@@ -57,9 +57,10 @@ The self-test result is printed to the console between
 |---|---|---|---|---|---|
 | macOS (arm64, debug) | JavaScriptCore | yes | ~30ms (~270ms total boot) | 0.16ms / ~2–3ms | 2026-07-05, M-series. Full self-test green: HamDB lookup, POTA spots (65, bands computed by `@ham2k/lib-operation-data`), QRZ session flow wired. |
 | Android 12 (arm64 emulator, debug) | QuickJS (`QuickJsRuntime2`) | yes | ~60ms (~690ms total boot) | 0.49ms / ~7ms | 2026-07-05. Full self-test green. This is the design's target engine. Emulator on M-series ≈ mid-range device; re-measure on real low-end hardware before calling perf final. |
-| iOS | | | | | not yet run |
+| iOS 26 (iPhone 17 Pro simulator, debug) | JavaScriptCore | yes | ~75ms (~620ms total boot) | 0.09ms / 0.44ms | 2026-07-05. Full self-test green on first run. Fastest bridge of the three. |
 
-Verdict so far: **the architecture's riskiest joint holds.** Sub-millisecond
+Verdict across macOS, Android and iOS: **the architecture's riskiest joint
+holds on every platform tried.** Sub-millisecond
 median bridge round-trips (budget was "a few ms"), trivial bundle load cost
 (~10ms/bundle → even 40 eagerly-loaded plugins would be acceptable, and lazy
 loading remains planned), JS engine runs fine on a background isolate, and an
