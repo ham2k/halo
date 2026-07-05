@@ -1,0 +1,16 @@
+{
+  "name": "@ham2k/polo-plugins",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "node build.mjs",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@ham2k/lib-operation-data": "1.1.0"
+  },
+  "devDependencies": {
+    "esbuild": "^0.25.5",
+    "typescript": "^5.8.0"
+  }
+}

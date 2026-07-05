@@ -1,0 +1,19 @@
+# Node
+node_modules/
+
+# Flutter / Dart
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+build/
+*.iml
+.idea/
+
+# Generated plugin bundles (built from plugins/ by `npm run build`)
+app/assets/plugins/
+
+# macOS
+.DS_Store
+
+# Local environment
+mise.local.toml
