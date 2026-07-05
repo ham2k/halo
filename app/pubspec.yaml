@@ -11,6 +11,12 @@ dependencies:
     sdk: flutter
   polo_plugin_host:
     path: ../packages/polo_plugin_host
+  polo_core:
+    path: ../packages/polo_core
+  polo_widgets:
+    path: ../packages/polo_widgets
+  drift: ^2.28.0
+  drift_flutter: ^0.2.4
 
 dev_dependencies:
   flutter_test:

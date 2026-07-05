@@ -1,0 +1,101 @@
+// Copyright ©️ 2026 Sebastian Delmont <sd@ham2k.com>
+// SPDX-License-Identifier: MPL-2.0
+
+import 'package:drift/native.dart';
+import 'package:polo_core/polo_core.dart';
+import 'package:test/test.dart';
+
+void main() {
+  late PoloDatabase db;
+  late OperationsRepository operations;
+  late QsosRepository qsos;
+
+  setUp(() {
+    db = PoloDatabase(NativeDatabase.memory());
+    operations = OperationsRepository(db);
+    qsos = QsosRepository(db);
+  });
+
+  tearDown(() async {
+    await db.close();
+  });
+
+  test('create and watch operations', () async {
+    final op = await operations.create(stationCall: 'ki2d', title: 'Test op');
+    expect(op.stationCall, 'KI2D');
+
+    final all = await operations.watchAll().first;
+    expect(all, hasLength(1));
+    expect(all.first.title, 'Test op');
+    expect(all.first.qsoCount, 0);
+  });
+
+  test('adding QSOs updates counters and indexed columns', () async {
+    final op = await operations.create(stationCall: 'KI2D');
+
+    await qsos.add(op.uuid, {
+      'our': {'call': 'KI2D', 'sent': '59'},
+      'their': {'call': 'W1AW', 'sent': '57'},
+      'freq': 14285.0,
+      'band': '20m',
+      'mode': 'SSB',
+      'startAtMillis': 1000,
+    });
+    await qsos.add(op.uuid, {
+      'our': {'call': 'KI2D', 'sent': '599'},
+      'their': {'call': 'EA4XYZ', 'sent': '579'},
+      'freq': 7025.0,
+      'band': '40m',
+      'mode': 'CW',
+      'startAtMillis': 2000,
+    });
+
+    final updated = await operations.get(op.uuid);
+    expect(updated!.qsoCount, 2);
+    expect(updated.startAtMillisMin, 1000);
+    expect(updated.startAtMillisMax, 2000);
+
+    final list = await qsos.watchForOperation(op.uuid).first;
+    expect(list.map((q) => q.theirCall), ['W1AW', 'EA4XYZ']);
+    expect(list.first.freq, 14285.0);
+    expect(list.first.sentRST, '59');
+    expect(list.first.receivedRST, '57');
+  });
+
+  test('watch stream emits on new QSOs', () async {
+    final op = await operations.create(stationCall: 'KI2D');
+    final emissions = <int>[];
+    final subscription = qsos.watchForOperation(op.uuid).listen((list) => emissions.add(list.length));
+
+    await pumpEventQueue();
+    await qsos.add(op.uuid, {
+      'their': {'call': 'W1AW'},
+      'mode': 'SSB',
+    });
+    await pumpEventQueue();
+
+    expect(emissions, containsAllInOrder([0, 1]));
+    await subscription.cancel();
+  });
+
+  test('soft delete hides QSO and refreshes counters', () async {
+    final op = await operations.create(stationCall: 'KI2D');
+    final qso = await qsos.add(op.uuid, {
+      'their': {'call': 'W1AW'},
+      'mode': 'CW',
+    });
+
+    await qsos.softDelete(qso);
+
+    final list = await qsos.watchForOperation(op.uuid).first;
+    expect(list, isEmpty);
+    final updated = await operations.get(op.uuid);
+    expect(updated!.qsoCount, 0);
+  });
+
+  test('soft deleted operations disappear from watchAll', () async {
+    final op = await operations.create(stationCall: 'KI2D');
+    await operations.softDelete(op.uuid);
+    expect(await operations.watchAll().first, isEmpty);
+  });
+}

@@ -14,7 +14,15 @@ taxonomy, data layer, sequencing plan.
 
 ## Status
 
-Pre-implementation. Nothing to build or run yet.
+- **Spike 01 — plugin bridge**: done, all platforms green
+  ([docs/spike-01-plugin-bridge.md](docs/spike-01-plugin-bridge.md)).
+- **Phase 2 — core logging loop**: operations, QSO entry, reactive QSO list
+  on drift/SQLite ([docs/phase-02-core-logging.md](docs/phase-02-core-logging.md)).
+
+```sh
+cd plugins && npm install && npm run build   # plugin bundles → app assets
+cd app && flutter run -d macos               # flutter provided via mise
+```
 
 ## License
 

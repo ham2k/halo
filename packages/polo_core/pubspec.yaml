@@ -1,0 +1,17 @@
+name: polo_core
+description: "PoLo Next core: data model, storage, and ham radio domain utilities. Pure Dart — no Flutter dependency."
+version: 0.0.1
+publish_to: 'none'
+
+environment:
+  sdk: ^3.12.2
+
+dependencies:
+  drift: ^2.28.0
+  uuid: ^4.5.0
+
+dev_dependencies:
+  build_runner: ^2.4.0
+  drift_dev: ^2.28.0
+  lints: ^6.0.0
+  test: ^1.25.6
