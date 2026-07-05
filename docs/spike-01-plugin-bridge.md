@@ -56,7 +56,7 @@ The self-test result is printed to the console between
 | Platform | Engine | Isolate? | Load ms (kernel+3) | Echo p50 / p95 | Notes |
 |---|---|---|---|---|---|
 | macOS (arm64, debug) | JavaScriptCore | yes | ~30ms (~270ms total boot) | 0.16ms / ~2–3ms | 2026-07-05, M-series. Full self-test green: HamDB lookup, POTA spots (65, bands computed by `@ham2k/lib-operation-data`), QRZ session flow wired. |
-| Android | | | | | not yet run (SDK cmdline-tools missing on dev machine) |
+| Android 12 (arm64 emulator, debug) | QuickJS (`QuickJsRuntime2`) | yes | ~60ms (~690ms total boot) | 0.49ms / ~7ms | 2026-07-05. Full self-test green. This is the design's target engine. Emulator on M-series ≈ mid-range device; re-measure on real low-end hardware before calling perf final. |
 | iOS | | | | | not yet run |
 
 Verdict so far: **the architecture's riskiest joint holds.** Sub-millisecond
@@ -78,6 +78,11 @@ Things learned the hard way (already reflected in the code):
   the footgun entirely.
 - JavaScriptCore `Error.stack` omits the message; the kernel reports
   `message + stack` explicitly.
+- flutter_js's Android module compiles Kotlin at JVM target 1.8 vs Java 11,
+  which current Gradle rejects; worked around with
+  `kotlin.jvm.target.validation.mode=warning` in `gradle.properties`. One
+  more nudge toward binding QuickJS-NG ourselves instead of depending on
+  flutter_js maintenance.
 
 ## Known spike shortcuts (not the real design)
 
