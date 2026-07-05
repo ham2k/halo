@@ -95,4 +95,56 @@ void main() {
       throwsA(isA<PluginHostException>()),
     );
   });
+
+  test('ADIF export plugin generates a valid file from QSON', () async {
+    final adifFile = File('../../app/assets/plugins/adif.js');
+    if (!kernelFile.existsSync() || !adifFile.existsSync()) {
+      markTestSkipped('bundles not built — run `npm run build` in plugins/ first');
+      return;
+    }
+
+    final host = await PluginHost.start(
+      kernelSource: kernelFile.readAsStringSync(),
+      plugins: [PluginBundle(key: 'adif', source: adifFile.readAsStringSync())],
+      useIsolate: false,
+    );
+    addTearDown(host.dispose);
+
+    final result = await host.invokeHook('export', key: 'adif', method: 'generateExport', args: {
+      'operation': {'uuid': 'op-1', 'stationCall': 'KI2D', 'title': 'Test Op'},
+      'qsos': [
+        {
+          'our': {'call': 'KI2D', 'sent': '59'},
+          'their': {'call': 'W1AW', 'sent': '57', 'name': 'ARRL HQ', 'grid': 'FN31pr', 'state': 'CT'},
+          'freq': 14285.0,
+          'band': '20m',
+          'mode': 'SSB',
+          'startAtMillis': DateTime.utc(2026, 7, 5, 18, 30).millisecondsSinceEpoch,
+        },
+        {
+          'our': {'call': 'KI2D', 'sent': '599'},
+          'their': {'call': 'EA4XYZ', 'sent': '579'},
+          'freq': 7025.0,
+          'band': '40m',
+          'mode': 'CW',
+          'startAtMillis': DateTime.utc(2026, 7, 5, 18, 45).millisecondsSinceEpoch,
+        },
+      ],
+    }) as Map;
+
+    expect(result['filename'], '20260705-ki2d-test-op.adi');
+    final content = result['content'] as String;
+    expect(content, contains('<ADIF_VER:5>3.1.5'));
+    expect(content, contains('<EOH>'));
+    expect(content, contains('<CALL:4>W1AW'));
+    expect(content, contains('<QSO_DATE:8>20260705'));
+    expect(content, contains('<TIME_ON:6>183000'));
+    expect(content, contains('<FREQ:6>14.285'));
+    expect(content, contains('<MODE:3>SSB'));
+    expect(content, contains('<NAME:7>ARRL HQ'));
+    expect(content, contains('<GRIDSQUARE:6>FN31pr'));
+    expect(content, contains('<CALL:6>EA4XYZ'));
+    expect(content, contains('<MODE:2>CW'));
+    expect('<EOR>'.allMatches(content).length, 2);
+  });
 }

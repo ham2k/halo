@@ -11,6 +11,7 @@ import 'package:flutter/material.dart';
 import 'package:polo_core/polo_core.dart';
 
 import 'screens/operations_screen.dart';
+import 'services/export_service.dart';
 import 'services/plugin_service.dart';
 
 void main() {
@@ -29,6 +30,7 @@ class PoloServices {
   late final OperationsRepository operations = OperationsRepository(db);
   late final QsosRepository qsos = QsosRepository(db);
   final PluginService plugins = PluginService();
+  late final ExportService exports = ExportService(plugins: plugins, qsos: qsos);
 
   PoloServices(this.db);
 }

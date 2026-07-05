@@ -54,7 +54,22 @@ export interface SpotsHook {
   fetchSpots(args: Record<string, never>, ctx: HookContext): Promise<Spot[]>
 }
 
-export type Hook = LookupHook | SpotsHook | Record<string, unknown>
+export interface ExportRequest {
+  operation: Record<string, JSONValue>
+  qsos: Record<string, JSONValue>[]
+}
+
+export interface ExportResult {
+  filename: string
+  mimeType: string
+  content: string
+}
+
+export interface ExportHook {
+  generateExport(args: ExportRequest, ctx: HookContext): Promise<ExportResult>
+}
+
+export type Hook = LookupHook | SpotsHook | ExportHook | Record<string, unknown>
 
 export interface RegisterHookParams {
   hook: Hook

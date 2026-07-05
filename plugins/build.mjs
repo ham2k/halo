@@ -15,6 +15,7 @@ const outDir = resolve(root, '../app/assets/plugins')
 
 const bundles = [
   { key: 'kernel', entry: 'sdk/src/kernel.ts', kind: 'kernel' },
+  { key: 'adif', entry: 'core/adif/src/index.ts', kind: 'plugin' },
   { key: 'hamdb', entry: 'lookups/hamdb/src/index.ts', kind: 'plugin' },
   { key: 'qrz', entry: 'lookups/qrz/src/index.ts', kind: 'plugin' },
   { key: 'pota-spots', entry: 'spots/pota/src/index.ts', kind: 'plugin' },

@@ -35,6 +35,18 @@ class _OperationScreenState extends State<OperationScreen> {
     setState(() => _operation = operation);
   }
 
+  Future<void> _export(Operation operation) async {
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      final path = await widget.services.exports.exportOperation(operation);
+      if (path != null) {
+        messenger.showSnackBar(SnackBar(content: Text('Exported to $path')));
+      }
+    } catch (e) {
+      messenger.showSnackBar(SnackBar(content: Text('Export failed: $e')));
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final operation = _operation;
@@ -56,6 +68,13 @@ class _OperationScreenState extends State<OperationScreen> {
               operation.title.isEmpty ? operation.stationCall : operation.title,
               '${qsos.length} QSOs',
             ].join(' — ')),
+            actions: [
+              IconButton(
+                tooltip: 'Export ADIF',
+                icon: const Icon(Icons.file_download_outlined),
+                onPressed: qsos.isEmpty ? null : () => _export(operation),
+              ),
+            ],
           ),
           body: Column(children: [
             Expanded(
