@@ -11,11 +11,16 @@ import 'package:flutter/material.dart';
 import 'package:polo_core/polo_core.dart';
 
 import 'screens/operations_screen.dart';
+import 'services/plugin_service.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
   final db = PoloDatabase(driftDatabase(name: 'polo_next'));
-  runApp(PoloNextApp(services: PoloServices(db)));
+  final services = PoloServices(db);
+  // Fire-and-forget: the plugin runtime enriches features as it comes up;
+  // the core logging loop never waits on it.
+  services.plugins.start();
+  runApp(PoloNextApp(services: services));
 }
 
 /// The core services bundle passed down to screens.
@@ -23,6 +28,7 @@ class PoloServices {
   final PoloDatabase db;
   late final OperationsRepository operations = OperationsRepository(db);
   late final QsosRepository qsos = QsosRepository(db);
+  final PluginService plugins = PluginService();
 
   PoloServices(this.db);
 }

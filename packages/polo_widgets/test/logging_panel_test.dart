@@ -97,6 +97,42 @@ void main() {
     expect(await waitForQsos(tester, 1), isEmpty);
   });
 
+  testWidgets('debounced lookup enriches the entry line and the logged QSO', (tester) async {
+    var lookups = 0;
+    Future<Map<String, dynamic>?> lookup(String call) async {
+      lookups++;
+      if (call != 'W1AW') return null;
+      return {'name': 'ARRL HQ', 'city': 'Newington', 'state': 'CT', 'grid': 'FN31pr'};
+    }
+
+    await tester.pumpWidget(MaterialApp(
+      home: Scaffold(
+        body: LoggingPanel(operation: operation, qsosRepository: qsos, lookup: lookup),
+      ),
+    ));
+
+    // Typing partial calls must not fire lookups until the debounce expires.
+    await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'W1A');
+    await tester.pump(const Duration(milliseconds: 100));
+    await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'W1AW');
+    await tester.pump(const Duration(milliseconds: 100));
+    expect(lookups, 0);
+
+    await tester.pump(const Duration(milliseconds: 250));
+    await tester.pump();
+    expect(lookups, 1);
+    expect(find.textContaining('ARRL HQ'), findsOneWidget);
+    expect(find.textContaining('Newington, CT'), findsOneWidget);
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+    final logged = await waitForQsos(tester, 1);
+    expect(logged.single.theirName, 'ARRL HQ');
+    expect(logged.single.data['their']['grid'], 'FN31pr');
+
+    // Wipe cleared the enrichment line.
+    expect(find.textContaining('ARRL HQ'), findsNothing);
+  });
+
   testWidgets('shows DUPE chip for same call, band and mode', (tester) async {
     final dupe = (await tester.runAsync(() => qsos.add(operation.uuid, {
           'their': {'call': 'W1AW'},

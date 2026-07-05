@@ -45,7 +45,18 @@ class QsoList extends StatelessWidget {
           title: Row(children: [
             SizedBox(width: 52, child: Text(timeLabel, style: monospace)),
             Expanded(
-              child: Text(qso.theirCall, style: monospace?.copyWith(fontWeight: FontWeight.bold)),
+              child: Text.rich(
+                TextSpan(children: [
+                  TextSpan(text: qso.theirCall, style: monospace?.copyWith(fontWeight: FontWeight.bold)),
+                  if (qso.theirName != null && qso.theirName!.isNotEmpty)
+                    TextSpan(
+                      text: '  ${qso.theirName}',
+                      style: monospace?.copyWith(color: Theme.of(context).colorScheme.outline),
+                    ),
+                ]),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
             ),
             SizedBox(width: 48, child: Text(qso.band ?? '', style: monospace)),
             SizedBox(width: 48, child: Text(qso.mode ?? '', style: monospace)),

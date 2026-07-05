@@ -138,8 +138,8 @@ class _SpikeScreenState extends State<SpikeScreen> {
     setState(() => _lookupResult = 'Looking up…');
     try {
       if (hookKey == 'qrz') {
-        host.setKV('username', _qrzUserController.text.trim());
-        host.setKV('password', _qrzPassController.text);
+        host.setKV('qrz', 'username', _qrzUserController.text.trim());
+        host.setKV('qrz', 'password', _qrzPassController.text);
       }
       final result = await host.invokeHook('lookup', key: hookKey, method: 'lookupCall',
           args: {'callInfo': {'call': _callsignController.text.trim()}});

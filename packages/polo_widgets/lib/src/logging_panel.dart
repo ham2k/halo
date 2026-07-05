@@ -9,10 +9,16 @@
 // Everything here is pure Dart/Flutter; plugins only ever get debounced,
 // async involvement (lookups, validation) and none are wired yet.
 
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import 'package:polo_core/polo_core.dart';
+
+/// Async callsign enrichment (name, location, grid…) from lookup sources.
+/// Returning null means "nothing known". Must never throw.
+typedef CallLookup = Future<Map<String, dynamic>?> Function(String call);
 
 class LoggingPanel extends StatefulWidget {
   final Operation operation;
@@ -22,12 +28,16 @@ class LoggingPanel extends StatefulWidget {
   final List<Qso> qsos;
   final void Function(Qso qso)? onLogged;
 
+  /// Optional lookup enrichment; fired debounced, off the keystroke path.
+  final CallLookup? lookup;
+
   const LoggingPanel({
     super.key,
     required this.operation,
     required this.qsosRepository,
     this.qsos = const [],
     this.onLogged,
+    this.lookup,
   });
 
   @override
@@ -44,22 +54,65 @@ class _LoggingPanelState extends State<LoggingPanel> {
   String _mode = 'SSB';
   bool _rstsTouched = false;
 
+  Timer? _lookupDebounce;
+  String? _lookupFor;
+  Map<String, dynamic>? _lookupResult;
+
   @override
   void initState() {
     super.initState();
     _applyDefaultRSTs();
-    _callController.addListener(() => setState(() {}));
+    _callController.addListener(_onCallChanged);
     _freqController.addListener(() => setState(() {}));
   }
 
   @override
   void dispose() {
+    _lookupDebounce?.cancel();
     _callController.dispose();
     _sentController.dispose();
     _rcvdController.dispose();
     _freqController.dispose();
     _callFocus.dispose();
     super.dispose();
+  }
+
+  void _onCallChanged() {
+    setState(() {});
+    _lookupDebounce?.cancel();
+    if (widget.lookup == null) return;
+
+    final call = _call;
+    if (_lookupFor == call) return;
+    if (!looksLikeCallsign(call)) {
+      setState(() {
+        _lookupFor = null;
+        _lookupResult = null;
+      });
+      return;
+    }
+
+    _lookupDebounce = Timer(const Duration(milliseconds: 300), () async {
+      final result = await widget.lookup!(call);
+      if (!mounted || _call != call) return; // stale — the call changed
+      setState(() {
+        _lookupFor = call;
+        _lookupResult = result;
+      });
+    });
+  }
+
+  String? get _lookupLine {
+    final result = _lookupResult;
+    if (result == null || _lookupFor != _call) return null;
+    final location = [result['city'], result['state']].whereType<String>().where((s) => s.isNotEmpty).join(', ');
+    final parts = [
+      result['name'],
+      location.isEmpty ? null : location,
+      result['country'],
+      result['grid'],
+    ].whereType<String>().where((s) => s.isNotEmpty).toList();
+    return parts.isEmpty ? null : parts.join(' • ');
   }
 
   String get _call => _callController.text.trim().toUpperCase();
@@ -81,6 +134,9 @@ class _LoggingPanelState extends State<LoggingPanel> {
   void _wipe() {
     _callController.clear();
     _applyDefaultRSTs();
+    _lookupDebounce?.cancel();
+    _lookupFor = null;
+    _lookupResult = null;
     _callFocus.requestFocus();
     setState(() {});
   }
@@ -90,9 +146,17 @@ class _LoggingPanelState extends State<LoggingPanel> {
       _callFocus.requestFocus();
       return;
     }
+    // Fold lookup enrichment into `their` if it belongs to this call.
+    final lookup = _lookupFor == _call ? _lookupResult : null;
     final qso = await widget.qsosRepository.add(widget.operation.uuid, {
       'our': {'call': widget.operation.stationCall, 'sent': _sentController.text.trim()},
-      'their': {'call': _call, 'sent': _rcvdController.text.trim()},
+      'their': {
+        'call': _call,
+        'sent': _rcvdController.text.trim(),
+        if (lookup != null)
+          for (final field in const ['name', 'city', 'state', 'country', 'grid'])
+            if (lookup[field] != null) field: lookup[field],
+      },
       if (_freq != null) 'freq': _freq,
       if (_band != null) 'band': _band,
       'mode': _mode,
@@ -158,6 +222,22 @@ class _LoggingPanelState extends State<LoggingPanel> {
                       labelStyle: TextStyle(color: theme.colorScheme.onErrorContainer),
                     ),
                 ]),
+                if (_lookupLine != null)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 4),
+                    child: Row(children: [
+                      Icon(Icons.person_outline, size: 16, color: theme.colorScheme.primary),
+                      const SizedBox(width: 4),
+                      Expanded(
+                        child: Text(
+                          _lookupLine!,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.primary),
+                        ),
+                      ),
+                    ]),
+                  ),
                 const SizedBox(height: 8),
                 Row(children: [
                   Expanded(

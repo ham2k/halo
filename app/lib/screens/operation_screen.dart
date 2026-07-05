@@ -71,6 +71,7 @@ class _OperationScreenState extends State<OperationScreen> {
               operation: operation,
               qsosRepository: widget.services.qsos,
               qsos: qsos,
+              lookup: widget.services.plugins.lookupCall,
             ),
           ]),
         );

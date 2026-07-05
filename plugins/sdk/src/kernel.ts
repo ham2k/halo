@@ -6,11 +6,18 @@
 // singleton on globalThis.__polo. Plugin bundles talk to it through the thin
 // wrappers in `index.ts`.
 //
+// Activation is lazy: definePlugin only registers the definition; the host
+// calls activateAll() after every bundle has been evaluated. This removes
+// the declaration-order footgun spike 01 found (esbuild IIFE output hoists
+// late declarations as undefined vars).
+//
 // Bridge protocol (all payloads are JSON strings over the 'polo' channel):
 //   JS → Dart:  {type:'result', id, ok, value|error, jsMillis}
 //               {type:'hostCall', callId, method, params}
 //               {type:'log', message}
 //   Dart → JS:  __polo.invokeHook(id, category, key|null, method, argsJson)
+//               __polo.invokeHookAll(id, category, method, argsJson)
+//               __polo.activateAll()
 //               __polo.hostResponse(callId, ok, resultJson)
 
 import type { PluginDefinition, RegisterHookParams } from "./types"
@@ -31,6 +38,7 @@ interface PendingHostCall {
 }
 
 const plugins: Record<string, PluginDefinition> = {}
+const activated = new Set<string>()
 const hooks: HookRecord[] = []
 const pendingHostCalls = new Map<number, PendingHostCall>()
 let nextHostCallId = 1
@@ -43,14 +51,19 @@ function log(message: string) {
   post({ type: 'log', message })
 }
 
-function findHook(category: string, key: string | null): HookRecord | undefined {
-  const matches = hooks
-    .filter((h) => h.category === category && (key == null || h.key === key))
-    .sort((a, b) => b.priority - a.priority)
-  return matches[0]
+function describeError(e: unknown): string {
+  // JavaScriptCore stacks don't include the message; report both.
+  const err = e as Error
+  return err?.message ? `${err.message}\n${err.stack ?? ''}`.trim() : String(e)
 }
 
-function hostCall(method: string, params: unknown): Promise<unknown> {
+function hooksFor(category: string, key: string | null): HookRecord[] {
+  return hooks
+    .filter((h) => h.category === category && (key == null || h.key === key))
+    .sort((a, b) => b.priority - a.priority)
+}
+
+function hostCall(method: string, params: Record<string, unknown>): Promise<unknown> {
   const callId = nextHostCallId++
   return new Promise((resolve, reject) => {
     pendingHostCalls.set(callId, { resolve, reject })
@@ -58,58 +71,80 @@ function hostCall(method: string, params: unknown): Promise<unknown> {
   })
 }
 
+async function callHookMethod(record: HookRecord, method: string, args: unknown): Promise<unknown> {
+  const fn = record.hook[method]
+  if (typeof fn !== 'function') {
+    throw new Error(`hook ${record.category}/${record.key} has no method ${method}`)
+  }
+  return await fn.call(record.hook, args, { online: true })
+}
+
+function activatePlugin(def: PluginDefinition) {
+  if (activated.has(def.key)) return
+  activated.add(def.key)
+  try {
+    def.onActivation({
+      registerHook(category: string, params: RegisterHookParams) {
+        if (!params?.hook) {
+          throw new Error(`registerHook(${category}) called with no hook in plugin ${def.key}`)
+        }
+        hooks.push({
+          category,
+          key: params.key ?? def.key,
+          priority: params.priority ?? 0,
+          pluginKey: def.key,
+          hook: params.hook as Record<string, unknown>,
+        })
+      },
+    })
+    log(`activated plugin ${def.key}@${def.version}`)
+  } catch (e) {
+    log(`ERROR activating plugin ${def.key}: ${describeError(e)}`)
+  }
+}
+
 const kernel = {
   definePlugin(def: PluginDefinition) {
     plugins[def.key] = def
-    try {
-      def.onActivation({
-        registerHook(category: string, params: RegisterHookParams) {
-          if (!params?.hook) {
-            throw new Error(`registerHook(${category}) called with no hook — check declaration order in plugin ${def.key}`)
-          }
-          hooks.push({
-            category,
-            key: params.key ?? def.key,
-            priority: params.priority ?? 0,
-            pluginKey: def.key,
-            hook: params.hook as Record<string, unknown>,
-          })
-        },
-      })
-      log(`activated plugin ${def.key}@${def.version}`)
-    } catch (e) {
-      log(`ERROR activating plugin ${def.key}: ${e}`)
-    }
+  },
+
+  /// Called by the host once all bundles are evaluated.
+  activateAll() {
+    for (const def of Object.values(plugins)) activatePlugin(def)
   },
 
   invokeHook(id: number, category: string, key: string | null, method: string, argsJson: string) {
     const startedAt = Date.now()
-    const respond = (ok: boolean, payload: unknown) => {
-      post({
-        type: 'result',
-        id,
-        ok,
-        ...(ok ? { value: payload ?? null } : { error: String(payload) }),
-        jsMillis: Date.now() - startedAt,
-      })
-    }
-
     void (async () => {
       try {
-        const record = findHook(category, key)
+        const record = hooksFor(category, key)[0]
         if (!record) throw new Error(`no hook registered for ${category}/${key ?? '*'}`)
-        const fn = record.hook[method]
-        if (typeof fn !== 'function') {
-          throw new Error(`hook ${category}/${record.key} has no method ${method}`)
-        }
-        const args = JSON.parse(argsJson)
-        const result = await fn.call(record.hook, args, { online: true })
-        respond(true, result)
+        const result = await callHookMethod(record, method, JSON.parse(argsJson))
+        post({ type: 'result', id, ok: true, value: result ?? null, jsMillis: Date.now() - startedAt })
       } catch (e) {
-        // JavaScriptCore stacks don't include the message; report both.
-        const err = e as Error
-        respond(false, err?.message ? `${err.message}\n${err.stack ?? ''}`.trim() : String(e))
+        post({ type: 'result', id, ok: false, error: describeError(e), jsMillis: Date.now() - startedAt })
       }
+    })()
+  },
+
+  /// Invokes `method` on every hook in a category (priority order) and
+  /// responds with one entry per hook: {key, ok, value|error}. Failures are
+  /// per-entry so one bad source never poisons the rest.
+  invokeHookAll(id: number, category: string, method: string, argsJson: string) {
+    const startedAt = Date.now()
+    void (async () => {
+      const args = JSON.parse(argsJson)
+      const records = hooksFor(category, null).filter((r) => typeof r.hook[method] === 'function')
+      const entries = await Promise.all(
+        records.map(async (record) => {
+          try {
+            return { key: record.key, ok: true, value: (await callHookMethod(record, method, args)) ?? null }
+          } catch (e) {
+            return { key: record.key, ok: false, error: describeError(e) }
+          }
+        }),
+      )
+      post({ type: 'result', id, ok: true, value: entries, jsMillis: Date.now() - startedAt })
     })()
   },
 

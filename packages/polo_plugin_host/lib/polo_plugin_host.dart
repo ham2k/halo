@@ -178,20 +178,39 @@ class PluginHost {
     required String method,
     Object? args,
     Duration timeout = const Duration(seconds: 10),
-  }) async {
-    final id = _nextId++;
-    final completer = Completer<dynamic>();
-    _pending[id] = completer;
-    _inFlight[id] = ('$category.$method', Stopwatch()..start());
-
-    final message = {
-      'type': 'invoke',
-      'id': id,
+  }) {
+    return _send('invoke', '$category.$method', {
       'category': category,
       'key': key,
       'method': method,
       'argsJson': jsonEncode(args ?? const <String, Object?>{}),
-    };
+    }, timeout);
+  }
+
+  /// Invokes `method` on every hook in `category` (priority order). Returns
+  /// one entry per hook: `{key, ok, value|error}` — a failing source never
+  /// poisons the others.
+  Future<List<Map<String, dynamic>>> invokeHookAll(
+    String category, {
+    required String method,
+    Object? args,
+    Duration timeout = const Duration(seconds: 10),
+  }) async {
+    final result = await _send('invokeAll', '$category.$method*', {
+      'category': category,
+      'method': method,
+      'argsJson': jsonEncode(args ?? const <String, Object?>{}),
+    }, timeout);
+    return (result as List).cast<Map>().map((e) => e.cast<String, dynamic>()).toList();
+  }
+
+  Future<dynamic> _send(String type, String label, Map<String, Object?> fields, Duration timeout) async {
+    final id = _nextId++;
+    final completer = Completer<dynamic>();
+    _pending[id] = completer;
+    _inFlight[id] = (label, Stopwatch()..start());
+
+    final message = {'type': type, 'id': id, ...fields};
     if (_inProcessCore != null) {
       _inProcessCore!.handle(message);
     } else {
@@ -203,13 +222,13 @@ class PluginHost {
     } on TimeoutException {
       _pending.remove(id);
       _inFlight.remove(id);
-      throw PluginHostException('hook $category.$method timed out after ${timeout.inMilliseconds}ms');
+      throw PluginHostException('hook $label timed out after ${timeout.inMilliseconds}ms');
     }
   }
 
-  /// Seeds a value into the plugin key-value store (e.g. credentials).
-  void setKV(String key, Object? value) {
-    final message = {'type': 'kvSet', 'key': key, 'value': value};
+  /// Seeds a value into a plugin's key-value namespace (e.g. credentials).
+  void setKV(String pluginKey, String key, Object? value) {
+    final message = {'type': 'kvSet', 'ns': pluginKey, 'key': key, 'value': value};
     if (_inProcessCore != null) {
       _inProcessCore!.handle(message);
     } else {
@@ -293,8 +312,9 @@ class _HostCore {
 
   late final JavascriptRuntime _js;
   final _http = http.Client();
-  final Map<String, Object?> _kv = {};
+  final Map<String, Map<String, Object?>> _kv = {};
   Timer? _pump;
+  int _outstanding = 0;
 
   _HostCore({required this.emit});
 
@@ -313,11 +333,9 @@ class _HostCore {
     for (final bundle in bundles) {
       _evaluate(bundle.source, name: bundle.key);
     }
-
-    // QuickJS needs explicit pumping for promise continuations scheduled by
-    // bridge responses; a fast timer is crude but fine for the spike. A real
-    // implementation would pump only while work is outstanding.
-    _pump = Timer.periodic(const Duration(milliseconds: 5), (_) => _executePendingJobs());
+    // Activation is deferred until every bundle is evaluated, so plugins
+    // never depend on declaration order within their own bundle.
+    _evaluate('__polo.activateAll()', name: 'activateAll');
 
     return (stopwatch..stop()).elapsedMilliseconds;
   }
@@ -325,20 +343,42 @@ class _HostCore {
   void handle(Map<String, dynamic> msg) {
     switch (msg['type']) {
       case 'invoke':
-        final code = '__polo.invokeHook('
-            '${msg['id']}, '
-            '${jsonEncode(msg['category'])}, '
-            '${msg['key'] == null ? 'null' : jsonEncode(msg['key'])}, '
-            '${jsonEncode(msg['method'])}, '
-            '${jsonEncode(msg['argsJson'])})';
+      case 'invokeAll':
+        final code = msg['type'] == 'invoke'
+            ? '__polo.invokeHook('
+                '${msg['id']}, '
+                '${jsonEncode(msg['category'])}, '
+                '${msg['key'] == null ? 'null' : jsonEncode(msg['key'])}, '
+                '${jsonEncode(msg['method'])}, '
+                '${jsonEncode(msg['argsJson'])})'
+            : '__polo.invokeHookAll('
+                '${msg['id']}, '
+                '${jsonEncode(msg['category'])}, '
+                '${jsonEncode(msg['method'])}, '
+                '${jsonEncode(msg['argsJson'])})';
+        _outstanding++;
+        _ensurePumping();
         try {
           _evaluate(code, name: 'invokeHook');
         } catch (e) {
+          _outstanding--;
           emit({'type': 'result', 'id': msg['id'], 'ok': false, 'error': '$e'});
         }
       case 'kvSet':
-        _kv[msg['key'] as String] = msg['value'];
+        _kv.putIfAbsent(msg['ns'] as String? ?? 'default', () => {})[msg['key'] as String] = msg['value'];
     }
+  }
+
+  /// Pumps the JS job queue only while hook calls are outstanding, instead
+  /// of a permanent fast timer.
+  void _ensurePumping() {
+    _pump ??= Timer.periodic(const Duration(milliseconds: 5), (_) {
+      _executePendingJobs();
+      if (_outstanding <= 0) {
+        _pump?.cancel();
+        _pump = null;
+      }
+    });
   }
 
   void _evaluate(String code, {required String name}) {
@@ -361,6 +401,8 @@ class _HostCore {
     final msg = (args is String ? jsonDecode(args) : args) as Map;
     switch (msg['type']) {
       case 'result':
+        _outstanding--;
+        emit(msg.cast<String, dynamic>());
       case 'log':
         emit(msg.cast<String, dynamic>());
       case 'hostCall':
@@ -380,11 +422,11 @@ class _HostCore {
         case 'fetch':
           result = await _hostFetch(params);
         case 'kvGet':
-          // Spike shortcut: one flat namespace. The real design namespaces
-          // per plugin, backed by the platform keychain for credentials.
-          result = _kv[params['key']];
+          // In-memory per-plugin namespaces; credentials move to the
+          // platform keychain when settings become persistent.
+          result = _kv[params['ns'] ?? 'default']?[params['key']];
         case 'kvSet':
-          _kv[params['key'] as String] = params['value'];
+          _kv.putIfAbsent(params['ns'] as String? ?? 'default', () => {})[params['key'] as String] = params['value'];
         default:
           ok = false;
           result = 'unknown host method $method';
