@@ -1,5 +1,5 @@
 name: polo_next
-description: "Ham2K Portable Logger Next — spike: JS plugin runtime bridge."
+description: "Ham2K Portable Logger Next — spike: JS extension runtime bridge."
 publish_to: 'none'
 version: 0.1.0+1
 
@@ -9,8 +9,8 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  polo_plugin_host:
-    path: ../packages/polo_plugin_host
+  polo_extension_host:
+    path: ../packages/polo_extension_host
   polo_core:
     path: ../packages/polo_core
   polo_widgets:
@@ -27,4 +27,4 @@ dev_dependencies:
 flutter:
   uses-material-design: true
   assets:
-    - assets/plugins/
+    - assets/extensions/

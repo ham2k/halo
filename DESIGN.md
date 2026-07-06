@@ -1,6 +1,6 @@
 # PoLo Next — Architecture & Design
 
-*Ham2K Portable Logger, next generation: a Flutter core with TypeScript plugins.*
+*Ham2K Portable Logger, next generation: a Flutter core with TypeScript extensions.*
 
 Status: **draft / pre-implementation**
 Last updated: 2026-07-05
@@ -23,7 +23,7 @@ That extension model has proven itself across ~40 extensions and is worth
 preserving. [web-lofi](../web-lofi) already started a second iteration: its
 `src/extensions/@framework` folder contains typed TS hook contracts
 (`ActivityHook`, `ReferenceHandlerHook`, `ExportHandlerHook`) — the embryo of a
-formal plugin SDK.
+formal extension SDK.
 
 ### What we keep
 
@@ -69,12 +69,12 @@ boundary. The only hooks that don't cross cleanly are the UI ones — solved in
 │  • SQLite storage (drift), reactive queries                │
 │  • Sync engine (dirty-flag loop, batching — policy only)   │
 │  • Settings, i18n, theming, platform services (GPS, files) │
-│  • Plugin host: JS runtime + bridge + capability system    │
+│  • Extension host: JS runtime + bridge + capabilities     │
 ├────────────────────────────────────────────────────────────┤
-│ TypeScript plugin runtime — "the knowledge"                │
+│ TypeScript extension runtime — "the knowledge"            │
 │  • QuickJS engine on a background isolate                  │
 │  • @ham2k/polo-sdk (typed hook contracts, host API)        │
-│  • Plugins: activities, contests, lookups, spots sources,  │
+│  • Extensions: activities, contests, lookups, spots,      │
 │    exporters, scoring, sync transports, commands           │
 │  • Reuses existing @ham2k JS libs (callsigns, country      │
 │    files, qson-adif, qson-cabrillo…) unchanged             │
@@ -87,16 +87,16 @@ about operations, QSOs, refs, spots, scores, and export files as
 opaque-but-schema'd JSON — the same philosophy as today, but with the boundary
 made physical instead of conventional.
 
-A major practical win of keeping plugins in TS rather than porting them to
+A major practical win of keeping extensions in TS rather than porting them to
 Dart: `@ham2k/lib-callsigns`, `lib-country-files`, `lib-qson-adif`,
 `lib-qson-cabrillo`, `lib-operation-data`, etc. (the `ham-js-libs` repo) run
-as-is inside the plugin runtime. That is years of accumulated edge-case
+as-is inside the extension runtime. That is years of accumulated edge-case
 knowledge we do not re-port. Only hot-path utilities the UI needs at 60fps
 (frequency/time formatting, band-for-frequency) get small Dart ports.
 
 ---
 
-## 3. Plugin runtime and bridge
+## 3. Extension runtime and bridge
 
 ### Engine
 
@@ -106,7 +106,7 @@ knowledge we do not re-port. Only hot-path utilities the UI needs at 60fps
   Windows / Linux, and is more than adequate for this workload: hooks fire on
   human timescales (keystrokes, spot refreshes), never per-frame.
 - The engine runs on a **dedicated background isolate**. The UI never blocks
-  on a plugin; every hook call is async by construction.
+  on an extension; every hook call is async by construction.
 - The engine choice is hidden behind the bridge interface. If QuickJS ever
   becomes the bottleneck, Hermes or JavaScriptCore can be swapped in — the
   protocol, not the engine, is the contract.
@@ -116,7 +116,7 @@ knowledge we do not re-port. Only hot-path utilities the UI needs at 60fps
 JSON message passing; essentially JSON-RPC with cancellation and timeouts.
 
 **Dart → JS:** `invokeHook(category, key, method, argsJson)` with a per-call
-budget (e.g. 2s for lookups, 250ms for command matching). A misbehaving plugin
+budget (e.g. 2s for lookups, 250ms for command matching). A misbehaving extension
 degrades — it never hangs the app.
 
 **JS → Dart (host API):** a capability-scoped surface, wrapped by the SDK in
@@ -124,25 +124,25 @@ typed functions:
 
 | API | Purpose |
 |---|---|
-| `host.fetch()` | HTTP, restricted to per-plugin domain allowlists from the manifest |
-| `host.lookups` | Shared reference dataset store (today's `lookups` table + `dataFiles` machinery, unified). The **core** handles download / cache / refresh scheduling of large files; the plugin supplies the URL and a streaming transform to records. |
-| `host.kv` | Per-plugin namespaced settings and state |
+| `host.fetch()` | HTTP, restricted to per-extension domain allowlists from the manifest |
+| `host.lookups` | Shared reference dataset store (today's `lookups` table + `dataFiles` machinery, unified). The **core** handles download / cache / refresh scheduling of large files; the extension supplies the URL and a streaming transform to records. |
+| `host.kv` | Per-extension namespaced settings and state |
 | `host.qsos` / `host.operations` | Read queries (scoring, dupe checking) served by the core's indexed SQLite — the log never ships wholesale across the bridge |
 | `host.events` | Subscriptions: `qsoAdded`, `operationChanged`, `online`/`offline`, `tick` |
 | `host.secrets` | Credential storage in the platform keychain (QRZ passwords no longer live in settings JSON) |
 
 ### Packaging and distribution
 
-Each plugin is a **manifest + an ESBuild-bundled ESM file**. Two channels:
+Each extension is a **manifest + an ESBuild-bundled ESM file**. Two channels:
 
 1. Baked into app assets (the default set).
-2. Downloaded / updated from a Ham2K plugin registry at runtime — new activity
+2. Downloaded / updated from a Ham2K extension registry at runtime — new activity
    programs, new QSO parties, contest rule fixes **without an app-store
    release**.
 
 The manifest declares capabilities (`network: [pota.app]`,
 `hooks: [activity, spots, ref:potaActivation]`), which doubles as a review and
-consent story for third-party plugins later. Plugin bundles are lazy-loaded on
+consent story for third-party extensions later. Extension bundles are lazy-loaded on
 first activation to protect app startup time.
 
 ---
@@ -160,7 +160,7 @@ SDK (grown from web-lofi's `@framework/types`):
 | `spots` | fetch and enrich spot sources | pure JSON already |
 | `command` | text shortcuts in the call field | `match` regex + `describe`/`invoke`; commands mutate via a whitelisted field-change operation, not arbitrary state |
 | `scoring` | per-QSO score, day accumulator, summarizer | runs batched in JS; results cached per-QSO in SQLite so list scroll never waits on JS |
-| `export` | ADIF / Cabrillo / CSV generation | plugin streams records; core writes the file and drives the share sheet |
+| `export` | ADIF / Cabrillo / CSV generation | extension streams records; core writes the file and drives the share sheet |
 | `syncTransport` | LoFi (or future) sync backends | core keeps the loop / batching / dirty flags in Dart — sync must work even if the JS runtime is wedged |
 | `settingsPanel`, `accountConnection`, `confirmation` | forms via the declarative catalog | |
 
@@ -175,7 +175,7 @@ calls. The current per-item hook signatures are not to be copied blindly.
 
 ---
 
-## 5. Plugin UI: declarative contributions
+## 5. Extension UI: declarative contributions
 
 The one contract that cannot cross the boundary is
 `InputComponent: <ReactComponent>`. But the components extensions actually
@@ -184,11 +184,11 @@ options form with a reference picker, a list row with icon and label. The
 current API is already half-declarative (`inputWidthMultiplier`, `optionType`,
 `order`, `icon`, `label`).
 
-**The core ships a widget catalog; plugins describe UI as data and handle
+**The core ships a widget catalog; extensions describe UI as data and handle
 events as logic.**
 
 ```ts
-// TS side — POTA plugin
+// TS side — POTA extension
 loggingControls: ({ operation }) => [{
   key: 'pota/activator',
   order: 10, icon: 'pota', optionType: 'mandatory',
@@ -212,7 +212,7 @@ panels), `markdown` (program notes), `listSection`, `mapOverlay`,
 `scoreSummary`.
 
 Each component exposes *behavior slots* (validate, suggest, decorate, format)
-that call back into the plugin. This is server-driven-UI mechanics with a
+that call back into the extension. This is server-driven-UI mechanics with a
 fixed native catalog: fast, accessible, theme-consistent — and the same
 declarative descriptions can render in a future web client, fixing the
 app-polo / web-lofi duplication at the root.
@@ -220,17 +220,17 @@ app-polo / web-lofi duplication at the root.
 **Escape hatches**, in order of preference:
 
 1. Propose the missing component for the catalog. The catalog is versioned;
-   plugins declare `minCatalog`.
+   extensions declare `minCatalog`.
 2. A sandboxed webview surface for rare full-custom screens (stats dashboards,
    program-specific maps) — acceptable there because those are not
    latency-critical.
 
 **The fast path never crosses the bridge.** Keystroke → text field → QSO list
-update is pure Dart. Plugins get debounced, async involvement (lookup
+update is pure Dart. Extensions get debounced, async involvement (lookup
 enrichment, command matching, validation) — which matches how they behave
 today anyway.
 
-> Discipline note: plugins will always want "just one custom widget." Catalog
+> Discipline note: extensions will always want "just one custom widget." Catalog
 > additions are core PRs. The day the catalog becomes Turing-complete we have
 > rebuilt React, badly.
 
@@ -250,10 +250,10 @@ qsos       (uuid PK, operation, our_call, their_call,
             band, mode, start_at_millis, data JSON,
             deleted, synced, score_cache JSON)
 
-lookups    (plugin, category, key PK, name, lat, lon,
-            data JSON, updated)          -- now plugin-namespaced
+lookups    (extension, category, key PK, name, lat, lon,
+            data JSON, updated)          -- now extension-namespaced
 
-plugin_kv  (plugin, key, value JSON)
+extension_kv (extension, key, value JSON)
 sync_state (...)
 ```
 
@@ -267,7 +267,7 @@ sync_state (...)
 - The **sync engine** is a Dart service implementing exactly the design in
   `app-polo/src/store/sync/README.md`: dirty flags, small-batch on change,
   large-batch on loop, server-tunable parameters. Only the transport call goes
-  through a plugin.
+  through an extension.
 
 ---
 
@@ -300,8 +300,8 @@ Flutter's official multi-window support is still maturing (Windows first;
   subscribes to the same reactive queries.
 - A minimal cross-window notify channel signals "data changed, re-query."
   **SQLite is the multi-window bus.**
-- The plugin runtime runs only in the primary window's process; secondary
-  windows are pure views, so plugin state never forks.
+- The extension runtime runs only in the primary window's process; secondary
+  windows are pure views, so extension state never forks.
 - Desktop users can tear off any module (spots monitor on a second screen, map
   on another) into its own OS window.
 
@@ -318,24 +318,24 @@ app-polo-next/
   packages/
     polo_core/            # Dart: models, db, sync engine, services
     polo_widgets/         # Dart: widget catalog + modules
-    polo_plugin_host/     # Dart: QuickJS binding, bridge, manifests
-  plugins/                # TypeScript workspace
+    polo_extension_host/     # Dart: QuickJS binding, bridge, manifests
+  extensions/                # TypeScript workspace
     sdk/                  # @ham2k/polo-sdk — hook types + host API
     activities/           # pota, sota, wwff, ...
     contests/             # naqp, qp, cqwpx, ...
     lookups/              # qrz, hamdb, hamqth
     spots/
     sync/                 # ham2k-lofi
-  tools/                  # plugin bundler, manifest validator, dev server
+  tools/                  # extension bundler, manifest validator, dev server
   docs/
 ```
 
-### Plugin developer experience
+### Extension developer experience
 
-- `polo plugin dev`: a watcher that rebundles and hot-reloads a plugin into a
+- `polo extension dev`: a watcher that rebundles and hot-reloads an extension into a
   running app. The runtime re-evaluates the bundle and re-registers hooks —
   the activate/deactivate lifecycle already supports this.
-- A headless test harness so plugin authors run their hooks against fixture
+- A headless test harness so extension authors run their hooks against fixture
   QSOs in vitest, with no Flutter involved.
 
 ---
@@ -343,21 +343,21 @@ app-polo-next/
 ## 10. Sequencing
 
 1. **Spike the riskiest joint (2–3 weeks).** QuickJS on an isolate + bridge +
-   the QRZ lookup plugin + POTA spots plugin against a stub UI. Measure:
+   the QRZ lookup extension + POTA spots extension against a stub UI. Measure:
    bridge latency, memory on a low-end Android device, cold-start cost of
    loading ~40 bundles.
-2. **Core logging loop, no plugins.** Operations, QSO entry, QSO list, SQLite,
+2. **Core logging loop, no extensions.** Operations, QSO entry, QSO list, SQLite,
    ADIF import. Prove the keyboard/entry ergonomics on desktop and mobile.
-3. **SDK v1 + three archetype plugins:** POTA (location activity, the
+3. **SDK v1 + three archetype extensions:** POTA (location activity, the
    richest), NAQP or a QSO party (contest with exchange + scoring), QRZ
    (lookup). These exercise every hook category; the remaining ~35 extensions
    are then mostly mechanical ports — and the TS-ification already underway in
    web-lofi's `@framework` feeds directly into the SDK.
-4. **Sync** via the LoFi transport plugin, validated against the existing
+4. **Sync** via the LoFi transport extension, validated against the existing
    server.
 5. **Spots, map, scoring cache, export.**
 6. **Desktop polish + multi-window tear-off.**
-7. Long tail of plugin ports; plugin registry / OTA update channel.
+7. Long tail of extension ports; extension registry / OTA update channel.
 
 ---
 
@@ -369,17 +369,17 @@ app-polo-next/
 | QuickJS performance ceiling | Engine hidden behind the bridge interface; Hermes/JSC swappable |
 | Catalog creep | Catalog additions are core PRs; versioned catalog; webview escape hatch for non-critical surfaces |
 | Flutter multi-window immaturity | SQLite-as-bus design; tear-off windows out of v1 |
-| JS runtime wedged / plugin crash | Sync and logging fast path are pure Dart; timeouts degrade features, never the app |
-| Startup cost of many plugins | Lazy-load bundles on first activation |
+| JS runtime wedged / extension crash | Sync and logging fast path are pure Dart; timeouts degrade features, never the app |
+| Startup cost of many extensions | Lazy-load bundles on first activation |
 
 ---
 
 ## 12. Summary of improvements over the current architecture
 
-- Typed, host-independent plugin contracts.
-- Plugins updatable without app releases.
-- One plugin codebase servable to Flutter **and** web clients.
-- Sync that cannot be broken by a plugin.
+- Typed, host-independent extension contracts.
+- Extensions updatable without app releases.
+- One extension codebase servable to Flutter **and** web clients.
+- Sync that cannot be broken by an extension.
 - Credentials in the platform keychain.
 - A UI that scales from a phone tab bar to a multi-monitor contest station
   without forking the extension ecosystem.

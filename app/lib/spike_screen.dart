@@ -1,7 +1,7 @@
 // Copyright ©️ 2026 Sebastian Delmont <sd@ham2k.com>
 // SPDX-License-Identifier: MPL-2.0
 //
-// Spike stub UI: boots the plugin host, runs a self-test on launch (bridge
+// Spike stub UI: boots the extension host, runs a self-test on launch (bridge
 // benchmark, HamDB lookup, POTA spots fetch), and exposes interactive
 // controls for lookups, spots, and latency measurement.
 
@@ -9,7 +9,7 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show rootBundle;
-import 'package:polo_plugin_host/polo_plugin_host.dart';
+import 'package:polo_extension_host/polo_extension_host.dart';
 
 class SpikeScreen extends StatefulWidget {
   const SpikeScreen({super.key});
@@ -19,8 +19,8 @@ class SpikeScreen extends StatefulWidget {
 }
 
 class _SpikeScreenState extends State<SpikeScreen> {
-  PluginHost? _host;
-  String _status = 'Booting plugin host…';
+  ExtensionHost? _host;
+  String _status = 'Booting extension host…';
   String? _selfTestReport;
   String? _lookupResult;
   String? _benchResult;
@@ -49,17 +49,17 @@ class _SpikeScreenState extends State<SpikeScreen> {
   Future<void> _boot() async {
     try {
       final bootWatch = Stopwatch()..start();
-      final index = jsonDecode(await rootBundle.loadString('assets/plugins/index.json')) as Map<String, dynamic>;
-      final kernelSource = await rootBundle.loadString('assets/plugins/${index['kernel']}');
-      final plugins = <PluginBundle>[];
-      for (final entry in (index['plugins'] as List).cast<Map<String, dynamic>>()) {
-        plugins.add(PluginBundle(
+      final index = jsonDecode(await rootBundle.loadString('assets/extensions/index.json')) as Map<String, dynamic>;
+      final kernelSource = await rootBundle.loadString('assets/extensions/${index['kernel']}');
+      final bundles = <ExtensionBundle>[];
+      for (final entry in (index['extensions'] as List).cast<Map<String, dynamic>>()) {
+        bundles.add(ExtensionBundle(
           key: entry['key'] as String,
-          source: await rootBundle.loadString('assets/plugins/${entry['file']}'),
+          source: await rootBundle.loadString('assets/extensions/${entry['file']}'),
         ));
       }
 
-      final host = await PluginHost.start(kernelSource: kernelSource, plugins: plugins);
+      final host = await ExtensionHost.start(kernelSource: kernelSource, extensions: bundles);
       bootWatch.stop();
 
       setState(() {
@@ -67,7 +67,7 @@ class _SpikeScreenState extends State<SpikeScreen> {
         _logs.addAll(host.logLines);
         _status = 'Ready — engine: ${host.engine}'
             '${host.runningInIsolate ? " on background isolate" : " IN-PROCESS (isolate failed)"}'
-            ' — kernel+${plugins.length} plugins loaded in ${host.loadMillis}ms'
+            ' — kernel+${bundles.length} extensions loaded in ${host.loadMillis}ms'
             ' (${bootWatch.elapsedMilliseconds}ms total boot)';
       });
       host.logs.listen((line) => setState(() => _logs.add(line)));
@@ -78,7 +78,7 @@ class _SpikeScreenState extends State<SpikeScreen> {
     }
   }
 
-  Future<void> _selfTest(PluginHost host) async {
+  Future<void> _selfTest(ExtensionHost host) async {
     final report = StringBuffer();
     try {
       final echo = await host.invokeHook('bench', key: 'kernel', method: 'echo', args: {'ping': true});
@@ -108,7 +108,7 @@ class _SpikeScreenState extends State<SpikeScreen> {
     debugPrint('=== SPIKE SELF-TEST ===\n$_status\n$report=== END SELF-TEST ===');
   }
 
-  Future<String> _runBench(PluginHost host, {bool warmup = false}) async {
+  Future<String> _runBench(ExtensionHost host, {bool warmup = false}) async {
     const rounds = 100;
     final times = <int>[];
     final watch = Stopwatch();
@@ -164,7 +164,7 @@ class _SpikeScreenState extends State<SpikeScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('PoLo Next — Plugin Bridge Spike')),
+      appBar: AppBar(title: const Text('PoLo Next — Extension Bridge Spike')),
       body: ListView(
         padding: const EdgeInsets.all(12),
         children: [
@@ -236,7 +236,7 @@ class _SpikeScreenState extends State<SpikeScreen> {
             'Hook call stats',
             _mono(_statsTable()),
           ),
-          _card('Plugin log', _mono(_logs.reversed.take(40).toList().reversed.join('\n'))),
+          _card('Extension log', _mono(_logs.reversed.take(40).toList().reversed.join('\n'))),
         ],
       ),
     );

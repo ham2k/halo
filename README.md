@@ -1,7 +1,7 @@
 # PoLo Next
 
 Next-generation Ham2K Portable Logger: a Flutter core ("the machine") with
-TypeScript plugins ("the knowledge") for activities, contests, callsign
+TypeScript extensions ("the knowledge") for activities, contests, callsign
 lookups, spotting, exports, and sync transports.
 
 Successor to [app-polo](https://github.com/ham2k/app-polo), designed to run on
@@ -9,18 +9,19 @@ mobile, tablet, and desktop — including multi-window contest-station setups �
 while keeping the extension ecosystem in TypeScript, updatable without app
 releases.
 
-**Start here: [DESIGN.md](DESIGN.md)** — architecture, plugin model, hook
-taxonomy, data layer, sequencing plan.
+**Start here: [DESIGN.md](DESIGN.md)** — architecture, extension model, hook
+taxonomy, data layer, sequencing plan. For writing extensions, see
+[docs/extensions/](docs/extensions/README.md).
 
 ## Status
 
-- **Spike 01 — plugin bridge**: done, all platforms green
-  ([docs/spike-01-plugin-bridge.md](docs/spike-01-plugin-bridge.md)).
+- **Spike 01 — extension bridge**: done, all platforms green
+  ([docs/spike-01-extension-bridge.md](docs/spike-01-extension-bridge.md)).
 - **Phase 2 — core logging loop**: operations, QSO entry, reactive QSO list
   on drift/SQLite ([docs/phase-02-core-logging.md](docs/phase-02-core-logging.md)).
 
 ```sh
-cd plugins && npm install && npm run build   # plugin bundles → app assets
+cd extensions && npm install && npm run build   # extension bundles → app assets
 cd app && flutter run -d macos               # flutter provided via mise
 ```
 

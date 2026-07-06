@@ -1,7 +1,7 @@
 # Phase 2 — Core logging loop
 
 Step 2 of the sequencing plan in [DESIGN.md](../DESIGN.md) §10: operations,
-QSO entry, QSO list, SQLite — all pure Dart, no plugins involved. The goal is
+QSO entry, QSO list, SQLite — all pure Dart, no extensions involved. The goal is
 proving the storage shape and the keyboard/entry ergonomics before anything
 else is layered on.
 
@@ -13,13 +13,13 @@ else is layered on.
     `deleted`/`synced` flags for soft deletes and dirty-flag sync.
   - `src/models/models.dart` — `Operation`/`Qso` as thin typed views over
     QSON maps. The JSON stays canonical; it is what will sync and what
-    plugins will see.
+    extensions will see.
   - `src/repo/repositories.dart` — the only writers. Every write derives
     indexed columns, marks rows dirty, and refreshes operation counters in a
     transaction. Reads are reactive drift streams.
   - `src/ham/radio.dart` — hot-path domain utilities only (band plan, freq
     parse/format, RST defaults, callsign plausibility). Full domain knowledge
-    stays in the TS plugin runtime per DESIGN.md §2.
+    stays in the TS extension runtime per DESIGN.md §2.
 - **`packages/polo_widgets`** — UI modules (DESIGN.md §7: modules, not
   screens):
   - `LoggingPanel` — QSO entry. Enter logs from anywhere in the panel, Esc
@@ -55,7 +55,7 @@ cd app && flutter run -d macos
 ## Deferred to next increments
 
 - ADIF import/export (next).
-- Operation refs/activities (needs the plugin runtime wired into logging).
-- Lookup enrichment of the entry line (plugin `lookup` hooks — the bridge
+- Operation refs/activities (needs the extension runtime wired into logging).
+- Lookup enrichment of the entry line (extension `lookup` hooks — the bridge
   from spike 01 is ready for this).
 - Scoring cache column is in the schema but unused.

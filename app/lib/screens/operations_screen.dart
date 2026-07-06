@@ -150,7 +150,7 @@ class OperationsScreen extends StatelessWidget {
         title: const Text('PoLo Next — Operations'),
         actions: [
           IconButton(
-            tooltip: 'Plugin bridge spike',
+            tooltip: 'Extension bridge spike',
             icon: const Icon(Icons.science_outlined),
             onPressed: () => Navigator.of(context).push(
               MaterialPageRoute(builder: (_) => const SpikeScreen()),

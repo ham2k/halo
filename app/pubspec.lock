@@ -423,10 +423,10 @@ packages:
       relative: true
     source: path
     version: "0.0.1"
-  polo_plugin_host:
+  polo_extension_host:
     dependency: "direct main"
     description:
-      path: "../packages/polo_plugin_host"
+      path: "../packages/polo_extension_host"
       relative: true
     source: path
     version: "0.0.1"

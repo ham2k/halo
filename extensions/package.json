@@ -1,0 +1,17 @@
+{
+  "name": "@ham2k/polo-extensions",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "node build.mjs",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@ham2k/lib-format-tools": "^1.1.3",
+    "@ham2k/lib-operation-data": "1.1.0"
+  },
+  "devDependencies": {
+    "esbuild": "^0.25.5",
+    "typescript": "^5.8.0"
+  }
+}

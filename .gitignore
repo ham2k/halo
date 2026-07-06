@@ -10,7 +10,7 @@ build/
 .idea/
 
 # Generated plugin bundles (built from plugins/ by `npm run build`)
-app/assets/plugins/
+app/assets/extensions/
 
 # macOS
 .DS_Store

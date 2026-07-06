@@ -16,7 +16,7 @@ import 'package:polo_widgets/polo_widgets.dart';
 import 'screens/operation_screen.dart';
 import 'screens/operations_screen.dart';
 import 'services/export_service.dart';
-import 'services/plugin_service.dart';
+import 'services/extension_service.dart';
 
 final navigatorKey = GlobalKey<NavigatorState>();
 
@@ -24,9 +24,9 @@ void main() {
   WidgetsFlutterBinding.ensureInitialized();
   final db = PoloDatabase(driftDatabase(name: 'polo_next'));
   final services = PoloServices(db);
-  // Fire-and-forget: the plugin runtime enriches features as it comes up;
+  // Fire-and-forget: the extension runtime enriches features as it comes up;
   // the core logging loop never waits on it.
-  services.plugins.start();
+  services.extensions.start();
   runApp(PoloNextApp(services: services));
 
   // Dev nicety: launch with POLO_OPEN_FIRST_OP=1 in the environment (e.g.
@@ -53,8 +53,8 @@ class PoloServices {
   final PoloDatabase db;
   late final OperationsRepository operations = OperationsRepository(db);
   late final QsosRepository qsos = QsosRepository(db);
-  final PluginService plugins = PluginService();
-  late final ExportService exports = ExportService(plugins: plugins, qsos: qsos);
+  final ExtensionService extensions = ExtensionService();
+  late final ExportService exports = ExportService(extensions: extensions, qsos: qsos);
 
   PoloServices(this.db);
 }

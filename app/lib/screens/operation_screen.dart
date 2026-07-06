@@ -35,19 +35,19 @@ class _OperationScreenState extends State<OperationScreen> {
     final operation = await widget.services.operations.get(widget.operationUuid);
     setState(() => _operation = operation);
     if (operation != null) {
-      // Plugin runtime may still be booting; controls appear when it answers.
-      await widget.services.plugins.start();
-      final controls = await widget.services.plugins.loggingControls(operation.data);
+      // Extension runtime may still be booting; controls appear when it answers.
+      await widget.services.extensions.start();
+      final controls = await widget.services.extensions.loggingControls(operation.data);
       if (mounted) setState(() => _loggingControls = controls);
     }
   }
 
   Future<void> _editActivities(Operation operation) async {
-    final controls = await widget.services.plugins.operationControls(operation.data);
+    final controls = await widget.services.extensions.operationControls(operation.data);
     if (!mounted) return;
     if (controls.isEmpty) {
       ScaffoldMessenger.of(context)
-          .showSnackBar(const SnackBar(content: Text('No activities available (plugin runtime still starting?)')));
+          .showSnackBar(const SnackBar(content: Text('No activities available (extension runtime still starting?)')));
       return;
     }
 
@@ -82,7 +82,7 @@ class _OperationScreenState extends State<OperationScreen> {
                             ...updated,
                           ];
                         }),
-                        decorate: widget.services.plugins.decorateRef,
+                        decorate: widget.services.extensions.decorateRef,
                       ),
                     ),
               ],
@@ -180,9 +180,9 @@ class _OperationScreenState extends State<OperationScreen> {
               operation: operation,
               qsosRepository: widget.services.qsos,
               qsos: qsos,
-              lookup: widget.services.plugins.lookupCall,
+              lookup: widget.services.extensions.lookupCall,
               activityControls: _loggingControls,
-              decorateRef: widget.services.plugins.decorateRef,
+              decorateRef: widget.services.extensions.decorateRef,
             ),
           ]),
         );

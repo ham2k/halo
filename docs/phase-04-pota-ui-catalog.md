@@ -1,6 +1,6 @@
 # Phase 4 — POTA and the declarative UI catalog
 
-The last unproven pillar of the architecture (DESIGN.md §5): plugins
+The last unproven pillar of the architecture (DESIGN.md §5): extensions
 contributing UI as data, rendered by native widgets from a core catalog.
 POTA is the archetype — the richest activity in app-polo — ported as a
 vertical slice touching every remaining seam.
@@ -15,25 +15,25 @@ vertical slice touching every remaining seam.
   `operationControls` returning `LoggingControlDescriptor`s), and
   `AdifFieldsHook`.
 - **In-runtime hook composition**: `kernel.invokeLocal` / SDK `hooks.invokeAll`
-  lets one plugin call other plugins' hooks without crossing the bridge. The
+  lets one extension call other extensions' hooks without crossing the bridge. The
   ADIF exporter uses it to collect per-QSO program fields from activity
-  plugins — plugin composition stays inside the JS runtime.
+  extensions — extension composition stays inside the JS runtime.
 
-### POTA plugin (`plugins/activities/pota`)
+### POTA extension (`extensions/activities/pota`)
 
-One plugin, five hooks (mirroring app-polo's extension shape):
+One extension, five hooks (mirroring app-polo's extension shape):
 `ref:pota` + `ref:potaActivation` (validation regex + park decoration via
 the POTA API with an in-runtime cache), `activity` (declarative refList
 controls for logging panel and operation settings), `adifFields`
 (SIG/SIG_INFO/POTA_REF and MY_SIG/MY_SIG_INFO/MY_POTA_REF), and the `spots`
-source (absorbed from the former spots-only plugin).
+source (absorbed from the former spots-only extension).
 
 ### UI catalog v0 (`polo_widgets`)
 
 - **`RefChipsInput`** — the first catalog component (`input.kind: 'refList'`):
   chip list + entry field, pattern pre-validation from the descriptor,
-  duplicate rejection, async decoration via a callback into the plugin
-  runtime that updates the chip when it lands. Never blocks on the plugin.
+  duplicate rejection, async decoration via a callback into the extension
+  runtime that updates the chip when it lands. Never blocks on the extension.
 - **`LoggingPanel`** renders `activityControls` descriptors (refList kind),
   folds entered refs into the logged QSO's `refs`, and clears them on wipe.
 - **`QsoList`** shows QSO refs in the row.
@@ -48,9 +48,9 @@ source (absorbed from the former spots-only plugin).
 
 ## What this proves
 
-A plugin can put a control on the hottest screen in the app without owning
+An extension can put a control on the hottest screen in the app without owning
 any pixels: the descriptor crosses the bridge once per operation open, all
-rendering is native, and plugin involvement (validation feedback, park-name
+rendering is native, and extension involvement (validation feedback, park-name
 decoration) is async behavior on core-owned widgets. SOTA/WWFF/GMA are now
 mostly copy work; contests need one more catalog component (an exchange
 `textField`).
