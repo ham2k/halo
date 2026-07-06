@@ -28,3 +28,13 @@ flutter:
   uses-material-design: true
   assets:
     - assets/extensions/
+  fonts:
+    - family: Roboto
+      fonts:
+        - asset: assets/fonts/Roboto.ttf
+    - family: RobotoSlab
+      fonts:
+        - asset: assets/fonts/RobotoSlab.ttf
+    - family: RobotoMono
+      fonts:
+        - asset: assets/fonts/RobotoMono.ttf

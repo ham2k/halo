@@ -61,6 +61,10 @@ class _SpikeScreenState extends State<SpikeScreen> {
 
       final host = await ExtensionHost.start(kernelSource: kernelSource, extensions: bundles);
       bootWatch.stop();
+      if (!mounted) {
+        host.dispose();
+        return;
+      }
 
       setState(() {
         _host = host;
@@ -70,11 +74,13 @@ class _SpikeScreenState extends State<SpikeScreen> {
             ' — kernel+${bundles.length} extensions loaded in ${host.loadMillis}ms'
             ' (${bootWatch.elapsedMilliseconds}ms total boot)';
       });
-      host.logs.listen((line) => setState(() => _logs.add(line)));
+      host.logs.listen((line) {
+        if (mounted) setState(() => _logs.add(line));
+      });
 
       await _selfTest(host);
     } catch (e) {
-      setState(() => _status = 'BOOT FAILED: $e');
+      if (mounted) setState(() => _status = 'BOOT FAILED: $e');
     }
   }
 
@@ -97,13 +103,15 @@ class _SpikeScreenState extends State<SpikeScreen> {
       final sample = spots.isEmpty ? 'none' : jsonEncode(spots.first);
       report.writeln('pota spots: ${spots.length} fetched, first: $sample');
 
-      setState(() {
-        _selfTestReport = report.toString();
-        _spots = spots;
-      });
+      if (mounted) {
+        setState(() {
+          _selfTestReport = report.toString();
+          _spots = spots;
+        });
+      }
     } catch (e) {
       report.writeln('FAILED: $e');
-      setState(() => _selfTestReport = report.toString());
+      if (mounted) setState(() => _selfTestReport = report.toString());
     }
     debugPrint('=== SPIKE SELF-TEST ===\n$_status\n$report=== END SELF-TEST ===');
   }
@@ -128,7 +136,7 @@ class _SpikeScreenState extends State<SpikeScreen> {
         'p50 ${us(times[times.length ~/ 2])}, '
         'p95 ${us(times[(times.length * 95) ~/ 100])}, '
         'max ${us(times.last)}';
-    setState(() => _benchResult = line);
+    if (mounted) setState(() => _benchResult = line);
     return line;
   }
 
@@ -143,9 +151,9 @@ class _SpikeScreenState extends State<SpikeScreen> {
       }
       final result = await host.invokeHook('lookup', key: hookKey, method: 'lookupCall',
           args: {'callInfo': {'call': _callsignController.text.trim()}});
-      setState(() => _lookupResult = const JsonEncoder.withIndent('  ').convert(result));
+      if (mounted) setState(() => _lookupResult = const JsonEncoder.withIndent('  ').convert(result));
     } catch (e) {
-      setState(() => _lookupResult = '$e');
+      if (mounted) setState(() => _lookupResult = '$e');
     }
   }
 
@@ -155,9 +163,9 @@ class _SpikeScreenState extends State<SpikeScreen> {
     try {
       final spots = await host.invokeHook('spots', key: 'pota', method: 'fetchSpots',
           timeout: const Duration(seconds: 20)) as List;
-      setState(() => _spots = spots);
+      if (mounted) setState(() => _spots = spots);
     } catch (e) {
-      setState(() => _spots = ['ERROR: $e']);
+      if (mounted) setState(() => _spots = ['ERROR: $e']);
     }
   }
 

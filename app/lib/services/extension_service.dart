@@ -91,6 +91,31 @@ class ExtensionService {
     return merged;
   }
 
+  /// Tries every registered `command` hook (priority order) against `input`
+  /// and returns the first non-null field-change result: `{freq?, band?,
+  /// mode?}`. Returns null when nothing matched, the input is empty, or the
+  /// runtime isn't up — callers should treat that as "not a command".
+  Future<Map<String, dynamic>?> tryCommand(String input) async {
+    final host = _host;
+    if (host == null || input.isEmpty) return null;
+    try {
+      final entries = await host.invokeHookAll(
+        'command',
+        method: 'tryCommand',
+        args: {'input': input},
+        timeout: const Duration(seconds: 2),
+      );
+      for (final entry in entries) {
+        if (entry['ok'] == true && entry['value'] is Map) {
+          return (entry['value'] as Map).cast<String, dynamic>();
+        }
+      }
+    } on ExtensionHostException catch (e) {
+      debugPrint('[extensions] tryCommand failed: $e');
+    }
+    return null;
+  }
+
   /// Descriptors for controls activities want on the logging panel.
   Future<List<Map<String, dynamic>>> loggingControls(Map<String, dynamic> operationData) =>
       _collectControls('loggingControls', operationData);

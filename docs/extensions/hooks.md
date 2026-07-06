@@ -119,6 +119,39 @@ interface AdifFieldsHook {
 POTA contributes `SIG/SIG_INFO/POTA_REF` (hunted refs on the QSO) and
 `MY_SIG/MY_SIG_INFO/MY_POTA_REF` (activation refs on the operation).
 
+## ✅ `command` — call-field text shortcuts
+
+Space in the logging panel's call field tries the typed text as a command
+before falling back to "advance focus." The core does no matching itself —
+it fans out to **every** registered `command` hook via `invokeHookAll` and
+applies the first non-null result, in priority order.
+
+```ts
+interface CommandResult {
+  freq?: number
+  band?: string
+  mode?: string
+}
+
+interface CommandHook {
+  tryCommand(args: { input: string }, ctx): Promise<CommandResult | null>
+}
+```
+
+Each hook does its own regex matching internally and returns `null` for "not
+mine" — the host never compiles extension-supplied regex source itself.
+Results mutate only through the closed `CommandResult` field set (DESIGN.md
+§4's "whitelisted field-change operations"), never arbitrary state.
+
+Implemented by `radio-commands` (band/frequency/mode shortcuts — "20m ",
+"14285 ", "14.285 ", "cw "), ported from app-polo's `RadioCommands`
+extension. Notably, this replaced an earlier hand-rolled Dart regex for
+frequency parsing that rejected valid MHz-style input ("14.285") because it
+required 3+ digits before any decimal point; the extension delegates to
+`@ham2k/lib-format-tools`' published `parseFreq` instead, which already
+handles this correctly. Future command hooks (spotting, operator change…)
+register in the same category and compete on priority with these.
+
 ## ✅ `bench` — kernel diagnostics
 
 Registered by the kernel itself (`bench/kernel`): `echo` (bridge round-trip
@@ -131,7 +164,6 @@ extensions.
 
 | Category | Role | Notes |
 |---|---|---|
-| `command` | text shortcuts in the call field (`match` regex + `describe`/`invoke`) | The core already owns the space-trigger and implements freq/band/mode natively; extension commands (spotting, operator change…) layer onto the same trigger, mutating only via whitelisted field-change operations. |
 | `scoring` | per-QSO score, day accumulator, summarizer | Runs batched (score N QSOs per call); results cached in the `qsos.score_cache` column so list scroll never waits on JS. |
 | `syncTransport` | LoFi (and future) sync backends | The Dart core keeps the loop/batching/dirty flags; the hook only transports payloads. Sync must survive a wedged runtime. |
 | `confirmation` | QSL/confirmation sources (spot-history cross-checking) | |

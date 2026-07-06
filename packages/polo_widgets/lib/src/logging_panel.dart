@@ -27,6 +27,12 @@ import 'theme.dart';
 /// Returning null means "nothing known". Must never throw.
 typedef CallLookup = Future<Map<String, dynamic>?> Function(String call);
 
+/// Tries the input as an extension-registered command (band/freq/mode
+/// shortcuts, and eventually spotting/operator commands). Returns a
+/// field-change map (`{freq?, band?, mode?}`) or null for "not a command".
+/// Must never throw.
+typedef CommandHandler = Future<Map<String, dynamic>?> Function(String input);
+
 class LoggingPanel extends StatefulWidget {
   final Operation operation;
   final QsosRepository qsosRepository;
@@ -45,6 +51,10 @@ class LoggingPanel extends StatefulWidget {
   /// Async ref decoration via the plugin runtime.
   final RefDecorator? decorateRef;
 
+  /// Extension-backed command shortcuts, tried on space in the call field.
+  /// When null, space in the call field just advances focus.
+  final CommandHandler? tryCommand;
+
   const LoggingPanel({
     super.key,
     required this.operation,
@@ -54,6 +64,7 @@ class LoggingPanel extends StatefulWidget {
     this.lookup,
     this.activityControls = const [],
     this.decorateRef,
+    this.tryCommand,
   });
 
   @override
@@ -83,6 +94,10 @@ class _LoggingPanelState extends State<LoggingPanel> {
   /// Refs entered via activity controls for the QSO being composed,
   /// keyed by control key.
   final Map<String, List<Map<String, dynamic>>> _controlRefs = {};
+
+  /// Guards against double-logging: Enter is bound both as a keyboard
+  /// shortcut and as every field's onSubmitted, and can also auto-repeat.
+  bool _isLogging = false;
 
   @override
   void initState() {
@@ -146,50 +161,43 @@ class _LoggingPanelState extends State<LoggingPanel> {
     });
   }
 
-  // ---- Command shortcuts (app-polo's RadioCommands, core edition) ----
+  // ---- Command shortcuts ----
   //
-  // Space in the call field first tries to interpret the text as a command;
-  // domain-specific commands (spotting, operator changes…) will come from
-  // plugin `command` hooks later, evaluated on this same trigger.
+  // Space in the call field first tries the text as an extension command
+  // (band/frequency/mode shortcuts live in the `radio-commands` extension;
+  // see docs/extensions/hooks.md's `command` category). This is a real bridge
+  // round-trip, not a Dart regex — command matching and frequency parsing
+  // are extension/domain-library territory, not core UI territory.
 
-  static final _bandCommand = RegExp(r'^(2200|630|160|80|60|40|30|20|17|15|12|10|6|4|2)M?$', caseSensitive: false);
-  static final _freqCommand = RegExp(r'^[0-9]{3,6}([.,][0-9]+)?$');
-
-  bool _tryCommand(String text) {
-    if (text.isEmpty) return false;
-
-    final band = _bandCommand.firstMatch(text);
-    if (band != null && bands.any((b) => b.name == '${band.group(1)!.toLowerCase()}m')) {
-      setState(() {
-        _manualBand = '${band.group(1)!.toLowerCase()}m';
-        _freqController.clear();
-      });
-      return true;
-    }
-
-    if (_freqCommand.hasMatch(text)) {
-      final freq = parseFreq(text);
-      if (freq != null && bandForFrequency(freq) != null) {
-        setState(() => _freqController.text = fmtFreq(freq).replaceAll(',', ''));
-        return true;
-      }
-    }
-
-    final mode = modes.firstWhere((m) => m.toLowerCase() == text.toLowerCase(), orElse: () => '');
-    if (mode.isNotEmpty) {
-      _setMode(mode);
-      return true;
-    }
-
-    return false;
-  }
-
-  void _handleSpace() {
+  Future<void> _handleSpace() async {
     if (_callFocus.hasFocus) {
-      if (_tryCommand(_call)) {
-        _callController.clear();
-        // stay in the call field, ready for the next call or command
-      } else if (_call.isNotEmpty) {
+      final call = _call;
+      final tryCommand = widget.tryCommand;
+      if (call.isNotEmpty && tryCommand != null) {
+        final result = await tryCommand(call);
+        if (!mounted) return;
+        if (result != null) {
+          setState(() {
+            final freq = result['freq'];
+            final band = result['band'];
+            final mode = result['mode'];
+            if (freq is num) {
+              _freqController.text = fmtFreq(freq.toDouble()).replaceAll(',', '');
+              _manualBand = null;
+            } else if (band is String) {
+              _manualBand = band;
+              _freqController.clear();
+            }
+            if (mode is String) {
+              _mode = mode;
+              if (!_rstsTouched) _applyDefaultRSTs();
+            }
+          });
+          _callController.clear();
+          return;
+        }
+      }
+      if (call.isNotEmpty) {
         _sentFocus.requestFocus();
       }
     } else if (_sentFocus.hasFocus) {
@@ -254,29 +262,35 @@ class _LoggingPanelState extends State<LoggingPanel> {
   }
 
   Future<void> _log() async {
+    if (_isLogging) return; // already logging this entry; ignore the repeat
     if (!_canLog) {
       _callFocus.requestFocus();
       return;
     }
-    // Fold lookup enrichment into `their` if it belongs to this call.
-    final lookup = _lookupFor == _call ? _lookupResult : null;
-    final refs = [for (final list in _controlRefs.values) ...list];
-    final qso = await widget.qsosRepository.add(widget.operation.uuid, {
-      if (refs.isNotEmpty) 'refs': refs,
-      'our': {'call': widget.operation.stationCall, 'sent': _sentController.text.trim()},
-      'their': {
-        'call': _call,
-        'sent': _rcvdController.text.trim(),
-        if (lookup != null)
-          for (final field in const ['name', 'city', 'state', 'country', 'grid'])
-            if (lookup[field] != null) field: lookup[field],
-      },
-      if (_freq != null) 'freq': _freq,
-      if (_band != null) 'band': _band,
-      'mode': _mode,
-    });
-    widget.onLogged?.call(qso);
-    _wipe();
+    _isLogging = true;
+    try {
+      // Fold lookup enrichment into `their` if it belongs to this call.
+      final lookup = _lookupFor == _call ? _lookupResult : null;
+      final refs = [for (final list in _controlRefs.values) ...list];
+      final qso = await widget.qsosRepository.add(widget.operation.uuid, {
+        if (refs.isNotEmpty) 'refs': refs,
+        'our': {'call': widget.operation.stationCall, 'sent': _sentController.text.trim()},
+        'their': {
+          'call': _call,
+          'sent': _rcvdController.text.trim(),
+          if (lookup != null)
+            for (final field in const ['name', 'city', 'state', 'country', 'grid'])
+              if (lookup[field] != null) field: lookup[field],
+        },
+        if (_freq != null) 'freq': _freq,
+        if (_band != null) 'band': _band,
+        'mode': _mode,
+      });
+      widget.onLogged?.call(qso);
+      _wipe();
+    } finally {
+      _isLogging = false;
+    }
   }
 
   @override

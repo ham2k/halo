@@ -6,9 +6,15 @@
 //   • primary teal #006783, secondary blue #005FAF, tertiary orange #964900
 //   • Roboto for body text, Roboto Slab for headers, Roboto Mono for QSO data
 //   • per-band accent colors for log rows and spots
+//
+// Fonts are bundled as app assets (variable TTFs from the google/fonts repo,
+// declared in app/pubspec.yaml under family names 'Roboto'/'RobotoSlab'/
+// 'RobotoMono') rather than fetched via the google_fonts package at runtime —
+// PoLo's core use case is a field operation with no connectivity, and a
+// network-fetched font silently falling back to the system font on first
+// launch would be a bad first impression.
 
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 /// Extra Ham2K colors that don't fit Material's ColorScheme, including the
 /// band color map used to accent QSO rows and spots.
@@ -77,7 +83,7 @@ class PoloColors extends ThemeExtension<PoloColors> {
 }
 
 TextStyle poloMonoStyle(BuildContext context, {double? fontSize, FontWeight? fontWeight, Color? color}) {
-  return GoogleFonts.robotoMono(fontSize: fontSize, fontWeight: fontWeight, color: color);
+  return TextStyle(fontFamily: 'RobotoMono', fontSize: fontSize, fontWeight: fontWeight, color: color);
 }
 
 ThemeData buildPoloTheme(Brightness brightness) {
@@ -127,9 +133,7 @@ ThemeData buildPoloTheme(Brightness brightness) {
           outlineVariant: Color(0xFFDCE6E8),
         );
 
-  final textTheme = GoogleFonts.robotoTextTheme(
-    ThemeData(brightness: brightness).textTheme,
-  );
+  final textTheme = ThemeData(brightness: brightness).textTheme.apply(fontFamily: 'Roboto');
 
   return ThemeData(
     useMaterial3: true,
@@ -142,7 +146,8 @@ ThemeData buildPoloTheme(Brightness brightness) {
       foregroundColor: colorScheme.onPrimary,
       centerTitle: true,
       elevation: 0,
-      titleTextStyle: GoogleFonts.robotoSlab(
+      titleTextStyle: TextStyle(
+        fontFamily: 'RobotoSlab',
         fontSize: 20,
         fontWeight: FontWeight.w700,
         color: colorScheme.onPrimary,

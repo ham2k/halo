@@ -38,10 +38,14 @@ class QsoList extends StatelessWidget {
       itemCount: qsos.length,
       separatorBuilder: (context, index) => const Divider(),
       itemBuilder: (context, index) {
-        // reverse:true puts index 0 at the bottom, so the newest QSO sits
-        // next to the logging panel, contest-logger style.
-        final qso = qsos[index];
-        final number = index + 1;
+        // reverse:true renders itemBuilder index 0 at the bottom of the
+        // list. `qsos` is ordered oldest-first, so we index from the end to
+        // put the newest QSO at index 0 — next to the logging panel,
+        // contest-logger style. The row number stays chronological (1 =
+        // first QSO logged), independent of where it renders.
+        final chronologicalIndex = qsos.length - 1 - index;
+        final qso = qsos[chronologicalIndex];
+        final number = chronologicalIndex + 1;
         final time = qso.startAt;
         final timeLabel = time == null
             ? '--:--'

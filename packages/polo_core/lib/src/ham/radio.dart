@@ -66,17 +66,22 @@ double? parseFreq(String input) {
 
 /// Formats kHz for display: "14,285.5".
 String fmtFreq(double khz) {
-  final wholePart = khz.truncate();
-  final fraction = khz - wholePart;
+  // Round to one decimal FIRST, then split into whole/fraction — splitting
+  // the unrounded value and rounding just the fraction (the previous
+  // approach) drops the carry whenever the fraction is >= 0.95, e.g.
+  // 14285.96 would format as "14,285.0" instead of "14,286".
+  final rounded = (khz * 10).round() / 10;
+  final wholePart = rounded.truncate();
+  final fractionDigit = ((rounded - wholePart) * 10).round();
+
   final digits = wholePart.toString();
   final grouped = StringBuffer();
   for (var i = 0; i < digits.length; i++) {
     if (i > 0 && (digits.length - i) % 3 == 0) grouped.write(',');
     grouped.write(digits[i]);
   }
-  if (fraction > 0.0001) {
-    final fractionText = fraction.toStringAsFixed(1).substring(2);
-    return '$grouped.$fractionText';
+  if (fractionDigit != 0) {
+    return '$grouped.$fractionDigit';
   }
   return grouped.toString();
 }

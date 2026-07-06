@@ -30,12 +30,31 @@ void main() {
     await db.close();
   });
 
-  Widget host({List<Qso> existing = const []}) {
+  Widget host({List<Qso> existing = const [], CommandHandler? tryCommand}) {
     return MaterialApp(
       home: Scaffold(
-        body: LoggingPanel(operation: operation, qsosRepository: qsos, qsos: existing),
+        body: LoggingPanel(operation: operation, qsosRepository: qsos, qsos: existing, tryCommand: tryCommand),
       ),
     );
+  }
+
+  /// Stand-in for the real `radio-commands` extension (see
+  /// extensions/core/radio-commands), so this widget test can verify how
+  /// LoggingPanel applies a command result without booting a JS runtime.
+  /// The extension itself is covered by an integration test in
+  /// polo_extension_host against the real built bundle.
+  Future<Map<String, dynamic>?> fakeTryCommand(String input) async {
+    final band = RegExp(r'^(2200|630|160|80|60|40|30|20|17|15|12|10|6|4|2)M?$', caseSensitive: false).firstMatch(input);
+    if (band != null) return {'band': '${band.group(1)!.toLowerCase()}m'};
+
+    final mode = modes.firstWhere((m) => m.toLowerCase() == input.toLowerCase(), orElse: () => '');
+    if (mode.isNotEmpty) return {'mode': mode};
+
+    if (input.length >= 3) {
+      final freq = parseFreq(input);
+      if (freq != null && bandForFrequency(freq) != null) return {'freq': freq};
+    }
+    return null;
   }
 
   /// Pumps until the operation's QSO list reaches [count] (or gives up).
@@ -195,13 +214,18 @@ void main() {
   });
 
   testWidgets('call-field commands: frequency, band, and mode via space', (tester) async {
-    await tester.pumpWidget(host());
+    await tester.pumpWidget(host(tryCommand: fakeTryCommand));
 
     TextField field(String label) => tester.widget<TextField>(find.widgetWithText(TextField, label));
     Future<void> command(String text) async {
       await tester.enterText(find.widgetWithText(TextField, 'Their call'), text);
       await tester.pump();
       await tester.sendKeyEvent(LogicalKeyboardKey.space);
+      // _handleSpace is async now (tryCommand is a real await point, even
+      // when the fake resolves instantly) — two pumps let the continuation
+      // land before we assert, matching the convention already used for
+      // RefChipsInput's async decoration in ref_chips_input_test.dart.
+      await tester.pump();
       await tester.pump();
     }
 

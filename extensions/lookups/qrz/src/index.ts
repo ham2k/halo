@@ -79,11 +79,18 @@ async function lookupCall({ callInfo }: { callInfo: CallInfo }, _ctx: HookContex
       state: tag(xml, 'state'),
       country: tag(xml, 'country'),
       grid: tag(xml, 'grid'),
-      lat: parseFloat(tag(xml, 'lat') ?? '') || undefined,
-      lon: parseFloat(tag(xml, 'lon') ?? '') || undefined,
+      lat: parseCoordinate(tag(xml, 'lat')),
+      lon: parseCoordinate(tag(xml, 'lon')),
       image: tag(xml, 'image'),
     }
   } catch (e) {
     return { source: 'qrz.com', call, error: String((e as Error).message ?? e) }
   }
+}
+
+// `parseFloat(x) || undefined` would discard a legitimate 0° (equator or
+// prime meridian) since `0 || undefined` evaluates to undefined.
+function parseCoordinate(value: string | undefined): number | undefined {
+  const parsed = parseFloat(value ?? '')
+  return Number.isFinite(parsed) ? parsed : undefined
 }

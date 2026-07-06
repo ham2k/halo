@@ -46,6 +46,14 @@ void main() {
       expect(fmtFreq(472), '472');
       expect(fmtFreq(1296200), '1,296,200');
     });
+
+    test('carries the rounded fraction into the whole part', () {
+      // A fraction >= 0.95 rounds to 1.0 at one decimal place; the carry
+      // must propagate into the whole part instead of being dropped.
+      expect(fmtFreq(14285.96), '14,286');
+      expect(fmtFreq(14285.95), '14,286');
+      expect(fmtFreq(999.96), '1,000');
+    });
   });
 
   group('defaultRSTFor', () {

@@ -203,4 +203,73 @@ void main() {
     expect(content, contains('<MY_SIG_INFO:7>US-5678'));
     expect(content, contains('<MY_POTA_REF:7>US-5678'));
   });
+
+  test('samples list is capped instead of growing without bound', () async {
+    if (!kernelFile.existsSync()) {
+      markTestSkipped('kernel.js not built — run `npm run build` in extensions/ first');
+      return;
+    }
+
+    final host = await ExtensionHost.start(
+      kernelSource: kernelFile.readAsStringSync(),
+      extensions: const [],
+      useIsolate: false,
+    );
+    addTearDown(host.dispose);
+
+    const callCount = 2100; // above the 2000-sample cap
+    for (var i = 0; i < callCount; i++) {
+      await host.invokeHook('bench', key: 'kernel', method: 'echo', args: {'i': i});
+    }
+
+    expect(host.samples.length, lessThan(callCount));
+    expect(host.samples.length, lessThanOrEqualTo(2000));
+  });
+
+  test('radio-commands extension: band, frequency and mode via invokeHookAll', () async {
+    final radioCommandsFile = File('../../app/assets/extensions/radio-commands.js');
+    if (!kernelFile.existsSync() || !radioCommandsFile.existsSync()) {
+      markTestSkipped('bundles not built — run `npm run build` in extensions/ first');
+      return;
+    }
+
+    final host = await ExtensionHost.start(
+      kernelSource: kernelFile.readAsStringSync(),
+      extensions: [ExtensionBundle(key: 'radio-commands', source: radioCommandsFile.readAsStringSync())],
+      useIsolate: false,
+    );
+    addTearDown(host.dispose);
+
+    // Picks the first non-null result from every registered `command` hook,
+    // exactly as ExtensionService.tryCommand does.
+    Future<Map<String, dynamic>?> tryCommand(String input) async {
+      final entries = await host.invokeHookAll('command', method: 'tryCommand', args: {'input': input});
+      for (final entry in entries) {
+        if (entry['ok'] == true && entry['value'] is Map) return (entry['value'] as Map).cast<String, dynamic>();
+      }
+      return null;
+    }
+
+    // The bug this extension fixes: MHz-style input with only 2 digits
+    // before the decimal point never matched the old Dart regex, which
+    // required 3+ digits unconditionally.
+    expect(await tryCommand('14.285'), {'freq': 14285.0});
+
+    // Plain kHz input still works.
+    expect(await tryCommand('14285'), {'freq': 14285.0});
+
+    // Band and mode commands.
+    expect(await tryCommand('20m'), {'band': '20m'});
+    expect(await tryCommand('20'), {'band': '20m'});
+    expect(await tryCommand('cw'), {'mode': 'CW'});
+
+    // Nonsense input matches nothing.
+    expect(await tryCommand('QQQ'), isNull);
+    expect(await tryCommand('13000'), isNull); // gap between 30m and 20m, no such ham band
+
+    // 3-digit band tokens (160m, 630m) also resolve correctly — and don't
+    // get shadowed by the frequency command, since band priority (100)
+    // beats frequency (99) whenever both could theoretically match.
+    expect(await tryCommand('160m'), {'band': '160m'});
+  });
 }

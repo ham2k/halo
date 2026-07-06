@@ -98,4 +98,16 @@ void main() {
     await operations.softDelete(op.uuid);
     expect(await operations.watchAll().first, isEmpty);
   });
+
+  test('a brand-new operation with no QSOs sorts to the top, not the bottom', () async {
+    final active = await operations.create(stationCall: 'KI2D', title: 'Active op');
+    await qsos.add(active.uuid, {'their': {'call': 'W1AW'}, 'startAtMillis': 1000});
+
+    // New operation has a NULL startAtMillisMax; SQLite sorts NULLs last in
+    // DESC by default, which would otherwise bury it at the end.
+    final fresh = await operations.create(stationCall: 'KI2D', title: 'Fresh op');
+
+    final all = await operations.watchAll().first;
+    expect(all.map((o) => o.title), [fresh.title, active.title]);
+  });
 }

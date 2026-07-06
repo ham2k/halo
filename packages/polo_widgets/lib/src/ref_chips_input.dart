@@ -47,6 +47,19 @@ class _RefChipsInputState extends State<RefChipsInput> {
   final _focus = FocusNode();
   String? _error;
 
+  /// For each ref string we've emitted and are awaiting decoration for, the
+  /// list a resolved decoration should be merged into. Starts as our own
+  /// optimistic `updated` snapshot (setState schedules the parent's rebuild
+  /// for the next frame, so a decoration with no real network latency
+  /// typically resolves *before* the parent has rebuilt at all — the base
+  /// case, not an edge case). `didUpdateWidget` is the authoritative signal
+  /// for what happens after a rebuild: if the parent's new `refs` still has
+  /// this ref, we switch to building on that (in case something else
+  /// changed concurrently); if it doesn't, the ref was removed out from
+  /// under us (a wipe, a manual chip delete) and we drop it entirely so a
+  /// late decoration can't resurrect it.
+  final Map<String, List<Map<String, dynamic>>> _pendingBase = {};
+
   RegExp? get _regex {
     final pattern = widget.pattern;
     if (pattern == null) return null;
@@ -54,6 +67,18 @@ class _RefChipsInputState extends State<RefChipsInput> {
       return RegExp('^(?:$pattern)\$', caseSensitive: false);
     } catch (_) {
       return null;
+    }
+  }
+
+  @override
+  void didUpdateWidget(RefChipsInput oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    for (final refString in [..._pendingBase.keys]) {
+      if (widget.refs.any((r) => r['ref'] == refString)) {
+        _pendingBase[refString] = widget.refs;
+      } else {
+        _pendingBase.remove(refString);
+      }
     }
   }
 
@@ -82,16 +107,18 @@ class _RefChipsInputState extends State<RefChipsInput> {
     final updated = [...widget.refs, ref];
     _controller.clear();
     setState(() => _error = null);
+    _pendingBase[refString] = updated;
     widget.onChanged(updated);
 
     final decorate = widget.decorate;
     if (decorate != null) {
       final decorated = await decorate(ref);
-      if (!mounted) return;
-      // Replace by ref key. If the parent hasn't rebuilt us with the list we
-      // just emitted (decoration resolved within the same frame), fall back
-      // to that emitted list so the update isn't matched against stale refs.
-      final base = widget.refs.any((r) => r['ref'] == refString) ? widget.refs : updated;
+      // didUpdateWidget already removed this entry if the parent moved on
+      // (wipe, manual removal) while we were awaiting; otherwise it points
+      // at the freshest list that still contains our ref.
+      final base = _pendingBase.remove(refString);
+      if (!mounted || base == null) return;
+
       final current = [...base];
       final index = current.indexWhere((r) => r['ref'] == refString);
       if (index >= 0) {

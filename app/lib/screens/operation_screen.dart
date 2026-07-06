@@ -183,6 +183,7 @@ class _OperationScreenState extends State<OperationScreen> {
               lookup: widget.services.extensions.lookupCall,
               activityControls: _loggingControls,
               decorateRef: widget.services.extensions.decorateRef,
+              tryCommand: widget.services.extensions.tryCommand,
             ),
           ]),
         );

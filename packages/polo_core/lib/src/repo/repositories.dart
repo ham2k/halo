@@ -39,10 +39,14 @@ class OperationsRepository {
   }
 
   Stream<List<Operation>> watchAll() {
+    // A brand-new operation has no QSOs yet, so startAtMillisMax is NULL.
+    // SQLite sorts NULLs last in a DESC ordering by default, which would
+    // bury new operations at the end of the list; NullsOrder.first keeps
+    // them at the top instead, alongside the most recently active ones.
     final query = (db.select(db.operations)
       ..where((op) => op.deleted.equals(false))
       ..orderBy([
-        (op) => OrderingTerm(expression: op.startAtMillisMax, mode: OrderingMode.desc),
+        (op) => OrderingTerm(expression: op.startAtMillisMax, mode: OrderingMode.desc, nulls: NullsOrder.first),
       ]));
     return query.watch().map((rows) => rows.map(_operationFromRow).toList());
   }

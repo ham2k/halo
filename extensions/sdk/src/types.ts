@@ -125,6 +125,24 @@ export interface ExportHook {
   generateExport(args: ExportRequest, ctx: HookContext): Promise<ExportResult>
 }
 
+/// A field-change command triggered from the call field (space-activated).
+/// Deliberately a closed set of fields — commands mutate only through this
+/// whitelist, never arbitrary state (DESIGN.md §4).
+export interface CommandResult {
+  freq?: number
+  band?: string
+  mode?: string
+}
+
+/// Registered under category `command`. `tryCommand` does its own matching
+/// (returns null for no match) so the core can fan out to every registered
+/// command via invokeHookAll and apply the first non-null result in
+/// priority order, without the host needing to compile extension-supplied
+/// regex source itself.
+export interface CommandHook {
+  tryCommand(args: { input: string }, ctx: HookContext): Promise<CommandResult | null>
+}
+
 export type Hook =
   | LookupHook
   | SpotsHook
@@ -132,6 +150,7 @@ export type Hook =
   | RefHandlerHook
   | ActivityHook
   | AdifFieldsHook
+  | CommandHook
   | Record<string, unknown>
 
 export interface RegisterHookParams {

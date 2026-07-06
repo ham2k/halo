@@ -53,6 +53,11 @@ class ExtensionHost {
   final String engine;
   final int loadMillis;
 
+  /// Caps `samples`' growth over a long session (an all-day operation makes
+  /// many debounced lookup/control calls) — this is diagnostic data for the
+  /// spike screen, not something worth unbounded memory for.
+  static const _maxSamples = 2000;
+
   final _logs = StreamController<String>.broadcast();
 
   /// Every log line received so far (the stream only carries new ones).
@@ -250,6 +255,7 @@ class ExtensionHost {
             totalMillis: flight.$2.elapsedMilliseconds,
             jsMillis: (msg['jsMillis'] as num?)?.toInt() ?? 0,
           ));
+          if (samples.length > _maxSamples) samples.removeAt(0);
         }
         if (msg['ok'] == true) {
           completer.complete(msg['value']);

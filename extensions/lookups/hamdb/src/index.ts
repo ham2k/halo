@@ -39,7 +39,14 @@ async function lookupCall({ callInfo }: { callInfo: CallInfo }, _ctx: HookContex
     state: record.state,
     country: record.country,
     grid: record.grid,
-    lat: parseFloat(record.lat) || undefined,
-    lon: parseFloat(record.lon) || undefined,
+    lat: parseCoordinate(record.lat),
+    lon: parseCoordinate(record.lon),
   }
+}
+
+// `parseFloat(x) || undefined` would discard a legitimate 0° (equator or
+// prime meridian) since `0 || undefined` evaluates to undefined.
+function parseCoordinate(value: unknown): number | undefined {
+  const parsed = parseFloat(String(value))
+  return Number.isFinite(parsed) ? parsed : undefined
 }
