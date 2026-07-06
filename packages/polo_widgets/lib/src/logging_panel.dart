@@ -230,6 +230,19 @@ class _LoggingPanelState extends State<LoggingPanel> {
     });
   }
 
+  /// Shared look for the primary logging row (Their call/Sent/Rcvd) — same
+  /// font size and field padding across all three, and the label always
+  /// pinned to the top-left corner (not the "large placeholder until
+  /// focused" default) so the row's shape doesn't shift as you type.
+  TextStyle _primaryFieldStyle(BuildContext context, {required FontWeight fontWeight}) =>
+      poloMonoStyle(context, fontSize: 20, fontWeight: fontWeight);
+
+  InputDecoration _primaryFieldDecoration(String label) => const InputDecoration(
+        isDense: true,
+        floatingLabelBehavior: FloatingLabelBehavior.always,
+        contentPadding: EdgeInsets.fromLTRB(8, 6, 8, 4),
+      ).copyWith(labelText: label);
+
   String _fmtTime(DateTime dt) =>
       '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
   String _fmtTimeWithSeconds(DateTime dt) =>
@@ -755,15 +768,8 @@ class _LoggingPanelState extends State<LoggingPanel> {
                                 ),
                                 _UpperCaseFormatter(),
                               ],
-                              style: poloMonoStyle(
-                                context,
-                                fontSize: 24,
-                                fontWeight: FontWeight.w700,
-                              ),
-                              decoration: const InputDecoration(
-                                labelText: 'Their call',
-                                isDense: true,
-                              ),
+                              style: _primaryFieldStyle(context, fontWeight: FontWeight.w700),
+                              decoration: _primaryFieldDecoration('Their call'),
                               onSubmitted: (_) => _log(),
                             ),
                           ),
@@ -773,20 +779,13 @@ class _LoggingPanelState extends State<LoggingPanel> {
                             child: TextField(
                               controller: _sentController,
                               focusNode: _sentFocus,
-                              style: poloMonoStyle(
-                                context,
-                                fontSize: 17,
-                                fontWeight: FontWeight.w500,
-                              ),
+                              style: _primaryFieldStyle(context, fontWeight: FontWeight.w500),
                               inputFormatters: [
                                 FilteringTextInputFormatter.allow(
                                   RegExp(r'[0-9+\-]'),
                                 ),
                               ],
-                              decoration: const InputDecoration(
-                                labelText: 'Sent',
-                                isDense: true,
-                              ),
+                              decoration: _primaryFieldDecoration('Sent'),
                               onChanged: (_) => _rstsTouched = true,
                               onSubmitted: (_) => _log(),
                             ),
@@ -797,20 +796,13 @@ class _LoggingPanelState extends State<LoggingPanel> {
                             child: TextField(
                               controller: _rcvdController,
                               focusNode: _rcvdFocus,
-                              style: poloMonoStyle(
-                                context,
-                                fontSize: 17,
-                                fontWeight: FontWeight.w500,
-                              ),
+                              style: _primaryFieldStyle(context, fontWeight: FontWeight.w500),
                               inputFormatters: [
                                 FilteringTextInputFormatter.allow(
                                   RegExp(r'[0-9+\-]'),
                                 ),
                               ],
-                              decoration: const InputDecoration(
-                                labelText: 'Rcvd',
-                                isDense: true,
-                              ),
+                              decoration: _primaryFieldDecoration('Rcvd'),
                               onChanged: (_) => _rstsTouched = true,
                               onSubmitted: (_) => _log(),
                             ),
