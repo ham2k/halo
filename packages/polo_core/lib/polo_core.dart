@@ -4,6 +4,7 @@
 library;
 
 export 'src/db/database.dart';
+export 'src/ham/grid.dart';
 export 'src/ham/radio.dart';
 export 'src/models/models.dart';
 export 'src/repo/repositories.dart';

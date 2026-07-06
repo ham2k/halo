@@ -4,7 +4,7 @@
 // The logging screen: four tabs, ported from app-polo's OperationScreen —
 // "N QSOs" (list + logging panel; a wide-layout info side panel appears
 // there too, the first step toward the module-docking layout of
-// DESIGN.md §7), Spots and Map (placeholders for now), and Operation
+// DESIGN.md §7), Spots (placeholder for now), Map, and Operation
 // (settings/activities/data, a scoped-down OpSettingsTab).
 
 import 'package:flutter/material.dart';
@@ -13,6 +13,7 @@ import 'package:polo_widgets/polo_widgets.dart';
 
 import '../main.dart';
 import 'operation_dialogs.dart';
+import 'map/operation_map_tab.dart';
 
 class OperationScreen extends StatefulWidget {
   final PoloServices services;
@@ -211,7 +212,7 @@ class _OperationScreenState extends State<OperationScreen> {
                 ]),
               ),
               const _PlaceholderTab(label: 'Spots'),
-              const _PlaceholderTab(label: 'Map'),
+              _KeepAlive(child: OperationMapTab(operation: operation, qsos: qsos)),
               _OperationTab(
                 operation: operation,
                 qsoCount: qsos.length,

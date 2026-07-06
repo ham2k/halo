@@ -48,6 +48,7 @@ class Qso {
   String get ourCall => (_our['call'] as String?) ?? '';
   String get theirCall => (_their['call'] as String?) ?? '';
   String? get theirName => _their['name'] as String?;
+  String? get theirGrid => _their['grid'] as String?;
   String? get sentRST => _our['sent'] as String?;
   String? get receivedRST => _their['sent'] as String?;
 
