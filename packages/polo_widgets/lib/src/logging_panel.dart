@@ -237,11 +237,26 @@ class _LoggingPanelState extends State<LoggingPanel> {
   TextStyle _primaryFieldStyle(BuildContext context, {required FontWeight fontWeight}) =>
       poloMonoStyle(context, fontSize: 20, fontWeight: fontWeight);
 
-  InputDecoration _primaryFieldDecoration(String label) => const InputDecoration(
-        isDense: true,
-        floatingLabelBehavior: FloatingLabelBehavior.always,
-        contentPadding: EdgeInsets.fromLTRB(8, 6, 8, 4),
-      ).copyWith(labelText: label);
+  InputDecoration _primaryFieldDecoration(BuildContext context, String label) {
+    final theme = Theme.of(context);
+    return InputDecoration(
+      labelText: label,
+      isDense: true,
+      floatingLabelBehavior: FloatingLabelBehavior.always,
+      // A smaller floating label reserves less vertical space for itself,
+      // which is what actually pulls the value up closer to it — the
+      // surrounding contentPadding alone hits a floor set by Material's
+      // default (much larger) floating label metrics. Explicit here (rather
+      // than inheriting the ambient scoped theme's floatingLabelStyle)
+      // since setting one at all replaces the other outright rather than
+      // merging, so the color has to come along with the smaller size.
+      floatingLabelStyle: TextStyle(
+        fontSize: 11,
+        color: theme.colorScheme.onTertiaryContainer,
+      ),
+      contentPadding: const EdgeInsets.fromLTRB(4, 0, 4, 2),
+    );
+  }
 
   String _fmtTime(DateTime dt) =>
       '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
@@ -769,7 +784,7 @@ class _LoggingPanelState extends State<LoggingPanel> {
                                 _UpperCaseFormatter(),
                               ],
                               style: _primaryFieldStyle(context, fontWeight: FontWeight.w700),
-                              decoration: _primaryFieldDecoration('Their call'),
+                              decoration: _primaryFieldDecoration(context, 'Their call'),
                               onSubmitted: (_) => _log(),
                             ),
                           ),
@@ -785,7 +800,7 @@ class _LoggingPanelState extends State<LoggingPanel> {
                                   RegExp(r'[0-9+\-]'),
                                 ),
                               ],
-                              decoration: _primaryFieldDecoration('Sent'),
+                              decoration: _primaryFieldDecoration(context, 'Sent'),
                               onChanged: (_) => _rstsTouched = true,
                               onSubmitted: (_) => _log(),
                             ),
@@ -802,7 +817,7 @@ class _LoggingPanelState extends State<LoggingPanel> {
                                   RegExp(r'[0-9+\-]'),
                                 ),
                               ],
-                              decoration: _primaryFieldDecoration('Rcvd'),
+                              decoration: _primaryFieldDecoration(context, 'Rcvd'),
                               onChanged: (_) => _rstsTouched = true,
                               onSubmitted: (_) => _log(),
                             ),
