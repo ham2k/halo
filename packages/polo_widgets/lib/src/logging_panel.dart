@@ -254,7 +254,7 @@ class _LoggingPanelState extends State<LoggingPanel> {
         fontSize: 13,
         color: theme.colorScheme.onTertiaryContainer,
       ),
-      contentPadding: const EdgeInsets.fromLTRB(4, 2, 4, 6),
+      contentPadding: const EdgeInsets.fromLTRB(4, 4, 4, 8),
     );
   }
 
