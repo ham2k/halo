@@ -7,6 +7,7 @@ import 'package:polo_widgets/polo_widgets.dart';
 
 import '../main.dart';
 import '../spike_screen.dart';
+import 'operation_dialogs.dart';
 import 'operation_screen.dart';
 
 /// PoLo home-screen style row: bold "CALL title" line with count pill,
@@ -28,7 +29,7 @@ class _OperationRow extends StatelessWidget {
       onTap: () => Navigator.of(context).push(MaterialPageRoute(
         builder: (_) => OperationScreen(services: services, operationUuid: operation.uuid),
       )),
-      onLongPress: () => _confirmDelete(context),
+      onLongPress: () => confirmDeleteOperation(context, services.operations, operation),
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -75,20 +76,6 @@ class _OperationRow extends StatelessWidget {
         ]),
       ),
     );
-  }
-
-  Future<void> _confirmDelete(BuildContext context) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text('Delete operation "${operation.title.isEmpty ? operation.stationCall : operation.title}"?'),
-        actions: [
-          TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('Cancel')),
-          FilledButton(onPressed: () => Navigator.of(context).pop(true), child: const Text('Delete')),
-        ],
-      ),
-    );
-    if (confirmed == true) await services.operations.softDelete(operation.uuid);
   }
 
   String _monthName(int month) =>

@@ -260,6 +260,15 @@ ThemeData buildPoloTheme(Brightness brightness) {
       backgroundColor: colorScheme.primaryContainer,
       foregroundColor: colorScheme.onPrimaryContainer,
     ),
+    // Material3's default TabBar theming assumes a surface-colored bar and
+    // sets the selected label to colorScheme.primary — invisible when the
+    // bar itself sits inside our teal (primary-colored) AppBar, as every
+    // TabBar in this app does.
+    tabBarTheme: TabBarThemeData(
+      labelColor: colorScheme.onPrimary,
+      unselectedLabelColor: colorScheme.onPrimary.withValues(alpha: 0.7),
+      indicatorColor: colorScheme.onPrimary,
+    ),
     dividerTheme: DividerThemeData(
       color: colorScheme.outlineVariant,
       thickness: 0.5,

@@ -1,15 +1,18 @@
 // Copyright ©️ 2026 Sebastian Delmont <sd@ham2k.com>
 // SPDX-License-Identifier: MPL-2.0
 //
-// The logging screen: QSO list above, logging panel docked at the bottom.
-// On wide layouts (desktop, tablet landscape) an info side panel appears —
-// the first step toward the module-docking layout of DESIGN.md §7.
+// The logging screen: four tabs, ported from app-polo's OperationScreen —
+// "N QSOs" (list + logging panel; a wide-layout info side panel appears
+// there too, the first step toward the module-docking layout of
+// DESIGN.md §7), Spots and Map (placeholders for now), and Operation
+// (settings/activities/data, a scoped-down OpSettingsTab).
 
 import 'package:flutter/material.dart';
 import 'package:polo_core/polo_core.dart';
 import 'package:polo_widgets/polo_widgets.dart';
 
 import '../main.dart';
+import 'operation_dialogs.dart';
 
 class OperationScreen extends StatefulWidget {
   final PoloServices services;
@@ -109,6 +112,16 @@ class _OperationScreenState extends State<OperationScreen> {
     }
   }
 
+  Future<void> _editDetails(Operation operation) async {
+    final updated = await editOperationDetails(context, widget.services.operations, operation);
+    if (updated != null && mounted) setState(() => _operation = updated);
+  }
+
+  Future<void> _delete(Operation operation) async {
+    final deleted = await confirmDeleteOperation(context, widget.services.operations, operation);
+    if (deleted && mounted) Navigator.of(context).pop();
+  }
+
   Future<void> _export(Operation operation) async {
     final messenger = ScaffoldMessenger.of(context);
     try {
@@ -138,63 +151,196 @@ class _OperationScreenState extends State<OperationScreen> {
 
         final refsLine = operation.refs.map((r) => r['shortLabel'] ?? r['ref']).whereType<String>().join(' • ');
 
-        return Scaffold(
-          appBar: AppBar(
-            leadingWidth: isMacOSChromelessWindow ? 56 + macOSTrafficLightInset : null,
-            leading: isMacOSChromelessWindow
-                ? const Padding(
-                    padding: EdgeInsets.only(left: macOSTrafficLightInset),
-                    child: BackButton(),
-                  )
-                : null,
-            title: Column(mainAxisSize: MainAxisSize.min, children: [
-              Text(
-                operation.title.isEmpty ? operation.stationCall : '${operation.stationCall} ${operation.title}',
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
+        return DefaultTabController(
+          length: 4,
+          child: Scaffold(
+            appBar: AppBar(
+              leadingWidth: isMacOSChromelessWindow ? 56 + macOSTrafficLightInset : null,
+              leading: isMacOSChromelessWindow
+                  ? const Padding(
+                      padding: EdgeInsets.only(left: macOSTrafficLightInset),
+                      child: BackButton(),
+                    )
+                  : null,
+              title: Column(mainAxisSize: MainAxisSize.min, children: [
+                Text(
+                  operation.title.isEmpty ? operation.stationCall : '${operation.stationCall} ${operation.title}',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                if (refsLine.isNotEmpty)
+                  Text(
+                    refsLine,
+                    style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                          color: Theme.of(context).colorScheme.onPrimary.withValues(alpha: 0.85),
+                        ),
+                  ),
+              ]),
+              bottom: TabBar(tabs: [
+                Tab(text: '${qsos.length} QSOs'),
+                const Tab(text: 'Spots'),
+                const Tab(text: 'Map'),
+                const Tab(text: 'Operation'),
+              ]),
+            ),
+            body: TabBarView(children: [
+              _KeepAlive(
+                child: Column(children: [
+                  Expanded(
+                    child: wide
+                        ? Row(children: [
+                            Expanded(flex: 2, child: list),
+                            const VerticalDivider(width: 1),
+                            Expanded(child: _InfoPanel(operation: operation, qsos: qsos)),
+                          ])
+                        : list,
+                  ),
+                  LoggingPanel(
+                    operation: operation,
+                    qsosRepository: widget.services.qsos,
+                    qsos: qsos,
+                    lookup: widget.services.extensions.lookupCall,
+                    activityControls: _loggingControls,
+                    decorateRef: widget.services.extensions.decorateRef,
+                    tryCommand: widget.services.extensions.tryCommand,
+                  ),
+                ]),
               ),
-              Text(
-                [if (refsLine.isNotEmpty) refsLine, '${qsos.length} QSOs'].join(' • '),
-                style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                      color: Theme.of(context).colorScheme.onPrimary.withValues(alpha: 0.85),
-                    ),
+              const _PlaceholderTab(label: 'Spots'),
+              const _PlaceholderTab(label: 'Map'),
+              _OperationTab(
+                operation: operation,
+                qsoCount: qsos.length,
+                onEditDetails: () => _editDetails(operation),
+                onEditActivities: () => _editActivities(operation),
+                onExport: qsos.isEmpty ? null : () => _export(operation),
+                onDelete: () => _delete(operation),
               ),
             ]),
-            actions: [
-              IconButton(
-                tooltip: 'Activities',
-                icon: Icon(MdiIcons.pineTree),
-                onPressed: () => _editActivities(operation),
-              ),
-              IconButton(
-                tooltip: 'Export ADIF',
-                icon: Icon(MdiIcons.fileExportOutline),
-                onPressed: qsos.isEmpty ? null : () => _export(operation),
-              ),
-            ],
           ),
-          body: Column(children: [
-            Expanded(
-              child: wide
-                  ? Row(children: [
-                      Expanded(flex: 2, child: list),
-                      const VerticalDivider(width: 1),
-                      Expanded(child: _InfoPanel(operation: operation, qsos: qsos)),
-                    ])
-                  : list,
-            ),
-            LoggingPanel(
-              operation: operation,
-              qsosRepository: widget.services.qsos,
-              qsos: qsos,
-              lookup: widget.services.extensions.lookupCall,
-              activityControls: _loggingControls,
-              decorateRef: widget.services.extensions.decorateRef,
-              tryCommand: widget.services.extensions.tryCommand,
-            ),
-          ]),
         );
       },
+    );
+  }
+}
+
+/// Keeps the QSO list + logging panel's state alive while another tab is
+/// showing — a bare TabBarView disposes off-screen tabs by default, which
+/// would silently drop whatever's mid-typed in the logging panel the
+/// moment someone glances at the Map tab.
+class _KeepAlive extends StatefulWidget {
+  final Widget child;
+
+  const _KeepAlive({required this.child});
+
+  @override
+  State<_KeepAlive> createState() => _KeepAliveState();
+}
+
+class _KeepAliveState extends State<_KeepAlive> with AutomaticKeepAliveClientMixin {
+  @override
+  bool get wantKeepAlive => true;
+
+  @override
+  Widget build(BuildContext context) {
+    super.build(context);
+    return widget.child;
+  }
+}
+
+class _PlaceholderTab extends StatelessWidget {
+  final String label;
+
+  const _PlaceholderTab({required this.label});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Center(
+      child: Text(
+        '$label — coming soon',
+        style: theme.textTheme.bodyLarge?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+      ),
+    );
+  }
+}
+
+/// Operation settings/activities/data, a scoped-down port of app-polo's
+/// OpSettingsTab: just what this app already has actions for (editing
+/// station/title, managing activity refs, ADIF export, delete) rather than
+/// app-polo's full set (location, templates, Wavelog export, etc.), which
+/// this app doesn't have the underlying data/features for yet.
+class _OperationTab extends StatelessWidget {
+  final Operation operation;
+  final int qsoCount;
+  final VoidCallback onEditDetails;
+  final VoidCallback onEditActivities;
+  final VoidCallback? onExport;
+  final VoidCallback onDelete;
+
+  const _OperationTab({
+    required this.operation,
+    required this.qsoCount,
+    required this.onEditDetails,
+    required this.onEditActivities,
+    required this.onExport,
+    required this.onDelete,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final refsLine = operation.refs.map((r) => r['shortLabel'] ?? r['ref']).whereType<String>().join(' • ');
+
+    return ListView(
+      children: [
+        _SectionHeader('Station & operator'),
+        ListTile(
+          leading: Icon(MdiIcons.radioTower),
+          title: Text(operation.stationCall.isEmpty ? 'No station callsign' : operation.stationCall),
+          subtitle: Text(operation.title.isEmpty ? 'No title' : operation.title),
+          onTap: onEditDetails,
+        ),
+        _SectionHeader('Activities'),
+        ListTile(
+          leading: Icon(MdiIcons.pineTree),
+          title: const Text('Activities'),
+          subtitle: Text(refsLine.isEmpty ? 'None set' : refsLine),
+          onTap: onEditActivities,
+        ),
+        _SectionHeader('Operation data'),
+        ListTile(
+          leading: Icon(MdiIcons.fileExportOutline),
+          title: const Text('Export ADIF'),
+          subtitle: Text('$qsoCount QSOs'),
+          onTap: onExport,
+        ),
+        _SectionHeader('Danger zone', color: theme.colorScheme.error),
+        ListTile(
+          leading: Icon(MdiIcons.delete, color: theme.colorScheme.error),
+          title: Text('Delete operation', style: TextStyle(color: theme.colorScheme.error)),
+          onTap: onDelete,
+        ),
+      ],
+    );
+  }
+}
+
+class _SectionHeader extends StatelessWidget {
+  final String title;
+  final Color? color;
+
+  const _SectionHeader(this.title, {this.color});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
+      child: Text(
+        title,
+        style: theme.textTheme.titleSmall?.copyWith(color: color ?? theme.colorScheme.primary),
+      ),
     );
   }
 }

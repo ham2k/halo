@@ -72,5 +72,14 @@ void main() {
       expect(darkScheme.tertiaryContainer, const Color(0xFF8C4F20));
       expect(darkScheme.onTertiaryContainer, const Color(0xFFFFDCC6));
     });
+
+    test('tab bar labels use onPrimary, not Material3\'s primary-on-primary default', () {
+      // A TabBar's default M3 selected-label color is colorScheme.primary,
+      // which is invisible against this app's teal (primary-colored) AppBar
+      // — every TabBar in the app sits inside one.
+      final theme = buildPoloTheme(Brightness.light);
+      expect(theme.tabBarTheme.labelColor, theme.colorScheme.onPrimary);
+      expect(theme.tabBarTheme.indicatorColor, theme.colorScheme.onPrimary);
+    });
   });
 }
