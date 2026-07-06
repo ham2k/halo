@@ -61,6 +61,16 @@ class QsoList extends StatelessWidget {
             SizedBox(width: 48, child: Text(qso.band ?? '', style: monospace)),
             SizedBox(width: 48, child: Text(qso.mode ?? '', style: monospace)),
             SizedBox(width: 76, child: Text('${qso.sentRST ?? ''}/${qso.receivedRST ?? ''}', style: monospace)),
+            if (qso.refs.isNotEmpty)
+              SizedBox(
+                width: 90,
+                child: Text(
+                  qso.refs.map((r) => r['ref']).whereType<String>().join(','),
+                  style: monospace?.copyWith(color: Theme.of(context).colorScheme.tertiary),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
           ]),
           trailing: PopupMenuButton<String>(
             itemBuilder: (context) => const [

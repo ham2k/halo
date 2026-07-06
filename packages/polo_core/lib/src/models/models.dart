@@ -25,6 +25,9 @@ class Operation {
   String get title => (data['title'] as String?) ?? '';
   String? get grid => data['grid'] as String?;
 
+  List<Map<String, dynamic>> get refs =>
+      ((data['refs'] as List?) ?? const []).whereType<Map>().map((r) => r.cast<String, dynamic>()).toList();
+
   DateTime? get startAtMax =>
       startAtMillisMax == null ? null : DateTime.fromMillisecondsSinceEpoch(startAtMillisMax!, isUtc: true);
 }

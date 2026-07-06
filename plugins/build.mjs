@@ -18,7 +18,7 @@ const bundles = [
   { key: 'adif', entry: 'core/adif/src/index.ts', kind: 'plugin' },
   { key: 'hamdb', entry: 'lookups/hamdb/src/index.ts', kind: 'plugin' },
   { key: 'qrz', entry: 'lookups/qrz/src/index.ts', kind: 'plugin' },
-  { key: 'pota-spots', entry: 'spots/pota/src/index.ts', kind: 'plugin' },
+  { key: 'pota', entry: 'activities/pota/src/index.ts', kind: 'plugin' },
 ]
 
 await mkdir(outDir, { recursive: true })

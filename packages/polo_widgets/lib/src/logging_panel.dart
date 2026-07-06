@@ -16,6 +16,8 @@ import 'package:flutter/services.dart';
 
 import 'package:polo_core/polo_core.dart';
 
+import 'ref_chips_input.dart';
+
 /// Async callsign enrichment (name, location, grid…) from lookup sources.
 /// Returning null means "nothing known". Must never throw.
 typedef CallLookup = Future<Map<String, dynamic>?> Function(String call);
@@ -31,6 +33,13 @@ class LoggingPanel extends StatefulWidget {
   /// Optional lookup enrichment; fired debounced, off the keystroke path.
   final CallLookup? lookup;
 
+  /// Declarative activity control descriptors from plugins (UI catalog).
+  /// v0 supports `input.kind == 'refList'`.
+  final List<Map<String, dynamic>> activityControls;
+
+  /// Async ref decoration via the plugin runtime.
+  final RefDecorator? decorateRef;
+
   const LoggingPanel({
     super.key,
     required this.operation,
@@ -38,6 +47,8 @@ class LoggingPanel extends StatefulWidget {
     this.qsos = const [],
     this.onLogged,
     this.lookup,
+    this.activityControls = const [],
+    this.decorateRef,
   });
 
   @override
@@ -57,6 +68,10 @@ class _LoggingPanelState extends State<LoggingPanel> {
   Timer? _lookupDebounce;
   String? _lookupFor;
   Map<String, dynamic>? _lookupResult;
+
+  /// Refs entered via activity controls for the QSO being composed,
+  /// keyed by control key.
+  final Map<String, List<Map<String, dynamic>>> _controlRefs = {};
 
   @override
   void initState() {
@@ -137,6 +152,7 @@ class _LoggingPanelState extends State<LoggingPanel> {
     _lookupDebounce?.cancel();
     _lookupFor = null;
     _lookupResult = null;
+    _controlRefs.clear();
     _callFocus.requestFocus();
     setState(() {});
   }
@@ -148,7 +164,9 @@ class _LoggingPanelState extends State<LoggingPanel> {
     }
     // Fold lookup enrichment into `their` if it belongs to this call.
     final lookup = _lookupFor == _call ? _lookupResult : null;
+    final refs = [for (final list in _controlRefs.values) ...list];
     final qso = await widget.qsosRepository.add(widget.operation.uuid, {
+      if (refs.isNotEmpty) 'refs': refs,
       'our': {'call': widget.operation.stationCall, 'sent': _sentController.text.trim()},
       'their': {
         'call': _call,
@@ -222,6 +240,25 @@ class _LoggingPanelState extends State<LoggingPanel> {
                       labelStyle: TextStyle(color: theme.colorScheme.onErrorContainer),
                     ),
                 ]),
+                for (final control in widget.activityControls)
+                  if ((control['input'] as Map?)?['kind'] == 'refList')
+                    Padding(
+                      padding: const EdgeInsets.only(top: 4),
+                      child: Align(
+                        alignment: Alignment.centerLeft,
+                        child: RefChipsInput(
+                          key: ValueKey(control['key']),
+                          refType: (control['input'] as Map)['refType'] as String,
+                          label: (control['label'] as String?) ?? '',
+                          placeholder: (control['input'] as Map)['placeholder'] as String?,
+                          pattern: (control['input'] as Map)['pattern'] as String?,
+                          refs: _controlRefs[control['key']] ?? const [],
+                          onChanged: (refs) => setState(() => _controlRefs[control['key'] as String] = refs),
+                          decorate: widget.decorateRef,
+                          dense: true,
+                        ),
+                      ),
+                    ),
                 if (_lookupLine != null)
                   Padding(
                     padding: const EdgeInsets.only(top: 4),

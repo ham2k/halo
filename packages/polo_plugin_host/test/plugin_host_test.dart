@@ -147,4 +147,60 @@ void main() {
     expect(content, contains('<MODE:2>CW'));
     expect('<EOR>'.allMatches(content).length, 2);
   });
+
+  test('POTA plugin composes ADIF fields into the export (in-runtime hooks)', () async {
+    final adifFile = File('../../app/assets/plugins/adif.js');
+    final potaFile = File('../../app/assets/plugins/pota.js');
+    if (!kernelFile.existsSync() || !adifFile.existsSync() || !potaFile.existsSync()) {
+      markTestSkipped('bundles not built — run `npm run build` in plugins/ first');
+      return;
+    }
+
+    final host = await PluginHost.start(
+      kernelSource: kernelFile.readAsStringSync(),
+      plugins: [
+        PluginBundle(key: 'adif', source: adifFile.readAsStringSync()),
+        PluginBundle(key: 'pota', source: potaFile.readAsStringSync()),
+      ],
+      useIsolate: false,
+    );
+    addTearDown(host.dispose);
+
+    // POTA ref validation works without network.
+    final validation = await host.invokeHook('ref:pota', method: 'validateRef',
+        args: {'ref': {'type': 'pota', 'ref': 'us-1234'}});
+    expect(validation['valid'], true);
+    expect(validation['normalized'], 'US-1234');
+
+    final result = await host.invokeHook('export', key: 'adif', method: 'generateExport', args: {
+      'operation': {
+        'stationCall': 'KI2D',
+        'title': 'Park run',
+        'refs': [
+          {'type': 'potaActivation', 'ref': 'US-5678'},
+        ],
+      },
+      'qsos': [
+        {
+          'their': {'call': 'W1AW', 'sent': '59'},
+          'our': {'call': 'KI2D', 'sent': '59'},
+          'mode': 'SSB',
+          'band': '20m',
+          'startAtMillis': DateTime.utc(2026, 7, 5, 19).millisecondsSinceEpoch,
+          'refs': [
+            {'type': 'pota', 'ref': 'US-1234'},
+            {'type': 'pota', 'ref': 'US-4321'},
+          ],
+        },
+      ],
+    }) as Map;
+
+    final content = result['content'] as String;
+    expect(content, contains('<SIG:4>POTA'));
+    expect(content, contains('<SIG_INFO:7>US-1234'));
+    expect(content, contains('<POTA_REF:15>US-1234,US-4321'));
+    expect(content, contains('<MY_SIG:4>POTA'));
+    expect(content, contains('<MY_SIG_INFO:7>US-5678'));
+    expect(content, contains('<MY_POTA_REF:7>US-5678'));
+  });
 }

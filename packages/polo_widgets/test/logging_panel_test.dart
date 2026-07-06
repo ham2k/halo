@@ -133,6 +133,43 @@ void main() {
     expect(find.textContaining('ARRL HQ'), findsNothing);
   });
 
+  testWidgets('activity refList control folds refs into the logged QSO', (tester) async {
+    const controls = [
+      {
+        'key': 'pota/hunter',
+        'label': 'POTA',
+        'input': {'kind': 'refList', 'refType': 'pota', 'placeholder': 'US-1234', 'pattern': r'[A-Z0-9]+-[0-9]{4,5}'},
+      },
+    ];
+
+    await tester.pumpWidget(MaterialApp(
+      home: Scaffold(
+        body: LoggingPanel(
+          operation: operation,
+          qsosRepository: qsos,
+          activityControls: controls,
+        ),
+      ),
+    ));
+
+    await tester.enterText(find.widgetWithText(TextField, 'POTA'), 'US-1234');
+    await tester.testTextInput.receiveAction(TextInputAction.done);
+    await tester.pump();
+    expect(find.widgetWithText(InputChip, 'US-1234'), findsOneWidget);
+
+    await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'W1AW');
+    await tester.pump();
+    await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+
+    final logged = await waitForQsos(tester, 1);
+    expect(logged.single.refs, [
+      {'type': 'pota', 'ref': 'US-1234'},
+    ]);
+
+    // Wipe cleared the control's chips too.
+    expect(find.byType(InputChip), findsNothing);
+  });
+
   testWidgets('shows DUPE chip for same call, band and mode', (tester) async {
     final dupe = (await tester.runAsync(() => qsos.add(operation.uuid, {
           'their': {'call': 'W1AW'},

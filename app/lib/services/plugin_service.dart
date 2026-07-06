@@ -90,4 +90,45 @@ class PluginService {
     merged['sources'] = sources;
     return merged;
   }
+
+  /// Descriptors for controls activities want on the logging panel.
+  Future<List<Map<String, dynamic>>> loggingControls(Map<String, dynamic> operationData) =>
+      _collectControls('loggingControls', operationData);
+
+  /// Descriptors for controls activities want in operation settings.
+  Future<List<Map<String, dynamic>>> operationControls(Map<String, dynamic> operationData) =>
+      _collectControls('operationControls', operationData);
+
+  Future<List<Map<String, dynamic>>> _collectControls(String method, Map<String, dynamic> operationData) async {
+    final host = _host;
+    if (host == null) return const [];
+    try {
+      final entries = await host.invokeHookAll('activity', method: method, args: {'operation': operationData});
+      final controls = <Map<String, dynamic>>[];
+      for (final entry in entries) {
+        if (entry['ok'] != true || entry['value'] is! List) continue;
+        controls.addAll((entry['value'] as List).cast<Map>().map((c) => c.cast<String, dynamic>()));
+      }
+      controls.sort((a, b) => ((a['order'] as num?) ?? 0).compareTo((b['order'] as num?) ?? 0));
+      return controls;
+    } on PluginHostException catch (e) {
+      debugPrint('[plugins] $method failed: $e');
+      return const [];
+    }
+  }
+
+  /// Decorates a ref (park name, location…) via its `ref:<type>` handler.
+  /// Returns the input unchanged if no handler answers.
+  Future<Map<String, dynamic>> decorateRef(Map<String, dynamic> ref) async {
+    final host = _host;
+    final type = ref['type'] as String?;
+    if (host == null || type == null) return ref;
+    try {
+      final decorated = await host.invokeHook('ref:$type', method: 'decorateRef', args: {'ref': ref});
+      if (decorated is Map) return decorated.cast<String, dynamic>();
+    } on PluginHostException catch (e) {
+      debugPrint('[plugins] decorateRef failed: $e');
+    }
+    return ref;
+  }
 }

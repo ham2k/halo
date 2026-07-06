@@ -23,6 +23,7 @@ class OperationScreen extends StatefulWidget {
 
 class _OperationScreenState extends State<OperationScreen> {
   Operation? _operation;
+  List<Map<String, dynamic>> _loggingControls = const [];
 
   @override
   void initState() {
@@ -33,6 +34,79 @@ class _OperationScreenState extends State<OperationScreen> {
   Future<void> _load() async {
     final operation = await widget.services.operations.get(widget.operationUuid);
     setState(() => _operation = operation);
+    if (operation != null) {
+      // Plugin runtime may still be booting; controls appear when it answers.
+      await widget.services.plugins.start();
+      final controls = await widget.services.plugins.loggingControls(operation.data);
+      if (mounted) setState(() => _loggingControls = controls);
+    }
+  }
+
+  Future<void> _editActivities(Operation operation) async {
+    final controls = await widget.services.plugins.operationControls(operation.data);
+    if (!mounted) return;
+    if (controls.isEmpty) {
+      ScaffoldMessenger.of(context)
+          .showSnackBar(const SnackBar(content: Text('No activities available (plugin runtime still starting?)')));
+      return;
+    }
+
+    var refs = operation.refs;
+    final saved = await showDialog<bool>(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: const Text('Activities'),
+          content: SizedBox(
+            width: 420,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                for (final control in controls)
+                  if ((control['input'] as Map?)?['kind'] == 'refList')
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 8),
+                      child: RefChipsInput(
+                        refType: (control['input'] as Map)['refType'] as String,
+                        label: (control['label'] as String?) ?? '',
+                        placeholder: (control['input'] as Map)['placeholder'] as String?,
+                        pattern: (control['input'] as Map)['pattern'] as String?,
+                        refs: refs
+                            .where((r) => r['type'] == (control['input'] as Map)['refType'])
+                            .toList(),
+                        onChanged: (updated) => setDialogState(() {
+                          final refType = (control['input'] as Map)['refType'];
+                          refs = [
+                            ...refs.where((r) => r['type'] != refType),
+                            ...updated,
+                          ];
+                        }),
+                        decorate: widget.services.plugins.decorateRef,
+                      ),
+                    ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('Cancel')),
+            FilledButton(onPressed: () => Navigator.of(context).pop(true), child: const Text('Save')),
+          ],
+        ),
+      ),
+    );
+
+    if (saved == true) {
+      final updated = Operation(
+        uuid: operation.uuid,
+        data: {...operation.data, 'refs': refs},
+        qsoCount: operation.qsoCount,
+        startAtMillisMin: operation.startAtMillisMin,
+        startAtMillisMax: operation.startAtMillisMax,
+      );
+      await widget.services.operations.saveData(updated);
+      if (mounted) setState(() => _operation = updated);
+    }
   }
 
   Future<void> _export(Operation operation) async {
@@ -70,6 +144,11 @@ class _OperationScreenState extends State<OperationScreen> {
             ].join(' — ')),
             actions: [
               IconButton(
+                tooltip: 'Activities',
+                icon: const Icon(Icons.park_outlined),
+                onPressed: () => _editActivities(operation),
+              ),
+              IconButton(
                 tooltip: 'Export ADIF',
                 icon: const Icon(Icons.file_download_outlined),
                 onPressed: qsos.isEmpty ? null : () => _export(operation),
@@ -91,6 +170,8 @@ class _OperationScreenState extends State<OperationScreen> {
               qsosRepository: widget.services.qsos,
               qsos: qsos,
               lookup: widget.services.plugins.lookupCall,
+              activityControls: _loggingControls,
+              decorateRef: widget.services.plugins.decorateRef,
             ),
           ]),
         );

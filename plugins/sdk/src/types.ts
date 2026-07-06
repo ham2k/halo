@@ -54,6 +54,62 @@ export interface SpotsHook {
   fetchSpots(args: Record<string, never>, ctx: HookContext): Promise<Spot[]>
 }
 
+/// A reference ties a QSO or operation to an activity program entity
+/// (a park, a summit, a contest). Same shape as app-polo's QSON refs.
+export interface Ref {
+  type: string
+  ref?: string
+  name?: string
+  label?: string
+  shortLabel?: string
+  grid?: string
+  location?: string
+  program?: string
+  [key: string]: JSONValue | undefined
+}
+
+/// Handles one ref type (registered under category `ref:<type>`).
+export interface RefHandlerHook {
+  /// Cheap synchronous-ish validation/normalization of user input.
+  validateRef?(args: { ref: Ref }, ctx: HookContext): Promise<{ valid: boolean; normalized?: string }>
+  /// Enriches a ref with names/locations, possibly via the network.
+  decorateRef?(args: { ref: Ref }, ctx: HookContext): Promise<Ref>
+}
+
+/// Declarative UI contribution: the core renders these with native widgets
+/// from the catalog (DESIGN.md §5). v0 catalog has one input kind.
+export interface LoggingControlDescriptor {
+  key: string
+  label: string
+  icon?: string
+  order?: number
+  optionType?: 'optional' | 'mandatory'
+  input: RefListInputDescriptor
+}
+
+export interface RefListInputDescriptor {
+  kind: 'refList'
+  refType: string
+  placeholder?: string
+  /// Regex source string; the core pre-validates input before accepting a chip.
+  pattern?: string
+}
+
+export interface ActivityHook {
+  /// Controls shown on the logging panel for this operation.
+  loggingControls?(args: { operation: Record<string, JSONValue> }, ctx: HookContext): Promise<LoggingControlDescriptor[]>
+  /// Controls shown in operation settings (e.g. "which park am I activating").
+  operationControls?(args: { operation: Record<string, JSONValue> }, ctx: HookContext): Promise<LoggingControlDescriptor[]>
+}
+
+/// Contributes extra ADIF fields per QSO (registered under 'adifFields').
+export interface AdifFieldsHook {
+  fieldsForOneQSO(
+    args: { qso: Record<string, JSONValue>; operation: Record<string, JSONValue> },
+    ctx: HookContext,
+  ): Promise<{ name: string; value: string }[]>
+}
+
 export interface ExportRequest {
   operation: Record<string, JSONValue>
   qsos: Record<string, JSONValue>[]
@@ -69,7 +125,14 @@ export interface ExportHook {
   generateExport(args: ExportRequest, ctx: HookContext): Promise<ExportResult>
 }
 
-export type Hook = LookupHook | SpotsHook | ExportHook | Record<string, unknown>
+export type Hook =
+  | LookupHook
+  | SpotsHook
+  | ExportHook
+  | RefHandlerHook
+  | ActivityHook
+  | AdifFieldsHook
+  | Record<string, unknown>
 
 export interface RegisterHookParams {
   hook: Hook

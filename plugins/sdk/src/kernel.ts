@@ -148,6 +148,27 @@ const kernel = {
     })()
   },
 
+  /// In-runtime composition: lets one plugin invoke other plugins' hooks
+  /// without crossing the bridge (e.g. the ADIF exporter collecting
+  /// per-QSO fields from activity plugins). Returns settled entries in
+  /// priority order; failing hooks are isolated.
+  async invokeLocal(
+    category: string,
+    method: string,
+    args: unknown,
+  ): Promise<{ key: string; ok: boolean; value?: unknown; error?: string }[]> {
+    const records = hooksFor(category, null).filter((r) => typeof r.hook[method] === 'function')
+    return await Promise.all(
+      records.map(async (record) => {
+        try {
+          return { key: record.key, ok: true, value: (await callHookMethod(record, method, args)) ?? null }
+        } catch (e) {
+          return { key: record.key, ok: false, error: describeError(e) }
+        }
+      }),
+    )
+  },
+
   hostResponse(callId: number, ok: boolean, resultJson: string) {
     const pending = pendingHostCalls.get(callId)
     if (!pending) return

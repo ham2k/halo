@@ -15,6 +15,11 @@ export * from "./types"
 interface KernelApi {
   definePlugin(def: PluginDefinition): void
   hostCall(method: string, params: Record<string, unknown>): Promise<unknown>
+  invokeLocal(
+    category: string,
+    method: string,
+    args: unknown,
+  ): Promise<{ key: string; ok: boolean; value?: unknown; error?: string }[]>
   log(message: string): void
 }
 
@@ -29,6 +34,13 @@ function kernel(): KernelApi {
 export function definePlugin(def: PluginDefinition): void {
   currentPluginKey = def.key
   kernel().definePlugin(def)
+}
+
+/// Cross-plugin composition inside the runtime (no bridge round-trip).
+export const hooks = {
+  invokeAll(category: string, method: string, args: unknown) {
+    return kernel().invokeLocal(category, method, args)
+  },
 }
 
 export const host = {

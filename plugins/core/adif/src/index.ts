@@ -10,7 +10,7 @@
 import { fmtADIFDate, fmtADIFTime } from "@ham2k/lib-format-tools"
 import { adifModeAndSubmodeForMode } from "@ham2k/lib-operation-data"
 
-import { definePlugin } from "@ham2k/polo-sdk"
+import { definePlugin, hooks } from "@ham2k/polo-sdk"
 import type { ExportRequest, ExportResult, HookContext } from "@ham2k/polo-sdk"
 
 const ADIF_VERSION = '3.1.5'
@@ -65,6 +65,17 @@ const ExportHandler = {
       row += field('COUNTRY', their.country)
       row += field('GRIDSQUARE', their.grid)
       row += field('NOTES', qso.notes)
+
+      // Activity plugins contribute their program fields (SIG, POTA_REF…)
+      // via in-runtime hook composition — no bridge crossing.
+      const contributions = await hooks.invokeAll('adifFields', 'fieldsForOneQSO', { qso, operation })
+      for (const entry of contributions) {
+        if (!entry.ok || !Array.isArray(entry.value)) continue
+        for (const extra of entry.value as { name: string; value: string }[]) {
+          row += field(extra.name, extra.value)
+        }
+      }
+
       row += '<EOR>'
       lines.push(row)
     }
