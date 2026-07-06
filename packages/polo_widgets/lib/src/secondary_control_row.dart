@@ -138,9 +138,11 @@ class _ControlChip extends StatelessWidget {
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
       backgroundColor: poloColors.tertiaryLight,
       selectedColor: theme.colorScheme.tertiary,
+      // Material3's ChoiceChip draws a default outline when side is null;
+      // app-polo's LoggerChip has none unless flagging hasValue.
       side: control.hasValue
           ? BorderSide(color: theme.colorScheme.primary, width: 1.5)
-          : null,
+          : BorderSide.none,
       onSelected: (_) => onTap(),
     );
   }

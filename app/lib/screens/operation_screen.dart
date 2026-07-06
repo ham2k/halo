@@ -140,6 +140,13 @@ class _OperationScreenState extends State<OperationScreen> {
 
         return Scaffold(
           appBar: AppBar(
+            leadingWidth: isMacOSChromelessWindow ? 56 + macOSTrafficLightInset : null,
+            leading: isMacOSChromelessWindow
+                ? const Padding(
+                    padding: EdgeInsets.only(left: macOSTrafficLightInset),
+                    child: BackButton(),
+                  )
+                : null,
             title: Column(mainAxisSize: MainAxisSize.min, children: [
               Text(
                 operation.title.isEmpty ? operation.stationCall : '${operation.stationCall} ${operation.title}',
@@ -156,12 +163,12 @@ class _OperationScreenState extends State<OperationScreen> {
             actions: [
               IconButton(
                 tooltip: 'Activities',
-                icon: const Icon(Icons.park_outlined),
+                icon: Icon(MdiIcons.pineTree),
                 onPressed: () => _editActivities(operation),
               ),
               IconButton(
                 tooltip: 'Export ADIF',
-                icon: const Icon(Icons.file_download_outlined),
+                icon: Icon(MdiIcons.fileExportOutline),
                 onPressed: qsos.isEmpty ? null : () => _export(operation),
               ),
             ],

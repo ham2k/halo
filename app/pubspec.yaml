@@ -28,6 +28,7 @@ flutter:
   uses-material-design: true
   assets:
     - assets/extensions/
+    - assets/images/
   fonts:
     - family: Roboto
       fonts:
@@ -38,3 +39,6 @@ flutter:
     - family: RobotoMono
       fonts:
         - asset: assets/fonts/RobotoMono.ttf
+    - family: MaterialDesignIcons
+      fonts:
+        - asset: assets/fonts/MaterialDesignIcons.ttf

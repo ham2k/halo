@@ -3,6 +3,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:polo_core/polo_core.dart';
+import 'package:polo_widgets/polo_widgets.dart';
 
 import '../main.dart';
 import '../spike_screen.dart';
@@ -147,6 +148,16 @@ class OperationsScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
+        leadingWidth: isMacOSChromelessWindow ? 56 + macOSTrafficLightInset : null,
+        leading: Padding(
+          padding: EdgeInsets.fromLTRB(
+            8 + (isMacOSChromelessWindow ? macOSTrafficLightInset : 0),
+            8,
+            8,
+            8,
+          ),
+          child: Image.asset('assets/images/ham2k-logo.png'),
+        ),
         title: const Text('PoLo Next — Operations'),
         actions: [
           IconButton(
@@ -160,7 +171,7 @@ class OperationsScreen extends StatelessWidget {
       ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => _newOperation(context),
-        icon: const Icon(Icons.add),
+        icon: Icon(MdiIcons.plus),
         label: const Text('New operation'),
       ),
       body: StreamBuilder<List<Operation>>(

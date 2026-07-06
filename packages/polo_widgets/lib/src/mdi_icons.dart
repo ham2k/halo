@@ -1,0 +1,30 @@
+// Copyright ©️ 2026 Sebastian Delmont <sd@ham2k.com>
+// SPDX-License-Identifier: MPL-2.0
+//
+// A hand-picked subset of Pictogrammers' Material Design Icons — the same
+// icon set app-polo uses (react-native-paper's Icon renders MDI glyph names
+// like 'clock-outline', 'radio', 'pine-tree' directly) — covering just the
+// glyphs this app actually references. Not the `material_design_icons_flutter`
+// pub package: as of Flutter 3.44, `IconData` became a `final class`, and
+// that package's generated icon constants subclass it
+// (`class _MdiIconData extends IconData`), so it fails to compile here.
+// Constructing `IconData` directly (no subclassing) sidesteps the break, so
+// this is a plain codepoint lookup against the bundled font
+// (app/assets/fonts/MaterialDesignIcons.ttf, family 'MaterialDesignIcons')
+// rather than a dependency — codepoints taken from that pub package's own
+// icon_map.dart, which stays a valid source of codepoint data even though
+// its Dart wrapper doesn't compile.
+
+import 'package:flutter/widgets.dart';
+
+class MdiIcons {
+  MdiIcons._();
+
+  static const IconData clockOutline = IconData(0xf0150, fontFamily: 'MaterialDesignIcons');
+  static const IconData radio = IconData(0xf0439, fontFamily: 'MaterialDesignIcons');
+  static const IconData pineTree = IconData(0xf0405, fontFamily: 'MaterialDesignIcons');
+  static const IconData puzzleOutline = IconData(0xf0a66, fontFamily: 'MaterialDesignIcons');
+  static const IconData fileExportOutline = IconData(0xf102e, fontFamily: 'MaterialDesignIcons');
+  static const IconData plus = IconData(0xf0415, fontFamily: 'MaterialDesignIcons');
+  static const IconData accountSearch = IconData(0xf0016, fontFamily: 'MaterialDesignIcons');
+}

@@ -33,6 +33,7 @@ import 'package:flutter/services.dart';
 
 import 'package:polo_core/polo_core.dart';
 
+import 'mdi_icons.dart';
 import 'ref_chips_input.dart';
 import 'secondary_control_row.dart';
 import 'theme.dart';
@@ -312,9 +313,9 @@ class _LoggingPanelState extends State<LoggingPanel> {
   IconData _iconForControlName(String? name) {
     switch (name) {
       case 'pota':
-        return Icons.park_outlined;
+        return MdiIcons.pineTree;
       default:
-        return Icons.extension_outlined;
+        return MdiIcons.puzzleOutline;
     }
   }
 
@@ -325,7 +326,7 @@ class _LoggingPanelState extends State<LoggingPanel> {
     return [
       SecondaryControlSpec(
         key: 'time',
-        icon: Icons.access_time,
+        icon: MdiIcons.clockOutline,
         summary: _timeSummary,
         hasValue: _effectiveStartAtMillis != null,
         expandedBuilder: (context) => Row(
@@ -382,7 +383,7 @@ class _LoggingPanelState extends State<LoggingPanel> {
       ),
       SecondaryControlSpec(
         key: 'radio',
-        icon: Icons.radio,
+        icon: MdiIcons.radio,
         summary: _radioSummary,
         expandedBuilder: (context) => Row(
           mainAxisSize: MainAxisSize.min,
@@ -441,7 +442,11 @@ class _LoggingPanelState extends State<LoggingPanel> {
                 fontSize: 15,
                 fontWeight: FontWeight.w500,
               ),
-              inputDecorationTheme: const InputDecorationTheme(isDense: true),
+              inputDecorationTheme: InputDecorationTheme(
+                isDense: true,
+                filled: true,
+                fillColor: theme.colorScheme.surface,
+              ),
               dropdownMenuEntries: [
                 for (final m in modes) DropdownMenuEntry(value: m, label: m),
               ],
@@ -644,13 +649,14 @@ class _LoggingPanelState extends State<LoggingPanel> {
         child: Material(
           elevation: 4,
           // app-polo's logging panel uses the operation's theme color
-          // (tertiary here) as its background, with a solid divider line
-          // separating it from the QSO list above.
+          // (tertiary here) as its background, with a divider line in the
+          // same tertiaryLight tone as the unselected chips separating it
+          // from the QSO list above.
           color: theme.colorScheme.tertiaryContainer,
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Container(height: 2, color: theme.colorScheme.tertiary),
+              Container(height: 2, color: poloColors.tertiaryLight),
               Padding(
                 padding: const EdgeInsets.fromLTRB(12, 4, 12, 8),
                 // Scoped so every field's label/underline reads clearly
@@ -660,6 +666,11 @@ class _LoggingPanelState extends State<LoggingPanel> {
                 child: Theme(
                   data: theme.copyWith(
                     inputDecorationTheme: theme.inputDecorationTheme.copyWith(
+                      // Matches app-polo's H2kTextInput, whose fields sit on
+                      // a near-white `colors.background` fill regardless of
+                      // the panel's own (tertiary-tinted) background.
+                      filled: true,
+                      fillColor: theme.colorScheme.surface,
                       labelStyle: TextStyle(
                         color: theme.colorScheme.onTertiaryContainer.withValues(
                           alpha: 0.85,
@@ -677,7 +688,7 @@ class _LoggingPanelState extends State<LoggingPanel> {
                       focusedBorder: UnderlineInputBorder(
                         borderSide: BorderSide(
                           color: theme.colorScheme.tertiary,
-                          width: 2,
+                          width: 3,
                         ),
                       ),
                     ),
@@ -707,7 +718,7 @@ class _LoggingPanelState extends State<LoggingPanel> {
                           child: Row(
                             children: [
                               Icon(
-                                Icons.person_outline,
+                                MdiIcons.accountSearch,
                                 size: 16,
                                 color: theme.colorScheme.primary,
                               ),

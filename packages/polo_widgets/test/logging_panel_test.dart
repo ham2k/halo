@@ -80,7 +80,7 @@ void main() {
 
   testWidgets('Enter logs a QSO with mode, band and default RSTs', (tester) async {
     await tester.pumpWidget(host());
-    await openControl(tester, Icons.radio);
+    await openControl(tester, MdiIcons.radio);
 
     await tester.enterText(find.widgetWithText(TextField, 'Freq kHz'), '14285');
     await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'W1AW');
@@ -182,7 +182,7 @@ void main() {
         ),
       ),
     ));
-    await openControl(tester, Icons.park_outlined);
+    await openControl(tester, MdiIcons.pineTree);
 
     await tester.enterText(find.widgetWithText(TextField, 'POTA'), 'US-1234');
     await tester.testTextInput.receiveAction(TextInputAction.done);
@@ -275,7 +275,7 @@ void main() {
           'mode': 'SSB',
         })))!;
     await tester.pumpWidget(host(existing: [dupe]));
-    await openControl(tester, Icons.radio);
+    await openControl(tester, MdiIcons.radio);
 
     await tester.enterText(find.widgetWithText(TextField, 'Freq kHz'), '14285');
     await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'W1AW');
@@ -288,24 +288,24 @@ void main() {
     testWidgets('Time and Radio chips show by default; tapping expands, tapping again collapses', (tester) async {
       await tester.pumpWidget(host());
 
-      expect(find.byIcon(Icons.access_time), findsOneWidget);
-      expect(find.byIcon(Icons.radio), findsOneWidget);
+      expect(find.byIcon(MdiIcons.clockOutline), findsOneWidget);
+      expect(find.byIcon(MdiIcons.radio), findsOneWidget);
       expect(find.widgetWithText(TextField, 'Freq kHz'), findsNothing);
 
-      await openControl(tester, Icons.radio);
+      await openControl(tester, MdiIcons.radio);
       expect(find.widgetWithText(TextField, 'Freq kHz'), findsOneWidget);
 
-      await openControl(tester, Icons.radio);
+      await openControl(tester, MdiIcons.radio);
       expect(find.widgetWithText(TextField, 'Freq kHz'), findsNothing);
     });
 
     testWidgets('selecting a different control collapses the previous one', (tester) async {
       await tester.pumpWidget(host());
 
-      await openControl(tester, Icons.radio);
+      await openControl(tester, MdiIcons.radio);
       expect(find.widgetWithText(TextField, 'Freq kHz'), findsOneWidget);
 
-      await openControl(tester, Icons.access_time);
+      await openControl(tester, MdiIcons.clockOutline);
       expect(find.widgetWithText(TextField, 'Freq kHz'), findsNothing);
       expect(find.widgetWithText(TextField, 'Time (UTC)'), findsOneWidget);
     });
@@ -325,7 +325,7 @@ void main() {
 
     testWidgets('Time control sets a manual timestamp used at log time; Now resets it', (tester) async {
       await tester.pumpWidget(host());
-      await openControl(tester, Icons.access_time);
+      await openControl(tester, MdiIcons.clockOutline);
 
       await tester.enterText(find.widgetWithText(TextField, 'Time (UTC)'), '03:15');
       await tester.enterText(find.widgetWithText(TextField, 'Date'), '2026-01-02');
@@ -342,7 +342,7 @@ void main() {
       );
 
       // Wipe resets to automatic timestamping for the next QSO.
-      await openControl(tester, Icons.access_time);
+      await openControl(tester, MdiIcons.clockOutline);
       expect(find.widgetWithText(TextField, 'Time (UTC)'), findsOneWidget);
       final timeField = tester.widget<TextField>(find.widgetWithText(TextField, 'Time (UTC)'));
       expect(timeField.controller!.text, isNot('03:15'));
@@ -350,11 +350,11 @@ void main() {
 
     testWidgets('Now button clears a manual time override', (tester) async {
       await tester.pumpWidget(host());
-      await openControl(tester, Icons.access_time);
+      await openControl(tester, MdiIcons.clockOutline);
 
       await tester.enterText(find.widgetWithText(TextField, 'Time (UTC)'), '03:15');
       await tester.pump();
-      expect(find.byIcon(Icons.access_time), findsOneWidget); // chip still rendered
+      expect(find.byIcon(MdiIcons.clockOutline), findsOneWidget); // chip still rendered
 
       await tester.tap(find.widgetWithText(TextButton, 'Now'));
       await tester.pump();
@@ -364,7 +364,7 @@ void main() {
     });
 
     ChoiceChip timeChip(WidgetTester tester) => tester.widget<ChoiceChip>(
-          find.ancestor(of: find.byIcon(Icons.access_time), matching: find.byType(ChoiceChip)),
+          find.ancestor(of: find.byIcon(MdiIcons.clockOutline), matching: find.byType(ChoiceChip)),
         );
 
     testWidgets('Time chip shows a live clock, not a static "now" label', (tester) async {
@@ -385,7 +385,7 @@ void main() {
 
     testWidgets('Now button stays hidden until a manual time override is actually set', (tester) async {
       await tester.pumpWidget(host());
-      await openControl(tester, Icons.access_time);
+      await openControl(tester, MdiIcons.clockOutline);
 
       expect(find.widgetWithText(TextButton, 'Now'), findsNothing);
 
@@ -416,7 +416,7 @@ void main() {
       await tester.pump(const Duration(seconds: 2));
       expect((timeChip(tester).label as Text).data, '12:30z');
 
-      await openControl(tester, Icons.access_time);
+      await openControl(tester, MdiIcons.clockOutline);
       final timeField = tester.widget<TextField>(find.widgetWithText(TextField, 'Time (UTC)'));
       expect(timeField.controller!.text, '12:30');
       expect(find.widgetWithText(TextButton, 'Now'), findsNothing);
@@ -444,12 +444,12 @@ void main() {
       ));
 
       ChoiceChip potaChip() => tester.widget<ChoiceChip>(find.ancestor(
-            of: find.byIcon(Icons.park_outlined),
+            of: find.byIcon(MdiIcons.pineTree),
             matching: find.byType(ChoiceChip),
           ));
-      expect(potaChip().side, isNull);
+      expect(potaChip().side, BorderSide.none);
 
-      await openControl(tester, Icons.park_outlined);
+      await openControl(tester, MdiIcons.pineTree);
       await tester.enterText(find.widgetWithText(TextField, 'POTA'), 'US-1234');
       await tester.testTextInput.receiveAction(TextInputAction.done);
       await tester.pump();
@@ -466,7 +466,7 @@ void main() {
       ));
 
       final chip = tester.widget<ChoiceChip>(find.ancestor(
-        of: find.byIcon(Icons.radio),
+        of: find.byIcon(MdiIcons.radio),
         matching: find.byType(ChoiceChip),
       ));
       expect(chip.backgroundColor, PoloColors.light.tertiaryLight);
