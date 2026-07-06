@@ -170,6 +170,67 @@ void main() {
     expect(find.byType(InputChip), findsNothing);
   });
 
+  testWidgets('space advances focus call → sent → rcvd → call', (tester) async {
+    await tester.pumpWidget(host());
+
+    TextField field(String label) => tester.widget<TextField>(find.widgetWithText(TextField, label));
+
+    await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'W1AW');
+    await tester.pump();
+    await tester.sendKeyEvent(LogicalKeyboardKey.space);
+    await tester.pump();
+    expect(field('Their call').controller!.text, 'W1AW', reason: 'space must not clear the call');
+    expect(field('Sent').focusNode!.hasFocus, isTrue);
+    // Select-all on focus: typing replaces the default RST.
+    expect(field('Sent').controller!.selection.extentOffset - field('Sent').controller!.selection.baseOffset,
+        field('Sent').controller!.text.length);
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.space);
+    await tester.pump();
+    expect(field('Rcvd').focusNode!.hasFocus, isTrue);
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.space);
+    await tester.pump();
+    expect(field('Their call').focusNode!.hasFocus, isTrue);
+  });
+
+  testWidgets('call-field commands: frequency, band, and mode via space', (tester) async {
+    await tester.pumpWidget(host());
+
+    TextField field(String label) => tester.widget<TextField>(find.widgetWithText(TextField, label));
+    Future<void> command(String text) async {
+      await tester.enterText(find.widgetWithText(TextField, 'Their call'), text);
+      await tester.pump();
+      await tester.sendKeyEvent(LogicalKeyboardKey.space);
+      await tester.pump();
+    }
+
+    // Frequency command fills the freq field and derives the band.
+    await command('14285');
+    expect(field('Their call').controller!.text, isEmpty);
+    expect(field('Their call').focusNode!.hasFocus, isTrue);
+    expect(field('Freq kHz').controller!.text, '14285');
+    expect(find.text('20m'), findsWidgets);
+
+    // Mode command switches mode and resets untouched RSTs.
+    await command('CW');
+    expect(field('Sent').controller!.text, '599');
+
+    // Band command overrides band and clears the frequency.
+    await command('40M');
+    expect(field('Freq kHz').controller!.text, isEmpty);
+    expect(find.text('40m'), findsWidgets);
+
+    // Log a QSO with the band-only state: band recorded, no frequency.
+    await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'W1AW');
+    await tester.pump();
+    await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+    final logged = await waitForQsos(tester, 1);
+    expect(logged.single.band, '40m');
+    expect(logged.single.freq, isNull);
+    expect(logged.single.mode, 'CW');
+  });
+
   testWidgets('shows DUPE chip for same call, band and mode', (tester) async {
     final dupe = (await tester.runAsync(() => qsos.add(operation.uuid, {
           'their': {'call': 'W1AW'},
