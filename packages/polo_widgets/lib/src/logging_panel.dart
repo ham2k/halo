@@ -695,6 +695,7 @@ class _LoggingPanelState extends State<LoggingPanel> {
                   ),
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       SecondaryControlRow(
                         controls: _buildSecondaryControls(theme, poloColors),

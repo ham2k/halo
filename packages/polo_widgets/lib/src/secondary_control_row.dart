@@ -17,6 +17,8 @@
 // "hide this one" yet) and no drag-reordering. Both can layer onto this
 // widget's contract later without changing it.
 
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 
 import 'theme.dart';
@@ -48,7 +50,7 @@ class SecondaryControlSpec {
   });
 }
 
-class SecondaryControlRow extends StatelessWidget {
+class SecondaryControlRow extends StatefulWidget {
   final List<SecondaryControlSpec> controls;
   final String? selectedKey;
   final ValueChanged<String?> onSelect;
@@ -66,40 +68,127 @@ class SecondaryControlRow extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
-    SecondaryControlSpec? selected;
-    for (final control in controls) {
-      if (control.key == selectedKey) selected = control;
+  State<SecondaryControlRow> createState() => _SecondaryControlRowState();
+}
+
+class _SecondaryControlRowState extends State<SecondaryControlRow> {
+  // Anchors the coordinate space used to position the expanded content: its
+  // own top-left corner (stable regardless of how wide this widget's
+  // shrink-wrapped content ends up being — only its origin matters here),
+  // not its rendered width, which is why availableWidth comes from
+  // LayoutBuilder's incoming constraints instead (the true width this
+  // widget was offered, not whatever it chose to consume).
+  final _rowKey = GlobalKey();
+  final _expandedKey = GlobalKey();
+  final Map<String, GlobalKey> _chipKeys = {};
+  double _expandedLeft = 0;
+  double _availableWidth = 0;
+
+  GlobalKey _chipKeyFor(String key) => _chipKeys.putIfAbsent(key, GlobalKey.new);
+
+  @override
+  void initState() {
+    super.initState();
+    _scheduleReposition();
+  }
+
+  @override
+  void didUpdateWidget(covariant SecondaryControlRow oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    _scheduleReposition();
+  }
+
+  void _scheduleReposition() {
+    WidgetsBinding.instance.addPostFrameCallback((_) => _reposition());
+  }
+
+  /// Centers the expanded content over the selected chip when there's room;
+  /// otherwise hugs whichever edge of the chip it overflowed past, so it
+  /// never spills outside the panel. Runs after layout (needs the chip's
+  /// and expanded content's actual rendered sizes, which aren't known
+  /// during build), so a freshly-selected control briefly renders at its
+  /// previous offset before snapping into place one frame later.
+  void _reposition() {
+    if (!mounted || widget.selectedKey == null) return;
+    final rowBox = _rowKey.currentContext?.findRenderObject() as RenderBox?;
+    final chipBox = _chipKeys[widget.selectedKey]?.currentContext?.findRenderObject() as RenderBox?;
+    final expandedBox = _expandedKey.currentContext?.findRenderObject() as RenderBox?;
+    if (rowBox == null ||
+        chipBox == null ||
+        expandedBox == null ||
+        !rowBox.attached ||
+        !chipBox.attached ||
+        !expandedBox.attached) {
+      return;
     }
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        if (selected != null)
-          Padding(
-            padding: const EdgeInsets.only(bottom: 4),
-            child: Builder(builder: selected.expandedBuilder),
-          ),
-        SingleChildScrollView(
-          scrollDirection: Axis.horizontal,
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              for (final control in controls) ...[
-                _ControlChip(
-                  control: control,
-                  selected: control.key == selectedKey,
-                  onTap: () =>
-                      onSelect(control.key == selectedKey ? null : control.key),
-                ),
-                const SizedBox(width: 6),
-              ],
-              ?trailing,
-            ],
-          ),
-        ),
-      ],
+    final chipLeft = chipBox.localToGlobal(Offset.zero, ancestor: rowBox).dx;
+    final chipWidth = chipBox.size.width;
+    final expandedWidth = expandedBox.size.width;
+    final availableWidth = _availableWidth.isFinite ? _availableWidth : expandedWidth;
+    final maxLeft = math.max(0.0, availableWidth - expandedWidth);
+
+    var left = chipLeft + chipWidth / 2 - expandedWidth / 2;
+    if (left < 0) {
+      left = chipLeft; // hug the pill's left edge
+    } else if (left + expandedWidth > availableWidth) {
+      left = chipLeft + chipWidth - expandedWidth; // hug the pill's right edge
+    }
+    left = left.clamp(0.0, maxLeft);
+
+    if ((left - _expandedLeft).abs() > 0.5) {
+      setState(() => _expandedLeft = left);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    SecondaryControlSpec? selected;
+    for (final control in widget.controls) {
+      if (control.key == widget.selectedKey) selected = control;
+    }
+    // The expanded content's own size can change between builds (e.g.
+    // switching from Time's fields to Radio's, or DUPE appearing/
+    // disappearing next to the chips), so reposition on every build, not
+    // just when selectedKey changes; _reposition's own threshold check
+    // makes this a no-op once things settle.
+    if (selected != null) _scheduleReposition();
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        _availableWidth = constraints.maxWidth;
+        return Column(
+          key: _rowKey,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (selected != null)
+              Padding(
+                padding: EdgeInsets.only(left: _expandedLeft, bottom: 4),
+                child: Builder(key: _expandedKey, builder: selected.expandedBuilder),
+              ),
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  for (final control in widget.controls) ...[
+                    _ControlChip(
+                      key: _chipKeyFor(control.key),
+                      control: control,
+                      selected: control.key == widget.selectedKey,
+                      onTap: () => widget
+                          .onSelect(control.key == widget.selectedKey ? null : control.key),
+                    ),
+                    const SizedBox(width: 6),
+                  ],
+                  ?widget.trailing,
+                ],
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
 }
@@ -110,6 +199,7 @@ class _ControlChip extends StatelessWidget {
   final VoidCallback onTap;
 
   const _ControlChip({
+    super.key,
     required this.control,
     required this.selected,
     required this.onTap,
