@@ -30,4 +30,10 @@ class MdiIcons {
   static const IconData radioTower = IconData(0xf043b, fontFamily: 'MaterialDesignIcons');
   static const IconData bookOutline = IconData(0xf0b64, fontFamily: 'MaterialDesignIcons');
   static const IconData delete = IconData(0xf01b4, fontFamily: 'MaterialDesignIcons');
+  static const IconData cog = IconData(0xf0493, fontFamily: 'MaterialDesignIcons');
+  static const IconData keyChain = IconData(0xf1574, fontFamily: 'MaterialDesignIcons');
+  static const IconData themeLightDark = IconData(0xf050e, fontFamily: 'MaterialDesignIcons');
+  static const IconData whiteBalanceSunny = IconData(0xf05a8, fontFamily: 'MaterialDesignIcons');
+  static const IconData weatherNight = IconData(0xf0594, fontFamily: 'MaterialDesignIcons');
+  static const IconData informationOutline = IconData(0xf02fd, fontFamily: 'MaterialDesignIcons');
 }

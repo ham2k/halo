@@ -23,6 +23,16 @@ class ExtensionService {
     return _starting ??= _start();
   }
 
+  /// Seeds the QRZ extension's credentials into the host's KV store. Safe to
+  /// call before the runtime is up (awaits start()) or with blank values
+  /// (clears them) — called both at boot, from whatever SettingsService
+  /// loaded last session, and whenever Settings saves new credentials.
+  Future<void> setQrzCredentials({required String username, required String password}) async {
+    await start();
+    _host?.setKV('qrz', 'username', username);
+    _host?.setKV('qrz', 'password', password);
+  }
+
   Future<void> _start() async {
     try {
       final index = jsonDecode(await rootBundle.loadString('assets/extensions/index.json')) as Map<String, dynamic>;

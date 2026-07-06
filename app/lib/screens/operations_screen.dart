@@ -9,6 +9,7 @@ import '../main.dart';
 import '../spike_screen.dart';
 import 'operation_dialogs.dart';
 import 'operation_screen.dart';
+import 'settings_screen.dart';
 
 /// PoLo home-screen style row: bold "CALL title" line with count pill,
 /// subtitle line with refs/description and right-aligned date.
@@ -147,6 +148,13 @@ class OperationsScreen extends StatelessWidget {
         ),
         title: const Text('PoLo Next — Operations'),
         actions: [
+          IconButton(
+            tooltip: 'Settings',
+            icon: Icon(MdiIcons.cog),
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => SettingsScreen(services: services)),
+            ),
+          ),
           IconButton(
             tooltip: 'Extension bridge spike',
             icon: const Icon(Icons.science_outlined),
