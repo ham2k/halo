@@ -371,6 +371,7 @@ app-polo-next/
 | Flutter multi-window immaturity | SQLite-as-bus design; tear-off windows out of v1 |
 | JS runtime wedged / extension crash | Sync and logging fast path are pure Dart; timeouts degrade features, never the app |
 | Startup cost of many extensions | Lazy-load bundles on first activation |
+| **⚠️ TODO — credentials stored in plaintext** | `SettingsService` (`app/lib/services/settings_service.dart`) persists QRZ.com username/password via plain `SharedPreferences` — unencrypted on disk. Fine for early dev, **not acceptable before a real release**: swap for platform secure storage (Keychain/Keystore, e.g. `flutter_secure_storage`) before shipping. |
 
 ---
 
