@@ -15,12 +15,13 @@
 // control row (see secondary_control_row.dart) rather than as
 // permanently-visible fields — this is app-polo's SecondaryExchangePanel
 // pattern: a chip always shows a compact summary of the control's current
-// value ("20m • SSB", "now"), and tapping it expands the actual editable
-// fields. This is what lets extensions keep contributing controls (POTA's
-// park reference today, more activities later) without the panel's
-// permanent footprint growing — only one control is expanded at a time.
-// Command shortcuts still work while a control is collapsed, since they
-// mutate the same underlying state the expanded fields edit.
+// value ("20m • SSB", a live-ticking "17:06:49z" clock), and tapping it
+// expands the actual editable fields. This is what lets extensions keep
+// contributing controls (POTA's park reference today, more activities
+// later) without the panel's permanent footprint growing — only one
+// control is expanded at a time. Command shortcuts still work while a
+// control is collapsed, since they mutate the same underlying state the
+// expanded fields edit.
 //
 // Everything here is pure Dart/Flutter; extensions only get debounced,
 // async involvement (lookups, ref decoration) off the keystroke path.
@@ -69,6 +70,14 @@ class LoggingPanel extends StatefulWidget {
   /// When null, space in the call field just advances focus.
   final CommandHandler? tryCommand;
 
+  /// When set, the panel is editing this already-logged QSO rather than
+  /// composing a new one. Nothing wires this up yet (there's no tap-to-edit
+  /// on QsoList rows), but the Time control's behavior already depends on
+  /// the distinction: editing an existing entry shows *its* recorded time
+  /// instead of a live clock, and has no "Now" reset (there's no
+  /// "automatic" time to reset back to for a historical record).
+  final Qso? editingQso;
+
   const LoggingPanel({
     super.key,
     required this.operation,
@@ -79,6 +88,7 @@ class LoggingPanel extends StatefulWidget {
     this.activityControls = const [],
     this.decorateRef,
     this.tryCommand,
+    this.editingQso,
   });
 
   @override
@@ -111,6 +121,11 @@ class _LoggingPanelState extends State<LoggingPanel> {
   /// means "use the current time at the moment of logging."
   int? _manualStartAtMillis;
 
+  /// Ticks once a second so the Time chip shows a live clock while nothing
+  /// overrides it — only runs while it's actually needed (see
+  /// _updateClockTicker), not for the whole panel's lifetime.
+  Timer? _clockTicker;
+
   Timer? _lookupDebounce;
   String? _lookupFor;
   Map<String, dynamic>? _lookupResult;
@@ -128,6 +143,7 @@ class _LoggingPanelState extends State<LoggingPanel> {
     super.initState();
     _applyDefaultRSTs();
     _seedTimeFields();
+    _updateClockTicker();
     _callController.addListener(_onCallChanged);
     _freqController.addListener(_onFreqChanged);
     _timeController.addListener(_onTimeOrDateFieldChanged);
@@ -151,7 +167,14 @@ class _LoggingPanelState extends State<LoggingPanel> {
   }
 
   @override
+  void didUpdateWidget(LoggingPanel oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.editingQso?.uuid != widget.editingQso?.uuid) _updateClockTicker();
+  }
+
+  @override
   void dispose() {
+    _clockTicker?.cancel();
     _lookupDebounce?.cancel();
     _callController.dispose();
     _sentController.dispose();
@@ -208,18 +231,24 @@ class _LoggingPanelState extends State<LoggingPanel> {
 
   String _fmtTime(DateTime dt) =>
       '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
+  String _fmtTimeWithSeconds(DateTime dt) =>
+      '${_fmtTime(dt)}:${dt.second.toString().padLeft(2, '0')}';
   String _fmtDate(DateTime dt) =>
       '${dt.year.toString().padLeft(4, '0')}-${dt.month.toString().padLeft(2, '0')}-${dt.day.toString().padLeft(2, '0')}';
 
-  /// (Re-)populates the time/date fields from the pending override, or from
-  /// the current time if there isn't one — called whenever the Time control
-  /// is opened, so it never shows a stale snapshot from an earlier open.
+  /// The best-known timestamp for the entry being composed/edited: a manual
+  /// override if one's been set, else the existing QSO's recorded time when
+  /// editing one, else null — meaning "still automatic, tracks live now."
+  int? get _effectiveStartAtMillis => _manualStartAtMillis ?? widget.editingQso?.startAtMillis;
+
+  /// (Re-)populates the time/date fields from [_effectiveStartAtMillis], or
+  /// from the current time if that's null — called whenever the Time
+  /// control is opened, so it never shows a stale snapshot from an earlier
+  /// open.
   void _seedTimeFields() {
-    final dt = _manualStartAtMillis != null
-        ? DateTime.fromMillisecondsSinceEpoch(
-            _manualStartAtMillis!,
-            isUtc: true,
-          )
+    final millis = _effectiveStartAtMillis;
+    final dt = millis != null
+        ? DateTime.fromMillisecondsSinceEpoch(millis, isUtc: true)
         : DateTime.now().toUtc();
     _timeController.text = _fmtTime(dt);
     _dateController.text = _fmtDate(dt);
@@ -237,27 +266,39 @@ class _LoggingPanelState extends State<LoggingPanel> {
     if (hour == null || minute == null || year == null || month == null || day == null) {
       return;
     }
-    setState(
-      () => _manualStartAtMillis = DateTime.utc(
-        year,
-        month,
-        day,
-        hour,
-        minute,
-      ).millisecondsSinceEpoch,
-    );
+    setState(() {
+      _manualStartAtMillis = DateTime.utc(year, month, day, hour, minute).millisecondsSinceEpoch;
+      _updateClockTicker();
+    });
   }
 
   void _resetTimeToNow() {
     setState(() {
       _manualStartAtMillis = null;
       _seedTimeFields();
+      _updateClockTicker();
     });
   }
 
+  /// Starts or stops the live-clock ticker to match whether the Time chip
+  /// currently needs one — only while nothing overrides the timestamp and
+  /// we're not editing an existing (necessarily historical) QSO.
+  void _updateClockTicker() {
+    final needsTicking = _effectiveStartAtMillis == null;
+    if (needsTicking && _clockTicker == null) {
+      _clockTicker = Timer.periodic(const Duration(seconds: 1), (_) => setState(() {}));
+    } else if (!needsTicking && _clockTicker != null) {
+      _clockTicker!.cancel();
+      _clockTicker = null;
+    }
+  }
+
   String get _timeSummary {
-    if (_manualStartAtMillis == null) return 'now';
-    return '${_fmtTime(DateTime.fromMillisecondsSinceEpoch(_manualStartAtMillis!, isUtc: true))}z';
+    final millis = _effectiveStartAtMillis;
+    if (millis == null) {
+      return '${_fmtTimeWithSeconds(DateTime.now().toUtc())}z';
+    }
+    return '${_fmtTime(DateTime.fromMillisecondsSinceEpoch(millis, isUtc: true))}z';
   }
 
   String get _radioSummary {
@@ -286,7 +327,7 @@ class _LoggingPanelState extends State<LoggingPanel> {
         key: 'time',
         icon: Icons.access_time,
         summary: _timeSummary,
-        hasValue: _manualStartAtMillis != null,
+        hasValue: _effectiveStartAtMillis != null,
         expandedBuilder: (context) => Row(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -328,8 +369,14 @@ class _LoggingPanelState extends State<LoggingPanel> {
                 ],
               ),
             ),
-            const SizedBox(width: 8),
-            TextButton(onPressed: _resetTimeToNow, child: const Text('Now')),
+            // Only offer to reset back to automatic timestamping while
+            // composing a new QSO with a manual override in effect — there's
+            // no "automatic" time to reset to when editing an existing,
+            // necessarily historical, entry.
+            if (widget.editingQso == null && _manualStartAtMillis != null) ...[
+              const SizedBox(width: 8),
+              TextButton(onPressed: _resetTimeToNow, child: const Text('Now')),
+            ],
           ],
         ),
       ),
@@ -536,7 +583,7 @@ class _LoggingPanelState extends State<LoggingPanel> {
     _manualStartAtMillis = null;
     _selectedControlKey = null;
     _callFocus.requestFocus();
-    setState(() {});
+    setState(_updateClockTicker);
   }
 
   Future<void> _log() async {
@@ -572,7 +619,7 @@ class _LoggingPanelState extends State<LoggingPanel> {
         if (_freq != null) 'freq': _freq,
         if (_band != null) 'band': _band,
         'mode': _mode,
-        if (_manualStartAtMillis != null) 'startAtMillis': _manualStartAtMillis,
+        if (_effectiveStartAtMillis != null) 'startAtMillis': _effectiveStartAtMillis,
       });
       widget.onLogged?.call(qso);
       _wipe();

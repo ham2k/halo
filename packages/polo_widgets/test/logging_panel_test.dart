@@ -363,6 +363,71 @@ void main() {
       expect(timeField.controller!.text, isNot('03:15'));
     });
 
+    ChoiceChip timeChip(WidgetTester tester) => tester.widget<ChoiceChip>(
+          find.ancestor(of: find.byIcon(Icons.access_time), matching: find.byType(ChoiceChip)),
+        );
+
+    testWidgets('Time chip shows a live clock, not a static "now" label', (tester) async {
+      await tester.pumpWidget(host());
+
+      String summary() => (timeChip(tester).label as Text).data!;
+
+      // HH:MM:SSz — a real clock, matching app-polo's "17:06:49z" reference.
+      // (Not asserting the value changes across a pump: DateTime.now() reads
+      // the real wall clock, which FakeAsync's virtual time in tests doesn't
+      // advance — only Timer scheduling is virtualized. The Timer firing
+      // safely, repeatedly, without error is what's actually verifiable
+      // here; genuine tick-to-tick change is exercised by hand on-device.)
+      expect(summary(), matches(RegExp(r'^\d{2}:\d{2}:\d{2}z$')));
+      await tester.pump(const Duration(seconds: 2));
+      expect(summary(), matches(RegExp(r'^\d{2}:\d{2}:\d{2}z$')));
+    });
+
+    testWidgets('Now button stays hidden until a manual time override is actually set', (tester) async {
+      await tester.pumpWidget(host());
+      await openControl(tester, Icons.access_time);
+
+      expect(find.widgetWithText(TextButton, 'Now'), findsNothing);
+
+      await tester.enterText(find.widgetWithText(TextField, 'Time (UTC)'), '03:15');
+      await tester.pump();
+
+      expect(find.widgetWithText(TextButton, 'Now'), findsOneWidget);
+    });
+
+    testWidgets('editing an existing QSO shows its recorded time and never offers Now', (tester) async {
+      final existingQso = Qso(
+        uuid: 'existing-uuid',
+        operationUuid: operation.uuid,
+        data: {
+          'their': {'call': 'W1AW'},
+          'startAtMillis': DateTime.utc(2020, 3, 4, 12, 30).millisecondsSinceEpoch,
+        },
+      );
+
+      await tester.pumpWidget(MaterialApp(
+        home: Scaffold(
+          body: LoggingPanel(operation: operation, qsosRepository: qsos, editingQso: existingQso),
+        ),
+      ));
+
+      // Shows the existing QSO's own time — static, not a live clock.
+      expect((timeChip(tester).label as Text).data, '12:30z');
+      await tester.pump(const Duration(seconds: 2));
+      expect((timeChip(tester).label as Text).data, '12:30z');
+
+      await openControl(tester, Icons.access_time);
+      final timeField = tester.widget<TextField>(find.widgetWithText(TextField, 'Time (UTC)'));
+      expect(timeField.controller!.text, '12:30');
+      expect(find.widgetWithText(TextButton, 'Now'), findsNothing);
+
+      // Even after editing away from the original recorded time, Now never
+      // appears — there's no "automatic" to reset a historical entry to.
+      await tester.enterText(find.widgetWithText(TextField, 'Time (UTC)'), '05:00');
+      await tester.pump();
+      expect(find.widgetWithText(TextButton, 'Now'), findsNothing);
+    });
+
     testWidgets('activity control chip shows a hasValue indicator once a ref is entered', (tester) async {
       const controls = [
         {

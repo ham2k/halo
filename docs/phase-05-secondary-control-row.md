@@ -26,11 +26,21 @@ layout later when SOTA/WWFF/contests each want their own control.
   doesn't know or care whether it came from a built-in Dart widget or an
   extension descriptor.
 - **`LoggingPanel`** now builds three kinds of specs:
-  - **Time** — summary is `"now"` or `"14:32z"` once overridden; expands to
-    UTC time/date fields plus a "Now" reset button. Backed by
-    `_manualStartAtMillis`, which — when set — is passed through to
-    `QsosRepository.add` instead of letting the repository default to the
-    insert-time "now". Resets on wipe.
+  - **Time** — summary is a live-ticking `"17:06:49z"` clock while nothing
+    overrides it (a `Timer.periodic` that only runs while actually needed —
+    not while a manual time or an existing QSO's own time is showing), or a
+    static `"14:32z"` once one is. Expands to UTC time/date fields; the
+    "Now" reset button only appears once a manual override is actually set
+    **and** we're not editing an existing QSO — there's no "automatic" to
+    reset a historical entry back to. Backed by `_manualStartAtMillis`
+    (passed through to `QsosRepository.add` when set, letting the
+    repository default to insert-time "now" otherwise) and the new
+    `LoggingPanel.editingQso` parameter — unused by any caller yet (there's
+    no tap-to-edit on QsoList rows), but the Time control's display/seeding/
+    Now-button logic already branches on it correctly via a single
+    `_effectiveStartAtMillis` getter (`manual override ?? editingQso's
+    recorded time ?? null-meaning-live`), so wiring up real editing later
+    is additive, not a rewrite. Resets on wipe.
   - **Radio** — summary is `"<freq> • <mode>"` or `"<band> • <mode>"` or
     `"Band??? • <mode>"` (matching app-polo's exact fallback copy); expands
     to the frequency field, band readout, and mode dropdown that used to be
