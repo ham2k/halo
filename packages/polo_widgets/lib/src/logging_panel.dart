@@ -251,10 +251,10 @@ class _LoggingPanelState extends State<LoggingPanel> {
       // since setting one at all replaces the other outright rather than
       // merging, so the color has to come along with the smaller size.
       floatingLabelStyle: TextStyle(
-        fontSize: 11,
+        fontSize: 13,
         color: theme.colorScheme.onTertiaryContainer,
       ),
-      contentPadding: const EdgeInsets.fromLTRB(4, 0, 4, 2),
+      contentPadding: const EdgeInsets.fromLTRB(4, 2, 4, 6),
     );
   }
 
