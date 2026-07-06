@@ -66,6 +66,7 @@ class _MapboxWebviewMapViewState extends State<MapboxWebviewMapView> {
         baseUrl: WebUri('https://ham2k.com/'),
       ),
       initialSettings: InAppWebViewSettings(transparentBackground: true),
+      onConsoleMessage: (controller, message) => debugPrint('[map-webview] ${message.message}'),
       onWebViewCreated: (controller) {
         _controller = controller;
         controller.addJavaScriptHandler(
@@ -136,6 +137,13 @@ class _MapboxWebviewMapViewState extends State<MapboxWebviewMapView> {
     window.poloSetProjection = function (name) {
       map.setProjection(name);
     };
+
+    // Forwarded to Dart's debugPrint via onConsoleMessage — the only signal
+    // we get out of this page for "why is the map blank" reports (e.g. an
+    // invalid/expired token) without opening real devtools on it.
+    map.on('error', function (e) {
+      console.log('map error: ' + (e && e.error ? e.error.message : JSON.stringify(e)));
+    });
 
     map.on('load', function () {
       window.flutter_inappwebview.callHandler('poloMapReady');
