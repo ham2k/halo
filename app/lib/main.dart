@@ -9,6 +9,7 @@
 import 'package:drift_flutter/drift_flutter.dart';
 import 'package:flutter/material.dart';
 import 'package:polo_core/polo_core.dart';
+import 'package:polo_widgets/polo_widgets.dart';
 
 import 'screens/operations_screen.dart';
 import 'services/export_service.dart';
@@ -44,8 +45,8 @@ class PoloNextApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'PoLo Next',
-      theme: ThemeData(colorSchemeSeed: const Color(0xFFD32F2F), useMaterial3: true),
-      darkTheme: ThemeData(colorSchemeSeed: const Color(0xFFD32F2F), brightness: Brightness.dark, useMaterial3: true),
+      theme: buildPoloTheme(Brightness.light),
+      darkTheme: buildPoloTheme(Brightness.dark),
       home: OperationsScreen(services: services),
     );
   }

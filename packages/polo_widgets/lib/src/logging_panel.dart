@@ -17,6 +17,7 @@ import 'package:flutter/services.dart';
 import 'package:polo_core/polo_core.dart';
 
 import 'ref_chips_input.dart';
+import 'theme.dart';
 
 /// Async callsign enrichment (name, location, grid…) from lookup sources.
 /// Returning null means "nothing known". Must never throw.
@@ -186,6 +187,7 @@ class _LoggingPanelState extends State<LoggingPanel> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final poloColors = PoloColors.of(context);
 
     return CallbackShortcuts(
       bindings: {
@@ -196,30 +198,43 @@ class _LoggingPanelState extends State<LoggingPanel> {
       child: FocusTraversalGroup(
         child: Material(
           elevation: 4,
-          color: theme.colorScheme.surfaceContainer,
+          color: theme.colorScheme.surfaceContainerHighest,
           child: Padding(
-            padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
+            padding: const EdgeInsets.fromLTRB(12, 6, 12, 10),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
                 Row(children: [
                   SizedBox(
-                    width: 110,
+                    width: 104,
                     child: TextField(
                       controller: _freqController,
-                      decoration: InputDecoration(
-                        labelText: 'Freq kHz',
-                        isDense: true,
-                        helperText: _band ?? ' ',
-                      ),
+                      style: poloMonoStyle(context, fontSize: 15, fontWeight: FontWeight.w500),
+                      decoration: const InputDecoration(labelText: 'Freq kHz', isDense: true),
                       keyboardType: const TextInputType.numberWithOptions(decimal: true),
                     ),
                   ),
-                  const SizedBox(width: 8),
+                  const SizedBox(width: 6),
+                  SizedBox(
+                    width: 44,
+                    child: Text(
+                      _band ?? '',
+                      style: poloMonoStyle(
+                        context,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
+                        color: _band == null
+                            ? theme.colorScheme.outline
+                            : Color.lerp(poloColors.bandColor(_band!), theme.colorScheme.onSurface, 0.25),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 6),
                   DropdownMenu<String>(
                     initialSelection: _mode,
                     label: const Text('Mode'),
-                    width: 110,
+                    width: 104,
+                    textStyle: poloMonoStyle(context, fontSize: 15, fontWeight: FontWeight.w500),
                     inputDecorationTheme: const InputDecorationTheme(isDense: true),
                     dropdownMenuEntries: [for (final m in modes) DropdownMenuEntry(value: m, label: m)],
                     onSelected: (value) {
@@ -275,8 +290,8 @@ class _LoggingPanelState extends State<LoggingPanel> {
                       ),
                     ]),
                   ),
-                const SizedBox(height: 8),
-                Row(children: [
+                const SizedBox(height: 6),
+                Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
                   Expanded(
                     child: TextField(
                       controller: _callController,
@@ -289,16 +304,17 @@ class _LoggingPanelState extends State<LoggingPanel> {
                         FilteringTextInputFormatter.allow(RegExp(r'[a-zA-Z0-9/]')),
                         _UpperCaseFormatter(),
                       ],
-                      style: theme.textTheme.headlineSmall?.copyWith(fontFeatures: const []),
+                      style: poloMonoStyle(context, fontSize: 24, fontWeight: FontWeight.w700),
                       decoration: const InputDecoration(labelText: 'Their call', isDense: true),
                       onSubmitted: (_) => _log(),
                     ),
                   ),
-                  const SizedBox(width: 8),
+                  const SizedBox(width: 10),
                   SizedBox(
-                    width: 70,
+                    width: 64,
                     child: TextField(
                       controller: _sentController,
+                      style: poloMonoStyle(context, fontSize: 17, fontWeight: FontWeight.w500),
                       decoration: const InputDecoration(labelText: 'Sent', isDense: true),
                       onChanged: (_) => _rstsTouched = true,
                       onSubmitted: (_) => _log(),
@@ -306,19 +322,29 @@ class _LoggingPanelState extends State<LoggingPanel> {
                   ),
                   const SizedBox(width: 8),
                   SizedBox(
-                    width: 70,
+                    width: 64,
                     child: TextField(
                       controller: _rcvdController,
+                      style: poloMonoStyle(context, fontSize: 17, fontWeight: FontWeight.w500),
                       decoration: const InputDecoration(labelText: 'Rcvd', isDense: true),
                       onChanged: (_) => _rstsTouched = true,
                       onSubmitted: (_) => _log(),
                     ),
                   ),
                   const SizedBox(width: 12),
-                  FilledButton.icon(
-                    onPressed: _canLog ? _log : null,
-                    icon: const Icon(Icons.check),
-                    label: const Text('Log'),
+                  // PoLo's big light-blue log button.
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 2),
+                    child: FilledButton(
+                      onPressed: _canLog ? _log : null,
+                      style: FilledButton.styleFrom(
+                        backgroundColor: theme.colorScheme.primaryContainer,
+                        foregroundColor: theme.colorScheme.onPrimaryContainer,
+                        minimumSize: const Size(64, 48),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+                      ),
+                      child: const Icon(Icons.check, size: 28),
+                    ),
                   ),
                 ]),
               ],

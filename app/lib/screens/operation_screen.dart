@@ -136,12 +136,23 @@ class _OperationScreenState extends State<OperationScreen> {
 
         final list = QsoList(qsos: qsos, qsosRepository: widget.services.qsos);
 
+        final refsLine = operation.refs.map((r) => r['shortLabel'] ?? r['ref']).whereType<String>().join(' • ');
+
         return Scaffold(
           appBar: AppBar(
-            title: Text([
-              operation.title.isEmpty ? operation.stationCall : operation.title,
-              '${qsos.length} QSOs',
-            ].join(' — ')),
+            title: Column(mainAxisSize: MainAxisSize.min, children: [
+              Text(
+                operation.title.isEmpty ? operation.stationCall : '${operation.stationCall} ${operation.title}',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+              Text(
+                [if (refsLine.isNotEmpty) refsLine, '${qsos.length} QSOs'].join(' • '),
+                style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                      color: Theme.of(context).colorScheme.onPrimary.withValues(alpha: 0.85),
+                    ),
+              ),
+            ]),
             actions: [
               IconButton(
                 tooltip: 'Activities',
