@@ -10,6 +10,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import 'theme.dart';
+
 /// Async ref decoration via the plugin runtime. Receives `{type, ref}` and
 /// returns an enriched ref map; implementations must not throw.
 typedef RefDecorator = Future<Map<String, dynamic>> Function(Map<String, dynamic> ref);
@@ -26,6 +28,12 @@ class RefChipsInput extends StatefulWidget {
   final RefDecorator? decorate;
   final bool dense;
 
+  /// Passed straight through to poloFieldDecoration — set this when
+  /// embedding on a tinted background (e.g. LoggingPanel's
+  /// tertiaryContainer); left null for the default, plain-background tone
+  /// (e.g. the standalone Activities dialog).
+  final Color? labelColor;
+
   const RefChipsInput({
     super.key,
     required this.refType,
@@ -36,6 +44,7 @@ class RefChipsInput extends StatefulWidget {
     this.pattern,
     this.decorate,
     this.dense = false,
+    this.labelColor,
   });
 
   @override
@@ -157,11 +166,12 @@ class _RefChipsInputState extends State<RefChipsInput> {
               child: TextField(
                 controller: _controller,
                 focusNode: _focus,
-                decoration: InputDecoration(
-                  labelText: widget.label,
+                decoration: poloFieldDecoration(
+                  context,
+                  widget.label,
                   hintText: widget.placeholder,
-                  isDense: true,
                   errorText: _error,
+                  labelColor: widget.labelColor,
                 ),
                 textCapitalization: TextCapitalization.characters,
                 inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[a-zA-Z0-9\-]'))],

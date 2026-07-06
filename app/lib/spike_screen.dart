@@ -10,6 +10,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show rootBundle;
 import 'package:polo_extension_host/polo_extension_host.dart';
+import 'package:polo_widgets/polo_widgets.dart';
 
 class SpikeScreen extends StatefulWidget {
   const SpikeScreen({super.key});
@@ -194,7 +195,7 @@ class _SpikeScreenState extends State<SpikeScreen> {
             Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               TextField(
                 controller: _callsignController,
-                decoration: const InputDecoration(labelText: 'Callsign'),
+                decoration: poloFieldDecoration(context, 'Callsign'),
                 textCapitalization: TextCapitalization.characters,
               ),
               const SizedBox(height: 8),
@@ -202,7 +203,7 @@ class _SpikeScreenState extends State<SpikeScreen> {
                 Expanded(
                   child: TextField(
                     controller: _qrzUserController,
-                    decoration: const InputDecoration(labelText: 'QRZ username (optional)'),
+                    decoration: poloFieldDecoration(context, 'QRZ username (optional)'),
                   ),
                 ),
                 const SizedBox(width: 8),
@@ -210,7 +211,7 @@ class _SpikeScreenState extends State<SpikeScreen> {
                   child: TextField(
                     controller: _qrzPassController,
                     obscureText: true,
-                    decoration: const InputDecoration(labelText: 'QRZ password'),
+                    decoration: poloFieldDecoration(context, 'QRZ password'),
                   ),
                 ),
               ]),

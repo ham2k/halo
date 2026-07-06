@@ -233,30 +233,17 @@ class _LoggingPanelState extends State<LoggingPanel> {
   /// Shared look for the primary logging row (Their call/Sent/Rcvd) — same
   /// font size and field padding across all three, and the label always
   /// pinned to the top-left corner (not the "large placeholder until
-  /// focused" default) so the row's shape doesn't shift as you type.
+  /// focused" default) so the row's shape doesn't shift as you type. Built
+  /// on the app-wide poloFieldDecoration (theme.dart), tinted to read
+  /// against this panel's tertiaryContainer background.
   TextStyle _primaryFieldStyle(BuildContext context, {required FontWeight fontWeight}) =>
-      poloMonoStyle(context, fontSize: 20, fontWeight: fontWeight);
+      poloMonoStyle(context, fontSize: 18, fontWeight: fontWeight);
 
-  InputDecoration _primaryFieldDecoration(BuildContext context, String label) {
-    final theme = Theme.of(context);
-    return InputDecoration(
-      labelText: label,
-      isDense: true,
-      floatingLabelBehavior: FloatingLabelBehavior.always,
-      // A smaller floating label reserves less vertical space for itself,
-      // which is what actually pulls the value up closer to it — the
-      // surrounding contentPadding alone hits a floor set by Material's
-      // default (much larger) floating label metrics. Explicit here (rather
-      // than inheriting the ambient scoped theme's floatingLabelStyle)
-      // since setting one at all replaces the other outright rather than
-      // merging, so the color has to come along with the smaller size.
-      floatingLabelStyle: TextStyle(
-        fontSize: 13,
-        color: theme.colorScheme.onTertiaryContainer,
-      ),
-      contentPadding: const EdgeInsets.fromLTRB(4, 4, 4, 8),
-    );
-  }
+  InputDecoration _primaryFieldDecoration(BuildContext context, String label) => poloFieldDecoration(
+        context,
+        label,
+        labelColor: Theme.of(context).colorScheme.onTertiaryContainer,
+      );
 
   String _fmtTime(DateTime dt) =>
       '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
@@ -370,9 +357,10 @@ class _LoggingPanelState extends State<LoggingPanel> {
                   fontSize: 15,
                   fontWeight: FontWeight.w500,
                 ),
-                decoration: const InputDecoration(
-                  labelText: 'Time (UTC)',
-                  isDense: true,
+                decoration: poloFieldDecoration(
+                  context,
+                  'Time (UTC)',
+                  labelColor: Theme.of(context).colorScheme.onTertiaryContainer,
                 ),
                 inputFormatters: [
                   FilteringTextInputFormatter.allow(RegExp(r'[0-9:]')),
@@ -389,9 +377,10 @@ class _LoggingPanelState extends State<LoggingPanel> {
                   fontSize: 15,
                   fontWeight: FontWeight.w500,
                 ),
-                decoration: const InputDecoration(
-                  labelText: 'Date',
-                  isDense: true,
+                decoration: poloFieldDecoration(
+                  context,
+                  'Date',
+                  labelColor: Theme.of(context).colorScheme.onTertiaryContainer,
                 ),
                 inputFormatters: [
                   FilteringTextInputFormatter.allow(RegExp(r'[0-9-]')),
@@ -426,9 +415,10 @@ class _LoggingPanelState extends State<LoggingPanel> {
                   fontSize: 15,
                   fontWeight: FontWeight.w500,
                 ),
-                decoration: const InputDecoration(
-                  labelText: 'Freq kHz',
-                  isDense: true,
+                decoration: poloFieldDecoration(
+                  context,
+                  'Freq kHz',
+                  labelColor: Theme.of(context).colorScheme.onTertiaryContainer,
                 ),
                 keyboardType: const TextInputType.numberWithOptions(
                   decimal: true,
@@ -474,6 +464,12 @@ class _LoggingPanelState extends State<LoggingPanel> {
                 isDense: true,
                 filled: true,
                 fillColor: theme.colorScheme.surface,
+                floatingLabelBehavior: FloatingLabelBehavior.always,
+                floatingLabelStyle: TextStyle(
+                  fontSize: 14,
+                  color: theme.colorScheme.onTertiaryContainer,
+                ),
+                contentPadding: const EdgeInsets.fromLTRB(4, 6, 4, 8),
               ),
               dropdownMenuEntries: [
                 for (final m in modes) DropdownMenuEntry(value: m, label: m),
@@ -504,6 +500,7 @@ class _LoggingPanelState extends State<LoggingPanel> {
                   setState(() => _controlRefs[control['key'] as String] = refs),
               decorate: widget.decorateRef,
               dense: true,
+              labelColor: Theme.of(context).colorScheme.onTertiaryContainer,
             ),
           ),
     ];

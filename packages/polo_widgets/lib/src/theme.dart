@@ -128,6 +128,35 @@ TextStyle poloMonoStyle(
   );
 }
 
+/// Ham2K's compact text-field decoration, used for every text field in the
+/// app: the label always floating at the top-left corner (not Material's
+/// "large placeholder until focused" default), and tight, consistent
+/// padding. [labelColor] defaults to a plain-background-appropriate tone;
+/// pass the surrounding container's "on" color explicitly when the field
+/// sits on a tinted background (e.g. LoggingPanel's tertiaryContainer) —
+/// setting floatingLabelStyle at all replaces the ambient
+/// InputDecorationTheme's rather than merging with it, so the color has to
+/// come along with the rest of the style rather than being left to inherit.
+InputDecoration poloFieldDecoration(
+  BuildContext context,
+  String label, {
+  Color? labelColor,
+  String? hintText,
+  String? errorText,
+}) {
+  final theme = Theme.of(context);
+  final color = labelColor ?? theme.colorScheme.onSurfaceVariant;
+  return InputDecoration(
+    labelText: label,
+    hintText: hintText,
+    errorText: errorText,
+    isDense: true,
+    floatingLabelBehavior: FloatingLabelBehavior.always,
+    floatingLabelStyle: TextStyle(fontSize: 14, color: color),
+    contentPadding: const EdgeInsets.fromLTRB(4, 6, 4, 8),
+  );
+}
+
 /// Adds tabular figures to every style in a Roboto [TextTheme] so digit runs
 /// (QSO counts, dates) stay aligned — `TextTheme.apply` has no fontFeatures
 /// parameter, so each style needs it added explicitly.
