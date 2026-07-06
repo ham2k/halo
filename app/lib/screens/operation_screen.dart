@@ -176,12 +176,16 @@ class _OperationScreenState extends State<OperationScreen> {
                         ),
                   ),
               ]),
-              bottom: TabBar(tabs: [
-                Tab(text: '${qsos.length} QSOs'),
-                const Tab(text: 'Spots'),
-                const Tab(text: 'Map'),
-                const Tab(text: 'Operation'),
-              ]),
+              bottom: TabBar(
+                indicatorSize: TabBarIndicatorSize.tab,
+                indicatorWeight: 4,
+                tabs: [
+                  Tab(text: '${qsos.length} QSOS'),
+                  const Tab(text: 'SPOTS'),
+                  const Tab(text: 'MAP'),
+                  const Tab(text: 'OPERATION'),
+                ],
+              ),
             ),
             body: TabBarView(children: [
               _KeepAlive(
