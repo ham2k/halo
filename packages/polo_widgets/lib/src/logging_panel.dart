@@ -141,7 +141,10 @@ class _LoggingPanelState extends State<LoggingPanel> {
     ]) {
       focus.addListener(() {
         if (focus.hasFocus) {
-          controller.selection = TextSelection(baseOffset: 0, extentOffset: controller.text.length);
+          controller.selection = TextSelection(
+            baseOffset: 0,
+            extentOffset: controller.text.length,
+          );
         }
       });
     }
@@ -169,10 +172,12 @@ class _LoggingPanelState extends State<LoggingPanel> {
   String? get _band => _freq != null ? bandForFrequency(_freq!) : _manualBand;
   bool get _canLog => looksLikeCallsign(_call);
 
-  bool get _isDupe => widget.qsos.any((qso) =>
-      qso.theirCall == _call &&
-      qso.mode == _mode &&
-      (qso.band ?? '') == (_band ?? ''));
+  bool get _isDupe => widget.qsos.any(
+    (qso) =>
+        qso.theirCall == _call &&
+        qso.mode == _mode &&
+        (qso.band ?? '') == (_band ?? ''),
+  );
 
   void _onFreqChanged() {
     if (_freq != null) _manualBand = null;
@@ -201,7 +206,8 @@ class _LoggingPanelState extends State<LoggingPanel> {
     });
   }
 
-  String _fmtTime(DateTime dt) => '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
+  String _fmtTime(DateTime dt) =>
+      '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
   String _fmtDate(DateTime dt) =>
       '${dt.year.toString().padLeft(4, '0')}-${dt.month.toString().padLeft(2, '0')}-${dt.day.toString().padLeft(2, '0')}';
 
@@ -210,7 +216,10 @@ class _LoggingPanelState extends State<LoggingPanel> {
   /// is opened, so it never shows a stale snapshot from an earlier open.
   void _seedTimeFields() {
     final dt = _manualStartAtMillis != null
-        ? DateTime.fromMillisecondsSinceEpoch(_manualStartAtMillis!, isUtc: true)
+        ? DateTime.fromMillisecondsSinceEpoch(
+            _manualStartAtMillis!,
+            isUtc: true,
+          )
         : DateTime.now().toUtc();
     _timeController.text = _fmtTime(dt);
     _dateController.text = _fmtDate(dt);
@@ -225,8 +234,18 @@ class _LoggingPanelState extends State<LoggingPanel> {
     final year = int.tryParse(date[0]);
     final month = int.tryParse(date[1]);
     final day = int.tryParse(date[2]);
-    if (hour == null || minute == null || year == null || month == null || day == null) return;
-    setState(() => _manualStartAtMillis = DateTime.utc(year, month, day, hour, minute).millisecondsSinceEpoch);
+    if (hour == null || minute == null || year == null || month == null || day == null) {
+      return;
+    }
+    setState(
+      () => _manualStartAtMillis = DateTime.utc(
+        year,
+        month,
+        day,
+        hour,
+        minute,
+      ).millisecondsSinceEpoch,
+    );
   }
 
   void _resetTimeToNow() {
@@ -242,7 +261,9 @@ class _LoggingPanelState extends State<LoggingPanel> {
   }
 
   String get _radioSummary {
-    final parts = <String>[_freq != null ? fmtFreq(_freq!) : (_band ?? 'Band???')];
+    final parts = <String>[
+      _freq != null ? fmtFreq(_freq!) : (_band ?? 'Band???'),
+    ];
     parts.add(_mode);
     return parts.join(' • ');
   }
@@ -256,85 +277,135 @@ class _LoggingPanelState extends State<LoggingPanel> {
     }
   }
 
-  List<SecondaryControlSpec> _buildSecondaryControls(ThemeData theme, PoloColors poloColors) {
+  List<SecondaryControlSpec> _buildSecondaryControls(
+    ThemeData theme,
+    PoloColors poloColors,
+  ) {
     return [
       SecondaryControlSpec(
         key: 'time',
         icon: Icons.access_time,
         summary: _timeSummary,
         hasValue: _manualStartAtMillis != null,
-        expandedBuilder: (context) => Row(mainAxisSize: MainAxisSize.min, children: [
-          SizedBox(
-            width: 74,
-            child: TextField(
-              controller: _timeController,
-              focusNode: _timeFocus,
-              style: poloMonoStyle(context, fontSize: 15, fontWeight: FontWeight.w500),
-              decoration: const InputDecoration(labelText: 'Time (UTC)', isDense: true),
-              inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9:]'))],
+        expandedBuilder: (context) => Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            SizedBox(
+              width: 74,
+              child: TextField(
+                controller: _timeController,
+                focusNode: _timeFocus,
+                style: poloMonoStyle(
+                  context,
+                  fontSize: 15,
+                  fontWeight: FontWeight.w500,
+                ),
+                decoration: const InputDecoration(
+                  labelText: 'Time (UTC)',
+                  isDense: true,
+                ),
+                inputFormatters: [
+                  FilteringTextInputFormatter.allow(RegExp(r'[0-9:]')),
+                ],
+              ),
             ),
-          ),
-          const SizedBox(width: 8),
-          SizedBox(
-            width: 96,
-            child: TextField(
-              controller: _dateController,
-              style: poloMonoStyle(context, fontSize: 15, fontWeight: FontWeight.w500),
-              decoration: const InputDecoration(labelText: 'Date', isDense: true),
-              inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9-]'))],
+            const SizedBox(width: 8),
+            SizedBox(
+              width: 96,
+              child: TextField(
+                controller: _dateController,
+                style: poloMonoStyle(
+                  context,
+                  fontSize: 15,
+                  fontWeight: FontWeight.w500,
+                ),
+                decoration: const InputDecoration(
+                  labelText: 'Date',
+                  isDense: true,
+                ),
+                inputFormatters: [
+                  FilteringTextInputFormatter.allow(RegExp(r'[0-9-]')),
+                ],
+              ),
             ),
-          ),
-          const SizedBox(width: 8),
-          TextButton(onPressed: _resetTimeToNow, child: const Text('Now')),
-        ]),
+            const SizedBox(width: 8),
+            TextButton(onPressed: _resetTimeToNow, child: const Text('Now')),
+          ],
+        ),
       ),
       SecondaryControlSpec(
         key: 'radio',
         icon: Icons.radio,
         summary: _radioSummary,
-        expandedBuilder: (context) => Row(mainAxisSize: MainAxisSize.min, children: [
-          SizedBox(
-            width: 100,
-            child: TextField(
-              controller: _freqController,
-              focusNode: _freqFocus,
-              style: poloMonoStyle(context, fontSize: 15, fontWeight: FontWeight.w500),
-              decoration: const InputDecoration(labelText: 'Freq kHz', isDense: true),
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
-              inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9.,]'))],
-              onSubmitted: (_) => _log(),
-            ),
-          ),
-          const SizedBox(width: 6),
-          SizedBox(
-            width: 44,
-            child: Text(
-              _band ?? '',
-              style: poloMonoStyle(
-                context,
-                fontSize: 14,
-                fontWeight: FontWeight.w700,
-                color: _band == null
-                    ? theme.colorScheme.outline
-                    : Color.lerp(poloColors.bandColor(_band!), theme.colorScheme.onSurface, 0.25),
+        expandedBuilder: (context) => Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            SizedBox(
+              width: 100,
+              child: TextField(
+                controller: _freqController,
+                focusNode: _freqFocus,
+                style: poloMonoStyle(
+                  context,
+                  fontSize: 15,
+                  fontWeight: FontWeight.w500,
+                ),
+                decoration: const InputDecoration(
+                  labelText: 'Freq kHz',
+                  isDense: true,
+                ),
+                keyboardType: const TextInputType.numberWithOptions(
+                  decimal: true,
+                ),
+                inputFormatters: [
+                  FilteringTextInputFormatter.allow(RegExp(r'[0-9.,]')),
+                ],
+                onSubmitted: (_) => _log(),
               ),
             ),
-          ),
-          const SizedBox(width: 6),
-          DropdownMenu<String>(
-            initialSelection: _mode,
-            label: const Text('Mode'),
-            width: 104,
-            textStyle: poloMonoStyle(context, fontSize: 15, fontWeight: FontWeight.w500),
-            inputDecorationTheme: const InputDecorationTheme(isDense: true),
-            dropdownMenuEntries: [for (final m in modes) DropdownMenuEntry(value: m, label: m)],
-            onSelected: (value) {
-              if (value == null) return;
-              _setMode(value);
-              _callFocus.requestFocus();
-            },
-          ),
-        ]),
+            const SizedBox(width: 6),
+            SizedBox(
+              width: 44,
+              child: Text(
+                _band ?? '',
+                style: poloMonoStyle(
+                  context,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                  color: _band == null
+                      ? theme.colorScheme.onTertiaryContainer.withValues(
+                          alpha: 0.6,
+                        )
+                      : Color.lerp(
+                          poloColors.bandColor(_band!),
+                          theme.colorScheme.onTertiaryContainer,
+                          0.25,
+                        ),
+                ),
+              ),
+            ),
+            const SizedBox(width: 6),
+            DropdownMenu<String>(
+              initialSelection: _mode,
+              label: const Text('Mode'),
+              width: 104,
+              textStyle: poloMonoStyle(
+                context,
+                fontSize: 15,
+                fontWeight: FontWeight.w500,
+              ),
+              inputDecorationTheme: const InputDecorationTheme(isDense: true),
+              dropdownMenuEntries: [
+                for (final m in modes) DropdownMenuEntry(value: m, label: m),
+              ],
+              onSelected: (value) {
+                if (value == null) return;
+                _setMode(value);
+                _callFocus.requestFocus();
+              },
+            ),
+          ],
+        ),
       ),
       for (final control in widget.activityControls)
         if ((control['input'] as Map?)?['kind'] == 'refList')
@@ -349,7 +420,8 @@ class _LoggingPanelState extends State<LoggingPanel> {
               placeholder: (control['input'] as Map)['placeholder'] as String?,
               pattern: (control['input'] as Map)['pattern'] as String?,
               refs: _controlRefs[control['key']] ?? const [],
-              onChanged: (refs) => setState(() => _controlRefs[control['key'] as String] = refs),
+              onChanged: (refs) =>
+                  setState(() => _controlRefs[control['key'] as String] = refs),
               decorate: widget.decorateRef,
               dense: true,
             ),
@@ -378,7 +450,9 @@ class _LoggingPanelState extends State<LoggingPanel> {
             final band = result['band'];
             final mode = result['mode'];
             if (freq is num) {
-              _freqController.text = fmtFreq(freq.toDouble()).replaceAll(',', '');
+              _freqController.text = fmtFreq(
+                freq.toDouble(),
+              ).replaceAll(',', '');
               _manualBand = null;
             } else if (band is String) {
               _manualBand = band;
@@ -437,7 +511,10 @@ class _LoggingPanelState extends State<LoggingPanel> {
   String? get _lookupLine {
     final result = _lookupResult;
     if (result == null || _lookupFor != _call) return null;
-    final location = [result['city'], result['state']].whereType<String>().where((s) => s.isNotEmpty).join(', ');
+    final location = [
+      result['city'],
+      result['state'],
+    ].whereType<String>().where((s) => s.isNotEmpty).join(', ');
     final parts = [
       result['name'],
       location.isEmpty ? null : location,
@@ -475,12 +552,21 @@ class _LoggingPanelState extends State<LoggingPanel> {
       final refs = [for (final list in _controlRefs.values) ...list];
       final qso = await widget.qsosRepository.add(widget.operation.uuid, {
         if (refs.isNotEmpty) 'refs': refs,
-        'our': {'call': widget.operation.stationCall, 'sent': _sentController.text.trim()},
+        'our': {
+          'call': widget.operation.stationCall,
+          'sent': _sentController.text.trim(),
+        },
         'their': {
           'call': _call,
           'sent': _rcvdController.text.trim(),
           if (lookup != null)
-            for (final field in const ['name', 'city', 'state', 'country', 'grid'])
+            for (final field in const [
+              'name',
+              'city',
+              'state',
+              'country',
+              'grid',
+            ])
               if (lookup[field] != null) field: lookup[field],
         },
         if (_freq != null) 'freq': _freq,
@@ -510,104 +596,192 @@ class _LoggingPanelState extends State<LoggingPanel> {
       child: FocusTraversalGroup(
         child: Material(
           elevation: 4,
-          color: theme.colorScheme.surfaceContainerHighest,
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(12, 4, 12, 8),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                SecondaryControlRow(
-                  controls: _buildSecondaryControls(theme, poloColors),
-                  selectedKey: _selectedControlKey,
-                  onSelect: _onSelectControl,
-                  trailing: _isDupe
-                      ? Chip(
-                          label: const Text('DUPE'),
-                          visualDensity: VisualDensity.compact,
-                          backgroundColor: theme.colorScheme.errorContainer,
-                          labelStyle: TextStyle(color: theme.colorScheme.onErrorContainer),
-                        )
-                      : null,
-                ),
-                if (_lookupLine != null)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 2),
-                    child: Row(children: [
-                      Icon(Icons.person_outline, size: 16, color: theme.colorScheme.primary),
-                      const SizedBox(width: 4),
-                      Expanded(
-                        child: Text(
-                          _lookupLine!,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.primary),
+          // app-polo's logging panel uses the operation's theme color
+          // (tertiary here) as its background, with a solid divider line
+          // separating it from the QSO list above.
+          color: theme.colorScheme.tertiaryContainer,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(height: 2, color: theme.colorScheme.tertiary),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(12, 4, 12, 8),
+                // Scoped so every field's label/underline reads clearly
+                // against the tertiary-tinted panel, without touching the
+                // rest of the theme (the log button keeps its own
+                // deliberate primaryContainer styling below).
+                child: Theme(
+                  data: theme.copyWith(
+                    inputDecorationTheme: theme.inputDecorationTheme.copyWith(
+                      labelStyle: TextStyle(
+                        color: theme.colorScheme.onTertiaryContainer.withValues(
+                          alpha: 0.85,
                         ),
                       ),
-                    ]),
-                  ),
-                const SizedBox(height: 4),
-                Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
-                  Expanded(
-                    child: TextField(
-                      controller: _callController,
-                      focusNode: _callFocus,
-                      autofocus: true,
-                      autocorrect: false,
-                      enableSuggestions: false,
-                      textCapitalization: TextCapitalization.characters,
-                      inputFormatters: [
-                        FilteringTextInputFormatter.allow(RegExp(r'[a-zA-Z0-9/.,]')),
-                        _UpperCaseFormatter(),
-                      ],
-                      style: poloMonoStyle(context, fontSize: 24, fontWeight: FontWeight.w700),
-                      decoration: const InputDecoration(labelText: 'Their call', isDense: true),
-                      onSubmitted: (_) => _log(),
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  SizedBox(
-                    width: 64,
-                    child: TextField(
-                      controller: _sentController,
-                      focusNode: _sentFocus,
-                      style: poloMonoStyle(context, fontSize: 17, fontWeight: FontWeight.w500),
-                      inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9+\-]'))],
-                      decoration: const InputDecoration(labelText: 'Sent', isDense: true),
-                      onChanged: (_) => _rstsTouched = true,
-                      onSubmitted: (_) => _log(),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  SizedBox(
-                    width: 64,
-                    child: TextField(
-                      controller: _rcvdController,
-                      focusNode: _rcvdFocus,
-                      style: poloMonoStyle(context, fontSize: 17, fontWeight: FontWeight.w500),
-                      inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9+\-]'))],
-                      decoration: const InputDecoration(labelText: 'Rcvd', isDense: true),
-                      onChanged: (_) => _rstsTouched = true,
-                      onSubmitted: (_) => _log(),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  // PoLo's big light-blue log button.
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: 2),
-                    child: FilledButton(
-                      onPressed: _canLog ? _log : null,
-                      style: FilledButton.styleFrom(
-                        backgroundColor: theme.colorScheme.primaryContainer,
-                        foregroundColor: theme.colorScheme.onPrimaryContainer,
-                        minimumSize: const Size(64, 44),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22)),
+                      floatingLabelStyle: TextStyle(
+                        color: theme.colorScheme.onTertiaryContainer,
                       ),
-                      child: const Icon(Icons.check, size: 28),
+                      enabledBorder: UnderlineInputBorder(
+                        borderSide: BorderSide(
+                          color: theme.colorScheme.onTertiaryContainer
+                              .withValues(alpha: 0.4),
+                        ),
+                      ),
+                      focusedBorder: UnderlineInputBorder(
+                        borderSide: BorderSide(
+                          color: theme.colorScheme.tertiary,
+                          width: 2,
+                        ),
+                      ),
                     ),
                   ),
-                ]),
-              ],
-            ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      SecondaryControlRow(
+                        controls: _buildSecondaryControls(theme, poloColors),
+                        selectedKey: _selectedControlKey,
+                        onSelect: _onSelectControl,
+                        trailing: _isDupe
+                            ? Chip(
+                                label: const Text('DUPE'),
+                                visualDensity: VisualDensity.compact,
+                                backgroundColor:
+                                    theme.colorScheme.errorContainer,
+                                labelStyle: TextStyle(
+                                  color: theme.colorScheme.onErrorContainer,
+                                ),
+                              )
+                            : null,
+                      ),
+                      if (_lookupLine != null)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 2),
+                          child: Row(
+                            children: [
+                              Icon(
+                                Icons.person_outline,
+                                size: 16,
+                                color: theme.colorScheme.primary,
+                              ),
+                              const SizedBox(width: 4),
+                              Expanded(
+                                child: Text(
+                                  _lookupLine!,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: theme.textTheme.bodyMedium?.copyWith(
+                                    color: theme.colorScheme.primary,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      const SizedBox(height: 4),
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          Expanded(
+                            child: TextField(
+                              controller: _callController,
+                              focusNode: _callFocus,
+                              autofocus: true,
+                              autocorrect: false,
+                              enableSuggestions: false,
+                              textCapitalization: TextCapitalization.characters,
+                              inputFormatters: [
+                                FilteringTextInputFormatter.allow(
+                                  RegExp(r'[a-zA-Z0-9/.,]'),
+                                ),
+                                _UpperCaseFormatter(),
+                              ],
+                              style: poloMonoStyle(
+                                context,
+                                fontSize: 24,
+                                fontWeight: FontWeight.w700,
+                              ),
+                              decoration: const InputDecoration(
+                                labelText: 'Their call',
+                                isDense: true,
+                              ),
+                              onSubmitted: (_) => _log(),
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          SizedBox(
+                            width: 64,
+                            child: TextField(
+                              controller: _sentController,
+                              focusNode: _sentFocus,
+                              style: poloMonoStyle(
+                                context,
+                                fontSize: 17,
+                                fontWeight: FontWeight.w500,
+                              ),
+                              inputFormatters: [
+                                FilteringTextInputFormatter.allow(
+                                  RegExp(r'[0-9+\-]'),
+                                ),
+                              ],
+                              decoration: const InputDecoration(
+                                labelText: 'Sent',
+                                isDense: true,
+                              ),
+                              onChanged: (_) => _rstsTouched = true,
+                              onSubmitted: (_) => _log(),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          SizedBox(
+                            width: 64,
+                            child: TextField(
+                              controller: _rcvdController,
+                              focusNode: _rcvdFocus,
+                              style: poloMonoStyle(
+                                context,
+                                fontSize: 17,
+                                fontWeight: FontWeight.w500,
+                              ),
+                              inputFormatters: [
+                                FilteringTextInputFormatter.allow(
+                                  RegExp(r'[0-9+\-]'),
+                                ),
+                              ],
+                              decoration: const InputDecoration(
+                                labelText: 'Rcvd',
+                                isDense: true,
+                              ),
+                              onChanged: (_) => _rstsTouched = true,
+                              onSubmitted: (_) => _log(),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          // PoLo's big light-blue log button.
+                          Padding(
+                            padding: const EdgeInsets.only(bottom: 2),
+                            child: FilledButton(
+                              onPressed: _canLog ? _log : null,
+                              style: FilledButton.styleFrom(
+                                backgroundColor:
+                                    theme.colorScheme.primaryContainer,
+                                foregroundColor:
+                                    theme.colorScheme.onPrimaryContainer,
+                                minimumSize: const Size(64, 44),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(22),
+                                ),
+                              ),
+                              child: const Icon(Icons.check, size: 28),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
           ),
         ),
       ),
@@ -617,7 +791,10 @@ class _LoggingPanelState extends State<LoggingPanel> {
 
 class _UpperCaseFormatter extends TextInputFormatter {
   @override
-  TextEditingValue formatEditUpdate(TextEditingValue oldValue, TextEditingValue newValue) {
+  TextEditingValue formatEditUpdate(
+    TextEditingValue oldValue,
+    TextEditingValue newValue,
+  ) {
     return newValue.copyWith(text: newValue.text.toUpperCase());
   }
 }

@@ -19,6 +19,8 @@
 
 import 'package:flutter/material.dart';
 
+import 'theme.dart';
+
 /// One control the row can show. Built by the screen/panel that owns the
 /// relevant state — some specs wrap a built-in Dart widget (Time, Radio),
 /// others wrap an extension-described input (POTA's refList) rendered
@@ -88,7 +90,8 @@ class SecondaryControlRow extends StatelessWidget {
                 _ControlChip(
                   control: control,
                   selected: control.key == selectedKey,
-                  onTap: () => onSelect(control.key == selectedKey ? null : control.key),
+                  onTap: () =>
+                      onSelect(control.key == selectedKey ? null : control.key),
                 ),
                 const SizedBox(width: 6),
               ],
@@ -106,18 +109,38 @@ class _ControlChip extends StatelessWidget {
   final bool selected;
   final VoidCallback onTap;
 
-  const _ControlChip({required this.control, required this.selected, required this.onTap});
+  const _ControlChip({
+    required this.control,
+    required this.selected,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final poloColors = PoloColors.of(context);
+
+    // Matches app-polo's LoggerChip: unselected = tertiaryLight fill with
+    // onTertiaryContainer text/icon; selected = solid tertiary fill with
+    // onTertiary (near-white) text/icon. A rounded-rectangle shape, not
+    // Flutter's default full-pill chip — app-polo's chips (react-native-paper
+    // Chip, flat mode) are boxy with a modest corner radius.
+    final foreground = selected
+        ? theme.colorScheme.onTertiary
+        : theme.colorScheme.onTertiaryContainer;
+
     return ChoiceChip(
-      avatar: Icon(control.icon, size: 16),
-      label: Text(control.summary),
+      avatar: Icon(control.icon, size: 16, color: foreground),
+      label: Text(control.summary, style: TextStyle(color: foreground)),
       selected: selected,
       showCheckmark: false,
       visualDensity: VisualDensity.compact,
-      side: control.hasValue ? BorderSide(color: theme.colorScheme.tertiary, width: 1.5) : null,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+      backgroundColor: poloColors.tertiaryLight,
+      selectedColor: theme.colorScheme.tertiary,
+      side: control.hasValue
+          ? BorderSide(color: theme.colorScheme.primary, width: 1.5)
+          : null,
       onSelected: (_) => onTap(),
     );
   }

@@ -35,12 +35,21 @@ class PoloColors extends ThemeExtension<PoloColors> {
   final Color important;
   final Color notice;
   final Color onNotice;
+
+  /// Unselected-chip fill for the secondary control row, matching
+  /// app-polo's `LoggerChip` (`${themeColor}Light`, computed there as
+  /// `Color(tertiary).lighten(1.3).desaturate(0.3)` in light mode / `.darken
+  /// (0.6).desaturate(0.1)` in dark mode — hex values below were computed
+  /// with that exact formula, not eyeballed).
+  final Color tertiaryLight;
+
   final Map<String, Color> bands;
 
   const PoloColors({
     required this.important,
     required this.notice,
     required this.onNotice,
+    required this.tertiaryLight,
     required this.bands,
   });
 
@@ -50,6 +59,7 @@ class PoloColors extends ThemeExtension<PoloColors> {
     important: Color(0xFF1AA01A),
     notice: Color(0xFFFCF4A7),
     onNotice: Color(0xFF615C2F),
+    tertiaryLight: Color(0xFFE6AB73),
     bands: _bandColors,
   );
 
@@ -57,6 +67,7 @@ class PoloColors extends ThemeExtension<PoloColors> {
     important: Color(0xFF1AC81A),
     notice: Color(0xFF615C2F),
     onNotice: Color(0xFFFCF4A7),
+    tertiaryLight: Color(0xFF5D3918),
     bands: _bandColors,
   );
 
@@ -78,23 +89,36 @@ class PoloColors extends ThemeExtension<PoloColors> {
   };
 
   @override
-  PoloColors copyWith({Color? important, Color? notice, Color? onNotice, Map<String, Color>? bands}) {
+  PoloColors copyWith({
+    Color? important,
+    Color? notice,
+    Color? onNotice,
+    Color? tertiaryLight,
+    Map<String, Color>? bands,
+  }) {
     return PoloColors(
       important: important ?? this.important,
       notice: notice ?? this.notice,
       onNotice: onNotice ?? this.onNotice,
+      tertiaryLight: tertiaryLight ?? this.tertiaryLight,
       bands: bands ?? this.bands,
     );
   }
 
   @override
-  PoloColors lerp(PoloColors? other, double t) => t < 0.5 ? this : (other ?? this);
+  PoloColors lerp(PoloColors? other, double t) =>
+      t < 0.5 ? this : (other ?? this);
 
   static PoloColors of(BuildContext context) =>
       Theme.of(context).extension<PoloColors>() ?? light;
 }
 
-TextStyle poloMonoStyle(BuildContext context, {double? fontSize, FontWeight? fontWeight, Color? color}) {
+TextStyle poloMonoStyle(
+  BuildContext context, {
+  double? fontSize,
+  FontWeight? fontWeight,
+  Color? color,
+}) {
   return TextStyle(
     fontFamily: 'RobotoMono',
     fontSize: fontSize,
@@ -108,8 +132,9 @@ TextStyle poloMonoStyle(BuildContext context, {double? fontSize, FontWeight? fon
 /// (QSO counts, dates) stay aligned — `TextTheme.apply` has no fontFeatures
 /// parameter, so each style needs it added explicitly.
 TextTheme _withTabularFigures(TextTheme theme) {
-  TextStyle? add(TextStyle? style) =>
-      style?.copyWith(fontFeatures: [...?style.fontFeatures, ..._tabularFigures]);
+  TextStyle? add(TextStyle? style) => style?.copyWith(
+    fontFeatures: [...?style.fontFeatures, ..._tabularFigures],
+  );
 
   return theme.copyWith(
     displayLarge: add(theme.displayLarge),
@@ -144,6 +169,8 @@ ThemeData buildPoloTheme(Brightness brightness) {
           onSecondary: Color(0xFF002B4C),
           tertiary: Color(0xFFD9904C),
           onTertiary: Color(0xFF4C2700),
+          tertiaryContainer: Color(0xFF8C4F20),
+          onTertiaryContainer: Color(0xFFFFDCC6),
           error: Color(0xFFF79797),
           onError: Color(0xFF680003),
           surface: Color(0xFF191C1E),
@@ -177,7 +204,9 @@ ThemeData buildPoloTheme(Brightness brightness) {
           outlineVariant: Color(0xFFDCE6E8),
         );
 
-  final textTheme = _withTabularFigures(ThemeData(brightness: brightness).textTheme.apply(fontFamily: 'Roboto'));
+  final textTheme = _withTabularFigures(
+    ThemeData(brightness: brightness).textTheme.apply(fontFamily: 'Roboto'),
+  );
 
   return ThemeData(
     useMaterial3: true,
@@ -193,7 +222,8 @@ ThemeData buildPoloTheme(Brightness brightness) {
       titleTextStyle: TextStyle(
         fontFamily: 'RobotoSlab',
         fontSize: 20,
-        fontWeight: FontWeight.w900, // "Roboto Slab Black" in app-polo's globalStyles.js
+        fontWeight: FontWeight
+            .w900, // "Roboto Slab Black" in app-polo's globalStyles.js
         color: colorScheme.onPrimary,
       ),
     ),

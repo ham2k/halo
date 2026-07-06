@@ -391,5 +391,31 @@ void main() {
 
       expect(potaChip().side, isNotNull);
     });
+
+    testWidgets('chips match app-polo LoggerChip styling: tertiary family, rounded rectangle', (tester) async {
+      await tester.pumpWidget(MaterialApp(
+        theme: buildPoloTheme(Brightness.light),
+        home: Scaffold(
+          body: LoggingPanel(operation: operation, qsosRepository: qsos),
+        ),
+      ));
+
+      final chip = tester.widget<ChoiceChip>(find.ancestor(
+        of: find.byIcon(Icons.radio),
+        matching: find.byType(ChoiceChip),
+      ));
+      expect(chip.backgroundColor, PoloColors.light.tertiaryLight);
+      expect(chip.selectedColor, const Color(0xFF964900)); // colorScheme.tertiary
+      expect(chip.shape, isA<RoundedRectangleBorder>());
+      expect((chip.shape as RoundedRectangleBorder).borderRadius, BorderRadius.circular(8));
+
+      // The whole panel — not just the chips — carries the tertiary tint.
+      // (ChoiceChip has its own internal Material for ink effects, so we
+      // match by fill color instead of "closest Material ancestor.")
+      expect(
+        find.byWidgetPredicate((w) => w is Material && w.color == const Color(0xFFFFDCC6)),
+        findsOneWidget,
+      );
+    });
   });
 }

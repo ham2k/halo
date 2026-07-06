@@ -56,5 +56,21 @@ void main() {
         expect(colors!.bandColor('20m'), isNot(colors.bandColor('40m')));
       }
     });
+
+    test('secondary control row uses the tertiary family, matching app-polo\'s LoggerChip', () {
+      // Values computed from app-polo's own formula (lightColors/darkColors
+      // tertiary run through Color(...).lighten(1.3).desaturate(0.3) in
+      // light mode, .darken(0.6).desaturate(0.1) in dark mode) — see
+      // theme.dart's PoloColors.tertiaryLight doc comment.
+      expect(PoloColors.light.tertiaryLight, const Color(0xFFE6AB73));
+      expect(PoloColors.dark.tertiaryLight, const Color(0xFF5D3918));
+
+      // Dark mode previously had no tertiaryContainer/onTertiaryContainer at
+      // all, silently falling back to Material's unrelated default — the
+      // whole secondary-control-row background depends on this being set.
+      final darkScheme = buildPoloTheme(Brightness.dark).colorScheme;
+      expect(darkScheme.tertiaryContainer, const Color(0xFF8C4F20));
+      expect(darkScheme.onTertiaryContainer, const Color(0xFFFFDCC6));
+    });
   });
 }
