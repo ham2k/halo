@@ -68,8 +68,19 @@ void main() {
     return logged;
   }
 
+  /// Opens a secondary control by tapping its chip (found by icon, since a
+  /// control's chip label is a dynamic summary — e.g. Radio's starts as
+  /// "Band??? • SSB" — not a fixed string). Taps the ChoiceChip ancestor
+  /// rather than the icon itself: the icon glyph's tight bounding box can
+  /// sit a pixel or two outside the chip's actual hit-test area.
+  Future<void> openControl(WidgetTester tester, IconData icon) async {
+    await tester.tap(find.ancestor(of: find.byIcon(icon), matching: find.byType(ChoiceChip)));
+    await tester.pump();
+  }
+
   testWidgets('Enter logs a QSO with mode, band and default RSTs', (tester) async {
     await tester.pumpWidget(host());
+    await openControl(tester, Icons.radio);
 
     await tester.enterText(find.widgetWithText(TextField, 'Freq kHz'), '14285');
     await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'W1AW');
@@ -157,6 +168,7 @@ void main() {
       {
         'key': 'pota/hunter',
         'label': 'POTA',
+        'icon': 'pota',
         'input': {'kind': 'refList', 'refType': 'pota', 'placeholder': 'US-1234', 'pattern': r'[A-Z0-9]+-[0-9]{4,5}'},
       },
     ];
@@ -170,6 +182,7 @@ void main() {
         ),
       ),
     ));
+    await openControl(tester, Icons.park_outlined);
 
     await tester.enterText(find.widgetWithText(TextField, 'POTA'), 'US-1234');
     await tester.testTextInput.receiveAction(TextInputAction.done);
@@ -262,11 +275,121 @@ void main() {
           'mode': 'SSB',
         })))!;
     await tester.pumpWidget(host(existing: [dupe]));
+    await openControl(tester, Icons.radio);
 
     await tester.enterText(find.widgetWithText(TextField, 'Freq kHz'), '14285');
     await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'W1AW');
     await tester.pump();
 
     expect(find.text('DUPE'), findsOneWidget);
+  });
+
+  group('secondary control row', () {
+    testWidgets('Time and Radio chips show by default; tapping expands, tapping again collapses', (tester) async {
+      await tester.pumpWidget(host());
+
+      expect(find.byIcon(Icons.access_time), findsOneWidget);
+      expect(find.byIcon(Icons.radio), findsOneWidget);
+      expect(find.widgetWithText(TextField, 'Freq kHz'), findsNothing);
+
+      await openControl(tester, Icons.radio);
+      expect(find.widgetWithText(TextField, 'Freq kHz'), findsOneWidget);
+
+      await openControl(tester, Icons.radio);
+      expect(find.widgetWithText(TextField, 'Freq kHz'), findsNothing);
+    });
+
+    testWidgets('selecting a different control collapses the previous one', (tester) async {
+      await tester.pumpWidget(host());
+
+      await openControl(tester, Icons.radio);
+      expect(find.widgetWithText(TextField, 'Freq kHz'), findsOneWidget);
+
+      await openControl(tester, Icons.access_time);
+      expect(find.widgetWithText(TextField, 'Freq kHz'), findsNothing);
+      expect(find.widgetWithText(TextField, 'Time (UTC)'), findsOneWidget);
+    });
+
+    testWidgets('a successful command auto-opens the Radio control', (tester) async {
+      await tester.pumpWidget(host(tryCommand: fakeTryCommand));
+      expect(find.widgetWithText(TextField, 'Freq kHz'), findsNothing);
+
+      await tester.enterText(find.widgetWithText(TextField, 'Their call'), '14285');
+      await tester.pump();
+      await tester.sendKeyEvent(LogicalKeyboardKey.space);
+      await tester.pump();
+      await tester.pump();
+
+      expect(find.widgetWithText(TextField, 'Freq kHz'), findsOneWidget);
+    });
+
+    testWidgets('Time control sets a manual timestamp used at log time; Now resets it', (tester) async {
+      await tester.pumpWidget(host());
+      await openControl(tester, Icons.access_time);
+
+      await tester.enterText(find.widgetWithText(TextField, 'Time (UTC)'), '03:15');
+      await tester.enterText(find.widgetWithText(TextField, 'Date'), '2026-01-02');
+      await tester.pump();
+
+      await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'W1AW');
+      await tester.pump();
+      await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+
+      final logged = await waitForQsos(tester, 1);
+      expect(
+        DateTime.fromMillisecondsSinceEpoch(logged.single.startAtMillis!, isUtc: true),
+        DateTime.utc(2026, 1, 2, 3, 15),
+      );
+
+      // Wipe resets to automatic timestamping for the next QSO.
+      await openControl(tester, Icons.access_time);
+      expect(find.widgetWithText(TextField, 'Time (UTC)'), findsOneWidget);
+      final timeField = tester.widget<TextField>(find.widgetWithText(TextField, 'Time (UTC)'));
+      expect(timeField.controller!.text, isNot('03:15'));
+    });
+
+    testWidgets('Now button clears a manual time override', (tester) async {
+      await tester.pumpWidget(host());
+      await openControl(tester, Icons.access_time);
+
+      await tester.enterText(find.widgetWithText(TextField, 'Time (UTC)'), '03:15');
+      await tester.pump();
+      expect(find.byIcon(Icons.access_time), findsOneWidget); // chip still rendered
+
+      await tester.tap(find.widgetWithText(TextButton, 'Now'));
+      await tester.pump();
+
+      final timeField = tester.widget<TextField>(find.widgetWithText(TextField, 'Time (UTC)'));
+      expect(timeField.controller!.text, isNot('03:15'));
+    });
+
+    testWidgets('activity control chip shows a hasValue indicator once a ref is entered', (tester) async {
+      const controls = [
+        {
+          'key': 'pota/hunter',
+          'label': 'POTA',
+          'icon': 'pota',
+          'input': {'kind': 'refList', 'refType': 'pota', 'placeholder': 'US-1234', 'pattern': r'[A-Z0-9]+-[0-9]{4,5}'},
+        },
+      ];
+      await tester.pumpWidget(MaterialApp(
+        home: Scaffold(
+          body: LoggingPanel(operation: operation, qsosRepository: qsos, activityControls: controls),
+        ),
+      ));
+
+      ChoiceChip potaChip() => tester.widget<ChoiceChip>(find.ancestor(
+            of: find.byIcon(Icons.park_outlined),
+            matching: find.byType(ChoiceChip),
+          ));
+      expect(potaChip().side, isNull);
+
+      await openControl(tester, Icons.park_outlined);
+      await tester.enterText(find.widgetWithText(TextField, 'POTA'), 'US-1234');
+      await tester.testTextInput.receiveAction(TextInputAction.done);
+      await tester.pump();
+
+      expect(potaChip().side, isNotNull);
+    });
   });
 }

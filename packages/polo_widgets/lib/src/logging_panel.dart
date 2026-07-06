@@ -7,11 +7,23 @@
 //   Esc     wipes the current entry
 //   Space   in the call field: runs command shortcuts (frequency, band,
 //           mode — "14285 ", "20m ", "cw ") or advances to Sent;
-//           in Sent/Rcvd/Freq: advances focus, cycling back to the call
+//           in Sent/Rcvd: advances focus, cycling back to the call
 //   focus   always returns to the callsign field after log/wipe;
-//           Sent/Rcvd/Freq select-all on focus so typing replaces
-// Everything here is pure Dart/Flutter; plugins only get debounced, async
-// involvement (lookups, ref decoration) off the keystroke path.
+//           Sent/Rcvd select-all on focus so typing replaces
+//
+// Frequency/band/mode and the QSO timestamp live behind the secondary
+// control row (see secondary_control_row.dart) rather than as
+// permanently-visible fields — this is app-polo's SecondaryExchangePanel
+// pattern: a chip always shows a compact summary of the control's current
+// value ("20m • SSB", "now"), and tapping it expands the actual editable
+// fields. This is what lets extensions keep contributing controls (POTA's
+// park reference today, more activities later) without the panel's
+// permanent footprint growing — only one control is expanded at a time.
+// Command shortcuts still work while a control is collapsed, since they
+// mutate the same underlying state the expanded fields edit.
+//
+// Everything here is pure Dart/Flutter; extensions only get debounced,
+// async involvement (lookups, ref decoration) off the keystroke path.
 
 import 'dart:async';
 
@@ -21,6 +33,7 @@ import 'package:flutter/services.dart';
 import 'package:polo_core/polo_core.dart';
 
 import 'ref_chips_input.dart';
+import 'secondary_control_row.dart';
 import 'theme.dart';
 
 /// Async callsign enrichment (name, location, grid…) from lookup sources.
@@ -44,11 +57,12 @@ class LoggingPanel extends StatefulWidget {
   /// Optional lookup enrichment; fired debounced, off the keystroke path.
   final CallLookup? lookup;
 
-  /// Declarative activity control descriptors from plugins (UI catalog).
-  /// v0 supports `input.kind == 'refList'`.
+  /// Declarative activity control descriptors from extensions (UI catalog).
+  /// v0 supports `input.kind == 'refList'`; each becomes a chip in the
+  /// secondary control row alongside the built-in Time and Radio controls.
   final List<Map<String, dynamic>> activityControls;
 
-  /// Async ref decoration via the plugin runtime.
+  /// Async ref decoration via the extension runtime.
   final RefDecorator? decorateRef;
 
   /// Extension-backed command shortcuts, tried on space in the call field.
@@ -76,16 +90,26 @@ class _LoggingPanelState extends State<LoggingPanel> {
   final _sentController = TextEditingController();
   final _rcvdController = TextEditingController();
   final _freqController = TextEditingController();
+  final _timeController = TextEditingController();
+  final _dateController = TextEditingController();
   final _callFocus = FocusNode();
   final _sentFocus = FocusNode();
   final _rcvdFocus = FocusNode();
   final _freqFocus = FocusNode();
+  final _timeFocus = FocusNode();
 
   String _mode = 'SSB';
 
   /// Band set via a "20m " command when no frequency is entered.
   String? _manualBand;
   bool _rstsTouched = false;
+
+  /// Which secondary control (if any) currently has its input expanded.
+  String? _selectedControlKey;
+
+  /// Overrides the QSO's timestamp when set via the Time control; null
+  /// means "use the current time at the moment of logging."
+  int? _manualStartAtMillis;
 
   Timer? _lookupDebounce;
   String? _lookupFor;
@@ -103,13 +127,17 @@ class _LoggingPanelState extends State<LoggingPanel> {
   void initState() {
     super.initState();
     _applyDefaultRSTs();
+    _seedTimeFields();
     _callController.addListener(_onCallChanged);
     _freqController.addListener(_onFreqChanged);
+    _timeController.addListener(_onTimeOrDateFieldChanged);
+    _dateController.addListener(_onTimeOrDateFieldChanged);
     // Exchange fields select-all on focus, so typing replaces the default.
     for (final (focus, controller) in [
       (_sentFocus, _sentController),
       (_rcvdFocus, _rcvdController),
       (_freqFocus, _freqController),
+      (_timeFocus, _timeController),
     ]) {
       focus.addListener(() {
         if (focus.hasFocus) {
@@ -126,10 +154,13 @@ class _LoggingPanelState extends State<LoggingPanel> {
     _sentController.dispose();
     _rcvdController.dispose();
     _freqController.dispose();
+    _timeController.dispose();
+    _dateController.dispose();
     _callFocus.dispose();
     _sentFocus.dispose();
     _rcvdFocus.dispose();
     _freqFocus.dispose();
+    _timeFocus.dispose();
     super.dispose();
   }
 
@@ -159,6 +190,171 @@ class _LoggingPanelState extends State<LoggingPanel> {
       _mode = mode;
       if (!_rstsTouched) _applyDefaultRSTs();
     });
+  }
+
+  // ---- Secondary control row ----
+
+  void _onSelectControl(String? key) {
+    setState(() {
+      if (key == 'time' && _selectedControlKey != 'time') _seedTimeFields();
+      _selectedControlKey = key;
+    });
+  }
+
+  String _fmtTime(DateTime dt) => '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
+  String _fmtDate(DateTime dt) =>
+      '${dt.year.toString().padLeft(4, '0')}-${dt.month.toString().padLeft(2, '0')}-${dt.day.toString().padLeft(2, '0')}';
+
+  /// (Re-)populates the time/date fields from the pending override, or from
+  /// the current time if there isn't one — called whenever the Time control
+  /// is opened, so it never shows a stale snapshot from an earlier open.
+  void _seedTimeFields() {
+    final dt = _manualStartAtMillis != null
+        ? DateTime.fromMillisecondsSinceEpoch(_manualStartAtMillis!, isUtc: true)
+        : DateTime.now().toUtc();
+    _timeController.text = _fmtTime(dt);
+    _dateController.text = _fmtDate(dt);
+  }
+
+  void _onTimeOrDateFieldChanged() {
+    final time = _timeController.text.split(':');
+    final date = _dateController.text.split('-');
+    if (time.length != 2 || date.length != 3) return;
+    final hour = int.tryParse(time[0]);
+    final minute = int.tryParse(time[1]);
+    final year = int.tryParse(date[0]);
+    final month = int.tryParse(date[1]);
+    final day = int.tryParse(date[2]);
+    if (hour == null || minute == null || year == null || month == null || day == null) return;
+    setState(() => _manualStartAtMillis = DateTime.utc(year, month, day, hour, minute).millisecondsSinceEpoch);
+  }
+
+  void _resetTimeToNow() {
+    setState(() {
+      _manualStartAtMillis = null;
+      _seedTimeFields();
+    });
+  }
+
+  String get _timeSummary {
+    if (_manualStartAtMillis == null) return 'now';
+    return '${_fmtTime(DateTime.fromMillisecondsSinceEpoch(_manualStartAtMillis!, isUtc: true))}z';
+  }
+
+  String get _radioSummary {
+    final parts = <String>[_freq != null ? fmtFreq(_freq!) : (_band ?? 'Band???')];
+    parts.add(_mode);
+    return parts.join(' • ');
+  }
+
+  IconData _iconForControlName(String? name) {
+    switch (name) {
+      case 'pota':
+        return Icons.park_outlined;
+      default:
+        return Icons.extension_outlined;
+    }
+  }
+
+  List<SecondaryControlSpec> _buildSecondaryControls(ThemeData theme, PoloColors poloColors) {
+    return [
+      SecondaryControlSpec(
+        key: 'time',
+        icon: Icons.access_time,
+        summary: _timeSummary,
+        hasValue: _manualStartAtMillis != null,
+        expandedBuilder: (context) => Row(mainAxisSize: MainAxisSize.min, children: [
+          SizedBox(
+            width: 74,
+            child: TextField(
+              controller: _timeController,
+              focusNode: _timeFocus,
+              style: poloMonoStyle(context, fontSize: 15, fontWeight: FontWeight.w500),
+              decoration: const InputDecoration(labelText: 'Time (UTC)', isDense: true),
+              inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9:]'))],
+            ),
+          ),
+          const SizedBox(width: 8),
+          SizedBox(
+            width: 96,
+            child: TextField(
+              controller: _dateController,
+              style: poloMonoStyle(context, fontSize: 15, fontWeight: FontWeight.w500),
+              decoration: const InputDecoration(labelText: 'Date', isDense: true),
+              inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9-]'))],
+            ),
+          ),
+          const SizedBox(width: 8),
+          TextButton(onPressed: _resetTimeToNow, child: const Text('Now')),
+        ]),
+      ),
+      SecondaryControlSpec(
+        key: 'radio',
+        icon: Icons.radio,
+        summary: _radioSummary,
+        expandedBuilder: (context) => Row(mainAxisSize: MainAxisSize.min, children: [
+          SizedBox(
+            width: 100,
+            child: TextField(
+              controller: _freqController,
+              focusNode: _freqFocus,
+              style: poloMonoStyle(context, fontSize: 15, fontWeight: FontWeight.w500),
+              decoration: const InputDecoration(labelText: 'Freq kHz', isDense: true),
+              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9.,]'))],
+              onSubmitted: (_) => _log(),
+            ),
+          ),
+          const SizedBox(width: 6),
+          SizedBox(
+            width: 44,
+            child: Text(
+              _band ?? '',
+              style: poloMonoStyle(
+                context,
+                fontSize: 14,
+                fontWeight: FontWeight.w700,
+                color: _band == null
+                    ? theme.colorScheme.outline
+                    : Color.lerp(poloColors.bandColor(_band!), theme.colorScheme.onSurface, 0.25),
+              ),
+            ),
+          ),
+          const SizedBox(width: 6),
+          DropdownMenu<String>(
+            initialSelection: _mode,
+            label: const Text('Mode'),
+            width: 104,
+            textStyle: poloMonoStyle(context, fontSize: 15, fontWeight: FontWeight.w500),
+            inputDecorationTheme: const InputDecorationTheme(isDense: true),
+            dropdownMenuEntries: [for (final m in modes) DropdownMenuEntry(value: m, label: m)],
+            onSelected: (value) {
+              if (value == null) return;
+              _setMode(value);
+              _callFocus.requestFocus();
+            },
+          ),
+        ]),
+      ),
+      for (final control in widget.activityControls)
+        if ((control['input'] as Map?)?['kind'] == 'refList')
+          SecondaryControlSpec(
+            key: control['key'] as String,
+            icon: _iconForControlName(control['icon'] as String?),
+            summary: (control['label'] as String?) ?? control['key'] as String,
+            hasValue: (_controlRefs[control['key']]?.isNotEmpty) ?? false,
+            expandedBuilder: (context) => RefChipsInput(
+              refType: (control['input'] as Map)['refType'] as String,
+              label: (control['label'] as String?) ?? '',
+              placeholder: (control['input'] as Map)['placeholder'] as String?,
+              pattern: (control['input'] as Map)['pattern'] as String?,
+              refs: _controlRefs[control['key']] ?? const [],
+              onChanged: (refs) => setState(() => _controlRefs[control['key'] as String] = refs),
+              decorate: widget.decorateRef,
+              dense: true,
+            ),
+          ),
+    ];
   }
 
   // ---- Command shortcuts ----
@@ -192,6 +388,9 @@ class _LoggingPanelState extends State<LoggingPanel> {
               _mode = mode;
               if (!_rstsTouched) _applyDefaultRSTs();
             }
+            // Show the result — otherwise a typed command would silently
+            // change state behind a collapsed chip with no feedback.
+            _selectedControlKey = 'radio';
           });
           _callController.clear();
           return;
@@ -257,6 +456,8 @@ class _LoggingPanelState extends State<LoggingPanel> {
     _lookupFor = null;
     _lookupResult = null;
     _controlRefs.clear();
+    _manualStartAtMillis = null;
+    _selectedControlKey = null;
     _callFocus.requestFocus();
     setState(() {});
   }
@@ -285,6 +486,7 @@ class _LoggingPanelState extends State<LoggingPanel> {
         if (_freq != null) 'freq': _freq,
         if (_band != null) 'band': _band,
         'mode': _mode,
+        if (_manualStartAtMillis != null) 'startAtMillis': _manualStartAtMillis,
       });
       widget.onLogged?.call(qso);
       _wipe();
@@ -314,76 +516,18 @@ class _LoggingPanelState extends State<LoggingPanel> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                // Top strip: frequency, band, mode, activity controls, DUPE.
-                // Wrap so it flows to a second line on narrow screens.
-                Align(
-                  alignment: Alignment.centerLeft,
-                  child: Wrap(
-                    spacing: 10,
-                    runSpacing: 2,
-                    crossAxisAlignment: WrapCrossAlignment.center,
-                    children: [
-                      SizedBox(
-                        width: 100,
-                        child: TextField(
-                          controller: _freqController,
-                          focusNode: _freqFocus,
-                          style: poloMonoStyle(context, fontSize: 15, fontWeight: FontWeight.w500),
-                          decoration: const InputDecoration(labelText: 'Freq kHz', isDense: true),
-                          keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                          inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9.,]'))],
-                          onSubmitted: (_) => _log(),
-                        ),
-                      ),
-                      SizedBox(
-                        width: 44,
-                        child: Text(
-                          _band ?? '',
-                          style: poloMonoStyle(
-                            context,
-                            fontSize: 14,
-                            fontWeight: FontWeight.w700,
-                            color: _band == null
-                                ? theme.colorScheme.outline
-                                : Color.lerp(poloColors.bandColor(_band!), theme.colorScheme.onSurface, 0.25),
-                          ),
-                        ),
-                      ),
-                      DropdownMenu<String>(
-                        initialSelection: _mode,
-                        label: const Text('Mode'),
-                        width: 100,
-                        textStyle: poloMonoStyle(context, fontSize: 15, fontWeight: FontWeight.w500),
-                        inputDecorationTheme: const InputDecorationTheme(isDense: true),
-                        dropdownMenuEntries: [for (final m in modes) DropdownMenuEntry(value: m, label: m)],
-                        onSelected: (value) {
-                          if (value == null) return;
-                          _setMode(value);
-                          _callFocus.requestFocus();
-                        },
-                      ),
-                      for (final control in widget.activityControls)
-                        if ((control['input'] as Map?)?['kind'] == 'refList')
-                          RefChipsInput(
-                            key: ValueKey(control['key']),
-                            refType: (control['input'] as Map)['refType'] as String,
-                            label: (control['label'] as String?) ?? '',
-                            placeholder: (control['input'] as Map)['placeholder'] as String?,
-                            pattern: (control['input'] as Map)['pattern'] as String?,
-                            refs: _controlRefs[control['key']] ?? const [],
-                            onChanged: (refs) => setState(() => _controlRefs[control['key'] as String] = refs),
-                            decorate: widget.decorateRef,
-                            dense: true,
-                          ),
-                      if (_isDupe)
-                        Chip(
+                SecondaryControlRow(
+                  controls: _buildSecondaryControls(theme, poloColors),
+                  selectedKey: _selectedControlKey,
+                  onSelect: _onSelectControl,
+                  trailing: _isDupe
+                      ? Chip(
                           label: const Text('DUPE'),
                           visualDensity: VisualDensity.compact,
                           backgroundColor: theme.colorScheme.errorContainer,
                           labelStyle: TextStyle(color: theme.colorScheme.onErrorContainer),
-                        ),
-                    ],
-                  ),
+                        )
+                      : null,
                 ),
                 if (_lookupLine != null)
                   Padding(

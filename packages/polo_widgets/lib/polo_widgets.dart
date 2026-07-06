@@ -6,4 +6,5 @@ library;
 export 'src/logging_panel.dart';
 export 'src/qso_list.dart';
 export 'src/ref_chips_input.dart';
+export 'src/secondary_control_row.dart';
 export 'src/theme.dart';
