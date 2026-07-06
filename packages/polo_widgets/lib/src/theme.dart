@@ -4,7 +4,8 @@
 // The Ham2K PoLo visual language, ported from app-polo's style sources
 // (src/styles/lightColors.json, darkColors.json, fonts.json, globalStyles.js):
 //   • primary teal #006783, secondary blue #005FAF, tertiary orange #964900
-//   • Roboto for body text, Roboto Slab for headers, Roboto Mono for QSO data
+//   • Roboto for body text, Roboto Slab (Black, per app-polo's
+//     boldTitleFontFamily) for headers, Roboto Mono for QSO data
 //   • per-band accent colors for log rows and spots
 //
 // Fonts are bundled as app assets (variable TTFs from the google/fonts repo,
@@ -13,8 +14,19 @@
 // PoLo's core use case is a field operation with no connectivity, and a
 // network-fetched font silently falling back to the system font on first
 // launch would be a bad first impression.
+//
+// Tabular figures: inspecting the bundled TTFs (fontTools GSUB dump) shows
+// Roboto ships both 'pnum' (proportional, its apparent default) and 'tnum'
+// (tabular) figure variants, so counts/dates set in plain Roboto need
+// `FontFeature.tabularFigures()` to keep digit columns aligned. RobotoMono
+// has neither feature — a monospace face has no separate tabular variant to
+// select, every glyph including digits is already fixed-width — so the
+// feature is a documented no-op there, kept for explicitness in case the
+// mono face ever changes.
 
 import 'package:flutter/material.dart';
+
+const _tabularFigures = [FontFeature.tabularFigures()];
 
 /// Extra Ham2K colors that don't fit Material's ColorScheme, including the
 /// band color map used to accent QSO rows and spots.
@@ -83,7 +95,39 @@ class PoloColors extends ThemeExtension<PoloColors> {
 }
 
 TextStyle poloMonoStyle(BuildContext context, {double? fontSize, FontWeight? fontWeight, Color? color}) {
-  return TextStyle(fontFamily: 'RobotoMono', fontSize: fontSize, fontWeight: fontWeight, color: color);
+  return TextStyle(
+    fontFamily: 'RobotoMono',
+    fontSize: fontSize,
+    fontWeight: fontWeight,
+    color: color,
+    fontFeatures: _tabularFigures,
+  );
+}
+
+/// Adds tabular figures to every style in a Roboto [TextTheme] so digit runs
+/// (QSO counts, dates) stay aligned — `TextTheme.apply` has no fontFeatures
+/// parameter, so each style needs it added explicitly.
+TextTheme _withTabularFigures(TextTheme theme) {
+  TextStyle? add(TextStyle? style) =>
+      style?.copyWith(fontFeatures: [...?style.fontFeatures, ..._tabularFigures]);
+
+  return theme.copyWith(
+    displayLarge: add(theme.displayLarge),
+    displayMedium: add(theme.displayMedium),
+    displaySmall: add(theme.displaySmall),
+    headlineLarge: add(theme.headlineLarge),
+    headlineMedium: add(theme.headlineMedium),
+    headlineSmall: add(theme.headlineSmall),
+    titleLarge: add(theme.titleLarge),
+    titleMedium: add(theme.titleMedium),
+    titleSmall: add(theme.titleSmall),
+    bodyLarge: add(theme.bodyLarge),
+    bodyMedium: add(theme.bodyMedium),
+    bodySmall: add(theme.bodySmall),
+    labelLarge: add(theme.labelLarge),
+    labelMedium: add(theme.labelMedium),
+    labelSmall: add(theme.labelSmall),
+  );
 }
 
 ThemeData buildPoloTheme(Brightness brightness) {
@@ -133,7 +177,7 @@ ThemeData buildPoloTheme(Brightness brightness) {
           outlineVariant: Color(0xFFDCE6E8),
         );
 
-  final textTheme = ThemeData(brightness: brightness).textTheme.apply(fontFamily: 'Roboto');
+  final textTheme = _withTabularFigures(ThemeData(brightness: brightness).textTheme.apply(fontFamily: 'Roboto'));
 
   return ThemeData(
     useMaterial3: true,
@@ -149,7 +193,7 @@ ThemeData buildPoloTheme(Brightness brightness) {
       titleTextStyle: TextStyle(
         fontFamily: 'RobotoSlab',
         fontSize: 20,
-        fontWeight: FontWeight.w700,
+        fontWeight: FontWeight.w900, // "Roboto Slab Black" in app-polo's globalStyles.js
         color: colorScheme.onPrimary,
       ),
     ),
