@@ -33,6 +33,20 @@ class ExtensionService {
     _host?.setKV('qrz', 'password', password);
   }
 
+  /// Seeds the `ham2k-lofi` sync extension's device identity (a stable
+  /// per-install key, generated once by `SettingsService.syncDeviceKey`) and
+  /// operator callsign. Called both at boot and whenever Settings saves a
+  /// new operator callsign — same shape as `setQrzCredentials`. There's
+  /// deliberately no `token` seeded here: the extension re-registers with
+  /// the server on first use each run (the token is session-scoped, kept in
+  /// the extension's own module state, same as app-polo's `GLOBAL.syncLoFiToken`
+  /// being memory-only there too).
+  Future<void> setSyncCredentials({required String deviceKey, required String operatorCall}) async {
+    await start();
+    _host?.setKV('ham2k-lofi', 'key', deviceKey);
+    _host?.setKV('ham2k-lofi', 'call', operatorCall);
+  }
+
   Future<void> _start() async {
     try {
       final index = jsonDecode(await rootBundle.loadString('assets/extensions/index.json')) as Map<String, dynamic>;
@@ -149,6 +163,35 @@ class ExtensionService {
     } on ExtensionHostException catch (e) {
       debugPrint('[extensions] $method failed: $e');
       return const [];
+    }
+  }
+
+  /// The current LoFi account/device/client info, for display in Settings.
+  /// Returns null if the runtime isn't up or the request failed (e.g. no
+  /// network) — callers should treat that as "status unknown", not "no sync".
+  Future<Map<String, dynamic>?> syncAccountData() async {
+    final host = _host;
+    if (host == null) return null;
+    try {
+      final result = await host.invokeHook('syncTransport', method: 'getAccountData', args: const {});
+      return result is Map ? result.cast<String, dynamic>() : null;
+    } on ExtensionHostException catch (e) {
+      debugPrint('[extensions] syncAccountData failed: $e');
+      return null;
+    }
+  }
+
+  /// Requests a link-by-email challenge from the sync server. Returns null
+  /// on failure; callers should surface that as "couldn't reach the server".
+  Future<Map<String, dynamic>?> syncLinkClientWithEmail(String email) async {
+    final host = _host;
+    if (host == null) return null;
+    try {
+      final result = await host.invokeHook('syncTransport', method: 'linkClientWithEmail', args: {'email': email});
+      return result is Map ? result.cast<String, dynamic>() : null;
+    } on ExtensionHostException catch (e) {
+      debugPrint('[extensions] syncLinkClientWithEmail failed: $e');
+      return null;
     }
   }
 

@@ -12,6 +12,7 @@ class Operation {
   final int qsoCount;
   final int? startAtMillisMin;
   final int? startAtMillisMax;
+  final bool deleted;
 
   const Operation({
     required this.uuid,
@@ -19,6 +20,7 @@ class Operation {
     this.qsoCount = 0,
     this.startAtMillisMin,
     this.startAtMillisMax,
+    this.deleted = false,
   });
 
   String get stationCall => (data['stationCall'] as String?) ?? '';
@@ -39,8 +41,9 @@ class Qso {
   final String uuid;
   final String operationUuid;
   final Map<String, dynamic> data;
+  final bool deleted;
 
-  const Qso({required this.uuid, required this.operationUuid, required this.data});
+  const Qso({required this.uuid, required this.operationUuid, required this.data, this.deleted = false});
 
   Map<String, dynamic> get _our => (data['our'] as Map<String, dynamic>?) ?? const {};
   Map<String, dynamic> get _their => (data['their'] as Map<String, dynamic>?) ?? const {};

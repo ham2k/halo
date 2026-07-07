@@ -92,6 +92,78 @@ Future<(String, String)?> editTwoFieldDialog(
   );
 }
 
+/// Single-field variant of `editTwoFieldDialog` (operator callsign, link-by-
+/// email) — same disposal-safety shape (see `_TwoFieldDialogState`'s note).
+/// Returns the raw (untrimmed) field value, or null if cancelled.
+Future<String?> editOneFieldDialog(
+  BuildContext context, {
+  required String title,
+  required String fieldLabel,
+  required String fieldInitial,
+  TextCapitalization fieldCapitalization = TextCapitalization.none,
+  String saveLabel = 'Save',
+}) {
+  return showDialog<String>(
+    context: context,
+    builder: (context) => _OneFieldDialog(
+      title: title,
+      fieldLabel: fieldLabel,
+      fieldInitial: fieldInitial,
+      fieldCapitalization: fieldCapitalization,
+      saveLabel: saveLabel,
+    ),
+  );
+}
+
+class _OneFieldDialog extends StatefulWidget {
+  final String title;
+  final String fieldLabel;
+  final String fieldInitial;
+  final TextCapitalization fieldCapitalization;
+  final String saveLabel;
+
+  const _OneFieldDialog({
+    required this.title,
+    required this.fieldLabel,
+    required this.fieldInitial,
+    required this.fieldCapitalization,
+    required this.saveLabel,
+  });
+
+  @override
+  State<_OneFieldDialog> createState() => _OneFieldDialogState();
+}
+
+class _OneFieldDialogState extends State<_OneFieldDialog> {
+  late final _controller = TextEditingController(text: widget.fieldInitial);
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void _save() => Navigator.of(context).pop(_controller.text);
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: Text(widget.title),
+      content: TextField(
+        controller: _controller,
+        autofocus: true,
+        textCapitalization: widget.fieldCapitalization,
+        decoration: poloFieldDecoration(context, widget.fieldLabel),
+        onSubmitted: (_) => _save(),
+      ),
+      actions: [
+        TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Cancel')),
+        FilledButton(onPressed: _save, child: Text(widget.saveLabel)),
+      ],
+    );
+  }
+}
+
 class _TwoFieldDialog extends StatefulWidget {
   final String title;
   final String field1Label;

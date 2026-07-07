@@ -5,6 +5,8 @@
 // a small, single-screen start (no app-polo-style nested settings stack;
 // there's nowhere near enough settings yet to need one).
 
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:polo_widgets/polo_widgets.dart';
 
@@ -23,6 +25,15 @@ class SettingsScreen extends StatefulWidget {
 }
 
 class _SettingsScreenState extends State<SettingsScreen> {
+  Map<String, dynamic>? _syncAccount;
+  bool _loadingSyncAccount = false;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.services.settings.syncEnabled) _refreshSyncAccount();
+  }
+
   Future<void> _editQrzCredentials() async {
     final settings = widget.services.settings;
     final result = await editTwoFieldDialog(
@@ -38,6 +49,62 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
     await widget.services.setQrzCredentials(username: result.$1.trim(), password: result.$2);
     if (mounted) setState(() {});
+  }
+
+  Future<void> _editOperatorCall() async {
+    final settings = widget.services.settings;
+    final result = await editOneFieldDialog(
+      context,
+      title: 'Operator callsign',
+      fieldLabel: 'Callsign',
+      fieldInitial: settings.operatorCall,
+      fieldCapitalization: TextCapitalization.characters,
+    );
+    if (result == null) return;
+    await widget.services.setOperatorCall(result);
+    if (mounted) setState(() {});
+  }
+
+  Future<void> _toggleSync(bool enabled) async {
+    await widget.services.setSyncEnabled(enabled);
+    if (enabled) {
+      unawaited(_refreshSyncAccount());
+    } else if (mounted) {
+      setState(() {});
+    }
+  }
+
+  Future<void> _refreshSyncAccount() async {
+    setState(() => _loadingSyncAccount = true);
+    final account = await widget.services.extensions.syncAccountData();
+    if (!mounted) return;
+    setState(() {
+      _syncAccount = account;
+      _loadingSyncAccount = false;
+    });
+  }
+
+  Future<void> _linkByEmail() async {
+    final email = await editOneFieldDialog(
+      context,
+      title: 'Link to an existing account',
+      fieldLabel: 'Email address',
+      fieldInitial: '',
+      saveLabel: 'Send link',
+    );
+    if (email == null || email.trim().isEmpty) return;
+
+    final result = await widget.services.extensions.syncLinkClientWithEmail(email.trim());
+    if (!mounted) return;
+    final message =
+        result == null ? 'Could not reach the sync server. Try again later.' : 'Check $email for a confirmation link.';
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+  }
+
+  String get _syncAccountSubtitle {
+    if (_loadingSyncAccount) return 'Checking…';
+    final call = (_syncAccount?['current_account'] as Map?)?['call'] as String?;
+    return (call == null || call.isEmpty) ? 'Not linked yet' : 'Linked as $call';
   }
 
   @override
@@ -90,6 +157,42 @@ class _SettingsScreenState extends State<SettingsScreen> {
             subtitle: Text(settings.hasQrzCredentials ? settings.qrzUsername : 'Not configured'),
             onTap: _editQrzCredentials,
           ),
+          const _SectionHeader('Sync'),
+          ListTile(
+            leading: Icon(resolveIconName('account-outline')),
+            title: const Text('Operator callsign'),
+            subtitle: Text(settings.operatorCall.isEmpty ? 'Not set' : settings.operatorCall),
+            onTap: _editOperatorCall,
+          ),
+          SwitchListTile(
+            secondary: Icon(resolveIconName(settings.syncEnabled ? 'cloud-sync-outline' : 'cloud-off-outline')),
+            title: const Text('Sync with Ham2K Log Filer'),
+            subtitle: Text(
+              settings.syncEnabled
+                  ? 'Backs up and syncs your log across devices'
+                  : 'Off — your log stays on this device only',
+            ),
+            value: settings.syncEnabled,
+            onChanged: _toggleSync,
+          ),
+          if (settings.syncEnabled) ...[
+            ListTile(
+              leading: Icon(resolveIconName('account-check-outline')),
+              title: const Text('Account'),
+              subtitle: Text(_syncAccountSubtitle),
+              trailing: IconButton(
+                icon: Icon(resolveIconName('refresh')),
+                tooltip: 'Refresh',
+                onPressed: _refreshSyncAccount,
+              ),
+            ),
+            ListTile(
+              leading: Icon(resolveIconName('email-outline')),
+              title: const Text('Link to an existing account'),
+              subtitle: const Text('Sync this device into an account you already use elsewhere'),
+              onTap: _linkByEmail,
+            ),
+          ],
           const _SectionHeader('About'),
           ListTile(
             leading: ClipRRect(

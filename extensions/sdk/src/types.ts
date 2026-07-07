@@ -147,6 +147,35 @@ export interface CommandHook {
   tryCommand(args: { input: string }, ctx: HookContext): Promise<CommandResult | null>
 }
 
+/// A batch of dirty records the core wants pushed to the sync server, plus
+/// batching/consent metadata. Batch selection and dirty-flag bookkeeping stay
+/// in Dart (DESIGN.md §4) — the hook is a dumb transport, never touching the
+/// database itself.
+export interface SyncPayload {
+  operations?: Record<string, JSONValue>[]
+  qsos?: Record<string, JSONValue>[]
+  meta?: Record<string, JSONValue>
+}
+
+/// The server's response: any records it wants merged in locally, tuning
+/// knobs for the next round, and the account this device is currently
+/// linked to.
+export interface SyncResponse {
+  operations?: Record<string, JSONValue>[]
+  qsos?: Record<string, JSONValue>[]
+  meta?: Record<string, JSONValue>
+  account?: Record<string, JSONValue>
+}
+
+/// Registered under category `syncTransport`. Handles authentication and
+/// the actual network calls; the core owns the sync loop, batching, and
+/// dirty flags so sync keeps working even if the JS runtime is wedged.
+export interface SyncTransportHook {
+  sync(payload: SyncPayload, ctx: HookContext): Promise<SyncResponse>
+  getAccountData(args: Record<string, never>, ctx: HookContext): Promise<Record<string, JSONValue>>
+  linkClientWithEmail(args: { email: string }, ctx: HookContext): Promise<Record<string, JSONValue>>
+}
+
 export type Hook =
   | LookupHook
   | SpotsHook
@@ -155,6 +184,7 @@ export type Hook =
   | ActivityHook
   | AdifFieldsHook
   | CommandHook
+  | SyncTransportHook
   | Record<string, unknown>
 
 export interface RegisterHookParams {

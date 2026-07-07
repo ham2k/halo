@@ -8,3 +8,4 @@ export 'src/ham/grid.dart';
 export 'src/ham/radio.dart';
 export 'src/models/models.dart';
 export 'src/repo/repositories.dart';
+export 'src/sync/sync_engine.dart';

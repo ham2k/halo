@@ -20,7 +20,13 @@ const _uuidGenerator = Uuid();
 class OperationsRepository {
   final PoloDatabase db;
 
-  OperationsRepository(this.db);
+  /// Notified after every local write so the sync engine can debounce a
+  /// small-batch round (DESIGN.md §4) — kept as a plain callback rather than
+  /// a direct dependency so this repository doesn't need to know the sync
+  /// engine's type.
+  final void Function()? onChange;
+
+  OperationsRepository(this.db, {this.onChange});
 
   Future<Operation> create({required String stationCall, String title = ''}) async {
     final operation = Operation(
@@ -35,6 +41,7 @@ class OperationsRepository {
           uuid: operation.uuid,
           data: Value(jsonEncode(operation.data)),
         ));
+    onChange?.call();
     return operation;
   }
 
@@ -60,12 +67,85 @@ class OperationsRepository {
     await (db.update(db.operations)..where((op) => op.uuid.equals(operation.uuid))).write(
       OperationsCompanion(data: Value(jsonEncode(operation.data)), synced: const Value(false)),
     );
+    onChange?.call();
   }
 
   Future<void> softDelete(String uuid) async {
     await (db.update(db.operations)..where((op) => op.uuid.equals(uuid))).write(
       const OperationsCompanion(deleted: Value(true), synced: Value(false)),
     );
+    onChange?.call();
+  }
+
+  /// Up to `limit` dirty operations, most-recently-active first — the same
+  /// selection app-polo's sync loop uses for its "large batch" round
+  /// (`sync.js`'s `queryOperations('WHERE synced IS false ...')`).
+  Future<List<Operation>> unsyncedBatch(int limit) async {
+    final query = (db.select(db.operations)
+      ..where((op) => op.synced.equals(false))
+      ..orderBy([
+        (op) => OrderingTerm(expression: op.startAtMillisMax, mode: OrderingMode.desc, nulls: NullsOrder.first),
+      ])
+      ..limit(limit));
+    return (await query.get()).map(_operationFromRow).toList();
+  }
+
+  /// Fetches specific operations by uuid (e.g. the parents of a QSO batch),
+  /// optionally narrowed to ones still unsynced.
+  Future<List<Operation>> byUuids(List<String> uuids, {bool onlyUnsynced = false}) async {
+    if (uuids.isEmpty) return const [];
+    final query = db.select(db.operations)..where((op) => op.uuid.isIn(uuids));
+    if (onlyUnsynced) query.where((op) => op.synced.equals(false));
+    return (await query.get()).map(_operationFromRow).toList();
+  }
+
+  Future<bool> hasUnsynced() async {
+    final row =
+        await (db.select(db.operations)..where((op) => op.synced.equals(false))..limit(1)).getSingleOrNull();
+    return row != null;
+  }
+
+  Future<void> markSynced(Iterable<String> uuids) async {
+    if (uuids.isEmpty) return;
+    await (db.update(db.operations)..where((op) => op.uuid.isIn(uuids))).write(
+      const OperationsCompanion(synced: Value(true)),
+    );
+  }
+
+  /// Total and pending-sync counts, reported in the sync payload's `meta`
+  /// (mirrors `getSyncCounts()` in app-polo's `sync.js`).
+  Future<({int total, int pending})> syncCounts() async {
+    final total = db.operations.uuid.count();
+    final query = db.selectOnly(db.operations)..addColumns([total]);
+    final totalCount = (await query.getSingle()).read(total) ?? 0;
+    final pendingCount = (await (db.selectOnly(db.operations)
+              ..addColumns([total])
+              ..where(db.operations.synced.equals(false)))
+            .getSingle())
+        .read(total) ?? 0;
+    return (total: totalCount, pending: pendingCount);
+  }
+
+  /// Upserts operations received from the sync server. Leaves the locally
+  /// derived counters (`qsoCount`, `startAtMillisMin/Max`) alone — they get
+  /// recomputed from this device's own QSOs once any of this operation's
+  /// QSOs are merged in too, and shouldn't be clobbered by the server's view
+  /// of them in the meantime.
+  Future<void> mergeFromSync(List<Map<String, dynamic>> operations) async {
+    for (final incoming in operations) {
+      final uuid = incoming['uuid'] as String?;
+      if (uuid == null) continue;
+      final data = Map<String, dynamic>.from(incoming)..remove('uuid');
+      final deleted = data.remove('deleted') == true;
+      await db.into(db.operations).insertOnConflictUpdate(OperationsCompanion(
+            uuid: Value(uuid),
+            data: Value(jsonEncode(data)),
+            deleted: Value(deleted),
+            synced: const Value(true),
+          ));
+    }
+    // No onChange() here: everything just written is already marked
+    // synced, so there's nothing new for the outbound side to react to.
   }
 
   Operation _operationFromRow(OperationRow row) => Operation(
@@ -74,13 +154,17 @@ class OperationsRepository {
         qsoCount: row.qsoCount,
         startAtMillisMin: row.startAtMillisMin,
         startAtMillisMax: row.startAtMillisMax,
+        deleted: row.deleted,
       );
 }
 
 class QsosRepository {
   final PoloDatabase db;
 
-  QsosRepository(this.db);
+  /// See `OperationsRepository.onChange`.
+  final void Function()? onChange;
+
+  QsosRepository(this.db, {this.onChange});
 
   /// Inserts a QSO from QSON data, deriving the indexed columns and
   /// refreshing the operation's counters, all in one transaction.
@@ -95,6 +179,7 @@ class QsosRepository {
       await db.into(db.qsos).insert(_companionFor(qso));
       await _refreshOperationCounters(operationUuid);
     });
+    onChange?.call();
     return qso;
   }
 
@@ -103,6 +188,7 @@ class QsosRepository {
       await (db.update(db.qsos)..where((q) => q.uuid.equals(qso.uuid))).write(_companionFor(qso));
       await _refreshOperationCounters(qso.operationUuid);
     });
+    onChange?.call();
   }
 
   Future<void> softDelete(Qso qso) async {
@@ -112,21 +198,80 @@ class QsosRepository {
       );
       await _refreshOperationCounters(qso.operationUuid);
     });
+    onChange?.call();
   }
 
   Stream<List<Qso>> watchForOperation(String operationUuid) {
     final query = (db.select(db.qsos)
       ..where((q) => q.operation.equals(operationUuid) & q.deleted.equals(false))
       ..orderBy([(q) => OrderingTerm(expression: q.startAtMillis)]));
-    return query.watch().map((rows) => [
-          for (final row in rows)
-            Qso(
-              uuid: row.uuid,
-              operationUuid: row.operation,
-              data: jsonDecode(row.data) as Map<String, dynamic>,
-            ),
-        ]);
+    return query.watch().map((rows) => rows.map(_qsoFromRow).toList());
   }
+
+  /// Up to `limit` dirty QSOs, most recent first — mirrors `sync.js`'s
+  /// `queryQSOs("WHERE synced IS false ... ORDER BY startAtMillis DESC")`.
+  Future<List<Qso>> unsyncedBatch(int limit) async {
+    final query = (db.select(db.qsos)
+      ..where((q) => q.synced.equals(false))
+      ..orderBy([(q) => OrderingTerm(expression: q.startAtMillis, mode: OrderingMode.desc)])
+      ..limit(limit));
+    return (await query.get()).map(_qsoFromRow).toList();
+  }
+
+  Future<bool> hasUnsynced() async {
+    final row = await (db.select(db.qsos)..where((q) => q.synced.equals(false))..limit(1)).getSingleOrNull();
+    return row != null;
+  }
+
+  Future<void> markSynced(Iterable<String> uuids) async {
+    if (uuids.isEmpty) return;
+    await (db.update(db.qsos)..where((q) => q.uuid.isIn(uuids))).write(const QsosCompanion(synced: Value(true)));
+  }
+
+  /// See `OperationsRepository.syncCounts`.
+  Future<({int total, int pending})> syncCounts() async {
+    final total = db.qsos.uuid.count();
+    final totalCount = (await (db.selectOnly(db.qsos)..addColumns([total])).getSingle()).read(total) ?? 0;
+    final pendingCount = (await (db.selectOnly(db.qsos)
+              ..addColumns([total])
+              ..where(db.qsos.synced.equals(false)))
+            .getSingle())
+        .read(total) ?? 0;
+    return (total: totalCount, pending: pendingCount);
+  }
+
+  /// Upserts QSOs received from the sync server and refreshes the counters
+  /// of every operation they belong to.
+  Future<void> mergeFromSync(List<Map<String, dynamic>> qsos) async {
+    final affectedOperations = <String>{};
+    await db.transaction(() async {
+      for (final incoming in qsos) {
+        final uuid = incoming['uuid'] as String?;
+        final operationUuid = incoming['operation'] as String?;
+        if (uuid == null || operationUuid == null) continue;
+
+        final data = Map<String, dynamic>.from(incoming)..remove('operation');
+        final deleted = data.remove('deleted') == true;
+        final qso = Qso(uuid: uuid, operationUuid: operationUuid, data: data);
+
+        await db.into(db.qsos).insertOnConflictUpdate(
+              _companionFor(qso).copyWith(synced: const Value(true), deleted: Value(deleted)),
+            );
+        affectedOperations.add(operationUuid);
+      }
+      for (final operationUuid in affectedOperations) {
+        await _refreshOperationCounters(operationUuid);
+      }
+    });
+    // No onChange() here — see OperationsRepository.mergeFromSync.
+  }
+
+  Qso _qsoFromRow(QsoRow row) => Qso(
+        uuid: row.uuid,
+        operationUuid: row.operation,
+        data: jsonDecode(row.data) as Map<String, dynamic>,
+        deleted: row.deleted,
+      );
 
   QsosCompanion _companionFor(Qso qso) => QsosCompanion(
         uuid: Value(qso.uuid),
@@ -140,6 +285,11 @@ class QsosRepository {
         synced: const Value(false),
       );
 
+  /// `qsoCount`/`startAtMillisMin/Max` are a locally derived cache — never
+  /// part of the JSON payload sync sends (see `SyncEngine._buildPayload`) —
+  /// so refreshing them must not flip `synced` back to false. Doing so
+  /// would make an operation perpetually "dirty" any time its QSOs change,
+  /// even after a round already sent its actual (unchanged) content.
   Future<void> _refreshOperationCounters(String operationUuid) async {
     final count = db.qsos.uuid.count();
     final minStart = db.qsos.startAtMillis.min();
@@ -154,7 +304,6 @@ class QsosRepository {
         qsoCount: Value(row.read(count) ?? 0),
         startAtMillisMin: Value(row.read(minStart)),
         startAtMillisMax: Value(row.read(maxStart)),
-        synced: const Value(false),
       ),
     );
   }

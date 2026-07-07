@@ -34,6 +34,8 @@ void main() async {
   if (settings.hasQrzCredentials) {
     services.extensions.setQrzCredentials(username: settings.qrzUsername, password: settings.qrzPassword);
   }
+  services.extensions.setSyncCredentials(deviceKey: settings.syncDeviceKey, operatorCall: settings.operatorCall);
+  services.syncEngine.start();
   runApp(PoloNextApp(services: services));
 
   // Dev nicety: launch with POLO_OPEN_FIRST_OP=1 in the environment (e.g.
@@ -59,10 +61,21 @@ void main() async {
 class PoloServices {
   final PoloDatabase db;
   final SettingsService settings;
-  late final OperationsRepository operations = OperationsRepository(db);
-  late final QsosRepository qsos = QsosRepository(db);
   final ExtensionService extensions;
+
+  late final OperationsRepository operations = OperationsRepository(db, onChange: () => syncEngine.notifyChanged());
+  late final QsosRepository qsos = QsosRepository(db, onChange: () => syncEngine.notifyChanged());
   late final ExportService exports = ExportService(extensions: extensions, qsos: qsos);
+
+  /// The dirty-flag sync loop (DESIGN.md §4) — batching and bookkeeping stay
+  /// here in Dart; only the network call crosses into the `ham2k-lofi`
+  /// extension via `_syncTransportCall`.
+  late final SyncEngine syncEngine = SyncEngine(
+    operations: operations,
+    qsos: qsos,
+    transport: _syncTransportCall,
+    settings: _SettingsSyncAdapter(settings),
+  );
 
   PoloServices(this.db, this.settings, {ExtensionService? extensions}) : extensions = extensions ?? ExtensionService();
 
@@ -74,6 +87,42 @@ class PoloServices {
     await settings.setQrzCredentials(username: username, password: password);
     await extensions.setQrzCredentials(username: username, password: password);
   }
+
+  /// Same one-call pattern as `setQrzCredentials`, for the sync device
+  /// identity + operator callsign.
+  Future<void> setOperatorCall(String call) async {
+    await settings.setOperatorCall(call);
+    await extensions.setSyncCredentials(deviceKey: settings.syncDeviceKey, operatorCall: settings.operatorCall);
+  }
+
+  Future<void> setSyncEnabled(bool enabled) async {
+    await settings.setSyncEnabled(enabled);
+    if (enabled) syncEngine.start();
+  }
+
+  Future<Map<String, dynamic>> _syncTransportCall(String method, Map<String, dynamic> args) async {
+    final host = extensions.host;
+    if (host == null) throw StateError('extension runtime is not ready yet');
+    final result =
+        await host.invokeHook('syncTransport', method: method, args: args, timeout: const Duration(seconds: 30));
+    return (result as Map).cast<String, dynamic>();
+  }
+}
+
+/// Adapts `SettingsService` (SharedPreferences, Flutter) to the plain-Dart
+/// `SyncSettings` interface `polo_core`'s `SyncEngine` depends on.
+class _SettingsSyncAdapter implements SyncSettings {
+  final SettingsService settings;
+  _SettingsSyncAdapter(this.settings);
+
+  @override
+  bool get enabled => settings.syncEnabled;
+
+  @override
+  Map<String, dynamic> get state => settings.syncState;
+
+  @override
+  Future<void> setState(Map<String, dynamic> state) => settings.setSyncState(state);
 }
 
 class PoloNextApp extends StatelessWidget {
