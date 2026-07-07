@@ -1,0 +1,21 @@
+name: halo_extension_host
+description: "JS-engine extension host for HaLo Next: loads TypeScript extension bundles and bridges hook calls between Dart and the extension runtime."
+version: 0.0.1
+homepage: https://ham2k.com
+
+environment:
+  sdk: ^3.12.2
+  flutter: ">=1.17.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_js: ^0.8.3
+  http: ^1.2.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+flutter:

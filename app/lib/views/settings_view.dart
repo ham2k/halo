@@ -8,8 +8,8 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:polo_core/polo_core.dart';
-import 'package:polo_widgets/polo_widgets.dart';
+import 'package:halo_core/halo_core.dart';
+import 'package:halo_widgets/halo_widgets.dart';
 
 import '../main.dart';
 import 'operation_dialogs.dart';
@@ -17,7 +17,7 @@ import 'operation_dialogs.dart';
 const _appVersion = '0.1.0'; // keep in sync with app/pubspec.yaml
 
 class SettingsView extends StatefulWidget {
-  final PoloServices services;
+  final HaLoServices services;
 
   const SettingsView({super.key, required this.services});
 
@@ -237,7 +237,7 @@ class _SettingsViewState extends State<SettingsView> {
               borderRadius: BorderRadius.circular(8),
               child: Image.asset('assets/images/ham2k-icon.png', width: 40, height: 40),
             ),
-            title: const Text('PoLo Next'),
+            title: const Text('HaLo Next'),
             subtitle: const Text('Version $_appVersion (dev build)'),
           ),
         ],

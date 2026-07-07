@@ -1,4 +1,4 @@
-# User Interface Design for Ham2K PoLo Next
+# User Interface Design for Ham2K HaLo Next
 
 ## Concepts
 

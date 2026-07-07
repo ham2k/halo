@@ -8,7 +8,7 @@
 import 'dart:io';
 
 import 'package:file_selector/file_selector.dart';
-import 'package:polo_core/polo_core.dart';
+import 'package:halo_core/halo_core.dart';
 
 import 'extension_service.dart';
 

@@ -352,6 +352,27 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "0.0.2"
+  halo_core:
+    dependency: "direct main"
+    description:
+      path: "../packages/halo_core"
+      relative: true
+    source: path
+    version: "0.0.1"
+  halo_extension_host:
+    dependency: "direct main"
+    description:
+      path: "../packages/halo_extension_host"
+      relative: true
+    source: path
+    version: "0.0.1"
+  halo_widgets:
+    dependency: "direct main"
+    description:
+      path: "../packages/halo_widgets"
+      relative: true
+    source: path
+    version: "0.0.1"
   hooks:
     dependency: transitive
     description:
@@ -584,27 +605,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "2.1.8"
-  polo_core:
-    dependency: "direct main"
-    description:
-      path: "../packages/polo_core"
-      relative: true
-    source: path
-    version: "0.0.1"
-  polo_extension_host:
-    dependency: "direct main"
-    description:
-      path: "../packages/polo_extension_host"
-      relative: true
-    source: path
-    version: "0.0.1"
-  polo_widgets:
-    dependency: "direct main"
-    description:
-      path: "../packages/polo_widgets"
-      relative: true
-    source: path
-    version: "0.0.1"
   posix:
     dependency: transitive
     description:

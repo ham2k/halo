@@ -8,8 +8,8 @@
 // (settings/activities/data, a scoped-down OpSettingsTab).
 
 import 'package:flutter/material.dart';
-import 'package:polo_core/polo_core.dart';
-import 'package:polo_widgets/polo_widgets.dart';
+import 'package:halo_core/halo_core.dart';
+import 'package:halo_widgets/halo_widgets.dart';
 
 import '../main.dart';
 import 'operation_dialogs.dart';
@@ -17,7 +17,7 @@ import 'operation/logging_panel.dart';
 import 'operation/map_panel.dart';
 
 class OperationView extends StatefulWidget {
-  final PoloServices services;
+  final HaLoServices services;
   final String operationUuid;
 
   const OperationView({super.key, required this.services, required this.operationUuid});

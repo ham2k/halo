@@ -22,7 +22,7 @@ extension participating in the hot logging path without ever degrading it.
   demands (one call, not N).
 - **Pump-on-demand.** The JS job queue is pumped only while hook calls are
   outstanding, replacing the spike's permanent 5ms timer.
-- **Integration test** (`polo_extension_host/test/extension_host_test.dart`):
+- **Integration test** (`halo_extension_host/test/extension_host_test.dart`):
   boots the real engine in-process against the built kernel bundle plus an
   inline test extension; covers activation, invoke, invokeAll error isolation,
   KV namespacing, and unknown-hook errors.

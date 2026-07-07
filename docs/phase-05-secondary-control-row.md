@@ -19,7 +19,7 @@ layout later when SOTA/WWFF/contests each want their own control.
 
 ## What's here
 
-- **`packages/polo_widgets/lib/src/secondary_control_row.dart`** —
+- **`packages/halo_widgets/lib/src/secondary_control_row.dart`** —
   `SecondaryControlRow` (dumb: renders chips + the selected control's
   expanded widget) and `SecondaryControlSpec` (icon, summary, `hasValue`
   badge flag, `expandedBuilder`). Deliberately origin-agnostic — a spec

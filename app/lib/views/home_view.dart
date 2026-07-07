@@ -2,18 +2,18 @@
 // SPDX-License-Identifier: MPL-2.0
 
 import 'package:flutter/material.dart';
-import 'package:polo_core/polo_core.dart';
-import 'package:polo_widgets/polo_widgets.dart';
+import 'package:halo_core/halo_core.dart';
+import 'package:halo_widgets/halo_widgets.dart';
 
 import '../main.dart';
 import 'operation_dialogs.dart';
 import 'operation_view.dart';
 import 'settings_view.dart';
 
-/// PoLo home-screen style row: bold "CALL title" line with count pill,
+/// HaLo home-screen style row: bold "CALL title" line with count pill,
 /// subtitle line with refs/description and right-aligned date.
 class _OperationRow extends StatelessWidget {
-  final PoloServices services;
+  final HaLoServices services;
   final Operation operation;
 
   const _OperationRow({required this.services, required this.operation});
@@ -87,7 +87,7 @@ class _OperationRow extends StatelessWidget {
 }
 
 class OperationListPanel extends StatelessWidget {
-  final PoloServices services;
+  final HaLoServices services;
   final List<Operation> operations;
 
   const OperationListPanel({
@@ -118,7 +118,7 @@ class OperationListPanel extends StatelessWidget {
 }
 
 class HomeView extends StatelessWidget {
-  final PoloServices services;
+  final HaLoServices services;
 
   const HomeView({super.key, required this.services});
 
@@ -182,7 +182,7 @@ class HomeView extends StatelessWidget {
         ),
         // "Desktop Logger" / "Portable Logger" is the in-app main-screen
         // title — independent of the OS-level app name ("Ham2K Logger" on
-        // desktop, "PoLo" on mobile; see macos/Runner/Configs/AppInfo.xcconfig,
+        // desktop, "HaLo" on mobile; see macos/Runner/Configs/AppInfo.xcconfig,
         // ios/Runner/Info.plist, android's AndroidManifest.xml).
         title: Text(isWindowedPlatform ? 'Desktop Logger' : 'Portable Logger'),
         actionsPadding: const EdgeInsets.only(right: 8),

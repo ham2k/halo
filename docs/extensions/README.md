@@ -1,6 +1,6 @@
-# PoLo Next Extensions
+# HaLo Next Extensions
 
-Extensions are TypeScript modules that give PoLo its domain knowledge:
+Extensions are TypeScript modules that give HaLo its domain knowledge:
 activity programs (POTA, SOTA…), contests, callsign lookup services, spot
 sources, exporters, and eventually sync transports and commands. The Flutter
 core knows nothing about any of them — it invokes **hooks** and renders
@@ -81,14 +81,14 @@ an entry to `bundles` in `extensions/build.mjs`, rebuild, and restart the app
 (bundles are baked into assets; runtime download/update channels come later).
 
 Integration testing without Flutter: see
-`packages/polo_extension_host/test/extension_host_test.dart`, which boots the
+`packages/halo_extension_host/test/extension_host_test.dart`, which boots the
 real JS engine against the built kernel plus inline extension source. For
 pure hook logic, plain vitest against fixture QSOs works — hooks have no
 dependencies beyond the SDK.
 
 ## Lifecycle and the bridge, briefly
 
-The Dart `ExtensionHost` (packages/polo_extension_host) runs the JS engine on
+The Dart `ExtensionHost` (packages/halo_extension_host) runs the JS engine on
 a background isolate. It evaluates `kernel.js` first, then every extension
 bundle listed in `index.json`, then activates all extensions. Hook calls
 cross the bridge as JSON messages with per-call timeouts; host calls

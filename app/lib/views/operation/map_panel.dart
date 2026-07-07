@@ -17,8 +17,8 @@ import 'dart:io' show Platform;
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:polo_core/polo_core.dart';
-import 'package:polo_widgets/polo_widgets.dart';
+import 'package:halo_core/halo_core.dart';
+import 'package:halo_widgets/halo_widgets.dart';
 
 import '../../config/mapbox_token.dart';
 import '../map/map_marker_data.dart';
@@ -42,7 +42,7 @@ class _MapPanelState extends State<MapPanel> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final poloColors = PoloColors.of(context);
+    final poloColors = HaLoColors.of(context);
 
     final markers = <MapMarkerData>[
       if (gridToLocation(widget.operation.grid) case final qth?)

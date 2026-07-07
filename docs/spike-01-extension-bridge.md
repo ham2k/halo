@@ -18,7 +18,7 @@ embedded JS engine, bridged to a Flutter host — and measure it.
     from npm — the same package app-polo uses — to prove existing ham-js-libs
     run unchanged in the extension runtime.
   - `build.mjs` — esbuild bundling to `app/assets/extensions/` + `index.json`.
-- **`packages/polo_extension_host/`** — Dart package. `ExtensionHost` spawns a
+- **`packages/halo_extension_host/`** — Dart package. `ExtensionHost` spawns a
   background isolate that owns the JS engine (via `flutter_js`), evaluates
   kernel + extension bundles, and exposes `invokeHook(category, key, method,
   args)` with per-call timeouts. Falls back to in-process mode if the engine

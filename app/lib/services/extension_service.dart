@@ -10,7 +10,7 @@ import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart' show rootBundle;
-import 'package:polo_extension_host/polo_extension_host.dart';
+import 'package:halo_extension_host/halo_extension_host.dart';
 
 class ExtensionService {
   ExtensionHost? _host;

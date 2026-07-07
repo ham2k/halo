@@ -10,8 +10,8 @@ import 'dart:io' show Platform;
 
 import 'package:drift_flutter/drift_flutter.dart';
 import 'package:flutter/material.dart';
-import 'package:polo_core/polo_core.dart';
-import 'package:polo_widgets/polo_widgets.dart';
+import 'package:halo_core/halo_core.dart';
+import 'package:halo_widgets/halo_widgets.dart';
 
 import 'views/operation_view.dart';
 import 'views/home_view.dart';
@@ -23,20 +23,20 @@ final navigatorKey = GlobalKey<NavigatorState>();
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  final db = PoloDatabase(driftDatabase(name: 'polo_next'));
+  final db = HaLoDatabase(driftDatabase(name: 'halo_next'));
   final extensions = ExtensionService();
   // Fire-and-forget, and kicked off before awaiting settings below so these
   // two independent boot steps run concurrently instead of serialized; the
   // core logging loop never waits on the extension runtime either way.
   extensions.start();
   final settings = await SettingsService.load();
-  final services = PoloServices(db, settings, extensions: extensions);
+  final services = HaLoServices(db, settings, extensions: extensions);
   if (settings.hasQrzCredentials) {
     services.extensions.setQrzCredentials(username: settings.qrzUsername, password: settings.qrzPassword);
   }
   services.extensions.setSyncCredentials(deviceKey: settings.syncDeviceKey, operatorCall: settings.operatorCall);
   services.syncEngine.start();
-  runApp(PoloNextApp(services: services));
+  runApp(HaLoApp(services: services));
 
   // Dev nicety: launch with POLO_OPEN_FIRST_OP=1 in the environment (e.g.
   // SIMCTL_CHILD_POLO_OPEN_FIRST_OP=1 simctl launch ...) to jump straight
@@ -58,8 +58,8 @@ void main() async {
 }
 
 /// The core services bundle passed down to screens.
-class PoloServices {
-  final PoloDatabase db;
+class HaLoServices {
+  final HaLoDatabase db;
   final SettingsService settings;
   final ExtensionService extensions;
 
@@ -77,7 +77,7 @@ class PoloServices {
     settings: _SettingsSyncAdapter(settings),
   );
 
-  PoloServices(this.db, this.settings, {ExtensionService? extensions}) : extensions = extensions ?? ExtensionService();
+  HaLoServices(this.db, this.settings, {ExtensionService? extensions}) : extensions = extensions ?? ExtensionService();
 
   /// Persists QRZ credentials and seeds them into the extension host in one
   /// call, so a future call site can't update one store and forget the
@@ -124,7 +124,7 @@ class PoloServices {
 }
 
 /// Adapts `SettingsService` (SharedPreferences, Flutter) to the plain-Dart
-/// `SyncSettings` interface `polo_core`'s `SyncEngine` depends on.
+/// `SyncSettings` interface `halo_core`'s `SyncEngine` depends on.
 class _SettingsSyncAdapter implements SyncSettings {
   final SettingsService settings;
   _SettingsSyncAdapter(this.settings);
@@ -139,10 +139,10 @@ class _SettingsSyncAdapter implements SyncSettings {
   Future<void> setState(Map<String, dynamic> state) => settings.setSyncState(state);
 }
 
-class PoloNextApp extends StatelessWidget {
-  final PoloServices services;
+class HaLoApp extends StatelessWidget {
+  final HaLoServices services;
 
-  const PoloNextApp({super.key, required this.services});
+  const HaLoApp({super.key, required this.services});
 
   @override
   Widget build(BuildContext context) {
@@ -154,11 +154,11 @@ class PoloNextApp extends StatelessWidget {
         // Android task-switcher card title / web tab title — matches each
         // platform's own OS-level app name (see isWindowedPlatform's other
         // uses: macos/Runner/Configs/AppInfo.xcconfig "Ham2K Logger",
-        // android's AndroidManifest.xml label "PoLo").
-        title: isWindowedPlatform ? 'Ham2K Logger' : 'PoLo',
+        // android's AndroidManifest.xml label "HaLo").
+        title: isWindowedPlatform ? 'Ham2K Logger' : 'HaLo',
         navigatorKey: navigatorKey,
-        theme: buildPoloTheme(Brightness.light),
-        darkTheme: buildPoloTheme(Brightness.dark),
+        theme: buildHaLoTheme(Brightness.light),
+        darkTheme: buildHaLoTheme(Brightness.dark),
         themeMode: services.settings.themeMode,
         debugShowCheckedModeBanner: false,
         home: HomeView(services: services),

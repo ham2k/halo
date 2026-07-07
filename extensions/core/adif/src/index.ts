@@ -14,7 +14,7 @@ import { defineExtension, hooks } from "@ham2k/polo-sdk"
 import type { ExportRequest, ExportResult, HookContext } from "@ham2k/polo-sdk"
 
 const ADIF_VERSION = '3.1.5'
-const PROGRAM_ID = 'Ham2K PoLo Next'
+const PROGRAM_ID = 'Ham2K HaLo Next'
 
 function field(name: string, value: unknown): string {
   if (value === undefined || value === null || value === '') return ''

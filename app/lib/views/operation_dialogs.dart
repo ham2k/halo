@@ -7,8 +7,8 @@
 // carrying two copies of the same confirm-delete/edit-details prompt.
 
 import 'package:flutter/material.dart';
-import 'package:polo_core/polo_core.dart';
-import 'package:polo_widgets/polo_widgets.dart';
+import 'package:halo_core/halo_core.dart';
+import 'package:halo_widgets/halo_widgets.dart';
 
 /// Prompts to confirm, then soft-deletes on confirmation. Returns whether
 /// the operation was deleted.

@@ -28,7 +28,7 @@ controls for logging panel and operation settings), `adifFields`
 (SIG/SIG_INFO/POTA_REF and MY_SIG/MY_SIG_INFO/MY_POTA_REF), and the `spots`
 source (absorbed from the former spots-only extension).
 
-### UI catalog v0 (`polo_widgets`)
+### UI catalog v0 (`halo_widgets`)
 
 - **`RefChipsInput`** — the first catalog component (`input.kind: 'refList'`):
   chip list + entry field, pattern pre-validation from the descriptor,

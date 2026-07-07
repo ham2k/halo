@@ -7,7 +7,7 @@ else is layered on.
 
 ## What's here
 
-- **`packages/polo_core`** — pure Dart (no Flutter dependency):
+- **`packages/halo_core`** — pure Dart (no Flutter dependency):
   - `src/db/database.dart` — drift schema following app-polo's proven shape:
     JSON `data` blob as source of truth + derived indexed columns,
     `deleted`/`synced` flags for soft deletes and dirty-flag sync.
@@ -20,7 +20,7 @@ else is layered on.
   - `src/ham/radio.dart` — hot-path domain utilities only (band plan, freq
     parse/format, RST defaults, callsign plausibility). Full domain knowledge
     stays in the TS extension runtime per DESIGN.md §2.
-- **`packages/polo_widgets`** — UI modules (DESIGN.md §7: modules, not
+- **`packages/halo_widgets`** — UI modules (DESIGN.md §7: modules, not
   screens):
   - `LoggingPanel` — QSO entry. Enter logs from anywhere in the panel, Esc
     wipes, focus always returns to the callsign field, RST defaults follow
@@ -36,8 +36,8 @@ else is layered on.
 ## Verifying
 
 ```sh
-cd packages/polo_core && dart test        # schema, repos, radio utils
-cd packages/polo_widgets && flutter test  # logging keyboard flows
+cd packages/halo_core && dart test        # schema, repos, radio utils
+cd packages/halo_widgets && flutter test  # logging keyboard flows
 cd app && flutter run -d macos
 ```
 

@@ -1,4 +1,4 @@
-name: polo_next
+name: halo_next
 description: "Ham2K Portable Logger Next — Flutter app with a TypeScript extension runtime."
 publish_to: 'none'
 version: 0.1.0+1
@@ -9,12 +9,12 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  polo_extension_host:
-    path: ../packages/polo_extension_host
-  polo_core:
-    path: ../packages/polo_core
-  polo_widgets:
-    path: ../packages/polo_widgets
+  halo_extension_host:
+    path: ../packages/halo_extension_host
+  halo_core:
+    path: ../packages/halo_core
+  halo_widgets:
+    path: ../packages/halo_widgets
   drift: ^2.28.0
   drift_flutter: ^0.2.4
   file_selector: ^1.1.0

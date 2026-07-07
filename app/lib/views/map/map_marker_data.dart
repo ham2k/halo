@@ -4,7 +4,7 @@
 // The backend-agnostic contract every Map tab implementation (OSM, Mapbox
 // native, Mapbox webview) accepts — built once by the facade
 // (operation_map_tab.dart) from `Qso`/`Operation` domain objects via
-// gridToLocation, so no backend widget touches polo_core's QSO shape
+// gridToLocation, so no backend widget touches halo_core's QSO shape
 // directly or re-derives grid math.
 
 import 'package:flutter/foundation.dart';
@@ -29,7 +29,7 @@ class MapMarkerData {
   final String? sublabel;
   final MapMarkerKind kind;
 
-  /// Resolved once by the facade (PoloColors.bandColor for QSOs, the theme's
+  /// Resolved once by the facade (HaLoColors.bandColor for QSOs, the theme's
   /// primary for the QTH marker) so backends never need theme/context access
   /// just to color a pin.
   final Color color;

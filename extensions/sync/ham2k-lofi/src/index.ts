@@ -16,7 +16,7 @@ import type { CommandResult, HookContext, JSONValue, SyncPayload, SyncResponse }
 
 export const DEFAULT_LOFI_SERVER = 'https://lofi.ham2k.net'
 const DEFAULT_SECRET = 'no-secret'
-const USER_AGENT = 'Ham2K PoLo Next/0.1.0'
+const USER_AGENT = 'Ham2K HaLo Next/0.1.0'
 
 defineExtension({
   key: 'ham2k-lofi',
@@ -55,7 +55,7 @@ async function registerClient(): Promise<string> {
     method: 'POST',
     headers: { 'User-Agent': USER_AGENT, 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      client: { key, name: 'PoLo Next', secret: secret || DEFAULT_SECRET },
+      client: { key, name: 'HaLo Next', secret: secret || DEFAULT_SECRET },
       account: { call: call || undefined },
     }),
   })

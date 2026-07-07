@@ -1,3 +1,3 @@
-# polo_next
+# halo_next
 
 A new Flutter project.

@@ -2,14 +2,14 @@
 // SPDX-License-Identifier: MPL-2.0
 
 import 'package:flutter/material.dart';
-import 'package:polo_core/polo_core.dart';
-import 'package:polo_widgets/polo_widgets.dart';
+import 'package:halo_core/halo_core.dart';
+import 'package:halo_widgets/halo_widgets.dart';
 
 import '../../main.dart';
 
 class LoggingPanel extends StatelessWidget {
   final Operation operation;
-  final PoloServices services;
+  final HaLoServices services;
   final List<Qso> qsos;
   final List<Map<String, dynamic>> loggingControls;
   final Future<void> Function(String action) onCommandAction;

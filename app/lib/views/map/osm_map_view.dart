@@ -12,7 +12,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
-import 'package:polo_widgets/polo_widgets.dart';
+import 'package:halo_widgets/halo_widgets.dart';
 
 import 'map_marker_data.dart';
 
@@ -107,7 +107,7 @@ class _QsoMarker extends StatelessWidget {
             ),
             child: Text(
               marker.label,
-              style: poloMonoStyle(context, fontSize: 11, fontWeight: FontWeight.w700),
+              style: haloMonoStyle(context, fontSize: 11, fontWeight: FontWeight.w700),
             ),
           ),
         ],

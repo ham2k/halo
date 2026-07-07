@@ -1,4 +1,4 @@
-# PoLo Next — Architecture & Design
+# HaLo Next — Architecture & Design
 
 *Ham2K Portable Logger, next generation: a Flutter core with TypeScript extensions.*
 
@@ -9,7 +9,7 @@ Last updated: 2026-07-05
 
 ## 1. Background and motivation
 
-PoLo today ([app-polo](../app-polo)) is a React Native app built around a hook
+HaLo today ([app-polo](../app-polo)) is a React Native app built around a hook
 registry: extensions register hooks by category (`activity`, `spots`, `lookup`,
 `command`, `sync`, `export`, `scoring`, `confirmation`, `ref:<type>`, …), sorted
 by priority and toggleable per user settings. Everything — POTA, SOTA, contests,
@@ -260,7 +260,7 @@ extension_kv (extension, key, value JSON)
 batch sizes/delay) turned out to be a handful of scalars, not per-row data —
 implemented as a JSON blob in `SettingsService` (SharedPreferences) instead
 of a drift table, alongside `syncEnabled`/`syncDeviceKey`/`operatorCall`. See
-`packages/polo_core/lib/src/sync/sync_engine.dart`'s `SyncSettings`
+`packages/halo_core/lib/src/sync/sync_engine.dart`'s `SyncSettings`
 interface and `app/lib/main.dart`'s `_SettingsSyncAdapter`.
 
 - **drift** for typed SQL, versioned migrations, and reactive streams; runs on
@@ -322,9 +322,9 @@ multi-window API. Tear-off windows stay **out of the v1 critical path**.
 app-polo-next/
   app/                    # Flutter app (thin: wiring + distro config)
   packages/
-    polo_core/            # Dart: models, db, sync engine, services
-    polo_widgets/         # Dart: widget catalog + modules
-    polo_extension_host/     # Dart: QuickJS binding, bridge, manifests
+    halo_core/            # Dart: models, db, sync engine, services
+    halo_widgets/         # Dart: widget catalog + modules
+    halo_extension_host/     # Dart: QuickJS binding, bridge, manifests
   extensions/                # TypeScript workspace
     sdk/                  # @ham2k/polo-sdk — hook types + host API
     activities/           # pota, sota, wwff, ...
@@ -380,7 +380,7 @@ app-polo-next/
 | **⚠️ TODO — credentials stored in plaintext** | `SettingsService` (`app/lib/services/settings_service.dart`) persists QRZ.com username/password via plain `SharedPreferences` — unencrypted on disk. Fine for early dev, **not acceptable before a real release**: swap for platform secure storage (Keychain/Keystore, e.g. `flutter_secure_storage`) before shipping. |
 | **⚠️ TODO — Windows/Linux desktop map backend unimplemented** | The Map tab's desktop Mapbox backend (`app/lib/screens/map/mapbox_webview_map_view.dart`) uses `flutter_inappwebview`, which claims Windows/Linux support, but neither platform is scaffolded into this project (`app/windows/`, `app/linux/` don't exist) nor verified — needs `flutter create --platforms=windows,linux .` and its own spike before relying on it there. |
 | **⚠️ TODO — Map tab has no web backend** | `app/web/` isn't scaffolded either, and `mapbox_maps_flutter`'s web support is Public Preview only as of `3.0.0-alpha.1`. The Map tab's `kIsWeb` branch falls back to the OSM/`flutter_map` backend — revisit once Mapbox's web support leaves preview, or a Mapbox GL JS `<script>`-tag/iframe approach is spiked (a webview doesn't make sense on web, since the app itself is already running in a browser). |
-| **⚠️ TODO — sync onboarding UX is a bare-minimum banner, not a guided flow** | `SyncEngine` (`packages/polo_core/lib/src/sync/sync_engine.dart`) now does pause-and-ask account reconciliation (combine/replace, backed by a full backfill — `syncedUntilMillis`/`anyClient: true`, paging backward until caught up, mirroring app-polo's `sync.js`) and a `SYNCALL` debug command reusing the same backup-and-clear mechanism. What's still missing is app-polo's four onboarding *scenarios* as a guided UX (`app-polo/src/store/sync/README.md`) — new-install-vs-existing-account framing, waiting-for-email-confirmation states, etc. Settings just shows a plain Combine/Replace banner with no narrative around it. |
+| **⚠️ TODO — sync onboarding UX is a bare-minimum banner, not a guided flow** | `SyncEngine` (`packages/halo_core/lib/src/sync/sync_engine.dart`) now does pause-and-ask account reconciliation (combine/replace, backed by a full backfill — `syncedUntilMillis`/`anyClient: true`, paging backward until caught up, mirroring app-polo's `sync.js`) and a `SYNCALL` debug command reusing the same backup-and-clear mechanism. What's still missing is app-polo's four onboarding *scenarios* as a guided UX (`app-polo/src/store/sync/README.md`) — new-install-vs-existing-account framing, waiting-for-email-confirmation states, etc. Settings just shows a plain Combine/Replace banner with no narrative around it. |
 
 ---
 

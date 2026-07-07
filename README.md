@@ -1,4 +1,4 @@
-# PoLo Next
+# HaLo Next
 
 Next-generation Ham2K Portable Logger: a Flutter core ("the machine") with
 TypeScript extensions ("the knowledge") for activities, contests, callsign
