@@ -241,9 +241,9 @@ void main() {
     addTearDown(host.dispose);
 
     // Picks the first non-null result from every registered `command` hook,
-    // exactly as ExtensionService.tryCommand does.
-    Future<Map<String, dynamic>?> tryCommand(String input) async {
-      final entries = await host.invokeHookAll('command', method: 'tryCommand', args: {'input': input});
+    // exactly as ExtensionService.interpretCommand does.
+    Future<Map<String, dynamic>?> interpretCommand(String input) async {
+      final entries = await host.invokeHookAll('command', method: 'interpret', args: {'input': input});
       for (final entry in entries) {
         if (entry['ok'] == true && entry['value'] is Map) return (entry['value'] as Map).cast<String, dynamic>();
       }
@@ -253,23 +253,110 @@ void main() {
     // The bug this extension fixes: MHz-style input with only 2 digits
     // before the decimal point never matched the old Dart regex, which
     // required 3+ digits unconditionally.
-    expect(await tryCommand('14.285'), {'freq': 14285.0});
+    expect(await interpretCommand('14.285'), {
+      'describe': 'Change frequency to **14.285 MHz**?',
+      'confirm': 'Frequency set to **14.285 MHz**',
+      'commands': [
+        {'setVfo': {'freq': 14285.0}}
+      ]
+    });
 
     // Plain kHz input still works.
-    expect(await tryCommand('14285'), {'freq': 14285.0});
+    expect(await interpretCommand('14285'), {
+      'describe': 'Change frequency to **14.285 MHz**?',
+      'confirm': 'Frequency set to **14.285 MHz**',
+      'commands': [
+        {'setVfo': {'freq': 14285.0}}
+      ]
+    });
 
     // Band and mode commands.
-    expect(await tryCommand('20m'), {'band': '20m'});
-    expect(await tryCommand('20'), {'band': '20m'});
-    expect(await tryCommand('cw'), {'mode': 'CW'});
+    expect(await interpretCommand('20m'), {
+      'describe': 'Change band to **20m**?',
+      'confirm': 'Band set to **20m**',
+      'commands': [
+        {'setVfo': {'band': '20m'}}
+      ]
+    });
+    expect(await interpretCommand('20'), {
+      'describe': 'Change band to **20m**?',
+      'confirm': 'Band set to **20m**',
+      'commands': [
+        {'setVfo': {'band': '20m'}}
+      ]
+    });
+    expect(await interpretCommand('cw'), {
+      'describe': 'Change mode to **CW**?',
+      'confirm': 'Mode set to **CW**',
+      'commands': [
+        {'setVfo': {'mode': 'CW'}}
+      ]
+    });
 
     // Nonsense input matches nothing.
-    expect(await tryCommand('QQQ'), isNull);
-    expect(await tryCommand('13000'), isNull); // gap between 30m and 20m, no such ham band
+    expect(await interpretCommand('QQQ'), isNull);
+    expect(await interpretCommand('13000'), isNull); // gap between 30m and 20m, no such ham band
 
     // 3-digit band tokens (160m, 630m) also resolve correctly — and don't
     // get shadowed by the frequency command, since band priority (100)
     // beats frequency (99) whenever both could theoretically match.
-    expect(await tryCommand('160m'), {'band': '160m'});
+    expect(await interpretCommand('160m'), {
+      'describe': 'Change band to **160m**?',
+      'confirm': 'Band set to **160m**',
+      'commands': [
+        {'setVfo': {'band': '160m'}}
+      ]
+    });
+  });
+
+  test('SOTA extension composes ADIF fields into the export (in-runtime hooks)', () async {
+    final adifFile = File('../../app/assets/extensions/adif.js');
+    final sotaFile = File('../../app/assets/extensions/sota.js');
+    if (!kernelFile.existsSync() || !adifFile.existsSync() || !sotaFile.existsSync()) {
+      markTestSkipped('bundles not built — run `npm run build` in extensions/ first');
+      return;
+    }
+
+    final host = await ExtensionHost.start(
+      kernelSource: kernelFile.readAsStringSync(),
+      extensions: [
+        ExtensionBundle(key: 'adif', source: adifFile.readAsStringSync()),
+        ExtensionBundle(key: 'sota', source: sotaFile.readAsStringSync()),
+      ],
+      useIsolate: false,
+    );
+    addTearDown(host.dispose);
+
+    // SOTA ref validation works without network.
+    final validation = await host.invokeHook('ref:sota', method: 'validateRef',
+        args: {'ref': {'type': 'sota', 'ref': 'w6/sd-026'}});
+    expect(validation['valid'], true);
+    expect(validation['normalized'], 'W6/SD-026');
+
+    final result = await host.invokeHook('export', key: 'adif', method: 'generateExport', args: {
+      'operation': {
+        'stationCall': 'KI2D',
+        'title': 'Summit run',
+        'refs': [
+          {'type': 'sotaActivation', 'ref': 'W6/SD-026'},
+        ],
+      },
+      'qsos': [
+        {
+          'their': {'call': 'W1AW', 'sent': '59'},
+          'our': {'call': 'KI2D', 'sent': '59'},
+          'mode': 'SSB',
+          'band': '20m',
+          'startAtMillis': DateTime.utc(2026, 7, 5, 19).millisecondsSinceEpoch,
+          'refs': [
+            {'type': 'sota', 'ref': 'G/LD-001'},
+          ],
+        },
+      ],
+    }) as Map;
+
+    final content = result['content'] as String;
+    expect(content, contains('<SOTA_REF:8>G/LD-001'));
+    expect(content, contains('<MY_SOTA_REF:9>W6/SD-026'));
   });
 }

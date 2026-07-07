@@ -20,6 +20,7 @@ const bundles = [
   { key: 'hamdb', entry: 'lookups/hamdb/src/index.ts', kind: 'extension' },
   { key: 'qrz', entry: 'lookups/qrz/src/index.ts', kind: 'extension' },
   { key: 'pota', entry: 'activities/pota/src/index.ts', kind: 'extension' },
+  { key: 'sota', entry: 'activities/sota/src/index.ts', kind: 'extension' },
   { key: 'ham2k-lofi', entry: 'sync/ham2k-lofi/src/index.ts', kind: 'extension' },
 ]
 
