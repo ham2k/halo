@@ -8,6 +8,7 @@
 // lib/config/mapbox_token.dart is filled in. Has no globe projection —
 // flutter_map is a 2D tile compositor, not a 3D renderer.
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
@@ -15,17 +16,45 @@ import 'package:polo_widgets/polo_widgets.dart';
 
 import 'map_marker_data.dart';
 
-class OsmMapView extends StatelessWidget {
+class OsmMapView extends StatefulWidget {
   final List<MapMarkerData> markers;
 
   const OsmMapView({super.key, required this.markers});
 
   @override
+  State<OsmMapView> createState() => _OsmMapViewState();
+}
+
+class _OsmMapViewState extends State<OsmMapView> {
+  final _mapController = MapController();
+
+  @override
+  void didUpdateWidget(OsmMapView oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (!listEquals(oldWidget.markers, widget.markers)) _fitCamera();
+  }
+
+  void _fitCamera() {
+    if (widget.markers.isEmpty) return;
+    _mapController.fitCamera(CameraFit.coordinates(
+      coordinates: [for (final m in widget.markers) LatLng(m.latitude, m.longitude)],
+      padding: const EdgeInsets.all(48),
+      maxZoom: 11,
+    ));
+  }
+
+  @override
+  void dispose() {
+    _mapController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final points = [for (final m in markers) LatLng(m.latitude, m.longitude)];
+    final points = [for (final m in widget.markers) LatLng(m.latitude, m.longitude)];
 
     return FlutterMap(
+      mapController: _mapController,
       options: MapOptions(
         initialCameraFit: CameraFit.coordinates(
           coordinates: points,
@@ -39,14 +68,14 @@ class OsmMapView extends StatelessWidget {
           userAgentPackageName: 'com.ham2k.poloNext',
         ),
         MarkerLayer(markers: [
-          for (final marker in markers)
+          for (final marker in widget.markers)
             Marker(
               point: LatLng(marker.latitude, marker.longitude),
               width: marker.kind == MapMarkerKind.qth ? 32 : 120,
               height: marker.kind == MapMarkerKind.qth ? 32 : 46,
               alignment: marker.kind == MapMarkerKind.qth ? Alignment.center : Alignment.topCenter,
               child: marker.kind == MapMarkerKind.qth
-                  ? Icon(MdiIcons.radioTower, color: theme.colorScheme.primary, size: 28)
+                  ? Icon(MdiIcons.radioTower, color: marker.color, size: 28)
                   : _QsoMarker(marker: marker),
             ),
         ]),
@@ -69,7 +98,7 @@ class _QsoMarker extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(Icons.location_pin, color: theme.colorScheme.tertiary, size: 24),
+          Icon(Icons.location_pin, color: marker.color, size: 24),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
             decoration: BoxDecoration(

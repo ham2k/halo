@@ -10,6 +10,7 @@
 
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 
@@ -35,7 +36,7 @@ class _MapboxWebviewMapViewState extends State<MapboxWebviewMapView> {
     super.didUpdateWidget(oldWidget);
     if (!_mapReady) return;
     if (oldWidget.projection != widget.projection) _applyProjection();
-    if (oldWidget.markers != widget.markers) _applyMarkers();
+    if (!listEquals(oldWidget.markers, widget.markers)) _applyMarkers();
   }
 
   Future<void> _applyProjection() async {
@@ -52,7 +53,9 @@ class _MapboxWebviewMapViewState extends State<MapboxWebviewMapView> {
           'latitude': m.latitude,
           'longitude': m.longitude,
           'label': m.label,
+          'sublabel': m.sublabel,
           'kind': m.kind.name,
+          'color': '#${m.color.toARGB32().toRadixString(16).padLeft(8, '0').substring(2)}',
         },
     ]);
     await _controller?.evaluateJavascript(source: 'window.poloSetMarkers($data);');
@@ -60,9 +63,11 @@ class _MapboxWebviewMapViewState extends State<MapboxWebviewMapView> {
 
   @override
   Widget build(BuildContext context) {
+    final primaryHex =
+        '#${Theme.of(context).colorScheme.primary.toARGB32().toRadixString(16).padLeft(8, '0').substring(2)}';
     return InAppWebView(
       initialData: InAppWebViewInitialData(
-        data: _html(mapboxAccessToken),
+        data: _html(mapboxAccessToken, primaryHex),
         baseUrl: WebUri('https://ham2k.com/'),
       ),
       initialSettings: InAppWebViewSettings(transparentBackground: true),
@@ -82,7 +87,7 @@ class _MapboxWebviewMapViewState extends State<MapboxWebviewMapView> {
     );
   }
 
-  static String _html(String token) => '''
+  static String _html(String token, String primaryColorHex) => '''
 <!DOCTYPE html>
 <html>
 <head>
@@ -120,11 +125,12 @@ class _MapboxWebviewMapViewState extends State<MapboxWebviewMapView> {
       data.forEach((m) => {
         let marker;
         if (m.kind === 'qth') {
-          marker = new mapboxgl.Marker({ color: '#006783' });
+          marker = new mapboxgl.Marker({ color: '$primaryColorHex' });
         } else {
           const el = document.createElement('div');
           el.className = 'polo-marker';
-          el.textContent = m.label;
+          el.style.borderColor = m.color;
+          el.textContent = m.sublabel ? m.label + ' — ' + m.sublabel : m.label;
           marker = new mapboxgl.Marker({ element: el });
         }
         marker.setLngLat([m.longitude, m.latitude]).addTo(map);

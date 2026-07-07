@@ -8,6 +8,7 @@
 // directly or re-derives grid math.
 
 import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart' show Color;
 
 enum MapMarkerKind { qso, qth }
 
@@ -28,12 +29,36 @@ class MapMarkerData {
   final String? sublabel;
   final MapMarkerKind kind;
 
+  /// Resolved once by the facade (PoloColors.bandColor for QSOs, the theme's
+  /// primary for the QTH marker) so backends never need theme/context access
+  /// just to color a pin.
+  final Color color;
+
   const MapMarkerData({
     required this.id,
     required this.latitude,
     required this.longitude,
     required this.label,
     required this.kind,
+    required this.color,
     this.sublabel,
   });
+
+  /// Value equality so `didUpdateWidget`/`listEquals` checks can tell a
+  /// same-content rebuild from an actual data change, rather than always
+  /// seeing a "different" list because the facade rebuilds a fresh one.
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is MapMarkerData &&
+          id == other.id &&
+          latitude == other.latitude &&
+          longitude == other.longitude &&
+          label == other.label &&
+          sublabel == other.sublabel &&
+          kind == other.kind &&
+          color == other.color);
+
+  @override
+  int get hashCode => Object.hash(id, latitude, longitude, label, sublabel, kind, color);
 }

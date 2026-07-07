@@ -18,6 +18,7 @@ import 'dart:io' show Platform;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:polo_core/polo_core.dart';
+import 'package:polo_widgets/polo_widgets.dart';
 
 import '../../config/mapbox_token.dart';
 import 'map_marker_data.dart';
@@ -41,6 +42,7 @@ class _OperationMapTabState extends State<OperationMapTab> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final poloColors = PoloColors.of(context);
 
     final markers = <MapMarkerData>[
       if (gridToLocation(widget.operation.grid) case final qth?)
@@ -50,6 +52,7 @@ class _OperationMapTabState extends State<OperationMapTab> {
           longitude: qth.longitude,
           label: 'QTH',
           kind: MapMarkerKind.qth,
+          color: theme.colorScheme.primary,
         ),
       for (final qso in widget.qsos)
         if (gridToLocation(qso.theirGrid) case final location?)
@@ -60,6 +63,7 @@ class _OperationMapTabState extends State<OperationMapTab> {
             label: qso.theirCall,
             sublabel: qso.theirName,
             kind: MapMarkerKind.qso,
+            color: poloColors.bandColor(qso.band),
           ),
     ];
 

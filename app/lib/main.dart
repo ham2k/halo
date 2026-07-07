@@ -24,11 +24,13 @@ final navigatorKey = GlobalKey<NavigatorState>();
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   final db = PoloDatabase(driftDatabase(name: 'polo_next'));
+  final extensions = ExtensionService();
+  // Fire-and-forget, and kicked off before awaiting settings below so these
+  // two independent boot steps run concurrently instead of serialized; the
+  // core logging loop never waits on the extension runtime either way.
+  extensions.start();
   final settings = await SettingsService.load();
-  final services = PoloServices(db, settings);
-  // Fire-and-forget: the extension runtime enriches features as it comes up;
-  // the core logging loop never waits on it.
-  services.extensions.start();
+  final services = PoloServices(db, settings, extensions: extensions);
   if (settings.hasQrzCredentials) {
     services.extensions.setQrzCredentials(username: settings.qrzUsername, password: settings.qrzPassword);
   }
@@ -59,10 +61,19 @@ class PoloServices {
   final SettingsService settings;
   late final OperationsRepository operations = OperationsRepository(db);
   late final QsosRepository qsos = QsosRepository(db);
-  final ExtensionService extensions = ExtensionService();
+  final ExtensionService extensions;
   late final ExportService exports = ExportService(extensions: extensions, qsos: qsos);
 
-  PoloServices(this.db, this.settings);
+  PoloServices(this.db, this.settings, {ExtensionService? extensions}) : extensions = extensions ?? ExtensionService();
+
+  /// Persists QRZ credentials and seeds them into the extension host in one
+  /// call, so a future call site can't update one store and forget the
+  /// other the way main.dart's boot path and SettingsScreen's save handler
+  /// used to have to coordinate by hand.
+  Future<void> setQrzCredentials({required String username, required String password}) async {
+    await settings.setQrzCredentials(username: username, password: password);
+    await extensions.setQrzCredentials(username: username, password: password);
+  }
 }
 
 class PoloNextApp extends StatelessWidget {
@@ -82,6 +93,10 @@ class PoloNextApp extends StatelessWidget {
         theme: buildPoloTheme(Brightness.light),
         darkTheme: buildPoloTheme(Brightness.dark),
         themeMode: services.settings.themeMode,
+        // No debug-mode ribbon — the OperationsScreen's logo is tinted red
+        // in debug builds instead (see operations_screen.dart), a signal
+        // that doesn't cover any content or collide with window chrome.
+        debugShowCheckedModeBanner: false,
         home: OperationsScreen(services: services),
       ),
     );

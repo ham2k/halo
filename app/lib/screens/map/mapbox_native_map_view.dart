@@ -7,6 +7,7 @@
 // MapLibre GL JS does, which is why desktop uses a webview instead of
 // MapLibre here — see the Map tab planning notes).
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:mapbox_maps_flutter/mapbox_maps_flutter.dart';
 
@@ -37,7 +38,7 @@ class _MapboxNativeMapViewState extends State<MapboxNativeMapView> {
   void didUpdateWidget(MapboxNativeMapView oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.projection != widget.projection) _applyProjection();
-    if (oldWidget.markers != widget.markers) _applyMarkers();
+    if (!listEquals(oldWidget.markers, widget.markers)) _applyMarkers();
   }
 
   Future<void> _applyProjection() async {
@@ -57,12 +58,14 @@ class _MapboxNativeMapViewState extends State<MapboxNativeMapView> {
       for (final marker in widget.markers)
         PointAnnotationOptions(
           geometry: Point(coordinates: Position(marker.longitude, marker.latitude)),
-          textField: marker.label,
+          textField: [marker.label, if (marker.sublabel != null) marker.sublabel!].join(' — '),
           textOffset: [0, 1.2],
           textColor: Colors.black.toARGB32(),
           textHaloColor: Colors.white.toARGB32(),
           textHaloWidth: 1.5,
-          iconImage: marker.kind == MapMarkerKind.qth ? null : 'marker-15',
+          iconImage: 'marker-15',
+          iconColor: marker.color.toARGB32(),
+          iconSize: marker.kind == MapMarkerKind.qth ? 1.5 : 1.0,
         ),
     ]);
 

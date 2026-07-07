@@ -9,6 +9,7 @@ import 'package:flutter/material.dart';
 import 'package:polo_widgets/polo_widgets.dart';
 
 import '../main.dart';
+import 'operation_dialogs.dart';
 
 const _appVersion = '0.1.0'; // keep in sync with app/pubspec.yaml
 
@@ -24,43 +25,18 @@ class SettingsScreen extends StatefulWidget {
 class _SettingsScreenState extends State<SettingsScreen> {
   Future<void> _editQrzCredentials() async {
     final settings = widget.services.settings;
-    final usernameController = TextEditingController(text: settings.qrzUsername);
-    final passwordController = TextEditingController(text: settings.qrzPassword);
-
-    final saved = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('QRZ.com credentials'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: usernameController,
-              autofocus: true,
-              decoration: poloFieldDecoration(context, 'Username'),
-            ),
-            const SizedBox(height: 8),
-            TextField(
-              controller: passwordController,
-              obscureText: true,
-              decoration: poloFieldDecoration(context, 'Password'),
-              onSubmitted: (_) => Navigator.of(context).pop(true),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('Cancel')),
-          FilledButton(onPressed: () => Navigator.of(context).pop(true), child: const Text('Save')),
-        ],
-      ),
+    final result = await editTwoFieldDialog(
+      context,
+      title: 'QRZ.com credentials',
+      field1Label: 'Username',
+      field1Initial: settings.qrzUsername,
+      field2Label: 'Password',
+      field2Initial: settings.qrzPassword,
+      field2Obscure: true,
     );
+    if (result == null) return;
 
-    if (saved != true) return;
-    await settings.setQrzCredentials(username: usernameController.text.trim(), password: passwordController.text);
-    await widget.services.extensions.setQrzCredentials(
-      username: usernameController.text.trim(),
-      password: passwordController.text,
-    );
+    await widget.services.setQrzCredentials(username: result.$1.trim(), password: result.$2);
     if (mounted) setState(() {});
   }
 
@@ -70,14 +46,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        leadingWidth: isMacOSChromelessWindow ? 56 + macOSTrafficLightInset : null,
+        leadingWidth: isMacOSChromelessWindow ? 56 + macOSTrafficLightInset + macOSTrafficLightGap : null,
         leading: isMacOSChromelessWindow
             ? const Padding(
-                padding: EdgeInsets.only(left: macOSTrafficLightInset),
+                padding: EdgeInsets.only(left: macOSTrafficLightInset + macOSTrafficLightGap),
                 child: BackButton(),
               )
             : null,
         title: const Text('Settings'),
+        actions: const [SizedBox(width: 16)],
       ),
       body: ListView(
         children: [
@@ -114,10 +91,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
             onTap: _editQrzCredentials,
           ),
           const _SectionHeader('About'),
-          const ListTile(
-            leading: Icon(Icons.info_outline),
-            title: Text('PoLo Next'),
-            subtitle: Text('Version $_appVersion (dev build)'),
+          ListTile(
+            leading: ClipRRect(
+              borderRadius: BorderRadius.circular(8),
+              child: Image.asset('assets/images/ham2k-icon.png', width: 40, height: 40),
+            ),
+            title: const Text('PoLo Next'),
+            subtitle: const Text('Version $_appVersion (dev build)'),
           ),
         ],
       ),
