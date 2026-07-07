@@ -6,10 +6,16 @@
 // there's nowhere near enough settings yet to need one).
 
 import 'dart:async';
+import 'dart:convert';
+import 'dart:math';
 
+import 'package:crypto/crypto.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_inappwebview/flutter_inappwebview.dart';
+import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:halo_core/halo_core.dart';
 import 'package:halo_widgets/halo_widgets.dart';
+import 'package:http/http.dart' as http;
 
 import '../main.dart';
 import 'operation_dialogs.dart';
@@ -28,28 +34,56 @@ class SettingsView extends StatefulWidget {
 class _SettingsViewState extends State<SettingsView> {
   Map<String, dynamic>? _syncAccount;
   bool _loadingSyncAccount = false;
+  List<Map<String, dynamic>>? _accounts;
+  final Map<String, String> _accountSubtitles = {};
 
   @override
   void initState() {
     super.initState();
     if (widget.services.settings.syncEnabled) _refreshSyncAccount();
+    _loadAccounts();
   }
 
-  Future<void> _editQrzCredentials() async {
-    final settings = widget.services.settings;
-    final result = await editTwoFieldDialog(
-      context,
-      title: 'QRZ.com credentials',
-      field1Label: 'Username',
-      field1Initial: settings.qrzUsername,
-      field2Label: 'Password',
-      field2Initial: settings.qrzPassword,
-      field2Obscure: true,
-    );
-    if (result == null) return;
+  Future<void> _loadAccounts() async {
+    await widget.services.extensions.start();
+    final accounts = await widget.services.extensions.getAccounts();
+    final subtitles = <String, String>{};
+    for (final account in accounts) {
+      final kvKey = account['kvKey'] as String;
+      final creds = await widget.services.extensions.getAccountCredentials(kvKey);
+      String subtitle = 'Not configured';
+      if (creds.isNotEmpty) {
+        if (creds.containsKey('username')) {
+          subtitle = creds['username']!;
+        } else if (creds.containsKey('email')) {
+          subtitle = creds['email']!;
+        } else if (creds.containsKey('login')) {
+          subtitle = creds['login']!;
+        } else {
+          subtitle = 'Configured';
+        }
+      }
+      subtitles[kvKey] = subtitle;
+    }
+    if (mounted) {
+      setState(() {
+        _accounts = accounts;
+        _accountSubtitles.clear();
+        _accountSubtitles.addAll(subtitles);
+      });
+    }
+  }
 
-    await widget.services.setQrzCredentials(username: result.$1.trim(), password: result.$2);
-    if (mounted) setState(() {});
+  Future<void> _openAccountDialog(Map<String, dynamic> account) async {
+    await showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => _AccountDialog(
+        services: widget.services,
+        account: account,
+        onSaved: _loadAccounts,
+      ),
+    );
   }
 
   Future<void> _editOperatorCall() async {
@@ -181,14 +215,29 @@ class _SettingsViewState extends State<SettingsView> {
               onSelectionChanged: (selection) => settings.setThemeMode(selection.first),
             ),
           ),
-          const _SectionHeader('Accounts & services'),
-          ListTile(
-            leading: Icon(MdiIcons.keyChain),
-            title: const Text('QRZ.com credentials'),
-            subtitle: Text(settings.hasQrzCredentials ? settings.qrzUsername : 'Not configured'),
-            onTap: _editQrzCredentials,
-            mouseCursor: SystemMouseCursors.click,
-          ),
+          const _SectionHeader('Accounts'),
+          if (_accounts == null)
+            const Padding(
+              padding: EdgeInsets.all(16.0),
+              child: Center(child: CircularProgressIndicator()),
+            )
+          else if (_accounts!.isEmpty)
+            const ListTile(
+              title: Text('No active extensions with accounts'),
+            )
+          else
+            ..._accounts!.map((account) {
+              final kvKey = account['kvKey'] as String;
+              final label = account['label'] as String;
+              final subtitle = _accountSubtitles[kvKey] ?? 'Not configured';
+              return ListTile(
+                leading: Icon(MdiIcons.keyChain),
+                title: Text(label),
+                subtitle: Text(subtitle),
+                onTap: () => _openAccountDialog(account),
+                mouseCursor: SystemMouseCursors.click,
+              );
+            }),
           const _SectionHeader('Sync'),
           ListTile(
             leading: Icon(resolveIconName('account-outline')),
@@ -312,6 +361,349 @@ class _SectionHeader extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
       child: Text(title, style: theme.textTheme.titleSmall?.copyWith(color: theme.colorScheme.primary)),
+    );
+  }
+}
+
+class _AccountDialog extends StatefulWidget {
+  final HaLoServices services;
+  final Map<String, dynamic> account;
+  final VoidCallback onSaved;
+
+  const _AccountDialog({
+    required this.services,
+    required this.account,
+    required this.onSaved,
+  });
+
+  @override
+  State<_AccountDialog> createState() => _AccountDialogState();
+}
+
+class _AccountDialogState extends State<_AccountDialog> {
+  final Map<String, TextEditingController> _controllers = {};
+  bool _testing = false;
+  String? _testResult;
+  bool _loggedIn = false;
+
+  String? _fieldError(String key, String value) {
+    if (widget.account['key'] == 'qrz' && key == 'username' && value.contains('@')) {
+      return "Don't use your email for login.";
+    }
+    return null;
+  }
+
+  List<Map<String, dynamic>> get _fields =>
+      (widget.account['fields'] as List? ?? const []).cast<Map<String, dynamic>>();
+
+  Map<String, dynamic>? get _oauth2 =>
+      widget.account['oauth2'] as Map<String, dynamic>?;
+
+  String get _kvKey => widget.account['kvKey'] as String;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadInitialData();
+  }
+
+  Future<void> _loadInitialData() async {
+    final creds = await widget.services.extensions.getAccountCredentials(_kvKey);
+    setState(() {
+      _loggedIn = creds.isNotEmpty;
+    });
+    for (final field in _fields) {
+      final key = field['key'] as String;
+      _controllers[key] = TextEditingController(text: creds[key] ?? '');
+    }
+  }
+
+  @override
+  void dispose() {
+    for (final c in _controllers.values) {
+      c.dispose();
+    }
+    super.dispose();
+  }
+
+  Future<void> _save() async {
+    if (_oauth2 == null) {
+      final creds = _controllers.map((key, controller) => MapEntry(key, controller.text.trim()));
+      await widget.services.extensions.setAccountCredentials(_kvKey, creds);
+    }
+    widget.onSaved();
+    if (mounted) Navigator.of(context).pop();
+  }
+
+  Future<void> _clear() async {
+    await widget.services.extensions.clearAccount(_kvKey);
+    for (final c in _controllers.values) {
+      c.clear();
+    }
+    setState(() {
+      _loggedIn = false;
+      _testResult = null;
+    });
+    widget.onSaved();
+  }
+
+  Future<void> _test() async {
+    setState(() {
+      _testing = true;
+      _testResult = null;
+    });
+
+    final Map<String, String> creds;
+    if (_oauth2 != null) {
+      creds = await widget.services.extensions.getAccountCredentials(_kvKey);
+    } else {
+      creds = _controllers.map((key, controller) => MapEntry(key, controller.text.trim()));
+    }
+
+    final res = await widget.services.extensions.testCredentials(
+      widget.account['key'] as String,
+      creds,
+    );
+
+    if (mounted) {
+      setState(() {
+        _testing = false;
+        _testResult = res;
+      });
+    }
+  }
+
+  Future<void> _doOAuth() async {
+    final oauth2 = _oauth2!;
+    final issuer = oauth2['issuer'] as String;
+    final clientId = oauth2['clientId'] as String;
+    final redirectUrl = oauth2['redirectUrl'] as String;
+    final scopes = (oauth2['scopes'] as List).cast<String>();
+
+    try {
+      final discoveryUrl = Uri.parse('$issuer/.well-known/openid-configuration');
+      final response = await http.get(discoveryUrl);
+      if (response.statusCode != 200) throw Exception('Failed to load OIDC discovery: ${response.statusCode}');
+      final discovery = jsonDecode(response.body) as Map<String, dynamic>;
+      final authEndpoint = discovery['authorization_endpoint'] as String;
+      final tokenEndpoint = discovery['token_endpoint'] as String;
+
+      final codeVerifier = _randomString(64);
+      final codeChallenge = _sha256Challenge(codeVerifier);
+      final state = _randomString(16);
+
+      final authUri = Uri.parse(authEndpoint).replace(queryParameters: {
+        'response_type': 'code',
+        'client_id': clientId,
+        'redirect_uri': redirectUrl,
+        'scope': scopes.join(' '),
+        'state': state,
+        'code_challenge': codeChallenge,
+        'code_challenge_method': 'S256',
+      });
+
+      if (!mounted) return;
+
+      final code = await Navigator.of(context).push<String>(
+        MaterialPageRoute(
+          builder: (context) => Scaffold(
+            appBar: AppBar(
+              title: Text('Connect to ${widget.account['label']}'),
+              leading: CloseButton(onPressed: () => Navigator.of(context).pop()),
+            ),
+            body: InAppWebView(
+              initialUrlRequest: URLRequest(url: WebUri(authUri.toString())),
+              initialSettings: InAppWebViewSettings(
+                javaScriptEnabled: true,
+                useShouldOverrideUrlLoading: true,
+              ),
+              shouldOverrideUrlLoading: (controller, navigationAction) async {
+                final url = navigationAction.request.url?.toString();
+                if (url != null && url.startsWith(redirectUrl)) {
+                  final uri = Uri.parse(url);
+                  final redirectCode = uri.queryParameters['code'];
+                  final redirectState = uri.queryParameters['state'];
+                  if (redirectState == state) {
+                    Navigator.of(context).pop(redirectCode);
+                  } else {
+                    Navigator.of(context).pop();
+                  }
+                  return NavigationActionPolicy.CANCEL;
+                }
+                return NavigationActionPolicy.ALLOW;
+              },
+            ),
+          ),
+        ),
+      );
+
+      if (code == null) return;
+
+      setState(() => _testing = true);
+
+      final tokenResponse = await http.post(
+        Uri.parse(tokenEndpoint),
+        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+        body: {
+          'grant_type': 'authorization_code',
+          'client_id': clientId,
+          'code': code,
+          'redirect_uri': redirectUrl,
+          'code_verifier': codeVerifier,
+        },
+      );
+
+      if (tokenResponse.statusCode != 200) {
+        throw Exception('Failed to exchange code: ${tokenResponse.body}');
+      }
+
+      final tokens = jsonDecode(tokenResponse.body) as Map<String, dynamic>;
+      final credentials = <String, String>{};
+      if (tokens['access_token'] != null) credentials['accessToken'] = tokens['access_token'] as String;
+      if (tokens['refresh_token'] != null) credentials['refreshToken'] = tokens['refresh_token'] as String;
+      if (tokens['id_token'] != null) credentials['idToken'] = tokens['id_token'] as String;
+
+      await widget.services.extensions.setAccountCredentials(_kvKey, credentials);
+      
+      setState(() {
+        _loggedIn = true;
+        _testing = false;
+      });
+      widget.onSaved();
+
+    } catch (e) {
+      if (mounted) {
+        setState(() => _testing = false);
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Login failed: $e')));
+      }
+    }
+  }
+
+  String _randomString(int length) {
+    final rand = Random.secure();
+    const chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-._~';
+    return List.generate(length, (index) => chars[rand.nextInt(chars.length)]).join();
+  }
+
+  String _sha256Challenge(String verifier) {
+    final bytes = utf8.encode(verifier);
+    final digest = sha256.convert(bytes);
+    return base64Url.encode(digest.bytes).replaceAll('=', '');
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return AlertDialog(
+      title: Text(widget.account['label'] as String),
+      content: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            if (_oauth2 != null) ...[
+              if (_loggedIn) ...[
+                Text(
+                  'Connected to ${widget.account['label']}',
+                  style: theme.textTheme.bodyMedium,
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 16),
+                OutlinedButton(
+                  onPressed: _clear,
+                  child: const Text('Disconnect'),
+                ),
+              ] else ...[
+                OutlinedButton(
+                  onPressed: _testing ? null : _doOAuth,
+                  child: const Text('Login'),
+                ),
+              ],
+            ] else ...[
+              ..._fields.map((field) {
+                final key = field['key'] as String;
+                final preface = field['preface'] as String?;
+                final postface = field['postface'] as String?;
+                final controller = _controllers[key];
+
+                if (controller == null) return const SizedBox.shrink();
+
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      if (preface != null && preface.isNotEmpty) ...[
+                        MarkdownBody(data: preface),
+                        const SizedBox(height: 8),
+                      ],
+                      TextField(
+                        controller: controller,
+                        obscureText: field['type'] == 'secret',
+                        keyboardType: field['type'] == 'email'
+                            ? TextInputType.emailAddress
+                            : TextInputType.text,
+                        decoration: poloFieldDecoration(context, field['label'] as String).copyWith(
+                          errorText: _fieldError(key, controller.text),
+                        ),
+                        onChanged: (_) => setState(() {}),
+                      ),
+                      if (postface != null && postface.isNotEmpty) ...[
+                        const SizedBox(height: 8),
+                        MarkdownBody(data: postface),
+                      ],
+                    ],
+                  ),
+                );
+              }),
+            ],
+            if (_testResult != null) ...[
+              const SizedBox(height: 16),
+              const Divider(),
+              const SizedBox(height: 8),
+              Text(
+                'Test Connection Result:',
+                style: theme.textTheme.titleSmall?.copyWith(color: theme.colorScheme.primary),
+              ),
+              const SizedBox(height: 8),
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.surfaceContainerHighest,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: MarkdownBody(data: _testResult!),
+              ),
+            ],
+            if (_testing) ...[
+              const SizedBox(height: 16),
+              const Center(child: CircularProgressIndicator()),
+            ],
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Cancel'),
+        ),
+        if (_oauth2 == null && _loggedIn)
+          TextButton(
+            onPressed: _clear,
+            child: const Text('Clear'),
+          ),
+        if (!_testing)
+          TextButton(
+            onPressed: _test,
+            child: const Text('Test'),
+          ),
+        if (_oauth2 == null)
+          FilledButton(
+            onPressed: _save,
+            child: const Text('Save'),
+          ),
+      ],
     );
   }
 }

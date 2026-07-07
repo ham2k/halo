@@ -71,12 +71,25 @@ function hostCall(method: string, params: Record<string, unknown>): Promise<unkn
   })
 }
 
-async function callHookMethod(record: HookRecord, method: string, args: unknown): Promise<unknown> {
-  const fn = record.hook[method]
-  if (typeof fn !== 'function') {
-    throw new Error(`hook ${record.category}/${record.key} has no method ${method}`)
+async function getAccountContext(extensionKey: string): Promise<unknown> {
+  const accountHookRecord = hooks.find((h) => h.category === 'account' && h.extensionKey === extensionKey)
+  if (!accountHookRecord) return undefined
+  const kvKey = accountHookRecord.hook.kvKey || accountHookRecord.key || extensionKey
+  try {
+    return (await hostCall('getAccount', { ns: extensionKey, kvKey })) as unknown
+  } catch (e) {
+    return undefined
   }
-  return await fn.call(record.hook, args, { online: true })
+}
+
+async function callHookMethod(record: HookRecord, method: string, args: unknown): Promise<unknown> {
+  const member = record.hook[method]
+  const account = (await getAccountContext(record.extensionKey)) as { credentials?: Record<string, string>; session?: Record<string, string> } | undefined
+  const ctx = { online: true, account }
+  if (typeof member === 'function') {
+    return await member.call(record.hook, args, ctx)
+  }
+  return member
 }
 
 function activateExtension(def: ExtensionDefinition) {
@@ -127,14 +140,30 @@ const kernel = {
     })()
   },
 
-  /// Invokes `method` on every hook in a category (priority order) and
-  /// responds with one entry per hook: {key, ok, value|error}. Failures are
-  /// per-entry so one bad source never poisons the rest.
   invokeHookAll(id: number, category: string, method: string, argsJson: string) {
     const startedAt = Date.now()
     void (async () => {
       const args = JSON.parse(argsJson)
-      const records = hooksFor(category, null).filter((r) => typeof r.hook[method] === 'function')
+      if (category === 'account' && method === 'getDefinition') {
+        const records = hooksFor('account', null)
+        const entries = records.map((record) => {
+          return {
+            key: record.key,
+            ok: true,
+            value: {
+              key: record.key,
+              extensionKey: record.extensionKey,
+              label: record.hook.label ?? record.key,
+              kvKey: record.hook.kvKey ?? record.key ?? record.extensionKey,
+              fields: record.hook.fields ?? [],
+              oauth2: record.hook.oauth2 ?? null,
+            }
+          }
+        })
+        post({ type: 'result', id, ok: true, value: entries, jsMillis: Date.now() - startedAt })
+        return
+      }
+      const records = hooksFor(category, null).filter((r) => typeof r.hook[method] === 'function' || r.hook[method] !== undefined)
       const entries = await Promise.all(
         records.map(async (record) => {
           try {
@@ -187,6 +216,11 @@ const kernel = {
 
   registeredHooks(): string[] {
     return hooks.map((h) => `${h.category}/${h.key} (${h.extensionKey})`)
+  },
+
+  getAccountKvKey(extensionKey: string): string {
+    const accountHookRecord = hooks.find((h) => h.category === 'account' && h.extensionKey === extensionKey)
+    return (accountHookRecord?.hook?.kvKey as string | undefined) || accountHookRecord?.key || extensionKey
   },
 }
 

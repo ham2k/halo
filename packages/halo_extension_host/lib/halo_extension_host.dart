@@ -24,6 +24,8 @@ import 'dart:isolate';
 import 'package:flutter_js/flutter_js.dart';
 import 'package:http/http.dart' as http;
 
+typedef HostCallHandler = Future<dynamic> Function(String method, Map<String, dynamic> params);
+
 class ExtensionBundle {
   final String key;
   final String source;
@@ -52,6 +54,7 @@ class ExtensionHost {
   final bool runningInIsolate;
   final String engine;
   final int loadMillis;
+  final HostCallHandler? onHostCall;
 
   /// Caps `samples`' growth over a long session (an all-day operation makes
   /// many debounced lookup/control calls) — this is diagnostic data for the
@@ -76,6 +79,7 @@ class ExtensionHost {
     required this.runningInIsolate,
     required this.engine,
     required this.loadMillis,
+    this.onHostCall,
   });
 
   Stream<String> get logs => _logs.stream;
@@ -85,22 +89,23 @@ class ExtensionHost {
     required String kernelSource,
     required List<ExtensionBundle> extensions,
     bool useIsolate = true,
+    HostCallHandler? onHostCall,
   }) async {
     if (useIsolate) {
       try {
-        return await _startInIsolate(kernelSource, extensions);
+        return await _startInIsolate(kernelSource, extensions, onHostCall);
       } catch (e) {
         // Fall through to in-process mode; the spike wants to know when this
         // happens, so surface it loudly on the first log line.
-        final host = await _startInProcess(kernelSource, extensions);
+        final host = await _startInProcess(kernelSource, extensions, onHostCall);
         host._log('WARN isolate mode failed ($e), running in-process');
         return host;
       }
     }
-    return _startInProcess(kernelSource, extensions);
+    return _startInProcess(kernelSource, extensions, onHostCall);
   }
 
-  static Future<ExtensionHost> _startInIsolate(String kernelSource, List<ExtensionBundle> extensions) async {
+  static Future<ExtensionHost> _startInIsolate(String kernelSource, List<ExtensionBundle> extensions, HostCallHandler? onHostCall) async {
     final fromIsolate = ReceivePort();
     final ready = Completer<Map<String, dynamic>>();
     final earlyMessages = <Map<String, dynamic>>[];
@@ -149,6 +154,7 @@ class ExtensionHost {
       runningInIsolate: true,
       engine: readyMsg['engine'] as String,
       loadMillis: readyMsg['loadMillis'] as int,
+      onHostCall: onHostCall,
     );
     host._isolate = isolate;
     host._toIsolate = toIsolate;
@@ -156,7 +162,7 @@ class ExtensionHost {
     return host;
   }
 
-  static Future<ExtensionHost> _startInProcess(String kernelSource, List<ExtensionBundle> extensions) async {
+  static Future<ExtensionHost> _startInProcess(String kernelSource, List<ExtensionBundle> extensions, HostCallHandler? onHostCall) async {
     final earlyMessages = <Map<String, dynamic>>[];
     ExtensionHost? host;
     final core = _HostCore(emit: (msg) {
@@ -167,7 +173,12 @@ class ExtensionHost {
       }
     });
     final loadMillis = await core.init(kernelSource, extensions);
-    host = ExtensionHost._(runningInIsolate: false, engine: core.engineDescription, loadMillis: loadMillis);
+    host = ExtensionHost._(
+      runningInIsolate: false, 
+      engine: core.engineDescription, 
+      loadMillis: loadMillis,
+      onHostCall: onHostCall,
+    );
     host._inProcessCore = core;
     earlyMessages.forEach(host._onCoreMessage);
     return host;
@@ -264,6 +275,38 @@ class ExtensionHost {
         }
       case 'log':
         _log(msg['message'] as String? ?? '');
+      case 'hostCall':
+        final callId = msg['callId'] as int;
+        final method = msg['method'] as String;
+        final params = (msg['params'] as Map).cast<String, dynamic>();
+        _handleHostCallDelegated(callId, method, params);
+    }
+  }
+
+  Future<void> _handleHostCallDelegated(int callId, String method, Map<String, dynamic> params) async {
+    final handler = onHostCall;
+    if (handler == null) {
+      _sendHostCallResponse(callId, false, 'no host call handler configured');
+      return;
+    }
+    try {
+      final res = await handler(method, params);
+      _sendHostCallResponse(callId, true, res);
+    } catch (e) {
+      _sendHostCallResponse(callId, false, e.toString());
+    }
+  }
+
+  void _sendHostCallResponse(int callId, bool ok, Object? result) {
+    if (_inProcessCore != null) {
+      _inProcessCore!.handleHostCallResponse(callId, ok, result);
+    } else {
+      _toIsolate?.send({
+        'type': 'hostCallResponse',
+        'callId': callId,
+        'ok': ok,
+        'result': result,
+      });
     }
   }
 
@@ -306,7 +349,15 @@ Future<void> _hostIsolateMain(_HostIsolateInit init) async {
   await for (final message in receive) {
     final msg = (message as Map).cast<String, dynamic>();
     if (msg['type'] == 'dispose') break;
-    core.handle(msg);
+    if (msg['type'] == 'hostCallResponse') {
+      core.handleHostCallResponse(
+        msg['callId'] as int,
+        msg['ok'] as bool,
+        msg['result'],
+      );
+    } else {
+      core.handle(msg);
+    }
   }
   core.dispose();
 }
@@ -319,6 +370,7 @@ class _HostCore {
   late final JavascriptRuntime _js;
   final _http = http.Client();
   final Map<String, Map<String, Object?>> _kv = {};
+  final Map<int, Completer<dynamic>> _pendingHostCalls = {};
   Timer? _pump;
   int _outstanding = 0;
 
@@ -434,8 +486,15 @@ class _HostCore {
         case 'kvSet':
           _kv.putIfAbsent(params['ns'] as String? ?? 'default', () => {})[params['key'] as String] = params['value'];
         default:
-          ok = false;
-          result = 'unknown host method $method';
+          final completer = Completer<dynamic>();
+          _pendingHostCalls[callId] = completer;
+          emit({
+            'type': 'hostCall',
+            'callId': callId,
+            'method': method,
+            'params': params,
+          });
+          result = await completer.future;
       }
     } catch (e) {
       ok = false;
@@ -447,6 +506,17 @@ class _HostCore {
       _evaluate(code, name: 'hostResponse');
     } catch (e) {
       emit({'type': 'log', 'message': 'ERROR delivering host response: $e'});
+    }
+  }
+
+  void handleHostCallResponse(int callId, bool ok, Object? result) {
+    final completer = _pendingHostCalls.remove(callId);
+    if (completer != null) {
+      if (ok) {
+        completer.complete(result);
+      } else {
+        completer.completeError(result ?? 'unknown host call error');
+      }
     }
   }
 

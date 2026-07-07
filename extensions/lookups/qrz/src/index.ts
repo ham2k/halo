@@ -11,8 +11,6 @@ import type { CallInfo, HookContext, LookupRecord } from "@ham2k/polo-sdk"
 const AGENT = 'polo-next-spike'
 const API = 'https://xmldata.qrz.com/xml/current/'
 
-let sessionKey: string | null = null
-
 defineExtension({
   key: 'qrz',
   name: 'QRZ.com Callsign Lookups',
@@ -20,6 +18,49 @@ defineExtension({
   description: 'Requires a QRZ.com account (paid for full data)',
   onActivation({ registerHook }) {
     registerHook('lookup', { hook: { lookupCall }, priority: 99 })
+    registerHook('account', {
+      hook: {
+        label: 'QRZ.com Callsign Lookups',
+        kvKey: 'qrz',
+        fields: [
+          {
+            key: 'username',
+            label: 'Login (your callsign)',
+            type: 'text',
+            postface: "Don't use your email for login."
+          },
+          {
+            key: 'password',
+            label: 'Password',
+            type: 'secret'
+          }
+        ],
+        async testCredentials(credentials: Record<string, string>): Promise<string> {
+          const username = (credentials.username || '').trim().toUpperCase()
+          const password = credentials.password
+          if (!username || !password) {
+            return 'Please provide both username and password.'
+          }
+          if (username.indexOf('@') >= 0) {
+            return "Don't use your email for login."
+          }
+          try {
+            const key = await testLogin(username, password)
+            const lookupUrl = `${API}?s=${key};callsign=${encodeURIComponent(username)}`
+            const lookupResponse = await host.fetch(lookupUrl)
+            const error = tag(lookupResponse.body, 'Error')
+            if (error) {
+              return `✅ Credentials are correct, but callsign lookup failed: **${error}**`
+            }
+            const name = [tag(lookupResponse.body, 'fname'), tag(lookupResponse.body, 'name')].filter((x) => x).join(' ')
+            const call = tag(lookupResponse.body, 'call') || username
+            return `✅ ${call}: ${name}`
+          } catch (e) {
+            return `Authentication failed: **${(e as Error).message}**`
+          }
+        }
+      }
+    })
   },
 })
 
@@ -29,44 +70,49 @@ function tag(xml: string, name: string): string | undefined {
   return match?.[1]?.trim() || undefined
 }
 
-async function login(): Promise<string> {
-  const username = await host.kvGet('username')
-  const password = await host.kvGet('password')
-  if (!username || !password) throw new Error('QRZ credentials not configured')
-
-  const url = `${API}?username=${encodeURIComponent(String(username))};password=${encodeURIComponent(String(password))};agent=${AGENT}`
+async function testLogin(username: string, password: string): Promise<string> {
+  const url = `${API}?username=${encodeURIComponent(username)};password=${encodeURIComponent(password)};agent=${AGENT}`
   const response = await host.fetch(url)
   const key = tag(response.body, 'Key')
-  if (!key) throw new Error(`QRZ login failed: ${tag(response.body, 'Error') ?? `HTTP ${response.status}`}`)
-  sessionKey = key
+  if (!key) throw new Error(tag(response.body, 'Error') ?? `HTTP ${response.status}`)
   return key
 }
 
-async function fetchCall(call: string): Promise<string> {
-  const key = sessionKey ?? (await login())
+async function login(ctx: HookContext): Promise<string> {
+  const username = ctx.account?.credentials?.username
+  const password = ctx.account?.credentials?.password
+  if (!username || !password) throw new Error('QRZ credentials not configured')
+
+  const key = await testLogin(username, password)
+  await host.setAccountSession({ sessionKey: key })
+  return key
+}
+
+async function fetchCall(call: string, ctx: HookContext): Promise<string> {
+  const key = ctx.account?.session?.sessionKey ?? (await login(ctx))
   const response = await host.fetch(`${API}?s=${key};callsign=${encodeURIComponent(call)}`)
 
   const error = tag(response.body, 'Error')
   if (error && /session|timeout|invalid.*key/i.test(error)) {
-    sessionKey = null
-    const freshKey = await login()
+    await host.setAccountSession({}) // clear invalid session
+    const freshKey = await login(ctx)
     const retry = await host.fetch(`${API}?s=${freshKey};callsign=${encodeURIComponent(call)}`)
     return retry.body
   }
   return response.body
 }
 
-async function lookupCall({ callInfo }: { callInfo: CallInfo }, _ctx: HookContext): Promise<LookupRecord> {
+async function lookupCall({ callInfo }: { callInfo: CallInfo }, ctx: HookContext): Promise<LookupRecord> {
   const call = (callInfo.call || '').trim().toUpperCase()
   if (call.length < 3) return { source: 'qrz.com', error: 'callsign too short' }
 
   try {
-    let xml = await fetchCall(call)
+    let xml = await fetchCall(call, ctx)
     let error = tag(xml, 'Error')
 
     // If not found and the call had modifiers, try the base call
     if (error && /not found/i.test(error) && callInfo.baseCall && callInfo.baseCall !== call) {
-      xml = await fetchCall(callInfo.baseCall.toUpperCase())
+      xml = await fetchCall(callInfo.baseCall.toUpperCase(), ctx)
       error = tag(xml, 'Error')
     }
     if (error) return { source: 'qrz.com', call, error: `QRZ: ${error}` }

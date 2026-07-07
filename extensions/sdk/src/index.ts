@@ -21,6 +21,7 @@ interface KernelApi {
     args: unknown,
   ): Promise<{ key: string; ok: boolean; value?: unknown; error?: string }[]>
   log(message: string): void
+  getAccountKvKey(extensionKey: string): string
 }
 
 let currentExtensionKey = 'unknown'
@@ -54,6 +55,11 @@ export const host = {
 
   async kvSet(key: string, value: JSONValue): Promise<void> {
     await kernel().hostCall('kvSet', { ns: currentExtensionKey, key, value })
+  },
+
+  async setAccountSession(session: Record<string, string>): Promise<void> {
+    const kvKey = kernel().getAccountKvKey(currentExtensionKey)
+    await kernel().hostCall('setAccountSession', { ns: currentExtensionKey, kvKey, session })
   },
 
   log(message: string): void {

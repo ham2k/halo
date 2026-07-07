@@ -10,11 +10,17 @@ import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart' show rootBundle;
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:halo_extension_host/halo_extension_host.dart';
 
 class ExtensionService {
   ExtensionHost? _host;
   Future<void>? _starting;
+  final _secureStorage = const FlutterSecureStorage(
+    mOptions: MacOsOptions(
+      usesDataProtectionKeychain: false,
+    ),
+  );
 
   bool get ready => _host != null;
   ExtensionHost? get host => _host;
@@ -23,20 +29,64 @@ class ExtensionService {
     return _starting ??= _start();
   }
 
-  /// Seeds the QRZ extension's credentials into the host's KV store. Safe to
-  /// call before the runtime is up (awaits start()) or with blank values
-  /// (clears them) — called both at boot, from whatever SettingsService
-  /// loaded last session, and whenever Settings saves new credentials.
-  Future<void> setQrzCredentials({required String username, required String password}) async {
-    await start();
-    _host?.setKV('qrz', 'username', username);
-    _host?.setKV('qrz', 'password', password);
+  Future<List<Map<String, dynamic>>> getAccounts() async {
+    final host = _host;
+    if (host == null) return const [];
+    try {
+      final entries = await host.invokeHookAll('account', method: 'getDefinition', timeout: const Duration(seconds: 2));
+      final accounts = <Map<String, dynamic>>[];
+      for (final entry in entries) {
+        if (entry['ok'] == true && entry['value'] is Map) {
+          accounts.add((entry['value'] as Map).cast<String, dynamic>());
+        }
+      }
+      return accounts;
+    } catch (e) {
+      debugPrint('[extensions] getAccounts failed: $e');
+      return const [];
+    }
+  }
+
+  Future<String> testCredentials(String accountKey, Map<String, String> credentials) async {
+    final host = _host;
+    if (host == null) return 'Extension runtime not ready.';
+    try {
+      final dynamic res = await host.invokeHook(
+        'account',
+        key: accountKey,
+        method: 'testCredentials',
+        args: credentials,
+        timeout: const Duration(seconds: 10),
+      );
+      return res is String ? res : res?.toString() ?? '';
+    } catch (e) {
+      return 'Test failed: $e';
+    }
+  }
+
+  Future<Map<String, String>> getAccountCredentials(String kvKey) async {
+    final raw = await _secureStorage.read(key: 'account_creds_$kvKey');
+    if (raw == null) return const {};
+    try {
+      return (jsonDecode(raw) as Map).cast<String, String>();
+    } catch (_) {
+      return const {};
+    }
+  }
+
+  Future<void> setAccountCredentials(String kvKey, Map<String, String> credentials) async {
+    await _secureStorage.write(key: 'account_creds_$kvKey', value: jsonEncode(credentials));
+  }
+
+  Future<void> clearAccount(String kvKey) async {
+    await _secureStorage.delete(key: 'account_creds_$kvKey');
+    await _secureStorage.delete(key: 'account_session_$kvKey');
   }
 
   /// Seeds the `ham2k-lofi` sync extension's device identity (a stable
   /// per-install key, generated once by `SettingsService.syncDeviceKey`) and
   /// operator callsign. Called both at boot and whenever Settings saves a
-  /// new operator callsign — same shape as `setQrzCredentials`. There's
+  /// new operator callsign. There's
   /// deliberately no `token` seeded here: the extension re-registers with
   /// the server on first use each run (the token is session-scoped, kept in
   /// the extension's own module state, same as app-polo's `GLOBAL.syncLoFiToken`
@@ -58,13 +108,37 @@ class ExtensionService {
           source: await rootBundle.loadString('assets/extensions/${entry['file']}'),
         ));
       }
-      _host = await ExtensionHost.start(kernelSource: kernelSource, extensions: bundles);
+      _host = await ExtensionHost.start(
+        kernelSource: kernelSource,
+        extensions: bundles,
+        onHostCall: _handleHostCall,
+      );
       _host!.logs.listen((line) => debugPrint('[extensions] $line'));
       for (final line in _host!.logLines) {
         debugPrint('[extensions] $line');
       }
     } catch (e) {
       debugPrint('[extensions] failed to start extension runtime: $e');
+    }
+  }
+
+  Future<dynamic> _handleHostCall(String method, Map<String, dynamic> params) async {
+    switch (method) {
+      case 'getAccount':
+        final kvKey = params['kvKey'] as String;
+        final credsStr = await _secureStorage.read(key: 'account_creds_$kvKey');
+        final sessionStr = await _secureStorage.read(key: 'account_session_$kvKey');
+        return {
+          'credentials': credsStr != null ? jsonDecode(credsStr) : const {},
+          'session': sessionStr != null ? jsonDecode(sessionStr) : const {},
+        };
+      case 'setAccountSession':
+        final kvKey = params['kvKey'] as String;
+        final session = params['session'] as Map<dynamic, dynamic>;
+        await _secureStorage.write(key: 'account_session_$kvKey', value: jsonEncode(session));
+        return null;
+      default:
+        throw UnimplementedError('Host call method $method not implemented');
     }
   }
 

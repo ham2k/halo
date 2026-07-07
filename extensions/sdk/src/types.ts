@@ -5,6 +5,10 @@ export type JSONValue = string | number | boolean | null | JSONValue[] | { [key:
 
 export interface HookContext {
   online: boolean
+  account?: {
+    credentials?: Record<string, string>
+    session?: Record<string, string>
+  }
 }
 
 export interface CallInfo {
@@ -180,6 +184,29 @@ export interface SyncTransportHook {
   linkClientWithEmail(args: { email: string }, ctx: HookContext): Promise<Record<string, JSONValue>>
 }
 
+export interface AccountField {
+  key: string
+  label: string
+  type: 'text' | 'email' | 'secret'
+  preface?: string
+  postface?: string
+}
+
+export interface OAuth2Config {
+  issuer: string
+  clientId: string
+  redirectUrl: string
+  scopes: string[]
+}
+
+export interface AccountHook {
+  label: string
+  kvKey?: string // defaults to the extension key
+  fields?: AccountField[]
+  oauth2?: OAuth2Config
+  testCredentials(credentials: Record<string, string>, ctx: HookContext): Promise<string>
+}
+
 export type Hook =
   | LookupHook
   | SpotsHook
@@ -189,6 +216,7 @@ export type Hook =
   | AdifFieldsHook
   | CommandHook
   | SyncTransportHook
+  | AccountHook
   | Record<string, unknown>
 
 export interface RegisterHookParams {

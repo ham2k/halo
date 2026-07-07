@@ -32,7 +32,11 @@ void main() async {
   final settings = await SettingsService.load();
   final services = HaLoServices(db, settings, extensions: extensions);
   if (settings.hasQrzCredentials) {
-    services.extensions.setQrzCredentials(username: settings.qrzUsername, password: settings.qrzPassword);
+    await services.extensions.setAccountCredentials('qrz', {
+      'username': settings.qrzUsername,
+      'password': settings.qrzPassword,
+    });
+    await settings.setQrzCredentials(username: '', password: '');
   }
   services.extensions.setSyncCredentials(deviceKey: settings.syncDeviceKey, operatorCall: settings.operatorCall);
   services.syncEngine.start();
@@ -79,14 +83,7 @@ class HaLoServices {
 
   HaLoServices(this.db, this.settings, {ExtensionService? extensions}) : extensions = extensions ?? ExtensionService();
 
-  /// Persists QRZ credentials and seeds them into the extension host in one
-  /// call, so a future call site can't update one store and forget the
-  /// other the way main.dart's boot path and SettingsView's save handler
-  /// used to have to coordinate by hand.
-  Future<void> setQrzCredentials({required String username, required String password}) async {
-    await settings.setQrzCredentials(username: username, password: password);
-    await extensions.setQrzCredentials(username: username, password: password);
-  }
+
 
   /// Same one-call pattern as `setQrzCredentials`, for the sync device
   /// identity + operator callsign.
