@@ -33,14 +33,14 @@ void main() {
   Widget host({List<Qso> existing = const [], CommandHandler? tryCommand}) {
     return MaterialApp(
       home: Scaffold(
-        body: LoggingPanel(operation: operation, qsosRepository: qsos, qsos: existing, tryCommand: tryCommand),
+        body: LoggingControls(operation: operation, qsosRepository: qsos, qsos: existing, tryCommand: tryCommand),
       ),
     );
   }
 
   /// Stand-in for the real `radio-commands` extension (see
   /// extensions/core/radio-commands), so this widget test can verify how
-  /// LoggingPanel applies a command result without booting a JS runtime.
+  /// LoggingControls applies a command result without booting a JS runtime.
   /// The extension itself is covered by an integration test in
   /// polo_extension_host against the real built bundle.
   Future<Map<String, dynamic>?> fakeTryCommand(String input) async {
@@ -137,7 +137,7 @@ void main() {
 
     await tester.pumpWidget(MaterialApp(
       home: Scaffold(
-        body: LoggingPanel(operation: operation, qsosRepository: qsos, lookup: lookup),
+        body: LoggingControls(operation: operation, qsosRepository: qsos, lookup: lookup),
       ),
     ));
 
@@ -175,7 +175,7 @@ void main() {
 
     await tester.pumpWidget(MaterialApp(
       home: Scaffold(
-        body: LoggingPanel(
+        body: LoggingControls(
           operation: operation,
           qsosRepository: qsos,
           activityControls: controls,
@@ -407,7 +407,7 @@ void main() {
 
       await tester.pumpWidget(MaterialApp(
         home: Scaffold(
-          body: LoggingPanel(operation: operation, qsosRepository: qsos, editingQso: existingQso),
+          body: LoggingControls(operation: operation, qsosRepository: qsos, editingQso: existingQso),
         ),
       ));
 
@@ -439,7 +439,7 @@ void main() {
       ];
       await tester.pumpWidget(MaterialApp(
         home: Scaffold(
-          body: LoggingPanel(operation: operation, qsosRepository: qsos, activityControls: controls),
+          body: LoggingControls(operation: operation, qsosRepository: qsos, activityControls: controls),
         ),
       ));
 
@@ -461,7 +461,7 @@ void main() {
       await tester.pumpWidget(MaterialApp(
         theme: buildPoloTheme(Brightness.light),
         home: Scaffold(
-          body: LoggingPanel(operation: operation, qsosRepository: qsos),
+          body: LoggingControls(operation: operation, qsosRepository: qsos),
         ),
       ));
 

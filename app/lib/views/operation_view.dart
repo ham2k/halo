@@ -1,7 +1,7 @@
 // Copyright ©️ 2026 Sebastian Delmont <sd@ham2k.com>
 // SPDX-License-Identifier: MPL-2.0
 //
-// The logging screen: four tabs, ported from app-polo's OperationScreen —
+// The logging view: four tabs, ported from app-polo's OperationView —
 // "N QSOs" (list + logging panel; a wide-layout info side panel appears
 // there too, the first step toward the module-docking layout of
 // DESIGN.md §7), Spots (placeholder for now), Map, and Operation
@@ -13,19 +13,20 @@ import 'package:polo_widgets/polo_widgets.dart';
 
 import '../main.dart';
 import 'operation_dialogs.dart';
-import 'map/operation_map_tab.dart';
+import 'operation/logging_panel.dart';
+import 'operation/map_panel.dart';
 
-class OperationScreen extends StatefulWidget {
+class OperationView extends StatefulWidget {
   final PoloServices services;
   final String operationUuid;
 
-  const OperationScreen({super.key, required this.services, required this.operationUuid});
+  const OperationView({super.key, required this.services, required this.operationUuid});
 
   @override
-  State<OperationScreen> createState() => _OperationScreenState();
+  State<OperationView> createState() => _OperationViewState();
 }
 
-class _OperationScreenState extends State<OperationScreen> {
+class _OperationViewState extends State<OperationView> {
   Operation? _operation;
   List<Map<String, dynamic>> _loggingControls = const [];
 
@@ -152,10 +153,6 @@ class _OperationScreenState extends State<OperationScreen> {
       stream: widget.services.qsos.watchForOperation(operation.uuid),
       builder: (context, snapshot) {
         final qsos = snapshot.data ?? const <Qso>[];
-        final wide = MediaQuery.sizeOf(context).width >= 900;
-
-        final list = QsoList(qsos: qsos, qsosRepository: widget.services.qsos);
-
         final refsLine = operation.refs.map((r) => r['shortLabel'] ?? r['ref']).whereType<String>().join(' • ');
 
         return DefaultTabController(
@@ -163,12 +160,15 @@ class _OperationScreenState extends State<OperationScreen> {
           child: Scaffold(
             appBar: AppBar(
               leadingWidth: isMacOSChromelessWindow ? 56 + macOSTrafficLightInset + macOSTrafficLightGap : null,
-              leading: isMacOSChromelessWindow
-                  ? const Padding(
-                      padding: EdgeInsets.only(left: macOSTrafficLightInset + macOSTrafficLightGap),
-                      child: BackButton(),
-                    )
-                  : null,
+              leading: MouseRegion(
+                cursor: SystemMouseCursors.click,
+                child: isMacOSChromelessWindow
+                    ? const Padding(
+                        padding: EdgeInsets.only(left: macOSTrafficLightInset + macOSTrafficLightGap),
+                        child: BackButton(),
+                      )
+                    : const BackButton(),
+              ),
               // Reserves trailing breathing room even though this AppBar has
               // no real action buttons — otherwise the title runs flush to
               // the window's right edge with no margin at all.
@@ -204,31 +204,17 @@ class _OperationScreenState extends State<OperationScreen> {
             ),
             body: TabBarView(children: [
               _KeepAlive(
-                child: Column(children: [
-                  Expanded(
-                    child: wide
-                        ? Row(children: [
-                            Expanded(flex: 2, child: list),
-                            const VerticalDivider(width: 1),
-                            Expanded(child: _InfoPanel(operation: operation, qsos: qsos)),
-                          ])
-                        : list,
-                  ),
-                  LoggingPanel(
-                    operation: operation,
-                    qsosRepository: widget.services.qsos,
-                    qsos: qsos,
-                    lookup: widget.services.extensions.lookupCall,
-                    activityControls: _loggingControls,
-                    decorateRef: widget.services.extensions.decorateRef,
-                    tryCommand: widget.services.extensions.tryCommand,
-                    onCommandAction: _handleCommandAction,
-                  ),
-                ]),
+                child: LoggingPanel(
+                  operation: operation,
+                  services: widget.services,
+                  qsos: qsos,
+                  loggingControls: _loggingControls,
+                  onCommandAction: _handleCommandAction,
+                ),
               ),
               const _PlaceholderTab(label: 'Spots'),
-              _KeepAlive(child: OperationMapTab(operation: operation, qsos: qsos)),
-              _OperationTab(
+              _KeepAlive(child: MapPanel(operation: operation, qsos: qsos)),
+              OperationSettingsPanel(
                 operation: operation,
                 qsoCount: qsos.length,
                 onEditDetails: () => _editDetails(operation),
@@ -290,7 +276,7 @@ class _PlaceholderTab extends StatelessWidget {
 /// station/title, managing activity refs, ADIF export, delete) rather than
 /// app-polo's full set (location, templates, Wavelog export, etc.), which
 /// this app doesn't have the underlying data/features for yet.
-class _OperationTab extends StatelessWidget {
+class OperationSettingsPanel extends StatelessWidget {
   final Operation operation;
   final int qsoCount;
   final VoidCallback onEditDetails;
@@ -298,7 +284,8 @@ class _OperationTab extends StatelessWidget {
   final VoidCallback? onExport;
   final VoidCallback onDelete;
 
-  const _OperationTab({
+  const OperationSettingsPanel({
+    super.key,
     required this.operation,
     required this.qsoCount,
     required this.onEditDetails,
@@ -320,6 +307,7 @@ class _OperationTab extends StatelessWidget {
           title: Text(operation.stationCall.isEmpty ? 'No station callsign' : operation.stationCall),
           subtitle: Text(operation.title.isEmpty ? 'No title' : operation.title),
           onTap: onEditDetails,
+          mouseCursor: SystemMouseCursors.click,
         ),
         _SectionHeader('Activities'),
         ListTile(
@@ -327,6 +315,7 @@ class _OperationTab extends StatelessWidget {
           title: const Text('Activities'),
           subtitle: Text(refsLine.isEmpty ? 'None set' : refsLine),
           onTap: onEditActivities,
+          mouseCursor: SystemMouseCursors.click,
         ),
         _SectionHeader('Operation data'),
         ListTile(
@@ -334,12 +323,14 @@ class _OperationTab extends StatelessWidget {
           title: const Text('Export ADIF'),
           subtitle: Text('$qsoCount QSOs'),
           onTap: onExport,
+          mouseCursor: SystemMouseCursors.click,
         ),
         _SectionHeader('Danger zone', color: theme.colorScheme.error),
         ListTile(
           leading: Icon(MdiIcons.delete, color: theme.colorScheme.error),
           title: Text('Delete operation', style: TextStyle(color: theme.colorScheme.error)),
           onTap: onDelete,
+          mouseCursor: SystemMouseCursors.click,
         ),
       ],
     );
@@ -361,38 +352,6 @@ class _SectionHeader extends StatelessWidget {
         title,
         style: theme.textTheme.titleSmall?.copyWith(color: color ?? theme.colorScheme.primary),
       ),
-    );
-  }
-}
-
-class _InfoPanel extends StatelessWidget {
-  final Operation operation;
-  final List<Qso> qsos;
-
-  const _InfoPanel({required this.operation, required this.qsos});
-
-  @override
-  Widget build(BuildContext context) {
-    final byBand = <String, int>{};
-    final byMode = <String, int>{};
-    for (final qso in qsos) {
-      byBand.update(qso.band ?? '?', (count) => count + 1, ifAbsent: () => 1);
-      byMode.update(qso.mode ?? '?', (count) => count + 1, ifAbsent: () => 1);
-    }
-
-    final theme = Theme.of(context);
-    return ListView(
-      padding: const EdgeInsets.all(16),
-      children: [
-        Text('Station', style: theme.textTheme.titleSmall),
-        Text(operation.stationCall, style: theme.textTheme.headlineSmall),
-        const SizedBox(height: 16),
-        Text('By band', style: theme.textTheme.titleSmall),
-        for (final entry in byBand.entries) Text('${entry.key}: ${entry.value}'),
-        const SizedBox(height: 16),
-        Text('By mode', style: theme.textTheme.titleSmall),
-        for (final entry in byMode.entries) Text('${entry.key}: ${entry.value}'),
-      ],
     );
   }
 }

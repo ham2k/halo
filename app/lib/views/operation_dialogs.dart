@@ -1,8 +1,8 @@
 // Copyright ©️ 2026 Sebastian Delmont <sd@ham2k.com>
 // SPDX-License-Identifier: MPL-2.0
 //
-// Small dialogs shared between OperationsScreen (the list, long-press to
-// delete) and OperationScreen's Operation tab (same actions, reached via a
+// Small dialogs shared between HomeView (the list, long-press to
+// delete) and OperationView's Operation settings panel (same actions, reached via a
 // list tile instead) — kept in one place so both stay in sync rather than
 // carrying two copies of the same confirm-delete/edit-details prompt.
 

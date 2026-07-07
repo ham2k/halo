@@ -61,12 +61,15 @@ class QsoList extends StatelessWidget {
               : '${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}';
           final band = qso.band ?? '';
 
-          return InkWell(
-            onLongPress: () => _confirmDelete(context, qso),
-            child: Container(
-              color: theme.colorScheme.surface,
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
-              child: Row(
+          return Material(
+            color: theme.colorScheme.surface,
+            child: InkWell(
+              onTap: () {}, // enables hover highlighting
+              onLongPress: () => _confirmDelete(context, qso),
+              mouseCursor: SystemMouseCursors.click,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+                child: Row(
                 children: [
                   SizedBox(width: 28, child: Text('$number', style: monoDim, textAlign: TextAlign.right)),
                   const SizedBox(width: 8),
@@ -119,8 +122,9 @@ class QsoList extends StatelessWidget {
                 ],
               ),
             ),
-          );
-        },
+          ),
+        );
+      },
       ),
     );
   }

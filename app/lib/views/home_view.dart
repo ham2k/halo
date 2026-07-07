@@ -7,8 +7,8 @@ import 'package:polo_widgets/polo_widgets.dart';
 
 import '../main.dart';
 import 'operation_dialogs.dart';
-import 'operation_screen.dart';
-import 'settings_screen.dart';
+import 'operation_view.dart';
+import 'settings_view.dart';
 
 /// PoLo home-screen style row: bold "CALL title" line with count pill,
 /// subtitle line with refs/description and right-aligned date.
@@ -25,56 +25,59 @@ class _OperationRow extends StatelessWidget {
     final dateLabel = when == null ? '' : '${_monthName(when.month)} ${when.day}';
     final subtitle = operation.refs.map((r) => r['name']).whereType<String>().join(' • ');
 
-    return InkWell(
-      onTap: () => Navigator.of(context).push(MaterialPageRoute(
-        builder: (_) => OperationScreen(services: services, operationUuid: operation.uuid),
-      )),
-      onLongPress: () => confirmDeleteOperation(context, services.operations, operation),
-      child: Container(
-        color: theme.colorScheme.surface,
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Row(children: [
-            Expanded(
-              child: Text.rich(
-                TextSpan(children: [
-                  TextSpan(
-                    text: operation.stationCall,
-                    style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800),
-                  ),
-                  if (operation.title.isNotEmpty)
+    return Material(
+      color: theme.colorScheme.surface,
+      child: InkWell(
+        onTap: () => Navigator.of(context).push(MaterialPageRoute(
+          builder: (_) => OperationView(services: services, operationUuid: operation.uuid),
+        )),
+        onLongPress: () => confirmDeleteOperation(context, services.operations, operation),
+        mouseCursor: SystemMouseCursors.click,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Row(children: [
+              Expanded(
+                child: Text.rich(
+                  TextSpan(children: [
                     TextSpan(
-                      text: ' ${operation.title}',
-                      style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+                      text: operation.stationCall,
+                      style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800),
                     ),
-                ]),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
+                    if (operation.title.isNotEmpty)
+                      TextSpan(
+                        text: ' ${operation.title}',
+                        style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+                      ),
+                  ]),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
               ),
-            ),
-            const SizedBox(width: 8),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
-              decoration: BoxDecoration(
-                color: theme.colorScheme.surfaceContainerHighest,
-                borderRadius: BorderRadius.circular(12),
+              const SizedBox(width: 8),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.surfaceContainerHighest,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text('${operation.qsoCount}', style: theme.textTheme.labelLarge),
               ),
-              child: Text('${operation.qsoCount}', style: theme.textTheme.labelLarge),
-            ),
+            ]),
+            const SizedBox(height: 2),
+            Row(children: [
+              Expanded(
+                child: Text(
+                  subtitle,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+                ),
+              ),
+              Text(dateLabel, style: theme.textTheme.bodyMedium),
+            ]),
           ]),
-          const SizedBox(height: 2),
-          Row(children: [
-            Expanded(
-              child: Text(
-                subtitle,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-              ),
-            ),
-            Text(dateLabel, style: theme.textTheme.bodyMedium),
-          ]),
-        ]),
+        ),
       ),
     );
   }
@@ -83,10 +86,41 @@ class _OperationRow extends StatelessWidget {
       const ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][month - 1];
 }
 
-class OperationsScreen extends StatelessWidget {
+class OperationListPanel extends StatelessWidget {
+  final PoloServices services;
+  final List<Operation> operations;
+
+  const OperationListPanel({
+    super.key,
+    required this.services,
+    required this.operations,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    if (operations.isEmpty) {
+      return Container(
+        color: Theme.of(context).colorScheme.surfaceContainerHighest,
+        child: const Center(child: Text('No operations yet. Create one to start logging.')),
+      );
+    }
+    return Container(
+      // Shows through below the last row when there aren't enough
+      // operations to fill the screen.
+      color: Theme.of(context).colorScheme.surfaceContainerHighest,
+      child: ListView.separated(
+        itemCount: operations.length,
+        separatorBuilder: (context, index) => const Divider(),
+        itemBuilder: (context, index) => _OperationRow(services: services, operation: operations[index]),
+      ),
+    );
+  }
+}
+
+class HomeView extends StatelessWidget {
   final PoloServices services;
 
-  const OperationsScreen({super.key, required this.services});
+  const HomeView({super.key, required this.services});
 
   Future<void> _newOperation(BuildContext context) async {
     final callController = TextEditingController();
@@ -127,7 +161,7 @@ class OperationsScreen extends StatelessWidget {
     );
     if (context.mounted) {
       Navigator.of(context).push(MaterialPageRoute(
-        builder: (_) => OperationScreen(services: services, operationUuid: operation.uuid),
+        builder: (_) => OperationView(services: services, operationUuid: operation.uuid),
       ));
     }
   }
@@ -157,8 +191,9 @@ class OperationsScreen extends StatelessWidget {
             tooltip: 'Settings',
             icon: Icon(MdiIcons.cog),
             onPressed: () => Navigator.of(context).push(
-              MaterialPageRoute(builder: (_) => SettingsScreen(services: services)),
+              MaterialPageRoute(builder: (_) => SettingsView(services: services)),
             ),
+            mouseCursor: SystemMouseCursors.click,
           ),
         ],
       ),
@@ -171,22 +206,7 @@ class OperationsScreen extends StatelessWidget {
         stream: services.operations.watchAll(),
         builder: (context, snapshot) {
           final operations = snapshot.data ?? const <Operation>[];
-          if (operations.isEmpty) {
-            return Container(
-              color: Theme.of(context).colorScheme.surfaceContainerHighest,
-              child: const Center(child: Text('No operations yet. Create one to start logging.')),
-            );
-          }
-          return Container(
-            // Shows through below the last row when there aren't enough
-            // operations to fill the screen.
-            color: Theme.of(context).colorScheme.surfaceContainerHighest,
-            child: ListView.separated(
-              itemCount: operations.length,
-              separatorBuilder: (context, index) => const Divider(),
-              itemBuilder: (context, index) => _OperationRow(services: services, operation: operations[index]),
-            ),
-          );
+          return OperationListPanel(services: services, operations: operations);
         },
       ),
     );

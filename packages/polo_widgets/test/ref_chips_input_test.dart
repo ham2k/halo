@@ -8,7 +8,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:polo_widgets/polo_widgets.dart';
 
 /// Harness that exposes an external `wipe()`, so a test can simulate a
-/// parent (like LoggingPanel) clearing refs out from under a pending
+/// parent (like LoggingControls) clearing refs out from under a pending
 /// decoration.
 class _Harness extends StatefulWidget {
   final RefDecorator decorate;
@@ -129,7 +129,7 @@ void main() {
     // Chip is present optimistically while decoration is still pending.
     expect(find.widgetWithText(InputChip, 'US-1234'), findsOneWidget);
 
-    // Parent wipes (e.g. LoggingPanel._wipe after logging the QSO) before
+    // Parent wipes (e.g. LoggingControls._wipe after logging the QSO) before
     // the decoration resolves.
     harnessKey.currentState!.wipe();
     await tester.pump();

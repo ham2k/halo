@@ -16,16 +16,16 @@ import 'operation_dialogs.dart';
 
 const _appVersion = '0.1.0'; // keep in sync with app/pubspec.yaml
 
-class SettingsScreen extends StatefulWidget {
+class SettingsView extends StatefulWidget {
   final PoloServices services;
 
-  const SettingsScreen({super.key, required this.services});
+  const SettingsView({super.key, required this.services});
 
   @override
-  State<SettingsScreen> createState() => _SettingsScreenState();
+  State<SettingsView> createState() => _SettingsViewState();
 }
 
-class _SettingsScreenState extends State<SettingsScreen> {
+class _SettingsViewState extends State<SettingsView> {
   Map<String, dynamic>? _syncAccount;
   bool _loadingSyncAccount = false;
 
@@ -150,12 +150,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
     return Scaffold(
       appBar: AppBar(
         leadingWidth: isMacOSChromelessWindow ? 56 + macOSTrafficLightInset + macOSTrafficLightGap : null,
-        leading: isMacOSChromelessWindow
-            ? const Padding(
-                padding: EdgeInsets.only(left: macOSTrafficLightInset + macOSTrafficLightGap),
-                child: BackButton(),
-              )
-            : null,
+        leading: MouseRegion(
+          cursor: SystemMouseCursors.click,
+          child: isMacOSChromelessWindow
+              ? const Padding(
+                  padding: EdgeInsets.only(left: macOSTrafficLightInset + macOSTrafficLightGap),
+                  child: BackButton(),
+                )
+              : const BackButton(),
+        ),
         title: const Text('Settings'),
         actions: const [SizedBox(width: 16)],
       ),
@@ -184,6 +187,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             title: const Text('QRZ.com credentials'),
             subtitle: Text(settings.hasQrzCredentials ? settings.qrzUsername : 'Not configured'),
             onTap: _editQrzCredentials,
+            mouseCursor: SystemMouseCursors.click,
           ),
           const _SectionHeader('Sync'),
           ListTile(
@@ -191,6 +195,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             title: const Text('Operator callsign'),
             subtitle: Text(settings.operatorCall.isEmpty ? 'Not set' : settings.operatorCall),
             onTap: _editOperatorCall,
+            mouseCursor: SystemMouseCursors.click,
           ),
           SwitchListTile(
             secondary: Icon(resolveIconName(settings.syncEnabled ? 'cloud-sync-outline' : 'cloud-off-outline')),
@@ -202,6 +207,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
             value: settings.syncEnabled,
             onChanged: _toggleSync,
+            mouseCursor: SystemMouseCursors.click,
           ),
           if (settings.syncState['pendingAccountUUID'] != null)
             _PendingAccountBanner(onCombine: _combineAccount, onReplace: _replaceAccount),
@@ -214,6 +220,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 icon: Icon(resolveIconName('refresh')),
                 tooltip: 'Refresh',
                 onPressed: _refreshSyncAccount,
+                mouseCursor: SystemMouseCursors.click,
               ),
             ),
             ListTile(
@@ -221,6 +228,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               title: const Text('Link to an existing account'),
               subtitle: const Text('Sync this device into an account you already use elsewhere'),
               onTap: _linkByEmail,
+              mouseCursor: SystemMouseCursors.click,
             ),
           ],
           const _SectionHeader('About'),

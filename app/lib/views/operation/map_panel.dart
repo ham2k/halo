@@ -21,22 +21,22 @@ import 'package:polo_core/polo_core.dart';
 import 'package:polo_widgets/polo_widgets.dart';
 
 import '../../config/mapbox_token.dart';
-import 'map_marker_data.dart';
-import 'mapbox_native_map_view.dart';
-import 'mapbox_webview_map_view.dart';
-import 'osm_map_view.dart';
+import '../map/map_marker_data.dart';
+import '../map/mapbox_native_map_view.dart';
+import '../map/mapbox_webview_map_view.dart';
+import '../map/osm_map_view.dart';
 
-class OperationMapTab extends StatefulWidget {
+class MapPanel extends StatefulWidget {
   final Operation operation;
   final List<Qso> qsos;
 
-  const OperationMapTab({super.key, required this.operation, required this.qsos});
+  const MapPanel({super.key, required this.operation, required this.qsos});
 
   @override
-  State<OperationMapTab> createState() => _OperationMapTabState();
+  State<MapPanel> createState() => _MapPanelState();
 }
 
-class _OperationMapTabState extends State<OperationMapTab> {
+class _MapPanelState extends State<MapPanel> {
   MapProjection _projection = MapProjection.mercator;
 
   @override

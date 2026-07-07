@@ -13,8 +13,8 @@ import 'package:flutter/material.dart';
 import 'package:polo_core/polo_core.dart';
 import 'package:polo_widgets/polo_widgets.dart';
 
-import 'screens/operation_screen.dart';
-import 'screens/operations_screen.dart';
+import 'views/operation_view.dart';
+import 'views/home_view.dart';
 import 'services/export_service.dart';
 import 'services/extension_service.dart';
 import 'services/settings_service.dart';
@@ -50,7 +50,7 @@ void main() async {
       final operations = await services.operations.watchAll().first;
       if (operations.isNotEmpty) {
         navigatorKey.currentState?.push(MaterialPageRoute(
-          builder: (_) => OperationScreen(services: services, operationUuid: operations.first.uuid),
+          builder: (_) => OperationView(services: services, operationUuid: operations.first.uuid),
         ));
       }
     });
@@ -81,7 +81,7 @@ class PoloServices {
 
   /// Persists QRZ credentials and seeds them into the extension host in one
   /// call, so a future call site can't update one store and forget the
-  /// other the way main.dart's boot path and SettingsScreen's save handler
+  /// other the way main.dart's boot path and SettingsView's save handler
   /// used to have to coordinate by hand.
   Future<void> setQrzCredentials({required String username, required String password}) async {
     await settings.setQrzCredentials(username: username, password: password);
@@ -161,7 +161,7 @@ class PoloNextApp extends StatelessWidget {
         darkTheme: buildPoloTheme(Brightness.dark),
         themeMode: services.settings.themeMode,
         debugShowCheckedModeBanner: false,
-        home: OperationsScreen(services: services),
+        home: HomeView(services: services),
       ),
     );
   }

@@ -63,16 +63,26 @@ class OperationsRepository {
   }
 
   Stream<List<Operation>> watchAll() {
-    // A brand-new operation has no QSOs yet, so startAtMillisMax is NULL.
-    // SQLite sorts NULLs last in a DESC ordering by default, which would
-    // bury new operations at the end of the list; NullsOrder.first keeps
-    // them at the top instead, alongside the most recently active ones.
+    // We select non-deleted operations. Since we want a robust sorting
+    // that uses fields within the JSON data blob (like createdAtMillis)
+    // as a fallback for operations with no QSOs, we perform the sort in Dart.
     final query = (db.select(db.operations)
-      ..where((op) => op.deleted.equals(false))
-      ..orderBy([
-        (op) => OrderingTerm(expression: op.startAtMillisMax, mode: OrderingMode.desc, nulls: NullsOrder.first),
-      ]));
-    return query.watch().map((rows) => rows.map(_operationFromRow).toList());
+      ..where((op) => op.deleted.equals(false)));
+    return query.watch().map((rows) {
+      final list = rows.map(_operationFromRow).toList();
+      list.sort((a, b) {
+        final aTime = a.startAtMillisMax ?? a.createdAtMillis ?? 0;
+        final bTime = b.startAtMillisMax ?? b.createdAtMillis ?? 0;
+        final cmp = bTime.compareTo(aTime);
+        if (cmp != 0) return cmp;
+
+        // Tie-breaker: createdAtMillis DESC (most recently created first)
+        final aCreated = a.createdAtMillis ?? 0;
+        final bCreated = b.createdAtMillis ?? 0;
+        return bCreated.compareTo(aCreated);
+      });
+      return list;
+    });
   }
 
   Future<Operation?> get(String uuid) async {

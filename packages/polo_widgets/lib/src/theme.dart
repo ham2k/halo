@@ -135,7 +135,7 @@ TextStyle poloMonoStyle(
 /// "large placeholder until focused" default), and tight, consistent
 /// padding. [labelColor] defaults to a plain-background-appropriate tone;
 /// pass the surrounding container's "on" color explicitly when the field
-/// sits on a tinted background (e.g. LoggingPanel's tertiaryContainer) —
+/// sits on a tinted background (e.g. LoggingControls' tertiaryContainer) —
 /// setting floatingLabelStyle at all replaces the ambient
 /// InputDecorationTheme's rather than merging with it, so the color has to
 /// come along with the rest of the style rather than being left to inherit.

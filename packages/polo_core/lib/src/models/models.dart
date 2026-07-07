@@ -32,6 +32,8 @@ class Operation {
 
   DateTime? get startAtMax =>
       startAtMillisMax == null ? null : DateTime.fromMillisecondsSinceEpoch(startAtMillisMax!, isUtc: true);
+
+  int? get createdAtMillis => data['createdAtMillis'] as int?;
 }
 
 /// One contact. QSON shape (same as app-polo):

@@ -29,7 +29,7 @@ class RefChipsInput extends StatefulWidget {
   final bool dense;
 
   /// Passed straight through to poloFieldDecoration — set this when
-  /// embedding on a tinted background (e.g. LoggingPanel's
+  /// embedding on a tinted background (e.g. LoggingControls'
   /// tertiaryContainer); left null for the default, plain-background tone
   /// (e.g. the standalone Activities dialog).
   final Color? labelColor;

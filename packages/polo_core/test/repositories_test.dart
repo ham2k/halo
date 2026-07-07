@@ -110,4 +110,19 @@ void main() {
     final all = await operations.watchAll().first;
     expect(all.map((o) => o.title), [fresh.title, active.title]);
   });
+
+  test('multiple operations with no QSOs sort by createdAtMillis descending', () async {
+    final op1 = await operations.create(stationCall: 'KI2D', title: 'First created');
+    await Future<void>.delayed(const Duration(milliseconds: 10));
+    final op2 = await operations.create(stationCall: 'KI2D', title: 'Second created');
+    await Future<void>.delayed(const Duration(milliseconds: 10));
+    final op3 = await operations.create(stationCall: 'KI2D', title: 'Third created');
+
+    final all = await operations.watchAll().first;
+    expect(all.map((o) => o.title).take(3), [
+      op3.title,
+      op2.title,
+      op1.title,
+    ]);
+  });
 }

@@ -1,9 +1,9 @@
 // Copyright ©️ 2026 Sebastian Delmont <sd@ham2k.com>
 // SPDX-License-Identifier: MPL-2.0
 //
-// The QSO entry panel — the hottest path in the whole app. Keyboard
+// The QSO entry controls — the hottest path in the whole app. Keyboard
 // ergonomics are the contract (DESIGN.md §7), ported from app-polo:
-//   Enter   logs the QSO from anywhere in the panel
+//   Enter   logs the QSO from anywhere in the controls
 //   Esc     wipes the current entry
 //   Space   in the call field: runs command shortcuts (frequency, band,
 //           mode — "14285 ", "20m ", "cw ") or advances to Sent;
@@ -18,7 +18,7 @@
 // value ("20m • SSB", a live-ticking "17:06:49z" clock), and tapping it
 // expands the actual editable fields. This is what lets extensions keep
 // contributing controls (POTA's park reference today, more activities
-// later) without the panel's permanent footprint growing — only one
+// later) without the controls' permanent footprint growing — only one
 // control is expanded at a time. Command shortcuts still work while a
 // control is collapsed, since they mutate the same underlying state the
 // expanded fields edit.
@@ -53,7 +53,7 @@ typedef CommandHandler = Future<Map<String, dynamic>?> Function(String input);
 /// a closed set the core recognizes, not arbitrary state (DESIGN.md §4).
 typedef CommandActionHandler = Future<void> Function(String action);
 
-class LoggingPanel extends StatefulWidget {
+class LoggingControls extends StatefulWidget {
   final Operation operation;
   final QsosRepository qsosRepository;
 
@@ -80,7 +80,7 @@ class LoggingPanel extends StatefulWidget {
   /// returns one instead of a field change. When null, actions are ignored.
   final CommandActionHandler? onCommandAction;
 
-  /// When set, the panel is editing this already-logged QSO rather than
+  /// When set, the controls are editing this already-logged QSO rather than
   /// composing a new one. Nothing wires this up yet (there's no tap-to-edit
   /// on QsoList rows), but the Time control's behavior already depends on
   /// the distinction: editing an existing entry shows *its* recorded time
@@ -88,7 +88,7 @@ class LoggingPanel extends StatefulWidget {
   /// "automatic" time to reset back to for a historical record).
   final Qso? editingQso;
 
-  const LoggingPanel({
+  const LoggingControls({
     super.key,
     required this.operation,
     required this.qsosRepository,
@@ -103,10 +103,10 @@ class LoggingPanel extends StatefulWidget {
   });
 
   @override
-  State<LoggingPanel> createState() => _LoggingPanelState();
+  State<LoggingControls> createState() => _LoggingControlsState();
 }
 
-class _LoggingPanelState extends State<LoggingPanel> {
+class _LoggingControlsState extends State<LoggingControls> {
   final _callController = TextEditingController();
   final _sentController = TextEditingController();
   final _rcvdController = TextEditingController();
@@ -178,7 +178,7 @@ class _LoggingPanelState extends State<LoggingPanel> {
   }
 
   @override
-  void didUpdateWidget(LoggingPanel oldWidget) {
+  void didUpdateWidget(LoggingControls oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.editingQso?.uuid != widget.editingQso?.uuid) _updateClockTicker();
   }
@@ -831,19 +831,22 @@ class _LoggingPanelState extends State<LoggingPanel> {
                           // PoLo's big light-blue log button.
                           Padding(
                             padding: const EdgeInsets.only(bottom: 2),
-                            child: FilledButton(
-                              onPressed: _canLog ? _log : null,
-                              style: FilledButton.styleFrom(
-                                backgroundColor:
-                                    theme.colorScheme.primaryContainer,
-                                foregroundColor:
-                                    theme.colorScheme.onPrimaryContainer,
-                                minimumSize: const Size(64, 44),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(22),
+                            child: MouseRegion(
+                              cursor: SystemMouseCursors.click,
+                              child: FilledButton(
+                                onPressed: _canLog ? _log : null,
+                                style: FilledButton.styleFrom(
+                                  backgroundColor:
+                                      theme.colorScheme.primaryContainer,
+                                  foregroundColor:
+                                      theme.colorScheme.onPrimaryContainer,
+                                  minimumSize: const Size(64, 44),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(22),
+                                  ),
                                 ),
+                                child: const Icon(Icons.check, size: 28),
                               ),
-                              child: const Icon(Icons.check, size: 28),
                             ),
                           ),
                         ],

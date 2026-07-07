@@ -234,6 +234,7 @@ class _ControlChip extends StatelessWidget {
           ? BorderSide(color: theme.colorScheme.primary, width: 1.5)
           : BorderSide.none,
       onSelected: (_) => onTap(),
+      mouseCursor: SystemMouseCursors.click,
     );
   }
 }
