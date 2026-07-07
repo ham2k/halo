@@ -149,6 +149,94 @@ void main() {
     expect(await qsos.hasUnsynced(), isFalse);
   });
 
+  test('a periodic round pulls even when there is nothing local to push', () async {
+    transport.responder = (method, args) {
+      expect(args.containsKey('operations'), isFalse);
+      expect(args.containsKey('qsos'), isFalse);
+      final sync = (args['meta'] as Map)['sync'] as Map;
+      expect(sync['operations'], {'syncedSinceMillis': 0, 'limit': SyncEngine.defaultLargeBatchSize, 'anyClient': false});
+      expect(sync['qsos'], {'syncedSinceMillis': 0, 'limit': SyncEngine.defaultLargeBatchSize, 'anyClient': false});
+      return const {};
+    };
+
+    await engine.runOneRound();
+
+    expect(transport.calls, hasLength(1));
+  });
+
+  test('a small-batch round never asks to pull', () async {
+    await operations.create(stationCall: 'KI2D');
+
+    transport.responder = (method, args) {
+      expect((args['meta'] as Map).containsKey('sync'), isFalse);
+      return const {};
+    };
+
+    await engine.runOneRound(smallBatch: true);
+
+    expect(transport.calls, hasLength(1));
+  });
+
+  test('a periodic round tracks the sync watermark from inbound records and asks since it next time', () async {
+    var round = 0;
+    transport.responder = (method, args) {
+      round++;
+      final sync = (args['meta'] as Map)['sync'] as Map;
+      if (round == 1) {
+        expect((sync['qsos'] as Map)['syncedSinceMillis'], 0);
+        return {
+          'qsos': [
+            {
+              'uuid': 'q1',
+              'operation': 'op1',
+              'their': {'call': 'W1AW'},
+              'startAtMillis': 1000,
+              'syncedAtMillis': 5000,
+            },
+          ],
+        };
+      }
+      expect((sync['qsos'] as Map)['syncedSinceMillis'], 5000);
+      return const {};
+    };
+
+    await engine.runOneRound();
+    await engine.runOneRound();
+
+    expect(round, 2);
+    expect(settings.state['latestQSOSyncedAtMillis'], 5000);
+  });
+
+  test('a full page of inbound records reschedules the loop immediately', () async {
+    // A server with 15 pending QSOs to hand back: a full page (10) the
+    // first call, a partial page (5) once the client's advancing
+    // syncedSinceMillis catches up — the same "keep looping until caught
+    // up" shape as app-polo's `receivedAllUpdates`.
+    const totalAvailable = 15;
+    transport.responder = (method, args) {
+      final since = (((args['meta'] as Map)['sync'] as Map)['qsos'] as Map)['syncedSinceMillis'] as int;
+      final remaining = [
+        for (var i = since; i < totalAvailable; i++)
+          {
+            'uuid': 'inbound-$i',
+            'operation': 'op1',
+            'their': {'call': 'W1AW$i'},
+            'startAtMillis': i,
+            'syncedAtMillis': i + 1,
+          },
+      ];
+      return {'qsos': remaining.take(SyncEngine.defaultLargeBatchSize).toList()};
+    };
+
+    await engine.runOneRound();
+    expect(transport.calls, hasLength(1)); // first page: 10 records, a full page
+
+    // A full page implies more is waiting server-side, so the loop
+    // reschedules with no delay rather than waiting defaultLoopDelay (20s).
+    await Future<void>.delayed(const Duration(milliseconds: 50));
+    expect(transport.calls, hasLength(2)); // second page: the remaining 5, not a full page — loop settles
+  });
+
   test('notifyChanged debounces into a small-batch round', () async {
     await operations.create(stationCall: 'KI2D');
 

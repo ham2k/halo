@@ -111,10 +111,21 @@ class SyncEngine {
 
   /// Runs one round of syncing: build a payload from [selectBatch], call the
   /// transport, mark what was sent as synced, and merge anything inbound.
-  /// A "large batch" round (the periodic loop) reschedules itself — sooner,
-  /// with no delay, if there's more to catch up on; after [defaultLoopDelay]
-  /// otherwise. A "small batch" round (a debounced reaction to a local edit)
-  /// never touches the loop's own schedule.
+  ///
+  /// A "small batch" round (a debounced reaction to a local edit) always has
+  /// something to push, by construction — it's only ever triggered by an
+  /// actual write — so it skips the network call entirely if it somehow
+  /// finds nothing, and never touches the loop's own schedule.
+  ///
+  /// A "large batch" round (the periodic loop) always calls the transport,
+  /// even with nothing local to push: it asks for anything new since
+  /// [SyncSettings.state]'s `latestOperationSyncedAtMillis`/
+  /// `latestQSOSyncedAtMillis` watermarks (`meta.sync` in the payload, same
+  /// shape as app-polo's forward-sync mode) so a device that isn't logging
+  /// anything itself still learns about QSOs logged elsewhere. It
+  /// reschedules itself — sooner, with no delay, if there's more to catch up
+  /// on (either a local backlog or a full page of inbound records implying
+  /// more is waiting server-side) — after [defaultLoopDelay] otherwise.
   Future<void> runOneRound({bool smallBatch = false}) async {
     if (!settings.enabled || _running) return;
     _running = true;
@@ -122,27 +133,25 @@ class SyncEngine {
       final batchSize = smallBatch ? smallBatchSize : _largeBatchSize;
       final batch = await selectBatch(qsoBatchSize: batchSize, operationBatchSize: batchSize);
 
-      if (batch.isEmpty) {
-        if (!smallBatch) _scheduleLoop(_loopDelay);
-        return;
-      }
+      if (batch.isEmpty && smallBatch) return;
 
-      final response = await transport('sync', await _buildPayload(batch));
+      final response = await transport('sync', await _buildPayload(batch, pull: !smallBatch, limit: batchSize));
 
       await operations.markSynced(batch.operations.map((o) => o.uuid));
       await qsos.markSynced(batch.qsos.map((q) => q.uuid));
 
       final inboundOperations = (response['operations'] as List?)?.cast<Map<String, dynamic>>() ?? const [];
       final inboundQsos = (response['qsos'] as List?)?.cast<Map<String, dynamic>>() ?? const [];
-      if (inboundOperations.isNotEmpty) await operations.mergeFromSync(inboundOperations);
-      if (inboundQsos.isNotEmpty) await qsos.mergeFromSync(inboundQsos);
+      final opWatermark = inboundOperations.isEmpty ? null : await operations.mergeFromSync(inboundOperations);
+      final qsoWatermark = inboundQsos.isEmpty ? null : await qsos.mergeFromSync(inboundQsos);
 
-      await _processResponseMeta(response);
+      await _processResponseMeta(response, opWatermark: opWatermark, qsoWatermark: qsoWatermark);
       _errorCount = 0;
 
       if (!smallBatch) {
         final morePending = await operations.hasUnsynced() || await qsos.hasUnsynced();
-        _scheduleLoop(morePending ? Duration.zero : _loopDelay);
+        final fullPage = inboundOperations.length >= batchSize || inboundQsos.length >= batchSize;
+        _scheduleLoop((morePending || fullPage) ? Duration.zero : _loopDelay);
       }
     } catch (_) {
       _errorCount++;
@@ -154,7 +163,7 @@ class SyncEngine {
     }
   }
 
-  Future<Map<String, dynamic>> _buildPayload(SyncBatch batch) async {
+  Future<Map<String, dynamic>> _buildPayload(SyncBatch batch, {required bool pull, required int limit}) async {
     final operationCounts = await operations.syncCounts();
     final qsoCounts = await qsos.syncCounts();
     final state = settings.state;
@@ -175,11 +184,33 @@ class SyncEngine {
         'qsoCount': qsoCounts.total,
         'unsyncedQSOCount': qsoCounts.pending,
         if (state['lastSyncAccountUUID'] != null) 'lastSyncAccountUUID': state['lastSyncAccountUUID'],
+        // Only the periodic loop pulls — a small-batch round is a reaction
+        // to a local write and doesn't need to ask "what's new" every time.
+        // Always "forward" (since the last watermark, defaulting to epoch 0
+        // on a fresh link): the backfill/earliest-first pagination app-polo
+        // uses for a wiped/fresh device isn't built here yet (DESIGN.md §11).
+        if (pull)
+          'sync': {
+            'operations': {
+              'syncedSinceMillis': (state['latestOperationSyncedAtMillis'] as num?)?.toInt() ?? 0,
+              'limit': limit,
+              'anyClient': false,
+            },
+            'qsos': {
+              'syncedSinceMillis': (state['latestQSOSyncedAtMillis'] as num?)?.toInt() ?? 0,
+              'limit': limit,
+              'anyClient': false,
+            },
+          },
       },
     };
   }
 
-  Future<void> _processResponseMeta(Map<String, dynamic> response) async {
+  Future<void> _processResponseMeta(
+    Map<String, dynamic> response, {
+    SyncWatermark? opWatermark,
+    SyncWatermark? qsoWatermark,
+  }) async {
     final meta = (response['meta'] as Map?)?.cast<String, dynamic>() ?? const {};
     final account = (response['account'] as Map?)?.cast<String, dynamic>();
 
@@ -191,10 +222,26 @@ class SyncEngine {
       _loopDelay = Duration(milliseconds: suggestedLoopDelayMillis);
     }
 
+    final state = settings.state;
+    final updates = <String, dynamic>{};
+
     final accountUuid = account?['uuid'] as String?;
-    if (accountUuid != null && accountUuid != settings.state['lastSyncAccountUUID']) {
-      await settings.setState({...settings.state, 'lastSyncAccountUUID': accountUuid});
+    if (accountUuid != null && accountUuid != state['lastSyncAccountUUID']) {
+      updates['lastSyncAccountUUID'] = accountUuid;
     }
+
+    final newOpWatermark = opWatermark?.latestSyncedAtMillis;
+    if (newOpWatermark != null) {
+      final current = (state['latestOperationSyncedAtMillis'] as num?)?.toInt() ?? 0;
+      if (newOpWatermark > current) updates['latestOperationSyncedAtMillis'] = newOpWatermark;
+    }
+    final newQsoWatermark = qsoWatermark?.latestSyncedAtMillis;
+    if (newQsoWatermark != null) {
+      final current = (state['latestQSOSyncedAtMillis'] as num?)?.toInt() ?? 0;
+      if (newQsoWatermark > current) updates['latestQSOSyncedAtMillis'] = newQsoWatermark;
+    }
+
+    if (updates.isNotEmpty) await settings.setState({...state, ...updates});
   }
 
   void _scheduleLoop(Duration delay) {

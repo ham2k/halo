@@ -103,8 +103,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   String get _syncAccountSubtitle {
     if (_loadingSyncAccount) return 'Checking…';
-    final call = (_syncAccount?['current_account'] as Map?)?['call'] as String?;
-    return (call == null || call.isEmpty) ? 'Not linked yet' : 'Linked as $call';
+    final account = _syncAccount?['current_account'] as Map?;
+    final call = account?['call'] as String?;
+    if (call == null || call.isEmpty) return 'Not linked yet';
+    final email = account?['email'] as String?;
+    return (email == null || email.isEmpty) ? 'Linked as $call' : 'Linked as $call ($email)';
   }
 
   @override

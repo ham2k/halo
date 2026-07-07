@@ -17,6 +17,23 @@ import '../models/models.dart';
 
 const _uuidGenerator = Uuid();
 
+/// Tracks the min/max `syncedAtMillis` seen while merging one inbound sync
+/// batch — see `OperationsRepository.mergeFromSync`.
+class SyncWatermark {
+  int? earliestSyncedAtMillis;
+  int? latestSyncedAtMillis;
+
+  void include(int? syncedAtMillis) {
+    if (syncedAtMillis == null) return;
+    if (earliestSyncedAtMillis == null || syncedAtMillis < earliestSyncedAtMillis!) {
+      earliestSyncedAtMillis = syncedAtMillis;
+    }
+    if (latestSyncedAtMillis == null || syncedAtMillis > latestSyncedAtMillis!) {
+      latestSyncedAtMillis = syncedAtMillis;
+    }
+  }
+}
+
 class OperationsRepository {
   final PoloDatabase db;
 
@@ -131,12 +148,19 @@ class OperationsRepository {
   /// recomputed from this device's own QSOs once any of this operation's
   /// QSOs are merged in too, and shouldn't be clobbered by the server's view
   /// of them in the meantime.
-  Future<void> mergeFromSync(List<Map<String, dynamic>> operations) async {
+  ///
+  /// Returns the min/max `syncedAtMillis` seen in this batch — a server-side
+  /// watermark distinct from `startAtMillis`, carried on every inbound
+  /// record — so `SyncEngine` can track "synced since" for the next pull,
+  /// mirroring app-polo's `mergeSyncOperations`.
+  Future<SyncWatermark> mergeFromSync(List<Map<String, dynamic>> operations) async {
+    final watermark = SyncWatermark();
     for (final incoming in operations) {
       final uuid = incoming['uuid'] as String?;
       if (uuid == null) continue;
       final data = Map<String, dynamic>.from(incoming)..remove('uuid');
       final deleted = data.remove('deleted') == true;
+      watermark.include((data['syncedAtMillis'] as num?)?.toInt());
       await db.into(db.operations).insertOnConflictUpdate(OperationsCompanion(
             uuid: Value(uuid),
             data: Value(jsonEncode(data)),
@@ -146,6 +170,7 @@ class OperationsRepository {
     }
     // No onChange() here: everything just written is already marked
     // synced, so there's nothing new for the outbound side to react to.
+    return watermark;
   }
 
   Operation _operationFromRow(OperationRow row) => Operation(
@@ -241,8 +266,10 @@ class QsosRepository {
   }
 
   /// Upserts QSOs received from the sync server and refreshes the counters
-  /// of every operation they belong to.
-  Future<void> mergeFromSync(List<Map<String, dynamic>> qsos) async {
+  /// of every operation they belong to. See `OperationsRepository.mergeFromSync`
+  /// for the returned watermark's purpose.
+  Future<SyncWatermark> mergeFromSync(List<Map<String, dynamic>> qsos) async {
+    final watermark = SyncWatermark();
     final affectedOperations = <String>{};
     await db.transaction(() async {
       for (final incoming in qsos) {
@@ -252,6 +279,7 @@ class QsosRepository {
 
         final data = Map<String, dynamic>.from(incoming)..remove('operation');
         final deleted = data.remove('deleted') == true;
+        watermark.include((data['syncedAtMillis'] as num?)?.toInt());
         final qso = Qso(uuid: uuid, operationUuid: operationUuid, data: data);
 
         await db.into(db.qsos).insertOnConflictUpdate(
@@ -264,6 +292,7 @@ class QsosRepository {
       }
     });
     // No onChange() here — see OperationsRepository.mergeFromSync.
+    return watermark;
   }
 
   Qso _qsoFromRow(QsoRow row) => Qso(
