@@ -1,5 +1,5 @@
 name: polo_next
-description: "Ham2K Portable Logger Next — spike: JS extension runtime bridge."
+description: "Ham2K Portable Logger Next — Flutter app with a TypeScript extension runtime."
 publish_to: 'none'
 version: 0.1.0+1
 
@@ -47,3 +47,6 @@ flutter:
     - family: MaterialDesignIcons
       fonts:
         - asset: assets/fonts/MaterialDesignIcons.ttf
+    - family: FontAwesome6Solid
+      fonts:
+        - asset: assets/fonts/FontAwesome6Solid.ttf

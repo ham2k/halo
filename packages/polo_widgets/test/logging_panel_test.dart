@@ -168,7 +168,7 @@ void main() {
       {
         'key': 'pota/hunter',
         'label': 'POTA',
-        'icon': 'pota',
+        'icon': 'pine-tree',
         'input': {'kind': 'refList', 'refType': 'pota', 'placeholder': 'US-1234', 'pattern': r'[A-Z0-9]+-[0-9]{4,5}'},
       },
     ];
@@ -433,7 +433,7 @@ void main() {
         {
           'key': 'pota/hunter',
           'label': 'POTA',
-          'icon': 'pota',
+          'icon': 'pine-tree',
           'input': {'kind': 'refList', 'refType': 'pota', 'placeholder': 'US-1234', 'pattern': r'[A-Z0-9]+-[0-9]{4,5}'},
         },
       ];

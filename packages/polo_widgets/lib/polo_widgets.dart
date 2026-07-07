@@ -3,6 +3,7 @@
 
 library;
 
+export 'src/icon_resolver.dart';
 export 'src/logging_panel.dart';
 export 'src/mdi_icons.dart';
 export 'src/platform_chrome.dart';

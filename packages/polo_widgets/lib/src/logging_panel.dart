@@ -33,6 +33,7 @@ import 'package:flutter/services.dart';
 
 import 'package:polo_core/polo_core.dart';
 
+import 'icon_resolver.dart';
 import 'mdi_icons.dart';
 import 'ref_chips_input.dart';
 import 'secondary_control_row.dart';
@@ -325,15 +326,6 @@ class _LoggingPanelState extends State<LoggingPanel> {
     return parts.join(' • ');
   }
 
-  IconData _iconForControlName(String? name) {
-    switch (name) {
-      case 'pota':
-        return MdiIcons.pineTree;
-      default:
-        return MdiIcons.puzzleOutline;
-    }
-  }
-
   List<SecondaryControlSpec> _buildSecondaryControls(
     ThemeData theme,
     PoloColors poloColors,
@@ -487,7 +479,7 @@ class _LoggingPanelState extends State<LoggingPanel> {
         if ((control['input'] as Map?)?['kind'] == 'refList')
           SecondaryControlSpec(
             key: control['key'] as String,
-            icon: _iconForControlName(control['icon'] as String?),
+            icon: resolveIconName(control['icon'] as String?),
             summary: (control['label'] as String?) ?? control['key'] as String,
             hasValue: (_controlRefs[control['key']]?.isNotEmpty) ?? false,
             expandedBuilder: (context) => RefChipsInput(
@@ -722,6 +714,7 @@ class _LoggingPanelState extends State<LoggingPanel> {
                     mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      const SizedBox(height: 6),
                       SecondaryControlRow(
                         controls: _buildSecondaryControls(theme, poloColors),
                         selectedKey: _selectedControlKey,
@@ -762,7 +755,7 @@ class _LoggingPanelState extends State<LoggingPanel> {
                             ],
                           ),
                         ),
-                      const SizedBox(height: 4),
+                      const SizedBox(height: 8),
                       Row(
                         crossAxisAlignment: CrossAxisAlignment.end,
                         children: [

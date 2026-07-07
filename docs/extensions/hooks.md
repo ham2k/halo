@@ -98,6 +98,11 @@ interface ActivityHook {
 // input (catalog v0): {kind: 'refList', refType, placeholder?, pattern?}
 ```
 
+`icon` is a Material Design Icons name (e.g. `'pine-tree'`), or a FontAwesome6
+solid-style name prefixed with `'fa-'` (e.g. `'fa-tree'`) — same convention
+app-polo itself uses. Any name in either set works with no core-repo change;
+an unrecognized name falls back to a placeholder glyph rather than erroring.
+
 `loggingControls` appear on the logging panel (per-QSO refs);
 `operationControls` appear in the operation's Activities dialog (e.g. "which
 park am I activating"). Catalog components are versioned core code —

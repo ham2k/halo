@@ -81,6 +81,10 @@ export interface RefHandlerHook {
 export interface LoggingControlDescriptor {
   key: string
   label: string
+  /// A Material Design Icons name (e.g. 'pine-tree') or, prefixed with
+  /// 'fa-', a FontAwesome6 solid-style name (e.g. 'fa-tree') — same
+  /// convention as app-polo's own icon rendering. Falls back to a
+  /// placeholder glyph if the name isn't found in either set.
   icon?: string
   order?: number
   optionType?: 'optional' | 'mandatory'

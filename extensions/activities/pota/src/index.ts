@@ -85,7 +85,7 @@ const ActivityHook = {
       {
         key: 'pota/hunter',
         label: 'POTA',
-        icon: 'pota',
+        icon: 'pine-tree',
         order: 10,
         optionType: 'optional',
         input: {
@@ -106,7 +106,7 @@ const ActivityHook = {
       {
         key: 'pota/activation',
         label: 'POTA activation',
-        icon: 'pota',
+        icon: 'pine-tree',
         order: 10,
         optionType: 'optional',
         input: {
