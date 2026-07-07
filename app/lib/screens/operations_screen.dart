@@ -146,7 +146,11 @@ class OperationsScreen extends StatelessWidget {
           ),
           child: Image.asset('assets/images/ham2k-logo.png'),
         ),
-        title: const Text('PoLo Next — Operations'),
+        // "Desktop Logger" / "Portable Logger" is the in-app main-screen
+        // title — independent of the OS-level app name ("Ham2K Logger" on
+        // desktop, "PoLo" on mobile; see macos/Runner/Configs/AppInfo.xcconfig,
+        // ios/Runner/Info.plist, android's AndroidManifest.xml).
+        title: Text(isWindowedPlatform ? 'Desktop Logger' : 'Portable Logger'),
         actionsPadding: const EdgeInsets.only(right: 8),
         actions: [
           IconButton(

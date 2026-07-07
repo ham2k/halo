@@ -88,14 +88,15 @@ class PoloNextApp extends StatelessWidget {
     return AnimatedBuilder(
       animation: services.settings,
       builder: (context, _) => MaterialApp(
-        title: 'PoLo Next',
+        // Android task-switcher card title / web tab title — matches each
+        // platform's own OS-level app name (see isWindowedPlatform's other
+        // uses: macos/Runner/Configs/AppInfo.xcconfig "Ham2K Logger",
+        // android's AndroidManifest.xml label "PoLo").
+        title: isWindowedPlatform ? 'Ham2K Logger' : 'PoLo',
         navigatorKey: navigatorKey,
         theme: buildPoloTheme(Brightness.light),
         darkTheme: buildPoloTheme(Brightness.dark),
         themeMode: services.settings.themeMode,
-        // No debug-mode ribbon — the OperationsScreen's logo is tinted red
-        // in debug builds instead (see operations_screen.dart), a signal
-        // that doesn't cover any content or collide with window chrome.
         debugShowCheckedModeBanner: false,
         home: OperationsScreen(services: services),
       ),

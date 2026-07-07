@@ -4,11 +4,13 @@
 // future. If not, the values below would default to using the project name when this becomes a
 // 'flutter create' template.
 
-// The application's name. By default this is also the title of the Flutter window.
-PRODUCT_NAME = polo_next
+// The application's name — drives the Dock/Finder icon label, the app
+// menu (top-left), and the About/Quit menu items (MainMenu.xib's "APP_NAME"
+// placeholders are substituted by AppKit at nib-load time using this name).
+PRODUCT_NAME = Ham2K Logger
 
 // The application's bundle identifier
-PRODUCT_BUNDLE_IDENTIFIER = com.ham2k.poloNext
+PRODUCT_BUNDLE_IDENTIFIER = com.ham2k.logger
 
 // The copyright displayed in application information
 PRODUCT_COPYRIGHT = Copyright © 2026 com.ham2k. All rights reserved.

@@ -1,4 +1,4 @@
-package com.ham2k.polo_next
+package com.ham2k.logger
 
 import io.flutter.embedding.android.FlutterActivity
 
