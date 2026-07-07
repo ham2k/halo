@@ -12,6 +12,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart' show rootBundle;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:halo_extension_host/halo_extension_host.dart';
+import 'settings_service.dart';
 
 class ExtensionService {
   ExtensionHost? _host;
@@ -21,6 +22,8 @@ class ExtensionService {
       usesDataProtectionKeychain: false,
     ),
   );
+
+  SettingsService? settings;
 
   bool get ready => _host != null;
   ExtensionHost? get host => _host;
@@ -137,6 +140,10 @@ class ExtensionService {
         final session = params['session'] as Map<dynamic, dynamic>;
         await _secureStorage.write(key: 'account_session_$kvKey', value: jsonEncode(session));
         return null;
+      case 'getSettings':
+        return {
+          'developerMode': settings?.developerMode ?? false,
+        };
       default:
         throw UnimplementedError('Host call method $method not implemented');
     }
@@ -189,18 +196,25 @@ class ExtensionService {
     return merged;
   }
 
-  /// Tries every registered `command` hook (priority order) against `input`
-  /// and returns the first non-null field-change result: `{freq?, band?,
-  /// mode?}`. Returns null when nothing matched, the input is empty, or the
-  /// runtime isn't up — callers should treat that as "not a command".
-  Future<Map<String, dynamic>?> tryCommand(String input) async {
+  /// Asks every registered `command` hook (priority order) to interpret the input command.
+  /// Returns the first non-null interpretation result: `{describe, confirm, commands}`.
+  /// Returns null when nothing matched, the input is empty, or the runtime isn't up.
+  Future<Map<String, dynamic>?> interpretCommand(
+    String input, [
+    Map<String, dynamic>? operation,
+    Map<String, dynamic>? qso,
+  ]) async {
     final host = _host;
     if (host == null || input.isEmpty) return null;
     try {
       final entries = await host.invokeHookAll(
         'command',
-        method: 'tryCommand',
-        args: {'input': input},
+        method: 'interpret',
+        args: {
+          'input': input,
+          if (operation != null) 'operation': operation,
+          if (qso != null) 'qso': qso,
+        },
         timeout: const Duration(seconds: 2),
       );
       for (final entry in entries) {
@@ -209,7 +223,7 @@ class ExtensionService {
         }
       }
     } on ExtensionHostException catch (e) {
-      debugPrint('[extensions] tryCommand failed: $e');
+      debugPrint('[extensions] interpretCommand failed: $e');
     }
     return null;
   }

@@ -9,6 +9,7 @@ export interface HookContext {
     credentials?: Record<string, string>
     session?: Record<string, string>
   }
+  developerMode?: boolean
 }
 
 export interface CallInfo {
@@ -133,26 +134,40 @@ export interface ExportHook {
   generateExport(args: ExportRequest, ctx: HookContext): Promise<ExportResult>
 }
 
-/// A field-change command triggered from the call field (space-activated).
-/// Deliberately a closed set of fields — commands mutate only through this
-/// whitelist, never arbitrary state (DESIGN.md §4). `action` is the same
-/// discipline applied to named side effects instead of field changes — a
-/// closed set of core-recognized actions (currently just `'syncAll'`, the
-/// `SYNCALL` debug command), not an arbitrary string the core has to trust.
-export interface CommandResult {
-  freq?: number
-  band?: string
-  mode?: string
-  action?: 'syncAll'
+export interface CommandAction {
+  setVfo?: {
+    freq?: number
+    band?: string
+    mode?: string
+  }
+  updateQso?: Record<string, JSONValue>
+  addQso?: Record<string, JSONValue>
+  sendSpots?: {
+    comment?: string
+  }
+  syncAll?: Record<string, never>
+  updateSettings?: {
+    developerMode?: boolean
+  }
+  [actionName: string]: unknown
 }
 
-/// Registered under category `command`. `tryCommand` does its own matching
+export interface CommandInterpretation {
+  describe: string
+  confirm: string
+  commands: CommandAction[]
+}
+
+/// Registered under category `command`. `interpret` does its own matching
 /// (returns null for no match) so the core can fan out to every registered
 /// command via invokeHookAll and apply the first non-null result in
 /// priority order, without the host needing to compile extension-supplied
 /// regex source itself.
 export interface CommandHook {
-  tryCommand(args: { input: string }, ctx: HookContext): Promise<CommandResult | null>
+  interpret(
+    args: { input: string; operation?: Record<string, JSONValue>; qso?: Record<string, JSONValue> },
+    ctx: HookContext,
+  ): Promise<CommandInterpretation | null>
 }
 
 /// A batch of dirty records the core wants pushed to the sync server, plus

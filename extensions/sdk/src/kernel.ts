@@ -85,7 +85,16 @@ async function getAccountContext(extensionKey: string): Promise<unknown> {
 async function callHookMethod(record: HookRecord, method: string, args: unknown): Promise<unknown> {
   const member = record.hook[method]
   const account = (await getAccountContext(record.extensionKey)) as { credentials?: Record<string, string>; session?: Record<string, string> } | undefined
-  const ctx = { online: true, account }
+  let developerMode = false
+  try {
+    const settings = (await hostCall('getSettings', {})) as { developerMode?: boolean } | undefined
+    if (settings?.developerMode) {
+      developerMode = true
+    }
+  } catch (e) {
+    // ignore
+  }
+  const ctx = { online: true, account, developerMode }
   if (typeof member === 'function') {
     return await member.call(record.hook, args, ctx)
   }

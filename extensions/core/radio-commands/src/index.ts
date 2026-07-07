@@ -14,47 +14,92 @@
 // point, so MHz-style input like "14.285" never matched even though
 // parseFreq has always supported it.
 
-import { parseFreq } from "@ham2k/lib-format-tools"
+import { parseFreq, fmtFreq } from "@ham2k/lib-format-tools"
 import { bandForFrequency } from "@ham2k/lib-operation-data"
 
 import { defineExtension } from "@ham2k/polo-sdk"
-import type { CommandResult, HookContext } from "@ham2k/polo-sdk"
+import type { CommandInterpretation, HookContext } from "@ham2k/polo-sdk"
 
 const BAND_MATCH = /^(2200|630|160|80|60|40|30|20|17|15|12|10|6|4|2)M?$/i
 const MODE_MATCH = /^(CW|SSB|USB|LSB|FM|AM|FT8|FT4|FT2|RTTY)$/i
 const FREQUENCY_MATCH = /^[\d.,]+$/
 
 const BandCommand = {
-  async tryCommand({ input }: { input: string }, _ctx: HookContext): Promise<CommandResult | null> {
+  async interpret({ input }: { input: string }, _ctx: HookContext): Promise<CommandInterpretation | null> {
     const match = BAND_MATCH.exec(input.trim())
     if (!match) return null
-    return { band: `${match[1].toLowerCase()}m` }
+    const band = `${match[1].toLowerCase()}m`
+    return {
+      describe: `Change band to **${band}**?`,
+      confirm: `Band set to **${band}**`,
+      commands: [{ setVfo: { band } }],
+    }
   },
 }
 
 const FrequencyCommand = {
-  async tryCommand({ input }: { input: string }, _ctx: HookContext): Promise<CommandResult | null> {
+  async interpret(
+    { input, qso }: { input: string; qso?: Record<string, any> },
+    _ctx: HookContext,
+  ): Promise<CommandInterpretation | null> {
     const trimmed = input.trim()
     // Require at least 3 characters so short band-only numbers ("20") don't
     // get treated as frequencies before the (higher-priority) band command
     // has a chance to match them.
-    if (trimmed.length < 3 || !FREQUENCY_MATCH.test(trimmed)) return null
+    if (trimmed.length < 3) return null
 
-    const freq = parseFreq(trimmed)
+    let freq: number | null = null
+    const qsoFreq = typeof qso?.freq === 'number' ? qso.freq : null
+
+    if (trimmed.startsWith('..') && qsoFreq) {
+      freq = parseFreq(`${Math.round(qsoFreq / 1000)}${trimmed.substring(1)}`)
+    } else if ((trimmed.startsWith('.') || trimmed.startsWith(',')) && qsoFreq) {
+      freq = parseFreq(`${Math.floor(qsoFreq / 1000)}${trimmed}`)
+    } else if (FREQUENCY_MATCH.test(trimmed)) {
+      freq = parseFreq(trimmed)
+    }
+
+    if (!freq) return null
+
     // bandForFrequency falls back to the literal string 'other' for
-    // unrecognized frequencies rather than a falsy value, so checking
-    // truthiness alone would accept any 3+ digit number as a "frequency."
+    // unrecognized frequencies rather than a falsy value.
     const band = freq ? bandForFrequency(freq) : undefined
-    if (!freq || !band || band === 'other') return null
-    return { freq }
+    if (!band || band === 'other') return null
+
+    const formattedFreq = fmtFreq(freq)
+    return {
+      describe: `Change frequency to **${formattedFreq} MHz**?`,
+      confirm: `Frequency set to **${formattedFreq} MHz**`,
+      commands: [{ setVfo: { freq } }],
+    }
   },
 }
 
 const ModeCommand = {
-  async tryCommand({ input }: { input: string }, _ctx: HookContext): Promise<CommandResult | null> {
+  async interpret({ input }: { input: string }, _ctx: HookContext): Promise<CommandInterpretation | null> {
     const match = MODE_MATCH.exec(input.trim())
     if (!match) return null
-    return { mode: match[1].toUpperCase() }
+    const mode = match[1].toUpperCase()
+    return {
+      describe: `Change mode to **${mode}**?`,
+      confirm: `Mode set to **${mode}**`,
+      commands: [{ setVfo: { mode } }],
+    }
+  },
+}
+
+const DevModeCommand = {
+  async interpret({ input }: { input: string }, ctx: HookContext): Promise<CommandInterpretation | null> {
+    const trimmed = input.trim().toUpperCase()
+    if (trimmed !== 'DEVMODE' && trimmed !== 'KONAMI') return null
+
+    const devMode = !!ctx.developerMode
+    const nextDevMode = !devMode
+    return {
+      describe: nextDevMode ? 'Activate developer mode?' : 'Deactivate developer mode?',
+      confirm: nextDevMode ? 'Developer mode activated' : 'Developer mode deactivated',
+      commands: [{ updateSettings: { developerMode: nextDevMode } }],
+    }
   },
 }
 
@@ -67,5 +112,6 @@ defineExtension({
     registerHook('command', { key: 'radio-commands-band', hook: BandCommand, priority: 100 })
     registerHook('command', { key: 'radio-commands-mode', hook: ModeCommand, priority: 100 })
     registerHook('command', { key: 'radio-commands-frequency', hook: FrequencyCommand, priority: 99 })
+    registerHook('command', { key: 'radio-commands-devmode', hook: DevModeCommand, priority: 100 })
   },
 })

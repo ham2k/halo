@@ -78,10 +78,12 @@ class HaLoServices {
     operations: operations,
     qsos: qsos,
     transport: _syncTransportCall,
-    settings: _SettingsSyncAdapter(settings),
+    settings: settings,
   );
 
-  HaLoServices(this.db, this.settings, {ExtensionService? extensions}) : extensions = extensions ?? ExtensionService();
+  HaLoServices(this.db, this.settings, {ExtensionService? extensions}) : extensions = extensions ?? ExtensionService() {
+    this.extensions.settings = settings;
+  }
 
 
 
@@ -120,21 +122,7 @@ class HaLoServices {
   }
 }
 
-/// Adapts `SettingsService` (SharedPreferences, Flutter) to the plain-Dart
-/// `SyncSettings` interface `halo_core`'s `SyncEngine` depends on.
-class _SettingsSyncAdapter implements SyncSettings {
-  final SettingsService settings;
-  _SettingsSyncAdapter(this.settings);
 
-  @override
-  bool get enabled => settings.syncEnabled;
-
-  @override
-  Map<String, dynamic> get state => settings.syncState;
-
-  @override
-  Future<void> setState(Map<String, dynamic> state) => settings.setSyncState(state);
-}
 
 class HaLoApp extends StatelessWidget {
   final HaLoServices services;
