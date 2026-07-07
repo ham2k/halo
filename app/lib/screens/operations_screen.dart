@@ -30,7 +30,8 @@ class _OperationRow extends StatelessWidget {
         builder: (_) => OperationScreen(services: services, operationUuid: operation.uuid),
       )),
       onLongPress: () => confirmDeleteOperation(context, services.operations, operation),
-      child: Padding(
+      child: Container(
+        color: theme.colorScheme.surface,
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Row(children: [
@@ -172,10 +173,15 @@ class OperationsScreen extends StatelessWidget {
               child: const Center(child: Text('No operations yet. Create one to start logging.')),
             );
           }
-          return ListView.separated(
-            itemCount: operations.length,
-            separatorBuilder: (context, index) => const Divider(),
-            itemBuilder: (context, index) => _OperationRow(services: services, operation: operations[index]),
+          return Container(
+            // Shows through below the last row when there aren't enough
+            // operations to fill the screen.
+            color: Theme.of(context).colorScheme.surfaceContainerHighest,
+            child: ListView.separated(
+              itemCount: operations.length,
+              separatorBuilder: (context, index) => const Divider(),
+              itemBuilder: (context, index) => _OperationRow(services: services, operation: operations[index]),
+            ),
           );
         },
       ),
