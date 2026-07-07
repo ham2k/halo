@@ -15,6 +15,12 @@ class _FakeSyncSettings implements SyncSettings {
 
   @override
   Future<void> setState(Map<String, dynamic> newState) async => state = newState;
+
+  bool devModeVal = false;
+  @override
+  bool get developerMode => devModeVal;
+  @override
+  Future<void> setDeveloperMode(bool enabled) async => devModeVal = enabled;
 }
 
 typedef _TransportResponder = Map<String, dynamic> Function(String method, Map<String, dynamic> args);

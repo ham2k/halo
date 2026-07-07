@@ -12,12 +12,13 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
+import 'package:halo_core/halo_core.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uuid/uuid.dart';
 
 const _uuidGenerator = Uuid();
 
-class SettingsService extends ChangeNotifier {
+class SettingsService extends ChangeNotifier implements SyncSettings {
   static const _themeModeKey = 'themeMode';
   static const _qrzUsernameKey = 'qrzUsername';
   static const _qrzPasswordKey = 'qrzPassword';
@@ -25,6 +26,7 @@ class SettingsService extends ChangeNotifier {
   static const _syncEnabledKey = 'syncEnabled';
   static const _syncDeviceKeyKey = 'syncDeviceKey';
   static const _syncStateKey = 'syncState';
+  static const _developerModeKey = 'developerMode';
 
   final SharedPreferences _prefs;
 
@@ -106,4 +108,22 @@ class SettingsService extends ChangeNotifier {
     await _prefs.setString(_syncStateKey, jsonEncode(state));
     notifyListeners();
   }
+
+  @override
+  bool get developerMode => _prefs.getBool(_developerModeKey) ?? false;
+
+  @override
+  Future<void> setDeveloperMode(bool enabled) async {
+    await _prefs.setBool(_developerModeKey, enabled);
+    notifyListeners();
+  }
+
+  @override
+  bool get enabled => syncEnabled;
+
+  @override
+  Map<String, dynamic> get state => syncState;
+
+  @override
+  Future<void> setState(Map<String, dynamic> state) => setSyncState(state);
 }

@@ -36,6 +36,8 @@ abstract class SyncSettings {
   bool get enabled;
   Map<String, dynamic> get state;
   Future<void> setState(Map<String, dynamic> state);
+  bool get developerMode => false;
+  Future<void> setDeveloperMode(bool enabled) async {}
 }
 
 class SyncBatch {
