@@ -135,6 +135,12 @@ class _OperationScreenState extends State<OperationScreen> {
     }
   }
 
+  Future<void> _handleCommandAction(String action) async {
+    final messenger = ScaffoldMessenger.of(context);
+    final message = await widget.services.handleCommandAction(action);
+    if (message != null) messenger.showSnackBar(SnackBar(content: Text(message)));
+  }
+
   @override
   Widget build(BuildContext context) {
     final operation = _operation;
@@ -216,6 +222,7 @@ class _OperationScreenState extends State<OperationScreen> {
                     activityControls: _loggingControls,
                     decorateRef: widget.services.extensions.decorateRef,
                     tryCommand: widget.services.extensions.tryCommand,
+                    onCommandAction: _handleCommandAction,
                   ),
                 ]),
               ),

@@ -100,6 +100,20 @@ class PoloServices {
     if (enabled) syncEngine.start();
   }
 
+  /// Handles a command action from the call field (currently just
+  /// `SYNCALL` — see `extensions/sync/ham2k-lofi`'s command hook). Returns
+  /// a message for the caller to show in a SnackBar, or null for nothing.
+  Future<String?> handleCommandAction(String action) async {
+    switch (action) {
+      case 'syncAll':
+        if (!settings.syncEnabled) return 'Enable sync in Settings first.';
+        await syncEngine.forceFullResync();
+        return 'Full resync started — local data was backed up first.';
+      default:
+        return null;
+    }
+  }
+
   Future<Map<String, dynamic>> _syncTransportCall(String method, Map<String, dynamic> args) async {
     final host = extensions.host;
     if (host == null) throw StateError('extension runtime is not ready yet');

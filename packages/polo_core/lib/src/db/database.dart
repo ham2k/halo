@@ -50,10 +50,52 @@ class Qsos extends Table {
   Set<Column> get primaryKey => {uuid};
 }
 
-@DriftDatabase(tables: [Operations, Qsos])
+/// A snapshot of every row from `Operations`/`Qsos` taken right before a
+/// "replace" sync reconciliation (or a `SYNCALL` command) wipes the live
+/// tables — see `OperationsRepository.backupAndClearAll`. Not a full schema
+/// mirror: only what's needed to inspect or manually recover a backup,
+/// tagged with the `backupId` (a UTC timestamp) that groups one event's
+/// rows together.
+@DataClassName('OperationBackupRow')
+class OperationsBackup extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  TextColumn get backupId => text()();
+  IntColumn get backupAtMillis => integer()();
+  TextColumn get uuid => text()();
+  TextColumn get data => text()();
+  IntColumn get startAtMillisMin => integer().nullable()();
+  IntColumn get startAtMillisMax => integer().nullable()();
+  IntColumn get qsoCount => integer().withDefault(const Constant(0))();
+  BoolColumn get deleted => boolean().withDefault(const Constant(false))();
+}
+
+/// See `OperationsBackup`.
+@DataClassName('QsoBackupRow')
+class QsosBackup extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  TextColumn get backupId => text()();
+  IntColumn get backupAtMillis => integer()();
+  TextColumn get uuid => text()();
+  TextColumn get operation => text()();
+  TextColumn get data => text()();
+  BoolColumn get deleted => boolean().withDefault(const Constant(false))();
+}
+
+@DriftDatabase(tables: [Operations, Qsos, OperationsBackup, QsosBackup])
 class PoloDatabase extends _$PoloDatabase {
   PoloDatabase(super.executor);
 
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 2;
+
+  @override
+  MigrationStrategy get migration => MigrationStrategy(
+        onCreate: (m) => m.createAll(),
+        onUpgrade: (Migrator m, int from, int to) async {
+          if (from < 2) {
+            await m.createTable(operationsBackup);
+            await m.createTable(qsosBackup);
+          }
+        },
+      );
 }

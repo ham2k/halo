@@ -1195,11 +1195,1031 @@ class QsosCompanion extends UpdateCompanion<QsoRow> {
   }
 }
 
+class $OperationsBackupTable extends OperationsBackup
+    with TableInfo<$OperationsBackupTable, OperationBackupRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $OperationsBackupTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    hasAutoIncrement: true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'PRIMARY KEY AUTOINCREMENT',
+    ),
+  );
+  static const VerificationMeta _backupIdMeta = const VerificationMeta(
+    'backupId',
+  );
+  @override
+  late final GeneratedColumn<String> backupId = GeneratedColumn<String>(
+    'backup_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _backupAtMillisMeta = const VerificationMeta(
+    'backupAtMillis',
+  );
+  @override
+  late final GeneratedColumn<int> backupAtMillis = GeneratedColumn<int>(
+    'backup_at_millis',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _uuidMeta = const VerificationMeta('uuid');
+  @override
+  late final GeneratedColumn<String> uuid = GeneratedColumn<String>(
+    'uuid',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _dataMeta = const VerificationMeta('data');
+  @override
+  late final GeneratedColumn<String> data = GeneratedColumn<String>(
+    'data',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _startAtMillisMinMeta = const VerificationMeta(
+    'startAtMillisMin',
+  );
+  @override
+  late final GeneratedColumn<int> startAtMillisMin = GeneratedColumn<int>(
+    'start_at_millis_min',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _startAtMillisMaxMeta = const VerificationMeta(
+    'startAtMillisMax',
+  );
+  @override
+  late final GeneratedColumn<int> startAtMillisMax = GeneratedColumn<int>(
+    'start_at_millis_max',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _qsoCountMeta = const VerificationMeta(
+    'qsoCount',
+  );
+  @override
+  late final GeneratedColumn<int> qsoCount = GeneratedColumn<int>(
+    'qso_count',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _deletedMeta = const VerificationMeta(
+    'deleted',
+  );
+  @override
+  late final GeneratedColumn<bool> deleted = GeneratedColumn<bool>(
+    'deleted',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("deleted" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    backupId,
+    backupAtMillis,
+    uuid,
+    data,
+    startAtMillisMin,
+    startAtMillisMax,
+    qsoCount,
+    deleted,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'operations_backup';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<OperationBackupRow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('backup_id')) {
+      context.handle(
+        _backupIdMeta,
+        backupId.isAcceptableOrUnknown(data['backup_id']!, _backupIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_backupIdMeta);
+    }
+    if (data.containsKey('backup_at_millis')) {
+      context.handle(
+        _backupAtMillisMeta,
+        backupAtMillis.isAcceptableOrUnknown(
+          data['backup_at_millis']!,
+          _backupAtMillisMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_backupAtMillisMeta);
+    }
+    if (data.containsKey('uuid')) {
+      context.handle(
+        _uuidMeta,
+        uuid.isAcceptableOrUnknown(data['uuid']!, _uuidMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_uuidMeta);
+    }
+    if (data.containsKey('data')) {
+      context.handle(
+        _dataMeta,
+        this.data.isAcceptableOrUnknown(data['data']!, _dataMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_dataMeta);
+    }
+    if (data.containsKey('start_at_millis_min')) {
+      context.handle(
+        _startAtMillisMinMeta,
+        startAtMillisMin.isAcceptableOrUnknown(
+          data['start_at_millis_min']!,
+          _startAtMillisMinMeta,
+        ),
+      );
+    }
+    if (data.containsKey('start_at_millis_max')) {
+      context.handle(
+        _startAtMillisMaxMeta,
+        startAtMillisMax.isAcceptableOrUnknown(
+          data['start_at_millis_max']!,
+          _startAtMillisMaxMeta,
+        ),
+      );
+    }
+    if (data.containsKey('qso_count')) {
+      context.handle(
+        _qsoCountMeta,
+        qsoCount.isAcceptableOrUnknown(data['qso_count']!, _qsoCountMeta),
+      );
+    }
+    if (data.containsKey('deleted')) {
+      context.handle(
+        _deletedMeta,
+        deleted.isAcceptableOrUnknown(data['deleted']!, _deletedMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  OperationBackupRow map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return OperationBackupRow(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      backupId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}backup_id'],
+      )!,
+      backupAtMillis: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}backup_at_millis'],
+      )!,
+      uuid: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}uuid'],
+      )!,
+      data: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}data'],
+      )!,
+      startAtMillisMin: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}start_at_millis_min'],
+      ),
+      startAtMillisMax: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}start_at_millis_max'],
+      ),
+      qsoCount: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}qso_count'],
+      )!,
+      deleted: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}deleted'],
+      )!,
+    );
+  }
+
+  @override
+  $OperationsBackupTable createAlias(String alias) {
+    return $OperationsBackupTable(attachedDatabase, alias);
+  }
+}
+
+class OperationBackupRow extends DataClass
+    implements Insertable<OperationBackupRow> {
+  final int id;
+  final String backupId;
+  final int backupAtMillis;
+  final String uuid;
+  final String data;
+  final int? startAtMillisMin;
+  final int? startAtMillisMax;
+  final int qsoCount;
+  final bool deleted;
+  const OperationBackupRow({
+    required this.id,
+    required this.backupId,
+    required this.backupAtMillis,
+    required this.uuid,
+    required this.data,
+    this.startAtMillisMin,
+    this.startAtMillisMax,
+    required this.qsoCount,
+    required this.deleted,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['backup_id'] = Variable<String>(backupId);
+    map['backup_at_millis'] = Variable<int>(backupAtMillis);
+    map['uuid'] = Variable<String>(uuid);
+    map['data'] = Variable<String>(data);
+    if (!nullToAbsent || startAtMillisMin != null) {
+      map['start_at_millis_min'] = Variable<int>(startAtMillisMin);
+    }
+    if (!nullToAbsent || startAtMillisMax != null) {
+      map['start_at_millis_max'] = Variable<int>(startAtMillisMax);
+    }
+    map['qso_count'] = Variable<int>(qsoCount);
+    map['deleted'] = Variable<bool>(deleted);
+    return map;
+  }
+
+  OperationsBackupCompanion toCompanion(bool nullToAbsent) {
+    return OperationsBackupCompanion(
+      id: Value(id),
+      backupId: Value(backupId),
+      backupAtMillis: Value(backupAtMillis),
+      uuid: Value(uuid),
+      data: Value(data),
+      startAtMillisMin: startAtMillisMin == null && nullToAbsent
+          ? const Value.absent()
+          : Value(startAtMillisMin),
+      startAtMillisMax: startAtMillisMax == null && nullToAbsent
+          ? const Value.absent()
+          : Value(startAtMillisMax),
+      qsoCount: Value(qsoCount),
+      deleted: Value(deleted),
+    );
+  }
+
+  factory OperationBackupRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return OperationBackupRow(
+      id: serializer.fromJson<int>(json['id']),
+      backupId: serializer.fromJson<String>(json['backupId']),
+      backupAtMillis: serializer.fromJson<int>(json['backupAtMillis']),
+      uuid: serializer.fromJson<String>(json['uuid']),
+      data: serializer.fromJson<String>(json['data']),
+      startAtMillisMin: serializer.fromJson<int?>(json['startAtMillisMin']),
+      startAtMillisMax: serializer.fromJson<int?>(json['startAtMillisMax']),
+      qsoCount: serializer.fromJson<int>(json['qsoCount']),
+      deleted: serializer.fromJson<bool>(json['deleted']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'backupId': serializer.toJson<String>(backupId),
+      'backupAtMillis': serializer.toJson<int>(backupAtMillis),
+      'uuid': serializer.toJson<String>(uuid),
+      'data': serializer.toJson<String>(data),
+      'startAtMillisMin': serializer.toJson<int?>(startAtMillisMin),
+      'startAtMillisMax': serializer.toJson<int?>(startAtMillisMax),
+      'qsoCount': serializer.toJson<int>(qsoCount),
+      'deleted': serializer.toJson<bool>(deleted),
+    };
+  }
+
+  OperationBackupRow copyWith({
+    int? id,
+    String? backupId,
+    int? backupAtMillis,
+    String? uuid,
+    String? data,
+    Value<int?> startAtMillisMin = const Value.absent(),
+    Value<int?> startAtMillisMax = const Value.absent(),
+    int? qsoCount,
+    bool? deleted,
+  }) => OperationBackupRow(
+    id: id ?? this.id,
+    backupId: backupId ?? this.backupId,
+    backupAtMillis: backupAtMillis ?? this.backupAtMillis,
+    uuid: uuid ?? this.uuid,
+    data: data ?? this.data,
+    startAtMillisMin: startAtMillisMin.present
+        ? startAtMillisMin.value
+        : this.startAtMillisMin,
+    startAtMillisMax: startAtMillisMax.present
+        ? startAtMillisMax.value
+        : this.startAtMillisMax,
+    qsoCount: qsoCount ?? this.qsoCount,
+    deleted: deleted ?? this.deleted,
+  );
+  OperationBackupRow copyWithCompanion(OperationsBackupCompanion data) {
+    return OperationBackupRow(
+      id: data.id.present ? data.id.value : this.id,
+      backupId: data.backupId.present ? data.backupId.value : this.backupId,
+      backupAtMillis: data.backupAtMillis.present
+          ? data.backupAtMillis.value
+          : this.backupAtMillis,
+      uuid: data.uuid.present ? data.uuid.value : this.uuid,
+      data: data.data.present ? data.data.value : this.data,
+      startAtMillisMin: data.startAtMillisMin.present
+          ? data.startAtMillisMin.value
+          : this.startAtMillisMin,
+      startAtMillisMax: data.startAtMillisMax.present
+          ? data.startAtMillisMax.value
+          : this.startAtMillisMax,
+      qsoCount: data.qsoCount.present ? data.qsoCount.value : this.qsoCount,
+      deleted: data.deleted.present ? data.deleted.value : this.deleted,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('OperationBackupRow(')
+          ..write('id: $id, ')
+          ..write('backupId: $backupId, ')
+          ..write('backupAtMillis: $backupAtMillis, ')
+          ..write('uuid: $uuid, ')
+          ..write('data: $data, ')
+          ..write('startAtMillisMin: $startAtMillisMin, ')
+          ..write('startAtMillisMax: $startAtMillisMax, ')
+          ..write('qsoCount: $qsoCount, ')
+          ..write('deleted: $deleted')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    backupId,
+    backupAtMillis,
+    uuid,
+    data,
+    startAtMillisMin,
+    startAtMillisMax,
+    qsoCount,
+    deleted,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is OperationBackupRow &&
+          other.id == this.id &&
+          other.backupId == this.backupId &&
+          other.backupAtMillis == this.backupAtMillis &&
+          other.uuid == this.uuid &&
+          other.data == this.data &&
+          other.startAtMillisMin == this.startAtMillisMin &&
+          other.startAtMillisMax == this.startAtMillisMax &&
+          other.qsoCount == this.qsoCount &&
+          other.deleted == this.deleted);
+}
+
+class OperationsBackupCompanion extends UpdateCompanion<OperationBackupRow> {
+  final Value<int> id;
+  final Value<String> backupId;
+  final Value<int> backupAtMillis;
+  final Value<String> uuid;
+  final Value<String> data;
+  final Value<int?> startAtMillisMin;
+  final Value<int?> startAtMillisMax;
+  final Value<int> qsoCount;
+  final Value<bool> deleted;
+  const OperationsBackupCompanion({
+    this.id = const Value.absent(),
+    this.backupId = const Value.absent(),
+    this.backupAtMillis = const Value.absent(),
+    this.uuid = const Value.absent(),
+    this.data = const Value.absent(),
+    this.startAtMillisMin = const Value.absent(),
+    this.startAtMillisMax = const Value.absent(),
+    this.qsoCount = const Value.absent(),
+    this.deleted = const Value.absent(),
+  });
+  OperationsBackupCompanion.insert({
+    this.id = const Value.absent(),
+    required String backupId,
+    required int backupAtMillis,
+    required String uuid,
+    required String data,
+    this.startAtMillisMin = const Value.absent(),
+    this.startAtMillisMax = const Value.absent(),
+    this.qsoCount = const Value.absent(),
+    this.deleted = const Value.absent(),
+  }) : backupId = Value(backupId),
+       backupAtMillis = Value(backupAtMillis),
+       uuid = Value(uuid),
+       data = Value(data);
+  static Insertable<OperationBackupRow> custom({
+    Expression<int>? id,
+    Expression<String>? backupId,
+    Expression<int>? backupAtMillis,
+    Expression<String>? uuid,
+    Expression<String>? data,
+    Expression<int>? startAtMillisMin,
+    Expression<int>? startAtMillisMax,
+    Expression<int>? qsoCount,
+    Expression<bool>? deleted,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (backupId != null) 'backup_id': backupId,
+      if (backupAtMillis != null) 'backup_at_millis': backupAtMillis,
+      if (uuid != null) 'uuid': uuid,
+      if (data != null) 'data': data,
+      if (startAtMillisMin != null) 'start_at_millis_min': startAtMillisMin,
+      if (startAtMillisMax != null) 'start_at_millis_max': startAtMillisMax,
+      if (qsoCount != null) 'qso_count': qsoCount,
+      if (deleted != null) 'deleted': deleted,
+    });
+  }
+
+  OperationsBackupCompanion copyWith({
+    Value<int>? id,
+    Value<String>? backupId,
+    Value<int>? backupAtMillis,
+    Value<String>? uuid,
+    Value<String>? data,
+    Value<int?>? startAtMillisMin,
+    Value<int?>? startAtMillisMax,
+    Value<int>? qsoCount,
+    Value<bool>? deleted,
+  }) {
+    return OperationsBackupCompanion(
+      id: id ?? this.id,
+      backupId: backupId ?? this.backupId,
+      backupAtMillis: backupAtMillis ?? this.backupAtMillis,
+      uuid: uuid ?? this.uuid,
+      data: data ?? this.data,
+      startAtMillisMin: startAtMillisMin ?? this.startAtMillisMin,
+      startAtMillisMax: startAtMillisMax ?? this.startAtMillisMax,
+      qsoCount: qsoCount ?? this.qsoCount,
+      deleted: deleted ?? this.deleted,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (backupId.present) {
+      map['backup_id'] = Variable<String>(backupId.value);
+    }
+    if (backupAtMillis.present) {
+      map['backup_at_millis'] = Variable<int>(backupAtMillis.value);
+    }
+    if (uuid.present) {
+      map['uuid'] = Variable<String>(uuid.value);
+    }
+    if (data.present) {
+      map['data'] = Variable<String>(data.value);
+    }
+    if (startAtMillisMin.present) {
+      map['start_at_millis_min'] = Variable<int>(startAtMillisMin.value);
+    }
+    if (startAtMillisMax.present) {
+      map['start_at_millis_max'] = Variable<int>(startAtMillisMax.value);
+    }
+    if (qsoCount.present) {
+      map['qso_count'] = Variable<int>(qsoCount.value);
+    }
+    if (deleted.present) {
+      map['deleted'] = Variable<bool>(deleted.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('OperationsBackupCompanion(')
+          ..write('id: $id, ')
+          ..write('backupId: $backupId, ')
+          ..write('backupAtMillis: $backupAtMillis, ')
+          ..write('uuid: $uuid, ')
+          ..write('data: $data, ')
+          ..write('startAtMillisMin: $startAtMillisMin, ')
+          ..write('startAtMillisMax: $startAtMillisMax, ')
+          ..write('qsoCount: $qsoCount, ')
+          ..write('deleted: $deleted')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $QsosBackupTable extends QsosBackup
+    with TableInfo<$QsosBackupTable, QsoBackupRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $QsosBackupTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    hasAutoIncrement: true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'PRIMARY KEY AUTOINCREMENT',
+    ),
+  );
+  static const VerificationMeta _backupIdMeta = const VerificationMeta(
+    'backupId',
+  );
+  @override
+  late final GeneratedColumn<String> backupId = GeneratedColumn<String>(
+    'backup_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _backupAtMillisMeta = const VerificationMeta(
+    'backupAtMillis',
+  );
+  @override
+  late final GeneratedColumn<int> backupAtMillis = GeneratedColumn<int>(
+    'backup_at_millis',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _uuidMeta = const VerificationMeta('uuid');
+  @override
+  late final GeneratedColumn<String> uuid = GeneratedColumn<String>(
+    'uuid',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _operationMeta = const VerificationMeta(
+    'operation',
+  );
+  @override
+  late final GeneratedColumn<String> operation = GeneratedColumn<String>(
+    'operation',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _dataMeta = const VerificationMeta('data');
+  @override
+  late final GeneratedColumn<String> data = GeneratedColumn<String>(
+    'data',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _deletedMeta = const VerificationMeta(
+    'deleted',
+  );
+  @override
+  late final GeneratedColumn<bool> deleted = GeneratedColumn<bool>(
+    'deleted',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("deleted" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    backupId,
+    backupAtMillis,
+    uuid,
+    operation,
+    data,
+    deleted,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'qsos_backup';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<QsoBackupRow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('backup_id')) {
+      context.handle(
+        _backupIdMeta,
+        backupId.isAcceptableOrUnknown(data['backup_id']!, _backupIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_backupIdMeta);
+    }
+    if (data.containsKey('backup_at_millis')) {
+      context.handle(
+        _backupAtMillisMeta,
+        backupAtMillis.isAcceptableOrUnknown(
+          data['backup_at_millis']!,
+          _backupAtMillisMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_backupAtMillisMeta);
+    }
+    if (data.containsKey('uuid')) {
+      context.handle(
+        _uuidMeta,
+        uuid.isAcceptableOrUnknown(data['uuid']!, _uuidMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_uuidMeta);
+    }
+    if (data.containsKey('operation')) {
+      context.handle(
+        _operationMeta,
+        operation.isAcceptableOrUnknown(data['operation']!, _operationMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_operationMeta);
+    }
+    if (data.containsKey('data')) {
+      context.handle(
+        _dataMeta,
+        this.data.isAcceptableOrUnknown(data['data']!, _dataMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_dataMeta);
+    }
+    if (data.containsKey('deleted')) {
+      context.handle(
+        _deletedMeta,
+        deleted.isAcceptableOrUnknown(data['deleted']!, _deletedMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  QsoBackupRow map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return QsoBackupRow(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      backupId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}backup_id'],
+      )!,
+      backupAtMillis: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}backup_at_millis'],
+      )!,
+      uuid: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}uuid'],
+      )!,
+      operation: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}operation'],
+      )!,
+      data: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}data'],
+      )!,
+      deleted: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}deleted'],
+      )!,
+    );
+  }
+
+  @override
+  $QsosBackupTable createAlias(String alias) {
+    return $QsosBackupTable(attachedDatabase, alias);
+  }
+}
+
+class QsoBackupRow extends DataClass implements Insertable<QsoBackupRow> {
+  final int id;
+  final String backupId;
+  final int backupAtMillis;
+  final String uuid;
+  final String operation;
+  final String data;
+  final bool deleted;
+  const QsoBackupRow({
+    required this.id,
+    required this.backupId,
+    required this.backupAtMillis,
+    required this.uuid,
+    required this.operation,
+    required this.data,
+    required this.deleted,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['backup_id'] = Variable<String>(backupId);
+    map['backup_at_millis'] = Variable<int>(backupAtMillis);
+    map['uuid'] = Variable<String>(uuid);
+    map['operation'] = Variable<String>(operation);
+    map['data'] = Variable<String>(data);
+    map['deleted'] = Variable<bool>(deleted);
+    return map;
+  }
+
+  QsosBackupCompanion toCompanion(bool nullToAbsent) {
+    return QsosBackupCompanion(
+      id: Value(id),
+      backupId: Value(backupId),
+      backupAtMillis: Value(backupAtMillis),
+      uuid: Value(uuid),
+      operation: Value(operation),
+      data: Value(data),
+      deleted: Value(deleted),
+    );
+  }
+
+  factory QsoBackupRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return QsoBackupRow(
+      id: serializer.fromJson<int>(json['id']),
+      backupId: serializer.fromJson<String>(json['backupId']),
+      backupAtMillis: serializer.fromJson<int>(json['backupAtMillis']),
+      uuid: serializer.fromJson<String>(json['uuid']),
+      operation: serializer.fromJson<String>(json['operation']),
+      data: serializer.fromJson<String>(json['data']),
+      deleted: serializer.fromJson<bool>(json['deleted']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'backupId': serializer.toJson<String>(backupId),
+      'backupAtMillis': serializer.toJson<int>(backupAtMillis),
+      'uuid': serializer.toJson<String>(uuid),
+      'operation': serializer.toJson<String>(operation),
+      'data': serializer.toJson<String>(data),
+      'deleted': serializer.toJson<bool>(deleted),
+    };
+  }
+
+  QsoBackupRow copyWith({
+    int? id,
+    String? backupId,
+    int? backupAtMillis,
+    String? uuid,
+    String? operation,
+    String? data,
+    bool? deleted,
+  }) => QsoBackupRow(
+    id: id ?? this.id,
+    backupId: backupId ?? this.backupId,
+    backupAtMillis: backupAtMillis ?? this.backupAtMillis,
+    uuid: uuid ?? this.uuid,
+    operation: operation ?? this.operation,
+    data: data ?? this.data,
+    deleted: deleted ?? this.deleted,
+  );
+  QsoBackupRow copyWithCompanion(QsosBackupCompanion data) {
+    return QsoBackupRow(
+      id: data.id.present ? data.id.value : this.id,
+      backupId: data.backupId.present ? data.backupId.value : this.backupId,
+      backupAtMillis: data.backupAtMillis.present
+          ? data.backupAtMillis.value
+          : this.backupAtMillis,
+      uuid: data.uuid.present ? data.uuid.value : this.uuid,
+      operation: data.operation.present ? data.operation.value : this.operation,
+      data: data.data.present ? data.data.value : this.data,
+      deleted: data.deleted.present ? data.deleted.value : this.deleted,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('QsoBackupRow(')
+          ..write('id: $id, ')
+          ..write('backupId: $backupId, ')
+          ..write('backupAtMillis: $backupAtMillis, ')
+          ..write('uuid: $uuid, ')
+          ..write('operation: $operation, ')
+          ..write('data: $data, ')
+          ..write('deleted: $deleted')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode =>
+      Object.hash(id, backupId, backupAtMillis, uuid, operation, data, deleted);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is QsoBackupRow &&
+          other.id == this.id &&
+          other.backupId == this.backupId &&
+          other.backupAtMillis == this.backupAtMillis &&
+          other.uuid == this.uuid &&
+          other.operation == this.operation &&
+          other.data == this.data &&
+          other.deleted == this.deleted);
+}
+
+class QsosBackupCompanion extends UpdateCompanion<QsoBackupRow> {
+  final Value<int> id;
+  final Value<String> backupId;
+  final Value<int> backupAtMillis;
+  final Value<String> uuid;
+  final Value<String> operation;
+  final Value<String> data;
+  final Value<bool> deleted;
+  const QsosBackupCompanion({
+    this.id = const Value.absent(),
+    this.backupId = const Value.absent(),
+    this.backupAtMillis = const Value.absent(),
+    this.uuid = const Value.absent(),
+    this.operation = const Value.absent(),
+    this.data = const Value.absent(),
+    this.deleted = const Value.absent(),
+  });
+  QsosBackupCompanion.insert({
+    this.id = const Value.absent(),
+    required String backupId,
+    required int backupAtMillis,
+    required String uuid,
+    required String operation,
+    required String data,
+    this.deleted = const Value.absent(),
+  }) : backupId = Value(backupId),
+       backupAtMillis = Value(backupAtMillis),
+       uuid = Value(uuid),
+       operation = Value(operation),
+       data = Value(data);
+  static Insertable<QsoBackupRow> custom({
+    Expression<int>? id,
+    Expression<String>? backupId,
+    Expression<int>? backupAtMillis,
+    Expression<String>? uuid,
+    Expression<String>? operation,
+    Expression<String>? data,
+    Expression<bool>? deleted,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (backupId != null) 'backup_id': backupId,
+      if (backupAtMillis != null) 'backup_at_millis': backupAtMillis,
+      if (uuid != null) 'uuid': uuid,
+      if (operation != null) 'operation': operation,
+      if (data != null) 'data': data,
+      if (deleted != null) 'deleted': deleted,
+    });
+  }
+
+  QsosBackupCompanion copyWith({
+    Value<int>? id,
+    Value<String>? backupId,
+    Value<int>? backupAtMillis,
+    Value<String>? uuid,
+    Value<String>? operation,
+    Value<String>? data,
+    Value<bool>? deleted,
+  }) {
+    return QsosBackupCompanion(
+      id: id ?? this.id,
+      backupId: backupId ?? this.backupId,
+      backupAtMillis: backupAtMillis ?? this.backupAtMillis,
+      uuid: uuid ?? this.uuid,
+      operation: operation ?? this.operation,
+      data: data ?? this.data,
+      deleted: deleted ?? this.deleted,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (backupId.present) {
+      map['backup_id'] = Variable<String>(backupId.value);
+    }
+    if (backupAtMillis.present) {
+      map['backup_at_millis'] = Variable<int>(backupAtMillis.value);
+    }
+    if (uuid.present) {
+      map['uuid'] = Variable<String>(uuid.value);
+    }
+    if (operation.present) {
+      map['operation'] = Variable<String>(operation.value);
+    }
+    if (data.present) {
+      map['data'] = Variable<String>(data.value);
+    }
+    if (deleted.present) {
+      map['deleted'] = Variable<bool>(deleted.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('QsosBackupCompanion(')
+          ..write('id: $id, ')
+          ..write('backupId: $backupId, ')
+          ..write('backupAtMillis: $backupAtMillis, ')
+          ..write('uuid: $uuid, ')
+          ..write('operation: $operation, ')
+          ..write('data: $data, ')
+          ..write('deleted: $deleted')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$PoloDatabase extends GeneratedDatabase {
   _$PoloDatabase(QueryExecutor e) : super(e);
   $PoloDatabaseManager get managers => $PoloDatabaseManager(this);
   late final $OperationsTable operations = $OperationsTable(this);
   late final $QsosTable qsos = $QsosTable(this);
+  late final $OperationsBackupTable operationsBackup = $OperationsBackupTable(
+    this,
+  );
+  late final $QsosBackupTable qsosBackup = $QsosBackupTable(this);
   late final Index qsosOperationStart = Index(
     'qsos_operation_start',
     'CREATE INDEX qsos_operation_start ON qsos (operation, start_at_millis)',
@@ -1211,6 +2231,8 @@ abstract class _$PoloDatabase extends GeneratedDatabase {
   List<DatabaseSchemaEntity> get allSchemaEntities => [
     operations,
     qsos,
+    operationsBackup,
+    qsosBackup,
     qsosOperationStart,
   ];
 }
@@ -1786,6 +2808,526 @@ typedef $$QsosTableProcessedTableManager =
       QsoRow,
       PrefetchHooks Function()
     >;
+typedef $$OperationsBackupTableCreateCompanionBuilder =
+    OperationsBackupCompanion Function({
+      Value<int> id,
+      required String backupId,
+      required int backupAtMillis,
+      required String uuid,
+      required String data,
+      Value<int?> startAtMillisMin,
+      Value<int?> startAtMillisMax,
+      Value<int> qsoCount,
+      Value<bool> deleted,
+    });
+typedef $$OperationsBackupTableUpdateCompanionBuilder =
+    OperationsBackupCompanion Function({
+      Value<int> id,
+      Value<String> backupId,
+      Value<int> backupAtMillis,
+      Value<String> uuid,
+      Value<String> data,
+      Value<int?> startAtMillisMin,
+      Value<int?> startAtMillisMax,
+      Value<int> qsoCount,
+      Value<bool> deleted,
+    });
+
+class $$OperationsBackupTableFilterComposer
+    extends Composer<_$PoloDatabase, $OperationsBackupTable> {
+  $$OperationsBackupTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get backupId => $composableBuilder(
+    column: $table.backupId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get backupAtMillis => $composableBuilder(
+    column: $table.backupAtMillis,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get uuid => $composableBuilder(
+    column: $table.uuid,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get data => $composableBuilder(
+    column: $table.data,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get startAtMillisMin => $composableBuilder(
+    column: $table.startAtMillisMin,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get startAtMillisMax => $composableBuilder(
+    column: $table.startAtMillisMax,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get qsoCount => $composableBuilder(
+    column: $table.qsoCount,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get deleted => $composableBuilder(
+    column: $table.deleted,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$OperationsBackupTableOrderingComposer
+    extends Composer<_$PoloDatabase, $OperationsBackupTable> {
+  $$OperationsBackupTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get backupId => $composableBuilder(
+    column: $table.backupId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get backupAtMillis => $composableBuilder(
+    column: $table.backupAtMillis,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get uuid => $composableBuilder(
+    column: $table.uuid,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get data => $composableBuilder(
+    column: $table.data,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get startAtMillisMin => $composableBuilder(
+    column: $table.startAtMillisMin,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get startAtMillisMax => $composableBuilder(
+    column: $table.startAtMillisMax,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get qsoCount => $composableBuilder(
+    column: $table.qsoCount,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get deleted => $composableBuilder(
+    column: $table.deleted,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$OperationsBackupTableAnnotationComposer
+    extends Composer<_$PoloDatabase, $OperationsBackupTable> {
+  $$OperationsBackupTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get backupId =>
+      $composableBuilder(column: $table.backupId, builder: (column) => column);
+
+  GeneratedColumn<int> get backupAtMillis => $composableBuilder(
+    column: $table.backupAtMillis,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get uuid =>
+      $composableBuilder(column: $table.uuid, builder: (column) => column);
+
+  GeneratedColumn<String> get data =>
+      $composableBuilder(column: $table.data, builder: (column) => column);
+
+  GeneratedColumn<int> get startAtMillisMin => $composableBuilder(
+    column: $table.startAtMillisMin,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get startAtMillisMax => $composableBuilder(
+    column: $table.startAtMillisMax,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get qsoCount =>
+      $composableBuilder(column: $table.qsoCount, builder: (column) => column);
+
+  GeneratedColumn<bool> get deleted =>
+      $composableBuilder(column: $table.deleted, builder: (column) => column);
+}
+
+class $$OperationsBackupTableTableManager
+    extends
+        RootTableManager<
+          _$PoloDatabase,
+          $OperationsBackupTable,
+          OperationBackupRow,
+          $$OperationsBackupTableFilterComposer,
+          $$OperationsBackupTableOrderingComposer,
+          $$OperationsBackupTableAnnotationComposer,
+          $$OperationsBackupTableCreateCompanionBuilder,
+          $$OperationsBackupTableUpdateCompanionBuilder,
+          (
+            OperationBackupRow,
+            BaseReferences<
+              _$PoloDatabase,
+              $OperationsBackupTable,
+              OperationBackupRow
+            >,
+          ),
+          OperationBackupRow,
+          PrefetchHooks Function()
+        > {
+  $$OperationsBackupTableTableManager(
+    _$PoloDatabase db,
+    $OperationsBackupTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$OperationsBackupTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$OperationsBackupTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$OperationsBackupTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<String> backupId = const Value.absent(),
+                Value<int> backupAtMillis = const Value.absent(),
+                Value<String> uuid = const Value.absent(),
+                Value<String> data = const Value.absent(),
+                Value<int?> startAtMillisMin = const Value.absent(),
+                Value<int?> startAtMillisMax = const Value.absent(),
+                Value<int> qsoCount = const Value.absent(),
+                Value<bool> deleted = const Value.absent(),
+              }) => OperationsBackupCompanion(
+                id: id,
+                backupId: backupId,
+                backupAtMillis: backupAtMillis,
+                uuid: uuid,
+                data: data,
+                startAtMillisMin: startAtMillisMin,
+                startAtMillisMax: startAtMillisMax,
+                qsoCount: qsoCount,
+                deleted: deleted,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                required String backupId,
+                required int backupAtMillis,
+                required String uuid,
+                required String data,
+                Value<int?> startAtMillisMin = const Value.absent(),
+                Value<int?> startAtMillisMax = const Value.absent(),
+                Value<int> qsoCount = const Value.absent(),
+                Value<bool> deleted = const Value.absent(),
+              }) => OperationsBackupCompanion.insert(
+                id: id,
+                backupId: backupId,
+                backupAtMillis: backupAtMillis,
+                uuid: uuid,
+                data: data,
+                startAtMillisMin: startAtMillisMin,
+                startAtMillisMax: startAtMillisMax,
+                qsoCount: qsoCount,
+                deleted: deleted,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$OperationsBackupTableProcessedTableManager =
+    ProcessedTableManager<
+      _$PoloDatabase,
+      $OperationsBackupTable,
+      OperationBackupRow,
+      $$OperationsBackupTableFilterComposer,
+      $$OperationsBackupTableOrderingComposer,
+      $$OperationsBackupTableAnnotationComposer,
+      $$OperationsBackupTableCreateCompanionBuilder,
+      $$OperationsBackupTableUpdateCompanionBuilder,
+      (
+        OperationBackupRow,
+        BaseReferences<
+          _$PoloDatabase,
+          $OperationsBackupTable,
+          OperationBackupRow
+        >,
+      ),
+      OperationBackupRow,
+      PrefetchHooks Function()
+    >;
+typedef $$QsosBackupTableCreateCompanionBuilder =
+    QsosBackupCompanion Function({
+      Value<int> id,
+      required String backupId,
+      required int backupAtMillis,
+      required String uuid,
+      required String operation,
+      required String data,
+      Value<bool> deleted,
+    });
+typedef $$QsosBackupTableUpdateCompanionBuilder =
+    QsosBackupCompanion Function({
+      Value<int> id,
+      Value<String> backupId,
+      Value<int> backupAtMillis,
+      Value<String> uuid,
+      Value<String> operation,
+      Value<String> data,
+      Value<bool> deleted,
+    });
+
+class $$QsosBackupTableFilterComposer
+    extends Composer<_$PoloDatabase, $QsosBackupTable> {
+  $$QsosBackupTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get backupId => $composableBuilder(
+    column: $table.backupId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get backupAtMillis => $composableBuilder(
+    column: $table.backupAtMillis,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get uuid => $composableBuilder(
+    column: $table.uuid,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get operation => $composableBuilder(
+    column: $table.operation,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get data => $composableBuilder(
+    column: $table.data,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get deleted => $composableBuilder(
+    column: $table.deleted,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$QsosBackupTableOrderingComposer
+    extends Composer<_$PoloDatabase, $QsosBackupTable> {
+  $$QsosBackupTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get backupId => $composableBuilder(
+    column: $table.backupId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get backupAtMillis => $composableBuilder(
+    column: $table.backupAtMillis,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get uuid => $composableBuilder(
+    column: $table.uuid,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get operation => $composableBuilder(
+    column: $table.operation,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get data => $composableBuilder(
+    column: $table.data,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get deleted => $composableBuilder(
+    column: $table.deleted,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$QsosBackupTableAnnotationComposer
+    extends Composer<_$PoloDatabase, $QsosBackupTable> {
+  $$QsosBackupTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get backupId =>
+      $composableBuilder(column: $table.backupId, builder: (column) => column);
+
+  GeneratedColumn<int> get backupAtMillis => $composableBuilder(
+    column: $table.backupAtMillis,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get uuid =>
+      $composableBuilder(column: $table.uuid, builder: (column) => column);
+
+  GeneratedColumn<String> get operation =>
+      $composableBuilder(column: $table.operation, builder: (column) => column);
+
+  GeneratedColumn<String> get data =>
+      $composableBuilder(column: $table.data, builder: (column) => column);
+
+  GeneratedColumn<bool> get deleted =>
+      $composableBuilder(column: $table.deleted, builder: (column) => column);
+}
+
+class $$QsosBackupTableTableManager
+    extends
+        RootTableManager<
+          _$PoloDatabase,
+          $QsosBackupTable,
+          QsoBackupRow,
+          $$QsosBackupTableFilterComposer,
+          $$QsosBackupTableOrderingComposer,
+          $$QsosBackupTableAnnotationComposer,
+          $$QsosBackupTableCreateCompanionBuilder,
+          $$QsosBackupTableUpdateCompanionBuilder,
+          (
+            QsoBackupRow,
+            BaseReferences<_$PoloDatabase, $QsosBackupTable, QsoBackupRow>,
+          ),
+          QsoBackupRow,
+          PrefetchHooks Function()
+        > {
+  $$QsosBackupTableTableManager(_$PoloDatabase db, $QsosBackupTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$QsosBackupTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$QsosBackupTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$QsosBackupTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<String> backupId = const Value.absent(),
+                Value<int> backupAtMillis = const Value.absent(),
+                Value<String> uuid = const Value.absent(),
+                Value<String> operation = const Value.absent(),
+                Value<String> data = const Value.absent(),
+                Value<bool> deleted = const Value.absent(),
+              }) => QsosBackupCompanion(
+                id: id,
+                backupId: backupId,
+                backupAtMillis: backupAtMillis,
+                uuid: uuid,
+                operation: operation,
+                data: data,
+                deleted: deleted,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                required String backupId,
+                required int backupAtMillis,
+                required String uuid,
+                required String operation,
+                required String data,
+                Value<bool> deleted = const Value.absent(),
+              }) => QsosBackupCompanion.insert(
+                id: id,
+                backupId: backupId,
+                backupAtMillis: backupAtMillis,
+                uuid: uuid,
+                operation: operation,
+                data: data,
+                deleted: deleted,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$QsosBackupTableProcessedTableManager =
+    ProcessedTableManager<
+      _$PoloDatabase,
+      $QsosBackupTable,
+      QsoBackupRow,
+      $$QsosBackupTableFilterComposer,
+      $$QsosBackupTableOrderingComposer,
+      $$QsosBackupTableAnnotationComposer,
+      $$QsosBackupTableCreateCompanionBuilder,
+      $$QsosBackupTableUpdateCompanionBuilder,
+      (
+        QsoBackupRow,
+        BaseReferences<_$PoloDatabase, $QsosBackupTable, QsoBackupRow>,
+      ),
+      QsoBackupRow,
+      PrefetchHooks Function()
+    >;
 
 class $PoloDatabaseManager {
   final _$PoloDatabase _db;
@@ -1793,4 +3335,8 @@ class $PoloDatabaseManager {
   $$OperationsTableTableManager get operations =>
       $$OperationsTableTableManager(_db, _db.operations);
   $$QsosTableTableManager get qsos => $$QsosTableTableManager(_db, _db.qsos);
+  $$OperationsBackupTableTableManager get operationsBackup =>
+      $$OperationsBackupTableTableManager(_db, _db.operationsBackup);
+  $$QsosBackupTableTableManager get qsosBackup =>
+      $$QsosBackupTableTableManager(_db, _db.qsosBackup);
 }

@@ -8,6 +8,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:polo_core/polo_core.dart';
 import 'package:polo_widgets/polo_widgets.dart';
 
 import '../main.dart';
@@ -96,9 +97,41 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
     final result = await widget.services.extensions.syncLinkClientWithEmail(email.trim());
     if (!mounted) return;
-    final message =
-        result == null ? 'Could not reach the sync server. Try again later.' : 'Check $email for a confirmation link.';
+    final message = result == null
+        ? 'Could not reach the sync server. Try again later.'
+        : 'Check $email for a confirmation link.';
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+  }
+
+  Future<void> _combineAccount() async {
+    await widget.services.syncEngine.resolveAccountChange(SyncAccountChoice.combine);
+    if (mounted) setState(() {});
+  }
+
+  Future<void> _replaceAccount() async {
+    final opCount = (await widget.services.operations.syncCounts()).total;
+    final qsoCount = (await widget.services.qsos.syncCounts()).total;
+    if (!mounted) return;
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Replace local data?'),
+        content: Text(
+          'This backs up and clears $opCount operation${opCount == 1 ? '' : 's'} and $qsoCount '
+          'QSO${qsoCount == 1 ? '' : 's'} from this device, then downloads the account\'s data '
+          'instead. The backup stays in this device\'s database.',
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('Cancel')),
+          FilledButton(onPressed: () => Navigator.of(context).pop(true), child: const Text('Replace')),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+
+    await widget.services.syncEngine.resolveAccountChange(SyncAccountChoice.replace);
+    if (mounted) setState(() {});
   }
 
   String get _syncAccountSubtitle {
@@ -138,16 +171,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   icon: Icon(Icons.brightness_auto_outlined),
                   label: Text('System'),
                 ),
-                ButtonSegment(
-                  value: ThemeMode.light,
-                  icon: Icon(Icons.light_mode_outlined),
-                  label: Text('Light'),
-                ),
-                ButtonSegment(
-                  value: ThemeMode.dark,
-                  icon: Icon(Icons.dark_mode_outlined),
-                  label: Text('Dark'),
-                ),
+                ButtonSegment(value: ThemeMode.light, icon: Icon(Icons.light_mode_outlined), label: Text('Light')),
+                ButtonSegment(value: ThemeMode.dark, icon: Icon(Icons.dark_mode_outlined), label: Text('Dark')),
               ],
               selected: {settings.themeMode},
               onSelectionChanged: (selection) => settings.setThemeMode(selection.first),
@@ -178,6 +203,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
             value: settings.syncEnabled,
             onChanged: _toggleSync,
           ),
+          if (settings.syncState['pendingAccountUUID'] != null)
+            _PendingAccountBanner(onCombine: _combineAccount, onReplace: _replaceAccount),
           if (settings.syncEnabled) ...[
             ListTile(
               leading: Icon(resolveIconName('account-check-outline')),
@@ -206,6 +233,61 @@ class _SettingsScreenState extends State<SettingsScreen> {
             subtitle: const Text('Version $_appVersion (dev build)'),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// Shown whenever `SettingsService.syncState['pendingAccountUUID']` is set —
+/// a first-ever link, or a re-registration under a different account
+/// (`SyncEngine`'s account-identity gating, DESIGN.md's sync reconciliation
+/// flow) — pausing sync until the user picks how to reconcile local data.
+class _PendingAccountBanner extends StatelessWidget {
+  final VoidCallback onCombine;
+  final VoidCallback onReplace;
+
+  const _PendingAccountBanner({required this.onCombine, required this.onReplace});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Card(
+      margin: const EdgeInsets.fromLTRB(16, 4, 16, 12),
+      color: theme.colorScheme.tertiaryContainer,
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(resolveIconName('cloud-question-outline'), color: theme.colorScheme.onTertiaryContainer),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'New Ham2K Log Filer account detected',
+                    style: theme.textTheme.titleSmall?.copyWith(color: theme.colorScheme.onTertiaryContainer),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Text(
+              "Keep this device's existing operations and QSOs and merge them into the account, "
+              'or replace them with the account\'s data (a backup stays on this device either way).',
+              style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onTertiaryContainer),
+            ),
+            const SizedBox(height: 12),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                TextButton(onPressed: onCombine, child: const Text('Combine')),
+                const SizedBox(width: 8),
+                FilledButton(onPressed: onReplace, child: const Text('Replace')),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }

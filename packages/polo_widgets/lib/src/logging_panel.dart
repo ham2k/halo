@@ -45,9 +45,13 @@ typedef CallLookup = Future<Map<String, dynamic>?> Function(String call);
 
 /// Tries the input as an extension-registered command (band/freq/mode
 /// shortcuts, and eventually spotting/operator commands). Returns a
-/// field-change map (`{freq?, band?, mode?}`) or null for "not a command".
-/// Must never throw.
+/// field-change map (`{freq?, band?, mode?}`) or a named `{action: ...}`
+/// (e.g. `SYNCALL`), or null for "not a command". Must never throw.
 typedef CommandHandler = Future<Map<String, dynamic>?> Function(String input);
+
+/// Handles a named command action (see [CommandHandler]'s `action` field) —
+/// a closed set the core recognizes, not arbitrary state (DESIGN.md §4).
+typedef CommandActionHandler = Future<void> Function(String action);
 
 class LoggingPanel extends StatefulWidget {
   final Operation operation;
@@ -72,6 +76,10 @@ class LoggingPanel extends StatefulWidget {
   /// When null, space in the call field just advances focus.
   final CommandHandler? tryCommand;
 
+  /// Handles a command's named `action` (e.g. `SYNCALL`), when `tryCommand`
+  /// returns one instead of a field change. When null, actions are ignored.
+  final CommandActionHandler? onCommandAction;
+
   /// When set, the panel is editing this already-logged QSO rather than
   /// composing a new one. Nothing wires this up yet (there's no tap-to-edit
   /// on QsoList rows), but the Time control's behavior already depends on
@@ -90,6 +98,7 @@ class LoggingPanel extends StatefulWidget {
     this.activityControls = const [],
     this.decorateRef,
     this.tryCommand,
+    this.onCommandAction,
     this.editingQso,
   });
 
@@ -514,6 +523,12 @@ class _LoggingPanelState extends State<LoggingPanel> {
         final result = await tryCommand(call);
         if (!mounted) return;
         if (result != null) {
+          final action = result['action'];
+          if (action is String) {
+            _callController.clear();
+            await widget.onCommandAction?.call(action);
+            return;
+          }
           setState(() {
             final freq = result['freq'];
             final band = result['band'];

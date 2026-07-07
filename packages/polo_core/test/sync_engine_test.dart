@@ -9,7 +9,9 @@ class _FakeSyncSettings implements SyncSettings {
   @override
   bool enabled = true;
   @override
-  Map<String, dynamic> state = const {};
+  Map<String, dynamic> state;
+
+  _FakeSyncSettings({Map<String, dynamic>? state}) : state = state ?? const {};
 
   @override
   Future<void> setState(Map<String, dynamic> newState) async => state = newState;
@@ -42,7 +44,11 @@ void main() {
     db = PoloDatabase(NativeDatabase.memory());
     operations = OperationsRepository(db);
     qsos = QsosRepository(db);
-    settings = _FakeSyncSettings();
+    // Already linked and backfilled, by default — most tests exercise
+    // ordinary forward push/pull, not the account-identity/backfill state
+    // machine (see the "account identity and backfill" group below, which
+    // starts from a genuinely blank state).
+    settings = _FakeSyncSettings(state: {'lastSyncAccountUUID': 'acct-1', 'completedFullSync': true});
     transport = _FakeTransport((method, args) => const {});
     engine = SyncEngine(operations: operations, qsos: qsos, transport: transport.call, settings: settings);
   });
@@ -110,7 +116,6 @@ void main() {
 
     final merged = await qsos.watchForOperation(op.uuid).first;
     expect(merged.map((q) => q.theirCall), containsAll(['W1AW', 'N1MM']));
-    expect(settings.state['lastSyncAccountUUID'], 'acct-1');
   });
 
   test('runOneRound does nothing when sync is disabled', () async {
@@ -153,7 +158,14 @@ void main() {
     transport.responder = (method, args) {
       expect(args.containsKey('operations'), isFalse);
       expect(args.containsKey('qsos'), isFalse);
-      final sync = (args['meta'] as Map)['sync'] as Map;
+      final meta = args['meta'] as Map;
+      // The real server ignores `meta.sync` entirely unless this flag is
+      // also set — a genuine bug this test caught: it's easy to port
+      // `meta.sync` from sync.js and miss the separate `meta.inboundSync`
+      // flag sitting right next to it, and get a silent, error-free
+      // "nothing to pull, ever" response instead.
+      expect(meta['inboundSync'], isTrue);
+      final sync = meta['sync'] as Map;
       expect(sync['operations'], {'syncedSinceMillis': 0, 'limit': SyncEngine.defaultLargeBatchSize, 'anyClient': false});
       expect(sync['qsos'], {'syncedSinceMillis': 0, 'limit': SyncEngine.defaultLargeBatchSize, 'anyClient': false});
       return const {};
@@ -169,6 +181,7 @@ void main() {
 
     transport.responder = (method, args) {
       expect((args['meta'] as Map).containsKey('sync'), isFalse);
+      expect((args['meta'] as Map).containsKey('inboundSync'), isFalse);
       return const {};
     };
 
@@ -245,5 +258,162 @@ void main() {
 
     await Future<void>.delayed(SyncEngine.debounceDelay + const Duration(milliseconds: 200));
     expect(transport.calls, hasLength(1));
+  });
+
+  group('account identity and backfill', () {
+    setUp(() {
+      // A genuinely fresh device: no account linked yet, nothing backfilled.
+      settings = _FakeSyncSettings();
+      engine = SyncEngine(operations: operations, qsos: qsos, transport: transport.call, settings: settings);
+    });
+
+    test('a never-linked device only calls getAccountData, never pushes or pulls real data', () async {
+      transport.responder = (method, args) {
+        expect(method, 'getAccountData');
+        return {
+          'current_account': {'uuid': 'acct-new'},
+        };
+      };
+
+      await engine.runOneRound();
+
+      expect(transport.calls, hasLength(1));
+      expect(settings.state['pendingAccountUUID'], 'acct-new');
+      expect(settings.state['lastSyncAccountUUID'], isNull);
+    });
+
+    test('a pending account choice pauses sync entirely', () async {
+      settings.state = {'pendingAccountUUID': 'acct-new'};
+      await operations.create(stationCall: 'KI2D'); // some local data, just in case
+
+      await engine.runOneRound();
+      await engine.runOneRound(smallBatch: true);
+
+      expect(transport.calls, isEmpty);
+    });
+
+    test('resolveAccountChange(combine) resets sync flags and starts a fresh backfill', () async {
+      final op = await operations.create(stationCall: 'KI2D');
+      await qsos.add(op.uuid, {'their': {'call': 'W1AW'}});
+      await operations.markSynced([op.uuid]);
+      await qsos.markSynced((await qsos.watchForOperation(op.uuid).first).map((q) => q.uuid));
+      settings.state = {'pendingAccountUUID': 'acct-new'};
+
+      transport.responder = (method, args) => const {};
+      await engine.resolveAccountChange(SyncAccountChoice.combine);
+
+      // resetSyncedStatus runs synchronously inside resolveAccountChange,
+      // before the round it schedules even starts.
+      expect(settings.state['lastSyncAccountUUID'], 'acct-new');
+      expect(settings.state['pendingAccountUUID'], isNull);
+      expect(await operations.hasUnsynced(), isTrue); // reset, not deleted
+      expect(await qsos.hasUnsynced(), isTrue);
+
+      // Give the immediately-scheduled round a moment to run and confirm it
+      // backfills (anyClient: true), not forward mode — and that local data
+      // survived (combine keeps it, unlike replace).
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+      expect(transport.calls, isNotEmpty);
+      final sync = (transport.calls.last.$2['meta'] as Map)['sync'] as Map;
+      expect((sync['qsos'] as Map)['anyClient'], isTrue);
+      expect(await operations.byUuids([op.uuid]), isNotEmpty);
+    });
+
+    test('resolveAccountChange(replace) backs up local data and clears it', () async {
+      final op = await operations.create(stationCall: 'KI2D');
+      await qsos.add(op.uuid, {'their': {'call': 'W1AW'}});
+      settings.state = {'pendingAccountUUID': 'acct-new'};
+
+      transport.responder = (method, args) => const {};
+      await engine.resolveAccountChange(SyncAccountChoice.replace);
+
+      expect(await operations.byUuids([op.uuid]), isEmpty);
+      expect((await qsos.watchForOperation(op.uuid).first), isEmpty);
+
+      final backedUpOps = await db.select(db.operationsBackup).get();
+      final backedUpQsos = await db.select(db.qsosBackup).get();
+      expect(backedUpOps.map((r) => r.uuid), [op.uuid]);
+      expect(backedUpQsos, hasLength(1));
+      expect(settings.state['lastSyncAccountUUID'], 'acct-new');
+    });
+
+    test('backfill pages backward and hands off to forward mode once caught up', () async {
+      settings.state = {'lastSyncAccountUUID': 'acct-1'}; // linked, but completedFullSync is not yet true
+      const totalAvailable = 15;
+      // A server holding 15 historical QSOs (syncedAtMillis 0..14, oldest
+      // first). Each call returns whatever's strictly older than `until`,
+      // newest-first, capped at the page limit — the same "keep asking for
+      // what's older than my cursor" shape the real server implements.
+      transport.responder = (method, args) {
+        final until = (((args['meta'] as Map)['sync'] as Map)['qsos'] as Map)['syncedUntilMillis'] as int;
+        expect((((args['meta'] as Map)['sync'] as Map)['qsos'] as Map)['anyClient'], isTrue);
+        final page = [
+          for (var s = totalAvailable - 1; s >= 0; s--)
+            if (s < until)
+              {
+                'uuid': 'hist-$s',
+                'operation': 'op1',
+                'their': {'call': 'W1AW$s'},
+                'startAtMillis': s,
+                'syncedAtMillis': s,
+              },
+        ].take(SyncEngine.defaultLargeBatchSize).toList();
+        return {'qsos': page};
+      };
+
+      // First round: syncedUntilMillis defaults to "now" (a large number),
+      // so it returns a full page and keeps backfilling.
+      await engine.runOneRound();
+      expect(settings.state['completedFullSync'], isNot(true));
+
+      // Keep running rounds until the (small, 15-record) history is
+      // exhausted and the engine flips over to forward mode.
+      var guard = 0;
+      while (settings.state['completedFullSync'] != true && guard < 10) {
+        await engine.runOneRound();
+        guard++;
+      }
+
+      expect(settings.state['completedFullSync'], isTrue);
+      expect(settings.state['latestQSOSyncedAtMillis'], isNotNull);
+      final merged = await qsos.watchForOperation('op1').first;
+      expect(merged, hasLength(totalAvailable));
+    });
+
+    test('an account change mid-stream pauses sync without merging that response', () async {
+      settings.state = {'lastSyncAccountUUID': 'acct-1', 'completedFullSync': true};
+      transport.responder = (method, args) => {
+            'account': {'uuid': 'acct-2'}, // a different account than expected
+            'qsos': [
+              {
+                'uuid': 'suspect-qso',
+                'operation': 'op1',
+                'their': {'call': 'SHOULDNOTMERGE'},
+              },
+            ],
+          };
+
+      await engine.runOneRound();
+
+      expect(settings.state['pendingAccountUUID'], 'acct-2');
+      expect(settings.state['lastSyncAccountUUID'], 'acct-1'); // unchanged until resolved
+      expect(await qsos.watchForOperation('op1').first, isEmpty); // not merged
+    });
+
+    test('forceFullResync (SYNCALL) backs up and clears data without touching account state', () async {
+      settings.state = {'lastSyncAccountUUID': 'acct-1', 'completedFullSync': true};
+      final op = await operations.create(stationCall: 'KI2D');
+      await qsos.add(op.uuid, {'their': {'call': 'W1AW'}});
+
+      transport.responder = (method, args) => const {};
+      await engine.forceFullResync();
+
+      expect(await operations.byUuids([op.uuid]), isEmpty);
+      final backedUpOps = await db.select(db.operationsBackup).get();
+      expect(backedUpOps.map((r) => r.uuid), [op.uuid]);
+      expect(settings.state['lastSyncAccountUUID'], 'acct-1'); // untouched
+      expect(settings.state['pendingAccountUUID'], isNull);
+      expect(settings.state['completedFullSync'], isNot(true));
+    });
   });
 }

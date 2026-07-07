@@ -173,6 +173,42 @@ class OperationsRepository {
     return watermark;
   }
 
+  /// Marks every operation dirty, deleted ones included — used when
+  /// "combining" local data into a newly linked account (DESIGN.md's sync
+  /// reconciliation flow): the account has no idea this device's data
+  /// exists yet, so all of it needs to go out, not just whatever changed
+  /// since the last (different-account) sync. Mirrors app-polo's
+  /// `resetSyncedStatus`.
+  Future<void> resetSyncedStatus() async {
+    await db.update(db.operations).write(const OperationsCompanion(synced: Value(false)));
+  }
+
+  /// Copies every operation (deleted ones included) into `OperationsBackup`
+  /// under `backupId`, then deletes all of them from the live table — used
+  /// when "replacing" local data with a different account's, or by the
+  /// `SYNCALL` command. Mirrors app-polo's `clearAllOperationData`, but as a
+  /// portable copy-then-delete instead of its SQLite-specific `ALTER TABLE
+  /// RENAME` trick.
+  Future<void> backupAndClearAll(String backupId) async {
+    final now = DateTime.now().toUtc().millisecondsSinceEpoch;
+    await db.transaction(() async {
+      final rows = await db.select(db.operations).get();
+      for (final row in rows) {
+        await db.into(db.operationsBackup).insert(OperationsBackupCompanion.insert(
+              backupId: backupId,
+              backupAtMillis: now,
+              uuid: row.uuid,
+              data: row.data,
+              startAtMillisMin: Value(row.startAtMillisMin),
+              startAtMillisMax: Value(row.startAtMillisMax),
+              qsoCount: Value(row.qsoCount),
+              deleted: Value(row.deleted),
+            ));
+      }
+      await db.delete(db.operations).go();
+    });
+  }
+
   Operation _operationFromRow(OperationRow row) => Operation(
         uuid: row.uuid,
         data: jsonDecode(row.data) as Map<String, dynamic>,
@@ -293,6 +329,30 @@ class QsosRepository {
     });
     // No onChange() here — see OperationsRepository.mergeFromSync.
     return watermark;
+  }
+
+  /// See `OperationsRepository.resetSyncedStatus`.
+  Future<void> resetSyncedStatus() async {
+    await db.update(db.qsos).write(const QsosCompanion(synced: Value(false)));
+  }
+
+  /// See `OperationsRepository.backupAndClearAll`.
+  Future<void> backupAndClearAll(String backupId) async {
+    final now = DateTime.now().toUtc().millisecondsSinceEpoch;
+    await db.transaction(() async {
+      final rows = await db.select(db.qsos).get();
+      for (final row in rows) {
+        await db.into(db.qsosBackup).insert(QsosBackupCompanion.insert(
+              backupId: backupId,
+              backupAtMillis: now,
+              uuid: row.uuid,
+              operation: row.operation,
+              data: row.data,
+              deleted: Value(row.deleted),
+            ));
+      }
+      await db.delete(db.qsos).go();
+    });
   }
 
   Qso _qsoFromRow(QsoRow row) => Qso(

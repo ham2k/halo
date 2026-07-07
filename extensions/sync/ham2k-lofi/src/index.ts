@@ -12,7 +12,7 @@
 // in-memory-per-process store, not itself durable across app restarts.
 
 import { defineExtension, host } from "@ham2k/polo-sdk"
-import type { HookContext, JSONValue, SyncPayload, SyncResponse } from "@ham2k/polo-sdk"
+import type { CommandResult, HookContext, JSONValue, SyncPayload, SyncResponse } from "@ham2k/polo-sdk"
 
 export const DEFAULT_LOFI_SERVER = 'https://lofi.ham2k.net'
 const DEFAULT_SECRET = 'no-secret'
@@ -25,8 +25,18 @@ defineExtension({
   description: 'Cloud backup and sync for Ham2K apps',
   onActivation({ registerHook }) {
     registerHook('syncTransport', { hook: { sync, getAccountData, linkClientWithEmail } })
+    registerHook('command', { key: 'ham2k-lofi-syncall', hook: { tryCommand: syncAllCommand } })
   },
 })
+
+// Debug/utility command: wipes local operations/QSOs (backed up first, on
+// the Dart side — see SyncEngine.forceFullResync) and re-runs a full
+// backfill from the server. Typed into the call field, same as
+// radio-commands' band/frequency/mode shortcuts.
+async function syncAllCommand({ input }: { input: string }, _ctx: HookContext): Promise<CommandResult | null> {
+  if (input.trim().toUpperCase() !== 'SYNCALL') return null
+  return { action: 'syncAll' }
+}
 
 // Cached in module state for the life of the runtime; persisted back to
 // `host.kv` so a restart doesn't force re-registering as a "new" device.

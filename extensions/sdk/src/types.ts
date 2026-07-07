@@ -131,11 +131,15 @@ export interface ExportHook {
 
 /// A field-change command triggered from the call field (space-activated).
 /// Deliberately a closed set of fields — commands mutate only through this
-/// whitelist, never arbitrary state (DESIGN.md §4).
+/// whitelist, never arbitrary state (DESIGN.md §4). `action` is the same
+/// discipline applied to named side effects instead of field changes — a
+/// closed set of core-recognized actions (currently just `'syncAll'`, the
+/// `SYNCALL` debug command), not an arbitrary string the core has to trust.
 export interface CommandResult {
   freq?: number
   band?: string
   mode?: string
+  action?: 'syncAll'
 }
 
 /// Registered under category `command`. `tryCommand` does its own matching
