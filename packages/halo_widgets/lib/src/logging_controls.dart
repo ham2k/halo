@@ -32,6 +32,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import 'package:halo_core/halo_core.dart';
+import 'package:flutter_markdown/flutter_markdown.dart';
 
 import 'icon_resolver.dart';
 import 'mdi_icons.dart';
@@ -47,9 +48,13 @@ typedef CallLookup = Future<Map<String, dynamic>?> Function(String call);
 /// shortcuts, and eventually spotting/operator commands). Returns a
 /// field-change map (`{freq?, band?, mode?}`) or a named `{action: ...}`
 /// (e.g. `SYNCALL`), or null for "not a command". Must never throw.
-typedef CommandHandler = Future<Map<String, dynamic>?> Function(String input);
+typedef CommandInterpreter = Future<Map<String, dynamic>?> Function(
+  String input, [
+  Map<String, dynamic>? operation,
+  Map<String, dynamic>? qso,
+]);
 
-/// Handles a named command action (see [CommandHandler]'s `action` field) —
+/// Handles a named command action —
 /// a closed set the core recognizes, not arbitrary state (DESIGN.md §4).
 typedef CommandActionHandler = Future<void> Function(String action);
 
@@ -74,9 +79,11 @@ class LoggingControls extends StatefulWidget {
 
   /// Extension-backed command shortcuts, tried on space in the call field.
   /// When null, space in the call field just advances focus.
-  final CommandHandler? tryCommand;
+  final CommandInterpreter? interpretCommand;
 
-  /// Handles a command's named `action` (e.g. `SYNCALL`), when `tryCommand`
+  final void Function(String? message)? onCommandMessageChanged;
+
+  /// Handles a command's named `action` (e.g. `SYNCALL`), when the command
   /// returns one instead of a field change. When null, actions are ignored.
   final CommandActionHandler? onCommandAction;
 
@@ -88,6 +95,9 @@ class LoggingControls extends StatefulWidget {
   /// "automatic" time to reset back to for a historical record).
   final Qso? editingQso;
 
+  /// Settings engine interface.
+  final SyncSettings? settings;
+
   const LoggingControls({
     super.key,
     required this.operation,
@@ -97,9 +107,11 @@ class LoggingControls extends StatefulWidget {
     this.lookup,
     this.activityControls = const [],
     this.decorateRef,
-    this.tryCommand,
+    this.interpretCommand,
+    this.onCommandMessageChanged,
     this.onCommandAction,
     this.editingQso,
+    this.settings,
   });
 
   @override
@@ -140,6 +152,12 @@ class _LoggingControlsState extends State<LoggingControls> {
   Timer? _lookupDebounce;
   String? _lookupFor;
   Map<String, dynamic>? _lookupResult;
+
+  Map<String, dynamic>? _currentInterpretation;
+  Timer? _commandDescribeDebounce;
+  Timer? _executeMessageTimer;
+  String? _commandMessage;
+  final Map<String, dynamic> _currentQsoExtra = {};
 
   /// Refs entered via activity controls for the QSO being composed,
   /// keyed by control key.
@@ -187,6 +205,8 @@ class _LoggingControlsState extends State<LoggingControls> {
   void dispose() {
     _clockTicker?.cancel();
     _lookupDebounce?.cancel();
+    _commandDescribeDebounce?.cancel();
+    _executeMessageTimer?.cancel();
     _callController.dispose();
     _sentController.dispose();
     _rcvdController.dispose();
@@ -518,42 +538,6 @@ class _LoggingControlsState extends State<LoggingControls> {
   Future<void> _handleSpace() async {
     if (_callFocus.hasFocus) {
       final call = _call;
-      final tryCommand = widget.tryCommand;
-      if (call.isNotEmpty && tryCommand != null) {
-        final result = await tryCommand(call);
-        if (!mounted) return;
-        if (result != null) {
-          final action = result['action'];
-          if (action is String) {
-            _callController.clear();
-            await widget.onCommandAction?.call(action);
-            return;
-          }
-          setState(() {
-            final freq = result['freq'];
-            final band = result['band'];
-            final mode = result['mode'];
-            if (freq is num) {
-              _freqController.text = fmtFreq(
-                freq.toDouble(),
-              ).replaceAll(',', '');
-              _manualBand = null;
-            } else if (band is String) {
-              _manualBand = band;
-              _freqController.clear();
-            }
-            if (mode is String) {
-              _mode = mode;
-              if (!_rstsTouched) _applyDefaultRSTs();
-            }
-            // Show the result — otherwise a typed command would silently
-            // change state behind a collapsed chip with no feedback.
-            _selectedControlKey = 'radio';
-          });
-          _callController.clear();
-          return;
-        }
-      }
       if (call.isNotEmpty) {
         _sentFocus.requestFocus();
       }
@@ -565,14 +549,124 @@ class _LoggingControlsState extends State<LoggingControls> {
     // Space in other fields (e.g. activity ref inputs) is deliberately inert.
   }
 
+  Future<void> _dispatchActions(List<dynamic> actions) async {
+    for (final action in actions) {
+      if (action is! Map) continue;
+      final map = action.cast<String, dynamic>();
+
+      if (map.containsKey('setVfo')) {
+        final params = map['setVfo'] as Map;
+        setState(() {
+          final freq = params['freq'];
+          final band = params['band'];
+          final mode = params['mode'];
+          if (freq is num) {
+            _freqController.text = fmtFreq(
+              freq.toDouble(),
+            ).replaceAll(',', '');
+            _manualBand = null;
+          } else if (band is String) {
+            _manualBand = band;
+            _freqController.clear();
+          }
+          if (mode is String) {
+            _mode = mode;
+            if (!_rstsTouched) _applyDefaultRSTs();
+          }
+          _selectedControlKey = 'radio';
+        });
+      } else if (map.containsKey('updateQso')) {
+        final params = (map['updateQso'] as Map).cast<String, dynamic>();
+        setState(() {
+          _currentQsoExtra.addAll(params);
+        });
+      } else if (map.containsKey('addQso')) {
+        final params = (map['addQso'] as Map).cast<String, dynamic>();
+        final qso = await widget.qsosRepository.add(widget.operation.uuid, params);
+        widget.onLogged?.call(qso);
+      } else if (map.containsKey('updateSettings')) {
+        final params = (map['updateSettings'] as Map).cast<String, dynamic>();
+        if (widget.settings != null) {
+          if (params.containsKey('developerMode')) {
+            await widget.settings!.setDeveloperMode(params['developerMode'] as bool);
+          }
+        }
+      } else if (map.containsKey('syncAll')) {
+        await widget.onCommandAction?.call('syncAll');
+      } else if (map.containsKey('sendSpots')) {
+        debugPrint('[extensions] sendSpots action: ${map['sendSpots']}');
+      }
+    }
+  }
+
+  Map<String, dynamic> _getCurrentQsoData() {
+    final refs = [for (final list in _controlRefs.values) ...list];
+    return {
+      if (refs.isNotEmpty) 'refs': refs,
+      'our': {
+        'call': widget.operation.stationCall,
+        'sent': _sentController.text.trim(),
+      },
+      'their': {
+        'call': _callController.text.trim().toUpperCase(),
+        'sent': _rcvdController.text.trim(),
+        if (_lookupFor == _call && _lookupResult != null)
+          ..._lookupResult!,
+      },
+      if (_freq != null) 'freq': _freq,
+      if (_band != null) 'band': _band,
+      'mode': _mode,
+      if (_effectiveStartAtMillis != null) 'startAtMillis': _effectiveStartAtMillis,
+      ..._currentQsoExtra,
+    };
+  }
+
   // ---- Lookup enrichment ----
 
   void _onCallChanged() {
     setState(() {});
     _lookupDebounce?.cancel();
-    if (widget.lookup == null) return;
+    _commandDescribeDebounce?.cancel();
+    
+    // Clear any active execution confirmation message when the user types
+    _executeMessageTimer?.cancel();
+    _currentInterpretation = null;
+    _commandMessage = null;
+    widget.onCommandMessageChanged?.call(null);
 
     final call = _call;
+    if (call.isEmpty) {
+      if (_lookupFor != null) {
+        setState(() {
+          _lookupFor = null;
+          _lookupResult = null;
+        });
+      }
+      return;
+    }
+
+    if (widget.interpretCommand != null) {
+      _commandDescribeDebounce = Timer(const Duration(milliseconds: 150), () async {
+        final qsoData = _getCurrentQsoData();
+        final result = await widget.interpretCommand!(
+          call,
+          widget.operation.data,
+          qsoData,
+        );
+        if (!mounted || _call != call) return;
+        setState(() {
+          _currentInterpretation = result;
+          if (result != null && result['describe'] is String) {
+            _commandMessage = result['describe'] as String;
+          } else {
+            _commandMessage = null;
+          }
+        });
+        widget.onCommandMessageChanged?.call(_commandMessage);
+      });
+    }
+
+    if (widget.lookup == null) return;
     if (_lookupFor == call) return;
     if (!looksLikeCallsign(call)) {
       setState(() {
@@ -614,17 +708,74 @@ class _LoggingControlsState extends State<LoggingControls> {
     _callController.clear();
     _applyDefaultRSTs();
     _lookupDebounce?.cancel();
+    _commandDescribeDebounce?.cancel();
+    _executeMessageTimer?.cancel();
     _lookupFor = null;
     _lookupResult = null;
     _controlRefs.clear();
+    _currentQsoExtra.clear();
     _manualStartAtMillis = null;
     _selectedControlKey = null;
     _callFocus.requestFocus();
-    setState(_updateClockTicker);
+    setState(() {
+      _commandMessage = null;
+      _currentInterpretation = null;
+      _updateClockTicker();
+    });
+    widget.onCommandMessageChanged?.call(null);
   }
 
   Future<void> _log() async {
     if (_isLogging) return; // already logging this entry; ignore the repeat
+
+    // Check command
+    final call = _call;
+    if (call.isNotEmpty && widget.interpretCommand != null) {
+      _commandDescribeDebounce?.cancel();
+      final qsoData = _getCurrentQsoData();
+      final interpretation = _currentInterpretation ?? await widget.interpretCommand!(
+        call,
+        widget.operation.data,
+        qsoData,
+      );
+      if (!mounted) return;
+      if (interpretation != null) {
+        _isLogging = true;
+        try {
+          _callController.clear();
+          _currentInterpretation = null;
+          _executeMessageTimer?.cancel();
+
+          final confirmMarkdown = interpretation['confirm'];
+          setState(() {
+            _currentInterpretation = null;
+            if (confirmMarkdown is String) {
+              _commandMessage = confirmMarkdown;
+              _executeMessageTimer = Timer(const Duration(seconds: 5), () {
+                if (mounted) {
+                  setState(() {
+                    _commandMessage = null;
+                  });
+                  widget.onCommandMessageChanged?.call(null);
+                }
+              });
+            } else {
+              _commandMessage = null;
+            }
+          });
+          widget.onCommandMessageChanged?.call(_commandMessage);
+
+          final commands = interpretation['commands'];
+          if (commands is List) {
+            await _dispatchActions(commands);
+          }
+        } finally {
+          _isLogging = false;
+        }
+        return;
+      }
+    }
+
     if (!_canLog) {
       _callFocus.requestFocus();
       return;
@@ -657,6 +808,7 @@ class _LoggingControlsState extends State<LoggingControls> {
         if (_band != null) 'band': _band,
         'mode': _mode,
         if (_effectiveStartAtMillis != null) 'startAtMillis': _effectiveStartAtMillis,
+        ..._currentQsoExtra,
       });
       widget.onLogged?.call(qso);
       _wipe();
@@ -746,30 +898,11 @@ class _LoggingControlsState extends State<LoggingControls> {
                               )
                             : null,
                       ),
-                      if (_lookupLine != null)
-                        Padding(
-                          padding: const EdgeInsets.only(top: 2),
-                          child: Row(
-                            children: [
-                              Icon(
-                                MdiIcons.accountSearch,
-                                size: 16,
-                                color: theme.colorScheme.primary,
-                              ),
-                              const SizedBox(width: 4),
-                              Expanded(
-                                child: Text(
-                                  _lookupLine!,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: theme.textTheme.bodyMedium?.copyWith(
-                                    color: theme.colorScheme.primary,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
+                      // A fixed-height container to prevent layout shifting
+                      SizedBox(
+                        height: 36,
+                        child: _buildInfoArea(theme),
+                      ),
                       const SizedBox(height: 8),
                       Row(
                         crossAxisAlignment: CrossAxisAlignment.end,
@@ -860,6 +993,54 @@ class _LoggingControlsState extends State<LoggingControls> {
         ),
       ),
     );
+  }
+
+  Widget _buildInfoArea(ThemeData theme) {
+    final message = _commandMessage;
+    final lookup = _lookupLine;
+
+    if (message != null) {
+      return Align(
+        alignment: Alignment.centerLeft,
+        child: MarkdownBody(
+          data: message,
+          styleSheet: MarkdownStyleSheet.fromTheme(theme).copyWith(
+            p: theme.textTheme.bodyMedium?.copyWith(
+              color: theme.colorScheme.primary,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ),
+      );
+    }
+
+    if (lookup != null) {
+      return Align(
+        alignment: Alignment.centerLeft,
+        child: Row(
+          children: [
+            Icon(
+              MdiIcons.accountSearch,
+              size: 16,
+              color: theme.colorScheme.primary,
+            ),
+            const SizedBox(width: 4),
+            Expanded(
+              child: Text(
+                lookup,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: theme.colorScheme.primary,
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return const SizedBox.shrink();
   }
 }
 

@@ -2,12 +2,13 @@
 // SPDX-License-Identifier: MPL-2.0
 
 import 'package:flutter/material.dart';
+import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:halo_core/halo_core.dart';
 import 'package:halo_widgets/halo_widgets.dart';
 
 import '../../main.dart';
 
-class LoggingPanel extends StatelessWidget {
+class LoggingPanel extends StatefulWidget {
   final Operation operation;
   final HaLoServices services;
   final List<Qso> qsos;
@@ -24,9 +25,16 @@ class LoggingPanel extends StatelessWidget {
   });
 
   @override
+  State<LoggingPanel> createState() => _LoggingPanelState();
+}
+
+class _LoggingPanelState extends State<LoggingPanel> {
+  String? _commandMarkdown;
+
+  @override
   Widget build(BuildContext context) {
     final wide = MediaQuery.sizeOf(context).width >= 900;
-    final list = QsoList(qsos: qsos, qsosRepository: services.qsos);
+    final list = QsoList(qsos: widget.qsos, qsosRepository: widget.services.qsos);
 
     return Column(
       children: [
@@ -36,20 +44,32 @@ class LoggingPanel extends StatelessWidget {
                   children: [
                     Expanded(flex: 2, child: list),
                     const VerticalDivider(width: 1),
-                    Expanded(child: InformationArea(operation: operation, qsos: qsos)),
+                    Expanded(
+                      child: InformationArea(
+                        operation: widget.operation,
+                        qsos: widget.qsos,
+                        commandMarkdown: _commandMarkdown,
+                      ),
+                    ),
                   ],
                 )
               : list,
         ),
         LoggingControls(
-          operation: operation,
-          qsosRepository: services.qsos,
-          qsos: qsos,
-          lookup: services.extensions.lookupCall,
-          activityControls: loggingControls,
-          decorateRef: services.extensions.decorateRef,
-          tryCommand: services.extensions.tryCommand,
-          onCommandAction: onCommandAction,
+          operation: widget.operation,
+          qsosRepository: widget.services.qsos,
+          qsos: widget.qsos,
+          settings: widget.services.settings,
+          lookup: widget.services.extensions.lookupCall,
+          activityControls: widget.loggingControls,
+          decorateRef: widget.services.extensions.decorateRef,
+          interpretCommand: widget.services.extensions.interpretCommand,
+          onCommandMessageChanged: (message) {
+            setState(() {
+              _commandMarkdown = message;
+            });
+          },
+          onCommandAction: widget.onCommandAction,
         ),
       ],
     );
@@ -59,8 +79,14 @@ class LoggingPanel extends StatelessWidget {
 class InformationArea extends StatelessWidget {
   final Operation operation;
   final List<Qso> qsos;
+  final String? commandMarkdown;
 
-  const InformationArea({super.key, required this.operation, required this.qsos});
+  const InformationArea({
+    super.key,
+    required this.operation,
+    required this.qsos,
+    this.commandMarkdown,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -75,6 +101,20 @@ class InformationArea extends StatelessWidget {
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
+        if (commandMarkdown != null) ...[
+          MarkdownBody(
+            data: commandMarkdown!,
+            styleSheet: MarkdownStyleSheet.fromTheme(theme).copyWith(
+              p: theme.textTheme.bodyLarge?.copyWith(
+                color: theme.colorScheme.primary,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+          const Divider(),
+          const SizedBox(height: 16),
+        ],
         Text('Station', style: theme.textTheme.titleSmall),
         Text(operation.stationCall, style: theme.textTheme.headlineSmall),
         const SizedBox(height: 16),

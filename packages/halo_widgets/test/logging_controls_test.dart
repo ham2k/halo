@@ -30,10 +30,20 @@ void main() {
     await db.close();
   });
 
-  Widget host({List<Qso> existing = const [], CommandHandler? tryCommand}) {
+  Widget host({
+    List<Qso> existing = const [],
+    CommandInterpreter? interpretCommand,
+    void Function(String? message)? onCommandMessageChanged,
+  }) {
     return MaterialApp(
       home: Scaffold(
-        body: LoggingControls(operation: operation, qsosRepository: qsos, qsos: existing, tryCommand: tryCommand),
+        body: LoggingControls(
+          operation: operation,
+          qsosRepository: qsos,
+          qsos: existing,
+          interpretCommand: interpretCommand,
+          onCommandMessageChanged: onCommandMessageChanged,
+        ),
       ),
     );
   }
@@ -43,16 +53,45 @@ void main() {
   /// LoggingControls applies a command result without booting a JS runtime.
   /// The extension itself is covered by an integration test in
   /// halo_extension_host against the real built bundle.
-  Future<Map<String, dynamic>?> fakeTryCommand(String input) async {
+  Future<Map<String, dynamic>?> fakeInterpretCommand(
+    String input, [
+    Map<String, dynamic>? operation,
+    Map<String, dynamic>? qso,
+  ]) async {
     final band = RegExp(r'^(2200|630|160|80|60|40|30|20|17|15|12|10|6|4|2)M?$', caseSensitive: false).firstMatch(input);
-    if (band != null) return {'band': '${band.group(1)!.toLowerCase()}m'};
+    if (band != null) {
+      final b = '${band.group(1)!.toLowerCase()}m';
+      return {
+        'describe': 'Change band to **$b**?',
+        'confirm': 'Band set to **$b**',
+        'commands': [
+          {'setVfo': {'band': b}}
+        ]
+      };
+    }
 
     final mode = modes.firstWhere((m) => m.toLowerCase() == input.toLowerCase(), orElse: () => '');
-    if (mode.isNotEmpty) return {'mode': mode};
+    if (mode.isNotEmpty) {
+      return {
+        'describe': 'Change mode to **$mode**?',
+        'confirm': 'Mode set to **$mode**',
+        'commands': [
+          {'setVfo': {'mode': mode}}
+        ]
+      };
+    }
 
     if (input.length >= 3) {
       final freq = parseFreq(input);
-      if (freq != null && bandForFrequency(freq) != null) return {'freq': freq};
+      if (freq != null && bandForFrequency(freq) != null) {
+        return {
+          'describe': 'Change frequency to **${(freq / 1000).toStringAsFixed(3)} MHz**?',
+          'confirm': 'Frequency set to **${(freq / 1000).toStringAsFixed(3)} MHz**',
+          'commands': [
+            {'setVfo': {'freq': freq}}
+          ]
+        };
+      }
     }
     return null;
   }
@@ -227,19 +266,15 @@ void main() {
   });
 
   testWidgets('call-field commands: frequency, band, and mode via space', (tester) async {
-    await tester.pumpWidget(host(tryCommand: fakeTryCommand));
+    await tester.pumpWidget(host(interpretCommand: fakeInterpretCommand));
 
     TextField field(String label) => tester.widget<TextField>(find.widgetWithText(TextField, label));
     Future<void> command(String text) async {
       await tester.enterText(find.widgetWithText(TextField, 'Their call'), text);
       await tester.pump();
-      await tester.sendKeyEvent(LogicalKeyboardKey.space);
-      // _handleSpace is async now (tryCommand is a real await point, even
-      // when the fake resolves instantly) — two pumps let the continuation
-      // land before we assert, matching the convention already used for
-      // RefChipsInput's async decoration in ref_chips_input_test.dart.
-      await tester.pump();
-      await tester.pump();
+      await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+      // Wait for all command execution and state dispatching to finish
+      await tester.pump(const Duration(milliseconds: 200));
     }
 
     // Frequency command fills the freq field and derives the band.
@@ -311,14 +346,13 @@ void main() {
     });
 
     testWidgets('a successful command auto-opens the Radio control', (tester) async {
-      await tester.pumpWidget(host(tryCommand: fakeTryCommand));
+      await tester.pumpWidget(host(interpretCommand: fakeInterpretCommand));
       expect(find.widgetWithText(TextField, 'Freq kHz'), findsNothing);
 
       await tester.enterText(find.widgetWithText(TextField, 'Their call'), '14285');
       await tester.pump();
-      await tester.sendKeyEvent(LogicalKeyboardKey.space);
-      await tester.pump();
-      await tester.pump();
+      await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+      await tester.pump(const Duration(milliseconds: 200));
 
       expect(find.widgetWithText(TextField, 'Freq kHz'), findsOneWidget);
     });
