@@ -156,27 +156,35 @@ class _OperationScreenState extends State<OperationScreen> {
           length: 4,
           child: Scaffold(
             appBar: AppBar(
-              leadingWidth: isMacOSChromelessWindow ? 56 + macOSTrafficLightInset : null,
+              leadingWidth: isMacOSChromelessWindow ? 56 + macOSTrafficLightInset + macOSTrafficLightGap : null,
               leading: isMacOSChromelessWindow
                   ? const Padding(
-                      padding: EdgeInsets.only(left: macOSTrafficLightInset),
+                      padding: EdgeInsets.only(left: macOSTrafficLightInset + macOSTrafficLightGap),
                       child: BackButton(),
                     )
                   : null,
-              title: Column(mainAxisSize: MainAxisSize.min, children: [
-                Text(
-                  operation.title.isEmpty ? operation.stationCall : '${operation.stationCall} ${operation.title}',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                if (refsLine.isNotEmpty)
+              // Reserves trailing breathing room even though this AppBar has
+              // no real action buttons — otherwise the title runs flush to
+              // the window's right edge with no margin at all.
+              actions: const [SizedBox(width: 16)],
+              title: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
                   Text(
-                    refsLine,
-                    style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                          color: Theme.of(context).colorScheme.onPrimary.withValues(alpha: 0.85),
-                        ),
+                    operation.title.isEmpty ? operation.stationCall : '${operation.stationCall} ${operation.title}',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
-              ]),
+                  if (refsLine.isNotEmpty)
+                    Text(
+                      refsLine,
+                      style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                            color: Theme.of(context).colorScheme.onPrimary.withValues(alpha: 0.85),
+                          ),
+                    ),
+                ],
+              ),
               bottom: TabBar(
                 indicatorSize: TabBarIndicatorSize.tab,
                 indicatorWeight: 4,

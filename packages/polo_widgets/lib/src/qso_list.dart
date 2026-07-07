@@ -21,10 +21,13 @@ class QsoList extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     if (qsos.isEmpty) {
-      return Center(
-        child: Text(
-          'No QSOs yet — work someone!',
-          style: theme.textTheme.bodyLarge?.copyWith(color: theme.colorScheme.outline),
+      return Container(
+        color: theme.colorScheme.surfaceContainerHighest,
+        child: Center(
+          child: Text(
+            'No QSOs yet — work someone!',
+            style: theme.textTheme.bodyLarge?.copyWith(color: theme.colorScheme.outline),
+          ),
         ),
       );
     }

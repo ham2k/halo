@@ -26,6 +26,8 @@
 
 import 'package:flutter/material.dart';
 
+import 'platform_chrome.dart';
+
 const _tabularFigures = [FontFeature.tabularFigures()];
 
 /// Extra Ham2K colors that don't fit Material's ColorScheme, including the
@@ -246,7 +248,10 @@ ThemeData buildPoloTheme(Brightness brightness) {
     appBarTheme: AppBarTheme(
       backgroundColor: colorScheme.primary,
       foregroundColor: colorScheme.onPrimary,
-      centerTitle: true,
+      // Windowed/desktop platforms read like a title bar (left-aligned next
+      // to any leading content); mobile fullscreen centers per each
+      // platform's own convention.
+      centerTitle: !isWindowedPlatform,
       elevation: 0,
       titleTextStyle: TextStyle(
         fontFamily: 'RobotoSlab',

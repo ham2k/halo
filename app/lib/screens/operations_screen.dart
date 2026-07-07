@@ -6,7 +6,6 @@ import 'package:polo_core/polo_core.dart';
 import 'package:polo_widgets/polo_widgets.dart';
 
 import '../main.dart';
-import '../spike_screen.dart';
 import 'operation_dialogs.dart';
 import 'operation_screen.dart';
 import 'settings_screen.dart';
@@ -136,10 +135,10 @@ class OperationsScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        leadingWidth: isMacOSChromelessWindow ? 56 + macOSTrafficLightInset : null,
+        leadingWidth: isMacOSChromelessWindow ? 56 + macOSTrafficLightInset + macOSTrafficLightGap : null,
         leading: Padding(
           padding: EdgeInsets.fromLTRB(
-            8 + (isMacOSChromelessWindow ? macOSTrafficLightInset : 0),
+            8 + (isMacOSChromelessWindow ? macOSTrafficLightInset + macOSTrafficLightGap : 0),
             8,
             8,
             8,
@@ -147,19 +146,13 @@ class OperationsScreen extends StatelessWidget {
           child: Image.asset('assets/images/ham2k-logo.png'),
         ),
         title: const Text('PoLo Next — Operations'),
+        actionsPadding: const EdgeInsets.only(right: 8),
         actions: [
           IconButton(
             tooltip: 'Settings',
             icon: Icon(MdiIcons.cog),
             onPressed: () => Navigator.of(context).push(
               MaterialPageRoute(builder: (_) => SettingsScreen(services: services)),
-            ),
-          ),
-          IconButton(
-            tooltip: 'Extension bridge spike',
-            icon: const Icon(Icons.science_outlined),
-            onPressed: () => Navigator.of(context).push(
-              MaterialPageRoute(builder: (_) => const SpikeScreen()),
             ),
           ),
         ],
@@ -174,7 +167,10 @@ class OperationsScreen extends StatelessWidget {
         builder: (context, snapshot) {
           final operations = snapshot.data ?? const <Operation>[];
           if (operations.isEmpty) {
-            return const Center(child: Text('No operations yet. Create one to start logging.'));
+            return Container(
+              color: Theme.of(context).colorScheme.surfaceContainerHighest,
+              child: const Center(child: Text('No operations yet. Create one to start logging.')),
+            );
           }
           return ListView.separated(
             itemCount: operations.length,

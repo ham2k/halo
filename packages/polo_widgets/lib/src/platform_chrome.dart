@@ -17,3 +17,19 @@ bool get isMacOSChromelessWindow =>
 /// Horizontal space to reserve for the traffic-light buttons when
 /// [isMacOSChromelessWindow].
 const double macOSTrafficLightInset = 70;
+
+/// Extra breathing room between the traffic lights and whatever AppBar
+/// leading content follows them (logo, back button), so it doesn't start
+/// immediately at their edge.
+const double macOSTrafficLightGap = 12;
+
+/// True on desktop/windowed platforms (macOS, Windows, Linux) and web, where
+/// an AppBar title reads like a windowed app's title bar and should sit
+/// left-aligned next to any leading content; false on mobile (iOS, Android),
+/// where a fullscreen app's title centers per each platform's own
+/// convention.
+bool get isWindowedPlatform =>
+    kIsWeb ||
+    defaultTargetPlatform == TargetPlatform.macOS ||
+    defaultTargetPlatform == TargetPlatform.windows ||
+    defaultTargetPlatform == TargetPlatform.linux;
