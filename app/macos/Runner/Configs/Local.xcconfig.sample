@@ -1,0 +1,12 @@
+// Copy this file to Local.xcconfig (gitignored, never committed) to build
+// with a stable code-signing identity instead of Xcode's ad-hoc default.
+//
+// Without this, CODE_SIGN_IDENTITY is re-derived on every rebuild, so
+// macOS treats each build as a different app and re-prompts for keychain
+// access every time — see README.md "Building locally on macOS".
+//
+// Find your team ID at https://developer.apple.com/account (Membership) or
+// in Xcode > Settings > Accounts > your team.
+
+DEVELOPMENT_TEAM = YOUR_TEAM_ID
+CODE_SIGN_IDENTITY = Apple Development
