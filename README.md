@@ -25,7 +25,7 @@ cd extensions && npm install && npm run build   # extension bundles → app asse
 cd app && flutter run -d macos               # flutter provided via mise
 ```
 
-### Building locally on macOS
+### Building locally on macOS or iOS
 
 By default the macOS build signs ad-hoc (no Apple Developer team), which
 works fine but re-derives the code signature on every rebuild — so macOS
@@ -44,6 +44,10 @@ cp app/macos/Runner/Configs/Local.xcconfig.sample app/macos/Runner/Configs/Local
 
 Once in place, rebuilds sign consistently and you only need to click
 "Always Allow" on the keychain prompt once.
+
+The same mechanism exists for iOS builds — copy
+[`app/ios/Flutter/Local.xcconfig.sample`](app/ios/Flutter/Local.xcconfig.sample)
+to `Local.xcconfig` in the same folder and set `DEVELOPMENT_TEAM` there too.
 
 ## License
 
