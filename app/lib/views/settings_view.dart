@@ -22,6 +22,48 @@ import 'operation_dialogs.dart';
 
 const _appVersion = '0.1.0'; // keep in sync with app/pubspec.yaml
 
+const double _wideLayoutThreshold = 720.0;
+
+enum SettingsPanelType {
+  appearance,
+  sync,
+  accounts,
+  developer,
+  about,
+}
+
+extension SettingsPanelTypeExtension on SettingsPanelType {
+  String get title {
+    switch (this) {
+      case SettingsPanelType.appearance:
+        return 'Appearance';
+      case SettingsPanelType.sync:
+        return 'Sync';
+      case SettingsPanelType.accounts:
+        return 'Accounts';
+      case SettingsPanelType.developer:
+        return 'Developer Settings';
+      case SettingsPanelType.about:
+        return 'About';
+    }
+  }
+
+  IconData get icon {
+    switch (this) {
+      case SettingsPanelType.appearance:
+        return Icons.palette_outlined;
+      case SettingsPanelType.sync:
+        return Icons.sync;
+      case SettingsPanelType.accounts:
+        return Icons.vpn_key_outlined;
+      case SettingsPanelType.developer:
+        return Icons.bug_report_outlined;
+      case SettingsPanelType.about:
+        return Icons.info_outline;
+    }
+  }
+}
+
 class SettingsView extends StatefulWidget {
   final HaLoServices services;
 
@@ -32,58 +74,277 @@ class SettingsView extends StatefulWidget {
 }
 
 class _SettingsViewState extends State<SettingsView> {
+  SettingsPanelType _selectedPanel = SettingsPanelType.appearance;
+
+  @override
+  Widget build(BuildContext context) {
+    final double width = MediaQuery.sizeOf(context).width;
+    final bool isWide = width >= _wideLayoutThreshold;
+
+    if (isWide) {
+      final theme = Theme.of(context);
+      final bool isDark = theme.brightness == Brightness.dark;
+      
+      final appBarColor = theme.appBarTheme.backgroundColor ?? theme.colorScheme.surface;
+      final Color headerDividerColor;
+      if (isDark) {
+        headerDividerColor = Colors.grey[600]!;
+      } else {
+        final appBarHsl = HSLColor.fromColor(appBarColor);
+        headerDividerColor = appBarHsl.withLightness((appBarHsl.lightness - 0.15).clamp(0.0, 1.0)).toColor();
+      }
+
+      final bodyColor = theme.colorScheme.surface;
+      final Color bodyDividerColor;
+      if (isDark) {
+        bodyDividerColor = Colors.grey[600]!;
+      } else {
+        final bodyHsl = HSLColor.fromColor(bodyColor);
+        bodyDividerColor = bodyHsl.withLightness((bodyHsl.lightness - 0.15).clamp(0.0, 1.0)).toColor();
+      }
+
+      return Scaffold(
+        appBar: PreferredSize(
+          preferredSize: const Size.fromHeight(kToolbarHeight),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              SizedBox(
+                width: 320,
+                child: AppBar(
+                  leadingWidth: isMacOSChromelessWindow ? 56 + macOSTrafficLightInset + macOSTrafficLightGap : null,
+                  leading: MouseRegion(
+                    cursor: SystemMouseCursors.click,
+                    child: isMacOSChromelessWindow
+                        ? const Padding(
+                            padding: EdgeInsets.only(left: macOSTrafficLightInset + macOSTrafficLightGap),
+                            child: BackButton(),
+                          )
+                        : const BackButton(),
+                  ),
+                  title: const Text('Settings'),
+                ),
+              ),
+              Container(
+                width: 1,
+                color: headerDividerColor,
+              ),
+              Expanded(
+                child: AppBar(
+                  title: Text(_selectedPanel.title),
+                  automaticallyImplyLeading: false,
+                ),
+              ),
+            ],
+          ),
+        ),
+        body: Row(
+          children: [
+            SizedBox(
+              width: 320,
+              child: _buildSidebar(context, isWide: true),
+            ),
+            Container(
+              width: 1,
+              color: bodyDividerColor,
+            ),
+            Expanded(
+              child: _buildPanelContent(_selectedPanel, widget.services),
+            ),
+          ],
+        ),
+      );
+    } else {
+      return Scaffold(
+        appBar: AppBar(
+          leadingWidth: isMacOSChromelessWindow ? 56 + macOSTrafficLightInset + macOSTrafficLightGap : null,
+          leading: MouseRegion(
+            cursor: SystemMouseCursors.click,
+            child: isMacOSChromelessWindow
+                ? const Padding(
+                    padding: EdgeInsets.only(left: macOSTrafficLightInset + macOSTrafficLightGap),
+                    child: BackButton(),
+                  )
+                : const BackButton(),
+          ),
+          title: const Text('Settings'),
+        ),
+        body: _buildSidebar(context, isWide: false),
+      );
+    }
+  }
+
+  Widget _buildSidebar(BuildContext context, {required bool isWide}) {
+    final settings = widget.services.settings;
+
+    return ListenableBuilder(
+      listenable: settings,
+      builder: (context, _) {
+        final panels = [
+          SettingsPanelType.appearance,
+          SettingsPanelType.sync,
+          SettingsPanelType.accounts,
+          if (settings.developerMode) SettingsPanelType.developer,
+          SettingsPanelType.about,
+        ];
+
+        if (!panels.contains(_selectedPanel)) {
+          _selectedPanel = SettingsPanelType.appearance;
+        }
+
+        return ListView.builder(
+          itemCount: panels.length,
+          itemBuilder: (context, index) {
+            final panel = panels[index];
+            final isSelected = isWide && _selectedPanel == panel;
+
+            return ListTile(
+              selected: isSelected,
+              leading: Icon(panel.icon),
+              title: Text(panel.title),
+              onTap: () {
+                setState(() {
+                  _selectedPanel = panel;
+                });
+                if (!isWide) {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (context) => _SettingsPanelScreen(
+                        panel: panel,
+                        services: widget.services,
+                      ),
+                    ),
+                  );
+                }
+              },
+              mouseCursor: SystemMouseCursors.click,
+            );
+          },
+        );
+      },
+    );
+  }
+}
+
+class _SettingsPanelScreen extends StatelessWidget {
+  final SettingsPanelType panel;
+  final HaLoServices services;
+
+  const _SettingsPanelScreen({required this.panel, required this.services});
+
+  @override
+  Widget build(BuildContext context) {
+    if (MediaQuery.sizeOf(context).width >= _wideLayoutThreshold) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (Navigator.of(context).canPop()) {
+          Navigator.of(context).pop();
+        }
+      });
+      return const Scaffold(body: SizedBox.shrink());
+    }
+
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(panel.title),
+      ),
+      body: _buildPanelContent(panel, services),
+    );
+  }
+}
+
+Widget _buildPanelContent(SettingsPanelType panel, HaLoServices services) {
+  switch (panel) {
+    case SettingsPanelType.appearance:
+      return _AppearancePanel(services: services);
+    case SettingsPanelType.sync:
+      return _SyncPanel(services: services);
+    case SettingsPanelType.accounts:
+      return _AccountsPanel(services: services);
+    case SettingsPanelType.developer:
+      return _DeveloperPanel(services: services);
+    case SettingsPanelType.about:
+      return _AboutPanel(services: services);
+  }
+}
+
+class _AppearancePanel extends StatelessWidget {
+  final HaLoServices services;
+
+  const _AppearancePanel({required this.services});
+
+  @override
+  Widget build(BuildContext context) {
+    final settings = services.settings;
+
+    return ListenableBuilder(
+      listenable: settings,
+      builder: (context, _) {
+        return ListView(
+          padding: const EdgeInsets.all(16),
+          children: [
+            Text(
+              'Appearance Settings',
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    color: Theme.of(context).colorScheme.primary,
+                    fontWeight: FontWeight.bold,
+                  ),
+            ),
+            const SizedBox(height: 16),
+            const Text(
+              'Choose your preferred theme mode for the application.',
+              style: TextStyle(height: 1.4),
+            ),
+            const SizedBox(height: 16),
+            SegmentedButton<ThemeMode>(
+              segments: const [
+                ButtonSegment(
+                  value: ThemeMode.system,
+                  icon: Icon(Icons.brightness_auto_outlined),
+                  label: Text('System'),
+                ),
+                ButtonSegment(value: ThemeMode.light, icon: Icon(Icons.light_mode_outlined), label: Text('Light')),
+                ButtonSegment(value: ThemeMode.dark, icon: Icon(Icons.dark_mode_outlined), label: Text('Dark')),
+              ],
+              selected: {settings.themeMode},
+              onSelectionChanged: (selection) => settings.setThemeMode(selection.first),
+            ),
+          ],
+        );
+      },
+    );
+  }
+}
+
+class _SyncPanel extends StatefulWidget {
+  final HaLoServices services;
+
+  const _SyncPanel({required this.services});
+
+  @override
+  State<_SyncPanel> createState() => _SyncPanelState();
+}
+
+class _SyncPanelState extends State<_SyncPanel> {
   Map<String, dynamic>? _syncAccount;
   bool _loadingSyncAccount = false;
-  List<Map<String, dynamic>>? _accounts;
-  final Map<String, String> _accountSubtitles = {};
 
   @override
   void initState() {
     super.initState();
-    if (widget.services.settings.syncEnabled) _refreshSyncAccount();
-    _loadAccounts();
-  }
-
-  Future<void> _loadAccounts() async {
-    await widget.services.extensions.start();
-    final accounts = await widget.services.extensions.getAccounts();
-    final subtitles = <String, String>{};
-    for (final account in accounts) {
-      final kvKey = account['kvKey'] as String;
-      final creds = await widget.services.extensions.getAccountCredentials(kvKey);
-      String subtitle = 'Not configured';
-      if (creds.isNotEmpty) {
-        if (creds.containsKey('username')) {
-          subtitle = creds['username']!;
-        } else if (creds.containsKey('email')) {
-          subtitle = creds['email']!;
-        } else if (creds.containsKey('login')) {
-          subtitle = creds['login']!;
-        } else {
-          subtitle = 'Configured';
-        }
-      }
-      subtitles[kvKey] = subtitle;
-    }
-    if (mounted) {
-      setState(() {
-        _accounts = accounts;
-        _accountSubtitles.clear();
-        _accountSubtitles.addAll(subtitles);
-      });
+    if (widget.services.settings.syncEnabled) {
+      _refreshSyncAccount();
     }
   }
 
-  Future<void> _openAccountDialog(Map<String, dynamic> account) async {
-    await showDialog<void>(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => _AccountDialog(
-        services: widget.services,
-        account: account,
-        onSaved: _loadAccounts,
-      ),
-    );
+  Future<void> _refreshSyncAccount() async {
+    if (!mounted) return;
+    setState(() => _loadingSyncAccount = true);
+    final account = await widget.services.extensions.syncAccountData();
+    if (!mounted) return;
+    setState(() {
+      _syncAccount = account;
+      _loadingSyncAccount = false;
+    });
   }
 
   Future<void> _editOperatorCall() async {
@@ -107,16 +368,6 @@ class _SettingsViewState extends State<SettingsView> {
     } else if (mounted) {
       setState(() {});
     }
-  }
-
-  Future<void> _refreshSyncAccount() async {
-    setState(() => _loadingSyncAccount = true);
-    final account = await widget.services.extensions.syncAccountData();
-    if (!mounted) return;
-    setState(() {
-      _syncAccount = account;
-      _loadingSyncAccount = false;
-    });
   }
 
   Future<void> _linkByEmail() async {
@@ -181,116 +432,284 @@ class _SettingsViewState extends State<SettingsView> {
   Widget build(BuildContext context) {
     final settings = widget.services.settings;
 
-    return Scaffold(
-      appBar: AppBar(
-        leadingWidth: isMacOSChromelessWindow ? 56 + macOSTrafficLightInset + macOSTrafficLightGap : null,
-        leading: MouseRegion(
-          cursor: SystemMouseCursors.click,
-          child: isMacOSChromelessWindow
-              ? const Padding(
-                  padding: EdgeInsets.only(left: macOSTrafficLightInset + macOSTrafficLightGap),
-                  child: BackButton(),
-                )
-              : const BackButton(),
-        ),
-        title: const Text('Settings'),
-        actions: const [SizedBox(width: 16)],
-      ),
-      body: ListView(
-        children: [
-          const _SectionHeader('Appearance'),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-            child: SegmentedButton<ThemeMode>(
-              segments: const [
-                ButtonSegment(
-                  value: ThemeMode.system,
-                  icon: Icon(Icons.brightness_auto_outlined),
-                  label: Text('System'),
-                ),
-                ButtonSegment(value: ThemeMode.light, icon: Icon(Icons.light_mode_outlined), label: Text('Light')),
-                ButtonSegment(value: ThemeMode.dark, icon: Icon(Icons.dark_mode_outlined), label: Text('Dark')),
-              ],
-              selected: {settings.themeMode},
-              onSelectionChanged: (selection) => settings.setThemeMode(selection.first),
-            ),
-          ),
-          const _SectionHeader('Accounts'),
-          if (_accounts == null)
-            const Padding(
-              padding: EdgeInsets.all(16.0),
-              child: Center(child: CircularProgressIndicator()),
-            )
-          else if (_accounts!.isEmpty)
-            const ListTile(
-              title: Text('No active extensions with accounts'),
-            )
-          else
-            ..._accounts!.map((account) {
-              final kvKey = account['kvKey'] as String;
-              final label = account['label'] as String;
-              final subtitle = _accountSubtitles[kvKey] ?? 'Not configured';
-              return ListTile(
-                leading: Icon(MdiIcons.keyChain),
-                title: Text(label),
-                subtitle: Text(subtitle),
-                onTap: () => _openAccountDialog(account),
-                mouseCursor: SystemMouseCursors.click,
-              );
-            }),
-          const _SectionHeader('Sync'),
-          ListTile(
-            leading: Icon(resolveIconName('account-outline')),
-            title: const Text('Operator callsign'),
-            subtitle: Text(settings.operatorCall.isEmpty ? 'Not set' : settings.operatorCall),
-            onTap: _editOperatorCall,
-            mouseCursor: SystemMouseCursors.click,
-          ),
-          SwitchListTile(
-            secondary: Icon(resolveIconName(settings.syncEnabled ? 'cloud-sync-outline' : 'cloud-off-outline')),
-            title: const Text('Sync with Ham2K Log Filer'),
-            subtitle: Text(
-              settings.syncEnabled
-                  ? 'Backs up and syncs your log across devices'
-                  : 'Off — your log stays on this device only',
-            ),
-            value: settings.syncEnabled,
-            onChanged: _toggleSync,
-            mouseCursor: SystemMouseCursors.click,
-          ),
-          if (settings.syncState['pendingAccountUUID'] != null)
-            _PendingAccountBanner(onCombine: _combineAccount, onReplace: _replaceAccount),
-          if (settings.syncEnabled) ...[
+    return ListenableBuilder(
+      listenable: settings,
+      builder: (context, _) {
+        return ListView(
+          padding: const EdgeInsets.symmetric(vertical: 8),
+          children: [
+            const _SectionHeader('Sync Configuration'),
             ListTile(
-              leading: Icon(resolveIconName('account-check-outline')),
-              title: const Text('Account'),
-              subtitle: Text(_syncAccountSubtitle),
-              trailing: IconButton(
-                icon: Icon(resolveIconName('refresh')),
-                tooltip: 'Refresh',
-                onPressed: _refreshSyncAccount,
-                mouseCursor: SystemMouseCursors.click,
-              ),
-            ),
-            ListTile(
-              leading: Icon(resolveIconName('email-outline')),
-              title: const Text('Link to an existing account'),
-              subtitle: const Text('Sync this device into an account you already use elsewhere'),
-              onTap: _linkByEmail,
+              leading: Icon(resolveIconName('account-outline')),
+              title: const Text('Operator callsign'),
+              subtitle: Text(settings.operatorCall.isEmpty ? 'Not set' : settings.operatorCall),
+              onTap: _editOperatorCall,
               mouseCursor: SystemMouseCursors.click,
             ),
-          ],
-          const _SectionHeader('About'),
-          ListTile(
-            leading: ClipRRect(
-              borderRadius: BorderRadius.circular(8),
-              child: Image.asset('assets/images/ham2k-icon.png', width: 40, height: 40),
+            SwitchListTile(
+              secondary: Icon(resolveIconName(settings.syncEnabled ? 'cloud-sync-outline' : 'cloud-off-outline')),
+              title: const Text('Sync with Ham2K Log Filer'),
+              subtitle: Text(
+                settings.syncEnabled
+                    ? 'Backs up and syncs your log across devices'
+                    : 'Off — your log stays on this device only',
+              ),
+              value: settings.syncEnabled,
+              onChanged: _toggleSync,
+              mouseCursor: SystemMouseCursors.click,
             ),
-            title: const Text('HaLo Next'),
-            subtitle: const Text('Version $_appVersion (dev build)'),
+            if (settings.syncState['pendingAccountUUID'] != null)
+              _PendingAccountBanner(onCombine: _combineAccount, onReplace: _replaceAccount),
+            if (settings.syncEnabled) ...[
+              ListTile(
+                leading: Icon(resolveIconName('account-check-outline')),
+                title: const Text('Account'),
+                subtitle: Text(_syncAccountSubtitle),
+                trailing: IconButton(
+                  icon: Icon(resolveIconName('refresh')),
+                  tooltip: 'Refresh',
+                  onPressed: _refreshSyncAccount,
+                  mouseCursor: SystemMouseCursors.click,
+                ),
+              ),
+              ListTile(
+                leading: Icon(resolveIconName('email-outline')),
+                title: const Text('Link to an existing account'),
+                subtitle: const Text('Sync this device into an account you already use elsewhere'),
+                onTap: _linkByEmail,
+                mouseCursor: SystemMouseCursors.click,
+              ),
+            ],
+          ],
+        );
+      },
+    );
+  }
+}
+
+class _AccountsPanel extends StatefulWidget {
+  final HaLoServices services;
+
+  const _AccountsPanel({required this.services});
+
+  @override
+  State<_AccountsPanel> createState() => _AccountsPanelState();
+}
+
+class _AccountsPanelState extends State<_AccountsPanel> {
+  List<Map<String, dynamic>>? _accounts;
+  final Map<String, String> _accountSubtitles = {};
+
+  @override
+  void initState() {
+    super.initState();
+    _loadAccounts();
+  }
+
+  Future<void> _loadAccounts() async {
+    await widget.services.extensions.start();
+    final accounts = await widget.services.extensions.getAccounts();
+    final subtitles = <String, String>{};
+    for (final account in accounts) {
+      final kvKey = account['kvKey'] as String;
+      final creds = await widget.services.extensions.getAccountCredentials(kvKey);
+      String subtitle = 'Not configured';
+      if (creds.isNotEmpty) {
+        if (creds.containsKey('username')) {
+          subtitle = creds['username']!;
+        } else if (creds.containsKey('email')) {
+          subtitle = creds['email']!;
+        } else if (creds.containsKey('login')) {
+          subtitle = creds['login']!;
+        } else {
+          subtitle = 'Configured';
+        }
+      }
+      subtitles[kvKey] = subtitle;
+    }
+    if (mounted) {
+      setState(() {
+        _accounts = accounts;
+        _accountSubtitles.clear();
+        _accountSubtitles.addAll(subtitles);
+      });
+    }
+  }
+
+  Future<void> _openAccountDialog(Map<String, dynamic> account) async {
+    await showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => _AccountDialog(
+        services: widget.services,
+        account: account,
+        onSaved: _loadAccounts,
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_accounts == null) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    return ListView(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      children: [
+        const _SectionHeader('Accounts & Services'),
+        if (_accounts!.isEmpty)
+          const ListTile(
+            title: Text('No active extensions with accounts'),
+          )
+        else
+          ..._accounts!.map((account) {
+            final kvKey = account['kvKey'] as String;
+            final label = account['label'] as String;
+            final subtitle = _accountSubtitles[kvKey] ?? 'Not configured';
+            return ListTile(
+              leading: Icon(MdiIcons.keyChain),
+              title: Text(label),
+              subtitle: Text(subtitle),
+              onTap: () => _openAccountDialog(account),
+              mouseCursor: SystemMouseCursors.click,
+            );
+          }),
+      ],
+    );
+  }
+}
+
+class _DeveloperPanel extends StatelessWidget {
+  final HaLoServices services;
+
+  const _DeveloperPanel({required this.services});
+
+  @override
+  Widget build(BuildContext context) {
+    final settings = services.settings;
+
+    return ListenableBuilder(
+      listenable: settings,
+      builder: (context, _) {
+        return ListView(
+          padding: const EdgeInsets.all(16),
+          children: [
+            Text(
+              'Developer Options',
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    color: Theme.of(context).colorScheme.primary,
+                    fontWeight: FontWeight.bold,
+                  ),
+            ),
+            const SizedBox(height: 16),
+            SwitchListTile(
+              title: const Text('Developer Mode'),
+              subtitle: const Text('Enable developer warnings, debug logs, and tools.'),
+              value: settings.developerMode,
+              onChanged: (enabled) => settings.setDeveloperMode(enabled),
+              contentPadding: EdgeInsets.zero,
+            ),
+            const SizedBox(height: 16),
+            const Divider(),
+            const SizedBox(height: 16),
+            Text(
+              'System Information',
+              style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
+            ),
+            const SizedBox(height: 8),
+            _infoRow(context, 'Sync Device Key', settings.syncDeviceKey),
+            _infoRow(context, 'App Version', '$_appVersion (dev build)'),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _infoRow(BuildContext context, String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Expanded(
+            flex: 2,
+            child: Text(
+              label,
+              style: TextStyle(
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
+          Expanded(
+            flex: 3,
+            child: SelectableText(
+              value,
+              style: const TextStyle(
+                fontFamily: 'monospace',
+                fontSize: 13,
+              ),
+            ),
           ),
         ],
       ),
+    );
+  }
+}
+
+class _AboutPanel extends StatelessWidget {
+  final HaLoServices services;
+
+  const _AboutPanel({required this.services});
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView(
+      padding: const EdgeInsets.all(16),
+      children: [
+        Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const SizedBox(height: 24),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(16),
+                child: Image.asset('assets/images/ham2k-icon.png', width: 96, height: 96),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'Ham2K Logger',
+                style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                'Version $_appVersion (dev build)',
+                style: TextStyle(fontSize: 15, color: Colors.grey),
+              ),
+              const SizedBox(height: 24),
+            ],
+          ),
+        ),
+        const Divider(),
+        const SizedBox(height: 16),
+        Text(
+          'About the App',
+          style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.bold,
+              ),
+        ),
+        const SizedBox(height: 8),
+        const Text(
+          'Ham2K Logger is the next-generation Portable Logger for amateur radio operators. '
+          'It is designed to be lightweight, cross-platform, and extensible.',
+          style: TextStyle(height: 1.4, fontSize: 14),
+        ),
+      ],
     );
   }
 }
@@ -564,7 +983,7 @@ class _AccountDialogState extends State<_AccountDialog> {
       if (tokens['id_token'] != null) credentials['idToken'] = tokens['id_token'] as String;
 
       await widget.services.extensions.setAccountCredentials(_kvKey, credentials);
-      
+
       setState(() {
         _loggedIn = true;
         _testing = false;
