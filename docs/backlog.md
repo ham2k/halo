@@ -4,16 +4,9 @@
 
 # Features
 
-## Forms
+## Basic
 
-We need to implement a schema for describing forms so that extensions can ask users for inputs in complex forms. And of course, we also need to implement a way to render this schema into the UI in a View.
-
-A form is a list of fields, headers, section dividers and markdown text blocks. 
-It is rendered in a view or dialog. It can have a title and subtitle. 
-The form definition also includes the state values for each field, along with optional JS callbacks to validate and transform the field values.
-Fields can be of various types including single line text, multi-line text, email, callsign, number, select, radio, checkbox.
-
-Other elements include Section dividers with a title, and markdown text blocks.
+- QSO selection and editing, including a "more" secondary control and a full form view similar to the one on app-polo.
 
 ## Exports
 

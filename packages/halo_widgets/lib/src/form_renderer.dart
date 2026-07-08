@@ -80,6 +80,9 @@ class FormRendererState extends State<FormRenderer> {
       }
       _values[key] = val;
 
+      final focusNode = FocusNode();
+      _focusNodes[key] = focusNode;
+
       if (['text', 'multiline', 'email', 'callsign', 'number'].contains(fieldType)) {
         final controller = TextEditingController(text: val?.toString() ?? '');
         _controllers[key] = controller;
@@ -89,14 +92,14 @@ class FormRendererState extends State<FormRenderer> {
           if (fieldType == 'number') {
             parsed = num.tryParse(text);
           }
-          setState(() {
-            _values[key] = parsed;
-            _errors.remove(key);
-          });
+          if (_values[key] != parsed) {
+            setState(() {
+              _values[key] = parsed;
+              _errors.remove(key);
+            });
+          }
         });
 
-        final focusNode = FocusNode();
-        _focusNodes[key] = focusNode;
         focusNode.addListener(() {
           if (!focusNode.hasFocus) {
             _handleFieldBlurOrInteraction(key, _values[key]);
@@ -172,6 +175,7 @@ class FormRendererState extends State<FormRenderer> {
   }
 
   Future<void> submit() async {
+    FocusManager.instance.primaryFocus?.unfocus();
     if (_isSubmitting) return;
     setState(() {
       _isSubmitting = true;
@@ -215,6 +219,15 @@ class FormRendererState extends State<FormRenderer> {
         widget.submittingNotifier?.value = false;
         if (errors.isNotEmpty) {
           _errors.addAll(errors);
+
+          // Scroll first error into view
+          for (final field in _fields) {
+            final key = field['key'] as String;
+            if (errors.containsKey(key)) {
+              _focusNodes[key]?.requestFocus();
+              break;
+            }
+          }
         } else {
           widget.onSubmit(transformedValues);
         }
@@ -369,6 +382,8 @@ class FormRendererState extends State<FormRenderer> {
           controller: _controllers[key],
           focusNode: _focusNodes[key],
           autofillHints: _getAutofillHints(key, 'text'),
+          textInputAction: TextInputAction.done,
+          onSubmitted: (_) => submit(),
           decoration: poloFieldDecoration(context, label, hintText: placeholder, errorText: errorText),
         );
       case 'multiline':
@@ -386,6 +401,8 @@ class FormRendererState extends State<FormRenderer> {
           focusNode: _focusNodes[key],
           keyboardType: TextInputType.emailAddress,
           autofillHints: _getAutofillHints(key, 'email'),
+          textInputAction: TextInputAction.done,
+          onSubmitted: (_) => submit(),
           decoration: poloFieldDecoration(context, label, hintText: placeholder, errorText: errorText),
         );
       case 'callsign':
@@ -397,6 +414,8 @@ class FormRendererState extends State<FormRenderer> {
             TextInputFormatter.withFunction((oldValue, newValue) => newValue.copyWith(text: newValue.text.toUpperCase())),
           ],
           autofillHints: _getAutofillHints(key, 'callsign'),
+          textInputAction: TextInputAction.done,
+          onSubmitted: (_) => submit(),
           decoration: poloFieldDecoration(context, label, hintText: placeholder, errorText: errorText),
         );
       case 'number':
@@ -408,12 +427,16 @@ class FormRendererState extends State<FormRenderer> {
             FilteringTextInputFormatter.allow(RegExp(r'[0-9.-]')),
           ],
           autofillHints: _getAutofillHints(key, 'number'),
+          textInputAction: TextInputAction.done,
+          onSubmitted: (_) => submit(),
           decoration: poloFieldDecoration(context, label, hintText: placeholder, errorText: errorText),
         );
       case 'select':
         return DropdownButtonFormField<dynamic>(
           value: _values[key],
+          focusNode: _focusNodes[key],
           decoration: poloFieldDecoration(context, label, hintText: placeholder, errorText: errorText),
+          hint: placeholder != null ? Text(placeholder) : null,
           items: [
             for (final opt in options)
               DropdownMenuItem(
@@ -432,66 +455,72 @@ class FormRendererState extends State<FormRenderer> {
                 },
         );
       case 'radio':
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              label,
-              style: theme.textTheme.labelMedium?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
-              ),
-            ),
-            const SizedBox(height: 4),
-            for (final opt in options)
-              RadioListTile<dynamic>(
-                title: Text(opt['label'] as String),
-                value: opt['value'],
-                groupValue: _values[key],
-                onChanged: _isSubmitting
-                    ? null
-                    : (val) {
-                        setState(() {
-                          _values[key] = val;
-                          _errors.remove(key);
-                        });
-                        _handleFieldBlurOrInteraction(key, val);
-                      },
-                contentPadding: EdgeInsets.zero,
-                dense: true,
-              ),
-            if (errorText != null)
-              Padding(
-                padding: const EdgeInsets.only(top: 4, left: 4),
-                child: Text(
-                  errorText,
-                  style: TextStyle(color: theme.colorScheme.error, fontSize: 12),
+        return Focus(
+          focusNode: _focusNodes[key],
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                label,
+                style: theme.textTheme.labelMedium?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
                 ),
               ),
-          ],
+              const SizedBox(height: 4),
+              for (final opt in options)
+                RadioListTile<dynamic>(
+                  title: Text(opt['label'] as String),
+                  value: opt['value'],
+                  groupValue: _values[key],
+                  onChanged: _isSubmitting
+                      ? null
+                      : (val) {
+                          setState(() {
+                            _values[key] = val;
+                            _errors.remove(key);
+                          });
+                          _handleFieldBlurOrInteraction(key, val);
+                        },
+                  contentPadding: EdgeInsets.zero,
+                  dense: true,
+                ),
+              if (errorText != null)
+                Padding(
+                  padding: const EdgeInsets.only(top: 4, left: 4),
+                  child: Text(
+                    errorText,
+                    style: TextStyle(color: theme.colorScheme.error, fontSize: 12),
+                  ),
+                ),
+            ],
+          ),
         );
       case 'checkbox':
-        return CheckboxListTile(
-          title: Text(label),
-          value: _values[key] == true,
-          onChanged: _isSubmitting
-              ? null
-              : (val) {
-                  final finalVal = val ?? false;
-                  setState(() {
-                    _values[key] = finalVal;
-                    _errors.remove(key);
-                  });
-                  _handleFieldBlurOrInteraction(key, finalVal);
-                },
-          contentPadding: EdgeInsets.zero,
-          controlAffinity: ListTileControlAffinity.leading,
-          dense: true,
-          subtitle: errorText != null
-              ? Text(
-                  errorText,
-                  style: TextStyle(color: theme.colorScheme.error, fontSize: 12),
-                )
-              : null,
+        return Focus(
+          focusNode: _focusNodes[key],
+          child: CheckboxListTile(
+            title: Text(label),
+            value: _values[key] == true,
+            onChanged: _isSubmitting
+                ? null
+                : (val) {
+                    final finalVal = val ?? false;
+                    setState(() {
+                      _values[key] = finalVal;
+                      _errors.remove(key);
+                    });
+                    _handleFieldBlurOrInteraction(key, finalVal);
+                  },
+            contentPadding: EdgeInsets.zero,
+            controlAffinity: ListTileControlAffinity.leading,
+            dense: true,
+            subtitle: errorText != null
+                ? Text(
+                    errorText,
+                    style: TextStyle(color: theme.colorScheme.error, fontSize: 12),
+                  )
+                : null,
+          ),
         );
       default:
         return const SizedBox.shrink();
