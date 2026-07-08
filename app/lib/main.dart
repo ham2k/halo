@@ -19,41 +19,17 @@ import 'views/operation_view.dart';
 import 'views/home_view.dart';
 import 'services/export_service.dart';
 import 'services/extension_service.dart';
+import 'services/metrics_service.dart';
+import 'services/purchase_service.dart';
 import 'services/settings_service.dart';
+import 'services/update_service.dart';
 import 'services/data_file_manager.dart';
 import 'i18n/strings.g.dart';
 
 final navigatorKey = GlobalKey<NavigatorState>();
 
 void main() async {
-  WidgetsFlutterBinding.ensureInitialized();
-  final db = HaLoDatabase(driftDatabase(name: 'halo_next'));
-  final extensions = ExtensionService();
-  // Fire-and-forget, and kicked off before awaiting settings below so these
-  // two independent boot steps run concurrently instead of serialized; the
-  // core logging loop never waits on the extension runtime either way.
-  extensions.start();
-  final settings = await SettingsService.load();
-  LocaleSettings.setLocaleRaw(settings.locale);
-  final services = HaLoServices(db, settings, extensions: extensions);
-  if (settings.hasQrzCredentials) {
-    await services.extensions.setAccountCredentials('qrz', {
-      'username': settings.qrzUsername,
-      'password': settings.qrzPassword,
-    });
-    await settings.setQrzCredentials(username: '', password: '');
-  }
-  services.extensions.setSyncCredentials(deviceKey: settings.syncDeviceKey, operatorCall: settings.operatorCall);
-  services.syncEngine.start();
-  
-  // Await the extension system being fully booted, then initialize and sync data files
-  unawaited(extensions.start().then((_) async {
-    await services.dataFiles.loadRawDataFiles();
-    await services.dataFiles.syncAllDataFiles();
-  }).catchError((e) {
-    debugPrint('[boot] failed to initialize data files: $e');
-  }));
-
+  final services = await bootstrap();
   runApp(TranslationProvider(child: HaLoApp(services: services)));
 
   // Dev nicety: launch with POLO_OPEN_FIRST_OP=1 in the environment (e.g.
@@ -75,11 +51,61 @@ void main() async {
   }
 }
 
+/// Runs the shared boot sequence (database, extensions, settings, sync) and
+/// returns the assembled services bundle. Distribution-specific entrypoints
+/// (e.g. a private `main_dist.dart`) call this with real implementations of
+/// the distribution-only services instead of the OSS no-op defaults.
+Future<HaLoServices> bootstrap({
+  MetricsService? metrics,
+  PurchaseService? purchases,
+  UpdateService? updates,
+}) async {
+  WidgetsFlutterBinding.ensureInitialized();
+  final db = HaLoDatabase(driftDatabase(name: 'halo_next'));
+  final extensions = ExtensionService();
+  // Fire-and-forget, and kicked off before awaiting settings below so these
+  // two independent boot steps run concurrently instead of serialized; the
+  // core logging loop never waits on the extension runtime either way.
+  extensions.start();
+  final settings = await SettingsService.load();
+  LocaleSettings.setLocaleRaw(settings.locale);
+  final services = HaLoServices(
+    db,
+    settings,
+    extensions: extensions,
+    metrics: metrics,
+    purchases: purchases,
+    updates: updates,
+  );
+  if (settings.hasQrzCredentials) {
+    await services.extensions.setAccountCredentials('qrz', {
+      'username': settings.qrzUsername,
+      'password': settings.qrzPassword,
+    });
+    await settings.setQrzCredentials(username: '', password: '');
+  }
+  services.extensions.setSyncCredentials(deviceKey: settings.syncDeviceKey, operatorCall: settings.operatorCall);
+  services.syncEngine.start();
+
+  // Await the extension system being fully booted, then initialize and sync data files
+  unawaited(extensions.start().then((_) async {
+    await services.dataFiles.loadRawDataFiles();
+    await services.dataFiles.syncAllDataFiles();
+  }).catchError((e) {
+    debugPrint('[boot] failed to initialize data files: $e');
+  }));
+
+  return services;
+}
+
 /// The core services bundle passed down to screens.
 class HaLoServices {
   final HaLoDatabase db;
   final SettingsService settings;
   final ExtensionService extensions;
+  final MetricsService metrics;
+  final PurchaseService purchases;
+  final UpdateService updates;
 
   late final OperationsRepository operations = OperationsRepository(db, onChange: () => syncEngine.notifyChanged());
   late final QsosRepository qsos = QsosRepository(db, onChange: () => syncEngine.notifyChanged());
@@ -101,7 +127,17 @@ class HaLoServices {
     settings: settings,
   );
 
-  HaLoServices(this.db, this.settings, {ExtensionService? extensions}) : extensions = extensions ?? ExtensionService() {
+  HaLoServices(
+    this.db,
+    this.settings, {
+    ExtensionService? extensions,
+    MetricsService? metrics,
+    PurchaseService? purchases,
+    UpdateService? updates,
+  })  : extensions = extensions ?? ExtensionService(),
+        metrics = metrics ?? const NoopMetricsService(),
+        purchases = purchases ?? const NoopPurchaseService(),
+        updates = updates ?? const NoopUpdateService() {
     this.extensions.settings = settings;
     this.extensions.lookups = lookups;
   }
