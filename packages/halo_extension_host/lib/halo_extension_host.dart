@@ -25,7 +25,7 @@ import 'package:http/http.dart' as http;
 
 import 'src/js_engine.dart';
 
-export 'src/engine_runtime.dart' show ExtensionBundle;
+export 'src/engine_runtime.dart' show ExtensionBundle, ExtensionHostException;
 
 typedef HostCallHandler = Future<dynamic> Function(String method, Map<String, dynamic> params);
 
@@ -36,14 +36,6 @@ class HookCallSample {
   final int jsMillis;
 
   const HookCallSample({required this.label, required this.totalMillis, required this.jsMillis});
-}
-
-class ExtensionHostException implements Exception {
-  final String message;
-  ExtensionHostException(this.message);
-
-  @override
-  String toString() => 'ExtensionHostException: $message';
 }
 
 class ExtensionHost {
@@ -276,6 +268,17 @@ class ExtensionHost {
         final method = msg['method'] as String;
         final params = (msg['params'] as Map).cast<String, dynamic>();
         _handleHostCallDelegated(callId, method, params);
+      case 'fatalError':
+        // The engine died outside of any single call (e.g. a Worker crash) —
+        // every hook still waiting on a response would otherwise just hang
+        // until its own timeout, hiding the real cause.
+        final error = msg['error'] as String? ?? 'extension engine crashed';
+        _log('ERROR $error');
+        for (final completer in _pending.values) {
+          completer.completeError(ExtensionHostException(error));
+        }
+        _pending.clear();
+        _inFlight.clear();
     }
   }
 
@@ -377,29 +380,19 @@ class _HostCore {
   Future<int> init(String kernelSource, List<ExtensionBundle> bundles) async {
     final stopwatch = Stopwatch()..start();
     _js = createEngineRuntime();
-
-    if (!_js.available) {
-      emit({'type': 'log', 'message': 'WARN extension runtime unavailable on this platform; extensions disabled'});
-      return (stopwatch..stop()).elapsedMilliseconds;
-    }
-
     _js.onMessage(_onPoloMessage);
-    await _js.load(kernelSource, bundles);
+    _js.onFatalError(_onFatalError);
+    try {
+      await _js.load(kernelSource, bundles);
+    } catch (e) {
+      _js.dispose();
+      rethrow;
+    }
 
     return (stopwatch..stop()).elapsedMilliseconds;
   }
 
   void handle(Map<String, dynamic> msg) {
-    if (!_js.available) {
-      switch (msg['type']) {
-        case 'invoke':
-        case 'invokeAll':
-          emit({'type': 'result', 'id': msg['id'], 'ok': false, 'error': 'extensions are not available on this platform yet'});
-        case 'kvSet':
-          _kv.putIfAbsent(msg['ns'] as String? ?? 'default', () => {})[msg['key'] as String] = msg['value'];
-      }
-      return;
-    }
     switch (msg['type']) {
       case 'invoke':
       case 'invokeAll':
@@ -430,6 +423,14 @@ class _HostCore {
         _pump = null;
       }
     });
+  }
+
+  /// The engine died outside of any single call (e.g. a Worker crash after
+  /// load). Stop pumping — nothing will ever decrement `_outstanding` again —
+  /// and let `ExtensionHost` fail every hook call still waiting on a result.
+  void _onFatalError(String message) {
+    _outstanding = 0;
+    emit({'type': 'fatalError', 'error': message});
   }
 
   void _onPoloMessage(Map<String, dynamic> msg) {
@@ -514,6 +515,6 @@ class _HostCore {
   void dispose() {
     _pump?.cancel();
     _http.close();
-    if (_js.available) _js.dispose();
+    _js.dispose();
   }
 }

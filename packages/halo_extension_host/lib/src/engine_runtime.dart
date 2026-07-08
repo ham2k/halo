@@ -14,18 +14,27 @@ class ExtensionBundle {
   const ExtensionBundle({required this.key, required this.source});
 }
 
-abstract class EngineRuntime {
-  /// False on platforms where no engine backend could be created at all.
-  /// Currently always true — native uses QuickJS, web uses a Worker — but
-  /// kept as an escape hatch for platforms where neither is available.
-  bool get available;
+class ExtensionHostException implements Exception {
+  final String message;
+  ExtensionHostException(this.message);
 
+  @override
+  String toString() => 'ExtensionHostException: $message';
+}
+
+abstract class EngineRuntime {
   String get engineDescription;
 
   /// Registers the callback invoked for every message the JS side posts on
   /// the 'polo' channel: {type:'result'|'log'|'hostCall', ...}. Must be
   /// called before [load].
   void onMessage(void Function(Map<String, dynamic> message) callback);
+
+  /// Registers the callback invoked when the engine dies outside of any
+  /// single call (e.g. an uncaught exception crashing a Worker after it's
+  /// already loaded). Backends that can't fail this way (QuickJS, in-process)
+  /// simply never call it.
+  void onFatalError(void Function(String message) callback);
 
   /// Loads the kernel bundle, then every extension bundle in order, then
   /// activates all extensions. Throws if any step fails.

@@ -12,14 +12,18 @@ class _IoEngineRuntime implements EngineRuntime {
   void Function(Map<String, dynamic>)? _onMessage;
 
   @override
-  bool get available => true;
-
-  @override
   String get engineDescription => _runtime.runtimeType.toString();
 
   @override
   void onMessage(void Function(Map<String, dynamic> message) callback) {
     _onMessage = callback;
+  }
+
+  @override
+  void onFatalError(void Function(String message) callback) {
+    // QuickJS eval failures always surface synchronously from the call that
+    // triggered them (see _evaluate below) — there's no separate async crash
+    // mode to report here.
   }
 
   @override
@@ -73,7 +77,7 @@ class _IoEngineRuntime implements EngineRuntime {
   void _evaluate(String code, {required String name}) {
     final result = _runtime.evaluate(code);
     if (result.isError) {
-      throw StateError('evaluating $name: ${result.stringResult}');
+      throw ExtensionHostException('evaluating $name: ${result.stringResult}');
     }
     pump();
   }
