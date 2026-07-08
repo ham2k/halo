@@ -13,8 +13,8 @@ while [[ "$#" -gt 0 ]]; do
   shift
 done
 
-# Get root directory where the script is located
-ROOT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+# Get root directory (project root) relative to the scripts folder
+ROOT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )/.." && pwd )"
 cd "$ROOT_DIR"
 
 echo "🚀 Starting Ham2K Logger Web Build & Deployment..."
