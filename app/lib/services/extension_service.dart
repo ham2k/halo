@@ -261,6 +261,27 @@ class ExtensionService {
               return value;
             }
           },
+          onChange: (fieldKey, value, currentState) async {
+            try {
+              final res = await _host?.invokeHook(
+                'form',
+                key: formId,
+                method: 'onChangeField',
+                args: {
+                  'formId': formId,
+                  'fieldKey': fieldKey,
+                  'value': value,
+                  'state': currentState,
+                },
+              );
+              if (res is Map) {
+                return res.cast<String, dynamic>();
+              }
+              return null;
+            } catch (_) {
+              return null;
+            }
+          },
         );
         return result;
       default:

@@ -426,10 +426,12 @@ export interface FormDefinition {
   title?: string
   subtitle?: string
   elements: FormElement[]
+  onChange?: (fieldKey: string, value: any, state: Record<string, any>) => Promise<Record<string, any> | void> | Record<string, any> | void
 }
 
 export interface FormHook {
   getDefinition(args: { formId?: string }, ctx: HookContext): Promise<FormDefinition>
   validateField?(args: { formId?: string; fieldKey: string; value: any; state: Record<string, any> }, ctx: HookContext): Promise<string | null>
   transformField?(args: { formId?: string; fieldKey: string; value: any; state: Record<string, any> }, ctx: HookContext): Promise<any>
+  onChangeField?(args: { formId?: string; fieldKey: string; value: any; state: Record<string, any> }, ctx: HookContext): Promise<Record<string, any> | null | void>
 }

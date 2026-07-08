@@ -10,6 +10,7 @@ import 'theme.dart';
 
 typedef FormValidator = Future<String?> Function(String fieldKey, dynamic value, Map<String, dynamic> state);
 typedef FormTransformer = Future<dynamic> Function(String fieldKey, dynamic value, Map<String, dynamic> state);
+typedef FormOnChange = Future<Map<String, dynamic>?> Function(String fieldKey, dynamic value, Map<String, dynamic> state);
 
 /// Renders a form from a dynamic JSON definition, coordinating input fields,
 /// headers, section dividers, and markdown text blocks. Supports initial state,
@@ -19,6 +20,7 @@ class FormRenderer extends StatefulWidget {
   final Map<String, dynamic> initialState;
   final FormValidator? validator;
   final FormTransformer? transformer;
+  final FormOnChange? onChange;
   final void Function(Map<String, dynamic> values) onSubmit;
   final VoidCallback onCancel;
   final bool showActions;
@@ -29,6 +31,7 @@ class FormRenderer extends StatefulWidget {
     required this.initialState,
     this.validator,
     this.transformer,
+    this.onChange,
     required this.onSubmit,
     required this.onCancel,
     this.showActions = true,
@@ -92,7 +95,7 @@ class FormRendererState extends State<FormRenderer> {
         _focusNodes[key] = focusNode;
         focusNode.addListener(() {
           if (!focusNode.hasFocus) {
-            _validateFieldOnBlur(key);
+            _handleFieldBlurOrInteraction(key, _values[key]);
           }
         });
       }
@@ -110,18 +113,39 @@ class FormRendererState extends State<FormRenderer> {
     super.dispose();
   }
 
-  Future<void> _validateFieldOnBlur(String key) async {
-    if (widget.validator == null) return;
-    final val = _values[key];
-    final error = await widget.validator!(key, val, _values);
-    if (!mounted) return;
-    setState(() {
-      if (error != null && error.isNotEmpty) {
-        _errors[key] = error;
-      } else {
-        _errors.remove(key);
+  Future<void> _handleFieldBlurOrInteraction(String key, dynamic value) async {
+    if (widget.onChange != null) {
+      try {
+        final updates = await widget.onChange!(key, value, _values);
+        if (updates != null && updates.isNotEmpty && mounted) {
+          setState(() {
+            for (final entry in updates.entries) {
+              _values[entry.key] = entry.value;
+              final controller = _controllers[entry.key];
+              if (controller != null) {
+                if (controller.text != entry.value?.toString()) {
+                  controller.text = entry.value?.toString() ?? '';
+                }
+              }
+            }
+          });
+        }
+      } catch (e) {
+        debugPrint('Error running onChange for $key: $e');
       }
-    });
+    }
+
+    if (widget.validator != null) {
+      final error = await widget.validator!(key, value, _values);
+      if (!mounted) return;
+      setState(() {
+        if (error != null && error.isNotEmpty) {
+          _errors[key] = error;
+        } else {
+          _errors.remove(key);
+        }
+      });
+    }
   }
 
   Iterable<String>? _getAutofillHints(String key, String fieldType) {
@@ -398,7 +422,7 @@ class FormRendererState extends State<FormRenderer> {
                     _values[key] = val;
                     _errors.remove(key);
                   });
-                  _validateFieldOnBlur(key);
+                  _handleFieldBlurOrInteraction(key, val);
                 },
         );
       case 'radio':
@@ -424,7 +448,7 @@ class FormRendererState extends State<FormRenderer> {
                           _values[key] = val;
                           _errors.remove(key);
                         });
-                        _validateFieldOnBlur(key);
+                        _handleFieldBlurOrInteraction(key, val);
                       },
                 contentPadding: EdgeInsets.zero,
                 dense: true,
@@ -446,11 +470,12 @@ class FormRendererState extends State<FormRenderer> {
           onChanged: _isSubmitting
               ? null
               : (val) {
+                  final finalVal = val ?? false;
                   setState(() {
-                    _values[key] = val ?? false;
+                    _values[key] = finalVal;
                     _errors.remove(key);
                   });
-                  _validateFieldOnBlur(key);
+                  _handleFieldBlurOrInteraction(key, finalVal);
                 },
           contentPadding: EdgeInsets.zero,
           controlAffinity: ListTileControlAffinity.leading,
@@ -475,6 +500,7 @@ Future<Map<String, dynamic>?> showFormDialog(
   required Map<String, dynamic> initialState,
   FormValidator? validator,
   FormTransformer? transformer,
+  FormOnChange? onChange,
 }) {
   return showDialog<Map<String, dynamic>>(
     context: context,
@@ -489,6 +515,7 @@ Future<Map<String, dynamic>?> showFormDialog(
             initialState: initialState,
             validator: validator,
             transformer: transformer,
+            onChange: onChange,
             onSubmit: (values) => Navigator.of(context).pop(values),
             onCancel: () => Navigator.of(context).pop(null),
           ),
@@ -504,6 +531,7 @@ class FormView extends StatelessWidget {
   final Map<String, dynamic> initialState;
   final FormValidator? validator;
   final FormTransformer? transformer;
+  final FormOnChange? onChange;
   final void Function(Map<String, dynamic> values) onSubmit;
   final VoidCallback onCancel;
 
@@ -513,6 +541,7 @@ class FormView extends StatelessWidget {
     required this.initialState,
     this.validator,
     this.transformer,
+    this.onChange,
     required this.onSubmit,
     required this.onCancel,
   });
@@ -533,6 +562,7 @@ class FormView extends StatelessWidget {
               initialState: initialState,
               validator: validator,
               transformer: transformer,
+              onChange: onChange,
               onSubmit: onSubmit,
               onCancel: onCancel,
             ),

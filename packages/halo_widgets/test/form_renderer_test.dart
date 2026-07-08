@@ -277,5 +277,42 @@ void main() {
       expect(validationCalledKey, 'name');
       expect(find.text('Bad name'), findsOneWidget);
     });
+
+    testWidgets('triggers onChange to modify another field', (tester) async {
+      await tester.pumpWidget(MaterialApp(
+        home: Scaffold(
+          body: SingleChildScrollView(
+            child: FormRenderer(
+              formDefinition: formDefinition,
+              initialState: const {
+                'name': 'Old Name',
+                'agree': false,
+              },
+              onChange: (key, value, state) async {
+                if (key == 'agree' && value == true) {
+                  return {'name': 'Agreed Name'};
+                }
+                return null;
+              },
+              onSubmit: (_) {},
+              onCancel: () {},
+            ),
+          ),
+        ),
+      ));
+
+      final nameFieldFinder = find.widgetWithText(TextField, 'Name Field');
+      final nameTextField1 = tester.widget<TextField>(nameFieldFinder);
+      expect(nameTextField1.controller?.text, 'Old Name');
+
+      final agreeCheckboxFinder = find.byType(CheckboxListTile);
+      expect(agreeCheckboxFinder, findsOneWidget);
+      await tester.ensureVisible(agreeCheckboxFinder);
+      await tester.tap(agreeCheckboxFinder);
+      await tester.pumpAndSettle();
+
+      final nameTextField2 = tester.widget<TextField>(nameFieldFinder);
+      expect(nameTextField2.controller?.text, 'Agreed Name');
+    });
   });
 }

@@ -347,6 +347,12 @@ const kernel = {
             return await field.transform(args.value, args.state)
           }
           return args.value
+        },
+        onChangeField: async (args: { fieldKey: string; value: any; state: Record<string, any> }) => {
+          if (form.onChange) {
+            return (await form.onChange(args.fieldKey, args.value, args.state)) ?? null
+          }
+          return null
         }
       })
 

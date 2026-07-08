@@ -556,6 +556,12 @@ __polo.defineExtension({
             return args.value.trim().toUpperCase()
           }
           return args.value
+        },
+        onChangeField: async function (args) {
+          if (args.fieldKey === 'name' && args.value === 'trigger') {
+            return { otherField: 'triggered' }
+          }
+          return null
         }
       }
     });
@@ -575,7 +581,12 @@ __polo.defineExtension({
                 validate: (v) => v.length < 3 ? 'Short call' : null,
                 transform: (v) => v.toUpperCase()
               }
-            ]
+            ],
+            onChange: (fk, val, st) => {
+              if (fk === 'call' && val === 'update') {
+                return { otherField: 'W1AW' }
+              }
+            }
           }, { call: 'w1aw' });
           return result;
         }
@@ -618,6 +629,13 @@ __polo.defineExtension({
           });
           expect(transformed, 'KI2D');
 
+          final onChangeResult = await host?.invokeHook('form', key: formId, method: 'onChangeField', args: {
+            'fieldKey': 'call',
+            'value': 'update',
+            'state': {'call': 'update'}
+          });
+          expect(onChangeResult, {'otherField': 'W1AW'});
+
           return {'call': transformed};
         }
         return null;
@@ -649,6 +667,13 @@ __polo.defineExtension({
       'state': {'name': ' john '}
     });
     expect(trans, 'JOHN');
+
+    final changeRes = await host.invokeHook('form', key: 'test-form', method: 'onChangeField', args: {
+      'fieldKey': 'name',
+      'value': 'trigger',
+      'state': {'name': 'trigger'}
+    });
+    expect(changeRes, {'otherField': 'triggered'});
 
     final dynamicResult = await host.invokeHook('testTrigger', key: 'trigger', method: 'runDynamicForm', args: {});
     expect(dynamicResult, {'call': 'KI2D'});
