@@ -21,6 +21,10 @@ class ExtensionService {
   final _secureStorage = const FlutterSecureStorage(
     mOptions: MacOsOptions(
       usesDataProtectionKeychain: false,
+      accountName: 'Ham2K Logger',
+    ),
+    iOptions: IOSOptions(
+      accountName: 'Ham2K Logger',
     ),
   );
 

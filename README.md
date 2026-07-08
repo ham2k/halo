@@ -25,6 +25,26 @@ cd extensions && npm install && npm run build   # extension bundles → app asse
 cd app && flutter run -d macos               # flutter provided via mise
 ```
 
+### Building locally on macOS
+
+By default the macOS build signs ad-hoc (no Apple Developer team), which
+works fine but re-derives the code signature on every rebuild — so macOS
+treats each build as a new, unrecognized app and re-prompts for keychain
+access (e.g. for stored account credentials) every single time.
+
+If that gets annoying, copy
+[`app/macos/Runner/Configs/Local.xcconfig.sample`](app/macos/Runner/Configs/Local.xcconfig.sample)
+to `Local.xcconfig` in the same folder (gitignored, never committed) and
+fill in your own Apple Developer team ID:
+
+```sh
+cp app/macos/Runner/Configs/Local.xcconfig.sample app/macos/Runner/Configs/Local.xcconfig
+# then edit Local.xcconfig and set DEVELOPMENT_TEAM to your team ID
+```
+
+Once in place, rebuilds sign consistently and you only need to click
+"Always Allow" on the keychain prompt once.
+
 ## License
 
 MPL-2.0, following the rest of the Ham2K projects.
