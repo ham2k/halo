@@ -516,30 +516,46 @@ Future<Map<String, dynamic>?> showFormDialog(
     context: context,
     barrierDismissible: false,
     builder: (context) => AlertDialog(
-      title: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(
-            formDefinition['title'] as String? ?? 'Form',
-            style: theme.textTheme.titleLarge?.copyWith(
-              fontFamily: 'RobotoSlab',
-              fontWeight: FontWeight.bold,
-              color: theme.colorScheme.primary,
+      clipBehavior: Clip.antiAlias,
+      titlePadding: EdgeInsets.zero,
+      actionsPadding: EdgeInsets.zero,
+      title: Container(
+        width: double.infinity,
+        decoration: BoxDecoration(
+          color: theme.colorScheme.primary.withOpacity(0.08),
+          border: Border(
+            bottom: BorderSide(
+              color: theme.colorScheme.outlineVariant.withOpacity(0.4),
+              width: 1,
             ),
           ),
-          if (formDefinition['subtitle'] != null) ...[
-            const SizedBox(height: 4),
+        ),
+        padding: const EdgeInsets.fromLTRB(24, 20, 24, 16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
             Text(
-              formDefinition['subtitle'] as String,
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
+              formDefinition['title'] as String? ?? 'Form',
+              style: theme.textTheme.titleLarge?.copyWith(
+                fontFamily: 'RobotoSlab',
+                fontWeight: FontWeight.bold,
+                color: theme.colorScheme.primary,
               ),
             ),
+            if (formDefinition['subtitle'] != null) ...[
+              const SizedBox(height: 4),
+              Text(
+                formDefinition['subtitle'] as String,
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+              ),
+            ],
           ],
-        ],
+        ),
       ),
-      contentPadding: const EdgeInsets.fromLTRB(24, 8, 24, 16),
+      contentPadding: const EdgeInsets.fromLTRB(24, 16, 24, 16),
       content: SizedBox(
         width: 480,
         child: SingleChildScrollView(
@@ -562,26 +578,39 @@ Future<Map<String, dynamic>?> showFormDialog(
         ValueListenableBuilder<bool>(
           valueListenable: submittingNotifier,
           builder: (context, isSubmitting, _) {
-            return Row(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                TextButton(
-                  onPressed: isSubmitting ? null : () => Navigator.of(context).pop(null),
-                  child: const Text('Cancel'),
-                ),
-                const SizedBox(width: 12),
-                if (isSubmitting)
-                  const SizedBox(
-                    width: 24,
-                    height: 24,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
-                else
-                  FilledButton(
-                    onPressed: () => formKey.currentState?.submit(),
-                    child: const Text('Save'),
+            return Container(
+              width: double.infinity,
+              decoration: BoxDecoration(
+                color: theme.colorScheme.primary.withOpacity(0.08),
+                border: Border(
+                  top: BorderSide(
+                    color: theme.colorScheme.outlineVariant.withOpacity(0.4),
+                    width: 1,
                   ),
-              ],
+                ),
+              ),
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  TextButton(
+                    onPressed: isSubmitting ? null : () => Navigator.of(context).pop(null),
+                    child: const Text('Cancel'),
+                  ),
+                  const SizedBox(width: 12),
+                  if (isSubmitting)
+                    const SizedBox(
+                      width: 24,
+                      height: 24,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  else
+                    FilledButton(
+                      onPressed: () => formKey.currentState?.submit(),
+                      child: const Text('Save'),
+                    ),
+                ],
+              ),
             );
           },
         ),
@@ -659,6 +688,7 @@ class _FormViewState extends State<FormView> {
         builder: (context, isSubmitting, _) {
           return Container(
             decoration: BoxDecoration(
+              color: theme.colorScheme.primary.withOpacity(0.08),
               border: Border(
                 top: BorderSide(
                   color: theme.colorScheme.outlineVariant.withOpacity(0.5),
