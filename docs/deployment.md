@@ -22,7 +22,7 @@ mise run deploy-web
 
 ### What the script does:
 1. Installs dependencies and builds the TypeScript extension bundles in `extensions/` (moving the output JS files to `app/assets/extensions/`).
-2. Runs the Flutter compiler in release mode using the CanvasKit renderer (`flutter build web --release --web-renderer canvaskit`).
+2. Runs the Flutter compiler in release mode with icon tree-shaking disabled (`flutter build web --release --no-tree-shake-icons`).
 3. Checks for the local `wrangler` installation and uploads the compiled assets in `app/build/web` to your Cloudflare Pages account.
 
 ---

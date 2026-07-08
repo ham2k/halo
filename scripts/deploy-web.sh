@@ -26,10 +26,10 @@ npm install
 npm run build
 
 # 2. Build Flutter Web App
-echo "🔨 Compiling Flutter Web app (Canvaskit release)..."
+echo "🔨 Compiling Flutter Web app (release)..."
 cd "$ROOT_DIR/app"
 flutter pub get
-flutter build web --release --web-renderer canvaskit
+flutter build web --release --no-tree-shake-icons
 
 # 3. Deploy to Cloudflare Pages
 echo "☁️ Deploying to Cloudflare Pages..."
