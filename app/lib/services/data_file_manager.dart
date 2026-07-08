@@ -210,13 +210,15 @@ class DataFileManager {
     );
 
     // 2. Cache processed JSON to local file
-    final dir = await getApplicationDocumentsDirectory();
-    final dataFilesDir = Directory(p.join(dir.path, 'data_files'));
-    if (!await dataFilesDir.exists()) {
-      await dataFilesDir.create(recursive: true);
+    if (!kIsWeb) {
+      final dir = await getApplicationDocumentsDirectory();
+      final dataFilesDir = Directory(p.join(dir.path, 'data_files'));
+      if (!await dataFilesDir.exists()) {
+        await dataFilesDir.create(recursive: true);
+      }
+      final cacheFile = File(p.join(dataFilesDir.path, '$key.json'));
+      await cacheFile.writeAsString(jsonEncode(processedJson));
     }
-    final cacheFile = File(p.join(dataFilesDir.path, '$key.json'));
-    await cacheFile.writeAsString(jsonEncode(processedJson));
 
     // 3. Load processed data by calling onLoadRawData
     await host.invokeHook(
@@ -229,6 +231,7 @@ class DataFileManager {
 
   /// Triggers loading cached raw files at startup/activation.
   Future<void> loadRawDataFiles() async {
+    if (kIsWeb) return;
     final host = extensions.host;
     if (host == null) return;
 
@@ -290,10 +293,12 @@ class DataFileManager {
     await lookups.deleteCategory(key);
 
     // Delete raw cache files
-    final dir = await getApplicationDocumentsDirectory();
-    final cacheFile = File(p.join(dir.path, 'data_files', '$key.json'));
-    if (await cacheFile.exists()) {
-      await cacheFile.delete();
+    if (!kIsWeb) {
+      final dir = await getApplicationDocumentsDirectory();
+      final cacheFile = File(p.join(dir.path, 'data_files', '$key.json'));
+      if (await cacheFile.exists()) {
+        await cacheFile.delete();
+      }
     }
   }
 
