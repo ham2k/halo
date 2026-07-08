@@ -21,6 +21,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:isolate';
 
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:http/http.dart' as http;
 
 import 'src/js_engine.dart';
@@ -496,8 +497,26 @@ class _HostCore {
     }
   }
 
+  Uri _resolveFetchUri(String urlString) {
+    final uri = Uri.parse(urlString);
+    if (kIsWeb) {
+      const allowedDomains = {
+        'api.pota.app',
+        'logbook.qrz.com',
+        'country-files.com',
+        'pota.app',
+        'www.sotadata.org.uk',
+        'sotadata.org.uk',
+      };
+      if (allowedDomains.contains(uri.host)) {
+        return Uri.parse('https://services.ham2k.net/${uri.host}${uri.path}${uri.hasQuery ? "?${uri.query}" : ""}');
+      }
+    }
+    return uri;
+  }
+
   Future<Map<String, Object?>> _hostFetch(Map<String, dynamic> params) async {
-    final uri = Uri.parse(params['url'] as String);
+    final uri = _resolveFetchUri(params['url'] as String);
     if (uri.scheme != 'https') {
       throw ExtensionHostException('only https URLs are allowed');
     }
