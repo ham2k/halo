@@ -655,6 +655,145 @@ class _DeveloperPanel extends StatelessWidget {
               contentPadding: EdgeInsets.zero,
             ),
             const SizedBox(height: 16),
+            ElevatedButton(
+              onPressed: () async {
+                final formDefinition = {
+                  'title': 'Developer Form Demo',
+                  'subtitle': 'Verify all form element types and features',
+                  'elements': [
+                    {
+                      'type': 'header',
+                      'title': 'General Information',
+                      'subtitle': 'These elements describe basic section settings',
+                    },
+                    {
+                      'type': 'field',
+                      'fieldType': 'text',
+                      'key': 'name',
+                      'label': 'Name',
+                      'placeholder': 'Enter your full name',
+                    },
+                    {
+                      'type': 'field',
+                      'fieldType': 'multiline',
+                      'key': 'bio',
+                      'label': 'Biography',
+                      'placeholder': 'Tell us about yourself...',
+                    },
+                    {
+                      'type': 'divider',
+                      'title': 'Contact Details',
+                    },
+                    {
+                      'type': 'field',
+                      'fieldType': 'email',
+                      'key': 'email',
+                      'label': 'Email Address',
+                      'placeholder': 'email@example.com',
+                    },
+                    {
+                      'type': 'field',
+                      'fieldType': 'callsign',
+                      'key': 'callsign',
+                      'label': 'Operator Callsign',
+                      'placeholder': 'W1AW',
+                    },
+                    {
+                      'type': 'field',
+                      'fieldType': 'number',
+                      'key': 'power',
+                      'label': 'Power Output (Watts)',
+                      'placeholder': '100',
+                    },
+                    {
+                      'type': 'markdown',
+                      'text': 'Please make sure to **validate** the information before saving.',
+                    },
+                    {
+                      'type': 'divider',
+                      'title': 'Preferences',
+                    },
+                    {
+                      'type': 'field',
+                      'fieldType': 'select',
+                      'key': 'license',
+                      'label': 'License Class',
+                      'options': [
+                        {'label': 'Technician', 'value': 'tech'},
+                        {'label': 'General', 'value': 'general'},
+                        {'label': 'Extra', 'value': 'extra'},
+                      ],
+                    },
+                    {
+                      'type': 'field',
+                      'fieldType': 'radio',
+                      'key': 'mode_pref',
+                      'label': 'Preferred Mode',
+                      'options': [
+                        {'label': 'SSB / Phone', 'value': 'ssb'},
+                        {'label': 'CW / Morse', 'value': 'cw'},
+                        {'label': 'Digital (FT8, RTTY)', 'value': 'digital'},
+                      ],
+                    },
+                    {
+                      'type': 'field',
+                      'fieldType': 'checkbox',
+                      'key': 'subscribe',
+                      'label': 'Subscribe to newsletter',
+                    },
+                  ],
+                };
+
+                final initialState = {
+                  'name': 'Sebastian Delmont',
+                  'license': 'extra',
+                  'subscribe': true,
+                };
+
+                final result = await showFormDialog(
+                  context,
+                  formDefinition: formDefinition,
+                  initialState: initialState,
+                  validator: (fieldKey, value, state) async {
+                    await Future<void>.delayed(const Duration(milliseconds: 200));
+
+                    if (fieldKey == 'email') {
+                      final str = value?.toString() ?? '';
+                      if (str.isNotEmpty && !str.contains('@')) {
+                        return 'Invalid email address format';
+                      }
+                    }
+                    if (fieldKey == 'callsign') {
+                      final str = value?.toString() ?? '';
+                      if (str.isNotEmpty && str.length < 3) {
+                        return 'Callsign is too short (min 3 chars)';
+                      }
+                    }
+                    if (fieldKey == 'power') {
+                      final numVal = value as num?;
+                      if (numVal != null && (numVal < 0 || numVal > 1500)) {
+                        return 'Power must be between 0 and 1500 Watts';
+                      }
+                    }
+                    return null;
+                  },
+                  transformer: (fieldKey, value, state) async {
+                    if (fieldKey == 'callsign') {
+                      return value?.toString().toUpperCase();
+                    }
+                    return value;
+                  },
+                );
+
+                if (context.mounted && result != null) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Saved: ${result.toString()}')),
+                  );
+                }
+              },
+              child: const Text('Test Custom Form Dialog'),
+            ),
+            const SizedBox(height: 16),
             const Divider(),
             const SizedBox(height: 16),
             Text(

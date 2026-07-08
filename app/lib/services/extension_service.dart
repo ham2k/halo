@@ -14,6 +14,8 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:halo_extension_host/halo_extension_host.dart';
 import 'package:halo_core/halo_core.dart';
 import 'settings_service.dart';
+import 'package:halo_widgets/halo_widgets.dart';
+import '../main.dart';
 
 /// The QSON payload shape shared by every hook that takes a whole operation's
 /// worth of QSOs in one coarse call (export, scoring, …) — `operation.data`
@@ -209,6 +211,58 @@ class ExtensionService {
                   'flags': row.flags,
                 })
             .toList();
+      case 'showForm':
+        final formId = params['formId'] as String;
+        final formDef = (params['form'] as Map).cast<String, dynamic>();
+        final state = (params['state'] as Map? ?? const {}).cast<String, dynamic>();
+
+        final context = navigatorKey.currentContext;
+        if (context == null) {
+          throw StateError('No active navigation context found');
+        }
+
+        final result = await showFormDialog(
+          context,
+          formDefinition: formDef,
+          initialState: state,
+          validator: (fieldKey, value, currentState) async {
+            try {
+              final res = await _host?.invokeHook(
+                'form',
+                key: formId,
+                method: 'validateField',
+                args: {
+                  'formId': formId,
+                  'fieldKey': fieldKey,
+                  'value': value,
+                  'state': currentState,
+                },
+              );
+              return res as String?;
+            } catch (e) {
+              return 'Validation error: $e';
+            }
+          },
+          transformer: (fieldKey, value, currentState) async {
+            try {
+              final res = await _host?.invokeHook(
+                'form',
+                key: formId,
+                method: 'transformField',
+                args: {
+                  'formId': formId,
+                  'fieldKey': fieldKey,
+                  'value': value,
+                  'state': currentState,
+                },
+              );
+              return res;
+            } catch (_) {
+              return value;
+            }
+          },
+        );
+        return result;
       default:
         throw UnimplementedError('Host call method $method not implemented');
     }

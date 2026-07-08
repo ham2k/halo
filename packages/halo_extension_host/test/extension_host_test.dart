@@ -515,4 +515,142 @@ __polo.defineExtension({
     // already known) = 3; q2 and q4 repeat an already-known band AND mode.
     expect(operationSummary['bandsAndModes']['total'], 3);
   });
+
+  test('form hooks: getDefinition, validateField, transformField, and dynamic showForm', () async {
+    if (!kernelFile.existsSync()) {
+      markTestSkipped('kernel.js not built — run `npm run build` in extensions/ first');
+      return;
+    }
+
+    ExtensionHost? host;
+    host = await ExtensionHost.start(
+      kernelSource: kernelFile.readAsStringSync(),
+      extensions: const [
+        ExtensionBundle(
+          key: 'form-test-extension',
+          source: '''
+__polo.defineExtension({
+  key: 'form-test-extension',
+  name: 'Form Test Extension',
+  version: '0.0.1',
+  onActivation: function (api) {
+    api.registerHook('form', {
+      key: 'test-form',
+      hook: {
+        getDefinition: async function (args) {
+          return {
+            title: 'Test Static Form',
+            elements: [
+              { type: 'field', fieldType: 'text', key: 'name', label: 'Name' }
+            ]
+          }
+        },
+        validateField: async function (args) {
+          if (args.fieldKey === 'name' && args.value === '') {
+            return 'Name cannot be empty'
+          }
+          return null
+        },
+        transformField: async function (args) {
+          if (args.fieldKey === 'name') {
+            return args.value.trim().toUpperCase()
+          }
+          return args.value
+        }
+      }
+    });
+
+    api.registerHook('testTrigger', {
+      key: 'trigger',
+      hook: {
+        runDynamicForm: async function (args) {
+          const result = await globalThis.__polo.host.showForm({
+            title: 'Dynamic Form',
+            elements: [
+              {
+                type: 'field',
+                fieldType: 'text',
+                key: 'call',
+                label: 'Callsign',
+                validate: (v) => v.length < 3 ? 'Short call' : null,
+                transform: (v) => v.toUpperCase()
+              }
+            ]
+          }, { call: 'w1aw' });
+          return result;
+        }
+      }
+    });
+  },
+})
+'''
+        )
+      ],
+      useIsolate: false,
+      onHostCall: (method, params) async {
+        if (method == 'showForm') {
+          expect(params['formId'], startsWith('dynamic:'));
+          final form = params['form'] as Map;
+          expect(form['title'], 'Dynamic Form');
+          final elements = form['elements'] as List;
+          expect(elements[0]['key'], 'call');
+
+          final formId = params['formId'] as String;
+
+          final validationResult = await host?.invokeHook('form', key: formId, method: 'validateField', args: {
+            'fieldKey': 'call',
+            'value': 'ki',
+            'state': {'call': 'ki'}
+          });
+          expect(validationResult, 'Short call');
+
+          final validationResultOk = await host?.invokeHook('form', key: formId, method: 'validateField', args: {
+            'fieldKey': 'call',
+            'value': 'ki2d',
+            'state': {'call': 'ki2d'}
+          });
+          expect(validationResultOk, isNull);
+
+          final transformed = await host?.invokeHook('form', key: formId, method: 'transformField', args: {
+            'fieldKey': 'call',
+            'value': 'ki2d',
+            'state': {'call': 'ki2d'}
+          });
+          expect(transformed, 'KI2D');
+
+          return {'call': transformed};
+        }
+        return null;
+      }
+    );
+    addTearDown(host.dispose);
+
+    final def = await host.invokeHook('form', key: 'test-form', method: 'getDefinition', args: {});
+    expect(def['title'], 'Test Static Form');
+    expect(def['elements'][0]['key'], 'name');
+
+    final err1 = await host.invokeHook('form', key: 'test-form', method: 'validateField', args: {
+      'fieldKey': 'name',
+      'value': '',
+      'state': {'name': ''}
+    });
+    expect(err1, 'Name cannot be empty');
+
+    final err2 = await host.invokeHook('form', key: 'test-form', method: 'validateField', args: {
+      'fieldKey': 'name',
+      'value': 'John',
+      'state': {'name': 'John'}
+    });
+    expect(err2, isNull);
+
+    final trans = await host.invokeHook('form', key: 'test-form', method: 'transformField', args: {
+      'fieldKey': 'name',
+      'value': ' john ',
+      'state': {'name': ' john '}
+    });
+    expect(trans, 'JOHN');
+
+    final dynamicResult = await host.invokeHook('testTrigger', key: 'trigger', method: 'runDynamicForm', args: {});
+    expect(dynamicResult, {'call': 'KI2D'});
+  });
 }

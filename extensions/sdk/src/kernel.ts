@@ -20,7 +20,7 @@
 //               __polo.activateAll()
 //               __polo.hostResponse(callId, ok, resultJson)
 
-import type { ExtensionDefinition, RegisterHookParams } from "./types"
+import type { ExtensionDefinition, RegisterHookParams, FormDefinition, FormField } from "./types"
 
 import * as libCallsigns from "@ham2k/lib-callsigns"
 import * as libCountryFiles from "@ham2k/lib-country-files"
@@ -300,6 +300,63 @@ const kernel = {
   getAccountKvKey(extensionKey: string): string {
     const accountHookRecord = hooks.find((h) => h.category === 'account' && h.extensionKey === extensionKey)
     return (accountHookRecord?.hook?.kvKey as string | undefined) || accountHookRecord?.key || extensionKey
+  },
+
+  registerDynamicForm(formId: string, extensionKey: string, hookObj: Record<string, unknown>) {
+    hooks.push({
+      category: 'form',
+      key: formId,
+      priority: 0,
+      extensionKey,
+      hook: hookObj,
+    })
+  },
+
+  unregisterDynamicForm(formId: string) {
+    const idx = hooks.findIndex((h) => h.category === 'form' && h.key === formId)
+    if (idx !== -1) {
+      hooks.splice(idx, 1)
+    }
+  },
+
+  host: {
+    async showForm(form: FormDefinition, state: Record<string, any> = {}, extensionKey: string = 'kernel'): Promise<Record<string, any> | null> {
+      const formId = `dynamic:${Math.random().toString(36).substring(2, 10)}`
+      
+      const cleanElements = form.elements.map(el => {
+        if (el.type === 'field') {
+          const { validate, transform, ...rest } = el
+          return rest
+        }
+        return el
+      })
+      const cleanForm = { ...form, elements: cleanElements }
+
+      kernel.registerDynamicForm(formId, extensionKey, {
+        getDefinition: async () => cleanForm,
+        validateField: async (args: { fieldKey: string; value: any; state: Record<string, any> }) => {
+          const field = form.elements.find(el => el.type === 'field' && (el as FormField).key === args.fieldKey) as FormField | undefined
+          if (field?.validate) {
+            return (await field.validate(args.value, args.state)) ?? null
+          }
+          return null
+        },
+        transformField: async (args: { fieldKey: string; value: any; state: Record<string, any> }) => {
+          const field = form.elements.find(el => el.type === 'field' && (el as FormField).key === args.fieldKey) as FormField | undefined
+          if (field?.transform) {
+            return await field.transform(args.value, args.state)
+          }
+          return args.value
+        }
+      })
+
+      try {
+        const result = await hostCall('showForm', { formId, form: cleanForm, state })
+        return result as Record<string, any> | null
+      } finally {
+        kernel.unregisterDynamicForm(formId)
+      }
+    }
   },
 
   sharedModules,

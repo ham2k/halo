@@ -293,6 +293,7 @@ export type Hook =
   | SyncTransportHook
   | AccountHook
   | DataFileDefinition
+  | FormHook
   | Record<string, unknown>
 
 export interface RegisterHookParams {
@@ -374,4 +375,61 @@ export interface DataFileDefinition {
   rawToJSONData?: (args: { body: string; url: string; options: Record<string, any> }) => Promise<any>
   onLoadRawData?: (data: any) => void
   onRemoveRawData?: () => Promise<void>
+}
+
+export type FormFieldType =
+  | 'text'
+  | 'multiline'
+  | 'email'
+  | 'callsign'
+  | 'number'
+  | 'select'
+  | 'radio'
+  | 'checkbox'
+
+export interface FormFieldOption {
+  label: string;
+  value: any;
+}
+
+export interface FormField {
+  type: 'field'
+  fieldType: FormFieldType
+  key: string
+  label: string
+  value?: any
+  placeholder?: string
+  options?: FormFieldOption[]
+  validate?: (value: any, state: Record<string, any>) => string | null | undefined | Promise<string | null | undefined>
+  transform?: (value: any, state: Record<string, any>) => any | Promise<any>
+}
+
+export interface FormHeader {
+  type: 'header'
+  title: string
+  subtitle?: string
+}
+
+export interface FormSectionDivider {
+  type: 'divider'
+  title?: string
+}
+
+export interface FormMarkdownBlock {
+  type: 'markdown'
+  text: string
+}
+
+export type FormElement = FormField | FormHeader | FormSectionDivider | FormMarkdownBlock
+
+export interface FormDefinition {
+  title?: string
+  subtitle?: string
+  elements: FormElement[]
+}
+
+export interface FormHook {
+  getDefinition(args: { formId?: string }, ctx: HookContext): Promise<FormDefinition>
+  validateField?(args: { formId?: string; fieldKey: string; value: any; state: Record<string, any> }, ctx: HookContext): Promise<string | null>
+  transformField?(args: { formId?: string; fieldKey: string; value: any; state: Record<string, any> }, ctx: HookContext): Promise<any>
 }
