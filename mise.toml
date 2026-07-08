@@ -3,4 +3,5 @@ flutter = { version = "3.44.4", platforms = { linux-x64 = { url = "https://stora
 
 [tasks]
 deploy-web = { run = "./scripts/deploy-web.sh", description = "Build extensions and web app, then deploy to Cloudflare Pages" }
-
+run-ios = { run = "open -a Simulator && cd app && flutter run -d ios", description = "Boot iOS Simulator and run the app" }
+mac = { run = "(cd app && flutter run -d macos)" }
