@@ -10,6 +10,7 @@ import 'dart:async';
 import 'dart:io' show Platform;
 
 import 'package:drift_flutter/drift_flutter.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:halo_core/halo_core.dart';
@@ -36,7 +37,7 @@ void main() async {
   // SIMCTL_CHILD_POLO_OPEN_FIRST_OP=1 simctl launch ...) to jump straight
   // into the most recent operation.
   const openFirstOpDefine = bool.fromEnvironment('POLO_OPEN_FIRST_OP');
-  final openFirstOp = openFirstOpDefine || Platform.environment['POLO_OPEN_FIRST_OP'] == '1';
+  final openFirstOp = openFirstOpDefine || (!kIsWeb && Platform.environment['POLO_OPEN_FIRST_OP'] == '1');
   debugPrint('[boot] openFirstOp=$openFirstOp (define=$openFirstOpDefine)');
   if (openFirstOp) {
     WidgetsBinding.instance.addPostFrameCallback((_) async {
@@ -61,7 +62,15 @@ Future<HaLoServices> bootstrap({
   UpdateService? updates,
 }) async {
   WidgetsFlutterBinding.ensureInitialized();
-  final db = HaLoDatabase(driftDatabase(name: 'halo_next'));
+  final db = HaLoDatabase(driftDatabase(
+    name: 'halo_next',
+    web: kIsWeb
+        ? DriftWebOptions(
+            sqlite3Wasm: Uri.parse('sqlite3.wasm'),
+            driftWorker: Uri.parse('drift_worker.js'),
+          )
+        : null,
+  ));
   final extensions = ExtensionService();
   // Fire-and-forget, and kicked off before awaiting settings below so these
   // two independent boot steps run concurrently instead of serialized; the

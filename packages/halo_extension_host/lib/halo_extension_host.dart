@@ -21,17 +21,13 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:isolate';
 
-import 'package:flutter_js/flutter_js.dart';
 import 'package:http/http.dart' as http;
 
+import 'src/js_engine.dart';
+
+export 'src/engine_runtime.dart' show ExtensionBundle;
+
 typedef HostCallHandler = Future<dynamic> Function(String method, Map<String, dynamic> params);
-
-class ExtensionBundle {
-  final String key;
-  final String source;
-
-  const ExtensionBundle({required this.key, required this.source});
-}
 
 /// One completed hook invocation, for latency analysis.
 class HookCallSample {
@@ -367,7 +363,7 @@ Future<void> _hostIsolateMain(_HostIsolateInit init) async {
 class _HostCore {
   final void Function(Map<String, dynamic>) emit;
 
-  late final JavascriptRuntime _js;
+  late final EngineRuntime _js;
   final _http = http.Client();
   final Map<String, Map<String, Object?>> _kv = {};
   final Map<int, Completer<dynamic>> _pendingHostCalls = {};
@@ -376,48 +372,45 @@ class _HostCore {
 
   _HostCore({required this.emit});
 
-  String get engineDescription => _js.runtimeType.toString();
+  String get engineDescription => _js.engineDescription;
 
   Future<int> init(String kernelSource, List<ExtensionBundle> bundles) async {
     final stopwatch = Stopwatch()..start();
-    _js = getJavascriptRuntime(xhr: false);
+    _js = createEngineRuntime();
 
-    _js.onMessage('polo', (dynamic args) {
-      _onPoloMessage(args);
-      return null;
-    });
-
-    _evaluate(kernelSource, name: 'kernel');
-    for (final bundle in bundles) {
-      _evaluate(bundle.source, name: bundle.key);
+    if (!_js.available) {
+      emit({'type': 'log', 'message': 'WARN extension runtime unavailable on this platform; extensions disabled'});
+      return (stopwatch..stop()).elapsedMilliseconds;
     }
-    // Activation is deferred until every bundle is evaluated, so extensions
-    // never depend on declaration order within their own bundle.
-    _evaluate('__polo.activateAll()', name: 'activateAll');
+
+    _js.onMessage(_onPoloMessage);
+    await _js.load(kernelSource, bundles);
 
     return (stopwatch..stop()).elapsedMilliseconds;
   }
 
   void handle(Map<String, dynamic> msg) {
+    if (!_js.available) {
+      switch (msg['type']) {
+        case 'invoke':
+        case 'invokeAll':
+          emit({'type': 'result', 'id': msg['id'], 'ok': false, 'error': 'extensions are not available on this platform yet'});
+        case 'kvSet':
+          _kv.putIfAbsent(msg['ns'] as String? ?? 'default', () => {})[msg['key'] as String] = msg['value'];
+      }
+      return;
+    }
     switch (msg['type']) {
       case 'invoke':
       case 'invokeAll':
-        final code = msg['type'] == 'invoke'
-            ? '__polo.invokeHook('
-                '${msg['id']}, '
-                '${jsonEncode(msg['category'])}, '
-                '${msg['key'] == null ? 'null' : jsonEncode(msg['key'])}, '
-                '${jsonEncode(msg['method'])}, '
-                '${jsonEncode(msg['argsJson'])})'
-            : '__polo.invokeHookAll('
-                '${msg['id']}, '
-                '${jsonEncode(msg['category'])}, '
-                '${jsonEncode(msg['method'])}, '
-                '${jsonEncode(msg['argsJson'])})';
         _outstanding++;
         _ensurePumping();
         try {
-          _evaluate(code, name: 'invokeHook');
+          if (msg['type'] == 'invoke') {
+            _js.invoke(msg['id'] as int, msg['category'] as String, msg['key'] as String?, msg['method'] as String, msg['argsJson'] as String);
+          } else {
+            _js.invokeAll(msg['id'] as int, msg['category'] as String, msg['method'] as String, msg['argsJson'] as String);
+          }
         } catch (e) {
           _outstanding--;
           emit({'type': 'result', 'id': msg['id'], 'ok': false, 'error': '$e'});
@@ -431,7 +424,7 @@ class _HostCore {
   /// of a permanent fast timer.
   void _ensurePumping() {
     _pump ??= Timer.periodic(const Duration(milliseconds: 5), (_) {
-      _executePendingJobs();
+      _js.pump();
       if (_outstanding <= 0) {
         _pump?.cancel();
         _pump = null;
@@ -439,30 +432,13 @@ class _HostCore {
     });
   }
 
-  void _evaluate(String code, {required String name}) {
-    final result = _js.evaluate(code);
-    if (result.isError) {
-      throw ExtensionHostException('evaluating $name: ${result.stringResult}');
-    }
-    _executePendingJobs();
-  }
-
-  void _executePendingJobs() {
-    try {
-      _js.executePendingJob();
-    } catch (_) {
-      // Engines without an explicit job queue may not support this.
-    }
-  }
-
-  void _onPoloMessage(dynamic args) {
-    final msg = (args is String ? jsonDecode(args) : args) as Map;
+  void _onPoloMessage(Map<String, dynamic> msg) {
     switch (msg['type']) {
       case 'result':
         _outstanding--;
-        emit(msg.cast<String, dynamic>());
+        emit(msg);
       case 'log':
-        emit(msg.cast<String, dynamic>());
+        emit(msg);
       case 'hostCall':
         _handleHostCall(
           (msg['callId'] as num).toInt(),
@@ -501,9 +477,8 @@ class _HostCore {
       result = '$e';
     }
 
-    final code = '__polo.hostResponse($callId, $ok, ${jsonEncode(jsonEncode(result))})';
     try {
-      _evaluate(code, name: 'hostResponse');
+      _js.hostResponse(callId, ok, jsonEncode(result));
     } catch (e) {
       emit({'type': 'log', 'message': 'ERROR delivering host response: $e'});
     }
@@ -539,5 +514,6 @@ class _HostCore {
   void dispose() {
     _pump?.cancel();
     _http.close();
+    if (_js.available) _js.dispose();
   }
 }
