@@ -70,7 +70,7 @@ class SyncEngine {
   static const debounceDelay = Duration(milliseconds: 500);
   static const debounceMaxWait = Duration(seconds: 3);
   static const defaultLoopDelay = Duration(seconds: 20);
-  static const maxErrorRetries = 8;
+  static const maxErrorBackoffShift = 8; // caps the exponential backoff at 2^8s; the loop itself never gives up
 
   int _largeBatchSize = defaultLargeBatchSize;
   Duration _loopDelay = defaultLoopDelay;
@@ -265,8 +265,12 @@ class SyncEngine {
       }
     } catch (_) {
       _errorCount++;
-      if (!smallBatch && _errorCount < maxErrorRetries) {
-        _scheduleLoop(_loopDelay + Duration(seconds: 1 << _errorCount));
+      if (!smallBatch) {
+        // Keep retrying no matter how many failures pile up (an extended
+        // outage shouldn't permanently stop the periodic loop) — just cap
+        // how far the backoff grows.
+        final backoffShift = _errorCount < maxErrorBackoffShift ? _errorCount : maxErrorBackoffShift;
+        _scheduleLoop(_loopDelay + Duration(seconds: 1 << backoffShift));
       }
     } finally {
       _running = false;

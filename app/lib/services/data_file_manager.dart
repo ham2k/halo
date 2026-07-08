@@ -92,27 +92,27 @@ class DataFileManager {
       return;
     }
 
-    for (final entry in entries) {
+    await Future.wait(entries.map((entry) async {
       if (entry is Map && entry['ok'] == true && entry['value'] != null) {
-        final def = Map<String, dynamic>.from(entry['value'] as Map);
-        final key = def['key'] as String;
-        final maxAgeDays = def['maxAgeInDays'] as int? ?? 14;
+        try {
+          final def = Map<String, dynamic>.from(entry['value'] as Map);
+          final key = def['key'] as String;
+          final maxAgeDays = def['maxAgeInDays'] as int? ?? 14;
 
-        final lastUpdateKey = 'data_file_updated_$key';
-        final lastUpdateTime = prefs.getInt(lastUpdateKey) ?? 0;
-        final age = DateTime.now().millisecondsSinceEpoch - lastUpdateTime;
-        final isStale = age > maxAgeDays * 24 * 60 * 60 * 1000;
+          final lastUpdateKey = 'data_file_updated_$key';
+          final lastUpdateTime = prefs.getInt(lastUpdateKey) ?? 0;
+          final age = DateTime.now().millisecondsSinceEpoch - lastUpdateTime;
+          final isStale = age > maxAgeDays * 24 * 60 * 60 * 1000;
 
-        if (force || isStale || lastUpdateTime == 0) {
-          try {
+          if (force || isStale || lastUpdateTime == 0) {
             await processDataFile(key, def);
             await prefs.setInt(lastUpdateKey, DateTime.now().millisecondsSinceEpoch);
-          } catch (e, stack) {
-            debugPrint('[data-file] Error processing data file $key: $e\n$stack');
           }
+        } catch (e, stack) {
+          debugPrint('[data-file] Error processing data file entry ${entry['value']}: $e\n$stack');
         }
       }
-    }
+    }));
   }
 
   /// Natively parses and processes a data file based on its `fetchType`.

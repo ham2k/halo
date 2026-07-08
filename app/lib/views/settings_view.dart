@@ -18,6 +18,7 @@ import 'package:halo_widgets/halo_widgets.dart';
 import 'package:http/http.dart' as http;
 
 import '../main.dart';
+import '../services/settings_service.dart';
 import 'operation_dialogs.dart';
 import '../i18n/strings.g.dart';
 
@@ -79,8 +80,31 @@ class _SettingsViewState extends State<SettingsView> {
 
   @override
   Widget build(BuildContext context) {
+    final settings = widget.services.settings;
+
+    return ListenableBuilder(
+      listenable: settings,
+      builder: (context, _) => _buildContent(context, settings),
+    );
+  }
+
+  Widget _buildContent(BuildContext context, SettingsService settings) {
     final double width = MediaQuery.sizeOf(context).width;
     final bool isWide = width >= _wideLayoutThreshold;
+
+    final panels = [
+      SettingsPanelType.general,
+      SettingsPanelType.sync,
+      SettingsPanelType.accounts,
+      if (settings.developerMode) SettingsPanelType.developer,
+      SettingsPanelType.about,
+    ];
+    final effectivePanel = panels.contains(_selectedPanel) ? _selectedPanel : SettingsPanelType.general;
+    if (effectivePanel != _selectedPanel) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) setState(() => _selectedPanel = effectivePanel);
+      });
+    }
 
     if (isWide) {
       final theme = Theme.of(context);
@@ -132,7 +156,7 @@ class _SettingsViewState extends State<SettingsView> {
               ),
               Expanded(
                 child: AppBar(
-                  title: Text(_selectedPanel.title),
+                  title: Text(effectivePanel.title),
                   automaticallyImplyLeading: false,
                 ),
               ),
@@ -143,14 +167,14 @@ class _SettingsViewState extends State<SettingsView> {
           children: [
             SizedBox(
               width: 320,
-              child: _buildSidebar(context, isWide: true),
+              child: _buildSidebar(context, isWide: true, panels: panels, selectedPanel: effectivePanel),
             ),
             Container(
               width: 1,
               color: bodyDividerColor,
             ),
             Expanded(
-              child: _buildPanelContent(_selectedPanel, widget.services),
+              child: _buildPanelContent(effectivePanel, widget.services),
             ),
           ],
         ),
@@ -170,57 +194,43 @@ class _SettingsViewState extends State<SettingsView> {
           ),
           title: const Text('Settings'),
         ),
-        body: _buildSidebar(context, isWide: false),
+        body: _buildSidebar(context, isWide: false, panels: panels, selectedPanel: effectivePanel),
       );
     }
   }
 
-  Widget _buildSidebar(BuildContext context, {required bool isWide}) {
-    final settings = widget.services.settings;
+  Widget _buildSidebar(
+    BuildContext context, {
+    required bool isWide,
+    required List<SettingsPanelType> panels,
+    required SettingsPanelType selectedPanel,
+  }) {
+    return ListView.builder(
+      itemCount: panels.length,
+      itemBuilder: (context, index) {
+        final panel = panels[index];
+        final isSelected = isWide && selectedPanel == panel;
 
-    return ListenableBuilder(
-      listenable: settings,
-      builder: (context, _) {
-        final panels = [
-          SettingsPanelType.general,
-          SettingsPanelType.sync,
-          SettingsPanelType.accounts,
-          if (settings.developerMode) SettingsPanelType.developer,
-          SettingsPanelType.about,
-        ];
-
-        if (!panels.contains(_selectedPanel)) {
-          _selectedPanel = SettingsPanelType.general;
-        }
-
-        return ListView.builder(
-          itemCount: panels.length,
-          itemBuilder: (context, index) {
-            final panel = panels[index];
-            final isSelected = isWide && _selectedPanel == panel;
-
-            return ListTile(
-              selected: isSelected,
-              leading: Icon(panel.icon),
-              title: Text(panel.title),
-              onTap: () {
-                setState(() {
-                  _selectedPanel = panel;
-                });
-                if (!isWide) {
-                  Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (context) => _SettingsPanelScreen(
-                        panel: panel,
-                        services: widget.services,
-                      ),
-                    ),
-                  );
-                }
-              },
-              mouseCursor: SystemMouseCursors.click,
-            );
+        return ListTile(
+          selected: isSelected,
+          leading: Icon(panel.icon),
+          title: Text(panel.title),
+          onTap: () {
+            setState(() {
+              _selectedPanel = panel;
+            });
+            if (!isWide) {
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (context) => _SettingsPanelScreen(
+                    panel: panel,
+                    services: widget.services,
+                  ),
+                ),
+              );
+            }
           },
+          mouseCursor: SystemMouseCursors.click,
         );
       },
     );
