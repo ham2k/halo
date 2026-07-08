@@ -11,7 +11,8 @@ releases.
 
 **Start here: [DESIGN.md](DESIGN.md)** — architecture, extension model, hook
 taxonomy, data layer, sequencing plan. For writing extensions, see
-[docs/extensions/](docs/extensions/README.md).
+[docs/extensions/](docs/extensions/README.md). For web deployment setup, see
+[docs/deployment.md](docs/deployment.md).
 
 ## Status
 
