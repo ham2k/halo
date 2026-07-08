@@ -19,13 +19,14 @@ import 'package:http/http.dart' as http;
 
 import '../main.dart';
 import 'operation_dialogs.dart';
+import '../i18n/strings.g.dart';
 
 const _appVersion = '0.1.0'; // keep in sync with app/pubspec.yaml
 
 const double _wideLayoutThreshold = 720.0;
 
 enum SettingsPanelType {
-  appearance,
+  general,
   sync,
   accounts,
   developer,
@@ -35,8 +36,8 @@ enum SettingsPanelType {
 extension SettingsPanelTypeExtension on SettingsPanelType {
   String get title {
     switch (this) {
-      case SettingsPanelType.appearance:
-        return 'Appearance';
+      case SettingsPanelType.general:
+        return 'General';
       case SettingsPanelType.sync:
         return 'Sync';
       case SettingsPanelType.accounts:
@@ -50,8 +51,8 @@ extension SettingsPanelTypeExtension on SettingsPanelType {
 
   IconData get icon {
     switch (this) {
-      case SettingsPanelType.appearance:
-        return Icons.palette_outlined;
+      case SettingsPanelType.general:
+        return Icons.settings_outlined;
       case SettingsPanelType.sync:
         return Icons.sync;
       case SettingsPanelType.accounts:
@@ -74,7 +75,7 @@ class SettingsView extends StatefulWidget {
 }
 
 class _SettingsViewState extends State<SettingsView> {
-  SettingsPanelType _selectedPanel = SettingsPanelType.appearance;
+  SettingsPanelType _selectedPanel = SettingsPanelType.general;
 
   @override
   Widget build(BuildContext context) {
@@ -181,7 +182,7 @@ class _SettingsViewState extends State<SettingsView> {
       listenable: settings,
       builder: (context, _) {
         final panels = [
-          SettingsPanelType.appearance,
+          SettingsPanelType.general,
           SettingsPanelType.sync,
           SettingsPanelType.accounts,
           if (settings.developerMode) SettingsPanelType.developer,
@@ -189,7 +190,7 @@ class _SettingsViewState extends State<SettingsView> {
         ];
 
         if (!panels.contains(_selectedPanel)) {
-          _selectedPanel = SettingsPanelType.appearance;
+          _selectedPanel = SettingsPanelType.general;
         }
 
         return ListView.builder(
@@ -254,8 +255,8 @@ class _SettingsPanelScreen extends StatelessWidget {
 
 Widget _buildPanelContent(SettingsPanelType panel, HaLoServices services) {
   switch (panel) {
-    case SettingsPanelType.appearance:
-      return _AppearancePanel(services: services);
+    case SettingsPanelType.general:
+      return _GeneralPanel(services: services);
     case SettingsPanelType.sync:
       return _SyncPanel(services: services);
     case SettingsPanelType.accounts:
@@ -267,14 +268,15 @@ Widget _buildPanelContent(SettingsPanelType panel, HaLoServices services) {
   }
 }
 
-class _AppearancePanel extends StatelessWidget {
+class _GeneralPanel extends StatelessWidget {
   final HaLoServices services;
 
-  const _AppearancePanel({required this.services});
+  const _GeneralPanel({required this.services});
 
   @override
   Widget build(BuildContext context) {
     final settings = services.settings;
+    final t = context.t;
 
     return ListenableBuilder(
       listenable: settings,
@@ -283,30 +285,62 @@ class _AppearancePanel extends StatelessWidget {
           padding: const EdgeInsets.all(16),
           children: [
             Text(
-              'Appearance Settings',
+              t.settings.general,
               style: Theme.of(context).textTheme.titleMedium?.copyWith(
                     color: Theme.of(context).colorScheme.primary,
                     fontWeight: FontWeight.bold,
                   ),
             ),
             const SizedBox(height: 16),
-            const Text(
-              'Choose your preferred theme mode for the application.',
-              style: TextStyle(height: 1.4),
+            Text(
+              t.settings.theme.title,
+              style: const TextStyle(fontWeight: FontWeight.bold),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 8),
             SegmentedButton<ThemeMode>(
-              segments: const [
+              segments: [
                 ButtonSegment(
                   value: ThemeMode.system,
-                  icon: Icon(Icons.brightness_auto_outlined),
-                  label: Text('System'),
+                  icon: const Icon(Icons.brightness_auto_outlined),
+                  label: Text(t.settings.theme.system),
                 ),
-                ButtonSegment(value: ThemeMode.light, icon: Icon(Icons.light_mode_outlined), label: Text('Light')),
-                ButtonSegment(value: ThemeMode.dark, icon: Icon(Icons.dark_mode_outlined), label: Text('Dark')),
+                ButtonSegment(
+                  value: ThemeMode.light,
+                  icon: const Icon(Icons.light_mode_outlined),
+                  label: Text(t.settings.theme.light),
+                ),
+                ButtonSegment(
+                  value: ThemeMode.dark,
+                  icon: const Icon(Icons.dark_mode_outlined),
+                  label: Text(t.settings.theme.dark),
+                ),
               ],
               selected: {settings.themeMode},
               onSelectionChanged: (selection) => settings.setThemeMode(selection.first),
+            ),
+            const SizedBox(height: 24),
+            Text(
+              t.settings.language,
+              style: const TextStyle(fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 8),
+            SegmentedButton<String>(
+              segments: const [
+                ButtonSegment(
+                  value: 'en',
+                  label: Text('English'),
+                ),
+                ButtonSegment(
+                  value: 'es',
+                  label: Text('Español'),
+                ),
+              ],
+              selected: {settings.locale},
+              onSelectionChanged: (selection) async {
+                final newLocale = selection.first;
+                await settings.setLocale(newLocale);
+                LocaleSettings.setLocaleRaw(newLocale);
+              },
             ),
           ],
         );

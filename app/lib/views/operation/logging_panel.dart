@@ -7,6 +7,7 @@ import 'package:halo_core/halo_core.dart';
 import 'package:halo_widgets/halo_widgets.dart';
 
 import '../../main.dart';
+import '../../i18n/strings.g.dart';
 
 class LoggingPanel extends StatefulWidget {
   final Operation operation;
@@ -34,7 +35,14 @@ class _LoggingPanelState extends State<LoggingPanel> {
   @override
   Widget build(BuildContext context) {
     final wide = MediaQuery.sizeOf(context).width >= 900;
-    final list = QsoList(qsos: widget.qsos, qsosRepository: widget.services.qsos);
+    final list = QsoList(
+      qsos: widget.qsos,
+      qsosRepository: widget.services.qsos,
+      noQsosLabel: context.t.qsoList.empty,
+      deleteConfirmTitleBuilder: (call) => context.t.dialogs.deleteQsoConfirm(call: call),
+      cancelLabel: context.t.common.cancel,
+      deleteLabel: context.t.common.delete,
+    );
 
     return Column(
       children: [
@@ -70,6 +78,15 @@ class _LoggingPanelState extends State<LoggingPanel> {
             });
           },
           onCommandAction: widget.onCommandAction,
+          timeLabel: context.t.loggingControls.timeUtc,
+          dateLabel: context.t.loggingControls.date,
+          nowLabel: context.t.loggingControls.now,
+          freqLabel: context.t.loggingControls.freqKHz,
+          modeLabel: context.t.loggingControls.mode,
+          dupeLabel: context.t.loggingControls.dupe,
+          theirCallLabel: context.t.loggingControls.theirCall,
+          sentLabel: context.t.loggingControls.sent,
+          rcvdLabel: context.t.loggingControls.rcvd,
         ),
       ],
     );
@@ -115,13 +132,13 @@ class InformationArea extends StatelessWidget {
           const Divider(),
           const SizedBox(height: 16),
         ],
-        Text('Station', style: theme.textTheme.titleSmall),
+        Text(context.t.loggingPanel.station, style: theme.textTheme.titleSmall),
         Text(operation.stationCall, style: theme.textTheme.headlineSmall),
         const SizedBox(height: 16),
-        Text('By band', style: theme.textTheme.titleSmall),
+        Text(context.t.loggingPanel.byBand, style: theme.textTheme.titleSmall),
         for (final entry in byBand.entries) Text('${entry.key}: ${entry.value}'),
         const SizedBox(height: 16),
-        Text('By mode', style: theme.textTheme.titleSmall),
+        Text(context.t.loggingPanel.byMode, style: theme.textTheme.titleSmall),
         for (final entry in byMode.entries) Text('${entry.key}: ${entry.value}'),
       ],
     );

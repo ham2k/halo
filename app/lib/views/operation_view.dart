@@ -15,6 +15,7 @@ import '../main.dart';
 import 'operation_dialogs.dart';
 import 'operation/logging_panel.dart';
 import 'operation/map_panel.dart';
+import '../i18n/strings.g.dart';
 
 class OperationView extends StatefulWidget {
   final HaLoServices services;
@@ -52,7 +53,7 @@ class _OperationViewState extends State<OperationView> {
     if (!mounted) return;
     if (controls.isEmpty) {
       ScaffoldMessenger.of(context)
-          .showSnackBar(const SnackBar(content: Text('No activities available (extension runtime still starting?)')));
+          .showSnackBar(SnackBar(content: Text(context.t.operation.noActivities)));
       return;
     }
 
@@ -61,7 +62,7 @@ class _OperationViewState extends State<OperationView> {
       context: context,
       builder: (context) => StatefulBuilder(
         builder: (context, setDialogState) => AlertDialog(
-          title: const Text('Activities'),
+          title: Text(context.t.dialogs.activities),
           content: SizedBox(
             width: 420,
             child: Column(
@@ -94,8 +95,8 @@ class _OperationViewState extends State<OperationView> {
             ),
           ),
           actions: [
-            TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('Cancel')),
-            FilledButton(onPressed: () => Navigator.of(context).pop(true), child: const Text('Save')),
+            TextButton(onPressed: () => Navigator.of(context).pop(false), child: Text(context.t.common.cancel)),
+            FilledButton(onPressed: () => Navigator.of(context).pop(true), child: Text(context.t.common.save)),
           ],
         ),
       ),
@@ -125,14 +126,15 @@ class _OperationViewState extends State<OperationView> {
   }
 
   Future<void> _export(Operation operation) async {
+    final t = context.t;
     final messenger = ScaffoldMessenger.of(context);
     try {
       final path = await widget.services.exports.exportOperation(operation);
       if (path != null) {
-        messenger.showSnackBar(SnackBar(content: Text('Exported to $path')));
+        messenger.showSnackBar(SnackBar(content: Text(t.operation.exportSuccess(path: path))));
       }
     } catch (e) {
-      messenger.showSnackBar(SnackBar(content: Text('Export failed: $e')));
+      messenger.showSnackBar(SnackBar(content: Text(t.operation.exportFailed(error: e.toString()))));
     }
   }
 
@@ -195,10 +197,10 @@ class _OperationViewState extends State<OperationView> {
                 indicatorSize: TabBarIndicatorSize.tab,
                 indicatorWeight: 4,
                 tabs: [
-                  Tab(text: '${qsos.length} QSOS'),
-                  const Tab(text: 'SPOTS'),
-                  const Tab(text: 'MAP'),
-                  const Tab(text: 'OPERATION'),
+                  Tab(text: context.t.operation.tabs.qsos(count: qsos.length)),
+                  Tab(text: context.t.operation.tabs.spots),
+                  Tab(text: context.t.operation.tabs.map),
+                  Tab(text: context.t.operation.tabs.operation),
                 ],
               ),
             ),
@@ -212,7 +214,7 @@ class _OperationViewState extends State<OperationView> {
                   onCommandAction: _handleCommandAction,
                 ),
               ),
-              const _PlaceholderTab(label: 'Spots'),
+              _PlaceholderTab(label: context.t.operation.tabs.spots),
               _KeepAlive(child: MapPanel(operation: operation, qsos: qsos)),
               OperationSettingsPanel(
                 operation: operation,
@@ -264,7 +266,7 @@ class _PlaceholderTab extends StatelessWidget {
     final theme = Theme.of(context);
     return Center(
       child: Text(
-        '$label — coming soon',
+        context.t.operation.comingSoon(label: label),
         style: theme.textTheme.bodyLarge?.copyWith(color: theme.colorScheme.onSurfaceVariant),
       ),
     );
@@ -301,34 +303,34 @@ class OperationSettingsPanel extends StatelessWidget {
 
     return ListView(
       children: [
-        _SectionHeader('Station & operator'),
+        _SectionHeader(context.t.operation.sections.stationOperator),
         ListTile(
           leading: Icon(MdiIcons.radioTower),
-          title: Text(operation.stationCall.isEmpty ? 'No station callsign' : operation.stationCall),
-          subtitle: Text(operation.title.isEmpty ? 'No title' : operation.title),
+          title: Text(operation.stationCall.isEmpty ? context.t.operation.stationCallsignNone : operation.stationCall),
+          subtitle: Text(operation.title.isEmpty ? context.t.operation.titleNone : operation.title),
           onTap: onEditDetails,
           mouseCursor: SystemMouseCursors.click,
         ),
-        _SectionHeader('Activities'),
+        _SectionHeader(context.t.operation.sections.activities),
         ListTile(
           leading: Icon(MdiIcons.pineTree),
-          title: const Text('Activities'),
-          subtitle: Text(refsLine.isEmpty ? 'None set' : refsLine),
+          title: Text(context.t.operation.sections.activities),
+          subtitle: Text(refsLine.isEmpty ? context.t.operation.activitiesNone : refsLine),
           onTap: onEditActivities,
           mouseCursor: SystemMouseCursors.click,
         ),
-        _SectionHeader('Operation data'),
+        _SectionHeader(context.t.operation.sections.operationData),
         ListTile(
           leading: Icon(MdiIcons.fileExportOutline),
-          title: const Text('Export ADIF'),
-          subtitle: Text('$qsoCount QSOs'),
+          title: Text(context.t.operation.exportAdif),
+          subtitle: Text(context.t.operation.tabs.qsos(count: qsoCount)),
           onTap: onExport,
           mouseCursor: SystemMouseCursors.click,
         ),
-        _SectionHeader('Danger zone', color: theme.colorScheme.error),
+        _SectionHeader(context.t.operation.sections.dangerZone, color: theme.colorScheme.error),
         ListTile(
           leading: Icon(MdiIcons.delete, color: theme.colorScheme.error),
-          title: Text('Delete operation', style: TextStyle(color: theme.colorScheme.error)),
+          title: Text(context.t.operation.deleteOperation, style: TextStyle(color: theme.colorScheme.error)),
           onTap: onDelete,
           mouseCursor: SystemMouseCursors.click,
         ),

@@ -11,6 +11,7 @@ import 'dart:io' show Platform;
 
 import 'package:drift_flutter/drift_flutter.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:halo_core/halo_core.dart';
 import 'package:halo_widgets/halo_widgets.dart';
 
@@ -20,6 +21,7 @@ import 'services/export_service.dart';
 import 'services/extension_service.dart';
 import 'services/settings_service.dart';
 import 'services/data_file_manager.dart';
+import 'i18n/strings.g.dart';
 
 final navigatorKey = GlobalKey<NavigatorState>();
 
@@ -32,6 +34,7 @@ void main() async {
   // core logging loop never waits on the extension runtime either way.
   extensions.start();
   final settings = await SettingsService.load();
+  LocaleSettings.setLocaleRaw(settings.locale);
   final services = HaLoServices(db, settings, extensions: extensions);
   if (settings.hasQrzCredentials) {
     await services.extensions.setAccountCredentials('qrz', {
@@ -51,7 +54,7 @@ void main() async {
     debugPrint('[boot] failed to initialize data files: $e');
   }));
 
-  runApp(HaLoApp(services: services));
+  runApp(TranslationProvider(child: HaLoApp(services: services)));
 
   // Dev nicety: launch with POLO_OPEN_FIRST_OP=1 in the environment (e.g.
   // SIMCTL_CHILD_POLO_OPEN_FIRST_OP=1 simctl launch ...) to jump straight
@@ -160,6 +163,9 @@ class HaLoApp extends StatelessWidget {
         // android's AndroidManifest.xml label "HaLo").
         title: isWindowedPlatform ? 'Ham2K Logger' : 'HaLo',
         navigatorKey: navigatorKey,
+        locale: TranslationProvider.of(context).locale.flutterLocale,
+        supportedLocales: AppLocaleUtils.supportedLocales,
+        localizationsDelegates: GlobalMaterialLocalizations.delegates,
         theme: buildHaLoTheme(Brightness.light),
         darkTheme: buildHaLoTheme(Brightness.dark),
         themeMode: services.settings.themeMode,

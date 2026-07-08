@@ -10,8 +10,10 @@ host invokes them two ways:
 
 All argument and result types below are defined in
 [`extensions/sdk/src/types.ts`](../../extensions/sdk/src/types.ts). Every
-hook method receives `(args, ctx)` where `ctx: HookContext` is currently
-`{online: boolean}` and will grow (settings, locale, flags).
+hook method receives `(args, ctx)` where `ctx: HookContext` is:
+* `online: boolean` — True if the device has an active network connection.
+* `developerMode: boolean` — True if developer options are enabled in settings.
+* `locale: string` — The active locale code of the application (e.g. `'en'`, `'es'`).
 
 Status legend: ✅ implemented · 🔜 planned (design in DESIGN.md §4).
 

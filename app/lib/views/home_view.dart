@@ -9,6 +9,7 @@ import '../main.dart';
 import 'operation_dialogs.dart';
 import 'operation_view.dart';
 import 'settings_view.dart';
+import '../i18n/strings.g.dart';
 
 /// HaLo home-screen style row: bold "CALL title" line with count pill,
 /// subtitle line with refs/description and right-aligned date.
@@ -101,7 +102,7 @@ class OperationListPanel extends StatelessWidget {
     if (operations.isEmpty) {
       return Container(
         color: Theme.of(context).colorScheme.surfaceContainerHighest,
-        child: const Center(child: Text('No operations yet. Create one to start logging.')),
+        child: Center(child: Text(context.t.home.emptyList)),
       );
     }
     return Container(
@@ -136,7 +137,7 @@ class _HomeViewState extends State<HomeView> {
     final created = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('New operation'),
+        title: Text(context.t.home.newOperation),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -144,19 +145,19 @@ class _HomeViewState extends State<HomeView> {
               controller: callController,
               autofocus: true,
               textCapitalization: TextCapitalization.characters,
-              decoration: poloFieldDecoration(context, 'Station callsign'),
+              decoration: poloFieldDecoration(context, context.t.home.stationCallsign),
             ),
             const SizedBox(height: 8),
             TextField(
               controller: titleController,
-              decoration: poloFieldDecoration(context, 'Title (optional)'),
+              decoration: poloFieldDecoration(context, context.t.home.titleOptional),
               onSubmitted: (_) => Navigator.of(context).pop(true),
             ),
           ],
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('Cancel')),
-          FilledButton(onPressed: () => Navigator.of(context).pop(true), child: const Text('Create')),
+          TextButton(onPressed: () => Navigator.of(context).pop(false), child: Text(context.t.common.cancel)),
+          FilledButton(onPressed: () => Navigator.of(context).pop(true), child: Text(context.t.common.create)),
         ],
       ),
     );
@@ -192,10 +193,10 @@ class _HomeViewState extends State<HomeView> {
         // title — independent of the OS-level app name ("Ham2K Logger" on
         // desktop, "HaLo" on mobile; see macos/Runner/Configs/AppInfo.xcconfig,
         // ios/Runner/Info.plist, android's AndroidManifest.xml).
-        title: Text(isWindowedPlatform ? 'Desktop Logger' : 'Portable Logger'),
+        title: Text(isWindowedPlatform ? context.t.home.titleDesktop : context.t.home.title),
         actions: [
           IconButton(
-            tooltip: 'Settings',
+            tooltip: context.t.settings.title,
             icon: Icon(MdiIcons.cog),
             onPressed: () => Navigator.of(context).push(
               MaterialPageRoute(builder: (_) => SettingsView(services: widget.services)),
@@ -278,7 +279,7 @@ class _HomeViewState extends State<HomeView> {
                                       child: Padding(
                                         padding: const EdgeInsets.only(left: 8),
                                         child: Text(
-                                          'New operation',
+                                          context.t.home.newOperation,
                                           maxLines: 1,
                                           softWrap: false,
                                           style: theme.textTheme.labelLarge?.copyWith(
@@ -555,7 +556,7 @@ class _HomeQuickLookupState extends State<HomeQuickLookup> {
                         },
                       )
                     : null,
-                hintText: 'Quick Lookup',
+                hintText: context.t.home.quickLookup,
                 isDense: true,
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(24.0),

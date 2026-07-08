@@ -6,12 +6,67 @@
 // to load. Output goes into the Flutter app's assets.
 
 import { build } from 'esbuild'
-import { mkdir, writeFile } from 'node:fs/promises'
+import { mkdir, writeFile, readFile } from 'node:fs/promises'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import semver from 'semver'
 
 const root = dirname(fileURLToPath(import.meta.url))
 const outDir = resolve(root, '../app/assets/extensions')
+
+const sharedPackages = [
+  "@ham2k/lib-callsigns",
+  "@ham2k/lib-country-files",
+  "@ham2k/lib-cqmag-data",
+  "@ham2k/lib-dxcc-data",
+  "@ham2k/lib-format-tools",
+  "@ham2k/lib-geo-tools",
+  "@ham2k/lib-operation-data",
+  "@ham2k/lib-qson-adif",
+  "@ham2k/lib-qson-cabrillo",
+  "@ham2k/lib-qson-tools",
+  "i18next",
+]
+
+// Resolve the versions of all shared libraries installed in local node_modules
+const hostSharedVersions = {}
+for (const pkg of sharedPackages) {
+  const pkgJsonPath = join(root, 'node_modules', pkg, 'package.json')
+  const pkgJson = JSON.parse(await readFile(pkgJsonPath, 'utf-8'))
+  hostSharedVersions[pkg] = pkgJson.version
+}
+
+// Read the main package.json dependencies to get versions required by extensions
+const rootPackageJson = JSON.parse(await readFile(join(root, 'package.json'), 'utf-8'))
+const rootDeps = rootPackageJson.dependencies || {}
+
+function sharedLibsPlugin(extensionDependencies = {}) {
+  return {
+    name: 'shared-libs',
+    setup(build) {
+      build.onResolve({ filter: /^(@ham2k\/lib-|i18next$)/ }, (args) => {
+        const packageName = args.path
+        const requestedRange = extensionDependencies[packageName] || '*'
+        const hostVersion = hostSharedVersions[packageName]
+
+        // Externalize only if host has it and it satisfies the requested range
+        if (hostVersion && semver.satisfies(hostVersion, requestedRange)) {
+          return { path: packageName, namespace: 'shared-libs-external' }
+        }
+
+        // Version mismatch: let esbuild bundle it inline
+        return null
+      })
+
+      build.onLoad({ filter: /.*/, namespace: 'shared-libs-external' }, (args) => {
+        return {
+          contents: `module.exports = globalThis.__polo.sharedModules["${args.path}"];`,
+          loader: 'js',
+        }
+      })
+    }
+  }
+}
 
 const bundles = [
   { key: 'kernel', entry: 'sdk/src/kernel.ts', kind: 'kernel' },
@@ -27,7 +82,8 @@ const bundles = [
 await mkdir(outDir, { recursive: true })
 
 for (const bundle of bundles) {
-  const result = await build({
+  const isKernel = bundle.kind === 'kernel'
+  const buildOptions = {
     entryPoints: [join(root, bundle.entry)],
     bundle: true,
     format: 'iife',
@@ -38,7 +94,17 @@ for (const bundle of bundles) {
     alias: { '@ham2k/polo-sdk': join(root, 'sdk/src/index.ts') },
     logLevel: 'warning',
     metafile: true,
-  })
+  }
+
+  if (isKernel) {
+    buildOptions.define = {
+      '__SHARED_VERSIONS__': JSON.stringify(hostSharedVersions)
+    }
+  } else {
+    buildOptions.plugins = [sharedLibsPlugin(rootDeps)]
+  }
+
+  const result = await build(buildOptions)
   const bytes = Object.values(result.metafile.outputs)[0].bytes
   console.log(`${bundle.key}.js — ${(bytes / 1024).toFixed(1)} KB`)
 }

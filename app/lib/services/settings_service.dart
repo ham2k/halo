@@ -27,6 +27,7 @@ class SettingsService extends ChangeNotifier implements SyncSettings {
   static const _syncDeviceKeyKey = 'syncDeviceKey';
   static const _syncStateKey = 'syncState';
   static const _developerModeKey = 'developerMode';
+  static const _localeKey = 'locale';
 
   final SharedPreferences _prefs;
 
@@ -128,4 +129,11 @@ class SettingsService extends ChangeNotifier implements SyncSettings {
 
   @override
   Future<void> setState(Map<String, dynamic> state) => setSyncState(state);
+
+  String get locale => _prefs.getString(_localeKey) ?? 'en';
+
+  Future<void> setLocale(String localeCode) async {
+    await _prefs.setString(_localeKey, localeCode);
+    notifyListeners();
+  }
 }

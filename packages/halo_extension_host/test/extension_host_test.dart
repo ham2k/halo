@@ -96,6 +96,56 @@ void main() {
     );
   });
 
+  test('kernel passes settings (locale) to hook context', () async {
+    if (!kernelFile.existsSync()) {
+      markTestSkipped('kernel.js not built — run `npm run build` in extensions/ first');
+      return;
+    }
+
+    final host = await ExtensionHost.start(
+      kernelSource: kernelFile.readAsStringSync(),
+      extensions: const [
+        ExtensionBundle(
+          key: 'locale-test-extension',
+          source: '''
+__polo.defineExtension({
+  key: 'locale-test-extension',
+  name: 'Locale Test Extension',
+  version: '0.0.1',
+  onActivation: function (api) {
+    api.registerHook('localeTest', {
+      key: 'test',
+      hook: {
+        checkContext: async function (args, ctx) {
+          return { locale: ctx.locale, online: ctx.online }
+        }
+      }
+    })
+  },
+})
+'''
+        )
+      ],
+      useIsolate: false,
+      onHostCall: (method, params) async {
+        if (method == 'getSettings') {
+          return {
+            'developerMode': true,
+            'locale': 'es',
+          };
+        }
+        return null;
+      },
+    );
+    addTearDown(host.dispose);
+
+    final result = await host.invokeHook('localeTest', key: 'test', method: 'checkContext', args: {});
+    expect(result, {
+      'locale': 'es',
+      'online': true,
+    });
+  });
+
   test('ADIF export extension generates a valid file from QSON', () async {
     final adifFile = File('../../app/assets/extensions/adif.js');
     if (!kernelFile.existsSync() || !adifFile.existsSync()) {

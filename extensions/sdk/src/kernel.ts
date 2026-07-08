@@ -22,6 +22,34 @@
 
 import type { ExtensionDefinition, RegisterHookParams } from "./types"
 
+import * as libCallsigns from "@ham2k/lib-callsigns"
+import * as libCountryFiles from "@ham2k/lib-country-files"
+import * as libCqmagData from "@ham2k/lib-cqmag-data"
+import * as libDxccData from "@ham2k/lib-dxcc-data"
+import * as libFormatTools from "@ham2k/lib-format-tools"
+import * as libGeoTools from "@ham2k/lib-geo-tools"
+import * as libOperationData from "@ham2k/lib-operation-data"
+import * as libQsonAdif from "@ham2k/lib-qson-adif"
+import * as libQsonCabrillo from "@ham2k/lib-qson-cabrillo"
+import * as libQsonTools from "@ham2k/lib-qson-tools"
+import i18next from "i18next"
+
+declare const __SHARED_VERSIONS__: Record<string, string>
+
+const sharedModules: Record<string, any> = {
+  "@ham2k/lib-callsigns": libCallsigns,
+  "@ham2k/lib-country-files": libCountryFiles,
+  "@ham2k/lib-cqmag-data": libCqmagData,
+  "@ham2k/lib-dxcc-data": libDxccData,
+  "@ham2k/lib-format-tools": libFormatTools,
+  "@ham2k/lib-geo-tools": libGeoTools,
+  "@ham2k/lib-operation-data": libOperationData,
+  "@ham2k/lib-qson-adif": libQsonAdif,
+  "@ham2k/lib-qson-cabrillo": libQsonCabrillo,
+  "@ham2k/lib-qson-tools": libQsonTools,
+  "i18next": i18next,
+}
+
 declare function sendMessage(channel: string, message: string): void
 
 interface HookRecord {
@@ -86,15 +114,19 @@ async function callHookMethod(record: HookRecord, method: string, args: unknown)
   const member = record.hook[method]
   const account = (await getAccountContext(record.extensionKey)) as { credentials?: Record<string, string>; session?: Record<string, string> } | undefined
   let developerMode = false
+  let locale = 'en'
   try {
-    const settings = (await hostCall('getSettings', {})) as { developerMode?: boolean } | undefined
+    const settings = (await hostCall('getSettings', {})) as { developerMode?: boolean; locale?: string } | undefined
     if (settings?.developerMode) {
       developerMode = true
+    }
+    if (settings?.locale) {
+      locale = settings.locale
     }
   } catch (e) {
     // ignore
   }
-  const ctx = { online: true, account, developerMode }
+  const ctx = { online: true, account, developerMode, locale }
   if (typeof member === 'function') {
     return await member.call(record.hook, args, ctx)
   }
@@ -269,6 +301,9 @@ const kernel = {
     const accountHookRecord = hooks.find((h) => h.category === 'account' && h.extensionKey === extensionKey)
     return (accountHookRecord?.hook?.kvKey as string | undefined) || accountHookRecord?.key || extensionKey
   },
+
+  sharedModules,
+  sharedVersions: typeof __SHARED_VERSIONS__ !== 'undefined' ? __SHARED_VERSIONS__ : {},
 }
 
 ;(globalThis as Record<string, unknown>).__polo = kernel

@@ -11,6 +11,7 @@
 import type { FetchOptions, FetchResponse, JSONValue, ExtensionDefinition, LookupRow } from "./types"
 
 export * from "./types"
+export * from "./i18n"
 
 interface KernelApi {
   defineExtension(def: ExtensionDefinition): void

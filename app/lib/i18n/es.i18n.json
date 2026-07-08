@@ -1,0 +1,89 @@
+{
+  "common": {
+    "save": "Guardar",
+    "cancel": "Cancelar",
+    "delete": "Eliminar",
+    "create": "Crear",
+    "error": "Error"
+  },
+  "home": {
+    "title": "Registrador Portátil",
+    "titleDesktop": "Registrador de Escritorio",
+    "newOperation": "Nueva operación",
+    "stationCallsign": "Indicativo de la estación",
+    "titleOptional": "Título (opcional)",
+    "emptyList": "Aún no hay operaciones. Crea una para comenzar a registrar.",
+    "quickLookup": "Búsqueda Rápida"
+  },
+  "dialogs": {
+    "deleteOperationConfirm": "¿Eliminar operación \"${title}\"?",
+    "operationDetails": "Detalles de la operación",
+    "activities": "Actividades",
+    "deleteQsoConfirm": "¿Eliminar QSO con ${call}?"
+  },
+  "operation": {
+    "tabs": {
+      "qsos": "${count} QSOs",
+      "spots": "SPOTS",
+      "map": "MAPA",
+      "operation": "OPERACIÓN"
+    },
+    "comingSoon": "${label} — próximamente",
+    "noActivities": "No hay actividades disponibles (¿el motor de extensiones aún está iniciando?)",
+    "exportSuccess": "Exportado a ${path}",
+    "exportFailed": "Exportación fallida: ${error}",
+    "sections": {
+      "stationOperator": "Estación y operador",
+      "activities": "Actividades",
+      "operationData": "Datos de operación",
+      "dangerZone": "Zona de peligro"
+    },
+    "stationCallsignNone": "Sin indicativo de estación",
+    "titleNone": "Sin título",
+    "activitiesNone": "Ninguna seleccionada",
+    "exportAdif": "Exportar ADIF",
+    "deleteOperation": "Eliminar operación"
+  },
+  "loggingControls": {
+    "timeUtc": "Hora (UTC)",
+    "date": "Fecha",
+    "now": "Ahora",
+    "freqKHz": "Frec kHz",
+    "mode": "Modo",
+    "dupe": "DUPE",
+    "theirCall": "Su indicativo",
+    "sent": "Enviado",
+    "rcvd": "Recibido"
+  },
+  "qsoList": {
+    "empty": "Aún no hay QSOs — ¡haz un contacto!"
+  },
+  "loggingPanel": {
+    "station": "Estación",
+    "byBand": "Por banda",
+    "byMode": "Por modo"
+  },
+  "settings": {
+    "title": "Configuración",
+    "general": "Configuración General",
+    "language": "Idioma",
+    "theme": {
+      "title": "Modo de Tema",
+      "system": "Sistema",
+      "light": "Claro",
+      "dark": "Oscuro"
+    },
+    "operatorCall": "Indicativo del Operador",
+    "sync": {
+      "title": "Configuración de Sincronización",
+      "enable": "Habilitar Sincronización",
+      "deviceKey": "Clave del Dispositivo"
+    },
+    "qrz": {
+      "title": "Credenciales de QRZ.com",
+      "username": "Usuario",
+      "password": "Contraseña"
+    },
+    "developerMode": "Modo Desarrollador"
+  }
+}

@@ -62,6 +62,43 @@ Planned host APIs from the design (not yet implemented): `host.lookups`
 (offline reference datasets), `host.qsos`/`host.operations` (indexed log
 queries), `host.events` (subscriptions), `host.secrets` (keychain).
 
+## Internationalization (i18n)
+
+Extensions running in the QuickJS isolate have access to the shared `i18next` library (pre-loaded inside the kernel to avoid duplicate bundle bloat). 
+
+### Exposing Translations
+You can define localized strings in your extension as a JSON/JS map and load them using the SDK's `createTranslator` helper alongside the `locale` passed in the `HookContext`:
+
+```ts
+import { createTranslator, HookContext } from "@ham2k/polo-sdk"
+
+const resources = {
+  en: {
+    translation: {
+      name: "Parks on the Air"
+    }
+  },
+  es: {
+    translation: {
+      name: "Parques en el Aire"
+    }
+  }
+}
+
+export const RefHandler = {
+  decorateRef: async ({ ref }, ctx: HookContext) => {
+    // Initialize the translator for the current invocation's locale
+    const t = createTranslator(resources, ctx.locale || 'en')
+    return {
+      ...ref,
+      name: t('name')
+    }
+  }
+}
+```
+
+By resolving locale-aware keys inside extension logic, you ensure that dynamically rendered labels, exporters, or lookup details match the user's active application language seamlessly.
+
 ## Build and dev loop
 
 ```sh

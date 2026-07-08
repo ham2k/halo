@@ -98,6 +98,16 @@ class LoggingControls extends StatefulWidget {
   /// Settings engine interface.
   final SyncSettings? settings;
 
+  final String? timeLabel;
+  final String? dateLabel;
+  final String? nowLabel;
+  final String? freqLabel;
+  final String? modeLabel;
+  final String? dupeLabel;
+  final String? theirCallLabel;
+  final String? sentLabel;
+  final String? rcvdLabel;
+
   const LoggingControls({
     super.key,
     required this.operation,
@@ -112,6 +122,15 @@ class LoggingControls extends StatefulWidget {
     this.onCommandAction,
     this.editingQso,
     this.settings,
+    this.timeLabel,
+    this.dateLabel,
+    this.nowLabel,
+    this.freqLabel,
+    this.modeLabel,
+    this.dupeLabel,
+    this.theirCallLabel,
+    this.sentLabel,
+    this.rcvdLabel,
   });
 
   @override
@@ -380,7 +399,7 @@ class _LoggingControlsState extends State<LoggingControls> {
                 ),
                 decoration: poloFieldDecoration(
                   context,
-                  'Time (UTC)',
+                  widget.timeLabel ?? 'Time (UTC)',
                   labelColor: Theme.of(context).colorScheme.onTertiaryContainer,
                 ),
                 inputFormatters: [
@@ -400,7 +419,7 @@ class _LoggingControlsState extends State<LoggingControls> {
                 ),
                 decoration: poloFieldDecoration(
                   context,
-                  'Date',
+                  widget.dateLabel ?? 'Date',
                   labelColor: Theme.of(context).colorScheme.onTertiaryContainer,
                 ),
                 inputFormatters: [
@@ -414,7 +433,7 @@ class _LoggingControlsState extends State<LoggingControls> {
             // necessarily historical, entry.
             if (widget.editingQso == null && _manualStartAtMillis != null) ...[
               const SizedBox(width: 8),
-              TextButton(onPressed: _resetTimeToNow, child: const Text('Now')),
+              TextButton(onPressed: _resetTimeToNow, child: Text(widget.nowLabel ?? 'Now')),
             ],
           ],
         ),
@@ -438,7 +457,7 @@ class _LoggingControlsState extends State<LoggingControls> {
                 ),
                 decoration: poloFieldDecoration(
                   context,
-                  'Freq kHz',
+                  widget.freqLabel ?? 'Freq kHz',
                   labelColor: Theme.of(context).colorScheme.onTertiaryContainer,
                 ),
                 keyboardType: const TextInputType.numberWithOptions(
@@ -474,7 +493,7 @@ class _LoggingControlsState extends State<LoggingControls> {
             const SizedBox(width: 6),
             DropdownMenu<String>(
               initialSelection: _mode,
-              label: const Text('Mode'),
+              label: Text(widget.modeLabel ?? 'Mode'),
               width: 104,
               textStyle: haloMonoStyle(
                 context,
@@ -888,7 +907,7 @@ class _LoggingControlsState extends State<LoggingControls> {
                         onSelect: _onSelectControl,
                         trailing: _isDupe
                             ? Chip(
-                                label: const Text('DUPE'),
+                                label: Text(widget.dupeLabel ?? 'DUPE'),
                                 visualDensity: VisualDensity.compact,
                                 backgroundColor:
                                     theme.colorScheme.errorContainer,
@@ -922,7 +941,7 @@ class _LoggingControlsState extends State<LoggingControls> {
                                 _UpperCaseFormatter(),
                               ],
                               style: _primaryFieldStyle(context, fontWeight: FontWeight.w700),
-                              decoration: _primaryFieldDecoration(context, 'Their call'),
+                              decoration: _primaryFieldDecoration(context, widget.theirCallLabel ?? 'Their call'),
                               onSubmitted: (_) => _log(),
                             ),
                           ),
@@ -938,7 +957,7 @@ class _LoggingControlsState extends State<LoggingControls> {
                                   RegExp(r'[0-9+\-]'),
                                 ),
                               ],
-                              decoration: _primaryFieldDecoration(context, 'Sent'),
+                              decoration: _primaryFieldDecoration(context, widget.sentLabel ?? 'Sent'),
                               onChanged: (_) => _rstsTouched = true,
                               onSubmitted: (_) => _log(),
                             ),
@@ -955,7 +974,7 @@ class _LoggingControlsState extends State<LoggingControls> {
                                   RegExp(r'[0-9+\-]'),
                                 ),
                               ],
-                              decoration: _primaryFieldDecoration(context, 'Rcvd'),
+                              decoration: _primaryFieldDecoration(context, widget.rcvdLabel ?? 'Rcvd'),
                               onChanged: (_) => _rstsTouched = true,
                               onSubmitted: (_) => _log(),
                             ),

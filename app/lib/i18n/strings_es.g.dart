@@ -1,0 +1,307 @@
+///
+/// Generated file. Do not edit.
+///
+// coverage:ignore-file
+// ignore_for_file: type=lint, unused_import
+// dart format off
+
+import 'package:flutter/widgets.dart';
+import 'package:intl/intl.dart';
+import 'package:slang/generated.dart';
+import 'strings.g.dart';
+
+// Path: <root>
+class TranslationsEs extends Translations with BaseTranslations<AppLocale, Translations> {
+	/// You can call this constructor and build your own translation instance of this locale.
+	/// Constructing via the enum [AppLocale.build] is preferred.
+	TranslationsEs({Map<String, Node>? overrides, PluralResolver? cardinalResolver, PluralResolver? ordinalResolver, TranslationMetadata<AppLocale, Translations>? meta})
+		: assert(overrides == null, 'Set "translation_overrides: true" in order to enable this feature.'),
+		  $meta = meta ?? TranslationMetadata(
+		    locale: AppLocale.es,
+		    overrides: overrides ?? {},
+		    cardinalResolver: cardinalResolver,
+		    ordinalResolver: ordinalResolver,
+		  ),
+		  super(cardinalResolver: cardinalResolver, ordinalResolver: ordinalResolver) {
+		super.$meta.setFlatMapFunction($meta.getTranslation); // copy base translations to super.$meta
+		$meta.setFlatMapFunction(_flatMapFunction);
+	}
+
+	/// Metadata for the translations of <es>.
+	@override final TranslationMetadata<AppLocale, Translations> $meta;
+
+	/// Access flat map
+	@override dynamic operator[](String key) => $meta.getTranslation(key) ?? super.$meta.getTranslation(key);
+
+	late final TranslationsEs _root = this; // ignore: unused_field
+
+	@override 
+	TranslationsEs $copyWith({TranslationMetadata<AppLocale, Translations>? meta}) => TranslationsEs(meta: meta ?? this.$meta);
+
+	// Translations
+	@override late final _Translations$common$es common = _Translations$common$es._(_root);
+	@override late final _Translations$home$es home = _Translations$home$es._(_root);
+	@override late final _Translations$dialogs$es dialogs = _Translations$dialogs$es._(_root);
+	@override late final _Translations$operation$es operation = _Translations$operation$es._(_root);
+	@override late final _Translations$loggingControls$es loggingControls = _Translations$loggingControls$es._(_root);
+	@override late final _Translations$qsoList$es qsoList = _Translations$qsoList$es._(_root);
+	@override late final _Translations$loggingPanel$es loggingPanel = _Translations$loggingPanel$es._(_root);
+	@override late final _Translations$settings$es settings = _Translations$settings$es._(_root);
+}
+
+// Path: common
+class _Translations$common$es extends Translations$common$en {
+	_Translations$common$es._(TranslationsEs root) : this._root = root, super.internal(root);
+
+	final TranslationsEs _root; // ignore: unused_field
+
+	// Translations
+	@override String get save => 'Guardar';
+	@override String get cancel => 'Cancelar';
+	@override String get delete => 'Eliminar';
+	@override String get create => 'Crear';
+	@override String get error => 'Error';
+}
+
+// Path: home
+class _Translations$home$es extends Translations$home$en {
+	_Translations$home$es._(TranslationsEs root) : this._root = root, super.internal(root);
+
+	final TranslationsEs _root; // ignore: unused_field
+
+	// Translations
+	@override String get title => 'Registrador Portátil';
+	@override String get titleDesktop => 'Registrador de Escritorio';
+	@override String get newOperation => 'Nueva operación';
+	@override String get stationCallsign => 'Indicativo de la estación';
+	@override String get titleOptional => 'Título (opcional)';
+	@override String get emptyList => 'Aún no hay operaciones. Crea una para comenzar a registrar.';
+	@override String get quickLookup => 'Búsqueda Rápida';
+}
+
+// Path: dialogs
+class _Translations$dialogs$es extends Translations$dialogs$en {
+	_Translations$dialogs$es._(TranslationsEs root) : this._root = root, super.internal(root);
+
+	final TranslationsEs _root; // ignore: unused_field
+
+	// Translations
+	@override String deleteOperationConfirm({required Object title}) => '¿Eliminar operación "${title}"?';
+	@override String get operationDetails => 'Detalles de la operación';
+	@override String get activities => 'Actividades';
+	@override String deleteQsoConfirm({required Object call}) => '¿Eliminar QSO con ${call}?';
+}
+
+// Path: operation
+class _Translations$operation$es extends Translations$operation$en {
+	_Translations$operation$es._(TranslationsEs root) : this._root = root, super.internal(root);
+
+	final TranslationsEs _root; // ignore: unused_field
+
+	// Translations
+	@override late final _Translations$operation$tabs$es tabs = _Translations$operation$tabs$es._(_root);
+	@override String comingSoon({required Object label}) => '${label} — próximamente';
+	@override String get noActivities => 'No hay actividades disponibles (¿el motor de extensiones aún está iniciando?)';
+	@override String exportSuccess({required Object path}) => 'Exportado a ${path}';
+	@override String exportFailed({required Object error}) => 'Exportación fallida: ${error}';
+	@override late final _Translations$operation$sections$es sections = _Translations$operation$sections$es._(_root);
+	@override String get stationCallsignNone => 'Sin indicativo de estación';
+	@override String get titleNone => 'Sin título';
+	@override String get activitiesNone => 'Ninguna seleccionada';
+	@override String get exportAdif => 'Exportar ADIF';
+	@override String get deleteOperation => 'Eliminar operación';
+}
+
+// Path: loggingControls
+class _Translations$loggingControls$es extends Translations$loggingControls$en {
+	_Translations$loggingControls$es._(TranslationsEs root) : this._root = root, super.internal(root);
+
+	final TranslationsEs _root; // ignore: unused_field
+
+	// Translations
+	@override String get timeUtc => 'Hora (UTC)';
+	@override String get date => 'Fecha';
+	@override String get now => 'Ahora';
+	@override String get freqKHz => 'Frec kHz';
+	@override String get mode => 'Modo';
+	@override String get dupe => 'DUPE';
+	@override String get theirCall => 'Su indicativo';
+	@override String get sent => 'Enviado';
+	@override String get rcvd => 'Recibido';
+}
+
+// Path: qsoList
+class _Translations$qsoList$es extends Translations$qsoList$en {
+	_Translations$qsoList$es._(TranslationsEs root) : this._root = root, super.internal(root);
+
+	final TranslationsEs _root; // ignore: unused_field
+
+	// Translations
+	@override String get empty => 'Aún no hay QSOs — ¡haz un contacto!';
+}
+
+// Path: loggingPanel
+class _Translations$loggingPanel$es extends Translations$loggingPanel$en {
+	_Translations$loggingPanel$es._(TranslationsEs root) : this._root = root, super.internal(root);
+
+	final TranslationsEs _root; // ignore: unused_field
+
+	// Translations
+	@override String get station => 'Estación';
+	@override String get byBand => 'Por banda';
+	@override String get byMode => 'Por modo';
+}
+
+// Path: settings
+class _Translations$settings$es extends Translations$settings$en {
+	_Translations$settings$es._(TranslationsEs root) : this._root = root, super.internal(root);
+
+	final TranslationsEs _root; // ignore: unused_field
+
+	// Translations
+	@override String get title => 'Configuración';
+	@override String get general => 'Configuración General';
+	@override String get language => 'Idioma';
+	@override late final _Translations$settings$theme$es theme = _Translations$settings$theme$es._(_root);
+	@override String get operatorCall => 'Indicativo del Operador';
+	@override late final _Translations$settings$sync$es sync = _Translations$settings$sync$es._(_root);
+	@override late final _Translations$settings$qrz$es qrz = _Translations$settings$qrz$es._(_root);
+	@override String get developerMode => 'Modo Desarrollador';
+}
+
+// Path: operation.tabs
+class _Translations$operation$tabs$es extends Translations$operation$tabs$en {
+	_Translations$operation$tabs$es._(TranslationsEs root) : this._root = root, super.internal(root);
+
+	final TranslationsEs _root; // ignore: unused_field
+
+	// Translations
+	@override String qsos({required Object count}) => '${count} QSOs';
+	@override String get spots => 'SPOTS';
+	@override String get map => 'MAPA';
+	@override String get operation => 'OPERACIÓN';
+}
+
+// Path: operation.sections
+class _Translations$operation$sections$es extends Translations$operation$sections$en {
+	_Translations$operation$sections$es._(TranslationsEs root) : this._root = root, super.internal(root);
+
+	final TranslationsEs _root; // ignore: unused_field
+
+	// Translations
+	@override String get stationOperator => 'Estación y operador';
+	@override String get activities => 'Actividades';
+	@override String get operationData => 'Datos de operación';
+	@override String get dangerZone => 'Zona de peligro';
+}
+
+// Path: settings.theme
+class _Translations$settings$theme$es extends Translations$settings$theme$en {
+	_Translations$settings$theme$es._(TranslationsEs root) : this._root = root, super.internal(root);
+
+	final TranslationsEs _root; // ignore: unused_field
+
+	// Translations
+	@override String get title => 'Modo de Tema';
+	@override String get system => 'Sistema';
+	@override String get light => 'Claro';
+	@override String get dark => 'Oscuro';
+}
+
+// Path: settings.sync
+class _Translations$settings$sync$es extends Translations$settings$sync$en {
+	_Translations$settings$sync$es._(TranslationsEs root) : this._root = root, super.internal(root);
+
+	final TranslationsEs _root; // ignore: unused_field
+
+	// Translations
+	@override String get title => 'Configuración de Sincronización';
+	@override String get enable => 'Habilitar Sincronización';
+	@override String get deviceKey => 'Clave del Dispositivo';
+}
+
+// Path: settings.qrz
+class _Translations$settings$qrz$es extends Translations$settings$qrz$en {
+	_Translations$settings$qrz$es._(TranslationsEs root) : this._root = root, super.internal(root);
+
+	final TranslationsEs _root; // ignore: unused_field
+
+	// Translations
+	@override String get title => 'Credenciales de QRZ.com';
+	@override String get username => 'Usuario';
+	@override String get password => 'Contraseña';
+}
+
+/// The flat map containing all translations for locale <es>.
+/// Only for edge cases! For simple maps, use the map function of this library.
+///
+/// The Dart AOT compiler has issues with very large switch statements,
+/// so the map is split into smaller functions (512 entries each).
+extension on TranslationsEs {
+	dynamic _flatMapFunction(String path) {
+		return switch (path) {
+			'common.save' => 'Guardar',
+			'common.cancel' => 'Cancelar',
+			'common.delete' => 'Eliminar',
+			'common.create' => 'Crear',
+			'common.error' => 'Error',
+			'home.title' => 'Registrador Portátil',
+			'home.titleDesktop' => 'Registrador de Escritorio',
+			'home.newOperation' => 'Nueva operación',
+			'home.stationCallsign' => 'Indicativo de la estación',
+			'home.titleOptional' => 'Título (opcional)',
+			'home.emptyList' => 'Aún no hay operaciones. Crea una para comenzar a registrar.',
+			'home.quickLookup' => 'Búsqueda Rápida',
+			'dialogs.deleteOperationConfirm' => ({required Object title}) => '¿Eliminar operación "${title}"?',
+			'dialogs.operationDetails' => 'Detalles de la operación',
+			'dialogs.activities' => 'Actividades',
+			'dialogs.deleteQsoConfirm' => ({required Object call}) => '¿Eliminar QSO con ${call}?',
+			'operation.tabs.qsos' => ({required Object count}) => '${count} QSOs',
+			'operation.tabs.spots' => 'SPOTS',
+			'operation.tabs.map' => 'MAPA',
+			'operation.tabs.operation' => 'OPERACIÓN',
+			'operation.comingSoon' => ({required Object label}) => '${label} — próximamente',
+			'operation.noActivities' => 'No hay actividades disponibles (¿el motor de extensiones aún está iniciando?)',
+			'operation.exportSuccess' => ({required Object path}) => 'Exportado a ${path}',
+			'operation.exportFailed' => ({required Object error}) => 'Exportación fallida: ${error}',
+			'operation.sections.stationOperator' => 'Estación y operador',
+			'operation.sections.activities' => 'Actividades',
+			'operation.sections.operationData' => 'Datos de operación',
+			'operation.sections.dangerZone' => 'Zona de peligro',
+			'operation.stationCallsignNone' => 'Sin indicativo de estación',
+			'operation.titleNone' => 'Sin título',
+			'operation.activitiesNone' => 'Ninguna seleccionada',
+			'operation.exportAdif' => 'Exportar ADIF',
+			'operation.deleteOperation' => 'Eliminar operación',
+			'loggingControls.timeUtc' => 'Hora (UTC)',
+			'loggingControls.date' => 'Fecha',
+			'loggingControls.now' => 'Ahora',
+			'loggingControls.freqKHz' => 'Frec kHz',
+			'loggingControls.mode' => 'Modo',
+			'loggingControls.dupe' => 'DUPE',
+			'loggingControls.theirCall' => 'Su indicativo',
+			'loggingControls.sent' => 'Enviado',
+			'loggingControls.rcvd' => 'Recibido',
+			'qsoList.empty' => 'Aún no hay QSOs — ¡haz un contacto!',
+			'loggingPanel.station' => 'Estación',
+			'loggingPanel.byBand' => 'Por banda',
+			'loggingPanel.byMode' => 'Por modo',
+			'settings.title' => 'Configuración',
+			'settings.general' => 'Configuración General',
+			'settings.language' => 'Idioma',
+			'settings.theme.title' => 'Modo de Tema',
+			'settings.theme.system' => 'Sistema',
+			'settings.theme.light' => 'Claro',
+			'settings.theme.dark' => 'Oscuro',
+			'settings.operatorCall' => 'Indicativo del Operador',
+			'settings.sync.title' => 'Configuración de Sincronización',
+			'settings.sync.enable' => 'Habilitar Sincronización',
+			'settings.sync.deviceKey' => 'Clave del Dispositivo',
+			'settings.qrz.title' => 'Credenciales de QRZ.com',
+			'settings.qrz.username' => 'Usuario',
+			'settings.qrz.password' => 'Contraseña',
+			'settings.developerMode' => 'Modo Desarrollador',
+			_ => null,
+		};
+	}
+}

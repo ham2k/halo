@@ -9,6 +9,7 @@
 import 'package:flutter/material.dart';
 import 'package:halo_core/halo_core.dart';
 import 'package:halo_widgets/halo_widgets.dart';
+import '../i18n/strings.g.dart';
 
 /// Prompts to confirm, then soft-deletes on confirmation. Returns whether
 /// the operation was deleted.
@@ -20,10 +21,10 @@ Future<bool> confirmDeleteOperation(
   final confirmed = await showDialog<bool>(
     context: context,
     builder: (context) => AlertDialog(
-      title: Text('Delete operation "${operation.title.isEmpty ? operation.stationCall : operation.title}"?'),
+      title: Text(context.t.dialogs.deleteOperationConfirm(title: operation.title.isEmpty ? operation.stationCall : operation.title)),
       actions: [
-        TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('Cancel')),
-        FilledButton(onPressed: () => Navigator.of(context).pop(true), child: const Text('Delete')),
+        TextButton(onPressed: () => Navigator.of(context).pop(false), child: Text(context.t.common.cancel)),
+        FilledButton(onPressed: () => Navigator.of(context).pop(true), child: Text(context.t.common.delete)),
       ],
     ),
   );
@@ -40,11 +41,11 @@ Future<Operation?> editOperationDetails(
 ) async {
   final result = await editTwoFieldDialog(
     context,
-    title: 'Operation details',
-    field1Label: 'Station callsign',
+    title: context.t.dialogs.operationDetails,
+    field1Label: context.t.home.stationCallsign,
     field1Initial: operation.stationCall,
     field1Capitalization: TextCapitalization.characters,
-    field2Label: 'Title (optional)',
+    field2Label: context.t.home.titleOptional,
     field2Initial: operation.title,
   );
   if (result == null || result.$1.trim().isEmpty) return null;
@@ -157,7 +158,7 @@ class _OneFieldDialogState extends State<_OneFieldDialog> {
         onSubmitted: (_) => _save(),
       ),
       actions: [
-        TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Cancel')),
+        TextButton(onPressed: () => Navigator.of(context).pop(), child: Text(context.t.common.cancel)),
         FilledButton(onPressed: _save, child: Text(widget.saveLabel)),
       ],
     );
@@ -229,8 +230,8 @@ class _TwoFieldDialogState extends State<_TwoFieldDialog> {
         ],
       ),
       actions: [
-        TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Cancel')),
-        FilledButton(onPressed: _save, child: const Text('Save')),
+        TextButton(onPressed: () => Navigator.of(context).pop(), child: Text(context.t.common.cancel)),
+        FilledButton(onPressed: _save, child: Text(context.t.common.save)),
       ],
     );
   }

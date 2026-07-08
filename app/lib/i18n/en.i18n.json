@@ -1,0 +1,89 @@
+{
+  "common": {
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "create": "Create",
+    "error": "Error"
+  },
+  "home": {
+    "title": "Portable Logger",
+    "titleDesktop": "Desktop Logger",
+    "newOperation": "New operation",
+    "stationCallsign": "Station callsign",
+    "titleOptional": "Title (optional)",
+    "emptyList": "No operations yet. Create one to start logging.",
+    "quickLookup": "Quick Lookup"
+  },
+  "dialogs": {
+    "deleteOperationConfirm": "Delete operation \"${title}\"?",
+    "operationDetails": "Operation details",
+    "activities": "Activities",
+    "deleteQsoConfirm": "Delete QSO with ${call}?"
+  },
+  "operation": {
+    "tabs": {
+      "qsos": "${count} QSOs",
+      "spots": "SPOTS",
+      "map": "MAP",
+      "operation": "OPERATION"
+    },
+    "comingSoon": "${label} — coming soon",
+    "noActivities": "No activities available (extension runtime still starting?)",
+    "exportSuccess": "Exported to ${path}",
+    "exportFailed": "Export failed: ${error}",
+    "sections": {
+      "stationOperator": "Station & operator",
+      "activities": "Activities",
+      "operationData": "Operation data",
+      "dangerZone": "Danger zone"
+    },
+    "stationCallsignNone": "No station callsign",
+    "titleNone": "No title",
+    "activitiesNone": "None set",
+    "exportAdif": "Export ADIF",
+    "deleteOperation": "Delete operation"
+  },
+  "loggingControls": {
+    "timeUtc": "Time (UTC)",
+    "date": "Date",
+    "now": "Now",
+    "freqKHz": "Freq kHz",
+    "mode": "Mode",
+    "dupe": "DUPE",
+    "theirCall": "Their call",
+    "sent": "Sent",
+    "rcvd": "Rcvd"
+  },
+  "qsoList": {
+    "empty": "No QSOs yet — work someone!"
+  },
+  "loggingPanel": {
+    "station": "Station",
+    "byBand": "By band",
+    "byMode": "By mode"
+  },
+  "settings": {
+    "title": "Settings",
+    "general": "General Settings",
+    "language": "Language",
+    "theme": {
+      "title": "Theme Mode",
+      "system": "System",
+      "light": "Light",
+      "dark": "Dark"
+    },
+    "operatorCall": "Operator Callsign",
+    "sync": {
+      "title": "Sync Settings",
+      "enable": "Enable Sync",
+      "deviceKey": "Device Key"
+    },
+    "qrz": {
+      "title": "QRZ.com Credentials",
+      "username": "Username",
+      "password": "Password"
+    },
+    "developerMode": "Developer Mode"
+  }
+}

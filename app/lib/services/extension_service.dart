@@ -145,6 +145,7 @@ class ExtensionService {
       case 'getSettings':
         return {
           'developerMode': settings?.developerMode ?? false,
+          'locale': settings?.locale ?? 'en',
         };
       case 'dbLookupSelectOne':
         final category = params['category'] as String;
@@ -264,8 +265,8 @@ class ExtensionService {
         method: 'interpret',
         args: {
           'input': input,
-          if (operation != null) 'operation': operation,
-          if (qso != null) 'qso': qso,
+          'operation': ?operation,
+          'qso': ?qso,
         },
         timeout: const Duration(seconds: 2),
       );

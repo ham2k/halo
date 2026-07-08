@@ -10,6 +10,7 @@ export interface HookContext {
     session?: Record<string, string>
   }
   developerMode?: boolean
+  locale?: string
 }
 
 export interface CallInfo {

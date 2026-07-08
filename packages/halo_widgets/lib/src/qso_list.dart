@@ -14,8 +14,20 @@ import 'theme.dart';
 class QsoList extends StatelessWidget {
   final List<Qso> qsos;
   final QsosRepository qsosRepository;
+  final String? noQsosLabel;
+  final String Function(String call)? deleteConfirmTitleBuilder;
+  final String? cancelLabel;
+  final String? deleteLabel;
 
-  const QsoList({super.key, required this.qsos, required this.qsosRepository});
+  const QsoList({
+    super.key,
+    required this.qsos,
+    required this.qsosRepository,
+    this.noQsosLabel,
+    this.deleteConfirmTitleBuilder,
+    this.cancelLabel,
+    this.deleteLabel,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -25,7 +37,7 @@ class QsoList extends StatelessWidget {
         color: theme.colorScheme.surfaceContainerHighest,
         child: Center(
           child: Text(
-            'No QSOs yet — work someone!',
+            noQsosLabel ?? 'No QSOs yet — work someone!',
             style: theme.textTheme.bodyLarge?.copyWith(color: theme.colorScheme.outline),
           ),
         ),
@@ -133,10 +145,10 @@ class QsoList extends StatelessWidget {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text('Delete QSO with ${qso.theirCall}?'),
+        title: Text(deleteConfirmTitleBuilder?.call(qso.theirCall) ?? 'Delete QSO with ${qso.theirCall}?'),
         actions: [
-          TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('Cancel')),
-          FilledButton(onPressed: () => Navigator.of(context).pop(true), child: const Text('Delete')),
+          TextButton(onPressed: () => Navigator.of(context).pop(false), child: Text(cancelLabel ?? 'Cancel')),
+          FilledButton(onPressed: () => Navigator.of(context).pop(true), child: Text(deleteLabel ?? 'Delete')),
         ],
       ),
     );
