@@ -1,0 +1,9 @@
+// Copy this file to Local.xcconfig (gitignored, never committed) to build
+// with your own Apple Developer team instead of the Flutter default.
+//
+// Find your team ID at https://developer.apple.com/account (Membership) or
+// in Xcode > Settings > Accounts > your team. See also
+// app/macos/Runner/Configs/Local.xcconfig.sample and README.md
+// "Building locally on macOS" — same mechanism, for iOS.
+
+DEVELOPMENT_TEAM = YOUR_TEAM_ID

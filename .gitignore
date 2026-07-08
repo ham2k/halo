@@ -18,3 +18,4 @@ app/assets/extensions/
 # Local environment
 mise.local.toml
 app/macos/Runner/Configs/Local.xcconfig
+app/ios/Flutter/Local.xcconfig
