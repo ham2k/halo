@@ -1,3 +1,3 @@
-# halo_next
+# Ham2K Logger
 
 A new Flutter project.

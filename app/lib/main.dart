@@ -64,7 +64,7 @@ Future<HaLoServices> bootstrap({
 }) async {
   WidgetsFlutterBinding.ensureInitialized();
   final db = HaLoDatabase(driftDatabase(
-    name: 'halo_next',
+    name: 'ham2k_logger',
     web: kIsWeb
         ? DriftWebOptions(
             sqlite3Wasm: Uri.parse('sqlite3.wasm'),

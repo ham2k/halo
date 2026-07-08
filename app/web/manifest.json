@@ -1,6 +1,6 @@
 {
-    "name": "halo_next",
-    "short_name": "halo_next",
+    "name": "Ham2K Logger",
+    "short_name": "Ham2K Logger",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",
