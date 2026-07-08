@@ -110,12 +110,27 @@ function activateExtension(def: ExtensionDefinition) {
         if (!params?.hook) {
           throw new Error(`registerHook(${category}) called with no hook in extension ${def.key}`)
         }
+        const hookObj = params.hook as Record<string, unknown>
+        if (category === 'dataFile') {
+          if (typeof hookObj.csvToLookupEntry === 'function' && typeof hookObj.mapCsvBatch !== 'function') {
+            hookObj.mapCsvBatch = async (args: { rows: unknown[][] }) => {
+              const mapper = hookObj.csvToLookupEntry as (row: unknown) => unknown
+              return args.rows.map(row => mapper(row)).filter(x => x !== null && x !== undefined)
+            }
+          }
+          if (typeof hookObj.jsonToLookupEntry === 'function' && typeof hookObj.mapJsonBatch !== 'function') {
+            hookObj.mapJsonBatch = async (args: { entries: unknown[] }) => {
+              const mapper = hookObj.jsonToLookupEntry as (entry: unknown) => unknown
+              return args.entries.map(entry => mapper(entry)).filter(x => x !== null && x !== undefined)
+            }
+          }
+        }
         hooks.push({
           category,
           key: params.key ?? def.key,
           priority: params.priority ?? 0,
           extensionKey: def.key,
-          hook: params.hook as Record<string, unknown>,
+          hook: hookObj,
         })
       },
     })
@@ -166,6 +181,29 @@ const kernel = {
               kvKey: record.hook.kvKey ?? record.key ?? record.extensionKey,
               fields: record.hook.fields ?? [],
               oauth2: record.hook.oauth2 ?? null,
+            }
+          }
+        })
+        post({ type: 'result', id, ok: true, value: entries, jsMillis: Date.now() - startedAt })
+        return
+      }
+      if (category === 'dataFile' && method === 'getDefinition') {
+        const records = hooksFor('dataFile', null)
+        const entries = records.map((record) => {
+          return {
+            key: record.key,
+            ok: true,
+            value: {
+              key: record.key,
+              extensionKey: record.extensionKey,
+              name: record.hook.name,
+              description: record.hook.description,
+              url: record.hook.url,
+              maxAgeInDays: record.hook.maxAgeInDays,
+              fetchType: record.hook.fetchType,
+              category: record.hook.category,
+              csvOptions: record.hook.csvOptions ?? null,
+              jsonOptions: record.hook.jsonOptions ?? null,
             }
           }
         })

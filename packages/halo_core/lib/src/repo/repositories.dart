@@ -407,3 +407,65 @@ class QsosRepository {
     );
   }
 }
+
+class LookupRepository {
+  final HaLoDatabase db;
+
+  LookupRepository(this.db);
+
+  /// Performs a bulk insert or replace of lookup rows inside a single transaction.
+  Future<void> insertLookupBatch(List<LookupRow> rows) async {
+    await db.transaction(() async {
+      await db.batch((batch) {
+        for (final row in rows) {
+          batch.insert(
+            db.lookups,
+            row,
+            mode: InsertMode.insertOrReplace,
+          );
+        }
+      });
+    });
+  }
+
+  /// Deletes all lookups within a specific category.
+  Future<void> deleteCategory(String category) async {
+    await (db.delete(db.lookups)..where((l) => l.category.equals(category))).go();
+  }
+
+  /// Deletes all lookups in a category that do not have the specified updated flag value (stale data).
+  Future<void> deleteCategoryStale(String category, int updatedValue) async {
+    await (db.delete(db.lookups)
+          ..where((l) => l.category.equals(category) & l.updated.equals(updatedValue).not()))
+        .go();
+  }
+
+  /// Retrieves a single lookup row by category and key.
+  Future<LookupRow?> getLookup(String category, String key) async {
+    return await (db.select(db.lookups)
+          ..where((l) => l.category.equals(category) & l.key.equals(key)))
+        .getSingleOrNull();
+  }
+
+  /// Searches lookups in a category by matching query prefix on key or name.
+  Future<List<LookupRow>> queryLookups(String category, String query) async {
+    return await (db.select(db.lookups)
+          ..where((l) =>
+              l.category.equals(category) &
+              (l.key.like('%$query%') | l.name.like('%$query%')))
+          ..limit(100))
+        .get();
+  }
+
+  /// Searches lookups in a category by proximity to a lat/lon coordinate within a delta.
+  Future<List<LookupRow>> queryLookupsByLocation(
+      String category, double lat, double lon, double delta) async {
+    return await (db.select(db.lookups)
+          ..where((l) =>
+              l.category.equals(category) &
+              l.lat.isBetweenValues(lat - delta, lat + delta) &
+              l.lon.isBetweenValues(lon - delta, lon + delta))
+          ..limit(100))
+        .get();
+  }
+}

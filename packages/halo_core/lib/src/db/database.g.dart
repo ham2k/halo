@@ -2211,6 +2211,562 @@ class QsosBackupCompanion extends UpdateCompanion<QsoBackupRow> {
   }
 }
 
+class $LookupsTable extends Lookups with TableInfo<$LookupsTable, LookupRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $LookupsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _categoryMeta = const VerificationMeta(
+    'category',
+  );
+  @override
+  late final GeneratedColumn<String> category = GeneratedColumn<String>(
+    'category',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _subCategoryMeta = const VerificationMeta(
+    'subCategory',
+  );
+  @override
+  late final GeneratedColumn<String> subCategory = GeneratedColumn<String>(
+    'sub_category',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _keyMeta = const VerificationMeta('key');
+  @override
+  late final GeneratedColumn<String> key = GeneratedColumn<String>(
+    'key',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _nameMeta = const VerificationMeta('name');
+  @override
+  late final GeneratedColumn<String> name = GeneratedColumn<String>(
+    'name',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _dataMeta = const VerificationMeta('data');
+  @override
+  late final GeneratedColumn<String> data = GeneratedColumn<String>(
+    'data',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _latMeta = const VerificationMeta('lat');
+  @override
+  late final GeneratedColumn<double> lat = GeneratedColumn<double>(
+    'lat',
+    aliasedName,
+    true,
+    type: DriftSqlType.double,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _lonMeta = const VerificationMeta('lon');
+  @override
+  late final GeneratedColumn<double> lon = GeneratedColumn<double>(
+    'lon',
+    aliasedName,
+    true,
+    type: DriftSqlType.double,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _flagsMeta = const VerificationMeta('flags');
+  @override
+  late final GeneratedColumn<int> flags = GeneratedColumn<int>(
+    'flags',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _updatedMeta = const VerificationMeta(
+    'updated',
+  );
+  @override
+  late final GeneratedColumn<int> updated = GeneratedColumn<int>(
+    'updated',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    category,
+    subCategory,
+    key,
+    name,
+    data,
+    lat,
+    lon,
+    flags,
+    updated,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'lookups';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<LookupRow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('category')) {
+      context.handle(
+        _categoryMeta,
+        category.isAcceptableOrUnknown(data['category']!, _categoryMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_categoryMeta);
+    }
+    if (data.containsKey('sub_category')) {
+      context.handle(
+        _subCategoryMeta,
+        subCategory.isAcceptableOrUnknown(
+          data['sub_category']!,
+          _subCategoryMeta,
+        ),
+      );
+    }
+    if (data.containsKey('key')) {
+      context.handle(
+        _keyMeta,
+        key.isAcceptableOrUnknown(data['key']!, _keyMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_keyMeta);
+    }
+    if (data.containsKey('name')) {
+      context.handle(
+        _nameMeta,
+        name.isAcceptableOrUnknown(data['name']!, _nameMeta),
+      );
+    }
+    if (data.containsKey('data')) {
+      context.handle(
+        _dataMeta,
+        this.data.isAcceptableOrUnknown(data['data']!, _dataMeta),
+      );
+    }
+    if (data.containsKey('lat')) {
+      context.handle(
+        _latMeta,
+        lat.isAcceptableOrUnknown(data['lat']!, _latMeta),
+      );
+    }
+    if (data.containsKey('lon')) {
+      context.handle(
+        _lonMeta,
+        lon.isAcceptableOrUnknown(data['lon']!, _lonMeta),
+      );
+    }
+    if (data.containsKey('flags')) {
+      context.handle(
+        _flagsMeta,
+        flags.isAcceptableOrUnknown(data['flags']!, _flagsMeta),
+      );
+    }
+    if (data.containsKey('updated')) {
+      context.handle(
+        _updatedMeta,
+        updated.isAcceptableOrUnknown(data['updated']!, _updatedMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {category, key};
+  @override
+  LookupRow map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return LookupRow(
+      category: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}category'],
+      )!,
+      subCategory: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}sub_category'],
+      ),
+      key: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}key'],
+      )!,
+      name: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}name'],
+      ),
+      data: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}data'],
+      ),
+      lat: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}lat'],
+      ),
+      lon: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}lon'],
+      ),
+      flags: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}flags'],
+      ),
+      updated: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}updated'],
+      ),
+    );
+  }
+
+  @override
+  $LookupsTable createAlias(String alias) {
+    return $LookupsTable(attachedDatabase, alias);
+  }
+}
+
+class LookupRow extends DataClass implements Insertable<LookupRow> {
+  final String category;
+  final String? subCategory;
+  final String key;
+  final String? name;
+  final String? data;
+  final double? lat;
+  final double? lon;
+  final int? flags;
+  final int? updated;
+  const LookupRow({
+    required this.category,
+    this.subCategory,
+    required this.key,
+    this.name,
+    this.data,
+    this.lat,
+    this.lon,
+    this.flags,
+    this.updated,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['category'] = Variable<String>(category);
+    if (!nullToAbsent || subCategory != null) {
+      map['sub_category'] = Variable<String>(subCategory);
+    }
+    map['key'] = Variable<String>(key);
+    if (!nullToAbsent || name != null) {
+      map['name'] = Variable<String>(name);
+    }
+    if (!nullToAbsent || data != null) {
+      map['data'] = Variable<String>(data);
+    }
+    if (!nullToAbsent || lat != null) {
+      map['lat'] = Variable<double>(lat);
+    }
+    if (!nullToAbsent || lon != null) {
+      map['lon'] = Variable<double>(lon);
+    }
+    if (!nullToAbsent || flags != null) {
+      map['flags'] = Variable<int>(flags);
+    }
+    if (!nullToAbsent || updated != null) {
+      map['updated'] = Variable<int>(updated);
+    }
+    return map;
+  }
+
+  LookupsCompanion toCompanion(bool nullToAbsent) {
+    return LookupsCompanion(
+      category: Value(category),
+      subCategory: subCategory == null && nullToAbsent
+          ? const Value.absent()
+          : Value(subCategory),
+      key: Value(key),
+      name: name == null && nullToAbsent ? const Value.absent() : Value(name),
+      data: data == null && nullToAbsent ? const Value.absent() : Value(data),
+      lat: lat == null && nullToAbsent ? const Value.absent() : Value(lat),
+      lon: lon == null && nullToAbsent ? const Value.absent() : Value(lon),
+      flags: flags == null && nullToAbsent
+          ? const Value.absent()
+          : Value(flags),
+      updated: updated == null && nullToAbsent
+          ? const Value.absent()
+          : Value(updated),
+    );
+  }
+
+  factory LookupRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return LookupRow(
+      category: serializer.fromJson<String>(json['category']),
+      subCategory: serializer.fromJson<String?>(json['subCategory']),
+      key: serializer.fromJson<String>(json['key']),
+      name: serializer.fromJson<String?>(json['name']),
+      data: serializer.fromJson<String?>(json['data']),
+      lat: serializer.fromJson<double?>(json['lat']),
+      lon: serializer.fromJson<double?>(json['lon']),
+      flags: serializer.fromJson<int?>(json['flags']),
+      updated: serializer.fromJson<int?>(json['updated']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'category': serializer.toJson<String>(category),
+      'subCategory': serializer.toJson<String?>(subCategory),
+      'key': serializer.toJson<String>(key),
+      'name': serializer.toJson<String?>(name),
+      'data': serializer.toJson<String?>(data),
+      'lat': serializer.toJson<double?>(lat),
+      'lon': serializer.toJson<double?>(lon),
+      'flags': serializer.toJson<int?>(flags),
+      'updated': serializer.toJson<int?>(updated),
+    };
+  }
+
+  LookupRow copyWith({
+    String? category,
+    Value<String?> subCategory = const Value.absent(),
+    String? key,
+    Value<String?> name = const Value.absent(),
+    Value<String?> data = const Value.absent(),
+    Value<double?> lat = const Value.absent(),
+    Value<double?> lon = const Value.absent(),
+    Value<int?> flags = const Value.absent(),
+    Value<int?> updated = const Value.absent(),
+  }) => LookupRow(
+    category: category ?? this.category,
+    subCategory: subCategory.present ? subCategory.value : this.subCategory,
+    key: key ?? this.key,
+    name: name.present ? name.value : this.name,
+    data: data.present ? data.value : this.data,
+    lat: lat.present ? lat.value : this.lat,
+    lon: lon.present ? lon.value : this.lon,
+    flags: flags.present ? flags.value : this.flags,
+    updated: updated.present ? updated.value : this.updated,
+  );
+  LookupRow copyWithCompanion(LookupsCompanion data) {
+    return LookupRow(
+      category: data.category.present ? data.category.value : this.category,
+      subCategory: data.subCategory.present
+          ? data.subCategory.value
+          : this.subCategory,
+      key: data.key.present ? data.key.value : this.key,
+      name: data.name.present ? data.name.value : this.name,
+      data: data.data.present ? data.data.value : this.data,
+      lat: data.lat.present ? data.lat.value : this.lat,
+      lon: data.lon.present ? data.lon.value : this.lon,
+      flags: data.flags.present ? data.flags.value : this.flags,
+      updated: data.updated.present ? data.updated.value : this.updated,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('LookupRow(')
+          ..write('category: $category, ')
+          ..write('subCategory: $subCategory, ')
+          ..write('key: $key, ')
+          ..write('name: $name, ')
+          ..write('data: $data, ')
+          ..write('lat: $lat, ')
+          ..write('lon: $lon, ')
+          ..write('flags: $flags, ')
+          ..write('updated: $updated')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    category,
+    subCategory,
+    key,
+    name,
+    data,
+    lat,
+    lon,
+    flags,
+    updated,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is LookupRow &&
+          other.category == this.category &&
+          other.subCategory == this.subCategory &&
+          other.key == this.key &&
+          other.name == this.name &&
+          other.data == this.data &&
+          other.lat == this.lat &&
+          other.lon == this.lon &&
+          other.flags == this.flags &&
+          other.updated == this.updated);
+}
+
+class LookupsCompanion extends UpdateCompanion<LookupRow> {
+  final Value<String> category;
+  final Value<String?> subCategory;
+  final Value<String> key;
+  final Value<String?> name;
+  final Value<String?> data;
+  final Value<double?> lat;
+  final Value<double?> lon;
+  final Value<int?> flags;
+  final Value<int?> updated;
+  final Value<int> rowid;
+  const LookupsCompanion({
+    this.category = const Value.absent(),
+    this.subCategory = const Value.absent(),
+    this.key = const Value.absent(),
+    this.name = const Value.absent(),
+    this.data = const Value.absent(),
+    this.lat = const Value.absent(),
+    this.lon = const Value.absent(),
+    this.flags = const Value.absent(),
+    this.updated = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  LookupsCompanion.insert({
+    required String category,
+    this.subCategory = const Value.absent(),
+    required String key,
+    this.name = const Value.absent(),
+    this.data = const Value.absent(),
+    this.lat = const Value.absent(),
+    this.lon = const Value.absent(),
+    this.flags = const Value.absent(),
+    this.updated = const Value.absent(),
+    this.rowid = const Value.absent(),
+  }) : category = Value(category),
+       key = Value(key);
+  static Insertable<LookupRow> custom({
+    Expression<String>? category,
+    Expression<String>? subCategory,
+    Expression<String>? key,
+    Expression<String>? name,
+    Expression<String>? data,
+    Expression<double>? lat,
+    Expression<double>? lon,
+    Expression<int>? flags,
+    Expression<int>? updated,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (category != null) 'category': category,
+      if (subCategory != null) 'sub_category': subCategory,
+      if (key != null) 'key': key,
+      if (name != null) 'name': name,
+      if (data != null) 'data': data,
+      if (lat != null) 'lat': lat,
+      if (lon != null) 'lon': lon,
+      if (flags != null) 'flags': flags,
+      if (updated != null) 'updated': updated,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  LookupsCompanion copyWith({
+    Value<String>? category,
+    Value<String?>? subCategory,
+    Value<String>? key,
+    Value<String?>? name,
+    Value<String?>? data,
+    Value<double?>? lat,
+    Value<double?>? lon,
+    Value<int?>? flags,
+    Value<int?>? updated,
+    Value<int>? rowid,
+  }) {
+    return LookupsCompanion(
+      category: category ?? this.category,
+      subCategory: subCategory ?? this.subCategory,
+      key: key ?? this.key,
+      name: name ?? this.name,
+      data: data ?? this.data,
+      lat: lat ?? this.lat,
+      lon: lon ?? this.lon,
+      flags: flags ?? this.flags,
+      updated: updated ?? this.updated,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (category.present) {
+      map['category'] = Variable<String>(category.value);
+    }
+    if (subCategory.present) {
+      map['sub_category'] = Variable<String>(subCategory.value);
+    }
+    if (key.present) {
+      map['key'] = Variable<String>(key.value);
+    }
+    if (name.present) {
+      map['name'] = Variable<String>(name.value);
+    }
+    if (data.present) {
+      map['data'] = Variable<String>(data.value);
+    }
+    if (lat.present) {
+      map['lat'] = Variable<double>(lat.value);
+    }
+    if (lon.present) {
+      map['lon'] = Variable<double>(lon.value);
+    }
+    if (flags.present) {
+      map['flags'] = Variable<int>(flags.value);
+    }
+    if (updated.present) {
+      map['updated'] = Variable<int>(updated.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('LookupsCompanion(')
+          ..write('category: $category, ')
+          ..write('subCategory: $subCategory, ')
+          ..write('key: $key, ')
+          ..write('name: $name, ')
+          ..write('data: $data, ')
+          ..write('lat: $lat, ')
+          ..write('lon: $lon, ')
+          ..write('flags: $flags, ')
+          ..write('updated: $updated, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$HaLoDatabase extends GeneratedDatabase {
   _$HaLoDatabase(QueryExecutor e) : super(e);
   $HaLoDatabaseManager get managers => $HaLoDatabaseManager(this);
@@ -2220,6 +2776,7 @@ abstract class _$HaLoDatabase extends GeneratedDatabase {
     this,
   );
   late final $QsosBackupTable qsosBackup = $QsosBackupTable(this);
+  late final $LookupsTable lookups = $LookupsTable(this);
   late final Index qsosOperationStart = Index(
     'qsos_operation_start',
     'CREATE INDEX qsos_operation_start ON qsos (operation, start_at_millis)',
@@ -2233,6 +2790,7 @@ abstract class _$HaLoDatabase extends GeneratedDatabase {
     qsos,
     operationsBackup,
     qsosBackup,
+    lookups,
     qsosOperationStart,
   ];
 }
@@ -3328,6 +3886,278 @@ typedef $$QsosBackupTableProcessedTableManager =
       QsoBackupRow,
       PrefetchHooks Function()
     >;
+typedef $$LookupsTableCreateCompanionBuilder =
+    LookupsCompanion Function({
+      required String category,
+      Value<String?> subCategory,
+      required String key,
+      Value<String?> name,
+      Value<String?> data,
+      Value<double?> lat,
+      Value<double?> lon,
+      Value<int?> flags,
+      Value<int?> updated,
+      Value<int> rowid,
+    });
+typedef $$LookupsTableUpdateCompanionBuilder =
+    LookupsCompanion Function({
+      Value<String> category,
+      Value<String?> subCategory,
+      Value<String> key,
+      Value<String?> name,
+      Value<String?> data,
+      Value<double?> lat,
+      Value<double?> lon,
+      Value<int?> flags,
+      Value<int?> updated,
+      Value<int> rowid,
+    });
+
+class $$LookupsTableFilterComposer
+    extends Composer<_$HaLoDatabase, $LookupsTable> {
+  $$LookupsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get category => $composableBuilder(
+    column: $table.category,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get subCategory => $composableBuilder(
+    column: $table.subCategory,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get key => $composableBuilder(
+    column: $table.key,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get data => $composableBuilder(
+    column: $table.data,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get lat => $composableBuilder(
+    column: $table.lat,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get lon => $composableBuilder(
+    column: $table.lon,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get flags => $composableBuilder(
+    column: $table.flags,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get updated => $composableBuilder(
+    column: $table.updated,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$LookupsTableOrderingComposer
+    extends Composer<_$HaLoDatabase, $LookupsTable> {
+  $$LookupsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get category => $composableBuilder(
+    column: $table.category,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get subCategory => $composableBuilder(
+    column: $table.subCategory,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get key => $composableBuilder(
+    column: $table.key,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get data => $composableBuilder(
+    column: $table.data,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get lat => $composableBuilder(
+    column: $table.lat,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get lon => $composableBuilder(
+    column: $table.lon,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get flags => $composableBuilder(
+    column: $table.flags,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get updated => $composableBuilder(
+    column: $table.updated,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$LookupsTableAnnotationComposer
+    extends Composer<_$HaLoDatabase, $LookupsTable> {
+  $$LookupsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get category =>
+      $composableBuilder(column: $table.category, builder: (column) => column);
+
+  GeneratedColumn<String> get subCategory => $composableBuilder(
+    column: $table.subCategory,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get key =>
+      $composableBuilder(column: $table.key, builder: (column) => column);
+
+  GeneratedColumn<String> get name =>
+      $composableBuilder(column: $table.name, builder: (column) => column);
+
+  GeneratedColumn<String> get data =>
+      $composableBuilder(column: $table.data, builder: (column) => column);
+
+  GeneratedColumn<double> get lat =>
+      $composableBuilder(column: $table.lat, builder: (column) => column);
+
+  GeneratedColumn<double> get lon =>
+      $composableBuilder(column: $table.lon, builder: (column) => column);
+
+  GeneratedColumn<int> get flags =>
+      $composableBuilder(column: $table.flags, builder: (column) => column);
+
+  GeneratedColumn<int> get updated =>
+      $composableBuilder(column: $table.updated, builder: (column) => column);
+}
+
+class $$LookupsTableTableManager
+    extends
+        RootTableManager<
+          _$HaLoDatabase,
+          $LookupsTable,
+          LookupRow,
+          $$LookupsTableFilterComposer,
+          $$LookupsTableOrderingComposer,
+          $$LookupsTableAnnotationComposer,
+          $$LookupsTableCreateCompanionBuilder,
+          $$LookupsTableUpdateCompanionBuilder,
+          (LookupRow, BaseReferences<_$HaLoDatabase, $LookupsTable, LookupRow>),
+          LookupRow,
+          PrefetchHooks Function()
+        > {
+  $$LookupsTableTableManager(_$HaLoDatabase db, $LookupsTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$LookupsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$LookupsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$LookupsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> category = const Value.absent(),
+                Value<String?> subCategory = const Value.absent(),
+                Value<String> key = const Value.absent(),
+                Value<String?> name = const Value.absent(),
+                Value<String?> data = const Value.absent(),
+                Value<double?> lat = const Value.absent(),
+                Value<double?> lon = const Value.absent(),
+                Value<int?> flags = const Value.absent(),
+                Value<int?> updated = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => LookupsCompanion(
+                category: category,
+                subCategory: subCategory,
+                key: key,
+                name: name,
+                data: data,
+                lat: lat,
+                lon: lon,
+                flags: flags,
+                updated: updated,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String category,
+                Value<String?> subCategory = const Value.absent(),
+                required String key,
+                Value<String?> name = const Value.absent(),
+                Value<String?> data = const Value.absent(),
+                Value<double?> lat = const Value.absent(),
+                Value<double?> lon = const Value.absent(),
+                Value<int?> flags = const Value.absent(),
+                Value<int?> updated = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => LookupsCompanion.insert(
+                category: category,
+                subCategory: subCategory,
+                key: key,
+                name: name,
+                data: data,
+                lat: lat,
+                lon: lon,
+                flags: flags,
+                updated: updated,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$LookupsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$HaLoDatabase,
+      $LookupsTable,
+      LookupRow,
+      $$LookupsTableFilterComposer,
+      $$LookupsTableOrderingComposer,
+      $$LookupsTableAnnotationComposer,
+      $$LookupsTableCreateCompanionBuilder,
+      $$LookupsTableUpdateCompanionBuilder,
+      (LookupRow, BaseReferences<_$HaLoDatabase, $LookupsTable, LookupRow>),
+      LookupRow,
+      PrefetchHooks Function()
+    >;
 
 class $HaLoDatabaseManager {
   final _$HaLoDatabase _db;
@@ -3339,4 +4169,6 @@ class $HaLoDatabaseManager {
       $$OperationsBackupTableTableManager(_db, _db.operationsBackup);
   $$QsosBackupTableTableManager get qsosBackup =>
       $$QsosBackupTableTableManager(_db, _db.qsosBackup);
+  $$LookupsTableTableManager get lookups =>
+      $$LookupsTableTableManager(_db, _db.lookups);
 }

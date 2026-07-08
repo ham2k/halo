@@ -6,17 +6,19 @@
 //   activity                       — declarative logging + operation controls
 //   adifFields                     — SIG/POTA_REF contributions for exports
 //   spots                          — POTA.app spots source
+//   dataFile                       — CSV database download and offline caching
 // Ref types follow app-polo's QSON convention: 'pota' for hunting,
 // 'potaActivation' for activating.
 
 import { bandForFrequency } from "@ham2k/lib-operation-data"
-
+import { locationToGrid6 } from "@ham2k/lib-geo-tools"
 import { defineExtension, host } from "@ham2k/polo-sdk"
 import type {
   HookContext,
   LoggingControlDescriptor,
   Ref,
   Spot,
+  DataFileDefinition,
 } from "@ham2k/polo-sdk"
 
 const HUNTING_TYPE = 'pota'
@@ -37,6 +39,25 @@ async function fetchPark(ref: string): Promise<POTAParkInfo | null> {
   const cached = parkCache.get(ref)
   if (cached !== undefined) return cached
 
+  // 1. Try querying the offline local lookups database first
+  try {
+    const row = await host.dbLookupSelectOne('pota', ref)
+    if (row && row.data) {
+      const info: POTAParkInfo = {
+        reference: row.key,
+        name: row.name ?? '',
+        grid6: row.data.grid6 ?? '',
+        locationDesc: row.data.locationDesc ?? '',
+        active: row.flags ?? 1,
+      }
+      parkCache.set(ref, info)
+      return info
+    }
+  } catch (e) {
+    host.log(`Database lookup error for POTA park ${ref}: ${e}`)
+  }
+
+  // 2. Fall back to network fetch
   let park: POTAParkInfo | null = null
   try {
     const response = await host.fetch(`https://api.pota.app/park/${encodeURIComponent(ref)}`)
@@ -178,7 +199,7 @@ const SpotsHook = {
         const freq = parseFloat(spot.frequency)
         return {
           their: { call: spot.activator },
-          freq,
+          freq: freq || undefined,
           band: freq ? bandForFrequency(freq) : undefined,
           mode: spot.mode,
           refs: [{ ref: spot.reference, type: HUNTING_TYPE }],
@@ -206,6 +227,50 @@ function simplifyStates(locationDesc: string): string {
   return states.length > 1 ? `${oneState}+${states.length - 1}` : (oneState ?? '')
 }
 
+const potaDataFile: DataFileDefinition = {
+  key: 'pota-all-parks',
+  name: 'POTA: All Parks',
+  description: 'Database of all POTA references',
+  url: 'https://pota.app/all_parks_ext.csv',
+  maxAgeInDays: 30,
+  fetchType: 'csv',
+  category: 'pota',
+  csvOptions: {
+    hasHeaders: true,
+    delimiter: ',',
+  },
+  csvToLookupEntry: (row: Record<string, string> | string[]) => {
+    const r = row as Record<string, string>
+    if (!r.reference || !r.entityId) {
+      return null
+    }
+    const lat = parseFloat(r.latitude) || 0
+    const lon = parseFloat(r.longitude) || 0
+    const active = r.active === '1'
+    const ref = r.reference.toUpperCase()
+    const name = r.name
+
+    return {
+      subCategory: r.entityId,
+      key: ref,
+      name,
+      lat,
+      lon,
+      flags: active ? 1 : 0,
+      data: {
+        reference: ref,
+        dxccCode: parseInt(r.entityId, 10) || 0,
+        name,
+        active,
+        grid6: r.grid || locationToGrid6(lat, lon),
+        latitude: lat,
+        longitude: lon,
+        locationDesc: r.locationDesc || '',
+      },
+    }
+  },
+}
+
 defineExtension({
   key: 'pota',
   name: 'Parks on the Air',
@@ -216,5 +281,6 @@ defineExtension({
     registerHook('activity', { hook: ActivityHook, key: 'pota' })
     registerHook('adifFields', { hook: AdifFieldsHook, key: 'pota' })
     registerHook('spots', { hook: SpotsHook, key: 'pota' })
+    registerHook('dataFile', { hook: potaDataFile, key: 'pota-all-parks' })
   },
 })

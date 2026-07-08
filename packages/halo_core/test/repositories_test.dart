@@ -125,4 +125,49 @@ void main() {
       op1.title,
     ]);
   });
+
+  test('LookupRepository: insert, query, geo-query, delete stale', () async {
+    final lookupRepo = LookupRepository(db);
+
+    // Insert lookup batch.
+    await lookupRepo.insertLookupBatch([
+      LookupRow(
+        category: 'sota',
+        key: 'G/LD-001',
+        name: 'Scafell Pike',
+        lat: 54.45426,
+        lon: -3.211682,
+        updated: 1,
+      ),
+      LookupRow(
+        category: 'sota',
+        key: 'G/LD-002',
+        name: 'Helvellyn',
+        lat: 54.52688,
+        lon: -3.01725,
+        updated: 2,
+      ),
+    ]);
+
+    // Query single lookup by key.
+    final single = await lookupRepo.getLookup('sota', 'G/LD-001');
+    expect(single, isNotNull);
+    expect(single!.name, 'Scafell Pike');
+
+    // Query wildcards on name/key.
+    final match = await lookupRepo.queryLookups('sota', 'Pike');
+    expect(match, hasLength(1));
+    expect(match.first.key, 'G/LD-001');
+
+    // Proximity lookup.
+    final near = await lookupRepo.queryLookupsByLocation('sota', 54.5, -3.1, 0.2);
+    expect(near.map((r) => r.key), unorderedEquals(['G/LD-001', 'G/LD-002']));
+
+    // Stale delete deletes updated=1 when keeping updated=2.
+    await lookupRepo.deleteCategoryStale('sota', 2);
+    final lookup1 = await lookupRepo.getLookup('sota', 'G/LD-001');
+    final lookup2 = await lookupRepo.getLookup('sota', 'G/LD-002');
+    expect(lookup1, isNull);
+    expect(lookup2, isNotNull);
+  });
 }

@@ -232,6 +232,7 @@ export type Hook =
   | CommandHook
   | SyncTransportHook
   | AccountHook
+  | DataFileDefinition
   | Record<string, unknown>
 
 export interface RegisterHookParams {
@@ -261,4 +262,56 @@ export interface FetchOptions {
 export interface FetchResponse {
   status: number
   body: string
+}
+
+export interface LookupRow {
+  category: string
+  subCategory?: string
+  key: string
+  name?: string
+  data?: any
+  lat?: number
+  lon?: number
+  flags?: number
+}
+
+export interface LookupEntry {
+  subCategory?: string
+  key: string
+  name?: string
+  lat?: number
+  lon?: number
+  flags?: number
+  data?: Record<string, unknown>
+}
+
+export interface CsvOptions {
+  hasHeaders?: boolean
+  skipRows?: number
+  delimiter?: string
+}
+
+export interface JsonOptions {
+  rootPath?: string
+}
+
+export type FetchType = 'csv' | 'json' | 'raw'
+
+export interface DataFileDefinition {
+  key: string
+  name: string
+  description: string
+  url: string
+  maxAgeInDays: number
+  fetchType: FetchType
+
+  category?: string
+  csvOptions?: CsvOptions
+  csvToLookupEntry?: (row: string[] | Record<string, string>) => LookupEntry | null
+  jsonOptions?: JsonOptions
+  jsonToLookupEntry?: (entry: Record<string, any>) => LookupEntry | null
+
+  rawToJSONData?: (args: { body: string; url: string; options: Record<string, any> }) => Promise<any>
+  onLoadRawData?: (data: any) => void
+  onRemoveRawData?: () => Promise<void>
 }

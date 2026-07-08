@@ -81,12 +81,28 @@ class QsosBackup extends Table {
   BoolColumn get deleted => boolean().withDefault(const Constant(false))();
 }
 
-@DriftDatabase(tables: [Operations, Qsos, OperationsBackup, QsosBackup])
+@DataClassName('LookupRow')
+class Lookups extends Table {
+  TextColumn get category => text()();
+  TextColumn get subCategory => text().nullable()();
+  TextColumn get key => text()();
+  TextColumn get name => text().nullable()();
+  TextColumn get data => text().nullable()();
+  RealColumn get lat => real().nullable()();
+  RealColumn get lon => real().nullable()();
+  IntColumn get flags => integer().nullable()();
+  IntColumn get updated => integer().nullable()();
+
+  @override
+  Set<Column> get primaryKey => {category, key};
+}
+
+@DriftDatabase(tables: [Operations, Qsos, OperationsBackup, QsosBackup, Lookups])
 class HaLoDatabase extends _$HaLoDatabase {
   HaLoDatabase(super.executor);
 
   @override
-  int get schemaVersion => 2;
+  int get schemaVersion => 3;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -95,6 +111,9 @@ class HaLoDatabase extends _$HaLoDatabase {
           if (from < 2) {
             await m.createTable(operationsBackup);
             await m.createTable(qsosBackup);
+          }
+          if (from < 3) {
+            await m.createTable(lookups);
           }
         },
       );

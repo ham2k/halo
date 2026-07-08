@@ -12,6 +12,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart' show rootBundle;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:halo_extension_host/halo_extension_host.dart';
+import 'package:halo_core/halo_core.dart';
 import 'settings_service.dart';
 
 class ExtensionService {
@@ -24,6 +25,7 @@ class ExtensionService {
   );
 
   SettingsService? settings;
+  LookupRepository? lookups;
 
   bool get ready => _host != null;
   ExtensionHost? get host => _host;
@@ -144,6 +146,56 @@ class ExtensionService {
         return {
           'developerMode': settings?.developerMode ?? false,
         };
+      case 'dbLookupSelectOne':
+        final category = params['category'] as String;
+        final key = params['key'] as String;
+        final row = await lookups?.getLookup(category, key);
+        return row == null
+            ? null
+            : {
+                'category': row.category,
+                'subCategory': row.subCategory,
+                'key': row.key,
+                'name': row.name,
+                'data': row.data != null ? jsonDecode(row.data!) : null,
+                'lat': row.lat,
+                'lon': row.lon,
+                'flags': row.flags,
+              };
+      case 'dbLookupSelectAll':
+        final category = params['category'] as String;
+        final query = params['query'] as String;
+        final list = await lookups?.queryLookups(category, query) ?? const [];
+        return list
+            .map((row) => {
+                  'category': row.category,
+                  'subCategory': row.subCategory,
+                  'key': row.key,
+                  'name': row.name,
+                  'data': row.data != null ? jsonDecode(row.data!) : null,
+                  'lat': row.lat,
+                  'lon': row.lon,
+                  'flags': row.flags,
+                })
+            .toList();
+      case 'dbLookupSelectByLocation':
+        final category = params['category'] as String;
+        final lat = (params['lat'] as num).toDouble();
+        final lon = (params['lon'] as num).toDouble();
+        final delta = (params['delta'] as num).toDouble();
+        final list = await lookups?.queryLookupsByLocation(category, lat, lon, delta) ?? const [];
+        return list
+            .map((row) => {
+                  'category': row.category,
+                  'subCategory': row.subCategory,
+                  'key': row.key,
+                  'name': row.name,
+                  'data': row.data != null ? jsonDecode(row.data!) : null,
+                  'lat': row.lat,
+                  'lon': row.lon,
+                  'flags': row.flags,
+                })
+            .toList();
       default:
         throw UnimplementedError('Host call method $method not implemented');
     }

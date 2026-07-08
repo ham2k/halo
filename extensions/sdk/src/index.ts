@@ -8,7 +8,7 @@
 // is how host KV calls get namespaced to the extension without extensions having
 // to pass their own key around.
 
-import type { FetchOptions, FetchResponse, JSONValue, ExtensionDefinition } from "./types"
+import type { FetchOptions, FetchResponse, JSONValue, ExtensionDefinition, LookupRow } from "./types"
 
 export * from "./types"
 
@@ -60,6 +60,18 @@ export const host = {
   async setAccountSession(session: Record<string, string>): Promise<void> {
     const kvKey = kernel().getAccountKvKey(currentExtensionKey)
     await kernel().hostCall('setAccountSession', { ns: currentExtensionKey, kvKey, session })
+  },
+
+  async dbLookupSelectOne(category: string, key: string): Promise<LookupRow | null> {
+    return (await kernel().hostCall('dbLookupSelectOne', { category, key })) as LookupRow | null
+  },
+
+  async dbLookupSelectAll(category: string, query: string): Promise<LookupRow[]> {
+    return (await kernel().hostCall('dbLookupSelectAll', { category, query })) as LookupRow[]
+  },
+
+  async dbLookupSelectByLocation(category: string, lat: number, lon: number, delta: number): Promise<LookupRow[]> {
+    return (await kernel().hostCall('dbLookupSelectByLocation', { category, lat, lon, delta })) as LookupRow[]
   },
 
   log(message: string): void {

@@ -6,6 +6,7 @@
 // management stays at "constructor injection + streams" until it earns more
 // machinery — the database is the source of truth (DESIGN.md §6).
 
+import 'dart:async';
 import 'dart:io' show Platform;
 
 import 'package:drift_flutter/drift_flutter.dart';
@@ -18,6 +19,7 @@ import 'views/home_view.dart';
 import 'services/export_service.dart';
 import 'services/extension_service.dart';
 import 'services/settings_service.dart';
+import 'services/data_file_manager.dart';
 
 final navigatorKey = GlobalKey<NavigatorState>();
 
@@ -40,6 +42,15 @@ void main() async {
   }
   services.extensions.setSyncCredentials(deviceKey: settings.syncDeviceKey, operatorCall: settings.operatorCall);
   services.syncEngine.start();
+  
+  // Await the extension system being fully booted, then initialize and sync data files
+  unawaited(extensions.start().then((_) async {
+    await services.dataFiles.loadRawDataFiles();
+    await services.dataFiles.syncAllDataFiles();
+  }).catchError((e) {
+    debugPrint('[boot] failed to initialize data files: $e');
+  }));
+
   runApp(HaLoApp(services: services));
 
   // Dev nicety: launch with POLO_OPEN_FIRST_OP=1 in the environment (e.g.
@@ -69,7 +80,13 @@ class HaLoServices {
 
   late final OperationsRepository operations = OperationsRepository(db, onChange: () => syncEngine.notifyChanged());
   late final QsosRepository qsos = QsosRepository(db, onChange: () => syncEngine.notifyChanged());
+  late final LookupRepository lookups = LookupRepository(db);
   late final ExportService exports = ExportService(extensions: extensions, qsos: qsos);
+  late final DataFileManager dataFiles = DataFileManager(
+    lookups: lookups,
+    extensions: extensions,
+    prefs: settings.prefs,
+  );
 
   /// The dirty-flag sync loop (DESIGN.md §4) — batching and bookkeeping stay
   /// here in Dart; only the network call crosses into the `ham2k-lofi`
@@ -83,6 +100,7 @@ class HaLoServices {
 
   HaLoServices(this.db, this.settings, {ExtensionService? extensions}) : extensions = extensions ?? ExtensionService() {
     this.extensions.settings = settings;
+    this.extensions.lookups = lookups;
   }
 
 

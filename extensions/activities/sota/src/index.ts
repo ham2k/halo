@@ -6,14 +6,17 @@
 //   activity                       — SOTA hunting + activation controls
 //   adifFields                     — SOTA_REF/MY_SOTA_REF contributions for exports
 //   spots                          — SOTAWatch spots source
+//   dataFile                       — CSV database download and offline caching
 
 import { bandForFrequency } from "@ham2k/lib-operation-data"
+import { locationToGrid6 } from "@ham2k/lib-geo-tools"
 import { defineExtension, host } from "@ham2k/polo-sdk"
 import type {
   HookContext,
   LoggingControlDescriptor,
   Ref,
   Spot,
+  DataFileDefinition,
 } from "@ham2k/polo-sdk"
 
 const HUNTING_TYPE = 'sota'
@@ -33,10 +36,44 @@ interface SOTASummitInfo {
 
 const summitCache = new Map<string, SOTASummitInfo | null>()
 
+function isValidDateAsOfToday(str: string): boolean {
+  if (!str) return false
+  if (str === '31/12/2099') return true
+
+  const parts = str.split('/').map(Number)
+  if (parts.length !== 3) return false
+  const [day, month, year] = parts
+  const date = new Date(year, month - 1, day)
+  const today = new Date()
+  return (today.getTime() - date.getTime()) / (1000 * 60 * 60 * 24) < 14
+}
+
 async function fetchSummit(ref: string): Promise<SOTASummitInfo | null> {
   const cached = summitCache.get(ref)
   if (cached !== undefined) return cached
 
+  // 1. Try querying the offline local lookups database first
+  try {
+    const row = await host.dbLookupSelectOne('sota', ref)
+    if (row && row.data) {
+      const info: SOTASummitInfo = {
+        summitCode: row.key,
+        name: row.name ?? '',
+        associationName: row.data.association ?? '',
+        regionName: row.data.region ?? '',
+        locator: row.data.grid ?? '',
+        points: row.data.points ?? 0,
+        altM: row.data.altitude ?? 0,
+        valid: true,
+      }
+      summitCache.set(ref, info)
+      return info
+    }
+  } catch (e) {
+    host.log(`Database lookup error for SOTA summit ${ref}: ${e}`)
+  }
+
+  // 2. Fall back to network fetch
   let summit: SOTASummitInfo | null = null
   try {
     const response = await host.fetch(`https://api2.sota.org.uk/api/summits/${encodeURIComponent(ref)}`)
@@ -206,6 +243,54 @@ const SpotsHook = {
   },
 }
 
+const sotaDataFile: DataFileDefinition = {
+  key: 'sota-all-summits',
+  name: 'SOTA: All Summits',
+  description: 'Database of all SOTA references',
+  url: 'https://www.sotadata.org.uk/summitslist.csv',
+  maxAgeInDays: 30,
+  fetchType: 'csv',
+  category: 'sota',
+  csvOptions: {
+    hasHeaders: true,
+    skipRows: 1,
+    delimiter: ',',
+  },
+  csvToLookupEntry: (row: Record<string, string> | string[]) => {
+    const r = row as Record<string, string>
+    if (!r.SummitCode || !isValidDateAsOfToday(r.ValidTo)) {
+      return null
+    }
+    const lat = parseFloat(r.Latitude) || 0
+    const lon = parseFloat(r.Longitude) || 0
+    const ref = r.SummitCode.toUpperCase()
+    const name = r.SummitName
+    const altitude = parseInt(r.AltM, 10) || 0
+    const points = parseInt(r.Points, 10) || 0
+
+    return {
+      subCategory: r.AssociationName ? r.AssociationName.split('/')[0] : undefined,
+      key: ref,
+      name,
+      lat,
+      lon,
+      flags: 1,
+      data: {
+        ref,
+        name,
+        grid: locationToGrid6(lat, lon),
+        altitude,
+        points,
+        region: r.RegionName,
+        association: r.AssociationName,
+        active: true,
+        lat,
+        lon,
+      },
+    }
+  },
+}
+
 defineExtension({
   key: 'sota',
   name: 'Summits on the Air',
@@ -216,5 +301,6 @@ defineExtension({
     registerHook('activity', { hook: ActivityHook, key: 'sota' })
     registerHook('adifFields', { hook: AdifFieldsHook, key: 'sota' })
     registerHook('spots', { hook: SpotsHook, key: 'sota' })
+    registerHook('dataFile', { hook: sotaDataFile, key: 'sota-all-summits' })
   },
 })

@@ -32,6 +32,8 @@ class SettingsService extends ChangeNotifier implements SyncSettings {
 
   SettingsService(this._prefs);
 
+  SharedPreferences get prefs => _prefs;
+
   static Future<SettingsService> load() async => SettingsService(await SharedPreferences.getInstance());
 
   ThemeMode get themeMode {
