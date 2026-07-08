@@ -24,6 +24,8 @@ class FormRenderer extends StatefulWidget {
   final void Function(Map<String, dynamic> values) onSubmit;
   final VoidCallback onCancel;
   final bool showActions;
+  final bool showTitle;
+  final ValueNotifier<bool>? submittingNotifier;
 
   const FormRenderer({
     super.key,
@@ -35,6 +37,8 @@ class FormRenderer extends StatefulWidget {
     required this.onSubmit,
     required this.onCancel,
     this.showActions = true,
+    this.showTitle = true,
+    this.submittingNotifier,
   });
 
   @override
@@ -173,6 +177,7 @@ class FormRendererState extends State<FormRenderer> {
       _isSubmitting = true;
       _errors.clear();
     });
+    widget.submittingNotifier?.value = true;
 
     final errors = <String, String>{};
     final transformedValues = <String, dynamic>{..._values};
@@ -207,6 +212,7 @@ class FormRendererState extends State<FormRenderer> {
     if (mounted) {
       setState(() {
         _isSubmitting = false;
+        widget.submittingNotifier?.value = false;
         if (errors.isNotEmpty) {
           _errors.addAll(errors);
         } else {
@@ -226,7 +232,7 @@ class FormRendererState extends State<FormRenderer> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          if (widget.formDefinition['title'] != null) ...[
+          if (widget.showTitle && widget.formDefinition['title'] != null) ...[
             Text(
               widget.formDefinition['title'] as String,
               style: theme.textTheme.headlineSmall?.copyWith(
@@ -237,7 +243,7 @@ class FormRendererState extends State<FormRenderer> {
             ),
             const SizedBox(height: 4),
           ],
-          if (widget.formDefinition['subtitle'] != null) ...[
+          if (widget.showTitle && widget.formDefinition['subtitle'] != null) ...[
             Text(
               widget.formDefinition['subtitle'] as String,
               style: theme.textTheme.bodyMedium?.copyWith(
@@ -502,31 +508,90 @@ Future<Map<String, dynamic>?> showFormDialog(
   FormTransformer? transformer,
   FormOnChange? onChange,
 }) {
+  final theme = Theme.of(context);
+  final formKey = GlobalKey<FormRendererState>();
+  final submittingNotifier = ValueNotifier<bool>(false);
+
   return showDialog<Map<String, dynamic>>(
     context: context,
     barrierDismissible: false,
     builder: (context) => AlertDialog(
-      contentPadding: const EdgeInsets.fromLTRB(24, 20, 24, 16),
+      title: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            formDefinition['title'] as String? ?? 'Form',
+            style: theme.textTheme.titleLarge?.copyWith(
+              fontFamily: 'RobotoSlab',
+              fontWeight: FontWeight.bold,
+              color: theme.colorScheme.primary,
+            ),
+          ),
+          if (formDefinition['subtitle'] != null) ...[
+            const SizedBox(height: 4),
+            Text(
+              formDefinition['subtitle'] as String,
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+          ],
+        ],
+      ),
+      contentPadding: const EdgeInsets.fromLTRB(24, 8, 24, 16),
       content: SizedBox(
         width: 480,
         child: SingleChildScrollView(
           child: FormRenderer(
+            key: formKey,
             formDefinition: formDefinition,
             initialState: initialState,
             validator: validator,
             transformer: transformer,
             onChange: onChange,
+            showActions: false,
+            showTitle: false,
+            submittingNotifier: submittingNotifier,
             onSubmit: (values) => Navigator.of(context).pop(values),
             onCancel: () => Navigator.of(context).pop(null),
           ),
         ),
       ),
+      actions: [
+        ValueListenableBuilder<bool>(
+          valueListenable: submittingNotifier,
+          builder: (context, isSubmitting, _) {
+            return Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                TextButton(
+                  onPressed: isSubmitting ? null : () => Navigator.of(context).pop(null),
+                  child: const Text('Cancel'),
+                ),
+                const SizedBox(width: 12),
+                if (isSubmitting)
+                  const SizedBox(
+                    width: 24,
+                    height: 24,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                else
+                  FilledButton(
+                    onPressed: () => formKey.currentState?.submit(),
+                    child: const Text('Save'),
+                  ),
+              ],
+            );
+          },
+        ),
+      ],
     ),
   );
 }
 
 /// A fullscreen view wrapping the FormRenderer.
-class FormView extends StatelessWidget {
+class FormView extends StatefulWidget {
   final Map<String, dynamic> formDefinition;
   final Map<String, dynamic> initialState;
   final FormValidator? validator;
@@ -547,10 +612,26 @@ class FormView extends StatelessWidget {
   });
 
   @override
+  State<FormView> createState() => _FormViewState();
+}
+
+class _FormViewState extends State<FormView> {
+  final _formKey = GlobalKey<FormRendererState>();
+  final _submittingNotifier = ValueNotifier<bool>(false);
+
+  @override
+  void dispose() {
+    _submittingNotifier.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
     return Scaffold(
       appBar: AppBar(
-        title: Text(formDefinition['title'] as String? ?? 'Form'),
+        title: Text(widget.formDefinition['title'] as String? ?? 'Form'),
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(24),
@@ -558,16 +639,61 @@ class FormView extends StatelessWidget {
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 600),
             child: FormRenderer(
-              formDefinition: formDefinition,
-              initialState: initialState,
-              validator: validator,
-              transformer: transformer,
-              onChange: onChange,
-              onSubmit: onSubmit,
-              onCancel: onCancel,
+              key: _formKey,
+              formDefinition: widget.formDefinition,
+              initialState: widget.initialState,
+              validator: widget.validator,
+              transformer: widget.transformer,
+              onChange: widget.onChange,
+              showActions: false,
+              showTitle: false,
+              submittingNotifier: _submittingNotifier,
+              onSubmit: widget.onSubmit,
+              onCancel: widget.onCancel,
             ),
           ),
         ),
+      ),
+      bottomNavigationBar: ValueListenableBuilder<bool>(
+        valueListenable: _submittingNotifier,
+        builder: (context, isSubmitting, _) {
+          return Container(
+            decoration: BoxDecoration(
+              border: Border(
+                top: BorderSide(
+                  color: theme.colorScheme.outlineVariant.withOpacity(0.5),
+                  width: 1,
+                ),
+              ),
+            ),
+            child: SafeArea(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    TextButton(
+                      onPressed: isSubmitting ? null : widget.onCancel,
+                      child: const Text('Cancel'),
+                    ),
+                    const SizedBox(width: 12),
+                    if (isSubmitting)
+                      const SizedBox(
+                        width: 24,
+                        height: 24,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    else
+                      FilledButton(
+                        onPressed: () => _formKey.currentState?.submit(),
+                        child: const Text('Save'),
+                      ),
+                  ],
+                ),
+              ),
+            ),
+          );
+        },
       ),
     );
   }

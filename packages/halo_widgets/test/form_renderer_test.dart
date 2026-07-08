@@ -314,5 +314,32 @@ void main() {
       final nameTextField2 = tester.widget<TextField>(nameFieldFinder);
       expect(nameTextField2.controller?.text, 'Agreed Name');
     });
+
+    testWidgets('FormView pins actions at the bottom and submit works', (tester) async {
+      Map<String, dynamic>? submittedValues;
+      await tester.pumpWidget(MaterialApp(
+        home: FormView(
+          formDefinition: formDefinition,
+          initialState: const {
+            'name': 'Pinned Test',
+          },
+          onSubmit: (vals) {
+            submittedValues = vals;
+          },
+          onCancel: () {},
+        ),
+      ));
+
+      expect(find.text('Test Form'), findsWidgets);
+
+      final saveButtonFinder = find.widgetWithText(FilledButton, 'Save');
+      expect(saveButtonFinder, findsOneWidget);
+
+      await tester.tap(saveButtonFinder);
+      await tester.pumpAndSettle();
+
+      expect(submittedValues, isNotNull);
+      expect(submittedValues!['name'], 'Pinned Test');
+    });
   });
 }

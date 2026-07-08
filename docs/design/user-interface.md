@@ -71,10 +71,15 @@ The footer should include padding to avoid being hidden by rounded corners.
 
 # Dialogs
 
-Dialogs can have a title, subtitle and description (markdown) that are pinned on the top, then the dialog content and finally a set of actions (buttons) that are pinned at the bottom.
+Dialogs can have a title and subtitle that are pinned on the top, then the dialog content and finally a set of actions (buttons) that are pinned at the bottom.
 
 Clicking outside of the dialog or pressing the escape key will dismiss the dialog.
 
+# Forms
+
+Forms should have a clear and consistent layout, with labels and fields aligned properly.
+
+When rendering forms in a View, instead of a dialog, the actions should be pinned at the bottom just like on dialogs.
 
 ## Future directions
 
