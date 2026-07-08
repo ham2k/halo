@@ -56,12 +56,18 @@
     "rcvd": "Rcvd"
   },
   "qsoList": {
-    "empty": "No QSOs yet — work someone!"
+    "empty": "No QSOs yet — work someone!",
+    "duplicate": "Duplicate — same call, band and mode already logged",
+    "newEntity": "New DXCC entity",
+    "newBandOrMode": "New band or mode for this callsign"
   },
   "loggingPanel": {
     "station": "Station",
     "byBand": "By band",
-    "byMode": "By mode"
+    "byMode": "By mode",
+    "scoring": "Scoring",
+    "dxccEntities": "DXCC entities",
+    "duplicates": "Duplicates"
   },
   "settings": {
     "title": "Settings",

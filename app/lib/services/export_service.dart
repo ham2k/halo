@@ -43,10 +43,7 @@ class ExportService {
       'export',
       key: format,
       method: 'generateExport',
-      args: {
-        'operation': {...operation.data, 'uuid': operation.uuid},
-        'qsos': [for (final qso in qsoList) qso.data],
-      },
+      args: qsonPayloadFor(operation: operation, qsos: qsoList),
       timeout: const Duration(seconds: 30),
     ) as Map;
 

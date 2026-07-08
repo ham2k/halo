@@ -138,6 +138,9 @@ class _Translations$qsoList$es extends Translations$qsoList$en {
 
 	// Translations
 	@override String get empty => 'Aún no hay QSOs — ¡haz un contacto!';
+	@override String get duplicate => 'Duplicado — mismo indicativo, banda y modo ya registrados';
+	@override String get newEntity => 'Nueva entidad DXCC';
+	@override String get newBandOrMode => 'Nueva banda o modo para este indicativo';
 }
 
 // Path: loggingPanel
@@ -150,6 +153,9 @@ class _Translations$loggingPanel$es extends Translations$loggingPanel$en {
 	@override String get station => 'Estación';
 	@override String get byBand => 'Por banda';
 	@override String get byMode => 'Por modo';
+	@override String get scoring => 'Puntuación';
+	@override String get dxccEntities => 'Entidades DXCC';
+	@override String get duplicates => 'Duplicados';
 }
 
 // Path: settings
@@ -283,9 +289,15 @@ extension on TranslationsEs {
 			'loggingControls.sent' => 'Enviado',
 			'loggingControls.rcvd' => 'Recibido',
 			'qsoList.empty' => 'Aún no hay QSOs — ¡haz un contacto!',
+			'qsoList.duplicate' => 'Duplicado — mismo indicativo, banda y modo ya registrados',
+			'qsoList.newEntity' => 'Nueva entidad DXCC',
+			'qsoList.newBandOrMode' => 'Nueva banda o modo para este indicativo',
 			'loggingPanel.station' => 'Estación',
 			'loggingPanel.byBand' => 'Por banda',
 			'loggingPanel.byMode' => 'Por modo',
+			'loggingPanel.scoring' => 'Puntuación',
+			'loggingPanel.dxccEntities' => 'Entidades DXCC',
+			'loggingPanel.duplicates' => 'Duplicados',
 			'settings.title' => 'Configuración',
 			'settings.general' => 'Configuración General',
 			'settings.language' => 'Idioma',

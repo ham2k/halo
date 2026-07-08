@@ -135,6 +135,64 @@ export interface ExportHook {
   generateExport(args: ExportRequest, ctx: HookContext): Promise<ExportResult>
 }
 
+/// Per-QSO verdict from one scoring rule (dupe check, DXCC entity worked,
+/// band/mode worked, etc). `value` is the point contribution (usually 0 or 1);
+/// `dupe`/`notices`/`alerts` drive UI badges on the QSO row.
+export interface QsoScoreVerdict {
+  value: number
+  dupe?: boolean
+  notices?: string[]
+  alerts?: string[]
+  [extra: string]: JSONValue | undefined
+}
+
+/// All rules' verdicts for one QSO, keyed by rule key (e.g. 'dupe', 'dxcc',
+/// 'bandsAndModes'). Cached verbatim into `qsos.score_cache`.
+export type QsoScoreEntry = Record<string, QsoScoreVerdict>
+
+/// One rule's running tally, either for a calendar day or the whole
+/// operation. Shape is rule-specific beyond the common summary fields.
+export interface ScoreTally {
+  key: string
+  for: 'day' | 'operation'
+  icon?: string
+  label?: string
+  summary?: string
+  longSummary?: string
+  total: number
+  [extra: string]: JSONValue | undefined
+}
+
+/// One calendar-day bucket (UTC, following app-polo/web-lofi's convention)
+/// with that day's accumulated tallies per rule key.
+export interface DayScoreSummary {
+  day: number
+  count: number
+  scores: Record<string, ScoreTally>
+}
+
+export interface ScoreQsosRequest {
+  operation: Record<string, JSONValue>
+  qsos: Record<string, JSONValue>[]
+}
+
+export interface ScoreQsosResult {
+  /// Keyed by QSO uuid — written verbatim into that QSO's `score_cache` column.
+  qsoScores: Record<string, QsoScoreEntry>
+  daySections: DayScoreSummary[]
+  /// Cumulative tallies across the whole operation (last day section's
+  /// running totals) — cached on the operation, not any one QSO.
+  operationSummary: Record<string, ScoreTally>
+}
+
+/// Registered under category `scoring`. One coarse batched call scores an
+/// entire operation's QSOs at once (DESIGN.md §4: "score 500 QSOs in one
+/// call, not 500 calls") — day-sectioning and accumulation both happen here,
+/// inside the runtime, not orchestrated call-by-call from Dart.
+export interface ScoringHook {
+  scoreQsos(args: ScoreQsosRequest, ctx: HookContext): Promise<ScoreQsosResult>
+}
+
 export interface CommandAction {
   setVfo?: {
     freq?: number
@@ -227,6 +285,7 @@ export type Hook =
   | LookupHook
   | SpotsHook
   | ExportHook
+  | ScoringHook
   | RefHandlerHook
   | ActivityHook
   | AdifFieldsHook

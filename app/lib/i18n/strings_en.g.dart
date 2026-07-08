@@ -210,6 +210,15 @@ class Translations$qsoList$en {
 
 	/// en: 'No QSOs yet — work someone!'
 	String get empty => 'No QSOs yet — work someone!';
+
+	/// en: 'Duplicate — same call, band and mode already logged'
+	String get duplicate => 'Duplicate — same call, band and mode already logged';
+
+	/// en: 'New DXCC entity'
+	String get newEntity => 'New DXCC entity';
+
+	/// en: 'New band or mode for this callsign'
+	String get newBandOrMode => 'New band or mode for this callsign';
 }
 
 // Path: loggingPanel
@@ -228,6 +237,15 @@ class Translations$loggingPanel$en {
 
 	/// en: 'By mode'
 	String get byMode => 'By mode';
+
+	/// en: 'Scoring'
+	String get scoring => 'Scoring';
+
+	/// en: 'DXCC entities'
+	String get dxccEntities => 'DXCC entities';
+
+	/// en: 'Duplicates'
+	String get duplicates => 'Duplicates';
 }
 
 // Path: settings
@@ -409,9 +427,15 @@ extension on Translations {
 			'loggingControls.sent' => 'Sent',
 			'loggingControls.rcvd' => 'Rcvd',
 			'qsoList.empty' => 'No QSOs yet — work someone!',
+			'qsoList.duplicate' => 'Duplicate — same call, band and mode already logged',
+			'qsoList.newEntity' => 'New DXCC entity',
+			'qsoList.newBandOrMode' => 'New band or mode for this callsign',
 			'loggingPanel.station' => 'Station',
 			'loggingPanel.byBand' => 'By band',
 			'loggingPanel.byMode' => 'By mode',
+			'loggingPanel.scoring' => 'Scoring',
+			'loggingPanel.dxccEntities' => 'DXCC entities',
+			'loggingPanel.duplicates' => 'Duplicates',
 			'settings.title' => 'Settings',
 			'settings.general' => 'General Settings',
 			'settings.language' => 'Language',

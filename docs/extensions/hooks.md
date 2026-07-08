@@ -159,6 +159,42 @@ required 3+ digits before any decimal point; the extension delegates to
 handles this correctly. Future command hooks (spotting, operator change…)
 register in the same category and compete on priority with these.
 
+## ✅ `scoring` — per-operation score batches
+
+One hook call scores an entire operation's QSOs at once (DESIGN.md §4:
+"score 500 QSOs in one call, not 500 calls"). Day-sectioning (24h UTC
+buckets, following app-polo/web-lofi's convention) and accumulation both
+happen inside the runtime — the host just supplies the operation and its
+QSOs and gets back everything it needs to cache.
+
+```ts
+interface ScoringHook {
+  scoreQsos(args: ScoreQsosRequest, ctx): Promise<ScoreQsosResult>
+}
+// ScoreQsosRequest: {operation, qsos}   — full QSON, one coarse call
+// ScoreQsosResult:  {
+//   qsoScores: Record<uuid, Record<ruleKey, QsoScoreVerdict>>,
+//   daySections: {day, count, scores: Record<ruleKey, ScoreTally>}[],
+//   operationSummary: Record<ruleKey, ScoreTally>,
+// }
+```
+
+`Qsos.watchForOperation` already filters deleted rows and orders by
+`startAtMillis`, so unlike web-lofi's `analyzeAndSectionQSOs` there's no
+`deleted`/`event` row bookkeeping on this side of the bridge.
+`ScoringService` (`app/lib/services/scoring_service.dart`) writes
+`qsoScores` into each QSO's `score_cache` column (`QsosRepository.updateScoreCache`,
+one batched transaction) and `daySections`/`operationSummary` into the
+operation's `local_data` (`OperationsRepository.updateLocalData`) — never
+synced content, so list scroll and score displays both read from SQLite and
+never wait on the JS runtime. Triggered on operation open; per-edit debounced
+rescoring is not wired up yet (DESIGN.md §11).
+
+Implemented by: `scoring` (key `core`) — three rules so far: duplicate-contact
+detection, DXCC entities worked (via `@ham2k/lib-country-files`'
+`useBuiltinCountryFile`, no network needed), and bands/modes worked. US
+States and Canadian Provinces rules are deferred (DESIGN.md §11).
+
 ## ✅ `bench` — kernel diagnostics
 
 Registered by the kernel itself (`bench/kernel`): `echo` (bridge round-trip
@@ -171,7 +207,6 @@ extensions.
 
 | Category | Role | Notes |
 |---|---|---|
-| `scoring` | per-QSO score, day accumulator, summarizer | Runs batched (score N QSOs per call); results cached in the `qsos.score_cache` column so list scroll never waits on JS. |
 | `syncTransport` | LoFi (and future) sync backends | The Dart core keeps the loop/batching/dirty flags; the hook only transports payloads. Sync must survive a wedged runtime. |
 | `confirmation` | QSL/confirmation sources (spot-history cross-checking) | |
 | `settingsPanel` | extension settings forms via the declarative catalog | Needed for QRZ credentials. |

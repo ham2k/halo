@@ -60,6 +60,7 @@ Future<Operation?> editOperationDetails(
     qsoCount: operation.qsoCount,
     startAtMillisMin: operation.startAtMillisMin,
     startAtMillisMax: operation.startAtMillisMax,
+    localData: operation.localData,
   );
   await operations.saveData(updated);
   return updated;

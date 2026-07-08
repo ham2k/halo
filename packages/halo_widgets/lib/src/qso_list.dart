@@ -18,6 +18,9 @@ class QsoList extends StatelessWidget {
   final String Function(String call)? deleteConfirmTitleBuilder;
   final String? cancelLabel;
   final String? deleteLabel;
+  final String? duplicateLabel;
+  final String? newEntityLabel;
+  final String? newBandOrModeLabel;
 
   const QsoList({
     super.key,
@@ -27,6 +30,9 @@ class QsoList extends StatelessWidget {
     this.deleteConfirmTitleBuilder,
     this.cancelLabel,
     this.deleteLabel,
+    this.duplicateLabel,
+    this.newEntityLabel,
+    this.newBandOrModeLabel,
   });
 
   @override
@@ -84,7 +90,9 @@ class QsoList extends StatelessWidget {
                 child: Row(
                 children: [
                   SizedBox(width: 28, child: Text('$number', style: monoDim, textAlign: TextAlign.right)),
-                  const SizedBox(width: 8),
+                  const SizedBox(width: 6),
+                  SizedBox(width: 12, child: _scoreBadge(context, qso)),
+                  const SizedBox(width: 6),
                   Text(timeLabel, style: monoDim),
                   const SizedBox(width: 10),
                   // The callsign never truncates; the name absorbs the squeeze.
@@ -139,6 +147,50 @@ class QsoList extends StatelessWidget {
       },
       ),
     );
+  }
+
+  /// A small colored dot summarizing this QSO's cached scoring verdict
+  /// (`qso.scores`, written by `ScoringService` from the `scoring` hook's
+  /// batched results — see DESIGN.md §4). `null` (no dot) until the
+  /// operation has been scored, or when the QSO is unremarkable: not a
+  /// dupe, no new DXCC entity, no new band/mode. Priority when more than
+  /// one applies: duplicate > new entity > new band/mode.
+  Widget? _scoreBadge(BuildContext context, Qso qso) {
+    final scores = qso.scores;
+    if (scores == null) return null;
+
+    final theme = Theme.of(context);
+    final poloColors = HaLoColors.of(context);
+
+    final dupeScore = scores['dupe'] as Map<String, dynamic>?;
+    final isDupe = dupeScore?['dupe'] == true;
+    final notices = (dupeScore?['notices'] as List?)?.cast<String>() ?? const [];
+    final hasBandOrModeNotice = notices.contains('newBand') || notices.contains('newMode');
+
+    final dxccScore = scores['dxcc'] as Map<String, dynamic>?;
+    final isNewEntity = (dxccScore?['value'] as num?) == 1;
+
+    Color color;
+    String? tooltip;
+    if (isDupe) {
+      color = theme.colorScheme.error;
+      tooltip = duplicateLabel;
+    } else if (isNewEntity) {
+      color = poloColors.important;
+      tooltip = newEntityLabel;
+    } else if (hasBandOrModeNotice) {
+      color = poloColors.notice;
+      tooltip = newBandOrModeLabel;
+    } else {
+      return null;
+    }
+
+    final dot = Container(
+      width: 8,
+      height: 8,
+      decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+    );
+    return tooltip == null ? dot : Tooltip(message: tooltip, child: dot);
   }
 
   Future<void> _confirmDelete(BuildContext context, Qso qso) async {

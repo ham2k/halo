@@ -22,6 +22,7 @@ import 'services/export_service.dart';
 import 'services/extension_service.dart';
 import 'services/metrics_service.dart';
 import 'services/purchase_service.dart';
+import 'services/scoring_service.dart';
 import 'services/settings_service.dart';
 import 'services/update_service.dart';
 import 'services/data_file_manager.dart';
@@ -120,6 +121,7 @@ class HaLoServices {
   late final QsosRepository qsos = QsosRepository(db, onChange: () => syncEngine.notifyChanged());
   late final LookupRepository lookups = LookupRepository(db);
   late final ExportService exports = ExportService(extensions: extensions, qsos: qsos);
+  late final ScoringService scoring = ScoringService(extensions: extensions, qsos: qsos, operations: operations);
   late final DataFileManager dataFiles = DataFileManager(
     lookups: lookups,
     extensions: extensions,

@@ -42,6 +42,9 @@ class _LoggingPanelState extends State<LoggingPanel> {
       deleteConfirmTitleBuilder: (call) => context.t.dialogs.deleteQsoConfirm(call: call),
       cancelLabel: context.t.common.cancel,
       deleteLabel: context.t.common.delete,
+      duplicateLabel: context.t.qsoList.duplicate,
+      newEntityLabel: context.t.qsoList.newEntity,
+      newBandOrModeLabel: context.t.qsoList.newBandOrMode,
     );
 
     return Column(
@@ -114,6 +117,15 @@ class InformationArea extends StatelessWidget {
       byMode.update(qso.mode ?? '?', (count) => count + 1, ifAbsent: () => 1);
     }
 
+    // Cached by `ScoringService.rescoreOperation` into `Operations.localData`
+    // (never synced — DESIGN.md §4) each time this operation is (re)scored;
+    // absent until the first rescore completes.
+    final scoring = operation.localData['scoring'] as Map<String, dynamic>?;
+    final operationSummary = scoring?['operationSummary'] as Map<String, dynamic>?;
+    final dxcc = operationSummary?['dxcc'] as Map<String, dynamic>?;
+    final dxccCount = (dxcc?['entities'] as Map?)?.length ?? 0;
+    final duplicateCount = ((operationSummary?['qsoCount'] as Map?)?['duplicates'] as num?)?.toInt() ?? 0;
+
     final theme = Theme.of(context);
     return ListView(
       padding: const EdgeInsets.all(16),
@@ -140,6 +152,12 @@ class InformationArea extends StatelessWidget {
         const SizedBox(height: 16),
         Text(context.t.loggingPanel.byMode, style: theme.textTheme.titleSmall),
         for (final entry in byMode.entries) Text('${entry.key}: ${entry.value}'),
+        if (operationSummary != null) ...[
+          const SizedBox(height: 16),
+          Text(context.t.loggingPanel.scoring, style: theme.textTheme.titleSmall),
+          Text('${context.t.loggingPanel.dxccEntities}: $dxccCount'),
+          Text('${context.t.loggingPanel.duplicates}: $duplicateCount'),
+        ],
       ],
     );
   }

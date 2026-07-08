@@ -409,4 +409,110 @@ __polo.defineExtension({
     expect(content, contains('<SOTA_REF:8>G/LD-001'));
     expect(content, contains('<MY_SOTA_REF:9>W6/SD-026'));
   });
+
+  test('Scoring extension detects dupes and tallies DXCC/bands/modes in one batched call', () async {
+    final scoringFile = File('../../app/assets/extensions/scoring.js');
+    if (!kernelFile.existsSync() || !scoringFile.existsSync()) {
+      markTestSkipped('bundles not built — run `npm run build` in extensions/ first');
+      return;
+    }
+
+    final host = await ExtensionHost.start(
+      kernelSource: kernelFile.readAsStringSync(),
+      extensions: [ExtensionBundle(key: 'scoring', source: scoringFile.readAsStringSync())],
+      useIsolate: false,
+    );
+    addTearDown(host.dispose);
+
+    final day1 = DateTime.utc(2026, 7, 5, 18);
+    final day2 = DateTime.utc(2026, 7, 6, 12);
+
+    final result = await host.invokeHook('scoring', key: 'core', method: 'scoreQsos', args: {
+      'operation': {'uuid': 'op-1', 'stationCall': 'KI2D'},
+      'qsos': [
+        {
+          'uuid': 'q1',
+          'our': {'call': 'KI2D'},
+          'their': {'call': 'W1AW'},
+          'band': '20m',
+          'mode': 'SSB',
+          'startAtMillis': day1.millisecondsSinceEpoch,
+        },
+        // Same call/band/mode as q1 — should score as a duplicate.
+        {
+          'uuid': 'q2',
+          'our': {'call': 'KI2D'},
+          'their': {'call': 'W1AW'},
+          'band': '20m',
+          'mode': 'SSB',
+          'startAtMillis': day1.add(const Duration(minutes: 5)).millisecondsSinceEpoch,
+        },
+        // Different DXCC entity, still day 1.
+        {
+          'uuid': 'q3',
+          'our': {'call': 'KI2D'},
+          'their': {'call': 'EA4XYZ'},
+          'band': '40m',
+          'mode': 'CW',
+          'startAtMillis': day1.add(const Duration(minutes: 10)).millisecondsSinceEpoch,
+        },
+        // Next day — new day section, DXCC/bands/modes tallies carry over.
+        {
+          'uuid': 'q4',
+          'our': {'call': 'KI2D'},
+          'their': {'call': 'JA1ABC'},
+          'band': '20m',
+          'mode': 'SSB',
+          'startAtMillis': day2.millisecondsSinceEpoch,
+        },
+        // New band (15m), but mode (SSB) was already worked on q1/q4 — must
+        // still score as a new band, not get zeroed out just because the
+        // mode was already known.
+        {
+          'uuid': 'q5',
+          'our': {'call': 'KI2D'},
+          'their': {'call': 'G4ABC'},
+          'band': '15m',
+          'mode': 'SSB',
+          'startAtMillis': day2.add(const Duration(minutes: 5)).millisecondsSinceEpoch,
+        },
+      ],
+    }) as Map;
+
+    final qsoScores = result['qsoScores'] as Map;
+    expect(qsoScores['q1']['dupe']['value'], 1);
+    expect(qsoScores['q2']['dupe']['dupe'], true);
+    expect(qsoScores['q2']['dupe']['value'], 0);
+    expect(qsoScores['q3']['dupe']['value'], 1);
+
+    expect(qsoScores['q1']['dxcc']['entityPrefix'], 'K');
+    expect(qsoScores['q3']['dxcc']['entityPrefix'], 'EA');
+    expect(qsoScores['q4']['dxcc']['entityPrefix'], 'JA');
+
+    // q5 is a new band (15m) even though its mode (SSB) was already worked
+    // on q1/q4 — scoring must credit a QSO as new if EITHER the band or the
+    // mode is new, not require BOTH to already be known.
+    expect(qsoScores['q5']['bandsAndModes']['value'], 1);
+    expect(qsoScores['q5']['bandsAndModes']['band'], '15m');
+
+    final daySections = result['daySections'] as List;
+    expect(daySections.length, 2);
+
+    final day1Scores = (daySections[0] as Map)['scores'] as Map;
+    expect(day1Scores['qsoCount']['total'], 2); // q1 (new) + q3 (new); q2 is a dupe
+    expect(day1Scores['qsoCount']['duplicates'], 1);
+    expect(day1Scores['dxcc']['total'], 2); // K, EA
+
+    final day2Scores = (daySections[1] as Map)['scores'] as Map;
+    expect(day2Scores['qsoCount']['total'], 2); // q4 + q5
+    expect(day2Scores['dxcc']['total'], 4); // K, EA, JA carried over from day 1, plus G
+
+    final operationSummary = result['operationSummary'] as Map;
+    expect(operationSummary['qsoCount']['total'], 4);
+    expect(operationSummary['qsoCount']['duplicates'], 1);
+    expect(operationSummary['dxcc']['total'], 4);
+    // q1 (new 20m+SSB) + q3 (new 40m+CW) + q5 (new 15m, even though SSB was
+    // already known) = 3; q2 and q4 repeat an already-known band AND mode.
+    expect(operationSummary['bandsAndModes']['total'], 3);
+  });
 }

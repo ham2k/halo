@@ -15,6 +15,14 @@ import 'package:halo_extension_host/halo_extension_host.dart';
 import 'package:halo_core/halo_core.dart';
 import 'settings_service.dart';
 
+/// The QSON payload shape shared by every hook that takes a whole operation's
+/// worth of QSOs in one coarse call (export, scoring, …) — `operation.data`
+/// with `uuid` folded in, plus each QSO's raw QSON `data`.
+Map<String, dynamic> qsonPayloadFor({required Operation operation, required List<Qso> qsos}) => {
+      'operation': {...operation.data, 'uuid': operation.uuid},
+      'qsos': [for (final qso in qsos) qso.data],
+    };
+
 class ExtensionService {
   ExtensionHost? _host;
   Future<void>? _starting;

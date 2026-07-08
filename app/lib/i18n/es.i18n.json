@@ -56,12 +56,18 @@
     "rcvd": "Recibido"
   },
   "qsoList": {
-    "empty": "Aún no hay QSOs — ¡haz un contacto!"
+    "empty": "Aún no hay QSOs — ¡haz un contacto!",
+    "duplicate": "Duplicado — mismo indicativo, banda y modo ya registrados",
+    "newEntity": "Nueva entidad DXCC",
+    "newBandOrMode": "Nueva banda o modo para este indicativo"
   },
   "loggingPanel": {
     "station": "Estación",
     "byBand": "Por banda",
-    "byMode": "Por modo"
+    "byMode": "Por modo",
+    "scoring": "Puntuación",
+    "dxccEntities": "Entidades DXCC",
+    "duplicates": "Duplicados"
   },
   "settings": {
     "title": "Configuración",

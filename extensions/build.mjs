@@ -71,6 +71,7 @@ function sharedLibsPlugin(extensionDependencies = {}) {
 const bundles = [
   { key: 'kernel', entry: 'sdk/src/kernel.ts', kind: 'kernel' },
   { key: 'adif', entry: 'core/adif/src/index.ts', kind: 'extension' },
+  { key: 'scoring', entry: 'core/scoring/src/index.ts', kind: 'extension' },
   { key: 'radio-commands', entry: 'core/radio-commands/src/index.ts', kind: 'extension' },
   { key: 'hamdb', entry: 'lookups/hamdb/src/index.ts', kind: 'extension' },
   { key: 'qrz', entry: 'lookups/qrz/src/index.ts', kind: 'extension' },
