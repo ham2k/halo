@@ -68,6 +68,14 @@ In mobile devices, the footer is hidden when they keyboard is open.
 
 The footer should include padding to avoid being hidden by rounded corners.
 
+
+# Dialogs
+
+Dialogs can have a title, subtitle and description (markdown) that are pinned on the top, then the dialog content and finally a set of actions (buttons) that are pinned at the bottom.
+
+Clicking outside of the dialog or pressing the escape key will dismiss the dialog.
+
+
 ## Future directions
 
 * We will implement a layout mechanism that lets users drag and drop secondary controls to reorder them, and they can drag a secondary control outside of the current secondary area to create a separate secondary control strip where the user can leave a control open independently from the original secondary control strip.

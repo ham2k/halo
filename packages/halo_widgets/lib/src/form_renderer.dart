@@ -41,6 +41,7 @@ class FormRenderer extends StatefulWidget {
 class FormRendererState extends State<FormRenderer> {
   final Map<String, dynamic> _values = {};
   final Map<String, TextEditingController> _controllers = {};
+  final Map<String, FocusNode> _focusNodes = {};
   final Map<String, String> _errors = {};
   bool _isSubmitting = false;
 
@@ -86,6 +87,14 @@ class FormRendererState extends State<FormRenderer> {
             _errors.remove(key);
           });
         });
+
+        final focusNode = FocusNode();
+        _focusNodes[key] = focusNode;
+        focusNode.addListener(() {
+          if (!focusNode.hasFocus) {
+            _validateFieldOnBlur(key);
+          }
+        });
       }
     }
   }
@@ -95,7 +104,43 @@ class FormRendererState extends State<FormRenderer> {
     for (final c in _controllers.values) {
       c.dispose();
     }
+    for (final fn in _focusNodes.values) {
+      fn.dispose();
+    }
     super.dispose();
+  }
+
+  Future<void> _validateFieldOnBlur(String key) async {
+    if (widget.validator == null) return;
+    final val = _values[key];
+    final error = await widget.validator!(key, val, _values);
+    if (!mounted) return;
+    setState(() {
+      if (error != null && error.isNotEmpty) {
+        _errors[key] = error;
+      } else {
+        _errors.remove(key);
+      }
+    });
+  }
+
+  Iterable<String>? _getAutofillHints(String key, String fieldType) {
+    if (fieldType == 'email') {
+      return const [AutofillHints.email];
+    }
+    if (fieldType == 'text') {
+      final k = key.toLowerCase();
+      if (k.contains('name')) {
+        return const [AutofillHints.name];
+      }
+      if (k.contains('phone') || k.contains('tel')) {
+        return const [AutofillHints.telephoneNumber];
+      }
+      if (k.contains('address')) {
+        return const [AutofillHints.fullStreetAddress];
+      }
+    }
+    return null;
   }
 
   Future<void> submit() async {
@@ -152,77 +197,79 @@ class FormRendererState extends State<FormRenderer> {
     final theme = Theme.of(context);
     final elements = _elements;
 
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        if (widget.formDefinition['title'] != null) ...[
-          Text(
-            widget.formDefinition['title'] as String,
-            style: theme.textTheme.headlineSmall?.copyWith(
-              fontFamily: 'RobotoSlab',
-              fontWeight: FontWeight.bold,
-              color: theme.colorScheme.primary,
-            ),
-          ),
-          const SizedBox(height: 4),
-        ],
-        if (widget.formDefinition['subtitle'] != null) ...[
-          Text(
-            widget.formDefinition['subtitle'] as String,
-            style: theme.textTheme.bodyMedium?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant,
-            ),
-          ),
-          const SizedBox(height: 16),
-        ],
-        ListView.separated(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          itemCount: elements.length,
-          separatorBuilder: (context, index) => const SizedBox(height: 16),
-          itemBuilder: (context, index) {
-            final el = elements[index];
-            final type = el['type'] as String?;
-            switch (type) {
-              case 'header':
-                return _buildHeader(el, theme);
-              case 'divider':
-                return _buildDivider(el, theme);
-              case 'markdown':
-                return _buildMarkdown(el, theme);
-              case 'field':
-                return _buildField(el, theme);
-              default:
-                return const SizedBox.shrink();
-            }
-          },
-        ),
-        if (widget.showActions) ...[
-          const SizedBox(height: 24),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.end,
-            children: [
-              TextButton(
-                onPressed: _isSubmitting ? null : widget.onCancel,
-                child: const Text('Cancel'),
+    return AutofillGroup(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          if (widget.formDefinition['title'] != null) ...[
+            Text(
+              widget.formDefinition['title'] as String,
+              style: theme.textTheme.headlineSmall?.copyWith(
+                fontFamily: 'RobotoSlab',
+                fontWeight: FontWeight.bold,
+                color: theme.colorScheme.primary,
               ),
-              const SizedBox(width: 12),
-              if (_isSubmitting)
-                const SizedBox(
-                  width: 24,
-                  height: 24,
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                )
-              else
-                FilledButton(
-                  onPressed: submit,
-                  child: const Text('Save'),
-                ),
-            ],
+            ),
+            const SizedBox(height: 4),
+          ],
+          if (widget.formDefinition['subtitle'] != null) ...[
+            Text(
+              widget.formDefinition['subtitle'] as String,
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+            const SizedBox(height: 16),
+          ],
+          ListView.separated(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            itemCount: elements.length,
+            separatorBuilder: (context, index) => const SizedBox(height: 16),
+            itemBuilder: (context, index) {
+              final el = elements[index];
+              final type = el['type'] as String?;
+              switch (type) {
+                case 'header':
+                  return _buildHeader(el, theme);
+                case 'divider':
+                  return _buildDivider(el, theme);
+                case 'markdown':
+                  return _buildMarkdown(el, theme);
+                case 'field':
+                  return _buildField(el, theme);
+                default:
+                  return const SizedBox.shrink();
+              }
+            },
           ),
+          if (widget.showActions) ...[
+            const SizedBox(height: 24),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                TextButton(
+                  onPressed: _isSubmitting ? null : widget.onCancel,
+                  child: const Text('Cancel'),
+                ),
+                const SizedBox(width: 12),
+                if (_isSubmitting)
+                  const SizedBox(
+                    width: 24,
+                    height: 24,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                else
+                  FilledButton(
+                    onPressed: submit,
+                    child: const Text('Save'),
+                  ),
+              ],
+            ),
+          ],
         ],
-      ],
+      ),
     );
   }
 
@@ -290,34 +337,47 @@ class FormRendererState extends State<FormRenderer> {
       case 'text':
         return TextField(
           controller: _controllers[key],
+          focusNode: _focusNodes[key],
+          autofillHints: _getAutofillHints(key, 'text'),
           decoration: poloFieldDecoration(context, label, hintText: placeholder, errorText: errorText),
         );
       case 'multiline':
         return TextField(
           controller: _controllers[key],
+          focusNode: _focusNodes[key],
           maxLines: null,
           minLines: 3,
+          autofillHints: _getAutofillHints(key, 'multiline'),
           decoration: poloFieldDecoration(context, label, hintText: placeholder, errorText: errorText),
         );
       case 'email':
         return TextField(
           controller: _controllers[key],
+          focusNode: _focusNodes[key],
           keyboardType: TextInputType.emailAddress,
+          autofillHints: _getAutofillHints(key, 'email'),
           decoration: poloFieldDecoration(context, label, hintText: placeholder, errorText: errorText),
         );
       case 'callsign':
         return TextField(
           controller: _controllers[key],
+          focusNode: _focusNodes[key],
           textCapitalization: TextCapitalization.characters,
           inputFormatters: [
             TextInputFormatter.withFunction((oldValue, newValue) => newValue.copyWith(text: newValue.text.toUpperCase())),
           ],
+          autofillHints: _getAutofillHints(key, 'callsign'),
           decoration: poloFieldDecoration(context, label, hintText: placeholder, errorText: errorText),
         );
       case 'number':
         return TextField(
           controller: _controllers[key],
-          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+          focusNode: _focusNodes[key],
+          keyboardType: const TextInputType.numberWithOptions(decimal: true, signed: true),
+          inputFormatters: [
+            FilteringTextInputFormatter.allow(RegExp(r'[0-9.-]')),
+          ],
+          autofillHints: _getAutofillHints(key, 'number'),
           decoration: poloFieldDecoration(context, label, hintText: placeholder, errorText: errorText),
         );
       case 'select':
@@ -338,6 +398,7 @@ class FormRendererState extends State<FormRenderer> {
                     _values[key] = val;
                     _errors.remove(key);
                   });
+                  _validateFieldOnBlur(key);
                 },
         );
       case 'radio':
@@ -363,6 +424,7 @@ class FormRendererState extends State<FormRenderer> {
                           _values[key] = val;
                           _errors.remove(key);
                         });
+                        _validateFieldOnBlur(key);
                       },
                 contentPadding: EdgeInsets.zero,
                 dense: true,
@@ -388,6 +450,7 @@ class FormRendererState extends State<FormRenderer> {
                     _values[key] = val ?? false;
                     _errors.remove(key);
                   });
+                  _validateFieldOnBlur(key);
                 },
           contentPadding: EdgeInsets.zero,
           controlAffinity: ListTileControlAffinity.leading,

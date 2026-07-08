@@ -225,5 +225,57 @@ void main() {
       expect(find.text('Name is invalid'), findsOneWidget);
       expect(submitted, isFalse);
     });
+
+    testWidgets('triggers validation on blur and configures keyboard/autofill attributes', (tester) async {
+      var validationCalledKey = '';
+
+      await tester.pumpWidget(MaterialApp(
+        home: Scaffold(
+          body: SingleChildScrollView(
+            child: FormRenderer(
+              formDefinition: formDefinition,
+              initialState: const {
+                'name': 'John Doe',
+              },
+              validator: (key, value, state) async {
+                validationCalledKey = key;
+                if (key == 'name' && value == 'invalid') {
+                  return 'Bad name';
+                }
+                return null;
+              },
+              onSubmit: (_) {},
+              onCancel: () {},
+            ),
+          ),
+        ),
+      ));
+
+      // Check text field attributes
+      final nameFieldFinder = find.widgetWithText(TextField, 'Name Field');
+      final nameTextField = tester.widget<TextField>(nameFieldFinder);
+      expect(nameTextField.autofillHints, contains(AutofillHints.name));
+      expect(nameTextField.focusNode, isNotNull);
+
+      // Check number field attributes (decimal & signed keyboard, formatters)
+      final powerFieldFinder = find.widgetWithText(TextField, 'Power Field');
+      final powerTextField = tester.widget<TextField>(powerFieldFinder);
+      expect(powerTextField.keyboardType!.decimal, isTrue);
+      expect(powerTextField.keyboardType!.signed, isTrue);
+      expect(powerTextField.inputFormatters, isNotEmpty);
+
+      // Focus the name field, enter 'invalid', then focus another field (to blur)
+      await tester.tap(nameFieldFinder);
+      await tester.enterText(nameFieldFinder, 'invalid');
+      await tester.pumpAndSettle();
+
+      // Tap on power field to shift focus (blur name field)
+      await tester.tap(powerFieldFinder);
+      await tester.pumpAndSettle();
+
+      // Verify validator was run for 'name' on blur and error is displayed
+      expect(validationCalledKey, 'name');
+      expect(find.text('Bad name'), findsOneWidget);
+    });
   });
 }
