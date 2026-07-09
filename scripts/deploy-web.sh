@@ -2,7 +2,7 @@
 set -e
 
 # Default Cloudflare Pages project name
-PROJECT_NAME="ham2k-halo-dev"
+PROJECT_NAME="halo-dev-ham2k-net"
 
 # Parse arguments for custom project name
 while [[ "$#" -gt 0 ]]; do
