@@ -1,5 +1,6 @@
 # Node
 node_modules/
+.wrangler/
 
 # Flutter / Dart
 .dart_tool/
