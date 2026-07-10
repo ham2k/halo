@@ -150,14 +150,15 @@ InputDecoration poloFieldDecoration(
 }) {
   final theme = Theme.of(context);
   final color = labelColor ?? theme.colorScheme.onSurfaceVariant;
+  final double scale = MediaQuery.textScalerOf(context).scale(1.0);
   return InputDecoration(
     labelText: label,
     hintText: hintText,
     errorText: errorText,
     isDense: true,
     floatingLabelBehavior: FloatingLabelBehavior.always,
-    floatingLabelStyle: TextStyle(fontSize: 14, color: color),
-    contentPadding: const EdgeInsets.fromLTRB(4, 6, 4, 8),
+    floatingLabelStyle: TextStyle(fontSize: 14 * scale, color: color),
+    contentPadding: EdgeInsets.fromLTRB(4 * scale, 6 * scale, 4 * scale, 8 * scale),
   );
 }
 

@@ -293,8 +293,51 @@ class _HaLoAppState extends State<HaLoApp> {
               ),
             ),
             chipTheme: baseTheme.chipTheme.copyWith(
+              labelStyle: baseTheme.chipTheme.labelStyle?.copyWith(
+                fontSize: (baseTheme.chipTheme.labelStyle?.fontSize ?? 14.0) * scale,
+              ),
               iconTheme: (baseTheme.chipTheme.iconTheme ?? const IconThemeData()).copyWith(
                 size: (baseTheme.chipTheme.iconTheme?.size ?? 24.0) * scale,
+              ),
+              padding: baseTheme.chipTheme.padding != null
+                  ? baseTheme.chipTheme.padding! * scale
+                  : EdgeInsets.symmetric(horizontal: 12.0 * scale, vertical: 8.0 * scale),
+            ),
+            floatingActionButtonTheme: baseTheme.floatingActionButtonTheme.copyWith(
+              sizeConstraints: BoxConstraints.tightFor(
+                width: 56.0 * scale,
+                height: 56.0 * scale,
+              ),
+              extendedSizeConstraints: BoxConstraints.tightFor(
+                height: 48.0 * scale,
+              ),
+            ),
+            segmentedButtonTheme: SegmentedButtonThemeData(
+              style: baseTheme.segmentedButtonTheme.style?.copyWith(
+                padding: WidgetStateProperty.all(
+                  EdgeInsets.symmetric(horizontal: 12.0 * scale, vertical: 8.0 * scale),
+                ),
+              ),
+            ),
+            filledButtonTheme: FilledButtonThemeData(
+              style: baseTheme.filledButtonTheme.style?.copyWith(
+                padding: WidgetStateProperty.all(
+                  EdgeInsets.symmetric(horizontal: 24.0 * scale, vertical: 12.0 * scale),
+                ),
+              ),
+            ),
+            elevatedButtonTheme: ElevatedButtonThemeData(
+              style: baseTheme.elevatedButtonTheme.style?.copyWith(
+                padding: WidgetStateProperty.all(
+                  EdgeInsets.symmetric(horizontal: 24.0 * scale, vertical: 12.0 * scale),
+                ),
+              ),
+            ),
+            outlinedButtonTheme: OutlinedButtonThemeData(
+              style: baseTheme.outlinedButtonTheme.style?.copyWith(
+                padding: WidgetStateProperty.all(
+                  EdgeInsets.symmetric(horizontal: 24.0 * scale, vertical: 12.0 * scale),
+                ),
               ),
             ),
           );
