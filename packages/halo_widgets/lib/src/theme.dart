@@ -121,9 +121,11 @@ TextStyle haloMonoStyle(
   FontWeight? fontWeight,
   Color? color,
 }) {
+  final double baseSize = fontSize ?? 14.0;
+  final double scaledSize = MediaQuery.textScalerOf(context).scale(baseSize);
   return TextStyle(
     fontFamily: 'RobotoMono',
-    fontSize: fontSize,
+    fontSize: scaledSize,
     fontWeight: fontWeight,
     color: color,
     fontFeatures: _tabularFigures,

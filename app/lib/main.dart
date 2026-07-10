@@ -271,11 +271,42 @@ class _HaLoAppState extends State<HaLoApp> {
           if (child == null) return const SizedBox.shrink();
           final settings = widget.services.settings;
           final mediaQueryData = MediaQuery.of(context);
+          final scale = settings.fontScale.scaleFactor;
+
+          final baseTheme = Theme.of(context);
+          final scaledTheme = baseTheme.copyWith(
+            iconTheme: baseTheme.iconTheme.copyWith(
+              size: (baseTheme.iconTheme.size ?? 24.0) * scale,
+            ),
+            primaryIconTheme: baseTheme.primaryIconTheme.copyWith(
+              size: (baseTheme.primaryIconTheme.size ?? 24.0) * scale,
+            ),
+            appBarTheme: baseTheme.appBarTheme.copyWith(
+              iconTheme: (baseTheme.appBarTheme.iconTheme ?? const IconThemeData()).copyWith(
+                size: (baseTheme.appBarTheme.iconTheme?.size ?? 24.0) * scale,
+              ),
+              actionsIconTheme: (baseTheme.appBarTheme.actionsIconTheme ?? const IconThemeData()).copyWith(
+                size: (baseTheme.appBarTheme.actionsIconTheme?.size ?? 24.0) * scale,
+              ),
+            ),
+            chipTheme: baseTheme.chipTheme.copyWith(
+              iconTheme: (baseTheme.chipTheme.iconTheme ?? const IconThemeData()).copyWith(
+                size: (baseTheme.chipTheme.iconTheme?.size ?? 24.0) * scale,
+              ),
+            ),
+          );
+
           return MediaQuery(
             data: mediaQueryData.copyWith(
-              textScaler: RelativeTextScaler(mediaQueryData.textScaler, settings.fontScale.scaleFactor),
+              textScaler: RelativeTextScaler(mediaQueryData.textScaler, scale),
             ),
-            child: child,
+            child: Theme(
+              data: scaledTheme,
+              child: IconTheme(
+                data: scaledTheme.iconTheme,
+                child: child,
+              ),
+            ),
           );
         },
       ),
