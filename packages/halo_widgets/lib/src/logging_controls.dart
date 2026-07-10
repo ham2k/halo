@@ -989,9 +989,9 @@ class _LoggingControlsState extends State<LoggingControls> {
                                 onPressed: _canLog ? _log : null,
                                 style: FilledButton.styleFrom(
                                   backgroundColor:
-                                      theme.colorScheme.primaryContainer,
+                                      theme.colorScheme.tertiary,
                                   foregroundColor:
-                                      theme.colorScheme.onPrimaryContainer,
+                                      theme.colorScheme.onTertiary,
                                   minimumSize: Size(
                                     64 * MediaQuery.textScalerOf(context).scale(1.0),
                                     44 * MediaQuery.textScalerOf(context).scale(1.0),
