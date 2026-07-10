@@ -28,6 +28,7 @@ class SettingsService extends ChangeNotifier implements SyncSettings {
   static const _syncStateKey = 'syncState';
   static const _developerModeKey = 'developerMode';
   static const _localeKey = 'locale';
+  static const _fontScaleKey = 'fontScale';
 
   final SharedPreferences _prefs;
 
@@ -136,4 +137,46 @@ class SettingsService extends ChangeNotifier implements SyncSettings {
     await _prefs.setString(_localeKey, localeCode);
     notifyListeners();
   }
+
+  FontScale get fontScale {
+    final value = _prefs.getString(_fontScaleKey);
+    return FontScale.values.firstWhere(
+      (e) => e.name == value,
+      orElse: () => FontScale.normal,
+    );
+  }
+
+  Future<void> setFontScale(FontScale scale) async {
+    await _prefs.setString(_fontScaleKey, scale.name);
+    notifyListeners();
+  }
+
+  Future<void> increaseFontScale() async {
+    final current = fontScale;
+    final index = current.index;
+    if (index < FontScale.values.length - 1) {
+      await setFontScale(FontScale.values[index + 1]);
+    }
+  }
+
+  Future<void> decreaseFontScale() async {
+    final current = fontScale;
+    final index = current.index;
+    if (index > 0) {
+      await setFontScale(FontScale.values[index - 1]);
+    }
+  }
+}
+
+enum FontScale {
+  smallest(0.70, 'Smallest'),
+  smaller(0.85, 'Smaller'),
+  normal(1.00, 'Normal'),
+  larger(1.20, 'Larger'),
+  largest(1.40, 'Largest');
+
+  final double scaleFactor;
+  final String label;
+
+  const FontScale(this.scaleFactor, this.label);
 }

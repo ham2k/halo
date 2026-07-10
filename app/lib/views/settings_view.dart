@@ -130,14 +130,14 @@ class _SettingsViewState extends State<SettingsView> {
 
       return Scaffold(
         appBar: PreferredSize(
-          preferredSize: const Size.fromHeight(kToolbarHeight),
+          preferredSize: Size.fromHeight(Theme.of(context).appBarTheme.toolbarHeight ?? 56.0),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               SizedBox(
                 width: 320,
                 child: AppBar(
-                  leadingWidth: isMacOSChromelessWindow ? 56 + macOSTrafficLightInset + macOSTrafficLightGap : null,
+                  leadingWidth: isMacOSChromelessWindow ? 48 + macOSTrafficLightInset + macOSTrafficLightGap : null,
                   leading: MouseRegion(
                     cursor: SystemMouseCursors.click,
                     child: isMacOSChromelessWindow
@@ -182,7 +182,7 @@ class _SettingsViewState extends State<SettingsView> {
     } else {
       return Scaffold(
         appBar: AppBar(
-          leadingWidth: isMacOSChromelessWindow ? 56 + macOSTrafficLightInset + macOSTrafficLightGap : null,
+          leadingWidth: isMacOSChromelessWindow ? 48 + macOSTrafficLightInset + macOSTrafficLightGap : null,
           leading: MouseRegion(
             cursor: SystemMouseCursors.click,
             child: isMacOSChromelessWindow
@@ -351,6 +351,53 @@ class _GeneralPanel extends StatelessWidget {
                 await settings.setLocale(newLocale);
                 LocaleSettings.setLocaleRaw(newLocale);
               },
+            ),
+            const SizedBox(height: 24),
+            Text(
+              t.settings.fontScale,
+              style: const TextStyle(fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 8),
+            InputDecorator(
+              decoration: const InputDecoration(
+                contentPadding: EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+              ),
+              child: DropdownButtonHideUnderline(
+                child: DropdownButton<FontScale>(
+                  value: settings.fontScale,
+                  isDense: true,
+                  isExpanded: true,
+                  items: FontScale.values.map((scale) {
+                    String translatedLabel;
+                    switch (scale) {
+                      case FontScale.smallest:
+                        translatedLabel = t.settings.fontScaleOpts.smallest;
+                        break;
+                      case FontScale.smaller:
+                        translatedLabel = t.settings.fontScaleOpts.smaller;
+                        break;
+                      case FontScale.normal:
+                        translatedLabel = t.settings.fontScaleOpts.normal;
+                        break;
+                      case FontScale.larger:
+                        translatedLabel = t.settings.fontScaleOpts.larger;
+                        break;
+                      case FontScale.largest:
+                        translatedLabel = t.settings.fontScaleOpts.largest;
+                        break;
+                    }
+                    return DropdownMenuItem<FontScale>(
+                      value: scale,
+                      child: Text(translatedLabel),
+                    );
+                  }).toList(),
+                  onChanged: (scale) {
+                    if (scale != null) {
+                      settings.setFontScale(scale);
+                    }
+                  },
+                ),
+              ),
             ),
           ],
         );
@@ -1242,6 +1289,7 @@ class _AccountDialogState extends State<_AccountDialog> {
                       ],
                       TextField(
                         controller: controller,
+                        style: theme.textTheme.bodyLarge?.copyWith(fontSize: 15),
                         obscureText: field['type'] == 'secret',
                         keyboardType: field['type'] == 'email'
                             ? TextInputType.emailAddress

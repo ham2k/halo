@@ -12,6 +12,7 @@ import 'dart:io' show Platform;
 import 'package:drift_flutter/drift_flutter.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:halo_core/halo_core.dart';
 import 'package:halo_widgets/halo_widgets.dart';
@@ -192,17 +193,65 @@ class HaLoServices {
 
 
 
-class HaLoApp extends StatelessWidget {
+class HaLoApp extends StatefulWidget {
   final HaLoServices services;
 
   const HaLoApp({super.key, required this.services});
 
   @override
+  State<HaLoApp> createState() => _HaLoAppState();
+}
+
+class _HaLoAppState extends State<HaLoApp> {
+  @override
+  void initState() {
+    super.initState();
+    HardwareKeyboard.instance.addHandler(_handleKeyEvent);
+  }
+
+  @override
+  void dispose() {
+    HardwareKeyboard.instance.removeHandler(_handleKeyEvent);
+    super.dispose();
+  }
+
+  bool _handleKeyEvent(KeyEvent event) {
+    if (event is! KeyDownEvent) return false;
+
+    final isMetaPressed = HardwareKeyboard.instance.isMetaPressed;
+    final isControlPressed = HardwareKeyboard.instance.isControlPressed;
+    final hasModifier = isMetaPressed || isControlPressed;
+
+    if (!hasModifier) return false;
+
+    final key = event.logicalKey;
+    final settings = widget.services.settings;
+
+    if (key == LogicalKeyboardKey.equal ||
+        key == LogicalKeyboardKey.add ||
+        key == LogicalKeyboardKey.numpadAdd) {
+      settings.increaseFontScale();
+      return true;
+    } else if (key == LogicalKeyboardKey.minus ||
+        key == LogicalKeyboardKey.numpadSubtract ||
+        key == LogicalKeyboardKey.underscore) {
+      settings.decreaseFontScale();
+      return true;
+    } else if (key == LogicalKeyboardKey.digit0 ||
+        key == LogicalKeyboardKey.numpad0) {
+      settings.setFontScale(FontScale.normal);
+      return true;
+    }
+
+    return false;
+  }
+
+  @override
   Widget build(BuildContext context) {
-    // Rebuilds when Settings changes themeMode, so toggling it in the
+    // Rebuilds when Settings changes themeMode or fontScale, so toggling it in the
     // Settings screen takes effect immediately rather than needing a restart.
     return AnimatedBuilder(
-      animation: services.settings,
+      animation: widget.services.settings,
       builder: (context, _) => MaterialApp(
         // Android task-switcher card title / web tab title — matches each
         // platform's own OS-level app name (see isWindowedPlatform's other
@@ -215,10 +264,35 @@ class HaLoApp extends StatelessWidget {
         localizationsDelegates: GlobalMaterialLocalizations.delegates,
         theme: buildHaLoTheme(Brightness.light),
         darkTheme: buildHaLoTheme(Brightness.dark),
-        themeMode: services.settings.themeMode,
+        themeMode: widget.services.settings.themeMode,
         debugShowCheckedModeBanner: false,
-        home: HomeView(services: services),
+        home: HomeView(services: widget.services),
+        builder: (context, child) {
+          if (child == null) return const SizedBox.shrink();
+          final settings = widget.services.settings;
+          final mediaQueryData = MediaQuery.of(context);
+          return MediaQuery(
+            data: mediaQueryData.copyWith(
+              textScaler: RelativeTextScaler(mediaQueryData.textScaler, settings.fontScale.scaleFactor),
+            ),
+            child: child,
+          );
+        },
       ),
     );
   }
+}
+
+class RelativeTextScaler extends TextScaler {
+  final TextScaler parent;
+  final double scaleFactor;
+
+  const RelativeTextScaler(this.parent, this.scaleFactor);
+
+  @override
+  // ignore: deprecated_member_use
+  double get textScaleFactor => parent.textScaleFactor * scaleFactor;
+
+  @override
+  double scale(double fontSize) => parent.scale(fontSize) * scaleFactor;
 }

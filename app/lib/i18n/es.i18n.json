@@ -79,6 +79,14 @@
       "light": "Claro",
       "dark": "Oscuro"
     },
+    "fontScale": "Tamaño de Letra",
+    "fontScaleOpts": {
+      "smallest": "Más pequeña",
+      "smaller": "Pequeña",
+      "normal": "Normal",
+      "larger": "Grande",
+      "largest": "Más grande"
+    },
     "operatorCall": "Indicativo del Operador",
     "sync": {
       "title": "Configuración de Sincronización",

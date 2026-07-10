@@ -79,6 +79,14 @@
       "light": "Light",
       "dark": "Dark"
     },
+    "fontScale": "Font Scale",
+    "fontScaleOpts": {
+      "smallest": "Smallest",
+      "smaller": "Smaller",
+      "normal": "Normal",
+      "larger": "Larger",
+      "largest": "Largest"
+    },
     "operatorCall": "Operator Callsign",
     "sync": {
       "title": "Sync Settings",

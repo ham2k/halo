@@ -169,6 +169,8 @@ class _Translations$settings$es extends Translations$settings$en {
 	@override String get general => 'Configuración General';
 	@override String get language => 'Idioma';
 	@override late final _Translations$settings$theme$es theme = _Translations$settings$theme$es._(_root);
+	@override String get fontScale => 'Tamaño de Letra';
+	@override late final _Translations$settings$fontScaleOpts$es fontScaleOpts = _Translations$settings$fontScaleOpts$es._(_root);
 	@override String get operatorCall => 'Indicativo del Operador';
 	@override late final _Translations$settings$sync$es sync = _Translations$settings$sync$es._(_root);
 	@override late final _Translations$settings$qrz$es qrz = _Translations$settings$qrz$es._(_root);
@@ -212,6 +214,20 @@ class _Translations$settings$theme$es extends Translations$settings$theme$en {
 	@override String get system => 'Sistema';
 	@override String get light => 'Claro';
 	@override String get dark => 'Oscuro';
+}
+
+// Path: settings.fontScaleOpts
+class _Translations$settings$fontScaleOpts$es extends Translations$settings$fontScaleOpts$en {
+	_Translations$settings$fontScaleOpts$es._(TranslationsEs root) : this._root = root, super.internal(root);
+
+	final TranslationsEs _root; // ignore: unused_field
+
+	// Translations
+	@override String get smallest => 'Más pequeña';
+	@override String get smaller => 'Pequeña';
+	@override String get normal => 'Normal';
+	@override String get larger => 'Grande';
+	@override String get largest => 'Más grande';
 }
 
 // Path: settings.sync
@@ -305,6 +321,12 @@ extension on TranslationsEs {
 			'settings.theme.system' => 'Sistema',
 			'settings.theme.light' => 'Claro',
 			'settings.theme.dark' => 'Oscuro',
+			'settings.fontScale' => 'Tamaño de Letra',
+			'settings.fontScaleOpts.smallest' => 'Más pequeña',
+			'settings.fontScaleOpts.smaller' => 'Pequeña',
+			'settings.fontScaleOpts.normal' => 'Normal',
+			'settings.fontScaleOpts.larger' => 'Grande',
+			'settings.fontScaleOpts.largest' => 'Más grande',
 			'settings.operatorCall' => 'Indicativo del Operador',
 			'settings.sync.title' => 'Configuración de Sincronización',
 			'settings.sync.enable' => 'Habilitar Sincronización',

@@ -197,7 +197,7 @@ class _OperationViewState extends State<OperationView> {
           length: 4,
           child: Scaffold(
             appBar: AppBar(
-              leadingWidth: isMacOSChromelessWindow ? 56 + macOSTrafficLightInset + macOSTrafficLightGap : null,
+              leadingWidth: isMacOSChromelessWindow ? 48 + macOSTrafficLightInset + macOSTrafficLightGap : null,
               leading: MouseRegion(
                 cursor: SystemMouseCursors.click,
                 child: isMacOSChromelessWindow

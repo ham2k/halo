@@ -23,3 +23,13 @@ Implement a
 ## Location
 
 Implement the location options in the Operation Settings Panel
+
+### Status bar
+
+A status bar on the bottom of the screen, which in mobile apps is hidden unless there is important information to display.  It can show transient single line text messages, progress bars, or notices. Each can have an icon, a title and markdown text. Notices can have richer content, multi-line text, and action buttons (see app-polo for examples). 
+
+Extensions and app components can add messages programmatically, and messages and progress status can have a key (prefixed with the extension key automatically, extensions cannot modify other extension messages) that allows them to update or remove existing messages.
+
+If there are multiple items active, it shows the last one but can be tapped to expand it and see at least five lines in a scrollable area. If there are notices, they are displayed as a stack of post-it like rectangles on top of the rest of the active items scrollable area.
+
+On the settings screen, in the about section, there should be a link to a screen that shows "Recent Notices" where they are still displayed as post-it notes but one after another, with most recent on top.

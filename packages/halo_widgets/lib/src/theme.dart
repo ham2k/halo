@@ -253,9 +253,11 @@ ThemeData buildHaLoTheme(Brightness brightness) {
       // platform's own convention.
       centerTitle: !isWindowedPlatform,
       elevation: 0,
+      toolbarHeight: 48.0,
+      titleSpacing: 8.0,
       titleTextStyle: TextStyle(
         fontFamily: 'RobotoSlab',
-        fontSize: 20,
+        fontSize: 18,
         fontWeight: FontWeight
             .w900, // "Roboto Slab Black" in app-polo's globalStyles.js
         color: colorScheme.onPrimary,

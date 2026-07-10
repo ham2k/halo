@@ -267,6 +267,11 @@ class Translations$settings$en {
 
 	late final Translations$settings$theme$en theme = Translations$settings$theme$en.internal(_root);
 
+	/// en: 'Font Scale'
+	String get fontScale => 'Font Scale';
+
+	late final Translations$settings$fontScaleOpts$en fontScaleOpts = Translations$settings$fontScaleOpts$en.internal(_root);
+
 	/// en: 'Operator Callsign'
 	String get operatorCall => 'Operator Callsign';
 
@@ -338,6 +343,30 @@ class Translations$settings$theme$en {
 
 	/// en: 'Dark'
 	String get dark => 'Dark';
+}
+
+// Path: settings.fontScaleOpts
+class Translations$settings$fontScaleOpts$en {
+	Translations$settings$fontScaleOpts$en.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Smallest'
+	String get smallest => 'Smallest';
+
+	/// en: 'Smaller'
+	String get smaller => 'Smaller';
+
+	/// en: 'Normal'
+	String get normal => 'Normal';
+
+	/// en: 'Larger'
+	String get larger => 'Larger';
+
+	/// en: 'Largest'
+	String get largest => 'Largest';
 }
 
 // Path: settings.sync
@@ -443,6 +472,12 @@ extension on Translations {
 			'settings.theme.system' => 'System',
 			'settings.theme.light' => 'Light',
 			'settings.theme.dark' => 'Dark',
+			'settings.fontScale' => 'Font Scale',
+			'settings.fontScaleOpts.smallest' => 'Smallest',
+			'settings.fontScaleOpts.smaller' => 'Smaller',
+			'settings.fontScaleOpts.normal' => 'Normal',
+			'settings.fontScaleOpts.larger' => 'Larger',
+			'settings.fontScaleOpts.largest' => 'Largest',
 			'settings.operatorCall' => 'Operator Callsign',
 			'settings.sync.title' => 'Sync Settings',
 			'settings.sync.enable' => 'Enable Sync',

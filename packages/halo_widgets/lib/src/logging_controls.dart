@@ -286,7 +286,7 @@ class _LoggingControlsState extends State<LoggingControls> {
   /// on the app-wide poloFieldDecoration (theme.dart), tinted to read
   /// against this panel's tertiaryContainer background.
   TextStyle _primaryFieldStyle(BuildContext context, {required FontWeight fontWeight}) =>
-      haloMonoStyle(context, fontSize: 18, fontWeight: fontWeight);
+      haloMonoStyle(context, fontSize: 15, fontWeight: fontWeight);
 
   InputDecoration _primaryFieldDecoration(BuildContext context, String label) => poloFieldDecoration(
         context,
@@ -940,7 +940,7 @@ class _LoggingControlsState extends State<LoggingControls> {
                                 ),
                                 _UpperCaseFormatter(),
                               ],
-                              style: _primaryFieldStyle(context, fontWeight: FontWeight.w700),
+                              style: _primaryFieldStyle(context, fontWeight: FontWeight.w500),
                               decoration: _primaryFieldDecoration(context, widget.theirCallLabel ?? 'Their call'),
                               onSubmitted: (_) => _log(),
                             ),
