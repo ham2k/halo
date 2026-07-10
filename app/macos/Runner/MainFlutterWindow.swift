@@ -6,7 +6,19 @@ class MainFlutterWindow: NSWindow {
   // lights center vertically in the merged title bar/AppBar rather than
   // sitting at the standard native title bar's default position (near the
   // very top of our much taller custom bar).
-  private let appBarHeight: CGFloat = 48
+  private var appBarHeight: CGFloat {
+    let scaleStr = UserDefaults.standard.string(forKey: "flutter.fontScale") ?? "normal"
+    let scale: CGFloat
+    switch scaleStr {
+    case "smallest": scale = 0.70
+    case "smaller": scale = 0.85
+    case "normal": scale = 1.00
+    case "larger": scale = 1.20
+    case "largest": scale = 1.40
+    default: scale = 1.00
+    }
+    return 48.0 * scale
+  }
 
   override func awakeFromNib() {
     let flutterViewController = FlutterViewController()

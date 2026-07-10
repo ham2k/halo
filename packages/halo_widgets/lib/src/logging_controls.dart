@@ -992,12 +992,18 @@ class _LoggingControlsState extends State<LoggingControls> {
                                       theme.colorScheme.primaryContainer,
                                   foregroundColor:
                                       theme.colorScheme.onPrimaryContainer,
-                                  minimumSize: const Size(64, 44),
+                                  minimumSize: Size(
+                                    64 * MediaQuery.textScalerOf(context).scale(1.0),
+                                    44 * MediaQuery.textScalerOf(context).scale(1.0),
+                                  ),
                                   shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(22),
+                                    borderRadius: BorderRadius.circular(22 * MediaQuery.textScalerOf(context).scale(1.0)),
                                   ),
                                 ),
-                                child: const Icon(Icons.check, size: 28),
+                                child: Icon(
+                                  Icons.upload,
+                                  size: 28 * MediaQuery.textScalerOf(context).scale(1.0),
+                                ),
                               ),
                             ),
                           ),

@@ -220,7 +220,11 @@ class _ControlChip extends StatelessWidget {
         : theme.colorScheme.onTertiaryContainer;
 
     return ChoiceChip(
-      avatar: Icon(control.icon, size: 16, color: foreground),
+      avatar: Icon(
+        control.icon,
+        size: 16 * MediaQuery.textScalerOf(context).scale(1.0),
+        color: foreground,
+      ),
       label: Text(control.summary, style: TextStyle(color: foreground)),
       selected: selected,
       showCheckmark: false,

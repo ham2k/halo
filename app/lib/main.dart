@@ -282,11 +282,14 @@ class _HaLoAppState extends State<HaLoApp> {
               size: (baseTheme.primaryIconTheme.size ?? 24.0) * scale,
             ),
             appBarTheme: baseTheme.appBarTheme.copyWith(
+              toolbarHeight: (baseTheme.appBarTheme.toolbarHeight ?? 48.0) * scale,
               iconTheme: (baseTheme.appBarTheme.iconTheme ?? const IconThemeData()).copyWith(
                 size: (baseTheme.appBarTheme.iconTheme?.size ?? 24.0) * scale,
+                color: baseTheme.appBarTheme.foregroundColor ?? baseTheme.colorScheme.onPrimary,
               ),
               actionsIconTheme: (baseTheme.appBarTheme.actionsIconTheme ?? const IconThemeData()).copyWith(
                 size: (baseTheme.appBarTheme.actionsIconTheme?.size ?? 24.0) * scale,
+                color: baseTheme.appBarTheme.foregroundColor ?? baseTheme.colorScheme.onPrimary,
               ),
             ),
             chipTheme: baseTheme.chipTheme.copyWith(
