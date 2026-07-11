@@ -47,6 +47,9 @@ Available via `import { host } from "@ham2k/polo-sdk"`:
 |---|---|
 | `host.fetch(url, options?)` | HTTPS requests, executed by the Dart host. Returns `{status, body}`. Per-extension domain allowlists are planned. |
 | `host.kvGet(key)` / `host.kvSet(key, value)` | Key-value storage, automatically namespaced to your extension (currently in-memory; keychain-backed persistence planned for credentials). |
+| `host.statusBar.setMessage(params)` / `.setProgress(params)` | Transient single-line message or progress bar in the app's footer, keyed and namespaced to your extension the same way as `kvGet`/`kvSet`. |
+| `host.statusBar.clear(key)` | Removes a message/progress item you posted. |
+| `host.statusBar.showNotice(params)` / `.dismissNotice(key)` | A richer, dismissible notice (markdown body, optional `link`/`dialog` action buttons) shown as a "post-it" over the footer and kept in the user's Settings → About → Recent Notices history. |
 | `host.log(message)` | Log line, prefixed with your extension key, visible in the app console. |
 
 Cross-extension composition (calling other extensions' hooks *inside* the

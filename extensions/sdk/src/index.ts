@@ -8,7 +8,18 @@
 // is how host KV calls get namespaced to the extension without extensions having
 // to pass their own key around.
 
-import type { FetchOptions, FetchResponse, JSONValue, ExtensionDefinition, LookupRow, FormDefinition, FormField } from "./types"
+import type {
+  FetchOptions,
+  FetchResponse,
+  JSONValue,
+  ExtensionDefinition,
+  LookupRow,
+  FormDefinition,
+  FormField,
+  StatusBarMessageParams,
+  StatusBarProgressParams,
+  StatusBarNoticeParams,
+} from "./types"
 
 export * from "./types"
 export * from "./i18n"
@@ -82,6 +93,37 @@ export const host = {
 
   async showForm(form: FormDefinition, state: Record<string, any> = {}): Promise<Record<string, any> | null> {
     return kernel().host.showForm(form, state, currentExtensionKey)
+  },
+
+  statusBar: {
+    /// A transient single-line message, replacing any prior message under
+    /// the same `key`. `key` is automatically namespaced to this extension —
+    /// other extensions can't see or clear it.
+    async setMessage(params: StatusBarMessageParams): Promise<void> {
+      await kernel().hostCall('statusBarSetMessage', { ...params, extensionKey: currentExtensionKey })
+    },
+
+    /// A transient progress bar under `key`; omit `value` for indeterminate.
+    async setProgress(params: StatusBarProgressParams): Promise<void> {
+      await kernel().hostCall('statusBarSetProgress', { ...params, extensionKey: currentExtensionKey })
+    },
+
+    /// Removes the message/progress item under `key`, if any.
+    async clear(key: string): Promise<void> {
+      await kernel().hostCall('statusBarClear', { key, extensionKey: currentExtensionKey })
+    },
+
+    /// A richer, dismissible notice, replacing any prior undismissed notice
+    /// under the same `key`. Stays in the user's notice history after
+    /// dismissal.
+    async showNotice(params: StatusBarNoticeParams): Promise<void> {
+      await kernel().hostCall('statusBarShowNotice', { ...params, extensionKey: currentExtensionKey })
+    },
+
+    /// Dismisses the active notice under `key`, if any.
+    async dismissNotice(key: string): Promise<void> {
+      await kernel().hostCall('statusBarDismissNotice', { key, extensionKey: currentExtensionKey })
+    },
   },
 
   log(message: string): void {

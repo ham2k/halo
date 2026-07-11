@@ -208,6 +208,18 @@ export interface CommandAction {
   updateSettings?: {
     developerMode?: boolean
   }
+  /// Developer-only: posts a notice via `host.statusBar.showNotice` (see
+  /// `dev-commands`'s DEVNOTICE). Dispatched by the app, not the extension
+  /// itself, so it goes through the same confirm/preview flow as any other
+  /// command action.
+  devNotice?: { icon?: string; title?: string; text: string }
+  /// Developer-only: posts a transient status message (DEVSTATUS). `key`
+  /// lets the caller post more than one at once (e.g. a fresh key per call)
+  /// instead of always replacing the same status item.
+  devStatus?: { key?: string; icon?: string; title?: string; text?: string }
+  /// Developer-only: posts a progress bar (DEVPROGRESS); omit `percent` for
+  /// an indeterminate bar.
+  devProgress?: { icon?: string; title?: string; percent?: number }
   [actionName: string]: unknown
 }
 
@@ -434,4 +446,36 @@ export interface FormHook {
   validateField?(args: { formId?: string; fieldKey: string; value: any; state: Record<string, any> }, ctx: HookContext): Promise<string | null>
   transformField?(args: { formId?: string; fieldKey: string; value: any; state: Record<string, any> }, ctx: HookContext): Promise<any>
   onChangeField?(args: { formId?: string; fieldKey: string; value: any; state: Record<string, any> }, ctx: HookContext): Promise<Record<string, any> | null | void>
+}
+
+/// An action button on a status bar notice. Declarative, not a callback —
+/// the core renders and handles these itself (`link` opens a URL, `dialog`
+/// shows a markdown dialog), matching the same "extensions describe UI as
+/// data" convention as `ActivityHook`.
+export type NoticeAction =
+  | { label: string; type: 'link'; url: string }
+  | { label: string; type: 'dialog'; title?: string; text: string }
+
+export interface StatusBarMessageParams {
+  key: string
+  icon?: string
+  title?: string
+  text?: string
+}
+
+export interface StatusBarProgressParams {
+  key: string
+  icon?: string
+  title?: string
+  text?: string
+  /// Omit for an indeterminate progress bar; otherwise 0.0-1.0.
+  value?: number
+}
+
+export interface StatusBarNoticeParams {
+  key: string
+  icon?: string
+  title?: string
+  text: string
+  actions?: NoticeAction[]
 }

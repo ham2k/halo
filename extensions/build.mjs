@@ -73,6 +73,7 @@ const bundles = [
   { key: 'adif', entry: 'core/adif/src/index.ts', kind: 'extension' },
   { key: 'scoring', entry: 'core/scoring/src/index.ts', kind: 'extension' },
   { key: 'radio-commands', entry: 'core/radio-commands/src/index.ts', kind: 'extension' },
+  { key: 'dev-commands', entry: 'core/dev-commands/src/index.ts', kind: 'extension' },
   { key: 'hamdb', entry: 'lookups/hamdb/src/index.ts', kind: 'extension' },
   { key: 'qrz', entry: 'lookups/qrz/src/index.ts', kind: 'extension' },
   { key: 'pota', entry: 'activities/pota/src/index.ts', kind: 'extension' },

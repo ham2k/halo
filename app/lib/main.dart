@@ -25,6 +25,7 @@ import 'services/metrics_service.dart';
 import 'services/purchase_service.dart';
 import 'services/scoring_service.dart';
 import 'services/settings_service.dart';
+import 'services/status_bar_service.dart';
 import 'services/update_service.dart';
 import 'services/data_file_manager.dart';
 import 'i18n/strings.g.dart';
@@ -128,6 +129,7 @@ class HaLoServices {
     extensions: extensions,
     prefs: settings.prefs,
   );
+  late final StatusBarService statusBar = StatusBarService(settings.prefs);
 
   /// The dirty-flag sync loop (DESIGN.md §4) — batching and bookkeeping stay
   /// here in Dart; only the network call crosses into the `ham2k-lofi`
@@ -152,6 +154,7 @@ class HaLoServices {
         updates = updates ?? const NoopUpdateService() {
     this.extensions.settings = settings;
     this.extensions.lookups = lookups;
+    this.extensions.statusBar = statusBar;
   }
 
 
@@ -168,15 +171,47 @@ class HaLoServices {
     if (enabled) syncEngine.start();
   }
 
-  /// Handles a command action from the call field (currently just
-  /// `SYNCALL` — see `extensions/sync/ham2k-lofi`'s command hook). Returns
-  /// a message for the caller to show in a SnackBar, or null for nothing.
-  Future<String?> handleCommandAction(String action) async {
+  /// Handles a named command action from the call field — `SYNCALL` (see
+  /// `extensions/sync/ham2k-lofi`) and the `dev-commands` extension's
+  /// DEVNOTICE/DEVSTATUS/DEVPROGRESS. Returns a message for the caller to
+  /// show in a SnackBar, or null for nothing — the dev-command cases return
+  /// null since their `confirm` text already shows in the call field, and
+  /// the status bar item itself is the visible result.
+  Future<String?> handleCommandAction(String action, [Map<String, dynamic>? params]) async {
     switch (action) {
       case 'syncAll':
         if (!settings.syncEnabled) return 'Enable sync in Settings first.';
         await syncEngine.forceFullResync();
         return 'Full resync started — local data was backed up first.';
+      case 'devNotice':
+        final p = params ?? const {};
+        statusBar.showNotice(
+          key: 'dev-commands:devNotice',
+          icon: p['icon'] as String?,
+          title: p['title'] as String?,
+          text: p['text'] as String? ?? '',
+        );
+        return null;
+      case 'devStatus':
+        final p = params ?? const {};
+        final devStatusKey = p['key'] as String? ?? 'devStatus';
+        statusBar.setMessage(
+          key: 'dev-commands:$devStatusKey',
+          icon: p['icon'] as String?,
+          title: p['title'] as String?,
+          text: p['text'] as String?,
+        );
+        return null;
+      case 'devProgress':
+        final p = params ?? const {};
+        final percent = p['percent'] as num?;
+        statusBar.setProgress(
+          key: 'dev-commands:devProgress',
+          icon: p['icon'] as String?,
+          title: p['title'] as String?,
+          value: percent == null ? null : percent.toDouble() / 100,
+        );
+        return null;
       default:
         return null;
     }
@@ -350,12 +385,71 @@ class _HaLoAppState extends State<HaLoApp> {
               data: scaledTheme,
               child: IconTheme(
                 data: scaledTheme.iconTheme,
-                child: child,
+                child: _StatusBarOverlay(services: widget.services, child: child),
               ),
             ),
           );
         },
       ),
+    );
+  }
+}
+
+/// Wraps the whole app (every route, since `MaterialApp.builder` wraps the
+/// Navigator as a single instance) with the global footer + notice stack —
+/// one integration point instead of touching every view's `Scaffold`.
+class _StatusBarOverlay extends StatelessWidget {
+  final HaLoServices services;
+  final Widget child;
+
+  const _StatusBarOverlay({required this.services, required this.child});
+
+  @override
+  Widget build(BuildContext context) {
+    return ListenableBuilder(
+      listenable: services.statusBar,
+      builder: (context, _) {
+        final statusBar = services.statusBar;
+        final items = [
+          for (final item in statusBar.items)
+            StatusBarItemData(
+              key: item.key,
+              icon: item.icon,
+              title: item.title,
+              text: item.text,
+              progressValue: item.progressValue,
+              isIndeterminateProgress: item.isIndeterminateProgress,
+            ),
+        ];
+        final notices = [
+          for (final notice in statusBar.activeNotices)
+            StatusBarNoticeData(
+              key: notice.key,
+              icon: notice.icon,
+              title: notice.title,
+              text: notice.text,
+              actions: [
+                for (final action in notice.actions)
+                  StatusBarActionData(label: action.label, onTap: action.onTap),
+              ],
+              createdAt: notice.createdAt,
+            ),
+        ];
+
+        // Mobile-only: the footer is hidden entirely while the keyboard is
+        // open (user-interface.md's footer spec), not just left empty.
+        final keyboardOpen = MediaQuery.viewInsetsOf(context).bottom > 0;
+        final hideFooter = keyboardOpen && !isWindowedPlatform;
+
+        return Column(
+          children: [
+            Expanded(child: child),
+            if (notices.isNotEmpty && !hideFooter)
+              NoticeStack(notices: notices, onDismiss: statusBar.dismissNotice),
+            if (!hideFooter) StatusBarFooter(items: items, onDismiss: statusBar.clear),
+          ],
+        );
+      },
     );
   }
 }

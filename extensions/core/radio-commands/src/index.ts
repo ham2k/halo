@@ -88,21 +88,6 @@ const ModeCommand = {
   },
 }
 
-const DevModeCommand = {
-  async interpret({ input }: { input: string }, ctx: HookContext): Promise<CommandInterpretation | null> {
-    const trimmed = input.trim().toUpperCase()
-    if (trimmed !== 'DEVMODE' && trimmed !== 'KONAMI') return null
-
-    const devMode = !!ctx.developerMode
-    const nextDevMode = !devMode
-    return {
-      describe: nextDevMode ? 'Activate developer mode?' : 'Deactivate developer mode?',
-      confirm: nextDevMode ? 'Developer mode activated' : 'Developer mode deactivated',
-      commands: [{ updateSettings: { developerMode: nextDevMode } }],
-    }
-  },
-}
-
 defineExtension({
   key: 'radio-commands',
   name: 'Radio Commands',
@@ -112,6 +97,5 @@ defineExtension({
     registerHook('command', { key: 'radio-commands-band', hook: BandCommand, priority: 100 })
     registerHook('command', { key: 'radio-commands-mode', hook: ModeCommand, priority: 100 })
     registerHook('command', { key: 'radio-commands-frequency', hook: FrequencyCommand, priority: 99 })
-    registerHook('command', { key: 'radio-commands-devmode', hook: DevModeCommand, priority: 100 })
   },
 })

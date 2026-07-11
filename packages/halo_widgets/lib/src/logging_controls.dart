@@ -54,9 +54,10 @@ typedef CommandInterpreter = Future<Map<String, dynamic>?> Function(
   Map<String, dynamic>? qso,
 ]);
 
-/// Handles a named command action —
-/// a closed set the core recognizes, not arbitrary state (DESIGN.md §4).
-typedef CommandActionHandler = Future<void> Function(String action);
+/// Handles a named command action — a closed set the core recognizes, not
+/// arbitrary state (DESIGN.md §4). `params` carries whatever JSON payload
+/// came with that action (e.g. `devNotice`'s icon/title/text).
+typedef CommandActionHandler = Future<void> Function(String action, [Map<String, dynamic>? params]);
 
 class LoggingControls extends StatefulWidget {
   final Operation operation;
@@ -614,6 +615,12 @@ class _LoggingControlsState extends State<LoggingControls> {
         await widget.onCommandAction?.call('syncAll');
       } else if (map.containsKey('sendSpots')) {
         debugPrint('[extensions] sendSpots action: ${map['sendSpots']}');
+      } else if (map.containsKey('devNotice')) {
+        await widget.onCommandAction?.call('devNotice', (map['devNotice'] as Map).cast<String, dynamic>());
+      } else if (map.containsKey('devStatus')) {
+        await widget.onCommandAction?.call('devStatus', (map['devStatus'] as Map).cast<String, dynamic>());
+      } else if (map.containsKey('devProgress')) {
+        await widget.onCommandAction?.call('devProgress', (map['devProgress'] as Map).cast<String, dynamic>());
       }
     }
   }

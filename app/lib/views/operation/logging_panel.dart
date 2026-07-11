@@ -14,7 +14,7 @@ class LoggingPanel extends StatefulWidget {
   final HaLoServices services;
   final List<Qso> qsos;
   final List<Map<String, dynamic>> loggingControls;
-  final Future<void> Function(String action) onCommandAction;
+  final CommandActionHandler onCommandAction;
 
   const LoggingPanel({
     super.key,

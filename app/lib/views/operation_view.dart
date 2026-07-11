@@ -174,9 +174,9 @@ class _OperationViewState extends State<OperationView> {
     }
   }
 
-  Future<void> _handleCommandAction(String action) async {
+  Future<void> _handleCommandAction(String action, [Map<String, dynamic>? params]) async {
     final messenger = ScaffoldMessenger.of(context);
-    final message = await widget.services.handleCommandAction(action);
+    final message = await widget.services.handleCommandAction(action, params);
     if (message != null) messenger.showSnackBar(SnackBar(content: Text(message)));
   }
 

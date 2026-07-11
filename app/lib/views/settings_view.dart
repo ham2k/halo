@@ -19,6 +19,7 @@ import 'package:http/http.dart' as http;
 
 import '../main.dart';
 import '../services/settings_service.dart';
+import 'notice_history_view.dart';
 import 'operation_dialogs.dart';
 import '../i18n/strings.g.dart';
 
@@ -938,6 +939,16 @@ class _AboutPanel extends StatelessWidget {
           'Ham2K Logger is the next-generation Portable Logger for amateur radio operators. '
           'It is designed to be lightweight, cross-platform, and extensible.',
           style: TextStyle(height: 1.4, fontSize: 14),
+        ),
+        const SizedBox(height: 8),
+        ListTile(
+          contentPadding: EdgeInsets.zero,
+          leading: const Icon(Icons.notifications_outlined),
+          title: const Text('Recent Notices'),
+          onTap: () => Navigator.of(context).push(
+            MaterialPageRoute(builder: (context) => NoticeHistoryView(services: services)),
+          ),
+          mouseCursor: SystemMouseCursors.click,
         ),
       ],
     );

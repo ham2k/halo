@@ -156,8 +156,12 @@ extension. Notably, this replaced an earlier hand-rolled Dart regex for
 frequency parsing that rejected valid MHz-style input ("14.285") because it
 required 3+ digits before any decimal point; the extension delegates to
 `@ham2k/lib-format-tools`' published `parseFreq` instead, which already
-handles this correctly. Future command hooks (spotting, operator change…)
-register in the same category and compete on priority with these.
+handles this correctly. Also implemented by `dev-commands` (DEVMODE toggles
+developer mode; DEVNOTICE/DEVSTATUS/DEVPROGRESS post sample items to the
+status bar via the `devNotice`/`devStatus`/`devProgress` action fields, for
+exercising that UI without a real extension driving it). Future command
+hooks (spotting, operator change…) register in the same category and
+compete on priority with these.
 
 ## ✅ `scoring` — per-operation score batches
 
