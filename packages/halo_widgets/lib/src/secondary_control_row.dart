@@ -33,12 +33,6 @@ class SecondaryControlSpec {
   final String key;
   final IconData icon;
   final String summary;
-
-  /// Shown as a highlighted border on the chip when the control already
-  /// holds a value worth flagging (e.g. a POTA ref has been entered, or the
-  /// time has been manually overridden).
-  final bool hasValue;
-
   final WidgetBuilder expandedBuilder;
 
   const SecondaryControlSpec({
@@ -46,7 +40,6 @@ class SecondaryControlSpec {
     required this.icon,
     required this.summary,
     required this.expandedBuilder,
-    this.hasValue = false,
   });
 }
 
@@ -233,10 +226,8 @@ class _ControlChip extends StatelessWidget {
       backgroundColor: poloColors.tertiaryLight,
       selectedColor: theme.colorScheme.tertiary,
       // Material3's ChoiceChip draws a default outline when side is null;
-      // app-polo's LoggerChip has none unless flagging hasValue.
-      side: control.hasValue
-          ? BorderSide(color: theme.colorScheme.primary, width: 1.5)
-          : BorderSide.none,
+      // app-polo's LoggerChip has none.
+      side: BorderSide.none,
       onSelected: (_) => onTap(),
       mouseCursor: SystemMouseCursors.click,
     );

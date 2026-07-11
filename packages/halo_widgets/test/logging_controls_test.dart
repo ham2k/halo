@@ -462,7 +462,7 @@ void main() {
       expect(find.widgetWithText(TextButton, 'Now'), findsNothing);
     });
 
-    testWidgets('activity control chip shows a hasValue indicator once a ref is entered', (tester) async {
+    testWidgets('activity control chip has no border, before or after a ref is entered', (tester) async {
       const controls = [
         {
           'key': 'pota/hunter',
@@ -488,7 +488,7 @@ void main() {
       await tester.testTextInput.receiveAction(TextInputAction.done);
       await tester.pump();
 
-      expect(potaChip().side, isNotNull);
+      expect(potaChip().side, BorderSide.none);
     });
 
     testWidgets('chips match app-polo LoggerChip styling: tertiary family, rounded rectangle', (tester) async {

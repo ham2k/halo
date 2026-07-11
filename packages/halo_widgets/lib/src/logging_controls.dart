@@ -525,12 +525,6 @@ class _LoggingControlsState extends State<LoggingControls> {
         key: 'time',
         icon: MdiIcons.clockOutline,
         summary: _timeSummary,
-        // Flags a manual override specifically — not just "there's a
-        // timestamp at all", which `_effectiveStartAtMillis` always has
-        // while editing an existing QSO (it falls back to the record's own
-        // startAtMillis), and would otherwise show this border on every
-        // edit regardless of whether the user actually changed the time.
-        hasValue: _manualStartAtMillis != null,
         expandedBuilder: (context) => Row(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -676,7 +670,6 @@ class _LoggingControlsState extends State<LoggingControls> {
             key: control['key'] as String,
             icon: resolveIconName(control['icon'] as String?),
             summary: (control['label'] as String?) ?? control['key'] as String,
-            hasValue: (_controlRefs[control['key']]?.isNotEmpty) ?? false,
             expandedBuilder: (context) => RefChipsInput(
               refType: (control['input'] as Map)['refType'] as String,
               label: (control['label'] as String?) ?? '',
