@@ -92,6 +92,7 @@ class SecondaryControlRow extends StatefulWidget {
 }
 
 class _SecondaryControlRowState extends State<SecondaryControlRow> {
+  final _rowKey = GlobalKey();
   final Map<String, GlobalKey> _chipKeys = {};
 
   /// Whether the caret has expanded the strip into a multi-row grid.
@@ -103,33 +104,58 @@ class _SecondaryControlRowState extends State<SecondaryControlRow> {
   /// height) until the first real measurement lands.
   double _chipHeight = 32;
 
+  /// Where the expanded panel's content sits within its (full-width)
+  /// background — matches the selected chip's own horizontal position: a
+  /// chip in the left quarter of the row aligns the panel left, one in the
+  /// right quarter aligns it right, and anything in the middle half centers
+  /// it. Defaults to left until the first post-frame measurement lands.
+  Alignment _expandedAlignment = Alignment.centerLeft;
+
   GlobalKey _chipKeyFor(String key) => _chipKeys.putIfAbsent(key, GlobalKey.new);
 
   @override
   void initState() {
     super.initState();
-    _scheduleMeasureChipHeight();
+    _scheduleMeasure();
   }
 
   @override
   void didUpdateWidget(covariant SecondaryControlRow oldWidget) {
     super.didUpdateWidget(oldWidget);
-    _scheduleMeasureChipHeight();
+    _scheduleMeasure();
   }
 
-  void _scheduleMeasureChipHeight() {
-    WidgetsBinding.instance.addPostFrameCallback((_) => _measureChipHeight());
+  void _scheduleMeasure() {
+    WidgetsBinding.instance.addPostFrameCallback((_) => _measure());
   }
 
-  void _measureChipHeight() {
+  void _measure() {
     if (!mounted) return;
+
     final anyChipBox = widget.controls.isEmpty
         ? null
         : _chipKeys[widget.controls.first.key]?.currentContext?.findRenderObject() as RenderBox?;
-    if (anyChipBox == null || !anyChipBox.attached) return;
-    final height = anyChipBox.size.height;
-    if (height > 0 && (height - _chipHeight).abs() > 0.5) {
-      setState(() => _chipHeight = height);
+    if (anyChipBox != null && anyChipBox.attached) {
+      final height = anyChipBox.size.height;
+      if (height > 0 && (height - _chipHeight).abs() > 0.5) {
+        setState(() => _chipHeight = height);
+      }
+    }
+
+    if (widget.selectedKey == null) return;
+    final rowBox = _rowKey.currentContext?.findRenderObject() as RenderBox?;
+    final chipBox = _chipKeys[widget.selectedKey]?.currentContext?.findRenderObject() as RenderBox?;
+    if (rowBox == null || chipBox == null || !rowBox.attached || !chipBox.attached) return;
+
+    final chipCenter = chipBox.localToGlobal(Offset.zero, ancestor: rowBox).dx + chipBox.size.width / 2;
+    final availableWidth = rowBox.size.width;
+    final alignment = chipCenter < availableWidth * 0.25
+        ? Alignment.centerLeft
+        : chipCenter > availableWidth * 0.75
+            ? Alignment.centerRight
+            : Alignment.center;
+    if (alignment != _expandedAlignment) {
+      setState(() => _expandedAlignment = alignment);
     }
   }
 
@@ -154,6 +180,7 @@ class _SecondaryControlRowState extends State<SecondaryControlRow> {
     ];
 
     return Column(
+      key: _rowKey,
       crossAxisAlignment: CrossAxisAlignment.stretch,
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -181,7 +208,10 @@ class _SecondaryControlRowState extends State<SecondaryControlRow> {
                 width: constraints.maxWidth + widget.horizontalBleed * 2,
                 color: theme.colorScheme.tertiary,
                 padding: EdgeInsets.symmetric(horizontal: widget.horizontalBleed + 8, vertical: 8),
-                child: Builder(builder: selected.expandedBuilder),
+                child: Align(
+                  alignment: _expandedAlignment,
+                  child: Builder(builder: selected.expandedBuilder),
+                ),
               ),
             ),
           ),
