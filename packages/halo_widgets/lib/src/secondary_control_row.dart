@@ -22,8 +22,6 @@
 // list it's given, plus a settings button the caller wires up to open
 // that management UI.
 
-import 'dart:math' as math;
-
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 
@@ -86,17 +84,7 @@ class SecondaryControlRow extends StatefulWidget {
 }
 
 class _SecondaryControlRowState extends State<SecondaryControlRow> {
-  // Anchors the coordinate space used to position the expanded content: its
-  // own top-left corner (stable regardless of how wide this widget's
-  // shrink-wrapped content ends up being — only its origin matters here),
-  // not its rendered width, which is why availableWidth comes from
-  // LayoutBuilder's incoming constraints instead (the true width this
-  // widget was offered, not whatever it chose to consume).
-  final _rowKey = GlobalKey();
-  final _expandedKey = GlobalKey();
   final Map<String, GlobalKey> _chipKeys = {};
-  double _expandedLeft = 0;
-  double _availableWidth = 0;
 
   /// Whether the caret has expanded the strip into a multi-row grid.
   bool _gridExpanded = false;
@@ -112,69 +100,28 @@ class _SecondaryControlRowState extends State<SecondaryControlRow> {
   @override
   void initState() {
     super.initState();
-    _scheduleReposition();
+    _scheduleMeasureChipHeight();
   }
 
   @override
   void didUpdateWidget(covariant SecondaryControlRow oldWidget) {
     super.didUpdateWidget(oldWidget);
-    _scheduleReposition();
+    _scheduleMeasureChipHeight();
   }
 
-  void _scheduleReposition() {
-    WidgetsBinding.instance.addPostFrameCallback((_) => _reposition());
+  void _scheduleMeasureChipHeight() {
+    WidgetsBinding.instance.addPostFrameCallback((_) => _measureChipHeight());
   }
 
-  /// Centers the expanded content over the selected chip when there's room;
-  /// otherwise hugs whichever edge of the chip it overflowed past, so it
-  /// never spills outside the panel. Runs after layout (needs the chip's
-  /// and expanded content's actual rendered sizes, which aren't known
-  /// during build), so a freshly-selected control briefly renders at its
-  /// previous offset before snapping into place one frame later. Also
-  /// measures a chip's actual height while it's at it, for the expanded
-  /// grid's row cap.
-  void _reposition() {
+  void _measureChipHeight() {
     if (!mounted) return;
-
     final anyChipBox = widget.controls.isEmpty
         ? null
         : _chipKeys[widget.controls.first.key]?.currentContext?.findRenderObject() as RenderBox?;
-    if (anyChipBox != null && anyChipBox.attached) {
-      final height = anyChipBox.size.height;
-      if (height > 0 && (height - _chipHeight).abs() > 0.5) {
-        setState(() => _chipHeight = height);
-      }
-    }
-
-    if (widget.selectedKey == null) return;
-    final rowBox = _rowKey.currentContext?.findRenderObject() as RenderBox?;
-    final chipBox = _chipKeys[widget.selectedKey]?.currentContext?.findRenderObject() as RenderBox?;
-    final expandedBox = _expandedKey.currentContext?.findRenderObject() as RenderBox?;
-    if (rowBox == null ||
-        chipBox == null ||
-        expandedBox == null ||
-        !rowBox.attached ||
-        !chipBox.attached ||
-        !expandedBox.attached) {
-      return;
-    }
-
-    final chipLeft = chipBox.localToGlobal(Offset.zero, ancestor: rowBox).dx;
-    final chipWidth = chipBox.size.width;
-    final expandedWidth = expandedBox.size.width;
-    final availableWidth = _availableWidth.isFinite ? _availableWidth : expandedWidth;
-    final maxLeft = math.max(0.0, availableWidth - expandedWidth);
-
-    var left = chipLeft + chipWidth / 2 - expandedWidth / 2;
-    if (left < 0) {
-      left = chipLeft; // hug the pill's left edge
-    } else if (left + expandedWidth > availableWidth) {
-      left = chipLeft + chipWidth - expandedWidth; // hug the pill's right edge
-    }
-    left = left.clamp(0.0, maxLeft);
-
-    if ((left - _expandedLeft).abs() > 0.5) {
-      setState(() => _expandedLeft = left);
+    if (anyChipBox == null || !anyChipBox.attached) return;
+    final height = anyChipBox.size.height;
+    if (height > 0 && (height - _chipHeight).abs() > 0.5) {
+      setState(() => _chipHeight = height);
     }
   }
 
@@ -184,14 +131,8 @@ class _SecondaryControlRowState extends State<SecondaryControlRow> {
     for (final control in widget.controls) {
       if (control.key == widget.selectedKey) selected = control;
     }
-    // The expanded content's own size can change between builds (e.g.
-    // switching from Time's fields to Radio's, or DUPE appearing/
-    // disappearing next to the chips), so reposition on every build, not
-    // just when selectedKey changes; _reposition's own threshold check
-    // makes this a no-op once things settle.
-    _scheduleReposition();
 
-    final poloColors = HaLoColors.of(context);
+    final theme = Theme.of(context);
     const spacing = 6.0;
     final chips = [
       for (final control in widget.controls)
@@ -204,75 +145,67 @@ class _SecondaryControlRowState extends State<SecondaryControlRow> {
       ?widget.trailing,
     ];
 
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        _availableWidth = constraints.maxWidth;
-        return Column(
-          key: _rowKey,
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        if (selected != null)
+          Container(
+            // Same solid color as a selected pill — this is the "extended
+            // area" that gets the pill background, not the chip strip
+            // itself — full width, flush against the top and sides.
+            width: double.infinity,
+            color: theme.colorScheme.tertiary,
+            child: Builder(builder: selected.expandedBuilder),
+          ),
+        const SizedBox(height: 4),
+        Row(
           crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
           children: [
-            if (selected != null)
-              Padding(
-                padding: EdgeInsets.only(left: _expandedLeft, bottom: 4),
-                child: Container(
-                  // Same tone as the chips' own unselected fill — this is the
-                  // "extended area" that gets the pill background, not the
-                  // chip strip itself.
-                  color: poloColors.tertiaryLight,
-                  padding: const EdgeInsets.all(4),
-                  child: Builder(key: _expandedKey, builder: selected.expandedBuilder),
-                ),
-              ),
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(
-                  child: _gridExpanded
-                      ? ConstrainedBox(
-                          constraints: BoxConstraints(maxHeight: _chipHeight * 4 + spacing * 3),
-                          child: SingleChildScrollView(
-                            child: Wrap(
-                              spacing: spacing,
-                              runSpacing: spacing,
-                              children: chips,
-                            ),
-                          ),
-                        )
-                      : ScrollConfiguration(
-                          behavior: _DragScrollBehavior(),
-                          child: SingleChildScrollView(
-                            scrollDirection: Axis.horizontal,
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                for (final chip in chips) ...[
-                                  chip,
-                                  if (chip != chips.last) const SizedBox(width: spacing),
-                                ],
-                              ],
-                            ),
-                          ),
+            Expanded(
+              child: _gridExpanded
+                  ? ConstrainedBox(
+                      constraints: BoxConstraints(maxHeight: _chipHeight * 4 + spacing * 3),
+                      child: SingleChildScrollView(
+                        child: Wrap(
+                          spacing: spacing,
+                          runSpacing: spacing,
+                          children: chips,
                         ),
-                ),
-                IconButton(
-                  tooltip: _gridExpanded ? 'Collapse' : 'Expand',
-                  visualDensity: VisualDensity.compact,
-                  icon: Icon(_gridExpanded ? Icons.expand_less : Icons.expand_more),
-                  onPressed: () => setState(() => _gridExpanded = !_gridExpanded),
-                ),
-                if (widget.onOpenSettings != null)
-                  IconButton(
-                    tooltip: 'Logging controls settings',
-                    visualDensity: VisualDensity.compact,
-                    icon: const Icon(Icons.settings_outlined),
-                    onPressed: widget.onOpenSettings,
-                  ),
-              ],
+                      ),
+                    )
+                  : ScrollConfiguration(
+                      behavior: _DragScrollBehavior(),
+                      child: SingleChildScrollView(
+                        scrollDirection: Axis.horizontal,
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            for (final chip in chips) ...[
+                              chip,
+                              if (chip != chips.last) const SizedBox(width: spacing),
+                            ],
+                          ],
+                        ),
+                      ),
+                    ),
             ),
+            IconButton(
+              tooltip: _gridExpanded ? 'Collapse' : 'Expand',
+              visualDensity: VisualDensity.compact,
+              icon: Icon(_gridExpanded ? Icons.expand_less : Icons.expand_more),
+              onPressed: () => setState(() => _gridExpanded = !_gridExpanded),
+            ),
+            if (widget.onOpenSettings != null)
+              IconButton(
+                tooltip: 'Logging controls settings',
+                visualDensity: VisualDensity.compact,
+                icon: const Icon(Icons.settings_outlined),
+                onPressed: widget.onOpenSettings,
+              ),
           ],
-        );
-      },
+        ),
+      ],
     );
   }
 }
