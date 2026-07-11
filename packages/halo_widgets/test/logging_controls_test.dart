@@ -319,6 +319,31 @@ void main() {
     expect(find.text('DUPE'), findsOneWidget);
   });
 
+  testWidgets('editing an existing QSO does not flag it as its own duplicate', (tester) async {
+    final existingQso = Qso(
+      uuid: 'existing-uuid',
+      operationUuid: operation.uuid,
+      data: {
+        'their': {'call': 'W1AW'},
+        'band': '20m',
+        'mode': 'SSB',
+      },
+    );
+
+    await tester.pumpWidget(MaterialApp(
+      home: Scaffold(
+        body: LoggingControls(
+          operation: operation,
+          qsosRepository: qsos,
+          qsos: [existingQso],
+          editingQso: existingQso,
+        ),
+      ),
+    ));
+
+    expect(find.text('DUPE'), findsNothing);
+  });
+
   group('secondary control row', () {
     testWidgets('Time and Radio chips show by default; tapping expands, tapping again collapses', (tester) async {
       await tester.pumpWidget(host());

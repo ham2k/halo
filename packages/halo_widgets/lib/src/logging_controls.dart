@@ -438,8 +438,13 @@ class _LoggingControlsState extends State<LoggingControls> {
   String? get _band => _freq != null ? bandForFrequency(_freq!) : _manualBand;
   bool get _canLog => looksLikeCallsign(_call);
 
+  // Excludes the QSO currently being edited — otherwise, since its call/
+  // mode/band are exactly what populated the fields in the first place,
+  // editing any existing QSO would immediately flag itself as its own
+  // duplicate.
   bool get _isDupe => widget.qsos.any(
     (qso) =>
+        qso.uuid != widget.editingQso?.uuid &&
         qso.theirCall == _call &&
         qso.mode == _mode &&
         (qso.band ?? '') == (_band ?? ''),
