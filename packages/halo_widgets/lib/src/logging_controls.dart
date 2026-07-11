@@ -1219,7 +1219,7 @@ class _LoggingControlsState extends State<LoggingControls> {
         icon: Icon(icon),
         color: accentTheme.colorScheme.tertiary,
         padding: EdgeInsets.zero,
-        iconSize: diameter * 0.5,
+        iconSize: diameter * 0.5 * 1.2,
       ),
     );
   }
@@ -1578,7 +1578,7 @@ class _LoggingControlsState extends State<LoggingControls> {
                                   _pendingDelete
                                       ? resolveIconName('trash-can')
                                       : (editing ? resolveIconName('content-save') : Icons.upload),
-                                  size: 24 * MediaQuery.textScalerOf(context).scale(1.0),
+                                  size: 24 * 1.2 * MediaQuery.textScalerOf(context).scale(1.0),
                                 ),
                               ),
                             ),
@@ -1608,7 +1608,7 @@ class _LoggingControlsState extends State<LoggingControls> {
           data: message,
           styleSheet: MarkdownStyleSheet.fromTheme(theme).copyWith(
             p: theme.textTheme.bodyMedium?.copyWith(
-              color: theme.colorScheme.primary,
+              color: Colors.black,
               fontWeight: FontWeight.w500,
             ),
           ),
@@ -1633,7 +1633,7 @@ class _LoggingControlsState extends State<LoggingControls> {
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
                 style: theme.textTheme.bodyMedium?.copyWith(
-                  color: theme.colorScheme.primary,
+                  color: Colors.black,
                 ),
               ),
             ),
