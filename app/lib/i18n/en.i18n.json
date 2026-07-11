@@ -53,7 +53,18 @@
     "dupe": "DUPE",
     "theirCall": "Their call",
     "sent": "Sent",
-    "rcvd": "Rcvd"
+    "rcvd": "Rcvd",
+    "more": "More",
+    "revert": "Revert",
+    "undoDelete": "Undo delete",
+    "pendingDeleteWarning": "QSO will be deleted when you save"
+  },
+  "qsoEditForm": {
+    "title": "Edit QSO",
+    "theirName": "Name",
+    "theirGrid": "Grid",
+    "band": "Band",
+    "notes": "Notes"
   },
   "qsoList": {
     "empty": "No QSOs yet — work someone!",

@@ -31,6 +31,13 @@ class LoggingPanel extends StatefulWidget {
 
 class _LoggingPanelState extends State<LoggingPanel> {
   String? _commandMarkdown;
+  Qso? _selectedQso;
+
+  void _handleSelectQso(Qso qso) {
+    setState(() {
+      _selectedQso = _selectedQso?.uuid == qso.uuid ? null : qso;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -45,6 +52,8 @@ class _LoggingPanelState extends State<LoggingPanel> {
       duplicateLabel: context.t.qsoList.duplicate,
       newEntityLabel: context.t.qsoList.newEntity,
       newBandOrModeLabel: context.t.qsoList.newBandOrMode,
+      selectedUuid: _selectedQso?.uuid,
+      onSelect: _handleSelectQso,
     );
 
     return Column(
@@ -81,6 +90,9 @@ class _LoggingPanelState extends State<LoggingPanel> {
             });
           },
           onCommandAction: widget.onCommandAction,
+          editingQso: _selectedQso,
+          onEditCanceled: () => setState(() => _selectedQso = null),
+          onLogged: (_) => setState(() => _selectedQso = null),
           timeLabel: context.t.loggingControls.timeUtc,
           dateLabel: context.t.loggingControls.date,
           nowLabel: context.t.loggingControls.now,
@@ -90,6 +102,16 @@ class _LoggingPanelState extends State<LoggingPanel> {
           theirCallLabel: context.t.loggingControls.theirCall,
           sentLabel: context.t.loggingControls.sent,
           rcvdLabel: context.t.loggingControls.rcvd,
+          moreLabel: context.t.loggingControls.more,
+          revertLabel: context.t.loggingControls.revert,
+          deleteLabel: context.t.common.delete,
+          undoDeleteLabel: context.t.loggingControls.undoDelete,
+          pendingDeleteWarning: context.t.loggingControls.pendingDeleteWarning,
+          qsoEditFormTitle: context.t.qsoEditForm.title,
+          theirNameLabel: context.t.qsoEditForm.theirName,
+          theirGridLabel: context.t.qsoEditForm.theirGrid,
+          notesLabel: context.t.qsoEditForm.notes,
+          bandLabel: context.t.qsoEditForm.band,
         ),
       ],
     );

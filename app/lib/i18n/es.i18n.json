@@ -53,7 +53,18 @@
     "dupe": "DUPE",
     "theirCall": "Su indicativo",
     "sent": "Enviado",
-    "rcvd": "Recibido"
+    "rcvd": "Recibido",
+    "more": "Más",
+    "revert": "Revertir",
+    "undoDelete": "Deshacer eliminación",
+    "pendingDeleteWarning": "El QSO se eliminará al guardar"
+  },
+  "qsoEditForm": {
+    "title": "Editar QSO",
+    "theirName": "Nombre",
+    "theirGrid": "Locador",
+    "band": "Banda",
+    "notes": "Notas"
   },
   "qsoList": {
     "empty": "Aún no hay QSOs — ¡haz un contacto!",

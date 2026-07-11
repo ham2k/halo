@@ -44,6 +44,7 @@ class TranslationsEs extends Translations with BaseTranslations<AppLocale, Trans
 	@override late final _Translations$dialogs$es dialogs = _Translations$dialogs$es._(_root);
 	@override late final _Translations$operation$es operation = _Translations$operation$es._(_root);
 	@override late final _Translations$loggingControls$es loggingControls = _Translations$loggingControls$es._(_root);
+	@override late final _Translations$qsoEditForm$es qsoEditForm = _Translations$qsoEditForm$es._(_root);
 	@override late final _Translations$qsoList$es qsoList = _Translations$qsoList$es._(_root);
 	@override late final _Translations$loggingPanel$es loggingPanel = _Translations$loggingPanel$es._(_root);
 	@override late final _Translations$settings$es settings = _Translations$settings$es._(_root);
@@ -128,6 +129,24 @@ class _Translations$loggingControls$es extends Translations$loggingControls$en {
 	@override String get theirCall => 'Su indicativo';
 	@override String get sent => 'Enviado';
 	@override String get rcvd => 'Recibido';
+	@override String get more => 'Más';
+	@override String get revert => 'Revertir';
+	@override String get undoDelete => 'Deshacer eliminación';
+	@override String get pendingDeleteWarning => 'El QSO se eliminará al guardar';
+}
+
+// Path: qsoEditForm
+class _Translations$qsoEditForm$es extends Translations$qsoEditForm$en {
+	_Translations$qsoEditForm$es._(TranslationsEs root) : this._root = root, super.internal(root);
+
+	final TranslationsEs _root; // ignore: unused_field
+
+	// Translations
+	@override String get title => 'Editar QSO';
+	@override String get theirName => 'Nombre';
+	@override String get theirGrid => 'Locador';
+	@override String get band => 'Banda';
+	@override String get notes => 'Notas';
 }
 
 // Path: qsoList
@@ -304,6 +323,15 @@ extension on TranslationsEs {
 			'loggingControls.theirCall' => 'Su indicativo',
 			'loggingControls.sent' => 'Enviado',
 			'loggingControls.rcvd' => 'Recibido',
+			'loggingControls.more' => 'Más',
+			'loggingControls.revert' => 'Revertir',
+			'loggingControls.undoDelete' => 'Deshacer eliminación',
+			'loggingControls.pendingDeleteWarning' => 'El QSO se eliminará al guardar',
+			'qsoEditForm.title' => 'Editar QSO',
+			'qsoEditForm.theirName' => 'Nombre',
+			'qsoEditForm.theirGrid' => 'Locador',
+			'qsoEditForm.band' => 'Banda',
+			'qsoEditForm.notes' => 'Notas',
 			'qsoList.empty' => 'Aún no hay QSOs — ¡haz un contacto!',
 			'qsoList.duplicate' => 'Duplicado — mismo indicativo, banda y modo ya registrados',
 			'qsoList.newEntity' => 'Nueva entidad DXCC',

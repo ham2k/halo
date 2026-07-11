@@ -41,7 +41,7 @@ void main() {
 
     await tester.pumpWidget(MaterialApp(
       home: Scaffold(
-        body: QsoList(qsos: [first, second], qsosRepository: qsos),
+        body: QsoList(qsos: [first, second], qsosRepository: qsos, onSelect: (_) {}),
       ),
     ));
 
@@ -77,7 +77,7 @@ void main() {
 
       await tester.pumpWidget(MaterialApp(
         home: Scaffold(
-          body: QsoList(qsos: [qso], qsosRepository: qsos, duplicateLabel: 'Duplicate contact'),
+          body: QsoList(qsos: [qso], qsosRepository: qsos, duplicateLabel: 'Duplicate contact', onSelect: (_) {}),
         ),
       ));
 
@@ -92,7 +92,7 @@ void main() {
 
       await tester.pumpWidget(MaterialApp(
         home: Scaffold(
-          body: QsoList(qsos: [qso], qsosRepository: qsos, newEntityLabel: 'New entity!'),
+          body: QsoList(qsos: [qso], qsosRepository: qsos, newEntityLabel: 'New entity!', onSelect: (_) {}),
         ),
       ));
 
@@ -106,7 +106,7 @@ void main() {
 
       await tester.pumpWidget(MaterialApp(
         home: Scaffold(
-          body: QsoList(qsos: [qso], qsosRepository: qsos, newBandOrModeLabel: 'New band!'),
+          body: QsoList(qsos: [qso], qsosRepository: qsos, newBandOrModeLabel: 'New band!', onSelect: (_) {}),
         ),
       ));
 
@@ -132,6 +132,7 @@ void main() {
             duplicateLabel: 'Duplicate',
             newEntityLabel: 'New entity',
             newBandOrModeLabel: 'New band or mode',
+            onSelect: (_) {},
           ),
         ),
       ));

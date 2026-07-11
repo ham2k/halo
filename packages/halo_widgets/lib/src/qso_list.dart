@@ -22,10 +22,20 @@ class QsoList extends StatelessWidget {
   final String? newEntityLabel;
   final String? newBandOrModeLabel;
 
+  /// The uuid of the QSO currently loaded for editing in the logging panel,
+  /// if any — that row gets the secondary-colored selected treatment.
+  final String? selectedUuid;
+
+  /// Tap a row to select/edit it. The caller owns toggle-to-deselect
+  /// semantics (tapping the already-selected row again).
+  final void Function(Qso qso) onSelect;
+
   const QsoList({
     super.key,
     required this.qsos,
     required this.qsosRepository,
+    required this.onSelect,
+    this.selectedUuid,
     this.noQsosLabel,
     this.deleteConfirmTitleBuilder,
     this.cancelLabel,
@@ -78,73 +88,93 @@ class QsoList extends StatelessWidget {
               ? '--:--'
               : '${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}';
           final band = qso.band ?? '';
+          final selected = qso.uuid == selectedUuid;
 
-          return Material(
-            color: theme.colorScheme.surface,
-            child: InkWell(
-              onTap: () {}, // enables hover highlighting
-              onLongPress: () => _confirmDelete(context, qso),
-              mouseCursor: SystemMouseCursors.click,
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
-                child: Row(
-                children: [
-                  SizedBox(width: 28, child: Text('$number', style: monoDim, textAlign: TextAlign.right)),
-                  const SizedBox(width: 6),
-                  SizedBox(width: 12, child: _scoreBadge(context, qso)),
-                  const SizedBox(width: 6),
-                  Text(timeLabel, style: monoDim),
-                  const SizedBox(width: 10),
-                  // The callsign never truncates; the name absorbs the squeeze.
-                  Text(qso.theirCall, style: mono.copyWith(fontWeight: FontWeight.w700, fontSize: 15)),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      qso.theirName ?? '',
-                      style: monoDim.copyWith(fontSize: 13),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
+          // Selected treatment matches app-polo's QSOList: secondaryContainer
+          // fill with a secondary top/bottom border accent, text tinted
+          // toward onSecondaryContainer so it doesn't wash out.
+          final rowMono = selected ? mono.copyWith(color: theme.colorScheme.onSecondaryContainer) : mono;
+          final rowMonoDim = selected
+              ? monoDim.copyWith(color: theme.colorScheme.onSecondaryContainer.withValues(alpha: 0.75))
+              : monoDim;
+
+          return Container(
+            decoration: selected
+                ? BoxDecoration(
+                    border: Border.symmetric(
+                      horizontal: BorderSide(color: theme.colorScheme.secondary, width: 3),
                     ),
-                  ),
-                  if (qso.refs.isNotEmpty) ...[
-                    ConstrainedBox(
-                      constraints: const BoxConstraints(maxWidth: 76),
+                  )
+                : null,
+            child: Material(
+              color: selected ? theme.colorScheme.secondaryContainer : theme.colorScheme.surface,
+              child: InkWell(
+                onTap: () => onSelect(qso),
+                onLongPress: () => _confirmDelete(context, qso),
+                mouseCursor: SystemMouseCursors.click,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+                  child: Row(
+                  children: [
+                    SizedBox(width: 28, child: Text('$number', style: rowMonoDim, textAlign: TextAlign.right)),
+                    const SizedBox(width: 6),
+                    SizedBox(width: 12, child: _scoreBadge(context, qso)),
+                    const SizedBox(width: 6),
+                    Text(timeLabel, style: rowMonoDim),
+                    const SizedBox(width: 10),
+                    // The callsign never truncates; the name absorbs the squeeze.
+                    Text(qso.theirCall, style: rowMono.copyWith(fontWeight: FontWeight.w700, fontSize: 15)),
+                    const SizedBox(width: 8),
+                    Expanded(
                       child: Text(
-                        qso.refs.map((r) => r['ref']).whereType<String>().join(','),
-                        style: mono.copyWith(fontSize: 12, color: theme.colorScheme.tertiary),
+                        qso.theirName ?? '',
+                        style: rowMonoDim.copyWith(fontSize: 13),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
                     ),
-                    const SizedBox(width: 6),
-                  ],
-                  SizedBox(
-                    width: 44,
-                    child: Text(
-                      band,
-                      style: mono.copyWith(
-                        fontWeight: FontWeight.w600,
-                        color: Color.lerp(poloColors.bandColor(band), theme.colorScheme.onSurface, 0.25),
+                    if (qso.refs.isNotEmpty) ...[
+                      ConstrainedBox(
+                        constraints: const BoxConstraints(maxWidth: 76),
+                        child: Text(
+                          qso.refs.map((r) => r['ref']).whereType<String>().join(','),
+                          style: rowMono.copyWith(fontSize: 12, color: theme.colorScheme.tertiary),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
                       ),
-                      textAlign: TextAlign.right,
+                      const SizedBox(width: 6),
+                    ],
+                    SizedBox(
+                      width: 44,
+                      child: Text(
+                        band,
+                        style: rowMono.copyWith(
+                          fontWeight: FontWeight.w600,
+                          color: selected
+                              ? theme.colorScheme.onSecondaryContainer
+                              : Color.lerp(poloColors.bandColor(band), theme.colorScheme.onSurface, 0.25),
+                        ),
+                        textAlign: TextAlign.right,
+                      ),
                     ),
-                  ),
-                  const SizedBox(width: 8),
-                  SizedBox(width: 42, child: Text(qso.mode ?? '', style: mono)),
-                  SizedBox(
-                    width: 68,
-                    child: Text(
-                      '${qso.sentRST ?? ''} ${qso.receivedRST ?? ''}',
-                      style: monoDim,
-                      textAlign: TextAlign.right,
+                    const SizedBox(width: 8),
+                    SizedBox(width: 42, child: Text(qso.mode ?? '', style: rowMono)),
+                    SizedBox(
+                      width: 68,
+                      child: Text(
+                        '${qso.sentRST ?? ''} ${qso.receivedRST ?? ''}',
+                        style: rowMonoDim,
+                        textAlign: TextAlign.right,
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
+                ),
               ),
             ),
-          ),
-        );
-      },
+          );
+        },
       ),
     );
   }

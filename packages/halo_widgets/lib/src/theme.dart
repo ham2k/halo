@@ -201,6 +201,8 @@ ThemeData buildHaLoTheme(Brightness brightness) {
           onPrimaryContainer: Color(0xFFBCE9FF),
           secondary: Color(0xFF5B9EDE),
           onSecondary: Color(0xFF002B4C),
+          secondaryContainer: Color(0xFF3E6096),
+          onSecondaryContainer: Color(0xFFD4E3FF),
           tertiary: Color(0xFFD9904C),
           onTertiary: Color(0xFF4C2700),
           tertiaryContainer: Color(0xFF8C4F20),

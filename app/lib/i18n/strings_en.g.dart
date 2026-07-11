@@ -45,6 +45,7 @@ class Translations with BaseTranslations<AppLocale, Translations> {
 	late final Translations$dialogs$en dialogs = Translations$dialogs$en.internal(_root);
 	late final Translations$operation$en operation = Translations$operation$en.internal(_root);
 	late final Translations$loggingControls$en loggingControls = Translations$loggingControls$en.internal(_root);
+	late final Translations$qsoEditForm$en qsoEditForm = Translations$qsoEditForm$en.internal(_root);
 	late final Translations$qsoList$en qsoList = Translations$qsoList$en.internal(_root);
 	late final Translations$loggingPanel$en loggingPanel = Translations$loggingPanel$en.internal(_root);
 	late final Translations$settings$en settings = Translations$settings$en.internal(_root);
@@ -198,6 +199,42 @@ class Translations$loggingControls$en {
 
 	/// en: 'Rcvd'
 	String get rcvd => 'Rcvd';
+
+	/// en: 'More'
+	String get more => 'More';
+
+	/// en: 'Revert'
+	String get revert => 'Revert';
+
+	/// en: 'Undo delete'
+	String get undoDelete => 'Undo delete';
+
+	/// en: 'QSO will be deleted when you save'
+	String get pendingDeleteWarning => 'QSO will be deleted when you save';
+}
+
+// Path: qsoEditForm
+class Translations$qsoEditForm$en {
+	Translations$qsoEditForm$en.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Edit QSO'
+	String get title => 'Edit QSO';
+
+	/// en: 'Name'
+	String get theirName => 'Name';
+
+	/// en: 'Grid'
+	String get theirGrid => 'Grid';
+
+	/// en: 'Band'
+	String get band => 'Band';
+
+	/// en: 'Notes'
+	String get notes => 'Notes';
 }
 
 // Path: qsoList
@@ -455,6 +492,15 @@ extension on Translations {
 			'loggingControls.theirCall' => 'Their call',
 			'loggingControls.sent' => 'Sent',
 			'loggingControls.rcvd' => 'Rcvd',
+			'loggingControls.more' => 'More',
+			'loggingControls.revert' => 'Revert',
+			'loggingControls.undoDelete' => 'Undo delete',
+			'loggingControls.pendingDeleteWarning' => 'QSO will be deleted when you save',
+			'qsoEditForm.title' => 'Edit QSO',
+			'qsoEditForm.theirName' => 'Name',
+			'qsoEditForm.theirGrid' => 'Grid',
+			'qsoEditForm.band' => 'Band',
+			'qsoEditForm.notes' => 'Notes',
 			'qsoList.empty' => 'No QSOs yet — work someone!',
 			'qsoList.duplicate' => 'Duplicate — same call, band and mode already logged',
 			'qsoList.newEntity' => 'New DXCC entity',
