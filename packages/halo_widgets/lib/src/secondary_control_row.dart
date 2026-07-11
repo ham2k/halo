@@ -177,7 +177,7 @@ class _SecondaryControlRowState extends State<SecondaryControlRow> {
           onTap: () => widget.onSelect(control.key == widget.selectedKey ? null : control.key),
         ),
       ?widget.trailing,
-      if (widget.onOpenSettings != null) _SettingsPill(onTap: widget.onOpenSettings!),
+      if (widget.onOpenSettings != null) _SettingsPill(height: _chipHeight, onTap: widget.onOpenSettings!),
     ];
 
     return Column(
@@ -251,6 +251,9 @@ class _SecondaryControlRowState extends State<SecondaryControlRow> {
             IconButton(
               tooltip: _gridExpanded ? 'Collapse' : 'Expand',
               visualDensity: VisualDensity.compact,
+              style: IconButton.styleFrom(
+                backgroundColor: HaLoColors.of(context).tertiaryLight.withValues(alpha: 0.5),
+              ),
               icon: Icon(_gridExpanded ? Icons.expand_less : Icons.expand_more),
               onPressed: () => setState(() => _gridExpanded = !_gridExpanded),
             ),
@@ -311,30 +314,37 @@ class _ControlChip extends StatelessWidget {
 
 /// Opens the show/hide + reorder settings dialog. Same pill shape/fill as
 /// an unselected control chip (it's never "selected" — it opens a dialog
-/// rather than expanding inline), icon-only.
+/// rather than expanding inline), icon-only. An empty label leaves Chip's
+/// own sizing shorter than a labeled chip, so `height` (the other chips'
+/// own measured height) is enforced explicitly to keep every pill the
+/// same height.
 class _SettingsPill extends StatelessWidget {
+  final double height;
   final VoidCallback onTap;
 
-  const _SettingsPill({required this.onTap});
+  const _SettingsPill({required this.height, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final poloColors = HaLoColors.of(context);
 
-    return ActionChip(
-      avatar: Icon(
-        Icons.settings_outlined,
-        size: 16 * MediaQuery.textScalerOf(context).scale(1.0),
-        color: theme.colorScheme.onTertiaryContainer,
+    return SizedBox(
+      height: height,
+      child: ActionChip(
+        avatar: Icon(
+          Icons.settings,
+          size: 16 * MediaQuery.textScalerOf(context).scale(1.0),
+          color: theme.colorScheme.onTertiaryContainer,
+        ),
+        label: const SizedBox.shrink(),
+        visualDensity: VisualDensity.compact,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        backgroundColor: poloColors.tertiaryLight,
+        side: BorderSide.none,
+        onPressed: onTap,
+        mouseCursor: SystemMouseCursors.click,
       ),
-      label: const SizedBox.shrink(),
-      visualDensity: VisualDensity.compact,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-      backgroundColor: poloColors.tertiaryLight,
-      side: BorderSide.none,
-      onPressed: onTap,
-      mouseCursor: SystemMouseCursors.click,
     );
   }
 }
