@@ -125,7 +125,7 @@ class HaLoServices {
   late final LookupRepository lookups = LookupRepository(db);
   late final ExportService exports = ExportService(extensions: extensions, qsos: qsos);
   late final ScoringService scoring = ScoringService(extensions: extensions, qsos: qsos, operations: operations);
-  late final RadioService radio = RadioService(operations: operations);
+  late final RadioService radio = RadioService(settings.prefs);
   late final DataFileManager dataFiles = DataFileManager(
     lookups: lookups,
     extensions: extensions,

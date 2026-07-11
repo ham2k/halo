@@ -135,10 +135,11 @@ class LoggingControls extends StatefulWidget {
   /// Settings engine interface.
   final SyncSettings? settings;
 
-  /// Holds the operation's VFO state (`vfoA`), used to seed the Radio
-  /// control for a new QSO instead of resetting to a hardcoded default, and
-  /// as the destination for its edits. When null, the Radio control behaves
-  /// as it did before this state existed — purely local to this widget.
+  /// Holds the radio's VFO state (`vfoA`) — device-global, shared by every
+  /// operation, not scoped to this one. Used to seed the Radio control for
+  /// a new QSO instead of resetting to a hardcoded default, and as the
+  /// destination for its edits. When null, the Radio control behaves as it
+  /// did before this state existed — purely local to this widget.
   final VfoStore? radioService;
 
   /// The user's preferred order for the secondary control chips, by key
@@ -336,7 +337,6 @@ class _LoggingControlsState extends State<LoggingControls> {
   @override
   void initState() {
     super.initState();
-    widget.radioService?.loadForOperation(widget.operation);
     _applyDefaultRSTs();
     // Population normally happens in didUpdateWidget, as editingQso
     // transitions from null to a selected QSO — but if this widget is ever
@@ -391,15 +391,6 @@ class _LoggingControlsState extends State<LoggingControls> {
   @override
   void didUpdateWidget(LoggingControls oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.operation.uuid != widget.operation.uuid) {
-      widget.radioService?.loadForOperation(widget.operation);
-      if (widget.editingQso == null) {
-        _populating = true;
-        _seedFromRadioService();
-        setState(() {});
-        _populating = false;
-      }
-    }
     if (oldWidget.editingQso?.uuid != widget.editingQso?.uuid) {
       _pendingDelete = false;
       _theirNameOverride = null;

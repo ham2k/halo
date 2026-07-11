@@ -7,8 +7,6 @@
 // runtime per DESIGN.md §2 — only what the core UI needs per keystroke gets
 // a Dart port. Frequencies are in kHz throughout, matching QSON.
 
-import '../models/models.dart';
-
 class BandInfo {
   final String name;
   final double minKHz;
@@ -94,11 +92,13 @@ final RegExp _callsignRegex = RegExp(r'^([A-Z0-9]{1,4}/)?[A-Z0-9]{1,3}[0-9][A-Z0
 /// parsing (prefixes, DXCC, modifiers) is plugin territory.
 bool looksLikeCallsign(String text) => _callsignRegex.hasMatch(text.toUpperCase());
 
-/// A radio's tuned state — `freq`/`mode`/`band` for one of an operation's
-/// up to 4 VFOs (`vfoA`..`vfoD`, see `RadioService`). `band` is only set
-/// when `freq` is null (a manually picked band with no specific
-/// frequency) — mirrors the `_manualBand` precedence `LoggingControls`
-/// already used before this state moved to the operation.
+/// A radio's tuned state — `freq`/`mode`/`band` for one of up to 4 VFOs
+/// (`vfoA`..`vfoD`, see `RadioService`). Device-global, not tied to any
+/// one operation: a physical radio is tuned to one frequency regardless of
+/// which operation you're logging into. `band` is only set when `freq` is
+/// null (a manually picked band with no specific frequency) — mirrors the
+/// `_manualBand` precedence `LoggingControls` already used before this
+/// state existed.
 class Vfo {
   final double? freq;
   final String? band;
@@ -119,12 +119,11 @@ class Vfo {
       };
 }
 
-/// What `LoggingControls` (halo_widgets) needs for reading and writing an
-/// operation's VFO state — implemented by the app's `RadioService`. Kept
-/// here, in pure-Dart halo_core, so halo_widgets doesn't need a dependency
-/// on the Flutter-only app package.
+/// What `LoggingControls` (halo_widgets) needs for reading and writing the
+/// device's (not any one operation's) VFO state — implemented by the app's
+/// `RadioService`. Kept here, in pure-Dart halo_core, so halo_widgets
+/// doesn't need a dependency on the Flutter-only app package.
 abstract class VfoStore {
   Vfo get vfoA;
-  void loadForOperation(Operation operation);
   void setVfo(String key, {double? freq, String? band, String? mode});
 }

@@ -318,11 +318,29 @@ void main() {
     await tester.pumpWidget(host(radioService: fakeRadio));
     await openControl(tester, MdiIcons.radio);
 
-    expect(fakeRadio.loadedOperationUuid, operation.uuid);
     expect(find.widgetWithText(TextField, 'Frequency'), findsOneWidget);
     final freqField = tester.widget<TextField>(find.widgetWithText(TextField, 'Frequency'));
     expect(freqField.controller!.text, '14285');
     expect(find.text('20m'), findsWidgets);
+  });
+
+  testWidgets('a brand new operation sees the same vfoA as any other — it is not per-operation', (tester) async {
+    fakeRadio.setVfo('vfoA', freq: 14285, mode: 'CW');
+    final freshOperation = await operations.create(stationCall: 'KI2D');
+
+    await tester.pumpWidget(MaterialApp(
+      home: Scaffold(
+        body: LoggingControls(
+          operation: freshOperation,
+          qsosRepository: qsos,
+          radioService: fakeRadio,
+        ),
+      ),
+    ));
+    await openControl(tester, MdiIcons.radio);
+
+    final freqField = tester.widget<TextField>(find.widgetWithText(TextField, 'Frequency'));
+    expect(freqField.controller!.text, '14285');
   });
 
   testWidgets('does not seed from radioService.vfoA while editing an existing QSO', (tester) async {
@@ -894,18 +912,12 @@ void main() {
 /// In-memory stand-in for the app's `RadioService` (which lives outside
 /// this package, in the Flutter app rather than halo_widgets) — just
 /// enough of `VfoStore` to verify LoggingControls seeds from and writes
-/// back to it, without a real operations repository.
+/// back to it, without a real SharedPreferences-backed store.
 class _FakeVfoStore implements VfoStore {
   Vfo _vfoA = const Vfo();
-  String? loadedOperationUuid;
 
   @override
   Vfo get vfoA => _vfoA;
-
-  @override
-  void loadForOperation(Operation operation) {
-    loadedOperationUuid = operation.uuid;
-  }
 
   @override
   void setVfo(String key, {double? freq, String? band, String? mode}) {
