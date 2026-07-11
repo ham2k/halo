@@ -1429,44 +1429,50 @@ class _LoggingControlsState extends State<LoggingControls> {
                         ),
                       ),
                       // A fixed-height container to prevent layout shifting.
-                      // The second edit button (wipe/undo, delete/undo, or
-                      // revert-changes — see _buildWipeOrEditButton) is the
-                      // same size as the submit button, which is taller than
-                      // this row — Clip.none plus a Positioned bottom:0 lets
-                      // it overflow upward from this row's bottom edge
-                      // rather than being squeezed to fit inside it.
+                      // Sized to the second edit button's own diameter (see
+                      // _buildWipeOrEditButton) — that button is the same
+                      // size as the submit button, well over the 36px this
+                      // row used to be, and a shorter row would have it
+                      // overflowing upward into the secondary control row's
+                      // chips above.
                       Stack(
                         clipBehavior: Clip.none,
                         children: [
                           SizedBox(
-                            height: 36,
+                            height: _editButtonDiameter ?? 44,
                             width: double.infinity,
-                            child: _pendingDelete
-                                ? Align(
-                                    alignment: Alignment.centerLeft,
-                                    child: Row(
-                                      children: [
-                                        Icon(
-                                          resolveIconName('alert'),
-                                          size: 16,
-                                          color: theme.colorScheme.error,
-                                        ),
-                                        const SizedBox(width: 4),
-                                        Expanded(
-                                          child: Text(
-                                            widget.pendingDeleteWarning ?? 'QSO will be deleted when you save',
-                                            maxLines: 2,
-                                            overflow: TextOverflow.ellipsis,
-                                            style: theme.textTheme.bodyMedium?.copyWith(
-                                              color: theme.colorScheme.error,
-                                              fontWeight: FontWeight.w500,
+                            // Reserves room for the button positioned on
+                            // top of this box (below), so text truncates
+                            // before it rather than rendering underneath.
+                            child: Padding(
+                              padding: EdgeInsets.only(right: (_editButtonDiameter ?? 44) + 8),
+                              child: _pendingDelete
+                                  ? Align(
+                                      alignment: Alignment.centerLeft,
+                                      child: Row(
+                                        children: [
+                                          Icon(
+                                            resolveIconName('alert'),
+                                            size: 16,
+                                            color: theme.colorScheme.error,
+                                          ),
+                                          const SizedBox(width: 4),
+                                          Expanded(
+                                            child: Text(
+                                              widget.pendingDeleteWarning ?? 'QSO will be deleted when you save',
+                                              maxLines: 2,
+                                              overflow: TextOverflow.ellipsis,
+                                              style: theme.textTheme.bodyMedium?.copyWith(
+                                                color: theme.colorScheme.error,
+                                                fontWeight: FontWeight.w500,
+                                              ),
                                             ),
                                           ),
-                                        ),
-                                      ],
-                                    ),
-                                  )
-                                : _buildInfoArea(theme),
+                                        ],
+                                      ),
+                                    )
+                                  : _buildInfoArea(theme),
+                            ),
                           ),
                           Positioned(
                             right: 0,
