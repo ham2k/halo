@@ -782,7 +782,13 @@ class _LoggingControlsState extends State<LoggingControls> {
     ];
     return {
       ...base,
-      if (refs.isNotEmpty) 'refs': refs,
+      // Unconditional (not `if (refs.isNotEmpty)`/`if (_freq != null)`):
+      // `base` may already carry a non-empty value for these from the
+      // record being edited, and a merge-style `...base` above won't drop
+      // a stale one just because the live value is now empty/null — these
+      // have to actively overwrite every time, including with null/empty,
+      // for clearing a ref/freq/band during an edit to actually stick.
+      'refs': refs,
       'our': {
         ...?(base['our'] as Map<String, dynamic>?),
         'call': widget.operation.stationCall,
@@ -796,8 +802,8 @@ class _LoggingControlsState extends State<LoggingControls> {
         'sent': _rcvdController.text.trim(),
         if (_lookupFor == _call && _lookupResult != null) ..._lookupResult!,
       },
-      if (_freq != null) 'freq': _freq,
-      if (_band != null) 'band': _band,
+      'freq': _freq,
+      'band': _band,
       'mode': _mode,
       if (_effectiveStartAtMillis != null) 'startAtMillis': _effectiveStartAtMillis,
       ..._currentQsoExtra,
@@ -943,7 +949,8 @@ class _LoggingControlsState extends State<LoggingControls> {
       return;
     }
 
-    if (widget.interpretCommand != null) {
+    // Command shortcuts only apply while composing a new QSO — see _log().
+    if (widget.editingQso == null && widget.interpretCommand != null) {
       _commandDescribeDebounce = Timer(const Duration(milliseconds: 150), () async {
         final qsoData = _getCurrentQsoData();
         final result = await widget.interpretCommand!(
@@ -1026,9 +1033,13 @@ class _LoggingControlsState extends State<LoggingControls> {
   Future<void> _log() async {
     if (_isLogging) return; // already logging this entry; ignore the repeat
 
-    // Check command
+    // Check command — shortcuts (band/freq/mode, etc.) only apply while
+    // composing a new QSO. A real callsign is exceedingly unlikely to
+    // parse as one, but editing an existing entry shouldn't run it through
+    // command interpretation at all, least of all while confirming a
+    // staged delete.
     final call = _call;
-    if (call.isNotEmpty && widget.interpretCommand != null) {
+    if (widget.editingQso == null && call.isNotEmpty && widget.interpretCommand != null) {
       _commandDescribeDebounce?.cancel();
       final qsoData = _getCurrentQsoData();
       final interpretation = _currentInterpretation ?? await widget.interpretCommand!(
