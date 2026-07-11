@@ -87,6 +87,7 @@ class _LoggingPanelState extends State<LoggingPanel> {
           qsosRepository: widget.services.qsos,
           qsos: widget.qsos,
           settings: widget.services.settings,
+          radioService: widget.services.radio,
           lookup: widget.services.extensions.lookupCall,
           activityControls: widget.loggingControls,
           decorateRef: widget.services.extensions.decorateRef,
