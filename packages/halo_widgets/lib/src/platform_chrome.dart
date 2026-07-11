@@ -21,7 +21,7 @@ const double macOSTrafficLightInset = 70;
 /// Extra breathing room between the traffic lights and whatever AppBar
 /// leading content follows them (logo, back button), so it doesn't start
 /// immediately at their edge.
-const double macOSTrafficLightGap = 12;
+const double macOSTrafficLightGap = 16;
 
 /// True on desktop/windowed platforms (macOS, Windows, Linux) and web, where
 /// an AppBar title reads like a windowed app's title bar and should sit

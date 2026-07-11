@@ -18,8 +18,7 @@
   "dialogs": {
     "deleteOperationConfirm": "Delete operation \"${title}\"?",
     "operationDetails": "Operation details",
-    "activities": "Activities",
-    "deleteQsoConfirm": "Delete QSO with ${call}?"
+    "activities": "Activities"
   },
   "operation": {
     "tabs": {
@@ -48,20 +47,42 @@
     "timeUtc": "Time (UTC)",
     "date": "Date",
     "now": "Now",
-    "freqKHz": "Freq kHz",
+    "frequency": "Frequency",
     "mode": "Mode",
     "dupe": "DUPE",
     "theirCall": "Their call",
     "sent": "Sent",
-    "rcvd": "Rcvd"
+    "rcvd": "Rcvd",
+    "more": "More",
+    "revert": "Revert",
+    "undoDelete": "Undo delete",
+    "wipe": "Wipe",
+    "undo": "Undo",
+    "pendingDeleteWarning": "QSO will be deleted when you save",
+    "timeControl": "Time",
+    "radioControl": "Radio",
+    "controlSettings": "Logging Controls"
+  },
+  "qsoEditForm": {
+    "title": "Edit QSO",
+    "theirName": "Name",
+    "theirGrid": "Grid",
+    "band": "Band",
+    "notes": "Notes"
   },
   "qsoList": {
-    "empty": "No QSOs yet — work someone!"
+    "empty": "No QSOs yet — work someone!",
+    "duplicate": "Duplicate — same call, band and mode already logged",
+    "newEntity": "New DXCC entity",
+    "newBandOrMode": "New band or mode for this callsign"
   },
   "loggingPanel": {
     "station": "Station",
     "byBand": "By band",
-    "byMode": "By mode"
+    "byMode": "By mode",
+    "scoring": "Scoring",
+    "dxccEntities": "DXCC entities",
+    "duplicates": "Duplicates"
   },
   "settings": {
     "title": "Settings",
@@ -72,6 +93,14 @@
       "system": "System",
       "light": "Light",
       "dark": "Dark"
+    },
+    "fontScale": "Font Scale",
+    "fontScaleOpts": {
+      "smallest": "Smallest",
+      "smaller": "Smaller",
+      "normal": "Normal",
+      "larger": "Larger",
+      "largest": "Largest"
     },
     "operatorCall": "Operator Callsign",
     "sync": {

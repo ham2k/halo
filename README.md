@@ -11,7 +11,8 @@ releases.
 
 **Start here: [DESIGN.md](DESIGN.md)** — architecture, extension model, hook
 taxonomy, data layer, sequencing plan. For writing extensions, see
-[docs/extensions/](docs/extensions/README.md).
+[docs/extensions/](docs/extensions/README.md). For web deployment setup, see
+[docs/deployment.md](docs/deployment.md).
 
 ## Status
 
@@ -48,6 +49,32 @@ Once in place, rebuilds sign consistently and you only need to click
 The same mechanism exists for iOS builds — copy
 [`app/ios/Flutter/Local.xcconfig.sample`](app/ios/Flutter/Local.xcconfig.sample)
 to `Local.xcconfig` in the same folder and set `DEVELOPMENT_TEAM` there too.
+
+### Windows
+
+Setup:
+```
+Install Visual Studio 2026, with C++ Desktop development
+Install Git
+Install Node.js
+Install VSCode
+Install Flutter extension for VSCode
+winget install Microsoft.NuGet
+Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
+start ms-settings:developers # Enable Developer Mode
+
+# Close and reopen the terminal
+
+cd app/lib/config
+copy mapbox_token.dart.example mapbox_token.dart
+cd ../../..
+```
+
+Build:
+```
+cd extensions && npm install && npm run build
+cd app && flutter run -d windows
+```
 
 ## License
 

@@ -5,6 +5,8 @@
 // source of truth (it is what syncs and what plugins see), the getters just
 // give the core and UI a safe way in.
 
+import 'dart:convert';
+
 /// A logging session: one station, one setup, one stretch of time.
 class Operation {
   final String uuid;
@@ -14,6 +16,11 @@ class Operation {
   final int? startAtMillisMax;
   final bool deleted;
 
+  /// Device-local state that never syncs — e.g. cached day/operation scoring
+  /// summaries written by `ScoringService` under the `scoring` key. Distinct
+  /// from `data`, which is the QSON blob that syncs to the server.
+  final Map<String, dynamic> localData;
+
   const Operation({
     required this.uuid,
     required this.data,
@@ -21,6 +28,7 @@ class Operation {
     this.startAtMillisMin,
     this.startAtMillisMax,
     this.deleted = false,
+    this.localData = const {},
   });
 
   String get stationCall => (data['stationCall'] as String?) ?? '';
@@ -45,7 +53,29 @@ class Qso {
   final Map<String, dynamic> data;
   final bool deleted;
 
-  const Qso({required this.uuid, required this.operationUuid, required this.data, this.deleted = false});
+  /// Cached scoring results (DESIGN.md §4: the `scoring` hook runs batched
+  /// and caches its per-QSO verdicts here, keyed by rule — e.g. `dupe`,
+  /// `dxcc`, `bandsAndModes` — so list rendering never waits on the JS
+  /// runtime). `null` until `ScoringService` has scored this operation.
+  final String? scoreCache;
+
+  const Qso({
+    required this.uuid,
+    required this.operationUuid,
+    required this.data,
+    this.deleted = false,
+    this.scoreCache,
+  });
+
+  Map<String, dynamic>? get scores {
+    if (scoreCache == null) return null;
+    try {
+      final decoded = jsonDecode(scoreCache!);
+      return decoded is Map<String, dynamic> ? decoded : null;
+    } catch (_) {
+      return null;
+    }
+  }
 
   Map<String, dynamic> get _our => (data['our'] as Map<String, dynamic>?) ?? const {};
   Map<String, dynamic> get _their => (data['their'] as Map<String, dynamic>?) ?? const {};

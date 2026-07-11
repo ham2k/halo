@@ -12,14 +12,19 @@
 // visible) is what app-polo moved away from as more activities registered
 // logging controls.
 //
-// Scoped down for v1 versus app-polo's original: no per-user visibility
-// settings (every control the caller passes in shows; there's no persisted
-// "hide this one" yet) and no drag-reordering. Both can layer onto this
-// widget's contract later without changing it.
+// The chip strip itself can be dragged to scroll (desktop mice don't get
+// click-drag scrolling by default — only touch/trackpad do, unless
+// explicitly opted in), and a caret expands it into a multi-row grid (up to
+// 4 rows tall, scrollable beyond that) so every control can be seen at
+// once instead of scrolled through one at a time. Show/hide and reordering
+// of which controls appear at all lives one level up (LoggingControls owns
+// that state and persistence); this widget just renders whatever ordered
+// list it's given, plus a settings button the caller wires up to open
+// that management UI.
 
-import 'dart:math' as math;
-
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart' show OverflowBoxFit;
 
 import 'theme.dart';
 
@@ -33,12 +38,6 @@ class SecondaryControlSpec {
   final String key;
   final IconData icon;
   final String summary;
-
-  /// Shown as a highlighted border on the chip when the control already
-  /// holds a value worth flagging (e.g. a POTA ref has been entered, or the
-  /// time has been manually overridden).
-  final bool hasValue;
-
   final WidgetBuilder expandedBuilder;
 
   const SecondaryControlSpec({
@@ -46,8 +45,17 @@ class SecondaryControlSpec {
     required this.icon,
     required this.summary,
     required this.expandedBuilder,
-    this.hasValue = false,
   });
+}
+
+/// Lets mouse click-drag scroll the chip strip, in addition to the
+/// touch/trackpad drag Flutter's default behavior already allows.
+class _DragScrollBehavior extends MaterialScrollBehavior {
+  @override
+  Set<PointerDeviceKind> get dragDevices => {
+        ...super.dragDevices,
+        PointerDeviceKind.mouse,
+      };
 }
 
 class SecondaryControlRow extends StatefulWidget {
@@ -59,12 +67,24 @@ class SecondaryControlRow extends StatefulWidget {
   /// It's not a control — it doesn't expand or get selected.
   final Widget? trailing;
 
+  /// Opens the show/hide + reorder settings dialog. The gear button is
+  /// hidden if this is null.
+  final VoidCallback? onOpenSettings;
+
+  /// How far the parent's own horizontal padding insets this widget from
+  /// the true edge of the view. The expanded control panel's background
+  /// bleeds out by this much on each side so it reaches the view's actual
+  /// edges instead of stopping at the parent's padding.
+  final double horizontalBleed;
+
   const SecondaryControlRow({
     super.key,
     required this.controls,
     required this.selectedKey,
     required this.onSelect,
     this.trailing,
+    this.onOpenSettings,
+    this.horizontalBleed = 0,
   });
 
   @override
@@ -72,72 +92,89 @@ class SecondaryControlRow extends StatefulWidget {
 }
 
 class _SecondaryControlRowState extends State<SecondaryControlRow> {
-  // Anchors the coordinate space used to position the expanded content: its
-  // own top-left corner (stable regardless of how wide this widget's
-  // shrink-wrapped content ends up being — only its origin matters here),
-  // not its rendered width, which is why availableWidth comes from
-  // LayoutBuilder's incoming constraints instead (the true width this
-  // widget was offered, not whatever it chose to consume).
   final _rowKey = GlobalKey();
   final _expandedKey = GlobalKey();
   final Map<String, GlobalKey> _chipKeys = {};
-  double _expandedLeft = 0;
-  double _availableWidth = 0;
+
+  /// Whether the caret has expanded the strip into a multi-row grid.
+  bool _gridExpanded = false;
+
+  /// A single chip's rendered height, measured post-frame from whichever
+  /// chip happens to be built first — used to cap the expanded grid at
+  /// ~4 rows. Defaults to a reasonable guess (a compact ChoiceChip's actual
+  /// height) until the first real measurement lands.
+  double _chipHeight = 32;
+
+  /// Where the expanded panel's content sits within its (full-width)
+  /// background: a chip in the left quarter of the row aligns the panel
+  /// left, one in the right quarter aligns it right, and anything in the
+  /// middle half centers the panel *on the chip itself* (not on the whole
+  /// row) — computed from the chip's and panel's own measured widths so the
+  /// panel visually hangs below the pill that opened it. Defaults to left
+  /// until the first post-frame measurement lands.
+  Alignment _expandedAlignment = Alignment.centerLeft;
 
   GlobalKey _chipKeyFor(String key) => _chipKeys.putIfAbsent(key, GlobalKey.new);
 
   @override
   void initState() {
     super.initState();
-    _scheduleReposition();
+    _scheduleMeasure();
   }
 
   @override
   void didUpdateWidget(covariant SecondaryControlRow oldWidget) {
     super.didUpdateWidget(oldWidget);
-    _scheduleReposition();
+    _scheduleMeasure();
   }
 
-  void _scheduleReposition() {
-    WidgetsBinding.instance.addPostFrameCallback((_) => _reposition());
+  void _scheduleMeasure() {
+    WidgetsBinding.instance.addPostFrameCallback((_) => _measure());
   }
 
-  /// Centers the expanded content over the selected chip when there's room;
-  /// otherwise hugs whichever edge of the chip it overflowed past, so it
-  /// never spills outside the panel. Runs after layout (needs the chip's
-  /// and expanded content's actual rendered sizes, which aren't known
-  /// during build), so a freshly-selected control briefly renders at its
-  /// previous offset before snapping into place one frame later.
-  void _reposition() {
-    if (!mounted || widget.selectedKey == null) return;
+  void _measure() {
+    if (!mounted) return;
+
+    final anyChipBox = widget.controls.isEmpty
+        ? null
+        : _chipKeys[widget.controls.first.key]?.currentContext?.findRenderObject() as RenderBox?;
+    if (anyChipBox != null && anyChipBox.attached) {
+      final height = anyChipBox.size.height;
+      if (height > 0 && (height - _chipHeight).abs() > 0.5) {
+        setState(() => _chipHeight = height);
+      }
+    }
+
+    if (widget.selectedKey == null) return;
     final rowBox = _rowKey.currentContext?.findRenderObject() as RenderBox?;
     final chipBox = _chipKeys[widget.selectedKey]?.currentContext?.findRenderObject() as RenderBox?;
-    final expandedBox = _expandedKey.currentContext?.findRenderObject() as RenderBox?;
-    if (rowBox == null ||
-        chipBox == null ||
-        expandedBox == null ||
-        !rowBox.attached ||
-        !chipBox.attached ||
-        !expandedBox.attached) {
-      return;
-    }
+    if (rowBox == null || chipBox == null || !rowBox.attached || !chipBox.attached) return;
 
     final chipLeft = chipBox.localToGlobal(Offset.zero, ancestor: rowBox).dx;
-    final chipWidth = chipBox.size.width;
-    final expandedWidth = expandedBox.size.width;
-    final availableWidth = _availableWidth.isFinite ? _availableWidth : expandedWidth;
-    final maxLeft = math.max(0.0, availableWidth - expandedWidth);
+    final chipCenter = chipLeft + chipBox.size.width / 2;
+    final availableWidth = rowBox.size.width;
 
-    var left = chipLeft + chipWidth / 2 - expandedWidth / 2;
-    if (left < 0) {
-      left = chipLeft; // hug the pill's left edge
-    } else if (left + expandedWidth > availableWidth) {
-      left = chipLeft + chipWidth - expandedWidth; // hug the pill's right edge
+    Alignment alignment;
+    if (chipCenter < availableWidth * 0.25) {
+      alignment = Alignment.centerLeft;
+    } else if (chipCenter > availableWidth * 0.75) {
+      alignment = Alignment.centerRight;
+    } else {
+      // Center the panel on the chip's own position rather than the whole
+      // row: solve Align's placement formula for the x that puts the
+      // panel's midpoint at chipCenter, using the panel's own measured
+      // width (falls back to plain center pending that measurement).
+      final expandedBox = _expandedKey.currentContext?.findRenderObject() as RenderBox?;
+      final expandedWidth = expandedBox != null && expandedBox.attached ? expandedBox.size.width : null;
+      if (expandedWidth == null || expandedWidth >= availableWidth) {
+        alignment = Alignment.center;
+      } else {
+        final x = 2 * (chipCenter - expandedWidth / 2) / (availableWidth - expandedWidth) - 1;
+        alignment = Alignment(x.clamp(-1.0, 1.0), 0);
+      }
     }
-    left = left.clamp(0.0, maxLeft);
-
-    if ((left - _expandedLeft).abs() > 0.5) {
-      setState(() => _expandedLeft = left);
+    if (alignment != _expandedAlignment) {
+      setState(() => _expandedAlignment = alignment);
     }
   }
 
@@ -147,48 +184,105 @@ class _SecondaryControlRowState extends State<SecondaryControlRow> {
     for (final control in widget.controls) {
       if (control.key == widget.selectedKey) selected = control;
     }
-    // The expanded content's own size can change between builds (e.g.
-    // switching from Time's fields to Radio's, or DUPE appearing/
-    // disappearing next to the chips), so reposition on every build, not
-    // just when selectedKey changes; _reposition's own threshold check
-    // makes this a no-op once things settle.
-    if (selected != null) _scheduleReposition();
 
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        _availableWidth = constraints.maxWidth;
-        return Column(
-          key: _rowKey,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            if (selected != null)
-              Padding(
-                padding: EdgeInsets.only(left: _expandedLeft, bottom: 4),
-                child: Builder(key: _expandedKey, builder: selected.expandedBuilder),
-              ),
-            SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  for (final control in widget.controls) ...[
-                    _ControlChip(
-                      key: _chipKeyFor(control.key),
-                      control: control,
-                      selected: control.key == widget.selectedKey,
-                      onTap: () => widget
-                          .onSelect(control.key == widget.selectedKey ? null : control.key),
-                    ),
-                    const SizedBox(width: 6),
-                  ],
-                  ?widget.trailing,
-                ],
+    final theme = Theme.of(context);
+    const spacing = 6.0;
+    final chips = [
+      for (final control in widget.controls)
+        _ControlChip(
+          key: _chipKeyFor(control.key),
+          control: control,
+          selected: control.key == widget.selectedKey,
+          onTap: () => widget.onSelect(control.key == widget.selectedKey ? null : control.key),
+        ),
+      ?widget.trailing,
+      if (widget.onOpenSettings != null) _SettingsPill(height: _chipHeight, onTap: widget.onOpenSettings!),
+    ];
+
+    return Column(
+      key: _rowKey,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        if (selected case final selected?)
+          LayoutBuilder(
+            builder: (context, constraints) => OverflowBox(
+              // Bleeds past the parent's own horizontal padding so the
+              // background below reaches the view's true edges instead of
+              // stopping short at that padding. OverflowBox (rather than a
+              // negative Padding, which Flutter rejects outright) lets a
+              // child be wider than the space its parent offered.
+              minWidth: 0,
+              maxWidth: constraints.maxWidth + widget.horizontalBleed * 2,
+              // The Column above sizes to its children (mainAxisSize.min),
+              // handing this an unbounded height — deferToChild sizes the
+              // OverflowBox to its child's own height instead of trying to
+              // fill that infinite constraint.
+              fit: OverflowBoxFit.deferToChild,
+              child: Container(
+                // Same solid color as a selected pill — this is the
+                // "extended area" that gets the pill background, not the
+                // chip strip itself — full width, flush against the top
+                // and sides, with its own regular inner padding around
+                // the content.
+                width: constraints.maxWidth + widget.horizontalBleed * 2,
+                color: theme.colorScheme.tertiary,
+                // Horizontal inset matches the pill row's own — that row
+                // has no padding of its own, so its chips sit exactly
+                // `horizontalBleed` in from the true edge (the parent's own
+                // padding, which this panel otherwise bleeds past).
+                padding: EdgeInsets.symmetric(horizontal: widget.horizontalBleed, vertical: 8),
+                child: Align(
+                  alignment: _expandedAlignment,
+                  child: Builder(key: _expandedKey, builder: selected.expandedBuilder),
+                ),
               ),
             ),
+          ),
+        const SizedBox(height: 4),
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: _gridExpanded
+                  ? ConstrainedBox(
+                      constraints: BoxConstraints(maxHeight: _chipHeight * 4 + spacing * 3),
+                      child: SingleChildScrollView(
+                        child: Wrap(
+                          spacing: spacing,
+                          runSpacing: spacing,
+                          children: chips,
+                        ),
+                      ),
+                    )
+                  : ScrollConfiguration(
+                      behavior: _DragScrollBehavior(),
+                      child: SingleChildScrollView(
+                        scrollDirection: Axis.horizontal,
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            for (final chip in chips) ...[
+                              chip,
+                              if (chip != chips.last) const SizedBox(width: spacing),
+                            ],
+                          ],
+                        ),
+                      ),
+                    ),
+            ),
+            IconButton(
+              tooltip: _gridExpanded ? 'Collapse' : 'Expand',
+              visualDensity: VisualDensity.compact,
+              style: IconButton.styleFrom(
+                backgroundColor: HaLoColors.of(context).tertiaryLight.withValues(alpha: 0.5),
+              ),
+              icon: Icon(_gridExpanded ? Icons.expand_less : Icons.expand_more),
+              onPressed: () => setState(() => _gridExpanded = !_gridExpanded),
+            ),
           ],
-        );
-      },
+        ),
+      ],
     );
   }
 }
@@ -220,7 +314,11 @@ class _ControlChip extends StatelessWidget {
         : theme.colorScheme.onTertiaryContainer;
 
     return ChoiceChip(
-      avatar: Icon(control.icon, size: 16, color: foreground),
+      avatar: Icon(
+        control.icon,
+        size: 16 * MediaQuery.textScalerOf(context).scale(1.0),
+        color: foreground,
+      ),
       label: Text(control.summary, style: TextStyle(color: foreground)),
       selected: selected,
       showCheckmark: false,
@@ -229,12 +327,51 @@ class _ControlChip extends StatelessWidget {
       backgroundColor: poloColors.tertiaryLight,
       selectedColor: theme.colorScheme.tertiary,
       // Material3's ChoiceChip draws a default outline when side is null;
-      // app-polo's LoggerChip has none unless flagging hasValue.
-      side: control.hasValue
-          ? BorderSide(color: theme.colorScheme.primary, width: 1.5)
-          : BorderSide.none,
+      // app-polo's LoggerChip has none.
+      side: BorderSide.none,
       onSelected: (_) => onTap(),
       mouseCursor: SystemMouseCursors.click,
+    );
+  }
+}
+
+/// Opens the show/hide + reorder settings dialog. Same pill shape/fill as
+/// an unselected control chip (it's never "selected" — it opens a dialog
+/// rather than expanding inline), icon-only. Built directly on Material
+/// rather than ChoiceChip/ActionChip — Chip's built-in label padding keeps
+/// some horizontal space reserved even for an empty label, which fights
+/// against staying narrow; a square Material+InkWell has no such minimum.
+class _SettingsPill extends StatelessWidget {
+  final double height;
+  final VoidCallback onTap;
+
+  const _SettingsPill({required this.height, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final poloColors = HaLoColors.of(context);
+    final borderRadius = BorderRadius.circular(8);
+
+    return SizedBox(
+      width: height,
+      height: height,
+      child: Material(
+        color: poloColors.tertiaryLight,
+        borderRadius: borderRadius,
+        child: InkWell(
+          borderRadius: borderRadius,
+          mouseCursor: SystemMouseCursors.click,
+          onTap: onTap,
+          child: Center(
+            child: Icon(
+              Icons.settings,
+              size: 16 * MediaQuery.textScalerOf(context).scale(1.0),
+              color: theme.colorScheme.onTertiaryContainer,
+            ),
+          ),
+        ),
+      ),
     );
   }
 }

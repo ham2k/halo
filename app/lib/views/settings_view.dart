@@ -19,6 +19,7 @@ import 'package:http/http.dart' as http;
 
 import '../main.dart';
 import '../services/settings_service.dart';
+import 'notice_history_view.dart';
 import 'operation_dialogs.dart';
 import '../i18n/strings.g.dart';
 
@@ -130,14 +131,14 @@ class _SettingsViewState extends State<SettingsView> {
 
       return Scaffold(
         appBar: PreferredSize(
-          preferredSize: const Size.fromHeight(kToolbarHeight),
+          preferredSize: Size.fromHeight(Theme.of(context).appBarTheme.toolbarHeight ?? 56.0),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               SizedBox(
                 width: 320,
                 child: AppBar(
-                  leadingWidth: isMacOSChromelessWindow ? 56 + macOSTrafficLightInset + macOSTrafficLightGap : null,
+                  leadingWidth: isMacOSChromelessWindow ? 48 + macOSTrafficLightInset + macOSTrafficLightGap : null,
                   leading: MouseRegion(
                     cursor: SystemMouseCursors.click,
                     child: isMacOSChromelessWindow
@@ -182,7 +183,7 @@ class _SettingsViewState extends State<SettingsView> {
     } else {
       return Scaffold(
         appBar: AppBar(
-          leadingWidth: isMacOSChromelessWindow ? 56 + macOSTrafficLightInset + macOSTrafficLightGap : null,
+          leadingWidth: isMacOSChromelessWindow ? 48 + macOSTrafficLightInset + macOSTrafficLightGap : null,
           leading: MouseRegion(
             cursor: SystemMouseCursors.click,
             child: isMacOSChromelessWindow
@@ -351,6 +352,53 @@ class _GeneralPanel extends StatelessWidget {
                 await settings.setLocale(newLocale);
                 LocaleSettings.setLocaleRaw(newLocale);
               },
+            ),
+            const SizedBox(height: 24),
+            Text(
+              t.settings.fontScale,
+              style: const TextStyle(fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 8),
+            InputDecorator(
+              decoration: const InputDecoration(
+                contentPadding: EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+              ),
+              child: DropdownButtonHideUnderline(
+                child: DropdownButton<FontScale>(
+                  value: settings.fontScale,
+                  isDense: true,
+                  isExpanded: true,
+                  items: FontScale.values.map((scale) {
+                    String translatedLabel;
+                    switch (scale) {
+                      case FontScale.smallest:
+                        translatedLabel = t.settings.fontScaleOpts.smallest;
+                        break;
+                      case FontScale.smaller:
+                        translatedLabel = t.settings.fontScaleOpts.smaller;
+                        break;
+                      case FontScale.normal:
+                        translatedLabel = t.settings.fontScaleOpts.normal;
+                        break;
+                      case FontScale.larger:
+                        translatedLabel = t.settings.fontScaleOpts.larger;
+                        break;
+                      case FontScale.largest:
+                        translatedLabel = t.settings.fontScaleOpts.largest;
+                        break;
+                    }
+                    return DropdownMenuItem<FontScale>(
+                      value: scale,
+                      child: Text(translatedLabel),
+                    );
+                  }).toList(),
+                  onChanged: (scale) {
+                    if (scale != null) {
+                      settings.setFontScale(scale);
+                    }
+                  },
+                ),
+              ),
             ),
           ],
         );
@@ -655,6 +703,145 @@ class _DeveloperPanel extends StatelessWidget {
               contentPadding: EdgeInsets.zero,
             ),
             const SizedBox(height: 16),
+            ElevatedButton(
+              onPressed: () async {
+                final formDefinition = {
+                  'title': 'Developer Form Demo',
+                  'subtitle': 'Verify all form element types and features',
+                  'elements': [
+                    {
+                      'type': 'header',
+                      'title': 'General Information',
+                      'subtitle': 'These elements describe basic section settings',
+                    },
+                    {
+                      'type': 'field',
+                      'fieldType': 'text',
+                      'key': 'name',
+                      'label': 'Name',
+                      'placeholder': 'Enter your full name',
+                    },
+                    {
+                      'type': 'field',
+                      'fieldType': 'multiline',
+                      'key': 'bio',
+                      'label': 'Biography',
+                      'placeholder': 'Tell us about yourself...',
+                    },
+                    {
+                      'type': 'divider',
+                      'title': 'Contact Details',
+                    },
+                    {
+                      'type': 'field',
+                      'fieldType': 'email',
+                      'key': 'email',
+                      'label': 'Email Address',
+                      'placeholder': 'email@example.com',
+                    },
+                    {
+                      'type': 'field',
+                      'fieldType': 'callsign',
+                      'key': 'callsign',
+                      'label': 'Operator Callsign',
+                      'placeholder': 'W1AW',
+                    },
+                    {
+                      'type': 'field',
+                      'fieldType': 'number',
+                      'key': 'power',
+                      'label': 'Power Output (Watts)',
+                      'placeholder': '100',
+                    },
+                    {
+                      'type': 'markdown',
+                      'text': 'Please make sure to **validate** the information before saving.',
+                    },
+                    {
+                      'type': 'divider',
+                      'title': 'Preferences',
+                    },
+                    {
+                      'type': 'field',
+                      'fieldType': 'select',
+                      'key': 'license',
+                      'label': 'License Class',
+                      'options': [
+                        {'label': 'Technician', 'value': 'tech'},
+                        {'label': 'General', 'value': 'general'},
+                        {'label': 'Extra', 'value': 'extra'},
+                      ],
+                    },
+                    {
+                      'type': 'field',
+                      'fieldType': 'radio',
+                      'key': 'mode_pref',
+                      'label': 'Preferred Mode',
+                      'options': [
+                        {'label': 'SSB / Phone', 'value': 'ssb'},
+                        {'label': 'CW / Morse', 'value': 'cw'},
+                        {'label': 'Digital (FT8, RTTY)', 'value': 'digital'},
+                      ],
+                    },
+                    {
+                      'type': 'field',
+                      'fieldType': 'checkbox',
+                      'key': 'subscribe',
+                      'label': 'Subscribe to newsletter',
+                    },
+                  ],
+                };
+
+                final initialState = {
+                  'name': 'Sebastian Delmont',
+                  'license': 'extra',
+                  'subscribe': true,
+                };
+
+                final result = await showFormDialog(
+                  context,
+                  formDefinition: formDefinition,
+                  initialState: initialState,
+                  validator: (fieldKey, value, state) async {
+                    await Future<void>.delayed(const Duration(milliseconds: 200));
+
+                    if (fieldKey == 'email') {
+                      final str = value?.toString() ?? '';
+                      if (str.isNotEmpty && !str.contains('@')) {
+                        return 'Invalid email address format';
+                      }
+                    }
+                    if (fieldKey == 'callsign') {
+                      final str = value?.toString() ?? '';
+                      if (str.isNotEmpty && str.length < 3) {
+                        return 'Callsign is too short (min 3 chars)';
+                      }
+                    }
+                    if (fieldKey == 'power') {
+                      final numVal = value as num?;
+                      if (numVal != null && (numVal < 0 || numVal > 1500)) {
+                        return 'Power must be between 0 and 1500 Watts';
+                      }
+                    }
+                    return null;
+                  },
+                  transformer: (fieldKey, value, state) async {
+                    if (fieldKey == 'callsign') {
+                      return value?.toString().toUpperCase();
+                    }
+                    return value;
+                  },
+                );
+
+                if (context.mounted && result != null) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Saved: ${result.toString()}')),
+                  );
+                }
+              },
+              child: const Text('Test Custom Form Dialog'),
+            ),
+            const SizedBox(height: 16),
             const Divider(),
             const SizedBox(height: 16),
             Text(
@@ -752,6 +939,16 @@ class _AboutPanel extends StatelessWidget {
           'Ham2K Logger is the next-generation Portable Logger for amateur radio operators. '
           'It is designed to be lightweight, cross-platform, and extensible.',
           style: TextStyle(height: 1.4, fontSize: 14),
+        ),
+        const SizedBox(height: 8),
+        ListTile(
+          contentPadding: EdgeInsets.zero,
+          leading: const Icon(Icons.notifications_outlined),
+          title: const Text('Recent Notices'),
+          onTap: () => Navigator.of(context).push(
+            MaterialPageRoute(builder: (context) => NoticeHistoryView(services: services)),
+          ),
+          mouseCursor: SystemMouseCursors.click,
         ),
       ],
     );
@@ -1103,6 +1300,7 @@ class _AccountDialogState extends State<_AccountDialog> {
                       ],
                       TextField(
                         controller: controller,
+                        style: theme.textTheme.bodyLarge?.copyWith(fontSize: 15),
                         obscureText: field['type'] == 'secret',
                         keyboardType: field['type'] == 'email'
                             ? TextInputType.emailAddress

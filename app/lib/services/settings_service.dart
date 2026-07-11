@@ -28,6 +28,9 @@ class SettingsService extends ChangeNotifier implements SyncSettings {
   static const _syncStateKey = 'syncState';
   static const _developerModeKey = 'developerMode';
   static const _localeKey = 'locale';
+  static const _fontScaleKey = 'fontScale';
+  static const _secondaryControlsOrderKey = 'secondaryControlsOrder';
+  static const _hiddenSecondaryControlsKey = 'hiddenSecondaryControls';
 
   final SharedPreferences _prefs;
 
@@ -136,4 +139,66 @@ class SettingsService extends ChangeNotifier implements SyncSettings {
     await _prefs.setString(_localeKey, localeCode);
     notifyListeners();
   }
+
+  FontScale get fontScale {
+    final value = _prefs.getString(_fontScaleKey);
+    return FontScale.values.firstWhere(
+      (e) => e.name == value,
+      orElse: () => FontScale.normal,
+    );
+  }
+
+  Future<void> setFontScale(FontScale scale) async {
+    await _prefs.setString(_fontScaleKey, scale.name);
+    notifyListeners();
+  }
+
+  Future<void> increaseFontScale() async {
+    final current = fontScale;
+    final index = current.index;
+    if (index < FontScale.values.length - 1) {
+      await setFontScale(FontScale.values[index + 1]);
+    }
+  }
+
+  Future<void> decreaseFontScale() async {
+    final current = fontScale;
+    final index = current.index;
+    if (index > 0) {
+      await setFontScale(FontScale.values[index - 1]);
+    }
+  }
+
+  /// The user's preferred order for the logging panel's secondary control
+  /// chips (Time, Radio, activity-contributed ones, More), by key. Missing
+  /// keys (a newly-installed extension, or before this was ever set) fall
+  /// back to whatever default order the panel itself uses.
+  List<String> get secondaryControlsOrder => _prefs.getStringList(_secondaryControlsOrderKey) ?? const [];
+
+  Future<void> setSecondaryControlsOrder(List<String> order) async {
+    await _prefs.setStringList(_secondaryControlsOrderKey, order);
+    notifyListeners();
+  }
+
+  /// Control keys hidden from the secondary control row. Time and Radio
+  /// can't be hidden — the panel itself enforces that, this is just storage.
+  Set<String> get hiddenSecondaryControls => _prefs.getStringList(_hiddenSecondaryControlsKey)?.toSet() ?? const {};
+
+  Future<void> setHiddenSecondaryControls(Set<String> hidden) async {
+    await _prefs.setStringList(_hiddenSecondaryControlsKey, hidden.toList());
+    notifyListeners();
+  }
+}
+
+enum FontScale {
+  smallest(0.70, 'Smallest'),
+  smaller(0.85, 'Smaller'),
+  normal(1.00, 'Normal'),
+  larger(1.20, 'Larger'),
+  largest(1.40, 'Largest');
+
+  final double scaleFactor;
+  final String label;
+
+  const FontScale(this.scaleFactor, this.label);
 }

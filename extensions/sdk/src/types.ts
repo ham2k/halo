@@ -135,6 +135,64 @@ export interface ExportHook {
   generateExport(args: ExportRequest, ctx: HookContext): Promise<ExportResult>
 }
 
+/// Per-QSO verdict from one scoring rule (dupe check, DXCC entity worked,
+/// band/mode worked, etc). `value` is the point contribution (usually 0 or 1);
+/// `dupe`/`notices`/`alerts` drive UI badges on the QSO row.
+export interface QsoScoreVerdict {
+  value: number
+  dupe?: boolean
+  notices?: string[]
+  alerts?: string[]
+  [extra: string]: JSONValue | undefined
+}
+
+/// All rules' verdicts for one QSO, keyed by rule key (e.g. 'dupe', 'dxcc',
+/// 'bandsAndModes'). Cached verbatim into `qsos.score_cache`.
+export type QsoScoreEntry = Record<string, QsoScoreVerdict>
+
+/// One rule's running tally, either for a calendar day or the whole
+/// operation. Shape is rule-specific beyond the common summary fields.
+export interface ScoreTally {
+  key: string
+  for: 'day' | 'operation'
+  icon?: string
+  label?: string
+  summary?: string
+  longSummary?: string
+  total: number
+  [extra: string]: JSONValue | undefined
+}
+
+/// One calendar-day bucket (UTC, following app-polo/web-lofi's convention)
+/// with that day's accumulated tallies per rule key.
+export interface DayScoreSummary {
+  day: number
+  count: number
+  scores: Record<string, ScoreTally>
+}
+
+export interface ScoreQsosRequest {
+  operation: Record<string, JSONValue>
+  qsos: Record<string, JSONValue>[]
+}
+
+export interface ScoreQsosResult {
+  /// Keyed by QSO uuid — written verbatim into that QSO's `score_cache` column.
+  qsoScores: Record<string, QsoScoreEntry>
+  daySections: DayScoreSummary[]
+  /// Cumulative tallies across the whole operation (last day section's
+  /// running totals) — cached on the operation, not any one QSO.
+  operationSummary: Record<string, ScoreTally>
+}
+
+/// Registered under category `scoring`. One coarse batched call scores an
+/// entire operation's QSOs at once (DESIGN.md §4: "score 500 QSOs in one
+/// call, not 500 calls") — day-sectioning and accumulation both happen here,
+/// inside the runtime, not orchestrated call-by-call from Dart.
+export interface ScoringHook {
+  scoreQsos(args: ScoreQsosRequest, ctx: HookContext): Promise<ScoreQsosResult>
+}
+
 export interface CommandAction {
   setVfo?: {
     freq?: number
@@ -150,6 +208,18 @@ export interface CommandAction {
   updateSettings?: {
     developerMode?: boolean
   }
+  /// Developer-only: posts a notice via `host.statusBar.showNotice` (see
+  /// `dev-commands`'s DEVNOTICE). Dispatched by the app, not the extension
+  /// itself, so it goes through the same confirm/preview flow as any other
+  /// command action.
+  devNotice?: { icon?: string; title?: string; text: string }
+  /// Developer-only: posts a transient status message (DEVSTATUS). `key`
+  /// lets the caller post more than one at once (e.g. a fresh key per call)
+  /// instead of always replacing the same status item.
+  devStatus?: { key?: string; icon?: string; title?: string; text?: string }
+  /// Developer-only: posts a progress bar (DEVPROGRESS); omit `percent` for
+  /// an indeterminate bar.
+  devProgress?: { icon?: string; title?: string; percent?: number }
   [actionName: string]: unknown
 }
 
@@ -227,6 +297,7 @@ export type Hook =
   | LookupHook
   | SpotsHook
   | ExportHook
+  | ScoringHook
   | RefHandlerHook
   | ActivityHook
   | AdifFieldsHook
@@ -234,6 +305,7 @@ export type Hook =
   | SyncTransportHook
   | AccountHook
   | DataFileDefinition
+  | FormHook
   | Record<string, unknown>
 
 export interface RegisterHookParams {
@@ -315,4 +387,95 @@ export interface DataFileDefinition {
   rawToJSONData?: (args: { body: string; url: string; options: Record<string, any> }) => Promise<any>
   onLoadRawData?: (data: any) => void
   onRemoveRawData?: () => Promise<void>
+}
+
+export type FormFieldType =
+  | 'text'
+  | 'multiline'
+  | 'email'
+  | 'callsign'
+  | 'number'
+  | 'select'
+  | 'radio'
+  | 'checkbox'
+
+export interface FormFieldOption {
+  label: string;
+  value: any;
+}
+
+export interface FormField {
+  type: 'field'
+  fieldType: FormFieldType
+  key: string
+  label: string
+  value?: any
+  placeholder?: string
+  options?: FormFieldOption[]
+  validate?: (value: any, state: Record<string, any>) => string | null | undefined | Promise<string | null | undefined>
+  transform?: (value: any, state: Record<string, any>) => any | Promise<any>
+}
+
+export interface FormHeader {
+  type: 'header'
+  title: string
+  subtitle?: string
+}
+
+export interface FormSectionDivider {
+  type: 'divider'
+  title?: string
+}
+
+export interface FormMarkdownBlock {
+  type: 'markdown'
+  text: string
+}
+
+export type FormElement = FormField | FormHeader | FormSectionDivider | FormMarkdownBlock
+
+export interface FormDefinition {
+  title?: string
+  subtitle?: string
+  elements: FormElement[]
+  onChange?: (fieldKey: string, value: any, state: Record<string, any>) => Promise<Record<string, any> | void> | Record<string, any> | void
+}
+
+export interface FormHook {
+  getDefinition(args: { formId?: string }, ctx: HookContext): Promise<FormDefinition>
+  validateField?(args: { formId?: string; fieldKey: string; value: any; state: Record<string, any> }, ctx: HookContext): Promise<string | null>
+  transformField?(args: { formId?: string; fieldKey: string; value: any; state: Record<string, any> }, ctx: HookContext): Promise<any>
+  onChangeField?(args: { formId?: string; fieldKey: string; value: any; state: Record<string, any> }, ctx: HookContext): Promise<Record<string, any> | null | void>
+}
+
+/// An action button on a status bar notice. Declarative, not a callback —
+/// the core renders and handles these itself (`link` opens a URL, `dialog`
+/// shows a markdown dialog), matching the same "extensions describe UI as
+/// data" convention as `ActivityHook`.
+export type NoticeAction =
+  | { label: string; type: 'link'; url: string }
+  | { label: string; type: 'dialog'; title?: string; text: string }
+
+export interface StatusBarMessageParams {
+  key: string
+  icon?: string
+  title?: string
+  text?: string
+}
+
+export interface StatusBarProgressParams {
+  key: string
+  icon?: string
+  title?: string
+  text?: string
+  /// Omit for an indeterminate progress bar; otherwise 0.0-1.0.
+  value?: number
+}
+
+export interface StatusBarNoticeParams {
+  key: string
+  icon?: string
+  title?: string
+  text: string
+  actions?: NoticeAction[]
 }

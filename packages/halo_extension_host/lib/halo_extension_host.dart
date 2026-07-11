@@ -21,17 +21,14 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:isolate';
 
-import 'package:flutter_js/flutter_js.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:http/http.dart' as http;
 
+import 'src/js_engine.dart';
+
+export 'src/engine_runtime.dart' show ExtensionBundle, ExtensionHostException;
+
 typedef HostCallHandler = Future<dynamic> Function(String method, Map<String, dynamic> params);
-
-class ExtensionBundle {
-  final String key;
-  final String source;
-
-  const ExtensionBundle({required this.key, required this.source});
-}
 
 /// One completed hook invocation, for latency analysis.
 class HookCallSample {
@@ -40,14 +37,6 @@ class HookCallSample {
   final int jsMillis;
 
   const HookCallSample({required this.label, required this.totalMillis, required this.jsMillis});
-}
-
-class ExtensionHostException implements Exception {
-  final String message;
-  ExtensionHostException(this.message);
-
-  @override
-  String toString() => 'ExtensionHostException: $message';
 }
 
 class ExtensionHost {
@@ -280,6 +269,17 @@ class ExtensionHost {
         final method = msg['method'] as String;
         final params = (msg['params'] as Map).cast<String, dynamic>();
         _handleHostCallDelegated(callId, method, params);
+      case 'fatalError':
+        // The engine died outside of any single call (e.g. a Worker crash) —
+        // every hook still waiting on a response would otherwise just hang
+        // until its own timeout, hiding the real cause.
+        final error = msg['error'] as String? ?? 'extension engine crashed';
+        _log('ERROR $error');
+        for (final completer in _pending.values) {
+          completer.completeError(ExtensionHostException(error));
+        }
+        _pending.clear();
+        _inFlight.clear();
     }
   }
 
@@ -367,7 +367,7 @@ Future<void> _hostIsolateMain(_HostIsolateInit init) async {
 class _HostCore {
   final void Function(Map<String, dynamic>) emit;
 
-  late final JavascriptRuntime _js;
+  late final EngineRuntime _js;
   final _http = http.Client();
   final Map<String, Map<String, Object?>> _kv = {};
   final Map<int, Completer<dynamic>> _pendingHostCalls = {};
@@ -376,24 +376,19 @@ class _HostCore {
 
   _HostCore({required this.emit});
 
-  String get engineDescription => _js.runtimeType.toString();
+  String get engineDescription => _js.engineDescription;
 
   Future<int> init(String kernelSource, List<ExtensionBundle> bundles) async {
     final stopwatch = Stopwatch()..start();
-    _js = getJavascriptRuntime(xhr: false);
-
-    _js.onMessage('polo', (dynamic args) {
-      _onPoloMessage(args);
-      return null;
-    });
-
-    _evaluate(kernelSource, name: 'kernel');
-    for (final bundle in bundles) {
-      _evaluate(bundle.source, name: bundle.key);
+    _js = createEngineRuntime();
+    _js.onMessage(_onPoloMessage);
+    _js.onFatalError(_onFatalError);
+    try {
+      await _js.load(kernelSource, bundles);
+    } catch (e) {
+      _js.dispose();
+      rethrow;
     }
-    // Activation is deferred until every bundle is evaluated, so extensions
-    // never depend on declaration order within their own bundle.
-    _evaluate('__polo.activateAll()', name: 'activateAll');
 
     return (stopwatch..stop()).elapsedMilliseconds;
   }
@@ -402,22 +397,14 @@ class _HostCore {
     switch (msg['type']) {
       case 'invoke':
       case 'invokeAll':
-        final code = msg['type'] == 'invoke'
-            ? '__polo.invokeHook('
-                '${msg['id']}, '
-                '${jsonEncode(msg['category'])}, '
-                '${msg['key'] == null ? 'null' : jsonEncode(msg['key'])}, '
-                '${jsonEncode(msg['method'])}, '
-                '${jsonEncode(msg['argsJson'])})'
-            : '__polo.invokeHookAll('
-                '${msg['id']}, '
-                '${jsonEncode(msg['category'])}, '
-                '${jsonEncode(msg['method'])}, '
-                '${jsonEncode(msg['argsJson'])})';
         _outstanding++;
         _ensurePumping();
         try {
-          _evaluate(code, name: 'invokeHook');
+          if (msg['type'] == 'invoke') {
+            _js.invoke(msg['id'] as int, msg['category'] as String, msg['key'] as String?, msg['method'] as String, msg['argsJson'] as String);
+          } else {
+            _js.invokeAll(msg['id'] as int, msg['category'] as String, msg['method'] as String, msg['argsJson'] as String);
+          }
         } catch (e) {
           _outstanding--;
           emit({'type': 'result', 'id': msg['id'], 'ok': false, 'error': '$e'});
@@ -431,7 +418,7 @@ class _HostCore {
   /// of a permanent fast timer.
   void _ensurePumping() {
     _pump ??= Timer.periodic(const Duration(milliseconds: 5), (_) {
-      _executePendingJobs();
+      _js.pump();
       if (_outstanding <= 0) {
         _pump?.cancel();
         _pump = null;
@@ -439,30 +426,21 @@ class _HostCore {
     });
   }
 
-  void _evaluate(String code, {required String name}) {
-    final result = _js.evaluate(code);
-    if (result.isError) {
-      throw ExtensionHostException('evaluating $name: ${result.stringResult}');
-    }
-    _executePendingJobs();
+  /// The engine died outside of any single call (e.g. a Worker crash after
+  /// load). Stop pumping — nothing will ever decrement `_outstanding` again —
+  /// and let `ExtensionHost` fail every hook call still waiting on a result.
+  void _onFatalError(String message) {
+    _outstanding = 0;
+    emit({'type': 'fatalError', 'error': message});
   }
 
-  void _executePendingJobs() {
-    try {
-      _js.executePendingJob();
-    } catch (_) {
-      // Engines without an explicit job queue may not support this.
-    }
-  }
-
-  void _onPoloMessage(dynamic args) {
-    final msg = (args is String ? jsonDecode(args) : args) as Map;
+  void _onPoloMessage(Map<String, dynamic> msg) {
     switch (msg['type']) {
       case 'result':
         _outstanding--;
-        emit(msg.cast<String, dynamic>());
+        emit(msg);
       case 'log':
-        emit(msg.cast<String, dynamic>());
+        emit(msg);
       case 'hostCall':
         _handleHostCall(
           (msg['callId'] as num).toInt(),
@@ -501,9 +479,8 @@ class _HostCore {
       result = '$e';
     }
 
-    final code = '__polo.hostResponse($callId, $ok, ${jsonEncode(jsonEncode(result))})';
     try {
-      _evaluate(code, name: 'hostResponse');
+      _js.hostResponse(callId, ok, jsonEncode(result));
     } catch (e) {
       emit({'type': 'log', 'message': 'ERROR delivering host response: $e'});
     }
@@ -520,8 +497,26 @@ class _HostCore {
     }
   }
 
+  Uri _resolveFetchUri(String urlString) {
+    final uri = Uri.parse(urlString);
+    if (kIsWeb) {
+      const allowedDomains = {
+        'api.pota.app',
+        'logbook.qrz.com',
+        'country-files.com',
+        'pota.app',
+        'www.sotadata.org.uk',
+        'sotadata.org.uk',
+      };
+      if (allowedDomains.contains(uri.host)) {
+        return Uri.parse('https://services.ham2k.net/${uri.host}${uri.path}${uri.hasQuery ? "?${uri.query}" : ""}');
+      }
+    }
+    return uri;
+  }
+
   Future<Map<String, Object?>> _hostFetch(Map<String, dynamic> params) async {
-    final uri = Uri.parse(params['url'] as String);
+    final uri = _resolveFetchUri(params['url'] as String);
     if (uri.scheme != 'https') {
       throw ExtensionHostException('only https URLs are allowed');
     }
@@ -539,5 +534,6 @@ class _HostCore {
   void dispose() {
     _pump?.cancel();
     _http.close();
+    _js.dispose();
   }
 }

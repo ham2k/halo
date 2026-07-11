@@ -1,4 +1,4 @@
-name: halo_next
+name: ham2k_logger
 description: "Ham2K Portable Logger Next — Flutter app with a TypeScript extension runtime."
 publish_to: 'none'
 version: 0.1.0+1
@@ -33,6 +33,7 @@ dependencies:
   path: ^1.9.0
   crypto: ^3.0.7
   slang_flutter: ^4.0.0
+  url_launcher: ^6.3.1
 
 dev_dependencies:
   flutter_test:

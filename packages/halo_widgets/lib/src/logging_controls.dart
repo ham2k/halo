@@ -27,6 +27,7 @@
 // async involvement (lookups, ref decoration) off the keystroke path.
 
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -34,6 +35,7 @@ import 'package:flutter/services.dart';
 import 'package:halo_core/halo_core.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 
+import 'form_renderer.dart';
 import 'icon_resolver.dart';
 import 'mdi_icons.dart';
 import 'ref_chips_input.dart';
@@ -54,9 +56,36 @@ typedef CommandInterpreter = Future<Map<String, dynamic>?> Function(
   Map<String, dynamic>? qso,
 ]);
 
-/// Handles a named command action —
-/// a closed set the core recognizes, not arbitrary state (DESIGN.md §4).
-typedef CommandActionHandler = Future<void> Function(String action);
+/// Handles a named command action — a closed set the core recognizes, not
+/// arbitrary state (DESIGN.md §4). `params` carries whatever JSON payload
+/// came with that action (e.g. `devNotice`'s icon/title/text).
+typedef CommandActionHandler = Future<void> Function(String action, [Map<String, dynamic>? params]);
+
+/// A secondary control's identity for ordering/visibility purposes — the
+/// settings dialog's list and `_effectiveControlOrder` deal in these; the
+/// actual `SecondaryControlSpec` (which carries the live summary and
+/// expanded-input builder) is only built for controls that end up visible.
+class _ControlDescriptor {
+  final String key;
+  final IconData icon;
+  final String label;
+
+  /// Time and Radio — can't be hidden, so the settings dialog shows their
+  /// checkbox permanently checked and disabled.
+  final bool mandatory;
+
+  const _ControlDescriptor({
+    required this.key,
+    required this.icon,
+    required this.label,
+    this.mandatory = false,
+  });
+}
+
+/// Horizontal padding around the panel's fields — also handed to
+/// [SecondaryControlRow] so its expanded control panel can bleed past it
+/// and reach the view's true edges.
+const _secondaryPanelHorizontalInset = 12.0;
 
 class LoggingControls extends StatefulWidget {
   final Operation operation;
@@ -88,15 +117,40 @@ class LoggingControls extends StatefulWidget {
   final CommandActionHandler? onCommandAction;
 
   /// When set, the controls are editing this already-logged QSO rather than
-  /// composing a new one. Nothing wires this up yet (there's no tap-to-edit
-  /// on QsoList rows), but the Time control's behavior already depends on
-  /// the distinction: editing an existing entry shows *its* recorded time
-  /// instead of a live clock, and has no "Now" reset (there's no
-  /// "automatic" time to reset back to for a historical record).
+  /// composing a new one — fields are populated from it, saving calls
+  /// `qsosRepository.update` instead of `.add`, and Delete/Revert become
+  /// available. The Time control's behavior already depended on the
+  /// distinction before this: editing an existing entry shows *its*
+  /// recorded time instead of a live clock, and has no "Now" reset (there's
+  /// no "automatic" time to reset back to for a historical record).
   final Qso? editingQso;
+
+  /// Fires when an editing session ends without necessarily going through
+  /// `onLogged` — a save of an existing QSO, a delete, or an explicit
+  /// revert. The caller (which owns the selected-QSO state) clears its
+  /// selection in response; this widget's own fields reset via
+  /// `didUpdateWidget` once `editingQso` becomes null on the next build.
+  final VoidCallback? onEditCanceled;
 
   /// Settings engine interface.
   final SyncSettings? settings;
+
+  /// The user's preferred order for the secondary control chips, by key
+  /// (`'time'`, `'radio'`, an activity control's own key, `'more'`). Keys
+  /// this doesn't mention are appended in their default order; keys it
+  /// mentions that no longer exist (e.g. an uninstalled extension) are
+  /// ignored. Persisted by the caller — see `_effectiveControlOrder`.
+  final List<String> controlOrder;
+
+  /// Control keys hidden from the row. Time and Radio are never hidden
+  /// regardless of what's in here — enforced by this widget, not the
+  /// caller, so a corrupted/stale preference can't hide either.
+  final Set<String> hiddenControlKeys;
+
+  /// Fires when the user changes order or visibility in the controls
+  /// settings dialog. The caller owns persisting it and feeding it back as
+  /// `controlOrder`/`hiddenControlKeys` on the next build.
+  final void Function(List<String> order, Set<String> hidden)? onControlsSettingsChanged;
 
   final String? timeLabel;
   final String? dateLabel;
@@ -107,6 +161,23 @@ class LoggingControls extends StatefulWidget {
   final String? theirCallLabel;
   final String? sentLabel;
   final String? rcvdLabel;
+  final String? moreLabel;
+  final String? revertLabel;
+  final String? deleteLabel;
+  final String? undoDeleteLabel;
+  final String? wipeLabel;
+  final String? undoLabel;
+  final String? pendingDeleteWarning;
+  final String? qsoEditFormTitle;
+  final String? theirNameLabel;
+  final String? theirGridLabel;
+  final String? notesLabel;
+  final String? bandLabel;
+  final String? timeControlLabel;
+  final String? radioControlLabel;
+  final String? controlSettingsTitle;
+  final String? saveLabel;
+  final String? cancelLabel;
 
   const LoggingControls({
     super.key,
@@ -121,7 +192,11 @@ class LoggingControls extends StatefulWidget {
     this.onCommandMessageChanged,
     this.onCommandAction,
     this.editingQso,
+    this.onEditCanceled,
     this.settings,
+    this.controlOrder = const [],
+    this.hiddenControlKeys = const {},
+    this.onControlsSettingsChanged,
     this.timeLabel,
     this.dateLabel,
     this.nowLabel,
@@ -131,6 +206,23 @@ class LoggingControls extends StatefulWidget {
     this.theirCallLabel,
     this.sentLabel,
     this.rcvdLabel,
+    this.moreLabel,
+    this.revertLabel,
+    this.deleteLabel,
+    this.undoDeleteLabel,
+    this.wipeLabel,
+    this.undoLabel,
+    this.pendingDeleteWarning,
+    this.qsoEditFormTitle,
+    this.theirNameLabel,
+    this.theirGridLabel,
+    this.notesLabel,
+    this.bandLabel,
+    this.timeControlLabel,
+    this.radioControlLabel,
+    this.controlSettingsTitle,
+    this.saveLabel,
+    this.cancelLabel,
   });
 
   @override
@@ -182,20 +274,78 @@ class _LoggingControlsState extends State<LoggingControls> {
   /// keyed by control key.
   final Map<String, List<Map<String, dynamic>>> _controlRefs = {};
 
+  /// Refs from `editingQso.refs` whose `type` matched no currently
+  /// registered activity control — round-tripped back into `refs` on save
+  /// rather than silently dropped, even though no UI can show them.
+  List<Map<String, dynamic>> _unmatchedRefs = const [];
+
+  /// Set while editing an existing QSO and Delete has been tapped but not
+  /// yet saved — mirrors app-polo's `_willBeDeleted` staged-delete flag.
+  bool _pendingDelete = false;
+
+  /// Their name/grid overrides, settable only via the "More" edit dialog —
+  /// deliberately not full inline fields, to avoid growing the primary
+  /// controls' footprint for rarely-edited data.
+  String? _theirNameOverride;
+  String? _theirGridOverride;
+
+  /// True while `didUpdateWidget` is populating controllers from a newly
+  /// selected `editingQso` — suppresses `_onCallChanged`'s lookup/command
+  /// side effects, which would otherwise re-query and overwrite stored
+  /// `their.*` fields for a call that's already known.
+  bool _populating = false;
+
+  /// A wiped-but-not-yet-lost new QSO, stashed by the wipe button so the
+  /// same button can flip to "undo" for a few seconds afterward. Only
+  /// meaningful while composing a new QSO (`editingQso == null`).
+  Map<String, dynamic>? _undoQsoData;
+  Timer? _undoExpireTimer;
+
   /// Guards against double-logging: Enter is bound both as a keyboard
   /// shortcut and as every field's onSubmitted, and can also auto-repeat.
   bool _isLogging = false;
+
+  /// The submit button's rendered diameter, measured post-frame (its own
+  /// size comes from IntrinsicHeight/AspectRatio further down the tree, so
+  /// it isn't known until after layout) and reused to size the info row's
+  /// second button identically — see _buildWipeOrEditButton.
+  final GlobalKey _submitButtonKey = GlobalKey();
+  double? _editButtonDiameter;
+
+  void _scheduleSubmitButtonMeasurement() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final size = _submitButtonKey.currentContext?.size;
+      if (size != null && (_editButtonDiameter == null || (size.height - _editButtonDiameter!).abs() > 0.5)) {
+        setState(() => _editButtonDiameter = size.height);
+      }
+    });
+  }
 
   @override
   void initState() {
     super.initState();
     _applyDefaultRSTs();
+    // Population normally happens in didUpdateWidget, as editingQso
+    // transitions from null to a selected QSO — but if this widget is ever
+    // constructed with editingQso already set (rather than transitioning
+    // into it), that transition never fires. Applying it here too, before
+    // any listeners are attached below, covers that case for free with no
+    // risk of triggering their side effects.
+    if (widget.editingQso != null) _applyFieldsFromData(widget.editingQso!.data);
     _seedTimeFields();
     _updateClockTicker();
     _callController.addListener(_onCallChanged);
     _freqController.addListener(_onFreqChanged);
     _timeController.addListener(_onTimeOrDateFieldChanged);
     _dateController.addListener(_onTimeOrDateFieldChanged);
+    // Sent/Rcvd don't otherwise need a rebuild on every keystroke, but the
+    // info row's second button (_buildWipeOrEditButton) re-evaluates
+    // _qsoDataChanged() on every build, which reads these controllers —
+    // without a rebuild, editing just the RST wouldn't flip that button
+    // from "delete" to "revert changes".
+    _sentController.addListener(_onSentOrRcvdChanged);
+    _rcvdController.addListener(_onSentOrRcvdChanged);
     // Exchange fields select-all on focus, so typing replaces the default.
     for (final (focus, controller) in [
       (_sentFocus, _sentController),
@@ -217,7 +367,107 @@ class _LoggingControlsState extends State<LoggingControls> {
   @override
   void didUpdateWidget(LoggingControls oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.editingQso?.uuid != widget.editingQso?.uuid) _updateClockTicker();
+    if (oldWidget.editingQso?.uuid != widget.editingQso?.uuid) {
+      _pendingDelete = false;
+      _theirNameOverride = null;
+      _theirGridOverride = null;
+      _undoExpireTimer?.cancel();
+      _undoExpireTimer = null;
+      _undoQsoData = null;
+      if (widget.editingQso != null) {
+        _populateFromEditingQso(widget.editingQso!);
+      } else {
+        _resetLocalFields();
+      }
+      _updateClockTicker();
+    }
+  }
+
+  /// Populates controllers/state from an existing QSO selected for editing.
+  /// Local-state only — never calls parent-notifying callbacks (this runs
+  /// from `didUpdateWidget`, where a synchronous `setState` back up the
+  /// tree could throw).
+  void _populateFromEditingQso(Qso qso) {
+    _populating = true;
+    _applyFieldsFromData(qso.data);
+    _manualStartAtMillis = null; // _effectiveStartAtMillis falls back to editingQso.startAtMillis
+    setState(() {});
+    _populating = false;
+  }
+
+  /// Shared by `_populateFromEditingQso` (loading an existing record for
+  /// editing) and `_restoreFromUndoSlot` (undoing a wipe) — both need to
+  /// push a `data` map from a `Qso`/`_getCurrentQsoData()` shape back into
+  /// the live controllers/state.
+  void _applyFieldsFromData(Map<String, dynamic> data) {
+    final our = data['our'] as Map<String, dynamic>? ?? const {};
+    final their = data['their'] as Map<String, dynamic>? ?? const {};
+    _callController.text = (their['call'] as String?) ?? '';
+    _sentController.text = (our['sent'] as String?) ?? '';
+    _rcvdController.text = (their['sent'] as String?) ?? '';
+    _rstsTouched = true;
+    final freq = (data['freq'] as num?)?.toDouble();
+    _freqController.text = freq != null ? fmtFreq(freq).replaceAll(',', '') : '';
+    _mode = data['mode'] as String? ?? _mode;
+    _manualBand = freq == null ? data['band'] as String? : null;
+    _currentQsoExtra
+      ..clear()
+      ..addAll(data)
+      ..remove('refs')
+      ..remove('our')
+      ..remove('their')
+      ..remove('freq')
+      ..remove('band')
+      ..remove('mode')
+      ..remove('startAtMillis');
+    _controlRefs.clear();
+    _unmatchedRefs = [];
+    final refs = (data['refs'] as List?)?.whereType<Map>().map((r) => r.cast<String, dynamic>()) ?? const [];
+    for (final ref in refs) {
+      String? key;
+      for (final control in widget.activityControls) {
+        if ((control['input'] as Map?)?['refType'] == ref['type']) {
+          key = control['key'] as String?;
+          break;
+        }
+      }
+      if (key != null) {
+        (_controlRefs[key] ??= []).add(ref);
+      } else {
+        _unmatchedRefs.add(ref);
+      }
+    }
+    _lookupFor = null;
+    _lookupResult = null;
+    _selectedControlKey = null;
+  }
+
+  /// Clears local fields when an editing session ends (mirrors the
+  /// local-state portion of `_wipe()`, without `_wipe()`'s parent callback —
+  /// see `didUpdateWidget`).
+  void _resetLocalFields() {
+    // Guards _onCallChanged (fired synchronously by _callController.clear()
+    // below) from calling widget.onCommandMessageChanged — a parent-state
+    // setState — while still inside didUpdateWidget.
+    _populating = true;
+    _callController.clear();
+    _applyDefaultRSTs();
+    _lookupDebounce?.cancel();
+    _commandDescribeDebounce?.cancel();
+    _executeMessageTimer?.cancel();
+    _lookupFor = null;
+    _lookupResult = null;
+    _controlRefs.clear();
+    _unmatchedRefs = [];
+    _currentQsoExtra.clear();
+    _manualStartAtMillis = null;
+    _manualBand = null;
+    _selectedControlKey = null;
+    setState(() {
+      _commandMessage = null;
+      _currentInterpretation = null;
+    });
+    _populating = false;
   }
 
   @override
@@ -226,6 +476,7 @@ class _LoggingControlsState extends State<LoggingControls> {
     _lookupDebounce?.cancel();
     _commandDescribeDebounce?.cancel();
     _executeMessageTimer?.cancel();
+    _undoExpireTimer?.cancel();
     _callController.dispose();
     _sentController.dispose();
     _rcvdController.dispose();
@@ -245,8 +496,13 @@ class _LoggingControlsState extends State<LoggingControls> {
   String? get _band => _freq != null ? bandForFrequency(_freq!) : _manualBand;
   bool get _canLog => looksLikeCallsign(_call);
 
+  // Excludes the QSO currently being edited — otherwise, since its call/
+  // mode/band are exactly what populated the fields in the first place,
+  // editing any existing QSO would immediately flag itself as its own
+  // duplicate.
   bool get _isDupe => widget.qsos.any(
     (qso) =>
+        qso.uuid != widget.editingQso?.uuid &&
         qso.theirCall == _call &&
         qso.mode == _mode &&
         (qso.band ?? '') == (_band ?? ''),
@@ -256,6 +512,8 @@ class _LoggingControlsState extends State<LoggingControls> {
     if (_freq != null) _manualBand = null;
     setState(() {});
   }
+
+  void _onSentOrRcvdChanged() => setState(() {});
 
   void _applyDefaultRSTs() {
     _sentController.text = defaultRSTFor(_mode);
@@ -273,6 +531,10 @@ class _LoggingControlsState extends State<LoggingControls> {
   // ---- Secondary control row ----
 
   void _onSelectControl(String? key) {
+    if (key == 'more') {
+      _openMoreEditor();
+      return;
+    }
     setState(() {
       if (key == 'time' && _selectedControlKey != 'time') _seedTimeFields();
       _selectedControlKey = key;
@@ -286,7 +548,7 @@ class _LoggingControlsState extends State<LoggingControls> {
   /// on the app-wide poloFieldDecoration (theme.dart), tinted to read
   /// against this panel's tertiaryContainer background.
   TextStyle _primaryFieldStyle(BuildContext context, {required FontWeight fontWeight}) =>
-      haloMonoStyle(context, fontSize: 18, fontWeight: fontWeight);
+      haloMonoStyle(context, fontSize: 15, fontWeight: fontWeight);
 
   InputDecoration _primaryFieldDecoration(BuildContext context, String label) => poloFieldDecoration(
         context,
@@ -360,10 +622,11 @@ class _LoggingControlsState extends State<LoggingControls> {
 
   String get _timeSummary {
     final millis = _effectiveStartAtMillis;
-    if (millis == null) {
-      return '${_fmtTimeWithSeconds(DateTime.now().toUtc())}z';
-    }
-    return '${_fmtTime(DateTime.fromMillisecondsSinceEpoch(millis, isUtc: true))}z';
+    final dt = millis == null ? DateTime.now().toUtc() : DateTime.fromMillisecondsSinceEpoch(millis, isUtc: true);
+    // Always shows seconds, even when they're not meaningful (a manually
+    // entered/edited time has none — it comes from a plain HH:MM field —
+    // so it's always :00 rather than the pill silently switching formats).
+    return '${_fmtTimeWithSeconds(dt)}z';
   }
 
   String get _radioSummary {
@@ -374,21 +637,98 @@ class _LoggingControlsState extends State<LoggingControls> {
     return parts.join(' • ');
   }
 
+  // ---- Control identity, order and visibility ----
+  //
+  // Descriptors carry just enough for the settings dialog and ordering
+  // (key/icon/label/mandatory) — the actual SecondaryControlSpec (live
+  // summary + expanded-input builder) is only built for controls that end
+  // up visible, in _buildSecondaryControls below.
+
+  List<_ControlDescriptor> _controlDescriptors() => [
+        _ControlDescriptor(
+          key: 'time',
+          icon: MdiIcons.clockOutline,
+          label: widget.timeControlLabel ?? 'Time',
+          mandatory: true,
+        ),
+        _ControlDescriptor(
+          key: 'radio',
+          icon: MdiIcons.radio,
+          label: widget.radioControlLabel ?? 'Radio',
+          mandatory: true,
+        ),
+        for (final control in widget.activityControls)
+          if ((control['input'] as Map?)?['kind'] == 'refList')
+            _ControlDescriptor(
+              key: control['key'] as String,
+              icon: resolveIconName(control['icon'] as String?),
+              label: (control['label'] as String?) ?? control['key'] as String,
+            ),
+        _ControlDescriptor(
+          key: 'more',
+          icon: resolveIconName('pencil'),
+          label: widget.moreLabel ?? 'More',
+        ),
+      ];
+
+  /// `widget.controlOrder`, filtered to keys that still exist and
+  /// de-duplicated, with any remaining known keys appended in their default
+  /// order — so a fresh install (empty order) or a newly-added extension
+  /// control both fall back to sane placement.
+  List<String> _effectiveControlOrder(List<_ControlDescriptor> descriptors) {
+    final allKeys = descriptors.map((d) => d.key).toSet();
+    final order = <String>[];
+    for (final key in widget.controlOrder) {
+      if (allKeys.contains(key) && !order.contains(key)) order.add(key);
+    }
+    for (final descriptor in descriptors) {
+      if (!order.contains(descriptor.key)) order.add(descriptor.key);
+    }
+    return order;
+  }
+
   List<SecondaryControlSpec> _buildSecondaryControls(
     ThemeData theme,
     HaLoColors poloColors,
   ) {
-    return [
-      SecondaryControlSpec(
+    final descriptors = _controlDescriptors();
+    final byKey = {for (final d in descriptors) d.key: d};
+    final specs = <SecondaryControlSpec>[];
+    for (final key in _effectiveControlOrder(descriptors)) {
+      final descriptor = byKey[key];
+      if (descriptor == null) continue;
+      if (!descriptor.mandatory && widget.hiddenControlKeys.contains(key)) continue;
+      switch (key) {
+        case 'time':
+          specs.add(_timeControlSpec());
+        case 'radio':
+          specs.add(_radioControlSpec(theme, poloColors));
+        case 'more':
+          specs.add(_moreControlSpec());
+        default:
+          for (final control in widget.activityControls) {
+            if (control['key'] == key) {
+              specs.add(_activityControlSpec(control));
+              break;
+            }
+          }
+      }
+    }
+    return specs;
+  }
+
+  SecondaryControlSpec _timeControlSpec() => SecondaryControlSpec(
         key: 'time',
         icon: MdiIcons.clockOutline,
         summary: _timeSummary,
-        hasValue: _effectiveStartAtMillis != null,
         expandedBuilder: (context) => Row(
           mainAxisSize: MainAxisSize.min,
           children: [
             SizedBox(
-              width: 74,
+              // Same width as the date field below — wide enough to fit a
+              // full "2026-07-11", even though the time value itself
+              // ("16:54") is shorter.
+              width: 120,
               child: TextField(
                 controller: _timeController,
                 focusNode: _timeFocus,
@@ -409,7 +749,7 @@ class _LoggingControlsState extends State<LoggingControls> {
             ),
             const SizedBox(width: 8),
             SizedBox(
-              width: 96,
+              width: 120,
               child: TextField(
                 controller: _dateController,
                 style: haloMonoStyle(
@@ -437,14 +777,60 @@ class _LoggingControlsState extends State<LoggingControls> {
             ],
           ],
         ),
-      ),
-      SecondaryControlSpec(
+      );
+
+  SecondaryControlSpec _radioControlSpec(ThemeData theme, HaLoColors poloColors) => SecondaryControlSpec(
         key: 'radio',
         icon: MdiIcons.radio,
         summary: _radioSummary,
         expandedBuilder: (context) => Row(
           mainAxisSize: MainAxisSize.min,
           children: [
+            DropdownMenu<String>(
+              initialSelection: _band,
+              label: Text(widget.bandLabel ?? 'Band'),
+              width: 104,
+              textStyle: haloMonoStyle(
+                context,
+                fontSize: 15,
+                fontWeight: FontWeight.w500,
+              ),
+              inputDecorationTheme: InputDecorationTheme(
+                isDense: true,
+                filled: true,
+                fillColor: theme.colorScheme.surface,
+                floatingLabelBehavior: FloatingLabelBehavior.always,
+                floatingLabelStyle: TextStyle(
+                  fontSize: 14,
+                  color: theme.colorScheme.onTertiaryContainer,
+                ),
+                contentPadding: const EdgeInsets.fromLTRB(4, 6, 4, 8),
+              ),
+              dropdownMenuEntries: [
+                for (final b in bands)
+                  DropdownMenuEntry(
+                    value: b.name,
+                    label: b.name,
+                    style: MenuItemButton.styleFrom(
+                      foregroundColor: poloColors.bandColor(b.name),
+                    ),
+                  ),
+              ],
+              onSelected: (value) {
+                if (value == null) return;
+                setState(() {
+                  // Matches the `setVfo{band: ...}` command action's
+                  // convention (see `_dispatchActions`): picking a band
+                  // directly is mutually exclusive with a manual frequency,
+                  // since `_band` prefers the freq-derived value whenever
+                  // `_freq` is set.
+                  _manualBand = value;
+                  _freqController.clear();
+                });
+                _callFocus.requestFocus();
+              },
+            ),
+            const SizedBox(width: 6),
             SizedBox(
               width: 100,
               child: TextField(
@@ -457,7 +843,7 @@ class _LoggingControlsState extends State<LoggingControls> {
                 ),
                 decoration: poloFieldDecoration(
                   context,
-                  widget.freqLabel ?? 'Freq kHz',
+                  widget.freqLabel ?? 'Frequency',
                   labelColor: Theme.of(context).colorScheme.onTertiaryContainer,
                 ),
                 keyboardType: const TextInputType.numberWithOptions(
@@ -467,27 +853,6 @@ class _LoggingControlsState extends State<LoggingControls> {
                   FilteringTextInputFormatter.allow(RegExp(r'[0-9.,]')),
                 ],
                 onSubmitted: (_) => _log(),
-              ),
-            ),
-            const SizedBox(width: 6),
-            SizedBox(
-              width: 44,
-              child: Text(
-                _band ?? '',
-                style: haloMonoStyle(
-                  context,
-                  fontSize: 14,
-                  fontWeight: FontWeight.w700,
-                  color: _band == null
-                      ? theme.colorScheme.onTertiaryContainer.withValues(
-                          alpha: 0.6,
-                        )
-                      : Color.lerp(
-                          poloColors.bandColor(_band!),
-                          theme.colorScheme.onTertiaryContainer,
-                          0.25,
-                        ),
-                ),
               ),
             ),
             const SizedBox(width: 6),
@@ -522,29 +887,34 @@ class _LoggingControlsState extends State<LoggingControls> {
             ),
           ],
         ),
-      ),
-      for (final control in widget.activityControls)
-        if ((control['input'] as Map?)?['kind'] == 'refList')
-          SecondaryControlSpec(
-            key: control['key'] as String,
-            icon: resolveIconName(control['icon'] as String?),
-            summary: (control['label'] as String?) ?? control['key'] as String,
-            hasValue: (_controlRefs[control['key']]?.isNotEmpty) ?? false,
-            expandedBuilder: (context) => RefChipsInput(
-              refType: (control['input'] as Map)['refType'] as String,
-              label: (control['label'] as String?) ?? '',
-              placeholder: (control['input'] as Map)['placeholder'] as String?,
-              pattern: (control['input'] as Map)['pattern'] as String?,
-              refs: _controlRefs[control['key']] ?? const [],
-              onChanged: (refs) =>
-                  setState(() => _controlRefs[control['key'] as String] = refs),
-              decorate: widget.decorateRef,
-              dense: true,
-              labelColor: Theme.of(context).colorScheme.onTertiaryContainer,
-            ),
-          ),
-    ];
-  }
+      );
+
+  SecondaryControlSpec _activityControlSpec(Map<String, dynamic> control) => SecondaryControlSpec(
+        key: control['key'] as String,
+        icon: resolveIconName(control['icon'] as String?),
+        summary: (control['label'] as String?) ?? control['key'] as String,
+        expandedBuilder: (context) => RefChipsInput(
+          refType: (control['input'] as Map)['refType'] as String,
+          label: (control['label'] as String?) ?? '',
+          placeholder: (control['input'] as Map)['placeholder'] as String?,
+          pattern: (control['input'] as Map)['pattern'] as String?,
+          refs: _controlRefs[control['key']] ?? const [],
+          onChanged: (refs) =>
+              setState(() => _controlRefs[control['key'] as String] = refs),
+          decorate: widget.decorateRef,
+          dense: true,
+          labelColor: Theme.of(context).colorScheme.onTertiaryContainer,
+        ),
+      );
+
+  SecondaryControlSpec _moreControlSpec() => SecondaryControlSpec(
+        key: 'more',
+        icon: resolveIconName('pencil'),
+        summary: widget.moreLabel ?? 'More',
+        // Never actually shown — _onSelectControl special-cases 'more' to
+        // open the full-edit dialog instead of expanding inline.
+        expandedBuilder: (context) => const SizedBox.shrink(),
+      );
 
   // ---- Command shortcuts ----
   //
@@ -592,7 +962,6 @@ class _LoggingControlsState extends State<LoggingControls> {
             _mode = mode;
             if (!_rstsTouched) _applyDefaultRSTs();
           }
-          _selectedControlKey = 'radio';
         });
       } else if (map.containsKey('updateQso')) {
         final params = (map['updateQso'] as Map).cast<String, dynamic>();
@@ -614,35 +983,247 @@ class _LoggingControlsState extends State<LoggingControls> {
         await widget.onCommandAction?.call('syncAll');
       } else if (map.containsKey('sendSpots')) {
         debugPrint('[extensions] sendSpots action: ${map['sendSpots']}');
+      } else if (map['devNotice'] is Map) {
+        await widget.onCommandAction?.call('devNotice', (map['devNotice'] as Map).cast<String, dynamic>());
+      } else if (map['devStatus'] is Map) {
+        await widget.onCommandAction?.call('devStatus', (map['devStatus'] as Map).cast<String, dynamic>());
+      } else if (map['devProgress'] is Map) {
+        await widget.onCommandAction?.call('devProgress', (map['devProgress'] as Map).cast<String, dynamic>());
       }
     }
   }
 
   Map<String, dynamic> _getCurrentQsoData() {
-    final refs = [for (final list in _controlRefs.values) ...list];
+    final base = widget.editingQso?.data ?? const <String, dynamic>{};
+    final refs = [
+      for (final list in _controlRefs.values) ...list,
+      ..._unmatchedRefs,
+    ];
     return {
-      if (refs.isNotEmpty) 'refs': refs,
+      ...base,
+      // Unconditional (not `if (refs.isNotEmpty)`/`if (_freq != null)`):
+      // `base` may already carry a non-empty value for these from the
+      // record being edited, and a merge-style `...base` above won't drop
+      // a stale one just because the live value is now empty/null — these
+      // have to actively overwrite every time, including with null/empty,
+      // for clearing a ref/freq/band during an edit to actually stick.
+      'refs': refs,
       'our': {
+        ...?(base['our'] as Map<String, dynamic>?),
         'call': widget.operation.stationCall,
         'sent': _sentController.text.trim(),
       },
       'their': {
-        'call': _callController.text.trim().toUpperCase(),
+        ...?(base['their'] as Map<String, dynamic>?),
+        if (_theirNameOverride != null) 'name': _theirNameOverride,
+        if (_theirGridOverride != null) 'grid': _theirGridOverride,
+        'call': _call,
         'sent': _rcvdController.text.trim(),
-        if (_lookupFor == _call && _lookupResult != null)
-          ..._lookupResult!,
+        if (_lookupFor == _call && _lookupResult != null) ..._lookupResult!,
       },
-      if (_freq != null) 'freq': _freq,
-      if (_band != null) 'band': _band,
+      'freq': _freq,
+      'band': _band,
       'mode': _mode,
       if (_effectiveStartAtMillis != null) 'startAtMillis': _effectiveStartAtMillis,
       ..._currentQsoExtra,
     };
   }
 
+  // ---- "More" full-edit dialog ----
+  //
+  // A secondary control that bypasses the usual inline-expand behavior
+  // (special-cased in _onSelectControl) to open a dialog covering fields
+  // the primary/secondary controls don't otherwise expose: their name,
+  // grid, and notes. Reuses the existing FormRenderer/showFormDialog
+  // engine (see form_renderer.dart) rather than a new navigation route.
+
+  Map<String, dynamic> _buildQsoEditFormDefinition() {
+    return {
+      'title': widget.qsoEditFormTitle ?? 'Edit QSO',
+      'elements': [
+        {'type': 'field', 'key': 'theirCall', 'fieldType': 'callsign', 'label': widget.theirCallLabel ?? 'Their call'},
+        {'type': 'field', 'key': 'theirName', 'fieldType': 'text', 'label': widget.theirNameLabel ?? 'Name'},
+        {'type': 'field', 'key': 'theirGrid', 'fieldType': 'text', 'label': widget.theirGridLabel ?? 'Grid'},
+        {'type': 'field', 'key': 'sent', 'fieldType': 'text', 'label': widget.sentLabel ?? 'Sent'},
+        {'type': 'field', 'key': 'rcvd', 'fieldType': 'text', 'label': widget.rcvdLabel ?? 'Rcvd'},
+        {'type': 'field', 'key': 'freq', 'fieldType': 'number', 'label': widget.freqLabel ?? 'Frequency'},
+        {'type': 'field', 'key': 'band', 'fieldType': 'text', 'label': widget.bandLabel ?? 'Band'},
+        {
+          'type': 'field',
+          'key': 'mode',
+          'fieldType': 'select',
+          'label': widget.modeLabel ?? 'Mode',
+          'options': [for (final m in modes) {'value': m, 'label': m}],
+        },
+        {'type': 'field', 'key': 'date', 'fieldType': 'text', 'label': widget.dateLabel ?? 'Date'},
+        {'type': 'field', 'key': 'time', 'fieldType': 'text', 'label': widget.timeLabel ?? 'Time (UTC)'},
+        {'type': 'field', 'key': 'notes', 'fieldType': 'multiline', 'label': widget.notesLabel ?? 'Notes'},
+      ],
+    };
+  }
+
+  Future<void> _openMoreEditor() async {
+    final millis = _effectiveStartAtMillis;
+    final dt = millis != null
+        ? DateTime.fromMillisecondsSinceEpoch(millis, isUtc: true)
+        : DateTime.now().toUtc();
+
+    final result = await showFormDialog(
+      context,
+      formDefinition: _buildQsoEditFormDefinition(),
+      initialState: {
+        'theirCall': _call,
+        'theirName': _theirNameOverride ?? widget.editingQso?.theirName ?? '',
+        'theirGrid': _theirGridOverride ?? widget.editingQso?.theirGrid ?? '',
+        'sent': _sentController.text.trim(),
+        'rcvd': _rcvdController.text.trim(),
+        'freq': _freq,
+        'band': _band ?? '',
+        'mode': _mode,
+        'date': _fmtDate(dt),
+        'time': _fmtTime(dt),
+        'notes': (_currentQsoExtra['notes'] as String?) ?? '',
+      },
+      onChange: (key, value, state) async {
+        // Freq wins over a manually-typed band, matching _onFreqChanged's
+        // existing precedence for the inline Radio control.
+        if (key == 'freq' && value is num) {
+          final band = bandForFrequency(value.toDouble());
+          if (band != null) return {'band': band};
+        }
+        return null;
+      },
+    );
+    if (result == null || !mounted) return;
+
+    setState(() {
+      _callController.text = ((result['theirCall'] as String?) ?? '').toUpperCase();
+      final name = (result['theirName'] as String?)?.trim();
+      _theirNameOverride = (name == null || name.isEmpty) ? null : name;
+      final grid = (result['theirGrid'] as String?)?.trim();
+      _theirGridOverride = (grid == null || grid.isEmpty) ? null : grid;
+      _sentController.text = (result['sent'] as String?) ?? '';
+      _rcvdController.text = (result['rcvd'] as String?) ?? '';
+      _rstsTouched = true;
+
+      final freq = result['freq'];
+      if (freq is num) {
+        _freqController.text = fmtFreq(freq.toDouble()).replaceAll(',', '');
+        _manualBand = null;
+      } else {
+        _freqController.clear();
+        final band = (result['band'] as String?)?.trim();
+        _manualBand = (band == null || band.isEmpty) ? null : band;
+      }
+
+      _mode = (result['mode'] as String?) ?? _mode;
+
+      final dateParts = ((result['date'] as String?) ?? '').split('-');
+      final timeParts = ((result['time'] as String?) ?? '').split(':');
+      if (dateParts.length == 3 && timeParts.length == 2) {
+        final year = int.tryParse(dateParts[0]);
+        final month = int.tryParse(dateParts[1]);
+        final day = int.tryParse(dateParts[2]);
+        final hour = int.tryParse(timeParts[0]);
+        final minute = int.tryParse(timeParts[1]);
+        if (year != null && month != null && day != null && hour != null && minute != null) {
+          _manualStartAtMillis = DateTime.utc(year, month, day, hour, minute).millisecondsSinceEpoch;
+        }
+      }
+
+      final notes = ((result['notes'] as String?) ?? '').trim();
+      if (notes.isEmpty) {
+        _currentQsoExtra.remove('notes');
+      } else {
+        _currentQsoExtra['notes'] = notes;
+      }
+
+      _seedTimeFields();
+      _updateClockTicker();
+    });
+  }
+
+  // ---- Secondary control settings (show/hide + reorder) ----
+
+  Future<void> _openControlSettingsDialog() async {
+    final descriptors = _controlDescriptors();
+    final byKey = {for (final d in descriptors) d.key: d};
+    var order = _effectiveControlOrder(descriptors);
+    var hidden = Set<String>.from(widget.hiddenControlKeys);
+
+    final result = await showDialog<(List<String>, Set<String>)>(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (dialogContext, setDialogState) => AlertDialog(
+          title: Text(widget.controlSettingsTitle ?? 'Logging Controls'),
+          content: SizedBox(
+            width: 360,
+            child: ReorderableListView(
+              shrinkWrap: true,
+              buildDefaultDragHandles: false,
+              onReorderItem: (oldIndex, newIndex) => setDialogState(() {
+                final reordered = List<String>.from(order);
+                final key = reordered.removeAt(oldIndex);
+                reordered.insert(newIndex, key);
+                order = reordered;
+              }),
+              children: [
+                for (final (index, key) in order.indexed)
+                  if (byKey[key] case final descriptor?)
+                    ListTile(
+                      key: ValueKey(key),
+                      leading: ReorderableDragStartListener(
+                        index: index,
+                        child: const Icon(Icons.drag_handle),
+                      ),
+                      title: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(descriptor.icon, size: 18),
+                          const SizedBox(width: 12),
+                          Text(descriptor.label),
+                        ],
+                      ),
+                      trailing: Checkbox(
+                        value: descriptor.mandatory || !hidden.contains(key),
+                        onChanged: descriptor.mandatory
+                            ? null
+                            : (checked) => setDialogState(() {
+                                  final updated = Set<String>.from(hidden);
+                                  if (checked == true) {
+                                    updated.remove(key);
+                                  } else {
+                                    updated.add(key);
+                                  }
+                                  hidden = updated;
+                                }),
+                      ),
+                    ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(),
+              child: Text(widget.cancelLabel ?? 'Cancel'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.of(dialogContext).pop((order, hidden)),
+              child: Text(widget.saveLabel ?? 'Save'),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    if (result == null) return;
+    widget.onControlsSettingsChanged?.call(result.$1, result.$2);
+  }
+
   // ---- Lookup enrichment ----
 
   void _onCallChanged() {
+    if (_populating) return;
     setState(() {});
     _lookupDebounce?.cancel();
     _commandDescribeDebounce?.cancel();
@@ -664,7 +1245,8 @@ class _LoggingControlsState extends State<LoggingControls> {
       return;
     }
 
-    if (widget.interpretCommand != null) {
+    // Command shortcuts only apply while composing a new QSO — see _log().
+    if (widget.editingQso == null && widget.interpretCommand != null) {
       _commandDescribeDebounce = Timer(const Duration(milliseconds: 150), () async {
         final qsoData = _getCurrentQsoData();
         final result = await widget.interpretCommand!(
@@ -744,12 +1326,155 @@ class _LoggingControlsState extends State<LoggingControls> {
     widget.onCommandMessageChanged?.call(null);
   }
 
+  // ---- Wipe/undo, delete/undo, revert-changes: the info row's second button ----
+
+  /// Whether the in-progress new QSO has anything actually worth wiping —
+  /// the wipe button stays visible but disabled when this is false.
+  bool get _hasComposedValues =>
+      _call.isNotEmpty ||
+      _freqController.text.trim().isNotEmpty ||
+      _manualBand != null ||
+      _manualStartAtMillis != null ||
+      _controlRefs.values.any((refs) => refs.isNotEmpty) ||
+      _unmatchedRefs.isNotEmpty ||
+      _currentQsoExtra.isNotEmpty;
+
+  /// Stashes the in-progress new QSO into the undo slot (for 5 seconds,
+  /// even if the user keeps typing — see `_buildWipeOrEditButton`), then
+  /// wipes the form.
+  void _handleWipeTap() {
+    _undoQsoData = _getCurrentQsoData();
+    _undoExpireTimer?.cancel();
+    _undoExpireTimer = Timer(const Duration(seconds: 5), () {
+      if (mounted) setState(() => _undoQsoData = null);
+    });
+    _wipe();
+  }
+
+  void _restoreFromUndoSlot() {
+    final data = _undoQsoData;
+    if (data == null) return;
+    _undoExpireTimer?.cancel();
+    _undoExpireTimer = null;
+    _populating = true;
+    _applyFieldsFromData(data);
+    _manualStartAtMillis = data['startAtMillis'] as int?;
+    _undoQsoData = null;
+    setState(() => _updateClockTicker());
+    _populating = false;
+  }
+
+  /// Deep, order-insensitive-for-lists equality — used to detect whether
+  /// the fields being edited still match the stored record. Lists compare
+  /// as multisets (via sorted JSON) rather than element-by-element, since
+  /// `refs` is the only list-valued field here and its order is an
+  /// artifact of how `_controlRefs` iterates, not a meaningful edit. A key
+  /// missing entirely, an empty Map/List/String, and an explicit null all
+  /// count as equivalent — `_getCurrentQsoData()` always emits fields like
+  /// `their.sent`/`mode`/`freq`/`band`/`refs`, even when blank/null/empty,
+  /// but a record with nothing recorded there yet might simply lack the
+  /// key, which isn't a meaningful edit either.
+  bool _deepEquals(dynamic a, dynamic b) {
+    if (_isEmptyish(a) && _isEmptyish(b)) return true;
+    if (a is Map || b is Map) {
+      final ma = a is Map ? a : const {};
+      final mb = b is Map ? b : const {};
+      for (final key in {...ma.keys, ...mb.keys}) {
+        if (!_deepEquals(ma[key], mb[key])) return false;
+      }
+      return true;
+    }
+    if (a is List || b is List) {
+      final la = a is List ? a : const [];
+      final lb = b is List ? b : const [];
+      if (la.length != lb.length) return false;
+      final sa = la.map(jsonEncode).toList()..sort();
+      final sb = lb.map(jsonEncode).toList()..sort();
+      for (var i = 0; i < sa.length; i++) {
+        if (sa[i] != sb[i]) return false;
+      }
+      return true;
+    }
+    return a == b;
+  }
+
+  bool _isEmptyish(dynamic v) =>
+      v == null ||
+      (v is String && v.isEmpty) ||
+      (v is Map && v.isEmpty) ||
+      (v is List && v.isEmpty);
+
+  /// Whether the fields being edited differ from the stored record — drives
+  /// the "revert changes" vs. "delete" state of the info row's second
+  /// button while editing.
+  bool _qsoDataChanged() {
+    final editingQso = widget.editingQso;
+    if (editingQso == null) return false;
+    return !_deepEquals(_getCurrentQsoData(), editingQso.data);
+  }
+
+  /// The info row's second (no-background) button — a single control whose
+  /// icon/action depends on whether we're composing a new QSO or editing
+  /// an existing one, per the state machine in the class doc comment above.
+  Widget _buildWipeOrEditButton(ThemeData accentTheme) {
+    final editingQso = widget.editingQso;
+    final IconData icon;
+    final String? tooltip;
+    final VoidCallback? onPressed;
+
+    if (editingQso == null) {
+      if (_undoQsoData != null) {
+        icon = resolveIconName('undo');
+        tooltip = widget.undoLabel ?? 'Undo';
+        onPressed = _restoreFromUndoSlot;
+      } else {
+        icon = resolveIconName('backspace-outline');
+        tooltip = widget.wipeLabel ?? 'Wipe';
+        onPressed = _hasComposedValues ? _handleWipeTap : null;
+      }
+    } else if (_pendingDelete) {
+      icon = resolveIconName('undo');
+      tooltip = widget.undoDeleteLabel ?? 'Undo delete';
+      onPressed = () => setState(() => _pendingDelete = false);
+    } else if (_qsoDataChanged()) {
+      icon = resolveIconName('undo');
+      tooltip = widget.revertLabel ?? 'Revert';
+      onPressed = () => _populateFromEditingQso(editingQso);
+    } else {
+      icon = resolveIconName('trash-can-outline');
+      tooltip = widget.deleteLabel ?? 'Delete';
+      onPressed = () => setState(() => _pendingDelete = true);
+    }
+
+    // Same footprint as the submit button (measured post-frame, since that
+    // button's own size is layout-derived — see _editButtonDiameter), no
+    // background of its own, and its icon tinted with the color the submit
+    // button uses as its *background*, tying the two together visually.
+    final diameter = _editButtonDiameter ?? 44;
+    return SizedBox(
+      width: diameter,
+      height: diameter,
+      child: IconButton(
+        tooltip: tooltip,
+        onPressed: onPressed,
+        icon: Icon(icon),
+        color: accentTheme.colorScheme.tertiary,
+        padding: EdgeInsets.zero,
+        iconSize: diameter * 0.5 * 1.2,
+      ),
+    );
+  }
+
   Future<void> _log() async {
     if (_isLogging) return; // already logging this entry; ignore the repeat
 
-    // Check command
+    // Check command — shortcuts (band/freq/mode, etc.) only apply while
+    // composing a new QSO. A real callsign is exceedingly unlikely to
+    // parse as one, but editing an existing entry shouldn't run it through
+    // command interpretation at all, least of all while confirming a
+    // staged delete.
     final call = _call;
-    if (call.isNotEmpty && widget.interpretCommand != null) {
+    if (widget.editingQso == null && call.isNotEmpty && widget.interpretCommand != null) {
       _commandDescribeDebounce?.cancel();
       final qsoData = _getCurrentQsoData();
       final interpretation = _currentInterpretation ?? await widget.interpretCommand!(
@@ -795,42 +1520,39 @@ class _LoggingControlsState extends State<LoggingControls> {
       }
     }
 
+    final editingQso = widget.editingQso;
+
+    if (editingQso != null && _pendingDelete) {
+      _isLogging = true;
+      try {
+        await widget.qsosRepository.softDelete(editingQso);
+        widget.onEditCanceled?.call();
+      } finally {
+        _isLogging = false;
+      }
+      return;
+    }
+
     if (!_canLog) {
       _callFocus.requestFocus();
       return;
     }
     _isLogging = true;
     try {
-      // Fold lookup enrichment into `their` if it belongs to this call.
-      final lookup = _lookupFor == _call ? _lookupResult : null;
-      final refs = [for (final list in _controlRefs.values) ...list];
-      final qso = await widget.qsosRepository.add(widget.operation.uuid, {
-        if (refs.isNotEmpty) 'refs': refs,
-        'our': {
-          'call': widget.operation.stationCall,
-          'sent': _sentController.text.trim(),
-        },
-        'their': {
-          'call': _call,
-          'sent': _rcvdController.text.trim(),
-          if (lookup != null)
-            for (final field in const [
-              'name',
-              'city',
-              'state',
-              'country',
-              'grid',
-            ])
-              if (lookup[field] != null) field: lookup[field],
-        },
-        if (_freq != null) 'freq': _freq,
-        if (_band != null) 'band': _band,
-        'mode': _mode,
-        if (_effectiveStartAtMillis != null) 'startAtMillis': _effectiveStartAtMillis,
-        ..._currentQsoExtra,
-      });
-      widget.onLogged?.call(qso);
-      _wipe();
+      if (editingQso != null) {
+        await widget.qsosRepository.update(
+          Qso(
+            uuid: editingQso.uuid,
+            operationUuid: widget.operation.uuid,
+            data: _getCurrentQsoData(),
+          ),
+        );
+        widget.onEditCanceled?.call();
+      } else {
+        final qso = await widget.qsosRepository.add(widget.operation.uuid, _getCurrentQsoData());
+        widget.onLogged?.call(qso);
+        _wipe();
+      }
     } finally {
       _isLogging = false;
     }
@@ -838,8 +1560,32 @@ class _LoggingControlsState extends State<LoggingControls> {
 
   @override
   Widget build(BuildContext context) {
+    _scheduleSubmitButtonMeasurement();
     final theme = Theme.of(context);
     final poloColors = HaLoColors.of(context);
+
+    // While editing an existing QSO, the panel swaps its tertiary ("new
+    // QSO") accent for the secondary ("editing") accent — mirrors
+    // app-polo's `themeColor` switching. Only the tertiary* tokens are
+    // remapped (not a full ColorScheme swap), so unrelated colors
+    // (primary, error) are unaffected. `accentTheme` carries the remapped
+    // HaLoColors extension too, so SecondaryControlRow's chips (which read
+    // HaLoColors.of(context)/Theme.of(context) ambiently) pick it up.
+    final editing = widget.editingQso != null;
+    final accentPoloColors = editing
+        ? poloColors.copyWith(tertiaryLight: poloColors.secondaryLight)
+        : poloColors;
+    final accentTheme = editing
+        ? theme.copyWith(
+            colorScheme: theme.colorScheme.copyWith(
+              tertiary: theme.colorScheme.secondary,
+              onTertiary: theme.colorScheme.onSecondary,
+              tertiaryContainer: theme.colorScheme.secondaryContainer,
+              onTertiaryContainer: theme.colorScheme.onSecondaryContainer,
+            ),
+            extensions: [accentPoloColors],
+          )
+        : theme;
 
     return CallbackShortcuts(
       bindings: {
@@ -852,45 +1598,53 @@ class _LoggingControlsState extends State<LoggingControls> {
         child: Material(
           elevation: 4,
           // app-polo's logging panel uses the operation's theme color
-          // (tertiary here) as its background, with a divider line in the
-          // same tertiaryLight tone as the unselected chips separating it
-          // from the QSO list above.
-          color: theme.colorScheme.tertiaryContainer,
+          // (tertiary here, secondary while editing) as its background,
+          // with a divider line in the same tint separating it from the
+          // QSO list above.
+          color: accentTheme.colorScheme.tertiaryContainer,
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Container(height: 2, color: poloColors.tertiaryLight),
+              Container(height: 2, color: accentPoloColors.tertiaryLight),
               Padding(
-                padding: const EdgeInsets.fromLTRB(12, 4, 12, 8),
+                // No top inset while a control is expanded — that gap would
+                // otherwise show as bare panel background between the
+                // divider above and the expanded control's own background.
+                padding: EdgeInsets.fromLTRB(
+                  _secondaryPanelHorizontalInset,
+                  _selectedControlKey != null ? 0 : 4,
+                  _secondaryPanelHorizontalInset,
+                  8,
+                ),
                 // Scoped so every field's label/underline reads clearly
                 // against the tertiary-tinted panel, without touching the
                 // rest of the theme (the log button keeps its own
                 // deliberate primaryContainer styling below).
                 child: Theme(
-                  data: theme.copyWith(
-                    inputDecorationTheme: theme.inputDecorationTheme.copyWith(
+                  data: accentTheme.copyWith(
+                    inputDecorationTheme: accentTheme.inputDecorationTheme.copyWith(
                       // Matches app-polo's H2kTextInput, whose fields sit on
                       // a near-white `colors.background` fill regardless of
                       // the panel's own (tertiary-tinted) background.
                       filled: true,
-                      fillColor: theme.colorScheme.surface,
+                      fillColor: accentTheme.colorScheme.surface,
                       labelStyle: TextStyle(
-                        color: theme.colorScheme.onTertiaryContainer.withValues(
+                        color: accentTheme.colorScheme.onTertiaryContainer.withValues(
                           alpha: 0.85,
                         ),
                       ),
                       floatingLabelStyle: TextStyle(
-                        color: theme.colorScheme.onTertiaryContainer,
+                        color: accentTheme.colorScheme.onTertiaryContainer,
                       ),
                       enabledBorder: UnderlineInputBorder(
                         borderSide: BorderSide(
-                          color: theme.colorScheme.onTertiaryContainer
+                          color: accentTheme.colorScheme.onTertiaryContainer
                               .withValues(alpha: 0.4),
                         ),
                       ),
                       focusedBorder: UnderlineInputBorder(
                         borderSide: BorderSide(
-                          color: theme.colorScheme.tertiary,
+                          color: accentTheme.colorScheme.tertiary,
                           width: 3,
                         ),
                       ),
@@ -900,36 +1654,101 @@ class _LoggingControlsState extends State<LoggingControls> {
                     mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const SizedBox(height: 6),
-                      SecondaryControlRow(
-                        controls: _buildSecondaryControls(theme, poloColors),
-                        selectedKey: _selectedControlKey,
-                        onSelect: _onSelectControl,
-                        trailing: _isDupe
-                            ? Chip(
-                                label: Text(widget.dupeLabel ?? 'DUPE'),
-                                visualDensity: VisualDensity.compact,
-                                backgroundColor:
-                                    theme.colorScheme.errorContainer,
-                                labelStyle: TextStyle(
-                                  color: theme.colorScheme.onErrorContainer,
-                                ),
-                              )
-                            : null,
-                      ),
-                      // A fixed-height container to prevent layout shifting
-                      SizedBox(
-                        height: 36,
-                        child: _buildInfoArea(theme),
+                      SizedBox(height: _selectedControlKey != null ? 0 : 6),
+                      AbsorbPointer(
+                        absorbing: _pendingDelete,
+                        child: Opacity(
+                          opacity: _pendingDelete ? 0.5 : 1,
+                          child: SecondaryControlRow(
+                            controls: _buildSecondaryControls(accentTheme, accentPoloColors),
+                            selectedKey: _selectedControlKey,
+                            onSelect: _onSelectControl,
+                            onOpenSettings: _openControlSettingsDialog,
+                            horizontalBleed: _secondaryPanelHorizontalInset,
+                            trailing: _isDupe
+                                ? Chip(
+                                    label: Text(widget.dupeLabel ?? 'DUPE'),
+                                    visualDensity: VisualDensity.compact,
+                                    backgroundColor:
+                                        theme.colorScheme.errorContainer,
+                                    labelStyle: TextStyle(
+                                      color: theme.colorScheme.onErrorContainer,
+                                    ),
+                                  )
+                                : null,
+                          ),
+                        ),
                       ),
                       const SizedBox(height: 8),
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.end,
+                      // A fixed-height container to prevent layout shifting.
+                      // Sized to the second edit button's own diameter (see
+                      // _buildWipeOrEditButton) — that button is the same
+                      // size as the submit button, well over the 36px this
+                      // row used to be, and a shorter row would have it
+                      // overflowing upward into the secondary control row's
+                      // chips above.
+                      Stack(
+                        clipBehavior: Clip.none,
+                        children: [
+                          SizedBox(
+                            height: _editButtonDiameter ?? 44,
+                            width: double.infinity,
+                            // Reserves room for the button positioned on
+                            // top of this box (below), so text truncates
+                            // before it rather than rendering underneath.
+                            child: Padding(
+                              padding: EdgeInsets.only(right: (_editButtonDiameter ?? 44) + 8),
+                              child: _pendingDelete
+                                  ? Align(
+                                      alignment: Alignment.centerLeft,
+                                      child: Row(
+                                        children: [
+                                          Icon(
+                                            resolveIconName('alert'),
+                                            size: 16,
+                                            color: theme.colorScheme.error,
+                                          ),
+                                          const SizedBox(width: 4),
+                                          Expanded(
+                                            child: Text(
+                                              widget.pendingDeleteWarning ?? 'QSO will be deleted when you save',
+                                              maxLines: 2,
+                                              overflow: TextOverflow.ellipsis,
+                                              style: theme.textTheme.bodyMedium?.copyWith(
+                                                color: theme.colorScheme.error,
+                                                fontWeight: FontWeight.w500,
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    )
+                                  : _buildInfoArea(theme),
+                            ),
+                          ),
+                          Positioned(
+                            right: 0,
+                            bottom: 0,
+                            child: _buildWipeOrEditButton(accentTheme),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      // IntrinsicHeight + stretch, rather than a guessed
+                      // pixel height, so the submit button (an AspectRatio
+                      // circle) is guaranteed to exactly match whatever
+                      // height the text fields actually render at — not an
+                      // eyeballed constant that drifts if their font size,
+                      // padding, or text scale ever changes.
+                      IntrinsicHeight(
+                        child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
                           Expanded(
                             child: TextField(
                               controller: _callController,
                               focusNode: _callFocus,
+                              enabled: !_pendingDelete,
                               autofocus: true,
                               autocorrect: false,
                               enableSuggestions: false,
@@ -940,7 +1759,7 @@ class _LoggingControlsState extends State<LoggingControls> {
                                 ),
                                 _UpperCaseFormatter(),
                               ],
-                              style: _primaryFieldStyle(context, fontWeight: FontWeight.w700),
+                              style: _primaryFieldStyle(context, fontWeight: FontWeight.w500),
                               decoration: _primaryFieldDecoration(context, widget.theirCallLabel ?? 'Their call'),
                               onSubmitted: (_) => _log(),
                             ),
@@ -951,6 +1770,7 @@ class _LoggingControlsState extends State<LoggingControls> {
                             child: TextField(
                               controller: _sentController,
                               focusNode: _sentFocus,
+                              enabled: !_pendingDelete,
                               style: _primaryFieldStyle(context, fontWeight: FontWeight.w500),
                               inputFormatters: [
                                 FilteringTextInputFormatter.allow(
@@ -968,6 +1788,7 @@ class _LoggingControlsState extends State<LoggingControls> {
                             child: TextField(
                               controller: _rcvdController,
                               focusNode: _rcvdFocus,
+                              enabled: !_pendingDelete,
                               style: _primaryFieldStyle(context, fontWeight: FontWeight.w500),
                               inputFormatters: [
                                 FilteringTextInputFormatter.allow(
@@ -980,28 +1801,41 @@ class _LoggingControlsState extends State<LoggingControls> {
                             ),
                           ),
                           const SizedBox(width: 12),
-                          // HaLo's big light-blue log button.
-                          Padding(
-                            padding: const EdgeInsets.only(bottom: 2),
+                          // HaLo's big light-blue log button — a circle as
+                          // tall as the text fields beside it. (A
+                          // LayoutBuilder here to size the icon off the
+                          // button's resolved constraints would seem
+                          // natural, but IntrinsicHeight above needs to
+                          // query this subtree's intrinsic dimensions, which
+                          // LayoutBuilder explicitly doesn't support — so
+                          // the icon just uses a fixed, comfortable size.)
+                          AspectRatio(
+                            key: _submitButtonKey,
+                            aspectRatio: 1,
                             child: MouseRegion(
                               cursor: SystemMouseCursors.click,
                               child: FilledButton(
-                                onPressed: _canLog ? _log : null,
+                                onPressed: (_pendingDelete || _canLog) ? _log : null,
                                 style: FilledButton.styleFrom(
                                   backgroundColor:
-                                      theme.colorScheme.primaryContainer,
+                                      accentTheme.colorScheme.tertiary,
                                   foregroundColor:
-                                      theme.colorScheme.onPrimaryContainer,
-                                  minimumSize: const Size(64, 44),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(22),
-                                  ),
+                                      accentTheme.colorScheme.onTertiary,
+                                  minimumSize: Size.zero,
+                                  padding: EdgeInsets.zero,
+                                  shape: const CircleBorder(),
                                 ),
-                                child: const Icon(Icons.check, size: 28),
+                                child: Icon(
+                                  _pendingDelete
+                                      ? resolveIconName('trash-can')
+                                      : (editing ? resolveIconName('content-save') : Icons.upload),
+                                  size: 24 * 1.2 * MediaQuery.textScalerOf(context).scale(1.0),
+                                ),
                               ),
                             ),
                           ),
                         ],
+                        ),
                       ),
                     ],
                   ),
@@ -1025,7 +1859,7 @@ class _LoggingControlsState extends State<LoggingControls> {
           data: message,
           styleSheet: MarkdownStyleSheet.fromTheme(theme).copyWith(
             p: theme.textTheme.bodyMedium?.copyWith(
-              color: theme.colorScheme.primary,
+              color: Colors.black,
               fontWeight: FontWeight.w500,
             ),
           ),
@@ -1050,7 +1884,7 @@ class _LoggingControlsState extends State<LoggingControls> {
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
                 style: theme.textTheme.bodyMedium?.copyWith(
-                  color: theme.colorScheme.primary,
+                  color: Colors.black,
                 ),
               ),
             ),

@@ -10,7 +10,9 @@ import 'dart:async';
 import 'dart:io' show Platform;
 
 import 'package:drift_flutter/drift_flutter.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:halo_core/halo_core.dart';
 import 'package:halo_widgets/halo_widgets.dart';
@@ -21,7 +23,9 @@ import 'services/export_service.dart';
 import 'services/extension_service.dart';
 import 'services/metrics_service.dart';
 import 'services/purchase_service.dart';
+import 'services/scoring_service.dart';
 import 'services/settings_service.dart';
+import 'services/status_bar_service.dart';
 import 'services/update_service.dart';
 import 'services/data_file_manager.dart';
 import 'i18n/strings.g.dart';
@@ -36,7 +40,7 @@ void main() async {
   // SIMCTL_CHILD_POLO_OPEN_FIRST_OP=1 simctl launch ...) to jump straight
   // into the most recent operation.
   const openFirstOpDefine = bool.fromEnvironment('POLO_OPEN_FIRST_OP');
-  final openFirstOp = openFirstOpDefine || Platform.environment['POLO_OPEN_FIRST_OP'] == '1';
+  final openFirstOp = openFirstOpDefine || (!kIsWeb && Platform.environment['POLO_OPEN_FIRST_OP'] == '1');
   debugPrint('[boot] openFirstOp=$openFirstOp (define=$openFirstOpDefine)');
   if (openFirstOp) {
     WidgetsBinding.instance.addPostFrameCallback((_) async {
@@ -61,7 +65,15 @@ Future<HaLoServices> bootstrap({
   UpdateService? updates,
 }) async {
   WidgetsFlutterBinding.ensureInitialized();
-  final db = HaLoDatabase(driftDatabase(name: 'halo_next'));
+  final db = HaLoDatabase(driftDatabase(
+    name: 'ham2k_logger',
+    web: kIsWeb
+        ? DriftWebOptions(
+            sqlite3Wasm: Uri.parse('sqlite3.wasm'),
+            driftWorker: Uri.parse('drift_worker.js'),
+          )
+        : null,
+  ));
   final extensions = ExtensionService();
   // Fire-and-forget, and kicked off before awaiting settings below so these
   // two independent boot steps run concurrently instead of serialized; the
@@ -111,11 +123,13 @@ class HaLoServices {
   late final QsosRepository qsos = QsosRepository(db, onChange: () => syncEngine.notifyChanged());
   late final LookupRepository lookups = LookupRepository(db);
   late final ExportService exports = ExportService(extensions: extensions, qsos: qsos);
+  late final ScoringService scoring = ScoringService(extensions: extensions, qsos: qsos, operations: operations);
   late final DataFileManager dataFiles = DataFileManager(
     lookups: lookups,
     extensions: extensions,
     prefs: settings.prefs,
   );
+  late final StatusBarService statusBar = StatusBarService(settings.prefs);
 
   /// The dirty-flag sync loop (DESIGN.md §4) — batching and bookkeeping stay
   /// here in Dart; only the network call crosses into the `ham2k-lofi`
@@ -140,6 +154,7 @@ class HaLoServices {
         updates = updates ?? const NoopUpdateService() {
     this.extensions.settings = settings;
     this.extensions.lookups = lookups;
+    this.extensions.statusBar = statusBar;
   }
 
 
@@ -156,15 +171,47 @@ class HaLoServices {
     if (enabled) syncEngine.start();
   }
 
-  /// Handles a command action from the call field (currently just
-  /// `SYNCALL` — see `extensions/sync/ham2k-lofi`'s command hook). Returns
-  /// a message for the caller to show in a SnackBar, or null for nothing.
-  Future<String?> handleCommandAction(String action) async {
+  /// Handles a named command action from the call field — `SYNCALL` (see
+  /// `extensions/sync/ham2k-lofi`) and the `dev-commands` extension's
+  /// DEVNOTICE/DEVSTATUS/DEVPROGRESS. Returns a message for the caller to
+  /// show in a SnackBar, or null for nothing — the dev-command cases return
+  /// null since their `confirm` text already shows in the call field, and
+  /// the status bar item itself is the visible result.
+  Future<String?> handleCommandAction(String action, [Map<String, dynamic>? params]) async {
     switch (action) {
       case 'syncAll':
         if (!settings.syncEnabled) return 'Enable sync in Settings first.';
         await syncEngine.forceFullResync();
         return 'Full resync started — local data was backed up first.';
+      case 'devNotice':
+        final p = params ?? const {};
+        statusBar.showNotice(
+          key: 'command:devNotice',
+          icon: p['icon'] as String?,
+          title: p['title'] as String?,
+          text: p['text'] as String? ?? '',
+        );
+        return null;
+      case 'devStatus':
+        final p = params ?? const {};
+        final devStatusKey = p['key'] as String? ?? 'devStatus';
+        statusBar.setMessage(
+          key: 'command:devStatus:$devStatusKey',
+          icon: p['icon'] as String?,
+          title: p['title'] as String?,
+          text: p['text'] as String?,
+        );
+        return null;
+      case 'devProgress':
+        final p = params ?? const {};
+        final percent = p['percent'] as num?;
+        statusBar.setProgress(
+          key: 'command:devProgress',
+          icon: p['icon'] as String?,
+          title: p['title'] as String?,
+          value: percent == null ? null : percent.toDouble() / 100,
+        );
+        return null;
       default:
         return null;
     }
@@ -181,17 +228,65 @@ class HaLoServices {
 
 
 
-class HaLoApp extends StatelessWidget {
+class HaLoApp extends StatefulWidget {
   final HaLoServices services;
 
   const HaLoApp({super.key, required this.services});
 
   @override
+  State<HaLoApp> createState() => _HaLoAppState();
+}
+
+class _HaLoAppState extends State<HaLoApp> {
+  @override
+  void initState() {
+    super.initState();
+    HardwareKeyboard.instance.addHandler(_handleKeyEvent);
+  }
+
+  @override
+  void dispose() {
+    HardwareKeyboard.instance.removeHandler(_handleKeyEvent);
+    super.dispose();
+  }
+
+  bool _handleKeyEvent(KeyEvent event) {
+    if (event is! KeyDownEvent) return false;
+
+    final isMetaPressed = HardwareKeyboard.instance.isMetaPressed;
+    final isControlPressed = HardwareKeyboard.instance.isControlPressed;
+    final hasModifier = isMetaPressed || isControlPressed;
+
+    if (!hasModifier) return false;
+
+    final key = event.logicalKey;
+    final settings = widget.services.settings;
+
+    if (key == LogicalKeyboardKey.equal ||
+        key == LogicalKeyboardKey.add ||
+        key == LogicalKeyboardKey.numpadAdd) {
+      settings.increaseFontScale();
+      return true;
+    } else if (key == LogicalKeyboardKey.minus ||
+        key == LogicalKeyboardKey.numpadSubtract ||
+        key == LogicalKeyboardKey.underscore) {
+      settings.decreaseFontScale();
+      return true;
+    } else if (key == LogicalKeyboardKey.digit0 ||
+        key == LogicalKeyboardKey.numpad0) {
+      settings.setFontScale(FontScale.normal);
+      return true;
+    }
+
+    return false;
+  }
+
+  @override
   Widget build(BuildContext context) {
-    // Rebuilds when Settings changes themeMode, so toggling it in the
+    // Rebuilds when Settings changes themeMode or fontScale, so toggling it in the
     // Settings screen takes effect immediately rather than needing a restart.
     return AnimatedBuilder(
-      animation: services.settings,
+      animation: widget.services.settings,
       builder: (context, _) => MaterialApp(
         // Android task-switcher card title / web tab title — matches each
         // platform's own OS-level app name (see isWindowedPlatform's other
@@ -204,10 +299,171 @@ class HaLoApp extends StatelessWidget {
         localizationsDelegates: GlobalMaterialLocalizations.delegates,
         theme: buildHaLoTheme(Brightness.light),
         darkTheme: buildHaLoTheme(Brightness.dark),
-        themeMode: services.settings.themeMode,
+        themeMode: widget.services.settings.themeMode,
         debugShowCheckedModeBanner: false,
-        home: HomeView(services: services),
+        home: HomeView(services: widget.services),
+        builder: (context, child) {
+          if (child == null) return const SizedBox.shrink();
+          final settings = widget.services.settings;
+          final mediaQueryData = MediaQuery.of(context);
+          final scale = settings.fontScale.scaleFactor;
+
+          final baseTheme = Theme.of(context);
+          final scaledTheme = baseTheme.copyWith(
+            iconTheme: baseTheme.iconTheme.copyWith(
+              size: (baseTheme.iconTheme.size ?? 24.0) * scale,
+            ),
+            primaryIconTheme: baseTheme.primaryIconTheme.copyWith(
+              size: (baseTheme.primaryIconTheme.size ?? 24.0) * scale,
+            ),
+            appBarTheme: baseTheme.appBarTheme.copyWith(
+              toolbarHeight: (baseTheme.appBarTheme.toolbarHeight ?? 48.0) * scale,
+              iconTheme: (baseTheme.appBarTheme.iconTheme ?? const IconThemeData()).copyWith(
+                size: (baseTheme.appBarTheme.iconTheme?.size ?? 24.0) * scale,
+                color: baseTheme.appBarTheme.foregroundColor ?? baseTheme.colorScheme.onPrimary,
+              ),
+              actionsIconTheme: (baseTheme.appBarTheme.actionsIconTheme ?? const IconThemeData()).copyWith(
+                size: (baseTheme.appBarTheme.actionsIconTheme?.size ?? 24.0) * scale,
+                color: baseTheme.appBarTheme.foregroundColor ?? baseTheme.colorScheme.onPrimary,
+              ),
+            ),
+            chipTheme: baseTheme.chipTheme.copyWith(
+              labelStyle: baseTheme.chipTheme.labelStyle?.copyWith(
+                fontSize: (baseTheme.chipTheme.labelStyle?.fontSize ?? 14.0) * scale,
+              ),
+              iconTheme: (baseTheme.chipTheme.iconTheme ?? const IconThemeData()).copyWith(
+                size: (baseTheme.chipTheme.iconTheme?.size ?? 24.0) * scale,
+              ),
+              padding: baseTheme.chipTheme.padding != null
+                  ? baseTheme.chipTheme.padding! * scale
+                  : EdgeInsets.symmetric(horizontal: 12.0 * scale, vertical: 8.0 * scale),
+            ),
+            floatingActionButtonTheme: baseTheme.floatingActionButtonTheme.copyWith(
+              sizeConstraints: BoxConstraints.tightFor(
+                width: 56.0 * scale,
+                height: 56.0 * scale,
+              ),
+              extendedSizeConstraints: BoxConstraints.tightFor(
+                height: 48.0 * scale,
+              ),
+            ),
+            segmentedButtonTheme: SegmentedButtonThemeData(
+              style: baseTheme.segmentedButtonTheme.style?.copyWith(
+                padding: WidgetStateProperty.all(
+                  EdgeInsets.symmetric(horizontal: 12.0 * scale, vertical: 8.0 * scale),
+                ),
+              ),
+            ),
+            filledButtonTheme: FilledButtonThemeData(
+              style: baseTheme.filledButtonTheme.style?.copyWith(
+                padding: WidgetStateProperty.all(
+                  EdgeInsets.symmetric(horizontal: 24.0 * scale, vertical: 12.0 * scale),
+                ),
+              ),
+            ),
+            elevatedButtonTheme: ElevatedButtonThemeData(
+              style: baseTheme.elevatedButtonTheme.style?.copyWith(
+                padding: WidgetStateProperty.all(
+                  EdgeInsets.symmetric(horizontal: 24.0 * scale, vertical: 12.0 * scale),
+                ),
+              ),
+            ),
+            outlinedButtonTheme: OutlinedButtonThemeData(
+              style: baseTheme.outlinedButtonTheme.style?.copyWith(
+                padding: WidgetStateProperty.all(
+                  EdgeInsets.symmetric(horizontal: 24.0 * scale, vertical: 12.0 * scale),
+                ),
+              ),
+            ),
+          );
+
+          return MediaQuery(
+            data: mediaQueryData.copyWith(
+              textScaler: RelativeTextScaler(mediaQueryData.textScaler, scale),
+            ),
+            child: Theme(
+              data: scaledTheme,
+              child: IconTheme(
+                data: scaledTheme.iconTheme,
+                child: _StatusBarOverlay(services: widget.services, child: child),
+              ),
+            ),
+          );
+        },
       ),
     );
   }
+}
+
+/// Wraps the whole app (every route, since `MaterialApp.builder` wraps the
+/// Navigator as a single instance) with the global footer + notice stack —
+/// one integration point instead of touching every view's `Scaffold`.
+class _StatusBarOverlay extends StatelessWidget {
+  final HaLoServices services;
+  final Widget child;
+
+  const _StatusBarOverlay({required this.services, required this.child});
+
+  @override
+  Widget build(BuildContext context) {
+    return ListenableBuilder(
+      listenable: services.statusBar,
+      builder: (context, _) {
+        final statusBar = services.statusBar;
+        final items = [
+          for (final item in statusBar.items)
+            StatusBarItemData(
+              key: item.key,
+              icon: item.icon,
+              title: item.title,
+              text: item.text,
+              progressValue: item.progressValue,
+              isIndeterminateProgress: item.isIndeterminateProgress,
+            ),
+        ];
+        final notices = [
+          for (final notice in statusBar.activeNotices)
+            StatusBarNoticeData(
+              key: notice.key,
+              icon: notice.icon,
+              title: notice.title,
+              text: notice.text,
+              actions: [
+                for (final action in notice.actions)
+                  StatusBarActionData(label: action.label, onTap: action.onTap),
+              ],
+              createdAt: notice.createdAt,
+            ),
+        ];
+
+        // Mobile-only: the footer is hidden entirely while the keyboard is
+        // open (user-interface.md's footer spec), not just left empty.
+        final keyboardOpen = MediaQuery.viewInsetsOf(context).bottom > 0;
+        final hideFooter = keyboardOpen && !isWindowedPlatform;
+
+        return Column(
+          children: [
+            Expanded(child: child),
+            if (notices.isNotEmpty && !hideFooter)
+              NoticeStack(notices: notices, onDismiss: statusBar.dismissNotice),
+            if (!hideFooter) StatusBarFooter(items: items, onDismiss: statusBar.clear),
+          ],
+        );
+      },
+    );
+  }
+}
+
+class RelativeTextScaler extends TextScaler {
+  final TextScaler parent;
+  final double scaleFactor;
+
+  const RelativeTextScaler(this.parent, this.scaleFactor);
+
+  @override
+  // ignore: deprecated_member_use
+  double get textScaleFactor => parent.textScaleFactor * scaleFactor;
+
+  @override
+  double scale(double fontSize) => parent.scale(fontSize) * scaleFactor;
 }

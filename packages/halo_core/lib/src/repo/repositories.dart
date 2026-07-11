@@ -226,7 +226,22 @@ class OperationsRepository {
         startAtMillisMin: row.startAtMillisMin,
         startAtMillisMax: row.startAtMillisMax,
         deleted: row.deleted,
+        localData: row.localData == null ? const {} : jsonDecode(row.localData!) as Map<String, dynamic>,
       );
+
+  /// Merges [patch] into this operation's device-local, never-synced state
+  /// (e.g. `ScoringService` writing its `scoring` summary blob under that
+  /// key). Never touches `synced` — `localData` isn't part of what syncs.
+  Future<void> updateLocalData(String uuid, Map<String, dynamic> patch) async {
+    await db.transaction(() async {
+      final operation = await get(uuid);
+      if (operation == null) return;
+      final merged = {...operation.localData, ...patch};
+      await (db.update(db.operations)..where((op) => op.uuid.equals(uuid))).write(
+        OperationsCompanion(localData: Value(jsonEncode(merged))),
+      );
+    });
+  }
 }
 
 class QsosRepository {
@@ -370,7 +385,27 @@ class QsosRepository {
         operationUuid: row.operation,
         data: jsonDecode(row.data) as Map<String, dynamic>,
         deleted: row.deleted,
+        scoreCache: row.scoreCache,
       );
+
+  /// Batch-writes cached scoring results, one row update per QSO but all in
+  /// a single transaction — the counterpart to the `scoring` hook's single
+  /// coarse batched call (DESIGN.md §4). Score cache is locally derived, not
+  /// synced content, so this never touches `synced` or fires [onChange];
+  /// `watchForOperation` streams pick up the change on their own since it's
+  /// still a write to the `qsos` table.
+  Future<void> updateScoreCache(Map<String, String> scoreCacheByUuid) async {
+    if (scoreCacheByUuid.isEmpty) return;
+    await db.batch((batch) {
+      for (final entry in scoreCacheByUuid.entries) {
+        batch.update(
+          db.qsos,
+          QsosCompanion(scoreCache: Value(entry.value)),
+          where: (q) => q.uuid.equals(entry.key),
+        );
+      }
+    });
+  }
 
   QsosCompanion _companionFor(Qso qso) => QsosCompanion(
         uuid: Value(qso.uuid),

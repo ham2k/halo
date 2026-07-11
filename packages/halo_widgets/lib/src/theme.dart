@@ -45,6 +45,13 @@ class HaLoColors extends ThemeExtension<HaLoColors> {
   /// with that exact formula, not eyeballed).
   final Color tertiaryLight;
 
+  /// Same idea as [tertiaryLight] but derived from `secondary` — used when
+  /// the logging panel switches to its "editing an existing QSO" accent
+  /// (see `LoggingControls`'s `accentPoloColors`), so the chips keep the
+  /// same amount of contrast against their container that they have in the
+  /// tertiary ("new QSO") case, instead of blending into it.
+  final Color secondaryLight;
+
   final Map<String, Color> bands;
 
   const HaLoColors({
@@ -52,6 +59,7 @@ class HaLoColors extends ThemeExtension<HaLoColors> {
     required this.notice,
     required this.onNotice,
     required this.tertiaryLight,
+    required this.secondaryLight,
     required this.bands,
   });
 
@@ -62,6 +70,7 @@ class HaLoColors extends ThemeExtension<HaLoColors> {
     notice: Color(0xFFFCF4A7),
     onNotice: Color(0xFF615C2F),
     tertiaryLight: Color(0xFFE6AB73),
+    secondaryLight: Color(0xFF69A9DF),
     bands: _bandColors,
   );
 
@@ -70,6 +79,7 @@ class HaLoColors extends ThemeExtension<HaLoColors> {
     notice: Color(0xFF615C2F),
     onNotice: Color(0xFFFCF4A7),
     tertiaryLight: Color(0xFF5D3918),
+    secondaryLight: Color(0xFF244462),
     bands: _bandColors,
   );
 
@@ -96,6 +106,7 @@ class HaLoColors extends ThemeExtension<HaLoColors> {
     Color? notice,
     Color? onNotice,
     Color? tertiaryLight,
+    Color? secondaryLight,
     Map<String, Color>? bands,
   }) {
     return HaLoColors(
@@ -103,6 +114,7 @@ class HaLoColors extends ThemeExtension<HaLoColors> {
       notice: notice ?? this.notice,
       onNotice: onNotice ?? this.onNotice,
       tertiaryLight: tertiaryLight ?? this.tertiaryLight,
+      secondaryLight: secondaryLight ?? this.secondaryLight,
       bands: bands ?? this.bands,
     );
   }
@@ -121,9 +133,11 @@ TextStyle haloMonoStyle(
   FontWeight? fontWeight,
   Color? color,
 }) {
+  final double baseSize = fontSize ?? 14.0;
+  final double scaledSize = MediaQuery.textScalerOf(context).scale(baseSize);
   return TextStyle(
     fontFamily: 'RobotoMono',
-    fontSize: fontSize,
+    fontSize: scaledSize,
     fontWeight: fontWeight,
     color: color,
     fontFeatures: _tabularFigures,
@@ -148,14 +162,15 @@ InputDecoration poloFieldDecoration(
 }) {
   final theme = Theme.of(context);
   final color = labelColor ?? theme.colorScheme.onSurfaceVariant;
+  final double scale = MediaQuery.textScalerOf(context).scale(1.0);
   return InputDecoration(
     labelText: label,
     hintText: hintText,
     errorText: errorText,
     isDense: true,
     floatingLabelBehavior: FloatingLabelBehavior.always,
-    floatingLabelStyle: TextStyle(fontSize: 14, color: color),
-    contentPadding: const EdgeInsets.fromLTRB(4, 6, 4, 8),
+    floatingLabelStyle: TextStyle(fontSize: 14 * scale, color: color),
+    contentPadding: EdgeInsets.fromLTRB(4 * scale, 6 * scale, 4 * scale, 8 * scale),
   );
 }
 
@@ -198,6 +213,8 @@ ThemeData buildHaLoTheme(Brightness brightness) {
           onPrimaryContainer: Color(0xFFBCE9FF),
           secondary: Color(0xFF5B9EDE),
           onSecondary: Color(0xFF002B4C),
+          secondaryContainer: Color(0xFF3E6096),
+          onSecondaryContainer: Color(0xFFD4E3FF),
           tertiary: Color(0xFFD9904C),
           onTertiary: Color(0xFF4C2700),
           tertiaryContainer: Color(0xFF8C4F20),
@@ -253,9 +270,11 @@ ThemeData buildHaLoTheme(Brightness brightness) {
       // platform's own convention.
       centerTitle: !isWindowedPlatform,
       elevation: 0,
+      toolbarHeight: 48.0,
+      titleSpacing: 8.0,
       titleTextStyle: TextStyle(
         fontFamily: 'RobotoSlab',
-        fontSize: 20,
+        fontSize: 18,
         fontWeight: FontWeight
             .w900, // "Roboto Slab Black" in app-polo's globalStyles.js
         color: colorScheme.onPrimary,

@@ -42,13 +42,30 @@ class DataFileManager {
     return u;
   }
 
+  String _resolveFetchUrl(String urlString) {
+    if (kIsWeb) {
+      final uri = Uri.parse(urlString);
+      const allowedDomains = {
+        'api.pota.app',
+        'logbook.qrz.com',
+        'country-files.com',
+        'pota.app',
+        'www.sotadata.org.uk',
+        'sotadata.org.uk',
+      };
+      if (allowedDomains.contains(uri.host)) {
+        return 'https://services.ham2k.net/${uri.host}${uri.path}${uri.hasQuery ? "?${uri.query}" : ""}';
+      }
+    }
+    return urlString;
+  }
+
   /// Downloads the file at [url] and returns the HTTP body string or throws.
   /// Uses ETag cached in [prefs] to avoid duplicate downloads.
   Future<String?> downloadFile(String key, String url) async {
-    final resolvedUrl = resolveDownloadUrl(url);
+    final resolvedUrl = _resolveFetchUrl(resolveDownloadUrl(url));
     final client = http.Client();
     final request = http.Request('GET', Uri.parse(resolvedUrl));
-
     final etagKey = 'data_file_etag_$key';
     final cachedEtag = prefs.getString(etagKey);
     if (cachedEtag != null) {
@@ -210,13 +227,15 @@ class DataFileManager {
     );
 
     // 2. Cache processed JSON to local file
-    final dir = await getApplicationDocumentsDirectory();
-    final dataFilesDir = Directory(p.join(dir.path, 'data_files'));
-    if (!await dataFilesDir.exists()) {
-      await dataFilesDir.create(recursive: true);
+    if (!kIsWeb) {
+      final dir = await getApplicationDocumentsDirectory();
+      final dataFilesDir = Directory(p.join(dir.path, 'data_files'));
+      if (!await dataFilesDir.exists()) {
+        await dataFilesDir.create(recursive: true);
+      }
+      final cacheFile = File(p.join(dataFilesDir.path, '$key.json'));
+      await cacheFile.writeAsString(jsonEncode(processedJson));
     }
-    final cacheFile = File(p.join(dataFilesDir.path, '$key.json'));
-    await cacheFile.writeAsString(jsonEncode(processedJson));
 
     // 3. Load processed data by calling onLoadRawData
     await host.invokeHook(
@@ -229,6 +248,7 @@ class DataFileManager {
 
   /// Triggers loading cached raw files at startup/activation.
   Future<void> loadRawDataFiles() async {
+    if (kIsWeb) return;
     final host = extensions.host;
     if (host == null) return;
 
@@ -290,10 +310,12 @@ class DataFileManager {
     await lookups.deleteCategory(key);
 
     // Delete raw cache files
-    final dir = await getApplicationDocumentsDirectory();
-    final cacheFile = File(p.join(dir.path, 'data_files', '$key.json'));
-    if (await cacheFile.exists()) {
-      await cacheFile.delete();
+    if (!kIsWeb) {
+      final dir = await getApplicationDocumentsDirectory();
+      final cacheFile = File(p.join(dir.path, 'data_files', '$key.json'));
+      if (await cacheFile.exists()) {
+        await cacheFile.delete();
+      }
     }
   }
 

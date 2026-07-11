@@ -18,8 +18,7 @@
   "dialogs": {
     "deleteOperationConfirm": "¿Eliminar operación \"${title}\"?",
     "operationDetails": "Detalles de la operación",
-    "activities": "Actividades",
-    "deleteQsoConfirm": "¿Eliminar QSO con ${call}?"
+    "activities": "Actividades"
   },
   "operation": {
     "tabs": {
@@ -48,20 +47,42 @@
     "timeUtc": "Hora (UTC)",
     "date": "Fecha",
     "now": "Ahora",
-    "freqKHz": "Frec kHz",
+    "frequency": "Frecuencia",
     "mode": "Modo",
     "dupe": "DUPE",
     "theirCall": "Su indicativo",
     "sent": "Enviado",
-    "rcvd": "Recibido"
+    "rcvd": "Recibido",
+    "more": "Más",
+    "revert": "Revertir",
+    "undoDelete": "Deshacer eliminación",
+    "wipe": "Borrar",
+    "undo": "Deshacer",
+    "pendingDeleteWarning": "El QSO se eliminará al guardar",
+    "timeControl": "Hora",
+    "radioControl": "Radio",
+    "controlSettings": "Controles de registro"
+  },
+  "qsoEditForm": {
+    "title": "Editar QSO",
+    "theirName": "Nombre",
+    "theirGrid": "Locador",
+    "band": "Banda",
+    "notes": "Notas"
   },
   "qsoList": {
-    "empty": "Aún no hay QSOs — ¡haz un contacto!"
+    "empty": "Aún no hay QSOs — ¡haz un contacto!",
+    "duplicate": "Duplicado — mismo indicativo, banda y modo ya registrados",
+    "newEntity": "Nueva entidad DXCC",
+    "newBandOrMode": "Nueva banda o modo para este indicativo"
   },
   "loggingPanel": {
     "station": "Estación",
     "byBand": "Por banda",
-    "byMode": "Por modo"
+    "byMode": "Por modo",
+    "scoring": "Puntuación",
+    "dxccEntities": "Entidades DXCC",
+    "duplicates": "Duplicados"
   },
   "settings": {
     "title": "Configuración",
@@ -72,6 +93,14 @@
       "system": "Sistema",
       "light": "Claro",
       "dark": "Oscuro"
+    },
+    "fontScale": "Tamaño de Letra",
+    "fontScaleOpts": {
+      "smallest": "Más pequeña",
+      "smaller": "Pequeña",
+      "normal": "Normal",
+      "larger": "Grande",
+      "largest": "Más grande"
     },
     "operatorCall": "Indicativo del Operador",
     "sync": {

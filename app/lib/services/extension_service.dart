@@ -8,12 +8,25 @@
 
 import 'dart:convert';
 
-import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show rootBundle;
+import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:halo_extension_host/halo_extension_host.dart';
 import 'package:halo_core/halo_core.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'settings_service.dart';
+import 'status_bar_service.dart';
+import 'package:halo_widgets/halo_widgets.dart';
+import '../main.dart';
+
+/// The QSON payload shape shared by every hook that takes a whole operation's
+/// worth of QSOs in one coarse call (export, scoring, …) — `operation.data`
+/// with `uuid` folded in, plus each QSO's raw QSON `data`.
+Map<String, dynamic> qsonPayloadFor({required Operation operation, required List<Qso> qsos}) => {
+      'operation': {...operation.data, 'uuid': operation.uuid},
+      'qsos': [for (final qso in qsos) qso.data],
+    };
 
 class ExtensionService {
   ExtensionHost? _host;
@@ -30,6 +43,7 @@ class ExtensionService {
 
   SettingsService? settings;
   LookupRepository? lookups;
+  StatusBarService? statusBar;
 
   bool get ready => _host != null;
   ExtensionHost? get host => _host;
@@ -201,9 +215,168 @@ class ExtensionService {
                   'flags': row.flags,
                 })
             .toList();
+      case 'showForm':
+        final formId = params['formId'] as String;
+        final formDef = (params['form'] as Map).cast<String, dynamic>();
+        final state = (params['state'] as Map? ?? const {}).cast<String, dynamic>();
+
+        final context = navigatorKey.currentContext;
+        if (context == null) {
+          throw StateError('No active navigation context found');
+        }
+
+        final result = await showFormDialog(
+          context,
+          formDefinition: formDef,
+          initialState: state,
+          validator: (fieldKey, value, currentState) async {
+            try {
+              final res = await _host?.invokeHook(
+                'form',
+                key: formId,
+                method: 'validateField',
+                args: {
+                  'formId': formId,
+                  'fieldKey': fieldKey,
+                  'value': value,
+                  'state': currentState,
+                },
+              );
+              return res as String?;
+            } catch (e) {
+              return 'Validation error: $e';
+            }
+          },
+          transformer: (fieldKey, value, currentState) async {
+            try {
+              final res = await _host?.invokeHook(
+                'form',
+                key: formId,
+                method: 'transformField',
+                args: {
+                  'formId': formId,
+                  'fieldKey': fieldKey,
+                  'value': value,
+                  'state': currentState,
+                },
+              );
+              return res;
+            } catch (_) {
+              return value;
+            }
+          },
+          onChange: (fieldKey, value, currentState) async {
+            try {
+              final res = await _host?.invokeHook(
+                'form',
+                key: formId,
+                method: 'onChangeField',
+                args: {
+                  'formId': formId,
+                  'fieldKey': fieldKey,
+                  'value': value,
+                  'state': currentState,
+                },
+              );
+              if (res is Map) {
+                return res.cast<String, dynamic>();
+              }
+              return null;
+            } catch (_) {
+              return null;
+            }
+          },
+        );
+        return result;
+      case 'statusBarSetMessage':
+        statusBar?.setMessage(
+          key: _namespacedKey(params),
+          icon: params['icon'] as String?,
+          title: params['title'] as String?,
+          text: params['text'] as String?,
+        );
+        return null;
+      case 'statusBarSetProgress':
+        statusBar?.setProgress(
+          key: _namespacedKey(params),
+          icon: params['icon'] as String?,
+          title: params['title'] as String?,
+          text: params['text'] as String?,
+          value: (params['value'] as num?)?.toDouble(),
+        );
+        return null;
+      case 'statusBarClear':
+        statusBar?.clear(_namespacedKey(params));
+        return null;
+      case 'statusBarShowNotice':
+        statusBar?.showNotice(
+          key: _namespacedKey(params),
+          icon: params['icon'] as String?,
+          title: params['title'] as String?,
+          text: params['text'] as String? ?? '',
+          actions: _noticeActionsFromJson(params['actions'], _namespacedKey(params)),
+        );
+        return null;
+      case 'statusBarDismissNotice':
+        statusBar?.dismissNotice(_namespacedKey(params));
+        return null;
       default:
         throw UnimplementedError('Host call method $method not implemented');
     }
+  }
+
+  /// Extension-supplied keys are prefixed with the calling extension's key so
+  /// one extension's status bar items/notices can never collide with — or be
+  /// cleared/dismissed by — another's. Same `ns` convention as `kvGet`/`kvSet`.
+  String _namespacedKey(Map<String, dynamic> params) {
+    final ns = params['ns'] as String;
+    final key = params['key'] as String;
+    return '$ns:$key';
+  }
+
+  /// Notice actions from extensions are declarative JSON, not callbacks back
+  /// into the extension (matches the `activity` hook's "describe UI as data"
+  /// convention) — `link` opens a URL, `dialog` shows a markdown dialog.
+  List<StatusBarAction> _noticeActionsFromJson(dynamic raw, String noticeKey) {
+    if (raw is! List) return const [];
+    final actions = <StatusBarAction>[];
+    for (final entry in raw) {
+      if (entry is! Map) continue;
+      final map = entry.cast<String, dynamic>();
+      final label = map['label'] as String?;
+      final type = map['type'] as String?;
+      if (label == null || type == null) continue;
+      switch (type) {
+        case 'link':
+          final url = map['url'] as String?;
+          if (url == null) continue;
+          actions.add(StatusBarAction(
+            label: label,
+            onTap: () => launchUrl(Uri.parse(url)),
+          ));
+        case 'dialog':
+          final text = map['text'] as String? ?? '';
+          final title = map['title'] as String?;
+          actions.add(StatusBarAction(
+            label: label,
+            onTap: () {
+              final context = navigatorKey.currentContext;
+              if (context == null) return;
+              showDialog<void>(
+                context: context,
+                builder: (context) => AlertDialog(
+                  title: title != null ? Text(title) : null,
+                  content: SingleChildScrollView(child: MarkdownBody(data: text)),
+                  actions: [
+                    TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Close')),
+                  ],
+                ),
+              );
+            },
+          ));
+      }
+    }
+    return actions;
   }
 
   /// Calls every registered lookup source and merges the results in priority

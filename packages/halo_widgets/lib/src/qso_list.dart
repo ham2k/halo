@@ -13,20 +13,31 @@ import 'theme.dart';
 
 class QsoList extends StatelessWidget {
   final List<Qso> qsos;
-  final QsosRepository qsosRepository;
   final String? noQsosLabel;
-  final String Function(String call)? deleteConfirmTitleBuilder;
-  final String? cancelLabel;
-  final String? deleteLabel;
+  final String? duplicateLabel;
+  final String? newEntityLabel;
+  final String? newBandOrModeLabel;
+
+  /// The uuid of the QSO currently loaded for editing in the logging panel,
+  /// if any — that row gets the secondary-colored selected treatment.
+  final String? selectedUuid;
+
+  /// Tap a row to select/edit it. The caller owns toggle-to-deselect
+  /// semantics (tapping the already-selected row again). Deleting is
+  /// handled entirely through selecting a row and using the logging
+  /// panel's staged delete — there's no separate quick-delete on the row
+  /// itself, so a single delete flow can't be bypassed mid-edit.
+  final void Function(Qso qso) onSelect;
 
   const QsoList({
     super.key,
     required this.qsos,
-    required this.qsosRepository,
+    required this.onSelect,
+    this.selectedUuid,
     this.noQsosLabel,
-    this.deleteConfirmTitleBuilder,
-    this.cancelLabel,
-    this.deleteLabel,
+    this.duplicateLabel,
+    this.newEntityLabel,
+    this.newBandOrModeLabel,
   });
 
   @override
@@ -72,86 +83,143 @@ class QsoList extends StatelessWidget {
               ? '--:--'
               : '${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}';
           final band = qso.band ?? '';
+          final selected = qso.uuid == selectedUuid;
 
-          return Material(
-            color: theme.colorScheme.surface,
-            child: InkWell(
-              onTap: () {}, // enables hover highlighting
-              onLongPress: () => _confirmDelete(context, qso),
-              mouseCursor: SystemMouseCursors.click,
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
-                child: Row(
-                children: [
-                  SizedBox(width: 28, child: Text('$number', style: monoDim, textAlign: TextAlign.right)),
-                  const SizedBox(width: 8),
-                  Text(timeLabel, style: monoDim),
-                  const SizedBox(width: 10),
-                  // The callsign never truncates; the name absorbs the squeeze.
-                  Text(qso.theirCall, style: mono.copyWith(fontWeight: FontWeight.w700, fontSize: 15)),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      qso.theirName ?? '',
-                      style: monoDim.copyWith(fontSize: 13),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                  if (qso.refs.isNotEmpty) ...[
-                    ConstrainedBox(
-                      constraints: const BoxConstraints(maxWidth: 76),
+          // Selected treatment matches app-polo's QSOList: secondaryContainer
+          // fill with a secondary top/bottom border accent, text tinted
+          // toward onSecondaryContainer so it doesn't wash out.
+          final rowMono = selected ? mono.copyWith(color: theme.colorScheme.onSecondaryContainer) : mono;
+          final rowMonoDim = selected
+              ? monoDim.copyWith(color: theme.colorScheme.onSecondaryContainer.withValues(alpha: 0.75))
+              : monoDim;
+
+          return Container(
+            // The border is always present (3px, just transparent when
+            // unselected) rather than added/removed with `selected` —
+            // Container turns a BoxDecoration's border into padding around
+            // the child, so toggling it on and off would grow/shrink the
+            // row's height by the border width instead of just recoloring it.
+            decoration: BoxDecoration(
+              border: Border.symmetric(
+                horizontal: BorderSide(
+                  color: selected ? theme.colorScheme.secondary : Colors.transparent,
+                  width: 3,
+                ),
+              ),
+            ),
+            child: Material(
+              color: selected ? theme.colorScheme.secondaryContainer : theme.colorScheme.surface,
+              child: InkWell(
+                onTap: () => onSelect(qso),
+                mouseCursor: SystemMouseCursors.click,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+                  child: Row(
+                  children: [
+                    SizedBox(width: 28, child: Text('$number', style: rowMonoDim, textAlign: TextAlign.right)),
+                    const SizedBox(width: 6),
+                    SizedBox(width: 12, child: _scoreBadge(context, qso)),
+                    const SizedBox(width: 6),
+                    Text(timeLabel, style: rowMonoDim),
+                    const SizedBox(width: 10),
+                    // The callsign never truncates; the name absorbs the squeeze.
+                    Text(qso.theirCall, style: rowMono.copyWith(fontWeight: FontWeight.w700, fontSize: 15)),
+                    const SizedBox(width: 8),
+                    Expanded(
                       child: Text(
-                        qso.refs.map((r) => r['ref']).whereType<String>().join(','),
-                        style: mono.copyWith(fontSize: 12, color: theme.colorScheme.tertiary),
+                        qso.theirName ?? '',
+                        style: rowMonoDim.copyWith(fontSize: 13),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
                     ),
-                    const SizedBox(width: 6),
-                  ],
-                  SizedBox(
-                    width: 44,
-                    child: Text(
-                      band,
-                      style: mono.copyWith(
-                        fontWeight: FontWeight.w600,
-                        color: Color.lerp(poloColors.bandColor(band), theme.colorScheme.onSurface, 0.25),
+                    if (qso.refs.isNotEmpty) ...[
+                      ConstrainedBox(
+                        constraints: const BoxConstraints(maxWidth: 76),
+                        child: Text(
+                          qso.refs.map((r) => r['ref']).whereType<String>().join(','),
+                          style: rowMono.copyWith(fontSize: 12, color: theme.colorScheme.tertiary),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
                       ),
-                      textAlign: TextAlign.right,
+                      const SizedBox(width: 6),
+                    ],
+                    SizedBox(
+                      width: 44,
+                      child: Text(
+                        band,
+                        style: rowMono.copyWith(
+                          fontWeight: FontWeight.w600,
+                          color: selected
+                              ? theme.colorScheme.onSecondaryContainer
+                              : Color.lerp(poloColors.bandColor(band), theme.colorScheme.onSurface, 0.25),
+                        ),
+                        textAlign: TextAlign.right,
+                      ),
                     ),
-                  ),
-                  const SizedBox(width: 8),
-                  SizedBox(width: 42, child: Text(qso.mode ?? '', style: mono)),
-                  SizedBox(
-                    width: 68,
-                    child: Text(
-                      '${qso.sentRST ?? ''} ${qso.receivedRST ?? ''}',
-                      style: monoDim,
-                      textAlign: TextAlign.right,
+                    const SizedBox(width: 8),
+                    SizedBox(width: 42, child: Text(qso.mode ?? '', style: rowMono)),
+                    SizedBox(
+                      width: 68,
+                      child: Text(
+                        '${qso.sentRST ?? ''} ${qso.receivedRST ?? ''}',
+                        style: rowMonoDim,
+                        textAlign: TextAlign.right,
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
+                ),
               ),
             ),
-          ),
-        );
-      },
+          );
+        },
       ),
     );
   }
 
-  Future<void> _confirmDelete(BuildContext context, Qso qso) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text(deleteConfirmTitleBuilder?.call(qso.theirCall) ?? 'Delete QSO with ${qso.theirCall}?'),
-        actions: [
-          TextButton(onPressed: () => Navigator.of(context).pop(false), child: Text(cancelLabel ?? 'Cancel')),
-          FilledButton(onPressed: () => Navigator.of(context).pop(true), child: Text(deleteLabel ?? 'Delete')),
-        ],
-      ),
+  /// A small colored dot summarizing this QSO's cached scoring verdict
+  /// (`qso.scores`, written by `ScoringService` from the `scoring` hook's
+  /// batched results — see DESIGN.md §4). `null` (no dot) until the
+  /// operation has been scored, or when the QSO is unremarkable: not a
+  /// dupe, no new DXCC entity, no new band/mode. Priority when more than
+  /// one applies: duplicate > new entity > new band/mode.
+  Widget? _scoreBadge(BuildContext context, Qso qso) {
+    final scores = qso.scores;
+    if (scores == null) return null;
+
+    final theme = Theme.of(context);
+    final poloColors = HaLoColors.of(context);
+
+    final dupeScore = scores['dupe'] as Map<String, dynamic>?;
+    final isDupe = dupeScore?['dupe'] == true;
+    final notices = (dupeScore?['notices'] as List?)?.cast<String>() ?? const [];
+    final hasBandOrModeNotice = notices.contains('newBand') || notices.contains('newMode');
+
+    final dxccScore = scores['dxcc'] as Map<String, dynamic>?;
+    final isNewEntity = (dxccScore?['value'] as num?) == 1;
+
+    Color color;
+    String? tooltip;
+    if (isDupe) {
+      color = theme.colorScheme.error;
+      tooltip = duplicateLabel;
+    } else if (isNewEntity) {
+      color = poloColors.important;
+      tooltip = newEntityLabel;
+    } else if (hasBandOrModeNotice) {
+      color = poloColors.notice;
+      tooltip = newBandOrModeLabel;
+    } else {
+      return null;
+    }
+
+    final dot = Container(
+      width: 8,
+      height: 8,
+      decoration: BoxDecoration(color: color, shape: BoxShape.circle),
     );
-    if (confirmed == true) await qsosRepository.softDelete(qso);
+    return tooltip == null ? dot : Tooltip(message: tooltip, child: dot);
   }
 }

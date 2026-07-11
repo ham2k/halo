@@ -7,6 +7,8 @@
 // DESIGN.md §7), Spots (placeholder for now), Map, and Operation
 // (settings/activities/data, a scoped-down OpSettingsTab).
 
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:halo_core/halo_core.dart';
 import 'package:halo_widgets/halo_widgets.dart';
@@ -45,6 +47,39 @@ class _OperationViewState extends State<OperationView> {
       await widget.services.extensions.start();
       final controls = await widget.services.extensions.loggingControls(operation.data);
       if (mounted) setState(() => _loggingControls = controls);
+
+      // Scores are cached per-QSO (DESIGN.md §4), so a rescore on open is
+      // enough to keep them fresh without re-running on every keystroke.
+      // TODO: debounce a rescore after each QSO add/edit/delete too, once
+      // there's a safe way to do that without the score-cache write itself
+      // re-triggering `watchForOperation`'s stream.
+      //
+      // Per-QSO scores stream in on their own via `watchForOperation`
+      // (rescoring writes `score_cache`, which is a row in that table), but
+      // the day/operation summary lives in `Operations.localData` — not
+      // watched anywhere — so re-fetch and refresh `_operation` once
+      // rescoring lands to pick that up.
+      //
+      // Only the freshly-scored `localData` gets applied onto whatever
+      // `_operation` is current at that point, rather than replacing
+      // `_operation` wholesale — this scoring call can take a few seconds,
+      // and blindly overwriting would clobber a `data`/counter edit
+      // (details, refs) the user made in-between with a stale snapshot.
+      unawaited(widget.services.scoring.rescoreOperation(operation).then((_) async {
+        if (!mounted) return;
+        final rescored = await widget.services.operations.get(widget.operationUuid);
+        final current = _operation;
+        if (rescored != null && current != null && mounted) {
+          setState(() => _operation = Operation(
+                uuid: current.uuid,
+                data: current.data,
+                qsoCount: current.qsoCount,
+                startAtMillisMin: current.startAtMillisMin,
+                startAtMillisMax: current.startAtMillisMax,
+                localData: rescored.localData,
+              ));
+        }
+      }));
     }
   }
 
@@ -109,6 +144,7 @@ class _OperationViewState extends State<OperationView> {
         qsoCount: operation.qsoCount,
         startAtMillisMin: operation.startAtMillisMin,
         startAtMillisMax: operation.startAtMillisMax,
+        localData: operation.localData,
       );
       await widget.services.operations.saveData(updated);
       if (mounted) setState(() => _operation = updated);
@@ -138,9 +174,9 @@ class _OperationViewState extends State<OperationView> {
     }
   }
 
-  Future<void> _handleCommandAction(String action) async {
+  Future<void> _handleCommandAction(String action, [Map<String, dynamic>? params]) async {
     final messenger = ScaffoldMessenger.of(context);
-    final message = await widget.services.handleCommandAction(action);
+    final message = await widget.services.handleCommandAction(action, params);
     if (message != null) messenger.showSnackBar(SnackBar(content: Text(message)));
   }
 
@@ -161,7 +197,7 @@ class _OperationViewState extends State<OperationView> {
           length: 4,
           child: Scaffold(
             appBar: AppBar(
-              leadingWidth: isMacOSChromelessWindow ? 56 + macOSTrafficLightInset + macOSTrafficLightGap : null,
+              leadingWidth: isMacOSChromelessWindow ? 48 + macOSTrafficLightInset + macOSTrafficLightGap : null,
               leading: MouseRegion(
                 cursor: SystemMouseCursors.click,
                 child: isMacOSChromelessWindow

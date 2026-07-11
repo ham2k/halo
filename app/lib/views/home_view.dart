@@ -179,13 +179,13 @@ class _HomeViewState extends State<HomeView> {
     final theme = Theme.of(context);
     return Scaffold(
       appBar: AppBar(
-        leadingWidth: isMacOSChromelessWindow ? 56 + macOSTrafficLightInset + macOSTrafficLightGap : null,
+        leadingWidth: isMacOSChromelessWindow ? 48 + macOSTrafficLightInset + macOSTrafficLightGap : null,
         leading: Padding(
           padding: EdgeInsets.fromLTRB(
-            8 + (isMacOSChromelessWindow ? macOSTrafficLightInset + macOSTrafficLightGap : 0),
-            8,
-            8,
-            8,
+            2 + (isMacOSChromelessWindow ? macOSTrafficLightInset + macOSTrafficLightGap : 0),
+            1,
+            2,
+            1,
           ),
           child: Image.asset('assets/images/ham2k-logo.png'),
         ),
@@ -203,6 +203,7 @@ class _HomeViewState extends State<HomeView> {
             ),
             mouseCursor: SystemMouseCursors.click,
           ),
+          const SizedBox(width: 8),
         ],
       ),
       body: Column(
@@ -462,6 +463,12 @@ class _HomeQuickLookupState extends State<HomeQuickLookup> {
         }
       } else if (map.containsKey('syncAll')) {
         await widget.services.handleCommandAction('syncAll');
+      } else if (map['devNotice'] is Map) {
+        await widget.services.handleCommandAction('devNotice', (map['devNotice'] as Map).cast<String, dynamic>());
+      } else if (map['devStatus'] is Map) {
+        await widget.services.handleCommandAction('devStatus', (map['devStatus'] as Map).cast<String, dynamic>());
+      } else if (map['devProgress'] is Map) {
+        await widget.services.handleCommandAction('devProgress', (map['devProgress'] as Map).cast<String, dynamic>());
       }
     }
   }
@@ -507,7 +514,9 @@ class _HomeQuickLookupState extends State<HomeQuickLookup> {
                       data: _commandMessage!,
                       styleSheet: MarkdownStyleSheet.fromTheme(theme).copyWith(
                         p: theme.textTheme.bodyLarge?.copyWith(
-                          color: _isConfirmation ? theme.colorScheme.secondary : theme.colorScheme.primary,
+                          color: _isConfirmation
+                              ? theme.colorScheme.onPrimary
+                              : theme.colorScheme.onPrimary.withValues(alpha: 0.85),
                           fontWeight: FontWeight.w600,
                         ),
                       ),
@@ -515,13 +524,13 @@ class _HomeQuickLookupState extends State<HomeQuickLookup> {
                   if (_commandMessage == null && lookupLine != null)
                     Row(
                       children: [
-                        Icon(MdiIcons.accountSearch, size: 16, color: theme.colorScheme.primary),
+                        Icon(MdiIcons.accountSearch, size: 16, color: theme.colorScheme.onPrimary),
                         const SizedBox(width: 8),
                         Expanded(
                           child: Text(
                             lookupLine,
                             style: theme.textTheme.bodyMedium?.copyWith(
-                              color: theme.colorScheme.primary,
+                              color: theme.colorScheme.onPrimary.withValues(alpha: 0.85),
                               fontWeight: FontWeight.w500,
                             ),
                           ),
@@ -532,10 +541,18 @@ class _HomeQuickLookupState extends State<HomeQuickLookup> {
               ),
             ),
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+            padding: EdgeInsets.fromLTRB(
+              16,
+              8,
+              16,
+              MediaQuery.paddingOf(context).bottom > 8.0
+                  ? MediaQuery.paddingOf(context).bottom
+                  : 8.0,
+            ),
             child: TextField(
               controller: _controller,
               focusNode: _focusNode,
+              style: haloMonoStyle(context, fontSize: 15),
               textCapitalization: TextCapitalization.characters,
               inputFormatters: [
                 TextInputFormatter.withFunction(

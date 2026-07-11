@@ -45,6 +45,7 @@ class Translations with BaseTranslations<AppLocale, Translations> {
 	late final Translations$dialogs$en dialogs = Translations$dialogs$en.internal(_root);
 	late final Translations$operation$en operation = Translations$operation$en.internal(_root);
 	late final Translations$loggingControls$en loggingControls = Translations$loggingControls$en.internal(_root);
+	late final Translations$qsoEditForm$en qsoEditForm = Translations$qsoEditForm$en.internal(_root);
 	late final Translations$qsoList$en qsoList = Translations$qsoList$en.internal(_root);
 	late final Translations$loggingPanel$en loggingPanel = Translations$loggingPanel$en.internal(_root);
 	late final Translations$settings$en settings = Translations$settings$en.internal(_root);
@@ -120,9 +121,6 @@ class Translations$dialogs$en {
 
 	/// en: 'Activities'
 	String get activities => 'Activities';
-
-	/// en: 'Delete QSO with ${call}?'
-	String deleteQsoConfirm({required Object call}) => 'Delete QSO with ${call}?';
 }
 
 // Path: operation
@@ -181,8 +179,8 @@ class Translations$loggingControls$en {
 	/// en: 'Now'
 	String get now => 'Now';
 
-	/// en: 'Freq kHz'
-	String get freqKHz => 'Freq kHz';
+	/// en: 'Frequency'
+	String get frequency => 'Frequency';
 
 	/// en: 'Mode'
 	String get mode => 'Mode';
@@ -198,6 +196,57 @@ class Translations$loggingControls$en {
 
 	/// en: 'Rcvd'
 	String get rcvd => 'Rcvd';
+
+	/// en: 'More'
+	String get more => 'More';
+
+	/// en: 'Revert'
+	String get revert => 'Revert';
+
+	/// en: 'Undo delete'
+	String get undoDelete => 'Undo delete';
+
+	/// en: 'Wipe'
+	String get wipe => 'Wipe';
+
+	/// en: 'Undo'
+	String get undo => 'Undo';
+
+	/// en: 'QSO will be deleted when you save'
+	String get pendingDeleteWarning => 'QSO will be deleted when you save';
+
+	/// en: 'Time'
+	String get timeControl => 'Time';
+
+	/// en: 'Radio'
+	String get radioControl => 'Radio';
+
+	/// en: 'Logging Controls'
+	String get controlSettings => 'Logging Controls';
+}
+
+// Path: qsoEditForm
+class Translations$qsoEditForm$en {
+	Translations$qsoEditForm$en.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Edit QSO'
+	String get title => 'Edit QSO';
+
+	/// en: 'Name'
+	String get theirName => 'Name';
+
+	/// en: 'Grid'
+	String get theirGrid => 'Grid';
+
+	/// en: 'Band'
+	String get band => 'Band';
+
+	/// en: 'Notes'
+	String get notes => 'Notes';
 }
 
 // Path: qsoList
@@ -210,6 +259,15 @@ class Translations$qsoList$en {
 
 	/// en: 'No QSOs yet — work someone!'
 	String get empty => 'No QSOs yet — work someone!';
+
+	/// en: 'Duplicate — same call, band and mode already logged'
+	String get duplicate => 'Duplicate — same call, band and mode already logged';
+
+	/// en: 'New DXCC entity'
+	String get newEntity => 'New DXCC entity';
+
+	/// en: 'New band or mode for this callsign'
+	String get newBandOrMode => 'New band or mode for this callsign';
 }
 
 // Path: loggingPanel
@@ -228,6 +286,15 @@ class Translations$loggingPanel$en {
 
 	/// en: 'By mode'
 	String get byMode => 'By mode';
+
+	/// en: 'Scoring'
+	String get scoring => 'Scoring';
+
+	/// en: 'DXCC entities'
+	String get dxccEntities => 'DXCC entities';
+
+	/// en: 'Duplicates'
+	String get duplicates => 'Duplicates';
 }
 
 // Path: settings
@@ -248,6 +315,11 @@ class Translations$settings$en {
 	String get language => 'Language';
 
 	late final Translations$settings$theme$en theme = Translations$settings$theme$en.internal(_root);
+
+	/// en: 'Font Scale'
+	String get fontScale => 'Font Scale';
+
+	late final Translations$settings$fontScaleOpts$en fontScaleOpts = Translations$settings$fontScaleOpts$en.internal(_root);
 
 	/// en: 'Operator Callsign'
 	String get operatorCall => 'Operator Callsign';
@@ -322,6 +394,30 @@ class Translations$settings$theme$en {
 	String get dark => 'Dark';
 }
 
+// Path: settings.fontScaleOpts
+class Translations$settings$fontScaleOpts$en {
+	Translations$settings$fontScaleOpts$en.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Smallest'
+	String get smallest => 'Smallest';
+
+	/// en: 'Smaller'
+	String get smaller => 'Smaller';
+
+	/// en: 'Normal'
+	String get normal => 'Normal';
+
+	/// en: 'Larger'
+	String get larger => 'Larger';
+
+	/// en: 'Largest'
+	String get largest => 'Largest';
+}
+
 // Path: settings.sync
 class Translations$settings$sync$en {
 	Translations$settings$sync$en.internal(this._root);
@@ -381,7 +477,6 @@ extension on Translations {
 			'dialogs.deleteOperationConfirm' => ({required Object title}) => 'Delete operation "${title}"?',
 			'dialogs.operationDetails' => 'Operation details',
 			'dialogs.activities' => 'Activities',
-			'dialogs.deleteQsoConfirm' => ({required Object call}) => 'Delete QSO with ${call}?',
 			'operation.tabs.qsos' => ({required Object count}) => '${count} QSOs',
 			'operation.tabs.spots' => 'SPOTS',
 			'operation.tabs.map' => 'MAP',
@@ -402,16 +497,36 @@ extension on Translations {
 			'loggingControls.timeUtc' => 'Time (UTC)',
 			'loggingControls.date' => 'Date',
 			'loggingControls.now' => 'Now',
-			'loggingControls.freqKHz' => 'Freq kHz',
+			'loggingControls.frequency' => 'Frequency',
 			'loggingControls.mode' => 'Mode',
 			'loggingControls.dupe' => 'DUPE',
 			'loggingControls.theirCall' => 'Their call',
 			'loggingControls.sent' => 'Sent',
 			'loggingControls.rcvd' => 'Rcvd',
+			'loggingControls.more' => 'More',
+			'loggingControls.revert' => 'Revert',
+			'loggingControls.undoDelete' => 'Undo delete',
+			'loggingControls.wipe' => 'Wipe',
+			'loggingControls.undo' => 'Undo',
+			'loggingControls.pendingDeleteWarning' => 'QSO will be deleted when you save',
+			'loggingControls.timeControl' => 'Time',
+			'loggingControls.radioControl' => 'Radio',
+			'loggingControls.controlSettings' => 'Logging Controls',
+			'qsoEditForm.title' => 'Edit QSO',
+			'qsoEditForm.theirName' => 'Name',
+			'qsoEditForm.theirGrid' => 'Grid',
+			'qsoEditForm.band' => 'Band',
+			'qsoEditForm.notes' => 'Notes',
 			'qsoList.empty' => 'No QSOs yet — work someone!',
+			'qsoList.duplicate' => 'Duplicate — same call, band and mode already logged',
+			'qsoList.newEntity' => 'New DXCC entity',
+			'qsoList.newBandOrMode' => 'New band or mode for this callsign',
 			'loggingPanel.station' => 'Station',
 			'loggingPanel.byBand' => 'By band',
 			'loggingPanel.byMode' => 'By mode',
+			'loggingPanel.scoring' => 'Scoring',
+			'loggingPanel.dxccEntities' => 'DXCC entities',
+			'loggingPanel.duplicates' => 'Duplicates',
 			'settings.title' => 'Settings',
 			'settings.general' => 'General Settings',
 			'settings.language' => 'Language',
@@ -419,6 +534,12 @@ extension on Translations {
 			'settings.theme.system' => 'System',
 			'settings.theme.light' => 'Light',
 			'settings.theme.dark' => 'Dark',
+			'settings.fontScale' => 'Font Scale',
+			'settings.fontScaleOpts.smallest' => 'Smallest',
+			'settings.fontScaleOpts.smaller' => 'Smaller',
+			'settings.fontScaleOpts.normal' => 'Normal',
+			'settings.fontScaleOpts.larger' => 'Larger',
+			'settings.fontScaleOpts.largest' => 'Largest',
 			'settings.operatorCall' => 'Operator Callsign',
 			'settings.sync.title' => 'Sync Settings',
 			'settings.sync.enable' => 'Enable Sync',

@@ -121,7 +121,7 @@ void main() {
     await tester.pumpWidget(host());
     await openControl(tester, MdiIcons.radio);
 
-    await tester.enterText(find.widgetWithText(TextField, 'Freq kHz'), '14285');
+    await tester.enterText(find.widgetWithText(TextField, 'Frequency'), '14285');
     await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'W1AW');
     await tester.pump();
     await tester.sendKeyEvent(LogicalKeyboardKey.enter);
@@ -267,6 +267,10 @@ void main() {
 
   testWidgets('call-field commands: frequency, band, and mode via space', (tester) async {
     await tester.pumpWidget(host(interpretCommand: fakeInterpretCommand));
+    // Commands apply their changes without forcing the Radio control open
+    // (see the dedicated test for that); open it manually here so the
+    // assertions below can read its fields.
+    await openControl(tester, MdiIcons.radio);
 
     TextField field(String label) => tester.widget<TextField>(find.widgetWithText(TextField, label));
     Future<void> command(String text) async {
@@ -281,7 +285,7 @@ void main() {
     await command('14285');
     expect(field('Their call').controller!.text, isEmpty);
     expect(field('Their call').focusNode!.hasFocus, isTrue);
-    expect(field('Freq kHz').controller!.text, '14285');
+    expect(field('Frequency').controller!.text, '14285');
     expect(find.text('20m'), findsWidgets);
 
     // Mode command switches mode and resets untouched RSTs.
@@ -290,7 +294,7 @@ void main() {
 
     // Band command overrides band and clears the frequency.
     await command('40M');
-    expect(field('Freq kHz').controller!.text, isEmpty);
+    expect(field('Frequency').controller!.text, isEmpty);
     expect(find.text('40m'), findsWidgets);
 
     // Log a QSO with the band-only state: band recorded, no frequency.
@@ -312,11 +316,36 @@ void main() {
     await tester.pumpWidget(host(existing: [dupe]));
     await openControl(tester, MdiIcons.radio);
 
-    await tester.enterText(find.widgetWithText(TextField, 'Freq kHz'), '14285');
+    await tester.enterText(find.widgetWithText(TextField, 'Frequency'), '14285');
     await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'W1AW');
     await tester.pump();
 
     expect(find.text('DUPE'), findsOneWidget);
+  });
+
+  testWidgets('editing an existing QSO does not flag it as its own duplicate', (tester) async {
+    final existingQso = Qso(
+      uuid: 'existing-uuid',
+      operationUuid: operation.uuid,
+      data: {
+        'their': {'call': 'W1AW'},
+        'band': '20m',
+        'mode': 'SSB',
+      },
+    );
+
+    await tester.pumpWidget(MaterialApp(
+      home: Scaffold(
+        body: LoggingControls(
+          operation: operation,
+          qsosRepository: qsos,
+          qsos: [existingQso],
+          editingQso: existingQso,
+        ),
+      ),
+    ));
+
+    expect(find.text('DUPE'), findsNothing);
   });
 
   group('secondary control row', () {
@@ -325,36 +354,47 @@ void main() {
 
       expect(find.byIcon(MdiIcons.clockOutline), findsOneWidget);
       expect(find.byIcon(MdiIcons.radio), findsOneWidget);
-      expect(find.widgetWithText(TextField, 'Freq kHz'), findsNothing);
+      expect(find.widgetWithText(TextField, 'Frequency'), findsNothing);
 
       await openControl(tester, MdiIcons.radio);
-      expect(find.widgetWithText(TextField, 'Freq kHz'), findsOneWidget);
+      expect(find.widgetWithText(TextField, 'Frequency'), findsOneWidget);
 
       await openControl(tester, MdiIcons.radio);
-      expect(find.widgetWithText(TextField, 'Freq kHz'), findsNothing);
+      expect(find.widgetWithText(TextField, 'Frequency'), findsNothing);
     });
 
     testWidgets('selecting a different control collapses the previous one', (tester) async {
       await tester.pumpWidget(host());
 
       await openControl(tester, MdiIcons.radio);
-      expect(find.widgetWithText(TextField, 'Freq kHz'), findsOneWidget);
+      expect(find.widgetWithText(TextField, 'Frequency'), findsOneWidget);
 
       await openControl(tester, MdiIcons.clockOutline);
-      expect(find.widgetWithText(TextField, 'Freq kHz'), findsNothing);
+      expect(find.widgetWithText(TextField, 'Frequency'), findsNothing);
       expect(find.widgetWithText(TextField, 'Time (UTC)'), findsOneWidget);
     });
 
-    testWidgets('a successful command auto-opens the Radio control', (tester) async {
+    testWidgets('a successful command applies the change without opening the Radio control', (tester) async {
       await tester.pumpWidget(host(interpretCommand: fakeInterpretCommand));
-      expect(find.widgetWithText(TextField, 'Freq kHz'), findsNothing);
+      expect(find.widgetWithText(TextField, 'Frequency'), findsNothing);
 
       await tester.enterText(find.widgetWithText(TextField, 'Their call'), '14285');
       await tester.pump();
       await tester.sendKeyEvent(LogicalKeyboardKey.enter);
       await tester.pump(const Duration(milliseconds: 200));
 
-      expect(find.widgetWithText(TextField, 'Freq kHz'), findsOneWidget);
+      // The command's frequency took effect (reflected in the still-closed
+      // chip's summary text)...
+      expect(find.widgetWithText(TextField, 'Frequency'), findsNothing);
+      expect(find.text('14,285 • SSB'), findsOneWidget);
+
+      // ...but the Radio control itself was not force-opened by it.
+      await openControl(tester, MdiIcons.radio);
+      expect(find.widgetWithText(TextField, 'Frequency'), findsOneWidget);
+      expect(
+        tester.widget<TextField>(find.widgetWithText(TextField, 'Frequency')).controller!.text,
+        '14285',
+      );
     });
 
     testWidgets('Time control sets a manual timestamp used at log time; Now resets it', (tester) async {
@@ -445,10 +485,11 @@ void main() {
         ),
       ));
 
-      // Shows the existing QSO's own time — static, not a live clock.
-      expect((timeChip(tester).label as Text).data, '12:30z');
+      // Shows the existing QSO's own time — static, not a live clock, with
+      // an explicit :00 seconds since the stored value has none.
+      expect((timeChip(tester).label as Text).data, '12:30:00z');
       await tester.pump(const Duration(seconds: 2));
-      expect((timeChip(tester).label as Text).data, '12:30z');
+      expect((timeChip(tester).label as Text).data, '12:30:00z');
 
       await openControl(tester, MdiIcons.clockOutline);
       final timeField = tester.widget<TextField>(find.widgetWithText(TextField, 'Time (UTC)'));
@@ -462,7 +503,7 @@ void main() {
       expect(find.widgetWithText(TextButton, 'Now'), findsNothing);
     });
 
-    testWidgets('activity control chip shows a hasValue indicator once a ref is entered', (tester) async {
+    testWidgets('activity control chip has no border, before or after a ref is entered', (tester) async {
       const controls = [
         {
           'key': 'pota/hunter',
@@ -488,7 +529,7 @@ void main() {
       await tester.testTextInput.receiveAction(TextInputAction.done);
       await tester.pump();
 
-      expect(potaChip().side, isNotNull);
+      expect(potaChip().side, BorderSide.none);
     });
 
     testWidgets('chips match app-polo LoggerChip styling: tertiary family, rounded rectangle', (tester) async {
@@ -515,6 +556,131 @@ void main() {
         find.byWidgetPredicate((w) => w is Material && w.color == const Color(0xFFFFDCC6)),
         findsOneWidget,
       );
+    });
+  });
+
+  group('wipe/undo, delete/undo, revert-changes button', () {
+    IconButton secondButton(WidgetTester tester, IconData icon) => tester.widget<IconButton>(
+          find.ancestor(of: find.byIcon(icon), matching: find.byType(IconButton)),
+        );
+
+    final wipeIcon = resolveIconName('backspace-outline');
+    final undoIcon = resolveIconName('undo');
+    final deleteIcon = resolveIconName('trash-can-outline');
+
+    testWidgets('wipe is disabled with nothing entered, enabled once a call is typed, and wiping offers a 5s undo', (tester) async {
+      await tester.pumpWidget(host());
+
+      expect(secondButton(tester, wipeIcon).onPressed, isNull);
+
+      await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'W1AW');
+      await tester.pump();
+      expect(secondButton(tester, wipeIcon).onPressed, isNotNull);
+
+      await tester.tap(find.byIcon(wipeIcon));
+      await tester.pump();
+
+      final callField = tester.widget<TextField>(find.widgetWithText(TextField, 'Their call'));
+      expect(callField.controller!.text, isEmpty);
+      expect(find.byIcon(wipeIcon), findsNothing);
+      expect(find.byIcon(undoIcon), findsOneWidget);
+
+      await tester.tap(find.byIcon(undoIcon));
+      await tester.pump();
+
+      expect(callField.controller!.text, 'W1AW');
+      expect(find.byIcon(undoIcon), findsNothing);
+      expect(find.byIcon(wipeIcon), findsOneWidget);
+    });
+
+    testWidgets('the wipe undo option expires after 5 seconds even if the user starts typing again', (tester) async {
+      await tester.pumpWidget(host());
+
+      await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'W1AW');
+      await tester.pump();
+      await tester.tap(find.byIcon(wipeIcon));
+      await tester.pump();
+      expect(find.byIcon(undoIcon), findsOneWidget);
+
+      await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'K2HAM');
+      await tester.pump();
+      expect(find.byIcon(undoIcon), findsOneWidget); // still available mid-retype
+
+      await tester.pump(const Duration(seconds: 5));
+      expect(find.byIcon(undoIcon), findsNothing);
+      expect(find.byIcon(wipeIcon), findsOneWidget);
+
+      // Expiry only hides the undo option — it doesn't touch what's typed.
+      final callField = tester.widget<TextField>(find.widgetWithText(TextField, 'Their call'));
+      expect(callField.controller!.text, 'K2HAM');
+    });
+
+    testWidgets('editing an unmodified QSO shows delete; tapping stages it and offers undo', (tester) async {
+      final existingQso = Qso(
+        uuid: 'existing-uuid',
+        operationUuid: operation.uuid,
+        data: {
+          'their': {'call': 'W1AW', 'sent': ''},
+          'our': {'sent': '59', 'call': 'KI2D'},
+          'mode': 'SSB',
+        },
+      );
+
+      await tester.pumpWidget(MaterialApp(
+        home: Scaffold(
+          body: LoggingControls(operation: operation, qsosRepository: qsos, editingQso: existingQso),
+        ),
+      ));
+
+      expect(secondButton(tester, deleteIcon).onPressed, isNotNull);
+      expect(find.byIcon(undoIcon), findsNothing);
+
+      await tester.tap(find.byIcon(deleteIcon));
+      await tester.pump();
+
+      expect(find.textContaining('will be deleted'), findsOneWidget);
+      expect(find.byIcon(deleteIcon), findsNothing);
+      expect(find.byIcon(undoIcon), findsOneWidget);
+
+      await tester.tap(find.byIcon(undoIcon));
+      await tester.pump();
+
+      expect(find.textContaining('will be deleted'), findsNothing);
+      expect(find.byIcon(deleteIcon), findsOneWidget);
+    });
+
+    testWidgets('editing changes the second button to revert-changes; tapping restores the original values', (tester) async {
+      final existingQso = Qso(
+        uuid: 'existing-uuid',
+        operationUuid: operation.uuid,
+        data: {
+          'their': {'call': 'W1AW', 'sent': '59'},
+          'our': {'sent': '59', 'call': 'KI2D'},
+          'mode': 'SSB',
+        },
+      );
+
+      await tester.pumpWidget(MaterialApp(
+        home: Scaffold(
+          body: LoggingControls(operation: operation, qsosRepository: qsos, editingQso: existingQso),
+        ),
+      ));
+
+      expect(find.byIcon(deleteIcon), findsOneWidget);
+
+      await tester.enterText(find.widgetWithText(TextField, 'Sent'), '57');
+      await tester.pump();
+
+      expect(find.byIcon(deleteIcon), findsNothing);
+      expect(find.byIcon(undoIcon), findsOneWidget);
+
+      await tester.tap(find.byIcon(undoIcon));
+      await tester.pump();
+
+      final sentField = tester.widget<TextField>(find.widgetWithText(TextField, 'Sent'));
+      expect(sentField.controller!.text, '59');
+      expect(find.byIcon(deleteIcon), findsOneWidget);
+      expect(find.byIcon(undoIcon), findsNothing);
     });
   });
 }

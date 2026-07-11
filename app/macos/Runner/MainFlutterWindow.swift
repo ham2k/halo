@@ -6,7 +6,19 @@ class MainFlutterWindow: NSWindow {
   // lights center vertically in the merged title bar/AppBar rather than
   // sitting at the standard native title bar's default position (near the
   // very top of our much taller custom bar).
-  private let appBarHeight: CGFloat = 56
+  private var appBarHeight: CGFloat {
+    let scaleStr = UserDefaults.standard.string(forKey: "flutter.fontScale") ?? "normal"
+    let scale: CGFloat
+    switch scaleStr {
+    case "smallest": scale = 0.70
+    case "smaller": scale = 0.85
+    case "normal": scale = 1.00
+    case "larger": scale = 1.20
+    case "largest": scale = 1.40
+    default: scale = 1.00
+    }
+    return 48.0 * scale
+  }
 
   override func awakeFromNib() {
     let flutterViewController = FlutterViewController()
@@ -28,17 +40,11 @@ class MainFlutterWindow: NSWindow {
     super.awakeFromNib()
 
     centerTrafficLights()
-    // AppKit performs its own layout pass on the titlebar view (resetting
-    // the buttons back to their default position) after awakeFromNib
-    // returns but before the window is actually displayed, so the very
-    // first frame the user sees is uncorrected unless we reapply once more
-    // on the next run-loop tick, after that layout pass has happened.
     DispatchQueue.main.async { [weak self] in self?.centerTrafficLights() }
 
     for name: Notification.Name in [
+      NSWindow.didUpdateNotification,
       NSWindow.didResizeNotification,
-      NSWindow.didBecomeKeyNotification,
-      NSWindow.didBecomeMainNotification,
     ] {
       NotificationCenter.default.addObserver(
         self, selector: #selector(centerTrafficLights), name: name, object: self)
@@ -60,13 +66,25 @@ class MainFlutterWindow: NSWindow {
     else { return }
 
     let windowHeight = self.frame.height
+    let leftOffset: CGFloat = 6
+    
+    let desiredCenterYFromTop = appBarHeight / 2
+    let desiredOriginYInWindow = windowHeight - desiredCenterYFromTop - close.frame.height / 2
+    guard let superview = close.superview else { return }
+    let pointInSuperview = superview.convert(NSPoint(x: 0, y: desiredOriginYInWindow), from: nil)
+    
+    // If the close button is already centered, skip to prevent redundant updates or layout loops
+    if abs(close.frame.origin.y - pointInSuperview.y) < 0.1 {
+      return
+    }
+
     for button in [close, miniaturize, zoom] {
-      guard let superview = button.superview else { continue }
-      let desiredCenterYFromTop = appBarHeight / 2
-      let desiredOriginYInWindow = windowHeight - desiredCenterYFromTop - button.frame.height / 2
-      let pointInSuperview = superview.convert(NSPoint(x: 0, y: desiredOriginYInWindow), from: nil)
+      guard let buttonSuperview = button.superview else { continue }
+      let buttonOriginY = windowHeight - desiredCenterYFromTop - button.frame.height / 2
+      let buttonPoint = buttonSuperview.convert(NSPoint(x: 0, y: buttonOriginY), from: nil)
       var frame = button.frame
-      frame.origin.y = pointInSuperview.y
+      frame.origin.x = frame.origin.x + leftOffset
+      frame.origin.y = buttonPoint.y
       button.frame = frame
     }
   }
