@@ -134,6 +134,9 @@ class _Translations$loggingControls$es extends Translations$loggingControls$en {
 	@override String get wipe => 'Borrar';
 	@override String get undo => 'Deshacer';
 	@override String get pendingDeleteWarning => 'El QSO se eliminará al guardar';
+	@override String get timeControl => 'Hora';
+	@override String get radioControl => 'Radio';
+	@override String get controlSettings => 'Controles de registro';
 }
 
 // Path: qsoEditForm
@@ -329,6 +332,9 @@ extension on TranslationsEs {
 			'loggingControls.wipe' => 'Borrar',
 			'loggingControls.undo' => 'Deshacer',
 			'loggingControls.pendingDeleteWarning' => 'El QSO se eliminará al guardar',
+			'loggingControls.timeControl' => 'Hora',
+			'loggingControls.radioControl' => 'Radio',
+			'loggingControls.controlSettings' => 'Controles de registro',
 			'qsoEditForm.title' => 'Editar QSO',
 			'qsoEditForm.theirName' => 'Nombre',
 			'qsoEditForm.theirGrid' => 'Locador',

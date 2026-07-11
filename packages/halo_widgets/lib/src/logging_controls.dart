@@ -61,6 +61,27 @@ typedef CommandInterpreter = Future<Map<String, dynamic>?> Function(
 /// came with that action (e.g. `devNotice`'s icon/title/text).
 typedef CommandActionHandler = Future<void> Function(String action, [Map<String, dynamic>? params]);
 
+/// A secondary control's identity for ordering/visibility purposes — the
+/// settings dialog's list and `_effectiveControlOrder` deal in these; the
+/// actual `SecondaryControlSpec` (which carries the live summary and
+/// expanded-input builder) is only built for controls that end up visible.
+class _ControlDescriptor {
+  final String key;
+  final IconData icon;
+  final String label;
+
+  /// Time and Radio — can't be hidden, so the settings dialog shows their
+  /// checkbox permanently checked and disabled.
+  final bool mandatory;
+
+  const _ControlDescriptor({
+    required this.key,
+    required this.icon,
+    required this.label,
+    this.mandatory = false,
+  });
+}
+
 class LoggingControls extends StatefulWidget {
   final Operation operation;
   final QsosRepository qsosRepository;
@@ -109,6 +130,23 @@ class LoggingControls extends StatefulWidget {
   /// Settings engine interface.
   final SyncSettings? settings;
 
+  /// The user's preferred order for the secondary control chips, by key
+  /// (`'time'`, `'radio'`, an activity control's own key, `'more'`). Keys
+  /// this doesn't mention are appended in their default order; keys it
+  /// mentions that no longer exist (e.g. an uninstalled extension) are
+  /// ignored. Persisted by the caller — see `_effectiveControlOrder`.
+  final List<String> controlOrder;
+
+  /// Control keys hidden from the row. Time and Radio are never hidden
+  /// regardless of what's in here — enforced by this widget, not the
+  /// caller, so a corrupted/stale preference can't hide either.
+  final Set<String> hiddenControlKeys;
+
+  /// Fires when the user changes order or visibility in the controls
+  /// settings dialog. The caller owns persisting it and feeding it back as
+  /// `controlOrder`/`hiddenControlKeys` on the next build.
+  final void Function(List<String> order, Set<String> hidden)? onControlsSettingsChanged;
+
   final String? timeLabel;
   final String? dateLabel;
   final String? nowLabel;
@@ -130,6 +168,11 @@ class LoggingControls extends StatefulWidget {
   final String? theirGridLabel;
   final String? notesLabel;
   final String? bandLabel;
+  final String? timeControlLabel;
+  final String? radioControlLabel;
+  final String? controlSettingsTitle;
+  final String? saveLabel;
+  final String? cancelLabel;
 
   const LoggingControls({
     super.key,
@@ -146,6 +189,9 @@ class LoggingControls extends StatefulWidget {
     this.editingQso,
     this.onEditCanceled,
     this.settings,
+    this.controlOrder = const [],
+    this.hiddenControlKeys = const {},
+    this.onControlsSettingsChanged,
     this.timeLabel,
     this.dateLabel,
     this.nowLabel,
@@ -167,6 +213,11 @@ class LoggingControls extends StatefulWidget {
     this.theirGridLabel,
     this.notesLabel,
     this.bandLabel,
+    this.timeControlLabel,
+    this.radioControlLabel,
+    this.controlSettingsTitle,
+    this.saveLabel,
+    this.cancelLabel,
   });
 
   @override
@@ -368,11 +419,13 @@ class _LoggingControlsState extends State<LoggingControls> {
     _unmatchedRefs = [];
     final refs = (data['refs'] as List?)?.whereType<Map>().map((r) => r.cast<String, dynamic>()) ?? const [];
     for (final ref in refs) {
-      final control = widget.activityControls.firstWhere(
-        (c) => (c['input'] as Map?)?['refType'] == ref['type'],
-        orElse: () => const {},
-      );
-      final key = control['key'] as String?;
+      String? key;
+      for (final control in widget.activityControls) {
+        if ((control['input'] as Map?)?['refType'] == ref['type']) {
+          key = control['key'] as String?;
+          break;
+        }
+      }
       if (key != null) {
         (_controlRefs[key] ??= []).add(ref);
       } else {
@@ -579,12 +632,87 @@ class _LoggingControlsState extends State<LoggingControls> {
     return parts.join(' • ');
   }
 
+  // ---- Control identity, order and visibility ----
+  //
+  // Descriptors carry just enough for the settings dialog and ordering
+  // (key/icon/label/mandatory) — the actual SecondaryControlSpec (live
+  // summary + expanded-input builder) is only built for controls that end
+  // up visible, in _buildSecondaryControls below.
+
+  List<_ControlDescriptor> _controlDescriptors() => [
+        _ControlDescriptor(
+          key: 'time',
+          icon: MdiIcons.clockOutline,
+          label: widget.timeControlLabel ?? 'Time',
+          mandatory: true,
+        ),
+        _ControlDescriptor(
+          key: 'radio',
+          icon: MdiIcons.radio,
+          label: widget.radioControlLabel ?? 'Radio',
+          mandatory: true,
+        ),
+        for (final control in widget.activityControls)
+          if ((control['input'] as Map?)?['kind'] == 'refList')
+            _ControlDescriptor(
+              key: control['key'] as String,
+              icon: resolveIconName(control['icon'] as String?),
+              label: (control['label'] as String?) ?? control['key'] as String,
+            ),
+        _ControlDescriptor(
+          key: 'more',
+          icon: resolveIconName('pencil'),
+          label: widget.moreLabel ?? 'More',
+        ),
+      ];
+
+  /// `widget.controlOrder`, filtered to keys that still exist and
+  /// de-duplicated, with any remaining known keys appended in their default
+  /// order — so a fresh install (empty order) or a newly-added extension
+  /// control both fall back to sane placement.
+  List<String> _effectiveControlOrder(List<_ControlDescriptor> descriptors) {
+    final allKeys = descriptors.map((d) => d.key).toSet();
+    final order = <String>[];
+    for (final key in widget.controlOrder) {
+      if (allKeys.contains(key) && !order.contains(key)) order.add(key);
+    }
+    for (final descriptor in descriptors) {
+      if (!order.contains(descriptor.key)) order.add(descriptor.key);
+    }
+    return order;
+  }
+
   List<SecondaryControlSpec> _buildSecondaryControls(
     ThemeData theme,
     HaLoColors poloColors,
   ) {
-    return [
-      SecondaryControlSpec(
+    final descriptors = _controlDescriptors();
+    final byKey = {for (final d in descriptors) d.key: d};
+    final specs = <SecondaryControlSpec>[];
+    for (final key in _effectiveControlOrder(descriptors)) {
+      final descriptor = byKey[key];
+      if (descriptor == null) continue;
+      if (!descriptor.mandatory && widget.hiddenControlKeys.contains(key)) continue;
+      switch (key) {
+        case 'time':
+          specs.add(_timeControlSpec());
+        case 'radio':
+          specs.add(_radioControlSpec(theme, poloColors));
+        case 'more':
+          specs.add(_moreControlSpec());
+        default:
+          for (final control in widget.activityControls) {
+            if (control['key'] == key) {
+              specs.add(_activityControlSpec(control));
+              break;
+            }
+          }
+      }
+    }
+    return specs;
+  }
+
+  SecondaryControlSpec _timeControlSpec() => SecondaryControlSpec(
         key: 'time',
         icon: MdiIcons.clockOutline,
         summary: _timeSummary,
@@ -641,8 +769,9 @@ class _LoggingControlsState extends State<LoggingControls> {
             ],
           ],
         ),
-      ),
-      SecondaryControlSpec(
+      );
+
+  SecondaryControlSpec _radioControlSpec(ThemeData theme, HaLoColors poloColors) => SecondaryControlSpec(
         key: 'radio',
         icon: MdiIcons.radio,
         summary: _radioSummary,
@@ -726,36 +855,34 @@ class _LoggingControlsState extends State<LoggingControls> {
             ),
           ],
         ),
-      ),
-      for (final control in widget.activityControls)
-        if ((control['input'] as Map?)?['kind'] == 'refList')
-          SecondaryControlSpec(
-            key: control['key'] as String,
-            icon: resolveIconName(control['icon'] as String?),
-            summary: (control['label'] as String?) ?? control['key'] as String,
-            expandedBuilder: (context) => RefChipsInput(
-              refType: (control['input'] as Map)['refType'] as String,
-              label: (control['label'] as String?) ?? '',
-              placeholder: (control['input'] as Map)['placeholder'] as String?,
-              pattern: (control['input'] as Map)['pattern'] as String?,
-              refs: _controlRefs[control['key']] ?? const [],
-              onChanged: (refs) =>
-                  setState(() => _controlRefs[control['key'] as String] = refs),
-              decorate: widget.decorateRef,
-              dense: true,
-              labelColor: Theme.of(context).colorScheme.onTertiaryContainer,
-            ),
-          ),
-      SecondaryControlSpec(
+      );
+
+  SecondaryControlSpec _activityControlSpec(Map<String, dynamic> control) => SecondaryControlSpec(
+        key: control['key'] as String,
+        icon: resolveIconName(control['icon'] as String?),
+        summary: (control['label'] as String?) ?? control['key'] as String,
+        expandedBuilder: (context) => RefChipsInput(
+          refType: (control['input'] as Map)['refType'] as String,
+          label: (control['label'] as String?) ?? '',
+          placeholder: (control['input'] as Map)['placeholder'] as String?,
+          pattern: (control['input'] as Map)['pattern'] as String?,
+          refs: _controlRefs[control['key']] ?? const [],
+          onChanged: (refs) =>
+              setState(() => _controlRefs[control['key'] as String] = refs),
+          decorate: widget.decorateRef,
+          dense: true,
+          labelColor: Theme.of(context).colorScheme.onTertiaryContainer,
+        ),
+      );
+
+  SecondaryControlSpec _moreControlSpec() => SecondaryControlSpec(
         key: 'more',
         icon: resolveIconName('pencil'),
         summary: widget.moreLabel ?? 'More',
         // Never actually shown — _onSelectControl special-cases 'more' to
         // open the full-edit dialog instead of expanding inline.
         expandedBuilder: (context) => const SizedBox.shrink(),
-      ),
-    ];
-  }
+      );
 
   // ---- Command shortcuts ----
   //
@@ -983,6 +1110,83 @@ class _LoggingControlsState extends State<LoggingControls> {
       _seedTimeFields();
       _updateClockTicker();
     });
+  }
+
+  // ---- Secondary control settings (show/hide + reorder) ----
+
+  Future<void> _openControlSettingsDialog() async {
+    final descriptors = _controlDescriptors();
+    final byKey = {for (final d in descriptors) d.key: d};
+    var order = _effectiveControlOrder(descriptors);
+    var hidden = Set<String>.from(widget.hiddenControlKeys);
+
+    final result = await showDialog<(List<String>, Set<String>)>(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (dialogContext, setDialogState) => AlertDialog(
+          title: Text(widget.controlSettingsTitle ?? 'Logging Controls'),
+          content: SizedBox(
+            width: 360,
+            child: ReorderableListView(
+              shrinkWrap: true,
+              buildDefaultDragHandles: false,
+              onReorderItem: (oldIndex, newIndex) => setDialogState(() {
+                final reordered = List<String>.from(order);
+                final key = reordered.removeAt(oldIndex);
+                reordered.insert(newIndex, key);
+                order = reordered;
+              }),
+              children: [
+                for (final (index, key) in order.indexed)
+                  if (byKey[key] case final descriptor?)
+                    ListTile(
+                      key: ValueKey(key),
+                      leading: ReorderableDragStartListener(
+                        index: index,
+                        child: const Icon(Icons.drag_handle),
+                      ),
+                      title: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(descriptor.icon, size: 18),
+                          const SizedBox(width: 12),
+                          Text(descriptor.label),
+                        ],
+                      ),
+                      trailing: Checkbox(
+                        value: descriptor.mandatory || !hidden.contains(key),
+                        onChanged: descriptor.mandatory
+                            ? null
+                            : (checked) => setDialogState(() {
+                                  final updated = Set<String>.from(hidden);
+                                  if (checked == true) {
+                                    updated.remove(key);
+                                  } else {
+                                    updated.add(key);
+                                  }
+                                  hidden = updated;
+                                }),
+                      ),
+                    ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(),
+              child: Text(widget.cancelLabel ?? 'Cancel'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.of(dialogContext).pop((order, hidden)),
+              child: Text(widget.saveLabel ?? 'Save'),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    if (result == null) return;
+    widget.onControlsSettingsChanged?.call(result.$1, result.$2);
   }
 
   // ---- Lookup enrichment ----
@@ -1420,6 +1624,7 @@ class _LoggingControlsState extends State<LoggingControls> {
                             controls: _buildSecondaryControls(accentTheme, accentPoloColors),
                             selectedKey: _selectedControlKey,
                             onSelect: _onSelectControl,
+                            onOpenSettings: _openControlSettingsDialog,
                             trailing: _isDupe
                                 ? Chip(
                                     label: Text(widget.dupeLabel ?? 'DUPE'),

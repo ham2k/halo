@@ -12,13 +12,19 @@
 // visible) is what app-polo moved away from as more activities registered
 // logging controls.
 //
-// Scoped down for v1 versus app-polo's original: no per-user visibility
-// settings (every control the caller passes in shows; there's no persisted
-// "hide this one" yet) and no drag-reordering. Both can layer onto this
-// widget's contract later without changing it.
+// The chip strip itself can be dragged to scroll (desktop mice don't get
+// click-drag scrolling by default — only touch/trackpad do, unless
+// explicitly opted in), and a caret expands it into a multi-row grid (up to
+// 4 rows tall, scrollable beyond that) so every control can be seen at
+// once instead of scrolled through one at a time. Show/hide and reordering
+// of which controls appear at all lives one level up (LoggingControls owns
+// that state and persistence); this widget just renders whatever ordered
+// list it's given, plus a settings button the caller wires up to open
+// that management UI.
 
 import 'dart:math' as math;
 
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 
 import 'theme.dart';
@@ -43,6 +49,16 @@ class SecondaryControlSpec {
   });
 }
 
+/// Lets mouse click-drag scroll the chip strip, in addition to the
+/// touch/trackpad drag Flutter's default behavior already allows.
+class _DragScrollBehavior extends MaterialScrollBehavior {
+  @override
+  Set<PointerDeviceKind> get dragDevices => {
+        ...super.dragDevices,
+        PointerDeviceKind.mouse,
+      };
+}
+
 class SecondaryControlRow extends StatefulWidget {
   final List<SecondaryControlSpec> controls;
   final String? selectedKey;
@@ -52,12 +68,17 @@ class SecondaryControlRow extends StatefulWidget {
   /// It's not a control — it doesn't expand or get selected.
   final Widget? trailing;
 
+  /// Opens the show/hide + reorder settings dialog. The gear button is
+  /// hidden if this is null.
+  final VoidCallback? onOpenSettings;
+
   const SecondaryControlRow({
     super.key,
     required this.controls,
     required this.selectedKey,
     required this.onSelect,
     this.trailing,
+    this.onOpenSettings,
   });
 
   @override
@@ -76,6 +97,15 @@ class _SecondaryControlRowState extends State<SecondaryControlRow> {
   final Map<String, GlobalKey> _chipKeys = {};
   double _expandedLeft = 0;
   double _availableWidth = 0;
+
+  /// Whether the caret has expanded the strip into a multi-row grid.
+  bool _gridExpanded = false;
+
+  /// A single chip's rendered height, measured post-frame from whichever
+  /// chip happens to be built first — used to cap the expanded grid at
+  /// ~4 rows. Defaults to a reasonable guess (a compact ChoiceChip's actual
+  /// height) until the first real measurement lands.
+  double _chipHeight = 32;
 
   GlobalKey _chipKeyFor(String key) => _chipKeys.putIfAbsent(key, GlobalKey.new);
 
@@ -100,9 +130,23 @@ class _SecondaryControlRowState extends State<SecondaryControlRow> {
   /// never spills outside the panel. Runs after layout (needs the chip's
   /// and expanded content's actual rendered sizes, which aren't known
   /// during build), so a freshly-selected control briefly renders at its
-  /// previous offset before snapping into place one frame later.
+  /// previous offset before snapping into place one frame later. Also
+  /// measures a chip's actual height while it's at it, for the expanded
+  /// grid's row cap.
   void _reposition() {
-    if (!mounted || widget.selectedKey == null) return;
+    if (!mounted) return;
+
+    final anyChipBox = widget.controls.isEmpty
+        ? null
+        : _chipKeys[widget.controls.first.key]?.currentContext?.findRenderObject() as RenderBox?;
+    if (anyChipBox != null && anyChipBox.attached) {
+      final height = anyChipBox.size.height;
+      if (height > 0 && (height - _chipHeight).abs() > 0.5) {
+        setState(() => _chipHeight = height);
+      }
+    }
+
+    if (widget.selectedKey == null) return;
     final rowBox = _rowKey.currentContext?.findRenderObject() as RenderBox?;
     final chipBox = _chipKeys[widget.selectedKey]?.currentContext?.findRenderObject() as RenderBox?;
     final expandedBox = _expandedKey.currentContext?.findRenderObject() as RenderBox?;
@@ -145,7 +189,20 @@ class _SecondaryControlRowState extends State<SecondaryControlRow> {
     // disappearing next to the chips), so reposition on every build, not
     // just when selectedKey changes; _reposition's own threshold check
     // makes this a no-op once things settle.
-    if (selected != null) _scheduleReposition();
+    _scheduleReposition();
+
+    final poloColors = HaLoColors.of(context);
+    const spacing = 6.0;
+    final chips = [
+      for (final control in widget.controls)
+        _ControlChip(
+          key: _chipKeyFor(control.key),
+          control: control,
+          selected: control.key == widget.selectedKey,
+          onTap: () => widget.onSelect(control.key == widget.selectedKey ? null : control.key),
+        ),
+      ?widget.trailing,
+    ];
 
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -160,24 +217,59 @@ class _SecondaryControlRowState extends State<SecondaryControlRow> {
                 padding: EdgeInsets.only(left: _expandedLeft, bottom: 4),
                 child: Builder(key: _expandedKey, builder: selected.expandedBuilder),
               ),
-            SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  for (final control in widget.controls) ...[
-                    _ControlChip(
-                      key: _chipKeyFor(control.key),
-                      control: control,
-                      selected: control.key == widget.selectedKey,
-                      onTap: () => widget
-                          .onSelect(control.key == widget.selectedKey ? null : control.key),
-                    ),
-                    const SizedBox(width: 6),
-                  ],
-                  ?widget.trailing,
-                ],
-              ),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: Container(
+                    // Same tone as the chips' own unselected fill, so the
+                    // strip (collapsed or expanded into a grid) reads as
+                    // one continuous surface rather than chips floating on
+                    // the panel's own background.
+                    color: poloColors.tertiaryLight,
+                    padding: const EdgeInsets.all(4),
+                    child: _gridExpanded
+                        ? ConstrainedBox(
+                            constraints: BoxConstraints(maxHeight: _chipHeight * 4 + spacing * 3),
+                            child: SingleChildScrollView(
+                              child: Wrap(
+                                spacing: spacing,
+                                runSpacing: spacing,
+                                children: chips,
+                              ),
+                            ),
+                          )
+                        : ScrollConfiguration(
+                            behavior: _DragScrollBehavior(),
+                            child: SingleChildScrollView(
+                              scrollDirection: Axis.horizontal,
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  for (final chip in chips) ...[
+                                    chip,
+                                    if (chip != chips.last) const SizedBox(width: spacing),
+                                  ],
+                                ],
+                              ),
+                            ),
+                          ),
+                  ),
+                ),
+                IconButton(
+                  tooltip: _gridExpanded ? 'Collapse' : 'Expand',
+                  visualDensity: VisualDensity.compact,
+                  icon: Icon(_gridExpanded ? Icons.expand_less : Icons.expand_more),
+                  onPressed: () => setState(() => _gridExpanded = !_gridExpanded),
+                ),
+                if (widget.onOpenSettings != null)
+                  IconButton(
+                    tooltip: 'Logging controls settings',
+                    visualDensity: VisualDensity.compact,
+                    icon: const Icon(Icons.settings_outlined),
+                    onPressed: widget.onOpenSettings,
+                  ),
+              ],
             ),
           ],
         );

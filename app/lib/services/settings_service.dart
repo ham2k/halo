@@ -29,6 +29,8 @@ class SettingsService extends ChangeNotifier implements SyncSettings {
   static const _developerModeKey = 'developerMode';
   static const _localeKey = 'locale';
   static const _fontScaleKey = 'fontScale';
+  static const _secondaryControlsOrderKey = 'secondaryControlsOrder';
+  static const _hiddenSecondaryControlsKey = 'hiddenSecondaryControls';
 
   final SharedPreferences _prefs;
 
@@ -165,6 +167,26 @@ class SettingsService extends ChangeNotifier implements SyncSettings {
     if (index > 0) {
       await setFontScale(FontScale.values[index - 1]);
     }
+  }
+
+  /// The user's preferred order for the logging panel's secondary control
+  /// chips (Time, Radio, activity-contributed ones, More), by key. Missing
+  /// keys (a newly-installed extension, or before this was ever set) fall
+  /// back to whatever default order the panel itself uses.
+  List<String> get secondaryControlsOrder => _prefs.getStringList(_secondaryControlsOrderKey) ?? const [];
+
+  Future<void> setSecondaryControlsOrder(List<String> order) async {
+    await _prefs.setStringList(_secondaryControlsOrderKey, order);
+    notifyListeners();
+  }
+
+  /// Control keys hidden from the secondary control row. Time and Radio
+  /// can't be hidden — the panel itself enforces that, this is just storage.
+  Set<String> get hiddenSecondaryControls => _prefs.getStringList(_hiddenSecondaryControlsKey)?.toSet() ?? const {};
+
+  Future<void> setHiddenSecondaryControls(Set<String> hidden) async {
+    await _prefs.setStringList(_hiddenSecondaryControlsKey, hidden.toList());
+    notifyListeners();
   }
 }
 

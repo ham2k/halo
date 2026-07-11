@@ -214,6 +214,15 @@ class Translations$loggingControls$en {
 
 	/// en: 'QSO will be deleted when you save'
 	String get pendingDeleteWarning => 'QSO will be deleted when you save';
+
+	/// en: 'Time'
+	String get timeControl => 'Time';
+
+	/// en: 'Radio'
+	String get radioControl => 'Radio';
+
+	/// en: 'Logging Controls'
+	String get controlSettings => 'Logging Controls';
 }
 
 // Path: qsoEditForm
@@ -500,6 +509,9 @@ extension on Translations {
 			'loggingControls.wipe' => 'Wipe',
 			'loggingControls.undo' => 'Undo',
 			'loggingControls.pendingDeleteWarning' => 'QSO will be deleted when you save',
+			'loggingControls.timeControl' => 'Time',
+			'loggingControls.radioControl' => 'Radio',
+			'loggingControls.controlSettings' => 'Logging Controls',
 			'qsoEditForm.title' => 'Edit QSO',
 			'qsoEditForm.theirName' => 'Name',
 			'qsoEditForm.theirGrid' => 'Grid',

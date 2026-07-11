@@ -58,7 +58,10 @@
     "undoDelete": "Undo delete",
     "wipe": "Wipe",
     "undo": "Undo",
-    "pendingDeleteWarning": "QSO will be deleted when you save"
+    "pendingDeleteWarning": "QSO will be deleted when you save",
+    "timeControl": "Time",
+    "radioControl": "Radio",
+    "controlSettings": "Logging Controls"
   },
   "qsoEditForm": {
     "title": "Edit QSO",

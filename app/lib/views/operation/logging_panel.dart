@@ -32,11 +32,22 @@ class LoggingPanel extends StatefulWidget {
 class _LoggingPanelState extends State<LoggingPanel> {
   String? _commandMarkdown;
   Qso? _selectedQso;
+  late List<String> _controlOrder = widget.services.settings.secondaryControlsOrder;
+  late Set<String> _hiddenControls = widget.services.settings.hiddenSecondaryControls;
 
   void _handleSelectQso(Qso qso) {
     setState(() {
       _selectedQso = _selectedQso?.uuid == qso.uuid ? null : qso;
     });
+  }
+
+  void _handleControlsSettingsChanged(List<String> order, Set<String> hidden) {
+    setState(() {
+      _controlOrder = order;
+      _hiddenControls = hidden;
+    });
+    widget.services.settings.setSecondaryControlsOrder(order);
+    widget.services.settings.setHiddenSecondaryControls(hidden);
   }
 
   @override
@@ -89,6 +100,14 @@ class _LoggingPanelState extends State<LoggingPanel> {
           editingQso: _selectedQso,
           onEditCanceled: () => setState(() => _selectedQso = null),
           onLogged: (_) => setState(() => _selectedQso = null),
+          controlOrder: _controlOrder,
+          hiddenControlKeys: _hiddenControls,
+          onControlsSettingsChanged: _handleControlsSettingsChanged,
+          timeControlLabel: context.t.loggingControls.timeControl,
+          radioControlLabel: context.t.loggingControls.radioControl,
+          controlSettingsTitle: context.t.loggingControls.controlSettings,
+          saveLabel: context.t.common.save,
+          cancelLabel: context.t.common.cancel,
           timeLabel: context.t.loggingControls.timeUtc,
           dateLabel: context.t.loggingControls.date,
           nowLabel: context.t.loggingControls.now,
