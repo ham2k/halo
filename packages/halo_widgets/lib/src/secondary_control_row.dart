@@ -227,7 +227,11 @@ class _SecondaryControlRowState extends State<SecondaryControlRow> {
                 // the content.
                 width: constraints.maxWidth + widget.horizontalBleed * 2,
                 color: theme.colorScheme.tertiary,
-                padding: EdgeInsets.symmetric(horizontal: widget.horizontalBleed + 8, vertical: 8),
+                // Horizontal inset matches the pill row's own — that row
+                // has no padding of its own, so its chips sit exactly
+                // `horizontalBleed` in from the true edge (the parent's own
+                // padding, which this panel otherwise bleeds past).
+                padding: EdgeInsets.symmetric(horizontal: widget.horizontalBleed, vertical: 8),
                 child: Align(
                   alignment: _expandedAlignment,
                   child: Builder(key: _expandedKey, builder: selected.expandedBuilder),
