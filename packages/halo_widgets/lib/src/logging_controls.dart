@@ -959,7 +959,6 @@ class _LoggingControlsState extends State<LoggingControls> {
             _mode = mode;
             if (!_rstsTouched) _applyDefaultRSTs();
           }
-          _selectedControlKey = 'radio';
         });
       } else if (map.containsKey('updateQso')) {
         final params = (map['updateQso'] as Map).cast<String, dynamic>();

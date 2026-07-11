@@ -267,6 +267,10 @@ void main() {
 
   testWidgets('call-field commands: frequency, band, and mode via space', (tester) async {
     await tester.pumpWidget(host(interpretCommand: fakeInterpretCommand));
+    // Commands apply their changes without forcing the Radio control open
+    // (see the dedicated test for that); open it manually here so the
+    // assertions below can read its fields.
+    await openControl(tester, MdiIcons.radio);
 
     TextField field(String label) => tester.widget<TextField>(find.widgetWithText(TextField, label));
     Future<void> command(String text) async {
@@ -370,7 +374,7 @@ void main() {
       expect(find.widgetWithText(TextField, 'Time (UTC)'), findsOneWidget);
     });
 
-    testWidgets('a successful command auto-opens the Radio control', (tester) async {
+    testWidgets('a successful command applies the change without opening the Radio control', (tester) async {
       await tester.pumpWidget(host(interpretCommand: fakeInterpretCommand));
       expect(find.widgetWithText(TextField, 'Frequency'), findsNothing);
 
@@ -379,7 +383,18 @@ void main() {
       await tester.sendKeyEvent(LogicalKeyboardKey.enter);
       await tester.pump(const Duration(milliseconds: 200));
 
+      // The command's frequency took effect (reflected in the still-closed
+      // chip's summary text)...
+      expect(find.widgetWithText(TextField, 'Frequency'), findsNothing);
+      expect(find.text('14,285 • SSB'), findsOneWidget);
+
+      // ...but the Radio control itself was not force-opened by it.
+      await openControl(tester, MdiIcons.radio);
       expect(find.widgetWithText(TextField, 'Frequency'), findsOneWidget);
+      expect(
+        tester.widget<TextField>(find.widgetWithText(TextField, 'Frequency')).controller!.text,
+        '14285',
+      );
     });
 
     testWidgets('Time control sets a manual timestamp used at log time; Now resets it', (tester) async {
