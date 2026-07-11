@@ -18,12 +18,14 @@ void main() {
   late OperationsRepository operations;
   late QsosRepository qsos;
   late Operation operation;
+  late _FakeVfoStore fakeRadio;
 
   setUp(() async {
     db = HaLoDatabase(NativeDatabase.memory());
     operations = OperationsRepository(db);
     qsos = QsosRepository(db);
     operation = await operations.create(stationCall: 'KI2D');
+    fakeRadio = _FakeVfoStore();
   });
 
   tearDown(() async {
@@ -34,6 +36,8 @@ void main() {
     List<Qso> existing = const [],
     CommandInterpreter? interpretCommand,
     void Function(String? message)? onCommandMessageChanged,
+    VfoStore? radioService,
+    Qso? editingQso,
   }) {
     return MaterialApp(
       home: Scaffold(
@@ -43,6 +47,8 @@ void main() {
           qsos: existing,
           interpretCommand: interpretCommand,
           onCommandMessageChanged: onCommandMessageChanged,
+          radioService: radioService,
+          editingQso: editingQso,
         ),
       ),
     );
@@ -305,6 +311,102 @@ void main() {
     expect(logged.single.band, '40m');
     expect(logged.single.freq, isNull);
     expect(logged.single.mode, 'CW');
+  });
+
+  testWidgets('seeds the Radio control from radioService.vfoA for a new QSO', (tester) async {
+    fakeRadio.setVfo('vfoA', freq: 14285, mode: 'CW');
+    await tester.pumpWidget(host(radioService: fakeRadio));
+    await openControl(tester, MdiIcons.radio);
+
+    expect(fakeRadio.loadedOperationUuid, operation.uuid);
+    expect(find.widgetWithText(TextField, 'Frequency'), findsOneWidget);
+    final freqField = tester.widget<TextField>(find.widgetWithText(TextField, 'Frequency'));
+    expect(freqField.controller!.text, '14285');
+    expect(find.text('20m'), findsWidgets);
+  });
+
+  testWidgets('does not seed from radioService.vfoA while editing an existing QSO', (tester) async {
+    fakeRadio.setVfo('vfoA', freq: 14285, mode: 'CW');
+    final existingQso = Qso(
+      uuid: 'existing-uuid',
+      operationUuid: operation.uuid,
+      data: {
+        'their': {'call': 'W1AW'},
+        'freq': 7100,
+        'mode': 'SSB',
+      },
+    );
+    await tester.pumpWidget(host(radioService: fakeRadio, editingQso: existingQso));
+    await openControl(tester, MdiIcons.radio);
+
+    final freqField = tester.widget<TextField>(find.widgetWithText(TextField, 'Frequency'));
+    expect(freqField.controller!.text, '7100');
+  });
+
+  testWidgets('a command setVfo pushes to radioService immediately', (tester) async {
+    await tester.pumpWidget(host(interpretCommand: fakeInterpretCommand, radioService: fakeRadio));
+
+    await tester.enterText(find.widgetWithText(TextField, 'Their call'), '14285');
+    await tester.pump();
+    await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+    await tester.pump(const Duration(milliseconds: 200));
+
+    expect(fakeRadio.vfoA.freq, 14285);
+    expect(fakeRadio.vfoA.band, '20m');
+  });
+
+  testWidgets('manually typing a frequency pushes to radioService debounced, and flushes on blur', (tester) async {
+    await tester.pumpWidget(host(radioService: fakeRadio));
+    await openControl(tester, MdiIcons.radio);
+
+    await tester.enterText(find.widgetWithText(TextField, 'Frequency'), '14285');
+    await tester.pump();
+    // Not yet pushed — still within the debounce window.
+    expect(fakeRadio.vfoA.freq, isNull);
+
+    // Moving focus elsewhere flushes the pending push immediately, without
+    // waiting out the rest of the 5s debounce.
+    await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'W1AW');
+    await tester.pump();
+    expect(fakeRadio.vfoA.freq, 14285);
+    expect(fakeRadio.vfoA.band, '20m');
+  });
+
+  testWidgets('a 3-digit or shorter frequency is not pushed to radioService', (tester) async {
+    await tester.pumpWidget(host(radioService: fakeRadio));
+    await openControl(tester, MdiIcons.radio);
+
+    await tester.enterText(find.widgetWithText(TextField, 'Frequency'), '145');
+    await tester.pump();
+    await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'W1AW');
+    await tester.pump();
+
+    expect(fakeRadio.vfoA.freq, isNull);
+  });
+
+  testWidgets('picking a band from the dropdown pushes to radioService immediately', (tester) async {
+    await tester.pumpWidget(host(radioService: fakeRadio));
+    await openControl(tester, MdiIcons.radio);
+
+    await tester.tap(find.widgetWithText(TextField, 'Band').first);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('40m').last);
+    await tester.pump();
+
+    expect(fakeRadio.vfoA.band, '40m');
+    expect(fakeRadio.vfoA.freq, isNull);
+  });
+
+  testWidgets('picking a mode from the dropdown pushes to radioService immediately', (tester) async {
+    await tester.pumpWidget(host(radioService: fakeRadio));
+    await openControl(tester, MdiIcons.radio);
+
+    await tester.tap(find.widgetWithText(TextField, 'Mode').first);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('CW').last);
+    await tester.pump();
+
+    expect(fakeRadio.vfoA.mode, 'CW');
   });
 
   testWidgets('shows DUPE chip for same call, band and mode', (tester) async {
@@ -683,4 +785,33 @@ void main() {
       expect(find.byIcon(undoIcon), findsNothing);
     });
   });
+}
+
+/// In-memory stand-in for the app's `RadioService` (which lives outside
+/// this package, in the Flutter app rather than halo_widgets) — just
+/// enough of `VfoStore` to verify LoggingControls seeds from and writes
+/// back to it, without a real operations repository.
+class _FakeVfoStore implements VfoStore {
+  Vfo _vfoA = const Vfo();
+  String? loadedOperationUuid;
+
+  @override
+  Vfo get vfoA => _vfoA;
+
+  @override
+  void loadForOperation(Operation operation) {
+    loadedOperationUuid = operation.uuid;
+  }
+
+  @override
+  void setVfo(String key, {double? freq, String? band, String? mode}) {
+    if (key != 'vfoA') return;
+    if (freq != null) {
+      _vfoA = Vfo(freq: freq, band: bandForFrequency(freq), mode: mode ?? _vfoA.mode);
+    } else if (band != null) {
+      _vfoA = Vfo(freq: null, band: band, mode: mode ?? _vfoA.mode);
+    } else {
+      _vfoA = Vfo(freq: _vfoA.freq, band: _vfoA.band, mode: mode ?? _vfoA.mode);
+    }
+  }
 }

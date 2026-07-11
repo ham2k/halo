@@ -23,6 +23,7 @@ import 'services/export_service.dart';
 import 'services/extension_service.dart';
 import 'services/metrics_service.dart';
 import 'services/purchase_service.dart';
+import 'services/radio_service.dart';
 import 'services/scoring_service.dart';
 import 'services/settings_service.dart';
 import 'services/status_bar_service.dart';
@@ -124,6 +125,7 @@ class HaLoServices {
   late final LookupRepository lookups = LookupRepository(db);
   late final ExportService exports = ExportService(extensions: extensions, qsos: qsos);
   late final ScoringService scoring = ScoringService(extensions: extensions, qsos: qsos, operations: operations);
+  late final RadioService radio = RadioService(operations: operations);
   late final DataFileManager dataFiles = DataFileManager(
     lookups: lookups,
     extensions: extensions,
