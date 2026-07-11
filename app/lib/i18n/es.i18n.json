@@ -47,7 +47,7 @@
     "timeUtc": "Hora (UTC)",
     "date": "Fecha",
     "now": "Ahora",
-    "freqKHz": "Frec kHz",
+    "frequency": "Frecuencia",
     "mode": "Modo",
     "dupe": "DUPE",
     "theirCall": "Su indicativo",

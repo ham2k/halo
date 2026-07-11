@@ -783,6 +783,36 @@ class _LoggingControlsState extends State<LoggingControls> {
         expandedBuilder: (context) => Row(
           mainAxisSize: MainAxisSize.min,
           children: [
+            DropdownMenu<String>(
+              initialSelection: _mode,
+              label: Text(widget.modeLabel ?? 'Mode'),
+              width: 104,
+              textStyle: haloMonoStyle(
+                context,
+                fontSize: 15,
+                fontWeight: FontWeight.w500,
+              ),
+              inputDecorationTheme: InputDecorationTheme(
+                isDense: true,
+                filled: true,
+                fillColor: theme.colorScheme.surface,
+                floatingLabelBehavior: FloatingLabelBehavior.always,
+                floatingLabelStyle: TextStyle(
+                  fontSize: 14,
+                  color: theme.colorScheme.onTertiaryContainer,
+                ),
+                contentPadding: const EdgeInsets.fromLTRB(4, 6, 4, 8),
+              ),
+              dropdownMenuEntries: [
+                for (final m in modes) DropdownMenuEntry(value: m, label: m),
+              ],
+              onSelected: (value) {
+                if (value == null) return;
+                _setMode(value);
+                _callFocus.requestFocus();
+              },
+            ),
+            const SizedBox(width: 6),
             SizedBox(
               width: 100,
               child: TextField(
@@ -795,7 +825,7 @@ class _LoggingControlsState extends State<LoggingControls> {
                 ),
                 decoration: poloFieldDecoration(
                   context,
-                  widget.freqLabel ?? 'Freq kHz',
+                  widget.freqLabel ?? 'Frequency',
                   labelColor: Theme.of(context).colorScheme.onTertiaryContainer,
                 ),
                 keyboardType: const TextInputType.numberWithOptions(
@@ -827,36 +857,6 @@ class _LoggingControlsState extends State<LoggingControls> {
                         ),
                 ),
               ),
-            ),
-            const SizedBox(width: 6),
-            DropdownMenu<String>(
-              initialSelection: _mode,
-              label: Text(widget.modeLabel ?? 'Mode'),
-              width: 104,
-              textStyle: haloMonoStyle(
-                context,
-                fontSize: 15,
-                fontWeight: FontWeight.w500,
-              ),
-              inputDecorationTheme: InputDecorationTheme(
-                isDense: true,
-                filled: true,
-                fillColor: theme.colorScheme.surface,
-                floatingLabelBehavior: FloatingLabelBehavior.always,
-                floatingLabelStyle: TextStyle(
-                  fontSize: 14,
-                  color: theme.colorScheme.onTertiaryContainer,
-                ),
-                contentPadding: const EdgeInsets.fromLTRB(4, 6, 4, 8),
-              ),
-              dropdownMenuEntries: [
-                for (final m in modes) DropdownMenuEntry(value: m, label: m),
-              ],
-              onSelected: (value) {
-                if (value == null) return;
-                _setMode(value);
-                _callFocus.requestFocus();
-              },
             ),
           ],
         ),
@@ -1020,7 +1020,7 @@ class _LoggingControlsState extends State<LoggingControls> {
         {'type': 'field', 'key': 'theirGrid', 'fieldType': 'text', 'label': widget.theirGridLabel ?? 'Grid'},
         {'type': 'field', 'key': 'sent', 'fieldType': 'text', 'label': widget.sentLabel ?? 'Sent'},
         {'type': 'field', 'key': 'rcvd', 'fieldType': 'text', 'label': widget.rcvdLabel ?? 'Rcvd'},
-        {'type': 'field', 'key': 'freq', 'fieldType': 'number', 'label': widget.freqLabel ?? 'Freq kHz'},
+        {'type': 'field', 'key': 'freq', 'fieldType': 'number', 'label': widget.freqLabel ?? 'Frequency'},
         {'type': 'field', 'key': 'band', 'fieldType': 'text', 'label': widget.bandLabel ?? 'Band'},
         {
           'type': 'field',

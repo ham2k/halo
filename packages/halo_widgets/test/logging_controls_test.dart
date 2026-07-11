@@ -121,7 +121,7 @@ void main() {
     await tester.pumpWidget(host());
     await openControl(tester, MdiIcons.radio);
 
-    await tester.enterText(find.widgetWithText(TextField, 'Freq kHz'), '14285');
+    await tester.enterText(find.widgetWithText(TextField, 'Frequency'), '14285');
     await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'W1AW');
     await tester.pump();
     await tester.sendKeyEvent(LogicalKeyboardKey.enter);
@@ -281,7 +281,7 @@ void main() {
     await command('14285');
     expect(field('Their call').controller!.text, isEmpty);
     expect(field('Their call').focusNode!.hasFocus, isTrue);
-    expect(field('Freq kHz').controller!.text, '14285');
+    expect(field('Frequency').controller!.text, '14285');
     expect(find.text('20m'), findsWidgets);
 
     // Mode command switches mode and resets untouched RSTs.
@@ -290,7 +290,7 @@ void main() {
 
     // Band command overrides band and clears the frequency.
     await command('40M');
-    expect(field('Freq kHz').controller!.text, isEmpty);
+    expect(field('Frequency').controller!.text, isEmpty);
     expect(find.text('40m'), findsWidgets);
 
     // Log a QSO with the band-only state: band recorded, no frequency.
@@ -312,7 +312,7 @@ void main() {
     await tester.pumpWidget(host(existing: [dupe]));
     await openControl(tester, MdiIcons.radio);
 
-    await tester.enterText(find.widgetWithText(TextField, 'Freq kHz'), '14285');
+    await tester.enterText(find.widgetWithText(TextField, 'Frequency'), '14285');
     await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'W1AW');
     await tester.pump();
 
@@ -350,36 +350,36 @@ void main() {
 
       expect(find.byIcon(MdiIcons.clockOutline), findsOneWidget);
       expect(find.byIcon(MdiIcons.radio), findsOneWidget);
-      expect(find.widgetWithText(TextField, 'Freq kHz'), findsNothing);
+      expect(find.widgetWithText(TextField, 'Frequency'), findsNothing);
 
       await openControl(tester, MdiIcons.radio);
-      expect(find.widgetWithText(TextField, 'Freq kHz'), findsOneWidget);
+      expect(find.widgetWithText(TextField, 'Frequency'), findsOneWidget);
 
       await openControl(tester, MdiIcons.radio);
-      expect(find.widgetWithText(TextField, 'Freq kHz'), findsNothing);
+      expect(find.widgetWithText(TextField, 'Frequency'), findsNothing);
     });
 
     testWidgets('selecting a different control collapses the previous one', (tester) async {
       await tester.pumpWidget(host());
 
       await openControl(tester, MdiIcons.radio);
-      expect(find.widgetWithText(TextField, 'Freq kHz'), findsOneWidget);
+      expect(find.widgetWithText(TextField, 'Frequency'), findsOneWidget);
 
       await openControl(tester, MdiIcons.clockOutline);
-      expect(find.widgetWithText(TextField, 'Freq kHz'), findsNothing);
+      expect(find.widgetWithText(TextField, 'Frequency'), findsNothing);
       expect(find.widgetWithText(TextField, 'Time (UTC)'), findsOneWidget);
     });
 
     testWidgets('a successful command auto-opens the Radio control', (tester) async {
       await tester.pumpWidget(host(interpretCommand: fakeInterpretCommand));
-      expect(find.widgetWithText(TextField, 'Freq kHz'), findsNothing);
+      expect(find.widgetWithText(TextField, 'Frequency'), findsNothing);
 
       await tester.enterText(find.widgetWithText(TextField, 'Their call'), '14285');
       await tester.pump();
       await tester.sendKeyEvent(LogicalKeyboardKey.enter);
       await tester.pump(const Duration(milliseconds: 200));
 
-      expect(find.widgetWithText(TextField, 'Freq kHz'), findsOneWidget);
+      expect(find.widgetWithText(TextField, 'Frequency'), findsOneWidget);
     });
 
     testWidgets('Time control sets a manual timestamp used at log time; Now resets it', (tester) async {

@@ -179,8 +179,8 @@ class Translations$loggingControls$en {
 	/// en: 'Now'
 	String get now => 'Now';
 
-	/// en: 'Freq kHz'
-	String get freqKHz => 'Freq kHz';
+	/// en: 'Frequency'
+	String get frequency => 'Frequency';
 
 	/// en: 'Mode'
 	String get mode => 'Mode';
@@ -497,7 +497,7 @@ extension on Translations {
 			'loggingControls.timeUtc' => 'Time (UTC)',
 			'loggingControls.date' => 'Date',
 			'loggingControls.now' => 'Now',
-			'loggingControls.freqKHz' => 'Freq kHz',
+			'loggingControls.frequency' => 'Frequency',
 			'loggingControls.mode' => 'Mode',
 			'loggingControls.dupe' => 'DUPE',
 			'loggingControls.theirCall' => 'Their call',

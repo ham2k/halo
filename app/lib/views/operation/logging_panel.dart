@@ -111,7 +111,7 @@ class _LoggingPanelState extends State<LoggingPanel> {
           timeLabel: context.t.loggingControls.timeUtc,
           dateLabel: context.t.loggingControls.date,
           nowLabel: context.t.loggingControls.now,
-          freqLabel: context.t.loggingControls.freqKHz,
+          freqLabel: context.t.loggingControls.frequency,
           modeLabel: context.t.loggingControls.mode,
           dupeLabel: context.t.loggingControls.dupe,
           theirCallLabel: context.t.loggingControls.theirCall,

@@ -122,7 +122,7 @@ class _Translations$loggingControls$es extends Translations$loggingControls$en {
 	@override String get timeUtc => 'Hora (UTC)';
 	@override String get date => 'Fecha';
 	@override String get now => 'Ahora';
-	@override String get freqKHz => 'Frec kHz';
+	@override String get frequency => 'Frecuencia';
 	@override String get mode => 'Modo';
 	@override String get dupe => 'DUPE';
 	@override String get theirCall => 'Su indicativo';
@@ -320,7 +320,7 @@ extension on TranslationsEs {
 			'loggingControls.timeUtc' => 'Hora (UTC)',
 			'loggingControls.date' => 'Fecha',
 			'loggingControls.now' => 'Ahora',
-			'loggingControls.freqKHz' => 'Frec kHz',
+			'loggingControls.frequency' => 'Frecuencia',
 			'loggingControls.mode' => 'Modo',
 			'loggingControls.dupe' => 'DUPE',
 			'loggingControls.theirCall' => 'Su indicativo',
