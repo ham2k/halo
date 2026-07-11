@@ -57,19 +57,25 @@ void main() {
     expect(align.alignment, Alignment.centerLeft);
   });
 
-  testWidgets('a chip in the middle half aligns its expanded panel centered', (tester) async {
+  testWidgets('a chip in the middle half centers the expanded panel on the chip itself', (tester) async {
     await tester.pumpWidget(host(
       controls: controlsWithTargetAt('target', fillersBefore: 2),
       selectedKey: 'target',
     ));
-    await tester.pump();
-    await tester.pump();
+    // The panel's own width is only known once it's rendered, so the
+    // pill-relative alignment settles a frame later than the chip-height
+    // and zone measurements — pump a few extra times for it to land.
+    for (var i = 0; i < 4; i++) {
+      await tester.pump();
+    }
 
-    final align = tester.widget<Align>(find.ancestor(
-      of: find.text('expanded-target'),
-      matching: find.byType(Align),
-    ));
-    expect(align.alignment, Alignment.center);
+    final chipCenter = tester.getCenter(find.widgetWithText(ChoiceChip, 'target')).dx;
+    final panelCenter = tester.getCenter(find.text('expanded-target')).dx;
+    // Not pixel-exact: the panel's own internal Text isn't necessarily
+    // centered within the wider row it renders in, only the Align'd panel
+    // container is — a loose tolerance confirms "roughly over the chip"
+    // without coupling the test to that internal layout.
+    expect(panelCenter, closeTo(chipCenter, 5));
   });
 
   testWidgets('a chip in the right quarter aligns its expanded panel right', (tester) async {

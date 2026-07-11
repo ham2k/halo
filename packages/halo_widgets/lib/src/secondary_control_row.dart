@@ -93,6 +93,7 @@ class SecondaryControlRow extends StatefulWidget {
 
 class _SecondaryControlRowState extends State<SecondaryControlRow> {
   final _rowKey = GlobalKey();
+  final _expandedKey = GlobalKey();
   final Map<String, GlobalKey> _chipKeys = {};
 
   /// Whether the caret has expanded the strip into a multi-row grid.
@@ -105,10 +106,12 @@ class _SecondaryControlRowState extends State<SecondaryControlRow> {
   double _chipHeight = 32;
 
   /// Where the expanded panel's content sits within its (full-width)
-  /// background — matches the selected chip's own horizontal position: a
-  /// chip in the left quarter of the row aligns the panel left, one in the
-  /// right quarter aligns it right, and anything in the middle half centers
-  /// it. Defaults to left until the first post-frame measurement lands.
+  /// background: a chip in the left quarter of the row aligns the panel
+  /// left, one in the right quarter aligns it right, and anything in the
+  /// middle half centers the panel *on the chip itself* (not on the whole
+  /// row) — computed from the chip's and panel's own measured widths so the
+  /// panel visually hangs below the pill that opened it. Defaults to left
+  /// until the first post-frame measurement lands.
   Alignment _expandedAlignment = Alignment.centerLeft;
 
   GlobalKey _chipKeyFor(String key) => _chipKeys.putIfAbsent(key, GlobalKey.new);
@@ -147,13 +150,29 @@ class _SecondaryControlRowState extends State<SecondaryControlRow> {
     final chipBox = _chipKeys[widget.selectedKey]?.currentContext?.findRenderObject() as RenderBox?;
     if (rowBox == null || chipBox == null || !rowBox.attached || !chipBox.attached) return;
 
-    final chipCenter = chipBox.localToGlobal(Offset.zero, ancestor: rowBox).dx + chipBox.size.width / 2;
+    final chipLeft = chipBox.localToGlobal(Offset.zero, ancestor: rowBox).dx;
+    final chipCenter = chipLeft + chipBox.size.width / 2;
     final availableWidth = rowBox.size.width;
-    final alignment = chipCenter < availableWidth * 0.25
-        ? Alignment.centerLeft
-        : chipCenter > availableWidth * 0.75
-            ? Alignment.centerRight
-            : Alignment.center;
+
+    Alignment alignment;
+    if (chipCenter < availableWidth * 0.25) {
+      alignment = Alignment.centerLeft;
+    } else if (chipCenter > availableWidth * 0.75) {
+      alignment = Alignment.centerRight;
+    } else {
+      // Center the panel on the chip's own position rather than the whole
+      // row: solve Align's placement formula for the x that puts the
+      // panel's midpoint at chipCenter, using the panel's own measured
+      // width (falls back to plain center pending that measurement).
+      final expandedBox = _expandedKey.currentContext?.findRenderObject() as RenderBox?;
+      final expandedWidth = expandedBox != null && expandedBox.attached ? expandedBox.size.width : null;
+      if (expandedWidth == null || expandedWidth >= availableWidth) {
+        alignment = Alignment.center;
+      } else {
+        final x = 2 * (chipCenter - expandedWidth / 2) / (availableWidth - expandedWidth) - 1;
+        alignment = Alignment(x.clamp(-1.0, 1.0), 0);
+      }
+    }
     if (alignment != _expandedAlignment) {
       setState(() => _expandedAlignment = alignment);
     }
@@ -211,7 +230,7 @@ class _SecondaryControlRowState extends State<SecondaryControlRow> {
                 padding: EdgeInsets.symmetric(horizontal: widget.horizontalBleed + 8, vertical: 8),
                 child: Align(
                   alignment: _expandedAlignment,
-                  child: Builder(builder: selected.expandedBuilder),
+                  child: Builder(key: _expandedKey, builder: selected.expandedBuilder),
                 ),
               ),
             ),
