@@ -24,6 +24,7 @@
 
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart' show OverflowBoxFit;
 
 import 'theme.dart';
 
@@ -70,6 +71,12 @@ class SecondaryControlRow extends StatefulWidget {
   /// hidden if this is null.
   final VoidCallback? onOpenSettings;
 
+  /// How far the parent's own horizontal padding insets this widget from
+  /// the true edge of the view. The expanded control panel's background
+  /// bleeds out by this much on each side so it reaches the view's actual
+  /// edges instead of stopping at the parent's padding.
+  final double horizontalBleed;
+
   const SecondaryControlRow({
     super.key,
     required this.controls,
@@ -77,6 +84,7 @@ class SecondaryControlRow extends StatefulWidget {
     required this.onSelect,
     this.trailing,
     this.onOpenSettings,
+    this.horizontalBleed = 0,
   });
 
   @override
@@ -149,16 +157,33 @@ class _SecondaryControlRowState extends State<SecondaryControlRow> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       mainAxisSize: MainAxisSize.min,
       children: [
-        if (selected != null)
-          Container(
-            // Same solid color as a selected pill — this is the "extended
-            // area" that gets the pill background, not the chip strip
-            // itself — full width, flush against the top and sides, with
-            // its own regular inner padding around the content.
-            width: double.infinity,
-            color: theme.colorScheme.tertiary,
-            padding: const EdgeInsets.all(8),
-            child: Builder(builder: selected.expandedBuilder),
+        if (selected case final selected?)
+          LayoutBuilder(
+            builder: (context, constraints) => OverflowBox(
+              // Bleeds past the parent's own horizontal padding so the
+              // background below reaches the view's true edges instead of
+              // stopping short at that padding. OverflowBox (rather than a
+              // negative Padding, which Flutter rejects outright) lets a
+              // child be wider than the space its parent offered.
+              minWidth: 0,
+              maxWidth: constraints.maxWidth + widget.horizontalBleed * 2,
+              // The Column above sizes to its children (mainAxisSize.min),
+              // handing this an unbounded height — deferToChild sizes the
+              // OverflowBox to its child's own height instead of trying to
+              // fill that infinite constraint.
+              fit: OverflowBoxFit.deferToChild,
+              child: Container(
+                // Same solid color as a selected pill — this is the
+                // "extended area" that gets the pill background, not the
+                // chip strip itself — full width, flush against the top
+                // and sides, with its own regular inner padding around
+                // the content.
+                width: constraints.maxWidth + widget.horizontalBleed * 2,
+                color: theme.colorScheme.tertiary,
+                padding: EdgeInsets.symmetric(horizontal: widget.horizontalBleed + 8, vertical: 8),
+                child: Builder(builder: selected.expandedBuilder),
+              ),
+            ),
           ),
         const SizedBox(height: 4),
         Row(

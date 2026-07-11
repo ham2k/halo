@@ -82,6 +82,11 @@ class _ControlDescriptor {
   });
 }
 
+/// Horizontal padding around the panel's fields — also handed to
+/// [SecondaryControlRow] so its expanded control panel can bleed past it
+/// and reach the view's true edges.
+const _secondaryPanelHorizontalInset = 12.0;
+
 class LoggingControls extends StatefulWidget {
   final Operation operation;
   final QsosRepository qsosRepository;
@@ -1576,7 +1581,12 @@ class _LoggingControlsState extends State<LoggingControls> {
             children: [
               Container(height: 2, color: accentPoloColors.tertiaryLight),
               Padding(
-                padding: const EdgeInsets.fromLTRB(12, 4, 12, 8),
+                padding: const EdgeInsets.fromLTRB(
+                  _secondaryPanelHorizontalInset,
+                  4,
+                  _secondaryPanelHorizontalInset,
+                  8,
+                ),
                 // Scoped so every field's label/underline reads clearly
                 // against the tertiary-tinted panel, without touching the
                 // rest of the theme (the log button keeps its own
@@ -1625,6 +1635,7 @@ class _LoggingControlsState extends State<LoggingControls> {
                             selectedKey: _selectedControlKey,
                             onSelect: _onSelectControl,
                             onOpenSettings: _openControlSettingsDialog,
+                            horizontalBleed: _secondaryPanelHorizontalInset,
                             trailing: _isDupe
                                 ? Chip(
                                     label: Text(widget.dupeLabel ?? 'DUPE'),
