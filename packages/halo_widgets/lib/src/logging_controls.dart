@@ -725,7 +725,10 @@ class _LoggingControlsState extends State<LoggingControls> {
           mainAxisSize: MainAxisSize.min,
           children: [
             SizedBox(
-              width: 74,
+              // Same width as the date field below — wide enough to fit a
+              // full "2026-07-11", even though the time value itself
+              // ("16:54") is shorter.
+              width: 120,
               child: TextField(
                 controller: _timeController,
                 focusNode: _timeFocus,
@@ -746,7 +749,7 @@ class _LoggingControlsState extends State<LoggingControls> {
             ),
             const SizedBox(width: 8),
             SizedBox(
-              width: 96,
+              width: 120,
               child: TextField(
                 controller: _dateController,
                 style: haloMonoStyle(
