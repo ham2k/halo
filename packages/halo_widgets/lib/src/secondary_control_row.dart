@@ -215,46 +215,45 @@ class _SecondaryControlRowState extends State<SecondaryControlRow> {
             if (selected != null)
               Padding(
                 padding: EdgeInsets.only(left: _expandedLeft, bottom: 4),
-                child: Builder(key: _expandedKey, builder: selected.expandedBuilder),
+                child: Container(
+                  // Same tone as the chips' own unselected fill — this is the
+                  // "extended area" that gets the pill background, not the
+                  // chip strip itself.
+                  color: poloColors.tertiaryLight,
+                  padding: const EdgeInsets.all(4),
+                  child: Builder(key: _expandedKey, builder: selected.expandedBuilder),
+                ),
               ),
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Expanded(
-                  child: Container(
-                    // Same tone as the chips' own unselected fill, so the
-                    // strip (collapsed or expanded into a grid) reads as
-                    // one continuous surface rather than chips floating on
-                    // the panel's own background.
-                    color: poloColors.tertiaryLight,
-                    padding: const EdgeInsets.all(4),
-                    child: _gridExpanded
-                        ? ConstrainedBox(
-                            constraints: BoxConstraints(maxHeight: _chipHeight * 4 + spacing * 3),
-                            child: SingleChildScrollView(
-                              child: Wrap(
-                                spacing: spacing,
-                                runSpacing: spacing,
-                                children: chips,
-                              ),
-                            ),
-                          )
-                        : ScrollConfiguration(
-                            behavior: _DragScrollBehavior(),
-                            child: SingleChildScrollView(
-                              scrollDirection: Axis.horizontal,
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  for (final chip in chips) ...[
-                                    chip,
-                                    if (chip != chips.last) const SizedBox(width: spacing),
-                                  ],
-                                ],
-                              ),
+                  child: _gridExpanded
+                      ? ConstrainedBox(
+                          constraints: BoxConstraints(maxHeight: _chipHeight * 4 + spacing * 3),
+                          child: SingleChildScrollView(
+                            child: Wrap(
+                              spacing: spacing,
+                              runSpacing: spacing,
+                              children: chips,
                             ),
                           ),
-                  ),
+                        )
+                      : ScrollConfiguration(
+                          behavior: _DragScrollBehavior(),
+                          child: SingleChildScrollView(
+                            scrollDirection: Axis.horizontal,
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                for (final chip in chips) ...[
+                                  chip,
+                                  if (chip != chips.last) const SizedBox(width: spacing),
+                                ],
+                              ],
+                            ),
+                          ),
+                        ),
                 ),
                 IconButton(
                   tooltip: _gridExpanded ? 'Collapse' : 'Expand',
