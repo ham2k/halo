@@ -153,9 +153,11 @@ class _SecondaryControlRowState extends State<SecondaryControlRow> {
           Container(
             // Same solid color as a selected pill — this is the "extended
             // area" that gets the pill background, not the chip strip
-            // itself — full width, flush against the top and sides.
+            // itself — full width, flush against the top and sides, with
+            // its own regular inner padding around the content.
             width: double.infinity,
             color: theme.colorScheme.tertiary,
+            padding: const EdgeInsets.all(8),
             child: Builder(builder: selected.expandedBuilder),
           ),
         const SizedBox(height: 4),
