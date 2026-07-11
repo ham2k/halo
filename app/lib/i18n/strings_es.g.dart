@@ -131,6 +131,8 @@ class _Translations$loggingControls$es extends Translations$loggingControls$en {
 	@override String get more => 'Más';
 	@override String get revert => 'Revertir';
 	@override String get undoDelete => 'Deshacer eliminación';
+	@override String get wipe => 'Borrar';
+	@override String get undo => 'Deshacer';
 	@override String get pendingDeleteWarning => 'El QSO se eliminará al guardar';
 }
 
@@ -324,6 +326,8 @@ extension on TranslationsEs {
 			'loggingControls.more' => 'Más',
 			'loggingControls.revert' => 'Revertir',
 			'loggingControls.undoDelete' => 'Deshacer eliminación',
+			'loggingControls.wipe' => 'Borrar',
+			'loggingControls.undo' => 'Deshacer',
 			'loggingControls.pendingDeleteWarning' => 'El QSO se eliminará al guardar',
 			'qsoEditForm.title' => 'Editar QSO',
 			'qsoEditForm.theirName' => 'Nombre',

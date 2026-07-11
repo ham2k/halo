@@ -102,6 +102,8 @@ class _LoggingPanelState extends State<LoggingPanel> {
           revertLabel: context.t.loggingControls.revert,
           deleteLabel: context.t.common.delete,
           undoDeleteLabel: context.t.loggingControls.undoDelete,
+          wipeLabel: context.t.loggingControls.wipe,
+          undoLabel: context.t.loggingControls.undo,
           pendingDeleteWarning: context.t.loggingControls.pendingDeleteWarning,
           qsoEditFormTitle: context.t.qsoEditForm.title,
           theirNameLabel: context.t.qsoEditForm.theirName,

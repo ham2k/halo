@@ -206,6 +206,12 @@ class Translations$loggingControls$en {
 	/// en: 'Undo delete'
 	String get undoDelete => 'Undo delete';
 
+	/// en: 'Wipe'
+	String get wipe => 'Wipe';
+
+	/// en: 'Undo'
+	String get undo => 'Undo';
+
 	/// en: 'QSO will be deleted when you save'
 	String get pendingDeleteWarning => 'QSO will be deleted when you save';
 }
@@ -491,6 +497,8 @@ extension on Translations {
 			'loggingControls.more' => 'More',
 			'loggingControls.revert' => 'Revert',
 			'loggingControls.undoDelete' => 'Undo delete',
+			'loggingControls.wipe' => 'Wipe',
+			'loggingControls.undo' => 'Undo',
 			'loggingControls.pendingDeleteWarning' => 'QSO will be deleted when you save',
 			'qsoEditForm.title' => 'Edit QSO',
 			'qsoEditForm.theirName' => 'Name',

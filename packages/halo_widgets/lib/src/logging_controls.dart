@@ -27,6 +27,7 @@
 // async involvement (lookups, ref decoration) off the keystroke path.
 
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -121,6 +122,8 @@ class LoggingControls extends StatefulWidget {
   final String? revertLabel;
   final String? deleteLabel;
   final String? undoDeleteLabel;
+  final String? wipeLabel;
+  final String? undoLabel;
   final String? pendingDeleteWarning;
   final String? qsoEditFormTitle;
   final String? theirNameLabel;
@@ -156,6 +159,8 @@ class LoggingControls extends StatefulWidget {
     this.revertLabel,
     this.deleteLabel,
     this.undoDeleteLabel,
+    this.wipeLabel,
+    this.undoLabel,
     this.pendingDeleteWarning,
     this.qsoEditFormTitle,
     this.theirNameLabel,
@@ -234,6 +239,12 @@ class _LoggingControlsState extends State<LoggingControls> {
   /// `their.*` fields for a call that's already known.
   bool _populating = false;
 
+  /// A wiped-but-not-yet-lost new QSO, stashed by the wipe button so the
+  /// same button can flip to "undo" for a few seconds afterward. Only
+  /// meaningful while composing a new QSO (`editingQso == null`).
+  Map<String, dynamic>? _undoQsoData;
+  Timer? _undoExpireTimer;
+
   /// Guards against double-logging: Enter is bound both as a keyboard
   /// shortcut and as every field's onSubmitted, and can also auto-repeat.
   bool _isLogging = false;
@@ -242,12 +253,26 @@ class _LoggingControlsState extends State<LoggingControls> {
   void initState() {
     super.initState();
     _applyDefaultRSTs();
+    // Population normally happens in didUpdateWidget, as editingQso
+    // transitions from null to a selected QSO — but if this widget is ever
+    // constructed with editingQso already set (rather than transitioning
+    // into it), that transition never fires. Applying it here too, before
+    // any listeners are attached below, covers that case for free with no
+    // risk of triggering their side effects.
+    if (widget.editingQso != null) _applyFieldsFromData(widget.editingQso!.data);
     _seedTimeFields();
     _updateClockTicker();
     _callController.addListener(_onCallChanged);
     _freqController.addListener(_onFreqChanged);
     _timeController.addListener(_onTimeOrDateFieldChanged);
     _dateController.addListener(_onTimeOrDateFieldChanged);
+    // Sent/Rcvd don't otherwise need a rebuild on every keystroke, but the
+    // info row's second button (_buildWipeOrEditButton) re-evaluates
+    // _qsoDataChanged() on every build, which reads these controllers —
+    // without a rebuild, editing just the RST wouldn't flip that button
+    // from "delete" to "revert changes".
+    _sentController.addListener(_onSentOrRcvdChanged);
+    _rcvdController.addListener(_onSentOrRcvdChanged);
     // Exchange fields select-all on focus, so typing replaces the default.
     for (final (focus, controller) in [
       (_sentFocus, _sentController),
@@ -273,6 +298,9 @@ class _LoggingControlsState extends State<LoggingControls> {
       _pendingDelete = false;
       _theirNameOverride = null;
       _theirGridOverride = null;
+      _undoExpireTimer?.cancel();
+      _undoExpireTimer = null;
+      _undoQsoData = null;
       if (widget.editingQso != null) {
         _populateFromEditingQso(widget.editingQso!);
       } else {
@@ -288,17 +316,27 @@ class _LoggingControlsState extends State<LoggingControls> {
   /// tree could throw).
   void _populateFromEditingQso(Qso qso) {
     _populating = true;
-    final data = qso.data;
+    _applyFieldsFromData(qso.data);
+    _manualStartAtMillis = null; // _effectiveStartAtMillis falls back to editingQso.startAtMillis
+    setState(() {});
+    _populating = false;
+  }
+
+  /// Shared by `_populateFromEditingQso` (loading an existing record for
+  /// editing) and `_restoreFromUndoSlot` (undoing a wipe) — both need to
+  /// push a `data` map from a `Qso`/`_getCurrentQsoData()` shape back into
+  /// the live controllers/state.
+  void _applyFieldsFromData(Map<String, dynamic> data) {
     final our = data['our'] as Map<String, dynamic>? ?? const {};
     final their = data['their'] as Map<String, dynamic>? ?? const {};
-    _callController.text = (their['call'] as String?) ?? qso.theirCall;
+    _callController.text = (their['call'] as String?) ?? '';
     _sentController.text = (our['sent'] as String?) ?? '';
     _rcvdController.text = (their['sent'] as String?) ?? '';
     _rstsTouched = true;
-    _freqController.text = qso.freq != null ? fmtFreq(qso.freq!).replaceAll(',', '') : '';
-    _mode = qso.mode ?? _mode;
-    _manualBand = qso.freq == null ? qso.band : null;
-    _manualStartAtMillis = null; // _effectiveStartAtMillis falls back to editingQso.startAtMillis
+    final freq = (data['freq'] as num?)?.toDouble();
+    _freqController.text = freq != null ? fmtFreq(freq).replaceAll(',', '') : '';
+    _mode = data['mode'] as String? ?? _mode;
+    _manualBand = freq == null ? data['band'] as String? : null;
     _currentQsoExtra
       ..clear()
       ..addAll(data)
@@ -311,7 +349,8 @@ class _LoggingControlsState extends State<LoggingControls> {
       ..remove('startAtMillis');
     _controlRefs.clear();
     _unmatchedRefs = [];
-    for (final ref in qso.refs) {
+    final refs = (data['refs'] as List?)?.whereType<Map>().map((r) => r.cast<String, dynamic>()) ?? const [];
+    for (final ref in refs) {
       final control = widget.activityControls.firstWhere(
         (c) => (c['input'] as Map?)?['refType'] == ref['type'],
         orElse: () => const {},
@@ -326,8 +365,6 @@ class _LoggingControlsState extends State<LoggingControls> {
     _lookupFor = null;
     _lookupResult = null;
     _selectedControlKey = null;
-    setState(() {});
-    _populating = false;
   }
 
   /// Clears local fields when an editing session ends (mirrors the
@@ -364,6 +401,7 @@ class _LoggingControlsState extends State<LoggingControls> {
     _lookupDebounce?.cancel();
     _commandDescribeDebounce?.cancel();
     _executeMessageTimer?.cancel();
+    _undoExpireTimer?.cancel();
     _callController.dispose();
     _sentController.dispose();
     _rcvdController.dispose();
@@ -394,6 +432,8 @@ class _LoggingControlsState extends State<LoggingControls> {
     if (_freq != null) _manualBand = null;
     setState(() {});
   }
+
+  void _onSentOrRcvdChanged() => setState(() {});
 
   void _applyDefaultRSTs() {
     _sentController.text = defaultRSTFor(_mode);
@@ -1028,6 +1068,137 @@ class _LoggingControlsState extends State<LoggingControls> {
     widget.onCommandMessageChanged?.call(null);
   }
 
+  // ---- Wipe/undo, delete/undo, revert-changes: the info row's second button ----
+
+  /// Whether the in-progress new QSO has anything actually worth wiping —
+  /// the wipe button stays visible but disabled when this is false.
+  bool get _hasComposedValues =>
+      _call.isNotEmpty ||
+      _freqController.text.trim().isNotEmpty ||
+      _manualBand != null ||
+      _manualStartAtMillis != null ||
+      _controlRefs.values.any((refs) => refs.isNotEmpty) ||
+      _unmatchedRefs.isNotEmpty ||
+      _currentQsoExtra.isNotEmpty;
+
+  /// Stashes the in-progress new QSO into the undo slot (for 5 seconds,
+  /// even if the user keeps typing — see `_buildWipeOrEditButton`), then
+  /// wipes the form.
+  void _handleWipeTap() {
+    _undoQsoData = _getCurrentQsoData();
+    _undoExpireTimer?.cancel();
+    _undoExpireTimer = Timer(const Duration(seconds: 5), () {
+      if (mounted) setState(() => _undoQsoData = null);
+    });
+    _wipe();
+  }
+
+  void _restoreFromUndoSlot() {
+    final data = _undoQsoData;
+    if (data == null) return;
+    _undoExpireTimer?.cancel();
+    _undoExpireTimer = null;
+    _populating = true;
+    _applyFieldsFromData(data);
+    _manualStartAtMillis = data['startAtMillis'] as int?;
+    _undoQsoData = null;
+    setState(() => _updateClockTicker());
+    _populating = false;
+  }
+
+  /// Deep, order-insensitive-for-lists equality — used to detect whether
+  /// the fields being edited still match the stored record. Lists compare
+  /// as multisets (via sorted JSON) rather than element-by-element, since
+  /// `refs` is the only list-valued field here and its order is an
+  /// artifact of how `_controlRefs` iterates, not a meaningful edit. A key
+  /// missing entirely, an empty Map/List/String, and an explicit null all
+  /// count as equivalent — `_getCurrentQsoData()` always emits fields like
+  /// `their.sent`/`mode`/`freq`/`band`/`refs`, even when blank/null/empty,
+  /// but a record with nothing recorded there yet might simply lack the
+  /// key, which isn't a meaningful edit either.
+  bool _deepEquals(dynamic a, dynamic b) {
+    if (_isEmptyish(a) && _isEmptyish(b)) return true;
+    if (a is Map || b is Map) {
+      final ma = a is Map ? a : const {};
+      final mb = b is Map ? b : const {};
+      for (final key in {...ma.keys, ...mb.keys}) {
+        if (!_deepEquals(ma[key], mb[key])) return false;
+      }
+      return true;
+    }
+    if (a is List || b is List) {
+      final la = a is List ? a : const [];
+      final lb = b is List ? b : const [];
+      if (la.length != lb.length) return false;
+      final sa = la.map(jsonEncode).toList()..sort();
+      final sb = lb.map(jsonEncode).toList()..sort();
+      for (var i = 0; i < sa.length; i++) {
+        if (sa[i] != sb[i]) return false;
+      }
+      return true;
+    }
+    return a == b;
+  }
+
+  bool _isEmptyish(dynamic v) =>
+      v == null ||
+      (v is String && v.isEmpty) ||
+      (v is Map && v.isEmpty) ||
+      (v is List && v.isEmpty);
+
+  /// Whether the fields being edited differ from the stored record — drives
+  /// the "revert changes" vs. "delete" state of the info row's second
+  /// button while editing.
+  bool _qsoDataChanged() {
+    final editingQso = widget.editingQso;
+    if (editingQso == null) return false;
+    return !_deepEquals(_getCurrentQsoData(), editingQso.data);
+  }
+
+  /// The info row's second (no-background) button — a single control whose
+  /// icon/action depends on whether we're composing a new QSO or editing
+  /// an existing one, per the state machine in the class doc comment above.
+  Widget _buildWipeOrEditButton(ThemeData accentTheme) {
+    final editingQso = widget.editingQso;
+    final IconData icon;
+    final String? tooltip;
+    final VoidCallback? onPressed;
+
+    if (editingQso == null) {
+      if (_undoQsoData != null) {
+        icon = resolveIconName('undo');
+        tooltip = widget.undoLabel ?? 'Undo';
+        onPressed = _restoreFromUndoSlot;
+      } else {
+        icon = resolveIconName('backspace-outline');
+        tooltip = widget.wipeLabel ?? 'Wipe';
+        onPressed = _hasComposedValues ? _handleWipeTap : null;
+      }
+    } else if (_pendingDelete) {
+      icon = resolveIconName('undo');
+      tooltip = widget.undoDeleteLabel ?? 'Undo delete';
+      onPressed = () => setState(() => _pendingDelete = false);
+    } else if (_qsoDataChanged()) {
+      icon = resolveIconName('undo');
+      tooltip = widget.revertLabel ?? 'Revert';
+      onPressed = () => _populateFromEditingQso(editingQso);
+    } else {
+      icon = resolveIconName('trash-can-outline');
+      tooltip = widget.deleteLabel ?? 'Delete';
+      onPressed = () => setState(() => _pendingDelete = true);
+    }
+
+    return IconButton(
+      tooltip: tooltip,
+      onPressed: onPressed,
+      icon: Icon(icon),
+      color: accentTheme.colorScheme.onTertiaryContainer,
+      constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+      padding: EdgeInsets.zero,
+      iconSize: 20,
+    );
+  }
+
   Future<void> _log() async {
     if (_isLogging) return; // already logging this entry; ignore the repeat
 
@@ -1231,35 +1402,46 @@ class _LoggingControlsState extends State<LoggingControls> {
                           ),
                         ),
                       ),
-                      // A fixed-height container to prevent layout shifting
+                      // A fixed-height container to prevent layout shifting.
+                      // The second edit button (wipe/undo, delete/undo, or
+                      // revert-changes — see _buildWipeOrEditButton) sits at
+                      // the trailing edge of this row, above the primary
+                      // submit button.
                       SizedBox(
                         height: 36,
-                        child: _pendingDelete
-                            ? Align(
-                                alignment: Alignment.centerLeft,
-                                child: Row(
-                                  children: [
-                                    Icon(
-                                      resolveIconName('alert'),
-                                      size: 16,
-                                      color: theme.colorScheme.error,
-                                    ),
-                                    const SizedBox(width: 4),
-                                    Expanded(
-                                      child: Text(
-                                        widget.pendingDeleteWarning ?? 'QSO will be deleted when you save',
-                                        maxLines: 2,
-                                        overflow: TextOverflow.ellipsis,
-                                        style: theme.textTheme.bodyMedium?.copyWith(
-                                          color: theme.colorScheme.error,
-                                          fontWeight: FontWeight.w500,
-                                        ),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: _pendingDelete
+                                  ? Align(
+                                      alignment: Alignment.centerLeft,
+                                      child: Row(
+                                        children: [
+                                          Icon(
+                                            resolveIconName('alert'),
+                                            size: 16,
+                                            color: theme.colorScheme.error,
+                                          ),
+                                          const SizedBox(width: 4),
+                                          Expanded(
+                                            child: Text(
+                                              widget.pendingDeleteWarning ?? 'QSO will be deleted when you save',
+                                              maxLines: 2,
+                                              overflow: TextOverflow.ellipsis,
+                                              style: theme.textTheme.bodyMedium?.copyWith(
+                                                color: theme.colorScheme.error,
+                                                fontWeight: FontWeight.w500,
+                                              ),
+                                            ),
+                                          ),
+                                        ],
                                       ),
-                                    ),
-                                  ],
-                                ),
-                              )
-                            : _buildInfoArea(theme),
+                                    )
+                                  : _buildInfoArea(theme),
+                            ),
+                            _buildWipeOrEditButton(accentTheme),
+                          ],
+                        ),
                       ),
                       const SizedBox(height: 8),
                       // IntrinsicHeight + stretch, rather than a guessed
@@ -1328,25 +1510,6 @@ class _LoggingControlsState extends State<LoggingControls> {
                               onSubmitted: (_) => _log(),
                             ),
                           ),
-                          if (editing) ...[
-                            const SizedBox(width: 6),
-                            IconButton(
-                              tooltip: widget.revertLabel ?? 'Revert',
-                              onPressed: widget.onEditCanceled,
-                              icon: Icon(resolveIconName('close')),
-                              color: accentTheme.colorScheme.onTertiaryContainer,
-                            ),
-                            IconButton(
-                              tooltip: _pendingDelete
-                                  ? (widget.undoDeleteLabel ?? 'Undo delete')
-                                  : (widget.deleteLabel ?? 'Delete'),
-                              onPressed: () => setState(() => _pendingDelete = !_pendingDelete),
-                              icon: Icon(
-                                resolveIconName(_pendingDelete ? 'delete-restore' : 'trash-can-outline'),
-                              ),
-                              color: accentTheme.colorScheme.onTertiaryContainer,
-                            ),
-                          ],
                           const SizedBox(width: 12),
                           // HaLo's big light-blue log button — a circle as
                           // tall as the text fields beside it. (A

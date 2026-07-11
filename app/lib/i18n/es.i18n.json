@@ -56,6 +56,8 @@
     "more": "Más",
     "revert": "Revertir",
     "undoDelete": "Deshacer eliminación",
+    "wipe": "Borrar",
+    "undo": "Deshacer",
     "pendingDeleteWarning": "El QSO se eliminará al guardar"
   },
   "qsoEditForm": {

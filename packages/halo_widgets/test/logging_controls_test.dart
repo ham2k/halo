@@ -517,4 +517,129 @@ void main() {
       );
     });
   });
+
+  group('wipe/undo, delete/undo, revert-changes button', () {
+    IconButton secondButton(WidgetTester tester, IconData icon) => tester.widget<IconButton>(
+          find.ancestor(of: find.byIcon(icon), matching: find.byType(IconButton)),
+        );
+
+    final wipeIcon = resolveIconName('backspace-outline');
+    final undoIcon = resolveIconName('undo');
+    final deleteIcon = resolveIconName('trash-can-outline');
+
+    testWidgets('wipe is disabled with nothing entered, enabled once a call is typed, and wiping offers a 5s undo', (tester) async {
+      await tester.pumpWidget(host());
+
+      expect(secondButton(tester, wipeIcon).onPressed, isNull);
+
+      await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'W1AW');
+      await tester.pump();
+      expect(secondButton(tester, wipeIcon).onPressed, isNotNull);
+
+      await tester.tap(find.byIcon(wipeIcon));
+      await tester.pump();
+
+      final callField = tester.widget<TextField>(find.widgetWithText(TextField, 'Their call'));
+      expect(callField.controller!.text, isEmpty);
+      expect(find.byIcon(wipeIcon), findsNothing);
+      expect(find.byIcon(undoIcon), findsOneWidget);
+
+      await tester.tap(find.byIcon(undoIcon));
+      await tester.pump();
+
+      expect(callField.controller!.text, 'W1AW');
+      expect(find.byIcon(undoIcon), findsNothing);
+      expect(find.byIcon(wipeIcon), findsOneWidget);
+    });
+
+    testWidgets('the wipe undo option expires after 5 seconds even if the user starts typing again', (tester) async {
+      await tester.pumpWidget(host());
+
+      await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'W1AW');
+      await tester.pump();
+      await tester.tap(find.byIcon(wipeIcon));
+      await tester.pump();
+      expect(find.byIcon(undoIcon), findsOneWidget);
+
+      await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'K2HAM');
+      await tester.pump();
+      expect(find.byIcon(undoIcon), findsOneWidget); // still available mid-retype
+
+      await tester.pump(const Duration(seconds: 5));
+      expect(find.byIcon(undoIcon), findsNothing);
+      expect(find.byIcon(wipeIcon), findsOneWidget);
+
+      // Expiry only hides the undo option — it doesn't touch what's typed.
+      final callField = tester.widget<TextField>(find.widgetWithText(TextField, 'Their call'));
+      expect(callField.controller!.text, 'K2HAM');
+    });
+
+    testWidgets('editing an unmodified QSO shows delete; tapping stages it and offers undo', (tester) async {
+      final existingQso = Qso(
+        uuid: 'existing-uuid',
+        operationUuid: operation.uuid,
+        data: {
+          'their': {'call': 'W1AW', 'sent': ''},
+          'our': {'sent': '59', 'call': 'KI2D'},
+          'mode': 'SSB',
+        },
+      );
+
+      await tester.pumpWidget(MaterialApp(
+        home: Scaffold(
+          body: LoggingControls(operation: operation, qsosRepository: qsos, editingQso: existingQso),
+        ),
+      ));
+
+      expect(secondButton(tester, deleteIcon).onPressed, isNotNull);
+      expect(find.byIcon(undoIcon), findsNothing);
+
+      await tester.tap(find.byIcon(deleteIcon));
+      await tester.pump();
+
+      expect(find.textContaining('will be deleted'), findsOneWidget);
+      expect(find.byIcon(deleteIcon), findsNothing);
+      expect(find.byIcon(undoIcon), findsOneWidget);
+
+      await tester.tap(find.byIcon(undoIcon));
+      await tester.pump();
+
+      expect(find.textContaining('will be deleted'), findsNothing);
+      expect(find.byIcon(deleteIcon), findsOneWidget);
+    });
+
+    testWidgets('editing changes the second button to revert-changes; tapping restores the original values', (tester) async {
+      final existingQso = Qso(
+        uuid: 'existing-uuid',
+        operationUuid: operation.uuid,
+        data: {
+          'their': {'call': 'W1AW', 'sent': '59'},
+          'our': {'sent': '59', 'call': 'KI2D'},
+          'mode': 'SSB',
+        },
+      );
+
+      await tester.pumpWidget(MaterialApp(
+        home: Scaffold(
+          body: LoggingControls(operation: operation, qsosRepository: qsos, editingQso: existingQso),
+        ),
+      ));
+
+      expect(find.byIcon(deleteIcon), findsOneWidget);
+
+      await tester.enterText(find.widgetWithText(TextField, 'Sent'), '57');
+      await tester.pump();
+
+      expect(find.byIcon(deleteIcon), findsNothing);
+      expect(find.byIcon(undoIcon), findsOneWidget);
+
+      await tester.tap(find.byIcon(undoIcon));
+      await tester.pump();
+
+      final sentField = tester.widget<TextField>(find.widgetWithText(TextField, 'Sent'));
+      expect(sentField.controller!.text, '59');
+      expect(find.byIcon(deleteIcon), findsOneWidget);
+      expect(find.byIcon(undoIcon), findsNothing);
+    });
+  });
 }
