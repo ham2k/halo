@@ -1428,6 +1428,7 @@ class _LoggingControlsState extends State<LoggingControls> {
                           ),
                         ),
                       ),
+                      const SizedBox(height: 8),
                       // A fixed-height container to prevent layout shifting.
                       // Sized to the second edit button's own diameter (see
                       // _buildWipeOrEditButton) — that button is the same
