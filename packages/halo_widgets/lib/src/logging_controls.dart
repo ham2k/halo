@@ -525,7 +525,12 @@ class _LoggingControlsState extends State<LoggingControls> {
         key: 'time',
         icon: MdiIcons.clockOutline,
         summary: _timeSummary,
-        hasValue: _effectiveStartAtMillis != null,
+        // Flags a manual override specifically — not just "there's a
+        // timestamp at all", which `_effectiveStartAtMillis` always has
+        // while editing an existing QSO (it falls back to the record's own
+        // startAtMillis), and would otherwise show this border on every
+        // edit regardless of whether the user actually changed the time.
+        hasValue: _manualStartAtMillis != null,
         expandedBuilder: (context) => Row(
           mainAxisSize: MainAxisSize.min,
           children: [
