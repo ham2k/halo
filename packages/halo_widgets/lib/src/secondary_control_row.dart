@@ -177,6 +177,7 @@ class _SecondaryControlRowState extends State<SecondaryControlRow> {
           onTap: () => widget.onSelect(control.key == widget.selectedKey ? null : control.key),
         ),
       ?widget.trailing,
+      if (widget.onOpenSettings != null) _SettingsPill(onTap: widget.onOpenSettings!),
     ];
 
     return Column(
@@ -253,13 +254,6 @@ class _SecondaryControlRowState extends State<SecondaryControlRow> {
               icon: Icon(_gridExpanded ? Icons.expand_less : Icons.expand_more),
               onPressed: () => setState(() => _gridExpanded = !_gridExpanded),
             ),
-            if (widget.onOpenSettings != null)
-              IconButton(
-                tooltip: 'Logging controls settings',
-                visualDensity: VisualDensity.compact,
-                icon: const Icon(Icons.settings_outlined),
-                onPressed: widget.onOpenSettings,
-              ),
           ],
         ),
       ],
@@ -310,6 +304,36 @@ class _ControlChip extends StatelessWidget {
       // app-polo's LoggerChip has none.
       side: BorderSide.none,
       onSelected: (_) => onTap(),
+      mouseCursor: SystemMouseCursors.click,
+    );
+  }
+}
+
+/// Opens the show/hide + reorder settings dialog. Same pill shape/fill as
+/// an unselected control chip (it's never "selected" — it opens a dialog
+/// rather than expanding inline), icon-only.
+class _SettingsPill extends StatelessWidget {
+  final VoidCallback onTap;
+
+  const _SettingsPill({required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final poloColors = HaLoColors.of(context);
+
+    return ActionChip(
+      avatar: Icon(
+        Icons.settings_outlined,
+        size: 16 * MediaQuery.textScalerOf(context).scale(1.0),
+        color: theme.colorScheme.onTertiaryContainer,
+      ),
+      label: const SizedBox.shrink(),
+      visualDensity: VisualDensity.compact,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+      backgroundColor: poloColors.tertiaryLight,
+      side: BorderSide.none,
+      onPressed: onTap,
       mouseCursor: SystemMouseCursors.click,
     );
   }
