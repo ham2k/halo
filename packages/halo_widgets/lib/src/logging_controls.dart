@@ -249,6 +249,23 @@ class _LoggingControlsState extends State<LoggingControls> {
   /// shortcut and as every field's onSubmitted, and can also auto-repeat.
   bool _isLogging = false;
 
+  /// The submit button's rendered diameter, measured post-frame (its own
+  /// size comes from IntrinsicHeight/AspectRatio further down the tree, so
+  /// it isn't known until after layout) and reused to size the info row's
+  /// second button identically — see _buildWipeOrEditButton.
+  final GlobalKey _submitButtonKey = GlobalKey();
+  double? _editButtonDiameter;
+
+  void _scheduleSubmitButtonMeasurement() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final size = _submitButtonKey.currentContext?.size;
+      if (size != null && (_editButtonDiameter == null || (size.height - _editButtonDiameter!).abs() > 0.5)) {
+        setState(() => _editButtonDiameter = size.height);
+      }
+    });
+  }
+
   @override
   void initState() {
     super.initState();
@@ -1188,14 +1205,22 @@ class _LoggingControlsState extends State<LoggingControls> {
       onPressed = () => setState(() => _pendingDelete = true);
     }
 
-    return IconButton(
-      tooltip: tooltip,
-      onPressed: onPressed,
-      icon: Icon(icon),
-      color: accentTheme.colorScheme.onTertiaryContainer,
-      constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
-      padding: EdgeInsets.zero,
-      iconSize: 20,
+    // Same footprint as the submit button (measured post-frame, since that
+    // button's own size is layout-derived — see _editButtonDiameter), no
+    // background of its own, and its icon tinted with the color the submit
+    // button uses as its *background*, tying the two together visually.
+    final diameter = _editButtonDiameter ?? 44;
+    return SizedBox(
+      width: diameter,
+      height: diameter,
+      child: IconButton(
+        tooltip: tooltip,
+        onPressed: onPressed,
+        icon: Icon(icon),
+        color: accentTheme.colorScheme.tertiary,
+        padding: EdgeInsets.zero,
+        iconSize: diameter * 0.5,
+      ),
     );
   }
 
@@ -1294,6 +1319,7 @@ class _LoggingControlsState extends State<LoggingControls> {
 
   @override
   Widget build(BuildContext context) {
+    _scheduleSubmitButtonMeasurement();
     final theme = Theme.of(context);
     final poloColors = HaLoColors.of(context);
 
@@ -1404,44 +1430,50 @@ class _LoggingControlsState extends State<LoggingControls> {
                       ),
                       // A fixed-height container to prevent layout shifting.
                       // The second edit button (wipe/undo, delete/undo, or
-                      // revert-changes — see _buildWipeOrEditButton) sits at
-                      // the trailing edge of this row, above the primary
-                      // submit button.
-                      SizedBox(
-                        height: 36,
-                        child: Row(
-                          children: [
-                            Expanded(
-                              child: _pendingDelete
-                                  ? Align(
-                                      alignment: Alignment.centerLeft,
-                                      child: Row(
-                                        children: [
-                                          Icon(
-                                            resolveIconName('alert'),
-                                            size: 16,
-                                            color: theme.colorScheme.error,
-                                          ),
-                                          const SizedBox(width: 4),
-                                          Expanded(
-                                            child: Text(
-                                              widget.pendingDeleteWarning ?? 'QSO will be deleted when you save',
-                                              maxLines: 2,
-                                              overflow: TextOverflow.ellipsis,
-                                              style: theme.textTheme.bodyMedium?.copyWith(
-                                                color: theme.colorScheme.error,
-                                                fontWeight: FontWeight.w500,
-                                              ),
+                      // revert-changes — see _buildWipeOrEditButton) is the
+                      // same size as the submit button, which is taller than
+                      // this row — Clip.none plus a Positioned bottom:0 lets
+                      // it overflow upward from this row's bottom edge
+                      // rather than being squeezed to fit inside it.
+                      Stack(
+                        clipBehavior: Clip.none,
+                        children: [
+                          SizedBox(
+                            height: 36,
+                            width: double.infinity,
+                            child: _pendingDelete
+                                ? Align(
+                                    alignment: Alignment.centerLeft,
+                                    child: Row(
+                                      children: [
+                                        Icon(
+                                          resolveIconName('alert'),
+                                          size: 16,
+                                          color: theme.colorScheme.error,
+                                        ),
+                                        const SizedBox(width: 4),
+                                        Expanded(
+                                          child: Text(
+                                            widget.pendingDeleteWarning ?? 'QSO will be deleted when you save',
+                                            maxLines: 2,
+                                            overflow: TextOverflow.ellipsis,
+                                            style: theme.textTheme.bodyMedium?.copyWith(
+                                              color: theme.colorScheme.error,
+                                              fontWeight: FontWeight.w500,
                                             ),
                                           ),
-                                        ],
-                                      ),
-                                    )
-                                  : _buildInfoArea(theme),
-                            ),
-                            _buildWipeOrEditButton(accentTheme),
-                          ],
-                        ),
+                                        ),
+                                      ],
+                                    ),
+                                  )
+                                : _buildInfoArea(theme),
+                          ),
+                          Positioned(
+                            right: 0,
+                            bottom: 0,
+                            child: _buildWipeOrEditButton(accentTheme),
+                          ),
+                        ],
                       ),
                       const SizedBox(height: 8),
                       // IntrinsicHeight + stretch, rather than a guessed
@@ -1520,6 +1552,7 @@ class _LoggingControlsState extends State<LoggingControls> {
                           // LayoutBuilder explicitly doesn't support — so
                           // the icon just uses a fixed, comfortable size.)
                           AspectRatio(
+                            key: _submitButtonKey,
                             aspectRatio: 1,
                             child: MouseRegion(
                               cursor: SystemMouseCursors.click,
