@@ -94,13 +94,19 @@ class QsoList extends StatelessWidget {
               : monoDim;
 
           return Container(
-            decoration: selected
-                ? BoxDecoration(
-                    border: Border.symmetric(
-                      horizontal: BorderSide(color: theme.colorScheme.secondary, width: 3),
-                    ),
-                  )
-                : null,
+            // The border is always present (3px, just transparent when
+            // unselected) rather than added/removed with `selected` —
+            // Container turns a BoxDecoration's border into padding around
+            // the child, so toggling it on and off would grow/shrink the
+            // row's height by the border width instead of just recoloring it.
+            decoration: BoxDecoration(
+              border: Border.symmetric(
+                horizontal: BorderSide(
+                  color: selected ? theme.colorScheme.secondary : Colors.transparent,
+                  width: 3,
+                ),
+              ),
+            ),
             child: Material(
               color: selected ? theme.colorScheme.secondaryContainer : theme.colorScheme.surface,
               child: InkWell(
