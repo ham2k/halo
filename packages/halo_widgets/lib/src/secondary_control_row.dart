@@ -314,10 +314,10 @@ class _ControlChip extends StatelessWidget {
 
 /// Opens the show/hide + reorder settings dialog. Same pill shape/fill as
 /// an unselected control chip (it's never "selected" — it opens a dialog
-/// rather than expanding inline), icon-only. An empty label leaves Chip's
-/// own sizing shorter than a labeled chip, so `height` (the other chips'
-/// own measured height) is enforced explicitly to keep every pill the
-/// same height.
+/// rather than expanding inline), icon-only. Built directly on Material
+/// rather than ChoiceChip/ActionChip — Chip's built-in label padding keeps
+/// some horizontal space reserved even for an empty label, which fights
+/// against staying narrow; a square Material+InkWell has no such minimum.
 class _SettingsPill extends StatelessWidget {
   final double height;
   final VoidCallback onTap;
@@ -328,22 +328,26 @@ class _SettingsPill extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final poloColors = HaLoColors.of(context);
+    final borderRadius = BorderRadius.circular(8);
 
     return SizedBox(
+      width: height,
       height: height,
-      child: ActionChip(
-        avatar: Icon(
-          Icons.settings,
-          size: 16 * MediaQuery.textScalerOf(context).scale(1.0),
-          color: theme.colorScheme.onTertiaryContainer,
+      child: Material(
+        color: poloColors.tertiaryLight,
+        borderRadius: borderRadius,
+        child: InkWell(
+          borderRadius: borderRadius,
+          mouseCursor: SystemMouseCursors.click,
+          onTap: onTap,
+          child: Center(
+            child: Icon(
+              Icons.settings,
+              size: 16 * MediaQuery.textScalerOf(context).scale(1.0),
+              color: theme.colorScheme.onTertiaryContainer,
+            ),
+          ),
         ),
-        label: const SizedBox.shrink(),
-        visualDensity: VisualDensity.compact,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-        backgroundColor: poloColors.tertiaryLight,
-        side: BorderSide.none,
-        onPressed: onTap,
-        mouseCursor: SystemMouseCursors.click,
       ),
     );
   }
