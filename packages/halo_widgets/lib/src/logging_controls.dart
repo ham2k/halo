@@ -1347,7 +1347,10 @@ class _LoggingControlsState extends State<LoggingControls> {
                             ),
                           ],
                           const SizedBox(width: 12),
-                          // HaLo's big light-blue log button.
+                          // HaLo's big light-blue log button — a circle as
+                          // tall as the text fields beside it (44dp was
+                          // already tuned to that height; it just used to
+                          // be wider than tall, a pill rather than a circle).
                           Padding(
                             padding: const EdgeInsets.only(bottom: 2),
                             child: MouseRegion(
@@ -1359,19 +1362,15 @@ class _LoggingControlsState extends State<LoggingControls> {
                                       accentTheme.colorScheme.tertiary,
                                   foregroundColor:
                                       accentTheme.colorScheme.onTertiary,
-                                  minimumSize: Size(
-                                    64 * MediaQuery.textScalerOf(context).scale(1.0),
-                                    44 * MediaQuery.textScalerOf(context).scale(1.0),
-                                  ),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(22 * MediaQuery.textScalerOf(context).scale(1.0)),
-                                  ),
+                                  minimumSize: Size.square(44 * MediaQuery.textScalerOf(context).scale(1.0)),
+                                  padding: EdgeInsets.zero,
+                                  shape: const CircleBorder(),
                                 ),
                                 child: Icon(
                                   _pendingDelete
                                       ? resolveIconName('trash-can')
                                       : (editing ? resolveIconName('content-save') : Icons.upload),
-                                  size: 28 * MediaQuery.textScalerOf(context).scale(1.0),
+                                  size: 24 * MediaQuery.textScalerOf(context).scale(1.0),
                                 ),
                               ),
                             ),
