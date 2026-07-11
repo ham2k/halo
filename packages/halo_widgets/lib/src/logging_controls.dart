@@ -784,8 +784,8 @@ class _LoggingControlsState extends State<LoggingControls> {
           mainAxisSize: MainAxisSize.min,
           children: [
             DropdownMenu<String>(
-              initialSelection: _mode,
-              label: Text(widget.modeLabel ?? 'Mode'),
+              initialSelection: _band,
+              label: Text(widget.bandLabel ?? 'Band'),
               width: 104,
               textStyle: haloMonoStyle(
                 context,
@@ -804,11 +804,26 @@ class _LoggingControlsState extends State<LoggingControls> {
                 contentPadding: const EdgeInsets.fromLTRB(4, 6, 4, 8),
               ),
               dropdownMenuEntries: [
-                for (final m in modes) DropdownMenuEntry(value: m, label: m),
+                for (final b in bands)
+                  DropdownMenuEntry(
+                    value: b.name,
+                    label: b.name,
+                    style: MenuItemButton.styleFrom(
+                      foregroundColor: poloColors.bandColor(b.name),
+                    ),
+                  ),
               ],
               onSelected: (value) {
                 if (value == null) return;
-                _setMode(value);
+                setState(() {
+                  // Matches the `setVfo{band: ...}` command action's
+                  // convention (see `_dispatchActions`): picking a band
+                  // directly is mutually exclusive with a manual frequency,
+                  // since `_band` prefers the freq-derived value whenever
+                  // `_freq` is set.
+                  _manualBand = value;
+                  _freqController.clear();
+                });
                 _callFocus.requestFocus();
               },
             ),
@@ -838,25 +853,34 @@ class _LoggingControlsState extends State<LoggingControls> {
               ),
             ),
             const SizedBox(width: 6),
-            SizedBox(
-              width: 44,
-              child: Text(
-                _band ?? '',
-                style: haloMonoStyle(
-                  context,
-                  fontSize: 14,
-                  fontWeight: FontWeight.w700,
-                  color: _band == null
-                      ? theme.colorScheme.onTertiaryContainer.withValues(
-                          alpha: 0.6,
-                        )
-                      : Color.lerp(
-                          poloColors.bandColor(_band!),
-                          theme.colorScheme.onTertiaryContainer,
-                          0.25,
-                        ),
-                ),
+            DropdownMenu<String>(
+              initialSelection: _mode,
+              label: Text(widget.modeLabel ?? 'Mode'),
+              width: 104,
+              textStyle: haloMonoStyle(
+                context,
+                fontSize: 15,
+                fontWeight: FontWeight.w500,
               ),
+              inputDecorationTheme: InputDecorationTheme(
+                isDense: true,
+                filled: true,
+                fillColor: theme.colorScheme.surface,
+                floatingLabelBehavior: FloatingLabelBehavior.always,
+                floatingLabelStyle: TextStyle(
+                  fontSize: 14,
+                  color: theme.colorScheme.onTertiaryContainer,
+                ),
+                contentPadding: const EdgeInsets.fromLTRB(4, 6, 4, 8),
+              ),
+              dropdownMenuEntries: [
+                for (final m in modes) DropdownMenuEntry(value: m, label: m),
+              ],
+              onSelected: (value) {
+                if (value == null) return;
+                _setMode(value);
+                _callFocus.requestFocus();
+              },
             ),
           ],
         ),
