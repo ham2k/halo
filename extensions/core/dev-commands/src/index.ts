@@ -33,7 +33,7 @@ const DevModeCommand = {
 function pickNext<T>(list: T[], lastIndex: { value: number }): T {
   if (list.length === 1) return list[0]
   let index = Math.floor(Math.random() * (list.length - 1))
-  if (index >= lastIndex.value) index += 1
+  if (lastIndex.value >= 0 && index >= lastIndex.value) index += 1
   lastIndex.value = index
   return list[index]
 }

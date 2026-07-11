@@ -186,7 +186,7 @@ class HaLoServices {
       case 'devNotice':
         final p = params ?? const {};
         statusBar.showNotice(
-          key: 'dev-commands:devNotice',
+          key: 'command:devNotice',
           icon: p['icon'] as String?,
           title: p['title'] as String?,
           text: p['text'] as String? ?? '',
@@ -196,7 +196,7 @@ class HaLoServices {
         final p = params ?? const {};
         final devStatusKey = p['key'] as String? ?? 'devStatus';
         statusBar.setMessage(
-          key: 'dev-commands:$devStatusKey',
+          key: 'command:devStatus:$devStatusKey',
           icon: p['icon'] as String?,
           title: p['title'] as String?,
           text: p['text'] as String?,
@@ -206,7 +206,7 @@ class HaLoServices {
         final p = params ?? const {};
         final percent = p['percent'] as num?;
         statusBar.setProgress(
-          key: 'dev-commands:devProgress',
+          key: 'command:devProgress',
           icon: p['icon'] as String?,
           title: p['title'] as String?,
           value: percent == null ? null : percent.toDouble() / 100,

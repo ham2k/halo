@@ -463,11 +463,11 @@ class _HomeQuickLookupState extends State<HomeQuickLookup> {
         }
       } else if (map.containsKey('syncAll')) {
         await widget.services.handleCommandAction('syncAll');
-      } else if (map.containsKey('devNotice')) {
+      } else if (map['devNotice'] is Map) {
         await widget.services.handleCommandAction('devNotice', (map['devNotice'] as Map).cast<String, dynamic>());
-      } else if (map.containsKey('devStatus')) {
+      } else if (map['devStatus'] is Map) {
         await widget.services.handleCommandAction('devStatus', (map['devStatus'] as Map).cast<String, dynamic>());
-      } else if (map.containsKey('devProgress')) {
+      } else if (map['devProgress'] is Map) {
         await widget.services.handleCommandAction('devProgress', (map['devProgress'] as Map).cast<String, dynamic>());
       }
     }

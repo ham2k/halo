@@ -615,11 +615,11 @@ class _LoggingControlsState extends State<LoggingControls> {
         await widget.onCommandAction?.call('syncAll');
       } else if (map.containsKey('sendSpots')) {
         debugPrint('[extensions] sendSpots action: ${map['sendSpots']}');
-      } else if (map.containsKey('devNotice')) {
+      } else if (map['devNotice'] is Map) {
         await widget.onCommandAction?.call('devNotice', (map['devNotice'] as Map).cast<String, dynamic>());
-      } else if (map.containsKey('devStatus')) {
+      } else if (map['devStatus'] is Map) {
         await widget.onCommandAction?.call('devStatus', (map['devStatus'] as Map).cast<String, dynamic>());
-      } else if (map.containsKey('devProgress')) {
+      } else if (map['devProgress'] is Map) {
         await widget.onCommandAction?.call('devProgress', (map['devProgress'] as Map).cast<String, dynamic>());
       }
     }

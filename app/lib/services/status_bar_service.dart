@@ -14,6 +14,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 const _historyKey = 'statusBarNoticeHistory';
 const _maxHistory = 50;
+const _maxItems = 50;
 const _progressCompleteDismissDelay = Duration(seconds: 5);
 
 /// A single-line message or progress bar shown in the footer. Transient —
@@ -108,13 +109,15 @@ class StatusBarService extends ChangeNotifier {
   final SharedPreferences _prefs;
   final Map<String, StatusBarItem> _items = {};
 
-  /// Notices in creation order (stack order); actions aren't persisted since
-  /// a `VoidCallback` can't survive a restart — history entries are
-  /// read-only past that point.
+  /// Notices in creation order (stack order), active and dismissed alike —
+  /// the single source of truth for both `activeNotices` and `history`, kept
+  /// in sync with the persisted copy by `_persistNotices`. Actions aren't
+  /// persisted since a `VoidCallback` can't survive a restart — history
+  /// entries are read-only past that point.
   final List<StatusBarNotice> _notices = [];
 
   StatusBarService(this._prefs) {
-    _notices.addAll(_loadHistory().where((n) => n.dismissedAt == null));
+    _notices.addAll(_loadHistory());
   }
 
   List<StatusBarItem> get items => _items.values.toList()..sort((a, b) => a.updatedAt.compareTo(b.updatedAt));
@@ -122,11 +125,22 @@ class StatusBarService extends ChangeNotifier {
   List<StatusBarNotice> get activeNotices => _notices.where((n) => n.dismissedAt == null).toList();
 
   /// Most-recent-first, including dismissed notices.
-  List<StatusBarNotice> get history => _loadHistory().reversed.toList();
+  List<StatusBarNotice> get history => _notices.reversed.toList();
 
   void setMessage({required String key, String? icon, String? title, String? text}) {
     _items[key] = StatusBarItem(key: key, icon: icon, title: title, text: text, updatedAt: DateTime.now());
+    _capItems();
     notifyListeners();
+  }
+
+  /// Bounds `_items` the same way `_notices`/history are bounded, evicting
+  /// the oldest entry — otherwise a caller that mints a fresh key per call
+  /// (e.g. dev-commands' DEVSTATUS, by design, so repeated calls stack up as
+  /// separate items) grows this map for the rest of the process's lifetime.
+  void _capItems() {
+    if (_items.length <= _maxItems) return;
+    final oldestKey = _items.entries.reduce((a, b) => a.value.updatedAt.isBefore(b.value.updatedAt) ? a : b).key;
+    _items.remove(oldestKey);
   }
 
   /// `value` null means indeterminate; otherwise 0.0-1.0. A completed
@@ -142,6 +156,7 @@ class StatusBarService extends ChangeNotifier {
       isIndeterminateProgress: value == null,
       updatedAt: DateTime.now(),
     );
+    _capItems();
     notifyListeners();
 
     if (value != null && value >= 1.0) {
@@ -173,22 +188,21 @@ class StatusBarService extends ChangeNotifier {
     );
     _notices.removeWhere((n) => n.key == key);
     _notices.add(notice);
-    unawaited(_appendToHistory(notice));
+    if (_notices.length > _maxHistory) _notices.removeRange(0, _notices.length - _maxHistory);
+    unawaited(_persistNotices());
     notifyListeners();
   }
 
   void dismissNotice(String key) {
     final index = _notices.indexWhere((n) => n.key == key && n.dismissedAt == null);
     if (index == -1) return;
-    final dismissed = _notices[index].copyWith(dismissedAt: DateTime.now());
-    _notices[index] = dismissed;
-    unawaited(_markDismissedInHistory(dismissed));
+    _notices[index] = _notices[index].copyWith(dismissedAt: DateTime.now());
+    unawaited(_persistNotices());
     notifyListeners();
   }
 
-  // Growable lists throughout — `_appendToHistory`/`_markDismissedInHistory`
-  // mutate whatever this returns, and a `const []` (or any fixed-length
-  // list) would throw on the first `.add()`.
+  // Growable — a `const []` (or any fixed-length list) would throw on the
+  // first `.add()` in the constructor/`showNotice`.
   List<StatusBarNotice> _loadHistory() {
     final raw = _prefs.getString(_historyKey);
     if (raw == null || raw.isEmpty) return [];
@@ -197,28 +211,13 @@ class StatusBarService extends ChangeNotifier {
           .cast<Map<String, dynamic>>()
           .map(StatusBarNotice._fromJson)
           .toList();
-    } catch (_) {
+    } catch (e) {
+      debugPrint('[statusBar] failed to parse persisted notice history, discarding it: $e');
       return [];
     }
   }
 
-  Future<void> _saveHistory(List<StatusBarNotice> notices) async {
-    final capped = notices.length > _maxHistory ? notices.sublist(notices.length - _maxHistory) : notices;
-    await _prefs.setString(_historyKey, jsonEncode(capped.map((n) => n._toJson()).toList()));
-  }
-
-  Future<void> _appendToHistory(StatusBarNotice notice) async {
-    final history = _loadHistory();
-    history.removeWhere((n) => n.key == notice.key && n.dismissedAt == null);
-    history.add(notice);
-    await _saveHistory(history);
-  }
-
-  Future<void> _markDismissedInHistory(StatusBarNotice dismissed) async {
-    final history = _loadHistory();
-    final index = history.indexWhere((n) => n.key == dismissed.key && n.createdAt == dismissed.createdAt);
-    if (index == -1) return;
-    history[index] = dismissed;
-    await _saveHistory(history);
+  Future<void> _persistNotices() async {
+    await _prefs.setString(_historyKey, jsonEncode(_notices.map((n) => n._toJson()).toList()));
   }
 }

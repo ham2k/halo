@@ -327,11 +327,11 @@ class ExtensionService {
 
   /// Extension-supplied keys are prefixed with the calling extension's key so
   /// one extension's status bar items/notices can never collide with — or be
-  /// cleared/dismissed by — another's.
+  /// cleared/dismissed by — another's. Same `ns` convention as `kvGet`/`kvSet`.
   String _namespacedKey(Map<String, dynamic> params) {
-    final extensionKey = params['extensionKey'] as String;
+    final ns = params['ns'] as String;
     final key = params['key'] as String;
-    return '$extensionKey:$key';
+    return '$ns:$key';
   }
 
   /// Notice actions from extensions are declarative JSON, not callbacks back

@@ -100,29 +100,29 @@ export const host = {
     /// the same `key`. `key` is automatically namespaced to this extension —
     /// other extensions can't see or clear it.
     async setMessage(params: StatusBarMessageParams): Promise<void> {
-      await kernel().hostCall('statusBarSetMessage', { ...params, extensionKey: currentExtensionKey })
+      await kernel().hostCall('statusBarSetMessage', { ...params, ns: currentExtensionKey })
     },
 
     /// A transient progress bar under `key`; omit `value` for indeterminate.
     async setProgress(params: StatusBarProgressParams): Promise<void> {
-      await kernel().hostCall('statusBarSetProgress', { ...params, extensionKey: currentExtensionKey })
+      await kernel().hostCall('statusBarSetProgress', { ...params, ns: currentExtensionKey })
     },
 
     /// Removes the message/progress item under `key`, if any.
     async clear(key: string): Promise<void> {
-      await kernel().hostCall('statusBarClear', { key, extensionKey: currentExtensionKey })
+      await kernel().hostCall('statusBarClear', { key, ns: currentExtensionKey })
     },
 
     /// A richer, dismissible notice, replacing any prior undismissed notice
     /// under the same `key`. Stays in the user's notice history after
     /// dismissal.
     async showNotice(params: StatusBarNoticeParams): Promise<void> {
-      await kernel().hostCall('statusBarShowNotice', { ...params, extensionKey: currentExtensionKey })
+      await kernel().hostCall('statusBarShowNotice', { ...params, ns: currentExtensionKey })
     },
 
     /// Dismisses the active notice under `key`, if any.
     async dismissNotice(key: string): Promise<void> {
-      await kernel().hostCall('statusBarDismissNotice', { key, extensionKey: currentExtensionKey })
+      await kernel().hostCall('statusBarDismissNotice', { key, ns: currentExtensionKey })
     },
   },
 
