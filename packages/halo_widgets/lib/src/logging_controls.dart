@@ -1262,8 +1262,15 @@ class _LoggingControlsState extends State<LoggingControls> {
                             : _buildInfoArea(theme),
                       ),
                       const SizedBox(height: 8),
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.end,
+                      // IntrinsicHeight + stretch, rather than a guessed
+                      // pixel height, so the submit button (an AspectRatio
+                      // circle) is guaranteed to exactly match whatever
+                      // height the text fields actually render at — not an
+                      // eyeballed constant that drifts if their font size,
+                      // padding, or text scale ever changes.
+                      IntrinsicHeight(
+                        child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
                           Expanded(
                             child: TextField(
@@ -1323,36 +1330,34 @@ class _LoggingControlsState extends State<LoggingControls> {
                           ),
                           if (editing) ...[
                             const SizedBox(width: 6),
-                            Padding(
-                              padding: const EdgeInsets.only(bottom: 2),
-                              child: IconButton(
-                                tooltip: widget.revertLabel ?? 'Revert',
-                                onPressed: widget.onEditCanceled,
-                                icon: Icon(resolveIconName('close')),
-                                color: accentTheme.colorScheme.onTertiaryContainer,
-                              ),
+                            IconButton(
+                              tooltip: widget.revertLabel ?? 'Revert',
+                              onPressed: widget.onEditCanceled,
+                              icon: Icon(resolveIconName('close')),
+                              color: accentTheme.colorScheme.onTertiaryContainer,
                             ),
-                            Padding(
-                              padding: const EdgeInsets.only(bottom: 2),
-                              child: IconButton(
-                                tooltip: _pendingDelete
-                                    ? (widget.undoDeleteLabel ?? 'Undo delete')
-                                    : (widget.deleteLabel ?? 'Delete'),
-                                onPressed: () => setState(() => _pendingDelete = !_pendingDelete),
-                                icon: Icon(
-                                  resolveIconName(_pendingDelete ? 'delete-restore' : 'trash-can-outline'),
-                                ),
-                                color: accentTheme.colorScheme.onTertiaryContainer,
+                            IconButton(
+                              tooltip: _pendingDelete
+                                  ? (widget.undoDeleteLabel ?? 'Undo delete')
+                                  : (widget.deleteLabel ?? 'Delete'),
+                              onPressed: () => setState(() => _pendingDelete = !_pendingDelete),
+                              icon: Icon(
+                                resolveIconName(_pendingDelete ? 'delete-restore' : 'trash-can-outline'),
                               ),
+                              color: accentTheme.colorScheme.onTertiaryContainer,
                             ),
                           ],
                           const SizedBox(width: 12),
                           // HaLo's big light-blue log button — a circle as
-                          // tall as the text fields beside it (44dp was
-                          // already tuned to that height; it just used to
-                          // be wider than tall, a pill rather than a circle).
-                          Padding(
-                            padding: const EdgeInsets.only(bottom: 2),
+                          // tall as the text fields beside it. (A
+                          // LayoutBuilder here to size the icon off the
+                          // button's resolved constraints would seem
+                          // natural, but IntrinsicHeight above needs to
+                          // query this subtree's intrinsic dimensions, which
+                          // LayoutBuilder explicitly doesn't support — so
+                          // the icon just uses a fixed, comfortable size.)
+                          AspectRatio(
+                            aspectRatio: 1,
                             child: MouseRegion(
                               cursor: SystemMouseCursors.click,
                               child: FilledButton(
@@ -1362,7 +1367,7 @@ class _LoggingControlsState extends State<LoggingControls> {
                                       accentTheme.colorScheme.tertiary,
                                   foregroundColor:
                                       accentTheme.colorScheme.onTertiary,
-                                  minimumSize: Size.square(44 * MediaQuery.textScalerOf(context).scale(1.0)),
+                                  minimumSize: Size.zero,
                                   padding: EdgeInsets.zero,
                                   shape: const CircleBorder(),
                                 ),
@@ -1376,6 +1381,7 @@ class _LoggingControlsState extends State<LoggingControls> {
                             ),
                           ),
                         ],
+                        ),
                       ),
                     ],
                   ),
