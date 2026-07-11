@@ -9,7 +9,7 @@
 //   dataFile                       — CSV database download and offline caching
 
 import { bandForFrequency } from "@ham2k/lib-operation-data"
-import { locationToGrid6 } from "@ham2k/lib-geo-tools"
+import { locationToGrid6, distanceOnEarth } from "@ham2k/lib-geo-tools"
 import { defineExtension, host } from "@ham2k/polo-sdk"
 import type {
   HookContext,
@@ -17,11 +17,30 @@ import type {
   Ref,
   Spot,
   DataFileDefinition,
+  SuggestArgs,
+  ActivitySuggestion,
+  LookupRow,
 } from "@ham2k/polo-sdk"
 
 const HUNTING_TYPE = 'sota'
 const ACTIVATION_TYPE = 'sotaActivation'
 const REFERENCE_REGEX = /^[A-Z0-9]{1,4}\/[A-Z]{2}-[0-9]{3,}$/i
+
+// See POTA's identical note: bounding-box nearby query, real distance after.
+const NEARBY_DELTA = 1.5
+const MAX_SUGGESTIONS = 30
+
+function relevanceForMatch(row: LookupRow, searchTerm?: string): number {
+  if (!searchTerm) return row.flags ? 1 : 0.6
+  const term = searchTerm.toUpperCase()
+  const key = row.key.toUpperCase()
+  const name = (row.name ?? '').toUpperCase()
+  if (key === term) return 1
+  if (name.startsWith(term)) return 0.9
+  if (key.includes(term)) return 0.85
+  if (name.includes(term)) return 0.7
+  return 0.6
+}
 
 interface SOTASummitInfo {
   summitCode: string
@@ -156,6 +175,36 @@ const ActivityHook = {
         },
       },
     ]
+  },
+
+  async suggest({ location, searchTerm }: SuggestArgs, _ctx: HookContext): Promise<ActivitySuggestion[]> {
+    const rows: LookupRow[] = searchTerm
+      ? await host.dbLookupSelectAll('sota', searchTerm)
+      : location
+        ? await host.dbLookupSelectByLocation('sota', location.lat, location.lon, NEARBY_DELTA)
+        : []
+
+    return rows.slice(0, MAX_SUGGESTIONS).map((row) => {
+      const data = (row.data ?? {}) as Record<string, any>
+      const distance =
+        location && row.lat != null && row.lon != null
+          ? (distanceOnEarth(location, { lat: row.lat, lon: row.lon }) ?? undefined)
+          : undefined
+      const associationRegion = [data.region, data.association].filter((x) => x).join(', ')
+
+      return {
+        type: ACTIVATION_TYPE,
+        ref: row.key,
+        name: row.name,
+        grid: data.grid,
+        location: associationRegion,
+        program: 'SOTA',
+        label: `SOTA ${row.key}: ${row.name ?? ''}`,
+        shortLabel: `SOTA ${row.key}`,
+        distance,
+        relevance: relevanceForMatch(row, searchTerm),
+      }
+    })
   },
 }
 

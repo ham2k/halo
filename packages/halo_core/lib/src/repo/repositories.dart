@@ -269,6 +269,15 @@ class QsosRepository {
     return qso;
   }
 
+  /// Adds a start/break/end marker to the QSO timeline (see `Qso.isEvent`).
+  Future<Qso> addEvent(String operationUuid, {required String kind, required int atMillis}) {
+    return add(operationUuid, {
+      'band': 'event',
+      'startAtMillis': atMillis,
+      'event': {'event': kind},
+    });
+  }
+
   Future<void> update(Qso qso) async {
     await db.transaction(() async {
       await (db.update(db.qsos)..where((q) => q.uuid.equals(qso.uuid))).write(_companionFor(qso));
@@ -428,9 +437,12 @@ class QsosRepository {
     final count = db.qsos.uuid.count();
     final minStart = db.qsos.startAtMillis.min();
     final maxStart = db.qsos.startAtMillis.max();
+    // Event pseudo-QSOs (start/break/end markers) share the qsos table but
+    // aren't real contacts — exclude them from the count and time range.
+    final notEvent = db.qsos.band.isNull() | db.qsos.band.equals('event').not();
     final query = db.selectOnly(db.qsos)
       ..addColumns([count, minStart, maxStart])
-      ..where(db.qsos.operation.equals(operationUuid) & db.qsos.deleted.equals(false));
+      ..where(db.qsos.operation.equals(operationUuid) & db.qsos.deleted.equals(false) & notEvent);
     final row = await query.getSingle();
 
     await (db.update(db.operations)..where((op) => op.uuid.equals(operationUuid))).write(

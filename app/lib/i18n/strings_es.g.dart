@@ -43,6 +43,7 @@ class TranslationsEs extends Translations with BaseTranslations<AppLocale, Trans
 	@override late final _Translations$home$es home = _Translations$home$es._(_root);
 	@override late final _Translations$dialogs$es dialogs = _Translations$dialogs$es._(_root);
 	@override late final _Translations$operation$es operation = _Translations$operation$es._(_root);
+	@override late final _Translations$activitiesView$es activitiesView = _Translations$activitiesView$es._(_root);
 	@override late final _Translations$loggingControls$es loggingControls = _Translations$loggingControls$es._(_root);
 	@override late final _Translations$qsoEditForm$es qsoEditForm = _Translations$qsoEditForm$es._(_root);
 	@override late final _Translations$qsoList$es qsoList = _Translations$qsoList$es._(_root);
@@ -110,6 +111,29 @@ class _Translations$operation$es extends Translations$operation$en {
 	@override String get activitiesNone => 'Ninguna seleccionada';
 	@override String get exportAdif => 'Exportar ADIF';
 	@override String get deleteOperation => 'Eliminar operación';
+}
+
+// Path: activitiesView
+class _Translations$activitiesView$es extends Translations$activitiesView$en {
+	_Translations$activitiesView$es._(TranslationsEs root) : this._root = root, super.internal(root);
+
+	final TranslationsEs _root; // ignore: unused_field
+
+	// Translations
+	@override String get title => 'Actividades';
+	@override String get activitiesCountZero => 'Sin actividades actuales';
+	@override String get activitiesCountOne => 'Una actividad actual';
+	@override String activitiesCountOther({required Object count}) => '${count} actividades actuales';
+	@override String get empty => 'Aún no hay actividades — usa Sugerencias y Búsqueda abajo para añadir una';
+	@override String get addActivity => 'Añadir actividad';
+	@override String get removeActivity => 'Quitar';
+	@override String get editActivity => 'Editar actividad';
+	@override String get reference => 'Referencia';
+	@override String get invalidReference => 'Referencia no válida';
+	@override String get searchHint => 'Busca un parque, cumbre…';
+	@override String get searchOptions => 'Opciones';
+	@override String get noSuggestions => 'Sin sugerencias';
+	@override String get allOptions => 'Todas las opciones';
 }
 
 // Path: loggingControls
@@ -317,6 +341,20 @@ extension on TranslationsEs {
 			'operation.activitiesNone' => 'Ninguna seleccionada',
 			'operation.exportAdif' => 'Exportar ADIF',
 			'operation.deleteOperation' => 'Eliminar operación',
+			'activitiesView.title' => 'Actividades',
+			'activitiesView.activitiesCountZero' => 'Sin actividades actuales',
+			'activitiesView.activitiesCountOne' => 'Una actividad actual',
+			'activitiesView.activitiesCountOther' => ({required Object count}) => '${count} actividades actuales',
+			'activitiesView.empty' => 'Aún no hay actividades — usa Sugerencias y Búsqueda abajo para añadir una',
+			'activitiesView.addActivity' => 'Añadir actividad',
+			'activitiesView.removeActivity' => 'Quitar',
+			'activitiesView.editActivity' => 'Editar actividad',
+			'activitiesView.reference' => 'Referencia',
+			'activitiesView.invalidReference' => 'Referencia no válida',
+			'activitiesView.searchHint' => 'Busca un parque, cumbre…',
+			'activitiesView.searchOptions' => 'Opciones',
+			'activitiesView.noSuggestions' => 'Sin sugerencias',
+			'activitiesView.allOptions' => 'Todas las opciones',
 			'loggingControls.timeUtc' => 'Hora (UTC)',
 			'loggingControls.date' => 'Fecha',
 			'loggingControls.now' => 'Ahora',

@@ -15,6 +15,7 @@ import 'package:halo_widgets/halo_widgets.dart';
 
 import '../main.dart';
 import 'operation_dialogs.dart';
+import 'operation/activities_view.dart';
 import 'operation/logging_panel.dart';
 import 'operation/map_panel.dart';
 import '../i18n/strings.g.dart';
@@ -84,71 +85,12 @@ class _OperationViewState extends State<OperationView> {
   }
 
   Future<void> _editActivities(Operation operation) async {
-    final controls = await widget.services.extensions.operationControls(operation.data);
-    if (!mounted) return;
-    if (controls.isEmpty) {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text(context.t.operation.noActivities)));
-      return;
-    }
-
-    var refs = operation.refs;
-    final saved = await showDialog<bool>(
-      context: context,
-      builder: (context) => StatefulBuilder(
-        builder: (context, setDialogState) => AlertDialog(
-          title: Text(context.t.dialogs.activities),
-          content: SizedBox(
-            width: 420,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                for (final control in controls)
-                  if ((control['input'] as Map?)?['kind'] == 'refList')
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 8),
-                      child: RefChipsInput(
-                        refType: (control['input'] as Map)['refType'] as String,
-                        label: (control['label'] as String?) ?? '',
-                        placeholder: (control['input'] as Map)['placeholder'] as String?,
-                        pattern: (control['input'] as Map)['pattern'] as String?,
-                        refs: refs
-                            .where((r) => r['type'] == (control['input'] as Map)['refType'])
-                            .toList(),
-                        onChanged: (updated) => setDialogState(() {
-                          final refType = (control['input'] as Map)['refType'];
-                          refs = [
-                            ...refs.where((r) => r['type'] != refType),
-                            ...updated,
-                          ];
-                        }),
-                        decorate: widget.services.extensions.decorateRef,
-                      ),
-                    ),
-              ],
-            ),
-          ),
-          actions: [
-            TextButton(onPressed: () => Navigator.of(context).pop(false), child: Text(context.t.common.cancel)),
-            FilledButton(onPressed: () => Navigator.of(context).pop(true), child: Text(context.t.common.save)),
-          ],
-        ),
-      ),
+    await Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => ActivitiesView(services: widget.services, operation: operation)),
     );
-
-    if (saved == true) {
-      final updated = Operation(
-        uuid: operation.uuid,
-        data: {...operation.data, 'refs': refs},
-        qsoCount: operation.qsoCount,
-        startAtMillisMin: operation.startAtMillisMin,
-        startAtMillisMax: operation.startAtMillisMax,
-        localData: operation.localData,
-      );
-      await widget.services.operations.saveData(updated);
-      if (mounted) setState(() => _operation = updated);
-    }
+    if (!mounted) return;
+    final refreshed = await widget.services.operations.get(operation.uuid);
+    if (refreshed != null && mounted) setState(() => _operation = refreshed);
   }
 
   Future<void> _editDetails(Operation operation) async {
@@ -197,16 +139,8 @@ class _OperationViewState extends State<OperationView> {
           length: 4,
           child: Scaffold(
             appBar: AppBar(
-              leadingWidth: isMacOSChromelessWindow ? 48 + macOSTrafficLightInset + macOSTrafficLightGap : null,
-              leading: MouseRegion(
-                cursor: SystemMouseCursors.click,
-                child: isMacOSChromelessWindow
-                    ? const Padding(
-                        padding: EdgeInsets.only(left: macOSTrafficLightInset + macOSTrafficLightGap),
-                        child: BackButton(),
-                      )
-                    : const BackButton(),
-              ),
+              leadingWidth: macOSAwareLeadingWidth,
+              leading: macOSAwareBackButton(),
               // Reserves trailing breathing room even though this AppBar has
               // no real action buttons — otherwise the title runs flush to
               // the window's right edge with no margin at all.

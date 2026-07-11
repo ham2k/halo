@@ -24,3 +24,7 @@ mac = {
   run = "(cd app && flutter run -d macos)",
   description = "Build & run macOS app"
 }
+mac-files = {
+  run = "open ~/Library/Containers/com.ham2k.logger/Data/Documents",
+  description = "Open the macOS app's sandboxed Documents folder (sqlite db, etc.)"
+}

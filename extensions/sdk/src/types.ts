@@ -105,11 +105,38 @@ export interface RefListInputDescriptor {
   pattern?: string
 }
 
+/// A candidate activity/reference offered to the user while adding an
+/// activity — same shape as `Ref` plus ranking info. `distance` is km from
+/// the `location` given in `SuggestArgs` (omitted if either side lacks a
+/// location); `relevance` is an extension-defined 0..1 match quality (search
+/// term match, popularity, etc). The core sorts combined results across all
+/// extensions by `distance * relevance` (lower is better), so extensions
+/// should return both as consistently comparable as possible.
+export interface ActivitySuggestion extends Ref {
+  distance?: number
+  relevance?: number
+}
+
+export interface SuggestArgs {
+  operation: Record<string, JSONValue>
+  /// The operation's own location if set, otherwise the station's default —
+  /// resolved by the core before calling, since operations don't always
+  /// carry their own location.
+  location?: { lat: number; lon: number }
+  /// Same fallback rule as `location`: operation's callsign if set, else the
+  /// station default.
+  callsign?: string
+  searchTerm?: string
+}
+
 export interface ActivityHook {
   /// Controls shown on the logging panel for this operation.
   loggingControls?(args: { operation: Record<string, JSONValue> }, ctx: HookContext): Promise<LoggingControlDescriptor[]>
   /// Controls shown in operation settings (e.g. "which park am I activating").
   operationControls?(args: { operation: Record<string, JSONValue> }, ctx: HookContext): Promise<LoggingControlDescriptor[]>
+  /// Candidate activities for the "add activity" search/suggestions list —
+  /// nearby references when `searchTerm` is empty, name/code matches when set.
+  suggest?(args: SuggestArgs, ctx: HookContext): Promise<ActivitySuggestion[]>
 }
 
 /// Contributes extra ADIF fields per QSO (registered under 'adifFields').

@@ -95,9 +95,12 @@ for behavior.
 interface ActivityHook {
   loggingControls?(args: { operation }, ctx): Promise<LoggingControlDescriptor[]>
   operationControls?(args: { operation }, ctx): Promise<LoggingControlDescriptor[]>
+  suggest?(args: SuggestArgs, ctx): Promise<ActivitySuggestion[]>
 }
 // LoggingControlDescriptor: {key, label, icon?, order?, optionType?, input}
 // input (catalog v0): {kind: 'refList', refType, placeholder?, pattern?}
+// SuggestArgs: {operation, location?: {lat, lon}, callsign?, searchTerm?}
+// ActivitySuggestion: Ref & {distance?, relevance?}
 ```
 
 `icon` is a Material Design Icons name (e.g. `'pine-tree'`), or a FontAwesome6
@@ -110,6 +113,15 @@ an unrecognized name falls back to a placeholder glyph rather than erroring.
 park am I activating"). Catalog components are versioned core code —
 proposing a new `input.kind` is a core PR, deliberately (DESIGN.md §5's
 "catalog creep" risk). Implemented by: `pota`.
+
+`suggest` powers the Activities view's "add activity" search: called with a
+`location`/`callsign` the core resolves from the operation if set, else the
+station defaults (extensions never need to know which). Called with no
+`searchTerm` for nearby suggestions, or with one for name/code search — an
+extension may honor either, both, or neither (returning `[]`). The core fans
+out to every `activity` hook via `invokeHookAll`, merges results, and sorts
+by `distance * relevance` ascending (missing `distance` treated as
+unsorted/unknown, sorted after ranked ones). Implemented by: `pota`, `sota`.
 
 ## ✅ `adifFields` — per-QSO export field contributions
 

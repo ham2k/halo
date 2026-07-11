@@ -58,6 +58,44 @@ void main() {
     expect(find.text('2'), findsOneWidget);
   });
 
+  testWidgets('event markers render distinctly and are excluded from QSO numbering', (tester) async {
+    final operation = await operations.create(stationCall: 'KI2D');
+    final start = await qsos.addEvent(operation.uuid, kind: 'start', atMillis: 500);
+    final first = await qsos.add(operation.uuid, {
+      'their': {'call': 'W1AW'},
+      'band': '20m',
+      'mode': 'SSB',
+      'startAtMillis': 1000,
+    });
+    final brk = await qsos.addEvent(operation.uuid, kind: 'break', atMillis: 1500);
+    final second = await qsos.add(operation.uuid, {
+      'their': {'call': 'K2HAM'},
+      'band': '40m',
+      'mode': 'CW',
+      'startAtMillis': 2000,
+    });
+
+    Qso? tapped;
+    await tester.pumpWidget(MaterialApp(
+      home: Scaffold(
+        body: QsoList(
+          qsos: [start, first, brk, second],
+          onSelect: (_) {},
+          onSelectEvent: (qso) => tapped = qso,
+        ),
+      ),
+    ));
+
+    expect(find.text('Operation started'), findsOneWidget);
+    expect(find.text('Break'), findsOneWidget);
+    // Real QSOs still number 1 and 2 — events don't consume a number.
+    expect(find.text('1'), findsOneWidget);
+    expect(find.text('2'), findsOneWidget);
+
+    await tester.tap(find.text('Break'));
+    expect(tapped?.uuid, brk.uuid);
+  });
+
   group('score badges', () {
     /// Builds a QSO carrying the given cached `scoring` hook verdicts
     /// (`qso.scores`), without needing a real scoring pass through the JS

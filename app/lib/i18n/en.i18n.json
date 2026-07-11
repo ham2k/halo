@@ -43,6 +43,22 @@
     "exportAdif": "Export ADIF",
     "deleteOperation": "Delete operation"
   },
+  "activitiesView": {
+    "title": "Activities",
+    "activitiesCountZero": "No Current Activities",
+    "activitiesCountOne": "One Current Activity",
+    "activitiesCountOther": "${count} Current Activities",
+    "empty": "No activities yet — use Suggestions & Search below to add one",
+    "addActivity": "Add activity",
+    "removeActivity": "Remove",
+    "editActivity": "Edit activity",
+    "reference": "Reference",
+    "invalidReference": "Not a valid reference",
+    "searchHint": "Search for a park, summit…",
+    "searchOptions": "Options",
+    "noSuggestions": "No suggestions",
+    "allOptions": "All Options"
+  },
   "loggingControls": {
     "timeUtc": "Time (UTC)",
     "date": "Date",

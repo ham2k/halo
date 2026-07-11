@@ -44,6 +44,7 @@ class Translations with BaseTranslations<AppLocale, Translations> {
 	late final Translations$home$en home = Translations$home$en.internal(_root);
 	late final Translations$dialogs$en dialogs = Translations$dialogs$en.internal(_root);
 	late final Translations$operation$en operation = Translations$operation$en.internal(_root);
+	late final Translations$activitiesView$en activitiesView = Translations$activitiesView$en.internal(_root);
 	late final Translations$loggingControls$en loggingControls = Translations$loggingControls$en.internal(_root);
 	late final Translations$qsoEditForm$en qsoEditForm = Translations$qsoEditForm$en.internal(_root);
 	late final Translations$qsoList$en qsoList = Translations$qsoList$en.internal(_root);
@@ -160,6 +161,57 @@ class Translations$operation$en {
 
 	/// en: 'Delete operation'
 	String get deleteOperation => 'Delete operation';
+}
+
+// Path: activitiesView
+class Translations$activitiesView$en {
+	Translations$activitiesView$en.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Activities'
+	String get title => 'Activities';
+
+	/// en: 'No Current Activities'
+	String get activitiesCountZero => 'No Current Activities';
+
+	/// en: 'One Current Activity'
+	String get activitiesCountOne => 'One Current Activity';
+
+	/// en: '${count} Current Activities'
+	String activitiesCountOther({required Object count}) => '${count} Current Activities';
+
+	/// en: 'No activities yet — use Suggestions & Search below to add one'
+	String get empty => 'No activities yet — use Suggestions & Search below to add one';
+
+	/// en: 'Add activity'
+	String get addActivity => 'Add activity';
+
+	/// en: 'Remove'
+	String get removeActivity => 'Remove';
+
+	/// en: 'Edit activity'
+	String get editActivity => 'Edit activity';
+
+	/// en: 'Reference'
+	String get reference => 'Reference';
+
+	/// en: 'Not a valid reference'
+	String get invalidReference => 'Not a valid reference';
+
+	/// en: 'Search for a park, summit…'
+	String get searchHint => 'Search for a park, summit…';
+
+	/// en: 'Options'
+	String get searchOptions => 'Options';
+
+	/// en: 'No suggestions'
+	String get noSuggestions => 'No suggestions';
+
+	/// en: 'All Options'
+	String get allOptions => 'All Options';
 }
 
 // Path: loggingControls
@@ -494,6 +546,20 @@ extension on Translations {
 			'operation.activitiesNone' => 'None set',
 			'operation.exportAdif' => 'Export ADIF',
 			'operation.deleteOperation' => 'Delete operation',
+			'activitiesView.title' => 'Activities',
+			'activitiesView.activitiesCountZero' => 'No Current Activities',
+			'activitiesView.activitiesCountOne' => 'One Current Activity',
+			'activitiesView.activitiesCountOther' => ({required Object count}) => '${count} Current Activities',
+			'activitiesView.empty' => 'No activities yet — use Suggestions & Search below to add one',
+			'activitiesView.addActivity' => 'Add activity',
+			'activitiesView.removeActivity' => 'Remove',
+			'activitiesView.editActivity' => 'Edit activity',
+			'activitiesView.reference' => 'Reference',
+			'activitiesView.invalidReference' => 'Not a valid reference',
+			'activitiesView.searchHint' => 'Search for a park, summit…',
+			'activitiesView.searchOptions' => 'Options',
+			'activitiesView.noSuggestions' => 'No suggestions',
+			'activitiesView.allOptions' => 'All Options',
 			'loggingControls.timeUtc' => 'Time (UTC)',
 			'loggingControls.date' => 'Date',
 			'loggingControls.now' => 'Now',

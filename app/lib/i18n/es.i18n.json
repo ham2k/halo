@@ -43,6 +43,22 @@
     "exportAdif": "Exportar ADIF",
     "deleteOperation": "Eliminar operación"
   },
+  "activitiesView": {
+    "title": "Actividades",
+    "activitiesCountZero": "Sin actividades actuales",
+    "activitiesCountOne": "Una actividad actual",
+    "activitiesCountOther": "${count} actividades actuales",
+    "empty": "Aún no hay actividades — usa Sugerencias y Búsqueda abajo para añadir una",
+    "addActivity": "Añadir actividad",
+    "removeActivity": "Quitar",
+    "editActivity": "Editar actividad",
+    "reference": "Referencia",
+    "invalidReference": "Referencia no válida",
+    "searchHint": "Busca un parque, cumbre…",
+    "searchOptions": "Opciones",
+    "noSuggestions": "Sin sugerencias",
+    "allOptions": "Todas las opciones"
+  },
   "loggingControls": {
     "timeUtc": "Hora (UTC)",
     "date": "Fecha",
