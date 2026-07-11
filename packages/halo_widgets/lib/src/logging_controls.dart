@@ -1137,7 +1137,7 @@ class _LoggingControlsState extends State<LoggingControls> {
     // HaLoColors.of(context)/Theme.of(context) ambiently) pick it up.
     final editing = widget.editingQso != null;
     final accentPoloColors = editing
-        ? poloColors.copyWith(tertiaryLight: theme.colorScheme.secondaryContainer)
+        ? poloColors.copyWith(tertiaryLight: poloColors.secondaryLight)
         : poloColors;
     final accentTheme = editing
         ? theme.copyWith(

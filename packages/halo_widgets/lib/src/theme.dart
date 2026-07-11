@@ -45,6 +45,13 @@ class HaLoColors extends ThemeExtension<HaLoColors> {
   /// with that exact formula, not eyeballed).
   final Color tertiaryLight;
 
+  /// Same idea as [tertiaryLight] but derived from `secondary` — used when
+  /// the logging panel switches to its "editing an existing QSO" accent
+  /// (see `LoggingControls`'s `accentPoloColors`), so the chips keep the
+  /// same amount of contrast against their container that they have in the
+  /// tertiary ("new QSO") case, instead of blending into it.
+  final Color secondaryLight;
+
   final Map<String, Color> bands;
 
   const HaLoColors({
@@ -52,6 +59,7 @@ class HaLoColors extends ThemeExtension<HaLoColors> {
     required this.notice,
     required this.onNotice,
     required this.tertiaryLight,
+    required this.secondaryLight,
     required this.bands,
   });
 
@@ -62,6 +70,7 @@ class HaLoColors extends ThemeExtension<HaLoColors> {
     notice: Color(0xFFFCF4A7),
     onNotice: Color(0xFF615C2F),
     tertiaryLight: Color(0xFFE6AB73),
+    secondaryLight: Color(0xFF69A9DF),
     bands: _bandColors,
   );
 
@@ -70,6 +79,7 @@ class HaLoColors extends ThemeExtension<HaLoColors> {
     notice: Color(0xFF615C2F),
     onNotice: Color(0xFFFCF4A7),
     tertiaryLight: Color(0xFF5D3918),
+    secondaryLight: Color(0xFF244462),
     bands: _bandColors,
   );
 
@@ -96,6 +106,7 @@ class HaLoColors extends ThemeExtension<HaLoColors> {
     Color? notice,
     Color? onNotice,
     Color? tertiaryLight,
+    Color? secondaryLight,
     Map<String, Color>? bands,
   }) {
     return HaLoColors(
@@ -103,6 +114,7 @@ class HaLoColors extends ThemeExtension<HaLoColors> {
       notice: notice ?? this.notice,
       onNotice: onNotice ?? this.onNotice,
       tertiaryLight: tertiaryLight ?? this.tertiaryLight,
+      secondaryLight: secondaryLight ?? this.secondaryLight,
       bands: bands ?? this.bands,
     );
   }
