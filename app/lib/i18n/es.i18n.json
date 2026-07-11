@@ -18,8 +18,7 @@
   "dialogs": {
     "deleteOperationConfirm": "¿Eliminar operación \"${title}\"?",
     "operationDetails": "Detalles de la operación",
-    "activities": "Actividades",
-    "deleteQsoConfirm": "¿Eliminar QSO con ${call}?"
+    "activities": "Actividades"
   },
   "operation": {
     "tabs": {

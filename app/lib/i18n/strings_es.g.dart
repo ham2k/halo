@@ -90,7 +90,6 @@ class _Translations$dialogs$es extends Translations$dialogs$en {
 	@override String deleteOperationConfirm({required Object title}) => '¿Eliminar operación "${title}"?';
 	@override String get operationDetails => 'Detalles de la operación';
 	@override String get activities => 'Actividades';
-	@override String deleteQsoConfirm({required Object call}) => '¿Eliminar QSO con ${call}?';
 }
 
 // Path: operation
@@ -296,7 +295,6 @@ extension on TranslationsEs {
 			'dialogs.deleteOperationConfirm' => ({required Object title}) => '¿Eliminar operación "${title}"?',
 			'dialogs.operationDetails' => 'Detalles de la operación',
 			'dialogs.activities' => 'Actividades',
-			'dialogs.deleteQsoConfirm' => ({required Object call}) => '¿Eliminar QSO con ${call}?',
 			'operation.tabs.qsos' => ({required Object count}) => '${count} QSOs',
 			'operation.tabs.spots' => 'SPOTS',
 			'operation.tabs.map' => 'MAPA',

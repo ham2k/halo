@@ -44,11 +44,7 @@ class _LoggingPanelState extends State<LoggingPanel> {
     final wide = MediaQuery.sizeOf(context).width >= 900;
     final list = QsoList(
       qsos: widget.qsos,
-      qsosRepository: widget.services.qsos,
       noQsosLabel: context.t.qsoList.empty,
-      deleteConfirmTitleBuilder: (call) => context.t.dialogs.deleteQsoConfirm(call: call),
-      cancelLabel: context.t.common.cancel,
-      deleteLabel: context.t.common.delete,
       duplicateLabel: context.t.qsoList.duplicate,
       newEntityLabel: context.t.qsoList.newEntity,
       newBandOrModeLabel: context.t.qsoList.newBandOrMode,

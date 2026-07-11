@@ -13,11 +13,7 @@ import 'theme.dart';
 
 class QsoList extends StatelessWidget {
   final List<Qso> qsos;
-  final QsosRepository qsosRepository;
   final String? noQsosLabel;
-  final String Function(String call)? deleteConfirmTitleBuilder;
-  final String? cancelLabel;
-  final String? deleteLabel;
   final String? duplicateLabel;
   final String? newEntityLabel;
   final String? newBandOrModeLabel;
@@ -27,19 +23,18 @@ class QsoList extends StatelessWidget {
   final String? selectedUuid;
 
   /// Tap a row to select/edit it. The caller owns toggle-to-deselect
-  /// semantics (tapping the already-selected row again).
+  /// semantics (tapping the already-selected row again). Deleting is
+  /// handled entirely through selecting a row and using the logging
+  /// panel's staged delete — there's no separate quick-delete on the row
+  /// itself, so a single delete flow can't be bypassed mid-edit.
   final void Function(Qso qso) onSelect;
 
   const QsoList({
     super.key,
     required this.qsos,
-    required this.qsosRepository,
     required this.onSelect,
     this.selectedUuid,
     this.noQsosLabel,
-    this.deleteConfirmTitleBuilder,
-    this.cancelLabel,
-    this.deleteLabel,
     this.duplicateLabel,
     this.newEntityLabel,
     this.newBandOrModeLabel,
@@ -110,7 +105,6 @@ class QsoList extends StatelessWidget {
               color: selected ? theme.colorScheme.secondaryContainer : theme.colorScheme.surface,
               child: InkWell(
                 onTap: () => onSelect(qso),
-                onLongPress: () => _confirmDelete(context, qso),
                 mouseCursor: SystemMouseCursors.click,
                 child: Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
@@ -221,19 +215,5 @@ class QsoList extends StatelessWidget {
       decoration: BoxDecoration(color: color, shape: BoxShape.circle),
     );
     return tooltip == null ? dot : Tooltip(message: tooltip, child: dot);
-  }
-
-  Future<void> _confirmDelete(BuildContext context, Qso qso) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text(deleteConfirmTitleBuilder?.call(qso.theirCall) ?? 'Delete QSO with ${qso.theirCall}?'),
-        actions: [
-          TextButton(onPressed: () => Navigator.of(context).pop(false), child: Text(cancelLabel ?? 'Cancel')),
-          FilledButton(onPressed: () => Navigator.of(context).pop(true), child: Text(deleteLabel ?? 'Delete')),
-        ],
-      ),
-    );
-    if (confirmed == true) await qsosRepository.softDelete(qso);
   }
 }

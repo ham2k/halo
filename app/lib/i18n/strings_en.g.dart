@@ -121,9 +121,6 @@ class Translations$dialogs$en {
 
 	/// en: 'Activities'
 	String get activities => 'Activities';
-
-	/// en: 'Delete QSO with ${call}?'
-	String deleteQsoConfirm({required Object call}) => 'Delete QSO with ${call}?';
 }
 
 // Path: operation
@@ -465,7 +462,6 @@ extension on Translations {
 			'dialogs.deleteOperationConfirm' => ({required Object title}) => 'Delete operation "${title}"?',
 			'dialogs.operationDetails' => 'Operation details',
 			'dialogs.activities' => 'Activities',
-			'dialogs.deleteQsoConfirm' => ({required Object call}) => 'Delete QSO with ${call}?',
 			'operation.tabs.qsos' => ({required Object count}) => '${count} QSOs',
 			'operation.tabs.spots' => 'SPOTS',
 			'operation.tabs.map' => 'MAP',
