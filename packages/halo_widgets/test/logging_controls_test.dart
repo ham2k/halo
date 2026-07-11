@@ -470,10 +470,11 @@ void main() {
         ),
       ));
 
-      // Shows the existing QSO's own time — static, not a live clock.
-      expect((timeChip(tester).label as Text).data, '12:30z');
+      // Shows the existing QSO's own time — static, not a live clock, with
+      // an explicit :00 seconds since the stored value has none.
+      expect((timeChip(tester).label as Text).data, '12:30:00z');
       await tester.pump(const Duration(seconds: 2));
-      expect((timeChip(tester).label as Text).data, '12:30z');
+      expect((timeChip(tester).label as Text).data, '12:30:00z');
 
       await openControl(tester, MdiIcons.clockOutline);
       final timeField = tester.widget<TextField>(find.widgetWithText(TextField, 'Time (UTC)'));

@@ -564,10 +564,11 @@ class _LoggingControlsState extends State<LoggingControls> {
 
   String get _timeSummary {
     final millis = _effectiveStartAtMillis;
-    if (millis == null) {
-      return '${_fmtTimeWithSeconds(DateTime.now().toUtc())}z';
-    }
-    return '${_fmtTime(DateTime.fromMillisecondsSinceEpoch(millis, isUtc: true))}z';
+    final dt = millis == null ? DateTime.now().toUtc() : DateTime.fromMillisecondsSinceEpoch(millis, isUtc: true);
+    // Always shows seconds, even when they're not meaningful (a manually
+    // entered/edited time has none — it comes from a plain HH:MM field —
+    // so it's always :00 rather than the pill silently switching formats).
+    return '${_fmtTimeWithSeconds(dt)}z';
   }
 
   String get _radioSummary {
