@@ -343,6 +343,44 @@ void main() {
     expect(freqField.controller!.text, '7100');
   });
 
+  testWidgets('editing an existing QSO applies Radio control changes to the QSO, not the VFO', (tester) async {
+    fakeRadio.setVfo('vfoA', freq: 14285, mode: 'CW');
+    final existingQso = Qso(
+      uuid: 'existing-uuid',
+      operationUuid: operation.uuid,
+      data: {
+        'their': {'call': 'W1AW'},
+        'freq': 7100,
+        'mode': 'SSB',
+      },
+    );
+    await tester.pumpWidget(host(radioService: fakeRadio, editingQso: existingQso));
+    await openControl(tester, MdiIcons.radio);
+
+    // Typing a frequency, past both the debounce and the blur flush...
+    await tester.enterText(find.widgetWithText(TextField, 'Frequency'), '21200');
+    await tester.pump(const Duration(seconds: 6));
+    await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'W1AW');
+    await tester.pump();
+
+    // ...picking a band...
+    await tester.tap(find.widgetWithText(TextField, 'Band').first);
+    await tester.pumpAndSettle();
+    // DropdownMenu can leave a stale off-screen copy of a prior menu entry
+    // around briefly — same harmless artifact as elsewhere in this file.
+    await tester.tap(find.text('40m').last, warnIfMissed: false);
+    await tester.pumpAndSettle();
+
+    // ...and picking a mode all leave the operation's VFO untouched.
+    await tester.tap(find.widgetWithText(TextField, 'Mode').first);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('FT8').last);
+    await tester.pumpAndSettle();
+
+    expect(fakeRadio.vfoA.freq, 14285);
+    expect(fakeRadio.vfoA.mode, 'CW');
+  });
+
   testWidgets('a command setVfo pushes to radioService immediately', (tester) async {
     await tester.pumpWidget(host(interpretCommand: fakeInterpretCommand, radioService: fakeRadio));
 
@@ -407,6 +445,61 @@ void main() {
     await tester.pump();
 
     expect(fakeRadio.vfoA.mode, 'CW');
+  });
+
+  testWidgets('a stale-but-unflushed typed frequency still lands on the logged QSO', (tester) async {
+    await tester.pumpWidget(host(radioService: fakeRadio));
+    await openControl(tester, MdiIcons.radio);
+
+    // Typed, but Enter fires well within the 5s debounce window and
+    // without blurring the field first.
+    await tester.enterText(find.widgetWithText(TextField, 'Frequency'), '14285');
+    await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'W1AW');
+    await tester.pump();
+    await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+
+    final logged = await waitForQsos(tester, 1);
+    expect(logged.single.freq, 14285);
+    expect(fakeRadio.vfoA.freq, 14285);
+  });
+
+  testWidgets('ending an edit session re-seeds the Radio control from the VFO, not the just-edited QSO', (tester) async {
+    fakeRadio.setVfo('vfoA', freq: 14285, mode: 'CW');
+    final existingQso = Qso(
+      uuid: 'existing-uuid',
+      operationUuid: operation.uuid,
+      data: {
+        'their': {'call': 'W1AW'},
+        'freq': 7100,
+        'mode': 'SSB',
+      },
+    );
+
+    final editing = ValueNotifier<Qso?>(existingQso);
+    await tester.pumpWidget(MaterialApp(
+      home: Scaffold(
+        body: ValueListenableBuilder<Qso?>(
+          valueListenable: editing,
+          builder: (context, editingQso, _) => LoggingControls(
+            operation: operation,
+            qsosRepository: qsos,
+            radioService: fakeRadio,
+            editingQso: editingQso,
+            onEditCanceled: () => editing.value = null,
+          ),
+        ),
+      ),
+    ));
+    await openControl(tester, MdiIcons.radio);
+    expect(tester.widget<TextField>(find.widgetWithText(TextField, 'Frequency')).controller!.text, '7100');
+
+    editing.value = null;
+    await tester.pump();
+    // Ending the edit collapses the secondary control row back to its
+    // default (nothing expanded) — reopen it to read the re-seeded value.
+    await openControl(tester, MdiIcons.radio);
+
+    expect(tester.widget<TextField>(find.widgetWithText(TextField, 'Frequency')).controller!.text, '14285');
   });
 
   testWidgets('shows DUPE chip for same call, band and mode', (tester) async {
@@ -693,6 +786,17 @@ void main() {
       expect(callField.controller!.text, 'W1AW');
       expect(find.byIcon(undoIcon), findsNothing);
       expect(find.byIcon(wipeIcon), findsOneWidget);
+    });
+
+    testWidgets('wipe stays disabled for a fresh new QSO even though the Radio control shows the VFO frequency',
+        (tester) async {
+      fakeRadio.setVfo('vfoA', freq: 14285, mode: 'CW');
+      await tester.pumpWidget(host(radioService: fakeRadio));
+      await openControl(tester, MdiIcons.radio);
+
+      final freqField = tester.widget<TextField>(find.widgetWithText(TextField, 'Frequency'));
+      expect(freqField.controller!.text, '14285');
+      expect(secondButton(tester, wipeIcon).onPressed, isNull);
     });
 
     testWidgets('the wipe undo option expires after 5 seconds even if the user starts typing again', (tester) async {

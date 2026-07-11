@@ -377,9 +377,12 @@ class _LoggingControlsState extends State<LoggingControls> {
           );
         } else if (identical(focus, _freqFocus)) {
           // Flush a pending debounced push immediately on blur, rather than
-          // making the user wait out the rest of the 5s window.
+          // making the user wait out the rest of the 5s window. Never fires
+          // while editing an existing QSO — see _onFreqChanged.
           _vfoDebounce?.cancel();
-          if (_freqController.text.trim().length > 3) _pushVfoToRadioService();
+          if (widget.editingQso == null && _freqController.text.trim().length > 3) {
+            _pushVfoToRadioService();
+          }
         }
       });
     }
@@ -501,6 +504,7 @@ class _LoggingControlsState extends State<LoggingControls> {
     _callController.clear();
     _applyDefaultRSTs();
     _lookupDebounce?.cancel();
+    _vfoDebounce?.cancel();
     _commandDescribeDebounce?.cancel();
     _executeMessageTimer?.cancel();
     _lookupFor = null;
@@ -511,6 +515,10 @@ class _LoggingControlsState extends State<LoggingControls> {
     _manualStartAtMillis = null;
     _manualBand = null;
     _selectedControlKey = null;
+    // Back to composing a new QSO — the Radio control goes back to
+    // mirroring the operation's VFO, not whatever the just-edited QSO's
+    // own freq/band/mode happened to be.
+    _seedFromRadioService();
     setState(() {
       _commandMessage = null;
       _currentInterpretation = null;
@@ -560,7 +568,9 @@ class _LoggingControlsState extends State<LoggingControls> {
   void _onFreqChanged() {
     if (_freq != null) _manualBand = null;
     setState(() {});
-    if (_populating) return;
+    // Editing an existing QSO applies changes to the QSO, never the VFO —
+    // only a new (composing) QSO's Radio control mirrors/edits the VFO.
+    if (_populating || widget.editingQso != null) return;
     // Only push once there's enough digits to plausibly be a real
     // frequency (mirrors the frequency command's own `length < 3` reject),
     // debounced so we're not writing to the operation on every keystroke.
@@ -583,7 +593,7 @@ class _LoggingControlsState extends State<LoggingControls> {
       _mode = mode;
       if (!_rstsTouched) _applyDefaultRSTs();
     });
-    widget.radioService?.setVfo('vfoA', mode: mode);
+    if (widget.editingQso == null) widget.radioService?.setVfo('vfoA', mode: mode);
   }
 
   // ---- Secondary control row ----
@@ -887,7 +897,9 @@ class _LoggingControlsState extends State<LoggingControls> {
                 });
                 // A discrete dropdown pick, not a keystroke — push
                 // immediately rather than debouncing like frequency typing.
-                widget.radioService?.setVfo('vfoA', band: value);
+                // Only while composing — editing an existing QSO applies
+                // changes to the QSO, never the VFO.
+                if (widget.editingQso == null) widget.radioService?.setVfo('vfoA', band: value);
                 _callFocus.requestFocus();
               },
             ),
@@ -1167,6 +1179,11 @@ class _LoggingControlsState extends State<LoggingControls> {
     );
     if (result == null || !mounted) return;
 
+    // Same as the setVfo command dispatch: a deliberate dialog Save, not
+    // raw typing — push immediately rather than via _onFreqChanged's
+    // debounce, and only while composing (rule: editing an existing QSO
+    // applies changes to the QSO, never the VFO).
+    _populating = true;
     setState(() {
       _callController.text = ((result['theirCall'] as String?) ?? '').toUpperCase();
       final name = (result['theirName'] as String?)?.trim();
@@ -1212,6 +1229,8 @@ class _LoggingControlsState extends State<LoggingControls> {
       _seedTimeFields();
       _updateClockTicker();
     });
+    _populating = false;
+    if (widget.editingQso == null) _pushVfoToRadioService();
   }
 
   // ---- Secondary control settings (show/hide + reorder) ----
@@ -1400,11 +1419,13 @@ class _LoggingControlsState extends State<LoggingControls> {
   // ---- Wipe/undo, delete/undo, revert-changes: the info row's second button ----
 
   /// Whether the in-progress new QSO has anything actually worth wiping —
-  /// the wipe button stays visible but disabled when this is false.
+  /// the wipe button stays visible but disabled when this is false. With a
+  /// `radioService`, freq/band merely mirror the operation's VFO (seeded on
+  /// entry, not something the operator composed for this specific QSO) and
+  /// don't count; without one, they fall back to the pre-VFO behavior.
   bool get _hasComposedValues =>
       _call.isNotEmpty ||
-      _freqController.text.trim().isNotEmpty ||
-      _manualBand != null ||
+      (widget.radioService == null && (_freqController.text.trim().isNotEmpty || _manualBand != null)) ||
       _manualStartAtMillis != null ||
       _controlRefs.values.any((refs) => refs.isNotEmpty) ||
       _unmatchedRefs.isNotEmpty ||
@@ -1620,6 +1641,14 @@ class _LoggingControlsState extends State<LoggingControls> {
         );
         widget.onEditCanceled?.call();
       } else {
+        // Flush any pending debounced frequency push first, so a value
+        // typed just before hitting Enter/Log is reflected in both the VFO
+        // and this QSO, rather than only landing after the fact.
+        if (_vfoDebounce != null) {
+          _vfoDebounce!.cancel();
+          _vfoDebounce = null;
+          _pushVfoToRadioService();
+        }
         final qso = await widget.qsosRepository.add(widget.operation.uuid, _getCurrentQsoData());
         widget.onLogged?.call(qso);
         _wipe();
