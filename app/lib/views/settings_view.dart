@@ -138,16 +138,8 @@ class _SettingsViewState extends State<SettingsView> {
               SizedBox(
                 width: 320,
                 child: AppBar(
-                  leadingWidth: isMacOSChromelessWindow ? 48 + macOSTrafficLightInset + macOSTrafficLightGap : null,
-                  leading: MouseRegion(
-                    cursor: SystemMouseCursors.click,
-                    child: isMacOSChromelessWindow
-                        ? const Padding(
-                            padding: EdgeInsets.only(left: macOSTrafficLightInset + macOSTrafficLightGap),
-                            child: BackButton(),
-                          )
-                        : const BackButton(),
-                  ),
+                  leadingWidth: macOSAwareLeadingWidth,
+                  leading: macOSAwareBackButton(),
                   title: const Text('Settings'),
                 ),
               ),
@@ -183,16 +175,8 @@ class _SettingsViewState extends State<SettingsView> {
     } else {
       return Scaffold(
         appBar: AppBar(
-          leadingWidth: isMacOSChromelessWindow ? 48 + macOSTrafficLightInset + macOSTrafficLightGap : null,
-          leading: MouseRegion(
-            cursor: SystemMouseCursors.click,
-            child: isMacOSChromelessWindow
-                ? const Padding(
-                    padding: EdgeInsets.only(left: macOSTrafficLightInset + macOSTrafficLightGap),
-                    child: BackButton(),
-                  )
-                : const BackButton(),
-          ),
+          leadingWidth: macOSAwareLeadingWidth,
+          leading: macOSAwareBackButton(),
           title: const Text('Settings'),
         ),
         body: _buildSidebar(context, isWide: false, panels: panels, selectedPanel: effectivePanel),

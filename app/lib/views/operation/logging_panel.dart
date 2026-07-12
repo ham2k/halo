@@ -7,6 +7,7 @@ import 'package:halo_core/halo_core.dart';
 import 'package:halo_widgets/halo_widgets.dart';
 
 import '../../main.dart';
+import '../operation_dialogs.dart';
 import '../../i18n/strings.g.dart';
 
 class LoggingPanel extends StatefulWidget {
@@ -41,6 +42,25 @@ class _LoggingPanelState extends State<LoggingPanel> {
     });
   }
 
+  /// Start/break/end markers aren't real QSOs — tapping one edits its time
+  /// instead of loading it into the QSO editor (which `_handleSelectQso`
+  /// would otherwise do, showing a nonsensical form with no callsign/mode).
+  Future<void> _handleSelectEvent(Qso qso) async {
+    final newMillis = await editTimeDialog(
+      context,
+      title: context.t.qsoList.editEventTime,
+      initialMillis: qso.startAtMillis ?? DateTime.now().toUtc().millisecondsSinceEpoch,
+    );
+    if (newMillis == null) return;
+    await widget.services.qsos.update(Qso(
+      uuid: qso.uuid,
+      operationUuid: qso.operationUuid,
+      data: {...qso.data, 'startAtMillis': newMillis},
+      deleted: qso.deleted,
+      scoreCache: qso.scoreCache,
+    ));
+  }
+
   void _handleControlsSettingsChanged(List<String> order, Set<String> hidden) {
     setState(() {
       _controlOrder = order;
@@ -61,6 +81,7 @@ class _LoggingPanelState extends State<LoggingPanel> {
       newBandOrModeLabel: context.t.qsoList.newBandOrMode,
       selectedUuid: _selectedQso?.uuid,
       onSelect: _handleSelectQso,
+      onSelectEvent: _handleSelectEvent,
     );
 
     return Column(
@@ -153,6 +174,7 @@ class InformationArea extends StatelessWidget {
     final byBand = <String, int>{};
     final byMode = <String, int>{};
     for (final qso in qsos) {
+      if (qso.isEvent) continue; // start/break/end markers aren't contacts
       byBand.update(qso.band ?? '?', (count) => count + 1, ifAbsent: () => 1);
       byMode.update(qso.mode ?? '?', (count) => count + 1, ifAbsent: () => 1);
     }

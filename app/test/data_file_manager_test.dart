@@ -206,6 +206,62 @@ REF-002,Summit Two,45.56,-122.78
     expect(row2, isNotNull);
     expect(row2!.name, 'Helvellyn');
   });
+
+  test('DataFileManager: syncAllDataFiles isolates one malformed definition from the rest', () async {
+    final mockResults = <String, dynamic>{
+      'dataFile:*:getDefinition': [
+        {
+          // Missing 'key' — throws when cast during syncAllDataFiles, before
+          // this entry can even be counted as "matched". Must not prevent
+          // the other, well-formed entry below from being processed.
+          'key': 'malformed',
+          'ok': true,
+          'value': {'name': 'Missing key field'},
+        },
+        {
+          'key': 'good-csv-file',
+          'ok': true,
+          'value': {
+            'key': 'good-csv-file',
+            'name': 'Good CSV',
+            'description': 'test',
+            'url': 'https://example.com/good.csv',
+            'maxAgeInDays': 10,
+            'fetchType': 'csv',
+            'category': 'good_category',
+            'csvOptions': {'hasHeaders': true, 'delimiter': ','},
+          },
+        },
+      ],
+      'dataFile:good-csv-file:mapCsvBatch': (args) {
+        final rows = args['rows'] as List;
+        return rows.map((r) {
+          final row = r as Map;
+          return {'key': row['id'], 'name': row['title'], 'flags': 1};
+        }).toList();
+      },
+    };
+
+    final mockHost = MockExtensionHost(mockResults);
+    final mockExtensions = MockExtensionService(mockHost);
+
+    final managerWithMock = TestDataFileManager(
+      lookups: lookups,
+      extensions: mockExtensions,
+      prefs: prefs,
+    );
+    managerWithMock.mockDownloadBody = 'id,title\nGOOD-1,Something\n';
+
+    final matched = await managerWithMock.syncAllDataFiles();
+
+    // The well-formed entry was still downloaded and processed despite the
+    // other entry's cast throwing.
+    final row = await lookups.getLookup('good_category', 'GOOD-1');
+    expect(row, isNotNull);
+    expect(row!.name, 'Something');
+    // Only the entry that got far enough to determine its category counts.
+    expect(matched, 1);
+  });
 }
 
 class MockExtensionHost implements ExtensionHost {
@@ -267,7 +323,7 @@ class TestDataFileManager extends DataFileManager {
   });
 
   @override
-  Future<String?> downloadFile(String key, String url) async {
+  Future<String?> downloadFile(String key, String url, {bool force = false}) async {
     return mockDownloadBody;
   }
 }

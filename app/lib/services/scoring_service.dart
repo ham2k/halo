@@ -30,7 +30,7 @@ class ScoringService {
     final host = extensions.host;
     if (host == null) return;
 
-    final qsoList = await qsos.watchForOperation(operation.uuid).first;
+    final qsoList = (await qsos.watchForOperation(operation.uuid).first).where((q) => !q.isEvent).toList();
     if (qsoList.isEmpty) return;
 
     try {

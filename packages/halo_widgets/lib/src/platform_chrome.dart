@@ -10,6 +10,7 @@
 // them.
 
 import 'package:flutter/foundation.dart' show TargetPlatform, defaultTargetPlatform, kIsWeb;
+import 'package:flutter/material.dart';
 
 bool get isMacOSChromelessWindow =>
     !kIsWeb && defaultTargetPlatform == TargetPlatform.macOS;
@@ -33,3 +34,24 @@ bool get isWindowedPlatform =>
     defaultTargetPlatform == TargetPlatform.macOS ||
     defaultTargetPlatform == TargetPlatform.windows ||
     defaultTargetPlatform == TargetPlatform.linux;
+
+/// `AppBar.leadingWidth` for a plain back button that reserves clearance for
+/// the traffic-light buttons — pair with [macOSAwareBackButton]. Every
+/// pushed view's AppBar needs this (or the equivalent custom-leading math
+/// home_view.dart does for its logo), otherwise the title/back arrow render
+/// underneath the floating traffic lights.
+double? get macOSAwareLeadingWidth =>
+    isMacOSChromelessWindow ? 48 + macOSTrafficLightInset + macOSTrafficLightGap : null;
+
+/// A `BackButton` with left padding reserved for the traffic-light buttons
+/// when [isMacOSChromelessWindow]. Pair with [macOSAwareLeadingWidth] as the
+/// AppBar's `leadingWidth`.
+Widget macOSAwareBackButton({VoidCallback? onPressed}) => MouseRegion(
+      cursor: SystemMouseCursors.click,
+      child: isMacOSChromelessWindow
+          ? Padding(
+              padding: const EdgeInsets.only(left: macOSTrafficLightInset + macOSTrafficLightGap),
+              child: BackButton(onPressed: onPressed),
+            )
+          : BackButton(onPressed: onPressed),
+    );

@@ -5,7 +5,10 @@
 // (moved here from radio-commands — it's a dev tool, not a radio one), and
 // DEVNOTICE/DEVSTATUS/DEVPROGRESS post sample items to the status bar so
 // the footer/notice UI can be exercised without a real extension driving
-// it. All four are just `command` hooks like radio-commands' — see
+// it. RELOAD forces a data-file re-sync (bypassing the normal 30-day
+// staleness check), for both developers iterating on `csvToLookupEntry`
+// mapping logic and anyone troubleshooting stale/missing lookup data. All
+// five are just `command` hooks like radio-commands' — see
 // docs/extensions/hooks.md.
 
 import { defineExtension } from "@ham2k/polo-sdk"
@@ -96,15 +99,41 @@ const DevProgressCommand = {
   },
 }
 
+// "RELOAD POTA" / "RELOAD SOTA" -> reload data files whose category matches
+// that word; "RELOAD ALL", "RELOADALL", or bare "RELOAD!" -> reload every
+// data file. Requires an explicit target so a bare "RELOAD" (no target, no
+// ALL/!) falls through as ordinary typed input instead of being swallowed
+// as a command.
+const RELOAD_MATCH = /^RELOAD(ALL|!)?(?:\s+(\S+))?$/i
+
+const ReloadCommand = {
+  async interpret({ input }: { input: string }, _ctx: HookContext): Promise<CommandInterpretation | null> {
+    const match = RELOAD_MATCH.exec(input.trim())
+    if (!match) return null
+    const [, allShorthand, targetWord] = match
+    if (allShorthand && targetWord) return null // "RELOADALL POTA" / "RELOAD! POTA" is ambiguous — don't guess
+
+    const target = allShorthand || targetWord?.toUpperCase() === 'ALL' ? 'ALL' : targetWord?.toUpperCase()
+    if (!target) return null // bare "RELOAD" — not a command
+
+    return {
+      describe: target === 'ALL' ? 'Reload all data files?' : `Reload ${target} data files?`,
+      confirm: target === 'ALL' ? 'Reloading all data files…' : `Reloading ${target} data files…`,
+      commands: [{ reloadDataFiles: { target } }],
+    }
+  },
+}
+
 defineExtension({
   key: 'dev-commands',
   name: 'Developer Commands',
   version: '0.0.1',
-  description: 'Call-field shortcuts for developer tools: DEVMODE, DEVNOTICE, DEVSTATUS, DEVPROGRESS',
+  description: 'Call-field shortcuts for developer tools: DEVMODE, DEVNOTICE, DEVSTATUS, DEVPROGRESS, RELOAD',
   onActivation({ registerHook }) {
     registerHook('command', { key: 'dev-commands-devmode', hook: DevModeCommand, priority: 100 })
     registerHook('command', { key: 'dev-commands-devnotice', hook: DevNoticeCommand, priority: 100 })
     registerHook('command', { key: 'dev-commands-devstatus', hook: DevStatusCommand, priority: 100 })
     registerHook('command', { key: 'dev-commands-devprogress', hook: DevProgressCommand, priority: 100 })
+    registerHook('command', { key: 'dev-commands-reload', hook: ReloadCommand, priority: 100 })
   },
 })

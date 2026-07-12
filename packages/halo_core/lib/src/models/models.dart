@@ -98,4 +98,15 @@ class Qso {
 
   List<Map<String, dynamic>> get refs =>
       ((data['refs'] as List?) ?? const []).whereType<Map<String, dynamic>>().toList();
+
+  /// Start/break/end markers ride the QSO timeline as pseudo-QSOs with
+  /// `band == 'event'`, same convention as web-lofi/app-polo — see
+  /// `event`/`eventKind`. They interleave with real QSOs via `startAtMillis`
+  /// and are excluded from scoring, export, and the operation's QSO count.
+  bool get isEvent => band == 'event';
+
+  Map<String, dynamic>? get event => data['event'] as Map<String, dynamic>?;
+
+  /// The event's kind, e.g. `'start'`, `'break'`, `'end'`. Null for real QSOs.
+  String? get eventKind => event?['event'] as String?;
 }

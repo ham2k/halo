@@ -175,16 +175,38 @@ class HaLoServices {
 
   /// Handles a named command action from the call field — `SYNCALL` (see
   /// `extensions/sync/ham2k-lofi`) and the `dev-commands` extension's
-  /// DEVNOTICE/DEVSTATUS/DEVPROGRESS. Returns a message for the caller to
-  /// show in a SnackBar, or null for nothing — the dev-command cases return
-  /// null since their `confirm` text already shows in the call field, and
-  /// the status bar item itself is the visible result.
+  /// DEVNOTICE/DEVSTATUS/DEVPROGRESS/RELOAD. Returns a message for the
+  /// caller to show in a SnackBar, or null for nothing — the dev-command
+  /// cases return null since their `confirm` text already shows in the
+  /// call field, and the status bar item itself is the visible result.
   Future<String?> handleCommandAction(String action, [Map<String, dynamic>? params]) async {
     switch (action) {
       case 'syncAll':
         if (!settings.syncEnabled) return 'Enable sync in Settings first.';
         await syncEngine.forceFullResync();
         return 'Full resync started — local data was backed up first.';
+      case 'reloadDataFiles':
+        final p = params ?? const {};
+        final target = (p['target'] as String?)?.toUpperCase();
+        if (target == null) return null;
+        // Downloading + reprocessing can take a while (tens of thousands
+        // of CSV rows through the extension bridge) — don't block the
+        // call-field's command flow on it; report completion via the
+        // status bar instead, same as a background sync round.
+        unawaited(dataFiles.syncAllDataFiles(force: true, categoryFilter: target == 'ALL' ? null : target).then((matched) {
+          statusBar.showNotice(
+            key: 'command:reloadDataFiles',
+            text: matched == 0 ? 'No data files matched "$target".' : 'Reloaded $matched data file(s) for $target.',
+          );
+        }).catchError((e) {
+          // Belt-and-suspenders: syncAllDataFiles already isolates each data
+          // file's own errors, but this still needs to fail loud (not just
+          // silently drop the completion notice) for anything unexpected
+          // that slips past that per-entry try/catch.
+          debugPrint('[data-file] reloadDataFiles failed: $e');
+          statusBar.showNotice(key: 'command:reloadDataFiles', text: 'Reload failed: $e');
+        }));
+        return target == 'ALL' ? 'Reloading all data files…' : 'Reloading $target data files…';
       case 'devNotice':
         final p = params ?? const {};
         statusBar.showNotice(

@@ -36,6 +36,7 @@ void main() {
     List<Qso> existing = const [],
     CommandInterpreter? interpretCommand,
     void Function(String? message)? onCommandMessageChanged,
+    CommandActionHandler? onCommandAction,
     VfoStore? radioService,
     Qso? editingQso,
   }) {
@@ -47,6 +48,7 @@ void main() {
           qsos: existing,
           interpretCommand: interpretCommand,
           onCommandMessageChanged: onCommandMessageChanged,
+          onCommandAction: onCommandAction,
           radioService: radioService,
           editingQso: editingQso,
         ),
@@ -311,6 +313,50 @@ void main() {
     expect(logged.single.band, '40m');
     expect(logged.single.freq, isNull);
     expect(logged.single.mode, 'CW');
+  });
+
+  testWidgets('a command action with no local widget effect (e.g. reloadDataFiles) still forwards to onCommandAction', (tester) async {
+    // Regression test: _dispatchActions has an explicit per-action whitelist
+    // (setVfo/updateQso/addQso/updateSettings/syncAll/devNotice/devStatus/
+    // devProgress/reloadDataFiles) — adding a new CommandAction field to the
+    // SDK types without also adding its case here means the command
+    // interprets fine but silently no-ops on execution, exactly what
+    // happened when reloadDataFiles first shipped without this wiring.
+    final dispatched = <MapEntry<String, Map<String, dynamic>?>>[];
+    Future<Map<String, dynamic>?> fakeReloadCommand(
+      String input, [
+      Map<String, dynamic>? operation,
+      Map<String, dynamic>? qso,
+    ]) async {
+      if (input.trim().toUpperCase() != 'RELOADALL') return null;
+      return {
+        'describe': 'Reload all data files?',
+        'confirm': 'Reloading all data files…',
+        'commands': [
+          {
+            'reloadDataFiles': {'target': 'ALL'},
+          },
+        ],
+      };
+    }
+
+    await tester.pumpWidget(host(
+      interpretCommand: fakeReloadCommand,
+      onCommandAction: (action, [params]) async {
+        dispatched.add(MapEntry(action, params));
+      },
+    ));
+
+    await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'RELOADALL');
+    await tester.pump();
+    await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+    await tester.pump(const Duration(milliseconds: 200));
+
+    // MapEntry has no value equality, so compare key/value separately
+    // rather than the list of MapEntry objects directly.
+    expect(dispatched, hasLength(1));
+    expect(dispatched.single.key, 'reloadDataFiles');
+    expect(dispatched.single.value, {'target': 'ALL'});
   });
 
   testWidgets('seeds the Radio control from radioService.vfoA for a new QSO', (tester) async {

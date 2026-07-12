@@ -10,8 +10,11 @@
 // Ref types follow app-polo's QSON convention: 'pota' for hunting,
 // 'potaActivation' for activating.
 
+import { parseCallsign } from "@ham2k/lib-callsigns"
+import { annotateFromCountryFile, useBuiltinCountryFile } from "@ham2k/lib-country-files"
+import { DXCC_BY_CODE } from "@ham2k/lib-dxcc-data"
 import { bandForFrequency } from "@ham2k/lib-operation-data"
-import { locationToGrid6 } from "@ham2k/lib-geo-tools"
+import { locationToGrid6, distanceOnEarth } from "@ham2k/lib-geo-tools"
 import { defineExtension, host } from "@ham2k/polo-sdk"
 import type {
   HookContext,
@@ -19,11 +22,43 @@ import type {
   Ref,
   Spot,
   DataFileDefinition,
+  SuggestArgs,
+  ActivitySuggestion,
+  LookupRow,
 } from "@ham2k/polo-sdk"
 
 const HUNTING_TYPE = 'pota'
 const ACTIVATION_TYPE = 'potaActivation'
 const REFERENCE_REGEX = /^[A-Z0-9]+-(?:[0-9]{4,5}|TEST)$/i
+
+// Loads the bundled BIGCTY data once per runtime activation, so a park's
+// DXCC entity (from its numeric entityId) and a caller's own entity (from
+// their callsign) resolve without needing a network round trip.
+useBuiltinCountryFile()
+
+function entityPrefixForCall(call: string | undefined): string | undefined {
+  if (!call) return undefined
+  return annotateFromCountryFile(parseCallsign(call)).entityPrefix
+}
+
+// Nearby suggestions use a ~150km bounding box (dbLookupSelectByLocation is a
+// rectangular query, not a true radius); results are then given a real
+// Haversine distance and capped, same trade-off app-polo's own POTA
+// suggestions make.
+const NEARBY_DELTA = 1.5
+const MAX_SUGGESTIONS = 30
+
+function relevanceForMatch(row: LookupRow, searchTerm?: string): number {
+  if (!searchTerm) return row.flags ? 1 : 0.6
+  const term = searchTerm.toUpperCase()
+  const key = row.key.toUpperCase()
+  const name = (row.name ?? '').toUpperCase()
+  if (key === term) return 1
+  if (name.startsWith(term)) return 0.9
+  if (key.includes(term)) return 0.85
+  if (name.includes(term)) return 0.7
+  return 0.6
+}
 
 interface POTAParkInfo {
   reference: string
@@ -139,6 +174,43 @@ const ActivityHook = {
       },
     ]
   },
+
+  async suggest({ location, searchTerm, callsign }: SuggestArgs, _ctx: HookContext): Promise<ActivitySuggestion[]> {
+    const rows: LookupRow[] = searchTerm
+      ? await host.dbLookupSelectAll('pota', searchTerm)
+      : location
+        ? await host.dbLookupSelectByLocation('pota', location.lat, location.lon, NEARBY_DELTA)
+        : []
+
+    // A name/code search spans every POTA park worldwide, so narrow it to
+    // the caller's own DXCC entity when we can tell whose callsign this is
+    // — nearby (location-based) results are already geographically scoped
+    // by distance and shouldn't also be entity-restricted (a caller near a
+    // border may well want a nearby park just across it).
+    const callerEntity = searchTerm ? entityPrefixForCall(callsign) : undefined
+    const filteredRows = callerEntity ? rows.filter((row) => row.subCategory === callerEntity) : rows
+
+    return filteredRows.slice(0, MAX_SUGGESTIONS).map((row) => {
+      const data = (row.data ?? {}) as Record<string, any>
+      const distance =
+        location && row.lat != null && row.lon != null
+          ? (distanceOnEarth(location, { lat: row.lat, lon: row.lon }) ?? undefined)
+          : undefined
+
+      return {
+        type: ACTIVATION_TYPE,
+        ref: row.key,
+        name: row.name,
+        grid: data.grid6,
+        location: data.locationDesc,
+        program: 'POTA',
+        label: `POTA ${row.key}: ${row.name ?? ''}`,
+        shortLabel: `POTA ${row.key}`,
+        distance,
+        relevance: relevanceForMatch(row, searchTerm),
+      }
+    })
+  },
 }
 
 function refsOfType(container: Record<string, unknown>, type: string): Ref[] {
@@ -249,9 +321,14 @@ const potaDataFile: DataFileDefinition = {
     const active = r.active === '1'
     const ref = r.reference.toUpperCase()
     const name = r.name
+    const dxccCode = parseInt(r.entityId, 10) || 0
+    // Consistent with SOTA's subCategory (see its own comment): the DXCC
+    // entity prefix, not the raw numeric entityId, so `suggest` can filter
+    // by it the same way regardless of which activity is being searched.
+    const dxccPrefix = DXCC_BY_CODE[dxccCode]?.entityPrefix
 
     return {
-      subCategory: r.entityId,
+      subCategory: dxccPrefix,
       key: ref,
       name,
       lat,
@@ -259,7 +336,8 @@ const potaDataFile: DataFileDefinition = {
       flags: active ? 1 : 0,
       data: {
         reference: ref,
-        dxccCode: parseInt(r.entityId, 10) || 0,
+        dxccCode,
+        dxccPrefix,
         name,
         active,
         grid6: r.grid || locationToGrid6(lat, lon),

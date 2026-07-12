@@ -61,13 +61,15 @@ class DataFileManager {
   }
 
   /// Downloads the file at [url] and returns the HTTP body string or throws.
-  /// Uses ETag cached in [prefs] to avoid duplicate downloads.
-  Future<String?> downloadFile(String key, String url) async {
+  /// Uses ETag cached in [prefs] to avoid duplicate downloads, unless
+  /// [force] skips sending it — a manual reload wants a full reprocess
+  /// even when the server would otherwise report the content unchanged.
+  Future<String?> downloadFile(String key, String url, {bool force = false}) async {
     final resolvedUrl = _resolveFetchUrl(resolveDownloadUrl(url));
     final client = http.Client();
     final request = http.Request('GET', Uri.parse(resolvedUrl));
     final etagKey = 'data_file_etag_$key';
-    final cachedEtag = prefs.getString(etagKey);
+    final cachedEtag = force ? null : prefs.getString(etagKey);
     if (cachedEtag != null) {
       request.headers['If-None-Match'] = cachedEtag;
     }
@@ -93,12 +95,19 @@ class DataFileManager {
     return response.body;
   }
 
-  /// Schedules sync and processing of registered data files.
-  Future<void> syncAllDataFiles({bool force = false}) async {
+  /// Schedules sync and processing of registered data files. With
+  /// [categoryFilter], only data files whose `category` matches
+  /// (case-insensitively) are considered — used by the RELOAD command to
+  /// target a single activity (e.g. "RELOAD POTA"). [force] additionally
+  /// bypasses ETag caching (see [downloadFile]), not just the staleness
+  /// check — RELOAD's whole point is usually that our own mapping logic
+  /// changed, not the source data, so an unchanged server response still
+  /// needs reprocessing. Returns how many data files matched the filter.
+  Future<int> syncAllDataFiles({bool force = false, String? categoryFilter}) async {
     final host = extensions.host;
     if (host == null) {
       debugPrint('[data-file] Extension host not ready');
-      return;
+      return 0;
     }
 
     final List<dynamic> entries;
@@ -106,38 +115,48 @@ class DataFileManager {
       entries = await host.invokeHookAll('dataFile', method: 'getDefinition');
     } catch (e) {
       debugPrint('[data-file] failed to fetch definitions: $e');
-      return;
+      return 0;
     }
 
+    var matched = 0;
     await Future.wait(entries.map((entry) async {
-      if (entry is Map && entry['ok'] == true && entry['value'] != null) {
-        try {
-          final def = Map<String, dynamic>.from(entry['value'] as Map);
-          final key = def['key'] as String;
-          final maxAgeDays = def['maxAgeInDays'] as int? ?? 14;
+      if (entry is! Map || entry['ok'] != true || entry['value'] == null) return;
 
-          final lastUpdateKey = 'data_file_updated_$key';
-          final lastUpdateTime = prefs.getInt(lastUpdateKey) ?? 0;
-          final age = DateTime.now().millisecondsSinceEpoch - lastUpdateTime;
-          final isStale = age > maxAgeDays * 24 * 60 * 60 * 1000;
+      // Everything below — including parsing `entry['value']` itself — is
+      // guarded in one block: a malformed definition from one extension
+      // must not throw out of this closure uncaught, or it takes down
+      // `Future.wait`'s overall result for every other (well-formed) data
+      // file's caller too (e.g. the RELOAD command's completion notice).
+      try {
+        final def = Map<String, dynamic>.from(entry['value'] as Map);
+        final key = def['key'] as String;
+        final category = (def['category'] as String? ?? key).toUpperCase();
+        if (categoryFilter != null && category != categoryFilter) return;
+        matched++;
 
-          if (force || isStale || lastUpdateTime == 0) {
-            await processDataFile(key, def);
-            await prefs.setInt(lastUpdateKey, DateTime.now().millisecondsSinceEpoch);
-          }
-        } catch (e, stack) {
-          debugPrint('[data-file] Error processing data file entry ${entry['value']}: $e\n$stack');
+        final maxAgeDays = def['maxAgeInDays'] as int? ?? 14;
+        final lastUpdateKey = 'data_file_updated_$key';
+        final lastUpdateTime = prefs.getInt(lastUpdateKey) ?? 0;
+        final age = DateTime.now().millisecondsSinceEpoch - lastUpdateTime;
+        final isStale = age > maxAgeDays * 24 * 60 * 60 * 1000;
+
+        if (force || isStale || lastUpdateTime == 0) {
+          await processDataFile(key, def, force: force);
+          await prefs.setInt(lastUpdateKey, DateTime.now().millisecondsSinceEpoch);
         }
+      } catch (e, stack) {
+        debugPrint('[data-file] Error processing data file entry ${entry['value']}: $e\n$stack');
       }
     }));
+    return matched;
   }
 
   /// Natively parses and processes a data file based on its `fetchType`.
-  Future<void> processDataFile(String key, Map<String, dynamic> def) async {
+  Future<void> processDataFile(String key, Map<String, dynamic> def, {bool force = false}) async {
     final url = def['url'] as String;
     final fetchType = def['fetchType'] as String;
 
-    final body = await downloadFile(key, url);
+    final body = await downloadFile(key, url, force: force);
     if (body == null) {
       // Unchanged 304.
       return;

@@ -1063,6 +1063,16 @@ class _LoggingControlsState extends State<LoggingControls> {
         await widget.onCommandAction?.call('devStatus', (map['devStatus'] as Map).cast<String, dynamic>());
       } else if (map['devProgress'] is Map) {
         await widget.onCommandAction?.call('devProgress', (map['devProgress'] as Map).cast<String, dynamic>());
+      } else if (map['reloadDataFiles'] is Map) {
+        await widget.onCommandAction?.call('reloadDataFiles', (map['reloadDataFiles'] as Map).cast<String, dynamic>());
+      } else {
+        // Nothing above recognized this action's key(s) — most likely a new
+        // CommandAction field was added to the SDK (extensions/sdk/src/types.ts)
+        // without a matching branch here, which otherwise fails completely
+        // silently: the command interprets fine and this method just no-ops.
+        // See the regression test for `reloadDataFiles` shipping without this
+        // branch, above.
+        debugPrint('[extensions] no dispatch branch for command action: ${map.keys}');
       }
     }
   }
