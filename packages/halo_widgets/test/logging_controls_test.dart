@@ -232,6 +232,212 @@ void main() {
     }
   });
 
+  testWidgets('a comma-separated call list logs one QSO per call, 5 seconds apart', (tester) async {
+    await tester.pumpWidget(host());
+
+    await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'W1AW, K1ABC,N2XYZ');
+    await tester.pump();
+    await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+
+    final logged = await waitForQsos(tester, 3);
+    expect(logged, hasLength(3));
+    logged.sort((a, b) => a.startAtMillis!.compareTo(b.startAtMillis!));
+    expect(logged.map((q) => q.theirCall).toList(), ['W1AW', 'K1ABC', 'N2XYZ']);
+    expect(logged[1].startAtMillis! - logged[0].startAtMillis!, 5000);
+    expect(logged[2].startAtMillis! - logged[1].startAtMillis!, 5000);
+
+    // Entry is wiped, same as the single-call case.
+    final callField = tester.widget<TextField>(find.widgetWithText(TextField, 'Their call'));
+    expect(callField.controller!.text, isEmpty);
+  });
+
+  testWidgets('a call list with any implausible entry logs nothing', (tester) async {
+    await tester.pumpWidget(host());
+
+    await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'W1AW, QQQ');
+    await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+
+    final logged = await waitForQsos(tester, 1);
+    expect(logged, isEmpty);
+  });
+
+  testWidgets('editing a QSO with a comma-separated call list updates the original and adds new QSOs for the rest', (tester) async {
+    final existingQso = (await tester.runAsync(() => qsos.add(operation.uuid, {
+          'their': {'call': 'W1AW'},
+          'startAtMillis': 1000000,
+          'freq': 7100,
+          'mode': 'SSB',
+        })))!;
+    await tester.pumpWidget(host(editingQso: existingQso));
+
+    await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'W1AW, K1ABC');
+    await tester.pump();
+    await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+
+    final logged = await waitForQsos(tester, 2);
+    expect(logged, hasLength(2));
+    logged.sort((a, b) => a.startAtMillis!.compareTo(b.startAtMillis!));
+    // The original QSO is updated in place, keeping its own recorded time.
+    expect(logged[0].uuid, existingQso.uuid);
+    expect(logged[0].theirCall, 'W1AW');
+    expect(logged[0].startAtMillis, 1000000);
+    // The extra call becomes a new QSO, 5 seconds later.
+    expect(logged[1].uuid, isNot(existingQso.uuid));
+    expect(logged[1].theirCall, 'K1ABC');
+    expect(logged[1].startAtMillis, 1005000);
+  });
+
+  testWidgets('lookup preview follows the cursor segment within a comma-separated call list', (tester) async {
+    final lookups = <String>[];
+    Future<Map<String, dynamic>?> lookup(String call) async {
+      lookups.add(call);
+      if (call != 'W1AW') return null;
+      return {'name': 'ARRL HQ', 'city': 'Newington', 'state': 'CT', 'grid': 'FN31pr'};
+    }
+
+    await tester.pumpWidget(MaterialApp(
+      home: Scaffold(body: LoggingControls(operation: operation, qsosRepository: qsos, lookup: lookup)),
+    ));
+
+    // Cursor ends up at the end (last segment, "W1AW") after enterText.
+    await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'K1ABC, W1AW');
+    await tester.pump(const Duration(milliseconds: 400));
+
+    expect(lookups, contains('W1AW'));
+    expect(lookups, isNot(contains('K1ABC, W1AW')));
+    expect(find.textContaining('ARRL HQ'), findsOneWidget);
+  });
+
+  testWidgets('logging a comma-separated call list fetches a fresh, independent lookup per call rather than duplicating one cached result', (tester) async {
+    Future<Map<String, dynamic>?> lookup(String call) async {
+      if (call == 'W1AW') return {'name': 'ARRL HQ', 'grid': 'FN31pr'};
+      if (call == 'K1ABC') return {'name': 'Someone Else', 'grid': 'FN42aa'};
+      return null;
+    }
+
+    await tester.pumpWidget(MaterialApp(
+      home: Scaffold(body: LoggingControls(operation: operation, qsosRepository: qsos, lookup: lookup)),
+    ));
+
+    await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'W1AW, K1ABC');
+    await tester.pump(const Duration(milliseconds: 400)); // let the on-screen preview lookup settle first
+    await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+
+    final logged = await waitForQsos(tester, 2);
+    final w1aw = logged.firstWhere((q) => q.theirCall == 'W1AW');
+    final k1abc = logged.firstWhere((q) => q.theirCall == 'K1ABC');
+    expect(w1aw.theirName, 'ARRL HQ');
+    expect(w1aw.theirGrid, 'FN31pr');
+    expect(k1abc.theirName, 'Someone Else');
+    expect(k1abc.theirGrid, 'FN42aa');
+  });
+
+  testWidgets('editing a QSO into a comma-separated list: the original record survives untouched; only the newly added call gets a fresh lookup', (tester) async {
+    final existingQso = (await tester.runAsync(() => qsos.add(operation.uuid, {
+          'their': {'call': 'W1AW', 'name': 'Stale Cached Name', 'grid': 'FN31pr'},
+          'startAtMillis': 1000000,
+        })))!;
+
+    Future<Map<String, dynamic>?> lookup(String call) async {
+      if (call == 'W1AW') return {'name': 'ARRL HQ Fresh', 'grid': 'FN99xx'};
+      if (call == 'K1ABC') return {'name': 'Someone Else', 'grid': 'FN42aa'};
+      return null;
+    }
+
+    await tester.pumpWidget(MaterialApp(
+      home: Scaffold(
+        body: LoggingControls(operation: operation, qsosRepository: qsos, editingQso: existingQso, lookup: lookup),
+      ),
+    ));
+
+    await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'W1AW, K1ABC');
+    await tester.pump();
+    await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+
+    final logged = await waitForQsos(tester, 2);
+    final w1aw = logged.firstWhere((q) => q.theirCall == 'W1AW');
+    final k1abc = logged.firstWhere((q) => q.theirCall == 'K1ABC');
+    // The record being edited is untouched — no fresh lookup, its own
+    // already-stored data survives exactly as before.
+    expect(w1aw.theirName, 'Stale Cached Name');
+    expect(w1aw.theirGrid, 'FN31pr');
+    // The newly added call gets its own independent, fresh lookup.
+    expect(k1abc.theirName, 'Someone Else');
+    expect(k1abc.theirGrid, 'FN42aa');
+  });
+
+  testWidgets('a manually entered name override does not duplicate onto a newly added call, but a grid override does', (tester) async {
+    final existingQso = (await tester.runAsync(() => qsos.add(operation.uuid, {
+          'their': {'call': 'W1AW'},
+        })))!;
+
+    await tester.pumpWidget(MaterialApp(
+      home: Scaffold(
+        body: LoggingControls(
+          operation: operation,
+          qsosRepository: qsos,
+          editingQso: existingQso,
+          theirNameLabel: 'Name',
+          theirGridLabel: 'Grid',
+          saveLabel: 'Save',
+        ),
+      ),
+    ));
+
+    // Drive the "More" dialog to set an explicit name+grid override. The
+    // icon sits inside a horizontally-scrolling chip row — same harmless
+    // "off the hit-test center" artifact as the DropdownMenu taps elsewhere
+    // in this file.
+    await tester.tap(find.byIcon(resolveIconName('pencil')), warnIfMissed: false);
+    await tester.pumpAndSettle();
+    await tester.enterText(find.widgetWithText(TextField, 'Name'), 'Corrected Name');
+    await tester.enterText(find.widgetWithText(TextField, 'Grid'), 'FN99zz');
+    await tester.tap(find.widgetWithText(FilledButton, 'Save'));
+    await tester.pumpAndSettle();
+
+    // Extend the call field into a list — K1ABC is a newly added call.
+    await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'W1AW, K1ABC');
+    await tester.pump();
+    await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+
+    final logged = await waitForQsos(tester, 2);
+    final w1aw = logged.firstWhere((q) => q.theirCall == 'W1AW');
+    final k1abc = logged.firstWhere((q) => q.theirCall == 'K1ABC');
+    // The record being edited keeps both — same as before this feature.
+    expect(w1aw.theirName, 'Corrected Name');
+    expect(w1aw.theirGrid, 'FN99zz');
+    // The newly added call inherits the grid override, but not the name.
+    expect(k1abc.theirGrid, 'FN99zz');
+    expect(k1abc.theirName, isNot('Corrected Name'));
+  });
+
+  testWidgets('onCallListLogged fires once after a comma-separated list logs, never for a single call', (tester) async {
+    var callListLoggedCount = 0;
+    await tester.pumpWidget(MaterialApp(
+      home: Scaffold(
+        body: LoggingControls(
+          operation: operation,
+          qsosRepository: qsos,
+          onCallListLogged: () => callListLoggedCount++,
+        ),
+      ),
+    ));
+
+    // Single call — must NOT fire.
+    await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'W1AW');
+    await tester.pump();
+    await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+    await waitForQsos(tester, 1);
+    expect(callListLoggedCount, 0);
+
+    // Comma-separated list — fires exactly once for the whole batch.
+    await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'K1ABC, N2XYZ');
+    await tester.pump();
+    await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+    await waitForQsos(tester, 3);
+    expect(callListLoggedCount, 1);
+  });
+
   testWidgets('Escape wipes the entry', (tester) async {
     await tester.pumpWidget(host());
 
@@ -741,6 +947,30 @@ void main() {
     await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'W1AW');
     await tester.pump();
 
+    expect(find.text('DUPE'), findsOneWidget);
+  });
+
+  testWidgets('DUPE chip reflects only the call segment under the cursor within a comma-separated list', (tester) async {
+    final dupe = (await tester.runAsync(() => qsos.add(operation.uuid, {
+          'their': {'call': 'W1AW'},
+          'band': '20m',
+          'mode': 'SSB',
+        })))!;
+    await tester.pumpWidget(host(existing: [dupe]));
+    await openControl(tester, MdiIcons.radio);
+    await tester.enterText(find.widgetWithText(TextField, 'Frequency'), '14285');
+
+    await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'K1ABC, W1AW');
+    final callField = tester.widget<TextField>(find.widgetWithText(TextField, 'Their call'));
+
+    // Cursor in the first segment ("K1AB|C") — not a dupe.
+    callField.controller!.selection = const TextSelection.collapsed(offset: 4);
+    await tester.pump();
+    expect(find.text('DUPE'), findsNothing);
+
+    // Cursor at the end, in the "W1AW" segment — the actual dupe.
+    callField.controller!.selection = TextSelection.collapsed(offset: callField.controller!.text.length);
+    await tester.pump();
     expect(find.text('DUPE'), findsOneWidget);
   });
 

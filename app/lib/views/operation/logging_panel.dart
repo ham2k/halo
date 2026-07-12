@@ -122,6 +122,9 @@ class _LoggingPanelState extends State<LoggingPanel> {
           editingQso: _selectedQso,
           onEditCanceled: () => setState(() => _selectedQso = null),
           onLogged: (_) => setState(() => _selectedQso = null),
+          // A comma-separated call list (issue #7) logs several QSOs at
+          // once — one rescore for the whole batch, not one per call.
+          onCallListLogged: () => widget.services.scoring.rescoreOperation(widget.operation),
           controlOrder: _controlOrder,
           hiddenControlKeys: _hiddenControls,
           onControlsSettingsChanged: _handleControlsSettingsChanged,

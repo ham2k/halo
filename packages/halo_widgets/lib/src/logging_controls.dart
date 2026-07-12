@@ -96,6 +96,13 @@ class LoggingControls extends StatefulWidget {
   final List<Qso> qsos;
   final void Function(Qso qso)? onLogged;
 
+  /// Fires once after a comma-separated call list (issue #7) finishes
+  /// saving all its QSOs — never for an ordinary single-call log, which
+  /// already gets its (cheap, cached) dupe/lookup handling inline. Intended
+  /// for the caller to trigger a single rescoring pass for the whole batch,
+  /// rather than scoring each call as it's added.
+  final VoidCallback? onCallListLogged;
+
   /// Optional lookup enrichment; fired debounced, off the keystroke path.
   final CallLookup? lookup;
 
@@ -193,6 +200,7 @@ class LoggingControls extends StatefulWidget {
     required this.qsosRepository,
     this.qsos = const [],
     this.onLogged,
+    this.onCallListLogged,
     this.lookup,
     this.activityControls = const [],
     this.decorateRef,
@@ -558,9 +566,41 @@ class _LoggingControlsState extends State<LoggingControls> {
   /// is safe to use in place of `_call` for that one purpose.
   String get _commandInput => _callController.text.trim();
 
+  /// Comma-separated calls typed into the call field — "W1AW, K1ABC" logs
+  /// one QSO per call (issue #7) rather than one QSO whose call is the
+  /// literal joined string. A single call with no comma is just a one-item
+  /// list, so this also covers the common case.
+  List<String> get _callList => _call.split(',').map((s) => s.trim()).where((s) => s.isNotEmpty).toList();
+
+  /// The single call segment the cursor sits in, for a comma-separated list
+  /// — neither the on-screen lookup preview nor the dupe check make sense
+  /// against the whole joined field text, so both key off whichever call
+  /// the user is actually looking at/editing right now. A single call with
+  /// no comma is trivially "at the cursor" everywhere, so this is just
+  /// `_call` in that (common) case.
+  String get _callAtCursor {
+    final text = _callController.text;
+    if (!text.contains(',')) return _call;
+    final segments = text.split(',');
+    final cursor = _callController.selection.baseOffset;
+    var index = segments.length - 1;
+    if (cursor >= 0) {
+      var offset = 0;
+      for (var i = 0; i < segments.length; i++) {
+        offset += segments[i].length;
+        if (cursor <= offset) {
+          index = i;
+          break;
+        }
+        offset += 1; // the "," separator
+      }
+    }
+    return segments[index].trim().toUpperCase();
+  }
+
   double? get _freq => parseFreq(_freqController.text);
   String? get _band => _freq != null ? bandForFrequency(_freq!) : _manualBand;
-  bool get _canLog => looksLikeCallsign(_call);
+  bool get _canLog => _callList.isNotEmpty && _callList.every(looksLikeCallsign);
 
   // Excludes the QSO currently being edited — otherwise, since its call/
   // mode/band are exactly what populated the fields in the first place,
@@ -569,7 +609,7 @@ class _LoggingControlsState extends State<LoggingControls> {
   bool get _isDupe => widget.qsos.any(
     (qso) =>
         qso.uuid != widget.editingQso?.uuid &&
-        qso.theirCall == _call &&
+        qso.theirCall == _callAtCursor &&
         qso.mode == _mode &&
         (qso.band ?? '') == (_band ?? ''),
   );
@@ -1433,8 +1473,12 @@ class _LoggingControlsState extends State<LoggingControls> {
     }
 
     if (widget.lookup == null) return;
-    if (_lookupFor == call) return;
-    if (!looksLikeCallsign(call)) {
+    // Preview lookup keys off whichever call the cursor is on within a
+    // comma-separated list (issue #7) — the whole joined field text is
+    // never itself a callsign once there's more than one.
+    final activeCall = _callAtCursor;
+    if (_lookupFor == activeCall) return;
+    if (!looksLikeCallsign(activeCall)) {
       setState(() {
         _lookupFor = null;
         _lookupResult = null;
@@ -1443,10 +1487,10 @@ class _LoggingControlsState extends State<LoggingControls> {
     }
 
     _lookupDebounce = Timer(const Duration(milliseconds: 300), () async {
-      final result = await widget.lookup!(call);
-      if (!mounted || _call != call) return; // stale — the call changed
+      final result = await widget.lookup!(activeCall);
+      if (!mounted || _callAtCursor != activeCall) return; // stale — the active call changed
       setState(() {
-        _lookupFor = call;
+        _lookupFor = activeCall;
         _lookupResult = result;
       });
     });
@@ -1454,7 +1498,7 @@ class _LoggingControlsState extends State<LoggingControls> {
 
   String? get _lookupLine {
     final result = _lookupResult;
-    if (result == null || _lookupFor != _call) return null;
+    if (result == null || _lookupFor != _callAtCursor) return null;
     final location = [
       result['city'],
       result['state'],
@@ -1711,14 +1755,62 @@ class _LoggingControlsState extends State<LoggingControls> {
     }
     _isLogging = true;
     try {
+      // A comma-separated call list logs one QSO per call, all sharing the
+      // same other attributes, with each successive one's time 5 seconds
+      // after the last (issue #7) — a single call is just a one-item list,
+      // so `baseData`'s own startAtMillis/editingQso.startAtMillis is
+      // preserved exactly for that common case.
+      final calls = _callList;
+      final isList = calls.length > 1;
+      final baseData = _getCurrentQsoData();
+      final baseStartAtMillis =
+          (baseData['startAtMillis'] as int?) ?? DateTime.now().toUtc().millisecondsSinceEpoch;
+
+      // The record being edited (index 0, when editing) survives untouched
+      // even once more calls are added to its list — same as an ordinary
+      // single-call edit, no fresh lookup, nothing suppressed. Every other,
+      // newly-added entry in a multi-call list gets its own fresh,
+      // independent lookup instead of inheriting whatever single
+      // guessed/looked-up name/grid was cached for a different call. A
+      // manually entered grid override is more often a station-wide
+      // correction, so it's fine for that to still apply to every new
+      // entry — but a manually entered name is specific to whoever the
+      // override was actually typed for, so it isn't duplicated onto a
+      // different, newly-added call.
+      Future<Map<String, dynamic>> dataFor(String call, int index) async {
+        final keepOriginal = !isList || (editingQso != null && index == 0);
+        final freshLookup = !keepOriginal && widget.lookup != null ? await widget.lookup!(call) : null;
+        return {
+          ...baseData,
+          'their': {
+            if (keepOriginal) ...?(baseData['their'] as Map<String, dynamic>?),
+            ...?freshLookup,
+            'call': call,
+            'sent': _rcvdController.text.trim(),
+            if (keepOriginal && _theirNameOverride != null) 'name': _theirNameOverride,
+            if (_theirGridOverride != null) 'grid': _theirGridOverride,
+          },
+          'startAtMillis': baseStartAtMillis + index * 5000,
+        };
+      }
+
       if (editingQso != null) {
         await widget.qsosRepository.update(
           Qso(
             uuid: editingQso.uuid,
             operationUuid: widget.operation.uuid,
-            data: _getCurrentQsoData(),
+            data: await dataFor(calls.first, 0),
           ),
         );
+        for (var i = 1; i < calls.length; i++) {
+          // The base data carries the edited QSO's own uuid (baseData came
+          // from its record) — strip it so add() generates a fresh one for
+          // this new QSO instead of colliding with the original.
+          final data = await dataFor(calls[i], i)
+            ..remove('uuid');
+          final qso = await widget.qsosRepository.add(widget.operation.uuid, data);
+          widget.onLogged?.call(qso);
+        }
         widget.onEditCanceled?.call();
       } else {
         // Flush any pending debounced frequency push first, so a value
@@ -1729,10 +1821,17 @@ class _LoggingControlsState extends State<LoggingControls> {
           _vfoDebounce = null;
           _pushVfoToRadioService();
         }
-        final qso = await widget.qsosRepository.add(widget.operation.uuid, _getCurrentQsoData());
-        widget.onLogged?.call(qso);
+        for (var i = 0; i < calls.length; i++) {
+          final qso = await widget.qsosRepository.add(widget.operation.uuid, await dataFor(calls[i], i));
+          widget.onLogged?.call(qso);
+        }
         _wipe();
       }
+
+      // A single rescoring pass after the whole batch, not a dupe/score
+      // check per call — the on-screen dupe hint already only ever reflects
+      // the cursor's own call (_isDupe/_callAtCursor above).
+      if (isList) widget.onCallListLogged?.call();
     } finally {
       _isLogging = false;
     }
