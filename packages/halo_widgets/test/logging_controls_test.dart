@@ -386,6 +386,97 @@ void main() {
     expect(logged.single.mode, 'CW');
   });
 
+  testWidgets('call-field command awaiting params (expectsParams) allows space and lowercase, and Enter does not execute it', (tester) async {
+    Future<Map<String, dynamic>?> fakeReloadPrefix(
+      String input, [
+      Map<String, dynamic>? operation,
+      Map<String, dynamic>? qso,
+    ]) async {
+      if (input.trim().toUpperCase() == 'RELOAD') return {'expectsParams': true};
+      return null;
+    }
+
+    await tester.pumpWidget(host(interpretCommand: fakeReloadPrefix));
+    TextField field(String label) => tester.widget<TextField>(find.widgetWithText(TextField, label));
+
+    await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'RELOAD');
+    await tester.pump(const Duration(milliseconds: 200)); // let the debounced interpret() resolve
+
+    // Space is now a literal character, not the advance-focus shortcut.
+    await tester.sendKeyEvent(LogicalKeyboardKey.space);
+    await tester.pump();
+    expect(field('Their call').controller!.text, 'RELOAD ');
+    expect(field('Their call').focusNode!.hasFocus, isTrue);
+
+    // Lowercase text is preserved — no forced uppercasing while expectsParams.
+    await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'RELOAD pota');
+    await tester.pump();
+    expect(field('Their call').controller!.text, 'RELOAD pota');
+
+    // Enter doesn't execute or clear an incomplete command.
+    await tester.pump(const Duration(milliseconds: 200));
+    await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+    await tester.pump(const Duration(milliseconds: 200));
+    expect(field('Their call').controller!.text, 'RELOAD pota');
+  });
+
+  testWidgets('call-field command awaiting params: space typed immediately (before the debounce resolves) is still recognized, not lost', (tester) async {
+    // Regression test: _handleSpace must not trust a stale, debounce-lagged
+    // _commandExpectsParams — it re-checks (or reuses an already-resolved)
+    // interpretation synchronously before deciding, so a space typed right
+    // after "RELOAD" in one fluent motion (no pause for the 150ms debounce)
+    // still inserts a literal space instead of silently advancing focus.
+    Future<Map<String, dynamic>?> fakeReloadPrefix(
+      String input, [
+      Map<String, dynamic>? operation,
+      Map<String, dynamic>? qso,
+    ]) async {
+      if (input.trim().toUpperCase() == 'RELOAD') return {'expectsParams': true};
+      return null;
+    }
+
+    await tester.pumpWidget(host(interpretCommand: fakeReloadPrefix));
+    TextField field(String label) => tester.widget<TextField>(find.widgetWithText(TextField, label));
+
+    await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'RELOAD');
+    // No pump/wait here — space arrives before the 150ms debounce could
+    // possibly have resolved.
+    await tester.sendKeyEvent(LogicalKeyboardKey.space);
+    await tester.pump();
+
+    expect(field('Their call').controller!.text, 'RELOAD ');
+    expect(field('Their call').focusNode!.hasFocus, isTrue);
+  });
+
+  testWidgets('call-field command parameters reach interpretCommand with their original case, not uppercased', (tester) async {
+    // Regression test: the call field's own _call getter uppercases
+    // everything (callsigns are case-insensitive), but that same value must
+    // not leak into the argument passed to interpretCommand once a command
+    // is capturing free text (e.g. NOTE's message) — otherwise lowercase
+    // typed by the user is silently destroyed before the extension ever
+    // sees it.
+    final seenInputs = <String>[];
+    Future<Map<String, dynamic>?> fakeNotePrefix(
+      String input, [
+      Map<String, dynamic>? operation,
+      Map<String, dynamic>? qso,
+    ]) async {
+      seenInputs.add(input);
+      if (input.trim().toUpperCase() == 'NOTE') return {'expectsParams': true};
+      return null;
+    }
+
+    await tester.pumpWidget(host(interpretCommand: fakeNotePrefix));
+
+    await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'NOTE');
+    await tester.pump(const Duration(milliseconds: 200));
+
+    await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'NOTE Called Bob, good signal');
+    await tester.pump(const Duration(milliseconds: 200));
+
+    expect(seenInputs, contains('NOTE Called Bob, good signal'));
+  });
+
   testWidgets('a command action with no local widget effect (e.g. reloadDataFiles) still forwards to onCommandAction', (tester) async {
     // Regression test: _dispatchActions has an explicit per-action whitelist
     // (setVfo/updateQso/addQso/updateSettings/syncAll/devNotice/devStatus/

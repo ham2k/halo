@@ -5,7 +5,8 @@
 // extension) and the DataFileManager.syncAllDataFiles categoryFilter it
 // drives: "RELOAD POTA"/"RELOAD SOTA" target one activity, "RELOAD ALL",
 // "RELOADALL", or "RELOAD!" targets every data file, and a bare "RELOAD"
-// isn't a command at all — it must fall through to ordinary typed input.
+// expects params (recognized prefix, not executable yet) rather than being
+// either a no-op or immediately runnable.
 
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -86,8 +87,9 @@ void main() {
       }
     });
 
-    test('a bare "RELOAD" is not a command — it must fall through', () async {
-      expect(await interpret('RELOAD'), isNull);
+    test('a bare "RELOAD" expects params — it is recognized but not executable yet', () async {
+      final result = await interpret('RELOAD');
+      expect(result, {'expectsParams': true});
     });
 
     test('"RELOAD! POTA" and "RELOADALL POTA" are ambiguous and are not commands', () async {

@@ -101,9 +101,9 @@ const DevProgressCommand = {
 
 // "RELOAD POTA" / "RELOAD SOTA" -> reload data files whose category matches
 // that word; "RELOAD ALL", "RELOADALL", or bare "RELOAD!" -> reload every
-// data file. Requires an explicit target so a bare "RELOAD" (no target, no
-// ALL/!) falls through as ordinary typed input instead of being swallowed
-// as a command.
+// data file. Bare "RELOAD" (no target, no ALL/!) isn't executable by itself,
+// but it is a recognized prefix — expectsParams lets the call field switch
+// into free-text mode so the target word can be typed with a real space.
 const RELOAD_MATCH = /^RELOAD(ALL|!)?(?:\s+(\S+))?$/i
 
 const ReloadCommand = {
@@ -112,9 +112,9 @@ const ReloadCommand = {
     if (!match) return null
     const [, allShorthand, targetWord] = match
     if (allShorthand && targetWord) return null // "RELOADALL POTA" / "RELOAD! POTA" is ambiguous — don't guess
+    if (!allShorthand && !targetWord) return { expectsParams: true } // bare "RELOAD" — recognized, not complete yet
 
     const target = allShorthand || targetWord?.toUpperCase() === 'ALL' ? 'ALL' : targetWord?.toUpperCase()
-    if (!target) return null // bare "RELOAD" — not a command
 
     return {
       describe: target === 'ALL' ? 'Reload all data files?' : `Reload ${target} data files?`,

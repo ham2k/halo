@@ -279,6 +279,15 @@ class _LoggingControlsState extends State<LoggingControls> {
 
   Map<String, dynamic>? _currentInterpretation;
   Timer? _commandDescribeDebounce;
+  // Deliberately NOT derived from _currentInterpretation, even though it's
+  // only ever set from `_currentInterpretation['expectsParams']`: the latter
+  // resets synchronously on every keystroke (_onCallChanged, for the
+  // describe-message UI), but the call field's formatters/capitalization
+  // must NOT flicker back to uppercase-only on every keystroke while the
+  // user is still typing a command's parameters — so this field persists
+  // across keystrokes until the next debounced interpret() result actually
+  // changes it, instead of resetting in lockstep with _currentInterpretation.
+  bool _commandExpectsParams = false;
   Timer? _executeMessageTimer;
   String? _commandMessage;
   final Map<String, dynamic> _currentQsoExtra = {};
@@ -513,6 +522,7 @@ class _LoggingControlsState extends State<LoggingControls> {
     setState(() {
       _commandMessage = null;
       _currentInterpretation = null;
+      _commandExpectsParams = false;
     });
     _populating = false;
   }
@@ -540,6 +550,14 @@ class _LoggingControlsState extends State<LoggingControls> {
   }
 
   String get _call => _callController.text.trim().toUpperCase();
+
+  /// Trimmed call-field text WITHOUT forcing uppercase — used only for
+  /// command interpretation, so free-text parameters (e.g. NOTE's captured
+  /// text) keep the case the user actually typed. Command prefixes
+  /// themselves are matched case-insensitively by every extension, so this
+  /// is safe to use in place of `_call` for that one purpose.
+  String get _commandInput => _callController.text.trim();
+
   double? get _freq => parseFreq(_freqController.text);
   String? get _band => _freq != null ? bandForFrequency(_freq!) : _manualBand;
   bool get _canLog => looksLikeCallsign(_call);
@@ -991,15 +1009,68 @@ class _LoggingControlsState extends State<LoggingControls> {
   Future<void> _handleSpace() async {
     if (_callFocus.hasFocus) {
       final call = _call;
-      if (call.isNotEmpty) {
-        _sentFocus.requestFocus();
+      if (call.isEmpty) return;
+
+      // While a recognized command prefix is waiting on its parameters (e.g.
+      // "RELOAD"), space is a literal character to type, not the
+      // advance-focus shortcut — see the `expectsParams` field on
+      // CommandInterpretation. Ask the same question _log() asks on Enter,
+      // synchronously (awaited) rather than trusting whatever the debounced
+      // describe-preview last resolved to: that state can lag up to 150ms
+      // behind the latest keystroke, so typing "RELOAD" and hitting space in
+      // one fluent motion could otherwise still see the pre-keystroke
+      // (stale, not-yet-a-command) interpretation and silently swallow the
+      // space by advancing focus instead of inserting it. Reuses
+      // _currentInterpretation when the debounce already resolved for this
+      // exact text, so this only adds a round trip when genuinely needed.
+      if (widget.editingQso == null && widget.interpretCommand != null) {
+        var result = _currentInterpretation;
+        if (result == null) {
+          _commandDescribeDebounce?.cancel();
+          final qsoData = _getCurrentQsoData();
+          result = await widget.interpretCommand!(_commandInput, widget.operation.data, qsoData);
+          if (!mounted || _call != call) return; // stale — the call changed while awaiting
+          setState(() {
+            _currentInterpretation = result;
+            _commandExpectsParams = result != null && result['expectsParams'] == true;
+            _commandMessage = (result != null && result['describe'] is String) ? result['describe'] as String : null;
+          });
+          widget.onCommandMessageChanged?.call(_commandMessage);
+        }
+        if (result != null && result['expectsParams'] == true) {
+          _insertAtCursor(_callController, ' ');
+          return;
+        }
       }
+
+      _sentFocus.requestFocus();
     } else if (_sentFocus.hasFocus) {
       _rcvdFocus.requestFocus();
     } else if (_rcvdFocus.hasFocus || _freqFocus.hasFocus) {
       _callFocus.requestFocus();
     }
     // Space in other fields (e.g. activity ref inputs) is deliberately inert.
+  }
+
+  /// Synthesizes typing [text] at the cursor — used for the literal space in
+  /// _handleSpace's expectsParams branch, since that space is consumed by a
+  /// CallbackShortcuts binding and never reaches the field as an ordinary
+  /// keystroke. `composing` is deliberately reset to empty: this only runs
+  /// while ASCII command text (a space) is being inserted, so there's no
+  /// in-progress IME composition of our own to preserve, but explicitly
+  /// clearing it (rather than leaving whatever the platform last reported)
+  /// avoids carrying over a stale composing range from unrelated typing.
+  void _insertAtCursor(TextEditingController controller, String text) {
+    final value = controller.value;
+    final selection = value.selection;
+    final start = selection.start < 0 ? value.text.length : selection.start;
+    final end = selection.end < 0 ? value.text.length : selection.end;
+    final newText = value.text.replaceRange(start, end, text);
+    controller.value = value.copyWith(
+      text: newText,
+      selection: TextSelection.collapsed(offset: start + text.length),
+      composing: TextRange.empty,
+    );
   }
 
   Future<void> _dispatchActions(List<dynamic> actions) async {
@@ -1327,10 +1398,11 @@ class _LoggingControlsState extends State<LoggingControls> {
 
     final call = _call;
     if (call.isEmpty) {
-      if (_lookupFor != null) {
+      if (_lookupFor != null || _commandExpectsParams) {
         setState(() {
           _lookupFor = null;
           _lookupResult = null;
+          _commandExpectsParams = false;
         });
       }
       return;
@@ -1338,16 +1410,18 @@ class _LoggingControlsState extends State<LoggingControls> {
 
     // Command shortcuts only apply while composing a new QSO — see _log().
     if (widget.editingQso == null && widget.interpretCommand != null) {
+      final rawInput = _commandInput;
       _commandDescribeDebounce = Timer(const Duration(milliseconds: 150), () async {
         final qsoData = _getCurrentQsoData();
         final result = await widget.interpretCommand!(
-          call,
+          rawInput,
           widget.operation.data,
           qsoData,
         );
         if (!mounted || _call != call) return;
         setState(() {
           _currentInterpretation = result;
+          _commandExpectsParams = result != null && result['expectsParams'] == true;
           if (result != null && result['describe'] is String) {
             _commandMessage = result['describe'] as String;
           } else {
@@ -1412,6 +1486,7 @@ class _LoggingControlsState extends State<LoggingControls> {
     setState(() {
       _commandMessage = null;
       _currentInterpretation = null;
+      _commandExpectsParams = false;
       _updateClockTicker();
     });
     widget.onCommandMessageChanged?.call(null);
@@ -1571,12 +1646,16 @@ class _LoggingControlsState extends State<LoggingControls> {
       _commandDescribeDebounce?.cancel();
       final qsoData = _getCurrentQsoData();
       final interpretation = _currentInterpretation ?? await widget.interpretCommand!(
-        call,
+        _commandInput,
         widget.operation.data,
         qsoData,
       );
       if (!mounted) return;
-      if (interpretation != null) {
+      // A command still awaiting parameters (expectsParams) isn't complete
+      // — Enter shouldn't execute or clear the field, just fall through to
+      // ordinary logging (which _canLog below will normally reject, since
+      // it isn't a callsign either).
+      if (interpretation != null && interpretation['expectsParams'] != true) {
         _isLogging = true;
         try {
           _callController.clear();
@@ -1851,16 +1930,25 @@ class _LoggingControlsState extends State<LoggingControls> {
                               focusNode: _callFocus,
                               enabled: !_pendingDelete,
                               autofocus: true,
-                              autocorrect: false,
-                              enableSuggestions: false,
-                              textCapitalization: TextCapitalization.characters,
-                              inputFormatters: [
-                                FilteringTextInputFormatter.allow(
-                                  RegExp(r'[a-zA-Z0-9/.,]'),
-                                ),
-                                if (isMobilePlatform) MobileDotToSlashFormatter(),
-                                _UpperCaseFormatter(),
-                              ],
+                              autocorrect: _commandExpectsParams,
+                              enableSuggestions: _commandExpectsParams,
+                              // A command awaiting parameters (expectsParams)
+                              // switches the field to normal free-text entry
+                              // — spaces and lowercase allowed, platform's
+                              // usual sentence capitalization — instead of
+                              // the uppercase-only callsign restriction.
+                              textCapitalization: _commandExpectsParams
+                                  ? TextCapitalization.sentences
+                                  : TextCapitalization.characters,
+                              inputFormatters: _commandExpectsParams
+                                  ? null
+                                  : [
+                                      FilteringTextInputFormatter.allow(
+                                        RegExp(r'[a-zA-Z0-9/.,]'),
+                                      ),
+                                      if (isMobilePlatform) MobileDotToSlashFormatter(),
+                                      _UpperCaseFormatter(),
+                                    ],
                               style: _primaryFieldStyle(context, fontWeight: FontWeight.w500),
                               decoration: _primaryFieldDecoration(context, widget.theirCallLabel ?? 'Their call'),
                               onSubmitted: (_) => _log(),

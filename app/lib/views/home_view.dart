@@ -412,7 +412,10 @@ class _HomeQuickLookupState extends State<HomeQuickLookup> {
     final interpretation = _currentInterpretation ?? await widget.services.extensions.interpretCommand(text);
     if (!mounted) return;
 
-    if (interpretation != null) {
+    // A command still awaiting parameters (expectsParams) isn't complete —
+    // leave the field as-is so the user can keep typing, rather than
+    // treating it as executable (mirrors logging_controls.dart's _log()).
+    if (interpretation != null && interpretation['expectsParams'] != true) {
       _controller.clear();
       _commandDescribeDebounce?.cancel();
       _executeMessageTimer?.cancel();
@@ -441,7 +444,7 @@ class _HomeQuickLookupState extends State<HomeQuickLookup> {
       if (commands is List) {
         await _dispatchActions(commands);
       }
-    } else {
+    } else if (interpretation == null) {
       // Just clear search
       _controller.clear();
       setState(() {

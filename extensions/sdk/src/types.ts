@@ -257,9 +257,16 @@ export interface CommandAction {
 }
 
 export interface CommandInterpretation {
-  describe: string
-  confirm: string
-  commands: CommandAction[]
+  /// Set when `input` is a recognized command prefix that isn't complete yet
+  /// (e.g. "RELOAD" before its target word) — `describe`/`confirm`/`commands`
+  /// are omitted. Signals the call field to switch into free-text mode
+  /// (spaces and platform-normal capitalization allowed) so the user can keep
+  /// typing parameters; it is never executed even if Enter is pressed while
+  /// still set.
+  expectsParams?: boolean
+  describe?: string
+  confirm?: string
+  commands?: CommandAction[]
 }
 
 /// Registered under category `command`. `interpret` does its own matching

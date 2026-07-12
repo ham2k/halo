@@ -176,8 +176,19 @@ exercising that UI without a real extension driving it; RELOAD forces a
 "RELOAD SOTA" target one activity's data file(s) by category, "RELOAD ALL",
 "RELOADALL", or bare "RELOAD!" target every data file, and it bypasses ETag caching
 since a manual reload is usually about our own `csvToLookupEntry` mapping
-changing, not the source data). Future command hooks (spotting, operator
-change…) register in the same category and compete on priority with these.
+changing, not the source data) and `note-command` (NOTE <text> sets the
+in-progress QSO's notes field via `updateQso`). Future command hooks
+(spotting, operator change…) register in the same category and compete on
+priority with these.
+
+A command that recognizes its own prefix but needs more typed input before
+it can run (e.g. bare "RELOAD", before its target word) returns
+`{ expectsParams: true }` instead of `null` or a full result. That switches
+the call field to normal free-text entry — spaces and lowercase allowed,
+platform-normal capitalization — instead of the uppercase-only callsign
+restriction, and space no longer advances focus to the next field while it's
+set; the interpretation is never executed even if Enter is pressed while it
+still just says `expectsParams`.
 
 ## ✅ `scoring` — per-operation score batches
 
