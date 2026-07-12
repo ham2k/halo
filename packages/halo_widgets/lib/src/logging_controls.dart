@@ -9,7 +9,7 @@
 //           mode — "14285 ", "20m ", "cw ") or advances to Sent;
 //           in Sent/Rcvd: advances focus, cycling back to the call
 //   focus   always returns to the callsign field after log/wipe;
-//           Sent/Rcvd select-all on focus so typing replaces
+//           Sent/Rcvd/Frequency/Time place the cursor at the end on focus
 //
 // Frequency/band/mode and the QSO timestamp live behind the secondary
 // control row (see secondary_control_row.dart) rather than as
@@ -362,7 +362,9 @@ class _LoggingControlsState extends State<LoggingControls> {
     // from "delete" to "revert changes".
     _sentController.addListener(_onSentOrRcvdChanged);
     _rcvdController.addListener(_onSentOrRcvdChanged);
-    // Exchange fields select-all on focus, so typing replaces the default.
+    // Exchange fields place the cursor at the end on focus, rather than
+    // selecting the existing text — switching fields shouldn't put you one
+    // keystroke away from wiping out a default value you didn't mean to touch.
     for (final (focus, controller) in [
       (_sentFocus, _sentController),
       (_rcvdFocus, _rcvdController),
@@ -371,10 +373,7 @@ class _LoggingControlsState extends State<LoggingControls> {
     ]) {
       focus.addListener(() {
         if (focus.hasFocus) {
-          controller.selection = TextSelection(
-            baseOffset: 0,
-            extentOffset: controller.text.length,
-          );
+          controller.selection = TextSelection.collapsed(offset: controller.text.length);
         } else if (identical(focus, _freqFocus)) {
           // Flush a pending debounced push immediately on blur, rather than
           // making the user wait out the rest of the 5s window. Never fires

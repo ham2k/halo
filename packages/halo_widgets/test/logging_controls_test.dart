@@ -260,9 +260,9 @@ void main() {
     await tester.pump();
     expect(field('Their call').controller!.text, 'W1AW', reason: 'space must not clear the call');
     expect(field('Sent').focusNode!.hasFocus, isTrue);
-    // Select-all on focus: typing replaces the default RST.
-    expect(field('Sent').controller!.selection.extentOffset - field('Sent').controller!.selection.baseOffset,
-        field('Sent').controller!.text.length);
+    // Cursor placed at the end on focus, not selecting the default RST.
+    expect(field('Sent').controller!.selection.isCollapsed, isTrue);
+    expect(field('Sent').controller!.selection.baseOffset, field('Sent').controller!.text.length);
 
     await tester.sendKeyEvent(LogicalKeyboardKey.space);
     await tester.pump();
