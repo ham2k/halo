@@ -7,6 +7,7 @@ list(APPEND FLUTTER_PLUGIN_LIST
   flutter_inappwebview_windows
   flutter_js
   flutter_secure_storage_windows
+  geolocator_windows
   sqlite3_flutter_libs
   url_launcher_windows
 )

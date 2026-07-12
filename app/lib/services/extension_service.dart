@@ -485,21 +485,26 @@ class ExtensionService {
   }
 
   /// Candidate activities for the "add activity" search, merged across every
-  /// `activity` hook and sorted by `distance * relevance` ascending (results
-  /// missing a distance sort after ranked ones — an extension search hit
-  /// with no location still surfaces). `location`/`callsign` fall back from
-  /// the operation's own settings to the operator's global default (station
-  /// callsign only — there's no default location yet, so it stays null if
-  /// the operation has no grid).
+  /// `activity` hook and sorted by `distance / relevance` ascending — a more
+  /// relevant hit (relevance is 0..1, higher is better) effectively counts
+  /// as closer, so it doesn't lose out to a less relevant but nearer one
+  /// (results missing a distance sort after ranked ones — an extension
+  /// search hit with no location still surfaces). `location` comes from the operation's
+  /// own grid if it has one, otherwise [fallbackLocation] (typically the
+  /// device's current GPS position — see ActivitiesView) so nearby
+  /// suggestions still work before the operation's location is set.
+  /// `callsign` falls back from the operation's own settings to the
+  /// operator's global default.
   Future<List<Map<String, dynamic>>> suggestActivities(
     Map<String, dynamic> operationData, {
     String? searchTerm,
+    GridLocation? fallbackLocation,
   }) async {
     final host = _host;
     if (host == null) return const [];
 
     final grid = operationData['grid'] as String?;
-    final gridLocation = gridToLocation(grid);
+    final gridLocation = gridToLocation(grid) ?? fallbackLocation;
     final callsign = (operationData['stationCall'] as String?)?.isNotEmpty == true
         ? operationData['stationCall'] as String
         : settings?.operatorCall;
@@ -526,8 +531,8 @@ class ExtensionService {
       double rank(Map<String, dynamic> s) {
         final distance = s['distance'] as num?;
         final relevance = s['relevance'] as num?;
-        if (distance == null || relevance == null) return double.infinity;
-        return (distance * relevance).toDouble();
+        if (distance == null || relevance == null || relevance <= 0) return double.infinity;
+        return (distance / relevance).toDouble();
       }
 
       suggestions.sort((a, b) => rank(a).compareTo(rank(b)));

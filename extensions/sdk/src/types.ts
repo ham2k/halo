@@ -109,9 +109,10 @@ export interface RefListInputDescriptor {
 /// activity — same shape as `Ref` plus ranking info. `distance` is km from
 /// the `location` given in `SuggestArgs` (omitted if either side lacks a
 /// location); `relevance` is an extension-defined 0..1 match quality (search
-/// term match, popularity, etc). The core sorts combined results across all
-/// extensions by `distance * relevance` (lower is better), so extensions
-/// should return both as consistently comparable as possible.
+/// term match, popularity, etc — higher is better). The core sorts combined
+/// results across all extensions by `distance / relevance` ascending (a
+/// more relevant hit effectively counts as closer), so extensions should
+/// return both as consistently comparable as possible.
 export interface ActivitySuggestion extends Ref {
   distance?: number
   relevance?: number

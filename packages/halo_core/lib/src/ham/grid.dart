@@ -45,3 +45,26 @@ GridLocation? gridToLocation(String? grid) {
   }
   return GridLocation(lat + 0.5, lon + 1);
 }
+
+/// Encodes a latitude/longitude as a 6-character Maidenhead grid locator
+/// (e.g. `EM89hu`) — the inverse of [gridToLocation], used to show the
+/// device's current GPS position as a grid. Same algorithm as app-polo's
+/// @ham2k/lib-geo-tools `locationToGrid6`.
+String locationToGrid6(double lat, double lon) {
+  final adjLat = (lat + 90).clamp(0, 180);
+  final adjLon = (lon + 180).clamp(0, 360);
+
+  final lonField = (adjLon / 20).floor().clamp(0, 17);
+  final latField = (adjLat / 10).floor().clamp(0, 17);
+
+  final lonSquare = ((adjLon - lonField * 20) / 2).floor().clamp(0, 9);
+  final latSquare = (adjLat - latField * 10).floor().clamp(0, 9);
+
+  final lonSub = (((adjLon - lonField * 20 - lonSquare * 2)) / (2 / 24)).floor().clamp(0, 23);
+  final latSub = (((adjLat - latField * 10 - latSquare)) / (1 / 24)).floor().clamp(0, 23);
+
+  final field = String.fromCharCode(65 + lonField) + String.fromCharCode(65 + latField);
+  final square = '$lonSquare$latSquare';
+  final sub = String.fromCharCode(97 + lonSub) + String.fromCharCode(97 + latSub);
+  return '$field$square$sub';
+}

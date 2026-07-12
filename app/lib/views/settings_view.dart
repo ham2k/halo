@@ -514,7 +514,7 @@ class _SyncPanelState extends State<_SyncPanel> {
         return ListView(
           padding: const EdgeInsets.symmetric(vertical: 8),
           children: [
-            const _SectionHeader('Sync Configuration'),
+            const SectionHeader('Sync Configuration'),
             ListTile(
               leading: Icon(resolveIconName('account-outline')),
               title: const Text('Operator callsign'),
@@ -633,7 +633,7 @@ class _AccountsPanelState extends State<_AccountsPanel> {
     return ListView(
       padding: const EdgeInsets.symmetric(vertical: 8),
       children: [
-        const _SectionHeader('Accounts & Services'),
+        const SectionHeader('Accounts & Services'),
         if (_accounts!.isEmpty)
           const ListTile(
             title: Text('No active extensions with accounts'),
@@ -990,21 +990,6 @@ class _PendingAccountBanner extends StatelessWidget {
           ],
         ),
       ),
-    );
-  }
-}
-
-class _SectionHeader extends StatelessWidget {
-  final String title;
-
-  const _SectionHeader(this.title);
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
-      child: Text(title, style: theme.textTheme.titleSmall?.copyWith(color: theme.colorScheme.primary)),
     );
   }
 }

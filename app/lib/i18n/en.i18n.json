@@ -35,13 +35,15 @@
       "stationOperator": "Station & operator",
       "activities": "Activities",
       "operationData": "Operation data",
-      "dangerZone": "Danger zone"
+      "dangerZone": "Danger zone",
+      "location": "Location"
     },
     "stationCallsignNone": "No station callsign",
     "titleNone": "No title",
     "activitiesNone": "None set",
     "exportAdif": "Export ADIF",
-    "deleteOperation": "Delete operation"
+    "deleteOperation": "Delete operation",
+    "locationNone": "Not set"
   },
   "activitiesView": {
     "title": "Activities",
@@ -58,7 +60,10 @@
     "searchHint": "Search for a park, summit…",
     "searchOptions": "Options",
     "noSuggestions": "No suggestions",
-    "allOptions": "All Options"
+    "allOptions": "All Options",
+    "determiningLocation": "Determining current location…",
+    "noNearbySuggestions": "No nearby suggestions, current location not known",
+    "distanceKm": "${distance} km"
   },
   "loggingControls": {
     "timeUtc": "Time (UTC)",
@@ -132,5 +137,18 @@
       "password": "Password"
     },
     "developerMode": "Developer Mode"
+  },
+  "operationLocationScreen": {
+    "title": "Operation Location",
+    "selectedLocation": "Selected Location",
+    "gridSquare": "Maidenhead Grid Square Locator",
+    "suggestedLocations": "Suggested Locations",
+    "deviceGps": "Device GPS",
+    "locating": "Locating…",
+    "gpsUnavailable": "Location unavailable",
+    "permissionDenied": "Location permission denied",
+    "moreDetails": "More Details",
+    "stateOrProvince": "State or Province (optional)",
+    "county": "County (optional)"
   }
 }

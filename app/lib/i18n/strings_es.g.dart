@@ -49,6 +49,7 @@ class TranslationsEs extends Translations with BaseTranslations<AppLocale, Trans
 	@override late final _Translations$qsoList$es qsoList = _Translations$qsoList$es._(_root);
 	@override late final _Translations$loggingPanel$es loggingPanel = _Translations$loggingPanel$es._(_root);
 	@override late final _Translations$settings$es settings = _Translations$settings$es._(_root);
+	@override late final _Translations$operationLocationScreen$es operationLocationScreen = _Translations$operationLocationScreen$es._(_root);
 }
 
 // Path: common
@@ -111,6 +112,7 @@ class _Translations$operation$es extends Translations$operation$en {
 	@override String get activitiesNone => 'Ninguna seleccionada';
 	@override String get exportAdif => 'Exportar ADIF';
 	@override String get deleteOperation => 'Eliminar operación';
+	@override String get locationNone => 'Sin definir';
 }
 
 // Path: activitiesView
@@ -135,6 +137,9 @@ class _Translations$activitiesView$es extends Translations$activitiesView$en {
 	@override String get searchOptions => 'Opciones';
 	@override String get noSuggestions => 'Sin sugerencias';
 	@override String get allOptions => 'Todas las opciones';
+	@override String get determiningLocation => 'Determinando ubicación actual…';
+	@override String get noNearbySuggestions => 'Sin sugerencias cercanas, ubicación actual desconocida';
+	@override String distanceKm({required Object distance}) => '${distance} km';
 }
 
 // Path: loggingControls
@@ -226,6 +231,26 @@ class _Translations$settings$es extends Translations$settings$en {
 	@override String get developerMode => 'Modo Desarrollador';
 }
 
+// Path: operationLocationScreen
+class _Translations$operationLocationScreen$es extends Translations$operationLocationScreen$en {
+	_Translations$operationLocationScreen$es._(TranslationsEs root) : this._root = root, super.internal(root);
+
+	final TranslationsEs _root; // ignore: unused_field
+
+	// Translations
+	@override String get title => 'Ubicación de la operación';
+	@override String get selectedLocation => 'Ubicación seleccionada';
+	@override String get gridSquare => 'Locator de cuadrícula Maidenhead';
+	@override String get suggestedLocations => 'Ubicaciones sugeridas';
+	@override String get deviceGps => 'GPS del dispositivo';
+	@override String get locating => 'Localizando…';
+	@override String get gpsUnavailable => 'Ubicación no disponible';
+	@override String get permissionDenied => 'Permiso de ubicación denegado';
+	@override String get moreDetails => 'Más detalles';
+	@override String get stateOrProvince => 'Estado o provincia (opcional)';
+	@override String get county => 'Condado (opcional)';
+}
+
 // Path: operation.tabs
 class _Translations$operation$tabs$es extends Translations$operation$tabs$en {
 	_Translations$operation$tabs$es._(TranslationsEs root) : this._root = root, super.internal(root);
@@ -250,6 +275,7 @@ class _Translations$operation$sections$es extends Translations$operation$section
 	@override String get activities => 'Actividades';
 	@override String get operationData => 'Datos de operación';
 	@override String get dangerZone => 'Zona de peligro';
+	@override String get location => 'Ubicación';
 }
 
 // Path: settings.theme
@@ -338,11 +364,13 @@ extension on TranslationsEs {
 			'operation.sections.activities' => 'Actividades',
 			'operation.sections.operationData' => 'Datos de operación',
 			'operation.sections.dangerZone' => 'Zona de peligro',
+			'operation.sections.location' => 'Ubicación',
 			'operation.stationCallsignNone' => 'Sin indicativo de estación',
 			'operation.titleNone' => 'Sin título',
 			'operation.activitiesNone' => 'Ninguna seleccionada',
 			'operation.exportAdif' => 'Exportar ADIF',
 			'operation.deleteOperation' => 'Eliminar operación',
+			'operation.locationNone' => 'Sin definir',
 			'activitiesView.title' => 'Actividades',
 			'activitiesView.activitiesCountZero' => 'Sin actividades actuales',
 			'activitiesView.activitiesCountOne' => 'Una actividad actual',
@@ -358,6 +386,9 @@ extension on TranslationsEs {
 			'activitiesView.searchOptions' => 'Opciones',
 			'activitiesView.noSuggestions' => 'Sin sugerencias',
 			'activitiesView.allOptions' => 'Todas las opciones',
+			'activitiesView.determiningLocation' => 'Determinando ubicación actual…',
+			'activitiesView.noNearbySuggestions' => 'Sin sugerencias cercanas, ubicación actual desconocida',
+			'activitiesView.distanceKm' => ({required Object distance}) => '${distance} km',
 			'loggingControls.timeUtc' => 'Hora (UTC)',
 			'loggingControls.date' => 'Fecha',
 			'loggingControls.now' => 'Ahora',
@@ -413,6 +444,17 @@ extension on TranslationsEs {
 			'settings.qrz.username' => 'Usuario',
 			'settings.qrz.password' => 'Contraseña',
 			'settings.developerMode' => 'Modo Desarrollador',
+			'operationLocationScreen.title' => 'Ubicación de la operación',
+			'operationLocationScreen.selectedLocation' => 'Ubicación seleccionada',
+			'operationLocationScreen.gridSquare' => 'Locator de cuadrícula Maidenhead',
+			'operationLocationScreen.suggestedLocations' => 'Ubicaciones sugeridas',
+			'operationLocationScreen.deviceGps' => 'GPS del dispositivo',
+			'operationLocationScreen.locating' => 'Localizando…',
+			'operationLocationScreen.gpsUnavailable' => 'Ubicación no disponible',
+			'operationLocationScreen.permissionDenied' => 'Permiso de ubicación denegado',
+			'operationLocationScreen.moreDetails' => 'Más detalles',
+			'operationLocationScreen.stateOrProvince' => 'Estado o provincia (opcional)',
+			'operationLocationScreen.county' => 'Condado (opcional)',
 			_ => null,
 		};
 	}

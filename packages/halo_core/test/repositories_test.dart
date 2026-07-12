@@ -159,9 +159,11 @@ void main() {
     expect(match, hasLength(1));
     expect(match.first.key, 'G/LD-001');
 
-    // Proximity lookup.
+    // Proximity lookup, closest first — callers (e.g. activity suggestions)
+    // truncate this list, so ordering has to happen in the query itself
+    // rather than relying on the caller to re-sort an already-capped result.
     final near = await lookupRepo.queryLookupsByLocation('sota', 54.5, -3.1, 0.2);
-    expect(near.map((r) => r.key), unorderedEquals(['G/LD-001', 'G/LD-002']));
+    expect(near.map((r) => r.key), ['G/LD-002', 'G/LD-001']);
 
     // Stale delete deletes updated=1 when keeping updated=2.
     await lookupRepo.deleteCategoryStale('sota', 2);

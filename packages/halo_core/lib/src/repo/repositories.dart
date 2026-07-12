@@ -504,14 +504,24 @@ class LookupRepository {
         .get();
   }
 
-  /// Searches lookups in a category by proximity to a lat/lon coordinate within a delta.
+  /// Searches lookups in a category by proximity to a lat/lon coordinate
+  /// within a delta, closest first. Ordering (by squared distance, cheaper
+  /// than a real Haversine and fine for ranking within this small bounding
+  /// box) has to happen before the `limit` — otherwise the cap keeps
+  /// whichever 100 rows the query planner happens to hit first rather than
+  /// the 100 actually nearest to the caller, and a close-by entry can be
+  /// dropped in favor of farther ones.
   Future<List<LookupRow>> queryLookupsByLocation(
       String category, double lat, double lon, double delta) async {
+    final latDelta = db.lookups.lat - Variable(lat);
+    final lonDelta = db.lookups.lon - Variable(lon);
+    final distanceSquared = latDelta * latDelta + lonDelta * lonDelta;
     return await (db.select(db.lookups)
           ..where((l) =>
               l.category.equals(category) &
               l.lat.isBetweenValues(lat - delta, lat + delta) &
               l.lon.isBetweenValues(lon - delta, lon + delta))
+          ..orderBy([(l) => OrderingTerm.asc(distanceSquared)])
           ..limit(100))
         .get();
   }

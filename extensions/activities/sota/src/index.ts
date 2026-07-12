@@ -261,12 +261,21 @@ const ActivityHook = {
     const callerEntity = searchTerm ? entityPrefixForCall(callsign) : undefined
     const filteredRows = callerEntity ? rows.filter((row) => subCategoryMatchesCaller(row.subCategory, callerEntity)) : rows
 
-    return filteredRows.slice(0, MAX_SUGGESTIONS).map((row) => {
-      const data = (row.data ?? {}) as Record<string, any>
-      const distance =
+    const withDistance = filteredRows.map((row) => ({
+      row,
+      distance:
         location && row.lat != null && row.lon != null
           ? (distanceOnEarth(location, { lat: row.lat, lon: row.lon }) ?? undefined)
-          : undefined
+          : undefined,
+    }))
+    // See POTA's identical note: nearby (no search term) results must be
+    // ranked by real distance before truncating to MAX_SUGGESTIONS.
+    if (!searchTerm) {
+      withDistance.sort((a, b) => (a.distance ?? Infinity) - (b.distance ?? Infinity))
+    }
+
+    return withDistance.slice(0, MAX_SUGGESTIONS).map(({ row, distance }) => {
+      const data = (row.data ?? {}) as Record<string, any>
       const associationRegion = [data.region, data.association].filter((x) => x).join(', ')
 
       return {

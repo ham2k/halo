@@ -18,6 +18,7 @@ import 'operation_dialogs.dart';
 import 'operation/activities_view.dart';
 import 'operation/logging_panel.dart';
 import 'operation/map_panel.dart';
+import 'operation/operation_location_screen.dart';
 import '../i18n/strings.g.dart';
 
 class OperationView extends StatefulWidget {
@@ -96,6 +97,15 @@ class _OperationViewState extends State<OperationView> {
   Future<void> _editDetails(Operation operation) async {
     final updated = await editOperationDetails(context, widget.services.operations, operation);
     if (updated != null && mounted) setState(() => _operation = updated);
+  }
+
+  Future<void> _editLocation(Operation operation) async {
+    await Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => OperationLocationScreen(services: widget.services, operation: operation)),
+    );
+    if (!mounted) return;
+    final refreshed = await widget.services.operations.get(operation.uuid);
+    if (refreshed != null && mounted) setState(() => _operation = refreshed);
   }
 
   Future<void> _delete(Operation operation) async {
@@ -199,6 +209,7 @@ class _OperationViewState extends State<OperationView> {
                 qsoCount: realQsoCount,
                 onEditDetails: () => _editDetails(operation),
                 onEditActivities: () => _editActivities(operation),
+                onEditLocation: () => _editLocation(operation),
                 onExport: realQsoCount == 0 ? null : () => _export(operation),
                 onDelete: () => _delete(operation),
               ),
@@ -253,14 +264,15 @@ class _PlaceholderTab extends StatelessWidget {
 
 /// Operation settings/activities/data, a scoped-down port of app-polo's
 /// OpSettingsTab: just what this app already has actions for (editing
-/// station/title, managing activity refs, ADIF export, delete) rather than
-/// app-polo's full set (location, templates, Wavelog export, etc.), which
+/// station/title, managing activity refs, location, ADIF export, delete)
+/// rather than app-polo's full set (templates, Wavelog export, etc.), which
 /// this app doesn't have the underlying data/features for yet.
 class OperationSettingsPanel extends StatelessWidget {
   final Operation operation;
   final int qsoCount;
   final VoidCallback onEditDetails;
   final VoidCallback onEditActivities;
+  final VoidCallback onEditLocation;
   final VoidCallback? onExport;
   final VoidCallback onDelete;
 
@@ -270,6 +282,7 @@ class OperationSettingsPanel extends StatelessWidget {
     required this.qsoCount,
     required this.onEditDetails,
     required this.onEditActivities,
+    required this.onEditLocation,
     required this.onExport,
     required this.onDelete,
   });
@@ -278,10 +291,14 @@ class OperationSettingsPanel extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final refsLine = operation.refs.map((r) => r['shortLabel'] ?? r['ref']).whereType<String>().join(' • ');
+    final locationLine = [operation.grid, operation.data['state'], operation.data['county']]
+        .whereType<String>()
+        .where((s) => s.isNotEmpty)
+        .join(' • ');
 
     return ListView(
       children: [
-        _SectionHeader(context.t.operation.sections.stationOperator),
+        SectionHeader(context.t.operation.sections.stationOperator),
         ListTile(
           leading: Icon(MdiIcons.radioTower),
           title: Text(operation.stationCall.isEmpty ? context.t.operation.stationCallsignNone : operation.stationCall),
@@ -289,7 +306,7 @@ class OperationSettingsPanel extends StatelessWidget {
           onTap: onEditDetails,
           mouseCursor: SystemMouseCursors.click,
         ),
-        _SectionHeader(context.t.operation.sections.activities),
+        SectionHeader(context.t.operation.sections.activities),
         ListTile(
           leading: Icon(MdiIcons.pineTree),
           title: Text(context.t.operation.sections.activities),
@@ -297,7 +314,15 @@ class OperationSettingsPanel extends StatelessWidget {
           onTap: onEditActivities,
           mouseCursor: SystemMouseCursors.click,
         ),
-        _SectionHeader(context.t.operation.sections.operationData),
+        SectionHeader(context.t.operation.sections.location),
+        ListTile(
+          leading: Icon(resolveIconName('map-marker-outline')),
+          title: Text(context.t.operation.sections.location),
+          subtitle: Text(locationLine.isEmpty ? context.t.operation.locationNone : locationLine),
+          onTap: onEditLocation,
+          mouseCursor: SystemMouseCursors.click,
+        ),
+        SectionHeader(context.t.operation.sections.operationData),
         ListTile(
           leading: Icon(MdiIcons.fileExportOutline),
           title: Text(context.t.operation.exportAdif),
@@ -305,7 +330,7 @@ class OperationSettingsPanel extends StatelessWidget {
           onTap: onExport,
           mouseCursor: SystemMouseCursors.click,
         ),
-        _SectionHeader(context.t.operation.sections.dangerZone, color: theme.colorScheme.error),
+        SectionHeader(context.t.operation.sections.dangerZone, color: theme.colorScheme.error),
         ListTile(
           leading: Icon(MdiIcons.delete, color: theme.colorScheme.error),
           title: Text(context.t.operation.deleteOperation, style: TextStyle(color: theme.colorScheme.error)),
@@ -313,25 +338,6 @@ class OperationSettingsPanel extends StatelessWidget {
           mouseCursor: SystemMouseCursors.click,
         ),
       ],
-    );
-  }
-}
-
-class _SectionHeader extends StatelessWidget {
-  final String title;
-  final Color? color;
-
-  const _SectionHeader(this.title, {this.color});
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
-      child: Text(
-        title,
-        style: theme.textTheme.titleSmall?.copyWith(color: color ?? theme.colorScheme.primary),
-      ),
     );
   }
 }

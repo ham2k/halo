@@ -23,6 +23,8 @@ import 'package:halo_core/halo_core.dart';
 import 'package:halo_widgets/halo_widgets.dart';
 
 import '../../main.dart';
+import '../../services/activity_controls.dart';
+import '../../services/location_service.dart';
 import '../operation_dialogs.dart';
 import '../../i18n/strings.g.dart';
 
@@ -33,6 +35,37 @@ import '../../i18n/strings.g.dart';
 Color _greenerDesaturated(Color base) {
   final hsl = HSLColor.fromColor(base);
   return hsl.withHue((hsl.hue - 15) % 360).withSaturation(0.4).withLightness(0.8).toColor();
+}
+
+// Close enough that the operation's grid and the caller's live GPS grid
+// would round to the same (or an adjacent) square anyway, so adopting it
+// isn't a meaningful accuracy loss.
+const _nearbyGridAdoptionKm = 15;
+
+/// Decides which grid (if any) an operation should adopt right after a new
+/// activity ref is added, given it doesn't already have one:
+///  - if live GPS is available, adopt it — but only when the just-added ref
+///    is within [_nearbyGridAdoptionKm] of it (a far-away ref added while
+///    away from the shack shouldn't imply "this is where I am").
+///  - otherwise (no GPS fix), adopt the first ref's own grid, if it has one
+///    — the most that can be inferred without a location source at all.
+/// A pure function (no Flutter/service dependencies) so this decision is
+/// unit-testable without exercising the whole ActivitiesView widget tree.
+String? gridToAdoptAfterAddingRef({
+  required String? operationGrid,
+  required GridLocation? gpsPosition,
+  required num? distanceKm,
+  required List<Map<String, dynamic>> refsAfterAdd,
+}) {
+  if (operationGrid != null) return null;
+
+  if (gpsPosition != null) {
+    if (distanceKm == null || distanceKm > _nearbyGridAdoptionKm) return null;
+    return locationToGrid6(gpsPosition.latitude, gpsPosition.longitude);
+  }
+
+  final firstGrid = refsAfterAdd.isEmpty ? null : refsAfterAdd.first['grid'] as String?;
+  return (firstGrid != null && firstGrid.isNotEmpty) ? firstGrid : null;
 }
 
 class ActivitiesView extends StatefulWidget {
@@ -63,11 +96,20 @@ class _ActivitiesViewState extends State<ActivitiesView> {
   bool _searchExpanded = true;
   bool _allOptionsExpanded = false;
 
+  // Only watched when the operation itself has no grid — its own grid
+  // always takes priority over live GPS (see ExtensionService.suggestActivities).
+  bool _watchingLocation = false;
+
   @override
   void initState() {
     super.initState();
     _operation = widget.operation;
     _loadControls();
+    if (_operation.grid == null) {
+      _watchingLocation = true;
+      widget.services.location.start();
+      widget.services.location.addListener(_onLocationChanged);
+    }
     _search('');
     // Focusing the search field always reveals its results, even if the
     // user (or a previous collapse) had left the accordion closed.
@@ -83,27 +125,27 @@ class _ActivitiesViewState extends State<ActivitiesView> {
     _debounce?.cancel();
     _searchController.dispose();
     _searchFocusNode.dispose();
+    if (_watchingLocation) {
+      widget.services.location.removeListener(_onLocationChanged);
+      widget.services.location.stop();
+    }
     super.dispose();
+  }
+
+  // Re-runs the current search once the device's first GPS fix comes in (or
+  // its status otherwise changes), so nearby suggestions appear without the
+  // user having to touch the search field themselves. Routed through the
+  // same debounce as typed search — the position stream can otherwise fire
+  // every few seconds while moving (e.g. driving), each one triggering a
+  // fresh round of extension-hook lookups.
+  void _onLocationChanged() {
+    if (mounted) _onSearchChanged(_searchController.text);
   }
 
   Future<void> _loadControls() async {
     final controls = await widget.services.extensions.operationControls(_operation.data);
     if (mounted) setState(() => _controls = controls);
   }
-
-  /// The `operationControls` entry (icon, pattern, …) for a ref/suggestion
-  /// type, or null for a type with no active control.
-  Map<String, dynamic>? _controlForType(String? refType) {
-    for (final control in _controls) {
-      final input = control['input'] as Map?;
-      if (input?['refType'] == refType) return control;
-    }
-    return null;
-  }
-
-  /// Icon name for a ref/suggestion type, falling back to a generic marker
-  /// for types with no active control.
-  String? _iconForType(String? refType) => _controlForType(refType)?['icon'] as String?;
 
   bool _matchesPattern(String? pattern, String code) =>
       pattern == null || RegExp('^(?:$pattern)\$', caseSensitive: false).hasMatch(code);
@@ -117,10 +159,10 @@ class _ActivitiesViewState extends State<ActivitiesView> {
     return false;
   }
 
-  Future<void> _saveRefs(List<Map<String, dynamic>> refs) async {
+  Future<void> _saveOperationData(Map<String, dynamic> patch) async {
     final updated = Operation(
       uuid: _operation.uuid,
-      data: {..._operation.data, 'refs': refs},
+      data: {..._operation.data, ...patch},
       qsoCount: _operation.qsoCount,
       startAtMillisMin: _operation.startAtMillisMin,
       startAtMillisMax: _operation.startAtMillisMax,
@@ -128,6 +170,24 @@ class _ActivitiesViewState extends State<ActivitiesView> {
     );
     await widget.services.operations.saveData(updated);
     if (mounted) setState(() => _operation = updated);
+  }
+
+  Future<void> _saveRefs(List<Map<String, dynamic>> refs) => _saveOperationData({'refs': refs});
+
+  /// Opportunistically fills in the operation's own (still-unset) grid right
+  /// after a new activity ref is added — from live GPS if that ref is close
+  /// by, or otherwise from the first ref's own grid once GPS isn't available
+  /// — so features that need a grid (nearby suggestions, the Map tab) work
+  /// without the user having to set one by hand via OperationLocationScreen.
+  Future<void> _maybeAdoptGridFromNewRef({num? distanceKm}) async {
+    final position = widget.services.location.position;
+    final grid = gridToAdoptAfterAddingRef(
+      operationGrid: _operation.grid,
+      gpsPosition: position == null ? null : GridLocation(position.latitude, position.longitude),
+      distanceKm: distanceKm,
+      refsAfterAdd: _operation.refs,
+    );
+    if (grid != null) await _saveOperationData({'grid': grid});
   }
 
   Future<void> _editRef(Map<String, dynamic> ref) async {
@@ -146,7 +206,7 @@ class _ActivitiesViewState extends State<ActivitiesView> {
     if (trimmed.isEmpty) return;
 
     final type = ref['type'] as String?;
-    final pattern = (_controlForType(type)?['input'] as Map?)?['pattern'] as String?;
+    final pattern = (controlForRefType(_controls, type)?['input'] as Map?)?['pattern'] as String?;
     if (!_matchesPattern(pattern, trimmed)) {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(t.invalidReference)));
       return;
@@ -187,9 +247,13 @@ class _ActivitiesViewState extends State<ActivitiesView> {
     final requestId = ++_searchRequestId;
     setState(() => _loadingSuggestions = true);
     final trimmed = term.trim();
+    final location = widget.services.location;
+    final fallbackPosition = location.position;
     final results = await widget.services.extensions.suggestActivities(
       _operation.data,
       searchTerm: trimmed.isEmpty ? null : trimmed,
+      fallbackLocation:
+          fallbackPosition == null ? null : GridLocation(fallbackPosition.latitude, fallbackPosition.longitude),
     );
     // A newer search may have fired (and even resolved) while this one was
     // in flight — only the still-current request gets to apply its results.
@@ -209,6 +273,7 @@ class _ActivitiesViewState extends State<ActivitiesView> {
       return;
     }
     await _saveRefs([..._operation.refs, suggestion]);
+    await _maybeAdoptGridFromNewRef(distanceKm: suggestion['distance'] as num?);
   }
 
   Future<void> _addManually(Map<String, dynamic> control) async {
@@ -239,6 +304,26 @@ class _ActivitiesViewState extends State<ActivitiesView> {
     final ref = <String, dynamic>{'type': refType, 'ref': trimmed};
     final decorated = await widget.services.extensions.decorateRef(ref);
     await _saveRefs([..._operation.refs, decorated]);
+    // No distance to check here (a manually-typed ref wasn't looked up
+    // relative to any location) — only the no-GPS, first-ref-grid path
+    // inside `_maybeAdoptGridFromNewRef` can apply.
+    await _maybeAdoptGridFromNewRef();
+  }
+
+  /// The message shown in the Suggestions & Search section when there are
+  /// no results: while there's a search term, a plain "no matches" message
+  /// always applies; with an empty term (nearby suggestions) and no
+  /// operation grid, the three location-driven states from issue #6 kick in
+  /// instead — determining the device's location, or location known to be
+  /// unavailable.
+  String get _suggestionsEmptyMessage {
+    final t = context.t.activitiesView;
+    if (_searchController.text.trim().isNotEmpty || _operation.grid != null) return t.noSuggestions;
+    return switch (widget.services.location.status) {
+      LocationStatus.unknown || LocationStatus.determining => t.determiningLocation,
+      LocationStatus.available => t.noSuggestions,
+      LocationStatus.permissionDenied || LocationStatus.unavailable => t.noNearbySuggestions,
+    };
   }
 
   String _activitiesTitle(int count) {
@@ -314,7 +399,7 @@ class _ActivitiesViewState extends State<ActivitiesView> {
                     // up under the search row's options button — same
                     // IconButton defaults (no custom size/padding) too.
                     contentPadding: const EdgeInsets.only(left: 16, right: 4),
-                    leading: Icon(resolveIconName(_iconForType(ref['type'] as String?))),
+                    leading: Icon(resolveIconName(iconForRefType(_controls, ref['type'] as String?))),
                     title: Text((ref['shortLabel'] ?? ref['ref'] ?? '?') as String),
                     subtitle: (ref['name'] as String?) != null ? Text(ref['name'] as String) : null,
                     onTap: () => _editRef(ref),
@@ -367,19 +452,20 @@ class _ActivitiesViewState extends State<ActivitiesView> {
                         ? const SizedBox.shrink()
                         : Padding(
                             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                            child: Text(t.noSuggestions, style: TextStyle(color: theme.colorScheme.outline)),
+                            child: Text(_suggestionsEmptyMessage, style: TextStyle(color: theme.colorScheme.outline)),
                           ),
                     rows: [
                       for (final suggestion in _suggestions)
                         ListTile(
                           tileColor: rowColor,
-                          leading: Icon(resolveIconName(_iconForType(suggestion['type'] as String?))),
+                          leading: Icon(resolveIconName(iconForRefType(_controls, suggestion['type'] as String?))),
                           title: Text((suggestion['shortLabel'] ?? suggestion['ref'] ?? '?') as String),
                           subtitle: Text(
-                            [suggestion['name'], suggestion['location']]
-                                .whereType<String>()
-                                .where((s) => s.isNotEmpty)
-                                .join(' • '),
+                            [
+                              suggestion['name'],
+                              suggestion['location'],
+                              if (suggestion['distance'] is num) t.distanceKm(distance: (suggestion['distance'] as num).round()),
+                            ].whereType<String>().where((s) => s.isNotEmpty).join(' • '),
                           ),
                           onTap: () => _addSuggestion(suggestion),
                         ),

@@ -249,4 +249,52 @@ void main() {
     final sotaSuggestions = (results.firstWhere((e) => e['key'] == 'sota')['value'] as List).cast<Map>();
     expect(sotaSuggestions.any((s) => s['ref'] == 'W6/CT-001'), isTrue);
   });
+
+  test('POTA suggest() ranks nearby results by real distance before truncating to MAX_SUGGESTIONS', () async {
+    final host = extensions.host!;
+
+    // 40 parks scattered further out, all still inside the ~150km bounding
+    // box `suggest` queries with, plus one right next to the caller. If
+    // truncation ever again happens before sorting by distance (the actual
+    // bug reported: a 5km-away park missing from nearby suggestions), this
+    // close park can get cut by the 30-result cap in favor of arbitrary
+    // farther ones.
+    final farRows = [
+      for (var i = 0; i < 40; i++)
+        LookupRow(
+          category: 'pota',
+          key: 'US-9$i',
+          name: 'Far Park $i',
+          // Spread out within the bounding box, all farther than ~40km.
+          lat: 37.7749 + (i.isEven ? 1 : -1) * (0.4 + i * 0.01),
+          lon: -122.4194 + (i.isEven ? -1 : 1) * (0.4 + i * 0.01),
+          flags: 1,
+          data: '{"reference":"US-9$i","name":"Far Park $i","active":true}',
+        ),
+      LookupRow(
+        category: 'pota',
+        key: 'US-CLOSE',
+        name: 'Nearby Park',
+        lat: 37.7794, // ~5km from the query location below
+        lon: -122.4194,
+        flags: 1,
+        data: '{"reference":"US-CLOSE","name":"Nearby Park","active":true}',
+      ),
+    ];
+    await lookups.insertLookupBatch(farRows);
+
+    final results = await host.invokeHookAll(
+      'activity',
+      method: 'suggest',
+      args: {
+        'operation': <String, dynamic>{},
+        'location': {'lat': 37.7749, 'lon': -122.4194},
+      },
+    );
+
+    final potaSuggestions = (results.firstWhere((e) => e['key'] == 'pota')['value'] as List).cast<Map>();
+    expect(potaSuggestions.length, lessThanOrEqualTo(30));
+    expect(potaSuggestions.any((s) => s['ref'] == 'US-CLOSE'), isTrue);
+    expect(potaSuggestions.first['ref'], 'US-CLOSE');
+  });
 }

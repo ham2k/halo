@@ -190,13 +190,23 @@ const ActivityHook = {
     const callerEntity = searchTerm ? entityPrefixForCall(callsign) : undefined
     const filteredRows = callerEntity ? rows.filter((row) => row.subCategory === callerEntity) : rows
 
-    return filteredRows.slice(0, MAX_SUGGESTIONS).map((row) => {
-      const data = (row.data ?? {}) as Record<string, any>
-      const distance =
+    const withDistance = filteredRows.map((row) => ({
+      row,
+      distance:
         location && row.lat != null && row.lon != null
           ? (distanceOnEarth(location, { lat: row.lat, lon: row.lon }) ?? undefined)
-          : undefined
+          : undefined,
+    }))
+    // Nearby (no search term) results must be ranked by real distance before
+    // truncating to MAX_SUGGESTIONS — the DB query's row order isn't a
+    // reliable proxy for it, so slicing first can drop a closer entry in
+    // favor of a farther one that merely came back earlier.
+    if (!searchTerm) {
+      withDistance.sort((a, b) => (a.distance ?? Infinity) - (b.distance ?? Infinity))
+    }
 
+    return withDistance.slice(0, MAX_SUGGESTIONS).map(({ row, distance }) => {
+      const data = (row.data ?? {}) as Record<string, any>
       return {
         type: ACTIVATION_TYPE,
         ref: row.key,

@@ -35,13 +35,15 @@
       "stationOperator": "Estación y operador",
       "activities": "Actividades",
       "operationData": "Datos de operación",
-      "dangerZone": "Zona de peligro"
+      "dangerZone": "Zona de peligro",
+      "location": "Ubicación"
     },
     "stationCallsignNone": "Sin indicativo de estación",
     "titleNone": "Sin título",
     "activitiesNone": "Ninguna seleccionada",
     "exportAdif": "Exportar ADIF",
-    "deleteOperation": "Eliminar operación"
+    "deleteOperation": "Eliminar operación",
+    "locationNone": "Sin definir"
   },
   "activitiesView": {
     "title": "Actividades",
@@ -58,7 +60,10 @@
     "searchHint": "Busca un parque, cumbre…",
     "searchOptions": "Opciones",
     "noSuggestions": "Sin sugerencias",
-    "allOptions": "Todas las opciones"
+    "allOptions": "Todas las opciones",
+    "determiningLocation": "Determinando ubicación actual…",
+    "noNearbySuggestions": "Sin sugerencias cercanas, ubicación actual desconocida",
+    "distanceKm": "${distance} km"
   },
   "loggingControls": {
     "timeUtc": "Hora (UTC)",
@@ -132,5 +137,18 @@
       "password": "Contraseña"
     },
     "developerMode": "Modo Desarrollador"
+  },
+  "operationLocationScreen": {
+    "title": "Ubicación de la operación",
+    "selectedLocation": "Ubicación seleccionada",
+    "gridSquare": "Locator de cuadrícula Maidenhead",
+    "suggestedLocations": "Ubicaciones sugeridas",
+    "deviceGps": "GPS del dispositivo",
+    "locating": "Localizando…",
+    "gpsUnavailable": "Ubicación no disponible",
+    "permissionDenied": "Permiso de ubicación denegado",
+    "moreDetails": "Más detalles",
+    "stateOrProvince": "Estado o provincia (opcional)",
+    "county": "Condado (opcional)"
   }
 }
