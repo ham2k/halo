@@ -261,6 +261,88 @@ void main() {
     expect(logged, isEmpty);
   });
 
+  testWidgets('call stacking: "//" logs the last stacked call and leaves the rest for the next QSO', (tester) async {
+    await tester.pumpWidget(host());
+
+    await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'K1ABC//W1AW');
+    await tester.pump();
+    await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+
+    final logged = await waitForQsos(tester, 1);
+    expect(logged, hasLength(1));
+    expect(logged.single.theirCall, 'W1AW');
+
+    // The un-logged fragment stays in the field, ready for the next QSO —
+    // not a full wipe.
+    final callField = tester.widget<TextField>(find.widgetWithText(TextField, 'Their call'));
+    expect(callField.controller!.text, 'K1ABC');
+    expect(callField.focusNode!.hasFocus, isTrue);
+  });
+
+  testWidgets('call stacking: picks the segment at the cursor, not always the last one', (tester) async {
+    await tester.pumpWidget(host());
+
+    await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'K1ABC//W1AW');
+    // Move the cursor into the first segment ("K1AB|C").
+    final callField = tester.widget<TextField>(find.widgetWithText(TextField, 'Their call'));
+    callField.controller!.selection = const TextSelection.collapsed(offset: 4);
+    await tester.pump();
+    await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+
+    final logged = await waitForQsos(tester, 1);
+    expect(logged, hasLength(1));
+    expect(logged.single.theirCall, 'K1ABC');
+    expect(callField.controller!.text, 'W1AW');
+  });
+
+  testWidgets('call stacking: scans left past invalid fragments to find a valid callsign', (tester) async {
+    await tester.pumpWidget(host());
+
+    await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'W1AW//QQQ//RRR');
+    await tester.pump(); // cursor defaults to the end, inside the invalid "RRR" segment
+    await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+
+    final logged = await waitForQsos(tester, 1);
+    expect(logged, hasLength(1));
+    expect(logged.single.theirCall, 'W1AW');
+    final callField = tester.widget<TextField>(find.widgetWithText(TextField, 'Their call'));
+    expect(callField.controller!.text, 'QQQ//RRR');
+  });
+
+  testWidgets('call stacking: no valid callsign anywhere in the stack logs nothing', (tester) async {
+    await tester.pumpWidget(host());
+
+    await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'QQQ//RRR');
+    await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+
+    final logged = await waitForQsos(tester, 1);
+    expect(logged, isEmpty);
+  });
+
+  testWidgets('a field with both "//" and "," logs via stacking, not as a comma list — "//" takes priority', (tester) async {
+    await tester.pumpWidget(host());
+
+    // "W1AW//K1ABC,N2XYZ": _pickStackedCall only ever splits on "//", so
+    // there are exactly two segments — "W1AW" and "K1ABC,N2XYZ" (the call
+    // field's own formatter strips spaces, so no space survives after the
+    // comma either way). Cursor at the end sits in the second segment,
+    // which fails looksLikeCallsign whole (it's not a single callsign,
+    // it's comma-joined text), so the scan falls back to "W1AW" — one QSO
+    // logged via stacking, not a comma-list batch.
+    await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'W1AW//K1ABC,N2XYZ');
+    await tester.pump();
+    await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+
+    final logged = await waitForQsos(tester, 1);
+    expect(logged, hasLength(1));
+    expect(logged.single.theirCall, 'W1AW');
+
+    // The remainder (the other stacked segment, still comma-joined) stays
+    // in the field — comma-list logic never engaged for this Enter press.
+    final callField = tester.widget<TextField>(find.widgetWithText(TextField, 'Their call'));
+    expect(callField.controller!.text, 'K1ABC,N2XYZ');
+  });
+
   testWidgets('editing a QSO with a comma-separated call list updates the original and adds new QSOs for the rest', (tester) async {
     final existingQso = (await tester.runAsync(() => qsos.add(operation.uuid, {
           'their': {'call': 'W1AW'},
@@ -436,6 +518,72 @@ void main() {
     await tester.sendKeyEvent(LogicalKeyboardKey.enter);
     await waitForQsos(tester, 3);
     expect(callListLoggedCount, 1);
+  });
+
+  testWidgets('call stacking: no information carries over between stacked calls — logging one wipes fully before restoring the rest', (tester) async {
+    await tester.pumpWidget(host());
+
+    // A touched Sent RST — state that should apply to the QSO being logged
+    // but NOT carry over to whatever gets logged from the leftover stack.
+    await tester.enterText(find.widgetWithText(TextField, 'Sent'), '57');
+    await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'K1ABC//W1AW');
+    await tester.pump();
+    await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+
+    final logged = await waitForQsos(tester, 1);
+    expect(logged.single.theirCall, 'W1AW');
+    expect(logged.single.sentRST, '57'); // the touched RST applied to the logged QSO
+
+    // The field now holds the remainder, but the touched RST is gone —
+    // wiped back to the mode default, same as an ordinary log.
+    final sentField = tester.widget<TextField>(find.widgetWithText(TextField, 'Sent'));
+    expect(sentField.controller!.text, '59');
+    final callField = tester.widget<TextField>(find.widgetWithText(TextField, 'Their call'));
+    expect(callField.controller!.text, 'K1ABC');
+  });
+
+  testWidgets('call stacking: DUPE chip reflects the call that would actually be logged, not the raw stacked text', (tester) async {
+    final dupe = (await tester.runAsync(() => qsos.add(operation.uuid, {
+          'their': {'call': 'W1AW'},
+          'band': '20m',
+          'mode': 'SSB',
+        })))!;
+    await tester.pumpWidget(host(existing: [dupe]));
+    await openControl(tester, MdiIcons.radio);
+    await tester.enterText(find.widgetWithText(TextField, 'Frequency'), '14285');
+
+    // Cursor ends up at the end (last segment, "W1AW") after enterText.
+    await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'K1ABC//W1AW');
+    await tester.pump();
+    expect(find.text('DUPE'), findsOneWidget);
+
+    // Move the cursor into "K1AB|C" — not a dupe.
+    final callField = tester.widget<TextField>(find.widgetWithText(TextField, 'Their call'));
+    callField.controller!.selection = const TextSelection.collapsed(offset: 4);
+    await tester.pump();
+    expect(find.text('DUPE'), findsNothing);
+  });
+
+  testWidgets('call stacking: lookup enrichment applies to the picked call and reaches the logged QSO', (tester) async {
+    Future<Map<String, dynamic>?> lookup(String call) async {
+      if (call != 'W1AW') return null;
+      return {'name': 'ARRL HQ', 'city': 'Newington', 'state': 'CT', 'grid': 'FN31pr'};
+    }
+
+    await tester.pumpWidget(MaterialApp(
+      home: Scaffold(body: LoggingControls(operation: operation, qsosRepository: qsos, lookup: lookup)),
+    ));
+
+    // Cursor ends up at the end (last segment, "W1AW") after enterText.
+    await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'K1ABC//W1AW');
+    await tester.pump(const Duration(milliseconds: 400)); // let the debounced lookup resolve
+    expect(find.textContaining('ARRL HQ'), findsOneWidget);
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+    final logged = await waitForQsos(tester, 1);
+    expect(logged.single.theirCall, 'W1AW');
+    expect(logged.single.theirName, 'ARRL HQ');
+    expect(logged.single.theirGrid, 'FN31pr');
   });
 
   testWidgets('Escape wipes the entry', (tester) async {

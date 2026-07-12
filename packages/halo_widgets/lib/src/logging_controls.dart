@@ -572,14 +572,20 @@ class _LoggingControlsState extends State<LoggingControls> {
   /// list, so this also covers the common case.
   List<String> get _callList => _call.split(',').map((s) => s.trim()).where((s) => s.isNotEmpty).toList();
 
-  /// The single call segment the cursor sits in, for a comma-separated list
-  /// — neither the on-screen lookup preview nor the dupe check make sense
-  /// against the whole joined field text, so both key off whichever call
-  /// the user is actually looking at/editing right now. A single call with
-  /// no comma is trivially "at the cursor" everywhere, so this is just
-  /// `_call` in that (common) case.
+  /// The single call that's actually relevant right now — the whole field
+  /// for a plain callsign, whichever "//"-stacked segment
+  /// `_pickStackedCall` would pick (issue #7's call stacking, new QSOs
+  /// only), or whichever comma-separated segment the cursor sits in (issue
+  /// #7's call lists, new or editing). Neither the on-screen lookup
+  /// preview nor the DUPE chip make sense against the raw, multi-call
+  /// field text, so both key off this instead. "//" takes priority over
+  /// "," — a field can't meaningfully be both a stack and a list at once,
+  /// and "//" is the more specific syntax.
   String get _callAtCursor {
     final text = _callController.text;
+    if (widget.editingQso == null && text.contains('//')) {
+      return _pickStackedCall()?.call ?? _call;
+    }
     if (!text.contains(',')) return _call;
     final segments = text.split(',');
     final cursor = _callController.selection.baseOffset;
@@ -600,7 +606,54 @@ class _LoggingControlsState extends State<LoggingControls> {
 
   double? get _freq => parseFreq(_freqController.text);
   String? get _band => _freq != null ? bandForFrequency(_freq!) : _manualBand;
-  bool get _canLog => _callList.isNotEmpty && _callList.every(looksLikeCallsign);
+  bool get _canLog {
+    // Call stacking (issue #7): "//" takes priority over a comma-separated
+    // list — "//"-separated calls/fragments aren't a single valid callsign,
+    // but log is still possible as long as one of the stacked segments is —
+    // see _pickStackedCall. Only while composing a new QSO.
+    if (widget.editingQso == null && _callController.text.contains('//')) {
+      return _pickStackedCall() != null;
+    }
+    return _callList.isNotEmpty && _callList.every(looksLikeCallsign);
+  }
+
+  /// Call stacking (issue #7): the call field holds "//"-separated calls or
+  /// fragments (e.g. "K1ABC//W1AW" — a second call typed in while the first
+  /// is still queued up). Scanning left from the cursor, picks the first
+  /// segment that's a valid callsign and returns it alongside the remaining
+  /// segments (still "//"-joined) to leave in the field for the next QSO.
+  /// Only applies to new QSOs, not editing an existing one. Takes priority
+  /// over the comma-separated call list (issue #7) — a field can't
+  /// meaningfully be both a stack and a list at once, and "//" is the more
+  /// specific syntax.
+  ({String call, String remainder})? _pickStackedCall() {
+    final text = _callController.text;
+    if (!text.contains('//')) return null;
+    final segments = text.split('//');
+
+    final cursor = _callController.selection.baseOffset;
+    var cursorSegment = segments.length - 1;
+    if (cursor >= 0) {
+      var offset = 0;
+      for (var i = 0; i < segments.length; i++) {
+        offset += segments[i].length;
+        if (cursor <= offset) {
+          cursorSegment = i;
+          break;
+        }
+        offset += 2; // the "//" separator
+      }
+    }
+
+    for (var i = cursorSegment; i >= 0; i--) {
+      final candidate = segments[i].trim().toUpperCase();
+      if (looksLikeCallsign(candidate)) {
+        final remainder = [...segments]..removeAt(i);
+        return (call: candidate, remainder: remainder.join('//'));
+      }
+    }
+    return null;
+  }
 
   // Excludes the QSO currently being edited — otherwise, since its call/
   // mode/band are exactly what populated the fields in the first place,
@@ -1188,8 +1241,12 @@ class _LoggingControlsState extends State<LoggingControls> {
     }
   }
 
-  Map<String, dynamic> _getCurrentQsoData() {
+  /// [callOverride] lets call stacking (_pickStackedCall) supply the one
+  /// segment it picked out of the "//"-separated field, instead of the raw
+  /// (still-stacked) field text.
+  Map<String, dynamic> _getCurrentQsoData({String? callOverride}) {
     final base = widget.editingQso?.data ?? const <String, dynamic>{};
+    final call = callOverride ?? _call;
     final refs = [
       for (final list in _controlRefs.values) ...list,
       ..._unmatchedRefs,
@@ -1212,9 +1269,9 @@ class _LoggingControlsState extends State<LoggingControls> {
         ...?(base['their'] as Map<String, dynamic>?),
         if (_theirNameOverride != null) 'name': _theirNameOverride,
         if (_theirGridOverride != null) 'grid': _theirGridOverride,
-        'call': _call,
+        'call': call,
         'sent': _rcvdController.text.trim(),
-        if (_lookupFor == _call && _lookupResult != null) ..._lookupResult!,
+        if (_lookupFor == call && _lookupResult != null) ..._lookupResult!,
       },
       'freq': _freq,
       'band': _band,
@@ -1473,9 +1530,10 @@ class _LoggingControlsState extends State<LoggingControls> {
     }
 
     if (widget.lookup == null) return;
-    // Preview lookup keys off whichever call the cursor is on within a
-    // comma-separated list (issue #7) — the whole joined field text is
-    // never itself a callsign once there's more than one.
+    // Preview lookup keys off whichever call is actually about to be logged
+    // (issue #7's call stacking) or the segment the cursor is on within a
+    // comma-separated list — the whole joined field text is never itself a
+    // callsign once there's more than one call or stacked segment.
     final activeCall = _callAtCursor;
     if (_lookupFor == activeCall) return;
     if (!looksLikeCallsign(activeCall)) {
@@ -1747,6 +1805,38 @@ class _LoggingControlsState extends State<LoggingControls> {
         _isLogging = false;
       }
       return;
+    }
+
+    // Call stacking (issue #7): "//" picks one callsign out of the stack and
+    // logs just that one. No information carries over between stacked
+    // calls — this wipes exactly like an ordinary log (refs, notes,
+    // overrides, RSTs, manual time all reset), then restores the rest of
+    // the stack into the now-empty call field, same as if the operator had
+    // just typed it. Only while composing a new QSO — same restriction as
+    // command shortcuts above.
+    if (editingQso == null) {
+      final stacked = _pickStackedCall();
+      if (stacked != null) {
+        _isLogging = true;
+        try {
+          if (_vfoDebounce != null) {
+            _vfoDebounce!.cancel();
+            _vfoDebounce = null;
+            _pushVfoToRadioService();
+          }
+          final qso = await widget.qsosRepository.add(
+            widget.operation.uuid,
+            _getCurrentQsoData(callOverride: stacked.call),
+          );
+          widget.onLogged?.call(qso);
+
+          _wipe();
+          _callController.text = stacked.remainder;
+        } finally {
+          _isLogging = false;
+        }
+        return;
+      }
     }
 
     if (!_canLog) {
