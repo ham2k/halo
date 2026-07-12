@@ -35,6 +35,12 @@ bool get isWindowedPlatform =>
     defaultTargetPlatform == TargetPlatform.windows ||
     defaultTargetPlatform == TargetPlatform.linux;
 
+/// True on iOS/Android — where on-screen keyboards make "/" awkward to type
+/// (issue #7's "." → "/" autocorrect for logging inputs) and other
+/// mobile-only input quirks apply.
+bool get isMobilePlatform =>
+    !kIsWeb && (defaultTargetPlatform == TargetPlatform.iOS || defaultTargetPlatform == TargetPlatform.android);
+
 /// `AppBar.leadingWidth` for a plain back button that reserves clearance for
 /// the traffic-light buttons — pair with [macOSAwareBackButton]. Every
 /// pushed view's AppBar needs this (or the equivalent custom-leading math

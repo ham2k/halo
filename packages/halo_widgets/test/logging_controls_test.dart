@@ -7,6 +7,7 @@
 // writes (which start inside the fake zone) run to completion.
 
 import 'package:drift/native.dart';
+import 'package:flutter/foundation.dart' show debugDefaultTargetPlatformOverride;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -159,6 +160,76 @@ void main() {
 
     final logged = await waitForQsos(tester, 1);
     expect(logged, isEmpty);
+  });
+
+  group('mobile "." to "/" autocorrect', () {
+    // debugDefaultTargetPlatformOverride must be back to null before the
+    // test body returns — the test framework's invariant check runs right
+    // after, ahead of any tearDown/addTearDown callback — hence try/finally
+    // around each test instead of a shared setUp/tearDown.
+    testWidgets('on mobile, "." becomes "/" once the text looks like a callsign', (tester) async {
+      debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
+      try {
+        await tester.pumpWidget(host());
+
+        await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'K1ABC.P');
+        await tester.pump();
+        await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+
+        final logged = await waitForQsos(tester, 1);
+        expect(logged, hasLength(1));
+        expect(logged.single.theirCall, 'K1ABC/P');
+      } finally {
+        debugDefaultTargetPlatformOverride = null;
+      }
+    });
+
+    testWidgets('on mobile, a digit-only prefix keeps its "." — frequency entry is unaffected', (tester) async {
+      debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
+      try {
+        await tester.pumpWidget(host());
+
+        await tester.enterText(find.widgetWithText(TextField, 'Their call'), '14.285');
+        await tester.pump();
+
+        final callField = tester.widget<TextField>(find.widgetWithText(TextField, 'Their call'));
+        expect(callField.controller!.text, '14.285');
+      } finally {
+        debugDefaultTargetPlatformOverride = null;
+      }
+    });
+
+    testWidgets('a digit-then-letter prefix (e.g. a Japanese-style call) also converts', (tester) async {
+      debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
+      try {
+        await tester.pumpWidget(host());
+
+        await tester.enterText(find.widgetWithText(TextField, 'Their call'), '7K4ABC.QRP');
+        await tester.pump();
+
+        final callField = tester.widget<TextField>(find.widgetWithText(TextField, 'Their call'));
+        expect(callField.controller!.text, '7K4ABC/QRP');
+      } finally {
+        debugDefaultTargetPlatformOverride = null;
+      }
+    });
+  });
+
+  testWidgets('off mobile, "." in the call field is left alone', (tester) async {
+    // Under FLUTTER_TEST, defaultTargetPlatform defaults to android unless
+    // overridden — force a desktop platform to exercise the non-mobile path.
+    debugDefaultTargetPlatformOverride = TargetPlatform.macOS;
+    try {
+      await tester.pumpWidget(host());
+
+      await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'K1ABC.P');
+      await tester.pump();
+
+      final callField = tester.widget<TextField>(find.widgetWithText(TextField, 'Their call'));
+      expect(callField.controller!.text, 'K1ABC.P');
+    } finally {
+      debugDefaultTargetPlatformOverride = null;
+    }
   });
 
   testWidgets('Escape wipes the entry', (tester) async {

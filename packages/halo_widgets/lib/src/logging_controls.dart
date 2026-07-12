@@ -38,6 +38,7 @@ import 'package:flutter_markdown/flutter_markdown.dart';
 import 'form_renderer.dart';
 import 'icon_resolver.dart';
 import 'mdi_icons.dart';
+import 'platform_chrome.dart';
 import 'ref_chips_input.dart';
 import 'secondary_control_row.dart';
 import 'theme.dart';
@@ -1857,6 +1858,7 @@ class _LoggingControlsState extends State<LoggingControls> {
                                 FilteringTextInputFormatter.allow(
                                   RegExp(r'[a-zA-Z0-9/.,]'),
                                 ),
+                                if (isMobilePlatform) MobileDotToSlashFormatter(),
                                 _UpperCaseFormatter(),
                               ],
                               style: _primaryFieldStyle(context, fontWeight: FontWeight.w500),
@@ -1994,6 +1996,32 @@ class _LoggingControlsState extends State<LoggingControls> {
     }
 
     return const SizedBox.shrink();
+  }
+}
+
+/// On mobile, "." often gets typed where "/" was meant — portable/mobile
+/// suffixes like "/P" or "/QRP" sit behind an extra keyboard layer, while
+/// "." is right on the main keys (issue #7). Converts every "." to "/", but
+/// only once the text looks like the start of a callsign (a letter, or a
+/// digit then a letter) rather than digits alone, so typing a plain
+/// frequency ("14.285") keeps its decimal point. See isMobilePlatform.
+///
+/// Public (not `_`-prefixed) so other callsign-entry fields — e.g.
+/// HomeQuickLookup in app/lib/views/home_view.dart — can reuse it instead
+/// of leaving the same mobile keyboard quirk unhandled there.
+class MobileDotToSlashFormatter extends TextInputFormatter {
+  static final _callsignPrefix = RegExp(r'^([A-Z]|[0-9][A-Z])', caseSensitive: false);
+
+  @override
+  TextEditingValue formatEditUpdate(
+    TextEditingValue oldValue,
+    TextEditingValue newValue,
+  ) {
+    final text = newValue.text;
+    if (!text.contains('.') || !_callsignPrefix.hasMatch(text)) {
+      return newValue;
+    }
+    return newValue.copyWith(text: text.replaceAll('.', '/'));
   }
 }
 

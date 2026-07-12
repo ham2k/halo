@@ -558,6 +558,7 @@ class _HomeQuickLookupState extends State<HomeQuickLookup> {
               style: haloMonoStyle(context, fontSize: 15),
               textCapitalization: TextCapitalization.characters,
               inputFormatters: [
+                if (isMobilePlatform) MobileDotToSlashFormatter(),
                 TextInputFormatter.withFunction(
                   (oldValue, newValue) => newValue.copyWith(
                     text: newValue.text.toUpperCase(),
