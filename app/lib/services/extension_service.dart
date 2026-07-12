@@ -484,6 +484,60 @@ class ExtensionService {
     }
   }
 
+  /// Candidate activities for the "add activity" search, merged across every
+  /// `activity` hook and sorted by `distance * relevance` ascending (results
+  /// missing a distance sort after ranked ones — an extension search hit
+  /// with no location still surfaces). `location`/`callsign` fall back from
+  /// the operation's own settings to the operator's global default (station
+  /// callsign only — there's no default location yet, so it stays null if
+  /// the operation has no grid).
+  Future<List<Map<String, dynamic>>> suggestActivities(
+    Map<String, dynamic> operationData, {
+    String? searchTerm,
+  }) async {
+    final host = _host;
+    if (host == null) return const [];
+
+    final grid = operationData['grid'] as String?;
+    final gridLocation = gridToLocation(grid);
+    final callsign = (operationData['stationCall'] as String?)?.isNotEmpty == true
+        ? operationData['stationCall'] as String
+        : settings?.operatorCall;
+
+    try {
+      final entries = await host.invokeHookAll(
+        'activity',
+        method: 'suggest',
+        args: {
+          'operation': operationData,
+          if (gridLocation != null) 'location': {'lat': gridLocation.latitude, 'lon': gridLocation.longitude},
+          if (callsign != null && callsign.isNotEmpty) 'callsign': callsign,
+          if (searchTerm != null && searchTerm.isNotEmpty) 'searchTerm': searchTerm,
+        },
+        timeout: const Duration(seconds: 5),
+      );
+
+      final suggestions = <Map<String, dynamic>>[];
+      for (final entry in entries) {
+        if (entry['ok'] != true || entry['value'] is! List) continue;
+        suggestions.addAll((entry['value'] as List).cast<Map>().map((s) => s.cast<String, dynamic>()));
+      }
+
+      double rank(Map<String, dynamic> s) {
+        final distance = s['distance'] as num?;
+        final relevance = s['relevance'] as num?;
+        if (distance == null || relevance == null) return double.infinity;
+        return (distance * relevance).toDouble();
+      }
+
+      suggestions.sort((a, b) => rank(a).compareTo(rank(b)));
+      return suggestions;
+    } on ExtensionHostException catch (e) {
+      debugPrint('[extensions] suggestActivities failed: $e');
+      return const [];
+    }
+  }
+
   /// The current LoFi account/device/client info, for display in Settings.
   /// Returns null if the runtime isn't up or the request failed (e.g. no
   /// network) — callers should treat that as "status unknown", not "no sync".

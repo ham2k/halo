@@ -29,10 +29,15 @@ class QsoList extends StatelessWidget {
   /// itself, so a single delete flow can't be bypassed mid-edit.
   final void Function(Qso qso) onSelect;
 
+  /// Tap an event marker row (start/break/end — see `Qso.isEvent`) to edit
+  /// its time. Falls back to [onSelect] when omitted.
+  final void Function(Qso qso)? onSelectEvent;
+
   const QsoList({
     super.key,
     required this.qsos,
     required this.onSelect,
+    this.onSelectEvent,
     this.selectedUuid,
     this.noQsosLabel,
     this.duplicateLabel,
@@ -59,6 +64,15 @@ class QsoList extends StatelessWidget {
     final mono = haloMonoStyle(context, fontSize: 14, color: theme.colorScheme.onSurface);
     final monoDim = mono.copyWith(color: theme.colorScheme.outline);
 
+    // QSO numbers count only real contacts — event markers interspersed in
+    // the timeline don't consume a number.
+    final numbers = List<int>.filled(qsos.length, 0);
+    var runningNumber = 0;
+    for (var i = 0; i < qsos.length; i++) {
+      if (!qsos[i].isEvent) runningNumber++;
+      numbers[i] = runningNumber;
+    }
+
     return Container(
       // Shows through wherever the list doesn't reach (e.g. above the
       // oldest row when there are few QSOs, since the list is reversed to
@@ -77,7 +91,16 @@ class QsoList extends StatelessWidget {
           // first QSO logged), independent of where it renders.
           final chronologicalIndex = qsos.length - 1 - index;
           final qso = qsos[chronologicalIndex];
-          final number = chronologicalIndex + 1;
+
+          if (qso.isEvent) {
+            return EventRow(
+              qso: qso,
+              selected: qso.uuid == selectedUuid,
+              onTap: () => (onSelectEvent ?? onSelect)(qso),
+            );
+          }
+
+          final number = numbers[chronologicalIndex];
           final time = qso.startAt;
           final timeLabel = time == null
               ? '--:--'
@@ -221,5 +244,68 @@ class QsoList extends StatelessWidget {
       decoration: BoxDecoration(color: color, shape: BoxShape.circle),
     );
     return tooltip == null ? dot : Tooltip(message: tooltip, child: dot);
+  }
+}
+
+/// A start/break/end marker row in [QsoList], visually distinct from a QSO
+/// row (centered label instead of data columns) since it isn't a contact —
+/// tapping it opens time editing rather than the logging panel.
+class EventRow extends StatelessWidget {
+  final Qso qso;
+  final bool selected;
+  final VoidCallback onTap;
+
+  const EventRow({super.key, required this.qso, required this.onTap, this.selected = false});
+
+  static const _icons = {
+    'start': Icons.flag_outlined,
+    'break': Icons.pause_circle_outline,
+    'end': Icons.flag,
+  };
+
+  static const _labels = {
+    'start': 'Operation started',
+    'break': 'Break',
+    'end': 'Operation ended',
+  };
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final kind = qso.eventKind;
+    final time = qso.startAt;
+    final timeLabel = time == null
+        ? '--:--'
+        : '${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}';
+
+    return Material(
+      color: selected ? theme.colorScheme.secondaryContainer : theme.colorScheme.surfaceContainerHigh,
+      child: InkWell(
+        onTap: onTap,
+        mouseCursor: SystemMouseCursors.click,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(_icons[kind] ?? Icons.timelapse, size: 16, color: theme.colorScheme.outline),
+              const SizedBox(width: 8),
+              Text(
+                _labels[kind] ?? kind ?? 'Event',
+                style: theme.textTheme.labelMedium?.copyWith(
+                  color: theme.colorScheme.outline,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const SizedBox(width: 10),
+              Text(
+                timeLabel,
+                style: haloMonoStyle(context, fontSize: 12, color: theme.colorScheme.outline),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 }

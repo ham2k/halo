@@ -8,8 +8,10 @@
 //   spots                          — SOTAWatch spots source
 //   dataFile                       — CSV database download and offline caching
 
+import { parseCallsign } from "@ham2k/lib-callsigns"
+import { annotateFromCountryFile, useBuiltinCountryFile } from "@ham2k/lib-country-files"
 import { bandForFrequency } from "@ham2k/lib-operation-data"
-import { locationToGrid6 } from "@ham2k/lib-geo-tools"
+import { locationToGrid6, distanceOnEarth } from "@ham2k/lib-geo-tools"
 import { defineExtension, host } from "@ham2k/polo-sdk"
 import type {
   HookContext,
@@ -17,11 +19,100 @@ import type {
   Ref,
   Spot,
   DataFileDefinition,
+  SuggestArgs,
+  ActivitySuggestion,
+  LookupRow,
 } from "@ham2k/polo-sdk"
 
 const HUNTING_TYPE = 'sota'
 const ACTIVATION_TYPE = 'sotaActivation'
 const REFERENCE_REGEX = /^[A-Z0-9]{1,4}\/[A-Z]{2}-[0-9]{3,}$/i
+
+// See POTA's identical note on why this loads at module scope: resolves
+// both a summit's association code and a caller's callsign to a DXCC
+// entity without a network round trip.
+useBuiltinCountryFile()
+
+function entityPrefixForCall(call: string | undefined): string | undefined {
+  if (!call) return undefined
+  return annotateFromCountryFile(parseCallsign(call)).entityPrefix
+}
+
+// Association codes with no valid-prefix reading, even after the
+// trailing-letter fallback below — hand-verified against the real
+// summitslist.csv (every SOTA association that doesn't resolve otherwise).
+const ASSOCIATION_CODE_OVERRIDES: Record<string, string> = {
+  // South Georgia & the South Sandwich Islands: DXCC lists this under the
+  // compound prefix "VP8/g" (distinct from the Falkland Islands' plain
+  // "VP8", which is what "VP0" would otherwise collide with if simplified).
+  VP0: 'VP8/g',
+  // UK South Atlantic: SOTA's one "ZD" association actually spans three
+  // distinct DXCC entities — Ascension (ZD8), Saint Helena (ZD7), Tristan
+  // da Cunha & Gough (ZD9) — that a 2-letter code can't disambiguate.
+  // Stored as the literal "ZD" family marker rather than guessing one;
+  // `suggest`'s subCategory comparison below treats any caller entity
+  // starting with "ZD" as a match for it.
+  ZD: 'ZD',
+}
+
+// Only ~150-500 distinct association codes exist worldwide, but
+// csvToLookupEntry calls this once per summit (~181,000 rows in the real
+// summitslist.csv, and again on every RELOAD SOTA/RELOAD ALL) — the same
+// code recurs across thousands of summits (e.g. "W6" for all of
+// California), so caching by code avoids redoing the parseCallsign/
+// annotateFromCountryFile resolution for every row.
+const associationEntityCache = new Map<string, string | undefined>()
+
+// A SOTA association code (e.g. "W6", "HB9", "VE1") is a bare prefix, not a
+// full callsign — `parseCallsign` only extracts prefix info from something
+// call-shaped, so a lone prefix parses as empty/unmatched. Appending a
+// throwaway suffix gives it a real callsign's shape without changing which
+// prefix it resolves to.
+function entityPrefixForAssociationCode(code: string | undefined): string | undefined {
+  if (!code) return undefined
+  if (associationEntityCache.has(code)) return associationEntityCache.get(code)
+
+  const resolved = resolveEntityPrefixForAssociationCode(code)
+  associationEntityCache.set(code, resolved)
+  return resolved
+}
+
+function resolveEntityPrefixForAssociationCode(code: string): string | undefined {
+  if (ASSOCIATION_CODE_OVERRIDES[code]) return ASSOCIATION_CODE_OVERRIDES[code]
+
+  const direct = entityPrefixForCall(`${code}1AA`)
+  if (direct) return direct
+
+  // Many SOTA sub-associations tack one region-distinguishing letter onto a
+  // real ham prefix (Alaska's KLA/KLF/KLS on top of KL, Argentina's LUx on
+  // top of LU, Indonesia's YBx on top of YB, …) — not itself a valid
+  // prefix, but stripping it usually recovers one.
+  return entityPrefixForCall(`${code.slice(0, -1)}1AA`)
+}
+
+// "ZD" is a family marker for three DXCC entities at once (see
+// ASSOCIATION_CODE_OVERRIDES) — matching it against a caller's own entity
+// needs a prefix check, not equality, unlike every other subCategory value.
+function subCategoryMatchesCaller(rowSubCategory: string | undefined, callerEntity: string): boolean {
+  if (rowSubCategory === callerEntity) return true
+  return rowSubCategory === 'ZD' && callerEntity.startsWith('ZD')
+}
+
+// See POTA's identical note: bounding-box nearby query, real distance after.
+const NEARBY_DELTA = 1.5
+const MAX_SUGGESTIONS = 30
+
+function relevanceForMatch(row: LookupRow, searchTerm?: string): number {
+  if (!searchTerm) return row.flags ? 1 : 0.6
+  const term = searchTerm.toUpperCase()
+  const key = row.key.toUpperCase()
+  const name = (row.name ?? '').toUpperCase()
+  if (key === term) return 1
+  if (name.startsWith(term)) return 0.9
+  if (key.includes(term)) return 0.85
+  if (name.includes(term)) return 0.7
+  return 0.6
+}
 
 interface SOTASummitInfo {
   summitCode: string
@@ -157,6 +248,41 @@ const ActivityHook = {
       },
     ]
   },
+
+  async suggest({ location, searchTerm, callsign }: SuggestArgs, _ctx: HookContext): Promise<ActivitySuggestion[]> {
+    const rows: LookupRow[] = searchTerm
+      ? await host.dbLookupSelectAll('sota', searchTerm)
+      : location
+        ? await host.dbLookupSelectByLocation('sota', location.lat, location.lon, NEARBY_DELTA)
+        : []
+
+    // See POTA's identical note: entity-restrict name/code search results
+    // to the caller's own DXCC entity when known, but never nearby ones.
+    const callerEntity = searchTerm ? entityPrefixForCall(callsign) : undefined
+    const filteredRows = callerEntity ? rows.filter((row) => subCategoryMatchesCaller(row.subCategory, callerEntity)) : rows
+
+    return filteredRows.slice(0, MAX_SUGGESTIONS).map((row) => {
+      const data = (row.data ?? {}) as Record<string, any>
+      const distance =
+        location && row.lat != null && row.lon != null
+          ? (distanceOnEarth(location, { lat: row.lat, lon: row.lon }) ?? undefined)
+          : undefined
+      const associationRegion = [data.region, data.association].filter((x) => x).join(', ')
+
+      return {
+        type: ACTIVATION_TYPE,
+        ref: row.key,
+        name: row.name,
+        grid: data.grid,
+        location: associationRegion,
+        program: 'SOTA',
+        label: `SOTA ${row.key}: ${row.name ?? ''}`,
+        shortLabel: `SOTA ${row.key}`,
+        distance,
+        relevance: relevanceForMatch(row, searchTerm),
+      }
+    })
+  },
 }
 
 function refsOfType(container: Record<string, unknown>, type: string): Ref[] {
@@ -267,9 +393,15 @@ const sotaDataFile: DataFileDefinition = {
     const name = r.SummitName
     const altitude = parseInt(r.AltM, 10) || 0
     const points = parseInt(r.Points, 10) || 0
+    // SOTA association codes (the part of the reference before the "/",
+    // e.g. "W6" in "W6/SD-026") are themselves valid ham-radio prefixes —
+    // resolving one to its DXCC entity the same way POTA's numeric entityId
+    // does, so `suggest` can filter on subCategory consistently across
+    // activities.
+    const dxccPrefix = entityPrefixForAssociationCode(ref.split('/')[0])
 
     return {
-      subCategory: r.AssociationName ? r.AssociationName.split('/')[0] : undefined,
+      subCategory: dxccPrefix,
       key: ref,
       name,
       lat,
@@ -283,6 +415,7 @@ const sotaDataFile: DataFileDefinition = {
         points,
         region: r.RegionName,
         association: r.AssociationName,
+        dxccPrefix,
         active: true,
         lat,
         lon,

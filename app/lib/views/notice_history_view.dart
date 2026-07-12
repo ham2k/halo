@@ -21,7 +21,11 @@ class NoticeHistoryView extends StatelessWidget {
     final history = services.statusBar.history;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Recent Notices')),
+      appBar: AppBar(
+        leadingWidth: macOSAwareLeadingWidth,
+        leading: macOSAwareBackButton(),
+        title: const Text('Recent Notices'),
+      ),
       body: history.isEmpty
           ? const Center(child: Text('No notices yet'))
           : ListView.separated(
