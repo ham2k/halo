@@ -228,6 +228,7 @@ const kernel = {
             value: {
               key: record.key,
               extensionKey: record.extensionKey,
+              extensionName: extensions[record.extensionKey]?.name,
               name: record.hook.name,
               description: record.hook.description,
               url: record.hook.url,

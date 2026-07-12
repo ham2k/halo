@@ -10,16 +10,19 @@ import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'extension_service.dart';
+import 'status_bar_service.dart';
 
 class DataFileManager {
   final LookupRepository lookups;
   final ExtensionService extensions;
   final SharedPreferences prefs;
+  final StatusBarService? statusBar;
 
   DataFileManager({
     required this.lookups,
     required this.extensions,
     required this.prefs,
+    this.statusBar,
   });
 
   /// Resolves direct URLs from sharing links for known file sharing systems.
@@ -151,23 +154,39 @@ class DataFileManager {
     return matched;
   }
 
+  /// Resolves the human-facing name to show for a data file in status bar
+  /// messages: its own name if the extension gave it one, else the label of
+  /// the extension that registered it, else its raw key as a last resort.
+  String _labelFor(String key, Map<String, dynamic> def) {
+    return def['name'] as String? ?? def['extensionName'] as String? ?? key;
+  }
+
   /// Natively parses and processes a data file based on its `fetchType`.
   Future<void> processDataFile(String key, Map<String, dynamic> def, {bool force = false}) async {
     final url = def['url'] as String;
     final fetchType = def['fetchType'] as String;
+    final label = _labelFor(key, def);
+    final statusKey = 'dataFile:$key';
 
-    final body = await downloadFile(key, url, force: force);
-    if (body == null) {
-      // Unchanged 304.
-      return;
-    }
+    statusBar?.setProgress(key: statusKey, title: label, text: 'Downloading…');
+    try {
+      final body = await downloadFile(key, url, force: force);
+      if (body == null) {
+        // Unchanged 304.
+        statusBar?.clear(statusKey);
+        return;
+      }
 
-    if (fetchType == 'csv') {
-      await _processCsv(key, def, body);
-    } else if (fetchType == 'json') {
-      await _processJson(key, def, body);
-    } else if (fetchType == 'raw') {
-      await _processRaw(key, def, body);
+      if (fetchType == 'csv') {
+        await _processCsv(key, def, body);
+      } else if (fetchType == 'json') {
+        await _processJson(key, def, body);
+      } else if (fetchType == 'raw') {
+        await _processRaw(key, def, body);
+      }
+    } catch (e) {
+      statusBar?.clear(statusKey);
+      rethrow;
     }
   }
 
@@ -204,7 +223,7 @@ class DataFileManager {
       }
     }
 
-    await _batchWriteToDatabase(key, category, 'mapCsvBatch', 'rows', parsedRows);
+    await _batchWriteToDatabase(key, category, _labelFor(key, def), 'mapCsvBatch', 'rows', parsedRows);
   }
 
   Future<void> _processJson(String key, Map<String, dynamic> def, String body) async {
@@ -226,7 +245,7 @@ class DataFileManager {
       throw FormatException('Resolved target at rootPath is neither Array nor Object');
     }
 
-    await _batchWriteToDatabase(key, category, 'mapJsonBatch', 'entries', entriesToProcess);
+    await _batchWriteToDatabase(key, category, _labelFor(key, def), 'mapJsonBatch', 'entries', entriesToProcess);
   }
 
   Future<void> _processRaw(String key, Map<String, dynamic> def, String body) async {
@@ -262,6 +281,16 @@ class DataFileManager {
       key: key,
       method: 'onLoadRawData',
       args: processedJson,
+    );
+
+    final statusKey = 'dataFile:$key';
+    final label = _labelFor(key, def);
+    final count = processedJson is List ? processedJson.length : null;
+    statusBar?.setProgress(
+      key: statusKey,
+      title: label,
+      text: count != null ? 'Imported $count record(s) for $label.' : 'Imported data for $label.',
+      value: 1.0,
     );
   }
 
@@ -342,6 +371,7 @@ class DataFileManager {
   Future<void> _batchWriteToDatabase(
     String key,
     String category,
+    String label,
     String mappingMethod,
     String mappingArgKey,
     List<dynamic> items,
@@ -351,10 +381,19 @@ class DataFileManager {
 
     final updatedFlag = DateTime.now().millisecondsSinceEpoch;
     final chunkSize = 5000;
+    final statusKey = 'dataFile:$key';
+    var imported = 0;
 
     for (var start = 0; start < items.length; start += chunkSize) {
       final end = start + chunkSize < items.length ? start + chunkSize : items.length;
       final chunk = items.sublist(start, end);
+
+      statusBar?.setProgress(
+        key: statusKey,
+        title: label,
+        text: '$end / ${items.length} records',
+        value: items.isEmpty ? 1.0 : end / items.length,
+      );
 
       // Invoke chunk mapper in QuickJS
       final dynamic response = await host.invokeHook(
@@ -386,12 +425,15 @@ class DataFileManager {
         }
         if (lookupRows.isNotEmpty) {
           await lookups.insertLookupBatch(lookupRows);
+          imported += lookupRows.length;
         }
       }
     }
 
     // Clean up any stale records not updated in this run
     await lookups.deleteCategoryStale(category, updatedFlag);
+
+    statusBar?.setProgress(key: statusKey, title: label, text: 'Imported $imported record(s) for $label.', value: 1.0);
   }
 
   List<String> parseCsvRow(String line, String delimiter) {

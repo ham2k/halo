@@ -132,6 +132,7 @@ class HaLoServices {
     lookups: lookups,
     extensions: extensions,
     prefs: settings.prefs,
+    statusBar: statusBar,
   );
   late final StatusBarService statusBar = StatusBarService(settings.prefs);
 
@@ -193,20 +194,24 @@ class HaLoServices {
         if (target == null) return null;
         // Downloading + reprocessing can take a while (tens of thousands
         // of CSV rows through the extension bridge) — don't block the
-        // call-field's command flow on it; report completion via the
-        // status bar instead, same as a background sync round.
+        // call-field's command flow on it. Each matched data file already
+        // reports its own transient progress/completion in the status bar
+        // (see DataFileManager), so no separate summary is shown here.
         unawaited(dataFiles.syncAllDataFiles(force: true, categoryFilter: target == 'ALL' ? null : target).then((matched) {
-          statusBar.showNotice(
-            key: 'command:reloadDataFiles',
-            text: matched == 0 ? 'No data files matched "$target".' : 'Reloaded $matched data file(s) for $target.',
-          );
+          if (matched == 0) {
+            statusBar.setProgress(
+              key: 'command:reloadDataFiles',
+              text: 'No data files matched "$target".',
+              value: 1.0,
+            );
+          }
         }).catchError((e) {
           // Belt-and-suspenders: syncAllDataFiles already isolates each data
           // file's own errors, but this still needs to fail loud (not just
-          // silently drop the completion notice) for anything unexpected
-          // that slips past that per-entry try/catch.
+          // silently drop the failure) for anything unexpected that slips
+          // past that per-entry try/catch.
           debugPrint('[data-file] reloadDataFiles failed: $e');
-          statusBar.showNotice(key: 'command:reloadDataFiles', text: 'Reload failed: $e');
+          statusBar.setProgress(key: 'command:reloadDataFiles', text: 'Reload failed: $e', value: 1.0);
         }));
         return target == 'ALL' ? 'Reloading all data files…' : 'Reloading $target data files…';
       case 'devNotice':
