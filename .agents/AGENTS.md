@@ -7,15 +7,19 @@ This is a multi-platform app for Amateur Radio Logging, called "Ham2K Logger" (o
 - [DESIGN.md](file:///Users/sd/Work/ham2k/app-halo/DESIGN.md) contains high-level design documentation.
 - User interface conventions are listed in [user-interface.md](file:///Users/sd/Work/ham2k/app-halo/docs/design/user-interface.md) and branding is documented in [branding.md](file:///Users/sd/Work/ham2k/app-halo/docs/design/branding.md).
 - The extension system and hooks are defined under `docs/extensions/`.
-- We often mention app-polo and web-lofi, which are the existing mobile version and a web-based log browser that shares a lot of logic with PoLo. These are available in separate sibling repositories that can be used for reference. 
+- We often mention app-polo and web-lofi, which are the existing mobile version and a web-based log browser that shares a lot of logic with PoLo. These are available in separate sibling repositories that can be used for reference.
 
 ## Process Conventions
 
 - Agents should make commits to the repository when relevant changes are made. If the agent is continuing during a session (such as making updates based on developer feedback), they may amend the previous commit if it is related.
 - When working on a feature, the agent might want to run the mac or web versions in the background, and use hot reload to see changes without rebuilding the app.
+- We do most work on the `app-halo-dist` repository, with branches out of the `main-dist-private` branch. We use "squash-and-merge" to merge PRs. Any commits that include changes to `app_dist` are split into separate commits in `app-halo-dist`. The non `app_dist` changes are then cherry-picked to `main-public`.
+- New branches should be pushed to the `app-halo-dist` origin, never to regular `origin`.
 
 ## Tooling
 - On the development environment, we use `mise` to manage dependencies and tool versions.
+- When adding commits, identify yourself as "Ham2K Bot <bot@ham2k.com>"
+- When interacting with Github, use `export GH_TOKEN="$(security find-generic-password -a claude-code -s gh-bot-token -w)"` in the session to authenticate API requests as ham2k-bot.
 
 ---
 
