@@ -11,6 +11,12 @@ import 'theme.dart';
 typedef FormValidator = Future<String?> Function(String fieldKey, dynamic value, Map<String, dynamic> state);
 typedef FormTransformer = Future<dynamic> Function(String fieldKey, dynamic value, Map<String, dynamic> state);
 typedef FormOnChange = Future<Map<String, dynamic>?> Function(String fieldKey, dynamic value, Map<String, dynamic> state);
+typedef FormAction = Future<String?> Function(String actionKey, String method, Map<String, dynamic> state);
+
+/// Substitutes `${key}` placeholders in [template] with values from [item].
+String _templateString(String template, Map<String, dynamic> item) {
+  return template.replaceAllMapped(RegExp(r'\$\{([^}]+)\}'), (m) => item[m.group(1)]?.toString() ?? '');
+}
 
 /// Renders a form from a dynamic JSON definition, coordinating input fields,
 /// headers, section dividers, and markdown text blocks. Supports initial state,
@@ -21,6 +27,7 @@ class FormRenderer extends StatefulWidget {
   final FormValidator? validator;
   final FormTransformer? transformer;
   final FormOnChange? onChange;
+  final FormAction? onAction;
   final void Function(Map<String, dynamic> values) onSubmit;
   final VoidCallback onCancel;
   final bool showActions;
@@ -34,6 +41,7 @@ class FormRenderer extends StatefulWidget {
     this.validator,
     this.transformer,
     this.onChange,
+    this.onAction,
     required this.onSubmit,
     required this.onCancel,
     this.showActions = true,
@@ -50,6 +58,7 @@ class FormRendererState extends State<FormRenderer> {
   final Map<String, TextEditingController> _controllers = {};
   final Map<String, FocusNode> _focusNodes = {};
   final Map<String, String> _errors = {};
+  final Set<String> _runningActions = {};
   bool _isSubmitting = false;
 
   List<Map<String, dynamic>> get _elements =>
@@ -72,6 +81,8 @@ class FormRendererState extends State<FormRenderer> {
       if (val == null) {
         if (fieldType == 'checkbox') {
           val = false;
+        } else if (fieldType == 'list') {
+          val = <Map<String, dynamic>>[];
         } else if (['select', 'radio', 'number'].contains(fieldType)) {
           val = null;
         } else {
@@ -83,7 +94,7 @@ class FormRendererState extends State<FormRenderer> {
       final focusNode = FocusNode();
       _focusNodes[key] = focusNode;
 
-      if (['text', 'multiline', 'email', 'callsign', 'number'].contains(fieldType)) {
+      if (['text', 'multiline', 'email', 'callsign', 'number', 'secret'].contains(fieldType)) {
         final controller = TextEditingController(text: val?.toString() ?? '');
         _controllers[key] = controller;
         controller.addListener(() {
@@ -282,6 +293,8 @@ class FormRendererState extends State<FormRenderer> {
                   return _buildMarkdown(el, theme);
                 case 'field':
                   return _buildField(el, theme);
+                case 'action':
+                  return _buildActionElement(el, theme);
                 default:
                   return const SizedBox.shrink();
               }
@@ -431,6 +444,18 @@ class FormRendererState extends State<FormRenderer> {
           onSubmitted: (_) => submit(),
           decoration: poloFieldDecoration(context, label, hintText: placeholder, errorText: errorText),
         );
+      case 'secret':
+        return TextField(
+          controller: _controllers[key],
+          focusNode: _focusNodes[key],
+          obscureText: true,
+          autofillHints: const [AutofillHints.password],
+          textInputAction: TextInputAction.done,
+          onSubmitted: (_) => submit(),
+          decoration: poloFieldDecoration(context, label, hintText: placeholder, errorText: errorText),
+        );
+      case 'list':
+        return _buildListField(el, theme);
       case 'select':
         return DropdownButtonFormField<dynamic>(
           value: _values[key],
@@ -526,6 +551,156 @@ class FormRendererState extends State<FormRenderer> {
         return const SizedBox.shrink();
     }
   }
+
+  /// A `fieldType: 'list'` field: a summary row per item plus an "Add" row.
+  /// Editing or adding an item reopens the same form renderer recursively
+  /// (via [showFormDialog]) scoped to `itemFields`, so there's no separate
+  /// "list item editor" widget — just a smaller [FormDefinition].
+  Widget _buildListField(Map<String, dynamic> el, ThemeData theme) {
+    final key = el['key'] as String;
+    final label = el['label'] as String? ?? '';
+    final itemFields = (el['itemFields'] as List? ?? const []).cast<Map<String, dynamic>>();
+    final itemTitleTemplate = el['itemTitle'] as String?;
+    final orderable = el['orderable'] == true;
+    final errorText = _errors[key];
+    final items = ((_values[key] as List?) ?? const []).cast<Map<String, dynamic>>();
+
+    Future<void> commit(List<Map<String, dynamic>> newItems) async {
+      setState(() {
+        _values[key] = newItems;
+        _errors.remove(key);
+      });
+      await _handleFieldBlurOrInteraction(key, newItems);
+    }
+
+    Future<void> editItem(int? index) async {
+      final itemPath = '$key[${index ?? items.length}]';
+      final initial = index != null ? Map<String, dynamic>.from(items[index]) : <String, dynamic>{};
+      final result = await showFormDialog(
+        context,
+        formDefinition: {
+          'title': index != null ? 'Edit $label' : 'Add $label',
+          'elements': itemFields,
+        },
+        initialState: initial,
+        validator: widget.validator == null
+            ? null
+            : (fieldKey, value, state) => widget.validator!('$itemPath.$fieldKey', value, state),
+        transformer: widget.transformer == null
+            ? null
+            : (fieldKey, value, state) => widget.transformer!('$itemPath.$fieldKey', value, state),
+      );
+      if (result == null) return;
+      final newItems = List<Map<String, dynamic>>.from(items);
+      if (index != null) {
+        newItems[index] = result;
+      } else {
+        newItems.add(result);
+      }
+      await commit(newItems);
+    }
+
+    void deleteItem(int index) {
+      final newItems = List<Map<String, dynamic>>.from(items)..removeAt(index);
+      commit(newItems);
+    }
+
+    void reorder(int oldIndex, int newIndex) {
+      final newItems = List<Map<String, dynamic>>.from(items);
+      if (newIndex > oldIndex) newIndex -= 1;
+      newItems.insert(newIndex, newItems.removeAt(oldIndex));
+      commit(newItems);
+    }
+
+    Widget rowFor(int index) {
+      final item = items[index];
+      final title = itemTitleTemplate != null
+          ? _templateString(itemTitleTemplate, item)
+          : item.values.firstWhere((v) => v != null && v.toString().isNotEmpty, orElse: () => '').toString();
+      return ListTile(
+        key: ValueKey('$key-item-$index'),
+        dense: true,
+        contentPadding: EdgeInsets.zero,
+        title: Text(title.isEmpty ? '(untitled)' : title),
+        onTap: _isSubmitting ? null : () => editItem(index),
+        trailing: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (orderable) const Icon(Icons.drag_handle, size: 20),
+            IconButton(
+              icon: const Icon(Icons.delete_outline, size: 20),
+              onPressed: _isSubmitting ? null : () => deleteItem(index),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: theme.textTheme.labelMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+        ),
+        const SizedBox(height: 4),
+        if (orderable)
+          ReorderableListView(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            onReorder: reorder,
+            children: [for (var i = 0; i < items.length; i++) rowFor(i)],
+          )
+        else
+          for (var i = 0; i < items.length; i++) rowFor(i),
+        TextButton.icon(
+          onPressed: _isSubmitting ? null : () => editItem(null),
+          icon: const Icon(Icons.add, size: 18),
+          label: Text('Add $label'),
+        ),
+        if (errorText != null)
+          Padding(
+            padding: const EdgeInsets.only(top: 4, left: 4),
+            child: Text(errorText, style: TextStyle(color: theme.colorScheme.error, fontSize: 12)),
+          ),
+      ],
+    );
+  }
+
+  /// A `type: 'action'` element: a button that invokes [FormAction] and
+  /// shows the returned string as a result banner.
+  Widget _buildActionElement(Map<String, dynamic> el, ThemeData theme) {
+    final actionKey = el['key'] as String? ?? '';
+    final label = el['label'] as String? ?? '';
+    final method = el['method'] as String? ?? '';
+    final isRunning = _runningActions.contains(actionKey);
+
+    return OutlinedButton(
+      onPressed: widget.onAction == null || isRunning
+          ? null
+          : () async {
+              setState(() => _runningActions.add(actionKey));
+              String? result;
+              try {
+                result = await widget.onAction!(actionKey, method, _values);
+              } catch (e) {
+                result = 'Error: $e';
+              }
+              if (!mounted) return;
+              setState(() => _runningActions.remove(actionKey));
+              if (result != null && context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(result)));
+              }
+            },
+      child: isRunning
+          ? const SizedBox(
+              width: 16,
+              height: 16,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            )
+          : Text(label),
+    );
+  }
 }
 
 /// Helper function to display the FormRenderer inside an AlertDialog.
@@ -536,6 +711,7 @@ Future<Map<String, dynamic>?> showFormDialog(
   FormValidator? validator,
   FormTransformer? transformer,
   FormOnChange? onChange,
+  FormAction? onAction,
 }) {
   final theme = Theme.of(context);
   final formKey = GlobalKey<FormRendererState>();
@@ -595,6 +771,7 @@ Future<Map<String, dynamic>?> showFormDialog(
             validator: validator,
             transformer: transformer,
             onChange: onChange,
+            onAction: onAction,
             showActions: false,
             showTitle: false,
             submittingNotifier: submittingNotifier,
@@ -655,6 +832,7 @@ class FormView extends StatefulWidget {
   final FormValidator? validator;
   final FormTransformer? transformer;
   final FormOnChange? onChange;
+  final FormAction? onAction;
   final void Function(Map<String, dynamic> values) onSubmit;
   final VoidCallback onCancel;
 
@@ -665,6 +843,7 @@ class FormView extends StatefulWidget {
     this.validator,
     this.transformer,
     this.onChange,
+    this.onAction,
     required this.onSubmit,
     required this.onCancel,
   });
@@ -703,6 +882,7 @@ class _FormViewState extends State<FormView> {
               validator: widget.validator,
               transformer: widget.transformer,
               onChange: widget.onChange,
+              onAction: widget.onAction,
               showActions: false,
               showTitle: false,
               submittingNotifier: _submittingNotifier,

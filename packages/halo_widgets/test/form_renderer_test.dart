@@ -342,4 +342,131 @@ void main() {
       expect(submittedValues!['name'], 'Pinned Test');
     });
   });
+
+  group('FormRenderer secret/list/action fields', () {
+    testWidgets('secret field obscures its text', (tester) async {
+      await tester.pumpWidget(MaterialApp(
+        home: Scaffold(
+          body: FormRenderer(
+            formDefinition: const {
+              'elements': [
+                {'type': 'field', 'fieldType': 'secret', 'key': 'apiKey', 'label': 'API Key'},
+              ],
+            },
+            initialState: const {},
+            onSubmit: (_) {},
+            onCancel: () {},
+          ),
+        ),
+      ));
+
+      final field = tester.widget<TextField>(find.widgetWithText(TextField, 'API Key'));
+      expect(field.obscureText, isTrue);
+    });
+
+    testWidgets('list field adds, edits, and deletes items via the nested item dialog', (tester) async {
+      Map<String, dynamic>? submittedValues;
+      final listFormDefinition = {
+        'elements': [
+          {
+            'type': 'field',
+            'fieldType': 'list',
+            'key': 'presets',
+            'label': 'Presets',
+            'itemTitle': r'${name} — ${exchange}',
+            'itemFields': [
+              {'type': 'field', 'fieldType': 'text', 'key': 'name', 'label': 'Name'},
+              {'type': 'field', 'fieldType': 'text', 'key': 'exchange', 'label': 'Exchange'},
+            ],
+          },
+        ],
+      };
+
+      await tester.pumpWidget(MaterialApp(
+        home: Scaffold(
+          body: FormRenderer(
+            formDefinition: listFormDefinition,
+            initialState: const {},
+            onSubmit: (vals) => submittedValues = vals,
+            onCancel: () {},
+          ),
+        ),
+      ));
+
+      // No items yet, just the label and the "Add" row.
+      expect(find.text('Presets'), findsOneWidget);
+      expect(find.widgetWithText(TextButton, 'Add Presets'), findsOneWidget);
+
+      // Item add/edit dialogs have their own Save button, distinct from the
+      // outer form's — scope taps to the dialog to avoid ambiguity.
+      Finder dialogSaveButton() =>
+          find.descendant(of: find.byType(AlertDialog), matching: find.widgetWithText(FilledButton, 'Save'));
+
+      // Add an item through the nested dialog.
+      await tester.tap(find.widgetWithText(TextButton, 'Add Presets'));
+      await tester.pumpAndSettle();
+      await tester.enterText(find.widgetWithText(TextField, 'Name'), 'Field Day');
+      await tester.enterText(find.widgetWithText(TextField, 'Exchange'), '1A NNJ');
+      await tester.tap(dialogSaveButton());
+      await tester.pumpAndSettle();
+
+      // Summary row uses the itemTitle template.
+      expect(find.text('Field Day — 1A NNJ'), findsOneWidget);
+
+      // Edit the item: tapping the row reopens the dialog pre-filled.
+      await tester.tap(find.text('Field Day — 1A NNJ'));
+      await tester.pumpAndSettle();
+      expect(find.widgetWithText(TextField, 'Name'), findsOneWidget);
+      final nameField = tester.widget<TextField>(find.widgetWithText(TextField, 'Name'));
+      expect(nameField.controller?.text, 'Field Day');
+      await tester.enterText(find.widgetWithText(TextField, 'Exchange'), '2A NNJ');
+      await tester.tap(dialogSaveButton());
+      await tester.pumpAndSettle();
+      expect(find.text('Field Day — 2A NNJ'), findsOneWidget);
+
+      // Submitting the outer form includes the edited list.
+      await tester.tap(find.widgetWithText(FilledButton, 'Save'));
+      await tester.pumpAndSettle();
+      expect(submittedValues!['presets'], [
+        {'name': 'Field Day', 'exchange': '2A NNJ'},
+      ]);
+
+      // Delete removes the row.
+      await tester.tap(find.byIcon(Icons.delete_outline));
+      await tester.pumpAndSettle();
+      expect(find.text('Field Day — 2A NNJ'), findsNothing);
+    });
+
+    testWidgets('action element invokes onAction with its key and method, and shows the result', (tester) async {
+      String? capturedKey;
+      String? capturedMethod;
+
+      await tester.pumpWidget(MaterialApp(
+        home: Scaffold(
+          body: FormRenderer(
+            formDefinition: const {
+              'elements': [
+                {'type': 'action', 'key': 'test', 'label': 'Test Connection', 'method': 'testCredentials'},
+              ],
+            },
+            initialState: const {},
+            onAction: (actionKey, method, state) async {
+              capturedKey = actionKey;
+              capturedMethod = method;
+              return 'Connected';
+            },
+            onSubmit: (_) {},
+            onCancel: () {},
+          ),
+        ),
+      ));
+
+      await tester.tap(find.widgetWithText(OutlinedButton, 'Test Connection'));
+      await tester.pumpAndSettle();
+
+      expect(capturedKey, 'test');
+      expect(capturedMethod, 'testCredentials');
+      expect(find.text('Connected'), findsOneWidget);
+    });
+  });
 }
