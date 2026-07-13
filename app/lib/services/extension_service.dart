@@ -538,6 +538,7 @@ class ExtensionService {
               return null;
             }
           },
+          developerMode: settings?.developerMode ?? false,
         );
         return result;
       case 'statusBarSetMessage':

@@ -529,22 +529,30 @@ export interface FormField {
   /// discriminator only needed when one extension exposes more than one
   /// account-like entity under the same key.
   account?: { key: string; subkey?: string }
+  /// Hidden unless the app's developer mode is on; when shown, rendered in
+  /// the same orange "dev mode" accent app-polo uses (label/icon/subtitle
+  /// tinted, no badge or border). For settings that only matter for
+  /// debugging/development, not end users.
+  devMode?: boolean
 }
 
 export interface FormHeader {
   type: 'header'
   title: string
   subtitle?: string
+  devMode?: boolean
 }
 
 export interface FormSectionDivider {
   type: 'divider'
   title?: string
+  devMode?: boolean
 }
 
 export interface FormMarkdownBlock {
   type: 'markdown'
   text: string
+  devMode?: boolean
 }
 
 /// A button that invokes a named hook method (e.g. 'testCredentials')
@@ -556,6 +564,7 @@ export interface FormActionElement {
   key: string
   label: string
   method: string
+  devMode?: boolean
 }
 
 export type FormElement = FormField | FormHeader | FormSectionDivider | FormMarkdownBlock | FormActionElement

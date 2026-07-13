@@ -36,6 +36,10 @@ class FormRenderer extends StatefulWidget {
   final bool showTitle;
   final ValueNotifier<bool>? submittingNotifier;
 
+  /// Whether elements marked `devMode: true` in the definition are shown at
+  /// all — hidden entirely (not just disabled) when false, the default.
+  final bool developerMode;
+
   const FormRenderer({
     super.key,
     required this.formDefinition,
@@ -50,6 +54,7 @@ class FormRenderer extends StatefulWidget {
     this.showActions = true,
     this.showTitle = true,
     this.submittingNotifier,
+    this.developerMode = false,
   });
 
   @override
@@ -64,8 +69,15 @@ class FormRendererState extends State<FormRenderer> {
   final Set<String> _runningActions = {};
   bool _isSubmitting = false;
 
-  List<Map<String, dynamic>> get _elements =>
-      (widget.formDefinition['elements'] as List? ?? const []).cast<Map<String, dynamic>>();
+  List<Map<String, dynamic>> get _elements => (widget.formDefinition['elements'] as List? ?? const [])
+      .cast<Map<String, dynamic>>()
+      .where((el) => el['devMode'] != true || widget.developerMode)
+      .toList();
+
+  /// The orange "dev mode" accent for an element flagged `devMode: true` —
+  /// null once [_elements] has already excluded it, so no builder needs its
+  /// own visibility check, only this color check.
+  Color? _devModeColor(Map<String, dynamic> el) => el['devMode'] == true ? HaLoColors.of(context).devMode : null;
 
   List<Map<String, dynamic>> get _fields =>
       _elements.where((el) => el['type'] == 'field').toList();
@@ -335,6 +347,7 @@ class FormRendererState extends State<FormRenderer> {
   Widget _buildHeader(Map<String, dynamic> el, ThemeData theme) {
     final title = el['title'] as String? ?? '';
     final subtitle = el['subtitle'] as String?;
+    final devModeColor = _devModeColor(el);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -343,7 +356,7 @@ class FormRendererState extends State<FormRenderer> {
           style: theme.textTheme.titleMedium?.copyWith(
             fontFamily: 'RobotoSlab',
             fontWeight: FontWeight.w900,
-            color: theme.colorScheme.primary,
+            color: devModeColor ?? theme.colorScheme.primary,
           ),
         ),
         if (subtitle != null && subtitle.isNotEmpty) ...[
@@ -351,7 +364,7 @@ class FormRendererState extends State<FormRenderer> {
           Text(
             subtitle,
             style: theme.textTheme.bodySmall?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant,
+              color: devModeColor ?? theme.colorScheme.onSurfaceVariant,
             ),
           ),
         ],
@@ -364,12 +377,13 @@ class FormRendererState extends State<FormRenderer> {
     if (title == null || title.isEmpty) {
       return const Divider();
     }
+    final devModeColor = _devModeColor(el);
     return Row(
       children: [
         Text(
           title,
           style: theme.textTheme.titleSmall?.copyWith(
-            color: theme.colorScheme.primary,
+            color: devModeColor ?? theme.colorScheme.primary,
             fontWeight: FontWeight.bold,
           ),
         ),
@@ -381,7 +395,11 @@ class FormRendererState extends State<FormRenderer> {
 
   Widget _buildMarkdown(Map<String, dynamic> el, ThemeData theme) {
     final text = el['text'] as String? ?? '';
-    return MarkdownBody(data: text);
+    final devModeColor = _devModeColor(el);
+    return MarkdownBody(
+      data: text,
+      styleSheet: devModeColor == null ? null : MarkdownStyleSheet(p: TextStyle(color: devModeColor)),
+    );
   }
 
   Widget _buildField(Map<String, dynamic> el, ThemeData theme) {
@@ -391,6 +409,7 @@ class FormRendererState extends State<FormRenderer> {
     final placeholder = el['placeholder'] as String?;
     final options = (el['options'] as List? ?? const []).cast<Map<String, dynamic>>();
     final errorText = _errors[key];
+    final devModeColor = _devModeColor(el);
 
     switch (fieldType) {
       case 'text':
@@ -400,7 +419,7 @@ class FormRendererState extends State<FormRenderer> {
           autofillHints: _getAutofillHints(key, 'text'),
           textInputAction: TextInputAction.done,
           onSubmitted: (_) => submit(),
-          decoration: poloFieldDecoration(context, label, hintText: placeholder, errorText: errorText),
+          decoration: poloFieldDecoration(context, label, hintText: placeholder, errorText: errorText, labelColor: devModeColor),
         );
       case 'multiline':
         return TextField(
@@ -409,7 +428,7 @@ class FormRendererState extends State<FormRenderer> {
           maxLines: null,
           minLines: 3,
           autofillHints: _getAutofillHints(key, 'multiline'),
-          decoration: poloFieldDecoration(context, label, hintText: placeholder, errorText: errorText),
+          decoration: poloFieldDecoration(context, label, hintText: placeholder, errorText: errorText, labelColor: devModeColor),
         );
       case 'email':
         return TextField(
@@ -419,7 +438,7 @@ class FormRendererState extends State<FormRenderer> {
           autofillHints: _getAutofillHints(key, 'email'),
           textInputAction: TextInputAction.done,
           onSubmitted: (_) => submit(),
-          decoration: poloFieldDecoration(context, label, hintText: placeholder, errorText: errorText),
+          decoration: poloFieldDecoration(context, label, hintText: placeholder, errorText: errorText, labelColor: devModeColor),
         );
       case 'callsign':
         return TextField(
@@ -432,7 +451,7 @@ class FormRendererState extends State<FormRenderer> {
           autofillHints: _getAutofillHints(key, 'callsign'),
           textInputAction: TextInputAction.done,
           onSubmitted: (_) => submit(),
-          decoration: poloFieldDecoration(context, label, hintText: placeholder, errorText: errorText),
+          decoration: poloFieldDecoration(context, label, hintText: placeholder, errorText: errorText, labelColor: devModeColor),
         );
       case 'number':
         return TextField(
@@ -445,7 +464,7 @@ class FormRendererState extends State<FormRenderer> {
           autofillHints: _getAutofillHints(key, 'number'),
           textInputAction: TextInputAction.done,
           onSubmitted: (_) => submit(),
-          decoration: poloFieldDecoration(context, label, hintText: placeholder, errorText: errorText),
+          decoration: poloFieldDecoration(context, label, hintText: placeholder, errorText: errorText, labelColor: devModeColor),
         );
       case 'secret':
         return TextField(
@@ -455,7 +474,7 @@ class FormRendererState extends State<FormRenderer> {
           autofillHints: const [AutofillHints.password],
           textInputAction: TextInputAction.done,
           onSubmitted: (_) => submit(),
-          decoration: poloFieldDecoration(context, label, hintText: placeholder, errorText: errorText),
+          decoration: poloFieldDecoration(context, label, hintText: placeholder, errorText: errorText, labelColor: devModeColor),
         );
       case 'list':
         return _buildListField(el, theme);
@@ -465,7 +484,7 @@ class FormRendererState extends State<FormRenderer> {
         return DropdownButtonFormField<dynamic>(
           value: _values[key],
           focusNode: _focusNodes[key],
-          decoration: poloFieldDecoration(context, label, hintText: placeholder, errorText: errorText),
+          decoration: poloFieldDecoration(context, label, hintText: placeholder, errorText: errorText, labelColor: devModeColor),
           hint: placeholder != null ? Text(placeholder) : null,
           items: [
             for (final opt in options)
@@ -493,7 +512,7 @@ class FormRendererState extends State<FormRenderer> {
               Text(
                 label,
                 style: theme.textTheme.labelMedium?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant,
+                  color: devModeColor ?? theme.colorScheme.onSurfaceVariant,
                 ),
               ),
               const SizedBox(height: 4),
@@ -529,7 +548,7 @@ class FormRendererState extends State<FormRenderer> {
         return Focus(
           focusNode: _focusNodes[key],
           child: CheckboxListTile(
-            title: Text(label),
+            title: Text(label, style: devModeColor == null ? null : TextStyle(color: devModeColor)),
             value: _values[key] == true,
             onChanged: _isSubmitting
                 ? null
@@ -569,6 +588,7 @@ class FormRendererState extends State<FormRenderer> {
     final orderable = el['orderable'] == true;
     final errorText = _errors[key];
     final items = ((_values[key] as List?) ?? const []).cast<Map<String, dynamic>>();
+    final devModeColor = _devModeColor(el);
 
     Future<void> commit(List<Map<String, dynamic>> newItems) async {
       setState(() {
@@ -594,6 +614,7 @@ class FormRendererState extends State<FormRenderer> {
         transformer: widget.transformer == null
             ? null
             : (fieldKey, value, state) => widget.transformer!('$itemPath.$fieldKey', value, state),
+        developerMode: widget.developerMode,
       );
       if (result == null) return;
       final newItems = List<Map<String, dynamic>>.from(items);
@@ -646,7 +667,7 @@ class FormRendererState extends State<FormRenderer> {
       children: [
         Text(
           label,
-          style: theme.textTheme.labelMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+          style: theme.textTheme.labelMedium?.copyWith(color: devModeColor ?? theme.colorScheme.onSurfaceVariant),
         ),
         const SizedBox(height: 4),
         if (orderable)
@@ -688,15 +709,19 @@ class FormRendererState extends State<FormRenderer> {
     final status = (_values[key] is Map) ? (_values[key] as Map).cast<String, dynamic>() : const <String, dynamic>{};
     final connected = status['connected'] == true;
     final statusLabel = status['label'] as String?;
+    final devModeColor = _devModeColor(el);
 
     return ListTile(
       contentPadding: EdgeInsets.zero,
       leading: Icon(
         connected ? Icons.check_circle : Icons.radio_button_unchecked,
-        color: connected ? theme.colorScheme.primary : theme.colorScheme.onSurfaceVariant,
+        color: devModeColor ?? (connected ? theme.colorScheme.primary : theme.colorScheme.onSurfaceVariant),
       ),
-      title: Text(label),
-      subtitle: Text(connected ? (statusLabel ?? 'Connected') : 'Not Connected'),
+      title: Text(label, style: devModeColor == null ? null : TextStyle(color: devModeColor)),
+      subtitle: Text(
+        connected ? (statusLabel ?? 'Connected') : 'Not Connected',
+        style: devModeColor == null ? null : TextStyle(color: devModeColor),
+      ),
       trailing: TextButton(
         onPressed: accountKey == null || widget.onManageAccount == null ? null : () => widget.onManageAccount!(accountKey, subkey),
         child: Text(connected ? 'Manage' : 'Connect'),
@@ -711,8 +736,10 @@ class FormRendererState extends State<FormRenderer> {
     final label = el['label'] as String? ?? '';
     final method = el['method'] as String? ?? '';
     final isRunning = _runningActions.contains(actionKey);
+    final devModeColor = _devModeColor(el);
 
     return OutlinedButton(
+      style: devModeColor == null ? null : OutlinedButton.styleFrom(foregroundColor: devModeColor, side: BorderSide(color: devModeColor)),
       onPressed: widget.onAction == null || isRunning
           ? null
           : () async {
@@ -750,6 +777,7 @@ Future<Map<String, dynamic>?> showFormDialog(
   FormOnChange? onChange,
   FormAction? onAction,
   FormManageAccount? onManageAccount,
+  bool developerMode = false,
 }) {
   final theme = Theme.of(context);
   final formKey = GlobalKey<FormRendererState>();
@@ -811,6 +839,7 @@ Future<Map<String, dynamic>?> showFormDialog(
             onChange: onChange,
             onAction: onAction,
             onManageAccount: onManageAccount,
+            developerMode: developerMode,
             showActions: false,
             showTitle: false,
             submittingNotifier: submittingNotifier,
@@ -875,6 +904,7 @@ class FormView extends StatefulWidget {
   final FormManageAccount? onManageAccount;
   final void Function(Map<String, dynamic> values) onSubmit;
   final VoidCallback onCancel;
+  final bool developerMode;
 
   const FormView({
     super.key,
@@ -887,6 +917,7 @@ class FormView extends StatefulWidget {
     this.onManageAccount,
     required this.onSubmit,
     required this.onCancel,
+    this.developerMode = false,
   });
 
   @override
@@ -925,6 +956,7 @@ class _FormViewState extends State<FormView> {
               onChange: widget.onChange,
               onAction: widget.onAction,
               onManageAccount: widget.onManageAccount,
+              developerMode: widget.developerMode,
               showActions: false,
               showTitle: false,
               submittingNotifier: _submittingNotifier,

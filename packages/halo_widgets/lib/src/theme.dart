@@ -52,6 +52,12 @@ class HaLoColors extends ThemeExtension<HaLoColors> {
   /// tertiary ("new QSO") case, instead of blending into it.
   final Color secondaryLight;
 
+  /// app-polo's `styles.colors.devMode` (`lightColors.json`/`darkColors.json`:
+  /// `rgb(219,114,4)` light, `rgb(247,161,69)` dark) — the accent applied to
+  /// icon/title/description of any dev-mode-only setting, matching that
+  /// convention exactly rather than a badge or border.
+  final Color devMode;
+
   final Map<String, Color> bands;
 
   const HaLoColors({
@@ -60,6 +66,7 @@ class HaLoColors extends ThemeExtension<HaLoColors> {
     required this.onNotice,
     required this.tertiaryLight,
     required this.secondaryLight,
+    required this.devMode,
     required this.bands,
   });
 
@@ -71,6 +78,7 @@ class HaLoColors extends ThemeExtension<HaLoColors> {
     onNotice: Color(0xFF615C2F),
     tertiaryLight: Color(0xFFE6AB73),
     secondaryLight: Color(0xFF69A9DF),
+    devMode: Color(0xFFDB7204),
     bands: _bandColors,
   );
 
@@ -80,6 +88,7 @@ class HaLoColors extends ThemeExtension<HaLoColors> {
     onNotice: Color(0xFFFCF4A7),
     tertiaryLight: Color(0xFF5D3918),
     secondaryLight: Color(0xFF244462),
+    devMode: Color(0xFFF7A145),
     bands: _bandColors,
   );
 
@@ -107,6 +116,7 @@ class HaLoColors extends ThemeExtension<HaLoColors> {
     Color? onNotice,
     Color? tertiaryLight,
     Color? secondaryLight,
+    Color? devMode,
     Map<String, Color>? bands,
   }) {
     return HaLoColors(
@@ -115,6 +125,7 @@ class HaLoColors extends ThemeExtension<HaLoColors> {
       onNotice: onNotice ?? this.onNotice,
       tertiaryLight: tertiaryLight ?? this.tertiaryLight,
       secondaryLight: secondaryLight ?? this.secondaryLight,
+      devMode: devMode ?? this.devMode,
       bands: bands ?? this.bands,
     );
   }

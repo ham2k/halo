@@ -571,4 +571,65 @@ void main() {
       expect(capturedSubkey, 'backup');
     });
   });
+
+  group('FormRenderer devMode elements', () {
+    final devModeFormDefinition = {
+      'elements': [
+        {'type': 'header', 'title': 'Dev Only Header', 'devMode': true},
+        {'type': 'field', 'fieldType': 'text', 'key': 'debugFlag', 'label': 'Debug Flag', 'devMode': true},
+        {'type': 'field', 'fieldType': 'text', 'key': 'normalField', 'label': 'Normal Field'},
+      ],
+    };
+
+    testWidgets('devMode elements are hidden entirely when developerMode is false (the default)', (tester) async {
+      Map<String, dynamic>? submittedValues;
+      await tester.pumpWidget(MaterialApp(
+        home: Scaffold(
+          body: FormRenderer(
+            formDefinition: devModeFormDefinition,
+            initialState: const {},
+            onSubmit: (vals) => submittedValues = vals,
+            onCancel: () {},
+          ),
+        ),
+      ));
+
+      expect(find.text('Dev Only Header'), findsNothing);
+      expect(find.text('Debug Flag'), findsNothing);
+      expect(find.text('Normal Field'), findsOneWidget);
+
+      await tester.tap(find.widgetWithText(FilledButton, 'Save'));
+      await tester.pumpAndSettle();
+
+      // A hidden devMode field must not sneak a value into the submission.
+      expect(submittedValues!.containsKey('debugFlag'), isFalse);
+    });
+
+    testWidgets('devMode elements show and are tinted the orange dev-mode accent when developerMode is true', (tester) async {
+      await tester.pumpWidget(MaterialApp(
+        home: Scaffold(
+          body: FormRenderer(
+            formDefinition: devModeFormDefinition,
+            initialState: const {},
+            developerMode: true,
+            onSubmit: (_) {},
+            onCancel: () {},
+          ),
+        ),
+      ));
+
+      expect(find.text('Dev Only Header'), findsOneWidget);
+      expect(find.text('Debug Flag'), findsOneWidget);
+
+      final headerText = tester.widget<Text>(find.text('Dev Only Header'));
+      expect(headerText.style?.color, HaLoColors.light.devMode);
+
+      final debugField = tester.widget<TextField>(find.widgetWithText(TextField, 'Debug Flag'));
+      expect(debugField.decoration?.floatingLabelStyle?.color, HaLoColors.light.devMode);
+
+      // A non-devMode field must not pick up the accent.
+      final normalField = tester.widget<TextField>(find.widgetWithText(TextField, 'Normal Field'));
+      expect(normalField.decoration?.floatingLabelStyle?.color, isNot(HaLoColors.light.devMode));
+    });
+  });
 }

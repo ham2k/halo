@@ -237,6 +237,19 @@ object literal without a cast. This is a general mechanism, not specific to
 credentials — account connection testing lives on `AccountHook.testCredentials`
 instead (see below).
 
+## `devMode` fields
+
+Any field (or header/divider/action, anything in `fields`/`elements`) can be
+marked `devMode: true` to hide it unless the app's developer mode is on — see
+[forms.md's `devMode` elements](./forms.md#devmode-elements) for the full
+behavior (orange accent when shown, host-driven visibility). Useful for a
+Tier 1 panel that wants to expose a debug field (e.g. a raw API endpoint
+override) without it cluttering the panel for regular users:
+
+```ts
+{ type: "field", fieldType: "text", key: "apiEndpointOverride", label: "API Endpoint Override", devMode: true }
+```
+
 ---
 
 ## Relationship to `AccountHook`

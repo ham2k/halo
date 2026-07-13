@@ -809,6 +809,7 @@ class _ExtensionSettingsPanelState extends State<_ExtensionSettingsPanel> {
         formDefinition: definition,
         initialState: const {},
         showActions: false,
+        developerMode: widget.services.settings.developerMode,
         validator: _validate,
         onChange: _autosave,
         onAction: (actionKey, method, state) => widget.services.extensions.runSettingsAction(
