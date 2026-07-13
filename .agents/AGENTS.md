@@ -2,6 +2,7 @@
 
 This is a multi-platform app for Amateur Radio Logging, called "Ham2K Logger" (or "HaLo" for short). On desktop versions it identifies itself as "Ham2K Logger" while on mobile versions it uses "Ham2K Portable Logger".
 
+
 ## Design & Architecture
 
 - [DESIGN.md](file:///Users/sd/Work/ham2k/app-halo/DESIGN.md) contains high-level design documentation.
@@ -9,14 +10,18 @@ This is a multi-platform app for Amateur Radio Logging, called "Ham2K Logger" (o
 - The extension system and hooks are defined under `docs/extensions/`.
 - We often mention app-polo and web-lofi, which are the existing mobile version and a web-based log browser that shares a lot of logic with PoLo. These are available in separate sibling repositories that can be used for reference.
 
+
 ## Process Conventions
 
 - Agents should make commits to the repository when relevant changes are made. If the agent is continuing during a session (such as making updates based on developer feedback), they may amend the previous commit if it is related.
 - When working on a feature, the agent might want to run the mac or web versions in the background, and use hot reload to see changes without rebuilding the app.
 - We do most work on the `app-halo-dist` repository, with branches out of the `main-dist-private` branch. We use "squash-and-merge" to merge PRs. Any commits that include changes to `app_dist` are split into separate commits in `app-halo-dist`. The non `app_dist` changes are then cherry-picked to `main-public`.
 - New branches should be pushed to the `app-halo-dist` origin, never to regular `origin`.
+- Branches for Issues should be named using the convention `<issue-number>-<short-description>` and should be based off the `dist` branch of the `app-halo-dist` repository (available as `main-dist-private` locally).
+
 
 ## Tooling
+
 - On the development environment, we use `mise` to manage dependencies and tool versions.
 - When adding commits, identify yourself as "Ham2K Bot <bot@ham2k.com>"
 - When interacting with Github, use `export GH_TOKEN="$(security find-generic-password -a claude-code -s gh-bot-token -w)"` in the session to authenticate API requests as ham2k-bot.
@@ -27,6 +32,8 @@ This is a multi-platform app for Amateur Radio Logging, called "Ham2K Logger" (o
 
 These rules apply to every task in this project unless explicitly overridden.
 Bias: caution over speed on non-trivial work.
+
+Be terse, direct and precise in communication. Avoid unnecessary verbosity and praise and focus on delivering clear, actionable information.
 
 ## Rule 1 — Think Before Coding
 State assumptions explicitly. Ask rather than guess.
