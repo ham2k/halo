@@ -386,11 +386,15 @@ class Translations$settings$en {
 	String get language => 'Language';
 
 	late final Translations$settings$theme$en theme = Translations$settings$theme$en.internal(_root);
+	late final Translations$settings$themeDescription$en themeDescription = Translations$settings$themeDescription$en.internal(_root);
 
 	/// en: 'Font Scale'
 	String get fontScale => 'Font Scale';
 
 	late final Translations$settings$fontScaleOpts$en fontScaleOpts = Translations$settings$fontScaleOpts$en.internal(_root);
+
+	/// en: 'Affects text size throughout the app'
+	String get fontScaleDescription => 'Affects text size throughout the app';
 
 	/// en: 'Operator Callsign'
 	String get operatorCall => 'Operator Callsign';
@@ -508,6 +512,24 @@ class Translations$settings$theme$en {
 
 	/// en: 'Dark'
 	String get dark => 'Dark';
+}
+
+// Path: settings.themeDescription
+class Translations$settings$themeDescription$en {
+	Translations$settings$themeDescription$en.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Follows system setting'
+	String get system => 'Follows system setting';
+
+	/// en: 'Always in Light Mode'
+	String get light => 'Always in Light Mode';
+
+	/// en: 'Always in Dark Mode'
+	String get dark => 'Always in Dark Mode';
 }
 
 // Path: settings.fontScaleOpts
@@ -671,12 +693,16 @@ extension on Translations {
 			'settings.theme.system' => 'System',
 			'settings.theme.light' => 'Light',
 			'settings.theme.dark' => 'Dark',
+			'settings.themeDescription.system' => 'Follows system setting',
+			'settings.themeDescription.light' => 'Always in Light Mode',
+			'settings.themeDescription.dark' => 'Always in Dark Mode',
 			'settings.fontScale' => 'Font Scale',
 			'settings.fontScaleOpts.smallest' => 'Smallest',
 			'settings.fontScaleOpts.smaller' => 'Smaller',
 			'settings.fontScaleOpts.normal' => 'Normal',
 			'settings.fontScaleOpts.larger' => 'Larger',
 			'settings.fontScaleOpts.largest' => 'Largest',
+			'settings.fontScaleDescription' => 'Affects text size throughout the app',
 			'settings.operatorCall' => 'Operator Callsign',
 			'settings.sync.title' => 'Sync Settings',
 			'settings.sync.enable' => 'Enable Sync',

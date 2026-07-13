@@ -18,54 +18,44 @@ import 'package:halo_widgets/halo_widgets.dart';
 import 'package:http/http.dart' as http;
 
 import '../main.dart';
+import '../services/extension_service.dart';
 import '../services/settings_service.dart';
 import 'notice_history_view.dart';
 import 'operation_dialogs.dart';
-import '../i18n/strings.g.dart';
 
 const _appVersion = '0.1.0'; // keep in sync with app/pubspec.yaml
 
 const double _wideLayoutThreshold = 720.0;
 
-enum SettingsPanelType {
-  general,
-  sync,
-  accounts,
-  developer,
-  about,
+/// A sidebar entry: `key` identifies it (a fixed core key, or an
+/// extension's `panelKey`); `descriptor` is null for core panels and the
+/// raw `getSettingsPanels()` entry for extension-contributed ones (needed
+/// downstream by `_buildPanelContent` to route the definition fetch).
+/// `order` places it among every other panel — core and extension-
+/// contributed alike sort together by this one value, which is how the
+/// core/settings extension's "General" panel (order 0, see its
+/// `getPanels()`) lands first despite not being one of the hardcoded
+/// entries below.
+class _SettingsPanelEntry {
+  final String key;
+  final String title;
+  final IconData icon;
+  final int order;
+  final Map<String, dynamic>? descriptor;
+
+  const _SettingsPanelEntry({required this.key, required this.title, required this.icon, required this.order, this.descriptor});
 }
 
-extension SettingsPanelTypeExtension on SettingsPanelType {
-  String get title {
-    switch (this) {
-      case SettingsPanelType.general:
-        return 'General';
-      case SettingsPanelType.sync:
-        return 'Sync';
-      case SettingsPanelType.accounts:
-        return 'Accounts';
-      case SettingsPanelType.developer:
-        return 'Developer Settings';
-      case SettingsPanelType.about:
-        return 'About';
-    }
-  }
-
-  IconData get icon {
-    switch (this) {
-      case SettingsPanelType.general:
-        return Icons.settings_outlined;
-      case SettingsPanelType.sync:
-        return Icons.sync;
-      case SettingsPanelType.accounts:
-        return Icons.vpn_key_outlined;
-      case SettingsPanelType.developer:
-        return Icons.bug_report_outlined;
-      case SettingsPanelType.about:
-        return Icons.info_outline;
-    }
-  }
-}
+// "General" isn't here — it's the core/settings extension's own
+// settingsPanel now (extensions/core/settings), same as any other
+// extension-contributed panel, just always installed.
+const _fixedCorePanels = [
+  _SettingsPanelEntry(key: 'sync', title: 'Sync', icon: Icons.sync, order: 10),
+  _SettingsPanelEntry(key: 'accounts', title: 'Accounts', icon: Icons.vpn_key_outlined, order: 20),
+];
+const _developerPanelOrder = 90;
+const _aboutPanelOrder = 100;
+const _extensionPanelDefaultOrder = 50;
 
 class SettingsView extends StatefulWidget {
   final HaLoServices services;
@@ -77,7 +67,65 @@ class SettingsView extends StatefulWidget {
 }
 
 class _SettingsViewState extends State<SettingsView> {
-  SettingsPanelType _selectedPanel = SettingsPanelType.general;
+  String _selectedPanel = 'settings';
+  List<Map<String, dynamic>> _extensionPanels = [];
+  // 'settings' (the core/settings extension's General panel) only appears
+  // in _buildPanelEntries once _loadExtensionPanels's bridge call resolves.
+  // Until then, the wide-layout auto-correct below would see _selectedPanel
+  // match nothing, snap to whatever's first (Sync), and never revisit it
+  // once the real panel list arrives — so it's gated on this flag.
+  bool _extensionPanelsLoaded = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadExtensionPanels();
+  }
+
+  Future<void> _loadExtensionPanels() async {
+    await widget.services.extensions.start();
+    final panels = await widget.services.extensions.getSettingsPanels();
+    // The extension runtime failing to start is the one failure mode that's
+    // both detectable here and not already self-reported elsewhere (a
+    // single misbehaving extension's getPanels() failing is caught and
+    // isolated per-hook, so it only silently drops its own panels — no
+    // signal to surface for that). If the whole runtime never came up,
+    // General (and everything else extension-contributed) is missing with
+    // no other indication, so show it rather than fail silently.
+    if (!widget.services.extensions.ready) {
+      widget.services.statusBar.showNotice(
+        key: 'settings_extensions_unavailable',
+        icon: 'alert-circle-outline',
+        title: 'Some settings are unavailable',
+        text: 'The extension runtime failed to start, so extension-contributed settings (including General) are missing.',
+      );
+    }
+    if (mounted) {
+      setState(() {
+        _extensionPanels = panels;
+        _extensionPanelsLoaded = true;
+      });
+    }
+  }
+
+  List<_SettingsPanelEntry> _buildPanelEntries(SettingsService settings) {
+    final entries = [
+      ..._fixedCorePanels,
+      for (final p in _extensionPanels)
+        _SettingsPanelEntry(
+          key: p['panelKey'] as String,
+          title: (p['title'] as String?) ?? (p['panelKey'] as String),
+          icon: resolveIconName(p['icon'] as String?),
+          order: (p['order'] as num?)?.toInt() ?? _extensionPanelDefaultOrder,
+          descriptor: p,
+        ),
+      if (settings.developerMode)
+        const _SettingsPanelEntry(key: 'developer', title: 'Developer Settings', icon: Icons.bug_report_outlined, order: _developerPanelOrder),
+      const _SettingsPanelEntry(key: 'about', title: 'About', icon: Icons.info_outline, order: _aboutPanelOrder),
+    ];
+    entries.sort((a, b) => a.order.compareTo(b.order));
+    return entries;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -93,17 +141,12 @@ class _SettingsViewState extends State<SettingsView> {
     final double width = MediaQuery.sizeOf(context).width;
     final bool isWide = width >= _wideLayoutThreshold;
 
-    final panels = [
-      SettingsPanelType.general,
-      SettingsPanelType.sync,
-      SettingsPanelType.accounts,
-      if (settings.developerMode) SettingsPanelType.developer,
-      SettingsPanelType.about,
-    ];
-    final effectivePanel = panels.contains(_selectedPanel) ? _selectedPanel : SettingsPanelType.general;
-    if (effectivePanel != _selectedPanel) {
+    final panels = _buildPanelEntries(settings);
+    final selectionExists = panels.any((p) => p.key == _selectedPanel);
+    final effectivePanel = selectionExists ? panels.firstWhere((p) => p.key == _selectedPanel) : panels.first;
+    if (!selectionExists && _extensionPanelsLoaded) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) setState(() => _selectedPanel = effectivePanel);
+        if (mounted) setState(() => _selectedPanel = effectivePanel.key);
       });
     }
 
@@ -157,10 +200,11 @@ class _SettingsViewState extends State<SettingsView> {
           ),
         ),
         body: Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             SizedBox(
               width: 320,
-              child: _buildSidebar(context, isWide: true, panels: panels, selectedPanel: effectivePanel),
+              child: _buildSidebar(context, isWide: true, panels: panels, selectedKey: effectivePanel.key),
             ),
             Container(
               width: 1,
@@ -179,7 +223,7 @@ class _SettingsViewState extends State<SettingsView> {
           leading: macOSAwareBackButton(),
           title: const Text('Settings'),
         ),
-        body: _buildSidebar(context, isWide: false, panels: panels, selectedPanel: effectivePanel),
+        body: _buildSidebar(context, isWide: false, panels: panels, selectedKey: effectivePanel.key),
       );
     }
   }
@@ -187,14 +231,14 @@ class _SettingsViewState extends State<SettingsView> {
   Widget _buildSidebar(
     BuildContext context, {
     required bool isWide,
-    required List<SettingsPanelType> panels,
-    required SettingsPanelType selectedPanel,
+    required List<_SettingsPanelEntry> panels,
+    required String selectedKey,
   }) {
     return ListView.builder(
       itemCount: panels.length,
       itemBuilder: (context, index) {
         final panel = panels[index];
-        final isSelected = isWide && selectedPanel == panel;
+        final isSelected = isWide && selectedKey == panel.key;
 
         return ListTile(
           selected: isSelected,
@@ -202,7 +246,7 @@ class _SettingsViewState extends State<SettingsView> {
           title: Text(panel.title),
           onTap: () {
             setState(() {
-              _selectedPanel = panel;
+              _selectedPanel = panel.key;
             });
             if (!isWide) {
               Navigator.of(context).push(
@@ -223,7 +267,7 @@ class _SettingsViewState extends State<SettingsView> {
 }
 
 class _SettingsPanelScreen extends StatelessWidget {
-  final SettingsPanelType panel;
+  final _SettingsPanelEntry panel;
   final HaLoServices services;
 
   const _SettingsPanelScreen({required this.panel, required this.services});
@@ -248,146 +292,20 @@ class _SettingsPanelScreen extends StatelessWidget {
   }
 }
 
-Widget _buildPanelContent(SettingsPanelType panel, HaLoServices services) {
-  switch (panel) {
-    case SettingsPanelType.general:
-      return _GeneralPanel(services: services);
-    case SettingsPanelType.sync:
+Widget _buildPanelContent(_SettingsPanelEntry panel, HaLoServices services) {
+  switch (panel.key) {
+    case 'sync':
       return _SyncPanel(services: services);
-    case SettingsPanelType.accounts:
+    case 'accounts':
       return _AccountsPanel(services: services);
-    case SettingsPanelType.developer:
+    case 'developer':
       return _DeveloperPanel(services: services);
-    case SettingsPanelType.about:
+    case 'about':
       return _AboutPanel(services: services);
-  }
-}
-
-class _GeneralPanel extends StatelessWidget {
-  final HaLoServices services;
-
-  const _GeneralPanel({required this.services});
-
-  @override
-  Widget build(BuildContext context) {
-    final settings = services.settings;
-    final t = context.t;
-
-    return ListenableBuilder(
-      listenable: settings,
-      builder: (context, _) {
-        return ListView(
-          padding: const EdgeInsets.all(16),
-          children: [
-            Text(
-              t.settings.general,
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    color: Theme.of(context).colorScheme.primary,
-                    fontWeight: FontWeight.bold,
-                  ),
-            ),
-            const SizedBox(height: 16),
-            Text(
-              t.settings.theme.title,
-              style: const TextStyle(fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 8),
-            SegmentedButton<ThemeMode>(
-              segments: [
-                ButtonSegment(
-                  value: ThemeMode.system,
-                  icon: const Icon(Icons.brightness_auto_outlined),
-                  label: Text(t.settings.theme.system),
-                ),
-                ButtonSegment(
-                  value: ThemeMode.light,
-                  icon: const Icon(Icons.light_mode_outlined),
-                  label: Text(t.settings.theme.light),
-                ),
-                ButtonSegment(
-                  value: ThemeMode.dark,
-                  icon: const Icon(Icons.dark_mode_outlined),
-                  label: Text(t.settings.theme.dark),
-                ),
-              ],
-              selected: {settings.themeMode},
-              onSelectionChanged: (selection) => settings.setThemeMode(selection.first),
-            ),
-            const SizedBox(height: 24),
-            Text(
-              t.settings.language,
-              style: const TextStyle(fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 8),
-            SegmentedButton<String>(
-              segments: const [
-                ButtonSegment(
-                  value: 'en',
-                  label: Text('English'),
-                ),
-                ButtonSegment(
-                  value: 'es',
-                  label: Text('Español'),
-                ),
-              ],
-              selected: {settings.locale},
-              onSelectionChanged: (selection) async {
-                final newLocale = selection.first;
-                await settings.setLocale(newLocale);
-                LocaleSettings.setLocaleRaw(newLocale);
-              },
-            ),
-            const SizedBox(height: 24),
-            Text(
-              t.settings.fontScale,
-              style: const TextStyle(fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 8),
-            InputDecorator(
-              decoration: const InputDecoration(
-                contentPadding: EdgeInsets.symmetric(horizontal: 4, vertical: 4),
-              ),
-              child: DropdownButtonHideUnderline(
-                child: DropdownButton<FontScale>(
-                  value: settings.fontScale,
-                  isDense: true,
-                  isExpanded: true,
-                  items: FontScale.values.map((scale) {
-                    String translatedLabel;
-                    switch (scale) {
-                      case FontScale.smallest:
-                        translatedLabel = t.settings.fontScaleOpts.smallest;
-                        break;
-                      case FontScale.smaller:
-                        translatedLabel = t.settings.fontScaleOpts.smaller;
-                        break;
-                      case FontScale.normal:
-                        translatedLabel = t.settings.fontScaleOpts.normal;
-                        break;
-                      case FontScale.larger:
-                        translatedLabel = t.settings.fontScaleOpts.larger;
-                        break;
-                      case FontScale.largest:
-                        translatedLabel = t.settings.fontScaleOpts.largest;
-                        break;
-                    }
-                    return DropdownMenuItem<FontScale>(
-                      value: scale,
-                      child: Text(translatedLabel),
-                    );
-                  }).toList(),
-                  onChanged: (scale) {
-                    if (scale != null) {
-                      settings.setFontScale(scale);
-                    }
-                  },
-                ),
-              ),
-            ),
-          ],
-        );
-      },
-    );
+    default:
+      final descriptor = panel.descriptor;
+      if (descriptor == null) return const SizedBox.shrink();
+      return _ExtensionSettingsPanel(services: services, descriptor: descriptor);
   }
 }
 
@@ -589,18 +507,7 @@ class _AccountsPanelState extends State<_AccountsPanel> {
     for (final account in accounts) {
       final kvKey = account['kvKey'] as String;
       final creds = await widget.services.extensions.getAccountCredentials(kvKey);
-      String subtitle = 'Not configured';
-      if (creds.isNotEmpty) {
-        if (creds.containsKey('username')) {
-          subtitle = creds['username']!;
-        } else if (creds.containsKey('email')) {
-          subtitle = creds['email']!;
-        } else if (creds.containsKey('login')) {
-          subtitle = creds['login']!;
-        } else {
-          subtitle = 'Configured';
-        }
-      }
+      final subtitle = creds.isEmpty ? 'Not configured' : (ExtensionService.identityFromCredentials(creds) ?? 'Configured');
       subtitles[kvKey] = subtitle;
     }
     if (mounted) {
@@ -652,6 +559,223 @@ class _AccountsPanelState extends State<_AccountsPanel> {
             );
           }),
       ],
+    );
+  }
+}
+
+/// Renders one extension-contributed `settingsPanel` panel — the
+/// `descriptor` (from `getSettingsPanels()`) says which registration
+/// (`hookKey`) and tier (`kind`) it is; `panelKey` disambiguates when a
+/// Tier 2 registration serves more than one panel. `FormRenderer`'s
+/// `onChange` is repurposed as the autosave point: validate, then (Tier 2
+/// only) transform, then commit — nothing is persisted unless it passes
+/// validation, but the field keeps whatever the user typed either way,
+/// same as any other live form.
+class _ExtensionSettingsPanel extends StatefulWidget {
+  final HaLoServices services;
+  final Map<String, dynamic> descriptor;
+
+  const _ExtensionSettingsPanel({required this.services, required this.descriptor});
+
+  @override
+  State<_ExtensionSettingsPanel> createState() => _ExtensionSettingsPanelState();
+}
+
+class _ExtensionSettingsPanelState extends State<_ExtensionSettingsPanel> {
+  Map<String, dynamic>? _definition;
+  bool _loading = true;
+  List<Map<String, dynamic>>? _accountsCache;
+
+  // _load() is called from two places that can fire back-to-back for the
+  // same underlying change: _autosave's own reload after a commit, and the
+  // SettingsService listener below — committing a core setting notifies
+  // listeners synchronously, mid-commit, before _autosave reaches its own
+  // reload. Without this guard, one field edit fires two concurrent
+  // getSettingsPanelDefinition bridge calls that race on `setState`. This
+  // coalesces any _load() calls that arrive while one is already in flight
+  // into a single extra pass once the current one finishes, instead of
+  // running them in parallel.
+  bool _reloading = false;
+  bool _reloadPending = false;
+
+  // FormRenderer always calls onChange (_autosave) and then validator
+  // (_validate) back-to-back for the same (fieldKey, value) on every blur/
+  // interaction — without this, each interaction would run
+  // validateSettingsField's bridge call twice (autosave's own gate, then
+  // FormRenderer's separate validator call) and, worse, the two calls could
+  // disagree. Cache the one real result and let the second call reuse it.
+  String? _lastValidatedFieldKey;
+  dynamic _lastValidatedValue;
+  String? _lastValidationError;
+
+  String get _hookKey => widget.descriptor['hookKey'] as String;
+  String get _panelKey => widget.descriptor['panelKey'] as String;
+  String get _kind => widget.descriptor['kind'] as String;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+    // Picks up changes made outside this panel — e.g. font scale via
+    // keyboard shortcuts (main.dart) — which call SettingsService directly
+    // and never go through _autosave's own reload.
+    widget.services.settings.addListener(_load);
+  }
+
+  @override
+  void dispose() {
+    widget.services.settings.removeListener(_load);
+    super.dispose();
+  }
+
+  Future<void> _load() async {
+    if (_reloading) {
+      _reloadPending = true;
+      return;
+    }
+    _reloading = true;
+    try {
+      do {
+        _reloadPending = false;
+        final definition = await widget.services.extensions.getSettingsPanelDefinition(
+          hookKey: _hookKey,
+          panelKey: _panelKey,
+          kind: _kind,
+        );
+        if (mounted) {
+          setState(() {
+            _definition = definition;
+            _loading = false;
+          });
+        }
+      } while (_reloadPending && mounted);
+    } finally {
+      _reloading = false;
+    }
+  }
+
+  Map<String, dynamic> _fieldFor(String fieldKey) {
+    final elements = (_definition?['elements'] as List? ?? const []).cast<Map>();
+    for (final el in elements) {
+      if (el['type'] == 'field' && el['key'] == fieldKey) return el.cast<String, dynamic>();
+    }
+    return const {};
+  }
+
+  Future<String?> _validate(String fieldKey, dynamic value, Map<String, dynamic> state) async {
+    if (_lastValidatedFieldKey == fieldKey && _lastValidatedValue == value) {
+      return _lastValidationError;
+    }
+    final error = await widget.services.extensions.validateSettingsField(
+      kind: _kind,
+      hookKey: _hookKey,
+      panelKey: _panelKey,
+      field: _fieldFor(fieldKey),
+      fieldKey: fieldKey,
+      value: value,
+      state: state,
+    );
+    _lastValidatedFieldKey = fieldKey;
+    _lastValidatedValue = value;
+    _lastValidationError = error;
+    return error;
+  }
+
+  Future<Map<String, dynamic>?> _autosave(String fieldKey, dynamic value, Map<String, dynamic> state) async {
+    if (await _validate(fieldKey, value, state) != null) return null;
+    final field = _fieldFor(fieldKey);
+    final committedValue = _kind == 'dynamic'
+        ? await widget.services.extensions.transformSettingsField(
+            hookKey: _hookKey,
+            panelKey: _panelKey,
+            fieldKey: fieldKey,
+            value: value,
+            state: state,
+          )
+        : value;
+    await widget.services.extensions.commitSettingsFieldValue(
+      kind: _kind,
+      hookKey: _hookKey,
+      panelKey: _panelKey,
+      fieldKey: fieldKey,
+      value: committedValue,
+      state: state,
+      isSecret: field['fieldType'] == 'secret',
+    );
+    // Re-fetch so the panel reflects whatever the commit actually changed —
+    // not just this field's own value, but anything getDefinition derives
+    // from it (a hook keying labels off ctx.locale, fields that appear/
+    // disappear based on another field's value, etc.). _load() only shows
+    // its loading spinner on the very first call (_loading starts true);
+    // by now it's already false, so this swaps _definition in place with
+    // no flash.
+    if (mounted) await _load();
+    return null;
+  }
+
+  Future<void> _manageAccount(String accountKey, String? subkey) async {
+    if (subkey != null) {
+      // No AccountHook registration today can produce more than one account
+      // under the same kvKey, so there's nothing to disambiguate against
+      // yet — surfaced rather than silently ignored (see
+      // docs/extensions/settings.md's account field type note on subkey).
+      debugPrint(
+        '[settings] account field requested subkey "$subkey" for "$accountKey", but '
+        'subkey-based account disambiguation is not implemented yet — matching by kvKey only.',
+      );
+    }
+    final accounts = _accountsCache ??= await widget.services.extensions.getAccounts();
+    Map<String, dynamic>? account;
+    for (final a in accounts) {
+      if (a['kvKey'] == accountKey) {
+        account = a;
+        break;
+      }
+    }
+    if (account == null || !mounted) return;
+    await showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => _AccountDialog(
+        services: widget.services,
+        account: account!,
+        onSaved: () {
+          _accountsCache = null;
+          _load();
+        },
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_loading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+    final definition = _definition;
+    if (definition == null) {
+      return const Center(child: Text('Could not load this settings panel.'));
+    }
+
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16),
+      child: FormRenderer(
+        formDefinition: definition,
+        initialState: const {},
+        showActions: false,
+        developerMode: widget.services.settings.developerMode,
+        validator: _validate,
+        onChange: _autosave,
+        onAction: (actionKey, method, state) => widget.services.extensions.runSettingsAction(
+          hookKey: _hookKey,
+          panelKey: _panelKey,
+          method: method,
+          state: state,
+        ),
+        onManageAccount: _manageAccount,
+        onSubmit: (_) {},
+        onCancel: () {},
+      ),
     );
   }
 }

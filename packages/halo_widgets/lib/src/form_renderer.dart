@@ -6,11 +6,19 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
+import 'icon_resolver.dart';
 import 'theme.dart';
 
 typedef FormValidator = Future<String?> Function(String fieldKey, dynamic value, Map<String, dynamic> state);
 typedef FormTransformer = Future<dynamic> Function(String fieldKey, dynamic value, Map<String, dynamic> state);
 typedef FormOnChange = Future<Map<String, dynamic>?> Function(String fieldKey, dynamic value, Map<String, dynamic> state);
+typedef FormAction = Future<String?> Function(String actionKey, String method, Map<String, dynamic> state);
+typedef FormManageAccount = void Function(String accountKey, String? subkey);
+
+/// Substitutes `${key}` placeholders in [template] with values from [item].
+String _templateString(String template, Map<String, dynamic> item) {
+  return template.replaceAllMapped(RegExp(r'\$\{([^}]+)\}'), (m) => item[m.group(1)]?.toString() ?? '');
+}
 
 /// Renders a form from a dynamic JSON definition, coordinating input fields,
 /// headers, section dividers, and markdown text blocks. Supports initial state,
@@ -21,11 +29,17 @@ class FormRenderer extends StatefulWidget {
   final FormValidator? validator;
   final FormTransformer? transformer;
   final FormOnChange? onChange;
+  final FormAction? onAction;
+  final FormManageAccount? onManageAccount;
   final void Function(Map<String, dynamic> values) onSubmit;
   final VoidCallback onCancel;
   final bool showActions;
   final bool showTitle;
   final ValueNotifier<bool>? submittingNotifier;
+
+  /// Whether elements marked `devMode: true` in the definition are shown at
+  /// all — hidden entirely (not just disabled) when false, the default.
+  final bool developerMode;
 
   const FormRenderer({
     super.key,
@@ -34,11 +48,14 @@ class FormRenderer extends StatefulWidget {
     this.validator,
     this.transformer,
     this.onChange,
+    this.onAction,
+    this.onManageAccount,
     required this.onSubmit,
     required this.onCancel,
     this.showActions = true,
     this.showTitle = true,
     this.submittingNotifier,
+    this.developerMode = false,
   });
 
   @override
@@ -50,10 +67,18 @@ class FormRendererState extends State<FormRenderer> {
   final Map<String, TextEditingController> _controllers = {};
   final Map<String, FocusNode> _focusNodes = {};
   final Map<String, String> _errors = {};
+  final Set<String> _runningActions = {};
   bool _isSubmitting = false;
 
-  List<Map<String, dynamic>> get _elements =>
-      (widget.formDefinition['elements'] as List? ?? const []).cast<Map<String, dynamic>>();
+  List<Map<String, dynamic>> get _elements => (widget.formDefinition['elements'] as List? ?? const [])
+      .cast<Map<String, dynamic>>()
+      .where((el) => el['devMode'] != true || widget.developerMode)
+      .toList();
+
+  /// The orange "dev mode" accent for an element flagged `devMode: true` —
+  /// null once [_elements] has already excluded it, so no builder needs its
+  /// own visibility check, only this color check.
+  Color? _devModeColor(Map<String, dynamic> el) => el['devMode'] == true ? HaLoColors.of(context).devMode : null;
 
   List<Map<String, dynamic>> get _fields =>
       _elements.where((el) => el['type'] == 'field').toList();
@@ -64,48 +89,112 @@ class FormRendererState extends State<FormRenderer> {
     _initializeFormState();
   }
 
-  void _initializeFormState() {
+  @override
+  void didUpdateWidget(covariant FormRenderer oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (!identical(oldWidget.formDefinition, widget.formDefinition)) {
+      _syncFieldValuesFromDefinition(oldWidget.formDefinition);
+    }
+  }
+
+  static List<Map<String, dynamic>> _fieldsIn(Map<String, dynamic> definition) => (definition['elements'] as List? ?? const [])
+      .cast<Map<String, dynamic>>()
+      .where((el) => el['type'] == 'field')
+      .toList();
+
+  /// A field's `value` here is the source of truth — set by whatever last
+  /// called [FormRenderer] with a new [formDefinition] (e.g. a settings
+  /// panel re-fetching after a value changed outside this widget entirely,
+  /// like a keyboard shortcut). [initState] only ever sees this once, so
+  /// without this, [_values] would silently go stale on every subsequent
+  /// formDefinition change. A field absent from the OLD definition (e.g.
+  /// one that only appears once another field reaches some value) is never
+  /// "updated" — it's brand new — so it goes through [_initializeField]
+  /// instead, same as every field does on first mount; without that, it
+  /// would render with no controller/focus node and silently drop input.
+  /// For a field present in both, only overwrites [_values] when it still
+  /// matches what the OLD definition said — a field the user has locally
+  /// edited but not yet had committed back through [onChange] is left
+  /// alone, since here we can't tell that apart from a real external update
+  /// racing it.
+  void _syncFieldValuesFromDefinition(Map<String, dynamic> oldDefinition) {
+    final oldValues = {for (final f in _fieldsIn(oldDefinition)) f['key'] as String: f['value']};
+    final changes = <String, dynamic>{};
+    final newFields = <Map<String, dynamic>>[];
     for (final field in _fields) {
       final key = field['key'] as String;
-      final fieldType = field['fieldType'] as String;
-      var val = widget.initialState[key] ?? field['value'];
-      if (val == null) {
-        if (fieldType == 'checkbox') {
-          val = false;
-        } else if (['select', 'radio', 'number'].contains(fieldType)) {
-          val = null;
-        } else {
-          val = '';
+      if (!oldValues.containsKey(key)) {
+        if (!_values.containsKey(key)) newFields.add(field);
+        continue;
+      }
+      final newVal = field['value'];
+      if (newVal != oldValues[key] && _values[key] == oldValues[key]) {
+        changes[key] = newVal;
+      }
+    }
+    if (changes.isEmpty && newFields.isEmpty) return;
+    setState(() {
+      for (final entry in changes.entries) {
+        _values[entry.key] = entry.value;
+        final controller = _controllers[entry.key];
+        if (controller != null && controller.text != (entry.value?.toString() ?? '')) {
+          controller.text = entry.value?.toString() ?? '';
         }
       }
-      _values[key] = val;
-
-      final focusNode = FocusNode();
-      _focusNodes[key] = focusNode;
-
-      if (['text', 'multiline', 'email', 'callsign', 'number'].contains(fieldType)) {
-        final controller = TextEditingController(text: val?.toString() ?? '');
-        _controllers[key] = controller;
-        controller.addListener(() {
-          final text = controller.text;
-          dynamic parsed = text;
-          if (fieldType == 'number') {
-            parsed = num.tryParse(text);
-          }
-          if (_values[key] != parsed) {
-            setState(() {
-              _values[key] = parsed;
-              _errors.remove(key);
-            });
-          }
-        });
-
-        focusNode.addListener(() {
-          if (!focusNode.hasFocus) {
-            _handleFieldBlurOrInteraction(key, _values[key]);
-          }
-        });
+      for (final field in newFields) {
+        _initializeField(field);
       }
+    });
+  }
+
+  void _initializeFormState() {
+    for (final field in _fields) {
+      _initializeField(field);
+    }
+  }
+
+  void _initializeField(Map<String, dynamic> field) {
+    final key = field['key'] as String;
+    final fieldType = field['fieldType'] as String;
+    var val = widget.initialState[key] ?? field['value'];
+    if (val == null) {
+      if (fieldType == 'checkbox') {
+        val = false;
+      } else if (fieldType == 'list') {
+        val = <Map<String, dynamic>>[];
+      } else if (['select', 'radio', 'number', 'account'].contains(fieldType)) {
+        val = null;
+      } else {
+        val = '';
+      }
+    }
+    _values[key] = val;
+
+    final focusNode = FocusNode();
+    _focusNodes[key] = focusNode;
+
+    if (['text', 'multiline', 'email', 'callsign', 'number', 'secret'].contains(fieldType)) {
+      final controller = TextEditingController(text: val?.toString() ?? '');
+      _controllers[key] = controller;
+      controller.addListener(() {
+        final text = controller.text;
+        dynamic parsed = text;
+        if (fieldType == 'number') {
+          parsed = num.tryParse(text);
+        }
+        if (_values[key] != parsed) {
+          setState(() {
+            _values[key] = parsed;
+            _errors.remove(key);
+          });
+        }
+      });
+
+      focusNode.addListener(() {
+        if (!focusNode.hasFocus) {
+          _handleFieldBlurOrInteraction(key, _values[key]);
+        }
+      });
     }
   }
 
@@ -282,6 +371,8 @@ class FormRendererState extends State<FormRenderer> {
                   return _buildMarkdown(el, theme);
                 case 'field':
                   return _buildField(el, theme);
+                case 'action':
+                  return _buildActionElement(el, theme);
                 default:
                   return const SizedBox.shrink();
               }
@@ -316,26 +407,40 @@ class FormRendererState extends State<FormRenderer> {
     );
   }
 
+  /// `style: 'section'` opts into the same typography as the section
+  /// headers used in the Sync/Accounts settings panels (see SectionHeader)
+  /// — smaller and less bold than the default. Opt-in, not the default,
+  /// because `_buildHeader` renders `type: 'header'` elements for every
+  /// FormRenderer caller, not just settings panels — an ad hoc extension
+  /// form's own section headers keep the original bold look unless they
+  /// explicitly ask for the settings-panel one. Doesn't reuse SectionHeader
+  /// itself even when 'section' is requested: that widget bakes in its own
+  /// 16px horizontal padding, sized for a container with none of its own
+  /// (Sync/Accounts' ListView) — here, the horizontal inset already comes
+  /// from the outer SingleChildScrollView every field in this form shares,
+  /// so adding SectionHeader's on top would double it.
   Widget _buildHeader(Map<String, dynamic> el, ThemeData theme) {
     final title = el['title'] as String? ?? '';
     final subtitle = el['subtitle'] as String?;
+    final devModeColor = _devModeColor(el);
+    final isSection = el['style'] == 'section';
+    final titleStyle = isSection
+        ? theme.textTheme.titleSmall?.copyWith(color: devModeColor ?? theme.colorScheme.primary)
+        : theme.textTheme.titleMedium?.copyWith(
+            fontFamily: 'RobotoSlab',
+            fontWeight: FontWeight.w900,
+            color: devModeColor ?? theme.colorScheme.primary,
+          );
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          title,
-          style: theme.textTheme.titleMedium?.copyWith(
-            fontFamily: 'RobotoSlab',
-            fontWeight: FontWeight.w900,
-            color: theme.colorScheme.primary,
-          ),
-        ),
+        Text(title, style: titleStyle),
         if (subtitle != null && subtitle.isNotEmpty) ...[
           const SizedBox(height: 4),
           Text(
             subtitle,
             style: theme.textTheme.bodySmall?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant,
+              color: devModeColor ?? theme.colorScheme.onSurfaceVariant,
             ),
           ),
         ],
@@ -348,12 +453,13 @@ class FormRendererState extends State<FormRenderer> {
     if (title == null || title.isEmpty) {
       return const Divider();
     }
+    final devModeColor = _devModeColor(el);
     return Row(
       children: [
         Text(
           title,
           style: theme.textTheme.titleSmall?.copyWith(
-            color: theme.colorScheme.primary,
+            color: devModeColor ?? theme.colorScheme.primary,
             fontWeight: FontWeight.bold,
           ),
         ),
@@ -365,16 +471,31 @@ class FormRendererState extends State<FormRenderer> {
 
   Widget _buildMarkdown(Map<String, dynamic> el, ThemeData theme) {
     final text = el['text'] as String? ?? '';
-    return MarkdownBody(data: text);
+    final devModeColor = _devModeColor(el);
+    return MarkdownBody(
+      data: text,
+      styleSheet: devModeColor == null ? null : MarkdownStyleSheet(p: TextStyle(color: devModeColor)),
+    );
   }
 
+  static const _iconRowSupportedTypes = {'text', 'multiline', 'email', 'callsign', 'number', 'secret', 'select', 'checkbox'};
+
+  /// Field types whose compact trailing control this can build. 'list',
+  /// 'radio', and 'account' fall back to their normal full-width rendering
+  /// even when `icon` is set — a multi-option or multi-row control doesn't
+  /// have an obvious single-line compact form.
   Widget _buildField(Map<String, dynamic> el, ThemeData theme) {
     final fieldType = el['fieldType'] as String?;
+    if (el['icon'] != null && _iconRowSupportedTypes.contains(fieldType)) {
+      return _buildIconRowField(el, fieldType!, theme);
+    }
+
     final key = el['key'] as String;
     final label = el['label'] as String? ?? '';
     final placeholder = el['placeholder'] as String?;
     final options = (el['options'] as List? ?? const []).cast<Map<String, dynamic>>();
     final errorText = _errors[key];
+    final devModeColor = _devModeColor(el);
 
     switch (fieldType) {
       case 'text':
@@ -384,7 +505,7 @@ class FormRendererState extends State<FormRenderer> {
           autofillHints: _getAutofillHints(key, 'text'),
           textInputAction: TextInputAction.done,
           onSubmitted: (_) => submit(),
-          decoration: poloFieldDecoration(context, label, hintText: placeholder, errorText: errorText),
+          decoration: poloFieldDecoration(context, label, hintText: placeholder, errorText: errorText, labelColor: devModeColor),
         );
       case 'multiline':
         return TextField(
@@ -393,7 +514,7 @@ class FormRendererState extends State<FormRenderer> {
           maxLines: null,
           minLines: 3,
           autofillHints: _getAutofillHints(key, 'multiline'),
-          decoration: poloFieldDecoration(context, label, hintText: placeholder, errorText: errorText),
+          decoration: poloFieldDecoration(context, label, hintText: placeholder, errorText: errorText, labelColor: devModeColor),
         );
       case 'email':
         return TextField(
@@ -403,7 +524,7 @@ class FormRendererState extends State<FormRenderer> {
           autofillHints: _getAutofillHints(key, 'email'),
           textInputAction: TextInputAction.done,
           onSubmitted: (_) => submit(),
-          decoration: poloFieldDecoration(context, label, hintText: placeholder, errorText: errorText),
+          decoration: poloFieldDecoration(context, label, hintText: placeholder, errorText: errorText, labelColor: devModeColor),
         );
       case 'callsign':
         return TextField(
@@ -416,7 +537,7 @@ class FormRendererState extends State<FormRenderer> {
           autofillHints: _getAutofillHints(key, 'callsign'),
           textInputAction: TextInputAction.done,
           onSubmitted: (_) => submit(),
-          decoration: poloFieldDecoration(context, label, hintText: placeholder, errorText: errorText),
+          decoration: poloFieldDecoration(context, label, hintText: placeholder, errorText: errorText, labelColor: devModeColor),
         );
       case 'number':
         return TextField(
@@ -429,13 +550,27 @@ class FormRendererState extends State<FormRenderer> {
           autofillHints: _getAutofillHints(key, 'number'),
           textInputAction: TextInputAction.done,
           onSubmitted: (_) => submit(),
-          decoration: poloFieldDecoration(context, label, hintText: placeholder, errorText: errorText),
+          decoration: poloFieldDecoration(context, label, hintText: placeholder, errorText: errorText, labelColor: devModeColor),
         );
+      case 'secret':
+        return TextField(
+          controller: _controllers[key],
+          focusNode: _focusNodes[key],
+          obscureText: true,
+          autofillHints: const [AutofillHints.password],
+          textInputAction: TextInputAction.done,
+          onSubmitted: (_) => submit(),
+          decoration: poloFieldDecoration(context, label, hintText: placeholder, errorText: errorText, labelColor: devModeColor),
+        );
+      case 'list':
+        return _buildListField(el, theme);
+      case 'account':
+        return _buildAccountField(el, theme);
       case 'select':
         return DropdownButtonFormField<dynamic>(
           value: _values[key],
           focusNode: _focusNodes[key],
-          decoration: poloFieldDecoration(context, label, hintText: placeholder, errorText: errorText),
+          decoration: poloFieldDecoration(context, label, hintText: placeholder, errorText: errorText, labelColor: devModeColor),
           hint: placeholder != null ? Text(placeholder) : null,
           items: [
             for (final opt in options)
@@ -463,7 +598,7 @@ class FormRendererState extends State<FormRenderer> {
               Text(
                 label,
                 style: theme.textTheme.labelMedium?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant,
+                  color: devModeColor ?? theme.colorScheme.onSurfaceVariant,
                 ),
               ),
               const SizedBox(height: 4),
@@ -499,7 +634,7 @@ class FormRendererState extends State<FormRenderer> {
         return Focus(
           focusNode: _focusNodes[key],
           child: CheckboxListTile(
-            title: Text(label),
+            title: Text(label, style: devModeColor == null ? null : TextStyle(color: devModeColor)),
             value: _values[key] == true,
             onChanged: _isSubmitting
                 ? null
@@ -526,6 +661,342 @@ class FormRendererState extends State<FormRenderer> {
         return const SizedBox.shrink();
     }
   }
+
+  /// Below this width, an icon-row field stacks its control under the
+  /// title/description instead of trailing beside them — a compact
+  /// dropdown or 140px text field next to a label leaves too little room
+  /// for either on a narrow panel/phone screen. A toggle is exempt (see
+  /// [_buildIconRowField]): a Switch is already as small as it gets, and
+  /// stacking it under a one-line label would waste more space than it
+  /// saves.
+  static const _iconRowStackBreakpoint = 400.0;
+
+  /// The Sync/Accounts panel row shape: leading icon, bold title, an
+  /// optional description underneath (or the validation error, in its
+  /// place), and a compact version of the field's control on the trailing
+  /// side — as opposed to the standalone Material input the default
+  /// [_buildField] switch renders. Below [_iconRowStackBreakpoint], the
+  /// control instead renders full-width on its own row underneath, unless
+  /// it's a toggle (checkbox), which always stays trailing.
+  Widget _buildIconRowField(Map<String, dynamic> el, String fieldType, ThemeData theme) {
+    final key = el['key'] as String;
+    final label = el['label'] as String? ?? '';
+    final description = el['description'] as String?;
+    final icon = el['icon'] as String?;
+    final errorText = _errors[key];
+    final devModeColor = _devModeColor(el);
+
+    Widget? subtitle;
+    if (errorText != null) {
+      subtitle = Text(errorText, style: TextStyle(color: theme.colorScheme.error, fontSize: 12));
+    } else if (description != null && description.isNotEmpty) {
+      subtitle = Text(description, style: TextStyle(color: devModeColor));
+    }
+
+    final leading = icon != null ? Icon(resolveIconName(icon), color: devModeColor) : null;
+    final title = Text(label, style: theme.textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.bold, color: devModeColor));
+
+    if (fieldType == 'checkbox') {
+      return ListTile(
+        contentPadding: EdgeInsets.zero,
+        leading: leading,
+        title: title,
+        subtitle: subtitle,
+        trailing: _buildCompactControl(el, fieldType, devModeColor, expanded: false),
+      );
+    }
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        if (constraints.maxWidth >= _iconRowStackBreakpoint) {
+          return ListTile(
+            contentPadding: EdgeInsets.zero,
+            leading: leading,
+            title: title,
+            subtitle: subtitle,
+            trailing: _buildCompactControl(el, fieldType, devModeColor, expanded: false),
+          );
+        }
+        return Padding(
+          padding: const EdgeInsets.symmetric(vertical: 4),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: leading,
+                title: title,
+                subtitle: subtitle,
+              ),
+              _buildCompactControl(el, fieldType, devModeColor, expanded: true),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  TextInputType? _keyboardTypeFor(String fieldType) => switch (fieldType) {
+        'email' => TextInputType.emailAddress,
+        'number' => const TextInputType.numberWithOptions(decimal: true, signed: true),
+        _ => null,
+      };
+
+  List<TextInputFormatter>? _inputFormattersFor(String fieldType) => switch (fieldType) {
+        'callsign' => [TextInputFormatter.withFunction((oldValue, newValue) => newValue.copyWith(text: newValue.text.toUpperCase()))],
+        'number' => [FilteringTextInputFormatter.allow(RegExp(r'[0-9.-]'))],
+        _ => null,
+      };
+
+  /// `expanded` is the narrow-layout, stacked-under-the-title form: full
+  /// width instead of a fixed compact size, start-aligned text instead of
+  /// end-aligned (there's no label/description to its left to align
+  /// against anymore). Ignored for 'checkbox', which is never stacked.
+  Widget _buildCompactControl(Map<String, dynamic> el, String fieldType, Color? devModeColor, {required bool expanded}) {
+    final key = el['key'] as String;
+    final options = (el['options'] as List? ?? const []).cast<Map<String, dynamic>>();
+
+    switch (fieldType) {
+      case 'select':
+        final dropdown = DropdownButtonHideUnderline(
+          child: DropdownButton<dynamic>(
+            value: _values[key],
+            isExpanded: expanded,
+            items: [for (final opt in options) DropdownMenuItem(value: opt['value'], child: Text(opt['label'] as String))],
+            onChanged: _isSubmitting
+                ? null
+                : (val) {
+                    setState(() {
+                      _values[key] = val;
+                      _errors.remove(key);
+                    });
+                    _handleFieldBlurOrInteraction(key, val);
+                  },
+          ),
+        );
+        return expanded ? SizedBox(width: double.infinity, child: dropdown) : dropdown;
+      case 'checkbox':
+        return Switch(
+          value: _values[key] == true,
+          onChanged: _isSubmitting
+              ? null
+              : (val) {
+                  setState(() {
+                    _values[key] = val;
+                    _errors.remove(key);
+                  });
+                  _handleFieldBlurOrInteraction(key, val);
+                },
+        );
+      default: // text, multiline, email, callsign, number, secret
+        final field = TextField(
+          controller: _controllers[key],
+          focusNode: _focusNodes[key],
+          textAlign: expanded ? TextAlign.start : TextAlign.end,
+          obscureText: fieldType == 'secret',
+          maxLines: fieldType == 'multiline' ? null : 1,
+          minLines: fieldType == 'multiline' ? 3 : null,
+          textCapitalization: fieldType == 'callsign' ? TextCapitalization.characters : TextCapitalization.none,
+          keyboardType: _keyboardTypeFor(fieldType),
+          inputFormatters: _inputFormattersFor(fieldType),
+          autofillHints: fieldType == 'secret' ? const [AutofillHints.password] : _getAutofillHints(key, fieldType),
+          textInputAction: TextInputAction.done,
+          onSubmitted: (_) => submit(),
+          decoration: const InputDecoration(border: InputBorder.none, isDense: true, contentPadding: EdgeInsets.zero),
+        );
+        return expanded ? field : SizedBox(width: 140, child: field);
+    }
+  }
+
+  /// A `fieldType: 'list'` field: a summary row per item plus an "Add" row.
+  /// Editing or adding an item reopens the same form renderer recursively
+  /// (via [showFormDialog]) scoped to `itemFields`, so there's no separate
+  /// "list item editor" widget — just a smaller [FormDefinition].
+  Widget _buildListField(Map<String, dynamic> el, ThemeData theme) {
+    final key = el['key'] as String;
+    final label = el['label'] as String? ?? '';
+    final itemFields = (el['itemFields'] as List? ?? const []).cast<Map<String, dynamic>>();
+    final itemTitleTemplate = el['itemTitle'] as String?;
+    final orderable = el['orderable'] == true;
+    final errorText = _errors[key];
+    final items = ((_values[key] as List?) ?? const []).cast<Map<String, dynamic>>();
+    final devModeColor = _devModeColor(el);
+
+    Future<void> commit(List<Map<String, dynamic>> newItems) async {
+      setState(() {
+        _values[key] = newItems;
+        _errors.remove(key);
+      });
+      await _handleFieldBlurOrInteraction(key, newItems);
+    }
+
+    Future<void> editItem(int? index) async {
+      final itemPath = '$key[${index ?? items.length}]';
+      final initial = index != null ? Map<String, dynamic>.from(items[index]) : <String, dynamic>{};
+      final result = await showFormDialog(
+        context,
+        formDefinition: {
+          'title': index != null ? 'Edit $label' : 'Add $label',
+          'elements': itemFields,
+        },
+        initialState: initial,
+        validator: widget.validator == null
+            ? null
+            : (fieldKey, value, state) => widget.validator!('$itemPath.$fieldKey', value, state),
+        transformer: widget.transformer == null
+            ? null
+            : (fieldKey, value, state) => widget.transformer!('$itemPath.$fieldKey', value, state),
+        developerMode: widget.developerMode,
+      );
+      if (result == null) return;
+      final newItems = List<Map<String, dynamic>>.from(items);
+      if (index != null) {
+        newItems[index] = result;
+      } else {
+        newItems.add(result);
+      }
+      await commit(newItems);
+    }
+
+    void deleteItem(int index) {
+      final newItems = List<Map<String, dynamic>>.from(items)..removeAt(index);
+      commit(newItems);
+    }
+
+    void reorder(int oldIndex, int newIndex) {
+      final newItems = List<Map<String, dynamic>>.from(items);
+      if (newIndex > oldIndex) newIndex -= 1;
+      newItems.insert(newIndex, newItems.removeAt(oldIndex));
+      commit(newItems);
+    }
+
+    Widget rowFor(int index) {
+      final item = items[index];
+      final title = itemTitleTemplate != null
+          ? _templateString(itemTitleTemplate, item)
+          : item.values.firstWhere((v) => v != null && v.toString().isNotEmpty, orElse: () => '').toString();
+      return ListTile(
+        key: ValueKey('$key-item-$index'),
+        dense: true,
+        contentPadding: EdgeInsets.zero,
+        title: Text(title.isEmpty ? '(untitled)' : title),
+        onTap: _isSubmitting ? null : () => editItem(index),
+        trailing: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (orderable) const Icon(Icons.drag_handle, size: 20),
+            IconButton(
+              icon: const Icon(Icons.delete_outline, size: 20),
+              onPressed: _isSubmitting ? null : () => deleteItem(index),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: theme.textTheme.labelMedium?.copyWith(color: devModeColor ?? theme.colorScheme.onSurfaceVariant),
+        ),
+        const SizedBox(height: 4),
+        if (orderable)
+          ReorderableListView(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            onReorder: reorder,
+            children: [for (var i = 0; i < items.length; i++) rowFor(i)],
+          )
+        else
+          for (var i = 0; i < items.length; i++) rowFor(i),
+        TextButton.icon(
+          onPressed: _isSubmitting ? null : () => editItem(null),
+          icon: const Icon(Icons.add, size: 18),
+          label: Text('Add $label'),
+        ),
+        if (errorText != null)
+          Padding(
+            padding: const EdgeInsets.only(top: 4, left: 4),
+            child: Text(errorText, style: TextStyle(color: theme.colorScheme.error, fontSize: 12)),
+          ),
+      ],
+    );
+  }
+
+  /// A `fieldType: 'account'` field: a read-only reference into the
+  /// separate `account` hook system (see docs/extensions/settings.md's
+  /// "account field type") — never defines or stores account data itself.
+  /// Status is whatever the caller put in the field's `value`, shaped
+  /// `{connected: bool, label: String?}`; tapping Manage/Connect calls
+  /// [FormManageAccount] with the field's `account.key`/`account.subkey`,
+  /// which is expected to open that account's own standalone dialog.
+  Widget _buildAccountField(Map<String, dynamic> el, ThemeData theme) {
+    final key = el['key'] as String;
+    final label = el['label'] as String? ?? '';
+    final account = (el['account'] as Map?)?.cast<String, dynamic>();
+    final accountKey = account?['key'] as String?;
+    final subkey = account?['subkey'] as String?;
+    final status = (_values[key] is Map) ? (_values[key] as Map).cast<String, dynamic>() : const <String, dynamic>{};
+    final connected = status['connected'] == true;
+    final statusLabel = status['label'] as String?;
+    final devModeColor = _devModeColor(el);
+
+    return ListTile(
+      contentPadding: EdgeInsets.zero,
+      leading: Icon(
+        connected ? Icons.check_circle : Icons.radio_button_unchecked,
+        color: devModeColor ?? (connected ? theme.colorScheme.primary : theme.colorScheme.onSurfaceVariant),
+      ),
+      title: Text(label, style: devModeColor == null ? null : TextStyle(color: devModeColor)),
+      subtitle: Text(
+        connected ? (statusLabel ?? 'Connected') : 'Not Connected',
+        style: devModeColor == null ? null : TextStyle(color: devModeColor),
+      ),
+      trailing: TextButton(
+        onPressed: accountKey == null || widget.onManageAccount == null ? null : () => widget.onManageAccount!(accountKey, subkey),
+        child: Text(connected ? 'Manage' : 'Connect'),
+      ),
+    );
+  }
+
+  /// A `type: 'action'` element: a button that invokes [FormAction] and
+  /// shows the returned string as a result banner.
+  Widget _buildActionElement(Map<String, dynamic> el, ThemeData theme) {
+    final actionKey = el['key'] as String? ?? '';
+    final label = el['label'] as String? ?? '';
+    final method = el['method'] as String? ?? '';
+    final isRunning = _runningActions.contains(actionKey);
+    final devModeColor = _devModeColor(el);
+
+    return OutlinedButton(
+      style: devModeColor == null ? null : OutlinedButton.styleFrom(foregroundColor: devModeColor, side: BorderSide(color: devModeColor)),
+      onPressed: widget.onAction == null || isRunning
+          ? null
+          : () async {
+              setState(() => _runningActions.add(actionKey));
+              String? result;
+              try {
+                result = await widget.onAction!(actionKey, method, _values);
+              } catch (e) {
+                result = 'Error: $e';
+              }
+              if (!mounted) return;
+              setState(() => _runningActions.remove(actionKey));
+              if (result != null && context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(result)));
+              }
+            },
+      child: isRunning
+          ? const SizedBox(
+              width: 16,
+              height: 16,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            )
+          : Text(label),
+    );
+  }
 }
 
 /// Helper function to display the FormRenderer inside an AlertDialog.
@@ -536,6 +1007,9 @@ Future<Map<String, dynamic>?> showFormDialog(
   FormValidator? validator,
   FormTransformer? transformer,
   FormOnChange? onChange,
+  FormAction? onAction,
+  FormManageAccount? onManageAccount,
+  bool developerMode = false,
 }) {
   final theme = Theme.of(context);
   final formKey = GlobalKey<FormRendererState>();
@@ -595,6 +1069,9 @@ Future<Map<String, dynamic>?> showFormDialog(
             validator: validator,
             transformer: transformer,
             onChange: onChange,
+            onAction: onAction,
+            onManageAccount: onManageAccount,
+            developerMode: developerMode,
             showActions: false,
             showTitle: false,
             submittingNotifier: submittingNotifier,
@@ -655,8 +1132,11 @@ class FormView extends StatefulWidget {
   final FormValidator? validator;
   final FormTransformer? transformer;
   final FormOnChange? onChange;
+  final FormAction? onAction;
+  final FormManageAccount? onManageAccount;
   final void Function(Map<String, dynamic> values) onSubmit;
   final VoidCallback onCancel;
+  final bool developerMode;
 
   const FormView({
     super.key,
@@ -665,8 +1145,11 @@ class FormView extends StatefulWidget {
     this.validator,
     this.transformer,
     this.onChange,
+    this.onAction,
+    this.onManageAccount,
     required this.onSubmit,
     required this.onCancel,
+    this.developerMode = false,
   });
 
   @override
@@ -703,6 +1186,9 @@ class _FormViewState extends State<FormView> {
               validator: widget.validator,
               transformer: widget.transformer,
               onChange: widget.onChange,
+              onAction: widget.onAction,
+              onManageAccount: widget.onManageAccount,
+              developerMode: widget.developerMode,
               showActions: false,
               showTitle: false,
               submittingNotifier: _submittingNotifier,

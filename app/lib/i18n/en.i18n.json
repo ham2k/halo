@@ -117,6 +117,11 @@
       "light": "Light",
       "dark": "Dark"
     },
+    "themeDescription": {
+      "system": "Follows system setting",
+      "light": "Always in Light Mode",
+      "dark": "Always in Dark Mode"
+    },
     "fontScale": "Font Scale",
     "fontScaleOpts": {
       "smallest": "Smallest",
@@ -125,6 +130,7 @@
       "larger": "Larger",
       "largest": "Largest"
     },
+    "fontScaleDescription": "Affects text size throughout the app",
     "operatorCall": "Operator Callsign",
     "sync": {
       "title": "Sync Settings",

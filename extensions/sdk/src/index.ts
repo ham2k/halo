@@ -100,6 +100,39 @@ export const host = {
     await kernel().hostCall('setAccountSession', { ns: currentExtensionKey, kvKey, session })
   },
 
+  /// The app's own core settings (theme/locale/font scale) — not a generic
+  /// KV store, these read/write SettingsService directly so a change here
+  /// takes effect everywhere else in the app (MaterialApp's themeMode,
+  /// LocaleSettings, text scaling), not just in some extension's own
+  /// storage. For the core/settings extension's General panel; not
+  /// intended for arbitrary extension use.
+  async getCoreSettings(): Promise<{ themeMode: string; locale: string; fontScale: string }> {
+    return (await kernel().hostCall('getCoreSettings', {})) as { themeMode: string; locale: string; fontScale: string }
+  },
+
+  async setCoreSetting(key: string, value: JSONValue): Promise<void> {
+    await kernel().hostCall('setCoreSetting', { key, value })
+  },
+
+  /// Looks up a string from the app's own translations (app/lib/i18n/
+  /// {en,es}.i18n.json) by its dot-path key (e.g. "settings.theme.title"),
+  /// in whatever locale is currently active — there's no separate
+  /// extension-i18n system, this is the same source of truth the rest of
+  /// the app reads via its generated `t[key]` lookup. Returns null if the
+  /// key doesn't exist or isn't a plain string (e.g. it needs interpolation
+  /// params, which this doesn't support).
+  async translate(key: string): Promise<string | null> {
+    return (await kernel().hostCall('translate', { key })) as string | null
+  },
+
+  /// Same lookup as `translate`, but for many keys in one bridge round
+  /// trip — for a panel with a dozen-plus labels, that's a dozen-plus
+  /// fewer JS↔Dart hops than calling `translate` in a loop. Missing/non-
+  /// string keys come back as null, same as `translate`.
+  async translateAll(keys: string[]): Promise<Record<string, string | null>> {
+    return (await kernel().hostCall('translateAll', { keys })) as Record<string, string | null>
+  },
+
   async dbLookupSelectOne(category: string, key: string): Promise<LookupRow | null> {
     return (await kernel().hostCall('dbLookupSelectOne', { category, key })) as LookupRow | null
   },

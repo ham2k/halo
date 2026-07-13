@@ -342,4 +342,540 @@ void main() {
       expect(submittedValues!['name'], 'Pinned Test');
     });
   });
+
+  group('FormRenderer secret/list/action fields', () {
+    testWidgets('secret field obscures its text', (tester) async {
+      await tester.pumpWidget(MaterialApp(
+        home: Scaffold(
+          body: FormRenderer(
+            formDefinition: const {
+              'elements': [
+                {'type': 'field', 'fieldType': 'secret', 'key': 'apiKey', 'label': 'API Key'},
+              ],
+            },
+            initialState: const {},
+            onSubmit: (_) {},
+            onCancel: () {},
+          ),
+        ),
+      ));
+
+      final field = tester.widget<TextField>(find.widgetWithText(TextField, 'API Key'));
+      expect(field.obscureText, isTrue);
+    });
+
+    testWidgets('list field adds, edits, and deletes items via the nested item dialog', (tester) async {
+      Map<String, dynamic>? submittedValues;
+      final listFormDefinition = {
+        'elements': [
+          {
+            'type': 'field',
+            'fieldType': 'list',
+            'key': 'presets',
+            'label': 'Presets',
+            'itemTitle': r'${name} — ${exchange}',
+            'itemFields': [
+              {'type': 'field', 'fieldType': 'text', 'key': 'name', 'label': 'Name'},
+              {'type': 'field', 'fieldType': 'text', 'key': 'exchange', 'label': 'Exchange'},
+            ],
+          },
+        ],
+      };
+
+      await tester.pumpWidget(MaterialApp(
+        home: Scaffold(
+          body: FormRenderer(
+            formDefinition: listFormDefinition,
+            initialState: const {},
+            onSubmit: (vals) => submittedValues = vals,
+            onCancel: () {},
+          ),
+        ),
+      ));
+
+      // No items yet, just the label and the "Add" row.
+      expect(find.text('Presets'), findsOneWidget);
+      expect(find.widgetWithText(TextButton, 'Add Presets'), findsOneWidget);
+
+      // Item add/edit dialogs have their own Save button, distinct from the
+      // outer form's — scope taps to the dialog to avoid ambiguity.
+      Finder dialogSaveButton() =>
+          find.descendant(of: find.byType(AlertDialog), matching: find.widgetWithText(FilledButton, 'Save'));
+
+      // Add an item through the nested dialog.
+      await tester.tap(find.widgetWithText(TextButton, 'Add Presets'));
+      await tester.pumpAndSettle();
+      await tester.enterText(find.widgetWithText(TextField, 'Name'), 'Field Day');
+      await tester.enterText(find.widgetWithText(TextField, 'Exchange'), '1A NNJ');
+      await tester.tap(dialogSaveButton());
+      await tester.pumpAndSettle();
+
+      // Summary row uses the itemTitle template.
+      expect(find.text('Field Day — 1A NNJ'), findsOneWidget);
+
+      // Edit the item: tapping the row reopens the dialog pre-filled.
+      await tester.tap(find.text('Field Day — 1A NNJ'));
+      await tester.pumpAndSettle();
+      expect(find.widgetWithText(TextField, 'Name'), findsOneWidget);
+      final nameField = tester.widget<TextField>(find.widgetWithText(TextField, 'Name'));
+      expect(nameField.controller?.text, 'Field Day');
+      await tester.enterText(find.widgetWithText(TextField, 'Exchange'), '2A NNJ');
+      await tester.tap(dialogSaveButton());
+      await tester.pumpAndSettle();
+      expect(find.text('Field Day — 2A NNJ'), findsOneWidget);
+
+      // Submitting the outer form includes the edited list.
+      await tester.tap(find.widgetWithText(FilledButton, 'Save'));
+      await tester.pumpAndSettle();
+      expect(submittedValues!['presets'], [
+        {'name': 'Field Day', 'exchange': '2A NNJ'},
+      ]);
+
+      // Delete removes the row.
+      await tester.tap(find.byIcon(Icons.delete_outline));
+      await tester.pumpAndSettle();
+      expect(find.text('Field Day — 2A NNJ'), findsNothing);
+    });
+
+    testWidgets('action element invokes onAction with its key and method, and shows the result', (tester) async {
+      String? capturedKey;
+      String? capturedMethod;
+
+      await tester.pumpWidget(MaterialApp(
+        home: Scaffold(
+          body: FormRenderer(
+            formDefinition: const {
+              'elements': [
+                {'type': 'action', 'key': 'test', 'label': 'Test Connection', 'method': 'testCredentials'},
+              ],
+            },
+            initialState: const {},
+            onAction: (actionKey, method, state) async {
+              capturedKey = actionKey;
+              capturedMethod = method;
+              return 'Connected';
+            },
+            onSubmit: (_) {},
+            onCancel: () {},
+          ),
+        ),
+      ));
+
+      await tester.tap(find.widgetWithText(OutlinedButton, 'Test Connection'));
+      await tester.pumpAndSettle();
+
+      expect(capturedKey, 'test');
+      expect(capturedMethod, 'testCredentials');
+      expect(find.text('Connected'), findsOneWidget);
+    });
+
+    testWidgets('account field shows Not Connected / Connect when no status is set', (tester) async {
+      await tester.pumpWidget(MaterialApp(
+        home: Scaffold(
+          body: FormRenderer(
+            formDefinition: const {
+              'elements': [
+                {
+                  'type': 'field',
+                  'fieldType': 'account',
+                  'key': 'qrzStatus',
+                  'label': 'QRZ.com Account',
+                  'account': {'key': 'qrz'},
+                },
+              ],
+            },
+            initialState: const {},
+            onSubmit: (_) {},
+            onCancel: () {},
+          ),
+        ),
+      ));
+
+      expect(find.text('QRZ.com Account'), findsOneWidget);
+      expect(find.text('Not Connected'), findsOneWidget);
+      expect(find.widgetWithText(TextButton, 'Connect'), findsOneWidget);
+    });
+
+    testWidgets('account field shows the connected label and Manage, and never persists a value on submit', (tester) async {
+      Map<String, dynamic>? submittedValues;
+
+      await tester.pumpWidget(MaterialApp(
+        home: Scaffold(
+          body: FormRenderer(
+            formDefinition: const {
+              'elements': [
+                {
+                  'type': 'field',
+                  'fieldType': 'account',
+                  'key': 'qrzStatus',
+                  'label': 'QRZ.com Account',
+                  'value': {'connected': true, 'label': 'Connected as KI2D'},
+                  'account': {'key': 'qrz'},
+                },
+              ],
+            },
+            initialState: const {},
+            onSubmit: (vals) => submittedValues = vals,
+            onCancel: () {},
+          ),
+        ),
+      ));
+
+      expect(find.text('Connected as KI2D'), findsOneWidget);
+      expect(find.widgetWithText(TextButton, 'Manage'), findsOneWidget);
+
+      await tester.tap(find.widgetWithText(FilledButton, 'Save'));
+      await tester.pumpAndSettle();
+
+      // The account field's own status flows through to onSubmit like any
+      // other field's value (settings-panel dispatch is what actually
+      // excludes fieldType 'account' from persistence — see
+      // ExtensionService.getSettingsPanelDefinition) — but tapping Manage
+      // is the real interaction, exercised below.
+      expect(submittedValues!['qrzStatus'], {'connected': true, 'label': 'Connected as KI2D'});
+    });
+
+    testWidgets('tapping Manage/Connect calls onManageAccount with the field\'s account key and subkey', (tester) async {
+      String? capturedKey;
+      String? capturedSubkey;
+
+      await tester.pumpWidget(MaterialApp(
+        home: Scaffold(
+          body: FormRenderer(
+            formDefinition: const {
+              'elements': [
+                {
+                  'type': 'field',
+                  'fieldType': 'account',
+                  'key': 'lofiStatus',
+                  'label': 'LoFi Account',
+                  'account': {'key': 'lofi', 'subkey': 'backup'},
+                },
+              ],
+            },
+            initialState: const {},
+            onManageAccount: (accountKey, subkey) {
+              capturedKey = accountKey;
+              capturedSubkey = subkey;
+            },
+            onSubmit: (_) {},
+            onCancel: () {},
+          ),
+        ),
+      ));
+
+      await tester.tap(find.widgetWithText(TextButton, 'Connect'));
+      await tester.pumpAndSettle();
+
+      expect(capturedKey, 'lofi');
+      expect(capturedSubkey, 'backup');
+    });
+  });
+
+  group('FormRenderer devMode elements', () {
+    final devModeFormDefinition = {
+      'elements': [
+        {'type': 'header', 'title': 'Dev Only Header', 'devMode': true},
+        {'type': 'field', 'fieldType': 'text', 'key': 'debugFlag', 'label': 'Debug Flag', 'devMode': true},
+        {'type': 'field', 'fieldType': 'text', 'key': 'normalField', 'label': 'Normal Field'},
+      ],
+    };
+
+    testWidgets('devMode elements are hidden entirely when developerMode is false (the default)', (tester) async {
+      Map<String, dynamic>? submittedValues;
+      await tester.pumpWidget(MaterialApp(
+        home: Scaffold(
+          body: FormRenderer(
+            formDefinition: devModeFormDefinition,
+            initialState: const {},
+            onSubmit: (vals) => submittedValues = vals,
+            onCancel: () {},
+          ),
+        ),
+      ));
+
+      expect(find.text('Dev Only Header'), findsNothing);
+      expect(find.text('Debug Flag'), findsNothing);
+      expect(find.text('Normal Field'), findsOneWidget);
+
+      await tester.tap(find.widgetWithText(FilledButton, 'Save'));
+      await tester.pumpAndSettle();
+
+      // A hidden devMode field must not sneak a value into the submission.
+      expect(submittedValues!.containsKey('debugFlag'), isFalse);
+    });
+
+    testWidgets('devMode elements show and are tinted the orange dev-mode accent when developerMode is true', (tester) async {
+      await tester.pumpWidget(MaterialApp(
+        home: Scaffold(
+          body: FormRenderer(
+            formDefinition: devModeFormDefinition,
+            initialState: const {},
+            developerMode: true,
+            onSubmit: (_) {},
+            onCancel: () {},
+          ),
+        ),
+      ));
+
+      expect(find.text('Dev Only Header'), findsOneWidget);
+      expect(find.text('Debug Flag'), findsOneWidget);
+
+      final headerText = tester.widget<Text>(find.text('Dev Only Header'));
+      expect(headerText.style?.color, HaLoColors.light.devMode);
+
+      final debugField = tester.widget<TextField>(find.widgetWithText(TextField, 'Debug Flag'));
+      expect(debugField.decoration?.floatingLabelStyle?.color, HaLoColors.light.devMode);
+
+      // A non-devMode field must not pick up the accent.
+      final normalField = tester.widget<TextField>(find.widgetWithText(TextField, 'Normal Field'));
+      expect(normalField.decoration?.floatingLabelStyle?.color, isNot(HaLoColors.light.devMode));
+    });
+  });
+
+  group('FormRenderer icon-row fields', () {
+    final iconRowFormDefinition = {
+      'elements': [
+        {
+          'type': 'field',
+          'fieldType': 'select',
+          'key': 'themeMode',
+          'label': 'Theme Mode',
+          'icon': 'white-balance-sunny',
+          'description': 'Always in Light Mode',
+          'value': 'light',
+          'options': [
+            {'label': 'Light', 'value': 'light'},
+            {'label': 'Dark', 'value': 'dark'},
+          ],
+        },
+        {
+          'type': 'field',
+          'fieldType': 'select',
+          'key': 'noIcon',
+          'label': 'Plain Select',
+          'value': 'a',
+          'options': [
+            {'label': 'A', 'value': 'a'},
+            {'label': 'B', 'value': 'b'},
+          ],
+        },
+      ],
+    };
+
+    testWidgets('a field with icon set renders as a list row: leading icon, bold label, description, compact trailing control', (tester) async {
+      await tester.pumpWidget(MaterialApp(
+        home: Scaffold(
+          body: FormRenderer(
+            formDefinition: iconRowFormDefinition,
+            initialState: const {},
+            onSubmit: (_) {},
+            onCancel: () {},
+          ),
+        ),
+      ));
+
+      // The icon-row field renders inside a ListTile (leading icon, title,
+      // subtitle) instead of the standalone DropdownButtonFormField a
+      // 'select' field normally gets.
+      expect(find.byType(ListTile), findsOneWidget);
+      expect(find.text('Theme Mode'), findsOneWidget);
+      expect(find.text('Always in Light Mode'), findsOneWidget);
+      expect(find.text('Light'), findsOneWidget);
+
+      final title = tester.widget<Text>(find.text('Theme Mode'));
+      expect(title.style?.fontWeight, FontWeight.bold);
+
+      // A field with no `icon` is untouched — still the standalone Material
+      // input, not swept into the list-row layout.
+      expect(find.byType(DropdownButtonFormField<dynamic>), findsOneWidget);
+      expect(find.text('Plain Select'), findsOneWidget);
+    });
+
+    testWidgets('selecting a new value in the compact control commits it like the standalone control would', (tester) async {
+      Map<String, dynamic>? submittedValues;
+      await tester.pumpWidget(MaterialApp(
+        home: Scaffold(
+          body: FormRenderer(
+            formDefinition: iconRowFormDefinition,
+            initialState: const {},
+            onSubmit: (vals) => submittedValues = vals,
+            onCancel: () {},
+          ),
+        ),
+      ));
+
+      await tester.tap(find.text('Light'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Dark').last);
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.widgetWithText(FilledButton, 'Save'));
+      await tester.pumpAndSettle();
+
+      expect(submittedValues!['themeMode'], 'dark');
+    });
+
+    testWidgets('on a narrow panel, the control stacks below the title/description instead of trailing beside them', (tester) async {
+      await tester.pumpWidget(MaterialApp(
+        home: Scaffold(
+          body: SizedBox(
+            width: 300, // below FormRendererState._iconRowStackBreakpoint (400)
+            child: FormRenderer(
+              formDefinition: iconRowFormDefinition,
+              initialState: const {},
+              onSubmit: (_) {},
+              onCancel: () {},
+            ),
+          ),
+        ),
+      ));
+
+      // No longer inside the ListTile's trailing slot — this asserts the
+      // dropdown ends up below the title, not just that it's present.
+      final titleBottom = tester.getBottomLeft(find.text('Theme Mode')).dy;
+      final dropdownTop = tester.getTopLeft(find.text('Light')).dy;
+      expect(dropdownTop, greaterThan(titleBottom));
+
+      // The dropdown itself grows to the full available width instead of
+      // staying a small fixed-size control.
+      // The form also has a plain (no-icon) select field, whose standard
+      // DropdownButtonFormField wraps its own internal DropdownButton — so
+      // there are two in the tree; pick the themeMode one by its value.
+      final dropdown = tester.widgetList<DropdownButton>(find.byType(DropdownButton<dynamic>)).firstWhere((d) => d.value == 'light');
+      expect(dropdown.isExpanded, isTrue);
+    });
+
+    testWidgets('a toggle (checkbox) field stays trailing even on a narrow panel', (tester) async {
+      final toggleFormDefinition = {
+        'elements': [
+          {
+            'type': 'field',
+            'fieldType': 'checkbox',
+            'key': 'syncEnabled',
+            'label': 'Sync with Ham2K Log Filer',
+            'icon': 'cloud-sync-outline',
+            'value': false,
+          },
+        ],
+      };
+
+      await tester.pumpWidget(MaterialApp(
+        home: Scaffold(
+          body: SizedBox(
+            width: 300,
+            child: FormRenderer(
+              formDefinition: toggleFormDefinition,
+              initialState: const {},
+              onSubmit: (_) {},
+              onCancel: () {},
+            ),
+          ),
+        ),
+      ));
+
+      final titleTop = tester.getTopLeft(find.text('Sync with Ham2K Log Filer')).dy;
+      final switchTop = tester.getTopLeft(find.byType(Switch)).dy;
+      // Still on the same row as the title, not pushed below it.
+      expect((switchTop - titleTop).abs(), lessThan(20));
+    });
+  });
+
+  group('FormRenderer header style', () {
+    testWidgets('a header with no style (or style: default) keeps the bold form-title look', (tester) async {
+      await tester.pumpWidget(MaterialApp(
+        home: Scaffold(
+          body: FormRenderer(
+            formDefinition: const {
+              'elements': [
+                {'type': 'header', 'title': 'Plain Header'},
+              ],
+            },
+            initialState: const {},
+            onSubmit: (_) {},
+            onCancel: () {},
+          ),
+        ),
+      ));
+
+      final header = tester.widget<Text>(find.text('Plain Header'));
+      expect(header.style?.fontWeight, FontWeight.w900);
+      expect(header.style?.fontFamily, 'RobotoSlab');
+    });
+
+    testWidgets("style: 'section' switches to the smaller Sync/Accounts section-header look", (tester) async {
+      await tester.pumpWidget(MaterialApp(
+        home: Scaffold(
+          body: FormRenderer(
+            formDefinition: const {
+              'elements': [
+                {'type': 'header', 'title': 'Section Header', 'style': 'section'},
+              ],
+            },
+            initialState: const {},
+            onSubmit: (_) {},
+            onCancel: () {},
+          ),
+        ),
+      ));
+
+      final header = tester.widget<Text>(find.text('Section Header'));
+      expect(header.style?.fontWeight, isNot(FontWeight.w900));
+      expect(header.style?.fontFamily, isNot('RobotoSlab'));
+    });
+  });
+
+  group('FormRenderer fields appearing after a formDefinition change', () {
+    testWidgets('a field absent from the old definition is fully initialized (not just value-synced) when it first appears', (tester) async {
+      final withoutExtra = {
+        'elements': [
+          {'type': 'field', 'fieldType': 'text', 'key': 'always', 'label': 'Always Present', 'value': ''},
+        ],
+      };
+      final withExtra = {
+        'elements': [
+          {'type': 'field', 'fieldType': 'text', 'key': 'always', 'label': 'Always Present', 'value': ''},
+          {'type': 'field', 'fieldType': 'text', 'key': 'extra', 'label': 'Newly Appeared', 'value': ''},
+        ],
+      };
+
+      Map<String, dynamic> currentDefinition = withoutExtra;
+      late StateSetter setOuterState;
+      Map<String, dynamic>? submittedValues;
+
+      await tester.pumpWidget(StatefulBuilder(
+        builder: (context, setState) {
+          setOuterState = setState;
+          return MaterialApp(
+            home: Scaffold(
+              body: FormRenderer(
+                formDefinition: currentDefinition,
+                initialState: const {},
+                onSubmit: (vals) => submittedValues = vals,
+                onCancel: () {},
+              ),
+            ),
+          );
+        },
+      ));
+
+      expect(find.text('Newly Appeared'), findsNothing);
+
+      // Simulate a settings-panel-style re-fetch that adds a field, the
+      // same way _ExtensionSettingsPanel swaps in a new formDefinition.
+      setOuterState(() => currentDefinition = withExtra);
+      await tester.pump();
+
+      expect(find.text('Newly Appeared'), findsOneWidget);
+
+      // The newly-appeared field must have a real, wired-up TextField —
+      // typing into it must actually reach _values (and thus submit()),
+      // not a Flutter-internal untracked controller.
+      await tester.enterText(find.widgetWithText(TextField, 'Newly Appeared'), 'hello');
+      await tester.tap(find.widgetWithText(FilledButton, 'Save'));
+      await tester.pumpAndSettle();
+
+      expect(submittedValues!['extra'], 'hello');
+    });
+  });
 }

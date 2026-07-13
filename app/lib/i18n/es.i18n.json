@@ -117,6 +117,11 @@
       "light": "Claro",
       "dark": "Oscuro"
     },
+    "themeDescription": {
+      "system": "Sigue la configuración del sistema",
+      "light": "Siempre en Modo Claro",
+      "dark": "Siempre en Modo Oscuro"
+    },
     "fontScale": "Tamaño de Letra",
     "fontScaleOpts": {
       "smallest": "Más pequeña",
@@ -125,6 +130,7 @@
       "larger": "Grande",
       "largest": "Más grande"
     },
+    "fontScaleDescription": "Afecta el tamaño del texto en toda la app",
     "operatorCall": "Indicativo del Operador",
     "sync": {
       "title": "Configuración de Sincronización",
