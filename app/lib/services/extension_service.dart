@@ -451,19 +451,31 @@ class ExtensionService {
     return null;
   }
 
-  /// Descriptors for controls activities want on the logging panel.
-  Future<List<Map<String, dynamic>>> loggingControls(Map<String, dynamic> operationData) =>
-      _collectControls('loggingControls', operationData);
+  /// Descriptors for controls activities want on the logging panel. `qso` is
+  /// the in-progress QSO (including any `their.guess` from the callsign
+  /// lookup pipeline) — pass it so an extension can key a QSO-scoped
+  /// `placeholder`/`transforms` (e.g. a DXCC-derived reference prefix) off
+  /// it; omit for a QSO-agnostic refresh (e.g. right after the operation loads).
+  Future<List<Map<String, dynamic>>> loggingControls(Map<String, dynamic> operationData, {Map<String, dynamic>? qso}) =>
+      _collectControls('loggingControls', operationData, qso: qso);
 
   /// Descriptors for controls activities want in operation settings.
-  Future<List<Map<String, dynamic>>> operationControls(Map<String, dynamic> operationData) =>
-      _collectControls('operationControls', operationData);
+  Future<List<Map<String, dynamic>>> operationControls(Map<String, dynamic> operationData, {Map<String, dynamic>? qso}) =>
+      _collectControls('operationControls', operationData, qso: qso);
 
-  Future<List<Map<String, dynamic>>> _collectControls(String method, Map<String, dynamic> operationData) async {
+  Future<List<Map<String, dynamic>>> _collectControls(
+    String method,
+    Map<String, dynamic> operationData, {
+    Map<String, dynamic>? qso,
+  }) async {
     final host = _host;
     if (host == null) return const [];
     try {
-      final entries = await host.invokeHookAll('activity', method: method, args: {'operation': operationData});
+      final entries = await host.invokeHookAll(
+        'activity',
+        method: method,
+        args: {'operation': operationData, 'qso': ?qso},
+      );
       final controls = <Map<String, dynamic>>[];
       for (final entry in entries) {
         if (entry['ok'] != true || entry['value'] is! List) continue;

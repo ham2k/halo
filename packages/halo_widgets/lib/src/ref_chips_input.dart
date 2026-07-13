@@ -7,6 +7,8 @@
 // through an async callback into the plugin runtime and updates the chip
 // when it lands. The widget never blocks on the plugin.
 
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -16,6 +18,91 @@ import 'theme.dart';
 /// returns an enriched ref map; implementations must not throw.
 typedef RefDecorator = Future<Map<String, dynamic>> Function(Map<String, dynamic> ref);
 
+/// One live-reformatting pass from a control descriptor's `input.transforms`
+/// (`extensions/sdk/src/types.ts`'s `RefListInputDescriptor.transforms`): a
+/// regex `pattern` + a `replacement` using braced `${1}`/`${2}`… group
+/// placeholders, applied as the user types — e.g. turning "us1234" into
+/// "US-1234" without a runtime round trip per keystroke. Braced, not bare
+/// `$1`, because a replacement can concatenate a group directly against a
+/// literal that starts with a digit (e.g. a DXCC prefix like "3D2") — bare
+/// `$13` would misparse as group 13 instead of group 1 followed by "3".
+class RefTransform {
+  final String pattern;
+  final String replacement;
+  final String flags;
+
+  const RefTransform({required this.pattern, required this.replacement, this.flags = ''});
+
+  factory RefTransform.fromMap(Map<String, dynamic> map) => RefTransform(
+        pattern: map['pattern'] as String,
+        replacement: map['replacement'] as String,
+        flags: (map['flags'] as String?) ?? '',
+      );
+}
+
+/// References are always uppercase, live as the user types — not just at
+/// submit time (`_add` already uppercased there) — since `toUpperCase()` is
+/// length-preserving for the characters this field allows, the selection
+/// from `newValue` carries over unchanged.
+final _upperCaseFormatter = TextInputFormatter.withFunction(
+  (oldValue, newValue) => newValue.copyWith(text: newValue.text.toUpperCase()),
+);
+
+/// Applies an ordered list of [RefTransform]s to text on every edit — the
+/// native side of the extension's declarative reformatting contract.
+/// Malformed transform sources (an extension bug) are skipped rather than
+/// thrown, since this formatter runs on every keystroke.
+class _RefTransformFormatter extends TextInputFormatter {
+  final List<RefTransform> transforms;
+
+  _RefTransformFormatter(this.transforms);
+
+  @override
+  TextEditingValue formatEditUpdate(TextEditingValue oldValue, TextEditingValue newValue) {
+    // Distance from the end of the field, before rewriting — the same
+    // heuristic app-polo's own live-formatting inputs use ("cursorAware"):
+    // an edit's distance from the *end* of the string tends to survive a
+    // structural rewrite (dash/prefix insertion) better than its distance
+    // from the start, since these transforms mostly touch the ref the user
+    // is actively typing (near the cursor) and leave everything after it
+    // untouched.
+    final rawSelectionEnd = newValue.selection.end < 0 ? newValue.text.length : newValue.selection.end;
+    final distanceFromEnd = newValue.text.length - rawSelectionEnd;
+
+    var text = newValue.text;
+    // Two passes: a single-character keystroke always converges in one (the
+    // common case), but a multi-character paste (e.g. "us1234 us5678") can
+    // need a second pass once the first has already inserted a dash/prefix
+    // that a later rule in the chain depends on.
+    text = _applyOnce(_applyOnce(text));
+
+    final offset = (text.length - distanceFromEnd).clamp(0, text.length);
+    return TextEditingValue(text: text, selection: TextSelection.collapsed(offset: offset));
+  }
+
+  String _applyOnce(String text) {
+    for (final transform in transforms) {
+      RegExp regex;
+      try {
+        regex = RegExp(transform.pattern, caseSensitive: !transform.flags.contains('i'));
+      } catch (_) {
+        continue;
+      }
+      String expand(Match m) => transform.replacement.replaceAllMapped(RegExp(r'\$\{(\d+)\}'), (rm) {
+            final index = int.parse(rm.group(1)!);
+            return index <= m.groupCount ? (m.group(index) ?? '') : rm.group(0)!;
+          });
+      if (transform.flags.contains('g')) {
+        text = text.replaceAllMapped(regex, expand);
+      } else {
+        final match = regex.firstMatch(text);
+        if (match != null) text = text.replaceRange(match.start, match.end, expand(match));
+      }
+    }
+    return text;
+  }
+}
+
 class RefChipsInput extends StatefulWidget {
   final String refType;
   final String label;
@@ -23,6 +110,9 @@ class RefChipsInput extends StatefulWidget {
 
   /// Regex source from the control descriptor; input must match to be added.
   final String? pattern;
+
+  /// Live-reformatting passes from the control descriptor; see [RefTransform].
+  final List<RefTransform> transforms;
   final List<Map<String, dynamic>> refs;
   final ValueChanged<List<Map<String, dynamic>>> onChanged;
   final RefDecorator? decorate;
@@ -42,6 +132,7 @@ class RefChipsInput extends StatefulWidget {
     required this.onChanged,
     this.placeholder,
     this.pattern,
+    this.transforms = const [],
     this.decorate,
     this.dense = false,
     this.labelColor,
@@ -98,47 +189,95 @@ class _RefChipsInputState extends State<RefChipsInput> {
     super.dispose();
   }
 
+  /// Splits [text] on commas (the field's live `transforms` are what turn a
+  /// typed/pasted space into a comma — see the extension's `transforms`) so
+  /// one submission can add several references at once (e.g. a POTA
+  /// park-to-park boundary activation) — each becomes its OWN `Ref` entry in
+  /// `widget.refs`, one-ref-per-entry, same as a single-reference submission
+  /// always has been. The chips row groups same-`refType` entries into one
+  /// visual chip (see `build()`), but the underlying data — and therefore
+  /// duplicate detection below — stays per individual reference.
   Future<void> _add(String text) async {
-    final refString = text.trim().toUpperCase();
-    if (refString.isEmpty) return;
+    final codes = text.split(',').map((s) => s.trim().toUpperCase()).where((s) => s.isNotEmpty).toList();
+    if (codes.isEmpty) return;
 
     final regex = _regex;
-    if (regex != null && !regex.hasMatch(refString)) {
+    if (regex != null && codes.any((code) => !regex.hasMatch(code))) {
       setState(() => _error = 'Not a valid ${widget.label} reference');
       return;
     }
-    if (widget.refs.any((r) => r['ref'] == refString)) {
+
+    final existing = widget.refs.map((r) => r['ref']).toSet();
+    final newCodes = <String>[];
+    for (final code in codes) {
+      if (existing.contains(code) || newCodes.contains(code)) continue;
+      newCodes.add(code);
+    }
+    if (newCodes.isEmpty) {
       setState(() => _error = 'Already added');
       return;
     }
 
-    final ref = <String, dynamic>{'type': widget.refType, 'ref': refString};
-    final updated = [...widget.refs, ref];
+    final newRefs = [for (final code in newCodes) <String, dynamic>{'type': widget.refType, 'ref': code}];
+    final updated = [...widget.refs, ...newRefs];
     _controller.clear();
     setState(() => _error = null);
-    _pendingBase[refString] = updated;
+    for (final ref in newRefs) {
+      _pendingBase[ref['ref'] as String] = updated;
+    }
     widget.onChanged(updated);
 
     final decorate = widget.decorate;
-    if (decorate != null) {
-      final decorated = await decorate(ref);
-      // didUpdateWidget already removed this entry if the parent moved on
-      // (wipe, manual removal) while we were awaiting; otherwise it points
-      // at the freshest list that still contains our ref.
-      final base = _pendingBase.remove(refString);
-      if (!mounted || base == null) return;
-
-      final current = [...base];
-      final index = current.indexWhere((r) => r['ref'] == refString);
-      if (index >= 0) {
-        current[index] = decorated;
-        widget.onChanged(current);
-      }
+    if (decorate == null) return;
+    for (final ref in newRefs) {
+      unawaited(_decorateOne(ref, decorate));
     }
   }
 
-  void _remove(Map<String, dynamic> ref) {
-    widget.onChanged([...widget.refs]..removeWhere((r) => r['ref'] == ref['ref']));
+  Future<void> _decorateOne(Map<String, dynamic> ref, RefDecorator decorate) async {
+    final refString = ref['ref'] as String;
+    final decorated = await decorate(ref);
+    // didUpdateWidget already removed this entry if the parent moved on
+    // (wipe, manual removal) while we were awaiting; otherwise it points
+    // at the freshest list that still contains our ref.
+    final base = _pendingBase.remove(refString);
+    if (!mounted || base == null) return;
+
+    final current = [...base];
+    final index = current.indexWhere((r) => r['ref'] == refString);
+    if (index >= 0) {
+      current[index] = decorated;
+      widget.onChanged(current);
+    }
+  }
+
+  /// Clears every reference of this control's type — the one grouped chip
+  /// (see `build()`) represents all of them as a unit, so its delete action
+  /// removes the whole group rather than one reference at a time.
+  void _removeAll() => widget.onChanged(const []);
+
+  /// Types [text] at the cursor, same as an ordinary keystroke — used to
+  /// override LoggingControls' panel-wide space-advances-focus shortcut (see
+  /// the `CallbackShortcuts` around the field below) so a space can be a
+  /// literal separator between multiple references in this field instead.
+  /// Runs the same `transforms` an ordinary keystroke would, since directly
+  /// assigning `controller.value` bypasses `inputFormatters`.
+  void _insertAtCursor(String text) {
+    final oldValue = _controller.value;
+    final selection = oldValue.selection;
+    final start = selection.start < 0 ? oldValue.text.length : selection.start;
+    final end = selection.end < 0 ? oldValue.text.length : selection.end;
+    var newValue = oldValue.copyWith(
+      text: oldValue.text.replaceRange(start, end, text),
+      selection: TextSelection.collapsed(offset: start + text.length),
+      composing: TextRange.empty,
+    );
+    newValue = _upperCaseFormatter.formatEditUpdate(oldValue, newValue);
+    if (widget.transforms.isNotEmpty) {
+      newValue = _RefTransformFormatter(widget.transforms).formatEditUpdate(oldValue, newValue);
+    }
+    _controller.value = newValue;
+    if (_error != null) setState(() => _error = null);
   }
 
   @override
@@ -152,36 +291,67 @@ class _RefChipsInputState extends State<RefChipsInput> {
           runSpacing: 4,
           crossAxisAlignment: WrapCrossAlignment.center,
           children: [
-            for (final ref in widget.refs)
+            // One chip for the whole group of same-`refType` references
+            // (e.g. every POTA park on this QSO), not one per reference —
+            // its label is the comma-joined list, and deleting it clears
+            // the group as a unit (`_removeAll`). The underlying data is
+            // still one `Ref` entry per reference (see `_add`).
+            if (widget.refs.isNotEmpty)
               Tooltip(
-                message: (ref['name'] as String?) ?? '',
+                message: widget.refs.map((r) => r['name']).whereType<String>().join(' • '),
                 child: InputChip(
-                  label: Text((ref['shortLabel'] as String?) ?? (ref['ref'] as String? ?? '?')),
+                  label: Text(
+                    widget.refs.map((r) => (r['shortLabel'] as String?) ?? (r['ref'] as String? ?? '?')).join(', '),
+                  ),
                   visualDensity: VisualDensity.compact,
-                  onDeleted: () => _remove(ref),
+                  onDeleted: _removeAll,
                 ),
               ),
             ConstrainedBox(
               constraints: BoxConstraints(maxWidth: widget.dense ? 130 : 180),
-              child: TextField(
-                controller: _controller,
-                focusNode: _focus,
-                decoration: poloFieldDecoration(
-                  context,
-                  widget.label,
-                  hintText: widget.placeholder,
-                  errorText: _error,
-                  labelColor: widget.labelColor,
+              // LoggingControls binds Space, panel-wide, to advance focus to
+              // the next field — this nested CallbackShortcuts, being closer
+              // to the focused field, is consulted first and overrides that
+              // here so Space types as a literal separator between multiple
+              // references (e.g. a POTA park-to-park boundary activation)
+              // instead.
+              child: CallbackShortcuts(
+                bindings: {
+                  const SingleActivator(LogicalKeyboardKey.space): () => _insertAtCursor(' '),
+                },
+                child: TextField(
+                  controller: _controller,
+                  focusNode: _focus,
+                  decoration: poloFieldDecoration(
+                    context,
+                    widget.label,
+                    hintText: widget.placeholder,
+                    errorText: _error,
+                    labelColor: widget.labelColor,
+                  ),
+                  textCapitalization: TextCapitalization.characters,
+                  inputFormatters: [
+                    // Comma and space both work as separators between
+                    // multiple references in one field; the extension's
+                    // `transforms` below normalize whichever one was used.
+                    FilteringTextInputFormatter.allow(RegExp(r'[a-zA-Z0-9\-, ]')),
+                    // References are always uppercase — `textCapitalization`
+                    // above only hints the mobile soft keyboard, it doesn't
+                    // touch a hardware-keyboard keystroke or a paste, so a
+                    // real uppercasing pass is still needed live (not just
+                    // at submit time in `_add`) for the field to actually
+                    // read as uppercase while typing.
+                    _upperCaseFormatter,
+                    if (widget.transforms.isNotEmpty) _RefTransformFormatter(widget.transforms),
+                  ],
+                  onChanged: (_) {
+                    if (_error != null) setState(() => _error = null);
+                  },
+                  onSubmitted: (text) {
+                    _add(text);
+                    _focus.requestFocus();
+                  },
                 ),
-                textCapitalization: TextCapitalization.characters,
-                inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[a-zA-Z0-9\-]'))],
-                onChanged: (_) {
-                  if (_error != null) setState(() => _error = null);
-                },
-                onSubmitted: (text) {
-                  _add(text);
-                  _focus.requestFocus();
-                },
               ),
             ),
           ],

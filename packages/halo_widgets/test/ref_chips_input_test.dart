@@ -116,6 +116,106 @@ void main() {
     expect(find.textContaining('Example State Park'), findsOneWidget);
   });
 
+  testWidgets('submitting a comma-separated list adds one Ref entry per code, grouped into one chip', (tester) async {
+    var refs = <Map<String, dynamic>>[];
+
+    Widget build() => MaterialApp(
+          home: Scaffold(
+            body: StatefulBuilder(
+              builder: (context, setState) => RefChipsInput(
+                refType: 'pota',
+                label: 'POTA',
+                pattern: potaPattern,
+                refs: refs,
+                onChanged: (updated) => setState(() => refs = updated),
+              ),
+            ),
+          ),
+        );
+
+    await tester.pumpWidget(build());
+
+    await tester.enterText(find.byType(TextField), 'US-1234,US-5678');
+    await tester.testTextInput.receiveAction(TextInputAction.done);
+    await tester.pump();
+
+    // Two distinct Ref entries — the multi-ref storage model — not one
+    // entry holding a comma-joined string.
+    expect(refs, hasLength(2));
+    expect(refs[0]['ref'], 'US-1234');
+    expect(refs[1]['ref'], 'US-5678');
+
+    // But rendered as a single grouped chip, comma-joined.
+    expect(find.byType(InputChip), findsOneWidget);
+    expect(find.widgetWithText(InputChip, 'US-1234, US-5678'), findsOneWidget);
+  });
+
+  testWidgets('deleting the grouped chip clears every ref of this type at once', (tester) async {
+    var refs = <Map<String, dynamic>>[
+      {'type': 'pota', 'ref': 'US-1234'},
+      {'type': 'pota', 'ref': 'US-5678'},
+    ];
+
+    await tester.pumpWidget(MaterialApp(
+      home: Scaffold(
+        body: StatefulBuilder(
+          builder: (context, setState) => RefChipsInput(
+            refType: 'pota',
+            label: 'POTA',
+            pattern: potaPattern,
+            refs: refs,
+            onChanged: (updated) => setState(() => refs = updated),
+          ),
+        ),
+      ),
+    ));
+
+    expect(find.byType(InputChip), findsOneWidget);
+    await tester.tap(find.descendant(of: find.byType(InputChip), matching: find.byType(Icon)));
+    await tester.pump();
+
+    expect(refs, isEmpty);
+    expect(find.byType(InputChip), findsNothing);
+  });
+
+  testWidgets('a duplicate reference is rejected regardless of what else it was submitted alongside', (tester) async {
+    var refs = <Map<String, dynamic>>[
+      {'type': 'pota', 'ref': 'US-1234'},
+    ];
+
+    await tester.pumpWidget(MaterialApp(
+      home: Scaffold(
+        body: StatefulBuilder(
+          builder: (context, setState) => RefChipsInput(
+            refType: 'pota',
+            label: 'POTA',
+            pattern: potaPattern,
+            refs: refs,
+            onChanged: (updated) => setState(() => refs = updated),
+          ),
+        ),
+      ),
+    ));
+
+    // "US-5678,US-1234" — same park set as a later hypothetical duplicate
+    // chip would have had, but here submitted alongside a genuinely new
+    // one; the already-present US-1234 must not be re-added, while the new
+    // US-5678 still is (partial success, not an all-or-nothing reject).
+    await tester.enterText(find.byType(TextField), 'US-5678,US-1234');
+    await tester.testTextInput.receiveAction(TextInputAction.done);
+    await tester.pump();
+
+    expect(refs, hasLength(2));
+    expect(refs.map((r) => r['ref']), containsAll(['US-1234', 'US-5678']));
+
+    // Submitting the exact same reference again, alone, is rejected outright.
+    await tester.enterText(find.byType(TextField), 'US-5678');
+    await tester.testTextInput.receiveAction(TextInputAction.done);
+    await tester.pump();
+    expect(refs, hasLength(2));
+    expect(find.text('Already added'), findsOneWidget);
+  });
+
   testWidgets('a parent wipe while decoration is pending does not resurrect the ref', (tester) async {
     final completer = Completer<Map<String, dynamic>>();
     final harnessKey = GlobalKey<_HarnessState>();
@@ -143,5 +243,188 @@ void main() {
     // The ghost ref must not reappear.
     expect(find.byType(InputChip), findsNothing);
     expect(harnessKey.currentState!.refs, isEmpty);
+  });
+
+  group('transforms', () {
+    testWidgets('a transform reformats "us1234" into "US-1234" as the user types', (tester) async {
+      var refs = <Map<String, dynamic>>[];
+      await tester.pumpWidget(MaterialApp(
+        home: Scaffold(
+          body: StatefulBuilder(
+            builder: (context, setState) => RefChipsInput(
+              refType: 'pota',
+              label: 'POTA',
+              pattern: potaPattern,
+              transforms: const [
+                RefTransform(pattern: r'([A-Z]+)(\d+)', replacement: r'${1}-${2}', flags: 'gi'),
+              ],
+              refs: refs,
+              onChanged: (updated) => setState(() => refs = updated),
+            ),
+          ),
+        ),
+      ));
+
+      await tester.enterText(find.byType(TextField), 'us1234');
+      await tester.pump();
+
+      final field = tester.widget<TextField>(find.byType(TextField));
+      expect(field.controller!.text, 'US-1234');
+    });
+
+    testWidgets('reference text is uppercased live as it is typed, independent of any transform', (tester) async {
+      var refs = <Map<String, dynamic>>[];
+      await tester.pumpWidget(MaterialApp(
+        home: Scaffold(
+          body: StatefulBuilder(
+            builder: (context, setState) => RefChipsInput(
+              refType: 'pota',
+              label: 'POTA',
+              pattern: potaPattern,
+              refs: refs,
+              onChanged: (updated) => setState(() => refs = updated),
+            ),
+          ),
+        ),
+      ));
+
+      await tester.enterText(find.byType(TextField), 'abc');
+      await tester.pump();
+
+      final field = tester.widget<TextField>(find.byType(TextField));
+      expect(field.controller!.text, 'ABC');
+    });
+
+    testWidgets('a digit-leading replacement literal is not swallowed by group-index parsing', (tester) async {
+      var refs = <Map<String, dynamic>>[];
+      await tester.pumpWidget(MaterialApp(
+        home: Scaffold(
+          body: StatefulBuilder(
+            builder: (context, setState) => RefChipsInput(
+              refType: 'pota',
+              label: 'POTA',
+              pattern: potaPattern,
+              transforms: const [
+                // Same shape as POTA's real prefix-insertion transform with
+                // a DXCC prefix that starts with a digit (Fiji's "3D2").
+                RefTransform(pattern: r'(^|,\s*)(\d\d+|TEST)', replacement: r'${1}3D2-${2}', flags: 'gi'),
+              ],
+              refs: refs,
+              onChanged: (updated) => setState(() => refs = updated),
+            ),
+          ),
+        ),
+      ));
+
+      await tester.enterText(find.byType(TextField), '1234');
+      await tester.pump();
+
+      final field = tester.widget<TextField>(find.byType(TextField));
+      // Not "${13D2-1234" or "$13D2-1234" — the whole braced "${2}" group
+      // reference must resolve, not misparse into a nonexistent group 13.
+      expect(field.controller!.text, '3D2-1234');
+    });
+
+    testWidgets('cursor position survives a mid-string edit through a transform rewrite', (tester) async {
+      var refs = <Map<String, dynamic>>[];
+      await tester.pumpWidget(MaterialApp(
+        home: Scaffold(
+          body: StatefulBuilder(
+            builder: (context, setState) => RefChipsInput(
+              refType: 'pota',
+              label: 'POTA',
+              pattern: potaPattern,
+              transforms: const [
+                RefTransform(pattern: r'([A-Z]+)(\d+)', replacement: r'${1}-${2}', flags: 'gi'),
+              ],
+              refs: refs,
+              onChanged: (updated) => setState(() => refs = updated),
+            ),
+          ),
+        ),
+      ));
+
+      // Seed the field with an already-dashed value, via the same raw
+      // remote-text-input channel `enterText` uses, so the next update can
+      // supply its own selection (`enterText` always collapses to the end).
+      await tester.showKeyboard(find.byType(TextField));
+      tester.testTextInput.updateEditingValue(const TextEditingValue(text: 'US-1234,US-5678'));
+      await tester.pump();
+
+      // Simulate the single keystroke a user gets from inserting "9" right
+      // after the "1" of "1234" (offset 4): the raw post-keystroke value the
+      // platform reports has the "9" already inserted, cursor right after
+      // it — this is what reaches `_RefTransformFormatter.formatEditUpdate`
+      // as `newValue` before any transform runs.
+      tester.testTextInput.updateEditingValue(const TextEditingValue(
+        text: 'US-19234,US-5678',
+        selection: TextSelection.collapsed(offset: 5),
+      ));
+      await tester.pump();
+
+      final field = tester.widget<TextField>(find.byType(TextField));
+      expect(field.controller!.text, 'US-19234,US-5678');
+      // Not text.length (17) — the old always-jump-to-end behavior — but
+      // right after the "9" the user just typed.
+      expect(field.controller!.selection.baseOffset, 5);
+    });
+
+    // Regression test for a real bug: an earlier version of POTA's
+    // transformsForPrefix had a rule that eagerly inserted the next
+    // reference's prefix ("US-") the instant a trailing comma appeared, even
+    // with no digits typed yet after it. That made it impossible to delete
+    // back through a second reference — backspacing "US-1234,US-5678" down
+    // to "US-1234,US-" and then further would immediately regrow the "US-"
+    // the transform had just reinserted, so the comma could never be
+    // reached. Mirrors POTA's actual (fixed) transform chain for the "US"
+    // prefix: continuation after a comma now only happens once 2+ digits
+    // appear, same as at the start of the field.
+    testWidgets('deleting back through a second reference does not regrow its prefix', (tester) async {
+      var refs = <Map<String, dynamic>>[];
+      const potaTransforms = [
+        RefTransform(pattern: r'([A-Z0-9]-\d+|TEST) +(?=[A-Z0-9])', replacement: r'${1}, ', flags: 'gi'),
+        RefTransform(pattern: r'(^|,\s*)(\d\d+|TEST)', replacement: r'${1}US-${2}', flags: 'gi'),
+        RefTransform(pattern: r'(?<![A-Z0-9])([A-Z]+)(\d+|TEST)', replacement: r'${1}-${2}', flags: 'gi'),
+        RefTransform(pattern: r'[^A-Z0-9\-, ]', replacement: '', flags: 'gi'),
+      ];
+
+      await tester.pumpWidget(MaterialApp(
+        home: Scaffold(
+          body: StatefulBuilder(
+            builder: (context, setState) => RefChipsInput(
+              refType: 'pota',
+              label: 'POTA',
+              pattern: potaPattern,
+              transforms: potaTransforms,
+              refs: refs,
+              onChanged: (updated) => setState(() => refs = updated),
+            ),
+          ),
+        ),
+      ));
+
+      await tester.showKeyboard(find.byType(TextField));
+      // Backspacing one character at a time, from a complete two-reference
+      // value all the way down through the trailing comma.
+      const sequence = [
+        'US-1234,US-5678',
+        'US-1234,US-567',
+        'US-1234,US-56',
+        'US-1234,US-5',
+        'US-1234,US-',
+        'US-1234,US',
+        'US-1234,U',
+        'US-1234,',
+      ];
+      for (final text in sequence) {
+        tester.testTextInput.updateEditingValue(
+          TextEditingValue(text: text, selection: TextSelection.collapsed(offset: text.length)),
+        );
+        await tester.pump();
+      }
+
+      final field = tester.widget<TextField>(find.byType(TextField));
+      expect(field.controller!.text, 'US-1234,');
+    });
   });
 }

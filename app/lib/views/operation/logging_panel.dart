@@ -111,6 +111,8 @@ class _LoggingPanelState extends State<LoggingPanel> {
           radioService: widget.services.radio,
           lookup: widget.services.extensions.lookupCall,
           activityControls: widget.loggingControls,
+          refreshActivityControls: (qso) =>
+              widget.services.extensions.loggingControls(widget.operation.data, qso: qso),
           decorateRef: widget.services.extensions.decorateRef,
           interpretCommand: widget.services.extensions.interpretCommand,
           onCommandMessageChanged: (message) {

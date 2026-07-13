@@ -121,6 +121,16 @@ class LoggingControls extends StatefulWidget {
   /// secondary control row alongside the built-in Time and Radio controls.
   final List<Map<String, dynamic>> activityControls;
 
+  /// Re-fetches `activityControls` scoped to the given in-progress QSO —
+  /// called once the debounced callsign lookup's fast, local-data-only
+  /// offline pass resolves (not on every keystroke, and deliberately not
+  /// fired again after the slower online pass — see the call site's
+  /// comment), so an extension can key a QSO-scoped `placeholder`/
+  /// `transforms` (e.g. a DXCC-derived reference prefix) off
+  /// `qso.their.guess`. When null, or while a refresh is pending,
+  /// `activityControls` is used as-is.
+  final Future<List<Map<String, dynamic>>> Function(Map<String, dynamic> qso)? refreshActivityControls;
+
   /// Async ref decoration via the extension runtime.
   final RefDecorator? decorateRef;
 
@@ -213,6 +223,7 @@ class LoggingControls extends StatefulWidget {
     this.onCallListLogged,
     this.lookup,
     this.activityControls = const [],
+    this.refreshActivityControls,
     this.decorateRef,
     this.interpretCommand,
     this.onCommandMessageChanged,
@@ -290,6 +301,15 @@ class _LoggingControlsState extends State<LoggingControls> {
   Timer? _lookupDebounce;
   String? _lookupFor;
   Map<String, dynamic>? _lookupResult;
+
+  /// `widget.activityControls`, re-fetched for the current QSO once its
+  /// callsign lookup resolves — see `widget.refreshActivityControls`. Reset
+  /// to null (falling back to `widget.activityControls`) whenever the call
+  /// field is cleared, so a stale QSO-scoped placeholder/transform doesn't
+  /// linger onto the next entry.
+  List<Map<String, dynamic>>? _refreshedActivityControls;
+
+  List<Map<String, dynamic>> get _effectiveActivityControls => _refreshedActivityControls ?? widget.activityControls;
 
   /// Pending push of a manually-typed frequency to `widget.radioService` —
   /// see `_onFreqChanged` and `_pushVfoToRadioService`.
@@ -476,7 +496,7 @@ class _LoggingControlsState extends State<LoggingControls> {
     final refs = (data['refs'] as List?)?.whereType<Map>().map((r) => r.cast<String, dynamic>()) ?? const [];
     for (final ref in refs) {
       String? key;
-      for (final control in widget.activityControls) {
+      for (final control in _effectiveActivityControls) {
         if ((control['input'] as Map?)?['refType'] == ref['type']) {
           key = control['key'] as String?;
           break;
@@ -490,6 +510,7 @@ class _LoggingControlsState extends State<LoggingControls> {
     }
     _lookupFor = null;
     _lookupResult = null;
+    _refreshedActivityControls = null;
     _selectedControlKey = null;
   }
 
@@ -527,6 +548,7 @@ class _LoggingControlsState extends State<LoggingControls> {
     _executeMessageTimer?.cancel();
     _lookupFor = null;
     _lookupResult = null;
+    _refreshedActivityControls = null;
     _controlRefs.clear();
     _unmatchedRefs = [];
     _currentQsoExtra.clear();
@@ -837,7 +859,7 @@ class _LoggingControlsState extends State<LoggingControls> {
           label: widget.radioControlLabel ?? 'Radio',
           mandatory: true,
         ),
-        for (final control in widget.activityControls)
+        for (final control in _effectiveActivityControls)
           if ((control['input'] as Map?)?['kind'] == 'refList')
             _ControlDescriptor(
               key: control['key'] as String,
@@ -886,7 +908,7 @@ class _LoggingControlsState extends State<LoggingControls> {
         case 'more':
           specs.add(_moreControlSpec());
         default:
-          for (final control in widget.activityControls) {
+          for (final control in _effectiveActivityControls) {
             if (control['key'] == key) {
               specs.add(_activityControlSpec(control));
               break;
@@ -1083,6 +1105,10 @@ class _LoggingControlsState extends State<LoggingControls> {
           label: (control['label'] as String?) ?? '',
           placeholder: (control['input'] as Map)['placeholder'] as String?,
           pattern: (control['input'] as Map)['pattern'] as String?,
+          transforms: [
+            for (final t in ((control['input'] as Map)['transforms'] as List?) ?? const [])
+              RefTransform.fromMap((t as Map).cast<String, dynamic>()),
+          ],
           refs: _controlRefs[control['key']] ?? const [],
           onChanged: (refs) =>
               setState(() => _controlRefs[control['key'] as String] = refs),
@@ -1152,7 +1178,10 @@ class _LoggingControlsState extends State<LoggingControls> {
     } else if (_rcvdFocus.hasFocus || _freqFocus.hasFocus) {
       _callFocus.requestFocus();
     }
-    // Space in other fields (e.g. activity ref inputs) is deliberately inert.
+    // Space is inert in any other field with no override of its own. Ref
+    // chip inputs (RefChipsInput) are the one exception — they bind Space
+    // locally to type a literal separator instead, taking priority over
+    // this panel-wide shortcut.
   }
 
   /// Synthesizes typing [text] at the cursor — used for the literal space in
@@ -1515,6 +1544,7 @@ class _LoggingControlsState extends State<LoggingControls> {
         setState(() {
           _lookupFor = null;
           _lookupResult = null;
+          _refreshedActivityControls = null;
           _commandExpectsParams = false;
         });
       }
@@ -1556,6 +1586,7 @@ class _LoggingControlsState extends State<LoggingControls> {
       setState(() {
         _lookupFor = null;
         _lookupResult = null;
+        _refreshedActivityControls = null;
       });
       return;
     }
@@ -1577,6 +1608,19 @@ class _LoggingControlsState extends State<LoggingControls> {
         _lookupFor = activeCall;
         _lookupResult = offlineResult;
       });
+      // QSO-scoped activity controls (e.g. POTA's DXCC-derived placeholder)
+      // are refreshed off the offline pass ONLY, deliberately not fired
+      // again after the online pass below. Two reasons: (1) the offline
+      // pass's callsign-annotation pre-step already resolves the DXCC
+      // entity a placeholder/prefix depends on — the online pass adds
+      // QRZ/HamDB detail that doesn't change that entity, so a second
+      // refresh would almost always re-fetch the same descriptors; (2) two
+      // independent unawaited refreshes for the same call, with no ordering
+      // guarantee between them, could race — a slower offline-triggered
+      // refresh resolving after a faster online-triggered one would
+      // overwrite the fresher result with a stale one. A single refresh
+      // point sidesteps that entirely.
+      unawaited(_refreshActivityControlsFor(activeCall));
 
       final onlineResult = await widget.lookup!(
         activeCall,
@@ -1593,6 +1637,18 @@ class _LoggingControlsState extends State<LoggingControls> {
         _lookupResult = onlineResult;
       });
     });
+  }
+
+  /// Re-fetches `activityControls` for [activeCall]'s QSO via
+  /// `widget.refreshActivityControls`, discarding the result if the active
+  /// call moved on (or the widget was disposed) while awaiting — the same
+  /// staleness guard the lookup itself uses.
+  Future<void> _refreshActivityControlsFor(String activeCall) async {
+    final refresh = widget.refreshActivityControls;
+    if (refresh == null) return;
+    final controls = await refresh(_getCurrentQsoData(callOverride: activeCall));
+    if (!mounted || _callAtCursor != activeCall) return;
+    setState(() => _refreshedActivityControls = controls);
   }
 
   String? get _lookupLine {
@@ -1618,6 +1674,7 @@ class _LoggingControlsState extends State<LoggingControls> {
     _executeMessageTimer?.cancel();
     _lookupFor = null;
     _lookupResult = null;
+    _refreshedActivityControls = null;
     _controlRefs.clear();
     _currentQsoExtra.clear();
     _manualStartAtMillis = null;

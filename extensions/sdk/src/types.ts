@@ -120,6 +120,17 @@ export interface RefListInputDescriptor {
   placeholder?: string
   /// Regex source string; the core pre-validates input before accepting a chip.
   pattern?: string
+  /// Ordered live-reformatting passes, applied to the raw text on every
+  /// keystroke by the core's native input widget (no extension round-trip
+  /// while typing). Each is a regex `pattern` (source string) + `replacement`
+  /// using braced `${1}`/`${2}`… group placeholders (NOT bare `$1`/`$2` — a
+  /// replacement can concatenate a group directly against a literal that
+  /// starts with a digit, e.g. a DXCC prefix like "3D2", and bare `$13`
+  /// would misparse as group 13), run like a global find/replace — mirrors
+  /// app-polo's per-keystroke `textTransformer` chains (e.g. turning
+  /// "US1234" into "US-1234"), but declared once per `loggingControls`/
+  /// `operationControls` call instead of executed in the runtime per keypress.
+  transforms?: { pattern: string; replacement: string; flags?: string }[]
 }
 
 /// A candidate activity/reference offered to the user while adding an
@@ -148,10 +159,20 @@ export interface SuggestArgs {
 }
 
 export interface ActivityHook {
-  /// Controls shown on the logging panel for this operation.
-  loggingControls?(args: { operation: Record<string, JSONValue> }, ctx: HookContext): Promise<LoggingControlDescriptor[]>
+  /// Controls shown on the logging panel for this operation. `qso` is the
+  /// in-progress QSO (including any `their.guess` data from the callsign
+  /// lookup pipeline) — re-supplied whenever that lookup resolves, not on
+  /// every keystroke, so extensions can key a dynamic `placeholder`/
+  /// `transforms` (e.g. a DXCC-derived reference prefix) off it.
+  loggingControls?(
+    args: { operation: Record<string, JSONValue>; qso?: Record<string, JSONValue> },
+    ctx: HookContext,
+  ): Promise<LoggingControlDescriptor[]>
   /// Controls shown in operation settings (e.g. "which park am I activating").
-  operationControls?(args: { operation: Record<string, JSONValue> }, ctx: HookContext): Promise<LoggingControlDescriptor[]>
+  operationControls?(
+    args: { operation: Record<string, JSONValue>; qso?: Record<string, JSONValue> },
+    ctx: HookContext,
+  ): Promise<LoggingControlDescriptor[]>
   /// Candidate activities for the "add activity" search/suggestions list —
   /// nearby references when `searchTerm` is empty, name/code matches when set.
   suggest?(args: SuggestArgs, ctx: HookContext): Promise<ActivitySuggestion[]>
