@@ -43,7 +43,13 @@
     "activitiesNone": "None set",
     "exportAdif": "Export ADIF",
     "deleteOperation": "Delete operation",
-    "locationNone": "Not set"
+    "locationNone": "Not set",
+    "menu": {
+      "showRstFields": "Show RST fields",
+      "showStateField": "Show State field",
+      "showGridField": "Show Grid field",
+      "showDeletedQsos": "Show deleted QSOs"
+    }
   },
   "activitiesView": {
     "title": "Activities",
@@ -89,6 +95,7 @@
     "title": "Edit QSO",
     "theirName": "Name",
     "theirGrid": "Grid",
+    "theirState": "State",
     "band": "Band",
     "notes": "Notes"
   },

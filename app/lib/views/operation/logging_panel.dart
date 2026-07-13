@@ -16,6 +16,9 @@ class LoggingPanel extends StatefulWidget {
   final List<Qso> qsos;
   final List<Map<String, dynamic>> loggingControls;
   final CommandActionHandler onCommandAction;
+  final bool showRSTFields;
+  final bool showStateField;
+  final bool showGridField;
 
   const LoggingPanel({
     super.key,
@@ -24,6 +27,9 @@ class LoggingPanel extends StatefulWidget {
     required this.qsos,
     required this.loggingControls,
     required this.onCommandAction,
+    this.showRSTFields = true,
+    this.showStateField = false,
+    this.showGridField = false,
   });
 
   @override
@@ -82,6 +88,7 @@ class _LoggingPanelState extends State<LoggingPanel> {
       selectedUuid: _selectedQso?.uuid,
       onSelect: _handleSelectQso,
       onSelectEvent: _handleSelectEvent,
+      showRSTFields: widget.showRSTFields,
     );
 
     return Column(
@@ -130,6 +137,9 @@ class _LoggingPanelState extends State<LoggingPanel> {
           controlOrder: _controlOrder,
           hiddenControlKeys: _hiddenControls,
           onControlsSettingsChanged: _handleControlsSettingsChanged,
+          showRSTFields: widget.showRSTFields,
+          showStateField: widget.showStateField,
+          showGridField: widget.showGridField,
           timeControlLabel: context.t.loggingControls.timeControl,
           radioControlLabel: context.t.loggingControls.radioControl,
           controlSettingsTitle: context.t.loggingControls.controlSettings,
@@ -154,6 +164,7 @@ class _LoggingPanelState extends State<LoggingPanel> {
           qsoEditFormTitle: context.t.qsoEditForm.title,
           theirNameLabel: context.t.qsoEditForm.theirName,
           theirGridLabel: context.t.qsoEditForm.theirGrid,
+          theirStateLabel: context.t.qsoEditForm.theirState,
           notesLabel: context.t.qsoEditForm.notes,
           bandLabel: context.t.qsoEditForm.band,
         ),
@@ -179,7 +190,7 @@ class InformationArea extends StatelessWidget {
     final byBand = <String, int>{};
     final byMode = <String, int>{};
     for (final qso in qsos) {
-      if (qso.isEvent) continue; // start/break/end markers aren't contacts
+      if (!qso.isRealContact) continue;
       byBand.update(qso.band ?? '?', (count) => count + 1, ifAbsent: () => 1);
       byMode.update(qso.mode ?? '?', (count) => count + 1, ifAbsent: () => 1);
     }

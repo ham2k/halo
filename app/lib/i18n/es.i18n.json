@@ -43,7 +43,13 @@
     "activitiesNone": "Ninguna seleccionada",
     "exportAdif": "Exportar ADIF",
     "deleteOperation": "Eliminar operación",
-    "locationNone": "Sin definir"
+    "locationNone": "Sin definir",
+    "menu": {
+      "showRstFields": "Mostrar campos RST",
+      "showStateField": "Mostrar campo Estado/Provincia",
+      "showGridField": "Mostrar campo Locador",
+      "showDeletedQsos": "Mostrar QSOs eliminados"
+    }
   },
   "activitiesView": {
     "title": "Actividades",
@@ -89,6 +95,7 @@
     "title": "Editar QSO",
     "theirName": "Nombre",
     "theirGrid": "Locador",
+    "theirState": "Estado/Provincia",
     "band": "Banda",
     "notes": "Notas"
   },

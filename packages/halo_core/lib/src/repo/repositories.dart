@@ -296,9 +296,11 @@ class QsosRepository {
     onChange?.call();
   }
 
-  Stream<List<Qso>> watchForOperation(String operationUuid) {
+  Stream<List<Qso>> watchForOperation(String operationUuid, {bool includeDeleted = false}) {
     final query = (db.select(db.qsos)
-      ..where((q) => q.operation.equals(operationUuid) & q.deleted.equals(false))
+      ..where((q) => includeDeleted
+          ? q.operation.equals(operationUuid)
+          : q.operation.equals(operationUuid) & q.deleted.equals(false))
       ..orderBy([(q) => OrderingTerm(expression: q.startAtMillis)]));
     return query.watch().map((rows) => rows.map(_qsoFromRow).toList());
   }

@@ -113,6 +113,7 @@ class _Translations$operation$es extends Translations$operation$en {
 	@override String get exportAdif => 'Exportar ADIF';
 	@override String get deleteOperation => 'Eliminar operación';
 	@override String get locationNone => 'Sin definir';
+	@override late final _Translations$operation$menu$es menu = _Translations$operation$menu$es._(_root);
 }
 
 // Path: activitiesView
@@ -179,6 +180,7 @@ class _Translations$qsoEditForm$es extends Translations$qsoEditForm$en {
 	@override String get title => 'Editar QSO';
 	@override String get theirName => 'Nombre';
 	@override String get theirGrid => 'Locador';
+	@override String get theirState => 'Estado/Provincia';
 	@override String get band => 'Banda';
 	@override String get notes => 'Notas';
 }
@@ -278,6 +280,19 @@ class _Translations$operation$sections$es extends Translations$operation$section
 	@override String get operationData => 'Datos de operación';
 	@override String get dangerZone => 'Zona de peligro';
 	@override String get location => 'Ubicación';
+}
+
+// Path: operation.menu
+class _Translations$operation$menu$es extends Translations$operation$menu$en {
+	_Translations$operation$menu$es._(TranslationsEs root) : this._root = root, super.internal(root);
+
+	final TranslationsEs _root; // ignore: unused_field
+
+	// Translations
+	@override String get showRstFields => 'Mostrar campos RST';
+	@override String get showStateField => 'Mostrar campo Estado/Provincia';
+	@override String get showGridField => 'Mostrar campo Locador';
+	@override String get showDeletedQsos => 'Mostrar QSOs eliminados';
 }
 
 // Path: settings.theme
@@ -385,6 +400,10 @@ extension on TranslationsEs {
 			'operation.exportAdif' => 'Exportar ADIF',
 			'operation.deleteOperation' => 'Eliminar operación',
 			'operation.locationNone' => 'Sin definir',
+			'operation.menu.showRstFields' => 'Mostrar campos RST',
+			'operation.menu.showStateField' => 'Mostrar campo Estado/Provincia',
+			'operation.menu.showGridField' => 'Mostrar campo Locador',
+			'operation.menu.showDeletedQsos' => 'Mostrar QSOs eliminados',
 			'activitiesView.title' => 'Actividades',
 			'activitiesView.activitiesCountZero' => 'Sin actividades actuales',
 			'activitiesView.activitiesCountOne' => 'Una actividad actual',
@@ -424,6 +443,7 @@ extension on TranslationsEs {
 			'qsoEditForm.title' => 'Editar QSO',
 			'qsoEditForm.theirName' => 'Nombre',
 			'qsoEditForm.theirGrid' => 'Locador',
+			'qsoEditForm.theirState' => 'Estado/Provincia',
 			'qsoEditForm.band' => 'Banda',
 			'qsoEditForm.notes' => 'Notas',
 			'qsoList.empty' => 'Aún no hay QSOs — ¡haz un contacto!',

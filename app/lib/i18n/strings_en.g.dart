@@ -165,6 +165,8 @@ class Translations$operation$en {
 
 	/// en: 'Not set'
 	String get locationNone => 'Not set';
+
+	late final Translations$operation$menu$en menu = Translations$operation$menu$en.internal(_root);
 }
 
 // Path: activitiesView
@@ -309,6 +311,9 @@ class Translations$qsoEditForm$en {
 
 	/// en: 'Grid'
 	String get theirGrid => 'Grid';
+
+	/// en: 'State'
+	String get theirState => 'State';
 
 	/// en: 'Band'
 	String get band => 'Band';
@@ -493,6 +498,27 @@ class Translations$operation$sections$en {
 	String get location => 'Location';
 }
 
+// Path: operation.menu
+class Translations$operation$menu$en {
+	Translations$operation$menu$en.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Show RST fields'
+	String get showRstFields => 'Show RST fields';
+
+	/// en: 'Show State field'
+	String get showStateField => 'Show State field';
+
+	/// en: 'Show Grid field'
+	String get showGridField => 'Show Grid field';
+
+	/// en: 'Show deleted QSOs'
+	String get showDeletedQsos => 'Show deleted QSOs';
+}
+
 // Path: settings.theme
 class Translations$settings$theme$en {
 	Translations$settings$theme$en.internal(this._root);
@@ -634,6 +660,10 @@ extension on Translations {
 			'operation.exportAdif' => 'Export ADIF',
 			'operation.deleteOperation' => 'Delete operation',
 			'operation.locationNone' => 'Not set',
+			'operation.menu.showRstFields' => 'Show RST fields',
+			'operation.menu.showStateField' => 'Show State field',
+			'operation.menu.showGridField' => 'Show Grid field',
+			'operation.menu.showDeletedQsos' => 'Show deleted QSOs',
 			'activitiesView.title' => 'Activities',
 			'activitiesView.activitiesCountZero' => 'No Current Activities',
 			'activitiesView.activitiesCountOne' => 'One Current Activity',
@@ -673,6 +703,7 @@ extension on Translations {
 			'qsoEditForm.title' => 'Edit QSO',
 			'qsoEditForm.theirName' => 'Name',
 			'qsoEditForm.theirGrid' => 'Grid',
+			'qsoEditForm.theirState' => 'State',
 			'qsoEditForm.band' => 'Band',
 			'qsoEditForm.notes' => 'Notes',
 			'qsoList.empty' => 'No QSOs yet — work someone!',

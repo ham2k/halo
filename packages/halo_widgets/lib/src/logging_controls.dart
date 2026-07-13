@@ -207,6 +207,7 @@ class LoggingControls extends StatefulWidget {
   final String? qsoEditFormTitle;
   final String? theirNameLabel;
   final String? theirGridLabel;
+  final String? theirStateLabel;
   final String? notesLabel;
   final String? bandLabel;
   final String? timeControlLabel;
@@ -214,6 +215,15 @@ class LoggingControls extends StatefulWidget {
   final String? controlSettingsTitle;
   final String? saveLabel;
   final String? cancelLabel;
+
+  /// Logging view "..." menu toggles (ham2k/app-halo-dist#1) — gate the
+  /// Sent/Rcvd RST fields and add optional inline State/Grid fields. The
+  /// underlying data (State/Grid) is always editable via the "More" dialog
+  /// regardless of these flags; they only control the primary controls'
+  /// permanent footprint.
+  final bool showRSTFields;
+  final bool showStateField;
+  final bool showGridField;
 
   const LoggingControls({
     super.key,
@@ -255,6 +265,7 @@ class LoggingControls extends StatefulWidget {
     this.qsoEditFormTitle,
     this.theirNameLabel,
     this.theirGridLabel,
+    this.theirStateLabel,
     this.notesLabel,
     this.bandLabel,
     this.timeControlLabel,
@@ -262,6 +273,9 @@ class LoggingControls extends StatefulWidget {
     this.controlSettingsTitle,
     this.saveLabel,
     this.cancelLabel,
+    this.showRSTFields = true,
+    this.showStateField = false,
+    this.showGridField = false,
   });
 
   @override
@@ -275,11 +289,15 @@ class _LoggingControlsState extends State<LoggingControls> {
   final _freqController = TextEditingController();
   final _timeController = TextEditingController();
   final _dateController = TextEditingController();
+  final _gridController = TextEditingController();
+  final _stateController = TextEditingController();
   final _callFocus = FocusNode();
   final _sentFocus = FocusNode();
   final _rcvdFocus = FocusNode();
   final _freqFocus = FocusNode();
   final _timeFocus = FocusNode();
+  final _gridFocus = FocusNode();
+  final _stateFocus = FocusNode();
 
   String _mode = 'SSB';
 
@@ -344,11 +362,23 @@ class _LoggingControlsState extends State<LoggingControls> {
   /// yet saved — mirrors app-polo's `_willBeDeleted` staged-delete flag.
   bool _pendingDelete = false;
 
-  /// Their name/grid overrides, settable only via the "More" edit dialog —
-  /// deliberately not full inline fields, to avoid growing the primary
-  /// controls' footprint for rarely-edited data.
+  /// Their name override, settable only via the "More" edit dialog —
+  /// deliberately not a full inline field, to avoid growing the primary
+  /// controls' footprint for rarely-edited data. Grid/State have their own
+  /// controllers (`_gridController`/`_stateController`) instead, since they
+  /// can also appear as optional primary fields (`showGridField`/
+  /// `showStateField`).
   String? _theirNameOverride;
-  String? _theirGridOverride;
+
+  /// Whether the user has actually edited Grid/State (inline field or the
+  /// "More" dialog) for the QSO currently being composed/edited — as
+  /// opposed to `_gridController`/`_stateController` merely displaying a
+  /// value populated from `editingQso.theirGrid`/`theirState` on load. Only
+  /// a deliberate edit is sticky across a comma-separated call list (see
+  /// `dataFor` below); an untouched, merely-displayed value must not
+  /// clobber a fresh per-call lookup's own grid/state.
+  bool _gridTouched = false;
+  bool _stateTouched = false;
 
   /// True while `didUpdateWidget` is populating controllers from a newly
   /// selected `editingQso` — suppresses `_onCallChanged`'s lookup/command
@@ -411,18 +441,25 @@ class _LoggingControlsState extends State<LoggingControls> {
     // from "delete" to "revert changes".
     _sentController.addListener(_onSentOrRcvdChanged);
     _rcvdController.addListener(_onSentOrRcvdChanged);
+    // Same reasoning as Sent/Rcvd above — the button needs a rebuild when
+    // an optional Grid/State field changes too.
+    _gridController.addListener(_onSentOrRcvdChanged);
+    _stateController.addListener(_onSentOrRcvdChanged);
     // All fields place the cursor at the end on focus, rather than selecting
     // the existing text — switching fields (e.g. cycling back to the call
     // field via space without logging) shouldn't put you one keystroke away
     // from wiping out a value you didn't mean to touch. This also overrides
     // the desktop-platform default of selecting all text when a field gains
-    // focus via keyboard (as opposed to a tap).
+    // focus via keyboard (as opposed to a tap) — see each field's
+    // `selectAllOnFocus: false` below.
     for (final (focus, controller) in [
       (_callFocus, _callController),
       (_sentFocus, _sentController),
       (_rcvdFocus, _rcvdController),
       (_freqFocus, _freqController),
       (_timeFocus, _timeController),
+      (_gridFocus, _gridController),
+      (_stateFocus, _stateController),
     ]) {
       focus.addListener(() {
         if (focus.hasFocus) {
@@ -446,7 +483,8 @@ class _LoggingControlsState extends State<LoggingControls> {
     if (oldWidget.editingQso?.uuid != widget.editingQso?.uuid) {
       _pendingDelete = false;
       _theirNameOverride = null;
-      _theirGridOverride = null;
+      _gridTouched = false;
+      _stateTouched = false;
       _undoExpireTimer?.cancel();
       _undoExpireTimer = null;
       _undoQsoData = null;
@@ -482,6 +520,9 @@ class _LoggingControlsState extends State<LoggingControls> {
     _sentController.text = (our['sent'] as String?) ?? '';
     _rcvdController.text = (their['sent'] as String?) ?? '';
     _rstsTouched = true;
+    final theirGuess = their['guess'] as Map<String, dynamic>? ?? const {};
+    _gridController.text = (their['grid'] as String?) ?? (theirGuess['grid'] as String?) ?? '';
+    _stateController.text = (their['state'] as String?) ?? (theirGuess['state'] as String?) ?? '';
     final freq = (data['freq'] as num?)?.toDouble();
     _freqController.text = freq != null ? fmtFreq(freq).replaceAll(',', '') : '';
     _mode = data['mode'] as String? ?? _mode;
@@ -547,6 +588,10 @@ class _LoggingControlsState extends State<LoggingControls> {
     _populating = true;
     _callController.clear();
     _applyDefaultRSTs();
+    _gridController.clear();
+    _stateController.clear();
+    _gridTouched = false;
+    _stateTouched = false;
     _lookupDebounce?.cancel();
     _vfoDebounce?.cancel();
     _commandDescribeDebounce?.cancel();
@@ -586,10 +631,14 @@ class _LoggingControlsState extends State<LoggingControls> {
     _freqController.dispose();
     _timeController.dispose();
     _dateController.dispose();
+    _gridController.dispose();
+    _stateController.dispose();
     _callFocus.dispose();
     _sentFocus.dispose();
     _rcvdFocus.dispose();
     _freqFocus.dispose();
+    _gridFocus.dispose();
+    _stateFocus.dispose();
     _timeFocus.dispose();
     super.dispose();
   }
@@ -1145,50 +1194,71 @@ class _LoggingControlsState extends State<LoggingControls> {
   Future<void> _handleSpace() async {
     if (_callFocus.hasFocus) {
       final call = _call;
-      if (call.isEmpty) return;
-
-      // While a recognized command prefix is waiting on its parameters (e.g.
-      // "RELOAD"), space is a literal character to type, not the
-      // advance-focus shortcut — see the `expectsParams` field on
-      // CommandInterpretation. Ask the same question _log() asks on Enter,
-      // synchronously (awaited) rather than trusting whatever the debounced
-      // describe-preview last resolved to: that state can lag up to 150ms
-      // behind the latest keystroke, so typing "RELOAD" and hitting space in
-      // one fluent motion could otherwise still see the pre-keystroke
-      // (stale, not-yet-a-command) interpretation and silently swallow the
-      // space by advancing focus instead of inserting it. Reuses
-      // _currentInterpretation when the debounce already resolved for this
-      // exact text, so this only adds a round trip when genuinely needed.
-      if (widget.editingQso == null && widget.interpretCommand != null) {
-        var result = _currentInterpretation;
-        if (result == null) {
-          _commandDescribeDebounce?.cancel();
-          final qsoData = _getCurrentQsoData();
-          result = await widget.interpretCommand!(_commandInput, widget.operation.data, qsoData);
-          if (!mounted || _call != call) return; // stale — the call changed while awaiting
-          setState(() {
-            _currentInterpretation = result;
-            _commandExpectsParams = result != null && result['expectsParams'] == true;
-            _commandMessage = (result != null && result['describe'] is String) ? result['describe'] as String : null;
-          });
-          widget.onCommandMessageChanged?.call(_commandMessage);
-        }
-        if (result != null && result['expectsParams'] == true) {
-          _insertAtCursor(_callController, ' ');
-          return;
+      // An empty call can't be a command — nothing to interpret, just
+      // advance like every other field does when it's empty.
+      if (call.isNotEmpty) {
+        // While a recognized command prefix is waiting on its parameters
+        // (e.g. "RELOAD"), space is a literal character to type, not the
+        // advance-focus shortcut — see the `expectsParams` field on
+        // CommandInterpretation. Ask the same question _log() asks on Enter,
+        // synchronously (awaited) rather than trusting whatever the debounced
+        // describe-preview last resolved to: that state can lag up to 150ms
+        // behind the latest keystroke, so typing "RELOAD" and hitting space
+        // in one fluent motion could otherwise still see the pre-keystroke
+        // (stale, not-yet-a-command) interpretation and silently swallow the
+        // space by advancing focus instead of inserting it. Reuses
+        // _currentInterpretation when the debounce already resolved for this
+        // exact text, so this only adds a round trip when genuinely needed.
+        if (widget.editingQso == null && widget.interpretCommand != null) {
+          var result = _currentInterpretation;
+          if (result == null) {
+            _commandDescribeDebounce?.cancel();
+            final qsoData = _getCurrentQsoData();
+            result = await widget.interpretCommand!(_commandInput, widget.operation.data, qsoData);
+            if (!mounted || _call != call) return; // stale — the call changed while awaiting
+            setState(() {
+              _currentInterpretation = result;
+              _commandExpectsParams = result != null && result['expectsParams'] == true;
+              _commandMessage = (result != null && result['describe'] is String) ? result['describe'] as String : null;
+            });
+            widget.onCommandMessageChanged?.call(_commandMessage);
+          }
+          if (result != null && result['expectsParams'] == true) {
+            _insertAtCursor(_callController, ' ');
+            return;
+          }
         }
       }
 
-      _sentFocus.requestFocus();
-    } else if (_sentFocus.hasFocus) {
-      _rcvdFocus.requestFocus();
-    } else if (_rcvdFocus.hasFocus || _freqFocus.hasFocus) {
+      _advancePrimaryFocus();
+    } else if (_freqFocus.hasFocus) {
       _callFocus.requestFocus();
+    } else if (_stateFocus.hasFocus || _gridFocus.hasFocus || _sentFocus.hasFocus || _rcvdFocus.hasFocus) {
+      _advancePrimaryFocus();
     }
     // Space is inert in any other field with no override of its own. Ref
     // chip inputs (RefChipsInput) are the one exception — they bind Space
     // locally to type a literal separator instead, taking priority over
     // this panel-wide shortcut.
+  }
+
+  /// Space cycles through whichever primary exchange fields are currently
+  /// visible, in the same left-to-right order they're laid out in —
+  /// Sent/Rcvd (when RST is on) right after Call, then State/Grid (when
+  /// their "..." menu toggles are on) — wrapping back to Call after the
+  /// last one. Rebuilt on every call since `showRSTFields`/`showStateField`/
+  /// `showGridField` can change at runtime.
+  void _advancePrimaryFocus() {
+    final order = [
+      _callFocus,
+      if (widget.showRSTFields) _sentFocus,
+      if (widget.showRSTFields) _rcvdFocus,
+      if (widget.showStateField) _stateFocus,
+      if (widget.showGridField) _gridFocus,
+    ];
+    final current = order.indexWhere((f) => f.hasFocus);
+    final next = order[(current + 1) % order.length];
+    next.requestFocus();
   }
 
   /// Synthesizes typing [text] at the cursor — used for the literal space in
@@ -1314,7 +1384,16 @@ class _LoggingControlsState extends State<LoggingControls> {
       'their': {
         ...?(base['their'] as Map<String, dynamic>?),
         if (_theirNameOverride != null) 'name': _theirNameOverride,
-        if (_theirGridOverride != null) 'grid': _theirGridOverride,
+        // Conditional on `_gridTouched`/`_stateTouched`, not just "is the
+        // controller non-empty": the controller may just be *displaying* a
+        // value populated from `editingQso.theirGrid`/`theirState` on load,
+        // which must NOT clobber `their.guess`'s fallback for a call this
+        // record hasn't actually been edited for (see `dataFor` below).
+        // Once touched, though, write it unconditionally — including empty
+        // — so deliberately clearing the field actually clears the stored
+        // value instead of leaving the old one from `...?(base['their'])`.
+        if (_gridTouched) 'grid': _gridController.text.trim(),
+        if (_stateTouched) 'state': _stateController.text.trim(),
         'call': call,
         'sent': _rcvdController.text.trim(),
         // Matches the `AnnotatedCallInfo` TS type (`CallInfo & {guess?:
@@ -1348,6 +1427,7 @@ class _LoggingControlsState extends State<LoggingControls> {
         {'type': 'field', 'key': 'theirCall', 'fieldType': 'callsign', 'label': widget.theirCallLabel ?? 'Their call'},
         {'type': 'field', 'key': 'theirName', 'fieldType': 'text', 'label': widget.theirNameLabel ?? 'Name'},
         {'type': 'field', 'key': 'theirGrid', 'fieldType': 'text', 'label': widget.theirGridLabel ?? 'Grid'},
+        {'type': 'field', 'key': 'theirState', 'fieldType': 'text', 'label': widget.theirStateLabel ?? 'State'},
         {'type': 'field', 'key': 'sent', 'fieldType': 'text', 'label': widget.sentLabel ?? 'Sent'},
         {'type': 'field', 'key': 'rcvd', 'fieldType': 'text', 'label': widget.rcvdLabel ?? 'Rcvd'},
         {'type': 'field', 'key': 'freq', 'fieldType': 'number', 'label': widget.freqLabel ?? 'Frequency'},
@@ -1371,6 +1451,12 @@ class _LoggingControlsState extends State<LoggingControls> {
     final dt = millis != null
         ? DateTime.fromMillisecondsSinceEpoch(millis, isUtc: true)
         : DateTime.now().toUtc();
+    // Captured so the Save handler below can tell "the user actually edited
+    // Grid/State in this dialog" from "the dialog merely displayed whatever
+    // was already there" — the latter must not turn a passive lookup guess
+    // into a deliberately-touched, sticky value (see _gridTouched's doc).
+    final gridBeforeDialog = _gridController.text.trim();
+    final stateBeforeDialog = _stateController.text.trim();
 
     final result = await showFormDialog(
       context,
@@ -1378,7 +1464,8 @@ class _LoggingControlsState extends State<LoggingControls> {
       initialState: {
         'theirCall': _call,
         'theirName': _theirNameOverride ?? widget.editingQso?.theirName ?? '',
-        'theirGrid': _theirGridOverride ?? widget.editingQso?.theirGrid ?? '',
+        'theirGrid': gridBeforeDialog,
+        'theirState': stateBeforeDialog,
         'sent': _sentController.text.trim(),
         'rcvd': _rcvdController.text.trim(),
         'freq': _freq,
@@ -1409,8 +1496,12 @@ class _LoggingControlsState extends State<LoggingControls> {
       _callController.text = ((result['theirCall'] as String?) ?? '').toUpperCase();
       final name = (result['theirName'] as String?)?.trim();
       _theirNameOverride = (name == null || name.isEmpty) ? null : name;
-      final grid = (result['theirGrid'] as String?)?.trim();
-      _theirGridOverride = (grid == null || grid.isEmpty) ? null : grid;
+      final grid = ((result['theirGrid'] as String?) ?? '').trim();
+      final state = ((result['theirState'] as String?) ?? '').trim();
+      _gridTouched = _gridTouched || grid != gridBeforeDialog;
+      _stateTouched = _stateTouched || state != stateBeforeDialog;
+      _gridController.text = grid;
+      _stateController.text = state;
       _sentController.text = (result['sent'] as String?) ?? '';
       _rcvdController.text = (result['rcvd'] as String?) ?? '';
       _rstsTouched = true;
@@ -1676,6 +1767,10 @@ class _LoggingControlsState extends State<LoggingControls> {
   void _wipe() {
     _callController.clear();
     _applyDefaultRSTs();
+    _gridController.clear();
+    _stateController.clear();
+    _gridTouched = false;
+    _stateTouched = false;
     _lookupDebounce?.cancel();
     _commandDescribeDebounce?.cancel();
     _executeMessageTimer?.cancel();
@@ -1709,7 +1804,9 @@ class _LoggingControlsState extends State<LoggingControls> {
       _manualStartAtMillis != null ||
       _controlRefs.values.any((refs) => refs.isNotEmpty) ||
       _unmatchedRefs.isNotEmpty ||
-      _currentQsoExtra.isNotEmpty;
+      _currentQsoExtra.isNotEmpty ||
+      _gridController.text.trim().isNotEmpty ||
+      _stateController.text.trim().isNotEmpty;
 
   /// Stashes the in-progress new QSO into the undo slot (for 5 seconds,
   /// even if the user keeps typing — see `_buildWipeOrEditButton`), then
@@ -1992,7 +2089,8 @@ class _LoggingControlsState extends State<LoggingControls> {
             'call': call,
             'sent': _rcvdController.text.trim(),
             if (keepOriginal && _theirNameOverride != null) 'name': _theirNameOverride,
-            if (_theirGridOverride != null) 'grid': _theirGridOverride,
+            if (_gridTouched) 'grid': _gridController.text.trim(),
+            if (_stateTouched) 'state': _stateController.text.trim(),
           },
           'startAtMillis': baseStartAtMillis + index * 5000,
         };
@@ -2264,44 +2362,80 @@ class _LoggingControlsState extends State<LoggingControls> {
                               onSubmitted: (_) => _log(),
                             ),
                           ),
-                          const SizedBox(width: 10),
-                          SizedBox(
-                            width: 64,
-                            child: TextField(
-                              controller: _sentController,
-                              focusNode: _sentFocus,
-                              selectAllOnFocus: false,
-                              enabled: !_pendingDelete,
-                              style: _primaryFieldStyle(context, fontWeight: FontWeight.w500),
-                              inputFormatters: [
-                                FilteringTextInputFormatter.allow(
-                                  RegExp(r'[0-9+\-]'),
-                                ),
-                              ],
-                              decoration: _primaryFieldDecoration(context, widget.sentLabel ?? 'Sent'),
-                              onChanged: (_) => _rstsTouched = true,
-                              onSubmitted: (_) => _log(),
+                          if (widget.showRSTFields) ...[
+                            const SizedBox(width: 10),
+                            SizedBox(
+                              width: 64,
+                              child: TextField(
+                                controller: _sentController,
+                                focusNode: _sentFocus,
+                                selectAllOnFocus: false,
+                                enabled: !_pendingDelete,
+                                style: _primaryFieldStyle(context, fontWeight: FontWeight.w500),
+                                inputFormatters: [
+                                  FilteringTextInputFormatter.allow(
+                                    RegExp(r'[0-9+\-]'),
+                                  ),
+                                ],
+                                decoration: _primaryFieldDecoration(context, widget.sentLabel ?? 'Sent'),
+                                onChanged: (_) => _rstsTouched = true,
+                                onSubmitted: (_) => _log(),
+                              ),
                             ),
-                          ),
-                          const SizedBox(width: 8),
-                          SizedBox(
-                            width: 64,
-                            child: TextField(
-                              controller: _rcvdController,
-                              focusNode: _rcvdFocus,
-                              selectAllOnFocus: false,
-                              enabled: !_pendingDelete,
-                              style: _primaryFieldStyle(context, fontWeight: FontWeight.w500),
-                              inputFormatters: [
-                                FilteringTextInputFormatter.allow(
-                                  RegExp(r'[0-9+\-]'),
-                                ),
-                              ],
-                              decoration: _primaryFieldDecoration(context, widget.rcvdLabel ?? 'Rcvd'),
-                              onChanged: (_) => _rstsTouched = true,
-                              onSubmitted: (_) => _log(),
+                            const SizedBox(width: 8),
+                            SizedBox(
+                              width: 64,
+                              child: TextField(
+                                controller: _rcvdController,
+                                focusNode: _rcvdFocus,
+                                selectAllOnFocus: false,
+                                enabled: !_pendingDelete,
+                                style: _primaryFieldStyle(context, fontWeight: FontWeight.w500),
+                                inputFormatters: [
+                                  FilteringTextInputFormatter.allow(
+                                    RegExp(r'[0-9+\-]'),
+                                  ),
+                                ],
+                                decoration: _primaryFieldDecoration(context, widget.rcvdLabel ?? 'Rcvd'),
+                                onChanged: (_) => _rstsTouched = true,
+                                onSubmitted: (_) => _log(),
+                              ),
                             ),
-                          ),
+                          ],
+                          if (widget.showStateField) ...[
+                            const SizedBox(width: 10),
+                            SizedBox(
+                              width: 64,
+                              child: TextField(
+                                controller: _stateController,
+                                focusNode: _stateFocus,
+                                selectAllOnFocus: false,
+                                enabled: !_pendingDelete,
+                                textCapitalization: TextCapitalization.characters,
+                                style: _primaryFieldStyle(context, fontWeight: FontWeight.w500),
+                                decoration: _primaryFieldDecoration(context, widget.theirStateLabel ?? 'State'),
+                                onChanged: (_) => _stateTouched = true,
+                                onSubmitted: (_) => _log(),
+                              ),
+                            ),
+                          ],
+                          if (widget.showGridField) ...[
+                            const SizedBox(width: 10),
+                            SizedBox(
+                              width: 64,
+                              child: TextField(
+                                controller: _gridController,
+                                focusNode: _gridFocus,
+                                selectAllOnFocus: false,
+                                enabled: !_pendingDelete,
+                                textCapitalization: TextCapitalization.characters,
+                                style: _primaryFieldStyle(context, fontWeight: FontWeight.w500),
+                                decoration: _primaryFieldDecoration(context, widget.theirGridLabel ?? 'Grid'),
+                                onChanged: (_) => _gridTouched = true,
+                                onSubmitted: (_) => _log(),
+                              ),
+                            ),
+                          ],
                           const SizedBox(width: 12),
                           // HaLo's big light-blue log button — a circle as
                           // tall as the text fields beside it. (A

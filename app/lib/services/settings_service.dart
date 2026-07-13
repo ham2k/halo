@@ -31,6 +31,10 @@ class SettingsService extends ChangeNotifier implements SyncSettings {
   static const _fontScaleKey = 'fontScale';
   static const _secondaryControlsOrderKey = 'secondaryControlsOrder';
   static const _hiddenSecondaryControlsKey = 'hiddenSecondaryControls';
+  static const _showRSTFieldsKey = 'showRSTFields';
+  static const _showStateFieldKey = 'showStateField';
+  static const _showGridFieldKey = 'showGridField';
+  static const _showDeletedQSOsKey = 'showDeletedQSOs';
 
   final SharedPreferences _prefs;
 
@@ -186,6 +190,38 @@ class SettingsService extends ChangeNotifier implements SyncSettings {
 
   Future<void> setHiddenSecondaryControls(Set<String> hidden) async {
     await _prefs.setStringList(_hiddenSecondaryControlsKey, hidden.toList());
+    notifyListeners();
+  }
+
+  /// Logging view "..." menu toggles (ham2k/app-halo-dist#1).
+  bool get showRSTFields => _prefs.getBool(_showRSTFieldsKey) ?? true;
+
+  Future<void> setShowRSTFields(bool value) async {
+    await _prefs.setBool(_showRSTFieldsKey, value);
+    notifyListeners();
+  }
+
+  bool get showStateField => _prefs.getBool(_showStateFieldKey) ?? false;
+
+  Future<void> setShowStateField(bool value) async {
+    await _prefs.setBool(_showStateFieldKey, value);
+    notifyListeners();
+  }
+
+  bool get showGridField => _prefs.getBool(_showGridFieldKey) ?? false;
+
+  Future<void> setShowGridField(bool value) async {
+    await _prefs.setBool(_showGridFieldKey, value);
+    notifyListeners();
+  }
+
+  /// Off by default — deleted QSOs are hidden from the list unless the user
+  /// opts in, matching `QsoRepository.watchForOperation`'s previous
+  /// hardcoded behavior of always excluding them.
+  bool get showDeletedQSOs => _prefs.getBool(_showDeletedQSOsKey) ?? false;
+
+  Future<void> setShowDeletedQSOs(bool value) async {
+    await _prefs.setBool(_showDeletedQSOsKey, value);
     notifyListeners();
   }
 }

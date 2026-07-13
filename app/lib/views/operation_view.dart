@@ -34,6 +34,10 @@ class OperationView extends StatefulWidget {
 class _OperationViewState extends State<OperationView> {
   Operation? _operation;
   List<Map<String, dynamic>> _loggingControls = const [];
+  late bool _showRSTFields = widget.services.settings.showRSTFields;
+  late bool _showStateField = widget.services.settings.showStateField;
+  late bool _showGridField = widget.services.settings.showGridField;
+  late bool _showDeletedQSOs = widget.services.settings.showDeletedQSOs;
 
   @override
   void initState() {
@@ -132,6 +136,19 @@ class _OperationViewState extends State<OperationView> {
     if (message != null) messenger.showSnackBar(SnackBar(content: Text(message)));
   }
 
+  /// Flips one of the logging-view menu's toggles: updates the local mirror
+  /// (`apply`) so the AppBar menu's checkmark and the widgets below react
+  /// immediately, and persists via `persist` so it survives a restart.
+  void _toggleMenuSetting({
+    required bool current,
+    required void Function(bool value) apply,
+    required Future<void> Function(bool value) persist,
+  }) {
+    final value = !current;
+    setState(() => apply(value));
+    persist(value);
+  }
+
   @override
   Widget build(BuildContext context) {
     final operation = _operation;
@@ -140,13 +157,13 @@ class _OperationViewState extends State<OperationView> {
     }
 
     return StreamBuilder<List<Qso>>(
-      stream: widget.services.qsos.watchForOperation(operation.uuid),
+      stream: widget.services.qsos.watchForOperation(operation.uuid, includeDeleted: _showDeletedQSOs),
       builder: (context, snapshot) {
         final qsos = snapshot.data ?? const <Qso>[];
         // Start/break/end markers ride the same list (for QsoList to render
         // them inline) but aren't real contacts — every QSO *count* shown to
         // the user excludes them, matching scoring/export.
-        final realQsoCount = qsos.where((q) => !q.isEvent).length;
+        final realQsoCount = qsos.where((q) => q.isRealContact).length;
         final refsLine = operation.refs.map((r) => r['shortLabel'] ?? r['ref']).whereType<String>().join(' • ');
 
         return DefaultTabController(
@@ -155,10 +172,51 @@ class _OperationViewState extends State<OperationView> {
             appBar: AppBar(
               leadingWidth: macOSAwareLeadingWidth,
               leading: macOSAwareBackButton(),
-              // Reserves trailing breathing room even though this AppBar has
-              // no real action buttons — otherwise the title runs flush to
-              // the window's right edge with no margin at all.
-              actions: const [SizedBox(width: 16)],
+              actions: [
+                PopupMenuButton<VoidCallback>(
+                  icon: Icon(resolveIconName('dots-vertical')),
+                  onSelected: (toggle) => toggle(),
+                  itemBuilder: (context) => [
+                    CheckedPopupMenuItem<VoidCallback>(
+                      checked: _showRSTFields,
+                      value: () => _toggleMenuSetting(
+                        current: _showRSTFields,
+                        apply: (v) => _showRSTFields = v,
+                        persist: widget.services.settings.setShowRSTFields,
+                      ),
+                      child: Text(context.t.operation.menu.showRstFields),
+                    ),
+                    CheckedPopupMenuItem<VoidCallback>(
+                      checked: _showStateField,
+                      value: () => _toggleMenuSetting(
+                        current: _showStateField,
+                        apply: (v) => _showStateField = v,
+                        persist: widget.services.settings.setShowStateField,
+                      ),
+                      child: Text(context.t.operation.menu.showStateField),
+                    ),
+                    CheckedPopupMenuItem<VoidCallback>(
+                      checked: _showGridField,
+                      value: () => _toggleMenuSetting(
+                        current: _showGridField,
+                        apply: (v) => _showGridField = v,
+                        persist: widget.services.settings.setShowGridField,
+                      ),
+                      child: Text(context.t.operation.menu.showGridField),
+                    ),
+                    CheckedPopupMenuItem<VoidCallback>(
+                      checked: _showDeletedQSOs,
+                      value: () => _toggleMenuSetting(
+                        current: _showDeletedQSOs,
+                        apply: (v) => _showDeletedQSOs = v,
+                        persist: widget.services.settings.setShowDeletedQSOs,
+                      ),
+                      child: Text(context.t.operation.menu.showDeletedQsos),
+                    ),
+                  ],
+                ),
+                const SizedBox(width: 8),
+              ],
               title: InkWell(
                 onTap: () => _editActivities(operation),
                 mouseCursor: SystemMouseCursors.click,
@@ -200,6 +258,9 @@ class _OperationViewState extends State<OperationView> {
                   qsos: qsos,
                   loggingControls: _loggingControls,
                   onCommandAction: _handleCommandAction,
+                  showRSTFields: _showRSTFields,
+                  showStateField: _showStateField,
+                  showGridField: _showGridField,
                 ),
               ),
               _PlaceholderTab(label: context.t.operation.tabs.spots),

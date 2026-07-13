@@ -33,6 +33,10 @@ class QsoList extends StatelessWidget {
   /// its time. Falls back to [onSelect] when omitted.
   final void Function(Qso qso)? onSelectEvent;
 
+  /// Whether to show the RST column (ham2k/app-halo-dist#1's logging-view
+  /// menu) — the underlying data always exists, this only hides the column.
+  final bool showRSTFields;
+
   const QsoList({
     super.key,
     required this.qsos,
@@ -43,6 +47,7 @@ class QsoList extends StatelessWidget {
     this.duplicateLabel,
     this.newEntityLabel,
     this.newBandOrModeLabel,
+    this.showRSTFields = true,
   });
 
   @override
@@ -69,7 +74,7 @@ class QsoList extends StatelessWidget {
     final numbers = List<int>.filled(qsos.length, 0);
     var runningNumber = 0;
     for (var i = 0; i < qsos.length; i++) {
-      if (!qsos[i].isEvent) runningNumber++;
+      if (qsos[i].isRealContact) runningNumber++;
       numbers[i] = runningNumber;
     }
 
@@ -111,10 +116,23 @@ class QsoList extends StatelessWidget {
           // Selected treatment matches app-polo's QSOList: secondaryContainer
           // fill with a secondary top/bottom border accent, text tinted
           // toward onSecondaryContainer so it doesn't wash out.
-          final rowMono = selected ? mono.copyWith(color: theme.colorScheme.onSecondaryContainer) : mono;
-          final rowMonoDim = selected
+          var rowMono = selected ? mono.copyWith(color: theme.colorScheme.onSecondaryContainer) : mono;
+          var rowMonoDim = selected
               ? monoDim.copyWith(color: theme.colorScheme.onSecondaryContainer.withValues(alpha: 0.75))
               : monoDim;
+          // Deleted QSOs only ever show up here when the "show deleted QSOs"
+          // menu toggle is on — struck-through and faded so they read as
+          // gone without disappearing from the timeline.
+          if (qso.deleted) {
+            rowMono = rowMono.copyWith(
+              color: rowMono.color?.withValues(alpha: 0.5),
+              decoration: TextDecoration.lineThrough,
+            );
+            rowMonoDim = rowMonoDim.copyWith(
+              color: rowMonoDim.color?.withValues(alpha: 0.5),
+              decoration: TextDecoration.lineThrough,
+            );
+          }
 
           return Container(
             // The border is always present (3px, just transparent when
@@ -139,7 +157,10 @@ class QsoList extends StatelessWidget {
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
                   child: Row(
                   children: [
-                    SizedBox(width: 28, child: Text('$number', style: rowMonoDim, textAlign: TextAlign.right)),
+                    SizedBox(
+                      width: 28,
+                      child: Text(qso.deleted ? '' : '$number', style: rowMonoDim, textAlign: TextAlign.right),
+                    ),
                     const SizedBox(width: 6),
                     SizedBox(width: 12, child: _scoreBadge(context, qso)),
                     const SizedBox(width: 6),
@@ -183,14 +204,15 @@ class QsoList extends StatelessWidget {
                     ),
                     const SizedBox(width: 8),
                     SizedBox(width: 42, child: Text(qso.mode ?? '', style: rowMono)),
-                    SizedBox(
-                      width: 68,
-                      child: Text(
-                        '${qso.sentRST ?? ''} ${qso.receivedRST ?? ''}',
-                        style: rowMonoDim,
-                        textAlign: TextAlign.right,
+                    if (showRSTFields)
+                      SizedBox(
+                        width: 68,
+                        child: Text(
+                          '${qso.sentRST ?? ''} ${qso.receivedRST ?? ''}',
+                          style: rowMonoDim,
+                          textAlign: TextAlign.right,
+                        ),
                       ),
-                    ),
                   ],
                 ),
                 ),

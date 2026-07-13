@@ -90,6 +90,7 @@ class Qso {
   // entered/edited top-level value always wins over the guess.
   String? get theirName => (_their['name'] as String?) ?? (_theirGuess['name'] as String?);
   String? get theirGrid => (_their['grid'] as String?) ?? (_theirGuess['grid'] as String?);
+  String? get theirState => (_their['state'] as String?) ?? (_theirGuess['state'] as String?);
   String? get sentRST => _our['sent'] as String?;
   String? get receivedRST => _their['sent'] as String?;
 
@@ -110,6 +111,10 @@ class Qso {
   /// `event`/`eventKind`. They interleave with real QSOs via `startAtMillis`
   /// and are excluded from scoring, export, and the operation's QSO count.
   bool get isEvent => band == 'event';
+
+  /// Whether this counts as an actual contact for QSO counts/numbering/
+  /// per-band/per-mode stats — excludes event markers and soft-deleted QSOs.
+  bool get isRealContact => !isEvent && !deleted;
 
   Map<String, dynamic>? get event => data['event'] as Map<String, dynamic>?;
 
