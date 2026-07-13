@@ -51,6 +51,8 @@ class DataFileManager {
       const allowedDomains = {
         'api.pota.app',
         'logbook.qrz.com',
+        'xmldata.qrz.com',
+        'api.hamdb.org',
         'country-files.com',
         'pota.app',
         'www.sotadata.org.uk',
