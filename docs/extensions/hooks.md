@@ -292,8 +292,8 @@ extensions.
 |---|---|---|
 | `syncTransport` | LoFi (and future) sync backends | The Dart core keeps the loop/batching/dirty flags; the hook only transports payloads. Sync must survive a wedged runtime. |
 | `confirmation` | QSL/confirmation sources (spot-history cross-checking) | |
-| `settingsPanel` | extension settings forms via the declarative catalog | Needed for QRZ credentials. |
-| `account` | account connections (QRZ, LoFi) | |
+| `settingsPanel` | extension settings forms via the declarative catalog | Schema defined in [settings.md](./settings.md); complementary to `account` below, not a replacement — Dart-side rendering/dispatch not wired up yet. |
+| `account` | account connections (QRZ, LoFi) | Implemented today (`ExtensionService.getAccounts`/`testCredentials`, `SettingsView`'s Accounts panel); table placement is stale, not a `settingsPanel` migration target. |
 | `opSetting` | per-operation settings contributions | |
 
 When one of these lands, move it above the line with its real signature.

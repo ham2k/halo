@@ -363,9 +363,24 @@ export interface OAuth2Config {
   scopes: string[]
 }
 
+/// Registered under category `account`. One hook per account; core
+/// aggregates every extension's `account` hook via `invokeHookAll` into the
+/// account list shown in Settings. Accounts are defined, stored (credentials
+/// in secure storage, keyed by `kvKey`), and edited independently of
+/// `settingsPanel` — each account gets its own standalone dialog. A
+/// `settingsPanel` field can reference an account for display/navigation
+/// via `fieldType: 'account'` (see FormField), but does not define or store
+/// account data itself.
 export interface AccountHook {
   label: string
-  kvKey?: string // defaults to the extension key
+  /// Defaults to the extension's own key. If overridden (an extension with
+  /// more than one account), must equal the extension key or be prefixed
+  /// `<extensionKey>_` — e.g. extension `lofi` may use `lofi` or
+  /// `lofi_backup`, never bare `backup` or camelCase `lofiBackup`. Keeps
+  /// every account keyed under its owning extension's namespace, which is
+  /// how storage collisions are prevented and (later) how KV access
+  /// control will be scoped.
+  kvKey?: string
   fields?: AccountField[]
   oauth2?: OAuth2Config
   testCredentials(credentials: Record<string, string>, ctx: HookContext): Promise<string>
@@ -385,6 +400,7 @@ export type Hook =
   | AccountHook
   | DataFileDefinition
   | FormHook
+  | SettingsPanelHook
   | Record<string, unknown>
 
 export interface RegisterHookParams {
@@ -477,6 +493,9 @@ export type FormFieldType =
   | 'select'
   | 'radio'
   | 'checkbox'
+  | 'secret'
+  | 'list'
+  | 'account'
 
 export interface FormFieldOption {
   label: string;
@@ -493,6 +512,23 @@ export interface FormField {
   options?: FormFieldOption[]
   validate?: (value: any, state: Record<string, any>) => string | null | undefined | Promise<string | null | undefined>
   transform?: (value: any, state: Record<string, any>) => any | Promise<any>
+  /// Only used when fieldType === 'list'. `value` is then a
+  /// Record<string, any>[], each item matching the shape described by
+  /// `itemFields`. Rows render as a summary (from `itemTitle`, templated
+  /// against the item's values) with edit/delete; edit/add reuse the same
+  /// form renderer recursively, scoped to `itemFields`, in a dialog.
+  itemFields?: FormField[]
+  itemTitle?: string
+  orderable?: boolean
+  /// Only used when fieldType === 'account'. A read-only reference into the
+  /// separate `account` hook system (see AccountHook) — renders a
+  /// connection-status row (Connected as X / Not Connected) with a
+  /// Manage/Connect button that opens that account's own standalone dialog.
+  /// Does not define or store account data itself. `key` matches the
+  /// account's `kvKey`; `subkey` is an opaque, extension-defined
+  /// discriminator only needed when one extension exposes more than one
+  /// account-like entity under the same key.
+  account?: { key: string; subkey?: string }
 }
 
 export interface FormHeader {
@@ -511,7 +547,18 @@ export interface FormMarkdownBlock {
   text: string
 }
 
-export type FormElement = FormField | FormHeader | FormSectionDivider | FormMarkdownBlock
+/// A button that invokes a named hook method (e.g. 'testCredentials')
+/// against the current form/panel state and shows the returned string as a
+/// result banner. Declarative like `NoticeAction` below — core renders and
+/// dispatches it, the hook just returns a result.
+export interface FormActionElement {
+  type: 'action'
+  key: string
+  label: string
+  method: string
+}
+
+export type FormElement = FormField | FormHeader | FormSectionDivider | FormMarkdownBlock | FormActionElement
 
 export interface FormDefinition {
   title?: string
@@ -526,6 +573,79 @@ export interface FormHook {
   transformField?(args: { formId?: string; fieldKey: string; value: any; state: Record<string, any> }, ctx: HookContext): Promise<any>
   onChangeField?(args: { formId?: string; fieldKey: string; value: any; state: Record<string, any> }, ctx: HookContext): Promise<Record<string, any> | null | void>
 }
+
+export interface SettingsPanelDescriptor {
+  /// Must equal the extension's own key, or be prefixed `<extensionKey>_`
+  /// — e.g. extension `pota` may return panels keyed `pota` and
+  /// `pota_spots`, never bare `spots` or camelCase `potaSpots`. Same rule
+  /// as SimpleSettingsPanel.key/DynamicSettingsPanel.key below; it applies
+  /// here too since a Tier 2 panel with multiple entries needs the same
+  /// per-panel key uniqueness/namespacing.
+  key: string
+  title: string
+  icon?: string
+  order?: number
+}
+
+/// Same shape as FormField, but validate/transform closures are dropped in
+/// favor of a declarative `pattern` — a Tier 1 panel is captured once at
+/// registerHook time, so a closure there wouldn't avoid a bridge call the
+/// way it does for a live form; `pattern` gets the common cases (required,
+/// regex, numeric range) with none. `itemFields` is re-typed to
+/// SettingsField[] (not the inherited FormField[]) so the same restriction
+/// applies recursively to list items — otherwise a 'list' field's items
+/// could smuggle validate/transform closures back in.
+export interface SettingsField extends Omit<FormField, 'validate' | 'transform' | 'itemFields'> {
+  pattern?: string
+  patternError?: string
+  itemFields?: SettingsField[]
+}
+
+/// Tier 1: declarative settings, registered once at activation. The engine
+/// owns persistence (kv, or FlutterSecureStorage for fieldType 'secret')
+/// and declarative validation — no bridge call per keystroke. `fields` may
+/// include a `FormActionElement` (e.g. a "Clear Cache" or "Re-sync Now"
+/// button unrelated to any account) — its `method` is resolved against an
+/// extra, undeclared property on this same object (the SDK's `Hook` union
+/// includes `Record<string, unknown>`, so TS permits it without a cast).
+/// Account credentials/testCredentials are not part of this schema at all —
+/// see AccountHook.
+export interface SimpleSettingsPanel {
+  kind: 'simple'
+  /// Defaults to the extension's own key. If overridden (an extension with
+  /// more than one panel), must equal the extension key or be prefixed
+  /// `<extensionKey>_` — see SettingsPanelDescriptor.key's doc comment.
+  key?: string
+  title: string
+  icon?: string
+  order?: number
+  fields: (SettingsField | FormActionElement)[]
+}
+
+/// Tier 2: for panels whose fields, values, or validation depend on
+/// runtime state the engine can't compute itself. Mirrors FormHook, plus
+/// panel discovery and a persistence-on-commit hook (onChangeField here is
+/// "go persist this," not FormHook's "patch sibling form state").
+export interface DynamicSettingsPanel {
+  kind: 'dynamic'
+  /// Same naming rule as SimpleSettingsPanel.key — only actually used as a
+  /// panel key when `getPanels` is omitted (single-panel case); when
+  /// `getPanels` is present, each returned SettingsPanelDescriptor.key
+  /// governs instead.
+  key?: string
+  getPanels?(args: Record<string, never>, ctx: HookContext): Promise<SettingsPanelDescriptor[]>
+  getDefinition(args: { panelKey: string }, ctx: HookContext): Promise<FormDefinition>
+  validateField?(args: { panelKey: string; fieldKey: string; value: any; state: Record<string, any> }, ctx: HookContext): Promise<string | null>
+  transformField?(args: { panelKey: string; fieldKey: string; value: any; state: Record<string, any> }, ctx: HookContext): Promise<any>
+  onChangeField(args: { panelKey: string; fieldKey: string; value: any; state: Record<string, any> }, ctx: HookContext): Promise<void>
+}
+
+/// Registered under category 'settingsPanel'. Core discriminates by the
+/// required `kind` tag, not by shape. Complementary to AccountHook (see
+/// its doc comment) rather than a replacement for it — a settings panel
+/// can reference an account via `fieldType: 'account'` but never defines
+/// or stores account data.
+export type SettingsPanelHook = SimpleSettingsPanel | DynamicSettingsPanel
 
 /// An action button on a status bar notice. Declarative, not a callback —
 /// the core renders and handles these itself (`link` opens a URL, `dialog`
