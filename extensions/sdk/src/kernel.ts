@@ -110,7 +110,7 @@ async function getAccountContext(extensionKey: string): Promise<unknown> {
   }
 }
 
-async function callHookMethod(record: HookRecord, method: string, args: unknown): Promise<unknown> {
+async function callHookMethod(record: HookRecord, method: string, args: unknown, online = true): Promise<unknown> {
   const member = record.hook[method]
   const account = (await getAccountContext(record.extensionKey)) as { credentials?: Record<string, string>; session?: Record<string, string> } | undefined
   let developerMode = false
@@ -126,7 +126,7 @@ async function callHookMethod(record: HookRecord, method: string, args: unknown)
   } catch (e) {
     // ignore
   }
-  const ctx = { online: true, account, developerMode, locale }
+  const ctx = { online, account, developerMode, locale }
   if (typeof member === 'function') {
     return await member.call(record.hook, args, ctx)
   }
@@ -188,7 +188,9 @@ const kernel = {
       try {
         const record = hooksFor(category, key)[0]
         if (!record) throw new Error(`no hook registered for ${category}/${key ?? '*'}`)
-        const result = await callHookMethod(record, method, JSON.parse(argsJson))
+        const args = JSON.parse(argsJson)
+        const online = typeof args?.online === 'boolean' ? args.online : true
+        const result = await callHookMethod(record, method, args, online)
         post({ type: 'result', id, ok: true, value: result ?? null, jsMillis: Date.now() - startedAt })
       } catch (e) {
         post({ type: 'result', id, ok: false, error: describeError(e), jsMillis: Date.now() - startedAt })
@@ -243,11 +245,12 @@ const kernel = {
         post({ type: 'result', id, ok: true, value: entries, jsMillis: Date.now() - startedAt })
         return
       }
+      const online = typeof args?.online === 'boolean' ? args.online : true
       const records = hooksFor(category, null).filter((r) => typeof r.hook[method] === 'function' || r.hook[method] !== undefined)
       const entries = await Promise.all(
         records.map(async (record) => {
           try {
-            return { key: record.key, ok: true, value: (await callHookMethod(record, method, args)) ?? null }
+            return { key: record.key, ok: true, value: (await callHookMethod(record, method, args, online)) ?? null }
           } catch (e) {
             return { key: record.key, ok: false, error: describeError(e) }
           }
@@ -265,17 +268,45 @@ const kernel = {
     category: string,
     method: string,
     args: unknown,
+    online = true,
   ): Promise<{ key: string; ok: boolean; value?: unknown; error?: string }[]> {
     const records = hooksFor(category, null).filter((r) => typeof r.hook[method] === 'function')
     return await Promise.all(
       records.map(async (record) => {
         try {
-          return { key: record.key, ok: true, value: (await callHookMethod(record, method, args)) ?? null }
+          return { key: record.key, ok: true, value: (await callHookMethod(record, method, args, online)) ?? null }
         } catch (e) {
           return { key: record.key, ok: false, error: describeError(e) }
         }
       }),
     )
+  },
+
+  /// Like `invokeLocal`, but calls each matching hook one at a time, in
+  /// priority order, threading its result through `fold` to produce the
+  /// args for the next hook — needed when later hooks must see earlier
+  /// hooks' contributions (e.g. the lookup service's priority-ordered
+  /// merge), unlike `invokeLocal`'s parallel fan-out.
+  async invokeLocalSequential(
+    category: string,
+    method: string,
+    initialArgs: unknown,
+    fold: (args: unknown, hookResult: unknown, hookKey: string) => unknown,
+    online = true,
+  ): Promise<{ key: string; ok: boolean; value?: unknown; error?: string }[]> {
+    const records = hooksFor(category, null).filter((r) => typeof r.hook[method] === 'function')
+    let args = initialArgs
+    const out: { key: string; ok: boolean; value?: unknown; error?: string }[] = []
+    for (const record of records) {
+      try {
+        const value = (await callHookMethod(record, method, args, online)) ?? null
+        args = fold(args, value, record.key)
+        out.push({ key: record.key, ok: true, value })
+      } catch (e) {
+        out.push({ key: record.key, ok: false, error: describeError(e) })
+      }
+    }
+    return out
   },
 
   hostResponse(callId: number, ok: boolean, resultJson: string) {

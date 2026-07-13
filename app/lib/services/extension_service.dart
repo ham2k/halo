@@ -379,51 +379,44 @@ class ExtensionService {
     return actions;
   }
 
-  /// Calls every registered lookup source and merges the results in priority
-  /// order: the first source to provide a field wins. Returns null when no
-  /// source had anything useful (or the runtime isn't up).
-  Future<Map<String, dynamic>?> lookupCall(String call) async {
+  /// Runs the full lookup pipeline for one callsign — the hardcoded
+  /// callsign-annotation pre-step plus every registered `lookup` hook
+  /// (QRZ, HamDB, POTA, SOTA…), merged with locationScope-aware rules —
+  /// entirely inside the JS runtime via the single `lookupService/core`
+  /// hook (mirrors `ScoringService`'s "one coarse call in, everything back
+  /// out" shape). `online: false` asks every hook to skip network access
+  /// (for a fast local-data-only preview pass); `qso`/`operation` give
+  /// QSO-scoped hooks (e.g. POTA) access to refs already on the in-progress
+  /// QSO. Returns `{lookups: [...], guess: {...}}`, or null if the runtime
+  /// isn't up or nothing came back.
+  Future<Map<String, dynamic>?> lookupCall(
+    String call, {
+    required Map<String, dynamic> qso,
+    required Map<String, dynamic> operation,
+    bool online = true,
+  }) async {
     final host = _host;
     if (host == null || call.length < 3) return null;
 
-    final List<Map<String, dynamic>> entries;
     try {
-      entries = await host.invokeHookAll(
-        'lookup',
-        method: 'lookupCall',
-        args: {'callInfo': {'call': call}},
-        timeout: const Duration(seconds: 5),
+      final result = await host.invokeHook(
+        'lookupService',
+        key: 'core',
+        method: 'lookupCallInfo',
+        args: {
+          'callInfo': {'call': call},
+          'qso': qso,
+          'operation': operation,
+          'online': online,
+        },
+        timeout: const Duration(seconds: 8),
       );
+      if (result is! Map) return null;
+      return result.cast<String, dynamic>();
     } on ExtensionHostException catch (e) {
       debugPrint('[extensions] lookup failed: $e');
       return null;
     }
-
-    const mergeFields = ['name', 'city', 'state', 'country', 'grid', 'lat', 'lon', 'image'];
-    final merged = <String, dynamic>{};
-    final sources = <String>[];
-
-    for (final entry in entries) {
-      if (entry['ok'] != true) continue;
-      final value = entry['value'];
-      if (value is! Map) continue;
-      if ((value['error'] as String?)?.isNotEmpty ?? false) continue;
-
-      var contributed = false;
-      for (final field in mergeFields) {
-        final fieldValue = value[field];
-        if (fieldValue == null || (fieldValue is String && fieldValue.isEmpty)) continue;
-        if (merged[field] == null) {
-          merged[field] = fieldValue;
-          contributed = true;
-        }
-      }
-      if (contributed) sources.add((value['source'] as String?) ?? (entry['key'] as String));
-    }
-
-    if (merged.isEmpty) return null;
-    merged['sources'] = sources;
-    return merged;
   }
 
   /// Asks every registered `command` hook (priority order) to interpret the input command.

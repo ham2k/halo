@@ -8,6 +8,8 @@
     "noEmit": true,
     "skipLibCheck": true,
     "isolatedModules": true,
+    "allowImportingTsExtensions": true,
+    "types": ["node"],
     "paths": {
       "@ham2k/polo-sdk": ["./sdk/src/index.ts"]
     }

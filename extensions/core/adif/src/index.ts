@@ -42,6 +42,11 @@ const ExportHandler = {
     for (const qso of qsos) {
       const our = (qso.our ?? {}) as Record<string, unknown>
       const their = (qso.their ?? {}) as Record<string, unknown>
+      // The merged lookup guess (Lookups feature, ham2k/app-halo-dist#8)
+      // stays nested under `their.guess` rather than flattened onto
+      // `their` itself — fall back to it for fields the operator never
+      // manually entered, same convention as app-polo's ADIF exporter.
+      const theirGuess = (their.guess ?? {}) as Record<string, unknown>
       const startAtMillis = Number(qso.startAtMillis ?? 0)
       const [mode, submode] = adifModeAndSubmodeForMode(String(qso.mode ?? 'SSB'))
       const freqKHz = Number(qso.freq ?? 0)
@@ -59,11 +64,11 @@ const ExportHandler = {
       row += field('RST_SENT', our.sent)
       row += field('RST_RCVD', their.sent)
       row += field('STATION_CALLSIGN', stationCall)
-      row += field('NAME', their.name)
-      row += field('QTH', their.city)
-      row += field('STATE', their.state)
-      row += field('COUNTRY', their.country)
-      row += field('GRIDSQUARE', their.grid)
+      row += field('NAME', their.name ?? theirGuess.name)
+      row += field('QTH', their.city ?? theirGuess.city)
+      row += field('STATE', their.state ?? theirGuess.state)
+      row += field('COUNTRY', their.country ?? theirGuess.country)
+      row += field('GRIDSQUARE', their.grid ?? theirGuess.grid)
       row += field('NOTES', qso.notes)
 
       // Activity extensions contribute their program fields (SIG, POTA_REF…)

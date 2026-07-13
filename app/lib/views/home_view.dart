@@ -396,7 +396,13 @@ class _HomeQuickLookupState extends State<HomeQuickLookup> {
     }
 
     _lookupDebounce = Timer(const Duration(milliseconds: 300), () async {
-      final result = await widget.services.extensions.lookupCall(text);
+      // No in-progress QSO/operation context on this quick-log/command bar
+      // — QSO-scoped lookup hooks (e.g. POTA) simply find nothing to do.
+      final result = await widget.services.extensions.lookupCall(
+        text,
+        qso: const {},
+        operation: const {},
+      );
       if (!mounted || _controller.text.trim() != text) return;
       setState(() {
         _lookupFor = text;
@@ -482,15 +488,12 @@ class _HomeQuickLookupState extends State<HomeQuickLookup> {
   String? get _lookupLine {
     final result = _lookupResult;
     if (result == null || _lookupFor != _controller.text.trim()) return null;
-    final location = [
-      result['city'],
-      result['state'],
-    ].whereType<String>().where((s) => s.isNotEmpty).join(', ');
+    final guess = result['guess'] as Map<String, dynamic>? ?? const {};
     final parts = [
-      result['name'],
-      location.isEmpty ? null : location,
-      result['country'],
-      result['grid'],
+      guess['name'],
+      guess['location'],
+      guess['country'],
+      guess['grid'],
     ].whereType<String>().where((s) => s.isNotEmpty).toList();
     return parts.isEmpty ? null : parts.join(' • ');
   }

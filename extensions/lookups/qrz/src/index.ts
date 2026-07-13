@@ -5,8 +5,9 @@
 // extension doesn't: credentials from host storage, session state kept across
 // calls, and re-login on session expiry.
 
+import { cleanLocationParams } from "@ham2k/lib-geo-tools"
 import { defineExtension, host } from "@ham2k/polo-sdk"
-import type { CallInfo, HookContext, LookupRecord } from "@ham2k/polo-sdk"
+import type { AnnotatedCallInfo, CallInfoLookup, HookContext, JSONValue, LookupResult } from "@ham2k/polo-sdk"
 
 const AGENT = 'polo-next-spike'
 const API = 'https://xmldata.qrz.com/xml/current/'
@@ -102,41 +103,50 @@ async function fetchCall(call: string, ctx: HookContext): Promise<string> {
   return response.body
 }
 
-async function lookupCall({ callInfo }: { callInfo: CallInfo }, ctx: HookContext): Promise<LookupRecord> {
+async function lookupCall(
+  { callInfo }: { callInfo: AnnotatedCallInfo; qso: Record<string, JSONValue>; operation: Record<string, JSONValue> },
+  ctx: HookContext,
+): Promise<LookupResult> {
   const call = (callInfo.call || '').trim().toUpperCase()
-  if (call.length < 3) return { source: 'qrz.com', error: 'callsign too short' }
+  if (call.length < 3 || !ctx.online) return []
 
   try {
     let xml = await fetchCall(call, ctx)
     let error = tag(xml, 'Error')
+    // The result's own locationScope: the full (possibly-prefixed) call
+    // resolved -> inherit whatever locationScope the callInfo already
+    // carried (e.g. 'prefixed' for EA3/KI2D). A fallback to baseCall below
+    // is explicitly the plain home callsign -> 'qth'.
+    let locationScope = callInfo.locationScope ?? 'qth'
 
     // If not found and the call had modifiers, try the base call
     if (error && /not found/i.test(error) && callInfo.baseCall && callInfo.baseCall !== call) {
       xml = await fetchCall(callInfo.baseCall.toUpperCase(), ctx)
       error = tag(xml, 'Error')
+      locationScope = 'qth'
     }
-    if (error) return { source: 'qrz.com', call, error: `QRZ: ${error}` }
+    if (error) return []
 
-    return {
+    const city = tag(xml, 'addr2')
+    const state = tag(xml, 'state')
+    const [lat, lon] = cleanLocationParams(tag(xml, 'lat'), tag(xml, 'lon'))
+    const result: CallInfoLookup = {
+      call: tag(xml, 'call') ?? call,
       source: 'qrz.com',
-      call: tag(xml, 'call'),
+      scope: 'general',
+      locationScope,
       name: [tag(xml, 'fname'), tag(xml, 'name')].filter((x) => x).join(' '),
-      city: tag(xml, 'addr2'),
-      state: tag(xml, 'state'),
+      location: [city, state].filter((x) => x).join(', '),
+      city,
+      state,
       country: tag(xml, 'country'),
       grid: tag(xml, 'grid'),
-      lat: parseCoordinate(tag(xml, 'lat')),
-      lon: parseCoordinate(tag(xml, 'lon')),
-      image: tag(xml, 'image'),
+      lat,
+      lon,
     }
+    return [result]
   } catch (e) {
-    return { source: 'qrz.com', call, error: String((e as Error).message ?? e) }
+    host.log(`QRZ lookup failed for ${call}: ${(e as Error).message ?? e}`)
+    return []
   }
-}
-
-// `parseFloat(x) || undefined` would discard a legitimate 0° (equator or
-// prime meridian) since `0 || undefined` evaluates to undefined.
-function parseCoordinate(value: string | undefined): number | undefined {
-  const parsed = parseFloat(value ?? '')
-  return Number.isFinite(parsed) ? parsed : undefined
 }

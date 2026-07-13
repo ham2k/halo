@@ -17,8 +17,11 @@ import { bandForFrequency } from "@ham2k/lib-operation-data"
 import { locationToGrid6, distanceOnEarth } from "@ham2k/lib-geo-tools"
 import { defineExtension, host } from "@ham2k/polo-sdk"
 import type {
+  AnnotatedCallInfo,
   HookContext,
+  JSONValue,
   LoggingControlDescriptor,
+  LookupResult,
   Ref,
   Spot,
   DataFileDefinition,
@@ -227,6 +230,28 @@ function refsOfType(container: Record<string, unknown>, type: string): Ref[] {
   return (((container.refs as Ref[] | undefined) ?? [])).filter((r) => r.type === type && r.ref)
 }
 
+/// A QSO-scoped grid lookup: any POTA park hunted on THIS qso is a more
+/// specific ("portable") location than a callsign's registered home QTH —
+/// same concept as a `/P` callsign, per ham2k/app-halo-dist#8's worked
+/// example. Skips entirely if there's no POTA ref on the qso, if the
+/// callInfo already has a grid from a higher-priority source, or if this
+/// pass is offline (the network fallback in `fetchPark` needs online).
+async function lookupCall(
+  { callInfo, qso }: { callInfo: AnnotatedCallInfo; qso: Record<string, JSONValue>; operation: Record<string, JSONValue> },
+  ctx: HookContext,
+): Promise<LookupResult> {
+  if (callInfo.grid) return []
+  const refs = refsOfType(qso, HUNTING_TYPE)
+  if (refs.length === 0) return []
+  if (!ctx.online) return []
+
+  const park = await fetchPark(refs[0].ref!.toUpperCase())
+  if (!park?.grid6) return []
+
+  const location = [park.reference, park.locationDesc, park.name].filter((x) => x).join(' ')
+  return [{ call: callInfo.call, source: 'pota', scope: 'qso', locationScope: 'portable', grid: park.grid6, location }]
+}
+
 const AdifFieldsHook = {
   async fieldsForOneQSO(
     { qso, operation }: { qso: Record<string, unknown>; operation: Record<string, unknown> },
@@ -369,6 +394,11 @@ defineExtension({
     registerHook('activity', { hook: ActivityHook, key: 'pota' })
     registerHook('adifFields', { hook: AdifFieldsHook, key: 'pota' })
     registerHook('spots', { hook: SpotsHook, key: 'pota' })
+    // Priority 100 — higher than QRZ (99) / HamDB (50), so the POTA park's
+    // grid is resolved BEFORE a home-QTH lookup can set callInfo.grid; the
+    // `if (callInfo.grid) return []` guard below would otherwise skip this
+    // hook once a lower-priority qth-scope grid was already merged in.
+    registerHook('lookup', { hook: { lookupCall }, key: 'pota', priority: 100 })
     registerHook('dataFile', { hook: potaDataFile, key: 'pota-all-parks' })
   },
 })

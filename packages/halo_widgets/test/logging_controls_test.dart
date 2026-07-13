@@ -371,10 +371,17 @@ void main() {
 
   testWidgets('lookup preview follows the cursor segment within a comma-separated call list', (tester) async {
     final lookups = <String>[];
-    Future<Map<String, dynamic>?> lookup(String call) async {
+    Future<Map<String, dynamic>?> lookup(
+      String call, {
+      required Map<String, dynamic> qso,
+      required Map<String, dynamic> operation,
+      required bool online,
+    }) async {
       lookups.add(call);
       if (call != 'W1AW') return null;
-      return {'name': 'ARRL HQ', 'city': 'Newington', 'state': 'CT', 'grid': 'FN31pr'};
+      return {
+        'guess': {'name': 'ARRL HQ', 'location': 'Newington, CT', 'city': 'Newington', 'state': 'CT', 'grid': 'FN31pr'},
+      };
     }
 
     await tester.pumpWidget(MaterialApp(
@@ -391,9 +398,14 @@ void main() {
   });
 
   testWidgets('logging a comma-separated call list fetches a fresh, independent lookup per call rather than duplicating one cached result', (tester) async {
-    Future<Map<String, dynamic>?> lookup(String call) async {
-      if (call == 'W1AW') return {'name': 'ARRL HQ', 'grid': 'FN31pr'};
-      if (call == 'K1ABC') return {'name': 'Someone Else', 'grid': 'FN42aa'};
+    Future<Map<String, dynamic>?> lookup(
+      String call, {
+      required Map<String, dynamic> qso,
+      required Map<String, dynamic> operation,
+      required bool online,
+    }) async {
+      if (call == 'W1AW') return {'guess': {'name': 'ARRL HQ', 'grid': 'FN31pr'}};
+      if (call == 'K1ABC') return {'guess': {'name': 'Someone Else', 'grid': 'FN42aa'}};
       return null;
     }
 
@@ -420,9 +432,14 @@ void main() {
           'startAtMillis': 1000000,
         })))!;
 
-    Future<Map<String, dynamic>?> lookup(String call) async {
-      if (call == 'W1AW') return {'name': 'ARRL HQ Fresh', 'grid': 'FN99xx'};
-      if (call == 'K1ABC') return {'name': 'Someone Else', 'grid': 'FN42aa'};
+    Future<Map<String, dynamic>?> lookup(
+      String call, {
+      required Map<String, dynamic> qso,
+      required Map<String, dynamic> operation,
+      required bool online,
+    }) async {
+      if (call == 'W1AW') return {'guess': {'name': 'ARRL HQ Fresh', 'grid': 'FN99xx'}};
+      if (call == 'K1ABC') return {'guess': {'name': 'Someone Else', 'grid': 'FN42aa'}};
       return null;
     }
 
@@ -565,9 +582,16 @@ void main() {
   });
 
   testWidgets('call stacking: lookup enrichment applies to the picked call and reaches the logged QSO', (tester) async {
-    Future<Map<String, dynamic>?> lookup(String call) async {
+    Future<Map<String, dynamic>?> lookup(
+      String call, {
+      required Map<String, dynamic> qso,
+      required Map<String, dynamic> operation,
+      required bool online,
+    }) async {
       if (call != 'W1AW') return null;
-      return {'name': 'ARRL HQ', 'city': 'Newington', 'state': 'CT', 'grid': 'FN31pr'};
+      return {
+        'guess': {'name': 'ARRL HQ', 'location': 'Newington, CT', 'city': 'Newington', 'state': 'CT', 'grid': 'FN31pr'},
+      };
     }
 
     await tester.pumpWidget(MaterialApp(
@@ -601,10 +625,17 @@ void main() {
 
   testWidgets('debounced lookup enriches the entry line and the logged QSO', (tester) async {
     var lookups = 0;
-    Future<Map<String, dynamic>?> lookup(String call) async {
+    Future<Map<String, dynamic>?> lookup(
+      String call, {
+      required Map<String, dynamic> qso,
+      required Map<String, dynamic> operation,
+      required bool online,
+    }) async {
       lookups++;
       if (call != 'W1AW') return null;
-      return {'name': 'ARRL HQ', 'city': 'Newington', 'state': 'CT', 'grid': 'FN31pr'};
+      return {
+        'guess': {'name': 'ARRL HQ', 'location': 'Newington, CT', 'city': 'Newington', 'state': 'CT', 'grid': 'FN31pr'},
+      };
     }
 
     await tester.pumpWidget(MaterialApp(
@@ -622,14 +653,15 @@ void main() {
 
     await tester.pump(const Duration(milliseconds: 250));
     await tester.pump();
-    expect(lookups, 1);
+    // Two passes per resolved call: an offline pass, then an online pass.
+    expect(lookups, 2);
     expect(find.textContaining('ARRL HQ'), findsOneWidget);
     expect(find.textContaining('Newington, CT'), findsOneWidget);
 
     await tester.sendKeyEvent(LogicalKeyboardKey.enter);
     final logged = await waitForQsos(tester, 1);
     expect(logged.single.theirName, 'ARRL HQ');
-    expect(logged.single.data['their']['grid'], 'FN31pr');
+    expect(logged.single.theirGrid, 'FN31pr');
 
     // Wipe cleared the enrichment line.
     expect(find.textContaining('ARRL HQ'), findsNothing);

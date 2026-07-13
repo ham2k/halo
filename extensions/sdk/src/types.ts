@@ -13,27 +13,44 @@ export interface HookContext {
   locale?: string
 }
 
-export interface CallInfo {
-  call: string
-  baseCall?: string
-}
+export type { CallInfo, CallInfoLookup, AnnotatedCallInfo } from "@ham2k/lib-qson-tools"
+import type { CallInfo, CallInfoLookup, AnnotatedCallInfo } from "@ham2k/lib-qson-tools"
 
-export interface LookupRecord {
-  source: string
-  call?: string
-  name?: string
-  city?: string
-  state?: string
-  country?: string
-  grid?: string
-  lat?: number
-  lon?: number
-  image?: string
-  error?: string
-}
+/// A lookup hook may return zero or more records for one decoration pass —
+/// `[]` to skip (e.g. the field it would provide is already known).
+export type LookupResult = CallInfoLookup[]
 
+/// Registered under category `lookup`. Called once per decoration pass, in
+/// priority order, by the core `lookupService/core` hook's internal
+/// sequential fan-out — never directly from Dart. Receives the CallInfo
+/// being decorated so far (including its `lookups` and merged `guess`), the
+/// full `qso` and `operation` it belongs to (e.g. so a POTA lookup can
+/// inspect `qso.refs`), and whether this pass should attempt network calls.
 export interface LookupHook {
-  lookupCall(args: { callInfo: CallInfo }, ctx: HookContext): Promise<LookupRecord>
+  lookupCall(
+    args: { callInfo: AnnotatedCallInfo; qso: Record<string, JSONValue>; operation: Record<string, JSONValue> },
+    ctx: HookContext,
+  ): Promise<LookupResult>
+}
+
+export interface LookupServiceRequest {
+  callInfo: CallInfo
+  qso: Record<string, JSONValue>
+  operation: Record<string, JSONValue>
+}
+
+export interface LookupServiceResult {
+  lookups: CallInfoLookup[]
+  guess: CallInfo
+}
+
+/// Registered under category `lookupService`, key `core` — the single
+/// hardcoded orchestrator (mirrors `scoring/core`). Dart calls this ONE
+/// hook; it runs the hardcoded callsign-annotation pre-step, fans out to
+/// every `lookup` hook in priority order, and merges results according to
+/// the locationScope rules internally.
+export interface LookupServiceHook {
+  lookupCallInfo(args: LookupServiceRequest, ctx: HookContext): Promise<LookupServiceResult>
 }
 
 export interface SpotRef {
@@ -335,6 +352,7 @@ export interface AccountHook {
 
 export type Hook =
   | LookupHook
+  | LookupServiceHook
   | SpotsHook
   | ExportHook
   | ScoringHook

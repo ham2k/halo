@@ -21,22 +21,74 @@ Status legend: ✅ implemented · 🔜 planned (design in DESIGN.md §4).
 
 ## ✅ `lookup` — callsign lookups
 
-Data sources for callsign enrichment (QRZ, HamDB, HamQTH…). The core fans
-out to **all** lookup hooks via `invokeHookAll` and merges results in
-priority order — the first source to provide a field wins; `sources` records
-attribution. Fired debounced from the logging panel, never per-keystroke.
+Data sources for callsign/QSO enrichment (QRZ, HamDB, POTA, SOTA…). Never
+called directly from Dart — the `lookupService/core` hook below fans out to
+every registered `lookup` hook **sequentially, in priority order**, folding
+each result into the next hook's input, and applies the locationScope-aware
+merge rules (see below). Fired debounced from the logging panel, never
+per-keystroke.
 
 ```ts
 interface LookupHook {
-  lookupCall(args: { callInfo: CallInfo }, ctx): Promise<LookupRecord>
+  lookupCall(args: { callInfo: AnnotatedCallInfo; qso; operation }, ctx): Promise<LookupResult>
 }
-// CallInfo:     {call, baseCall?}
-// LookupRecord: {source, call?, name?, city?, state?, country?, grid?,
-//                lat?, lon?, image?, error?}
+// AnnotatedCallInfo: CallInfo & {guess?: CallInfo, lookups?: CallInfoLookup[]}
+// LookupResult:      CallInfoLookup[] — zero or more records; [] to skip
+// CallInfoLookup:    CallInfo & {source?, scope?: 'general'|'operation'|'qso', notes?, history?}
 ```
 
-Return `{source, error}` for "can't answer" (not configured, not found) —
-never throw for expected conditions. Implemented by: `hamdb`, `qrz`.
+Return `[]` for "can't answer" (not configured, not found, or `!ctx.online`
+and this source has no offline data) — never throw for expected conditions.
+`callInfo`/`qso`/`operation` are the full QSON-shaped objects (all from
+`@ham2k/lib-qson-tools`'s `CallInfo`/`QSON` types), so e.g. a POTA lookup can
+inspect `qso.refs` for a hunted park reference. Implemented by: `hamdb`,
+`qrz` (`scope: 'general'`), `pota`, `sota` (`scope: 'qso'`, grid of any
+hunted ref on the current QSO).
+
+## ✅ `lookupService` — the lookup orchestrator
+
+One hook call resolves an entire callsign decoration pass: the hardcoded
+callsign-annotation pre-step (via `@ham2k/lib-country-files`, always first,
+regardless of any other hook's priority) plus every registered `lookup` hook
+above, merged according to the `locationScope` rules — all inside the
+runtime, mirroring `scoring`'s "one coarse call in, everything back out"
+shape.
+
+```ts
+interface LookupServiceHook {
+  lookupCallInfo(args: { callInfo: CallInfo; qso; operation }, ctx): Promise<{ lookups: CallInfoLookup[]; guess: CallInfo }>
+}
+```
+
+**locationScope merge rules** (`CallInfo.locationScope`, ranked
+`qth < prefixed < portable`, most general to most specific):
+- A result whose `locationScope` is strictly more specific than the current
+  guess's clears all location fields (`locSource, lat, lon, grid, city,
+  state, county, country`) before merging the result in, and the guess
+  adopts the more specific scope.
+- Otherwise, priority order applies as usual: a field already present in the
+  guess is never overwritten by a later (lower-priority) result. A
+  location field additionally requires the result's own scope to be at
+  least as specific as the guess's current scope — a more general-scoped
+  result can never populate a slot a more specific one already claimed,
+  even if that slot is currently empty.
+- Grid/lat-lon reconciliation, scoped to fields the result actually set:
+  grid-only → lat/lon computed from the grid; lat/lon-only → a 6-digit grid
+  computed from them; both given → taken verbatim. Setting grid/lat/lon
+  clears city/state/country/county unless the *same* result also supplies
+  them; conversely, setting city/state/country (without county, and without
+  also setting grid/lat/lon in the same result) clears grid/lat/lon.
+- `notes`/`history` are per-`CallInfoLookup` fields, not part of the merged
+  `guess` — they simply accumulate, unconditionally, in the returned
+  `lookups[]` array.
+
+Implemented by: `lookups` (key `core`). The merge algorithm itself
+(`mergeLookupIntoGuess`/`runLookupPipeline` in
+`extensions/core/lookups/src/mergeLookup.ts`) is a pure, host-independent
+function with its own unit test suite
+(`extensions/core/lookups/src/mergeLookup.test.ts`, run via `npm test` in
+`extensions/`) — this is the highest-defect-risk logic in the feature, so it
+is tested in isolation from the hook/bridge plumbing.
 
 ## ✅ `spots` — spot sources
 
