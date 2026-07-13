@@ -534,6 +534,24 @@ export interface FormField {
   /// tinted, no badge or border). For settings that only matter for
   /// debugging/development, not end users.
   devMode?: boolean
+  /// Opts this field into the compact list-row layout used by the Sync/
+  /// Accounts settings panels: a leading icon, bold `label`, optional
+  /// `description` below it, and a compact version of the field's own
+  /// control on the trailing side — instead of the default standalone
+  /// Material input. Icon names follow the same convention as
+  /// SettingsPanelDescriptor.icon (an MDI name resolved via
+  /// resolveIconName). Only meaningful for fieldType 'select', 'checkbox',
+  /// and the plain text-like types (text/multiline/email/callsign/number/
+  /// secret) — 'list', 'radio', and 'account' ignore it and keep their
+  /// existing rendering, since a multi-option or multi-row control doesn't
+  /// have an obvious compact form.
+  icon?: string
+  /// Freeform text shown under `label` when `icon` is set — typically a
+  /// description of what the current value means (e.g. "Always in Light
+  /// Mode"), recomputed by the extension each time `getDefinition` runs so
+  /// it can reflect the field's current value. Ignored when `icon` isn't
+  /// set.
+  description?: string
 }
 
 export interface FormHeader {
@@ -541,6 +559,12 @@ export interface FormHeader {
   title: string
   subtitle?: string
   devMode?: boolean
+  /// Defaults to the form dialog's usual bold header look. Set to
+  /// 'section' to instead match the compact section-divider style used by
+  /// the Sync/Accounts/General settings panels — for a settingsPanel
+  /// carving its fields into named groups, not for an ad hoc form's own
+  /// title.
+  style?: 'default' | 'section'
 }
 
 export interface FormSectionDivider {

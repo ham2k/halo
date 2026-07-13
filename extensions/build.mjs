@@ -70,6 +70,7 @@ function sharedLibsPlugin(extensionDependencies = {}) {
 
 const bundles = [
   { key: 'kernel', entry: 'sdk/src/kernel.ts', kind: 'kernel' },
+  { key: 'settings', entry: 'core/settings/src/index.ts', kind: 'extension' },
   { key: 'adif', entry: 'core/adif/src/index.ts', kind: 'extension' },
   { key: 'scoring', entry: 'core/scoring/src/index.ts', kind: 'extension' },
   { key: 'lookups', entry: 'core/lookups/src/index.ts', kind: 'extension' },

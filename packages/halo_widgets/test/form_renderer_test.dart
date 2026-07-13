@@ -632,4 +632,250 @@ void main() {
       expect(normalField.decoration?.floatingLabelStyle?.color, isNot(HaLoColors.light.devMode));
     });
   });
+
+  group('FormRenderer icon-row fields', () {
+    final iconRowFormDefinition = {
+      'elements': [
+        {
+          'type': 'field',
+          'fieldType': 'select',
+          'key': 'themeMode',
+          'label': 'Theme Mode',
+          'icon': 'white-balance-sunny',
+          'description': 'Always in Light Mode',
+          'value': 'light',
+          'options': [
+            {'label': 'Light', 'value': 'light'},
+            {'label': 'Dark', 'value': 'dark'},
+          ],
+        },
+        {
+          'type': 'field',
+          'fieldType': 'select',
+          'key': 'noIcon',
+          'label': 'Plain Select',
+          'value': 'a',
+          'options': [
+            {'label': 'A', 'value': 'a'},
+            {'label': 'B', 'value': 'b'},
+          ],
+        },
+      ],
+    };
+
+    testWidgets('a field with icon set renders as a list row: leading icon, bold label, description, compact trailing control', (tester) async {
+      await tester.pumpWidget(MaterialApp(
+        home: Scaffold(
+          body: FormRenderer(
+            formDefinition: iconRowFormDefinition,
+            initialState: const {},
+            onSubmit: (_) {},
+            onCancel: () {},
+          ),
+        ),
+      ));
+
+      // The icon-row field renders inside a ListTile (leading icon, title,
+      // subtitle) instead of the standalone DropdownButtonFormField a
+      // 'select' field normally gets.
+      expect(find.byType(ListTile), findsOneWidget);
+      expect(find.text('Theme Mode'), findsOneWidget);
+      expect(find.text('Always in Light Mode'), findsOneWidget);
+      expect(find.text('Light'), findsOneWidget);
+
+      final title = tester.widget<Text>(find.text('Theme Mode'));
+      expect(title.style?.fontWeight, FontWeight.bold);
+
+      // A field with no `icon` is untouched — still the standalone Material
+      // input, not swept into the list-row layout.
+      expect(find.byType(DropdownButtonFormField<dynamic>), findsOneWidget);
+      expect(find.text('Plain Select'), findsOneWidget);
+    });
+
+    testWidgets('selecting a new value in the compact control commits it like the standalone control would', (tester) async {
+      Map<String, dynamic>? submittedValues;
+      await tester.pumpWidget(MaterialApp(
+        home: Scaffold(
+          body: FormRenderer(
+            formDefinition: iconRowFormDefinition,
+            initialState: const {},
+            onSubmit: (vals) => submittedValues = vals,
+            onCancel: () {},
+          ),
+        ),
+      ));
+
+      await tester.tap(find.text('Light'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Dark').last);
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.widgetWithText(FilledButton, 'Save'));
+      await tester.pumpAndSettle();
+
+      expect(submittedValues!['themeMode'], 'dark');
+    });
+
+    testWidgets('on a narrow panel, the control stacks below the title/description instead of trailing beside them', (tester) async {
+      await tester.pumpWidget(MaterialApp(
+        home: Scaffold(
+          body: SizedBox(
+            width: 300, // below FormRendererState._iconRowStackBreakpoint (400)
+            child: FormRenderer(
+              formDefinition: iconRowFormDefinition,
+              initialState: const {},
+              onSubmit: (_) {},
+              onCancel: () {},
+            ),
+          ),
+        ),
+      ));
+
+      // No longer inside the ListTile's trailing slot — this asserts the
+      // dropdown ends up below the title, not just that it's present.
+      final titleBottom = tester.getBottomLeft(find.text('Theme Mode')).dy;
+      final dropdownTop = tester.getTopLeft(find.text('Light')).dy;
+      expect(dropdownTop, greaterThan(titleBottom));
+
+      // The dropdown itself grows to the full available width instead of
+      // staying a small fixed-size control.
+      // The form also has a plain (no-icon) select field, whose standard
+      // DropdownButtonFormField wraps its own internal DropdownButton — so
+      // there are two in the tree; pick the themeMode one by its value.
+      final dropdown = tester.widgetList<DropdownButton>(find.byType(DropdownButton<dynamic>)).firstWhere((d) => d.value == 'light');
+      expect(dropdown.isExpanded, isTrue);
+    });
+
+    testWidgets('a toggle (checkbox) field stays trailing even on a narrow panel', (tester) async {
+      final toggleFormDefinition = {
+        'elements': [
+          {
+            'type': 'field',
+            'fieldType': 'checkbox',
+            'key': 'syncEnabled',
+            'label': 'Sync with Ham2K Log Filer',
+            'icon': 'cloud-sync-outline',
+            'value': false,
+          },
+        ],
+      };
+
+      await tester.pumpWidget(MaterialApp(
+        home: Scaffold(
+          body: SizedBox(
+            width: 300,
+            child: FormRenderer(
+              formDefinition: toggleFormDefinition,
+              initialState: const {},
+              onSubmit: (_) {},
+              onCancel: () {},
+            ),
+          ),
+        ),
+      ));
+
+      final titleTop = tester.getTopLeft(find.text('Sync with Ham2K Log Filer')).dy;
+      final switchTop = tester.getTopLeft(find.byType(Switch)).dy;
+      // Still on the same row as the title, not pushed below it.
+      expect((switchTop - titleTop).abs(), lessThan(20));
+    });
+  });
+
+  group('FormRenderer header style', () {
+    testWidgets('a header with no style (or style: default) keeps the bold form-title look', (tester) async {
+      await tester.pumpWidget(MaterialApp(
+        home: Scaffold(
+          body: FormRenderer(
+            formDefinition: const {
+              'elements': [
+                {'type': 'header', 'title': 'Plain Header'},
+              ],
+            },
+            initialState: const {},
+            onSubmit: (_) {},
+            onCancel: () {},
+          ),
+        ),
+      ));
+
+      final header = tester.widget<Text>(find.text('Plain Header'));
+      expect(header.style?.fontWeight, FontWeight.w900);
+      expect(header.style?.fontFamily, 'RobotoSlab');
+    });
+
+    testWidgets("style: 'section' switches to the smaller Sync/Accounts section-header look", (tester) async {
+      await tester.pumpWidget(MaterialApp(
+        home: Scaffold(
+          body: FormRenderer(
+            formDefinition: const {
+              'elements': [
+                {'type': 'header', 'title': 'Section Header', 'style': 'section'},
+              ],
+            },
+            initialState: const {},
+            onSubmit: (_) {},
+            onCancel: () {},
+          ),
+        ),
+      ));
+
+      final header = tester.widget<Text>(find.text('Section Header'));
+      expect(header.style?.fontWeight, isNot(FontWeight.w900));
+      expect(header.style?.fontFamily, isNot('RobotoSlab'));
+    });
+  });
+
+  group('FormRenderer fields appearing after a formDefinition change', () {
+    testWidgets('a field absent from the old definition is fully initialized (not just value-synced) when it first appears', (tester) async {
+      final withoutExtra = {
+        'elements': [
+          {'type': 'field', 'fieldType': 'text', 'key': 'always', 'label': 'Always Present', 'value': ''},
+        ],
+      };
+      final withExtra = {
+        'elements': [
+          {'type': 'field', 'fieldType': 'text', 'key': 'always', 'label': 'Always Present', 'value': ''},
+          {'type': 'field', 'fieldType': 'text', 'key': 'extra', 'label': 'Newly Appeared', 'value': ''},
+        ],
+      };
+
+      Map<String, dynamic> currentDefinition = withoutExtra;
+      late StateSetter setOuterState;
+      Map<String, dynamic>? submittedValues;
+
+      await tester.pumpWidget(StatefulBuilder(
+        builder: (context, setState) {
+          setOuterState = setState;
+          return MaterialApp(
+            home: Scaffold(
+              body: FormRenderer(
+                formDefinition: currentDefinition,
+                initialState: const {},
+                onSubmit: (vals) => submittedValues = vals,
+                onCancel: () {},
+              ),
+            ),
+          );
+        },
+      ));
+
+      expect(find.text('Newly Appeared'), findsNothing);
+
+      // Simulate a settings-panel-style re-fetch that adds a field, the
+      // same way _ExtensionSettingsPanel swaps in a new formDefinition.
+      setOuterState(() => currentDefinition = withExtra);
+      await tester.pump();
+
+      expect(find.text('Newly Appeared'), findsOneWidget);
+
+      // The newly-appeared field must have a real, wired-up TextField —
+      // typing into it must actually reach _values (and thus submit()),
+      // not a Flutter-internal untracked controller.
+      await tester.enterText(find.widgetWithText(TextField, 'Newly Appeared'), 'hello');
+      await tester.tap(find.widgetWithText(FilledButton, 'Save'));
+      await tester.pumpAndSettle();
+
+      expect(submittedValues!['extra'], 'hello');
+    });
+  });
 }

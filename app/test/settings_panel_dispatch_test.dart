@@ -239,6 +239,40 @@ void main() {
     expect(result, 'Cache cleared');
   });
 
+  test('transformSettingsField falls back to the original value when the hook has no transformField method', () async {
+    // No 'settingsPanel:core:transformField' entry registered — the bridge
+    // call resolves to null, same as a Tier 2 hook that never declared
+    // transformField at all. Must not let that null silently replace a
+    // real value before it reaches onChangeField/commitSettingsFieldValue.
+    final mockHost = MockExtensionHost(const {});
+    final extensions = MockExtensionService(mockHost)..settings = settings;
+
+    final result = await extensions.transformSettingsField(
+      hookKey: 'core',
+      panelKey: 'core',
+      fieldKey: 'themeMode',
+      value: 'dark',
+      state: const {},
+    );
+    expect(result, 'dark');
+  });
+
+  test('transformSettingsField still applies a real transformField result when the hook has one', () async {
+    final mockHost = MockExtensionHost({
+      'settingsPanel:lofi:transformField': 'TRANSFORMED',
+    });
+    final extensions = MockExtensionService(mockHost)..settings = settings;
+
+    final result = await extensions.transformSettingsField(
+      hookKey: 'lofi',
+      panelKey: 'lofi',
+      fieldKey: 'endpoint',
+      value: 'raw',
+      state: const {},
+    );
+    expect(result, 'TRANSFORMED');
+  });
+
   test('identityFromCredentials picks username, then email, then login, in that order', () {
     expect(ExtensionService.identityFromCredentials({'username': 'KI2D', 'email': 'x@y.com'}), 'KI2D');
     expect(ExtensionService.identityFromCredentials({'email': 'x@y.com', 'login': 'other'}), 'x@y.com');

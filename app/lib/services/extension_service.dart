@@ -18,6 +18,7 @@ import 'package:url_launcher/url_launcher.dart';
 import 'settings_service.dart';
 import 'status_bar_service.dart';
 import 'package:halo_widgets/halo_widgets.dart';
+import '../i18n/strings.g.dart';
 import '../main.dart';
 
 /// The QSON payload shape shared by every hook that takes a whole operation's
@@ -284,6 +285,13 @@ class ExtensionService {
 
   /// Transforms one field's value (Tier 2 only — Tier 1 fields never carry
   /// a transform, by construction of the `SettingsField` type).
+  /// `transformField` is optional on `DynamicSettingsPanel` — a hook that
+  /// doesn't implement it has nothing to distinguish "no transform
+  /// declared" from "explicitly transformed to null" once the call comes
+  /// back over the bridge (kernel.ts's generic dispatch has no per-field
+  /// fallback the way the `form` category's kernel-side wrapper does), so
+  /// a bare `null` result falls back to the original value rather than
+  /// silently nulling out the field being committed.
   Future<dynamic> transformSettingsField({
     required String hookKey,
     required String panelKey,
@@ -294,12 +302,13 @@ class ExtensionService {
     final host = this.host;
     if (host == null) return value;
     try {
-      return await host.invokeHook(
+      final result = await host.invokeHook(
         'settingsPanel',
         key: hookKey,
         method: 'transformField',
         args: {'panelKey': panelKey, 'fieldKey': fieldKey, 'value': value, 'state': state},
       );
+      return result ?? value;
     } catch (e) {
       return value;
     }
@@ -416,6 +425,50 @@ class ExtensionService {
         return {
           'developerMode': settings?.developerMode ?? false,
           'locale': settings?.locale ?? 'en',
+        };
+      case 'getCoreSettings':
+        return {
+          'themeMode': settings?.themeMode.name ?? 'system',
+          'locale': settings?.locale ?? 'en',
+          'fontScale': settings?.fontScale.name ?? 'normal',
+        };
+      case 'setCoreSetting':
+        final settingKey = params['key'] as String;
+        final value = params['value'];
+        if (value is! String) {
+          debugPrint('[extensions] setCoreSetting: "$settingKey" got a non-string value ($value) — ignored');
+          return null;
+        }
+        switch (settingKey) {
+          case 'themeMode':
+            final mode = _enumByNameOrNull(ThemeMode.values, value);
+            if (mode == null) {
+              debugPrint('[extensions] setCoreSetting: "themeMode" got an unrecognized value ($value) — ignored');
+              return null;
+            }
+            await settings?.setThemeMode(mode);
+          case 'locale':
+            await settings?.setLocale(value);
+            LocaleSettings.setLocaleRaw(value);
+          case 'fontScale':
+            final scale = _enumByNameOrNull(FontScale.values, value);
+            if (scale == null) {
+              debugPrint('[extensions] setCoreSetting: "fontScale" got an unrecognized value ($value) — ignored');
+              return null;
+            }
+            await settings?.setFontScale(scale);
+          default:
+            debugPrint('[extensions] setCoreSetting: unknown key "$settingKey"');
+        }
+        return null;
+      case 'translate':
+        final key = params['key'] as String;
+        final value = t[key];
+        return value is String ? value : null;
+      case 'translateAll':
+        final keys = (params['keys'] as List).cast<String>();
+        return {
+          for (final key in keys) key: (t[key] is String ? t[key] : null),
         };
       case 'dbLookupSelectOne':
         final category = params['category'] as String;
@@ -828,6 +881,19 @@ class ExtensionService {
       debugPrint('[extensions] syncLinkClientWithEmail failed: $e');
       return null;
     }
+  }
+
+  /// `Enum.values.byName` throws for any name that isn't an exact match —
+  /// too strict for a value crossing the extension bridge, where a stale
+  /// bundle or a third-party extension could send anything. Used by
+  /// setCoreSetting so an unrecognized value degrades the same way an
+  /// unrecognized settingKey or a non-String value already does: logged and
+  /// ignored, not an uncaught exception.
+  static T? _enumByNameOrNull<T extends Enum>(List<T> values, String name) {
+    for (final value in values) {
+      if (value.name == name) return value;
+    }
+    return null;
   }
 
   /// Decorates a ref (park name, location…) via its `ref:<type>` handler.

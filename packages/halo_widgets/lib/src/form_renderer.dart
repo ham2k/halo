@@ -6,6 +6,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
+import 'icon_resolver.dart';
 import 'theme.dart';
 
 typedef FormValidator = Future<String?> Function(String fieldKey, dynamic value, Map<String, dynamic> state);
@@ -88,50 +89,112 @@ class FormRendererState extends State<FormRenderer> {
     _initializeFormState();
   }
 
-  void _initializeFormState() {
+  @override
+  void didUpdateWidget(covariant FormRenderer oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (!identical(oldWidget.formDefinition, widget.formDefinition)) {
+      _syncFieldValuesFromDefinition(oldWidget.formDefinition);
+    }
+  }
+
+  static List<Map<String, dynamic>> _fieldsIn(Map<String, dynamic> definition) => (definition['elements'] as List? ?? const [])
+      .cast<Map<String, dynamic>>()
+      .where((el) => el['type'] == 'field')
+      .toList();
+
+  /// A field's `value` here is the source of truth — set by whatever last
+  /// called [FormRenderer] with a new [formDefinition] (e.g. a settings
+  /// panel re-fetching after a value changed outside this widget entirely,
+  /// like a keyboard shortcut). [initState] only ever sees this once, so
+  /// without this, [_values] would silently go stale on every subsequent
+  /// formDefinition change. A field absent from the OLD definition (e.g.
+  /// one that only appears once another field reaches some value) is never
+  /// "updated" — it's brand new — so it goes through [_initializeField]
+  /// instead, same as every field does on first mount; without that, it
+  /// would render with no controller/focus node and silently drop input.
+  /// For a field present in both, only overwrites [_values] when it still
+  /// matches what the OLD definition said — a field the user has locally
+  /// edited but not yet had committed back through [onChange] is left
+  /// alone, since here we can't tell that apart from a real external update
+  /// racing it.
+  void _syncFieldValuesFromDefinition(Map<String, dynamic> oldDefinition) {
+    final oldValues = {for (final f in _fieldsIn(oldDefinition)) f['key'] as String: f['value']};
+    final changes = <String, dynamic>{};
+    final newFields = <Map<String, dynamic>>[];
     for (final field in _fields) {
       final key = field['key'] as String;
-      final fieldType = field['fieldType'] as String;
-      var val = widget.initialState[key] ?? field['value'];
-      if (val == null) {
-        if (fieldType == 'checkbox') {
-          val = false;
-        } else if (fieldType == 'list') {
-          val = <Map<String, dynamic>>[];
-        } else if (['select', 'radio', 'number', 'account'].contains(fieldType)) {
-          val = null;
-        } else {
-          val = '';
+      if (!oldValues.containsKey(key)) {
+        if (!_values.containsKey(key)) newFields.add(field);
+        continue;
+      }
+      final newVal = field['value'];
+      if (newVal != oldValues[key] && _values[key] == oldValues[key]) {
+        changes[key] = newVal;
+      }
+    }
+    if (changes.isEmpty && newFields.isEmpty) return;
+    setState(() {
+      for (final entry in changes.entries) {
+        _values[entry.key] = entry.value;
+        final controller = _controllers[entry.key];
+        if (controller != null && controller.text != (entry.value?.toString() ?? '')) {
+          controller.text = entry.value?.toString() ?? '';
         }
       }
-      _values[key] = val;
-
-      final focusNode = FocusNode();
-      _focusNodes[key] = focusNode;
-
-      if (['text', 'multiline', 'email', 'callsign', 'number', 'secret'].contains(fieldType)) {
-        final controller = TextEditingController(text: val?.toString() ?? '');
-        _controllers[key] = controller;
-        controller.addListener(() {
-          final text = controller.text;
-          dynamic parsed = text;
-          if (fieldType == 'number') {
-            parsed = num.tryParse(text);
-          }
-          if (_values[key] != parsed) {
-            setState(() {
-              _values[key] = parsed;
-              _errors.remove(key);
-            });
-          }
-        });
-
-        focusNode.addListener(() {
-          if (!focusNode.hasFocus) {
-            _handleFieldBlurOrInteraction(key, _values[key]);
-          }
-        });
+      for (final field in newFields) {
+        _initializeField(field);
       }
+    });
+  }
+
+  void _initializeFormState() {
+    for (final field in _fields) {
+      _initializeField(field);
+    }
+  }
+
+  void _initializeField(Map<String, dynamic> field) {
+    final key = field['key'] as String;
+    final fieldType = field['fieldType'] as String;
+    var val = widget.initialState[key] ?? field['value'];
+    if (val == null) {
+      if (fieldType == 'checkbox') {
+        val = false;
+      } else if (fieldType == 'list') {
+        val = <Map<String, dynamic>>[];
+      } else if (['select', 'radio', 'number', 'account'].contains(fieldType)) {
+        val = null;
+      } else {
+        val = '';
+      }
+    }
+    _values[key] = val;
+
+    final focusNode = FocusNode();
+    _focusNodes[key] = focusNode;
+
+    if (['text', 'multiline', 'email', 'callsign', 'number', 'secret'].contains(fieldType)) {
+      final controller = TextEditingController(text: val?.toString() ?? '');
+      _controllers[key] = controller;
+      controller.addListener(() {
+        final text = controller.text;
+        dynamic parsed = text;
+        if (fieldType == 'number') {
+          parsed = num.tryParse(text);
+        }
+        if (_values[key] != parsed) {
+          setState(() {
+            _values[key] = parsed;
+            _errors.remove(key);
+          });
+        }
+      });
+
+      focusNode.addListener(() {
+        if (!focusNode.hasFocus) {
+          _handleFieldBlurOrInteraction(key, _values[key]);
+        }
+      });
     }
   }
 
@@ -344,21 +407,34 @@ class FormRendererState extends State<FormRenderer> {
     );
   }
 
+  /// `style: 'section'` opts into the same typography as the section
+  /// headers used in the Sync/Accounts settings panels (see SectionHeader)
+  /// — smaller and less bold than the default. Opt-in, not the default,
+  /// because `_buildHeader` renders `type: 'header'` elements for every
+  /// FormRenderer caller, not just settings panels — an ad hoc extension
+  /// form's own section headers keep the original bold look unless they
+  /// explicitly ask for the settings-panel one. Doesn't reuse SectionHeader
+  /// itself even when 'section' is requested: that widget bakes in its own
+  /// 16px horizontal padding, sized for a container with none of its own
+  /// (Sync/Accounts' ListView) — here, the horizontal inset already comes
+  /// from the outer SingleChildScrollView every field in this form shares,
+  /// so adding SectionHeader's on top would double it.
   Widget _buildHeader(Map<String, dynamic> el, ThemeData theme) {
     final title = el['title'] as String? ?? '';
     final subtitle = el['subtitle'] as String?;
     final devModeColor = _devModeColor(el);
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          title,
-          style: theme.textTheme.titleMedium?.copyWith(
+    final isSection = el['style'] == 'section';
+    final titleStyle = isSection
+        ? theme.textTheme.titleSmall?.copyWith(color: devModeColor ?? theme.colorScheme.primary)
+        : theme.textTheme.titleMedium?.copyWith(
             fontFamily: 'RobotoSlab',
             fontWeight: FontWeight.w900,
             color: devModeColor ?? theme.colorScheme.primary,
-          ),
-        ),
+          );
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(title, style: titleStyle),
         if (subtitle != null && subtitle.isNotEmpty) ...[
           const SizedBox(height: 4),
           Text(
@@ -402,8 +478,18 @@ class FormRendererState extends State<FormRenderer> {
     );
   }
 
+  static const _iconRowSupportedTypes = {'text', 'multiline', 'email', 'callsign', 'number', 'secret', 'select', 'checkbox'};
+
+  /// Field types whose compact trailing control this can build. 'list',
+  /// 'radio', and 'account' fall back to their normal full-width rendering
+  /// even when `icon` is set — a multi-option or multi-row control doesn't
+  /// have an obvious single-line compact form.
   Widget _buildField(Map<String, dynamic> el, ThemeData theme) {
     final fieldType = el['fieldType'] as String?;
+    if (el['icon'] != null && _iconRowSupportedTypes.contains(fieldType)) {
+      return _buildIconRowField(el, fieldType!, theme);
+    }
+
     final key = el['key'] as String;
     final label = el['label'] as String? ?? '';
     final placeholder = el['placeholder'] as String?;
@@ -573,6 +659,152 @@ class FormRendererState extends State<FormRenderer> {
         );
       default:
         return const SizedBox.shrink();
+    }
+  }
+
+  /// Below this width, an icon-row field stacks its control under the
+  /// title/description instead of trailing beside them — a compact
+  /// dropdown or 140px text field next to a label leaves too little room
+  /// for either on a narrow panel/phone screen. A toggle is exempt (see
+  /// [_buildIconRowField]): a Switch is already as small as it gets, and
+  /// stacking it under a one-line label would waste more space than it
+  /// saves.
+  static const _iconRowStackBreakpoint = 400.0;
+
+  /// The Sync/Accounts panel row shape: leading icon, bold title, an
+  /// optional description underneath (or the validation error, in its
+  /// place), and a compact version of the field's control on the trailing
+  /// side — as opposed to the standalone Material input the default
+  /// [_buildField] switch renders. Below [_iconRowStackBreakpoint], the
+  /// control instead renders full-width on its own row underneath, unless
+  /// it's a toggle (checkbox), which always stays trailing.
+  Widget _buildIconRowField(Map<String, dynamic> el, String fieldType, ThemeData theme) {
+    final key = el['key'] as String;
+    final label = el['label'] as String? ?? '';
+    final description = el['description'] as String?;
+    final icon = el['icon'] as String?;
+    final errorText = _errors[key];
+    final devModeColor = _devModeColor(el);
+
+    Widget? subtitle;
+    if (errorText != null) {
+      subtitle = Text(errorText, style: TextStyle(color: theme.colorScheme.error, fontSize: 12));
+    } else if (description != null && description.isNotEmpty) {
+      subtitle = Text(description, style: TextStyle(color: devModeColor));
+    }
+
+    final leading = icon != null ? Icon(resolveIconName(icon), color: devModeColor) : null;
+    final title = Text(label, style: theme.textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.bold, color: devModeColor));
+
+    if (fieldType == 'checkbox') {
+      return ListTile(
+        contentPadding: EdgeInsets.zero,
+        leading: leading,
+        title: title,
+        subtitle: subtitle,
+        trailing: _buildCompactControl(el, fieldType, devModeColor, expanded: false),
+      );
+    }
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        if (constraints.maxWidth >= _iconRowStackBreakpoint) {
+          return ListTile(
+            contentPadding: EdgeInsets.zero,
+            leading: leading,
+            title: title,
+            subtitle: subtitle,
+            trailing: _buildCompactControl(el, fieldType, devModeColor, expanded: false),
+          );
+        }
+        return Padding(
+          padding: const EdgeInsets.symmetric(vertical: 4),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: leading,
+                title: title,
+                subtitle: subtitle,
+              ),
+              _buildCompactControl(el, fieldType, devModeColor, expanded: true),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  TextInputType? _keyboardTypeFor(String fieldType) => switch (fieldType) {
+        'email' => TextInputType.emailAddress,
+        'number' => const TextInputType.numberWithOptions(decimal: true, signed: true),
+        _ => null,
+      };
+
+  List<TextInputFormatter>? _inputFormattersFor(String fieldType) => switch (fieldType) {
+        'callsign' => [TextInputFormatter.withFunction((oldValue, newValue) => newValue.copyWith(text: newValue.text.toUpperCase()))],
+        'number' => [FilteringTextInputFormatter.allow(RegExp(r'[0-9.-]'))],
+        _ => null,
+      };
+
+  /// `expanded` is the narrow-layout, stacked-under-the-title form: full
+  /// width instead of a fixed compact size, start-aligned text instead of
+  /// end-aligned (there's no label/description to its left to align
+  /// against anymore). Ignored for 'checkbox', which is never stacked.
+  Widget _buildCompactControl(Map<String, dynamic> el, String fieldType, Color? devModeColor, {required bool expanded}) {
+    final key = el['key'] as String;
+    final options = (el['options'] as List? ?? const []).cast<Map<String, dynamic>>();
+
+    switch (fieldType) {
+      case 'select':
+        final dropdown = DropdownButtonHideUnderline(
+          child: DropdownButton<dynamic>(
+            value: _values[key],
+            isExpanded: expanded,
+            items: [for (final opt in options) DropdownMenuItem(value: opt['value'], child: Text(opt['label'] as String))],
+            onChanged: _isSubmitting
+                ? null
+                : (val) {
+                    setState(() {
+                      _values[key] = val;
+                      _errors.remove(key);
+                    });
+                    _handleFieldBlurOrInteraction(key, val);
+                  },
+          ),
+        );
+        return expanded ? SizedBox(width: double.infinity, child: dropdown) : dropdown;
+      case 'checkbox':
+        return Switch(
+          value: _values[key] == true,
+          onChanged: _isSubmitting
+              ? null
+              : (val) {
+                  setState(() {
+                    _values[key] = val;
+                    _errors.remove(key);
+                  });
+                  _handleFieldBlurOrInteraction(key, val);
+                },
+        );
+      default: // text, multiline, email, callsign, number, secret
+        final field = TextField(
+          controller: _controllers[key],
+          focusNode: _focusNodes[key],
+          textAlign: expanded ? TextAlign.start : TextAlign.end,
+          obscureText: fieldType == 'secret',
+          maxLines: fieldType == 'multiline' ? null : 1,
+          minLines: fieldType == 'multiline' ? 3 : null,
+          textCapitalization: fieldType == 'callsign' ? TextCapitalization.characters : TextCapitalization.none,
+          keyboardType: _keyboardTypeFor(fieldType),
+          inputFormatters: _inputFormattersFor(fieldType),
+          autofillHints: fieldType == 'secret' ? const [AutofillHints.password] : _getAutofillHints(key, fieldType),
+          textInputAction: TextInputAction.done,
+          onSubmitted: (_) => submit(),
+          decoration: const InputDecoration(border: InputBorder.none, isDense: true, contentPadding: EdgeInsets.zero),
+        );
+        return expanded ? field : SizedBox(width: 140, child: field);
     }
   }
 

@@ -223,8 +223,10 @@ class _Translations$settings$es extends Translations$settings$en {
 	@override String get general => 'Configuración General';
 	@override String get language => 'Idioma';
 	@override late final _Translations$settings$theme$es theme = _Translations$settings$theme$es._(_root);
+	@override late final _Translations$settings$themeDescription$es themeDescription = _Translations$settings$themeDescription$es._(_root);
 	@override String get fontScale => 'Tamaño de Letra';
 	@override late final _Translations$settings$fontScaleOpts$es fontScaleOpts = _Translations$settings$fontScaleOpts$es._(_root);
+	@override String get fontScaleDescription => 'Afecta el tamaño del texto en toda la app';
 	@override String get operatorCall => 'Indicativo del Operador';
 	@override late final _Translations$settings$sync$es sync = _Translations$settings$sync$es._(_root);
 	@override late final _Translations$settings$qrz$es qrz = _Translations$settings$qrz$es._(_root);
@@ -289,6 +291,18 @@ class _Translations$settings$theme$es extends Translations$settings$theme$en {
 	@override String get system => 'Sistema';
 	@override String get light => 'Claro';
 	@override String get dark => 'Oscuro';
+}
+
+// Path: settings.themeDescription
+class _Translations$settings$themeDescription$es extends Translations$settings$themeDescription$en {
+	_Translations$settings$themeDescription$es._(TranslationsEs root) : this._root = root, super.internal(root);
+
+	final TranslationsEs _root; // ignore: unused_field
+
+	// Translations
+	@override String get system => 'Sigue la configuración del sistema';
+	@override String get light => 'Siempre en Modo Claro';
+	@override String get dark => 'Siempre en Modo Oscuro';
 }
 
 // Path: settings.fontScaleOpts
@@ -430,12 +444,16 @@ extension on TranslationsEs {
 			'settings.theme.system' => 'Sistema',
 			'settings.theme.light' => 'Claro',
 			'settings.theme.dark' => 'Oscuro',
+			'settings.themeDescription.system' => 'Sigue la configuración del sistema',
+			'settings.themeDescription.light' => 'Siempre en Modo Claro',
+			'settings.themeDescription.dark' => 'Siempre en Modo Oscuro',
 			'settings.fontScale' => 'Tamaño de Letra',
 			'settings.fontScaleOpts.smallest' => 'Más pequeña',
 			'settings.fontScaleOpts.smaller' => 'Pequeña',
 			'settings.fontScaleOpts.normal' => 'Normal',
 			'settings.fontScaleOpts.larger' => 'Grande',
 			'settings.fontScaleOpts.largest' => 'Más grande',
+			'settings.fontScaleDescription' => 'Afecta el tamaño del texto en toda la app',
 			'settings.operatorCall' => 'Indicativo del Operador',
 			'settings.sync.title' => 'Configuración de Sincronización',
 			'settings.sync.enable' => 'Habilitar Sincronización',
