@@ -72,6 +72,7 @@ const bundles = [
   { key: 'kernel', entry: 'sdk/src/kernel.ts', kind: 'kernel' },
   { key: 'adif', entry: 'core/adif/src/index.ts', kind: 'extension' },
   { key: 'scoring', entry: 'core/scoring/src/index.ts', kind: 'extension' },
+  { key: 'lookups', entry: 'core/lookups/src/index.ts', kind: 'extension' },
   { key: 'radio-commands', entry: 'core/radio-commands/src/index.ts', kind: 'extension' },
   { key: 'dev-commands', entry: 'core/dev-commands/src/index.ts', kind: 'extension' },
   { key: 'note-command', entry: 'core/note-command/src/index.ts', kind: 'extension' },

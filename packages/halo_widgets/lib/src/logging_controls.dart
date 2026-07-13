@@ -43,9 +43,19 @@ import 'ref_chips_input.dart';
 import 'secondary_control_row.dart';
 import 'theme.dart';
 
-/// Async callsign enrichment (name, location, grid…) from lookup sources.
-/// Returning null means "nothing known". Must never throw.
-typedef CallLookup = Future<Map<String, dynamic>?> Function(String call);
+/// Async callsign enrichment (name, location, grid…) from lookup sources —
+/// the hardcoded callsign-annotation pre-step plus every registered
+/// `lookup` hook, merged with locationScope-aware rules. `qso`/`operation`
+/// give QSO-scoped hooks (e.g. POTA) access to refs already on the
+/// in-progress QSO; `online: false` asks every hook to skip network access,
+/// for a fast local-data-only preview pass. Returns `{lookups, guess}`, or
+/// null meaning "nothing known". Must never throw.
+typedef CallLookup = Future<Map<String, dynamic>?> Function(
+  String call, {
+  required Map<String, dynamic> qso,
+  required Map<String, dynamic> operation,
+  required bool online,
+});
 
 /// Tries the input as an extension-registered command (band/freq/mode
 /// shortcuts, and eventually spotting/operator commands). Returns a
@@ -1271,7 +1281,13 @@ class _LoggingControlsState extends State<LoggingControls> {
         if (_theirGridOverride != null) 'grid': _theirGridOverride,
         'call': call,
         'sent': _rcvdController.text.trim(),
-        if (_lookupFor == call && _lookupResult != null) ..._lookupResult!,
+        // Matches the `AnnotatedCallInfo` TS type (`CallInfo & {guess?:
+        // CallInfo, lookups?: CallInfoLookup[]}`, @ham2k/lib-qson-tools) and
+        // app-polo's convention: the merged lookup guess stays NESTED under
+        // `guess`/`lookups`, never flattened onto `their`'s own fields —
+        // readers fall back to `their.guess.x` when `their.x` isn't set.
+        if (_lookupFor == call && _lookupResult != null) 'guess': _lookupResult!['guess'],
+        if (_lookupFor == call && _lookupResult != null) 'lookups': _lookupResult!['lookups'],
       },
       'freq': _freq,
       'band': _band,
@@ -1545,11 +1561,36 @@ class _LoggingControlsState extends State<LoggingControls> {
     }
 
     _lookupDebounce = Timer(const Duration(milliseconds: 300), () async {
-      final result = await widget.lookup!(activeCall);
+      // Offline pass first: fast, local-data-only, so the user sees
+      // whatever's cheaply available (e.g. the callsign-annotation
+      // pre-step) almost instantly. Then an online pass fills in
+      // network-sourced data (QRZ/HamDB/etc) as soon as it resolves — no
+      // extra artificial delay beyond its own network latency.
+      final offlineResult = await widget.lookup!(
+        activeCall,
+        qso: _getCurrentQsoData(callOverride: activeCall),
+        operation: widget.operation.data,
+        online: false,
+      );
       if (!mounted || _callAtCursor != activeCall) return; // stale — the active call changed
       setState(() {
         _lookupFor = activeCall;
-        _lookupResult = result;
+        _lookupResult = offlineResult;
+      });
+
+      final onlineResult = await widget.lookup!(
+        activeCall,
+        qso: _getCurrentQsoData(callOverride: activeCall),
+        operation: widget.operation.data,
+        online: true,
+      );
+      if (!mounted || _callAtCursor != activeCall) return; // stale — the active call changed
+      // A failed/timed-out online pass (host down, network error) must not
+      // erase an already-shown, still-valid offline preview — keep it.
+      if (onlineResult == null) return;
+      setState(() {
+        _lookupFor = activeCall;
+        _lookupResult = onlineResult;
       });
     });
   }
@@ -1557,15 +1598,12 @@ class _LoggingControlsState extends State<LoggingControls> {
   String? get _lookupLine {
     final result = _lookupResult;
     if (result == null || _lookupFor != _callAtCursor) return null;
-    final location = [
-      result['city'],
-      result['state'],
-    ].whereType<String>().where((s) => s.isNotEmpty).join(', ');
+    final guess = result['guess'] as Map<String, dynamic>? ?? const {};
     final parts = [
-      result['name'],
-      location.isEmpty ? null : location,
-      result['country'],
-      result['grid'],
+      guess['name'],
+      guess['location'],
+      guess['country'],
+      guess['grid'],
     ].whereType<String>().where((s) => s.isNotEmpty).toList();
     return parts.isEmpty ? null : parts.join(' • ');
   }
@@ -1869,12 +1907,24 @@ class _LoggingControlsState extends State<LoggingControls> {
       // different, newly-added call.
       Future<Map<String, dynamic>> dataFor(String call, int index) async {
         final keepOriginal = !isList || (editingQso != null && index == 0);
-        final freshLookup = !keepOriginal && widget.lookup != null ? await widget.lookup!(call) : null;
+        // Online only — this is about to be written to the record, not a
+        // UI preview, so there's no value in a separate fast offline pass.
+        final freshLookup = !keepOriginal && widget.lookup != null
+            ? await widget.lookup!(
+                call,
+                qso: {...baseData, 'their': {'call': call}},
+                operation: widget.operation.data,
+                online: true,
+              )
+            : null;
         return {
           ...baseData,
           'their': {
             if (keepOriginal) ...?(baseData['their'] as Map<String, dynamic>?),
-            ...?freshLookup,
+            // Nested, per the `AnnotatedCallInfo` TS convention — see the
+            // matching comment in `_getCurrentQsoData`.
+            if (freshLookup != null) 'guess': freshLookup['guess'],
+            if (freshLookup != null) 'lookups': freshLookup['lookups'],
             'call': call,
             'sent': _rcvdController.text.trim(),
             if (keepOriginal && _theirNameOverride != null) 'name': _theirNameOverride,

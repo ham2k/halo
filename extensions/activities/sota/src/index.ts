@@ -14,8 +14,11 @@ import { bandForFrequency } from "@ham2k/lib-operation-data"
 import { locationToGrid6, distanceOnEarth } from "@ham2k/lib-geo-tools"
 import { defineExtension, host } from "@ham2k/polo-sdk"
 import type {
+  AnnotatedCallInfo,
   HookContext,
+  JSONValue,
   LoggingControlDescriptor,
+  LookupResult,
   Ref,
   Spot,
   DataFileDefinition,
@@ -298,6 +301,24 @@ function refsOfType(container: Record<string, unknown>, type: string): Ref[] {
   return (((container.refs as Ref[] | undefined) ?? [])).filter((r) => r.type === type && r.ref)
 }
 
+/// See POTA's identical `lookupCall` for the rationale: a summit hunted on
+/// this qso is a more specific ("portable") location than a home QTH.
+async function lookupCall(
+  { callInfo, qso }: { callInfo: AnnotatedCallInfo; qso: Record<string, JSONValue>; operation: Record<string, JSONValue> },
+  ctx: HookContext,
+): Promise<LookupResult> {
+  if (callInfo.grid) return []
+  const refs = refsOfType(qso, HUNTING_TYPE)
+  if (refs.length === 0) return []
+  if (!ctx.online) return []
+
+  const summit = await fetchSummit(refs[0].ref!.toUpperCase())
+  if (!summit?.locator) return []
+
+  const location = [summit.summitCode, summit.regionName, summit.name].filter((x) => x).join(' ')
+  return [{ call: callInfo.call, source: 'sota', scope: 'qso', locationScope: 'portable', grid: summit.locator, location }]
+}
+
 const AdifFieldsHook = {
   async fieldsForOneQSO(
     { qso, operation }: { qso: Record<string, unknown>; operation: Record<string, unknown> },
@@ -443,6 +464,10 @@ defineExtension({
     registerHook('activity', { hook: ActivityHook, key: 'sota' })
     registerHook('adifFields', { hook: AdifFieldsHook, key: 'sota' })
     registerHook('spots', { hook: SpotsHook, key: 'sota' })
+    // Priority 100 — see POTA's identical comment: must run before QRZ (99)
+    // / HamDB (50) so the summit's grid is resolved before a home-QTH
+    // lookup can set callInfo.grid and trip this hook's early-return guard.
+    registerHook('lookup', { hook: { lookupCall }, key: 'sota', priority: 100 })
     registerHook('dataFile', { hook: sotaDataFile, key: 'sota-all-summits' })
   },
 })

@@ -1,0 +1,48 @@
+// Copyright ©️ 2026 Sebastian Delmont <sd@ham2k.com>
+// SPDX-License-Identifier: MPL-2.0
+//
+// Lookup service. Mirrors `core/scoring`'s architecture: Dart makes a single
+// call (`lookupService/core`), and this hook does everything else internally
+// — the hardcoded callsign-annotation pre-step, a priority-ordered fan-out
+// to every registered `lookup` hook, and the locationScope-aware merge —
+// entirely inside the runtime. See ham2k/app-halo-dist#8.
+
+import { defineExtension, hooks } from "@ham2k/polo-sdk"
+import type { CallInfo, CallInfoLookup, HookContext, LookupServiceRequest, LookupServiceResult } from "@ham2k/polo-sdk"
+
+import { annotateCallsign } from "./annotate"
+import { runLookupPipeline } from "./mergeLookup"
+
+async function lookupCallInfo(args: LookupServiceRequest, ctx: HookContext): Promise<LookupServiceResult> {
+  const call = (args.callInfo.call || '').trim().toUpperCase()
+
+  const preAnnotation = annotateCallsign(call)
+  const seeded = runLookupPipeline(args.callInfo, [preAnnotation])
+  const lookups: CallInfoLookup[] = seeded.lookups
+  let guess: CallInfo = seeded.guess
+
+  await hooks.invokeAllSequential(
+    'lookup',
+    'lookupCall',
+    { callInfo: guess, qso: args.qso, operation: args.operation },
+    (currentArgs, hookResult) => {
+      const results = (hookResult as CallInfoLookup[] | null) ?? []
+      const folded = runLookupPipeline(guess, results)
+      lookups.push(...folded.lookups)
+      guess = folded.guess
+      return { ...(currentArgs as Record<string, unknown>), callInfo: guess }
+    },
+    ctx.online,
+  )
+
+  return { lookups, guess }
+}
+
+defineExtension({
+  key: 'lookups',
+  name: 'Lookup Service',
+  version: '0.0.1',
+  onActivation({ registerHook }) {
+    registerHook('lookupService', { hook: { lookupCallInfo }, key: 'core' })
+  },
+})

@@ -31,6 +31,14 @@ interface KernelApi {
     category: string,
     method: string,
     args: unknown,
+    online?: boolean,
+  ): Promise<{ key: string; ok: boolean; value?: unknown; error?: string }[]>
+  invokeLocalSequential(
+    category: string,
+    method: string,
+    initialArgs: unknown,
+    fold: (args: unknown, hookResult: unknown, hookKey: string) => unknown,
+    online?: boolean,
   ): Promise<{ key: string; ok: boolean; value?: unknown; error?: string }[]>
   log(message: string): void
   getAccountKvKey(extensionKey: string): string
@@ -56,8 +64,21 @@ export function defineExtension(def: ExtensionDefinition): void {
 
 /// Cross-extension composition inside the runtime (no bridge round-trip).
 export const hooks = {
-  invokeAll(category: string, method: string, args: unknown) {
-    return kernel().invokeLocal(category, method, args)
+  invokeAll(category: string, method: string, args: unknown, online?: boolean) {
+    return kernel().invokeLocal(category, method, args, online)
+  },
+
+  /// Like `invokeAll`, but calls hooks one at a time in priority order,
+  /// threading each result into the next call's args via `fold` — needed
+  /// when later hooks must see earlier hooks' contributions.
+  invokeAllSequential(
+    category: string,
+    method: string,
+    initialArgs: unknown,
+    fold: (args: unknown, hookResult: unknown, hookKey: string) => unknown,
+    online?: boolean,
+  ) {
+    return kernel().invokeLocalSequential(category, method, initialArgs, fold, online)
   },
 }
 

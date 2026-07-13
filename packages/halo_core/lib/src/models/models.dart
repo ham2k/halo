@@ -80,10 +80,16 @@ class Qso {
   Map<String, dynamic> get _our => (data['our'] as Map<String, dynamic>?) ?? const {};
   Map<String, dynamic> get _their => (data['their'] as Map<String, dynamic>?) ?? const {};
 
+  Map<String, dynamic> get _theirGuess => (_their['guess'] as Map<String, dynamic>?) ?? const {};
+
   String get ourCall => (_our['call'] as String?) ?? '';
   String get theirCall => (_their['call'] as String?) ?? '';
-  String? get theirName => _their['name'] as String?;
-  String? get theirGrid => _their['grid'] as String?;
+  // `guess` (the merged lookup result — see the Lookups feature,
+  // ham2k/app-halo-dist#8) stays nested rather than flattened onto `their`,
+  // matching lib-qson-tools' `AnnotatedCallInfo` type; a manually
+  // entered/edited top-level value always wins over the guess.
+  String? get theirName => (_their['name'] as String?) ?? (_theirGuess['name'] as String?);
+  String? get theirGrid => (_their['grid'] as String?) ?? (_theirGuess['grid'] as String?);
   String? get sentRST => _our['sent'] as String?;
   String? get receivedRST => _their['sent'] as String?;
 
