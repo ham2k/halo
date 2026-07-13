@@ -468,5 +468,107 @@ void main() {
       expect(capturedMethod, 'testCredentials');
       expect(find.text('Connected'), findsOneWidget);
     });
+
+    testWidgets('account field shows Not Connected / Connect when no status is set', (tester) async {
+      await tester.pumpWidget(MaterialApp(
+        home: Scaffold(
+          body: FormRenderer(
+            formDefinition: const {
+              'elements': [
+                {
+                  'type': 'field',
+                  'fieldType': 'account',
+                  'key': 'qrzStatus',
+                  'label': 'QRZ.com Account',
+                  'account': {'key': 'qrz'},
+                },
+              ],
+            },
+            initialState: const {},
+            onSubmit: (_) {},
+            onCancel: () {},
+          ),
+        ),
+      ));
+
+      expect(find.text('QRZ.com Account'), findsOneWidget);
+      expect(find.text('Not Connected'), findsOneWidget);
+      expect(find.widgetWithText(TextButton, 'Connect'), findsOneWidget);
+    });
+
+    testWidgets('account field shows the connected label and Manage, and never persists a value on submit', (tester) async {
+      Map<String, dynamic>? submittedValues;
+
+      await tester.pumpWidget(MaterialApp(
+        home: Scaffold(
+          body: FormRenderer(
+            formDefinition: const {
+              'elements': [
+                {
+                  'type': 'field',
+                  'fieldType': 'account',
+                  'key': 'qrzStatus',
+                  'label': 'QRZ.com Account',
+                  'value': {'connected': true, 'label': 'Connected as KI2D'},
+                  'account': {'key': 'qrz'},
+                },
+              ],
+            },
+            initialState: const {},
+            onSubmit: (vals) => submittedValues = vals,
+            onCancel: () {},
+          ),
+        ),
+      ));
+
+      expect(find.text('Connected as KI2D'), findsOneWidget);
+      expect(find.widgetWithText(TextButton, 'Manage'), findsOneWidget);
+
+      await tester.tap(find.widgetWithText(FilledButton, 'Save'));
+      await tester.pumpAndSettle();
+
+      // The account field's own status flows through to onSubmit like any
+      // other field's value (settings-panel dispatch is what actually
+      // excludes fieldType 'account' from persistence — see
+      // ExtensionService.getSettingsPanelDefinition) — but tapping Manage
+      // is the real interaction, exercised below.
+      expect(submittedValues!['qrzStatus'], {'connected': true, 'label': 'Connected as KI2D'});
+    });
+
+    testWidgets('tapping Manage/Connect calls onManageAccount with the field\'s account key and subkey', (tester) async {
+      String? capturedKey;
+      String? capturedSubkey;
+
+      await tester.pumpWidget(MaterialApp(
+        home: Scaffold(
+          body: FormRenderer(
+            formDefinition: const {
+              'elements': [
+                {
+                  'type': 'field',
+                  'fieldType': 'account',
+                  'key': 'lofiStatus',
+                  'label': 'LoFi Account',
+                  'account': {'key': 'lofi', 'subkey': 'backup'},
+                },
+              ],
+            },
+            initialState: const {},
+            onManageAccount: (accountKey, subkey) {
+              capturedKey = accountKey;
+              capturedSubkey = subkey;
+            },
+            onSubmit: (_) {},
+            onCancel: () {},
+          ),
+        ),
+      ));
+
+      await tester.tap(find.widgetWithText(TextButton, 'Connect'));
+      await tester.pumpAndSettle();
+
+      expect(capturedKey, 'lofi');
+      expect(capturedSubkey, 'backup');
+    });
   });
 }

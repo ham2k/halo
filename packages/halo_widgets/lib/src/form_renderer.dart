@@ -12,6 +12,7 @@ typedef FormValidator = Future<String?> Function(String fieldKey, dynamic value,
 typedef FormTransformer = Future<dynamic> Function(String fieldKey, dynamic value, Map<String, dynamic> state);
 typedef FormOnChange = Future<Map<String, dynamic>?> Function(String fieldKey, dynamic value, Map<String, dynamic> state);
 typedef FormAction = Future<String?> Function(String actionKey, String method, Map<String, dynamic> state);
+typedef FormManageAccount = void Function(String accountKey, String? subkey);
 
 /// Substitutes `${key}` placeholders in [template] with values from [item].
 String _templateString(String template, Map<String, dynamic> item) {
@@ -28,6 +29,7 @@ class FormRenderer extends StatefulWidget {
   final FormTransformer? transformer;
   final FormOnChange? onChange;
   final FormAction? onAction;
+  final FormManageAccount? onManageAccount;
   final void Function(Map<String, dynamic> values) onSubmit;
   final VoidCallback onCancel;
   final bool showActions;
@@ -42,6 +44,7 @@ class FormRenderer extends StatefulWidget {
     this.transformer,
     this.onChange,
     this.onAction,
+    this.onManageAccount,
     required this.onSubmit,
     required this.onCancel,
     this.showActions = true,
@@ -83,7 +86,7 @@ class FormRendererState extends State<FormRenderer> {
           val = false;
         } else if (fieldType == 'list') {
           val = <Map<String, dynamic>>[];
-        } else if (['select', 'radio', 'number'].contains(fieldType)) {
+        } else if (['select', 'radio', 'number', 'account'].contains(fieldType)) {
           val = null;
         } else {
           val = '';
@@ -456,6 +459,8 @@ class FormRendererState extends State<FormRenderer> {
         );
       case 'list':
         return _buildListField(el, theme);
+      case 'account':
+        return _buildAccountField(el, theme);
       case 'select':
         return DropdownButtonFormField<dynamic>(
           value: _values[key],
@@ -667,6 +672,38 @@ class FormRendererState extends State<FormRenderer> {
     );
   }
 
+  /// A `fieldType: 'account'` field: a read-only reference into the
+  /// separate `account` hook system (see docs/extensions/settings.md's
+  /// "account field type") — never defines or stores account data itself.
+  /// Status is whatever the caller put in the field's `value`, shaped
+  /// `{connected: bool, label: String?}`; tapping Manage/Connect calls
+  /// [FormManageAccount] with the field's `account.key`/`account.subkey`,
+  /// which is expected to open that account's own standalone dialog.
+  Widget _buildAccountField(Map<String, dynamic> el, ThemeData theme) {
+    final key = el['key'] as String;
+    final label = el['label'] as String? ?? '';
+    final account = (el['account'] as Map?)?.cast<String, dynamic>();
+    final accountKey = account?['key'] as String?;
+    final subkey = account?['subkey'] as String?;
+    final status = (_values[key] is Map) ? (_values[key] as Map).cast<String, dynamic>() : const <String, dynamic>{};
+    final connected = status['connected'] == true;
+    final statusLabel = status['label'] as String?;
+
+    return ListTile(
+      contentPadding: EdgeInsets.zero,
+      leading: Icon(
+        connected ? Icons.check_circle : Icons.radio_button_unchecked,
+        color: connected ? theme.colorScheme.primary : theme.colorScheme.onSurfaceVariant,
+      ),
+      title: Text(label),
+      subtitle: Text(connected ? (statusLabel ?? 'Connected') : 'Not Connected'),
+      trailing: TextButton(
+        onPressed: accountKey == null || widget.onManageAccount == null ? null : () => widget.onManageAccount!(accountKey, subkey),
+        child: Text(connected ? 'Manage' : 'Connect'),
+      ),
+    );
+  }
+
   /// A `type: 'action'` element: a button that invokes [FormAction] and
   /// shows the returned string as a result banner.
   Widget _buildActionElement(Map<String, dynamic> el, ThemeData theme) {
@@ -712,6 +749,7 @@ Future<Map<String, dynamic>?> showFormDialog(
   FormTransformer? transformer,
   FormOnChange? onChange,
   FormAction? onAction,
+  FormManageAccount? onManageAccount,
 }) {
   final theme = Theme.of(context);
   final formKey = GlobalKey<FormRendererState>();
@@ -772,6 +810,7 @@ Future<Map<String, dynamic>?> showFormDialog(
             transformer: transformer,
             onChange: onChange,
             onAction: onAction,
+            onManageAccount: onManageAccount,
             showActions: false,
             showTitle: false,
             submittingNotifier: submittingNotifier,
@@ -833,6 +872,7 @@ class FormView extends StatefulWidget {
   final FormTransformer? transformer;
   final FormOnChange? onChange;
   final FormAction? onAction;
+  final FormManageAccount? onManageAccount;
   final void Function(Map<String, dynamic> values) onSubmit;
   final VoidCallback onCancel;
 
@@ -844,6 +884,7 @@ class FormView extends StatefulWidget {
     this.transformer,
     this.onChange,
     this.onAction,
+    this.onManageAccount,
     required this.onSubmit,
     required this.onCancel,
   });
@@ -883,6 +924,7 @@ class _FormViewState extends State<FormView> {
               transformer: widget.transformer,
               onChange: widget.onChange,
               onAction: widget.onAction,
+              onManageAccount: widget.onManageAccount,
               showActions: false,
               showTitle: false,
               submittingNotifier: _submittingNotifier,

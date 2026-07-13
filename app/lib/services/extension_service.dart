@@ -106,6 +106,258 @@ class ExtensionService {
     await _secureStorage.delete(key: 'account_session_$kvKey');
   }
 
+  /// Every panel across every extension's `settingsPanel` registration, one
+  /// entry per PANEL (not per registration — a Tier 2 hook's `getPanels()`
+  /// can fan one registration out to several), sorted by `order`. Each
+  /// entry is `{panelKey, hookKey, extensionKey, title, icon, order, kind}`
+  /// — `hookKey` is what routes `getSettingsPanelDefinition`/action calls
+  /// back to the right registered object; `panelKey` is what's passed as
+  /// `args.panelKey`. They're equal for Tier 1; only a multi-panel Tier 2
+  /// registration tells them apart.
+  Future<List<Map<String, dynamic>>> getSettingsPanels() async {
+    final host = this.host;
+    if (host == null) return const [];
+    try {
+      final entries = await host.invokeHookAll('settingsPanel', method: 'getPanels', timeout: const Duration(seconds: 2));
+      final panels = <Map<String, dynamic>>[];
+      for (final entry in entries) {
+        if (entry['ok'] == true && entry['value'] is Map) {
+          panels.add((entry['value'] as Map).cast<String, dynamic>());
+        }
+      }
+      panels.sort((a, b) => ((a['order'] as num?) ?? 0).compareTo((b['order'] as num?) ?? 0));
+      return panels;
+    } catch (e) {
+      debugPrint('[extensions] getSettingsPanels failed: $e');
+      return const [];
+    }
+  }
+
+  /// The `FormDefinition` for one panel. For a Tier 1 (`kind: 'simple'`)
+  /// panel, this is the ONLY bridge call in its whole lifecycle — every
+  /// plain/secret field's live value is overlaid from Dart-owned storage
+  /// right here, and every subsequent read/write/validate happens locally
+  /// (see [commitSettingsFieldValue]/[validateSettingsField]), matching
+  /// Tier 1's "no bridge call per keystroke" design. A Tier 2
+  /// (`kind: 'dynamic'`) panel's other fields are already current as
+  /// returned — that tier owns its own persistence, so nothing is
+  /// overlaid for them. `fieldType: 'account'` fields are resolved here
+  /// regardless of tier — neither tier can know live account connection
+  /// status itself, since that's entirely host-owned (see AccountHook).
+  Future<Map<String, dynamic>?> getSettingsPanelDefinition({
+    required String hookKey,
+    required String panelKey,
+    required String kind,
+  }) async {
+    final host = this.host;
+    if (host == null) return null;
+    try {
+      final result = await host.invokeHook(
+        'settingsPanel',
+        key: hookKey,
+        method: 'getDefinition',
+        args: {'panelKey': panelKey},
+        timeout: const Duration(seconds: 5),
+      );
+      if (result is! Map) return null;
+      final definition = Map<String, dynamic>.from(result);
+      final elements = ((definition['elements'] as List?) ?? const []).map((e) => Map<String, dynamic>.from(e as Map)).toList();
+      for (final el in elements) {
+        if (el['type'] != 'field') continue;
+        final fieldKey = el['key'] as String?;
+        if (fieldKey == null) continue;
+        if (el['fieldType'] == 'account') {
+          final accountKey = (el['account'] as Map?)?['key'] as String?;
+          if (accountKey != null) el['value'] = await _resolveAccountStatus(accountKey);
+          continue;
+        }
+        if (kind != 'simple') continue;
+        final stored = await _readSettingsValue(panelKey: panelKey, fieldKey: fieldKey, isSecret: el['fieldType'] == 'secret');
+        if (stored != null) el['value'] = stored;
+      }
+      definition['elements'] = elements;
+      return definition;
+    } catch (e) {
+      debugPrint('[extensions] getSettingsPanelDefinition failed: $e');
+      return null;
+    }
+  }
+
+  /// `{connected, label}` for a `fieldType: 'account'` field — `label` is
+  /// only set when connected (a human-readable "Connected as X"). Guarded
+  /// on its own: a credential-storage failure here must not take down the
+  /// whole panel the way an unguarded exception bubbling up to
+  /// [getSettingsPanelDefinition]'s own try/catch would.
+  Future<Map<String, dynamic>> _resolveAccountStatus(String accountKey) async {
+    try {
+      final creds = await getAccountCredentials(accountKey);
+      if (creds.isEmpty) return {'connected': false};
+      final identity = identityFromCredentials(creds);
+      return {'connected': true, if (identity != null) 'label': 'Connected as $identity'};
+    } catch (e) {
+      debugPrint('[extensions] _resolveAccountStatus failed for $accountKey: $e');
+      return {'connected': false};
+    }
+  }
+
+  /// Picks a human-readable identity out of a credentials map — the same
+  /// priority (`username` then `email` then `login`) used everywhere in
+  /// Settings that displays which account a set of stored credentials
+  /// belongs to.
+  static String? identityFromCredentials(Map<String, String> creds) {
+    return creds['username'] ?? creds['email'] ?? creds['login'];
+  }
+
+  /// Validates one field's value. Tier 1 checks `pattern`/`patternError`
+  /// declaratively, entirely in Dart — no bridge call. Tier 2 forwards to
+  /// its `validateField` hook method.
+  Future<String?> validateSettingsField({
+    required String kind,
+    required String hookKey,
+    required String panelKey,
+    required Map<String, dynamic> field,
+    required String fieldKey,
+    required dynamic value,
+    required Map<String, dynamic> state,
+  }) async {
+    if (kind == 'simple') {
+      final pattern = field['pattern'] as String?;
+      if (pattern == null || pattern.isEmpty) return null;
+      try {
+        if (RegExp(pattern).hasMatch(value?.toString() ?? '')) return null;
+      } catch (e) {
+        // A malformed pattern is an extension bug, not a user input error —
+        // still can't let it crash the caller, which (unlike submit()'s own
+        // validator call) doesn't wrap this in a try/catch on the on-blur path.
+        debugPrint('[extensions] settingsPanel field "${field['key']}" has an invalid pattern "$pattern": $e');
+        return 'Invalid field configuration';
+      }
+      return field['patternError'] as String? ?? 'Invalid value';
+    }
+    final host = this.host;
+    if (host == null) return null;
+    try {
+      final res = await host.invokeHook(
+        'settingsPanel',
+        key: hookKey,
+        method: 'validateField',
+        args: {'panelKey': panelKey, 'fieldKey': fieldKey, 'value': value, 'state': state},
+      );
+      return res as String?;
+    } catch (e) {
+      return 'Validation error: $e';
+    }
+  }
+
+  /// Commits one field's value after it's been accepted (validated, and for
+  /// Tier 2, transformed). Tier 1 persists directly to Dart-owned storage —
+  /// kv (SharedPreferences) normally, `FlutterSecureStorage` for
+  /// `fieldType: 'secret'`. Tier 2 has no local persistence at all; the
+  /// call is forwarded to `onChangeField` and the extension is responsible
+  /// for storing it itself (e.g. its own `host.kvSet`).
+  Future<void> commitSettingsFieldValue({
+    required String kind,
+    required String hookKey,
+    required String panelKey,
+    required String fieldKey,
+    required dynamic value,
+    required Map<String, dynamic> state,
+    bool isSecret = false,
+  }) async {
+    if (kind == 'simple') {
+      await _writeSettingsValue(panelKey: panelKey, fieldKey: fieldKey, value: value, isSecret: isSecret);
+      return;
+    }
+    final host = this.host;
+    if (host == null) return;
+    try {
+      await host.invokeHook(
+        'settingsPanel',
+        key: hookKey,
+        method: 'onChangeField',
+        args: {'panelKey': panelKey, 'fieldKey': fieldKey, 'value': value, 'state': state},
+      );
+    } catch (e) {
+      debugPrint('[extensions] settingsPanel onChangeField failed: $e');
+    }
+  }
+
+  /// Transforms one field's value (Tier 2 only — Tier 1 fields never carry
+  /// a transform, by construction of the `SettingsField` type).
+  Future<dynamic> transformSettingsField({
+    required String hookKey,
+    required String panelKey,
+    required String fieldKey,
+    required dynamic value,
+    required Map<String, dynamic> state,
+  }) async {
+    final host = this.host;
+    if (host == null) return value;
+    try {
+      return await host.invokeHook(
+        'settingsPanel',
+        key: hookKey,
+        method: 'transformField',
+        args: {'panelKey': panelKey, 'fieldKey': fieldKey, 'value': value, 'state': state},
+      );
+    } catch (e) {
+      return value;
+    }
+  }
+
+  /// Invokes a `FormActionElement`'s `method` (e.g. a "Test Connection" or
+  /// "Clear Cache" button) against the panel's current state and returns
+  /// the result string to show as a banner. `method` isn't a fixed hook
+  /// method — it's resolved against whatever extra property the extension
+  /// put on its registered panel object (see docs/extensions/settings.md's
+  /// "The action element").
+  Future<String?> runSettingsAction({
+    required String hookKey,
+    required String panelKey,
+    required String method,
+    required Map<String, dynamic> state,
+  }) async {
+    final host = this.host;
+    if (host == null) return 'Extension runtime not ready.';
+    try {
+      final res = await host.invokeHook(
+        'settingsPanel',
+        key: hookKey,
+        method: method,
+        args: {'panelKey': panelKey, 'state': state},
+        timeout: const Duration(seconds: 10),
+      );
+      return res is String ? res : res?.toString();
+    } catch (e) {
+      return 'Action failed: $e';
+    }
+  }
+
+  Future<dynamic> _readSettingsValue({required String panelKey, required String fieldKey, required bool isSecret}) async {
+    final raw = isSecret
+        ? await _secureStorage.read(key: _settingsSecretStorageKey(panelKey, fieldKey))
+        : settings?.prefs.getString(_settingsPrefsKey(panelKey, fieldKey));
+    if (raw == null) return null;
+    try {
+      return jsonDecode(raw);
+    } catch (_) {
+      return raw;
+    }
+  }
+
+  Future<void> _writeSettingsValue({required String panelKey, required String fieldKey, required dynamic value, required bool isSecret}) async {
+    final encoded = jsonEncode(value);
+    if (isSecret) {
+      await _secureStorage.write(key: _settingsSecretStorageKey(panelKey, fieldKey), value: encoded);
+      return;
+    }
+    await settings?.prefs.setString(_settingsPrefsKey(panelKey, fieldKey), encoded);
+  }
+
+  String _settingsPrefsKey(String panelKey, String fieldKey) => 'settingsPanel.$panelKey.$fieldKey';
+
+  String _settingsSecretStorageKey(String panelKey, String fieldKey) => 'settingsPanel_secret_${panelKey}_$fieldKey';
+
   /// Seeds the `ham2k-lofi` sync extension's device identity (a stable
   /// per-install key, generated once by `SettingsService.syncDeviceKey`) and
   /// operator callsign. Called both at boot and whenever Settings saves a

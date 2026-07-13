@@ -20,7 +20,8 @@
 //               __polo.activateAll()
 //               __polo.hostResponse(callId, ok, resultJson)
 
-import type { ExtensionDefinition, RegisterHookParams, FormDefinition, FormField } from "./types"
+import type { ExtensionDefinition, RegisterHookParams, FormDefinition, FormField, SettingsPanelDescriptor } from "./types"
+import { isValidHookKey, tier1FormDefinition, settingsPanelEntriesFor } from "./settingsPanels"
 
 import * as libCallsigns from "@ham2k/lib-callsigns"
 import * as libCountryFiles from "@ham2k/lib-country-files"
@@ -157,9 +158,20 @@ function activateExtension(def: ExtensionDefinition) {
             }
           }
         }
+        const resolvedKey = params.key ?? def.key
+        // Key namespacing (docs/extensions/settings.md; rule itself lives
+        // in settingsPanels.ts so it has its own unit tests). Logged and
+        // skipped rather than thrown: one bad key shouldn't take down the
+        // rest of the extension's hook registrations.
+        if (!isValidHookKey(category, def.key, resolvedKey)) {
+          log(
+            `ERROR registerHook(${category}) in extension ${def.key}: key '${resolvedKey}' must equal '${def.key}' or be prefixed '${def.key}_' — hook not registered`,
+          )
+          return
+        }
         hooks.push({
           category,
-          key: params.key ?? def.key,
+          key: resolvedKey,
           priority: params.priority ?? 0,
           extensionKey: def.key,
           hook: hookObj,
@@ -189,6 +201,15 @@ const kernel = {
         const record = hooksFor(category, key)[0]
         if (!record) throw new Error(`no hook registered for ${category}/${key ?? '*'}`)
         const args = JSON.parse(argsJson)
+        // Tier 1 settings panels (kind: 'simple') are static data, not a
+        // getDefinition() function — build the FormDefinition from the
+        // registered object directly. Everything else (Tier 2's real
+        // getDefinition/validateField/transformField/onChangeField, and any
+        // action method on either tier) goes through the generic path below.
+        if (category === 'settingsPanel' && method === 'getDefinition' && record.hook.kind === 'simple') {
+          post({ type: 'result', id, ok: true, value: tier1FormDefinition(record.hook), jsMillis: Date.now() - startedAt })
+          return
+        }
         const online = typeof args?.online === 'boolean' ? args.online : true
         const result = await callHookMethod(record, method, args, online)
         post({ type: 'result', id, ok: true, value: result ?? null, jsMillis: Date.now() - startedAt })
@@ -218,6 +239,52 @@ const kernel = {
             }
           }
         })
+        post({ type: 'result', id, ok: true, value: entries, jsMillis: Date.now() - startedAt })
+        return
+      }
+      // One `settingsPanel` registration can surface more than one panel —
+      // flattening/entry-shape logic lives in settingsPanelEntriesFor
+      // (settingsPanels.ts) so it has its own unit tests; this handles the
+      // two things that logic can't own itself: calling a Tier 2
+      // registration's `getPanels()` (each an independent, potentially
+      // bridge-crossing call, dispatched concurrently like every other
+      // category below — not sequentially, there's no fold/ordering need
+      // here), and rejecting any returned panel key that fails the same
+      // namespacing rule `registerHook` already enforces on the
+      // registration key itself (settingsPanelEntriesFor filters these
+      // out; logging them here is what makes a dropped panel visible to
+      // the extension author instead of just silently missing).
+      if (category === 'settingsPanel' && method === 'getPanels') {
+        const records = hooksFor('settingsPanel', null)
+        const online = typeof args?.online === 'boolean' ? args.online : true
+        const perRecord = await Promise.all(
+          records.map(async (record) => {
+            try {
+              const descriptors =
+                record.hook.kind === 'dynamic' && typeof record.hook.getPanels === 'function'
+                  ? ((await callHookMethod(record, 'getPanels', {}, online)) as SettingsPanelDescriptor[] | null)
+                  : undefined
+              for (const d of descriptors ?? []) {
+                if (!isValidHookKey('settingsPanel', record.extensionKey, d.key)) {
+                  log(
+                    `ERROR settingsPanel getPanels() in extension ${record.extensionKey}: key '${d.key}' must equal '${record.extensionKey}' or be prefixed '${record.extensionKey}_' — panel dropped`,
+                  )
+                }
+              }
+              return { ok: true as const, panels: settingsPanelEntriesFor(record, descriptors) }
+            } catch (e) {
+              return { ok: false as const, key: record.key, error: describeError(e) }
+            }
+          }),
+        )
+        const entries: { key: string; ok: boolean; value?: unknown; error?: string }[] = []
+        for (const result of perRecord) {
+          if (result.ok) {
+            for (const panel of result.panels) entries.push({ key: panel.panelKey, ok: true, value: panel })
+          } else {
+            entries.push({ key: result.key, ok: false, error: result.error })
+          }
+        }
         post({ type: 'result', id, ok: true, value: entries, jsMillis: Date.now() - startedAt })
         return
       }

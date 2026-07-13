@@ -10,11 +10,17 @@ This is a separate, complementary mechanism to the `account` hook category
 (see [Relationship to `AccountHook`](#relationship-to-accounthook) below) —
 `settingsPanel` never defines, stores, or edits account credentials itself.
 
-> **Status: 🔜 planned.** The types below exist in
-> `extensions/sdk/src/types.ts`; the Dart-side rendering and dispatch (a
-> `settingsPanel` case in `ExtensionService`, a data-driven panel list in
-> `SettingsView`, and `FormRenderer` support for the `secret`/`list`/`account`/
-> `action` additions to the form schema) is not implemented yet.
+> **Status: ✅ implemented.** Schema, kernel-side dispatch (key-namespacing
+> enforcement at `registerHook` time — including on panel keys a Tier 2
+> hook's `getPanels()` returns at call time, not just the registration key
+> — Tier 1's static `getDefinition`, `getPanels` discovery/flattening),
+> `ExtensionService`, `FormRenderer` support for every field type, and a
+> data-driven panel list in `SettingsView` are all done and reachable from
+> the app. One known gap: `fieldType: 'account'`'s `subkey` (multiple
+> accounts under one extension key) has no real implementation yet —
+> `AccountHook` registrations are one-kvKey-per-registration today, so
+> there's nothing to disambiguate against; `SettingsView` logs a warning
+> rather than silently mismatching if a field ever sets it.
 
 There are two tiers, discriminated by a required `kind` tag.
 
@@ -205,6 +211,13 @@ never defines or stores account data itself:
 `subkey` is an opaque, extension-defined discriminator, only needed when one
 extension exposes more than one account-like entity under the same `key`
 (e.g. multiple stored profiles) — most accounts don't need it.
+
+> **Not implemented yet:** `AccountHook` registrations are one-`kvKey`-per-
+> registration today, so there's no real scenario where two accounts share a
+> `key` to disambiguate between — `SettingsView`'s Manage/Connect handler
+> accepts `subkey` but only matches on `key`, logging a warning if `subkey`
+> is set rather than silently picking the wrong account. Wiring this up for
+> real needs `AccountHook` to grow its own multi-account concept first.
 
 ## The `action` element
 
