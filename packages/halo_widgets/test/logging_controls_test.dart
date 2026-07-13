@@ -728,6 +728,10 @@ void main() {
     await tester.sendKeyEvent(LogicalKeyboardKey.space);
     await tester.pump();
     expect(field('Their call').focusNode!.hasFocus, isTrue);
+    // Cursor placed at the end on refocus, not selecting the call — a stray
+    // keystroke right after cycling back shouldn't wipe out what's typed.
+    expect(field('Their call').controller!.selection.isCollapsed, isTrue);
+    expect(field('Their call').controller!.selection.baseOffset, field('Their call').controller!.text.length);
   });
 
   testWidgets('call-field commands: frequency, band, and mode via space', (tester) async {

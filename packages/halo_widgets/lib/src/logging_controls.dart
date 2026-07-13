@@ -9,7 +9,8 @@
 //           mode — "14285 ", "20m ", "cw ") or advances to Sent;
 //           in Sent/Rcvd: advances focus, cycling back to the call
 //   focus   always returns to the callsign field after log/wipe;
-//           Sent/Rcvd/Frequency/Time place the cursor at the end on focus
+//           every field places the cursor at the end on focus, never
+//           selecting the existing text
 //
 // Frequency/band/mode and the QSO timestamp live behind the secondary
 // control row (see secondary_control_row.dart) rather than as
@@ -410,10 +411,14 @@ class _LoggingControlsState extends State<LoggingControls> {
     // from "delete" to "revert changes".
     _sentController.addListener(_onSentOrRcvdChanged);
     _rcvdController.addListener(_onSentOrRcvdChanged);
-    // Exchange fields place the cursor at the end on focus, rather than
-    // selecting the existing text — switching fields shouldn't put you one
-    // keystroke away from wiping out a default value you didn't mean to touch.
+    // All fields place the cursor at the end on focus, rather than selecting
+    // the existing text — switching fields (e.g. cycling back to the call
+    // field via space without logging) shouldn't put you one keystroke away
+    // from wiping out a value you didn't mean to touch. This also overrides
+    // the desktop-platform default of selecting all text when a field gains
+    // focus via keyboard (as opposed to a tap).
     for (final (focus, controller) in [
+      (_callFocus, _callController),
       (_sentFocus, _sentController),
       (_rcvdFocus, _rcvdController),
       (_freqFocus, _freqController),
@@ -934,6 +939,7 @@ class _LoggingControlsState extends State<LoggingControls> {
               child: TextField(
                 controller: _timeController,
                 focusNode: _timeFocus,
+                selectAllOnFocus: false,
                 style: haloMonoStyle(
                   context,
                   fontSize: 15,
@@ -1043,6 +1049,7 @@ class _LoggingControlsState extends State<LoggingControls> {
               child: TextField(
                 controller: _freqController,
                 focusNode: _freqFocus,
+                selectAllOnFocus: false,
                 style: haloMonoStyle(
                   context,
                   fontSize: 15,
@@ -2224,6 +2231,13 @@ class _LoggingControlsState extends State<LoggingControls> {
                             child: TextField(
                               controller: _callController,
                               focusNode: _callFocus,
+                              // Desktop platforms (see selectAllOnFocus's
+                              // default) select-all on focus by default,
+                              // which runs *after* our own focus listener
+                              // above and silently overwrites its
+                              // cursor-at-end placement — this is the only
+                              // way to actually suppress it.
+                              selectAllOnFocus: false,
                               enabled: !_pendingDelete,
                               autofocus: true,
                               autocorrect: _commandExpectsParams,
@@ -2256,6 +2270,7 @@ class _LoggingControlsState extends State<LoggingControls> {
                             child: TextField(
                               controller: _sentController,
                               focusNode: _sentFocus,
+                              selectAllOnFocus: false,
                               enabled: !_pendingDelete,
                               style: _primaryFieldStyle(context, fontWeight: FontWeight.w500),
                               inputFormatters: [
@@ -2274,6 +2289,7 @@ class _LoggingControlsState extends State<LoggingControls> {
                             child: TextField(
                               controller: _rcvdController,
                               focusNode: _rcvdFocus,
+                              selectAllOnFocus: false,
                               enabled: !_pendingDelete,
                               style: _primaryFieldStyle(context, fontWeight: FontWeight.w500),
                               inputFormatters: [

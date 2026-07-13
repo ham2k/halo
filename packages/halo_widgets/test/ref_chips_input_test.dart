@@ -245,6 +245,50 @@ void main() {
     expect(harnessKey.currentState!.refs, isEmpty);
   });
 
+  testWidgets('cursor is placed at the end on focus, not selecting the existing text', (tester) async {
+    var refs = <Map<String, dynamic>>[];
+
+    Widget build() => MaterialApp(
+          home: Scaffold(
+            body: Column(
+              children: [
+                StatefulBuilder(
+                  builder: (context, setState) => RefChipsInput(
+                    refType: 'pota',
+                    label: 'POTA',
+                    pattern: potaPattern,
+                    refs: refs,
+                    onChanged: (updated) => setState(() => refs = updated),
+                  ),
+                ),
+                const TextField(decoration: InputDecoration(labelText: 'Elsewhere')),
+              ],
+            ),
+          ),
+        );
+
+    await tester.pumpWidget(build());
+
+    // Rejected submission (no match) leaves the text in place rather than
+    // clearing it.
+    await tester.enterText(find.byType(TextField).first, 'not a ref');
+    await tester.testTextInput.receiveAction(TextInputAction.done);
+    await tester.pump();
+    expect(tester.widget<TextField>(find.byType(TextField).first).controller!.text, 'NOT A REF');
+
+    // Focus moves away, then back — a stray keystroke on refocus must not
+    // wipe out the whole value.
+    await tester.tap(find.widgetWithText(TextField, 'Elsewhere'));
+    await tester.pump();
+    await tester.tap(find.byType(TextField).first);
+    await tester.pump();
+
+    final refField = tester.widget<TextField>(find.byType(TextField).first);
+    expect(refField.focusNode!.hasFocus, isTrue);
+    expect(refField.controller!.selection.isCollapsed, isTrue);
+    expect(refField.controller!.selection.baseOffset, refField.controller!.text.length);
+  });
+
   group('transforms', () {
     testWidgets('a transform reformats "us1234" into "US-1234" as the user types', (tester) async {
       var refs = <Map<String, dynamic>>[];

@@ -171,6 +171,21 @@ class _RefChipsInputState extends State<RefChipsInput> {
   }
 
   @override
+  void initState() {
+    super.initState();
+    // Place the cursor at the end on focus rather than selecting the
+    // existing text — matches every other logging field (LoggingControls'
+    // call/sent/rcvd/frequency/time fields) and overrides the
+    // desktop-platform default of selecting all text when a field gains
+    // focus via keyboard (as opposed to a tap).
+    _focus.addListener(() {
+      if (_focus.hasFocus) {
+        _controller.selection = TextSelection.collapsed(offset: _controller.text.length);
+      }
+    });
+  }
+
+  @override
   void didUpdateWidget(RefChipsInput oldWidget) {
     super.didUpdateWidget(oldWidget);
     for (final refString in [..._pendingBase.keys]) {
@@ -322,6 +337,10 @@ class _RefChipsInputState extends State<RefChipsInput> {
                 child: TextField(
                   controller: _controller,
                   focusNode: _focus,
+                  // Desktop platforms select-all on focus by default, which
+                  // runs after our own focus listener above and overwrites
+                  // its cursor-at-end placement.
+                  selectAllOnFocus: false,
                   decoration: poloFieldDecoration(
                     context,
                     widget.label,
