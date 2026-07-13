@@ -175,6 +175,14 @@ InputDecoration poloFieldDecoration(
     floatingLabelBehavior: FloatingLabelBehavior.always,
     floatingLabelStyle: TextStyle(fontSize: 14 * scale, color: color),
     contentPadding: EdgeInsets.fromLTRB(4 * scale, 6 * scale, 4 * scale, 8 * scale),
+    // A focused field's underline reads as black regardless of theme/light
+    // vs dark, rather than the default focus-color underline — a plain,
+    // high-contrast "you are here" cue that doesn't compete with the
+    // surrounding tertiaryContainer tint some fields sit on. Width matches
+    // Material's own default focused-border weight (2.0) — overriding
+    // focusedBorder at all drops that default back to a plain BorderSide's
+    // 1.0, so it has to be restored explicitly here.
+    focusedBorder: const UnderlineInputBorder(borderSide: BorderSide(color: Colors.black, width: 2.0)),
   );
 }
 
