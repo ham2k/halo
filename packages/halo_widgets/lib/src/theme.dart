@@ -166,6 +166,10 @@ InputDecoration poloFieldDecoration(
   return InputDecoration(
     labelText: label,
     hintText: hintText,
+    // Much lighter than the label/value — a hint (e.g. a POTA "US-...")
+    // must read as a faint format cue, not as if it were an actual value
+    // already sitting in the field.
+    hintStyle: TextStyle(fontSize: 14 * scale, color: color.withValues(alpha: 0.38)),
     errorText: errorText,
     isDense: true,
     floatingLabelBehavior: FloatingLabelBehavior.always,

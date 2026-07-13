@@ -16,12 +16,16 @@ deploy-web = {
   description = "Build extensions and web app, then deploy to Cloudflare Pages"
 }
 run-ios = { run = "open -a Simulator && cd app && flutter run -d iphone", description = "Boot iOS Simulator and run the app" }
+bundle = {
+  run = "cd extensions && npm run build",
+  description = "Build the JS/TS extensions"
+}
 android = {
   run = "cd app && flutter run -d android",
   description = "Run the app on an Android device or emulator"
 }
 mac = {
-  run = "(cd app && flutter run -d macos)",
+  run = "(cd extensions && npm run build && cd ../app && flutter run -d macos)",
   description = "Build & run macOS app"
 }
 mac-files = {

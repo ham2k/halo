@@ -10,8 +10,6 @@
 // Ref types follow app-polo's QSON convention: 'pota' for hunting,
 // 'potaActivation' for activating.
 
-import { parseCallsign } from "@ham2k/lib-callsigns"
-import { annotateFromCountryFile, useBuiltinCountryFile } from "@ham2k/lib-country-files"
 import { DXCC_BY_CODE } from "@ham2k/lib-dxcc-data"
 import { bandForFrequency } from "@ham2k/lib-operation-data"
 import { locationToGrid6, distanceOnEarth } from "@ham2k/lib-geo-tools"
@@ -29,20 +27,12 @@ import type {
   ActivitySuggestion,
   LookupRow,
 } from "@ham2k/polo-sdk"
+import { REFERENCE_REGEX, entityPrefixForCall, transformsForPrefix, hunterDefaultPrefix, activationDefaultPrefix } from "./refFormatting.ts"
+
+export { REFERENCE_REGEX, transformsForPrefix, hunterDefaultPrefix, activationDefaultPrefix } from "./refFormatting.ts"
 
 const HUNTING_TYPE = 'pota'
 const ACTIVATION_TYPE = 'potaActivation'
-const REFERENCE_REGEX = /^[A-Z0-9]+-(?:[0-9]{4,5}|TEST)$/i
-
-// Loads the bundled BIGCTY data once per runtime activation, so a park's
-// DXCC entity (from its numeric entityId) and a caller's own entity (from
-// their callsign) resolve without needing a network round trip.
-useBuiltinCountryFile()
-
-function entityPrefixForCall(call: string | undefined): string | undefined {
-  if (!call) return undefined
-  return annotateFromCountryFile(parseCallsign(call)).entityPrefix
-}
 
 // Nearby suggestions use a ~150km bounding box (dbLookupSelectByLocation is a
 // rectangular query, not a true radius); results are then given a real
@@ -137,9 +127,10 @@ const RefHandler = {
 
 const ActivityHook = {
   async loggingControls(
-    _args: { operation: Record<string, unknown> },
+    { operation, qso }: { operation: Record<string, JSONValue>; qso?: Record<string, JSONValue> },
     _ctx: HookContext,
   ): Promise<LoggingControlDescriptor[]> {
+    const prefix = hunterDefaultPrefix(operation, qso)
     return [
       {
         key: 'pota/hunter',
@@ -150,17 +141,19 @@ const ActivityHook = {
         input: {
           kind: 'refList',
           refType: HUNTING_TYPE,
-          placeholder: 'US-1234',
+          placeholder: `${prefix}-...`,
           pattern: REFERENCE_REGEX.source,
+          transforms: transformsForPrefix(prefix),
         },
       },
     ]
   },
 
   async operationControls(
-    _args: { operation: Record<string, unknown> },
+    { operation }: { operation: Record<string, JSONValue>; qso?: Record<string, JSONValue> },
     _ctx: HookContext,
   ): Promise<LoggingControlDescriptor[]> {
+    const prefix = activationDefaultPrefix(operation)
     return [
       {
         key: 'pota/activation',
@@ -171,8 +164,9 @@ const ActivityHook = {
         input: {
           kind: 'refList',
           refType: ACTIVATION_TYPE,
-          placeholder: 'US-1234',
+          placeholder: `${prefix}-...`,
           pattern: REFERENCE_REGEX.source,
+          transforms: transformsForPrefix(prefix),
         },
       },
     ]
@@ -261,6 +255,9 @@ const AdifFieldsHook = {
     const huntingRefs = refsOfType(qso, HUNTING_TYPE)
     const activationRefs = refsOfType(operation, ACTIVATION_TYPE)
 
+    // A park-to-park boundary activation logs several Ref entries of the
+    // same type — SIG_INFO/MY_SIG_INFO take only the primary (first) one,
+    // POTA_REF/MY_POTA_REF list them all.
     if (huntingRefs.length > 0) {
       fields.push({ name: 'SIG', value: 'POTA' })
       fields.push({ name: 'SIG_INFO', value: huntingRefs[0].ref! })

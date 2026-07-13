@@ -26,10 +26,12 @@ import type {
   ActivitySuggestion,
   LookupRow,
 } from "@ham2k/polo-sdk"
+import { REFERENCE_REGEX, TRANSFORMS } from "./refFormatting.ts"
+
+export { REFERENCE_REGEX, TRANSFORMS } from "./refFormatting.ts"
 
 const HUNTING_TYPE = 'sota'
 const ACTIVATION_TYPE = 'sotaActivation'
-const REFERENCE_REGEX = /^[A-Z0-9]{1,4}\/[A-Z]{2}-[0-9]{3,}$/i
 
 // See POTA's identical note on why this loads at module scope: resolves
 // both a summit's association code and a caller's callsign to a DXCC
@@ -211,7 +213,7 @@ const RefHandler = {
 
 const ActivityHook = {
   async loggingControls(
-    _args: { operation: Record<string, unknown> },
+    _args: { operation: Record<string, unknown>; qso?: Record<string, unknown> },
     _ctx: HookContext,
   ): Promise<LoggingControlDescriptor[]> {
     return [
@@ -224,15 +226,16 @@ const ActivityHook = {
         input: {
           kind: 'refList',
           refType: HUNTING_TYPE,
-          placeholder: 'W6/SD-026',
+          placeholder: 'W6/SD-...',
           pattern: REFERENCE_REGEX.source,
+          transforms: TRANSFORMS,
         },
       },
     ]
   },
 
   async operationControls(
-    _args: { operation: Record<string, unknown> },
+    _args: { operation: Record<string, unknown>; qso?: Record<string, unknown> },
     _ctx: HookContext,
   ): Promise<LoggingControlDescriptor[]> {
     return [
@@ -245,8 +248,9 @@ const ActivityHook = {
         input: {
           kind: 'refList',
           refType: ACTIVATION_TYPE,
-          placeholder: 'W6/SD-026',
+          placeholder: 'W6/SD-...',
           pattern: REFERENCE_REGEX.source,
+          transforms: TRANSFORMS,
         },
       },
     ]
