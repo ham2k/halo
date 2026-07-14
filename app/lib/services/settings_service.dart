@@ -269,6 +269,11 @@ enum FontScale {
   larger(1.20, 'Larger'),
   largest(1.40, 'Largest');
 
+  /// The uniform UI zoom factor. Consumed in exactly ONE place — `main.dart`'s
+  /// `MaterialApp.builder`, which feeds it to `UiScale` to scale the entire
+  /// interface at the root. Do NOT multiply widget/theme dimensions by this
+  /// anywhere else: everything below `UiScale` already scales, so a second
+  /// multiply double-scales. See docs/design/ui-scaling.md.
   final double scaleFactor;
   final String label;
 
