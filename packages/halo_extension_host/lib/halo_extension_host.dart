@@ -88,11 +88,17 @@ class ExtensionHost {
   bool get isDead => _dead;
 
   /// Loads the kernel and extension bundles into a fresh JS runtime.
+  ///
+  /// [fetchAllowlists] maps each extension key to the hostnames its
+  /// `host.fetch` may reach (the manifest's declared network capability):
+  /// exact hosts, `*.example.com` for subdomains, or a lone `*` for any
+  /// https host. Extensions with no entry get no network access.
   static Future<ExtensionHost> start({
     required String kernelSource,
     required List<ExtensionBundle> extensions,
     bool useIsolate = true,
     HostCallHandler? onHostCall,
+    Map<String, List<String>> fetchAllowlists = const {},
   }) async {
     // On web there are no Dart isolates — the "in-process" core runs a Web
     // Worker anyway, so extension work is still off the UI thread. Branching
@@ -100,19 +106,20 @@ class ExtensionHost {
     // "isolate mode failed" warning out of every web boot.
     if (useIsolate && !kIsWeb) {
       try {
-        return await _startInIsolate(kernelSource, extensions, onHostCall);
+        return await _startInIsolate(kernelSource, extensions, onHostCall, fetchAllowlists);
       } catch (e) {
         // Fall through to in-process mode; the spike wants to know when this
         // happens, so surface it loudly on the first log line.
-        final host = await _startInProcess(kernelSource, extensions, onHostCall);
+        final host = await _startInProcess(kernelSource, extensions, onHostCall, fetchAllowlists);
         host._log('WARN isolate mode failed ($e), running in-process');
         return host;
       }
     }
-    return _startInProcess(kernelSource, extensions, onHostCall);
+    return _startInProcess(kernelSource, extensions, onHostCall, fetchAllowlists);
   }
 
-  static Future<ExtensionHost> _startInIsolate(String kernelSource, List<ExtensionBundle> extensions, HostCallHandler? onHostCall) async {
+  static Future<ExtensionHost> _startInIsolate(String kernelSource, List<ExtensionBundle> extensions, HostCallHandler? onHostCall,
+      Map<String, List<String>> fetchAllowlists) async {
     final fromIsolate = ReceivePort();
     final onError = ReceivePort();
     final onExit = ReceivePort();
@@ -149,6 +156,7 @@ class ExtensionHost {
         mainPort: fromIsolate.sendPort,
         kernelSource: kernelSource,
         bundles: [for (final p in extensions) [p.key, p.source]],
+        fetchAllowlists: fetchAllowlists,
       ),
       errorsAreFatal: true,
       onError: onError.sendPort,
@@ -199,16 +207,19 @@ class ExtensionHost {
     return host;
   }
 
-  static Future<ExtensionHost> _startInProcess(String kernelSource, List<ExtensionBundle> extensions, HostCallHandler? onHostCall) async {
+  static Future<ExtensionHost> _startInProcess(String kernelSource, List<ExtensionBundle> extensions, HostCallHandler? onHostCall,
+      Map<String, List<String>> fetchAllowlists) async {
     final earlyMessages = <Map<String, dynamic>>[];
     ExtensionHost? host;
-    final core = _HostCore(emit: (msg) {
-      if (host == null) {
-        earlyMessages.add(msg);
-      } else {
-        host._onCoreMessage(msg);
-      }
-    });
+    final core = _HostCore(
+        fetchAllowlists: fetchAllowlists,
+        emit: (msg) {
+          if (host == null) {
+            earlyMessages.add(msg);
+          } else {
+            host._onCoreMessage(msg);
+          }
+        });
     final loadMillis = await core.init(kernelSource, extensions);
     host = ExtensionHost._(
       runningInIsolate: false, 
@@ -425,15 +436,21 @@ class _HostIsolateInit {
   final SendPort mainPort;
   final String kernelSource;
   final List<List<String>> bundles;
+  final Map<String, List<String>> fetchAllowlists;
 
-  const _HostIsolateInit({required this.mainPort, required this.kernelSource, required this.bundles});
+  const _HostIsolateInit({
+    required this.mainPort,
+    required this.kernelSource,
+    required this.bundles,
+    required this.fetchAllowlists,
+  });
 }
 
 Future<void> _hostIsolateMain(_HostIsolateInit init) async {
   final receive = ReceivePort();
   init.mainPort.send({'type': 'port', 'port': receive.sendPort});
 
-  final core = _HostCore(emit: init.mainPort.send);
+  final core = _HostCore(emit: init.mainPort.send, fetchAllowlists: init.fetchAllowlists);
   try {
     final loadMillis = await core.init(
       init.kernelSource,
@@ -466,6 +483,9 @@ Future<void> _hostIsolateMain(_HostIsolateInit init) async {
 class _HostCore {
   final void Function(Map<String, dynamic>) emit;
 
+  /// Per-extension fetch capability — see [ExtensionHost.start].
+  final Map<String, List<String>> fetchAllowlists;
+
   late final EngineRuntime _js;
   final _http = http.Client();
   final Map<String, Map<String, Object?>> _kv = {};
@@ -478,7 +498,7 @@ class _HostCore {
   /// hook's own late result eventually arrives too.
   final Set<int> _outstandingIds = {};
 
-  _HostCore({required this.emit});
+  _HostCore({required this.emit, this.fetchAllowlists = const {}});
 
   String get engineDescription => _js.engineDescription;
 
@@ -648,7 +668,43 @@ class _HostCore {
     return uri;
   }
 
+  /// The allowlist for [extensionKey], resolving a sub-extension ('pota-
+  /// all-parks') to its bundle's declaration ('pota') — same prefix rule the
+  /// kernel applies to defineExtension.
+  List<String>? _fetchAllowlistFor(String? extensionKey) {
+    if (extensionKey == null) return null;
+    final exact = fetchAllowlists[extensionKey];
+    if (exact != null) return exact;
+    for (final entry in fetchAllowlists.entries) {
+      if (extensionKey.startsWith('${entry.key}-') || extensionKey.startsWith('${entry.key}_')) {
+        return entry.value;
+      }
+    }
+    return null;
+  }
+
+  /// Enforces the manifest's declared network capability (DESIGN.md §3).
+  /// `extensionKey` is kernel-derived (bound at activation), never supplied
+  /// by extension code, so this really is "who is calling", and the check
+  /// runs against the ORIGINAL host — before any web proxy rewrite.
+  void _checkFetchAllowed(String? extensionKey, String host) {
+    final allowlist = _fetchAllowlistFor(extensionKey);
+    if (allowlist != null) {
+      for (final entry in allowlist) {
+        if (entry == '*') return;
+        if (entry.startsWith('*.')) {
+          if (host.endsWith(entry.substring(1))) return;
+        } else if (host == entry) {
+          return;
+        }
+      }
+    }
+    throw ExtensionHostException(
+        "fetch blocked: '$host' is not in extension '${extensionKey ?? 'unknown'}'s declared domains");
+  }
+
   Future<Map<String, Object?>> _hostFetch(Map<String, dynamic> params) async {
+    _checkFetchAllowed(params['extensionKey'] as String?, Uri.parse(params['url'] as String).host);
     final uri = _resolveFetchUri(params['url'] as String);
     if (uri.scheme != 'https') {
       throw ExtensionHostException('only https URLs are allowed');

@@ -405,16 +405,21 @@ class ExtensionService {
       final index = jsonDecode(await rootBundle.loadString('assets/extensions/index.json')) as Map<String, dynamic>;
       final kernelSource = await rootBundle.loadString('assets/extensions/${index['kernel']}');
       final bundles = <ExtensionBundle>[];
+      final fetchAllowlists = <String, List<String>>{};
       for (final entry in (index['extensions'] as List).cast<Map<String, dynamic>>()) {
+        final key = entry['key'] as String;
         bundles.add(ExtensionBundle(
-          key: entry['key'] as String,
+          key: key,
           source: await rootBundle.loadString('assets/extensions/${entry['file']}'),
         ));
+        // The manifest's declared network capability (build.mjs `domains`).
+        fetchAllowlists[key] = ((entry['domains'] as List?) ?? const []).cast<String>();
       }
       _host = await ExtensionHost.start(
         kernelSource: kernelSource,
         extensions: bundles,
         onHostCall: _handleHostCall,
+        fetchAllowlists: fetchAllowlists,
       );
       _host!.logs.listen((line) => debugPrint('[extensions] $line'));
       for (final line in _host!.logLines) {

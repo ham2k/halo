@@ -26,11 +26,16 @@ import 'engine_runtime.dart';
 
 const _bootstrapJs = r'''
 let ready = false;
+// Captured before any bundle evaluates: raw postMessage is the web
+// equivalent of the native `sendMessage` global — left reachable, any
+// extension could forge protocol messages. The kernel captures and removes
+// `sendMessage` itself; this closes the underlying worker channel too.
+const rawPostMessage = self.postMessage.bind(self);
 self.sendMessage = function (channel, message) {
   // `message` is already JSON (kernel.ts's post() calls JSON.stringify
   // before handing it to us) — parse it back so the envelope below only
   // stringifies it once instead of double-escaping the whole payload.
-  postMessage(JSON.stringify({ kind: 'polo', message: JSON.parse(message) }));
+  rawPostMessage(JSON.stringify({ kind: 'polo', message: JSON.parse(message) }));
 };
 self.onmessage = function (e) {
   const msg = JSON.parse(e.data);
@@ -38,14 +43,19 @@ self.onmessage = function (e) {
     if (msg.kind !== 'load') return;
     try {
       (0, eval)(msg.kernelSource);
+      try {
+        self.postMessage = function () { throw new Error('the raw worker channel is kernel-private'); };
+      } catch (err) { /* not shadowable: nothing more we can do */ }
       for (const bundle of msg.bundles) {
+        self.__polo.beginBundle(bundle.key);
         (0, eval)(bundle.source);
+        self.__polo.endBundle();
       }
       self.__polo.activateAll();
       ready = true;
-      postMessage(JSON.stringify({ kind: 'ready' }));
+      rawPostMessage(JSON.stringify({ kind: 'ready' }));
     } catch (err) {
-      postMessage(JSON.stringify({ kind: 'initError', error: String((err && err.stack) || err) }));
+      rawPostMessage(JSON.stringify({ kind: 'initError', error: String((err && err.stack) || err) }));
     }
     return;
   }

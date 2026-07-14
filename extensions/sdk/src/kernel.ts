@@ -53,6 +53,33 @@ const sharedModules: Record<string, any> = {
 
 declare function sendMessage(channel: string, message: string): void
 
+// ---- Raw channel capture -------------------------------------------------
+// The engine exposes a global `sendMessage(channel, message)` — the raw wire
+// to Dart. Left public, any extension bundle could forge protocol messages
+// (fake results hijacking other hooks' responses, host calls with arbitrary
+// identity). The kernel evaluates before every bundle, so it captures the
+// function into module scope and removes the global: from here on, the only
+// way onto the wire is through kernel APIs, which enforce identity.
+// (This is soft, single-realm containment — a hostile bundle can still
+// tamper with shared globals like __polo itself. Hard isolation needs
+// per-extension realms; see DESIGN.md §3's manifest/review story.)
+const rawSendMessage: typeof sendMessage =
+  typeof sendMessage === 'function' ? sendMessage : (globalThis as Record<string, any>).sendMessage
+try {
+  delete (globalThis as Record<string, unknown>).sendMessage
+} catch (e) {
+  // non-configurable — fall through to shadowing below
+}
+if (typeof (globalThis as Record<string, unknown>).sendMessage === 'function') {
+  try {
+    ;(globalThis as Record<string, unknown>).sendMessage = () => {
+      throw new Error('the raw message channel is kernel-private')
+    }
+  } catch (e) {
+    // both delete and assignment blocked: nothing more we can do here
+  }
+}
+
 interface HookRecord {
   category: string
   key: string
@@ -72,8 +99,27 @@ const hooks: HookRecord[] = []
 const pendingHostCalls = new Map<number, PendingHostCall>()
 let nextHostCallId = 1
 
+// ---- Bundle evaluation windows --------------------------------------------
+// The host brackets every bundle's evaluation with beginBundle(key)/
+// endBundle(), where `key` comes from the host's own manifest (index.json) —
+// so an extension's identity is host-declared, not self-declared. Inside a
+// window, defineExtension only accepts the bundle's key or a key it prefixes
+// ('pota' also defines 'pota-all-parks'); outside any window (once bundles
+// have started), definitions are refused so a hook can't mint a new identity
+// at invocation time.
+let currentBundleKey: string | null = null
+let bundlesStarted = false
+
+function bundleMayDefine(bundleKey: string, extensionKey: string): boolean {
+  return (
+    extensionKey === bundleKey ||
+    extensionKey.startsWith(`${bundleKey}-`) ||
+    extensionKey.startsWith(`${bundleKey}_`)
+  )
+}
+
 function post(message: Record<string, unknown>) {
-  sendMessage('polo', JSON.stringify(message))
+  rawSendMessage('polo', JSON.stringify(message))
 }
 
 function log(message: string) {
@@ -92,7 +138,25 @@ function hooksFor(category: string, key: string | null): HookRecord[] {
     .sort((a, b) => b.priority - a.priority)
 }
 
-function hostCall(method: string, params: Record<string, unknown>): Promise<unknown> {
+// Host calls that carry (or act on) a caller identity: their `ns`/`kvKey`/
+// `extensionKey` params must be derived by the kernel from which extension
+// is calling — never supplied by extension code, or any bundle could read
+// any other's keychain credentials, KV state, or clear its status items.
+const IDENTITY_HOST_METHODS = new Set([
+  'fetch',
+  'kvGet',
+  'kvSet',
+  'getAccount',
+  'setAccountSession',
+  'statusBarSetMessage',
+  'statusBarSetProgress',
+  'statusBarClear',
+  'statusBarShowNotice',
+  'statusBarDismissNotice',
+])
+
+/// Internal, trusted dispatch — everything on the wire goes through here.
+function dispatchHostCall(method: string, params: Record<string, unknown>): Promise<unknown> {
   // An extension writing its own session must see it on its very next hook
   // call, not after the context cache's TTL (see getAccountContext).
   if (method === 'setAccountSession' && typeof params.ns === 'string') {
@@ -103,6 +167,32 @@ function hostCall(method: string, params: Record<string, unknown>): Promise<unkn
     pendingHostCalls.set(callId, { resolve, reject })
     post({ type: 'hostCall', callId, method, params })
   })
+}
+
+/// The public (`__polo.hostCall`) surface: identity-bearing methods are
+/// refused — extensions reach those through the activation-scoped
+/// `api.hostCall` their SDK copy captures (see activateExtension), whose
+/// identity params the kernel injects itself.
+function hostCall(method: string, params: Record<string, unknown>): Promise<unknown> {
+  if (IDENTITY_HOST_METHODS.has(method)) {
+    return Promise.reject(
+      new Error(`host call '${method}' carries extension identity and is only available through the SDK host API`),
+    )
+  }
+  return dispatchHostCall(method, params)
+}
+
+/// The privileged host-call function handed to one extension at activation:
+/// identity params are forced to the kernel's own record of who this is.
+function boundHostCallFor(extensionKey: string) {
+  return (method: string, params: Record<string, unknown>): Promise<unknown> => {
+    if (!IDENTITY_HOST_METHODS.has(method)) return dispatchHostCall(method, params)
+    const bound: Record<string, unknown> = { ...params, ns: extensionKey, extensionKey }
+    if (method === 'getAccount' || method === 'setAccountSession') {
+      bound.kvKey = kernel.getAccountKvKey(extensionKey)
+    }
+    return dispatchHostCall(method, bound)
+  }
 }
 
 // Hook-context caching: settings and account credentials used to be
@@ -128,7 +218,7 @@ function getSettingsContext(): Promise<unknown> {
   if (cachedSettings && Date.now() - cachedSettings.at < CONTEXT_CACHE_TTL_MILLIS) return cachedSettings.value
   const value = (async () => {
     try {
-      return await hostCall('getSettings', {})
+      return await dispatchHostCall('getSettings', {})
     } catch (e) {
       return undefined
     }
@@ -145,7 +235,9 @@ function getAccountContext(extensionKey: string): Promise<unknown> {
   const kvKey = accountHookRecord.hook.kvKey || accountHookRecord.key || extensionKey
   const value = (async () => {
     try {
-      return (await hostCall('getAccount', { ns: extensionKey, kvKey })) as unknown
+      // Trusted kernel path (this is the kernel deriving identity itself,
+      // not extension code claiming one) — bypasses the public gate.
+      return (await dispatchHostCall('getAccount', { ns: extensionKey, kvKey })) as unknown
     } catch (e) {
       return undefined
     }
@@ -177,6 +269,10 @@ function activateExtension(def: ExtensionDefinition) {
   activated.add(def.key)
   try {
     def.onActivation({
+      // Activation is the identity hand-off: this function closes over the
+      // extension's kernel-recorded key, and the SDK copy inside the bundle
+      // captures it in module scope — unreachable from other bundles.
+      hostCall: boundHostCallFor(def.key),
       registerHook(category: string, params: RegisterHookParams) {
         if (!params?.hook) {
           throw new Error(`registerHook(${category}) called with no hook in extension ${def.key}`)
@@ -224,7 +320,30 @@ function activateExtension(def: ExtensionDefinition) {
 
 const kernel = {
   defineExtension(def: ExtensionDefinition) {
+    if (bundlesStarted && currentBundleKey == null) {
+      log(`ERROR defineExtension('${def.key}') outside a bundle evaluation window — ignored`)
+      return
+    }
+    if (currentBundleKey != null && !bundleMayDefine(currentBundleKey, def.key)) {
+      log(`ERROR bundle '${currentBundleKey}' tried to define extension '${def.key}' — keys must match the host manifest; ignored`)
+      return
+    }
+    if (extensions[def.key]) {
+      log(`ERROR duplicate extension key '${def.key}' — ignored`)
+      return
+    }
     extensions[def.key] = def
+  },
+
+  /// Host-only bracketing of bundle evaluation — see the block comment on
+  /// currentBundleKey above.
+  beginBundle(key: string) {
+    bundlesStarted = true
+    currentBundleKey = key
+  },
+
+  endBundle() {
+    currentBundleKey = null
   },
 
   /// Called by the host once all bundles are evaluated.

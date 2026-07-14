@@ -411,6 +411,13 @@ export interface RegisterHookParams {
 
 export interface ActivationApi {
   registerHook(category: string, params: RegisterHookParams): void
+
+  /// Privileged host-call function bound by the kernel to THIS extension's
+  /// identity (host-manifest-derived) — identity params (`ns`, `kvKey`,
+  /// `extensionKey`) are injected kernel-side and cannot be spoofed. The
+  /// SDK captures it at activation; extension code normally never touches
+  /// it directly and just uses the `host` API.
+  hostCall(method: string, params: Record<string, unknown>): Promise<unknown>
 }
 
 export interface ExtensionDefinition {

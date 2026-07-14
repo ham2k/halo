@@ -52,15 +52,39 @@ interface KernelApi {
 
 let currentExtensionKey = 'unknown'
 
+/// Privileged host-call functions handed over by the kernel at activation,
+/// one per extension this bundle defines ('pota' also defines
+/// 'pota-all-parks'). Module-scoped — each bundle carries its own SDK copy,
+/// so other bundles can't reach these closures. Identity params are
+/// injected by the kernel; the `ns` values this module used to pass are now
+/// just ignored fallbacks.
+const privilegedHostCalls: Record<string, (method: string, params: Record<string, unknown>) => Promise<unknown>> = {}
+
 function kernel(): KernelApi {
   const k = (globalThis as Record<string, unknown>).__polo as KernelApi | undefined
   if (!k) throw new Error('polo kernel not loaded; kernel.js must be evaluated before extension bundles')
   return k
 }
 
+/// The bound call for the currently-active extension key, falling back to
+/// any this bundle holds (a bundle's sub-extensions share its identity
+/// prefix), then to the public kernel surface (which refuses
+/// identity-bearing methods — only reachable before activation).
+function hostCallFn(): (method: string, params: Record<string, unknown>) => Promise<unknown> {
+  const bound = privilegedHostCalls[currentExtensionKey] ?? Object.values(privilegedHostCalls)[0]
+  if (bound) return bound
+  return (method, params) => kernel().hostCall(method, params)
+}
+
 export function defineExtension(def: ExtensionDefinition): void {
   currentExtensionKey = def.key
-  kernel().defineExtension(def)
+  kernel().defineExtension({
+    ...def,
+    onActivation(api) {
+      if (typeof api.hostCall === 'function') privilegedHostCalls[def.key] = api.hostCall
+      return def.onActivation(api)
+    },
+  })
 }
 
 /// Cross-extension composition inside the runtime (no bridge round-trip).
@@ -85,20 +109,20 @@ export const hooks = {
 
 export const host = {
   async fetch(url: string, options?: FetchOptions): Promise<FetchResponse> {
-    return (await kernel().hostCall('fetch', { url, ...options })) as FetchResponse
+    return (await hostCallFn()('fetch', { url, ...options })) as FetchResponse
   },
 
   async kvGet(key: string): Promise<JSONValue | null> {
-    return (await kernel().hostCall('kvGet', { ns: currentExtensionKey, key })) as JSONValue | null
+    return (await hostCallFn()('kvGet', { ns: currentExtensionKey, key })) as JSONValue | null
   },
 
   async kvSet(key: string, value: JSONValue): Promise<void> {
-    await kernel().hostCall('kvSet', { ns: currentExtensionKey, key, value })
+    await hostCallFn()('kvSet', { ns: currentExtensionKey, key, value })
   },
 
   async setAccountSession(session: Record<string, string>): Promise<void> {
     const kvKey = kernel().getAccountKvKey(currentExtensionKey)
-    await kernel().hostCall('setAccountSession', { ns: currentExtensionKey, kvKey, session })
+    await hostCallFn()('setAccountSession', { ns: currentExtensionKey, kvKey, session })
   },
 
   /// The app's own core settings (theme/locale/font scale) — not a generic
@@ -108,11 +132,11 @@ export const host = {
   /// storage. For the core/settings extension's General panel; not
   /// intended for arbitrary extension use.
   async getCoreSettings(): Promise<{ themeMode: string; locale: string; fontScale: string }> {
-    return (await kernel().hostCall('getCoreSettings', {})) as { themeMode: string; locale: string; fontScale: string }
+    return (await hostCallFn()('getCoreSettings', {})) as { themeMode: string; locale: string; fontScale: string }
   },
 
   async setCoreSetting(key: string, value: JSONValue): Promise<void> {
-    await kernel().hostCall('setCoreSetting', { key, value })
+    await hostCallFn()('setCoreSetting', { key, value })
   },
 
   /// Looks up a string from the app's own translations (app/lib/i18n/
@@ -123,7 +147,7 @@ export const host = {
   /// key doesn't exist or isn't a plain string (e.g. it needs interpolation
   /// params, which this doesn't support).
   async translate(key: string): Promise<string | null> {
-    return (await kernel().hostCall('translate', { key })) as string | null
+    return (await hostCallFn()('translate', { key })) as string | null
   },
 
   /// Same lookup as `translate`, but for many keys in one bridge round
@@ -131,19 +155,19 @@ export const host = {
   /// fewer JS↔Dart hops than calling `translate` in a loop. Missing/non-
   /// string keys come back as null, same as `translate`.
   async translateAll(keys: string[]): Promise<Record<string, string | null>> {
-    return (await kernel().hostCall('translateAll', { keys })) as Record<string, string | null>
+    return (await hostCallFn()('translateAll', { keys })) as Record<string, string | null>
   },
 
   async dbLookupSelectOne(category: string, key: string): Promise<LookupRow | null> {
-    return (await kernel().hostCall('dbLookupSelectOne', { category, key })) as LookupRow | null
+    return (await hostCallFn()('dbLookupSelectOne', { category, key })) as LookupRow | null
   },
 
   async dbLookupSelectAll(category: string, query: string): Promise<LookupRow[]> {
-    return (await kernel().hostCall('dbLookupSelectAll', { category, query })) as LookupRow[]
+    return (await hostCallFn()('dbLookupSelectAll', { category, query })) as LookupRow[]
   },
 
   async dbLookupSelectByLocation(category: string, lat: number, lon: number, delta: number): Promise<LookupRow[]> {
-    return (await kernel().hostCall('dbLookupSelectByLocation', { category, lat, lon, delta })) as LookupRow[]
+    return (await hostCallFn()('dbLookupSelectByLocation', { category, lat, lon, delta })) as LookupRow[]
   },
 
   async showForm(form: FormDefinition, state: Record<string, any> = {}): Promise<Record<string, any> | null> {
@@ -155,29 +179,29 @@ export const host = {
     /// the same `key`. `key` is automatically namespaced to this extension —
     /// other extensions can't see or clear it.
     async setMessage(params: StatusBarMessageParams): Promise<void> {
-      await kernel().hostCall('statusBarSetMessage', { ...params, ns: currentExtensionKey })
+      await hostCallFn()('statusBarSetMessage', { ...params, ns: currentExtensionKey })
     },
 
     /// A transient progress bar under `key`; omit `value` for indeterminate.
     async setProgress(params: StatusBarProgressParams): Promise<void> {
-      await kernel().hostCall('statusBarSetProgress', { ...params, ns: currentExtensionKey })
+      await hostCallFn()('statusBarSetProgress', { ...params, ns: currentExtensionKey })
     },
 
     /// Removes the message/progress item under `key`, if any.
     async clear(key: string): Promise<void> {
-      await kernel().hostCall('statusBarClear', { key, ns: currentExtensionKey })
+      await hostCallFn()('statusBarClear', { key, ns: currentExtensionKey })
     },
 
     /// A richer, dismissible notice, replacing any prior undismissed notice
     /// under the same `key`. Stays in the user's notice history after
     /// dismissal.
     async showNotice(params: StatusBarNoticeParams): Promise<void> {
-      await kernel().hostCall('statusBarShowNotice', { ...params, ns: currentExtensionKey })
+      await hostCallFn()('statusBarShowNotice', { ...params, ns: currentExtensionKey })
     },
 
     /// Dismisses the active notice under `key`, if any.
     async dismissNotice(key: string): Promise<void> {
-      await kernel().hostCall('statusBarDismissNotice', { key, ns: currentExtensionKey })
+      await hostCallFn()('statusBarDismissNotice', { key, ns: currentExtensionKey })
     },
   },
 

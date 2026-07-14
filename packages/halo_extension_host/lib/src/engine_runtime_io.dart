@@ -2,8 +2,11 @@
 // SPDX-License-Identifier: MPL-2.0
 
 import 'dart:convert';
+import 'dart:io' show Platform;
 
 import 'package:flutter_js/flutter_js.dart' as fjs;
+// The JavaScriptCore backend (macOS/iOS) isn't re-exported from the barrel.
+import 'package:flutter_js/javascriptcore/jscore_runtime.dart' show JavascriptCoreRuntime;
 
 import 'engine_runtime.dart';
 
@@ -26,9 +29,35 @@ class _IoEngineRuntime implements EngineRuntime {
     // mode to report here.
   }
 
+  /// Constructs the engine with resource limits where the backend supports
+  /// them. On Android/Windows/Linux that's QuickJS: a memory limit stops one
+  /// runaway extension from OOMing the whole app, and the stack limit is
+  /// made explicit rather than inherited. On macOS/iOS flutter_js uses
+  /// JavaScriptCore, which exposes no such knobs — full interrupt/memory
+  /// control on every platform is what DESIGN.md §3's direct-FFI QuickJS
+  /// binding is for; this is the portion available today.
+  fjs.JavascriptRuntime _createRuntime() {
+    if (Platform.isAndroid || Platform.isWindows || Platform.isLinux) {
+      final runtime = fjs.QuickJsRuntime2(
+        stackSize: 2 * 1024 * 1024,
+        memoryLimit: 256 * 1024 * 1024,
+        hostPromiseRejectionHandler: (dynamic reason) {
+          _onMessage?.call({'type': 'log', 'message': 'ERROR unhandled promise rejection: $reason'});
+        },
+      );
+      runtime.enableHandlePromises();
+      return runtime;
+    }
+    // Same construction getJavascriptRuntime(xhr: false) performs on these
+    // platforms, minus the fetch polyfill.
+    final runtime = JavascriptCoreRuntime();
+    runtime.enableHandlePromises();
+    return runtime;
+  }
+
   @override
   Future<void> load(String kernelSource, List<ExtensionBundle> bundles) async {
-    _runtime = fjs.getJavascriptRuntime(xhr: false);
+    _runtime = _createRuntime();
     _runtime.onMessage('polo', (dynamic args) {
       final msg = (args is String ? jsonDecode(args) : args) as Map;
       _onMessage?.call(msg.cast<String, dynamic>());
@@ -37,7 +66,12 @@ class _IoEngineRuntime implements EngineRuntime {
 
     _evaluate(kernelSource, name: 'kernel');
     for (final bundle in bundles) {
+      // The begin/end bracket is what makes extension identity
+      // host-declared: the kernel only accepts defineExtension keys matching
+      // the manifest key this bundle was loaded under.
+      _evaluate('__polo.beginBundle(${jsonEncode(bundle.key)})', name: 'beginBundle');
       _evaluate(bundle.source, name: bundle.key);
+      _evaluate('__polo.endBundle()', name: 'endBundle');
     }
     // Activation is deferred until every bundle is evaluated, so extensions
     // never depend on declaration order within their own bundle.
