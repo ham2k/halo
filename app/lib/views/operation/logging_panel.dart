@@ -43,8 +43,10 @@ class LoggingPanel extends StatefulWidget {
 class _LoggingPanelState extends State<LoggingPanel> {
   String? _commandMarkdown;
   Qso? _selectedQso;
-  late List<String> _controlOrder = widget.services.settings.secondaryControlsOrder;
-  late Set<String> _hiddenControls = widget.services.settings.hiddenSecondaryControls;
+  late List<String> _controlOrder =
+      widget.services.settings.secondaryControlsOrder;
+  late Set<String> _hiddenControls =
+      widget.services.settings.hiddenSecondaryControls;
 
   void _handleSelectQso(Qso qso) {
     setState(() {
@@ -59,16 +61,19 @@ class _LoggingPanelState extends State<LoggingPanel> {
     final newMillis = await editTimeDialog(
       context,
       title: context.t.qsoList.editEventTime,
-      initialMillis: qso.startAtMillis ?? DateTime.now().toUtc().millisecondsSinceEpoch,
+      initialMillis:
+          qso.startAtMillis ?? DateTime.now().toUtc().millisecondsSinceEpoch,
     );
     if (newMillis == null) return;
-    await widget.services.qsos.update(Qso(
-      uuid: qso.uuid,
-      operationUuid: qso.operationUuid,
-      data: {...qso.data, 'startAtMillis': newMillis},
-      deleted: qso.deleted,
-      scoreCache: qso.scoreCache,
-    ));
+    await widget.services.qsos.update(
+      Qso(
+        uuid: qso.uuid,
+        operationUuid: qso.operationUuid,
+        data: {...qso.data, 'startAtMillis': newMillis},
+        deleted: qso.deleted,
+        scoreCache: qso.scoreCache,
+      ),
+    );
   }
 
   void _handleControlsSettingsChanged(List<String> order, Set<String> hidden) {
@@ -83,6 +88,13 @@ class _LoggingPanelState extends State<LoggingPanel> {
   @override
   Widget build(BuildContext context) {
     final wide = MediaQuery.sizeOf(context).width >= 900;
+    // Cached by `ScoringService.rescoreOperation` into `Operation.localData`
+    // (never synced — DESIGN.md §4); absent until the first rescore lands.
+    final scoring =
+        widget.operation.localData['scoring'] as Map<String, dynamic>?;
+    final daySections = ((scoring?['daySections'] as List?) ?? const [])
+        .whereType<Map<String, dynamic>>()
+        .toList();
     final list = QsoList(
       qsos: widget.qsos,
       noQsosLabel: context.t.qsoList.empty,
@@ -93,6 +105,7 @@ class _LoggingPanelState extends State<LoggingPanel> {
       showQsoNumbers: widget.showQsoNumbers,
       activityControls: widget.loggingControls,
       ourEntityPrefix: widget.ourEntityPrefix,
+      daySections: daySections,
     );
 
     return Column(
@@ -122,8 +135,8 @@ class _LoggingPanelState extends State<LoggingPanel> {
           radioService: widget.services.radio,
           lookup: widget.services.extensions.lookupCall,
           activityControls: widget.loggingControls,
-          refreshActivityControls: (qso) =>
-              widget.services.extensions.loggingControls(widget.operation.data, qso: qso),
+          refreshActivityControls: (qso) => widget.services.extensions
+              .loggingControls(widget.operation.data, qso: qso),
           decorateRef: widget.services.extensions.decorateRef,
           interpretCommand: widget.services.extensions.interpretCommand,
           onCommandMessageChanged: (message) {
@@ -137,7 +150,8 @@ class _LoggingPanelState extends State<LoggingPanel> {
           onLogged: (_) => setState(() => _selectedQso = null),
           // A comma-separated call list (issue #7) logs several QSOs at
           // once — one rescore for the whole batch, not one per call.
-          onCallListLogged: () => widget.services.scoring.rescoreOperation(widget.operation),
+          onCallListLogged: () =>
+              widget.services.scoring.rescoreOperation(widget.operation),
           controlOrder: _controlOrder,
           hiddenControlKeys: _hiddenControls,
           onControlsSettingsChanged: _handleControlsSettingsChanged,
@@ -203,10 +217,14 @@ class InformationArea extends StatelessWidget {
     // (never synced — DESIGN.md §4) each time this operation is (re)scored;
     // absent until the first rescore completes.
     final scoring = operation.localData['scoring'] as Map<String, dynamic>?;
-    final operationSummary = scoring?['operationSummary'] as Map<String, dynamic>?;
+    final operationSummary =
+        scoring?['operationSummary'] as Map<String, dynamic>?;
     final dxcc = operationSummary?['dxcc'] as Map<String, dynamic>?;
     final dxccCount = (dxcc?['entities'] as Map?)?.length ?? 0;
-    final duplicateCount = ((operationSummary?['qsoCount'] as Map?)?['duplicates'] as num?)?.toInt() ?? 0;
+    final duplicateCount =
+        ((operationSummary?['qsoCount'] as Map?)?['duplicates'] as num?)
+            ?.toInt() ??
+        0;
 
     final theme = Theme.of(context);
     return ListView(
@@ -230,13 +248,18 @@ class InformationArea extends StatelessWidget {
         Text(operation.stationCall, style: theme.textTheme.headlineSmall),
         const SizedBox(height: 16),
         Text(context.t.loggingPanel.byBand, style: theme.textTheme.titleSmall),
-        for (final entry in byBand.entries) Text('${entry.key}: ${entry.value}'),
+        for (final entry in byBand.entries)
+          Text('${entry.key}: ${entry.value}'),
         const SizedBox(height: 16),
         Text(context.t.loggingPanel.byMode, style: theme.textTheme.titleSmall),
-        for (final entry in byMode.entries) Text('${entry.key}: ${entry.value}'),
+        for (final entry in byMode.entries)
+          Text('${entry.key}: ${entry.value}'),
         if (operationSummary != null) ...[
           const SizedBox(height: 16),
-          Text(context.t.loggingPanel.scoring, style: theme.textTheme.titleSmall),
+          Text(
+            context.t.loggingPanel.scoring,
+            style: theme.textTheme.titleSmall,
+          ),
           Text('${context.t.loggingPanel.dxccEntities}: $dxccCount'),
           Text('${context.t.loggingPanel.duplicates}: $duplicateCount'),
         ],

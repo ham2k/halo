@@ -43,7 +43,14 @@ double _textWidth(BuildContext context, String text, TextStyle style) {
   return painter.width;
 }
 
-class QsoList extends StatelessWidget {
+/// One UTC calendar day in milliseconds — QSOs are grouped by truncating
+/// `startAtMillis` to this boundary, matching the scoring extension's own
+/// day-sectioning (`extensions/core/scoring/src/index.ts`'s `DAY_IN_MILLIS`),
+/// so a day's pinned header lines up with the `daySections` scores cached
+/// for that same boundary.
+const int _dayInMillis = 1000 * 60 * 60 * 24;
+
+class QsoList extends StatefulWidget {
   final List<Qso> qsos;
   final String? noQsosLabel;
 
@@ -85,6 +92,15 @@ class QsoList extends StatelessWidget {
   /// lookup lands.
   final String? ourEntityPrefix;
 
+  /// Raw `daySections` from the scoring hook's last run (see
+  /// `ScoringHook.scoreQsos`/`ScoringService.rescoreOperation`), cached in
+  /// `Operation.localData['scoring']['daySections']` — each entry is
+  /// `{day, count, scores}`, `day` truncated to the same UTC boundary as
+  /// [_dayInMillis]. Matched against the locally-computed day groups below
+  /// by that `day` key; empty (or a day with no matching entry, e.g. before
+  /// the first rescore lands) just means that header shows no score badges.
+  final List<Map<String, dynamic>> daySections;
+
   const QsoList({
     super.key,
     required this.qsos,
@@ -96,24 +112,85 @@ class QsoList extends StatelessWidget {
     this.showQsoNumbers = true,
     this.activityControls = const [],
     this.ourEntityPrefix,
+    this.daySections = const [],
   });
 
   @override
+  State<QsoList> createState() => _QsoListState();
+}
+
+class _QsoListState extends State<QsoList> {
+  final _scrollController = ScrollController();
+  int _lastQsoCount = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _lastQsoCount = widget.qsos.length;
+    WidgetsBinding.instance.addPostFrameCallback((_) => _jumpToBottom());
+  }
+
+  @override
+  void didUpdateWidget(covariant QsoList oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    final grew = widget.qsos.length > _lastQsoCount;
+    _lastQsoCount = widget.qsos.length;
+    // Only follow new QSOs down when the user is already looking at the
+    // live edge — someone scrolled up to review earlier contacts shouldn't
+    // get yanked back to the bottom by the next logged QSO.
+    if (grew && _isNearBottom()) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => _jumpToBottom());
+    }
+  }
+
+  bool _isNearBottom() {
+    if (!_scrollController.hasClients) return true;
+    final position = _scrollController.position;
+    return position.maxScrollExtent - position.pixels < 120;
+  }
+
+  void _jumpToBottom() {
+    if (!_scrollController.hasClients) return;
+    _scrollController.jumpTo(_scrollController.position.maxScrollExtent);
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final qsos = widget.qsos;
+    final onSelect = widget.onSelect;
+    final onSelectEvent = widget.onSelectEvent;
+    final selectedUuid = widget.selectedUuid;
+    final showRSTFields = widget.showRSTFields;
+    final showQsoNumbers = widget.showQsoNumbers;
+    final activityControls = widget.activityControls;
+    final ourEntityPrefix = widget.ourEntityPrefix;
+
     final theme = Theme.of(context);
     if (qsos.isEmpty) {
       return Container(
         color: theme.colorScheme.surfaceContainerHighest,
         child: Center(
           child: Text(
-            noQsosLabel ?? 'No QSOs yet — work someone!',
-            style: theme.textTheme.bodyLarge?.copyWith(color: theme.colorScheme.outline),
+            widget.noQsosLabel ?? 'No QSOs yet — work someone!',
+            style: theme.textTheme.bodyLarge?.copyWith(
+              color: theme.colorScheme.outline,
+            ),
           ),
         ),
       );
     }
 
-    final mono = haloMonoStyle(context, fontSize: 14, color: theme.colorScheme.onSurface);
+    final mono = haloMonoStyle(
+      context,
+      fontSize: 14,
+      color: theme.colorScheme.onSurface,
+    );
     final monoDim = mono.copyWith(color: theme.colorScheme.outline);
     // Bold, but the same base size as every other field per the issue: "All
     // fields use the same base font size (except for frequency, see below)."
@@ -153,8 +230,12 @@ class QsoList extends StatelessWidget {
     // Column widths are computed once for the whole list so every row lines
     // up, per the issue: "wide enough to fit the largest number"/"longest
     // callsign in all qsos".
-    final numberWidth = showQsoNumbers ? _textWidth(context, '$maxNumber', mono) : 0.0;
-    final callsignWidth = longestCall.isEmpty ? 0.0 : _textWidth(context, longestCall, callStyle);
+    final numberWidth = showQsoNumbers
+        ? _textWidth(context, '$maxNumber', mono)
+        : 0.0;
+    final callsignWidth = longestCall.isEmpty
+        ? 0.0
+        : _textWidth(context, longestCall, callStyle);
 
     // "decide how many digits to display based on all the qsos in the
     // operation" — one Hz precision for the whole list, not per row.
@@ -163,212 +244,506 @@ class QsoList extends StatelessWidget {
     // modes — otherwise every row would repeat the same value.
     final usesMultipleModes = modesUsed.length > 1;
 
-    return Container(
-      // Shows through wherever the list doesn't reach (e.g. above the
-      // oldest row when there are few QSOs, since the list is reversed to
-      // keep the newest one at the bottom) — rows themselves stay opaque
-      // on the normal surface color below.
-      color: theme.colorScheme.surfaceContainerHighest,
-      child: ListView.separated(
-        reverse: true,
-        itemCount: qsos.length,
-        // Divider's own `height` (the space it reserves, not the visible
-        // line) defaults to 16 regardless of the app-wide dividerTheme's
-        // `space` unless given explicitly — measured at 16px in practice,
-        // way more than the issue's "one pixel divider ... no further
-        // margins" calls for.
-        separatorBuilder: (context, index) => const Divider(height: 1, thickness: 1),
-        itemBuilder: (context, index) {
-          // reverse:true renders itemBuilder index 0 at the bottom of the
-          // list. `qsos` is ordered oldest-first, so we index from the end to
-          // put the newest QSO at index 0 — next to the logging panel,
-          // contest-logger style. The row number stays chronological (1 =
-          // first QSO logged), independent of where it renders.
-          final chronologicalIndex = qsos.length - 1 - index;
-          final qso = qsos[chronologicalIndex];
+    // `qsos` arrives oldest-first (QsosRepository.watchForOperation orders
+    // by startAtMillis) — bucket it into consecutive UTC-day runs so each
+    // bucket becomes one pinned header + its own sliver of rows. A plain
+    // linear scan works because same-day QSOs are already contiguous; no
+    // need to build then sort a day->indices map.
+    final dayKeys = <int>[];
+    final dayGroups = <List<int>>[];
+    for (var i = 0; i < qsos.length; i++) {
+      final millis = qsos[i].startAtMillis ?? 0;
+      final dayKey = millis - (millis % _dayInMillis);
+      if (dayKeys.isEmpty || dayKeys.last != dayKey) {
+        dayKeys.add(dayKey);
+        dayGroups.add([]);
+      }
+      dayGroups.last.add(i);
+    }
 
-          if (qso.isEvent) {
-            return EventRow(
-              qso: qso,
-              selected: qso.uuid == selectedUuid,
-              onTap: () => (onSelectEvent ?? onSelect)(qso),
-            );
-          }
+    // Matched against each local day bucket by the same UTC-day key the
+    // scoring hook uses — see `_dayInMillis`'s doc comment. Absent (or a
+    // bucket with no matching entry, e.g. before the first rescore lands
+    // for QSOs just logged) just means that header shows no score badges.
+    final scoresByDay = <int, Map<String, dynamic>?>{
+      for (final section in widget.daySections)
+        if (section['day'] is num)
+          (section['day'] as num).toInt():
+              section['scores'] as Map<String, dynamic>?,
+    };
 
-          final number = numbers[chronologicalIndex];
-          final time = qso.startAt;
-          final timeLabel = time == null
-              ? '--:--z'
-              : '${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}z';
-          final selected = qso.uuid == selectedUuid;
+    Widget buildRow(BuildContext context, int chronologicalIndex) {
+      final qso = qsos[chronologicalIndex];
 
-          // Selected treatment matches app-polo's QSOList: secondaryContainer
-          // fill with a secondary top/bottom border accent, text tinted
-          // toward onSecondaryContainer so it doesn't wash out.
-          var rowMono = selected ? mono.copyWith(color: theme.colorScheme.onSecondaryContainer) : mono;
-          var rowMonoDim = selected
-              ? monoDim.copyWith(color: theme.colorScheme.onSecondaryContainer.withValues(alpha: 0.75))
-              : monoDim;
-          var rowCall = selected ? callStyle.copyWith(color: theme.colorScheme.onSecondaryContainer) : callStyle;
-          // Deleted QSOs only ever show up here when the "show deleted QSOs"
-          // menu toggle is on — struck-through and faded so they read as
-          // gone without disappearing from the timeline.
-          if (qso.deleted) {
-            rowMono = rowMono.copyWith(
-              color: rowMono.color?.withValues(alpha: 0.5),
-              decoration: TextDecoration.lineThrough,
-            );
-            rowMonoDim = rowMonoDim.copyWith(
-              color: rowMonoDim.color?.withValues(alpha: 0.5),
-              decoration: TextDecoration.lineThrough,
-            );
-            rowCall = rowCall.copyWith(
-              color: rowCall.color?.withValues(alpha: 0.5),
-              decoration: TextDecoration.lineThrough,
-            );
-          }
+      if (qso.isEvent) {
+        return EventRow(
+          qso: qso,
+          selected: qso.uuid == selectedUuid,
+          onTap: () => (onSelectEvent ?? onSelect)(qso),
+        );
+      }
 
-          // DX/State column: a flag only when we have positive evidence the
-          // contact is outside our own DXCC entity (both sides resolved and
-          // different) — otherwise falls back to the contact's state, same
-          // as a same-entity contact. Emoji use a proportional font per the
-          // issue ("emoji and name...use a proportional font"), so this
-          // deliberately doesn't use rowMono/rowMonoDim for the flag case —
-          // see theme.dart's emojiStyle for why it also needs an explicit
-          // fontFamily.
-          final theirEntityPrefix = qso.theirEntityPrefix;
-          final isDX = theirEntityPrefix != null && ourEntityPrefix != null && theirEntityPrefix != ourEntityPrefix;
-          final flag = qso.theirFlag;
-          final state = qso.theirState;
-          Widget? dxStateField;
-          if (isDX && flag != null) {
-            dxStateField = Text(flag, style: emojiStyle());
-          } else if (state != null && state.isNotEmpty) {
-            // Falls back to state whenever there's no flag to show — not just
-            // when `!isDX` — so a DX contact whose entity resolved but whose
-            // flag lookup came up empty (e.g. a DXCC entity present in
-            // lib-country-files but missing from lib-dxcc-data's table)
-            // still shows its state instead of going blank.
-            dxStateField = Text(state, style: rowMonoDim);
-          }
+      final number = numbers[chronologicalIndex];
+      final time = qso.startAt;
+      final timeLabel = time == null
+          ? '--:--z'
+          : '${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}z';
+      final selected = qso.uuid == selectedUuid;
 
-          // Frequency bolded-MHz/regular-kHz/smaller-Hz, dot-separated; falls
-          // back to the mode when the QSO has no frequency at all.
-          final freqKHz = qso.freq;
-          final Widget freqField;
-          if (freqKHz == null) {
-            freqField = Text(qso.mode ?? '', style: rowMono);
-          } else {
-            final parts = freqDisplayParts(freqKHz, hzDigits: hzDigits);
-            freqField = Row(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.baseline,
-              textBaseline: TextBaseline.alphabetic,
-              children: [
-                Text(parts.mhz, style: rowMono.copyWith(fontWeight: FontWeight.w700)),
-                Text('.', style: rowMono),
-                Text(parts.khz, style: rowMono),
-                if (parts.hz != null) ...[
-                  Text('.', style: rowMono),
-                  Text(parts.hz!, style: rowMono.copyWith(fontSize: (rowMono.fontSize ?? 14) * 0.8)),
-                ],
-              ],
-            );
-          }
+      // Selected treatment matches app-polo's QSOList: secondaryContainer
+      // fill with a secondary top/bottom border accent, text tinted
+      // toward onSecondaryContainer so it doesn't wash out.
+      var rowMono = selected
+          ? mono.copyWith(color: theme.colorScheme.onSecondaryContainer)
+          : mono;
+      var rowMonoDim = selected
+          ? monoDim.copyWith(
+              color: theme.colorScheme.onSecondaryContainer.withValues(
+                alpha: 0.75,
+              ),
+            )
+          : monoDim;
+      var rowCall = selected
+          ? callStyle.copyWith(color: theme.colorScheme.onSecondaryContainer)
+          : callStyle;
+      // Deleted QSOs only ever show up here when the "show deleted QSOs"
+      // menu toggle is on — struck-through and faded so they read as
+      // gone without disappearing from the timeline.
+      if (qso.deleted) {
+        rowMono = rowMono.copyWith(
+          color: rowMono.color?.withValues(alpha: 0.5),
+          decoration: TextDecoration.lineThrough,
+        );
+        rowMonoDim = rowMonoDim.copyWith(
+          color: rowMonoDim.color?.withValues(alpha: 0.5),
+          decoration: TextDecoration.lineThrough,
+        );
+        rowCall = rowCall.copyWith(
+          color: rowCall.color?.withValues(alpha: 0.5),
+          decoration: TextDecoration.lineThrough,
+        );
+      }
 
-          // One icon per distinct ref type, "×N" appended when the QSO
-          // carries more than one ref of that type.
-          final refCountsByType = <String, int>{};
-          for (final ref in qso.refs) {
-            final type = ref['type'] as String?;
-            if (type == null) continue;
-            refCountsByType.update(type, (count) => count + 1, ifAbsent: () => 1);
-          }
+      // DX/State column: a flag only when we have positive evidence the
+      // contact is outside our own DXCC entity (both sides resolved and
+      // different) — otherwise falls back to the contact's state, same
+      // as a same-entity contact. Emoji use a proportional font per the
+      // issue ("emoji and name...use a proportional font"), so this
+      // deliberately doesn't use rowMono/rowMonoDim for the flag case —
+      // see theme.dart's emojiStyle for why it also needs an explicit
+      // fontFamily.
+      final theirEntityPrefix = qso.theirEntityPrefix;
+      final isDX =
+          theirEntityPrefix != null &&
+          ourEntityPrefix != null &&
+          theirEntityPrefix != ourEntityPrefix;
+      final flag = qso.theirFlag;
+      final state = qso.theirState;
+      Widget? dxStateField;
+      if (isDX && flag != null) {
+        dxStateField = Text(flag, style: emojiStyle());
+      } else if (state != null && state.isNotEmpty) {
+        // Falls back to state whenever there's no flag to show — not just
+        // when `!isDX` — so a DX contact whose entity resolved but whose
+        // flag lookup came up empty (e.g. a DXCC entity present in
+        // lib-country-files but missing from lib-dxcc-data's table)
+        // still shows its state instead of going blank.
+        dxStateField = Text(state, style: rowMonoDim);
+      }
 
-          return Container(
-            // foregroundDecoration paints over the already-laid-out child
-            // instead of insetting it (unlike Container's `decoration`,
-            // which turns a BoxDecoration's border into padding) — the
-            // selected-row accent border can't add any height on top of the
-            // hairline row/divider spacing the issue calls for.
-            foregroundDecoration: BoxDecoration(
-              border: selected
-                  ? Border.symmetric(horizontal: BorderSide(color: theme.colorScheme.secondary, width: 3))
-                  : null,
+      // Frequency bolded-MHz/regular-kHz/smaller-Hz, dot-separated; falls
+      // back to the mode when the QSO has no frequency at all.
+      final freqKHz = qso.freq;
+      final Widget freqField;
+      if (freqKHz == null) {
+        freqField = Text(qso.mode ?? '', style: rowMono);
+      } else {
+        final parts = freqDisplayParts(freqKHz, hzDigits: hzDigits);
+        freqField = Row(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.baseline,
+          textBaseline: TextBaseline.alphabetic,
+          children: [
+            Text(
+              parts.mhz,
+              style: rowMono.copyWith(fontWeight: FontWeight.w700),
             ),
-            child: Material(
-              color: selected ? theme.colorScheme.secondaryContainer : theme.colorScheme.surface,
-              child: InkWell(
-                onTap: () => onSelect(qso),
-                mouseCursor: SystemMouseCursors.click,
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                  child: Row(
-                    children: [
-                      if (showQsoNumbers) ...[
-                        SizedBox(
-                          width: numberWidth,
-                          child: Text(qso.deleted ? '' : '$number', style: rowMonoDim, textAlign: TextAlign.right),
-                        ),
-                        const SizedBox(width: _columnGap),
-                      ],
-                      Text(timeLabel, style: rowMonoDim),
-                      const SizedBox(width: _columnGap),
-                      freqField,
-                      const SizedBox(width: _columnGap),
-                      if (usesMultipleModes) ...[
-                        SizedBox(width: 42, child: Text(qso.mode ?? '', style: rowMono)),
-                        const SizedBox(width: _columnGap),
-                      ],
-                      // The callsign never truncates; the name absorbs the squeeze.
-                      SizedBox(width: callsignWidth, child: Text(qso.theirCall, style: rowCall)),
-                      const SizedBox(width: _columnGap),
-                      if (dxStateField != null) ...[
-                        dxStateField,
-                        const SizedBox(width: _columnGap),
-                      ],
-                      Expanded(
-                        child: Text(
-                          qso.theirName ?? '',
-                          style: rowMonoDim.copyWith(fontSize: 13),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                      if (refCountsByType.isNotEmpty) ...[
-                        const SizedBox(width: _columnGap),
-                        Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            for (final entry in refCountsByType.entries) ...[
-                              Icon(
-                                resolveIconName(iconForRefType(activityControls, entry.key)),
-                                size: 14,
-                                color: theme.colorScheme.tertiary,
-                              ),
-                              if (entry.value > 1)
-                                Text('×${entry.value}', style: rowMono.copyWith(fontSize: 11)),
-                              const SizedBox(width: 6),
-                            ],
-                          ],
-                        ),
-                      ],
-                      if (showRSTFields)
-                        SizedBox(
-                          width: 68,
-                          child: Text(
-                            '${qso.sentRST ?? ''} ${qso.receivedRST ?? ''}',
-                            style: rowMonoDim,
-                            textAlign: TextAlign.right,
-                          ),
-                        ),
-                    ],
-                  ),
+            Text('.', style: rowMono),
+            Text(parts.khz, style: rowMono),
+            if (parts.hz != null) ...[
+              Text('.', style: rowMono),
+              Text(
+                parts.hz!,
+                style: rowMono.copyWith(
+                  fontSize: (rowMono.fontSize ?? 14) * 0.8,
                 ),
               ),
+            ],
+          ],
+        );
+      }
+
+      // One icon per distinct ref type, "×N" appended when the QSO
+      // carries more than one ref of that type.
+      final refCountsByType = <String, int>{};
+      for (final ref in qso.refs) {
+        final type = ref['type'] as String?;
+        if (type == null) continue;
+        refCountsByType.update(type, (count) => count + 1, ifAbsent: () => 1);
+      }
+
+      return Container(
+        // foregroundDecoration paints over the already-laid-out child
+        // instead of insetting it (unlike Container's `decoration`,
+        // which turns a BoxDecoration's border into padding) — the
+        // selected-row accent border can't add any height on top of the
+        // hairline row/divider spacing the issue calls for.
+        foregroundDecoration: BoxDecoration(
+          border: selected
+              ? Border.symmetric(
+                  horizontal: BorderSide(
+                    color: theme.colorScheme.secondary,
+                    width: 3,
+                  ),
+                )
+              : null,
+        ),
+        child: Material(
+          color: selected
+              ? theme.colorScheme.secondaryContainer
+              : theme.colorScheme.surface,
+          child: InkWell(
+            onTap: () => onSelect(qso),
+            mouseCursor: SystemMouseCursors.click,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+              child: Row(
+                children: [
+                  if (showQsoNumbers) ...[
+                    SizedBox(
+                      width: numberWidth,
+                      child: Text(
+                        qso.deleted ? '' : '$number',
+                        style: rowMonoDim,
+                        textAlign: TextAlign.right,
+                      ),
+                    ),
+                    const SizedBox(width: _columnGap),
+                  ],
+                  Text(timeLabel, style: rowMonoDim),
+                  const SizedBox(width: _columnGap),
+                  freqField,
+                  const SizedBox(width: _columnGap),
+                  if (usesMultipleModes) ...[
+                    SizedBox(
+                      width: 42,
+                      child: Text(qso.mode ?? '', style: rowMono),
+                    ),
+                    const SizedBox(width: _columnGap),
+                  ],
+                  // The callsign never truncates; the name absorbs the squeeze.
+                  SizedBox(
+                    width: callsignWidth,
+                    child: Text(qso.theirCall, style: rowCall),
+                  ),
+                  const SizedBox(width: _columnGap),
+                  if (dxStateField != null) ...[
+                    dxStateField,
+                    const SizedBox(width: _columnGap),
+                  ],
+                  Expanded(
+                    child: Text(
+                      qso.theirName ?? '',
+                      style: rowMonoDim.copyWith(fontSize: 13),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  if (refCountsByType.isNotEmpty) ...[
+                    const SizedBox(width: _columnGap),
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        for (final entry in refCountsByType.entries) ...[
+                          Icon(
+                            resolveIconName(
+                              iconForRefType(activityControls, entry.key),
+                            ),
+                            size: 14,
+                            color: theme.colorScheme.tertiary,
+                          ),
+                          if (entry.value > 1)
+                            Text(
+                              '×${entry.value}',
+                              style: rowMono.copyWith(fontSize: 11),
+                            ),
+                          const SizedBox(width: 6),
+                        ],
+                      ],
+                    ),
+                  ],
+                  if (showRSTFields)
+                    SizedBox(
+                      width: 68,
+                      child: Text(
+                        '${qso.sentRST ?? ''} ${qso.receivedRST ?? ''}',
+                        style: rowMonoDim,
+                        textAlign: TextAlign.right,
+                      ),
+                    ),
+                ],
+              ),
             ),
-          );
-        },
+          ),
+        ),
+      );
+    }
+
+    return Container(
+      // Shows through wherever the list doesn't reach (e.g. below the
+      // newest row when there are few QSOs) — rows themselves stay opaque
+      // on the normal surface color below.
+      color: theme.colorScheme.surfaceContainerHighest,
+      child: CustomScrollView(
+        controller: _scrollController,
+        slivers: [
+          for (var g = 0; g < dayGroups.length; g++)
+            // Groups each day's header with its own rows so Flutter's sliver
+            // protocol coordinates pinning *between* groups — without this,
+            // sibling `SliverPersistentHeader`s pin independently of each
+            // other and a short day's header never gets pushed off by the
+            // next day's, so both stay stuck on screen at once instead of
+            // only the current day's header showing.
+            SliverMainAxisGroup(
+              slivers: [
+                SliverPersistentHeader(
+                  pinned: true,
+                  delegate: _DayHeaderDelegate(
+                    child: DayHeaderRow(
+                      dayMillis: dayKeys[g],
+                      count: dayGroups[g]
+                          .where((i) => qsos[i].isRealContact)
+                          .length,
+                      scores: scoresByDay[dayKeys[g]],
+                    ),
+                  ),
+                ),
+                SliverList(
+                  delegate: SliverChildBuilderDelegate((context, i) {
+                    // Divider's own `height` (the space it reserves, not the
+                    // visible line) defaults to 16 regardless of the
+                    // app-wide dividerTheme's `space` unless given
+                    // explicitly — measured at 16px in practice, way more
+                    // than the issue's "one pixel divider ... no further
+                    // margins" calls for. Same odd-index-is-a-separator
+                    // trick `ListView.separated` uses internally, since
+                    // `SliverList` has no `.separated` ctor.
+                    if (i.isOdd) {
+                      return const Divider(height: 1, thickness: 1);
+                    }
+                    return buildRow(context, dayGroups[g][i ~/ 2]);
+                  }, childCount: dayGroups[g].length * 2 - 1),
+                ),
+              ],
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Pins [DayHeaderRow] to the top of [QsoList]'s `CustomScrollView` while its
+/// day's QSOs are in view, per issue #62 ("pinned headers that show the day
+/// and scoring summaries").
+class _DayHeaderDelegate extends SliverPersistentHeaderDelegate {
+  final Widget child;
+  // Matches an ordinary QSO row's own height (4px vertical padding either
+  // side of a 14px line at its natural, un-inflated line height — see
+  // `DayHeaderRow.build`'s `rowStyle`) plus a little headroom so [child]'s
+  // forced `SizedBox(height: _height)` below never clips/overflows it. The
+  // border lives in `foregroundDecoration`, not `decoration`, specifically
+  // so it doesn't add to this the way `Container` would otherwise
+  // auto-inset for a `decoration`'s border.
+  static const double _height = 28;
+
+  const _DayHeaderDelegate({required this.child});
+
+  @override
+  double get minExtent => _height;
+
+  @override
+  double get maxExtent => _height;
+
+  @override
+  Widget build(
+    BuildContext context,
+    double shrinkOffset,
+    bool overlapsContent,
+  ) {
+    // Forces the child to exactly [_height] regardless of its own intrinsic
+    // size — a pinned sliver header's declared extent must match what it
+    // actually paints, or Flutter throws a "layoutExtent exceeds
+    // paintExtent" assertion the instant [child]'s content (font size,
+    // padding, border width) doesn't add up to precisely [_height].
+    return SizedBox(height: _height, child: child);
+  }
+
+  @override
+  bool shouldRebuild(covariant _DayHeaderDelegate oldDelegate) =>
+      oldDelegate.child != child;
+}
+
+/// One UTC-day divider in [QsoList]: the day's date, its real-contact count,
+/// and (once scored) score badges for that day — see `DayScoreSummary` and
+/// `ScoreTally` in the extension SDK. `qsoCount` is skipped among the score
+/// badges since [count] already shows it as a label.
+class DayHeaderRow extends StatelessWidget {
+  final int dayMillis;
+  final int count;
+  final Map<String, dynamic>? scores;
+
+  /// Overrides "now" for the relative-date label below — tests only; a real
+  /// header always compares against the current moment.
+  final DateTime? now;
+
+  const DayHeaderRow({
+    super.key,
+    required this.dayMillis,
+    required this.count,
+    this.scores,
+    this.now,
+  });
+
+  static const _weekdayAbbrs = [
+    'Mon',
+    'Tue',
+    'Wed',
+    'Thu',
+    'Fri',
+    'Sat',
+    'Sun',
+  ];
+  static const _monthAbbrs = [
+    'Jan',
+    'Feb',
+    'Mar',
+    'Apr',
+    'May',
+    'Jun',
+    'Jul',
+    'Aug',
+    'Sep',
+    'Oct',
+    'Nov',
+    'Dec',
+  ];
+
+  /// Same tiering as app-polo/web-lofi's `fmtDateDynamicZulu(compact: true)`
+  /// (lib-format-tools' `fmtDateDynamic`): "Today"/"Yesterday" for the
+  /// obvious cases, weekday+day within the last week, month+day within the
+  /// last 9 months, and month+day+year beyond that — so a long-running log
+  /// still reads as calendar dates instead of an ever-scrolling "N days ago".
+  static String _dayLabel(int dayMillis, DateTime now) {
+    final d = DateTime.fromMillisecondsSinceEpoch(dayMillis, isUtc: true);
+    final diffInDays = now.difference(d).inMilliseconds / _dayInMillis;
+    final absDiffInDays = diffInDays.abs();
+
+    if (diffInDays > -1 && diffInDays <= 0) return 'Tomorrow';
+    if (diffInDays > 0 && diffInDays <= 1) return 'Today';
+    if (diffInDays <= 2) return 'Yesterday';
+    if (absDiffInDays <= 7) return '${_weekdayAbbrs[d.weekday - 1]} ${d.day}';
+    if (absDiffInDays <= 274) return '${_monthAbbrs[d.month - 1]} ${d.day}';
+    return '${_monthAbbrs[d.month - 1]} ${d.day} ${d.year}';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    // Same base size as the QSO rows below it (app-polo's QSOHeader reuses
+    // its row font wholesale, just bolding the date) — labelLarge/labelMedium
+    // read visibly larger than the row text and made the header feel like a
+    // different, heavier UI element instead of a divider within the list.
+    // `height: 1.0` overrides bodyMedium's Material 3 line-height multiplier
+    // (1.43, meant for prose) back down to the font's natural metric — same
+    // as the row's own `haloMonoStyle`, which never sets an explicit
+    // `height` either — so the header doesn't come out visibly taller than
+    // an ordinary QSO row despite using the same 14px font size.
+    final rowStyle = theme.textTheme.bodyMedium?.copyWith(
+      color: theme.colorScheme.onSurfaceVariant,
+      height: 1.0,
+    );
+
+    final badges = <Widget>[];
+    for (final entry in (scores ?? const <String, dynamic>{}).entries) {
+      if (entry.key == 'qsoCount') continue;
+      final tally = entry.value;
+      if (tally is! Map) continue;
+      final icon = tally['icon'] as String?;
+      final summary = tally['summary'] as String?;
+      if (icon == null || summary == null || summary.isEmpty) continue;
+      badges.add(
+        Padding(
+          padding: const EdgeInsets.only(left: 10),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                resolveIconName(icon),
+                size: 14,
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+              const SizedBox(width: 3),
+              Text(summary, style: rowStyle),
+            ],
+          ),
+        ),
+      );
+    }
+
+    return Container(
+      // `surfaceContainerHigh` isn't one of the tones `buildHaLoTheme`
+      // overrides (theme.dart), so it falls back to Flutter's default — an
+      // almost-white tint that doesn't read as "gray" against the QSO
+      // rows' plain `surface`. `surfaceContainerHighest` is an
+      // explicitly-set, visibly gray tone (already used to fill the list's
+      // own empty space above/below its rows), so it actually shows up as
+      // a distinct header background.
+      color: theme.colorScheme.surfaceContainerHighest,
+      // `foregroundDecoration`, not `decoration` — same reason the row's own
+      // selected-treatment border below uses it: `Container` auto-insets
+      // its child by a `BoxDecoration`'s border width when the border lives
+      // in `decoration`, which would make the header taller than a plain
+      // QSO row for the same padding. Painting over the already-laid-out
+      // box instead keeps the header exactly row-height while still
+      // reading as a stronger break than the 1px hairline between ordinary
+      // QSO rows — matching app-polo's QSOHeader (`headerRow`'s
+      // `borderBottomWidth: 2`) — using `outline`, not `outlineVariant`,
+      // since `outlineVariant` is nearly the same color as the header's own
+      // background and the border all but disappeared against it.
+      foregroundDecoration: BoxDecoration(
+        border: Border(
+          bottom: BorderSide(color: theme.colorScheme.outline, width: 3),
+        ),
+      ),
+      child: Padding(
+        // Same vertical padding as a QSO row (see `buildRow`'s own
+        // `Padding` above) so the header comes out exactly row-height.
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+        child: Row(
+          children: [
+            Text(
+              _dayLabel(dayMillis, now ?? DateTime.now().toUtc()),
+              style: rowStyle?.copyWith(
+                fontWeight: FontWeight.w700,
+                color: theme.colorScheme.onSurface,
+              ),
+            ),
+            const SizedBox(width: 10),
+            Text(count == 1 ? '1 QSO' : '$count QSOs', style: rowStyle),
+            const Spacer(),
+            ...badges,
+          ],
+        ),
       ),
     );
   }
@@ -382,7 +757,12 @@ class EventRow extends StatelessWidget {
   final bool selected;
   final VoidCallback onTap;
 
-  const EventRow({super.key, required this.qso, required this.onTap, this.selected = false});
+  const EventRow({
+    super.key,
+    required this.qso,
+    required this.onTap,
+    this.selected = false,
+  });
 
   static const _icons = {
     'start': Icons.flag_outlined,
@@ -406,7 +786,9 @@ class EventRow extends StatelessWidget {
         : '${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}z';
 
     return Material(
-      color: selected ? theme.colorScheme.secondaryContainer : theme.colorScheme.surfaceContainerHigh,
+      color: selected
+          ? theme.colorScheme.secondaryContainer
+          : theme.colorScheme.surfaceContainerHigh,
       child: InkWell(
         onTap: onTap,
         mouseCursor: SystemMouseCursors.click,
@@ -415,7 +797,11 @@ class EventRow extends StatelessWidget {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(_icons[kind] ?? Icons.timelapse, size: 16, color: theme.colorScheme.outline),
+              Icon(
+                _icons[kind] ?? Icons.timelapse,
+                size: 16,
+                color: theme.colorScheme.outline,
+              ),
               const SizedBox(width: 8),
               Text(
                 _labels[kind] ?? kind ?? 'Event',
@@ -427,7 +813,11 @@ class EventRow extends StatelessWidget {
               const SizedBox(width: 10),
               Text(
                 timeLabel,
-                style: haloMonoStyle(context, fontSize: 12, color: theme.colorScheme.outline),
+                style: haloMonoStyle(
+                  context,
+                  fontSize: 12,
+                  color: theme.colorScheme.outline,
+                ),
               ),
             ],
           ),

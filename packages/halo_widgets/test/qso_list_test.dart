@@ -22,7 +22,9 @@ void main() {
     await db.close();
   });
 
-  testWidgets('newest QSO renders at the bottom, next to the logging panel', (tester) async {
+  testWidgets('newest QSO renders at the bottom, next to the logging panel', (
+    tester,
+  ) async {
     final operation = await operations.create(stationCall: 'KI2D');
     final first = await qsos.add(operation.uuid, {
       'their': {'call': 'W1AW'},
@@ -37,11 +39,13 @@ void main() {
       'startAtMillis': 2000,
     });
 
-    await tester.pumpWidget(MaterialApp(
-      home: Scaffold(
-        body: QsoList(qsos: [first, second], onSelect: (_) {}),
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: QsoList(qsos: [first, second], onSelect: (_) {}),
+        ),
       ),
-    ));
+    );
 
     // The newer QSO (K2HAM) must be visually BELOW the older one (W1AW) —
     // reverse:true plus oldest-first input previously put the oldest QSO
@@ -56,86 +60,115 @@ void main() {
     expect(find.text('2'), findsOneWidget);
   });
 
-  testWidgets('the divider between rows is a hairline, not Material\'s default 16px-tall spacer', (tester) async {
-    final operation = await operations.create(stationCall: 'KI2D');
-    final first = await qsos.add(operation.uuid, {
-      'their': {'call': 'W1AW'},
-      'mode': 'SSB',
-      'startAtMillis': 1000,
-    });
-    final second = await qsos.add(operation.uuid, {
-      'their': {'call': 'K2HAM'},
-      'mode': 'SSB',
-      'startAtMillis': 2000,
-    });
-
-    await tester.pumpWidget(MaterialApp(
-      home: Scaffold(body: QsoList(qsos: [first, second], onSelect: (_) {})),
-    ));
-
-    expect(tester.getSize(find.byType(Divider)).height, 1);
-  });
-
-  testWidgets('event markers render distinctly and are excluded from QSO numbering', (tester) async {
-    final operation = await operations.create(stationCall: 'KI2D');
-    final start = await qsos.addEvent(operation.uuid, kind: 'start', atMillis: 500);
-    final first = await qsos.add(operation.uuid, {
-      'their': {'call': 'W1AW'},
-      'band': '20m',
-      'mode': 'SSB',
-      'startAtMillis': 1000,
-    });
-    final brk = await qsos.addEvent(operation.uuid, kind: 'break', atMillis: 1500);
-    final second = await qsos.add(operation.uuid, {
-      'their': {'call': 'K2HAM'},
-      'band': '40m',
-      'mode': 'CW',
-      'startAtMillis': 2000,
-    });
-
-    Qso? tapped;
-    await tester.pumpWidget(MaterialApp(
-      home: Scaffold(
-        body: QsoList(
-          qsos: [start, first, brk, second],
-          onSelect: (_) {},
-          onSelectEvent: (qso) => tapped = qso,
-        ),
-      ),
-    ));
-
-    expect(find.text('Operation started'), findsOneWidget);
-    expect(find.text('Break'), findsOneWidget);
-    // Real QSOs still number 1 and 2 — events don't consume a number.
-    expect(find.text('1'), findsOneWidget);
-    expect(find.text('2'), findsOneWidget);
-
-    await tester.tap(find.text('Break'));
-    expect(tapped?.uuid, brk.uuid);
-  });
-
-  group('frequency', () {
-    testWidgets('splits MHz (bold) / kHz, with no Hz segment for a whole-kHz frequency', (tester) async {
+  testWidgets(
+    'the divider between rows is a hairline, not Material\'s default 16px-tall spacer',
+    (tester) async {
       final operation = await operations.create(stationCall: 'KI2D');
-      final qso = await qsos.add(operation.uuid, {
+      final first = await qsos.add(operation.uuid, {
         'their': {'call': 'W1AW'},
-        'freq': 14074,
-        'mode': 'FT8',
+        'mode': 'SSB',
         'startAtMillis': 1000,
       });
+      final second = await qsos.add(operation.uuid, {
+        'their': {'call': 'K2HAM'},
+        'mode': 'SSB',
+        'startAtMillis': 2000,
+      });
 
-      await tester.pumpWidget(MaterialApp(
-        home: Scaffold(body: QsoList(qsos: [qso], onSelect: (_) {})),
-      ));
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: QsoList(qsos: [first, second], onSelect: (_) {}),
+          ),
+        ),
+      );
 
-      expect(find.text('14'), findsOneWidget);
-      expect(find.text('074'), findsOneWidget);
-      // MHz/kHz separated by exactly one period; no fractional-kHz precision
-      // anywhere in the list, so there's no second period for an Hz segment.
-      expect(find.text('.'), findsOneWidget);
-    });
+      expect(tester.getSize(find.byType(Divider)).height, 1);
+    },
+  );
 
-    testWidgets('shows the mode instead when the QSO has no frequency', (tester) async {
+  testWidgets(
+    'event markers render distinctly and are excluded from QSO numbering',
+    (tester) async {
+      final operation = await operations.create(stationCall: 'KI2D');
+      final start = await qsos.addEvent(
+        operation.uuid,
+        kind: 'start',
+        atMillis: 500,
+      );
+      final first = await qsos.add(operation.uuid, {
+        'their': {'call': 'W1AW'},
+        'band': '20m',
+        'mode': 'SSB',
+        'startAtMillis': 1000,
+      });
+      final brk = await qsos.addEvent(
+        operation.uuid,
+        kind: 'break',
+        atMillis: 1500,
+      );
+      final second = await qsos.add(operation.uuid, {
+        'their': {'call': 'K2HAM'},
+        'band': '40m',
+        'mode': 'CW',
+        'startAtMillis': 2000,
+      });
+
+      Qso? tapped;
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: QsoList(
+              qsos: [start, first, brk, second],
+              onSelect: (_) {},
+              onSelectEvent: (qso) => tapped = qso,
+            ),
+          ),
+        ),
+      );
+
+      expect(find.text('Operation started'), findsOneWidget);
+      expect(find.text('Break'), findsOneWidget);
+      // Real QSOs still number 1 and 2 — events don't consume a number.
+      expect(find.text('1'), findsOneWidget);
+      expect(find.text('2'), findsOneWidget);
+
+      await tester.tap(find.text('Break'));
+      expect(tapped?.uuid, brk.uuid);
+    },
+  );
+
+  group('frequency', () {
+    testWidgets(
+      'splits MHz (bold) / kHz, with no Hz segment for a whole-kHz frequency',
+      (tester) async {
+        final operation = await operations.create(stationCall: 'KI2D');
+        final qso = await qsos.add(operation.uuid, {
+          'their': {'call': 'W1AW'},
+          'freq': 14074,
+          'mode': 'FT8',
+          'startAtMillis': 1000,
+        });
+
+        await tester.pumpWidget(
+          MaterialApp(
+            home: Scaffold(
+              body: QsoList(qsos: [qso], onSelect: (_) {}),
+            ),
+          ),
+        );
+
+        expect(find.text('14'), findsOneWidget);
+        expect(find.text('074'), findsOneWidget);
+        // MHz/kHz separated by exactly one period; no fractional-kHz precision
+        // anywhere in the list, so there's no second period for an Hz segment.
+        expect(find.text('.'), findsOneWidget);
+      },
+    );
+
+    testWidgets('shows the mode instead when the QSO has no frequency', (
+      tester,
+    ) async {
       final operation = await operations.create(stationCall: 'KI2D');
       final qso = await qsos.add(operation.uuid, {
         'their': {'call': 'W1AW'},
@@ -143,9 +176,13 @@ void main() {
         'startAtMillis': 1000,
       });
 
-      await tester.pumpWidget(MaterialApp(
-        home: Scaffold(body: QsoList(qsos: [qso], onSelect: (_) {})),
-      ));
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: QsoList(qsos: [qso], onSelect: (_) {}),
+          ),
+        ),
+      );
 
       expect(find.text('CW'), findsOneWidget);
     });
@@ -169,9 +206,13 @@ void main() {
         'startAtMillis': 2000,
       });
 
-      await tester.pumpWidget(MaterialApp(
-        home: Scaffold(body: QsoList(qsos: [first, second], onSelect: (_) {})),
-      ));
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: QsoList(qsos: [first, second], onSelect: (_) {}),
+          ),
+        ),
+      );
 
       // 'SSB' would otherwise render twice (once per row) if the column showed.
       expect(find.text('SSB'), findsNothing);
@@ -192,9 +233,13 @@ void main() {
         'startAtMillis': 2000,
       });
 
-      await tester.pumpWidget(MaterialApp(
-        home: Scaffold(body: QsoList(qsos: [first, second], onSelect: (_) {})),
-      ));
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: QsoList(qsos: [first, second], onSelect: (_) {}),
+          ),
+        ),
+      );
 
       expect(find.text('SSB'), findsOneWidget);
       expect(find.text('CW'), findsOneWidget);
@@ -202,20 +247,31 @@ void main() {
   });
 
   group('DX/State column', () {
-    testWidgets('shows a flag when both entities are known and differ', (tester) async {
+    testWidgets('shows a flag when both entities are known and differ', (
+      tester,
+    ) async {
       final qso = Qso(
         uuid: 'q',
         operationUuid: 'op-1',
         data: {
-          'their': {'call': 'G0ABC', 'entityPrefix': 'G', 'flag': '🇬🇧', 'state': 'ignored-when-dx'},
+          'their': {
+            'call': 'G0ABC',
+            'entityPrefix': 'G',
+            'flag': '🇬🇧',
+            'state': 'ignored-when-dx',
+          },
           'mode': 'SSB',
           'startAtMillis': 1000,
         },
       );
 
-      await tester.pumpWidget(MaterialApp(
-        home: Scaffold(body: QsoList(qsos: [qso], onSelect: (_) {}, ourEntityPrefix: 'K')),
-      ));
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: QsoList(qsos: [qso], onSelect: (_) {}, ourEntityPrefix: 'K'),
+          ),
+        ),
+      );
 
       expect(find.text('🇬🇧'), findsOneWidget);
       expect(find.text('ignored-when-dx'), findsNothing);
@@ -226,66 +282,104 @@ void main() {
         uuid: 'q',
         operationUuid: 'op-1',
         data: {
-          'their': {'call': 'K2HAM', 'entityPrefix': 'K', 'flag': '🇺🇸', 'state': 'NY'},
+          'their': {
+            'call': 'K2HAM',
+            'entityPrefix': 'K',
+            'flag': '🇺🇸',
+            'state': 'NY',
+          },
           'mode': 'SSB',
           'startAtMillis': 1000,
         },
       );
 
-      await tester.pumpWidget(MaterialApp(
-        home: Scaffold(body: QsoList(qsos: [qso], onSelect: (_) {}, ourEntityPrefix: 'K')),
-      ));
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: QsoList(qsos: [qso], onSelect: (_) {}, ourEntityPrefix: 'K'),
+          ),
+        ),
+      );
 
       expect(find.text('NY'), findsOneWidget);
       expect(find.text('🇺🇸'), findsNothing);
     });
 
-    testWidgets('falls back to the state, not a flag, while our own entity is still unresolved', (tester) async {
-      final qso = Qso(
-        uuid: 'q',
-        operationUuid: 'op-1',
-        data: {
-          'their': {'call': 'G0ABC', 'entityPrefix': 'G', 'flag': '🇬🇧', 'state': 'shown-until-resolved'},
-          'mode': 'SSB',
-          'startAtMillis': 1000,
-        },
-      );
+    testWidgets(
+      'falls back to the state, not a flag, while our own entity is still unresolved',
+      (tester) async {
+        final qso = Qso(
+          uuid: 'q',
+          operationUuid: 'op-1',
+          data: {
+            'their': {
+              'call': 'G0ABC',
+              'entityPrefix': 'G',
+              'flag': '🇬🇧',
+              'state': 'shown-until-resolved',
+            },
+            'mode': 'SSB',
+            'startAtMillis': 1000,
+          },
+        );
 
-      await tester.pumpWidget(MaterialApp(
-        // ourEntityPrefix omitted — mirrors OperationView before its
-        // lookupCall(online: false) resolution lands.
-        home: Scaffold(body: QsoList(qsos: [qso], onSelect: (_) {})),
-      ));
+        await tester.pumpWidget(
+          MaterialApp(
+            // ourEntityPrefix omitted — mirrors OperationView before its
+            // lookupCall(online: false) resolution lands.
+            home: Scaffold(
+              body: QsoList(qsos: [qso], onSelect: (_) {}),
+            ),
+          ),
+        );
 
-      expect(find.text('shown-until-resolved'), findsOneWidget);
-      expect(find.text('🇬🇧'), findsNothing);
-    });
+        expect(find.text('shown-until-resolved'), findsOneWidget);
+        expect(find.text('🇬🇧'), findsNothing);
+      },
+    );
 
-    testWidgets('a DX contact with a resolved entity but no flag falls back to state instead of going blank', (tester) async {
-      // A resolvable entity with no matching flag data (e.g. an edge-case
-      // DXCC entity present in lib-country-files but missing from
-      // lib-dxcc-data's table) must not be treated the same as "no entity
-      // resolved at all" — it's still a known-DX contact, just without a
-      // flag glyph, so the row should still show something rather than
-      // nothing.
-      final qso = Qso(
-        uuid: 'q',
-        operationUuid: 'op-1',
-        data: {
-          'their': {'call': 'XX1ABC', 'entityPrefix': 'XX', 'state': 'fallback-state'},
-          'mode': 'SSB',
-          'startAtMillis': 1000,
-        },
-      );
+    testWidgets(
+      'a DX contact with a resolved entity but no flag falls back to state instead of going blank',
+      (tester) async {
+        // A resolvable entity with no matching flag data (e.g. an edge-case
+        // DXCC entity present in lib-country-files but missing from
+        // lib-dxcc-data's table) must not be treated the same as "no entity
+        // resolved at all" — it's still a known-DX contact, just without a
+        // flag glyph, so the row should still show something rather than
+        // nothing.
+        final qso = Qso(
+          uuid: 'q',
+          operationUuid: 'op-1',
+          data: {
+            'their': {
+              'call': 'XX1ABC',
+              'entityPrefix': 'XX',
+              'state': 'fallback-state',
+            },
+            'mode': 'SSB',
+            'startAtMillis': 1000,
+          },
+        );
 
-      await tester.pumpWidget(MaterialApp(
-        home: Scaffold(body: QsoList(qsos: [qso], onSelect: (_) {}, ourEntityPrefix: 'K')),
-      ));
+        await tester.pumpWidget(
+          MaterialApp(
+            home: Scaffold(
+              body: QsoList(
+                qsos: [qso],
+                onSelect: (_) {},
+                ourEntityPrefix: 'K',
+              ),
+            ),
+          ),
+        );
 
-      expect(find.text('fallback-state'), findsOneWidget);
-    });
+        expect(find.text('fallback-state'), findsOneWidget);
+      },
+    );
 
-    testWidgets('shows nothing when neither a flag nor a state is available', (tester) async {
+    testWidgets('shows nothing when neither a flag nor a state is available', (
+      tester,
+    ) async {
       final qso = Qso(
         uuid: 'q',
         operationUuid: 'op-1',
@@ -296,9 +390,13 @@ void main() {
         },
       );
 
-      await tester.pumpWidget(MaterialApp(
-        home: Scaffold(body: QsoList(qsos: [qso], onSelect: (_) {}, ourEntityPrefix: 'K')),
-      ));
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: QsoList(qsos: [qso], onSelect: (_) {}, ourEntityPrefix: 'K'),
+          ),
+        ),
+      );
 
       // Nothing to assert findsOneWidget on — just confirm it doesn't crash
       // and the row still renders the callsign.
@@ -306,82 +404,327 @@ void main() {
     });
   });
 
-  testWidgets('callsign column is sized to fit a deleted QSO\'s callsign too, not just active ones', (tester) async {
-    final short = Qso(
-      uuid: 'short',
-      operationUuid: 'op-1',
-      data: {'their': {'call': 'W1AW'}, 'mode': 'SSB', 'startAtMillis': 1000},
-    );
-    final long = Qso(
-      uuid: 'long',
-      operationUuid: 'op-1',
-      data: {'their': {'call': 'VP8/VERYLONGCALL'}, 'mode': 'SSB', 'startAtMillis': 2000},
-      deleted: true,
-    );
+  testWidgets(
+    'callsign column is sized to fit a deleted QSO\'s callsign too, not just active ones',
+    (tester) async {
+      final short = Qso(
+        uuid: 'short',
+        operationUuid: 'op-1',
+        data: {
+          'their': {'call': 'W1AW'},
+          'mode': 'SSB',
+          'startAtMillis': 1000,
+        },
+      );
+      final long = Qso(
+        uuid: 'long',
+        operationUuid: 'op-1',
+        data: {
+          'their': {'call': 'VP8/VERYLONGCALL'},
+          'mode': 'SSB',
+          'startAtMillis': 2000,
+        },
+        deleted: true,
+      );
 
-    await tester.pumpWidget(MaterialApp(
-      home: Scaffold(body: QsoList(qsos: [short, long], onSelect: (_) {})),
-    ));
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: QsoList(qsos: [short, long], onSelect: (_) {}),
+          ),
+        ),
+      );
 
-    // If the callsign column were sized only from active QSOs (excluding the
-    // deleted one), the long deleted callsign would wrap onto a second line,
-    // making its Text taller than the short active callsign's.
-    final shortHeight = tester.getSize(find.text('W1AW')).height;
-    final longHeight = tester.getSize(find.text('VP8/VERYLONGCALL')).height;
-    expect(longHeight, shortHeight);
-  });
+      // If the callsign column were sized only from active QSOs (excluding the
+      // deleted one), the long deleted callsign would wrap onto a second line,
+      // making its Text taller than the short active callsign's.
+      final shortHeight = tester.getSize(find.text('W1AW')).height;
+      final longHeight = tester.getSize(find.text('VP8/VERYLONGCALL')).height;
+      expect(longHeight, shortHeight);
+    },
+  );
 
-  testWidgets('callsign column stays sized to fit at a larger font-scale setting', (tester) async {
-    final qso = Qso(
-      uuid: 'q',
-      operationUuid: 'op-1',
-      data: {'their': {'call': 'VP8/VERYLONGCALL'}, 'mode': 'SSB', 'startAtMillis': 1000},
-    );
+  testWidgets(
+    'callsign column stays sized to fit at a larger font-scale setting',
+    (tester) async {
+      final qso = Qso(
+        uuid: 'q',
+        operationUuid: 'op-1',
+        data: {
+          'their': {'call': 'VP8/VERYLONGCALL'},
+          'mode': 'SSB',
+          'startAtMillis': 1000,
+        },
+      );
 
-    // A font-scale setting above 1x (accessibility or the app's own "Larger"
-    // preference) must still fit the callsign on one line — the column-width
-    // measurement has to apply the same ambient scaling the real Text gets.
-    await tester.pumpWidget(MediaQuery(
-      data: const MediaQueryData(textScaler: TextScaler.linear(1.5)),
-      child: MaterialApp(
-        home: Scaffold(body: QsoList(qsos: [qso], onSelect: (_) {})),
-      ),
-    ));
+      // A font-scale setting above 1x (accessibility or the app's own "Larger"
+      // preference) must still fit the callsign on one line — the column-width
+      // measurement has to apply the same ambient scaling the real Text gets.
+      await tester.pumpWidget(
+        MediaQuery(
+          data: const MediaQueryData(textScaler: TextScaler.linear(1.5)),
+          child: MaterialApp(
+            home: Scaffold(
+              body: QsoList(qsos: [qso], onSelect: (_) {}),
+            ),
+          ),
+        ),
+      );
 
-    // A single-line callsign at fontSize 15 * 1.5 scale has a known height
-    // ceiling well under two wrapped lines' worth.
-    expect(tester.getSize(find.text('VP8/VERYLONGCALL')).height, lessThan(40));
-  });
+      // A single-line callsign at fontSize 15 * 1.5 scale has a known height
+      // ceiling well under two wrapped lines' worth.
+      expect(
+        tester.getSize(find.text('VP8/VERYLONGCALL')).height,
+        lessThan(40),
+      );
+    },
+  );
 
-  testWidgets('references show one icon per type, with ×N for repeats of the same type', (tester) async {
-    final operation = await operations.create(stationCall: 'KI2D');
-    final qso = await qsos.add(operation.uuid, {
-      'their': {'call': 'W1AW'},
-      'mode': 'SSB',
-      'startAtMillis': 1000,
-      'refs': [
-        {'type': 'pota', 'ref': 'US-1234'},
-        {'type': 'pota', 'ref': 'US-5678'},
-        {'type': 'sota', 'ref': 'W1/AA-001'},
-      ],
+  testWidgets(
+    'references show one icon per type, with ×N for repeats of the same type',
+    (tester) async {
+      final operation = await operations.create(stationCall: 'KI2D');
+      final qso = await qsos.add(operation.uuid, {
+        'their': {'call': 'W1AW'},
+        'mode': 'SSB',
+        'startAtMillis': 1000,
+        'refs': [
+          {'type': 'pota', 'ref': 'US-1234'},
+          {'type': 'pota', 'ref': 'US-5678'},
+          {'type': 'sota', 'ref': 'W1/AA-001'},
+        ],
+      });
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: QsoList(
+              qsos: [qso],
+              onSelect: (_) {},
+              activityControls: [
+                {
+                  'icon': 'pine-tree',
+                  'input': {'refType': 'pota'},
+                },
+                {
+                  'icon': 'image-filter-hdr',
+                  'input': {'refType': 'sota'},
+                },
+              ],
+            ),
+          ),
+        ),
+      );
+
+      expect(find.byIcon(resolveIconName('pine-tree')), findsOneWidget);
+      expect(find.byIcon(resolveIconName('image-filter-hdr')), findsOneWidget);
+      expect(find.text('×2'), findsOneWidget);
+    },
+  );
+
+  group('day headers', () {
+    testWidgets('groups QSOs into one pinned header per UTC day', (
+      tester,
+    ) async {
+      final operation = await operations.create(stationCall: 'KI2D');
+      const dayMillis = 1000 * 60 * 60 * 24;
+      final first = await qsos.add(operation.uuid, {
+        'their': {'call': 'W1AW'},
+        'mode': 'SSB',
+        'startAtMillis': 1000,
+      });
+      final second = await qsos.add(operation.uuid, {
+        'their': {'call': 'K2HAM'},
+        'mode': 'SSB',
+        // A day later — its own header, separate from the first QSO's.
+        'startAtMillis': dayMillis + 1000,
+      });
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: QsoList(qsos: [first, second], onSelect: (_) {}),
+          ),
+        ),
+      );
+
+      expect(find.byType(DayHeaderRow), findsNWidgets(2));
+      // Both QSOs are decades in the past relative to "now" (the test run's
+      // real clock), so the dynamic date label falls into its oldest tier:
+      // month/day/year, no weekday — see `DayHeaderRow._dayLabel`.
+      expect(find.text('Jan 1 1970'), findsOneWidget);
+      expect(find.text('Jan 2 1970'), findsOneWidget);
+      expect(find.text('1 QSO'), findsNWidgets(2));
     });
 
-    await tester.pumpWidget(MaterialApp(
-      home: Scaffold(
-        body: QsoList(
-          qsos: [qso],
-          onSelect: (_) {},
-          activityControls: [
-            {'icon': 'pine-tree', 'input': {'refType': 'pota'}},
-            {'icon': 'image-filter-hdr', 'input': {'refType': 'sota'}},
-          ],
-        ),
-      ),
-    ));
+    testWidgets('is exactly as tall as an ordinary QSO row', (tester) async {
+      final operation = await operations.create(stationCall: 'KI2D');
+      final qso = await qsos.add(operation.uuid, {
+        'their': {'call': 'W1AW'},
+        'mode': 'SSB',
+        'startAtMillis': 1000,
+      });
 
-    expect(find.byIcon(resolveIconName('pine-tree')), findsOneWidget);
-    expect(find.byIcon(resolveIconName('image-filter-hdr')), findsOneWidget);
-    expect(find.text('×2'), findsOneWidget);
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: QsoList(qsos: [qso], onSelect: (_) {}),
+          ),
+        ),
+      );
+
+      final headerHeight = tester.getSize(find.byType(DayHeaderRow)).height;
+      // The row's own height, measured the same way: its immediate
+      // `Padding` ancestor (`buildRow`'s `EdgeInsets.symmetric(vertical:
+      // 4)`), found via the callsign text it wraps.
+      final rowHeight = tester
+          .getSize(
+            find
+                .ancestor(of: find.text('W1AW'), matching: find.byType(Padding))
+                .first,
+          )
+          .height;
+      expect(headerHeight, closeTo(rowHeight, 1));
+    });
+
+    testWidgets(
+      "only the current day's header stays pinned — short days' headers don't stack",
+      (tester) async {
+        final operation = await operations.create(stationCall: 'KI2D');
+        const dayMillis = 1000 * 60 * 60 * 24;
+        // Six single-QSO days: each day's own section is shorter than the
+        // header itself, the exact case where sibling
+        // `SliverPersistentHeader`s (without a `SliverMainAxisGroup` per
+        // day) never get pushed off by the next one and pile up on screen
+        // instead of only the current day's header showing.
+        final qsoList = [
+          for (var day = 0; day < 6; day++)
+            await qsos.add(operation.uuid, {
+              'their': {'call': 'W1AW'},
+              'mode': 'SSB',
+              'startAtMillis': day * dayMillis + 1000,
+            }),
+        ];
+
+        await tester.pumpWidget(
+          MaterialApp(
+            home: Scaffold(
+              body: SizedBox(
+                height: 200,
+                child: QsoList(qsos: qsoList, onSelect: (_) {}),
+              ),
+            ),
+          ),
+        );
+
+        // Scroll partway through the list — past a couple of day boundaries
+        // but not to either end — where a stacking bug would show more than
+        // one header pinned at the very top at once.
+        await tester.drag(find.byType(Scrollable), const Offset(0, -120));
+        await tester.pump();
+
+        final headers = find.byType(DayHeaderRow);
+        final pinnedCount = headers
+            .evaluate()
+            .where((e) => tester.getTopLeft(find.byWidget(e.widget)).dy <= 0.5)
+            .length;
+        expect(pinnedCount, 1);
+      },
+    );
+
+    testWidgets(
+      'shows score badges from the matching daySections entry, skipping qsoCount',
+      (tester) async {
+        final operation = await operations.create(stationCall: 'KI2D');
+        final qso = await qsos.add(operation.uuid, {
+          'their': {'call': 'W1AW'},
+          'mode': 'SSB',
+          'startAtMillis': 1000,
+        });
+
+        await tester.pumpWidget(
+          MaterialApp(
+            home: Scaffold(
+              body: QsoList(
+                qsos: [qso],
+                onSelect: (_) {},
+                daySections: [
+                  {
+                    'day': 0,
+                    'count': 1,
+                    'scores': {
+                      'qsoCount': {'icon': 'radio', 'summary': '1'},
+                      'dxcc': {'icon': 'earth', 'summary': '5'},
+                    },
+                  },
+                ],
+              ),
+            ),
+          ),
+        );
+
+        expect(find.byIcon(resolveIconName('earth')), findsOneWidget);
+        expect(find.byIcon(resolveIconName('radio')), findsNothing);
+        expect(find.text('5'), findsOneWidget);
+      },
+    );
+
+    group('dynamic date label', () {
+      const dayMillis = 1000 * 60 * 60 * 24;
+      // A Wednesday afternoon, so "this week" cases land on predictable
+      // weekday abbreviations regardless of when the test suite runs — and
+      // a non-midnight time-of-day, matching how the real app always calls
+      // this with the actual current moment: [dayMillis] arguments below
+      // are truncated day-start boundaries, so "yesterday" (a full 24h+
+      // before [now]'s own day-start) only lands within the 1-2 day window
+      // `_dayLabel` checks for because [now] itself isn't also day-aligned.
+      final now = DateTime.utc(2024, 1, 10, 15, 30);
+      int dayOf(DateTime dt) {
+        final millis = dt.millisecondsSinceEpoch;
+        return millis - (millis % dayMillis);
+      }
+
+      Future<void> pumpHeader(WidgetTester tester, int forDayMillis) =>
+          tester.pumpWidget(
+            MaterialApp(
+              home: Scaffold(
+                body: DayHeaderRow(dayMillis: forDayMillis, count: 1, now: now),
+              ),
+            ),
+          );
+
+      testWidgets('today', (tester) async {
+        await pumpHeader(tester, dayOf(now));
+        expect(find.text('Today'), findsOneWidget);
+      });
+
+      testWidgets('yesterday', (tester) async {
+        await pumpHeader(tester, dayOf(now.subtract(const Duration(days: 1))));
+        expect(find.text('Yesterday'), findsOneWidget);
+      });
+
+      testWidgets('within the last week uses a weekday abbreviation', (
+        tester,
+      ) async {
+        await pumpHeader(tester, dayOf(now.subtract(const Duration(days: 3))));
+        expect(find.text('Sun 7'), findsOneWidget);
+      });
+
+      testWidgets('within the last 9 months uses month + day, no year', (
+        tester,
+      ) async {
+        await pumpHeader(tester, dayOf(now.subtract(const Duration(days: 60))));
+        expect(find.text('Nov 11'), findsOneWidget);
+      });
+
+      testWidgets('beyond 9 months includes the year', (tester) async {
+        await pumpHeader(
+          tester,
+          dayOf(now.subtract(const Duration(days: 400))),
+        );
+        expect(find.text('Dec 6 2022'), findsOneWidget);
+      });
+    });
   });
 
   group('show QSO numbers', () {
@@ -393,9 +736,13 @@ void main() {
         'startAtMillis': 1000,
       });
 
-      await tester.pumpWidget(MaterialApp(
-        home: Scaffold(body: QsoList(qsos: [qso], onSelect: (_) {}, showQsoNumbers: false)),
-      ));
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: QsoList(qsos: [qso], onSelect: (_) {}, showQsoNumbers: false),
+          ),
+        ),
+      );
 
       expect(find.text('1'), findsNothing);
     });
