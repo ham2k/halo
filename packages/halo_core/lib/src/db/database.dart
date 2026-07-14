@@ -24,6 +24,12 @@ class Operations extends Table {
   BoolColumn get deleted => boolean().withDefault(const Constant(false))();
   BoolColumn get synced => boolean().withDefault(const Constant(false))();
 
+  /// Mirrors `data.updatedAtMillis` (stamped on every local write, app-polo
+  /// convention) so sync can compare revisions without decoding the blob:
+  /// `markSynced` only flips rows whose stamp still matches what was sent,
+  /// and `mergeFromSync` skips inbound records older than the local row.
+  IntColumn get updatedAtMillis => integer().nullable()();
+
   @override
   Set<Column> get primaryKey => {uuid};
 }
@@ -45,6 +51,9 @@ class Qsos extends Table {
   /// Cached plugin scoring results so list rendering never waits on the
   /// plugin runtime (DESIGN.md §4). Unused until the scoring hooks land.
   TextColumn get scoreCache => text().nullable()();
+
+  /// See `Operations.updatedAtMillis`.
+  IntColumn get updatedAtMillis => integer().nullable()();
 
   @override
   Set<Column> get primaryKey => {uuid};
@@ -102,7 +111,7 @@ class HaLoDatabase extends _$HaLoDatabase {
   HaLoDatabase(super.executor);
 
   @override
-  int get schemaVersion => 3;
+  int get schemaVersion => 4;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -114,6 +123,13 @@ class HaLoDatabase extends _$HaLoDatabase {
           }
           if (from < 3) {
             await m.createTable(lookups);
+          }
+          if (from < 4) {
+            // Left null for pre-existing rows: their data blobs carry no
+            // updatedAtMillis either, and sync treats null as "no revision
+            // information" on both sides of the comparison.
+            await m.addColumn(operations, operations.updatedAtMillis);
+            await m.addColumn(qsos, qsos.updatedAtMillis);
           }
         },
       );

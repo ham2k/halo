@@ -238,8 +238,11 @@ class SyncEngine {
         return;
       }
 
-      await operations.markSynced(batch.operations.map((o) => o.uuid));
-      await qsos.markSynced(batch.qsos.map((q) => q.uuid));
+      // Passes the sent models, not just uuids: markSynced compares each
+      // row's revision stamp against the copy that actually went out, so an
+      // edit made during the network await above stays dirty and re-pushes.
+      await operations.markSynced(batch.operations);
+      await qsos.markSynced(batch.qsos);
 
       final inboundOperations = (response['operations'] as List?)?.cast<Map<String, dynamic>>() ?? const [];
       final inboundQsos = (response['qsos'] as List?)?.cast<Map<String, dynamic>>() ?? const [];

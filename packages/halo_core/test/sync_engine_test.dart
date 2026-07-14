@@ -81,8 +81,8 @@ void main() {
   test('selectBatch falls back to unsynced operations when no QSOs are pending', () async {
     final op = await operations.create(stationCall: 'KI2D');
     await qsos.add(op.uuid, {'their': {'call': 'W1AW'}});
-    await operations.markSynced([op.uuid]);
-    await qsos.markSynced((await qsos.watchForOperation(op.uuid).first).map((q) => q.uuid));
+    await operations.markSynced([op]);
+    await qsos.markSynced(await qsos.watchForOperation(op.uuid).first);
 
     await operations.saveData(Operation(uuid: op.uuid, data: {...op.data, 'title': 'Renamed'}));
 
@@ -301,8 +301,8 @@ void main() {
     test('resolveAccountChange(combine) resets sync flags and starts a fresh backfill', () async {
       final op = await operations.create(stationCall: 'KI2D');
       await qsos.add(op.uuid, {'their': {'call': 'W1AW'}});
-      await operations.markSynced([op.uuid]);
-      await qsos.markSynced((await qsos.watchForOperation(op.uuid).first).map((q) => q.uuid));
+      await operations.markSynced([op]);
+      await qsos.markSynced(await qsos.watchForOperation(op.uuid).first);
       settings.state = {'pendingAccountUUID': 'acct-new'};
 
       transport.responder = (method, args) => const {};
