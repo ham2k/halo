@@ -536,6 +536,28 @@ void main() {
     expect(k1abc.theirName, isNull);
   });
 
+  testWidgets('onCommandMessageChanged does not fire on every keystroke when the message is unchanged', (tester) async {
+    final messages = <String?>[];
+    await tester.pumpWidget(host(
+      interpretCommand: fakeInterpretCommand,
+      onCommandMessageChanged: messages.add,
+    ));
+
+    // Typing an ordinary callsign never produces a command message: the
+    // callback must stay silent rather than firing null on every character
+    // (which used to rebuild the whole QsoList per keystroke).
+    await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'W');
+    await tester.pump();
+    await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'W1');
+    await tester.pump();
+    await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'W1A');
+    await tester.pump();
+    await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'W1AW');
+    await tester.pump(const Duration(milliseconds: 200));
+
+    expect(messages, isEmpty);
+  });
+
   testWidgets('onCallListLogged fires once after a comma-separated list logs, never for a single call', (tester) async {
     var callListLoggedCount = 0;
     await tester.pumpWidget(MaterialApp(

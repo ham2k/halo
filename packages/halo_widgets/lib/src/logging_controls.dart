@@ -308,6 +308,16 @@ class _LoggingControlsState extends State<LoggingControls> {
   /// Which secondary control (if any) currently has its input expanded.
   String? _selectedControlKey;
 
+  /// The last command message pushed to the parent via
+  /// `onCommandMessageChanged`. Every keystroke used to fire that callback
+  /// with `null` unconditionally, and the parent (LoggingPanel) answered
+  /// with a setState that rebuilds the whole QsoList — day-bucketing,
+  /// per-column TextPainter measurement, the scores map, all O(n) over the
+  /// log, per keystroke. Deduping here means the callback only fires on a
+  /// real change. Starts null, matching the parent's own initial "no
+  /// message" state, so a redundant null is a no-op.
+  String? _lastSentCommandMessage;
+
   /// Overrides the QSO's timestamp when set via the Time control; null
   /// means "use the current time at the moment of logging."
   int? _manualStartAtMillis;
@@ -1235,7 +1245,7 @@ class _LoggingControlsState extends State<LoggingControls> {
               _commandExpectsParams = result != null && result['expectsParams'] == true;
               _commandMessage = (result != null && result['describe'] is String) ? result['describe'] as String : null;
             });
-            widget.onCommandMessageChanged?.call(_commandMessage);
+            _notifyCommandMessage(_commandMessage);
           }
           if (result != null && result['expectsParams'] == true) {
             _insertAtCursor(_callController, ' ');
@@ -1642,6 +1652,14 @@ class _LoggingControlsState extends State<LoggingControls> {
 
   // ---- Lookup enrichment ----
 
+  /// Pushes a command message to the parent, but only when it actually
+  /// changed — see `_lastSentCommandMessage`.
+  void _notifyCommandMessage(String? message) {
+    if (_lastSentCommandMessage == message) return;
+    _lastSentCommandMessage = message;
+    widget.onCommandMessageChanged?.call(message);
+  }
+
   void _onCallChanged() {
     if (_populating) return;
     setState(() {});
@@ -1652,7 +1670,7 @@ class _LoggingControlsState extends State<LoggingControls> {
     _executeMessageTimer?.cancel();
     _currentInterpretation = null;
     _commandMessage = null;
-    widget.onCommandMessageChanged?.call(null);
+    _notifyCommandMessage(null);
 
     final call = _call;
     if (call.isEmpty) {
@@ -1687,7 +1705,7 @@ class _LoggingControlsState extends State<LoggingControls> {
             _commandMessage = null;
           }
         });
-        widget.onCommandMessageChanged?.call(_commandMessage);
+        _notifyCommandMessage(_commandMessage);
       });
     }
 
@@ -1808,7 +1826,7 @@ class _LoggingControlsState extends State<LoggingControls> {
       _commandExpectsParams = false;
       _updateClockTicker();
     });
-    widget.onCommandMessageChanged?.call(null);
+    _notifyCommandMessage(null);
   }
 
   // ---- Wipe/undo, delete/undo, revert-changes: the info row's second button ----
@@ -1994,14 +2012,14 @@ class _LoggingControlsState extends State<LoggingControls> {
                   setState(() {
                     _commandMessage = null;
                   });
-                  widget.onCommandMessageChanged?.call(null);
+                  _notifyCommandMessage(null);
                 }
               });
             } else {
               _commandMessage = null;
             }
           });
-          widget.onCommandMessageChanged?.call(_commandMessage);
+          _notifyCommandMessage(_commandMessage);
 
           final commands = interpretation['commands'];
           if (commands is List) {

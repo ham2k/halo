@@ -48,6 +48,22 @@ class _OperationViewState extends State<OperationView> {
   /// needs — see extensions/core/lookups/src/annotate.ts.
   String? _ourEntityPrefix;
 
+  /// Cached QSO stream. Recreating `watchForOperation` inside `build` made a
+  /// fresh drift query on every rebuild — a menu toggle, a `_loggingControls`
+  /// arrival, an entity-prefix resolve, a rescore refresh — each tearing
+  /// down and re-running the whole query. Keyed on `_showDeletedQSOs`, the
+  /// only input that changes during the view's life (the uuid is fixed).
+  Stream<List<Qso>>? _qsoStream;
+  bool? _qsoStreamIncludesDeleted;
+
+  Stream<List<Qso>> _qsosStream() {
+    if (_qsoStream == null || _qsoStreamIncludesDeleted != _showDeletedQSOs) {
+      _qsoStream = widget.services.qsos.watchForOperation(widget.operationUuid, includeDeleted: _showDeletedQSOs);
+      _qsoStreamIncludesDeleted = _showDeletedQSOs;
+    }
+    return _qsoStream!;
+  }
+
   @override
   void initState() {
     super.initState();
@@ -183,7 +199,7 @@ class _OperationViewState extends State<OperationView> {
     }
 
     return StreamBuilder<List<Qso>>(
-      stream: widget.services.qsos.watchForOperation(operation.uuid, includeDeleted: _showDeletedQSOs),
+      stream: _qsosStream(),
       builder: (context, snapshot) {
         final qsos = snapshot.data ?? const <Qso>[];
         // Start/break/end markers ride the same list (for QsoList to render
