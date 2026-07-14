@@ -4,9 +4,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:halo_widgets/halo_widgets.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:ham2k_logger/services/settings_service.dart';
-import 'package:ham2k_logger/main.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -73,13 +73,59 @@ void main() {
       expect(settings.fontScale, FontScale.smallest);
     });
 
-    test('RelativeTextScaler scales correctly', () {
-      const parentScaler = TextScaler.linear(1.5);
-      const relativeScaler = RelativeTextScaler(parentScaler, 1.2);
+    testWidgets('UiScale scales the whole subtree: children lay out in size/scale and paint scaled up', (tester) async {
+      // The font-scale mechanism: everything under UiScale sees a MediaQuery
+      // whose size is divided by the scale, and a fixed-size child paints back
+      // up by the scale. A 400x400 box at scale 2.0 fills an 800x800 window.
+      tester.view.physicalSize = const Size(800, 800);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
 
-      // ignore: deprecated_member_use
-      expect(relativeScaler.textScaleFactor, 1.5 * 1.2);
-      expect(relativeScaler.scale(10.0), 10.0 * 1.5 * 1.2);
+      late Size innerSize;
+      late double reportedScale;
+      await tester.pumpWidget(
+        MediaQuery(
+          data: const MediaQueryData(size: Size(800, 800)),
+          child: Directionality(
+            textDirection: TextDirection.ltr,
+            child: UiScale(
+              scale: 2.0,
+              child: Builder(builder: (context) {
+                innerSize = MediaQuery.sizeOf(context);
+                reportedScale = UiScale.of(context);
+                return const SizedBox(key: Key('box'), width: 400, height: 400);
+              }),
+            ),
+          ),
+        ),
+      );
+
+      // The subtree believes the screen is half the real size...
+      expect(innerSize, const Size(400, 400));
+      expect(reportedScale, 2.0);
+      // ...and the 400-logical box paints at 800 physical (fills the window).
+      expect(tester.getSize(find.byKey(const Key('box'))), const Size(400, 400));
+      final rect = tester.getRect(find.byKey(const Key('box')));
+      expect(rect.width, 800); // scaled up by 2.0 on screen
+      expect(rect.height, 800);
+    });
+
+    testWidgets('UiScale at 1.0 is a pass-through', (tester) async {
+      late double reportedScale;
+      await tester.pumpWidget(
+        Directionality(
+          textDirection: TextDirection.ltr,
+          child: UiScale(
+            scale: 1.0,
+            child: Builder(builder: (context) {
+              reportedScale = UiScale.of(context);
+              return const SizedBox();
+            }),
+          ),
+        ),
+      );
+      expect(reportedScale, 1.0);
+      expect(find.byType(Transform), findsNothing); // no transform inserted
     });
   });
 

@@ -128,8 +128,8 @@ class _OperationLocationScreenState extends State<OperationLocationScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        leadingWidth: macOSAwareLeadingWidth,
-        leading: macOSAwareBackButton(),
+        leadingWidth: macOSAwareLeadingWidth(context),
+        leading: macOSAwareBackButton(context),
         title: Text(t.title),
       ),
       body: ListView(

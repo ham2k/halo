@@ -261,8 +261,8 @@ class _OperationViewState extends State<OperationView> {
           length: 4,
           child: Scaffold(
             appBar: AppBar(
-              leadingWidth: macOSAwareLeadingWidth,
-              leading: macOSAwareBackButton(),
+              leadingWidth: macOSAwareLeadingWidth(context),
+              leading: macOSAwareBackButton(context),
               actions: [
                 PopupMenuButton<VoidCallback>(
                   icon: Icon(resolveIconName('dots-vertical')),

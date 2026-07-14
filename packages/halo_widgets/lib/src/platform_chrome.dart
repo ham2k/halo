@@ -12,17 +12,29 @@
 import 'package:flutter/foundation.dart' show TargetPlatform, defaultTargetPlatform, kIsWeb;
 import 'package:flutter/material.dart';
 
+import 'ui_scale.dart';
+
 bool get isMacOSChromelessWindow =>
     !kIsWeb && defaultTargetPlatform == TargetPlatform.macOS;
 
 /// Horizontal space to reserve for the traffic-light buttons when
-/// [isMacOSChromelessWindow].
+/// [isMacOSChromelessWindow]. A PHYSICAL measurement: the native buttons are
+/// fixed-size system controls that don't scale with the UI, so this clearance
+/// is divided by [UiScale.of] wherever it's applied (the AppBar leading lives
+/// inside the scaled subtree) to keep it a constant on-screen size.
 const double macOSTrafficLightInset = 70;
 
 /// Extra breathing room between the traffic lights and whatever AppBar
 /// leading content follows them (logo, back button), so it doesn't start
-/// immediately at their edge.
+/// immediately at their edge. Physical, like [macOSTrafficLightInset].
 const double macOSTrafficLightGap = 16;
+
+/// The traffic-light clearance in the AppBar's (scaled) coordinate space, so
+/// it renders at a constant physical size that always clears the native
+/// buttons regardless of UI scale. Use this instead of the raw constants for
+/// any custom leading layout (see [macOSAwareLeadingWidth]).
+double macOSTrafficLightClearance(BuildContext context) =>
+    (macOSTrafficLightInset + macOSTrafficLightGap) / UiScale.of(context);
 
 /// True on desktop/windowed platforms (macOS, Windows, Linux) and web, where
 /// an AppBar title reads like a windowed app's title bar and should sit
@@ -45,18 +57,19 @@ bool get isMobilePlatform =>
 /// the traffic-light buttons — pair with [macOSAwareBackButton]. Every
 /// pushed view's AppBar needs this (or the equivalent custom-leading math
 /// home_view.dart does for its logo), otherwise the title/back arrow render
-/// underneath the floating traffic lights.
-double? get macOSAwareLeadingWidth =>
-    isMacOSChromelessWindow ? 48 + macOSTrafficLightInset + macOSTrafficLightGap : null;
+/// underneath the floating traffic lights. The back button's own width scales
+/// with the UI; the traffic-light clearance stays fixed physical.
+double? macOSAwareLeadingWidth(BuildContext context) =>
+    isMacOSChromelessWindow ? 48 + macOSTrafficLightClearance(context) : null;
 
 /// A `BackButton` with left padding reserved for the traffic-light buttons
 /// when [isMacOSChromelessWindow]. Pair with [macOSAwareLeadingWidth] as the
 /// AppBar's `leadingWidth`.
-Widget macOSAwareBackButton({VoidCallback? onPressed}) => MouseRegion(
+Widget macOSAwareBackButton(BuildContext context, {VoidCallback? onPressed}) => MouseRegion(
       cursor: SystemMouseCursors.click,
       child: isMacOSChromelessWindow
           ? Padding(
-              padding: const EdgeInsets.only(left: macOSTrafficLightInset + macOSTrafficLightGap),
+              padding: EdgeInsets.only(left: macOSTrafficLightClearance(context)),
               child: BackButton(onPressed: onPressed),
             )
           : BackButton(onPressed: onPressed),

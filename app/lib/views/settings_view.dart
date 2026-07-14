@@ -181,8 +181,8 @@ class _SettingsViewState extends State<SettingsView> {
               SizedBox(
                 width: 320,
                 child: AppBar(
-                  leadingWidth: macOSAwareLeadingWidth,
-                  leading: macOSAwareBackButton(),
+                  leadingWidth: macOSAwareLeadingWidth(context),
+                  leading: macOSAwareBackButton(context),
                   title: const Text('Settings'),
                 ),
               ),
@@ -219,8 +219,8 @@ class _SettingsViewState extends State<SettingsView> {
     } else {
       return Scaffold(
         appBar: AppBar(
-          leadingWidth: macOSAwareLeadingWidth,
-          leading: macOSAwareBackButton(),
+          leadingWidth: macOSAwareLeadingWidth(context),
+          leading: macOSAwareBackButton(context),
           title: const Text('Settings'),
         ),
         body: _buildSidebar(context, isWide: false, panels: panels, selectedKey: effectivePanel.key),
@@ -285,6 +285,8 @@ class _SettingsPanelScreen extends StatelessWidget {
 
     return Scaffold(
       appBar: AppBar(
+        leadingWidth: macOSAwareLeadingWidth(context),
+        leading: macOSAwareBackButton(context),
         title: Text(panel.title),
       ),
       body: _buildPanelContent(panel, services),
@@ -1262,7 +1264,13 @@ class _AccountDialogState extends State<_AccountDialog> {
           builder: (context) => Scaffold(
             appBar: AppBar(
               title: Text('Connect to ${widget.account['label']}'),
-              leading: CloseButton(onPressed: () => Navigator.of(context).pop()),
+              leadingWidth: macOSAwareLeadingWidth(context),
+              leading: isMacOSChromelessWindow
+                  ? Padding(
+                      padding: EdgeInsets.only(left: macOSTrafficLightClearance(context)),
+                      child: CloseButton(onPressed: () => Navigator.of(context).pop()),
+                    )
+                  : CloseButton(onPressed: () => Navigator.of(context).pop()),
             ),
             body: InAppWebView(
               initialUrlRequest: URLRequest(url: WebUri(authUri.toString())),
