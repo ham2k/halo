@@ -144,6 +144,7 @@ class HaLoServices {
     qsos: qsos,
     transport: _syncTransportCall,
     settings: settings,
+    log: debugPrint,
   );
 
   HaLoServices(

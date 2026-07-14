@@ -1,6 +1,8 @@
 // Copyright ©️ 2026 Sebastian Delmont <sd@ham2k.com>
 // SPDX-License-Identifier: MPL-2.0
 
+import 'dart:async';
+
 import 'package:drift/native.dart';
 import 'package:halo_core/halo_core.dart';
 import 'package:test/test.dart';
@@ -381,9 +383,120 @@ void main() {
       }
 
       expect(settings.state['completedFullSync'], isTrue);
-      expect(settings.state['latestQSOSyncedAtMillis'], isNotNull);
+      // The forward watermark is the largest *server* stamp seen across the
+      // backfill (14) — never the local clock, which would permanently skip
+      // records other devices synced while this backfill ran (or anything
+      // in a clock-skew window).
+      expect(settings.state['latestQSOSyncedAtMillis'], totalAvailable - 1);
       final merged = await qsos.watchForOperation('op1').first;
       expect(merged, hasLength(totalAvailable));
+    });
+
+    test('backfill survives a page-sized timestamp tie without skipping records or hot-looping', () async {
+      settings.state = {'lastSyncAccountUUID': 'acct-1'};
+      // 25 QSOs all sharing syncedAtMillis 100 — a server-side bulk import.
+      // The server pages with strict `<` semantics: once the cursor reaches
+      // the tie's own stamp, a naive client would get an empty page and
+      // conclude backfill was complete, silently missing 15 records.
+      const totalAvailable = 25;
+      transport.responder = (method, args) {
+        final sync = ((args['meta'] as Map)['sync'] as Map)['qsos'] as Map;
+        final until = sync['syncedUntilMillis'] as int;
+        final limit = sync['limit'] as int;
+        final page = [
+          if (100 < until)
+            for (var i = 0; i < totalAvailable; i++)
+              {
+                'uuid': 'tie-$i',
+                'operation': 'op1',
+                'their': {'call': 'W1AW$i'},
+                'startAtMillis': i,
+                'syncedAtMillis': 100,
+              },
+        ].take(limit).toList();
+        return {'qsos': page};
+      };
+
+      var guard = 0;
+      while (settings.state['completedFullSync'] != true && guard < 20) {
+        await engine.runOneRound();
+        guard++;
+      }
+
+      expect(settings.state['completedFullSync'], isTrue);
+      expect(await qsos.watchForOperation('op1').first, hasLength(totalAvailable));
+    });
+
+    test('a reconciliation during an in-flight round abandons that round\'s response', () async {
+      settings.state = {'lastSyncAccountUUID': 'acct-1', 'completedFullSync': true};
+      final op = await operations.create(stationCall: 'KI2D');
+      await qsos.add(op.uuid, {'their': {'call': 'W1AW'}});
+
+      final gate = Completer<Map<String, dynamic>>();
+      final syncArgs = <Map<String, dynamic>>[];
+      engine.dispose();
+      engine = SyncEngine(
+        operations: operations,
+        qsos: qsos,
+        settings: settings,
+        transport: (method, args) {
+          syncArgs.add(args);
+          if (syncArgs.length == 1) return gate.future; // first round hangs on the network
+          return Future.value(const {});
+        },
+      );
+
+      final staleRound = engine.runOneRound();
+      await Future<void>.delayed(const Duration(milliseconds: 10)); // let it reach the transport await
+
+      // SYNCALL lands mid-flight: wipes the tables, resets backfill state.
+      await engine.forceFullResync();
+
+      // The hung response finally arrives — same account, server records,
+      // and (captured pre-wipe) short-page flags that would otherwise set
+      // completedFullSync on the freshly reset state.
+      gate.complete({
+        'account': {'uuid': 'acct-1'},
+        'qsos': [
+          {
+            'uuid': 'stale-inbound',
+            'operation': op.uuid,
+            'their': {'call': 'SHOULDNOTMERGE'},
+            'syncedAtMillis': 5,
+          },
+        ],
+      });
+      await staleRound;
+
+      // Nothing from the abandoned response reached the wiped tables.
+      expect(await qsos.watchForOperation(op.uuid).first, isEmpty);
+
+      // The fresh generation's round does run afterward — and as a real
+      // backfill (anyClient: true), proving the stale round didn't clobber
+      // the reset flags with its pre-wipe snapshot.
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+      expect(syncArgs.length, greaterThan(1));
+      final followUpSync = (syncArgs.last['meta'] as Map)['sync'] as Map;
+      expect((followUpSync['qsos'] as Map)['anyClient'], isTrue);
+      expect(await qsos.watchForOperation(op.uuid).first, isEmpty);
+    });
+
+    test('transport failures are logged, never silent', () async {
+      settings.state = {'lastSyncAccountUUID': 'acct-1', 'completedFullSync': true};
+      final logs = <String>[];
+      engine.dispose();
+      engine = SyncEngine(
+        operations: operations,
+        qsos: qsos,
+        settings: settings,
+        log: logs.add,
+        transport: (method, args) async => throw Exception('server exploded'),
+      );
+
+      await engine.runOneRound();
+
+      expect(logs, hasLength(1));
+      expect(logs.single, contains('server exploded'));
     });
 
     test('an account change mid-stream pauses sync without merging that response', () async {
