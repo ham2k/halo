@@ -528,7 +528,9 @@ class _LoggingControlsState extends State<LoggingControls> {
     final theirName = (their['name'] as String?)?.trim();
     _theirNameOverride = (theirName == null || theirName.isEmpty) ? null : theirName;
     final freq = (data['freq'] as num?)?.toDouble();
-    _freqController.text = freq != null ? fmtFreq(freq).replaceAll(',', '') : '';
+    // Full precision (not fmtFreq's 100Hz display rounding): selecting a QSO
+    // logged at 14074.25 must not flag it as changed or save "14074.3" back.
+    _freqController.text = freq != null ? fmtFreqInput(freq) : '';
     _mode = data['mode'] as String? ?? _mode;
     _manualBand = freq == null ? data['band'] as String? : null;
     _currentQsoExtra
@@ -572,7 +574,7 @@ class _LoggingControlsState extends State<LoggingControls> {
     final vfo = widget.radioService?.vfoA;
     if (vfo == null) return;
     final freq = vfo.freq;
-    _freqController.text = freq != null ? fmtFreq(freq).replaceAll(',', '') : '';
+    _freqController.text = freq != null ? fmtFreqInput(freq) : '';
     _manualBand = freq == null ? vfo.band : null;
     if (vfo.mode != null) _mode = vfo.mode!;
   }
@@ -1312,9 +1314,7 @@ class _LoggingControlsState extends State<LoggingControls> {
           final band = params['band'];
           final mode = params['mode'];
           if (freq is num) {
-            _freqController.text = fmtFreq(
-              freq.toDouble(),
-            ).replaceAll(',', '');
+            _freqController.text = fmtFreqInput(freq.toDouble());
             _manualBand = null;
           } else if (band is String) {
             _manualBand = band;
@@ -1525,7 +1525,7 @@ class _LoggingControlsState extends State<LoggingControls> {
 
       final freq = result['freq'];
       if (freq is num) {
-        _freqController.text = fmtFreq(freq.toDouble()).replaceAll(',', '');
+        _freqController.text = fmtFreqInput(freq.toDouble());
         _manualBand = null;
       } else {
         _freqController.clear();

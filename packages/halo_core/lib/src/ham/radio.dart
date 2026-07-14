@@ -145,6 +145,21 @@ String fmtFreq(double khz) {
   return grouped.toString();
 }
 
+/// Formats kHz for an editable frequency field, at full stored precision
+/// (down to 1 Hz — three decimals in kHz) and without thousands grouping,
+/// so a value round-trips through [parseFreq] unchanged. Unlike [fmtFreq]
+/// (a display formatter that rounds to 100 Hz), this never degrades a
+/// QSO's frequency just by selecting it for editing: 14074.25 stays
+/// "14074.25", not "14074.3". Trailing zeros are trimmed, so whole
+/// frequencies show plainly ("7025", not "7025.000").
+String fmtFreqInput(double khz) {
+  var s = khz.toStringAsFixed(3);
+  if (s.contains('.')) {
+    s = s.replaceAll(RegExp(r'0+$'), '').replaceAll(RegExp(r'\.$'), '');
+  }
+  return s;
+}
+
 final RegExp _callsignRegex = RegExp(r'^([A-Z0-9]{1,4}/)?[A-Z0-9]{1,3}[0-9][A-Z0-9]*[A-Z](/[A-Z0-9]{1,4})?$');
 
 /// Cheap plausibility check to enable the Log action — real callsign

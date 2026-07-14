@@ -56,6 +56,23 @@ void main() {
     });
   });
 
+  group('fmtFreqInput', () {
+    test('preserves full precision and round-trips through parseFreq', () {
+      // The bug fmtFreq caused on the edit field: 100Hz rounding degraded a
+      // stored sub-100Hz frequency just by selecting the QSO.
+      for (final khz in [14074.25, 7025.123, 10136.05, 50313.0, 1296200.0]) {
+        expect(parseFreq(fmtFreqInput(khz)), khz, reason: 'round-trip $khz');
+      }
+    });
+
+    test('trims trailing zeros and the dot, and never groups', () {
+      expect(fmtFreqInput(7025), '7025');
+      expect(fmtFreqInput(14285.5), '14285.5');
+      expect(fmtFreqInput(14074.25), '14074.25');
+      expect(fmtFreqInput(1296200), '1296200');
+    });
+  });
+
   group('hzDigitsNeeded', () {
     test('zero when every frequency lands on an exact kHz', () {
       expect(hzDigitsNeeded([14074, 7200, null]), 0);
