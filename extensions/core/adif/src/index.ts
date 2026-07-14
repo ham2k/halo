@@ -10,8 +10,8 @@
 import { fmtADIFDate, fmtADIFTime } from "@ham2k/lib-format-tools"
 import { adifModeAndSubmodeForMode } from "@ham2k/lib-operation-data"
 
-import { defineExtension, hooks } from "@ham2k/polo-sdk"
-import type { ExportRequest, ExportResult, HookContext } from "@ham2k/polo-sdk"
+import { defineExtension, hooks } from "@ham2k/halo-extension-sdk"
+import type { ExportRequest, ExportResult, HookContext } from "@ham2k/halo-extension-sdk"
 
 const ADIF_VERSION = '3.1.5'
 const PROGRAM_ID = 'Ham2K HaLo Next'

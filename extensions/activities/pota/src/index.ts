@@ -13,7 +13,7 @@
 import { DXCC_BY_CODE } from "@ham2k/lib-dxcc-data"
 import { bandForFrequency } from "@ham2k/lib-operation-data"
 import { locationToGrid6, distanceOnEarth } from "@ham2k/lib-geo-tools"
-import { defineExtension, host } from "@ham2k/polo-sdk"
+import { defineExtension, host } from "@ham2k/halo-extension-sdk"
 import type {
   AnnotatedCallInfo,
   HookContext,
@@ -26,7 +26,7 @@ import type {
   SuggestArgs,
   ActivitySuggestion,
   LookupRow,
-} from "@ham2k/polo-sdk"
+} from "@ham2k/halo-extension-sdk"
 import { REFERENCE_REGEX, entityPrefixForCall, transformsForPrefix, hunterDefaultPrefix, activationDefaultPrefix } from "./refFormatting.ts"
 
 export { REFERENCE_REGEX, transformsForPrefix, hunterDefaultPrefix, activationDefaultPrefix } from "./refFormatting.ts"

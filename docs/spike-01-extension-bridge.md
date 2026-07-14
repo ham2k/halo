@@ -7,7 +7,7 @@ embedded JS engine, bridged to a Flutter host — and measure it.
 ## What's here
 
 - **`extensions/`** — TypeScript workspace:
-  - `sdk/` — `@ham2k/polo-sdk`: typed hook contracts (`types.ts`), the runtime
+  - `sdk/` — `@ham2k/halo-extension-sdk`: typed hook contracts (`types.ts`), the runtime
     **kernel** (`kernel.ts`, evaluated first, owns the hook registry and the
     host-call bridge as a singleton on `globalThis.__polo`), and the thin
     extension-facing wrappers (`index.ts`).

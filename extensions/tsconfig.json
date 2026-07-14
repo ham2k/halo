@@ -11,7 +11,7 @@
     "allowImportingTsExtensions": true,
     "types": ["node"],
     "paths": {
-      "@ham2k/polo-sdk": ["./sdk/src/index.ts"]
+      "@ham2k/halo-extension-sdk": ["./sdk/src/index.ts"]
     }
   },
   "include": ["sdk/src/**/*.ts", "activities/*/src/**/*.ts", "core/*/src/**/*.ts", "lookups/*/src/**/*.ts", "sync/*/src/**/*.ts"]

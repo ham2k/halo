@@ -25,8 +25,8 @@
 // than the default standalone Material inputs — see FormField.icon in the
 // SDK types for why that's opt-in per field.
 
-import { defineExtension, host } from "@ham2k/polo-sdk"
-import type { FormDefinition, HookContext, JSONValue } from "@ham2k/polo-sdk"
+import { defineExtension, host } from "@ham2k/halo-extension-sdk"
+import type { FormDefinition, HookContext, JSONValue } from "@ham2k/halo-extension-sdk"
 
 const TRANSLATION_KEYS = [
   "settings.general",

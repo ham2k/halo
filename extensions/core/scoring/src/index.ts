@@ -15,7 +15,7 @@
 // `USStatesScoringHandler`/`CanadianProvincesScoringHandler`) are deferred —
 // see DESIGN.md §11.
 
-import { defineExtension, entityPrefixForCall } from "@ham2k/polo-sdk"
+import { defineExtension, entityPrefixForCall } from "@ham2k/halo-extension-sdk"
 import type {
   DayScoreSummary,
   HookContext,
@@ -25,7 +25,7 @@ import type {
   ScoreQsosRequest,
   ScoreQsosResult,
   ScoreTally,
-} from "@ham2k/polo-sdk"
+} from "@ham2k/halo-extension-sdk"
 
 const DAY_IN_MILLIS = 1000 * 60 * 60 * 24
 

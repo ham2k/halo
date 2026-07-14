@@ -7,14 +7,14 @@
 // against the bundled DXCC country file, the same way `core/scoring` does.
 //
 // `annotateCallAgainstCountryFile`/`flagForDxccCode` come in by relative
-// path, not the `@ham2k/polo-sdk` alias — this file has its own
+// path, not the `@ham2k/halo-extension-sdk` alias — this file has its own
 // `annotate.test.ts` run via plain `node --test`, which can't resolve that
 // tsc-only bare specifier (see activities/pota/src/refFormatting.ts's
 // header comment for the same constraint). `dxcc.ts` only imports real npm
 // packages itself, so the relative import stays resolvable.
 
 import { annotateCallAgainstCountryFile, flagForDxccCode } from "../../../sdk/src/dxcc.ts"
-import type { CallInfo, CallInfoLookup } from "@ham2k/polo-sdk"
+import type { CallInfo, CallInfoLookup } from "@ham2k/halo-extension-sdk"
 
 // Well-known postindicators that denote a temporary/traveling location —
 // exact vocabulary confirmed from lib-callsigns' `KNOWN_INDICATORS` list

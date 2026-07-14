@@ -17,8 +17,8 @@
 import { parseFreq, fmtFreq } from "@ham2k/lib-format-tools"
 import { bandForFrequency } from "@ham2k/lib-operation-data"
 
-import { defineExtension } from "@ham2k/polo-sdk"
-import type { CommandInterpretation, HookContext } from "@ham2k/polo-sdk"
+import { defineExtension } from "@ham2k/halo-extension-sdk"
+import type { CommandInterpretation, HookContext } from "@ham2k/halo-extension-sdk"
 
 const BAND_MATCH = /^(2200|630|160|80|60|40|30|20|17|15|12|10|6|4|2)M?$/i
 const MODE_MATCH = /^(CW|SSB|USB|LSB|FM|AM|FT8|FT4|FT2|RTTY)$/i

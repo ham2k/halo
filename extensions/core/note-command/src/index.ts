@@ -8,8 +8,8 @@
 // prefix that isn't a command yet, so the field switches to free-text
 // (spaces, normal capitalization) until the rest is typed.
 
-import { defineExtension } from "@ham2k/polo-sdk"
-import type { CommandInterpretation, HookContext } from "@ham2k/polo-sdk"
+import { defineExtension } from "@ham2k/halo-extension-sdk"
+import type { CommandInterpretation, HookContext } from "@ham2k/halo-extension-sdk"
 
 const NOTE_MATCH = /^NOTE(?:\s+(.*))?$/i
 

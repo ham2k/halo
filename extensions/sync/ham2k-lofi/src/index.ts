@@ -16,8 +16,8 @@
 // below only survives within one run and each launch re-registers,
 // matching app-polo's memory-only `GLOBAL.syncLoFiToken`.
 
-import { defineExtension, host } from "@ham2k/polo-sdk"
-import type { CommandInterpretation, HookContext, JSONValue, SyncPayload, SyncResponse } from "@ham2k/polo-sdk"
+import { defineExtension, host } from "@ham2k/halo-extension-sdk"
+import type { CommandInterpretation, HookContext, JSONValue, SyncPayload, SyncResponse } from "@ham2k/halo-extension-sdk"
 
 export const DEFAULT_LOFI_SERVER = 'https://lofi.ham2k.net'
 const DEFAULT_SECRET = 'no-secret'

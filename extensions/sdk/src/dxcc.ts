@@ -8,10 +8,10 @@
 // formatting each used to carry their own copy of the same
 // parseCallsign+annotateFromCountryFile call.
 //
-// A plain module, not part of the `@ham2k/polo-sdk` *value* import users
+// A plain module, not part of the `@ham2k/halo-extension-sdk` *value* import users
 // must avoid (see activities/pota/src/refFormatting.ts's header comment) —
 // import it by relative path from a file that needs to stay resolvable by
-// plain `node --test`, or via the `@ham2k/polo-sdk` re-export otherwise.
+// plain `node --test`, or via the `@ham2k/halo-extension-sdk` re-export otherwise.
 
 import { parseCallsign } from "@ham2k/lib-callsigns"
 import { annotateFromCountryFile, useBuiltinCountryFile } from "@ham2k/lib-country-files"

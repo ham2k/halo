@@ -15,7 +15,7 @@
 //    expansionValueFor). Leading "//" never parses as call stacking (a
 //    stack's first segment would be empty), so the two syntaxes coexist.
 
-import { defineExtension } from "@ham2k/polo-sdk"
+import { defineExtension } from "@ham2k/halo-extension-sdk"
 import type {
   AnnotatedCallInfo,
   CallInfoLookup,
@@ -24,7 +24,7 @@ import type {
   HookContext,
   JSONValue,
   LookupResult,
-} from "@ham2k/polo-sdk"
+} from "@ham2k/halo-extension-sdk"
 
 import { combineNotes, expansionValueFor, parseCallNotes } from "./callNotes"
 import type { CallNotesIndex } from "./callNotes"

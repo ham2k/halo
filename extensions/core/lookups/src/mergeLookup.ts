@@ -7,7 +7,7 @@
 // this is the highest-defect-risk piece of the whole feature.
 
 import { gridToLocation, locationToGrid6 } from "@ham2k/lib-geo-tools"
-import type { CallInfo, CallInfoLookup } from "@ham2k/polo-sdk"
+import type { CallInfo, CallInfoLookup } from "@ham2k/halo-extension-sdk"
 
 const LOCATION_SCOPE_RANK: Record<string, number> = { qth: 0, prefixed: 1, portable: 2 }
 

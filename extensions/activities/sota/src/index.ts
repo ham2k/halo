@@ -12,7 +12,7 @@ import { parseCallsign } from "@ham2k/lib-callsigns"
 import { annotateFromCountryFile, useBuiltinCountryFile } from "@ham2k/lib-country-files"
 import { bandForFrequency } from "@ham2k/lib-operation-data"
 import { locationToGrid6, distanceOnEarth } from "@ham2k/lib-geo-tools"
-import { defineExtension, host } from "@ham2k/polo-sdk"
+import { defineExtension, host } from "@ham2k/halo-extension-sdk"
 import type {
   AnnotatedCallInfo,
   HookContext,
@@ -25,7 +25,7 @@ import type {
   SuggestArgs,
   ActivitySuggestion,
   LookupRow,
-} from "@ham2k/polo-sdk"
+} from "@ham2k/halo-extension-sdk"
 import { REFERENCE_REGEX, TRANSFORMS } from "./refFormatting.ts"
 
 export { REFERENCE_REGEX, TRANSFORMS } from "./refFormatting.ts"

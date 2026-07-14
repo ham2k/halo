@@ -11,8 +11,8 @@
 // five are just `command` hooks like radio-commands' — see
 // docs/extensions/hooks.md.
 
-import { defineExtension } from "@ham2k/polo-sdk"
-import type { CommandInterpretation, HookContext } from "@ham2k/polo-sdk"
+import { defineExtension } from "@ham2k/halo-extension-sdk"
+import type { CommandInterpretation, HookContext } from "@ham2k/halo-extension-sdk"
 
 const DevModeCommand = {
   async interpret({ input }: { input: string }, ctx: HookContext): Promise<CommandInterpretation | null> {

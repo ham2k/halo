@@ -14,7 +14,7 @@ An extension is one directory under `extensions/` with a `src/index.ts` that
 calls `defineExtension`:
 
 ```ts
-import { defineExtension, host } from "@ham2k/polo-sdk"
+import { defineExtension, host } from "@ham2k/halo-extension-sdk"
 
 defineExtension({
   key: 'pota',                 // unique, stable; namespaces KV storage
@@ -41,7 +41,7 @@ Rules of the road:
 
 ## The host API
 
-Available via `import { host } from "@ham2k/polo-sdk"`:
+Available via `import { host } from "@ham2k/halo-extension-sdk"`:
 
 | Function | Purpose |
 |---|---|
@@ -56,7 +56,7 @@ Cross-extension composition (calling other extensions' hooks *inside* the
 runtime, without a bridge round-trip):
 
 ```ts
-import { hooks } from "@ham2k/polo-sdk"
+import { hooks } from "@ham2k/halo-extension-sdk"
 const entries = await hooks.invokeAll('adifFields', 'fieldsForOneQSO', { qso, operation })
 // entries: [{key, ok, value|error}, ...] in priority order
 ```
@@ -73,7 +73,7 @@ Extensions running in the QuickJS isolate have access to the shared `i18next` li
 You can define localized strings in your extension as a JSON/JS map and load them using the SDK's `createTranslator` helper alongside the `locale` passed in the `HookContext`:
 
 ```ts
-import { createTranslator, HookContext } from "@ham2k/polo-sdk"
+import { createTranslator, HookContext } from "@ham2k/halo-extension-sdk"
 
 const resources = {
   en: {

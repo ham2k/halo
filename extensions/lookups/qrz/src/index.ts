@@ -6,8 +6,8 @@
 // calls, and re-login on session expiry.
 
 import { cleanLocationParams } from "@ham2k/lib-geo-tools"
-import { defineExtension, host } from "@ham2k/polo-sdk"
-import type { AnnotatedCallInfo, CallInfoLookup, HookContext, JSONValue, LookupResult } from "@ham2k/polo-sdk"
+import { defineExtension, host } from "@ham2k/halo-extension-sdk"
+import type { AnnotatedCallInfo, CallInfoLookup, HookContext, JSONValue, LookupResult } from "@ham2k/halo-extension-sdk"
 
 const AGENT = 'polo-next-spike'
 const API = 'https://xmldata.qrz.com/xml/current/'

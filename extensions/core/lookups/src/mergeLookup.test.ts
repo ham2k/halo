@@ -5,7 +5,7 @@ import { test } from "node:test"
 import assert from "node:assert/strict"
 
 import { mergeLookupIntoGuess, runLookupPipeline } from "./mergeLookup.ts"
-import type { CallInfo, CallInfoLookup } from "@ham2k/polo-sdk"
+import type { CallInfo, CallInfoLookup } from "@ham2k/halo-extension-sdk"
 
 test("priority order: earlier result's field is not overwritten by a later one, but an absent field is populated", () => {
   const guess: CallInfo = { call: "KI2D" }

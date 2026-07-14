@@ -3,7 +3,7 @@
 //
 // SOTA reference validation/formatting — pulled out of index.ts so it can be
 // unit-tested directly (see index.test.ts): this file has no dependency on
-// `@ham2k/polo-sdk` (a tsc-only path alias — see extensions/tsconfig.json —
+// `@ham2k/halo-extension-sdk` (a tsc-only path alias — see extensions/tsconfig.json —
 // that Node's own module resolver, used by `node --test`, can't resolve at
 // runtime), unlike index.ts which imports real hook types/values from it.
 

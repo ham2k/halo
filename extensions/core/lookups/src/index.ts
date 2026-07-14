@@ -7,8 +7,8 @@
 // to every registered `lookup` hook, and the locationScope-aware merge —
 // entirely inside the runtime. See ham2k/app-halo-dist#8.
 
-import { defineExtension, hooks, host } from "@ham2k/polo-sdk"
-import type { CallInfo, CallInfoLookup, HookContext, LookupServiceRequest, LookupServiceResult } from "@ham2k/polo-sdk"
+import { defineExtension, hooks, host } from "@ham2k/halo-extension-sdk"
+import type { CallInfo, CallInfoLookup, HookContext, LookupServiceRequest, LookupServiceResult } from "@ham2k/halo-extension-sdk"
 
 import { annotateCallsign } from "./annotate"
 import { runLookupPipeline } from "./mergeLookup"
