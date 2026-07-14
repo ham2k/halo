@@ -64,6 +64,10 @@ export interface Spot {
   band?: string
   mode?: string
   refs?: SpotRef[]
+  /// MDI or FontAwesome ('fa-') icon name, same convention as activity
+  /// controls — a source hint the spots board can show (e.g. SOTA's summit
+  /// glyph).
+  icon?: string
   spot: {
     timeInMillis: number
     source: string
