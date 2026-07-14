@@ -28,6 +28,7 @@ import 'services/radio_service.dart';
 import 'services/scoring_service.dart';
 import 'services/settings_service.dart';
 import 'services/status_bar_service.dart';
+import 'services/window_chrome_service.dart';
 import 'services/update_service.dart';
 import 'services/data_file_manager.dart';
 import 'i18n/strings.g.dart';
@@ -345,6 +346,10 @@ class _HaLoAppState extends State<HaLoApp> {
           final scale = settings.fontScale.scaleFactor;
 
           final baseTheme = Theme.of(context);
+          final toolbarHeight = (baseTheme.appBarTheme.toolbarHeight ?? 48.0) * scale;
+          // Native traffic lights center in this height — see
+          // WindowChromeService. Deduped, so calling it every build is fine.
+          WindowChromeService.reportTitleBarHeight(toolbarHeight);
           final scaledTheme = baseTheme.copyWith(
             iconTheme: baseTheme.iconTheme.copyWith(
               size: (baseTheme.iconTheme.size ?? 24.0) * scale,
@@ -353,7 +358,7 @@ class _HaLoAppState extends State<HaLoApp> {
               size: (baseTheme.primaryIconTheme.size ?? 24.0) * scale,
             ),
             appBarTheme: baseTheme.appBarTheme.copyWith(
-              toolbarHeight: (baseTheme.appBarTheme.toolbarHeight ?? 48.0) * scale,
+              toolbarHeight: toolbarHeight,
               iconTheme: (baseTheme.appBarTheme.iconTheme ?? const IconThemeData()).copyWith(
                 size: (baseTheme.appBarTheme.iconTheme?.size ?? 24.0) * scale,
                 color: baseTheme.appBarTheme.foregroundColor ?? baseTheme.colorScheme.onPrimary,
