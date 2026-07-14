@@ -48,7 +48,8 @@
       "showRstFields": "Show RST fields",
       "showStateField": "Show State field",
       "showGridField": "Show Grid field",
-      "showDeletedQsos": "Show deleted QSOs"
+      "showDeletedQsos": "Show deleted QSOs",
+      "showQsoNumbers": "Show QSO Numbers"
     }
   },
   "activitiesView": {
@@ -101,9 +102,6 @@
   },
   "qsoList": {
     "empty": "No QSOs yet — work someone!",
-    "duplicate": "Duplicate — same call, band and mode already logged",
-    "newEntity": "New DXCC entity",
-    "newBandOrMode": "New band or mode for this callsign",
     "editEventTime": "Edit time"
   },
   "loggingPanel": {

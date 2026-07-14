@@ -48,7 +48,8 @@
       "showRstFields": "Mostrar campos RST",
       "showStateField": "Mostrar campo Estado/Provincia",
       "showGridField": "Mostrar campo Locador",
-      "showDeletedQsos": "Mostrar QSOs eliminados"
+      "showDeletedQsos": "Mostrar QSOs eliminados",
+      "showQsoNumbers": "Mostrar números de QSO"
     }
   },
   "activitiesView": {
@@ -101,9 +102,6 @@
   },
   "qsoList": {
     "empty": "Aún no hay QSOs — ¡haz un contacto!",
-    "duplicate": "Duplicado — mismo indicativo, banda y modo ya registrados",
-    "newEntity": "Nueva entidad DXCC",
-    "newBandOrMode": "Nueva banda o modo para este indicativo",
     "editEventTime": "Editar hora"
   },
   "loggingPanel": {

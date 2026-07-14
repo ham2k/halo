@@ -2,9 +2,9 @@
 // SPDX-License-Identifier: MPL-2.0
 //
 // Looks up an `operationControls`/`activityControls` entry (icon, pattern,
-// …) for a ref/suggestion type — shared between ActivitiesView and
-// OperationLocationScreen, which both render refs/suggestions using the
-// same active-extension controls list.
+// …) for a ref/suggestion type — shared between ActivitiesView,
+// OperationLocationScreen and QsoList, which all render refs/suggestions
+// using the same active-extension controls list.
 
 /// The controls entry for [refType], or null for a type with no active
 /// control.

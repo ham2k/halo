@@ -138,22 +138,47 @@ class HaLoColors extends ThemeExtension<HaLoColors> {
       Theme.of(context).extension<HaLoColors>() ?? light;
 }
 
+/// [context] is unused now but kept so every call site doesn't need editing
+/// if a context-dependent tweak (e.g. platform-specific tracking) is needed
+/// later.
+///
+/// Font size is deliberately left unscaled here — every `Text` widget this
+/// style feeds into already applies the ambient `MediaQuery.textScalerOf`
+/// once on its own (Flutter's default), same as every other text style in
+/// the app (`buildHaLoTheme`'s `textTheme` is never manually pre-scaled
+/// either). Pre-multiplying by the scaler here used to double-apply it —
+/// once here, once again when `Text` resolved its effective scaler — so
+/// mono text grew quadratically with the font-scale setting instead of
+/// linearly like the rest of the UI.
 TextStyle haloMonoStyle(
   BuildContext context, {
   double? fontSize,
   FontWeight? fontWeight,
   Color? color,
 }) {
-  final double baseSize = fontSize ?? 14.0;
-  final double scaledSize = MediaQuery.textScalerOf(context).scale(baseSize);
   return TextStyle(
     fontFamily: 'RobotoMono',
-    fontSize: scaledSize,
+    fontSize: fontSize ?? 14.0,
     fontWeight: fontWeight,
     color: color,
     fontFeatures: _tabularFigures,
   );
 }
+
+/// Google's Noto Color Emoji, bundled as an app asset (app/pubspec.yaml,
+/// app/assets/fonts/NotoColorEmoji.ttf) specifically because Flutter's web
+/// renderer (CanvasKit/Skia) does its own text shaping and doesn't fall back
+/// to the browser/OS's color emoji font the way plain HTML does — emoji
+/// glyphs render as nothing without an explicit bundled color-emoji font.
+/// Named here, not just inline on whichever `Text` widget needs it, so the
+/// next emoji use in the app (the issue's own "Emoji(s)" name column, still
+/// unimplemented) doesn't have to rediscover this requirement from scratch.
+const String emojiFontFamily = 'NotoColorEmoji';
+
+/// A `TextStyle` for rendering a single emoji glyph (e.g. a DXCC entity's
+/// flag) at [fontSize] — proportional, not `haloMonoStyle`'s monospace, per
+/// the issue's "emoji and name...use a proportional font".
+TextStyle emojiStyle({double fontSize = 16}) => TextStyle(fontSize: fontSize, fontFamily: emojiFontFamily);
 
 /// Ham2K's compact text-field decoration, used for every text field in the
 /// app: the label always floating at the top-left corner (not Material's

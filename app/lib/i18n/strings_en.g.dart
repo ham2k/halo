@@ -333,15 +333,6 @@ class Translations$qsoList$en {
 	/// en: 'No QSOs yet — work someone!'
 	String get empty => 'No QSOs yet — work someone!';
 
-	/// en: 'Duplicate — same call, band and mode already logged'
-	String get duplicate => 'Duplicate — same call, band and mode already logged';
-
-	/// en: 'New DXCC entity'
-	String get newEntity => 'New DXCC entity';
-
-	/// en: 'New band or mode for this callsign'
-	String get newBandOrMode => 'New band or mode for this callsign';
-
 	/// en: 'Edit time'
 	String get editEventTime => 'Edit time';
 }
@@ -517,6 +508,9 @@ class Translations$operation$menu$en {
 
 	/// en: 'Show deleted QSOs'
 	String get showDeletedQsos => 'Show deleted QSOs';
+
+	/// en: 'Show QSO Numbers'
+	String get showQsoNumbers => 'Show QSO Numbers';
 }
 
 // Path: settings.theme
@@ -664,6 +658,7 @@ extension on Translations {
 			'operation.menu.showStateField' => 'Show State field',
 			'operation.menu.showGridField' => 'Show Grid field',
 			'operation.menu.showDeletedQsos' => 'Show deleted QSOs',
+			'operation.menu.showQsoNumbers' => 'Show QSO Numbers',
 			'activitiesView.title' => 'Activities',
 			'activitiesView.activitiesCountZero' => 'No Current Activities',
 			'activitiesView.activitiesCountOne' => 'One Current Activity',
@@ -707,9 +702,6 @@ extension on Translations {
 			'qsoEditForm.band' => 'Band',
 			'qsoEditForm.notes' => 'Notes',
 			'qsoList.empty' => 'No QSOs yet — work someone!',
-			'qsoList.duplicate' => 'Duplicate — same call, band and mode already logged',
-			'qsoList.newEntity' => 'New DXCC entity',
-			'qsoList.newBandOrMode' => 'New band or mode for this callsign',
 			'qsoList.editEventTime' => 'Edit time',
 			'loggingPanel.station' => 'Station',
 			'loggingPanel.byBand' => 'By band',

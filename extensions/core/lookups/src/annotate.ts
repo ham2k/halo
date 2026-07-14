@@ -5,12 +5,16 @@
 // always runs first, regardless of any other hook's declared priority, per
 // ham2k/app-halo-dist#8). Parses the callsign's structure and annotates it
 // against the bundled DXCC country file, the same way `core/scoring` does.
+//
+// `annotateCallAgainstCountryFile`/`flagForDxccCode` come in by relative
+// path, not the `@ham2k/polo-sdk` alias — this file has its own
+// `annotate.test.ts` run via plain `node --test`, which can't resolve that
+// tsc-only bare specifier (see activities/pota/src/refFormatting.ts's
+// header comment for the same constraint). `dxcc.ts` only imports real npm
+// packages itself, so the relative import stays resolvable.
 
-import { parseCallsign } from "@ham2k/lib-callsigns"
-import { annotateFromCountryFile, useBuiltinCountryFile } from "@ham2k/lib-country-files"
+import { annotateCallAgainstCountryFile, flagForDxccCode } from "../../../sdk/src/dxcc.ts"
 import type { CallInfo, CallInfoLookup } from "@ham2k/polo-sdk"
-
-useBuiltinCountryFile()
 
 // Well-known postindicators that denote a temporary/traveling location —
 // exact vocabulary confirmed from lib-callsigns' `KNOWN_INDICATORS` list
@@ -18,14 +22,25 @@ useBuiltinCountryFile()
 // alternate), 'MM' (maritime mobile).
 const PORTABLE_INDICATORS = new Set(['P', 'M', 'AM', 'MM'])
 
-export function annotateCallsign(call: string): CallInfoLookup {
-  const parsed = parseCallsign(call)
-  const annotated = annotateFromCountryFile(parsed) as CallInfo
+// `flag` rides along as an extra field CallInfo/CallInfoLookup's fixed shape
+// (from lib-qson-tools, matching app-polo's QSON schema) doesn't declare —
+// the same way every hook result already crosses the Dart/JS bridge as a
+// plain untyped map, and `mergeLookupIntoGuess` merges any field
+// generically, not just the ones CallInfo declares. Used by the QSO row's
+// DX/domestic column (ham2k/app-halo-dist#2) to show a flag for a DX
+// contact without porting lib-dxcc-data's entity table into Dart. Widening
+// only this one field, rather than casting the whole return value to
+// `CallInfoLookup`, keeps every other field still checked against its real
+// declared type.
+type CallInfoLookupWithFlag = CallInfoLookup & { flag?: string }
+
+export function annotateCallsign(call: string): CallInfoLookupWithFlag {
+  const annotated = annotateCallAgainstCountryFile(call) as CallInfo
 
   let locationScope: CallInfo['locationScope'] = 'qth'
-  if (parsed.indicators?.some((i) => PORTABLE_INDICATORS.has(i))) {
+  if (annotated.indicators?.some((i) => PORTABLE_INDICATORS.has(i))) {
     locationScope = 'portable'
-  } else if (parsed.preindicator || parsed.prefixOverride) {
+  } else if (annotated.preindicator || annotated.prefixOverride) {
     locationScope = 'prefixed'
   }
 
@@ -35,6 +50,7 @@ export function annotateCallsign(call: string): CallInfoLookup {
     scope: 'general',
     call,
     locationScope,
+    flag: flagForDxccCode(annotated.dxccCode),
     // The country-file entity's centroid isn't real QTH data — suppressing
     // it here keeps a later "already have a grid" skip-check from being
     // satisfied by a coarse DXCC-entity-level location. `locSource` (which

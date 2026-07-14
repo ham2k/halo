@@ -3,13 +3,17 @@
 //
 // POTA reference validation/formatting — pulled out of index.ts so it can be
 // unit-tested directly (see index.test.ts): this file only imports real npm
-// packages, never the `@ham2k/polo-sdk` *value* import (a tsc-only path
-// alias — see extensions/tsconfig.json — that Node's own module resolver,
-// used by `node --test`, can't resolve at runtime).
+// packages and relative file paths, never the `@ham2k/polo-sdk` *bare
+// specifier* (a tsc-only path alias — see extensions/tsconfig.json — that
+// Node's own module resolver, used by `node --test`, can't resolve at
+// runtime). `sdk/src/dxcc.ts` only imports real npm packages itself, so
+// importing it by relative path keeps this file resolvable the same way.
 
-import { parseCallsign } from "@ham2k/lib-callsigns"
-import { annotateFromCountryFile, useBuiltinCountryFile } from "@ham2k/lib-country-files"
+import { useBuiltinCountryFile } from "@ham2k/lib-country-files"
 import { DXCC_BY_CODE } from "@ham2k/lib-dxcc-data"
+import { annotateCallAgainstCountryFile, entityPrefixForCall } from "../../../sdk/src/dxcc.ts"
+
+export { entityPrefixForCall }
 
 // One reference, e.g. "US-1234". The core's ref chip input lets a user type
 // several comma/space-separated references into one field (a rover working
@@ -22,11 +26,6 @@ export const REFERENCE_REGEX = /^[A-Z0-9]+-(?:[0-9]{4,5}|TEST)$/i
 // DXCC entity (from its numeric entityId) and a caller's own entity (from
 // their callsign) resolve without needing a network round trip.
 useBuiltinCountryFile()
-
-export function entityPrefixForCall(call: string | undefined): string | undefined {
-  if (!call) return undefined
-  return annotateFromCountryFile(parseCallsign(call)).entityPrefix
-}
 
 // POTA's own reference prefix follows a park's real-world country, not the
 // ham-radio DXCC "entity" a callsign's own prefix maps to — the two diverge
@@ -41,7 +40,7 @@ export function entityPrefixForCall(call: string | undefined): string | undefine
 // entities unlikely to have any real POTA parks).
 export function potaCountryPrefixForCall(call: string | undefined): string | undefined {
   if (!call) return undefined
-  const annotated = annotateFromCountryFile(parseCallsign(call))
+  const annotated = annotateCallAgainstCountryFile(call)
   const countryCode = annotated.dxccCode != null ? DXCC_BY_CODE[annotated.dxccCode]?.countryCode : undefined
   return countryCode ? countryCode.toUpperCase() : annotated.entityPrefix
 }

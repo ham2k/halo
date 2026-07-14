@@ -15,10 +15,7 @@
 // `USStatesScoringHandler`/`CanadianProvincesScoringHandler`) are deferred —
 // see DESIGN.md §11.
 
-import { parseCallsign } from "@ham2k/lib-callsigns"
-import { annotateFromCountryFile, useBuiltinCountryFile } from "@ham2k/lib-country-files"
-
-import { defineExtension } from "@ham2k/polo-sdk"
+import { defineExtension, entityPrefixForCall } from "@ham2k/polo-sdk"
 import type {
   DayScoreSummary,
   HookContext,
@@ -30,23 +27,12 @@ import type {
   ScoreTally,
 } from "@ham2k/polo-sdk"
 
-// Loads the bundled BIGCTY data once per runtime activation — self-contained,
-// no network — so DXCC entity resolution works without relying on a
-// callsign already having been enriched by a lookup hook.
-useBuiltinCountryFile()
-
 const DAY_IN_MILLIS = 1000 * 60 * 60 * 24
 
 type QsoJSON = Record<string, JSONValue>
 
 function str(value: JSONValue | undefined): string | undefined {
   return typeof value === 'string' && value.length > 0 ? value : undefined
-}
-
-function entityPrefixForCall(call: string | undefined): string | undefined {
-  if (!call) return undefined
-  const info = annotateFromCountryFile(parseCallsign(call))
-  return info.entityPrefix
 }
 
 // --- Duplicate-contact detection ----------------------------------------

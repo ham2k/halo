@@ -16,7 +16,6 @@ import 'package:halo_core/halo_core.dart';
 import 'package:halo_widgets/halo_widgets.dart';
 
 import '../../main.dart';
-import '../../services/activity_controls.dart';
 import '../../services/location_service.dart';
 import '../../i18n/strings.g.dart';
 

@@ -193,9 +193,6 @@ class _Translations$qsoList$es extends Translations$qsoList$en {
 
 	// Translations
 	@override String get empty => 'Aún no hay QSOs — ¡haz un contacto!';
-	@override String get duplicate => 'Duplicado — mismo indicativo, banda y modo ya registrados';
-	@override String get newEntity => 'Nueva entidad DXCC';
-	@override String get newBandOrMode => 'Nueva banda o modo para este indicativo';
 	@override String get editEventTime => 'Editar hora';
 }
 
@@ -293,6 +290,7 @@ class _Translations$operation$menu$es extends Translations$operation$menu$en {
 	@override String get showStateField => 'Mostrar campo Estado/Provincia';
 	@override String get showGridField => 'Mostrar campo Locador';
 	@override String get showDeletedQsos => 'Mostrar QSOs eliminados';
+	@override String get showQsoNumbers => 'Mostrar números de QSO';
 }
 
 // Path: settings.theme
@@ -404,6 +402,7 @@ extension on TranslationsEs {
 			'operation.menu.showStateField' => 'Mostrar campo Estado/Provincia',
 			'operation.menu.showGridField' => 'Mostrar campo Locador',
 			'operation.menu.showDeletedQsos' => 'Mostrar QSOs eliminados',
+			'operation.menu.showQsoNumbers' => 'Mostrar números de QSO',
 			'activitiesView.title' => 'Actividades',
 			'activitiesView.activitiesCountZero' => 'Sin actividades actuales',
 			'activitiesView.activitiesCountOne' => 'Una actividad actual',
@@ -447,9 +446,6 @@ extension on TranslationsEs {
 			'qsoEditForm.band' => 'Banda',
 			'qsoEditForm.notes' => 'Notas',
 			'qsoList.empty' => 'Aún no hay QSOs — ¡haz un contacto!',
-			'qsoList.duplicate' => 'Duplicado — mismo indicativo, banda y modo ya registrados',
-			'qsoList.newEntity' => 'Nueva entidad DXCC',
-			'qsoList.newBandOrMode' => 'Nueva banda o modo para este indicativo',
 			'qsoList.editEventTime' => 'Editar hora',
 			'loggingPanel.station' => 'Estación',
 			'loggingPanel.byBand' => 'Por banda',

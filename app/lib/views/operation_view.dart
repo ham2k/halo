@@ -38,6 +38,15 @@ class _OperationViewState extends State<OperationView> {
   late bool _showStateField = widget.services.settings.showStateField;
   late bool _showGridField = widget.services.settings.showGridField;
   late bool _showDeletedQSOs = widget.services.settings.showDeletedQSOs;
+  late bool _showQsoNumbers = widget.services.settings.showQsoNumbers;
+
+  /// The station's own DXCC entity, resolved once per operation load (not
+  /// per QSO — the station call essentially never changes DXCC entity
+  /// mid-operation) so the QSO row can tell a DX contact from a domestic
+  /// one. `online: false` skips network lookup hooks (QRZ/HamDB), running
+  /// only the local, no-network callsign-annotation step that's all this
+  /// needs — see extensions/core/lookups/src/annotate.ts.
+  String? _ourEntityPrefix;
 
   @override
   void initState() {
@@ -53,6 +62,8 @@ class _OperationViewState extends State<OperationView> {
       await widget.services.extensions.start();
       final controls = await widget.services.extensions.loggingControls(operation.data);
       if (mounted) setState(() => _loggingControls = controls);
+
+      await _resolveOurEntityPrefix(operation);
 
       // Scores are cached per-QSO (DESIGN.md §4), so a rescore on open is
       // enough to keep them fresh without re-running on every keystroke.
@@ -100,7 +111,22 @@ class _OperationViewState extends State<OperationView> {
 
   Future<void> _editDetails(Operation operation) async {
     final updated = await editOperationDetails(context, widget.services.operations, operation);
-    if (updated != null && mounted) setState(() => _operation = updated);
+    if (updated == null || !mounted) return;
+    setState(() => _operation = updated);
+    // The DX/State column's comparison goes stale otherwise — _load() only
+    // resolves this once, on the initial open.
+    if (updated.stationCall != operation.stationCall) await _resolveOurEntityPrefix(updated);
+  }
+
+  Future<void> _resolveOurEntityPrefix(Operation operation) async {
+    final ourInfo = await widget.services.extensions.lookupCall(
+      operation.stationCall,
+      qso: const {},
+      operation: operation.data,
+      online: false,
+    );
+    final ourGuess = ourInfo?['guess'] as Map<String, dynamic>?;
+    if (mounted) setState(() => _ourEntityPrefix = ourGuess?['entityPrefix'] as String?);
   }
 
   Future<void> _editLocation(Operation operation) async {
@@ -213,6 +239,15 @@ class _OperationViewState extends State<OperationView> {
                       ),
                       child: Text(context.t.operation.menu.showDeletedQsos),
                     ),
+                    CheckedPopupMenuItem<VoidCallback>(
+                      checked: _showQsoNumbers,
+                      value: () => _toggleMenuSetting(
+                        current: _showQsoNumbers,
+                        apply: (v) => _showQsoNumbers = v,
+                        persist: widget.services.settings.setShowQsoNumbers,
+                      ),
+                      child: Text(context.t.operation.menu.showQsoNumbers),
+                    ),
                   ],
                 ),
                 const SizedBox(width: 8),
@@ -261,6 +296,8 @@ class _OperationViewState extends State<OperationView> {
                   showRSTFields: _showRSTFields,
                   showStateField: _showStateField,
                   showGridField: _showGridField,
+                  showQsoNumbers: _showQsoNumbers,
+                  ourEntityPrefix: _ourEntityPrefix,
                 ),
               ),
               _PlaceholderTab(label: context.t.operation.tabs.spots),

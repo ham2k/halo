@@ -46,6 +46,65 @@ String? bandForFrequency(double khz) {
   return null;
 }
 
+/// MHz/kHz/Hz split for QSO-row display (issue ham2k/app-halo-dist#2): MHz
+/// bold, kHz regular, Hz (if any) regular at a smaller size, dot-separated.
+/// [hz] is null when the operation has no QSO needing sub-kHz precision —
+/// see [hzDigitsNeeded].
+class FreqParts {
+  final String mhz;
+  final String khz;
+  final String? hz;
+
+  const FreqParts({required this.mhz, required this.khz, this.hz});
+}
+
+/// Rounds a kHz value to the nearest Hz as a single integer, then splits by
+/// integer division/modulo — the shared source of truth for [freqDisplayParts]
+/// and [hzDigitsNeeded]. Flooring/subtracting the kHz-as-double pieces
+/// separately (the previous approach) can round a remainder up to exactly
+/// 1000 Hz on IEEE-754 boundary values (e.g. 8.158 MHz parses to the double
+/// 8157.999999999999 kHz) and then clamp it back down to 999 instead of
+/// carrying into kHz/MHz — rounding to a single integer up front sidesteps
+/// that: 8157.999999999999 * 1000 rounds to exactly 8158000 Hz.
+int _totalHzFor(double khz) => (khz * 1000).round();
+
+/// Splits a frequency in kHz into MHz/kHz/Hz display parts. [hzDigits] —
+/// normally the operation-wide value from [hzDigitsNeeded] — is how many Hz
+/// digits to show; 0 omits the Hz segment entirely.
+FreqParts freqDisplayParts(double khz, {required int hzDigits}) {
+  final totalHz = _totalHzFor(khz);
+  final mhzWhole = totalHz ~/ 1000000;
+  final khzWhole = (totalHz ~/ 1000) % 1000;
+  final hzValue = totalHz % 1000;
+  final hzString = hzValue.toString().padLeft(3, '0');
+
+  return FreqParts(
+    mhz: mhzWhole.toString(),
+    khz: khzWhole.toString().padLeft(3, '0'),
+    hz: hzDigits > 0 ? hzString.substring(0, hzDigits) : null,
+  );
+}
+
+/// How many Hz digits are needed to represent every QSO's frequency in the
+/// operation without losing precision, e.g. a lone frequency ending in
+/// "...074.5" kHz (500 Hz) needs 1 digit, "...074.05" (50 Hz) needs 2. 0
+/// means every QSO lands on an exact kHz, so no row needs an Hz segment.
+int hzDigitsNeeded(Iterable<double?> freqsInKHz) {
+  var maxDigits = 0;
+  for (final khz in freqsInKHz) {
+    if (khz == null) continue;
+    final hzValue = _totalHzFor(khz) % 1000;
+    if (hzValue == 0) continue;
+    final hzString = hzValue.toString().padLeft(3, '0');
+    var digits = 3;
+    while (digits > 0 && hzString[digits - 1] == '0') {
+      digits--;
+    }
+    if (digits > maxDigits) maxDigits = digits;
+  }
+  return maxDigits;
+}
+
 const List<String> modes = ['SSB', 'CW', 'FT8', 'FT4', 'FM', 'AM', 'RTTY', 'DATA'];
 
 const Set<String> _phoneModes = {'SSB', 'FM', 'AM'};

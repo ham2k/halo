@@ -91,6 +91,13 @@ class Qso {
   String? get theirName => (_their['name'] as String?) ?? (_theirGuess['name'] as String?);
   String? get theirGrid => (_their['grid'] as String?) ?? (_theirGuess['grid'] as String?);
   String? get theirState => (_their['state'] as String?) ?? (_theirGuess['state'] as String?);
+  // Both set by the callsign-annotation lookup step (ham2k/app-halo-dist#8's
+  // `annotateCallsign`) — `entityPrefix` identifies the DXCC entity for the
+  // QSO row's DX/domestic column, `flag` is that entity's emoji flag,
+  // resolved JS-side (extensions/core/lookups/src/annotate.ts) so Dart
+  // doesn't need its own copy of the DXCC entity table.
+  String? get theirEntityPrefix => (_their['entityPrefix'] as String?) ?? (_theirGuess['entityPrefix'] as String?);
+  String? get theirFlag => (_their['flag'] as String?) ?? (_theirGuess['flag'] as String?);
   String? get sentRST => _our['sent'] as String?;
   String? get receivedRST => _their['sent'] as String?;
 

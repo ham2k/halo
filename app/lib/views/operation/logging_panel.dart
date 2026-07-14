@@ -19,6 +19,8 @@ class LoggingPanel extends StatefulWidget {
   final bool showRSTFields;
   final bool showStateField;
   final bool showGridField;
+  final bool showQsoNumbers;
+  final String? ourEntityPrefix;
 
   const LoggingPanel({
     super.key,
@@ -30,6 +32,8 @@ class LoggingPanel extends StatefulWidget {
     this.showRSTFields = true,
     this.showStateField = false,
     this.showGridField = false,
+    this.showQsoNumbers = true,
+    this.ourEntityPrefix,
   });
 
   @override
@@ -82,13 +86,13 @@ class _LoggingPanelState extends State<LoggingPanel> {
     final list = QsoList(
       qsos: widget.qsos,
       noQsosLabel: context.t.qsoList.empty,
-      duplicateLabel: context.t.qsoList.duplicate,
-      newEntityLabel: context.t.qsoList.newEntity,
-      newBandOrModeLabel: context.t.qsoList.newBandOrMode,
       selectedUuid: _selectedQso?.uuid,
       onSelect: _handleSelectQso,
       onSelectEvent: _handleSelectEvent,
       showRSTFields: widget.showRSTFields,
+      showQsoNumbers: widget.showQsoNumbers,
+      activityControls: widget.loggingControls,
+      ourEntityPrefix: widget.ourEntityPrefix,
     );
 
     return Column(

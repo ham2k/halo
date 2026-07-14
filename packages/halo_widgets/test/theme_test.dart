@@ -25,6 +25,26 @@ void main() {
       expect(style.fontFamily, 'RobotoMono');
       expect(style.fontFeatures, contains(const FontFeature.tabularFigures()));
     });
+
+    testWidgets('does not pre-scale fontSize by the ambient text scaler', (tester) async {
+      // Every `Text` widget resolves and applies `MediaQuery.textScalerOf`
+      // itself by default — pre-multiplying fontSize here as well double-
+      // applied the scale factor (mono text grew quadratically with the
+      // app's font-scale setting instead of linearly, like the rest of the
+      // UI's un-pre-scaled text styles).
+      late TextStyle style;
+      await tester.pumpWidget(MediaQuery(
+        data: const MediaQueryData(textScaler: TextScaler.linear(2.0)),
+        child: MaterialApp(
+          home: Builder(builder: (context) {
+            style = haloMonoStyle(context, fontSize: 14);
+            return const SizedBox();
+          }),
+        ),
+      ));
+
+      expect(style.fontSize, 14.0);
+    });
   });
 
   group('buildHaLoTheme', () {

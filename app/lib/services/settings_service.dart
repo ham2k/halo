@@ -35,6 +35,7 @@ class SettingsService extends ChangeNotifier implements SyncSettings {
   static const _showStateFieldKey = 'showStateField';
   static const _showGridFieldKey = 'showGridField';
   static const _showDeletedQSOsKey = 'showDeletedQSOs';
+  static const _showQsoNumbersKey = 'showQsoNumbers';
 
   final SharedPreferences _prefs;
 
@@ -222,6 +223,13 @@ class SettingsService extends ChangeNotifier implements SyncSettings {
 
   Future<void> setShowDeletedQSOs(bool value) async {
     await _prefs.setBool(_showDeletedQSOsKey, value);
+    notifyListeners();
+  }
+
+  bool get showQsoNumbers => _prefs.getBool(_showQsoNumbersKey) ?? true;
+
+  Future<void> setShowQsoNumbers(bool value) async {
+    await _prefs.setBool(_showQsoNumbersKey, value);
     notifyListeners();
   }
 }
