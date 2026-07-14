@@ -4,7 +4,7 @@
 import { test } from "node:test"
 import assert from "node:assert/strict"
 
-import { REFERENCE_REGEX, transformsForPrefix, hunterDefaultPrefix, activationDefaultPrefix, potaCountryPrefixForCall } from "./refFormatting.ts"
+import { REFERENCE_REGEX, normalizeReference, transformsForPrefix, hunterDefaultPrefix, activationDefaultPrefix, potaCountryPrefixForCall } from "./refFormatting.ts"
 
 // Mirrors the group-expansion logic in
 // `packages/halo_widgets/lib/src/ref_chips_input.dart`'s
@@ -32,6 +32,27 @@ test("REFERENCE_REGEX accepts a well-formed park reference and rejects garbage",
   assert.equal(REFERENCE_REGEX.test("US1234"), false) // missing dash
   assert.equal(REFERENCE_REGEX.test("US-12"), false) // too few digits
   assert.equal(REFERENCE_REGEX.test("not a ref"), false)
+})
+
+test("normalizeReference accepts a dashed reference as-is, uppercased", () => {
+  assert.equal(normalizeReference("US-1234"), "US-1234")
+  assert.equal(normalizeReference("us-1234"), "US-1234")
+  assert.equal(normalizeReference(" US-1234 "), "US-1234")
+  assert.equal(normalizeReference("us-test"), "US-TEST")
+})
+
+test("normalizeReference accepts the same reference without a dash", () => {
+  assert.equal(normalizeReference("US1234"), "US-1234")
+  assert.equal(normalizeReference("us1234"), "US-1234")
+  assert.equal(normalizeReference("KTEST"), "K-TEST")
+  assert.equal(normalizeReference("k-test"), "K-TEST")
+})
+
+test("normalizeReference rejects anything that isn't a fully-formed reference either way", () => {
+  assert.equal(normalizeReference("US-12"), null) // too few digits
+  assert.equal(normalizeReference("US12"), null) // too few digits, no dash
+  assert.equal(normalizeReference("Yellowstone"), null)
+  assert.equal(normalizeReference(""), null)
 })
 
 test("transformsForPrefix reformats a bare number and a run-on prefix as the user types", () => {

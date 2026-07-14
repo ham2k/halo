@@ -53,6 +53,16 @@ bool get isWindowedPlatform =>
 bool get isMobilePlatform =>
     !kIsWeb && (defaultTargetPlatform == TargetPlatform.iOS || defaultTargetPlatform == TargetPlatform.android);
 
+/// The app's full self-identification name (.agents/AGENTS.md: "On desktop
+/// versions it identifies itself as 'Ham2K Logger' while on mobile versions
+/// it uses 'Ham2K Portable Logger'") — for places the app names itself to an
+/// external service or file (e.g. a spot's `source` field, an ADIF
+/// `PROGRAMID` header). Distinct from the OS-level window/task-switcher
+/// title (`main.dart`'s "HaLo") or the in-app home-screen heading
+/// (`home.title`/`home.titleDesktop`), which follow their own conventions.
+String get ham2kAppName =>
+    isWindowedPlatform ? 'Ham2K Logger' : 'Ham2K Portable Logger';
+
 /// `AppBar.leadingWidth` for a plain back button that reserves clearance for
 /// the traffic-light buttons — pair with [macOSAwareBackButton]. Every
 /// pushed view's AppBar needs this (or the equivalent custom-leading math

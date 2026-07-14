@@ -101,7 +101,14 @@
     "pendingDeleteWarning": "El QSO se eliminará al guardar",
     "timeControl": "Hora",
     "radioControl": "Radio",
-    "controlSettings": "Controles de registro"
+    "controlSettings": "Controles de registro",
+    "spottingControl": "Spotting",
+    "spottingSelfControl": "Auto-spot",
+    "spotSelfAt": "Auto-spot en ${freq}",
+    "spotOtherAt": "Spot a ${call} en ${freq}",
+    "spotTooLate": "Demasiado tarde para spotear a ${call}",
+    "spotNoFreq": "Primero define una frecuencia para spotear",
+    "spotComment": "Comentario"
   },
   "qsoEditForm": {
     "title": "Editar QSO",

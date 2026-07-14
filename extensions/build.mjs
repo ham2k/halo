@@ -90,6 +90,7 @@ const bundles = [
   { key: 'radio-commands', entry: 'core/radio-commands/src/index.ts', kind: 'extension' },
   { key: 'dev-commands', entry: 'core/dev-commands/src/index.ts', kind: 'extension' },
   { key: 'note-command', entry: 'core/note-command/src/index.ts', kind: 'extension' },
+  { key: 'spot-commands', entry: 'core/spot-commands/src/index.ts', kind: 'extension' },
   { key: 'hamdb', entry: 'lookups/hamdb/src/index.ts', kind: 'extension', domains: ['api.hamdb.org'] },
   { key: 'qrz', entry: 'lookups/qrz/src/index.ts', kind: 'extension', domains: ['xmldata.qrz.com', 'logbook.qrz.com'] },
   { key: 'call-notes', entry: 'lookups/call-notes/src/index.ts', kind: 'extension', domains: ['ham2k.com'] },

@@ -35,15 +35,17 @@ class RadioService extends ChangeNotifier implements VfoStore {
   /// the `setVfo` command action's convention: passing `freq` replaces the
   /// band with the one derived from it; passing `band` without `freq`
   /// clears the frequency (a manually picked band); `mode` is independent
-  /// of the two. Omitted parameters leave that part of the VFO unchanged.
+  /// of the two. Omitted parameters leave that part of the VFO unchanged —
+  /// `clearFreq` is the explicit way to clear it without also implying a
+  /// `band`.
   @override
-  void setVfo(String key, {double? freq, String? band, String? mode}) {
+  void setVfo(String key, {double? freq, String? band, String? mode, bool clearFreq = false}) {
     final current = _vfos[key] ?? const Vfo();
     final Vfo updated;
     if (freq != null) {
       updated = Vfo(freq: freq, band: bandForFrequency(freq), mode: mode ?? current.mode);
-    } else if (band != null) {
-      updated = Vfo(freq: null, band: band, mode: mode ?? current.mode);
+    } else if (band != null || clearFreq) {
+      updated = Vfo(freq: null, band: band ?? current.band, mode: mode ?? current.mode);
     } else {
       updated = Vfo(freq: current.freq, band: current.band, mode: mode ?? current.mode);
     }

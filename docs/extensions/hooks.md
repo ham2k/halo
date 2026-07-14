@@ -14,6 +14,10 @@ hook method receives `(args, ctx)` where `ctx: HookContext` is:
 * `online: boolean` — True if the device has an active network connection.
 * `developerMode: boolean` — True if developer options are enabled in settings.
 * `locale: string` — The active locale code of the application (e.g. `'en'`, `'es'`).
+* `appName?: string` — Platform-appropriate app name ("Ham2K Logger" on
+  desktop, "Ham2K Portable Logger" on mobile) — use this instead of a
+  hardcoded name when identifying the app to an external service or file
+  (e.g. a spot's `source` field, an ADIF `PROGRAMID` header).
 
 Status legend: ✅ implemented · 🔜 planned (design in DESIGN.md §4).
 
@@ -92,21 +96,40 @@ function with its own unit test suite
 `extensions/`) — this is the highest-defect-risk logic in the feature, so it
 is tested in isolation from the hook/bridge plumbing.
 
-## ✅ `spots` — spot sources
+## ✅ `spots` — spot sources and spotting (ham2k/app-halo-dist#9, #10)
 
 ```ts
 interface SpotsHook {
   sourceName: string
   fetchSpots(args: {}, ctx): Promise<Spot[]>
+  isSelfSpotEnabled?(args: { operation }, ctx): Promise<SpotEligibility>
+  isOtherSpotEnabled?(args: { qso }, ctx): Promise<SpotEligibility>
+  postSelfSpot?(args: PostSelfSpotRequest, ctx): Promise<PostResult>
+  postOtherSpot?(args: PostOtherSpotRequest, ctx): Promise<PostResult>
 }
 // Spot: {their: {call}, freq?, band?, mode?, refs?: Ref[],
 //        spot: {timeInMillis, source, label?, sourceInfo?}}
+// SpotEligibility: {enabled, icon?}
+// PostResult: {ok, message?}
+// PostSelfSpotRequest: {operation, freq, mode?, comment?}
+// PostOtherSpotRequest: {qso, comment?, spotterCall?}
 ```
 
 Map upstream spots into QSON-shaped spot objects; filter out QRT/stale
 entries at the source. `Spot` may also carry an `icon` (MDI/FontAwesome
 name, same convention as `activity` controls). Implemented by: `pota`,
-`sota` (SOTAWatch).
+`sota` (SOTAWatch) — fetch only.
+
+The four posting methods are all optional; a hook that omits them just
+never appears in the Spotting control's icon row (same "silently absent"
+convention as `export`'s `suggestExportOptions`). `isSelfSpotEnabled`/
+`isOtherSpotEnabled` are checked once to decide whether to show a source's
+icon at all (e.g. only when the operation/QSO has a matching activation
+ref); `postSelfSpot`/`postOtherSpot` are only called for sources that
+reported `enabled: true`. Implemented by: `pota` (self + other, posts
+directly to the POTA API, no auth required). `sota`'s spot API requires an
+authenticated account app-halo doesn't have yet, so `sota` stays
+fetch-only for now.
 
 ## ✅ `export` — log file generation
 

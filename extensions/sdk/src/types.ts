@@ -11,6 +11,11 @@ export interface HookContext {
   }
   developerMode?: boolean
   locale?: string
+  // Platform-appropriate app name — "Ham2K Logger" on desktop, "Ham2K
+  // Portable Logger" on mobile — for extensions that identify the app to an
+  // external service or file (e.g. a spot's "source" field, an ADIF
+  // PROGRAMID header).
+  appName?: string
 }
 
 export type { CallInfo, CallInfoLookup, AnnotatedCallInfo } from "@ham2k/lib-qson-tools"
@@ -76,9 +81,43 @@ export interface Spot {
   }
 }
 
+export interface SpotEligibility {
+  enabled: boolean
+  /// MDI or FontAwesome ('fa-') icon name for this source's status icon in
+  /// the Spotting control's icon row.
+  icon?: string
+}
+
+export interface PostResult {
+  ok: boolean
+  message?: string
+}
+
+export interface PostSelfSpotRequest {
+  operation: Record<string, JSONValue>
+  freq: number
+  mode?: string
+  comment?: string
+}
+
+export interface PostOtherSpotRequest {
+  qso: Record<string, JSONValue>
+  comment?: string
+  spotterCall?: string
+}
+
 export interface SpotsHook {
   sourceName: string
   fetchSpots(args: Record<string, never>, ctx: HookContext): Promise<Spot[]>
+  /// Whether this hook can post a spot for the operation itself right now
+  /// (e.g. it has a matching activation ref) — checked before showing this
+  /// source's icon in the Spotting control, not before every post.
+  isSelfSpotEnabled?(args: { operation: Record<string, JSONValue> }, ctx: HookContext): Promise<SpotEligibility>
+  /// Same, but for spotting the station on one already-logged QSO (e.g. it
+  /// has a matching hunted ref).
+  isOtherSpotEnabled?(args: { qso: Record<string, JSONValue> }, ctx: HookContext): Promise<SpotEligibility>
+  postSelfSpot?(args: PostSelfSpotRequest, ctx: HookContext): Promise<PostResult>
+  postOtherSpot?(args: PostOtherSpotRequest, ctx: HookContext): Promise<PostResult>
 }
 
 /// A reference ties a QSO or operation to an activity program entity
@@ -297,8 +336,12 @@ export interface CommandAction {
   }
   updateQso?: Record<string, JSONValue>
   addQso?: Record<string, JSONValue>
+  /// `target` picks what gets spotted: `'self'` (default) spots the
+  /// operation itself at the current VFO; `'last'` spots the most recent
+  /// logged QSO (SPOTLAST family) regardless of what's being edited.
   sendSpots?: {
     comment?: string
+    target?: 'self' | 'last'
   }
   syncAll?: Record<string, never>
   updateSettings?: {

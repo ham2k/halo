@@ -253,14 +253,14 @@ async function callHookMethod(record: HookRecord, method: string, args: unknown,
   const account = (await getAccountContext(record.extensionKey)) as { credentials?: Record<string, string>; session?: Record<string, string> } | undefined
   let developerMode = false
   let locale = 'en'
-  const settings = (await getSettingsContext()) as { developerMode?: boolean; locale?: string } | undefined
+  const settings = (await getSettingsContext()) as { developerMode?: boolean; locale?: string; appName?: string } | undefined
   if (settings?.developerMode) {
     developerMode = true
   }
   if (settings?.locale) {
     locale = settings.locale
   }
-  const ctx = { online, account, developerMode, locale }
+  const ctx = { online, account, developerMode, locale, appName: settings?.appName }
   return await member.call(record.hook, args, ctx)
 }
 

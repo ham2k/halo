@@ -40,6 +40,8 @@ void main() {
     CommandActionHandler? onCommandAction,
     VfoStore? radioService,
     Qso? editingQso,
+    SuggestSpotSources? suggestSpotSources,
+    SendSpot? sendSpot,
   }) {
     return MaterialApp(
       home: Scaffold(
@@ -52,6 +54,15 @@ void main() {
           onCommandAction: onCommandAction,
           radioService: radioService,
           editingQso: editingQso,
+          suggestSpotSources: suggestSpotSources,
+          sendSpot: sendSpot,
+          spottingControlLabel: 'Spotting',
+          spottingLabel: 'Spotting',
+          spottingSelfLabel: 'Self-spotting',
+          spotSelfLabel: (freq) => 'Self-spot at $freq',
+          spotOtherLabel: (call, freq) => 'Spot $call at $freq',
+          spotTooLateLabel: (call) => 'Too late to spot $call',
+          spotNoFreqLabel: 'First set a frequency to spot',
         ),
       ),
     );
@@ -959,6 +970,123 @@ void main() {
     expect(dispatched.single.value, {'target': 'ALL'});
   });
 
+  testWidgets('SPOTLAST resolves to the last real QSO, skipping trailing event markers (ham2k/app-halo-dist#10)', (tester) async {
+    // `qsos` is oldest-first (matches watchForOperation's ORDER BY
+    // startAtMillis) — the event marker logged after both real QSOs must
+    // NOT be picked just because it's last in the list.
+    final firstQso = Qso(
+      uuid: 'q1',
+      operationUuid: operation.uuid,
+      data: {'their': {'call': 'K1ABC'}, 'startAtMillis': 1000},
+    );
+    final lastRealQso = Qso(
+      uuid: 'q2',
+      operationUuid: operation.uuid,
+      data: {'their': {'call': 'W1XYZ'}, 'startAtMillis': 2000},
+    );
+    final trailingEventMarker = Qso(
+      uuid: 'evt',
+      operationUuid: operation.uuid,
+      data: {'band': 'event', 'startAtMillis': 3000},
+    );
+
+    final dispatched = <MapEntry<String, Map<String, dynamic>?>>[];
+    Future<Map<String, dynamic>?> fakeSpotLastCommand(
+      String input, [
+      Map<String, dynamic>? operation,
+      Map<String, dynamic>? qso,
+    ]) async {
+      if (input.trim().toUpperCase() != 'SPOTLAST') return null;
+      return {
+        'describe': 'Spot the last logged QSO?',
+        'confirm': 'Spotting last QSO…',
+        'commands': [
+          {'sendSpots': {'target': 'last'}},
+        ],
+      };
+    }
+
+    await tester.pumpWidget(host(
+      existing: [firstQso, lastRealQso, trailingEventMarker],
+      interpretCommand: fakeSpotLastCommand,
+      onCommandAction: (action, [params]) async {
+        dispatched.add(MapEntry(action, params));
+      },
+    ));
+
+    await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'SPOTLAST');
+    await tester.pump();
+    await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+    await tester.pump(const Duration(milliseconds: 200));
+
+    expect(dispatched, hasLength(1));
+    expect(dispatched.single.key, 'sendSpots');
+    final params = dispatched.single.value!;
+    expect(params['target'], 'last');
+    expect((params['qso'] as Map)['their'], {'call': 'W1XYZ'});
+  });
+
+  group('Spotting control pill label', () {
+    // The collapsed pill is always one of the two short, fixed labels —
+    // never the longer dynamic button text ("Self-spot at 7.200", "First
+    // set a frequency to spot", "Spot KN2X at 7.200", "Too late to spot
+    // KN2X"), which is reserved for the button inside the expanded panel.
+    Future<List<Map<String, dynamic>>> noSources({required Map<String, dynamic> operation, Map<String, dynamic>? qso}) async => [];
+    Future<Map<String, Map<String, dynamic>>> noopSend({
+      required List<Map<String, dynamic>> sources,
+      required Map<String, dynamic> operation,
+      Map<String, dynamic>? qso,
+      double? freq,
+      String? mode,
+      String? comment,
+      String? spotterCall,
+    }) async =>
+        {};
+
+    testWidgets('shows "Self-spotting" with no frequency set', (tester) async {
+      await tester.pumpWidget(host(suggestSpotSources: noSources, sendSpot: noopSend));
+      await tester.pump();
+      expect(find.text('Self-spotting'), findsOneWidget);
+      expect(find.text('First set a frequency to spot'), findsNothing);
+    });
+
+    testWidgets('shows "Self-spotting" (not "Self-spot at ...") once a frequency is set', (tester) async {
+      fakeRadio.setVfo('vfoA', freq: 14285);
+      await tester.pumpWidget(host(radioService: fakeRadio, suggestSpotSources: noSources, sendSpot: noopSend));
+      await tester.pump();
+      expect(find.text('Self-spotting'), findsOneWidget);
+      expect(find.textContaining('Self-spot at'), findsNothing);
+    });
+
+    testWidgets('shows "Spotting" (not "Spot ... at ..." or "Too late") while editing a recent QSO', (tester) async {
+      final recentQso = Qso(
+        uuid: 'recent',
+        operationUuid: operation.uuid,
+        data: {'their': {'call': 'KN2X'}, 'freq': 14285, 'startAtMillis': DateTime.now().millisecondsSinceEpoch},
+      );
+      await tester.pumpWidget(host(editingQso: recentQso, suggestSpotSources: noSources, sendSpot: noopSend));
+      await tester.pump();
+      expect(find.text('Spotting'), findsOneWidget);
+      expect(find.textContaining('Spot KN2X'), findsNothing);
+    });
+
+    testWidgets('shows "Spotting" (not "Too late...") while editing a stale QSO', (tester) async {
+      final staleQso = Qso(
+        uuid: 'stale',
+        operationUuid: operation.uuid,
+        data: {
+          'their': {'call': 'KN2X'},
+          'freq': 14285,
+          'startAtMillis': DateTime.now().subtract(const Duration(minutes: 10)).millisecondsSinceEpoch,
+        },
+      );
+      await tester.pumpWidget(host(editingQso: staleQso, suggestSpotSources: noSources, sendSpot: noopSend));
+      await tester.pump();
+      expect(find.text('Spotting'), findsOneWidget);
+      expect(find.textContaining('Too late'), findsNothing);
+    });
+  });
+
   testWidgets('note expansion: a setCallField command replaces the call field, and the result logs as a comma list', (tester) async {
     // `//KEY` (issue #17): the call-notes extension interprets "//DAN" into
     // a setCallField action carrying that entry's comma list of calls. The
@@ -1199,6 +1327,19 @@ void main() {
     final logged = await waitForQsos(tester, 1);
     expect(logged.single.freq, 14285);
     expect(fakeRadio.vfoA.freq, 14285);
+  });
+
+  testWidgets('clearing the frequency field pushes the clear to radioService immediately, not debounced', (tester) async {
+    fakeRadio.setVfo('vfoA', freq: 14285, mode: 'SSB');
+    await tester.pumpWidget(host(radioService: fakeRadio));
+    await openControl(tester, MdiIcons.radio);
+    expect(tester.widget<TextField>(find.widgetWithText(TextField, 'Frequency')).controller!.text, '14285');
+
+    await tester.enterText(find.widgetWithText(TextField, 'Frequency'), '');
+    await tester.pump();
+
+    // No 5s debounce wait, no blur — the clear takes effect right away.
+    expect(fakeRadio.vfoA.freq, isNull);
   });
 
   testWidgets('ending an edit session re-seeds the Radio control from the VFO, not the just-edited QSO', (tester) async {
@@ -1697,12 +1838,12 @@ class _FakeVfoStore implements VfoStore {
   Vfo get vfoA => _vfoA;
 
   @override
-  void setVfo(String key, {double? freq, String? band, String? mode}) {
+  void setVfo(String key, {double? freq, String? band, String? mode, bool clearFreq = false}) {
     if (key != 'vfoA') return;
     if (freq != null) {
       _vfoA = Vfo(freq: freq, band: bandForFrequency(freq), mode: mode ?? _vfoA.mode);
-    } else if (band != null) {
-      _vfoA = Vfo(freq: null, band: band, mode: mode ?? _vfoA.mode);
+    } else if (band != null || clearFreq) {
+      _vfoA = Vfo(freq: null, band: band ?? _vfoA.band, mode: mode ?? _vfoA.mode);
     } else {
       _vfoA = Vfo(freq: _vfoA.freq, band: _vfoA.band, mode: mode ?? _vfoA.mode);
     }

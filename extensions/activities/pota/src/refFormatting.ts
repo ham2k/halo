@@ -22,6 +22,23 @@ export { entityPrefixForCall }
 // one reference at a time.
 export const REFERENCE_REGEX = /^[A-Z0-9]+-(?:[0-9]{4,5}|TEST)$/i
 
+// Same shape as REFERENCE_REGEX but without the dash — a non-greedy prefix
+// capture backtracks until what's left at the end is exactly a valid
+// suffix (4-5 digits, or TEST), so "US15000" splits as "US" + "15000". Only
+// used to recognize free-typed search text (see `normalizeReference`); the
+// dash is still required everywhere a reference is stored or displayed.
+const DASHLESS_REFERENCE_MATCH = /^([A-Z0-9]+?)(TEST|[0-9]{4,5})$/i
+
+// Accepts a reference typed with or without its dash (e.g. "US-1234" or
+// "US1234") and returns the canonical dashed, uppercased form — or null if
+// `input` isn't a fully-formed reference either way.
+export function normalizeReference(input: string): string | null {
+  const trimmed = input.toUpperCase().trim()
+  if (REFERENCE_REGEX.test(trimmed)) return trimmed
+  const match = DASHLESS_REFERENCE_MATCH.exec(trimmed)
+  return match ? `${match[1]}-${match[2]}` : null
+}
+
 // Loads the bundled BIGCTY data once per runtime activation, so a park's
 // DXCC entity (from its numeric entityId) and a caller's own entity (from
 // their callsign) resolve without needing a network round trip.

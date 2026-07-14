@@ -108,6 +108,75 @@ class ExtensionService {
     }
   }
 
+  /// Every `spots` hook currently willing to post a spot (Spotting control,
+  /// ham2k/app-halo-dist#10), each tagged with `hookKey` so a later
+  /// `sendSpot` call can be routed back to it. Calls `isSelfSpotEnabled`
+  /// when `qso` is omitted, `isOtherSpotEnabled` otherwise; hooks that don't
+  /// implement the relevant method, or report `enabled: false`, are
+  /// silently absent — same convention as `getExportOptions`.
+  Future<List<Map<String, dynamic>>> suggestSpotSources({
+    required Map<String, dynamic> operation,
+    Map<String, dynamic>? qso,
+  }) async {
+    final host = _host;
+    if (host == null) return const [];
+    final method = qso == null ? 'isSelfSpotEnabled' : 'isOtherSpotEnabled';
+    final args = qso == null ? {'operation': operation} : {'qso': qso};
+    try {
+      final entries = await host.invokeHookAll('spots', method: method, args: args, timeout: const Duration(seconds: 5));
+      final sources = <Map<String, dynamic>>[];
+      for (final entry in entries) {
+        if (entry['ok'] != true || entry['value'] is! Map) continue;
+        final value = (entry['value'] as Map).cast<String, dynamic>();
+        if (value['enabled'] != true) continue;
+        sources.add({...value, 'hookKey': entry['key']});
+      }
+      return sources;
+    } catch (e) {
+      debugPrint('[extensions] suggestSpotSources failed: $e');
+      return const [];
+    }
+  }
+
+  /// Posts a spot via every hook in `sources` (as returned by
+  /// `suggestSpotSources`) concurrently — independent per-source calls, no
+  /// ordering dependency between them. Returns `{hookKey: PostResult}` so
+  /// the caller can color each source's status icon. `freq`/`mode` are only
+  /// used for a self-spot (`qso == null`); spotting an existing QSO derives
+  /// them from the QSO itself, JS-side.
+  Future<Map<String, Map<String, dynamic>>> sendSpot({
+    required List<Map<String, dynamic>> sources,
+    required Map<String, dynamic> operation,
+    Map<String, dynamic>? qso,
+    double? freq,
+    String? mode,
+    String? comment,
+    String? spotterCall,
+  }) async {
+    final host = _host;
+    if (host == null) return const {};
+    final method = qso == null ? 'postSelfSpot' : 'postOtherSpot';
+    final args = qso == null
+        ? {'operation': operation, 'freq': freq, 'mode': mode, 'comment': comment}
+        : {'qso': qso, 'comment': comment, 'spotterCall': spotterCall};
+    final entries = await Future.wait(sources.map((source) async {
+      final hookKey = source['hookKey'] as String?;
+      try {
+        final result = await host.invokeHook(
+          'spots',
+          key: hookKey,
+          method: method,
+          args: args,
+          timeout: const Duration(seconds: 15),
+        ) as Map;
+        return MapEntry(hookKey ?? '', result.cast<String, dynamic>());
+      } catch (e) {
+        return MapEntry(hookKey ?? '', <String, dynamic>{'ok': false, 'message': e.toString()});
+      }
+    }));
+    return {for (final entry in entries) entry.key: entry.value};
+  }
+
   Future<String> testCredentials(String accountKey, Map<String, String> credentials) async {
     final host = _host;
     if (host == null) return 'Extension runtime not ready.';
@@ -529,6 +598,7 @@ class ExtensionService {
         return {
           'developerMode': settings?.developerMode ?? false,
           'locale': settings?.locale ?? 'en',
+          'appName': ham2kAppName,
         };
       case 'getCoreSettings':
         return {

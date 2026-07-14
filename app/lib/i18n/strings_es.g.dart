@@ -166,6 +166,13 @@ class _Translations$loggingControls$es extends Translations$loggingControls$en {
 	@override String get timeControl => 'Hora';
 	@override String get radioControl => 'Radio';
 	@override String get controlSettings => 'Controles de registro';
+	@override String get spottingControl => 'Spotting';
+	@override String get spottingSelfControl => 'Auto-spot';
+	@override String spotSelfAt({required Object freq}) => 'Auto-spot en ${freq}';
+	@override String spotOtherAt({required Object call, required Object freq}) => 'Spot a ${call} en ${freq}';
+	@override String spotTooLate({required Object call}) => 'Demasiado tarde para spotear a ${call}';
+	@override String get spotNoFreq => 'Primero define una frecuencia para spotear';
+	@override String get spotComment => 'Comentario';
 }
 
 // Path: qsoEditForm
@@ -473,6 +480,13 @@ extension on TranslationsEs {
 			'loggingControls.timeControl' => 'Hora',
 			'loggingControls.radioControl' => 'Radio',
 			'loggingControls.controlSettings' => 'Controles de registro',
+			'loggingControls.spottingControl' => 'Spotting',
+			'loggingControls.spottingSelfControl' => 'Auto-spot',
+			'loggingControls.spotSelfAt' => ({required Object freq}) => 'Auto-spot en ${freq}',
+			'loggingControls.spotOtherAt' => ({required Object call, required Object freq}) => 'Spot a ${call} en ${freq}',
+			'loggingControls.spotTooLate' => ({required Object call}) => 'Demasiado tarde para spotear a ${call}',
+			'loggingControls.spotNoFreq' => 'Primero define una frecuencia para spotear',
+			'loggingControls.spotComment' => 'Comentario',
 			'qsoEditForm.title' => 'Editar QSO',
 			'qsoEditForm.theirName' => 'Nombre',
 			'qsoEditForm.theirGrid' => 'Locador',

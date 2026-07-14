@@ -297,4 +297,97 @@ void main() {
     expect(potaSuggestions.any((s) => s['ref'] == 'US-CLOSE'), isTrue);
     expect(potaSuggestions.first['ref'], 'US-CLOSE');
   });
+
+  test('POTA suggest() always offers a fully-formed reference typed in the search, even when absent from the lookup table', () async {
+    final host = extensions.host!;
+    // Deliberately empty lookup table — a brand-new park, or one the local
+    // data file hasn't synced yet, must still be offered as an option.
+
+    final results = await host.invokeHookAll(
+      'activity',
+      method: 'suggest',
+      args: {
+        'operation': <String, dynamic>{},
+        'callsign': 'W1AW',
+        'searchTerm': 'US-15000',
+      },
+    );
+
+    final potaSuggestions = (results.firstWhere((e) => e['key'] == 'pota')['value'] as List).cast<Map>();
+    expect(potaSuggestions.map((s) => s['ref']), contains('US-15000'));
+    final synthetic = potaSuggestions.firstWhere((s) => s['ref'] == 'US-15000');
+    expect(synthetic['type'], 'potaActivation');
+    expect(synthetic['name'], 'Unknown Park');
+  });
+
+  test('POTA suggest() accepts a fully-formed reference typed without its dash', () async {
+    final host = extensions.host!;
+
+    final results = await host.invokeHookAll(
+      'activity',
+      method: 'suggest',
+      args: {
+        'operation': <String, dynamic>{},
+        'callsign': 'W1AW',
+        'searchTerm': 'US15000',
+      },
+    );
+
+    final potaSuggestions = (results.firstWhere((e) => e['key'] == 'pota')['value'] as List).cast<Map>();
+    // Normalized to the canonical dashed form, not left as typed.
+    expect(potaSuggestions.map((s) => s['ref']), contains('US-15000'));
+    expect(potaSuggestions.map((s) => s['ref']), isNot(contains('US15000')));
+  });
+
+  test('POTA suggest() allows the special "K-TEST" reference (dashed or not), labeled "Test Park"', () async {
+    final host = extensions.host!;
+
+    for (final searchTerm in ['K-TEST', 'KTEST']) {
+      final results = await host.invokeHookAll(
+        'activity',
+        method: 'suggest',
+        args: {
+          'operation': <String, dynamic>{},
+          'callsign': 'W1AW',
+          'searchTerm': searchTerm,
+        },
+      );
+
+      final potaSuggestions = (results.firstWhere((e) => e['key'] == 'pota')['value'] as List).cast<Map>();
+      expect(potaSuggestions.map((s) => s['ref']), contains('K-TEST'), reason: searchTerm);
+      expect(potaSuggestions.firstWhere((s) => s['ref'] == 'K-TEST')['name'], 'Test Park', reason: searchTerm);
+    }
+  });
+
+  test('POTA suggest() prefers a real matching row over the synthetic fully-formed-reference entry', () async {
+    final host = extensions.host!;
+    await lookups.insertLookupBatch([
+      LookupRow(
+        category: 'pota',
+        key: 'US-1234',
+        name: 'Test State Park',
+        subCategory: 'K',
+        lat: 37.7749,
+        lon: -122.4194,
+        flags: 1,
+        data: '{"reference":"US-1234","name":"Test State Park"}',
+      ),
+    ]);
+
+    final results = await host.invokeHookAll(
+      'activity',
+      method: 'suggest',
+      args: {
+        'operation': <String, dynamic>{},
+        'callsign': 'W1AW',
+        'searchTerm': 'US-1234',
+      },
+    );
+
+    final potaSuggestions = (results.firstWhere((e) => e['key'] == 'pota')['value'] as List).cast<Map>();
+    // Exactly one entry for US-1234 — the real row's name, not a duplicate
+    // bare synthetic one.
+    expect(potaSuggestions.where((s) => s['ref'] == 'US-1234'), hasLength(1));
+    expect(potaSuggestions.firstWhere((s) => s['ref'] == 'US-1234')['name'], 'Test State Park');
+  });
 }

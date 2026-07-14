@@ -22,12 +22,16 @@ import type {
   LookupResult,
   Ref,
   Spot,
+  SpotEligibility,
+  PostResult,
+  PostSelfSpotRequest,
+  PostOtherSpotRequest,
   DataFileDefinition,
   SuggestArgs,
   ActivitySuggestion,
   LookupRow,
 } from "@ham2k/halo-extension-sdk"
-import { REFERENCE_REGEX, entityPrefixForCall, transformsForPrefix, hunterDefaultPrefix, activationDefaultPrefix } from "./refFormatting.ts"
+import { REFERENCE_REGEX, normalizeReference, entityPrefixForCall, transformsForPrefix, hunterDefaultPrefix, activationDefaultPrefix } from "./refFormatting.ts"
 
 export { REFERENCE_REGEX, transformsForPrefix, hunterDefaultPrefix, activationDefaultPrefix } from "./refFormatting.ts"
 
@@ -202,7 +206,7 @@ const ActivityHook = {
       withDistance.sort((a, b) => (a.distance ?? Infinity) - (b.distance ?? Infinity))
     }
 
-    return withDistance.slice(0, MAX_SUGGESTIONS).map(({ row, distance }) => {
+    const suggestions: ActivitySuggestion[] = withDistance.slice(0, MAX_SUGGESTIONS).map(({ row, distance }) => {
       const data = (row.data ?? {}) as Record<string, any>
       return {
         type: ACTIVATION_TYPE,
@@ -217,6 +221,31 @@ const ActivityHook = {
         relevance: relevanceForMatch(row, searchTerm),
       }
     })
+
+    // A fully-formed reference (e.g. "US-15000"/"US15000", or the special
+    // "-TEST" suffix) is always offered, even when it's missing from — or
+    // not yet loaded into — the local lookup table (a brand-new park, or
+    // the table hasn't synced yet), so a user who already knows their
+    // park's code isn't stuck with "no results". Skipped if a real row for
+    // it already made the cut above, so a known park's name/grid still
+    // take priority.
+    const normalizedSearch = searchTerm ? normalizeReference(searchTerm) : null
+    if (normalizedSearch && !suggestions.some((s) => s.ref === normalizedSearch)) {
+      const isTestRef = normalizedSearch.endsWith('-TEST')
+      const name = isTestRef ? 'Test Park' : 'Unknown Park'
+      if (suggestions.length >= MAX_SUGGESTIONS) suggestions.pop()
+      suggestions.unshift({
+        type: ACTIVATION_TYPE,
+        ref: normalizedSearch,
+        name,
+        program: 'POTA',
+        label: `POTA ${normalizedSearch}: ${name}`,
+        shortLabel: `POTA ${normalizedSearch}`,
+        relevance: 1,
+      })
+    }
+
+    return suggestions
   },
 }
 
@@ -322,6 +351,69 @@ const SpotsHook = {
         }
       })
   },
+
+  async isSelfSpotEnabled({ operation }: { operation: Record<string, JSONValue> }, _ctx: HookContext): Promise<SpotEligibility> {
+    return refsOfType(operation, ACTIVATION_TYPE).length > 0 ? { enabled: true, icon: 'pine-tree' } : { enabled: false }
+  },
+
+  async isOtherSpotEnabled({ qso }: { qso: Record<string, JSONValue> }, _ctx: HookContext): Promise<SpotEligibility> {
+    return refsOfType(qso, HUNTING_TYPE).length > 0 ? { enabled: true, icon: 'pine-tree' } : { enabled: false }
+  },
+
+  async postSelfSpot({ operation, freq, mode, comment }: PostSelfSpotRequest, ctx: HookContext): Promise<PostResult> {
+    const refs = refsOfType(operation, ACTIVATION_TYPE)
+    if (refs.length === 0) return { ok: false, message: 'No POTA activation on this operation' }
+    const call = String(operation.stationCall ?? '')
+    return postSpotToPOTA({ call, spotter: call, freq, mode, refs, comment, appName: ctx.appName })
+  },
+
+  async postOtherSpot({ qso, comment, spotterCall }: PostOtherSpotRequest, ctx: HookContext): Promise<PostResult> {
+    const refs = refsOfType(qso, HUNTING_TYPE)
+    if (refs.length === 0) return { ok: false, message: 'No POTA reference on this QSO' }
+    const freq = Number(qso.freq)
+    if (!freq) return { ok: false, message: 'This QSO has no frequency to spot' }
+    const their = (qso.their ?? {}) as Record<string, JSONValue>
+    const our = (qso.our ?? {}) as Record<string, JSONValue>
+    return postSpotToPOTA({
+      call: String(their.call ?? ''),
+      spotter: String(our.call ?? spotterCall ?? ''),
+      freq,
+      mode: qso.mode ? String(qso.mode) : undefined,
+      refs,
+      comment,
+      appName: ctx.appName,
+    })
+  },
+}
+
+/// Posts directly to the POTA API — no authentication required (unlike
+/// SOTA's spot API, which needs a logged-in account app-halo doesn't have
+/// yet). Ported from app-polo's POTAPostSpotAPI.js.
+async function postSpotToPOTA(
+  { call, spotter, freq, mode, refs, comment, appName }: { call: string; spotter: string; freq: number; mode?: string; refs: Ref[]; comment?: string; appName?: string },
+): Promise<PostResult> {
+  const refComment = refs.length > 1 ? `${refs.length}-fer: ${refs.map((r) => r.ref).join(' ')}` : ''
+  try {
+    const response = await host.fetch('https://api.pota.app/spot', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        activator: call,
+        spotter,
+        frequency: freq,
+        reference: refs[0].ref,
+        mode: mode ?? 'SSB',
+        source: appName ?? 'Ham2K Logger',
+        comments: [comment, refComment].filter((x) => x).join(' '),
+      }),
+    })
+    if (response.status !== 200) {
+      return { ok: false, message: `POTA API returned HTTP ${response.status}` }
+    }
+    return { ok: true }
+  } catch (e) {
+    return { ok: false, message: e instanceof Error ? e.message : String(e) }
+  }
 }
 
 function simplifyStates(locationDesc: string): string {

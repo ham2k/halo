@@ -101,7 +101,14 @@
     "pendingDeleteWarning": "QSO will be deleted when you save",
     "timeControl": "Time",
     "radioControl": "Radio",
-    "controlSettings": "Logging Controls"
+    "controlSettings": "Logging Controls",
+    "spottingControl": "Spotting",
+    "spottingSelfControl": "Self-spotting",
+    "spotSelfAt": "Self-spot at ${freq}",
+    "spotOtherAt": "Spot ${call} at ${freq}",
+    "spotTooLate": "Too late to spot ${call}",
+    "spotNoFreq": "First set a frequency to spot",
+    "spotComment": "Comment"
   },
   "qsoEditForm": {
     "title": "Edit QSO",

@@ -14,7 +14,7 @@ import { defineExtension, hooks } from "@ham2k/halo-extension-sdk"
 import type { ExportOption, ExportOptionsRequest, ExportRequest, ExportResult, HookContext } from "@ham2k/halo-extension-sdk"
 
 const ADIF_VERSION = '3.1.5'
-const PROGRAM_ID = 'Ham2K HaLo Next'
+const DEFAULT_PROGRAM_ID = 'Ham2K Logger'
 
 function field(name: string, value: unknown): string {
   if (value === undefined || value === null || value === '') return ''
@@ -51,14 +51,14 @@ const ExportHandler = {
     ]
   },
 
-  async generateExport({ operation, qsos }: ExportRequest, _ctx: HookContext): Promise<ExportResult> {
+  async generateExport({ operation, qsos }: ExportRequest, ctx: HookContext): Promise<ExportResult> {
     const stationCall = String(operation.stationCall ?? 'UNKNOWN')
     const title = String(operation.title ?? '')
 
     const lines: string[] = []
     lines.push(`ADIF export for ${[stationCall, title].filter((x) => x).join(' — ')}`)
     lines.push(field('ADIF_VER', ADIF_VERSION))
-    lines.push(field('PROGRAMID', PROGRAM_ID))
+    lines.push(field('PROGRAMID', ctx.appName ?? DEFAULT_PROGRAM_ID))
     lines.push(field('CREATED_TIMESTAMP', `${fmtADIFDate(Date.now())} ${fmtADIFTime(Date.now())}`))
     lines.push('<EOH>')
     lines.push('')

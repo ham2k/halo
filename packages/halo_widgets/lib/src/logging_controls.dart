@@ -73,6 +73,26 @@ typedef CommandInterpreter = Future<Map<String, dynamic>?> Function(
 /// came with that action (e.g. `devNotice`'s icon/title/text).
 typedef CommandActionHandler = Future<void> Function(String action, [Map<String, dynamic>? params]);
 
+/// Which `spots` hooks currently offer self- or other-spotting — `qso: null`
+/// asks about self-spotting the operation, `qso` set asks about spotting
+/// that QSO's station. Mirrors `ExtensionService.suggestSpotSources`.
+typedef SuggestSpotSources = Future<List<Map<String, dynamic>>> Function({
+  required Map<String, dynamic> operation,
+  Map<String, dynamic>? qso,
+});
+
+/// Posts a spot via every hook in `sources` and returns `{hookKey:
+/// PostResult}`. Mirrors `ExtensionService.sendSpot`.
+typedef SendSpot = Future<Map<String, Map<String, dynamic>>> Function({
+  required List<Map<String, dynamic>> sources,
+  required Map<String, dynamic> operation,
+  Map<String, dynamic>? qso,
+  double? freq,
+  String? mode,
+  String? comment,
+  String? spotterCall,
+});
+
 /// A secondary control's identity for ordering/visibility purposes — the
 /// settings dialog's list and `_effectiveControlOrder` deal in these; the
 /// actual `SecondaryControlSpec` (which carries the live summary and
@@ -216,6 +236,24 @@ class LoggingControls extends StatefulWidget {
   final String? saveLabel;
   final String? cancelLabel;
 
+  /// Spotting control (ham2k/app-halo-dist#10) — null (either) disables the
+  /// control's icon-row/send-button UI, matching how `radioService: null`
+  /// degrades the Radio control elsewhere in this widget.
+  final SuggestSpotSources? suggestSpotSources;
+  final SendSpot? sendSpot;
+  final String? spottingControlLabel;
+  /// Collapsed-pill label while spotting the QSO being edited — "Spotting".
+  final String? spottingLabel;
+  /// Collapsed-pill label otherwise (composing, or nothing selected) —
+  /// "Self-spotting". Distinct from `spotSelfLabel`, the longer dynamic
+  /// button text shown only in the expanded panel.
+  final String? spottingSelfLabel;
+  final String Function(String freq)? spotSelfLabel;
+  final String Function(String call, String freq)? spotOtherLabel;
+  final String Function(String call)? spotTooLateLabel;
+  final String? spotNoFreqLabel;
+  final String? spotCommentHint;
+
   /// Logging view "..." menu toggles (ham2k/app-halo-dist#1) — gate the
   /// Sent/Rcvd RST fields and add optional inline State/Grid fields. The
   /// underlying data (State/Grid) is always editable via the "More" dialog
@@ -273,6 +311,16 @@ class LoggingControls extends StatefulWidget {
     this.controlSettingsTitle,
     this.saveLabel,
     this.cancelLabel,
+    this.suggestSpotSources,
+    this.sendSpot,
+    this.spottingControlLabel,
+    this.spottingLabel,
+    this.spottingSelfLabel,
+    this.spotSelfLabel,
+    this.spotOtherLabel,
+    this.spotTooLateLabel,
+    this.spotNoFreqLabel,
+    this.spotCommentHint,
     this.showRSTFields = true,
     this.showStateField = false,
     this.showGridField = false,
@@ -390,6 +438,15 @@ class _LoggingControlsState extends State<LoggingControls> {
   bool _gridTouched = false;
   bool _stateTouched = false;
 
+  /// Spotting control state (ham2k/app-halo-dist#10) — lives here, not in
+  /// `expandedBuilder`'s closure, since that's a plain render function
+  /// re-invoked on every build, not a separately-stateful widget.
+  final _spotCommentController = TextEditingController();
+  List<Map<String, dynamic>> _spotSources = const [];
+  final Map<String, bool?> _spotStatus = {}; // hookKey -> ok/failed/neutral(null)
+  Timer? _spotStatusClearTimer;
+  bool _spotSending = false;
+
   /// True while `didUpdateWidget` is populating controllers from a newly
   /// selected `editingQso` — suppresses `_onCallChanged`'s lookup/command
   /// side effects, which would otherwise re-query and overwrite stored
@@ -485,6 +542,7 @@ class _LoggingControlsState extends State<LoggingControls> {
         }
       });
     }
+    _refreshSpotSources();
   }
 
   @override
@@ -504,7 +562,28 @@ class _LoggingControlsState extends State<LoggingControls> {
         _resetLocalFields();
       }
       _updateClockTicker();
+      // Self- vs other-spot eligibility can differ per extension (e.g. only
+      // self-spotting an operation with an activation ref) — re-fetch
+      // whenever what's being spotted changes.
+      _spotSources = const [];
+      _spotStatus.clear();
+      _refreshSpotSources();
+    } else if (widget.editingQso == null &&
+        !identical(oldWidget.operation.data['refs'], widget.operation.data['refs'])) {
+      // While composing a new QSO, self-spot eligibility depends on the
+      // operation's own activation refs (not editingQso, which stays null
+      // throughout) — refresh when those refs change too.
+      _refreshSpotSources();
     }
+  }
+
+  /// Which `spots` hooks currently offer self- or other-spotting, for the
+  /// Spotting control's icon row — shown before sending, not just after.
+  Future<void> _refreshSpotSources() async {
+    final suggest = widget.suggestSpotSources;
+    if (suggest == null) return;
+    final sources = await suggest(operation: widget.operation.data, qso: widget.editingQso?.data);
+    if (mounted) setState(() => _spotSources = sources);
   }
 
   /// Populates controllers/state from an existing QSO selected for editing.
@@ -641,6 +720,8 @@ class _LoggingControlsState extends State<LoggingControls> {
     _commandDescribeDebounce?.cancel();
     _executeMessageTimer?.cancel();
     _undoExpireTimer?.cancel();
+    _spotStatusClearTimer?.cancel();
+    _spotCommentController.dispose();
     _callController.dispose();
     _sentController.dispose();
     _rcvdController.dispose();
@@ -781,6 +862,11 @@ class _LoggingControlsState extends State<LoggingControls> {
     _vfoDebounce?.cancel();
     if (_freqController.text.trim().length > 3) {
       _vfoDebounce = Timer(const Duration(seconds: 5), _pushVfoToRadioService);
+    } else if (_freqController.text.trim().isEmpty) {
+      // Clearing the field is unambiguous — push it immediately rather than
+      // debouncing, so dependents reading radioService.vfoA (e.g. the
+      // Spotting control) drop the stale frequency right away.
+      widget.radioService?.setVfo('vfoA', clearFreq: true, band: _manualBand, mode: _mode);
     }
   }
 
@@ -937,6 +1023,12 @@ class _LoggingControlsState extends State<LoggingControls> {
           label: widget.radioControlLabel ?? 'Radio',
           mandatory: true,
         ),
+        if (widget.suggestSpotSources != null && widget.sendSpot != null)
+          _ControlDescriptor(
+            key: 'spotting',
+            icon: resolveIconName('hand-wave'),
+            label: widget.spottingControlLabel ?? 'Spotting',
+          ),
         for (final control in _effectiveActivityControls)
           if ((control['input'] as Map?)?['kind'] == 'refList')
             _ControlDescriptor(
@@ -983,6 +1075,8 @@ class _LoggingControlsState extends State<LoggingControls> {
           specs.add(_timeControlSpec());
         case 'radio':
           specs.add(_radioControlSpec(theme, poloColors));
+        case 'spotting':
+          specs.add(_spottingControlSpec(theme, poloColors));
         case 'more':
           specs.add(_moreControlSpec());
         default:
@@ -1175,6 +1269,171 @@ class _LoggingControlsState extends State<LoggingControls> {
           ],
         ),
       );
+
+  /// UI-level policy, not a per-source value: how recently a QSO must have
+  /// started for the button to offer spotting it at all. This is deliberately
+  /// NOT part of `SpotEligibility` — no spots source today needs a different
+  /// tolerance (POTA is the only `postOtherSpot` implementation; SOTA has no
+  /// posting support yet, see DESIGN notes on ham2k/app-halo-dist#10), so
+  /// making it hook-reported would be speculative. Revisit if a second
+  /// source ever needs its own window.
+  static const Duration _spotStaleAfter = Duration(minutes: 5);
+
+  /// Resolves the Spotting control's summary/button text and enabled state
+  /// per the issue's exact state machine (ham2k/app-halo-dist#10): no VFO
+  /// frequency disables self-spotting; editing a QSO switches to spotting
+  /// that QSO's station instead, only while it's recent enough (5min).
+  /// `summary` (the collapsed pill) is always one of the two short, fixed
+  /// labels — "Self-spotting"/"Spotting" — never the longer dynamic
+  /// messages, which are reserved for the button inside the expanded panel.
+  ({String summary, String buttonLabel, bool enabled, bool showComment}) get _spotState {
+    final editingQso = widget.editingQso;
+    if (editingQso != null) {
+      final call = (editingQso.data['their'] as Map?)?['call'] as String? ?? '?';
+      final ageMillis =
+          editingQso.startAtMillis == null ? null : DateTime.now().millisecondsSinceEpoch - editingQso.startAtMillis!;
+      final tooOld = ageMillis == null || ageMillis > _spotStaleAfter.inMilliseconds;
+      final summary = widget.spottingLabel ?? 'Spotting';
+      if (tooOld) {
+        return (
+          summary: summary,
+          buttonLabel: widget.spotTooLateLabel?.call(call) ?? 'Too late to spot $call',
+          enabled: false,
+          showComment: false,
+        );
+      }
+      final freqLabel = editingQso.freq == null ? '' : fmtFreq(editingQso.freq!);
+      return (
+        summary: summary,
+        buttonLabel: widget.spotOtherLabel?.call(call, freqLabel) ?? 'Spot $call at $freqLabel',
+        enabled: true,
+        showComment: true,
+      );
+    }
+
+    final summary = widget.spottingSelfLabel ?? 'Self-spotting';
+    final vfoFreq = widget.radioService?.vfoA.freq;
+    if (vfoFreq == null) {
+      return (
+        summary: summary,
+        buttonLabel: widget.spotNoFreqLabel ?? 'First set a frequency to spot',
+        enabled: false,
+        showComment: false,
+      );
+    }
+    final freqLabel = fmtFreq(vfoFreq);
+    return (
+      summary: summary,
+      buttonLabel: widget.spotSelfLabel?.call(freqLabel) ?? 'Self-spot at $freqLabel',
+      enabled: true,
+      showComment: true,
+    );
+  }
+
+  Future<void> _sendSpot() async {
+    final sendSpot = widget.sendSpot;
+    if (sendSpot == null || _spotSending) return;
+    final editingQso = widget.editingQso;
+    final vfo = widget.radioService?.vfoA;
+    // Snapshot the sources being spotted now — `_spotSources` can be reset
+    // and repopulated by `didUpdateWidget` (e.g. the user switches to
+    // editing a different QSO) while this send is still in flight, and the
+    // status-coloring below must key off what was actually sent, not
+    // whatever `_spotSources` holds once the await resolves.
+    final sentSources = _spotSources;
+    setState(() => _spotSending = true);
+    try {
+      final comment = _spotCommentController.text.trim();
+      final results = await sendSpot(
+        sources: sentSources,
+        operation: widget.operation.data,
+        qso: editingQso?.data,
+        freq: editingQso == null ? vfo?.freq : null,
+        mode: editingQso == null ? vfo?.mode : null,
+        comment: comment.isEmpty ? null : comment,
+      );
+      if (!mounted) return;
+      setState(() {
+        for (final source in sentSources) {
+          final hookKey = source['hookKey'] as String? ?? '';
+          final result = results[hookKey];
+          _spotStatus[hookKey] = result == null ? null : result['ok'] == true;
+        }
+        _spotCommentController.clear();
+      });
+      _spotStatusClearTimer?.cancel();
+      // Explicit 3-minute color-clear (no app-polo equivalent to diverge
+      // from — its own SpotterControl only resets colors on the next
+      // attempt).
+      _spotStatusClearTimer = Timer(const Duration(minutes: 3), () {
+        if (mounted) setState(_spotStatus.clear);
+      });
+    } finally {
+      if (mounted) setState(() => _spotSending = false);
+    }
+  }
+
+  SecondaryControlSpec _spottingControlSpec(ThemeData theme, HaLoColors poloColors) {
+    final state = _spotState;
+    return SecondaryControlSpec(
+      key: 'spotting',
+      icon: resolveIconName('hand-wave'),
+      summary: state.summary,
+      expandedBuilder: (context) => Row(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          if (state.showComment)
+            SizedBox(
+              width: 160,
+              child: TextField(
+                controller: _spotCommentController,
+                style: haloMonoStyle(context, fontSize: 15, fontWeight: FontWeight.w500),
+                decoration: poloFieldDecoration(
+                  context,
+                  widget.spotCommentHint ?? 'Comment',
+                  labelColor: theme.colorScheme.onTertiaryContainer,
+                ),
+              ),
+            ),
+          const SizedBox(width: 6),
+          FilledButton.icon(
+            style: FilledButton.styleFrom(
+              backgroundColor: theme.colorScheme.tertiaryContainer,
+              foregroundColor: theme.colorScheme.onTertiaryContainer,
+              disabledBackgroundColor: theme.colorScheme.tertiaryContainer.withValues(alpha: 0.4),
+            ),
+            onPressed: state.enabled && !_spotSending ? _sendSpot : null,
+            icon: _spotSending
+                ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
+                : Icon(resolveIconName('hand-wave-outline')),
+            label: Text(state.buttonLabel),
+          ),
+          // Up to 3 source-status icons per column, wrapping into another
+          // column to the right once a column fills up.
+          for (var i = 0; i < _spotSources.length; i += 3)
+            Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                for (final source in _spotSources.skip(i).take(3))
+                  Padding(
+                    padding: const EdgeInsets.only(left: 4, top: 2, bottom: 2),
+                    child: Icon(
+                      resolveIconName(source['icon'] as String? ?? 'radio-tower'),
+                      size: 16,
+                      color: switch (_spotStatus[source['hookKey'] as String? ?? '']) {
+                        true => poloColors.important,
+                        false => theme.colorScheme.error,
+                        null => theme.colorScheme.onTertiaryContainer,
+                      },
+                    ),
+                  ),
+              ],
+            ),
+        ],
+      ),
+    );
+  }
 
   SecondaryControlSpec _activityControlSpec(Map<String, dynamic> control) => SecondaryControlSpec(
         key: control['key'] as String,
@@ -1370,8 +1629,30 @@ class _LoggingControlsState extends State<LoggingControls> {
         _callFocus.requestFocus();
       } else if (map.containsKey('syncAll')) {
         await widget.onCommandAction?.call('syncAll');
-      } else if (map.containsKey('sendSpots')) {
-        debugPrint('[extensions] sendSpots action: ${map['sendSpots']}');
+      } else if (map['sendSpots'] is Map) {
+        // Resolving *who* gets spotted stays here (this widget owns
+        // `qsos`/`editingQso`/`radioService`) — the command hook only
+        // parsed text into a comment + target. 'last' (SPOTLAST family)
+        // spots the most recent real (non-event) QSO regardless of what's
+        // being edited; 'self' (default) spots the operation itself at the
+        // current VFO. `qsos` is oldest-first (see `watchForOperation`), so
+        // the last real contact is `lastWhere`, not `firstWhere`.
+        final params = (map['sendSpots'] as Map).cast<String, dynamic>();
+        final target = params['target'] as String? ?? 'self';
+        final comment = params['comment'] as String?;
+        Qso? qso;
+        if (target == 'last') {
+          qso = widget.qsos.cast<Qso?>().lastWhere((q) => q!.isRealContact, orElse: () => null);
+        }
+        final vfo = widget.radioService?.vfoA;
+        await widget.onCommandAction?.call('sendSpots', {
+          'operation': widget.operation.data,
+          'target': target,
+          if (qso != null) 'qso': qso.data,
+          if (comment != null) 'comment': comment,
+          if (qso == null) 'freq': vfo?.freq,
+          if (qso == null) 'mode': vfo?.mode,
+        });
       } else if (map['devNotice'] is Map) {
         await widget.onCommandAction?.call('devNotice', (map['devNotice'] as Map).cast<String, dynamic>());
       } else if (map['devStatus'] is Map) {

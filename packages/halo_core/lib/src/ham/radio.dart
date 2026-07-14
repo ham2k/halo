@@ -199,5 +199,9 @@ class Vfo {
 /// doesn't need a dependency on the Flutter-only app package.
 abstract class VfoStore {
   Vfo get vfoA;
-  void setVfo(String key, {double? freq, String? band, String? mode});
+  /// `freq`/`band`/`mode` omitted leave that part unchanged. `clearFreq`
+  /// explicitly clears the frequency (keeping the current band, or `band`
+  /// if also given) — distinct from simply omitting `freq`, which is a
+  /// no-op for it rather than a clear.
+  void setVfo(String key, {double? freq, String? band, String? mode, bool clearFreq = false});
 }

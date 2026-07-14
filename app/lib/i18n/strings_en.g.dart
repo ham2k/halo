@@ -285,6 +285,27 @@ class Translations$loggingControls$en {
 
 	/// en: 'Logging Controls'
 	String get controlSettings => 'Logging Controls';
+
+	/// en: 'Spotting'
+	String get spottingControl => 'Spotting';
+
+	/// en: 'Self-spotting'
+	String get spottingSelfControl => 'Self-spotting';
+
+	/// en: 'Self-spot at ${freq}'
+	String spotSelfAt({required Object freq}) => 'Self-spot at ${freq}';
+
+	/// en: 'Spot ${call} at ${freq}'
+	String spotOtherAt({required Object call, required Object freq}) => 'Spot ${call} at ${freq}';
+
+	/// en: 'Too late to spot ${call}'
+	String spotTooLate({required Object call}) => 'Too late to spot ${call}';
+
+	/// en: 'First set a frequency to spot'
+	String get spotNoFreq => 'First set a frequency to spot';
+
+	/// en: 'Comment'
+	String get spotComment => 'Comment';
 }
 
 // Path: qsoEditForm
@@ -759,6 +780,13 @@ extension on Translations {
 			'loggingControls.timeControl' => 'Time',
 			'loggingControls.radioControl' => 'Radio',
 			'loggingControls.controlSettings' => 'Logging Controls',
+			'loggingControls.spottingControl' => 'Spotting',
+			'loggingControls.spottingSelfControl' => 'Self-spotting',
+			'loggingControls.spotSelfAt' => ({required Object freq}) => 'Self-spot at ${freq}',
+			'loggingControls.spotOtherAt' => ({required Object call, required Object freq}) => 'Spot ${call} at ${freq}',
+			'loggingControls.spotTooLate' => ({required Object call}) => 'Too late to spot ${call}',
+			'loggingControls.spotNoFreq' => 'First set a frequency to spot',
+			'loggingControls.spotComment' => 'Comment',
 			'qsoEditForm.title' => 'Edit QSO',
 			'qsoEditForm.theirName' => 'Name',
 			'qsoEditForm.theirGrid' => 'Grid',
