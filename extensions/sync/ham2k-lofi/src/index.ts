@@ -6,10 +6,15 @@
 // Dart (DESIGN.md §4) — this extension only knows how to authenticate as a
 // device and move a payload of already-selected records over HTTP.
 //
-// Device identity (`key`/`secret`) and the last cached `token`/`server` are
-// seeded into this extension's KV namespace by the host at boot (mirrors
-// how the QRZ extension gets its credentials) since `host.kv` here is an
-// in-memory-per-process store, not itself durable across app restarts.
+// The host seeds this extension's KV namespace at boot (see
+// ExtensionService.setSyncCredentials): `key` (stable per-install device
+// id), `call` (operator callsign), and — in builds that define
+// HAM2K_LOFI_SECRET — `secret`, the app-attestation value app-polo gets
+// from its build config; without it registration sends the same
+// 'no-secret' fallback app-polo dev builds use. `token` is deliberately
+// NOT seeded: `host.kv` is in-memory per process, so the token written
+// below only survives within one run and each launch re-registers,
+// matching app-polo's memory-only `GLOBAL.syncLoFiToken`.
 
 import { defineExtension, host } from "@ham2k/polo-sdk"
 import type { CommandInterpretation, HookContext, JSONValue, SyncPayload, SyncResponse } from "@ham2k/polo-sdk"

@@ -367,10 +367,18 @@ class ExtensionService {
 
   String _settingsSecretStorageKey(String panelKey, String fieldKey) => 'settingsPanel_secret_${panelKey}_$fieldKey';
 
+  /// The LoFi app-attestation secret, injected at build time
+  /// (`flutter build ... --dart-define=HAM2K_LOFI_SECRET=...`) — the same
+  /// role as app-polo's `Config.HAM2K_LOFI_SECRET` from react-native-config.
+  /// It identifies the *build* to the server, not the device (the device
+  /// key does that); dev builds without the define fall back to the
+  /// extension's 'no-secret' default, exactly like app-polo dev builds.
+  static const _lofiSecret = String.fromEnvironment('HAM2K_LOFI_SECRET');
+
   /// Seeds the `ham2k-lofi` sync extension's device identity (a stable
-  /// per-install key, generated once by `SettingsService.syncDeviceKey`) and
-  /// operator callsign. Called both at boot and whenever Settings saves a
-  /// new operator callsign. There's
+  /// per-install key, generated once by `SettingsService.syncDeviceKey`),
+  /// operator callsign, and build secret. Called both at boot and whenever
+  /// Settings saves a new operator callsign. There's
   /// deliberately no `token` seeded here: the extension re-registers with
   /// the server on first use each run (the token is session-scoped, kept in
   /// the extension's own module state, same as app-polo's `GLOBAL.syncLoFiToken`
@@ -379,6 +387,7 @@ class ExtensionService {
     await start();
     _host?.setKV('ham2k-lofi', 'key', deviceKey);
     _host?.setKV('ham2k-lofi', 'call', operatorCall);
+    if (_lofiSecret.isNotEmpty) _host?.setKV('ham2k-lofi', 'secret', _lofiSecret);
   }
 
   Future<void> _start() async {
