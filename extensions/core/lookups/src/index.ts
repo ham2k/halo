@@ -7,7 +7,7 @@
 // to every registered `lookup` hook, and the locationScope-aware merge —
 // entirely inside the runtime. See ham2k/app-halo-dist#8.
 
-import { defineExtension, hooks } from "@ham2k/polo-sdk"
+import { defineExtension, hooks, host } from "@ham2k/polo-sdk"
 import type { CallInfo, CallInfoLookup, HookContext, LookupServiceRequest, LookupServiceResult } from "@ham2k/polo-sdk"
 
 import { annotateCallsign } from "./annotate"
@@ -21,7 +21,7 @@ async function lookupCallInfo(args: LookupServiceRequest, ctx: HookContext): Pro
   const lookups: CallInfoLookup[] = seeded.lookups
   let guess: CallInfo = seeded.guess
 
-  await hooks.invokeAllSequential(
+  const entries = await hooks.invokeAllSequential(
     'lookup',
     'lookupCall',
     { callInfo: guess, qso: args.qso, operation: args.operation },
@@ -34,6 +34,13 @@ async function lookupCallInfo(args: LookupServiceRequest, ctx: HookContext): Pro
     },
     ctx.online,
   )
+
+  // A hook that threw has already been isolated (its entry carries the
+  // error instead of poisoning the others) — but it must not be *silent*,
+  // or a broken lookup source just looks like "no data" in the field.
+  for (const entry of entries) {
+    if (!entry.ok) host.log(`ERROR lookup hook '${entry.key}' failed for ${call}: ${entry.error}`)
+  }
 
   return { lookups, guess }
 }

@@ -53,18 +53,28 @@ async function lookupCall(
   }
   if (!record) return []
 
-  const [lat, lon] = cleanLocationParams(record.lat, record.lon)
+  // HamDB reports missing fields as the literal string "NOT_FOUND" — on
+  // ANY field, not just names (common for Canadian/German records with no
+  // grid). Passed through, it reaches the UI and ADIF exports, and a
+  // "NOT_FOUND" grid used to crash the merge pipeline and silently discard
+  // this whole result, valid name and city included.
+  const real = (value: unknown): string | undefined =>
+    typeof value === 'string' && value !== '' && value !== 'NOT_FOUND' ? value : undefined
+
+  const city = real(record.addr2)
+  const state = real(record.state)
+  const [lat, lon] = cleanLocationParams(real(record.lat), real(record.lon))
   const result: CallInfoLookup = {
-    call: record.call ?? call,
+    call: real(record.call) ?? call,
     source: 'hamdb.org',
     scope: 'general',
     locationScope,
-    name: [record.fname, record.name].filter((x: string) => x && x !== 'NOT_FOUND').join(' '),
-    location: [record.addr2, record.state].filter((x: string) => x).join(', '),
-    city: record.addr2,
-    state: record.state,
-    country: record.country,
-    grid: record.grid,
+    name: [real(record.fname), real(record.name)].filter(Boolean).join(' '),
+    location: [city, state].filter(Boolean).join(', '),
+    city,
+    state,
+    country: real(record.country),
+    grid: real(record.grid),
     lat,
     lon,
   }

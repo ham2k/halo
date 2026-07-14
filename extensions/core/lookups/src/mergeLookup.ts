@@ -76,9 +76,17 @@ export function mergeLookupIntoGuess(guess: CallInfo, result: CallInfoLookup): C
   const setCityStateCountry = written.has('city') || written.has('state') || written.has('country') || written.has('location')
 
   if (setGrid && !setLatLon) {
-    const [lat, lon] = gridToLocation(next.grid!)
-    next.lat = lat
-    next.lon = lon
+    // A malformed grid (e.g. HamDB's literal "NOT_FOUND" before it started
+    // filtering, or any future source's junk) makes gridToLocation throw —
+    // and a throw here discards the source's entire result, valid name and
+    // city included. Drop just the bogus grid instead.
+    try {
+      const [lat, lon] = gridToLocation(next.grid!)
+      next.lat = lat
+      next.lon = lon
+    } catch (e) {
+      delete next.grid
+    }
   } else if (setLatLon && !setGrid && next.lat != null && next.lon != null) {
     next.grid = locationToGrid6(next.lat, next.lon)
   }
