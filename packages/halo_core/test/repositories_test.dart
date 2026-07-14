@@ -99,6 +99,40 @@ void main() {
     expect(await operations.watchAll().first, isEmpty);
   });
 
+  test('watchOperation emits counter refreshes and localData updates', () async {
+    final op = await operations.create(stationCall: 'KI2D', title: 'Reactive');
+    final emissions = <Operation?>[];
+    final sub = operations.watchOperation(op.uuid).listen(emissions.add);
+    await pumpEventQueue();
+
+    // A QSO add refreshes the operation's counters — the stream must see it
+    // without any manual re-fetch.
+    await qsos.add(op.uuid, {'their': {'call': 'W1AW'}, 'startAtMillis': 1000});
+    await pumpEventQueue();
+
+    // A localData write (the shape ScoringService uses for day/op summaries)
+    // must flow through too — this is what keeps day-header badges fresh.
+    await operations.updateLocalData(op.uuid, {'scoring': {'operationSummary': {'dupe': 0}}});
+    await pumpEventQueue();
+
+    expect(emissions.first?.title, 'Reactive');
+    expect(emissions.map((o) => o?.qsoCount), containsAllInOrder([0, 1]));
+    expect(emissions.last?.localData['scoring'], isNotNull);
+    await sub.cancel();
+  });
+
+  test('watchOperation emits null once the operation is hard-deleted', () async {
+    final op = await operations.create(stationCall: 'KI2D');
+    final emissions = <Operation?>[];
+    final sub = operations.watchOperation(op.uuid).listen(emissions.add);
+    await pumpEventQueue();
+    await operations.backupAndClearAll('backup-1');
+    await pumpEventQueue();
+
+    expect(emissions.last, isNull);
+    await sub.cancel();
+  });
+
   test('a brand-new operation with no QSOs sorts to the top, not the bottom', () async {
     final active = await operations.create(stationCall: 'KI2D', title: 'Active op');
     await qsos.add(active.uuid, {'their': {'call': 'W1AW'}, 'startAtMillis': 1000});
@@ -245,6 +279,27 @@ void main() {
       final deleted = (await qsos.watchForOperation(op.uuid, includeDeleted: true).first).single;
       expect(deleted.deleted, isTrue);
       expect(deleted.updatedAtMillis, greaterThan(qso.updatedAtMillis!));
+    });
+
+    test('caching scores never bumps updatedAtMillis — the invariant live rescore depends on', () async {
+      // OperationView drives live rescoring off a fingerprint built from
+      // updatedAtMillis. A rescore writes score_cache and localData; if
+      // either bumped updatedAtMillis the fingerprint would move and the
+      // rescore would re-trigger itself forever. Guard that here.
+      final op = await operations.create(stationCall: 'KI2D');
+      final qso = await qsos.add(op.uuid, {'their': {'call': 'W1AW'}, 'startAtMillis': 1000});
+      final beforeQso = qso.updatedAtMillis;
+      final beforeOp = (await operations.byUuids([op.uuid])).single.updatedAtMillis;
+
+      await qsos.updateScoreCache({qso.uuid: '{"dupe":false}'});
+      await operations.updateLocalData(op.uuid, {'scoring': {'operationSummary': {'dupe': 0}}});
+
+      final afterQso = (await qsos.watchForOperation(op.uuid).first).single;
+      final afterOp = (await operations.byUuids([op.uuid])).single;
+      expect(afterQso.updatedAtMillis, beforeQso);
+      expect(afterQso.scores, {'dupe': false}); // the cache did land
+      expect(afterOp.updatedAtMillis, beforeOp);
+      expect(afterOp.localData['scoring'], isNotNull); // localData did land
     });
   });
 

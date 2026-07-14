@@ -8,6 +8,7 @@
 // (settings/activities/data, a scoped-down OpSettingsTab).
 
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:halo_core/halo_core.dart';
@@ -64,74 +65,124 @@ class _OperationViewState extends State<OperationView> {
     return _qsoStream!;
   }
 
+  /// The operation row, kept live by [OperationsRepository.watchOperation]
+  /// rather than manually re-fetched after every mutating action.
+  StreamSubscription<Operation?>? _operationSub;
+
+  /// Drives live rescoring: any scoring-relevant QSO change reschedules a
+  /// debounced rescore. See [_onQsosChanged].
+  StreamSubscription<List<Qso>>? _rescoreSub;
+  Timer? _rescoreDebounce;
+  List<Qso> _latestQsos = const [];
+
+  /// The QSO-set fingerprint the last completed rescore was computed from —
+  /// deliberately built from `updatedAtMillis` (stamped on every real edit,
+  /// Milestone A) and NOT `scoreCache`, so a rescore's own `score_cache`
+  /// write re-emits the QSO stream with an unchanged fingerprint and can't
+  /// trigger itself. Null until a rescore has actually run with the
+  /// extension runtime available.
+  String? _lastScoredFingerprint;
+
+  bool _sideInitStarted = false;
+
   @override
   void initState() {
     super.initState();
-    _load();
+    _operationSub = widget.services.operations.watchOperation(widget.operationUuid).listen(_onOperationChanged);
+    // Non-deleted, non-event set — the same QSOs the scorer sees. A
+    // soft-delete/undelete changes this set (and each QSO's updatedAtMillis),
+    // so the fingerprint below still moves.
+    _rescoreSub = widget.services.qsos.watchForOperation(widget.operationUuid).listen(_onQsosChanged);
   }
 
-  Future<void> _load() async {
-    final operation = await widget.services.operations.get(widget.operationUuid);
+  @override
+  void dispose() {
+    _operationSub?.cancel();
+    _rescoreSub?.cancel();
+    _rescoreDebounce?.cancel();
+    super.dispose();
+  }
+
+  void _onOperationChanged(Operation? operation) {
+    if (!mounted) return;
+    final previous = _operation;
     setState(() => _operation = operation);
-    if (operation != null) {
-      // Extension runtime may still be booting; controls appear when it answers.
-      await widget.services.extensions.start();
-      final controls = await widget.services.extensions.loggingControls(operation.data);
-      if (mounted) setState(() => _loggingControls = controls);
+    if (operation == null) return;
 
-      await _resolveOurEntityPrefix(operation);
-
-      // Scores are cached per-QSO (DESIGN.md §4), so a rescore on open is
-      // enough to keep them fresh without re-running on every keystroke.
-      // TODO: debounce a rescore after each QSO add/edit/delete too, once
-      // there's a safe way to do that without the score-cache write itself
-      // re-triggering `watchForOperation`'s stream.
-      //
-      // Per-QSO scores stream in on their own via `watchForOperation`
-      // (rescoring writes `score_cache`, which is a row in that table), but
-      // the day/operation summary lives in `Operations.localData` — not
-      // watched anywhere — so re-fetch and refresh `_operation` once
-      // rescoring lands to pick that up.
-      //
-      // Only the freshly-scored `localData` gets applied onto whatever
-      // `_operation` is current at that point, rather than replacing
-      // `_operation` wholesale — this scoring call can take a few seconds,
-      // and blindly overwriting would clobber a `data`/counter edit
-      // (details, refs) the user made in-between with a stale snapshot.
-      unawaited(widget.services.scoring.rescoreOperation(operation).then((_) async {
-        if (!mounted) return;
-        final rescored = await widget.services.operations.get(widget.operationUuid);
-        final current = _operation;
-        if (rescored != null && current != null && mounted) {
-          setState(() => _operation = Operation(
-                uuid: current.uuid,
-                data: current.data,
-                qsoCount: current.qsoCount,
-                startAtMillisMin: current.startAtMillisMin,
-                startAtMillisMax: current.startAtMillisMax,
-                localData: rescored.localData,
-              ));
-        }
-      }));
+    if (!_sideInitStarted) {
+      _sideInitStarted = true;
+      unawaited(_initExtensionState(operation));
+    } else {
+      // Re-derive the extension-fed side state only when its input actually
+      // changed — not on every counter/localData emission (a QSO add, a
+      // rescore) — so this stays cheap.
+      if (previous?.stationCall != operation.stationCall) {
+        unawaited(_resolveOurEntityPrefix(operation));
+      }
+      if (previous == null || !_sameRefs(previous.data['refs'], operation.data['refs'])) {
+        unawaited(_refreshLoggingControls(operation));
+      }
     }
   }
 
+  bool _sameRefs(Object? a, Object? b) => jsonEncode(a) == jsonEncode(b);
+
+  /// One-time, extension-runtime-dependent setup: the runtime may still be
+  /// booting when the operation first arrives, so this awaits it, then does
+  /// the initial controls/entity-prefix resolve and kicks the first rescore.
+  Future<void> _initExtensionState(Operation operation) async {
+    await widget.services.extensions.start();
+    if (!mounted) return;
+    await _refreshLoggingControls(operation);
+    await _resolveOurEntityPrefix(operation);
+    // The extension runtime is ready now; a rescore scheduled before it was
+    // (which no-op'd) never recorded a fingerprint, so this re-attempts it.
+    _maybeScheduleRescore();
+  }
+
+  Future<void> _refreshLoggingControls(Operation operation) async {
+    final controls = await widget.services.extensions.loggingControls(operation.data);
+    if (mounted) setState(() => _loggingControls = controls);
+  }
+
+  void _onQsosChanged(List<Qso> qsos) {
+    _latestQsos = qsos;
+    _maybeScheduleRescore();
+  }
+
+  /// Debounced live rescore (DESIGN.md §11's per-edit TODO). Fires only when
+  /// the fingerprint moves, and records it only once a rescore actually runs
+  /// with a host — so an edit that arrives while the runtime is still booting
+  /// isn't silently marked scored. The score-cache/localData writes a rescore
+  /// makes flow back to the UI through the QSO and operation streams; neither
+  /// perturbs the fingerprint, so there's no feedback loop.
+  void _maybeScheduleRescore() {
+    final fingerprint = _fingerprintFor(_latestQsos);
+    if (fingerprint == _lastScoredFingerprint) return;
+    _rescoreDebounce?.cancel();
+    _rescoreDebounce = Timer(const Duration(milliseconds: 750), () async {
+      final operation = _operation;
+      if (operation == null || widget.services.extensions.host == null) return; // not ready — retried on the next change
+      _lastScoredFingerprint = fingerprint;
+      await widget.services.scoring.rescoreOperation(operation);
+    });
+  }
+
+  String _fingerprintFor(List<Qso> qsos) =>
+      qsos.map((q) => '${q.uuid}:${q.updatedAtMillis ?? ''}').join(',');
+
   Future<void> _editActivities(Operation operation) async {
+    // No manual re-fetch on pop: watchOperation streams the change back.
     await Navigator.of(context).push(
       MaterialPageRoute(builder: (_) => ActivitiesView(services: widget.services, operation: operation)),
     );
-    if (!mounted) return;
-    final refreshed = await widget.services.operations.get(operation.uuid);
-    if (refreshed != null && mounted) setState(() => _operation = refreshed);
   }
 
   Future<void> _editDetails(Operation operation) async {
-    final updated = await editOperationDetails(context, widget.services.operations, operation);
-    if (updated == null || !mounted) return;
-    setState(() => _operation = updated);
-    // The DX/State column's comparison goes stale otherwise — _load() only
-    // resolves this once, on the initial open.
-    if (updated.stationCall != operation.stationCall) await _resolveOurEntityPrefix(updated);
+    // The edit persists through the repository; watchOperation delivers the
+    // new row (and _onOperationChanged re-resolves the entity prefix if the
+    // station call changed) — no manual setState needed.
+    await editOperationDetails(context, widget.services.operations, operation);
   }
 
   Future<void> _resolveOurEntityPrefix(Operation operation) async {
@@ -146,12 +197,10 @@ class _OperationViewState extends State<OperationView> {
   }
 
   Future<void> _editLocation(Operation operation) async {
+    // No manual re-fetch on pop: watchOperation streams the change back.
     await Navigator.of(context).push(
       MaterialPageRoute(builder: (_) => OperationLocationScreen(services: widget.services, operation: operation)),
     );
-    if (!mounted) return;
-    final refreshed = await widget.services.operations.get(operation.uuid);
-    if (refreshed != null && mounted) setState(() => _operation = refreshed);
   }
 
   Future<void> _delete(Operation operation) async {

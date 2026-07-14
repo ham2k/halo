@@ -117,6 +117,18 @@ class OperationsRepository {
     return row == null ? null : _operationFromRow(row);
   }
 
+  /// Reactive single-operation query — emits the current row and every later
+  /// version (counter refreshes, detail/activity/location edits, and the
+  /// `localData` scoring summary a rescore writes). Lets views bind the
+  /// operation instead of manually re-fetching after each mutating action, so
+  /// there's no stale copy or hand-rolled `localData` merge to keep in sync.
+  /// Emits null if the operation doesn't exist (or is hard-deleted).
+  Stream<Operation?> watchOperation(String uuid) {
+    return (db.select(db.operations)..where((op) => op.uuid.equals(uuid)))
+        .watchSingleOrNull()
+        .map((row) => row == null ? null : _operationFromRow(row));
+  }
+
   Future<void> saveData(Operation operation) async {
     final now = _nowMillis();
     final data = {...operation.data, 'updatedAtMillis': now};
