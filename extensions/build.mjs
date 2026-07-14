@@ -46,6 +46,14 @@ function sharedLibsPlugin(extensionDependencies = {}) {
     setup(build) {
       build.onResolve({ filter: /^(@ham2k\/lib-|i18next$)/ }, (args) => {
         const packageName = args.path
+        // NOTE: today every extension shares the workspace-root package.json
+        // (there are no per-extension manifests), so `extensionDependencies`
+        // is always the root deps and this range check is effectively "the
+        // host has it" — it can't currently catch a version mismatch because
+        // there's only one declared version. The machinery stays for when
+        // per-extension dependency ranges are introduced (the OTA-extension
+        // story in DESIGN.md §3), at which point pass that extension's own
+        // `dependencies` here instead of the root's.
         const requestedRange = extensionDependencies[packageName] || '*'
         const hostVersion = hostSharedVersions[packageName]
 

@@ -20,6 +20,10 @@ bundle = {
   run = "cd extensions && npm run build",
   description = "Build the JS/TS extensions"
 }
+test = {
+  run = "./scripts/test.sh",
+  description = "Typecheck + test extensions, rebuild bundles, then analyze + test every Dart package"
+}
 android = {
   run = "cd app && flutter run -d android",
   description = "Run the app on an Android device or emulator"
