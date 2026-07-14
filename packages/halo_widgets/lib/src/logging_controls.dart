@@ -2534,7 +2534,9 @@ class _LoggingControlsState extends State<LoggingControls> {
           data: message,
           styleSheet: MarkdownStyleSheet.fromTheme(theme).copyWith(
             p: theme.textTheme.bodyMedium?.copyWith(
-              color: Colors.black,
+              // The info area sits on the panel's tertiaryContainer fill —
+              // hardcoded black rendered black-on-dark-brown in dark mode.
+              color: theme.colorScheme.onTertiaryContainer,
               fontWeight: FontWeight.w500,
             ),
           ),
@@ -2559,7 +2561,7 @@ class _LoggingControlsState extends State<LoggingControls> {
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
                 style: theme.textTheme.bodyMedium?.copyWith(
-                  color: Colors.black,
+                  color: theme.colorScheme.onTertiaryContainer,
                 ),
               ),
             ),

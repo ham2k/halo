@@ -50,6 +50,46 @@ double _textWidth(BuildContext context, String text, TextStyle style) {
 /// for that same boundary.
 const int _dayInMillis = 1000 * 60 * 60 * 24;
 
+/// The localizable vocabulary the QSO list needs for day headers and event
+/// rows — the tiering/formatting logic stays in the widget (it's display
+/// logic, tested here), but the words come from the app's locale. Defaults
+/// to English so the widget package stays usable standalone (and tests read
+/// naturally); the app injects a locale-aware instance (see
+/// `logging_panel.dart`, which fills the month/weekday names from `intl`'s
+/// `DateFormat`).
+class QsoListLabels {
+  /// Monday-first, 7 entries: Mon…Sun.
+  final List<String> weekdayAbbrs;
+
+  /// 12 entries: Jan…Dec.
+  final List<String> monthAbbrs;
+
+  final String today;
+  final String yesterday;
+  final String tomorrow;
+
+  /// Keyed by `Qso.eventKind` (`start`/`break`/`end`).
+  final Map<String, String> eventLabels;
+
+  const QsoListLabels({
+    required this.weekdayAbbrs,
+    required this.monthAbbrs,
+    required this.today,
+    required this.yesterday,
+    required this.tomorrow,
+    required this.eventLabels,
+  });
+
+  static const english = QsoListLabels(
+    weekdayAbbrs: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+    monthAbbrs: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
+    today: 'Today',
+    yesterday: 'Yesterday',
+    tomorrow: 'Tomorrow',
+    eventLabels: {'start': 'Operation started', 'break': 'Break', 'end': 'Operation ended'},
+  );
+}
+
 class QsoList extends StatefulWidget {
   final List<Qso> qsos;
   final String? noQsosLabel;
@@ -101,6 +141,10 @@ class QsoList extends StatefulWidget {
   /// the first rescore lands) just means that header shows no score badges.
   final List<Map<String, dynamic>> daySections;
 
+  /// Localized vocabulary for day headers and event rows — defaults to
+  /// English; the app passes a locale-aware instance.
+  final QsoListLabels labels;
+
   const QsoList({
     super.key,
     required this.qsos,
@@ -113,6 +157,7 @@ class QsoList extends StatefulWidget {
     this.activityControls = const [],
     this.ourEntityPrefix,
     this.daySections = const [],
+    this.labels = QsoListLabels.english,
   });
 
   @override
@@ -280,6 +325,7 @@ class _QsoListState extends State<QsoList> {
           qso: qso,
           selected: qso.uuid == selectedUuid,
           onTap: () => (onSelectEvent ?? onSelect)(qso),
+          labels: widget.labels,
         );
       }
 
@@ -525,6 +571,7 @@ class _QsoListState extends State<QsoList> {
                           .where((i) => qsos[i].isRealContact)
                           .length,
                       scores: scoresByDay[dayKeys[g]],
+                      labels: widget.labels,
                     ),
                   ),
                 ),
@@ -601,6 +648,7 @@ class DayHeaderRow extends StatelessWidget {
   final int dayMillis;
   final int count;
   final Map<String, dynamic>? scores;
+  final QsoListLabels labels;
 
   /// Overrides "now" for the relative-date label below — tests only; a real
   /// header always compares against the current moment.
@@ -611,49 +659,31 @@ class DayHeaderRow extends StatelessWidget {
     required this.dayMillis,
     required this.count,
     this.scores,
+    this.labels = QsoListLabels.english,
     this.now,
   });
-
-  static const _weekdayAbbrs = [
-    'Mon',
-    'Tue',
-    'Wed',
-    'Thu',
-    'Fri',
-    'Sat',
-    'Sun',
-  ];
-  static const _monthAbbrs = [
-    'Jan',
-    'Feb',
-    'Mar',
-    'Apr',
-    'May',
-    'Jun',
-    'Jul',
-    'Aug',
-    'Sep',
-    'Oct',
-    'Nov',
-    'Dec',
-  ];
 
   /// Same tiering as app-polo/web-lofi's `fmtDateDynamicZulu(compact: true)`
   /// (lib-format-tools' `fmtDateDynamic`): "Today"/"Yesterday" for the
   /// obvious cases, weekday+day within the last week, month+day within the
   /// last 9 months, and month+day+year beyond that — so a long-running log
   /// still reads as calendar dates instead of an ever-scrolling "N days ago".
-  static String _dayLabel(int dayMillis, DateTime now) {
+  static String _dayLabel(int dayMillis, DateTime now, QsoListLabels labels) {
     final d = DateTime.fromMillisecondsSinceEpoch(dayMillis, isUtc: true);
     final diffInDays = now.difference(d).inMilliseconds / _dayInMillis;
     final absDiffInDays = diffInDays.abs();
 
-    if (diffInDays > -1 && diffInDays <= 0) return 'Tomorrow';
-    if (diffInDays > 0 && diffInDays <= 1) return 'Today';
-    if (diffInDays <= 2) return 'Yesterday';
-    if (absDiffInDays <= 7) return '${_weekdayAbbrs[d.weekday - 1]} ${d.day}';
-    if (absDiffInDays <= 274) return '${_monthAbbrs[d.month - 1]} ${d.day}';
-    return '${_monthAbbrs[d.month - 1]} ${d.day} ${d.year}';
+    // Order matters: a day two-plus in the future has diffInDays <= -1, which
+    // must NOT fall through to the "Yesterday" (diffInDays <= 2) branch —
+    // future days get their calendar-date label like any other non-adjacent
+    // day, so a date typo or clock-skewed device reads "Jul 20", not
+    // "Yesterday".
+    if (diffInDays > -1 && diffInDays <= 0) return labels.tomorrow;
+    if (diffInDays > 0 && diffInDays <= 1) return labels.today;
+    if (diffInDays > 1 && diffInDays <= 2) return labels.yesterday;
+    if (absDiffInDays <= 7) return '${labels.weekdayAbbrs[d.weekday - 1]} ${d.day}';
+    if (absDiffInDays <= 274) return '${labels.monthAbbrs[d.month - 1]} ${d.day}';
+    return '${labels.monthAbbrs[d.month - 1]} ${d.day} ${d.year}';
   }
 
   @override
@@ -732,7 +762,7 @@ class DayHeaderRow extends StatelessWidget {
         child: Row(
           children: [
             Text(
-              _dayLabel(dayMillis, now ?? DateTime.now().toUtc()),
+              _dayLabel(dayMillis, now ?? DateTime.now().toUtc(), labels),
               style: rowStyle?.copyWith(
                 fontWeight: FontWeight.w700,
                 color: theme.colorScheme.onSurface,
@@ -756,24 +786,20 @@ class EventRow extends StatelessWidget {
   final Qso qso;
   final bool selected;
   final VoidCallback onTap;
+  final QsoListLabels labels;
 
   const EventRow({
     super.key,
     required this.qso,
     required this.onTap,
     this.selected = false,
+    this.labels = QsoListLabels.english,
   });
 
   static const _icons = {
     'start': Icons.flag_outlined,
     'break': Icons.pause_circle_outline,
     'end': Icons.flag,
-  };
-
-  static const _labels = {
-    'start': 'Operation started',
-    'break': 'Break',
-    'end': 'Operation ended',
   };
 
   @override
@@ -804,7 +830,7 @@ class EventRow extends StatelessWidget {
               ),
               const SizedBox(width: 8),
               Text(
-                _labels[kind] ?? kind ?? 'Event',
+                (kind == null ? null : labels.eventLabels[kind]) ?? kind ?? 'Event',
                 style: theme.textTheme.labelMedium?.copyWith(
                   color: theme.colorScheme.outline,
                   fontWeight: FontWeight.w600,

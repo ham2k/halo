@@ -102,7 +102,13 @@
   },
   "qsoList": {
     "empty": "No QSOs yet — work someone!",
-    "editEventTime": "Edit time"
+    "editEventTime": "Edit time",
+    "today": "Today",
+    "yesterday": "Yesterday",
+    "tomorrow": "Tomorrow",
+    "eventStarted": "Operation started",
+    "eventBreak": "Break",
+    "eventEnded": "Operation ended"
   },
   "loggingPanel": {
     "station": "Station",

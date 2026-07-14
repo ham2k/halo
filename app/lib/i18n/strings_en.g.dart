@@ -335,6 +335,24 @@ class Translations$qsoList$en {
 
 	/// en: 'Edit time'
 	String get editEventTime => 'Edit time';
+
+	/// en: 'Today'
+	String get today => 'Today';
+
+	/// en: 'Yesterday'
+	String get yesterday => 'Yesterday';
+
+	/// en: 'Tomorrow'
+	String get tomorrow => 'Tomorrow';
+
+	/// en: 'Operation started'
+	String get eventStarted => 'Operation started';
+
+	/// en: 'Break'
+	String get eventBreak => 'Break';
+
+	/// en: 'Operation ended'
+	String get eventEnded => 'Operation ended';
 }
 
 // Path: loggingPanel
@@ -703,6 +721,12 @@ extension on Translations {
 			'qsoEditForm.notes' => 'Notes',
 			'qsoList.empty' => 'No QSOs yet — work someone!',
 			'qsoList.editEventTime' => 'Edit time',
+			'qsoList.today' => 'Today',
+			'qsoList.yesterday' => 'Yesterday',
+			'qsoList.tomorrow' => 'Tomorrow',
+			'qsoList.eventStarted' => 'Operation started',
+			'qsoList.eventBreak' => 'Break',
+			'qsoList.eventEnded' => 'Operation ended',
 			'loggingPanel.station' => 'Station',
 			'loggingPanel.byBand' => 'By band',
 			'loggingPanel.byMode' => 'By mode',

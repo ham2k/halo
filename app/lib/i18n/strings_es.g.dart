@@ -194,6 +194,12 @@ class _Translations$qsoList$es extends Translations$qsoList$en {
 	// Translations
 	@override String get empty => 'Aún no hay QSOs — ¡haz un contacto!';
 	@override String get editEventTime => 'Editar hora';
+	@override String get today => 'Hoy';
+	@override String get yesterday => 'Ayer';
+	@override String get tomorrow => 'Mañana';
+	@override String get eventStarted => 'Operación iniciada';
+	@override String get eventBreak => 'Descanso';
+	@override String get eventEnded => 'Operación finalizada';
 }
 
 // Path: loggingPanel
@@ -447,6 +453,12 @@ extension on TranslationsEs {
 			'qsoEditForm.notes' => 'Notas',
 			'qsoList.empty' => 'Aún no hay QSOs — ¡haz un contacto!',
 			'qsoList.editEventTime' => 'Editar hora',
+			'qsoList.today' => 'Hoy',
+			'qsoList.yesterday' => 'Ayer',
+			'qsoList.tomorrow' => 'Mañana',
+			'qsoList.eventStarted' => 'Operación iniciada',
+			'qsoList.eventBreak' => 'Descanso',
+			'qsoList.eventEnded' => 'Operación finalizada',
 			'loggingPanel.station' => 'Estación',
 			'loggingPanel.byBand' => 'Por banda',
 			'loggingPanel.byMode' => 'Por modo',
