@@ -6,6 +6,7 @@
 // app start; every caller must tolerate `ready == false` — a missing or
 // broken extension runtime degrades features, never the core loop.
 
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
@@ -32,6 +33,10 @@ Map<String, dynamic> qsonPayloadFor({required Operation operation, required List
 class ExtensionService {
   ExtensionHost? _host;
   Future<void>? _starting;
+  Timer? _restartTimer;
+  int _restartAttempts = 0;
+  bool _restarting = false;
+  ({String deviceKey, String operatorCall})? _lastSyncCredentials;
   final _secureStorage = const FlutterSecureStorage(
     mOptions: MacOsOptions(
       usesDataProtectionKeychain: false,
@@ -100,11 +105,15 @@ class ExtensionService {
 
   Future<void> setAccountCredentials(String kvKey, Map<String, String> credentials) async {
     await _secureStorage.write(key: 'account_creds_$kvKey', value: jsonEncode(credentials));
+    // Fresh credentials must reach the very next hook call, not whatever
+    // the kernel's context cache still holds.
+    _host?.invalidateHookContext();
   }
 
   Future<void> clearAccount(String kvKey) async {
     await _secureStorage.delete(key: 'account_creds_$kvKey');
     await _secureStorage.delete(key: 'account_session_$kvKey');
+    _host?.invalidateHookContext();
   }
 
   /// Every panel across every extension's `settingsPanel` registration, one
@@ -384,6 +393,7 @@ class ExtensionService {
   /// the extension's own module state, same as app-polo's `GLOBAL.syncLoFiToken`
   /// being memory-only there too).
   Future<void> setSyncCredentials({required String deviceKey, required String operatorCall}) async {
+    _lastSyncCredentials = (deviceKey: deviceKey, operatorCall: operatorCall); // replayed after a runtime restart
     await start();
     _host?.setKV('ham2k-lofi', 'key', deviceKey);
     _host?.setKV('ham2k-lofi', 'call', operatorCall);
@@ -410,9 +420,57 @@ class ExtensionService {
       for (final line in _host!.logLines) {
         debugPrint('[extensions] $line');
       }
+      // A crashed runtime (isolate death, worker crash) is replaced, not
+      // mourned: DESIGN.md's contract is that extensions degrade, they
+      // don't stay dark until app restart.
+      _host!.fatalErrors.listen((error) => _scheduleRestart('runtime died: $error'));
+      _restartAttempts = 0;
     } catch (e) {
       debugPrint('[extensions] failed to start extension runtime: $e');
+      // A transient boot failure (asset hiccup, engine init) used to leave
+      // extensions off for the rest of the session ("_starting" memoized
+      // the failure). Retry with backoff instead.
+      _scheduleRestart('start failed: $e');
     }
+  }
+
+  /// Schedules a full runtime replacement (dispose + fresh start + re-seed)
+  /// with capped exponential backoff. Safe against double-triggering: a
+  /// crash reports through more than one channel, and a restart may itself
+  /// fail and re-schedule.
+  void _scheduleRestart(String reason) {
+    if (_restartTimer != null) return;
+    _restartAttempts++;
+    final delay = Duration(seconds: 1 << _restartAttempts.clamp(1, 5)); // 2s..32s, then flat
+    debugPrint('[extensions] $reason — restarting runtime in ${delay.inSeconds}s (attempt $_restartAttempts)');
+    _restartTimer = Timer(delay, () async {
+      _restartTimer = null;
+      if (_restarting) return;
+      _restarting = true;
+      try {
+        // A boot may already be in flight (e.g. setSyncCredentials calls
+        // start()); replacing the host under it would leak a live runtime.
+        final inFlight = _starting;
+        if (inFlight != null) await inFlight;
+        if (_host != null && !_host!.isDead) return; // recovered on its own
+
+        final old = _host;
+        _host = null;
+        _starting = null;
+        await old?.dispose();
+        await start();
+        if (_host != null) {
+          // The fresh runtime lost all seeded KV state (it's in-memory).
+          final creds = _lastSyncCredentials;
+          if (creds != null) {
+            await setSyncCredentials(deviceKey: creds.deviceKey, operatorCall: creds.operatorCall);
+          }
+          debugPrint('[extensions] runtime restarted');
+        }
+      } finally {
+        _restarting = false;
+      }
+    });
   }
 
   Future<dynamic> _handleHostCall(String method, Map<String, dynamic> params) async {
@@ -469,6 +527,7 @@ class ExtensionService {
           default:
             debugPrint('[extensions] setCoreSetting: unknown key "$settingKey"');
         }
+        _host?.invalidateHookContext();
         return null;
       case 'translate':
         final key = params['key'] as String;

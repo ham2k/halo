@@ -21,7 +21,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:isolate';
 
-import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter/foundation.dart' show kIsWeb, visibleForTesting;
 import 'package:http/http.dart' as http;
 
 import 'src/js_engine.dart';
@@ -51,6 +51,7 @@ class ExtensionHost {
   static const _maxSamples = 2000;
 
   final _logs = StreamController<String>.broadcast();
+  final _fatalErrors = StreamController<String>.broadcast();
 
   /// Every log line received so far (the stream only carries new ones).
   final List<String> logLines = [];
@@ -59,9 +60,12 @@ class ExtensionHost {
   final Map<int, Completer<dynamic>> _pending = {};
   final Map<int, (String, Stopwatch)> _inFlight = {};
   int _nextId = 1;
+  bool _dead = false;
+  bool _disposed = false;
 
   SendPort? _toIsolate;
   Isolate? _isolate;
+  final List<ReceivePort> _isolatePorts = [];
   _HostCore? _inProcessCore;
 
   ExtensionHost._({
@@ -73,6 +77,16 @@ class ExtensionHost {
 
   Stream<String> get logs => _logs.stream;
 
+  /// Fires when the runtime dies outside any single call (isolate/worker
+  /// crash or unexpected exit). By then every pending hook call has been
+  /// failed and [isDead] is true — the host can't recover itself; the owner
+  /// (ExtensionService) is expected to dispose it and start a fresh one.
+  Stream<String> get fatalErrors => _fatalErrors.stream;
+
+  /// True once the runtime has died; every subsequent hook call fails fast
+  /// instead of burning its full timeout against a dead engine.
+  bool get isDead => _dead;
+
   /// Loads the kernel and extension bundles into a fresh JS runtime.
   static Future<ExtensionHost> start({
     required String kernelSource,
@@ -80,7 +94,11 @@ class ExtensionHost {
     bool useIsolate = true,
     HostCallHandler? onHostCall,
   }) async {
-    if (useIsolate) {
+    // On web there are no Dart isolates — the "in-process" core runs a Web
+    // Worker anyway, so extension work is still off the UI thread. Branching
+    // here (instead of letting Isolate.spawn throw) keeps a misleading
+    // "isolate mode failed" warning out of every web boot.
+    if (useIsolate && !kIsWeb) {
       try {
         return await _startInIsolate(kernelSource, extensions, onHostCall);
       } catch (e) {
@@ -96,9 +114,34 @@ class ExtensionHost {
 
   static Future<ExtensionHost> _startInIsolate(String kernelSource, List<ExtensionBundle> extensions, HostCallHandler? onHostCall) async {
     final fromIsolate = ReceivePort();
+    final onError = ReceivePort();
+    final onExit = ReceivePort();
     final ready = Completer<Map<String, dynamic>>();
     final earlyMessages = <Map<String, dynamic>>[];
     ExtensionHost? host;
+
+    // Any uncaught error in the isolate kills it (errorsAreFatal). Without
+    // these ports the death is silent: sends to the isolate get dropped,
+    // every in-flight hook hangs to its timeout, and all future ones time
+    // out forever with no diagnostic and nothing to trigger a restart.
+    void fatal(String description) {
+      if (!ready.isCompleted) {
+        ready.completeError(ExtensionHostException(description));
+        return;
+      }
+      final h = host;
+      if (h != null && !h._disposed) {
+        h._onCoreMessage({'type': 'fatalError', 'error': description});
+      }
+    }
+
+    onError.listen((message) {
+      final desc = message is List
+          ? [for (final part in message) '$part'].where((s) => s.isNotEmpty).join('\n')
+          : '$message';
+      fatal('extension isolate error: $desc');
+    });
+    onExit.listen((_) => fatal('extension isolate exited unexpectedly'));
 
     final isolate = await Isolate.spawn(
       _hostIsolateMain,
@@ -108,6 +151,8 @@ class ExtensionHost {
         bundles: [for (final p in extensions) [p.key, p.source]],
       ),
       errorsAreFatal: true,
+      onError: onError.sendPort,
+      onExit: onExit.sendPort,
       debugName: 'polo-extension-host',
     );
 
@@ -136,6 +181,8 @@ class ExtensionHost {
     } catch (e) {
       isolate.kill(priority: Isolate.immediate);
       fromIsolate.close();
+      onError.close();
+      onExit.close();
       rethrow;
     }
 
@@ -147,6 +194,7 @@ class ExtensionHost {
     );
     host._isolate = isolate;
     host._toIsolate = toIsolate;
+    host._isolatePorts.addAll([fromIsolate, onError, onExit]);
     earlyMessages.forEach(host._onCoreMessage);
     return host;
   }
@@ -210,6 +258,9 @@ class ExtensionHost {
   }
 
   Future<dynamic> _send(String type, String label, Map<String, Object?> fields, Duration timeout) async {
+    if (_dead) {
+      throw ExtensionHostException('extension runtime is dead (hook $label not attempted)');
+    }
     final id = _nextId++;
     final completer = Completer<dynamic>();
     _pending[id] = completer;
@@ -227,6 +278,15 @@ class ExtensionHost {
     } on TimeoutException {
       _pending.remove(id);
       _inFlight.remove(id);
+      // Tell the core to stop counting this call as outstanding: a hook
+      // that never settles would otherwise keep the 5ms pump timer spinning
+      // forever — constant CPU wake-ups on an all-day field session.
+      final abandon = {'type': 'abandon', 'id': id};
+      if (_inProcessCore != null) {
+        _inProcessCore!.handle(abandon);
+      } else {
+        _toIsolate?.send(abandon);
+      }
       throw ExtensionHostException('hook $label timed out after ${timeout.inMilliseconds}ms');
     }
   }
@@ -241,10 +301,26 @@ class ExtensionHost {
     }
   }
 
+  /// Drops the kernel's cached hook context (settings, account credentials).
+  /// Call after the app writes either, so the next hook call sees the fresh
+  /// values instead of waiting out the kernel-side cache TTL.
+  void invalidateHookContext() {
+    const message = {'type': 'invalidateContext'};
+    if (_inProcessCore != null) {
+      _inProcessCore!.handle(message);
+    } else {
+      _toIsolate?.send(message);
+    }
+  }
+
   void _onCoreMessage(Map<String, dynamic> msg) {
     switch (msg['type']) {
       case 'result':
-        final id = msg['id'] as int;
+        // Defensive cast: a malformed id from the JS side must not throw
+        // inside this listener (on the isolate path that used to be exactly
+        // what killed the isolate; here it would kill the subscription).
+        final id = msg['id'];
+        if (id is! int) return;
         final completer = _pending.remove(id);
         final flight = _inFlight.remove(id);
         if (completer == null) return; // timed out; drop the late result
@@ -270,9 +346,13 @@ class ExtensionHost {
         final params = (msg['params'] as Map).cast<String, dynamic>();
         _handleHostCallDelegated(callId, method, params);
       case 'fatalError':
-        // The engine died outside of any single call (e.g. a Worker crash) —
-        // every hook still waiting on a response would otherwise just hang
-        // until its own timeout, hiding the real cause.
+        // The engine died outside of any single call (e.g. a Worker or
+        // isolate crash) — every hook still waiting on a response would
+        // otherwise just hang until its own timeout, hiding the real cause.
+        // A crash reports through more than one channel (onError + onExit);
+        // only the first one does the work.
+        if (_dead) return;
+        _dead = true;
         final error = msg['error'] as String? ?? 'extension engine crashed';
         _log('ERROR $error');
         for (final completer in _pending.values) {
@@ -280,6 +360,7 @@ class ExtensionHost {
         }
         _pending.clear();
         _inFlight.clear();
+        _fatalErrors.add(error);
     }
   }
 
@@ -315,10 +396,28 @@ class ExtensionHost {
     _logs.add(message);
   }
 
+  /// Kills the extension isolate the same way an uncaught error would,
+  /// so tests can exercise the death-detection path deterministically.
+  @visibleForTesting
+  void debugKillIsolate() => _isolate?.kill(priority: Isolate.immediate);
+
   Future<void> dispose() async {
+    _disposed = true;
+    _dead = true;
+    // Callers still awaiting a hook would otherwise wait out their full
+    // timeouts against a runtime that's already gone.
+    for (final completer in _pending.values) {
+      completer.completeError(ExtensionHostException('extension host disposed'));
+    }
+    _pending.clear();
+    _inFlight.clear();
     _isolate?.kill(priority: Isolate.immediate);
+    for (final port in _isolatePorts) {
+      port.close();
+    }
     _inProcessCore?.dispose();
     await _logs.close();
+    await _fatalErrors.close();
   }
 }
 
@@ -372,7 +471,12 @@ class _HostCore {
   final Map<String, Map<String, Object?>> _kv = {};
   final Map<int, Completer<dynamic>> _pendingHostCalls = {};
   Timer? _pump;
-  int _outstanding = 0;
+
+  /// Ids (not a bare counter) so a duplicate/forged 'result' can't drive
+  /// the count negative and stall the pump while genuine calls wait, and so
+  /// an 'abandon' after a Dart-side timeout can't double-decrement if the
+  /// hook's own late result eventually arrives too.
+  final Set<int> _outstandingIds = {};
 
   _HostCore({required this.emit});
 
@@ -397,20 +501,30 @@ class _HostCore {
     switch (msg['type']) {
       case 'invoke':
       case 'invokeAll':
-        _outstanding++;
+        final id = msg['id'] as int;
+        _outstandingIds.add(id);
         _ensurePumping();
         try {
           if (msg['type'] == 'invoke') {
-            _js.invoke(msg['id'] as int, msg['category'] as String, msg['key'] as String?, msg['method'] as String, msg['argsJson'] as String);
+            _js.invoke(id, msg['category'] as String, msg['key'] as String?, msg['method'] as String, msg['argsJson'] as String);
           } else {
-            _js.invokeAll(msg['id'] as int, msg['category'] as String, msg['method'] as String, msg['argsJson'] as String);
+            _js.invokeAll(id, msg['category'] as String, msg['method'] as String, msg['argsJson'] as String);
           }
         } catch (e) {
-          _outstanding--;
-          emit({'type': 'result', 'id': msg['id'], 'ok': false, 'error': '$e'});
+          _outstandingIds.remove(id);
+          emit({'type': 'result', 'id': id, 'ok': false, 'error': '$e'});
         }
+      case 'abandon':
+        // The main-isolate side timed this call out and stopped waiting.
+        _outstandingIds.remove(msg['id']);
       case 'kvSet':
         _kv.putIfAbsent(msg['ns'] as String? ?? 'default', () => {})[msg['key'] as String] = msg['value'];
+      case 'invalidateContext':
+        try {
+          _js.invalidateContext();
+        } catch (e) {
+          emit({'type': 'log', 'message': 'ERROR invalidating hook context: $e'});
+        }
     }
   }
 
@@ -419,7 +533,7 @@ class _HostCore {
   void _ensurePumping() {
     _pump ??= Timer.periodic(const Duration(milliseconds: 5), (_) {
       _js.pump();
-      if (_outstanding <= 0) {
+      if (_outstandingIds.isEmpty) {
         _pump?.cancel();
         _pump = null;
       }
@@ -427,17 +541,17 @@ class _HostCore {
   }
 
   /// The engine died outside of any single call (e.g. a Worker crash after
-  /// load). Stop pumping — nothing will ever decrement `_outstanding` again —
-  /// and let `ExtensionHost` fail every hook call still waiting on a result.
+  /// load). Stop pumping — nothing will ever settle these calls — and let
+  /// `ExtensionHost` fail every hook call still waiting on a result.
   void _onFatalError(String message) {
-    _outstanding = 0;
+    _outstandingIds.clear();
     emit({'type': 'fatalError', 'error': message});
   }
 
   void _onPoloMessage(Map<String, dynamic> msg) {
     switch (msg['type']) {
       case 'result':
-        _outstanding--;
+        _outstandingIds.remove(msg['id']);
         emit(msg);
       case 'log':
         emit(msg);
@@ -479,8 +593,25 @@ class _HostCore {
       result = '$e';
     }
 
+    // Encode before deciding the response: if the app's handler returned
+    // something JSON can't encode (a DateTime, a plain object), that must
+    // become an ok:false response — never an undelivered one, which leaks
+    // the kernel's pending call and wedges the awaiting hook until the
+    // Dart-side timeout.
+    // Encode before deciding the response: if the app's handler returned
+    // something JSON can't encode (a DateTime, a plain object), that must
+    // become an ok:false response — never an undelivered one, which leaks
+    // the kernel's pending call and wedges the awaiting hook until the
+    // Dart-side timeout.
+    String resultJson;
     try {
-      _js.hostResponse(callId, ok, jsonEncode(result));
+      resultJson = jsonEncode(result);
+    } catch (e) {
+      ok = false;
+      resultJson = jsonEncode('host call $method returned an unencodable result: $e');
+    }
+    try {
+      _js.hostResponse(callId, ok, resultJson);
     } catch (e) {
       emit({'type': 'log', 'message': 'ERROR delivering host response: $e'});
     }
@@ -529,7 +660,10 @@ class _HostCore {
     if (params['body'] != null) request.body = params['body'] as String;
 
     final streamed = await _http.send(request).timeout(const Duration(seconds: 15));
-    final response = await http.Response.fromStream(streamed);
+    // Headers arriving is no guarantee the body ever finishes: a server
+    // stalling mid-body would otherwise hang the calling hook indefinitely
+    // (the 15s above only covers up to the response headers).
+    final response = await http.Response.fromStream(streamed).timeout(const Duration(seconds: 30));
     return {'status': response.statusCode, 'body': response.body};
   }
 

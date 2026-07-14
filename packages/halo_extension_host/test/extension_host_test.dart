@@ -678,4 +678,191 @@ __polo.defineExtension({
     final dynamicResult = await host.invokeHook('testTrigger', key: 'trigger', method: 'runDynamicForm', args: {});
     expect(dynamicResult, {'call': 'KI2D'});
   });
+
+  test('invokeHookAll reports an unserializable aggregate as an error, not a timeout', () async {
+    if (!kernelFile.existsSync()) {
+      markTestSkipped('kernel.js not built — run `npm run build` in extensions/ first');
+      return;
+    }
+
+    final host = await ExtensionHost.start(
+      kernelSource: kernelFile.readAsStringSync(),
+      extensions: const [
+        ExtensionBundle(
+          key: 'circular-extension',
+          source: '''
+__polo.defineExtension({
+  key: 'circular-extension',
+  name: 'Circular Extension',
+  version: '0.0.1',
+  onActivation: function (api) {
+    api.registerHook('circularTest', {
+      key: 'circular-extension',
+      hook: {
+        makeCircle: async function () {
+          var a = {}
+          a.self = a
+          return a
+        }
+      }
+    })
+  },
+})
+'''
+        )
+      ],
+      useIsolate: false,
+    );
+    addTearDown(host.dispose);
+
+    // The per-record try/catch can't see this failure — it happens when the
+    // aggregate is stringified for posting. Without invokeHookAll's outer
+    // catch it became an unhandled rejection and the caller burned its full
+    // timeout reporting "timed out" instead of the real error.
+    await expectLater(
+      host.invokeHookAll('circularTest', method: 'makeCircle', timeout: const Duration(seconds: 3)),
+      throwsA(isA<ExtensionHostException>().having((e) => e.message, 'message', isNot(contains('timed out')))),
+    );
+  });
+
+  test('a host call whose handler returns an unencodable value fails the hook instead of wedging it', () async {
+    if (!kernelFile.existsSync()) {
+      markTestSkipped('kernel.js not built — run `npm run build` in extensions/ first');
+      return;
+    }
+
+    final host = await ExtensionHost.start(
+      kernelSource: kernelFile.readAsStringSync(),
+      extensions: const [
+        ExtensionBundle(
+          key: 'weird-extension',
+          source: '''
+__polo.defineExtension({
+  key: 'weird-extension',
+  name: 'Weird Extension',
+  version: '0.0.1',
+  onActivation: function (api) {
+    api.registerHook('weirdTest', {
+      key: 'weird-extension',
+      hook: {
+        callWeird: async function () {
+          return await __polo.hostCall('weird', {})
+        }
+      }
+    })
+  },
+})
+'''
+        )
+      ],
+      useIsolate: false,
+      onHostCall: (method, params) async {
+        if (method == 'weird') return Object(); // not JSON-encodable
+        return null;
+      },
+    );
+    addTearDown(host.dispose);
+
+    // Encode-before-deliver: the failure must come back as the hook's error
+    // (ok:false hostResponse), never as an undelivered response that leaks
+    // the kernel's pending call and times the hook out.
+    await expectLater(
+      host.invokeHook('weirdTest', key: 'weird-extension', method: 'callWeird', timeout: const Duration(seconds: 3)),
+      throwsA(isA<ExtensionHostException>().having((e) => e.message, 'message', contains('unencodable'))),
+    );
+  });
+
+  test('a never-settling hook times out without poisoning later calls', () async {
+    if (!kernelFile.existsSync()) {
+      markTestSkipped('kernel.js not built — run `npm run build` in extensions/ first');
+      return;
+    }
+
+    final host = await ExtensionHost.start(
+      kernelSource: kernelFile.readAsStringSync(),
+      extensions: const [
+        ExtensionBundle(
+          key: 'stuck-extension',
+          source: '''
+__polo.defineExtension({
+  key: 'stuck-extension',
+  name: 'Stuck Extension',
+  version: '0.0.1',
+  onActivation: function (api) {
+    api.registerHook('stuckTest', {
+      key: 'stuck-extension',
+      hook: {
+        never: function () { return new Promise(function () {}) }
+      }
+    })
+  },
+})
+'''
+        )
+      ],
+      useIsolate: false,
+    );
+    addTearDown(host.dispose);
+
+    await expectLater(
+      host.invokeHook('stuckTest', key: 'stuck-extension', method: 'never', timeout: const Duration(milliseconds: 300)),
+      throwsA(isA<ExtensionHostException>().having((e) => e.message, 'message', contains('timed out'))),
+    );
+
+    // The abandoned call must not leave the host in a bad state.
+    final echo = await host.invokeHook('bench', key: 'kernel', method: 'echo', args: {'ok': true});
+    expect(echo, {'ok': true});
+  });
+
+  test('hook context (settings) is cached across an invokeAll fan-out and drops on invalidation', () async {
+    if (!kernelFile.existsSync()) {
+      markTestSkipped('kernel.js not built — run `npm run build` in extensions/ first');
+      return;
+    }
+
+    var getSettingsCalls = 0;
+    final host = await ExtensionHost.start(
+      kernelSource: kernelFile.readAsStringSync(),
+      extensions: const [
+        ExtensionBundle(
+          key: 'ctx-extension',
+          source: '''
+__polo.defineExtension({
+  key: 'ctx-extension',
+  name: 'Ctx Extension',
+  version: '0.0.1',
+  onActivation: function (api) {
+    api.registerHook('ctxTest', { key: 'ctx-extension', priority: 10, hook: { probe: async function (args, ctx) { return ctx.locale } } })
+    api.registerHook('ctxTest', { key: 'ctx-extension_b', priority: 5, hook: { probe: async function (args, ctx) { return ctx.locale } } })
+  },
+})
+'''
+        )
+      ],
+      useIsolate: false,
+      onHostCall: (method, params) async {
+        if (method == 'getSettings') {
+          getSettingsCalls++;
+          return {'locale': 'es'};
+        }
+        return null;
+      },
+    );
+    addTearDown(host.dispose);
+
+    // Two hooks in one fan-out used to mean two getSettings round trips
+    // (and for account-owning extensions, two keychain reads) — per call.
+    final all = await host.invokeHookAll('ctxTest', method: 'probe');
+    expect(all.map((e) => e['value']), ['es', 'es']);
+    expect(getSettingsCalls, 1);
+
+    // Still cached on the next call...
+    await host.invokeHookAll('ctxTest', method: 'probe');
+    expect(getSettingsCalls, 1);
+
+    // ...until the host says settings changed.
+    host.invalidateHookContext();
+    await host.invokeHookAll('ctxTest', method: 'probe');
+    expect(getSettingsCalls, 2);
+  });
 }

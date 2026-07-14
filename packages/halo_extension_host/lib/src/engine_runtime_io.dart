@@ -74,6 +74,11 @@ class _IoEngineRuntime implements EngineRuntime {
     _evaluate('__polo.hostResponse($callId, $ok, ${jsonEncode(resultJson)})', name: 'hostResponse');
   }
 
+  @override
+  void invalidateContext() {
+    _evaluate('__polo.invalidateContext()', name: 'invalidateContext');
+  }
+
   void _evaluate(String code, {required String name}) {
     final result = _runtime.evaluate(code);
     if (result.isError) {

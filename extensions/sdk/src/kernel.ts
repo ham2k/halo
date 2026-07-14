@@ -93,6 +93,11 @@ function hooksFor(category: string, key: string | null): HookRecord[] {
 }
 
 function hostCall(method: string, params: Record<string, unknown>): Promise<unknown> {
+  // An extension writing its own session must see it on its very next hook
+  // call, not after the context cache's TTL (see getAccountContext).
+  if (method === 'setAccountSession' && typeof params.ns === 'string') {
+    cachedAccounts.delete(params.ns)
+  }
   const callId = nextHostCallId++
   return new Promise((resolve, reject) => {
     pendingHostCalls.set(callId, { resolve, reject })
@@ -100,38 +105,71 @@ function hostCall(method: string, params: Record<string, unknown>): Promise<unkn
   })
 }
 
-async function getAccountContext(extensionKey: string): Promise<unknown> {
+// Hook-context caching: settings and account credentials used to be
+// re-fetched over the bridge before EVERY hook method call — 1-2 extra
+// round trips (the account one hitting the platform keychain) multiplied
+// by N hooks in every invokeHookAll fan-out, on paths as hot as the
+// debounced per-keystroke lookup. Both change rarely; a short TTL bounds
+// staleness and the host can force-invalidate (__polo.invalidateContext)
+// when it writes settings or credentials.
+const CONTEXT_CACHE_TTL_MILLIS = 3000
+// The cache holds the in-flight PROMISE, not the resolved value: an
+// invokeHookAll fan-out calls N hooks concurrently, and value-caching would
+// let every one of them miss before the first fetch resolves.
+let cachedSettings: { value: Promise<unknown>; at: number } | null = null
+const cachedAccounts = new Map<string, { value: Promise<unknown>; at: number }>()
+
+function invalidateContext() {
+  cachedSettings = null
+  cachedAccounts.clear()
+}
+
+function getSettingsContext(): Promise<unknown> {
+  if (cachedSettings && Date.now() - cachedSettings.at < CONTEXT_CACHE_TTL_MILLIS) return cachedSettings.value
+  const value = (async () => {
+    try {
+      return await hostCall('getSettings', {})
+    } catch (e) {
+      return undefined
+    }
+  })()
+  cachedSettings = { value, at: Date.now() }
+  return value
+}
+
+function getAccountContext(extensionKey: string): Promise<unknown> {
   const accountHookRecord = hooks.find((h) => h.category === 'account' && h.extensionKey === extensionKey)
-  if (!accountHookRecord) return undefined
+  if (!accountHookRecord) return Promise.resolve(undefined)
+  const cached = cachedAccounts.get(extensionKey)
+  if (cached && Date.now() - cached.at < CONTEXT_CACHE_TTL_MILLIS) return cached.value
   const kvKey = accountHookRecord.hook.kvKey || accountHookRecord.key || extensionKey
-  try {
-    return (await hostCall('getAccount', { ns: extensionKey, kvKey })) as unknown
-  } catch (e) {
-    return undefined
-  }
+  const value = (async () => {
+    try {
+      return (await hostCall('getAccount', { ns: extensionKey, kvKey })) as unknown
+    } catch (e) {
+      return undefined
+    }
+  })()
+  cachedAccounts.set(extensionKey, { value, at: Date.now() })
+  return value
 }
 
 async function callHookMethod(record: HookRecord, method: string, args: unknown, online = true): Promise<unknown> {
   const member = record.hook[method]
+  // Plain data members don't get a ctx — skip the context fetches entirely.
+  if (typeof member !== 'function') return member
   const account = (await getAccountContext(record.extensionKey)) as { credentials?: Record<string, string>; session?: Record<string, string> } | undefined
   let developerMode = false
   let locale = 'en'
-  try {
-    const settings = (await hostCall('getSettings', {})) as { developerMode?: boolean; locale?: string } | undefined
-    if (settings?.developerMode) {
-      developerMode = true
-    }
-    if (settings?.locale) {
-      locale = settings.locale
-    }
-  } catch (e) {
-    // ignore
+  const settings = (await getSettingsContext()) as { developerMode?: boolean; locale?: string } | undefined
+  if (settings?.developerMode) {
+    developerMode = true
+  }
+  if (settings?.locale) {
+    locale = settings.locale
   }
   const ctx = { online, account, developerMode, locale }
-  if (typeof member === 'function') {
-    return await member.call(record.hook, args, ctx)
-  }
-  return member
+  return await member.call(record.hook, args, ctx)
 }
 
 function activateExtension(def: ExtensionDefinition) {
@@ -222,6 +260,13 @@ const kernel = {
   invokeHookAll(id: number, category: string, method: string, argsJson: string) {
     const startedAt = Date.now()
     void (async () => {
+      // Same whole-body containment as invokeHook: anything thrown outside
+      // the per-record try/catches below (malformed argsJson, a special-case
+      // branch, an unserializable aggregate failing inside post()) must
+      // still produce a result message — otherwise it becomes an unhandled
+      // rejection and the Dart caller burns its full timeout reporting a
+      // misleading "timed out" instead of the real error.
+      try {
       const args = JSON.parse(argsJson)
       if (category === 'account' && method === 'getDefinition') {
         const records = hooksFor('account', null)
@@ -324,6 +369,9 @@ const kernel = {
         }),
       )
       post({ type: 'result', id, ok: true, value: entries, jsMillis: Date.now() - startedAt })
+      } catch (e) {
+        post({ type: 'result', id, ok: false, error: describeError(e), jsMillis: Date.now() - startedAt })
+      }
     })()
   },
 
@@ -375,6 +423,10 @@ const kernel = {
     }
     return out
   },
+
+  /// Called by the host after it writes settings or account credentials, so
+  /// the next hook call sees them immediately instead of after the TTL.
+  invalidateContext,
 
   hostResponse(callId: number, ok: boolean, resultJson: string) {
     const pending = pendingHostCalls.get(callId)

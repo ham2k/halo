@@ -59,6 +59,9 @@ self.onmessage = function (e) {
     case 'hostResponse':
       self.__polo.hostResponse(msg.callId, msg.ok, msg.resultJson);
       break;
+    case 'invalidateContext':
+      self.__polo.invalidateContext();
+      break;
   }
 };
 ''';
@@ -158,6 +161,11 @@ class _WebWorkerEngineRuntime implements EngineRuntime {
       'ok': ok,
       'resultJson': resultJson,
     });
+  }
+
+  @override
+  void invalidateContext() {
+    _send({'kind': 'invalidateContext'});
   }
 
   void _send(Map<String, dynamic> payload) {
