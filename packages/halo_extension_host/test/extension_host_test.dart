@@ -364,6 +364,72 @@ __polo.defineExtension({
     });
   });
 
+  test('call-notes extension: raw dataFile round-trip, lookup notes, and //KEY expansion', () async {
+    final lookupsFile = File('../../app/assets/extensions/lookups.js');
+    final callNotesFile = File('../../app/assets/extensions/call-notes.js');
+    if (!kernelFile.existsSync() || !lookupsFile.existsSync() || !callNotesFile.existsSync()) {
+      markTestSkipped('bundles not built — run `npm run build` in extensions/ first');
+      return;
+    }
+
+    final host = await ExtensionHost.start(
+      kernelSource: kernelFile.readAsStringSync(),
+      extensions: [
+        ExtensionBundle(key: 'lookups', source: lookupsFile.readAsStringSync()),
+        ExtensionBundle(key: 'call-notes', source: callNotesFile.readAsStringSync()),
+      ],
+      useIsolate: false,
+    );
+    addTearDown(host.dispose);
+
+    // The exact invocations DataFileManager._processRaw makes for a
+    // fetchType 'raw' data file: parse the body, then hand the (JSON-cached)
+    // result back through onLoadRawData — issue #17's Hams of Note file.
+    const body = '# TITLE: Hams of Note\n'
+        '\n'
+        'KI2D 🤩 Sebastián - Ham2K PoLo Creator\n'
+        'KI2D 😁 also an Elmer\n'
+        'DAN WD4DAN,WD4JMM\n';
+    final parsed = await host.invokeHook('dataFile', key: 'call-notes', method: 'rawToJSONData',
+        args: {'body': body, 'url': 'https://ham2k.com/data/hams-of-note.txt', 'options': {}});
+    expect((parsed as Map)['KI2D'], hasLength(2));
+    await host.invokeHook('dataFile', key: 'call-notes', method: 'onLoadRawData', args: parsed);
+
+    // The full lookup pipeline (annotation pre-step + fan-out + merge)
+    // carries the combined note and marker emoji onto the guess.
+    final result = await host.invokeHook('lookupService', key: 'core', method: 'lookupCallInfo',
+        args: {'callInfo': {'call': 'KI2D'}, 'qso': {}, 'operation': {}});
+    final guess = (result['guess'] as Map).cast<String, dynamic>();
+    expect(guess['note'], '🤩😁 Sebastián - Ham2K PoLo Creator');
+    expect(guess['emoji'], '🤩');
+
+    // A call with no notes gets no note field.
+    final blank = await host.invokeHook('lookupService', key: 'core', method: 'lookupCallInfo',
+        args: {'callInfo': {'call': 'W1AW'}, 'qso': {}, 'operation': {}});
+    expect((blank['guess'] as Map).containsKey('note'), isFalse);
+
+    Future<Map<String, dynamic>?> interpretCommand(String input) async {
+      final entries = await host.invokeHookAll('command', method: 'interpret', args: {'input': input});
+      for (final entry in entries) {
+        if (entry['ok'] == true && entry['value'] is Map) return (entry['value'] as Map).cast<String, dynamic>();
+      }
+      return null;
+    }
+
+    // `//KEY` expands an entry whose note is a plain comma list of calls...
+    expect(await interpretCommand('//dan'), {
+      'describe': 'Expand to WD4DAN,WD4JMM?',
+      'commands': [
+        {'setCallField': {'text': 'WD4DAN,WD4JMM'}}
+      ]
+    });
+    // ...but never one with emoji/free-text (issue #17), an unknown key, or
+    // ordinary call-stacking input ("//" not at the start).
+    expect(await interpretCommand('//KI2D'), isNull);
+    expect(await interpretCommand('//NOSUCH'), isNull);
+    expect(await interpretCommand('K1ABC//W1AW'), isNull);
+  });
+
   test('SOTA extension composes ADIF fields into the export (in-runtime hooks)', () async {
     final adifFile = File('../../app/assets/extensions/adif.js');
     final sotaFile = File('../../app/assets/extensions/sota.js');

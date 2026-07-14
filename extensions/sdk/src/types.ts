@@ -278,6 +278,11 @@ export interface CommandAction {
   updateSettings?: {
     developerMode?: boolean
   }
+  /// Replaces the call field's entire text, cursor at the end — the
+  /// call-notes extension's `//KEY` note expansion. The new text runs
+  /// through the same change path as typing, so lookups, dupe checks and
+  /// comma-list handling all apply to it normally.
+  setCallField?: { text: string }
   /// Forces a fresh fetch+reprocess of `dataFile`s (see RELOAD), bypassing
   /// ETag caching — a manual reload is usually because our own mapping
   /// logic changed, not the source data. `target` is `'ALL'` or a

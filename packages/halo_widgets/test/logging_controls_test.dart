@@ -917,8 +917,8 @@ void main() {
 
   testWidgets('a command action with no local widget effect (e.g. reloadDataFiles) still forwards to onCommandAction', (tester) async {
     // Regression test: _dispatchActions has an explicit per-action whitelist
-    // (setVfo/updateQso/addQso/updateSettings/syncAll/devNotice/devStatus/
-    // devProgress/reloadDataFiles) — adding a new CommandAction field to the
+    // (setVfo/updateQso/addQso/updateSettings/syncAll/setCallField/devNotice/
+    // devStatus/devProgress/reloadDataFiles) — adding a new CommandAction field to the
     // SDK types without also adding its case here means the command
     // interprets fine but silently no-ops on execution, exactly what
     // happened when reloadDataFiles first shipped without this wiring.
@@ -957,6 +957,80 @@ void main() {
     expect(dispatched, hasLength(1));
     expect(dispatched.single.key, 'reloadDataFiles');
     expect(dispatched.single.value, {'target': 'ALL'});
+  });
+
+  testWidgets('note expansion: a setCallField command replaces the call field, and the result logs as a comma list', (tester) async {
+    // `//KEY` (issue #17): the call-notes extension interprets "//DAN" into
+    // a setCallField action carrying that entry's comma list of calls. The
+    // replaced text must then behave exactly as if typed — Enter logs one
+    // QSO per call (issue #7) — because expansion's entire purpose is
+    // feeding the ordinary call-list path, not a parallel one.
+    Future<Map<String, dynamic>?> fakeExpandCommand(
+      String input, [
+      Map<String, dynamic>? operation,
+      Map<String, dynamic>? qso,
+    ]) async {
+      if (input.trim().toUpperCase() != '//DAN') return null;
+      return {
+        'describe': 'Expand to WD4DAN,WD4JMM?',
+        'commands': [
+          {
+            'setCallField': {'text': 'WD4DAN,WD4JMM'},
+          },
+        ],
+      };
+    }
+
+    await tester.pumpWidget(host(interpretCommand: fakeExpandCommand));
+    TextField field(String label) => tester.widget<TextField>(find.widgetWithText(TextField, label));
+
+    // Leading "//" must reach command interpretation, not be mistaken for
+    // call stacking (a stack's first segment would be empty, so Enter would
+    // otherwise do nothing).
+    await tester.enterText(find.widgetWithText(TextField, 'Their call'), '//DAN');
+    await tester.pump();
+    await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+    await tester.pump(const Duration(milliseconds: 200));
+
+    expect(field('Their call').controller!.text, 'WD4DAN,WD4JMM');
+    expect(field('Their call').controller!.selection.baseOffset, 'WD4DAN,WD4JMM'.length);
+    expect(field('Their call').focusNode!.hasFocus, isTrue);
+    expect(await waitForQsos(tester, 1), isEmpty); // expansion itself logs nothing
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+    final logged = await waitForQsos(tester, 2);
+    expect(logged.map((q) => q.theirCall).toSet(), {'WD4DAN', 'WD4JMM'});
+  });
+
+  testWidgets('a callsign note takes the name slot in the lookup entry line', (tester) async {
+    // Issue #17: guess.note (from the call-notes lookup hook) usually
+    // already names the operator, so it replaces guess.name in the one-line
+    // preview instead of joining it — same precedence app-polo gives notes.
+    Future<Map<String, dynamic>?> lookup(
+      String call, {
+      required Map<String, dynamic> qso,
+      required Map<String, dynamic> operation,
+      required bool online,
+    }) async {
+      if (call != 'KI2D') return null;
+      return {
+        'guess': {'name': 'Sebastian', 'note': '🤩 Sebastián - Ham2K PoLo Creator', 'location': 'New York, NY'},
+      };
+    }
+
+    await tester.pumpWidget(MaterialApp(
+      home: Scaffold(
+        body: LoggingControls(operation: operation, qsosRepository: qsos, lookup: lookup),
+      ),
+    ));
+
+    await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'KI2D');
+    await tester.pump(const Duration(milliseconds: 350));
+    await tester.pump();
+
+    expect(find.textContaining('🤩 Sebastián - Ham2K PoLo Creator'), findsOneWidget);
+    expect(find.textContaining('New York, NY'), findsOneWidget);
+    expect(find.textContaining('Sebastian •'), findsNothing); // name is displaced, not joined
   });
 
   testWidgets('seeds the Radio control from radioService.vfoA for a new QSO', (tester) async {

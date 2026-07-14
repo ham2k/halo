@@ -489,8 +489,12 @@ class _HomeQuickLookupState extends State<HomeQuickLookup> {
     final result = _lookupResult;
     if (result == null || _lookupFor != _controller.text.trim()) return null;
     final guess = result['guess'] as Map<String, dynamic>? ?? const {};
+    // A callsign note (issue #17) takes the name's slot outright rather
+    // than joining it — same rule as the logging panel's _lookupLine
+    // (packages/halo_widgets/lib/src/logging_controls.dart).
+    final note = guess['note'] as String?;
     final parts = [
-      guess['name'],
+      (note != null && note.isNotEmpty) ? note : guess['name'],
       guess['location'],
       guess['country'],
       guess['grid'],

@@ -1355,6 +1355,19 @@ class _LoggingControlsState extends State<LoggingControls> {
             await widget.settings!.setDeveloperMode(params['developerMode'] as bool);
           }
         }
+      } else if (map['setCallField'] is Map) {
+        // Note expansion (`//KEY`, issue #17): the interpreted command
+        // replaces the call field wholesale. Set text and selection in one
+        // assignment so the cursor lands at the end, and let the ordinary
+        // _onCallChanged path react (lookup, dupe, comma-list handling) —
+        // exactly as if the expansion had been typed.
+        final params = (map['setCallField'] as Map).cast<String, dynamic>();
+        final text = params['text'] as String? ?? '';
+        _callController.value = TextEditingValue(
+          text: text,
+          selection: TextSelection.collapsed(offset: text.length),
+        );
+        _callFocus.requestFocus();
       } else if (map.containsKey('syncAll')) {
         await widget.onCommandAction?.call('syncAll');
       } else if (map.containsKey('sendSpots')) {
@@ -1789,8 +1802,12 @@ class _LoggingControlsState extends State<LoggingControls> {
     final result = _lookupResult;
     if (result == null || _lookupFor != _callAtCursor) return null;
     final guess = result['guess'] as Map<String, dynamic>? ?? const {};
+    // A callsign note (issue #17) takes the name's slot outright rather
+    // than joining it — the note usually already names the operator, and
+    // one line can't fit both (same precedence app-polo gives it).
+    final note = guess['note'] as String?;
     final parts = [
-      guess['name'],
+      (note != null && note.isNotEmpty) ? note : guess['name'],
       guess['location'],
       guess['country'],
       guess['grid'],

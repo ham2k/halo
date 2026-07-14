@@ -43,7 +43,9 @@ and this source has no offline data) — never throw for expected conditions.
 `@ham2k/lib-qson-tools`'s `CallInfo`/`QSON` types), so e.g. a POTA lookup can
 inspect `qso.refs` for a hunted park reference. Implemented by: `hamdb`,
 `qrz` (`scope: 'general'`), `pota`, `sota` (`scope: 'qso'`, grid of any
-hunted ref on the current QSO).
+hunted ref on the current QSO), and `call-notes` (`scope: 'general'`,
+offline — combined `note`/`emoji` extra fields from the Hams of Note file,
+issue #17).
 
 ## ✅ `lookupService` — the lookup orchestrator
 
@@ -208,7 +210,8 @@ interface CommandHook {
 }
 // CommandInterpretation: {expectsParams?, describe?, confirm?, commands?: CommandAction[]}
 // CommandAction (closed set): {setVfo?, updateQso?, addQso?, sendSpots?,
-//   syncAll?, updateSettings?, reloadDataFiles?, devNotice?, devStatus?, devProgress?}
+//   syncAll?, updateSettings?, setCallField?, reloadDataFiles?, devNotice?,
+//   devStatus?, devProgress?}
 ```
 
 Each hook does its own matching internally and returns `null` for "not mine"
@@ -233,10 +236,13 @@ exercising that UI without a real extension driving it; RELOAD forces a
 "RELOAD SOTA" target one activity's data file(s) by category, "RELOAD ALL",
 "RELOADALL", or bare "RELOAD!" target every data file, and it bypasses ETag caching
 since a manual reload is usually about our own `csvToLookupEntry` mapping
-changing, not the source data) and `note-command` (NOTE <text> sets the
-in-progress QSO's notes field via `updateQso`). Future command hooks
-(spotting, operator change…) register in the same category and compete on
-priority with these.
+changing, not the source data), `note-command` (NOTE <text> sets the
+in-progress QSO's notes field via `updateQso`), and `call-notes` (`//KEY`
+expands a Callsign Notes entry whose note is a plain comma list of calls
+into the call field via `setCallField` — issue #17; leading "//" never
+parses as call stacking, whose first segment would be empty, so the two
+syntaxes coexist). Future command hooks (spotting, operator change…)
+register in the same category and compete on priority with these.
 
 A command that recognizes its own prefix but needs more typed input before
 it can run (e.g. bare "RELOAD", before its target word) returns
@@ -320,7 +326,9 @@ Large offline datasets (park/summit lists) the core downloads, caches, and
 refreshes on a schedule; the extension supplies the URL and a
 row/entry→`LookupRow` transform. See `DataFileManager`
 (`app/lib/services/data_file_manager.dart`). Implemented by: `pota`
-(`pota-all-parks`), `sota` (`sota-all-summits`).
+(`pota-all-parks`), `sota` (`sota-all-summits`), and `call-notes`
+(`fetchType: 'raw'` — the parsed Hams of Note index is cached as JSON and
+replayed through `onLoadRawData` at startup, issue #17).
 
 ---
 

@@ -92,6 +92,7 @@ const bundles = [
   { key: 'note-command', entry: 'core/note-command/src/index.ts', kind: 'extension' },
   { key: 'hamdb', entry: 'lookups/hamdb/src/index.ts', kind: 'extension', domains: ['api.hamdb.org'] },
   { key: 'qrz', entry: 'lookups/qrz/src/index.ts', kind: 'extension', domains: ['xmldata.qrz.com', 'logbook.qrz.com'] },
+  { key: 'call-notes', entry: 'lookups/call-notes/src/index.ts', kind: 'extension', domains: ['ham2k.com'] },
   { key: 'pota', entry: 'activities/pota/src/index.ts', kind: 'extension', domains: ['api.pota.app', 'pota.app'] },
   { key: 'sota', entry: 'activities/sota/src/index.ts', kind: 'extension', domains: ['api2.sota.org.uk'] },
   { key: 'ham2k-lofi', entry: 'sync/ham2k-lofi/src/index.ts', kind: 'extension', domains: ['*'] },
