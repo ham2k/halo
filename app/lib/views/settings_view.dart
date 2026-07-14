@@ -959,7 +959,7 @@ class _DeveloperPanel extends StatelessWidget {
                   ),
             ),
             const SizedBox(height: 8),
-            _infoRow(context, 'Sync Device Key', settings.syncDeviceKey),
+            _infoRow(context, 'Sync Device Key', settings.syncDeviceKey ?? '(loading…)'),
             _infoRow(context, 'App Version', '$_appVersion (dev build)'),
           ],
         );

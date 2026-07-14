@@ -98,7 +98,8 @@ Future<HaLoServices> bootstrap({
     });
     await settings.setQrzCredentials(username: '', password: '');
   }
-  services.extensions.setSyncCredentials(deviceKey: settings.syncDeviceKey, operatorCall: settings.operatorCall);
+  final syncDeviceKey = await settings.ensureSyncDeviceKey();
+  services.extensions.setSyncCredentials(deviceKey: syncDeviceKey, operatorCall: settings.operatorCall);
   services.syncEngine.start();
 
   // Await the extension system being fully booted, then initialize and sync data files
@@ -169,7 +170,10 @@ class HaLoServices {
   /// identity + operator callsign.
   Future<void> setOperatorCall(String call) async {
     await settings.setOperatorCall(call);
-    await extensions.setSyncCredentials(deviceKey: settings.syncDeviceKey, operatorCall: settings.operatorCall);
+    await extensions.setSyncCredentials(
+      deviceKey: await settings.ensureSyncDeviceKey(),
+      operatorCall: settings.operatorCall,
+    );
   }
 
   Future<void> setSyncEnabled(bool enabled) async {
