@@ -523,6 +523,10 @@ class _LoggingControlsState extends State<LoggingControls> {
     final theirGuess = their['guess'] as Map<String, dynamic>? ?? const {};
     _gridController.text = (their['grid'] as String?) ?? (theirGuess['grid'] as String?) ?? '';
     _stateController.text = (their['state'] as String?) ?? (theirGuess['state'] as String?) ?? '';
+    // Restore the name override too, or wipe-then-undo would silently drop a
+    // name set via the "More" dialog (it round-trips as `their.name`).
+    final theirName = (their['name'] as String?)?.trim();
+    _theirNameOverride = (theirName == null || theirName.isEmpty) ? null : theirName;
     final freq = (data['freq'] as num?)?.toDouble();
     _freqController.text = freq != null ? fmtFreq(freq).replaceAll(',', '') : '';
     _mode = data['mode'] as String? ?? _mode;
@@ -833,11 +837,19 @@ class _LoggingControlsState extends State<LoggingControls> {
     final dt = millis != null
         ? DateTime.fromMillisecondsSinceEpoch(millis, isUtc: true)
         : DateTime.now().toUtc();
+    // Display-only refresh: without the _populating guard, these programmatic
+    // sets fire _onTimeOrDateFieldChanged, which would read the seeded value
+    // back as a manual override — freezing auto-timestamping just for opening
+    // the Time chip, and making "Now" re-freeze the clock it just released.
+    final wasPopulating = _populating;
+    _populating = true;
     _timeController.text = _fmtTime(dt);
     _dateController.text = _fmtDate(dt);
+    _populating = wasPopulating;
   }
 
   void _onTimeOrDateFieldChanged() {
+    if (_populating) return;
     final time = _timeController.text.split(':');
     final date = _dateController.text.split('-');
     if (time.length != 2 || date.length != 3) return;
@@ -1457,6 +1469,11 @@ class _LoggingControlsState extends State<LoggingControls> {
     // into a deliberately-touched, sticky value (see _gridTouched's doc).
     final gridBeforeDialog = _gridController.text.trim();
     final stateBeforeDialog = _stateController.text.trim();
+    // Same displayed-vs-edited distinction for date/time: while composing,
+    // the dialog shows the live clock, and saving an untouched value must
+    // not turn it into a manual override that freezes auto-timestamping.
+    final dateBeforeDialog = _fmtDate(dt);
+    final timeBeforeDialog = _fmtTime(dt);
 
     final result = await showFormDialog(
       context,
@@ -1520,7 +1537,8 @@ class _LoggingControlsState extends State<LoggingControls> {
 
       final dateParts = ((result['date'] as String?) ?? '').split('-');
       final timeParts = ((result['time'] as String?) ?? '').split(':');
-      if (dateParts.length == 3 && timeParts.length == 2) {
+      final dateOrTimeEdited = result['date'] != dateBeforeDialog || result['time'] != timeBeforeDialog;
+      if (dateOrTimeEdited && dateParts.length == 3 && timeParts.length == 2) {
         final year = int.tryParse(dateParts[0]);
         final month = int.tryParse(dateParts[1]);
         final day = int.tryParse(dateParts[2]);
@@ -1769,6 +1787,8 @@ class _LoggingControlsState extends State<LoggingControls> {
     _applyDefaultRSTs();
     _gridController.clear();
     _stateController.clear();
+    _theirNameOverride = null;
+    _unmatchedRefs = [];
     _gridTouched = false;
     _stateTouched = false;
     _lookupDebounce?.cancel();
@@ -1802,6 +1822,7 @@ class _LoggingControlsState extends State<LoggingControls> {
       _call.isNotEmpty ||
       (widget.radioService == null && (_freqController.text.trim().isNotEmpty || _manualBand != null)) ||
       _manualStartAtMillis != null ||
+      _theirNameOverride != null ||
       _controlRefs.values.any((refs) => refs.isNotEmpty) ||
       _unmatchedRefs.isNotEmpty ||
       _currentQsoExtra.isNotEmpty ||

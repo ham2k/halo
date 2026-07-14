@@ -510,6 +510,32 @@ void main() {
     expect(k1abc.theirName, isNot('Corrected Name'));
   });
 
+  testWidgets('a name set via the More dialog does not leak onto the next QSO after logging', (tester) async {
+    await tester.pumpWidget(host());
+
+    await tester.tap(find.byIcon(resolveIconName('pencil')), warnIfMissed: false);
+    await tester.pumpAndSettle();
+    await tester.enterText(find.widgetWithText(TextField, 'Name'), 'Hiram');
+    await tester.tap(find.widgetWithText(FilledButton, 'Save'));
+    await tester.pumpAndSettle();
+
+    await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'W1AW');
+    await tester.pump();
+    await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+    await waitForQsos(tester, 1);
+
+    await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'K1ABC');
+    await tester.pump();
+    await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+    final logged = await waitForQsos(tester, 2);
+
+    final w1aw = logged.firstWhere((q) => q.theirCall == 'W1AW');
+    final k1abc = logged.firstWhere((q) => q.theirCall == 'K1ABC');
+    expect(w1aw.theirName, 'Hiram');
+    // The log-then-wipe must clear the override — K1ABC is a different human.
+    expect(k1abc.theirName, isNull);
+  });
+
   testWidgets('onCallListLogged fires once after a comma-separated list logs, never for a single call', (tester) async {
     var callListLoggedCount = 0;
     await tester.pumpWidget(MaterialApp(
@@ -1270,6 +1296,39 @@ void main() {
 
       final timeField = tester.widget<TextField>(find.widgetWithText(TextField, 'Time (UTC)'));
       expect(timeField.controller!.text, isNot('03:15'));
+    });
+
+    testWidgets('Now actually restores automatic timestamping — the reseed must not re-freeze it', (tester) async {
+      await tester.pumpWidget(host());
+      await openControl(tester, MdiIcons.clockOutline);
+
+      // A date that can never be "today", so Now's reseed always rewrites the
+      // field text — which used to re-fire the manual-override listener and
+      // silently re-freeze the clock the button had just released.
+      await tester.enterText(find.widgetWithText(TextField, 'Date'), '2020-01-02');
+      await tester.enterText(find.widgetWithText(TextField, 'Time (UTC)'), '03:15');
+      await tester.pump();
+      expect(find.widgetWithText(TextButton, 'Now'), findsOneWidget);
+
+      await tester.tap(find.widgetWithText(TextButton, 'Now'));
+      await tester.pump();
+
+      // Now's visibility mirrors the override itself — gone means cleared.
+      expect(find.widgetWithText(TextButton, 'Now'), findsNothing);
+    });
+
+    testWidgets('saving the More dialog without editing date/time keeps automatic timestamping', (tester) async {
+      await tester.pumpWidget(host());
+
+      await tester.tap(find.byIcon(resolveIconName('pencil')), warnIfMissed: false);
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(FilledButton, 'Save'));
+      await tester.pumpAndSettle();
+
+      // The dialog merely displayed the live clock; saving it untouched must
+      // not convert that snapshot into a manual override.
+      await openControl(tester, MdiIcons.clockOutline);
+      expect(find.widgetWithText(TextButton, 'Now'), findsNothing);
     });
 
     ChoiceChip timeChip(WidgetTester tester) => tester.widget<ChoiceChip>(
