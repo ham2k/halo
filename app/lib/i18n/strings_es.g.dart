@@ -104,16 +104,14 @@ class _Translations$operation$es extends Translations$operation$en {
 	@override late final _Translations$operation$tabs$es tabs = _Translations$operation$tabs$es._(_root);
 	@override String comingSoon({required Object label}) => '${label} — próximamente';
 	@override String get noActivities => 'No hay actividades disponibles (¿el motor de extensiones aún está iniciando?)';
-	@override String exportSuccess({required Object path}) => 'Exportado a ${path}';
-	@override String exportFailed({required Object error}) => 'Exportación fallida: ${error}';
 	@override late final _Translations$operation$sections$es sections = _Translations$operation$sections$es._(_root);
 	@override String get stationCallsignNone => 'Sin indicativo de estación';
 	@override String get titleNone => 'Sin título';
 	@override String get activitiesNone => 'Ninguna seleccionada';
-	@override String get exportAdif => 'Exportar ADIF';
 	@override String get deleteOperation => 'Eliminar operación';
 	@override String get locationNone => 'Sin definir';
 	@override late final _Translations$operation$menu$es menu = _Translations$operation$menu$es._(_root);
+	@override late final _Translations$operation$export$es export = _Translations$operation$export$es._(_root);
 }
 
 // Path: activitiesView
@@ -299,6 +297,27 @@ class _Translations$operation$menu$es extends Translations$operation$menu$en {
 	@override String get showQsoNumbers => 'Mostrar números de QSO';
 }
 
+// Path: operation.export
+class _Translations$operation$export$es extends Translations$operation$export$en {
+	_Translations$operation$export$es._(TranslationsEs root) : this._root = root, super.internal(root);
+
+	final TranslationsEs _root; // ignore: unused_field
+
+	// Translations
+	@override String get title => 'Exportar';
+	@override String get syncedOperation => 'La operación está sincronizada';
+	@override String get unsyncedOperation => 'La operación tiene cambios sin sincronizar';
+	@override String qsosSynced({required Object total}) => 'Los ${total} QSOs están sincronizados';
+	@override String qsosPending({required Object pending, required Object total}) => '${pending} de ${total} QSOs pendientes de sincronizar';
+	@override String eventsSynced({required Object total}) => 'Los ${total} marcadores de evento están sincronizados';
+	@override String eventsPending({required Object pending, required Object total}) => '${pending} de ${total} marcadores de evento pendientes de sincronizar';
+	@override String get loading => 'Cargando opciones de exportación…';
+	@override String get noOptions => 'No hay formatos de exportación disponibles (¿el motor de extensiones aún está iniciando?)';
+	@override String get share => 'Compartir';
+	@override String saveSuccess({required Object path}) => 'Guardado en ${path}';
+	@override String exportFailed({required Object error}) => 'Exportación fallida: ${error}';
+}
+
 // Path: settings.theme
 class _Translations$settings$theme$es extends Translations$settings$theme$en {
 	_Translations$settings$theme$es._(TranslationsEs root) : this._root = root, super.internal(root);
@@ -391,8 +410,6 @@ extension on TranslationsEs {
 			'operation.tabs.operation' => 'OPERACIÓN',
 			'operation.comingSoon' => ({required Object label}) => '${label} — próximamente',
 			'operation.noActivities' => 'No hay actividades disponibles (¿el motor de extensiones aún está iniciando?)',
-			'operation.exportSuccess' => ({required Object path}) => 'Exportado a ${path}',
-			'operation.exportFailed' => ({required Object error}) => 'Exportación fallida: ${error}',
 			'operation.sections.stationOperator' => 'Estación y operador',
 			'operation.sections.activities' => 'Actividades',
 			'operation.sections.operationData' => 'Datos de operación',
@@ -401,7 +418,6 @@ extension on TranslationsEs {
 			'operation.stationCallsignNone' => 'Sin indicativo de estación',
 			'operation.titleNone' => 'Sin título',
 			'operation.activitiesNone' => 'Ninguna seleccionada',
-			'operation.exportAdif' => 'Exportar ADIF',
 			'operation.deleteOperation' => 'Eliminar operación',
 			'operation.locationNone' => 'Sin definir',
 			'operation.menu.showRstFields' => 'Mostrar campos RST',
@@ -409,6 +425,18 @@ extension on TranslationsEs {
 			'operation.menu.showGridField' => 'Mostrar campo Locador',
 			'operation.menu.showDeletedQsos' => 'Mostrar QSOs eliminados',
 			'operation.menu.showQsoNumbers' => 'Mostrar números de QSO',
+			'operation.export.title' => 'Exportar',
+			'operation.export.syncedOperation' => 'La operación está sincronizada',
+			'operation.export.unsyncedOperation' => 'La operación tiene cambios sin sincronizar',
+			'operation.export.qsosSynced' => ({required Object total}) => 'Los ${total} QSOs están sincronizados',
+			'operation.export.qsosPending' => ({required Object pending, required Object total}) => '${pending} de ${total} QSOs pendientes de sincronizar',
+			'operation.export.eventsSynced' => ({required Object total}) => 'Los ${total} marcadores de evento están sincronizados',
+			'operation.export.eventsPending' => ({required Object pending, required Object total}) => '${pending} de ${total} marcadores de evento pendientes de sincronizar',
+			'operation.export.loading' => 'Cargando opciones de exportación…',
+			'operation.export.noOptions' => 'No hay formatos de exportación disponibles (¿el motor de extensiones aún está iniciando?)',
+			'operation.export.share' => 'Compartir',
+			'operation.export.saveSuccess' => ({required Object path}) => 'Guardado en ${path}',
+			'operation.export.exportFailed' => ({required Object error}) => 'Exportación fallida: ${error}',
 			'activitiesView.title' => 'Actividades',
 			'activitiesView.activitiesCountZero' => 'Sin actividades actuales',
 			'activitiesView.activitiesCountOne' => 'Una actividad actual',

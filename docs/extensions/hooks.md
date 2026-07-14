@@ -112,16 +112,23 @@ name, same convention as `activity` controls). Implemented by: `pota`,
 
 ```ts
 interface ExportHook {
+  suggestExportOptions?(args: ExportOptionsRequest, ctx): Promise<ExportOption[]>
   generateExport(args: ExportRequest, ctx): Promise<ExportResult>
 }
-// ExportRequest: {operation, qsos}   — full QSON, one coarse call
+// ExportOptionsRequest: {operation, qsos}
+// ExportOption: {exportType, format, label, filename?, icon?, priority?, selectedByDefault?}
+// ExportRequest: {operation, qsos, exportType?}   — full QSON, one coarse call
 // ExportResult:  {filename, mimeType, content}
 ```
 
-The core owns file I/O and save dialogs; the hook only produces content.
+Two-step flow: the Exports Panel calls `suggestExportOptions` on every
+`export` hook to build its selectable list (a hook that omits it never
+appears in the panel), then calls `generateExport` — passing back the
+chosen option's `exportType` — only for the options the user selected. The
+core owns file I/O and save/share; the hook only produces content.
 Exporters should compose per-QSO program fields from `adifFields` hooks (see
 below) rather than knowing about specific activities. Implemented by: `adif`
-(key `adif`); Cabrillo will register here too.
+(key `adif`, one option); Cabrillo will register here too.
 
 ## ✅ `ref:<type>` — reference handlers
 

@@ -15,6 +15,7 @@ class Operation {
   final int? startAtMillisMin;
   final int? startAtMillisMax;
   final bool deleted;
+  final bool synced;
 
   /// Device-local state that never syncs — e.g. cached day/operation scoring
   /// summaries written by `ScoringService` under the `scoring` key. Distinct
@@ -28,6 +29,7 @@ class Operation {
     this.startAtMillisMin,
     this.startAtMillisMax,
     this.deleted = false,
+    this.synced = false,
     this.localData = const {},
   });
 

@@ -140,12 +140,6 @@ class Translations$operation$en {
 	/// en: 'No activities available (extension runtime still starting?)'
 	String get noActivities => 'No activities available (extension runtime still starting?)';
 
-	/// en: 'Exported to ${path}'
-	String exportSuccess({required Object path}) => 'Exported to ${path}';
-
-	/// en: 'Export failed: ${error}'
-	String exportFailed({required Object error}) => 'Export failed: ${error}';
-
 	late final Translations$operation$sections$en sections = Translations$operation$sections$en.internal(_root);
 
 	/// en: 'No station callsign'
@@ -157,9 +151,6 @@ class Translations$operation$en {
 	/// en: 'None set'
 	String get activitiesNone => 'None set';
 
-	/// en: 'Export ADIF'
-	String get exportAdif => 'Export ADIF';
-
 	/// en: 'Delete operation'
 	String get deleteOperation => 'Delete operation';
 
@@ -167,6 +158,7 @@ class Translations$operation$en {
 	String get locationNone => 'Not set';
 
 	late final Translations$operation$menu$en menu = Translations$operation$menu$en.internal(_root);
+	late final Translations$operation$export$en export = Translations$operation$export$en.internal(_root);
 }
 
 // Path: activitiesView
@@ -531,6 +523,51 @@ class Translations$operation$menu$en {
 	String get showQsoNumbers => 'Show QSO Numbers';
 }
 
+// Path: operation.export
+class Translations$operation$export$en {
+	Translations$operation$export$en.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Export'
+	String get title => 'Export';
+
+	/// en: 'Operation is synced'
+	String get syncedOperation => 'Operation is synced';
+
+	/// en: 'Operation has unsynced changes'
+	String get unsyncedOperation => 'Operation has unsynced changes';
+
+	/// en: 'All ${total} QSOs are synced'
+	String qsosSynced({required Object total}) => 'All ${total} QSOs are synced';
+
+	/// en: '${pending} of ${total} QSOs pending sync'
+	String qsosPending({required Object pending, required Object total}) => '${pending} of ${total} QSOs pending sync';
+
+	/// en: 'All ${total} event markers are synced'
+	String eventsSynced({required Object total}) => 'All ${total} event markers are synced';
+
+	/// en: '${pending} of ${total} event markers pending sync'
+	String eventsPending({required Object pending, required Object total}) => '${pending} of ${total} event markers pending sync';
+
+	/// en: 'Loading export options…'
+	String get loading => 'Loading export options…';
+
+	/// en: 'No export formats available (extension runtime still starting?)'
+	String get noOptions => 'No export formats available (extension runtime still starting?)';
+
+	/// en: 'Share'
+	String get share => 'Share';
+
+	/// en: 'Saved to ${path}'
+	String saveSuccess({required Object path}) => 'Saved to ${path}';
+
+	/// en: 'Export failed: ${error}'
+	String exportFailed({required Object error}) => 'Export failed: ${error}';
+}
+
 // Path: settings.theme
 class Translations$settings$theme$en {
 	Translations$settings$theme$en.internal(this._root);
@@ -659,8 +696,6 @@ extension on Translations {
 			'operation.tabs.operation' => 'OPERATION',
 			'operation.comingSoon' => ({required Object label}) => '${label} — coming soon',
 			'operation.noActivities' => 'No activities available (extension runtime still starting?)',
-			'operation.exportSuccess' => ({required Object path}) => 'Exported to ${path}',
-			'operation.exportFailed' => ({required Object error}) => 'Export failed: ${error}',
 			'operation.sections.stationOperator' => 'Station & operator',
 			'operation.sections.activities' => 'Activities',
 			'operation.sections.operationData' => 'Operation data',
@@ -669,7 +704,6 @@ extension on Translations {
 			'operation.stationCallsignNone' => 'No station callsign',
 			'operation.titleNone' => 'No title',
 			'operation.activitiesNone' => 'None set',
-			'operation.exportAdif' => 'Export ADIF',
 			'operation.deleteOperation' => 'Delete operation',
 			'operation.locationNone' => 'Not set',
 			'operation.menu.showRstFields' => 'Show RST fields',
@@ -677,6 +711,18 @@ extension on Translations {
 			'operation.menu.showGridField' => 'Show Grid field',
 			'operation.menu.showDeletedQsos' => 'Show deleted QSOs',
 			'operation.menu.showQsoNumbers' => 'Show QSO Numbers',
+			'operation.export.title' => 'Export',
+			'operation.export.syncedOperation' => 'Operation is synced',
+			'operation.export.unsyncedOperation' => 'Operation has unsynced changes',
+			'operation.export.qsosSynced' => ({required Object total}) => 'All ${total} QSOs are synced',
+			'operation.export.qsosPending' => ({required Object pending, required Object total}) => '${pending} of ${total} QSOs pending sync',
+			'operation.export.eventsSynced' => ({required Object total}) => 'All ${total} event markers are synced',
+			'operation.export.eventsPending' => ({required Object pending, required Object total}) => '${pending} of ${total} event markers pending sync',
+			'operation.export.loading' => 'Loading export options…',
+			'operation.export.noOptions' => 'No export formats available (extension runtime still starting?)',
+			'operation.export.share' => 'Share',
+			'operation.export.saveSuccess' => ({required Object path}) => 'Saved to ${path}',
+			'operation.export.exportFailed' => ({required Object error}) => 'Export failed: ${error}',
 			'activitiesView.title' => 'Activities',
 			'activitiesView.activitiesCountZero' => 'No Current Activities',
 			'activitiesView.activitiesCountOne' => 'One Current Activity',

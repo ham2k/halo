@@ -29,8 +29,6 @@
     },
     "comingSoon": "${label} — próximamente",
     "noActivities": "No hay actividades disponibles (¿el motor de extensiones aún está iniciando?)",
-    "exportSuccess": "Exportado a ${path}",
-    "exportFailed": "Exportación fallida: ${error}",
     "sections": {
       "stationOperator": "Estación y operador",
       "activities": "Actividades",
@@ -41,7 +39,6 @@
     "stationCallsignNone": "Sin indicativo de estación",
     "titleNone": "Sin título",
     "activitiesNone": "Ninguna seleccionada",
-    "exportAdif": "Exportar ADIF",
     "deleteOperation": "Eliminar operación",
     "locationNone": "Sin definir",
     "menu": {
@@ -50,6 +47,20 @@
       "showGridField": "Mostrar campo Locador",
       "showDeletedQsos": "Mostrar QSOs eliminados",
       "showQsoNumbers": "Mostrar números de QSO"
+    },
+    "export": {
+      "title": "Exportar",
+      "syncedOperation": "La operación está sincronizada",
+      "unsyncedOperation": "La operación tiene cambios sin sincronizar",
+      "qsosSynced": "Los ${total} QSOs están sincronizados",
+      "qsosPending": "${pending} de ${total} QSOs pendientes de sincronizar",
+      "eventsSynced": "Los ${total} marcadores de evento están sincronizados",
+      "eventsPending": "${pending} de ${total} marcadores de evento pendientes de sincronizar",
+      "loading": "Cargando opciones de exportación…",
+      "noOptions": "No hay formatos de exportación disponibles (¿el motor de extensiones aún está iniciando?)",
+      "share": "Compartir",
+      "saveSuccess": "Guardado en ${path}",
+      "exportFailed": "Exportación fallida: ${error}"
     }
   },
   "activitiesView": {

@@ -193,6 +193,9 @@ export interface AdifFieldsHook {
 export interface ExportRequest {
   operation: Record<string, JSONValue>
   qsos: Record<string, JSONValue>[]
+  /// Which of this hook's suggested options to generate — required once a
+  /// hook offers more than one via `suggestExportOptions`.
+  exportType?: string
 }
 
 export interface ExportResult {
@@ -201,7 +204,30 @@ export interface ExportResult {
   content: string
 }
 
+export interface ExportOptionsRequest {
+  operation: Record<string, JSONValue>
+  qsos: Record<string, JSONValue>[]
+}
+
+/// One selectable export offered by a hook. `exportType` only needs to be
+/// unique within the hook that returned it — the core pairs it with the
+/// hook's own registration key when routing a later `generateExport` call.
+export interface ExportOption {
+  exportType: string
+  /// Drives the panel's default mimeType/extension guess, e.g. 'adif'.
+  format: string
+  label: string
+  filename?: string
+  icon?: string
+  priority?: number
+  selectedByDefault?: boolean
+}
+
 export interface ExportHook {
+  /// Lists the export(s) this hook offers for the given operation/qsos, for
+  /// the Exports Panel to show as selectable options. A hook that omits
+  /// this never appears in the panel.
+  suggestExportOptions?(args: ExportOptionsRequest, ctx: HookContext): Promise<ExportOption[]>
   generateExport(args: ExportRequest, ctx: HookContext): Promise<ExportResult>
 }
 

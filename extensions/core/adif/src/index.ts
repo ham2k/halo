@@ -11,7 +11,7 @@ import { fmtADIFDate, fmtADIFTime } from "@ham2k/lib-format-tools"
 import { adifModeAndSubmodeForMode } from "@ham2k/lib-operation-data"
 
 import { defineExtension, hooks } from "@ham2k/halo-extension-sdk"
-import type { ExportRequest, ExportResult, HookContext } from "@ham2k/halo-extension-sdk"
+import type { ExportOption, ExportOptionsRequest, ExportRequest, ExportResult, HookContext } from "@ham2k/halo-extension-sdk"
 
 const ADIF_VERSION = '3.1.5'
 const PROGRAM_ID = 'Ham2K HaLo Next'
@@ -26,7 +26,31 @@ function slug(text: string): string {
   return text.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
 }
 
+function filenameFor(operation: Record<string, unknown>, qsos: Record<string, unknown>[]): string {
+  const stationCall = String(operation.stationCall ?? 'UNKNOWN')
+  const title = String(operation.title ?? '')
+  const firstMillis = qsos
+    .map((qso) => Number(qso.startAtMillis ?? 0))
+    .filter((t) => t > 0)
+    .sort((a, b) => a - b)[0]
+  const datePart = firstMillis ? fmtADIFDate(firstMillis) : fmtADIFDate(Date.now())
+  return [datePart, slug(stationCall), slug(title)].filter((x) => x).join('-') + '.adi'
+}
+
 const ExportHandler = {
+  async suggestExportOptions({ operation, qsos }: ExportOptionsRequest, _ctx: HookContext): Promise<ExportOption[]> {
+    return [
+      {
+        exportType: 'adif',
+        format: 'adif',
+        label: 'ADIF Export',
+        filename: filenameFor(operation, qsos),
+        icon: 'file-export-outline',
+        selectedByDefault: true,
+      },
+    ]
+  },
+
   async generateExport({ operation, qsos }: ExportRequest, _ctx: HookContext): Promise<ExportResult> {
     const stationCall = String(operation.stationCall ?? 'UNKNOWN')
     const title = String(operation.title ?? '')
@@ -85,14 +109,7 @@ const ExportHandler = {
       lines.push(row)
     }
 
-    const firstMillis = qsos
-      .map((qso) => Number(qso.startAtMillis ?? 0))
-      .filter((t) => t > 0)
-      .sort((a, b) => a - b)[0]
-    const datePart = firstMillis ? fmtADIFDate(firstMillis) : fmtADIFDate(Date.now())
-    const filename = [datePart, slug(stationCall), slug(title)].filter((x) => x).join('-') + '.adi'
-
-    return { filename, mimeType: 'application/octet-stream', content: lines.join('\n') + '\n' }
+    return { filename: filenameFor(operation, qsos), mimeType: 'application/octet-stream', content: lines.join('\n') + '\n' }
   },
 }
 

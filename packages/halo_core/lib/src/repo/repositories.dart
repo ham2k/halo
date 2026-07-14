@@ -315,6 +315,7 @@ class OperationsRepository {
         startAtMillisMin: row.startAtMillisMin,
         startAtMillisMax: row.startAtMillisMax,
         deleted: row.deleted,
+        synced: row.synced,
         localData: row.localData == null ? const {} : jsonDecode(row.localData!) as Map<String, dynamic>,
       );
 
@@ -460,6 +461,32 @@ class QsosRepository {
             .getSingle())
         .read(total) ?? 0;
     return (total: totalCount, pending: pendingCount);
+  }
+
+  /// Same as [syncCounts], but scoped to one operation's (non-deleted) rows,
+  /// and split into real QSOs vs. event markers (start/break/end, see
+  /// `Qso.isEvent`) — for the Exports Panel's per-operation sync summary,
+  /// which exports only real QSOs (`ExportService._qsoListFor`) and would
+  /// otherwise show a pending count inflated by markers that never export.
+  Future<({int total, int pending, int eventTotal, int eventPending})> syncCountsForOperation(String operationUuid) async {
+    final count = db.qsos.uuid.count();
+    Future<int> countWhere(Expression<bool> where) async {
+      final result = await (db.selectOnly(db.qsos)
+            ..addColumns([count])
+            ..where(where))
+          .getSingle();
+      return result.read(count) ?? 0;
+    }
+
+    final base = db.qsos.operation.equals(operationUuid) & db.qsos.deleted.equals(false);
+    final isEvent = db.qsos.band.equals('event');
+
+    final total = await countWhere(base & isEvent.not());
+    final pending = await countWhere(base & isEvent.not() & db.qsos.synced.equals(false));
+    final eventTotal = await countWhere(base & isEvent);
+    final eventPending = await countWhere(base & isEvent & db.qsos.synced.equals(false));
+
+    return (total: total, pending: pending, eventTotal: eventTotal, eventPending: eventPending);
   }
 
   /// Upserts QSOs received from the sync server and refreshes the counters

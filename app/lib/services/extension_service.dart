@@ -76,6 +76,38 @@ class ExtensionService {
     }
   }
 
+  /// Every export option offered by every `export` hook (Exports Panel,
+  /// ham2k/app-halo-dist#4), each tagged with `hookKey` — the hook's own
+  /// registration key — so a later `generateExport` call can be routed back
+  /// to the hook that offered it. Hooks that don't implement
+  /// `suggestExportOptions` are silently absent from the list.
+  Future<List<Map<String, dynamic>>> getExportOptions(Map<String, dynamic> args) async {
+    final host = _host;
+    if (host == null) return const [];
+    try {
+      final entries = await host.invokeHookAll(
+        'export',
+        method: 'suggestExportOptions',
+        args: args,
+        timeout: const Duration(seconds: 10),
+      );
+      final options = <Map<String, dynamic>>[];
+      for (final entry in entries) {
+        if (entry['ok'] != true || entry['value'] is! List) continue;
+        final hookKey = entry['key'] as String?;
+        for (final option in (entry['value'] as List)) {
+          if (option is Map) {
+            options.add({...option.cast<String, dynamic>(), 'hookKey': hookKey});
+          }
+        }
+      }
+      return options;
+    } catch (e) {
+      debugPrint('[extensions] getExportOptions failed: $e');
+      return const [];
+    }
+  }
+
   Future<String> testCredentials(String accountKey, Map<String, String> credentials) async {
     final host = _host;
     if (host == null) return 'Extension runtime not ready.';

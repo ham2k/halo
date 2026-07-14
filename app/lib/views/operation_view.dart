@@ -19,6 +19,7 @@ import 'operation_dialogs.dart';
 import 'operation/activities_view.dart';
 import 'operation/logging_panel.dart';
 import 'operation/map_panel.dart';
+import 'operation/operation_export_screen.dart';
 import 'operation/operation_location_screen.dart';
 import '../i18n/strings.g.dart';
 
@@ -209,16 +210,9 @@ class _OperationViewState extends State<OperationView> {
   }
 
   Future<void> _export(Operation operation) async {
-    final t = context.t;
-    final messenger = ScaffoldMessenger.of(context);
-    try {
-      final path = await widget.services.exports.exportOperation(operation);
-      if (path != null) {
-        messenger.showSnackBar(SnackBar(content: Text(t.operation.exportSuccess(path: path))));
-      }
-    } catch (e) {
-      messenger.showSnackBar(SnackBar(content: Text(t.operation.exportFailed(error: e.toString()))));
-    }
+    await Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => OperationExportScreen(services: widget.services, operation: operation)),
+    );
   }
 
   Future<void> _handleCommandAction(String action, [Map<String, dynamic>? params]) async {
@@ -427,7 +421,7 @@ class _PlaceholderTab extends StatelessWidget {
 
 /// Operation settings/activities/data, a scoped-down port of app-polo's
 /// OpSettingsTab: just what this app already has actions for (editing
-/// station/title, managing activity refs, location, ADIF export, delete)
+/// station/title, managing activity refs, location, export, delete)
 /// rather than app-polo's full set (templates, Wavelog export, etc.), which
 /// this app doesn't have the underlying data/features for yet.
 class OperationSettingsPanel extends StatelessWidget {
@@ -488,7 +482,7 @@ class OperationSettingsPanel extends StatelessWidget {
         SectionHeader(context.t.operation.sections.operationData),
         ListTile(
           leading: Icon(MdiIcons.fileExportOutline),
-          title: Text(context.t.operation.exportAdif),
+          title: Text(context.t.operation.export.title),
           subtitle: Text(context.t.operation.tabs.qsos(count: qsoCount)),
           onTap: onExport,
           mouseCursor: SystemMouseCursors.click,

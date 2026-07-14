@@ -29,8 +29,6 @@
     },
     "comingSoon": "${label} — coming soon",
     "noActivities": "No activities available (extension runtime still starting?)",
-    "exportSuccess": "Exported to ${path}",
-    "exportFailed": "Export failed: ${error}",
     "sections": {
       "stationOperator": "Station & operator",
       "activities": "Activities",
@@ -41,7 +39,6 @@
     "stationCallsignNone": "No station callsign",
     "titleNone": "No title",
     "activitiesNone": "None set",
-    "exportAdif": "Export ADIF",
     "deleteOperation": "Delete operation",
     "locationNone": "Not set",
     "menu": {
@@ -50,6 +47,20 @@
       "showGridField": "Show Grid field",
       "showDeletedQsos": "Show deleted QSOs",
       "showQsoNumbers": "Show QSO Numbers"
+    },
+    "export": {
+      "title": "Export",
+      "syncedOperation": "Operation is synced",
+      "unsyncedOperation": "Operation has unsynced changes",
+      "qsosSynced": "All ${total} QSOs are synced",
+      "qsosPending": "${pending} of ${total} QSOs pending sync",
+      "eventsSynced": "All ${total} event markers are synced",
+      "eventsPending": "${pending} of ${total} event markers pending sync",
+      "loading": "Loading export options…",
+      "noOptions": "No export formats available (extension runtime still starting?)",
+      "share": "Share",
+      "saveSuccess": "Saved to ${path}",
+      "exportFailed": "Export failed: ${error}"
     }
   },
   "activitiesView": {
