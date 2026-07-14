@@ -407,8 +407,8 @@ class Translations$settings$en {
 
 	late final Translations$settings$fontScaleOpts$en fontScaleOpts = Translations$settings$fontScaleOpts$en.internal(_root);
 
-	/// en: 'Affects text size throughout the app'
-	String get fontScaleDescription => 'Affects text size throughout the app';
+	/// en: 'Scales the whole interface — text, controls, and spacing'
+	String get fontScaleDescription => 'Scales the whole interface — text, controls, and spacing';
 
 	/// en: 'Operator Callsign'
 	String get operatorCall => 'Operator Callsign';
@@ -749,7 +749,7 @@ extension on Translations {
 			'settings.fontScaleOpts.normal' => 'Normal',
 			'settings.fontScaleOpts.larger' => 'Larger',
 			'settings.fontScaleOpts.largest' => 'Largest',
-			'settings.fontScaleDescription' => 'Affects text size throughout the app',
+			'settings.fontScaleDescription' => 'Scales the whole interface — text, controls, and spacing',
 			'settings.operatorCall' => 'Operator Callsign',
 			'settings.sync.title' => 'Sync Settings',
 			'settings.sync.enable' => 'Enable Sync',

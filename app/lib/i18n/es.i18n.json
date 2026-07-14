@@ -141,7 +141,7 @@
       "larger": "Grande",
       "largest": "Más grande"
     },
-    "fontScaleDescription": "Afecta el tamaño del texto en toda la app",
+    "fontScaleDescription": "Escala toda la interfaz: texto, controles y espaciado",
     "operatorCall": "Indicativo del Operador",
     "sync": {
       "title": "Configuración de Sincronización",

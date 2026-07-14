@@ -141,7 +141,7 @@
       "larger": "Larger",
       "largest": "Largest"
     },
-    "fontScaleDescription": "Affects text size throughout the app",
+    "fontScaleDescription": "Scales the whole interface — text, controls, and spacing",
     "operatorCall": "Operator Callsign",
     "sync": {
       "title": "Sync Settings",
