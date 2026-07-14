@@ -418,15 +418,20 @@ Worth recording so future reviews don't re-litigate:
 
 ## 6. Suggested remediation order
 
-**Milestone A — data integrity (small, high-stakes):**
-1. Add `updatedAtMillis` to operations/qsos; conditional `markSynced` (P0-1) and
-   compare-on-merge (P0-2).
-2. Server-derived watermarks (P0-3) + tie-safe paging (P1-4).
-3. Sync generation lock around reconciliation (P1-5); single-transaction wipe (P1-6);
-   log sync errors (P2-7).
-4. Fix `_wipe`/time-freeze logging bugs (P0-19, P0-20) — both are a few lines, with
-   tests that cross a minute boundary / assert override reset.
-5. Seed a real lofi secret or consciously accept key-only auth (P0-29).
+**Milestone A — data integrity (small, high-stakes): ✅ done 2026-07-14**
+1. ~~Add `updatedAtMillis` to operations/qsos; conditional `markSynced` (P0-1) and
+   compare-on-merge (P0-2).~~ Done (`ef7b4da`, schema v4).
+2. ~~Server-derived watermarks (P0-3) + tie-safe paging (P1-4).~~ Done (`17260b0`;
+   cursors page to `earliest+1`, single-stamp full pages grow the pull limit).
+3. ~~Sync generation lock around reconciliation (P1-5); single-transaction wipe (P1-6);
+   log sync errors (P2-7).~~ Done (`17260b0`; P2-8's dispose flag included).
+4. ~~Fix `_wipe`/time-freeze logging bugs (P0-19, P0-20).~~ Done (`44fabd5`; also the
+   More-dialog save variant of the freeze, and name restore on wipe-undo).
+5. ~~Seed a real lofi secret or consciously accept key-only auth (P0-29).~~ Done
+   (`2eb90a2`): the secret is app-polo's build-config *app attestation* value, now
+   injectable via `--dart-define=HAM2K_LOFI_SECRET`; stale comments fixed. Residual:
+   the per-install device key stays in SharedPreferences as the de-facto bearer
+   credential — move to secure storage in Milestone C.
 
 **Milestone B — extension-runtime robustness (before wiring more features through it):**
 6. Isolate `onError`/`onExit` → `fatalError` → restart in `ExtensionService`
