@@ -433,13 +433,21 @@ Worth recording so future reviews don't re-litigate:
    the per-install device key stays in SharedPreferences as the de-facto bearer
    credential — move to secure storage in Milestone C.
 
-**Milestone B — extension-runtime robustness (before wiring more features through it):**
-6. Isolate `onError`/`onExit` → `fatalError` → restart in `ExtensionService`
-   (P1-14) — the cheapest large win in the host.
-7. The hang-family fixes: `invokeHookAll` try/catch, encode-before-deliver, body
-   timeout, `_outstanding` cleanup (P1-15, P1-16).
-8. Cache settings/account context per invocation (P1-17).
-9. Lookup error logging (P1-31) + HamDB NOT_FOUND filtering (P1-30).
+**Milestone B — extension-runtime robustness: ✅ done 2026-07-14**
+6. ~~Isolate `onError`/`onExit` → `fatalError` → restart in `ExtensionService`
+   (P1-14).~~ Done (`3d913dd`; includes fail-fast `isDead`, full `dispose()`
+   cleanup, restart with capped backoff + KV re-seed, and the misleading web
+   "isolate mode failed" warning). Isolate-mode death can't be exercised under
+   flutter_test — that path is review-verified only.
+7. ~~The hang-family fixes: `invokeHookAll` try/catch, encode-before-deliver, body
+   timeout, `_outstanding` cleanup (P1-15, P1-16).~~ Done (`3d913dd`; outstanding
+   ids also close L6's forged-result pump stall).
+8. ~~Cache settings/account context per invocation (P1-17).~~ Done (`3d913dd`;
+   in-flight-promise cache, 3s TTL, host-side `invalidateHookContext` on
+   settings/credential writes).
+9. ~~Lookup error logging (P1-31) + HamDB NOT_FOUND filtering (P1-30).~~ Done
+   (`b35a77f`; mergeLookup also drops malformed grids instead of voiding the
+   source's whole result).
 
 **Milestone C — before any third-party / OTA extension channel (blocking):**
 10. Host-derived caller identity for all host calls (P0-11); manifest-declared fetch
