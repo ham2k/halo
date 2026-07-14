@@ -449,12 +449,29 @@ Worth recording so future reviews don't re-litigate:
    (`b35a77f`; mergeLookup also drops malformed grids instead of voiding the
    source's whole result).
 
-**Milestone C — before any third-party / OTA extension channel (blocking):**
-10. Host-derived caller identity for all host calls (P0-11); manifest-declared fetch
-    allowlists (P0-12); QuickJS interrupt + memory limits (P1-13) — likely the direct
-    FFI binding DESIGN already planned.
-11. SDK contract versioning (`minCatalog`-style) + discriminated `Hook` union;
-    fix hooks.md.
+**Milestone C — before any third-party / OTA extension channel: ✅ mostly done 2026-07-14**
+10. ~~Host-derived caller identity for all host calls (P0-11); manifest-declared fetch
+    allowlists (P0-12); QuickJS interrupt + memory limits (P1-13).~~ Done (`fc52014`):
+    the kernel captures the raw message channel and binds an activation-scoped
+    `hostCall` per extension (identity params injected kernel-side; public
+    `__polo.hostCall` refuses identity methods); bundle evaluation is bracketed with
+    the manifest key so `defineExtension` can't mint a foreign identity; `build.mjs`
+    declares per-extension `domains` in `index.json` and the host enforces them against
+    the pre-proxy host; QuickJS platforms get a 256MB memory limit + explicit stack.
+    **Caveats / still open:** this is *soft, single-realm* containment — a hostile
+    bundle can still tamper with shared globals (`__polo` itself); hard isolation needs
+    per-extension realms. macOS/iOS use JavaScriptCore, which exposes no memory/interrupt
+    knobs, and there's still no true execution-time *interrupt* on any platform — a
+    `while(true)` hook is caught only by the Dart-side timeout + M5's restart, not
+    pre-empted. Full per-platform control is what DESIGN.md §3's direct-FFI QuickJS
+    binding is still for. Also done (`7f5d983`): the sync device key moved to the
+    keychain.
+11. ~~fix hooks.md.~~ Done (`4e74cc4`; command contract, spots/Spot.icon,
+    syncTransport/settingsPanel/account/dataFile status). **Still open:** SDK contract
+    *versioning* (`minCatalog`-style negotiation for the OTA channel) and a discriminated
+    `Hook` union (the `\| Record<string, unknown>` arm still erases misspelled-method
+    errors) — neither blocks the current all-first-party build; both are prerequisites
+    for third-party extensions and belong with that work.
 
 **Milestone D — quality-of-life (fold into feature work):**
 12. `watchOperation(uuid)` reactive stream; retire manual refresh + localData merge
