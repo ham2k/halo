@@ -36,11 +36,16 @@ class _IoEngineRuntime implements EngineRuntime {
   /// JavaScriptCore, which exposes no such knobs — full interrupt/memory
   /// control on every platform is what DESIGN.md §3's direct-FFI QuickJS
   /// binding is for; this is the portion available today.
+  ///
+  /// The memory limit is Android-only: flutter_js compiles the QuickJS
+  /// bridge from source there, but ships stale prebuilt binaries on Linux
+  /// and Windows that export jsSetMaxStackSize and NOT jsSetMemoryLimit, so
+  /// a non-null memoryLimit crashes engine startup on those platforms.
   fjs.JavascriptRuntime _createRuntime() {
     if (Platform.isAndroid || Platform.isWindows || Platform.isLinux) {
       final runtime = fjs.QuickJsRuntime2(
         stackSize: 2 * 1024 * 1024,
-        memoryLimit: 256 * 1024 * 1024,
+        memoryLimit: Platform.isAndroid ? 256 * 1024 * 1024 : null,
         hostPromiseRejectionHandler: (dynamic reason) {
           _onMessage?.call({'type': 'log', 'message': 'ERROR unhandled promise rejection: $reason'});
         },

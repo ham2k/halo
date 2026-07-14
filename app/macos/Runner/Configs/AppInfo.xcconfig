@@ -15,6 +15,10 @@ PRODUCT_BUNDLE_IDENTIFIER = com.ham2k.logger
 // The copyright displayed in application information
 PRODUCT_COPYRIGHT = Copyright © 2026 com.ham2k. All rights reserved.
 
-// Local, gitignored signing overrides (DEVELOPMENT_TEAM, CODE_SIGN_IDENTITY)
-// — see Local.xcconfig.sample and README.md "Building locally on macOS".
+// Optional signing overrides (DEVELOPMENT_TEAM, CODE_SIGN_IDENTITY).
+// Distribution repos commit theirs under app_dist/, which does not exist
+// in public checkouts; Local.xcconfig is a gitignored per-developer
+// override that wins over both — see Local.xcconfig.sample and README.md
+// "Building locally on macOS".
+#include? "../../../../app_dist/macos/Signing.xcconfig"
 #include? "Local.xcconfig"

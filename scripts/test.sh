@@ -22,6 +22,26 @@ npm test
 echo "▶ extensions: build bundles (must precede the Dart integration tests)"
 npm run build
 
+# On Linux, flutter_js's QuickJS backend dlopen()s libquickjs_c_bridge_plugin.so,
+# a prebuilt library that ships inside the pub package (linux/shared/). It is
+# only staged next to the binary when building a full Linux app; `flutter test`
+# runs in the host VM, so we must point the loader at the pub cache ourselves.
+# macOS needs nothing — there flutter_js uses the system JavaScriptCore.
+if [[ "$(uname -s)" == "Linux" ]]; then
+  echo "▶ halo_extension_host: pub get so the QuickJS bridge library is in the pub cache"
+  (cd "$ROOT_DIR/packages/halo_extension_host" && flutter pub get)
+  QUICKJS_SHARED="$(ls -d "${PUB_CACHE:-$HOME/.pub-cache}"/hosted/pub.dev/flutter_js-*/linux/shared | sort -V | tail -1)"
+  export LD_LIBRARY_PATH="$QUICKJS_SHARED${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+fi
+
+# The real Mapbox token file is gitignored, so fresh checkouts (like CI)
+# don't have it and the app package fails to analyze. The blank template is
+# a supported configuration — the Map tab falls back to OpenStreetMap.
+if [[ ! -f "$ROOT_DIR/app/lib/config/mapbox_token.dart" ]]; then
+  echo "▶ app: no Mapbox token present, using the blank template"
+  cp "$ROOT_DIR/app/lib/config/mapbox_token.dart.example" "$ROOT_DIR/app/lib/config/mapbox_token.dart"
+fi
+
 for pkg in packages/halo_core packages/halo_extension_host packages/halo_widgets app; do
   echo "▶ $pkg: pub get, analyze, test"
   cd "$ROOT_DIR/$pkg"

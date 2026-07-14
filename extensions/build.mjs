@@ -109,7 +109,14 @@ for (const bundle of bundles) {
     mainFields: ['module', 'main'],
     target: 'es2020',
     outfile: join(outDir, `${bundle.key}.js`),
-    alias: { '@ham2k/polo-sdk': join(root, 'sdk/src/index.ts') },
+    alias: {
+      '@ham2k/polo-sdk': join(root, 'sdk/src/index.ts'),
+      // camelcase@8 (pulled in by @ham2k/lib-qson-cabrillo) uses \p{...}
+      // regex literals that the QuickJS builds flutter_js ships cannot even
+      // parse, so bundling it breaks the kernel on Android/Windows/Linux.
+      // See shims/camelcase.ts for the ASCII replacement.
+      'camelcase': join(root, 'shims/camelcase.ts'),
+    },
     logLevel: 'warning',
     metafile: true,
   }
