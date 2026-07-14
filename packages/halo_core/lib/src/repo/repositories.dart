@@ -17,6 +17,30 @@ import '../models/models.dart';
 
 const _uuidGenerator = Uuid();
 
+int _nowMillis() => DateTime.now().toUtc().millisecondsSinceEpoch;
+
+/// Whether an inbound sync record should be skipped in favor of the local
+/// row it would overwrite. Both sides carry a revision stamp
+/// (`updatedAtMillis`, written on every local edit and round-tripped through
+/// the server inside the record's JSON): when both stamps exist, the inbound
+/// record only wins if it is strictly newer — same rule as app-polo's
+/// `mergeSyncQSOs`. Without unconditional-overwrite protection here, a pull
+/// racing a local edit (or a "combine" backfill pulling this device's own
+/// older copies back down) silently reverts local changes and marks them
+/// synced. When the inbound record has no stamp (pre-stamp history), only
+/// local rows with unpushed edits (`synced == false`) are protected; clean
+/// rows accept it.
+bool _inboundIsStale({
+  required int? existingUpdatedAtMillis,
+  required bool existingSynced,
+  required int? incomingUpdatedAtMillis,
+}) {
+  if (existingUpdatedAtMillis != null && incomingUpdatedAtMillis != null) {
+    return existingUpdatedAtMillis >= incomingUpdatedAtMillis;
+  }
+  return incomingUpdatedAtMillis == null && !existingSynced;
+}
+
 /// Tracks the min/max `syncedAtMillis` seen while merging one inbound sync
 /// batch — see `OperationsRepository.mergeFromSync`.
 class SyncWatermark {
@@ -46,17 +70,20 @@ class OperationsRepository {
   OperationsRepository(this.db, {this.onChange});
 
   Future<Operation> create({required String stationCall, String title = ''}) async {
+    final now = _nowMillis();
     final operation = Operation(
       uuid: _uuidGenerator.v4(),
       data: {
         'stationCall': stationCall.toUpperCase(),
         'title': title,
-        'createdAtMillis': DateTime.now().toUtc().millisecondsSinceEpoch,
+        'createdAtMillis': now,
+        'updatedAtMillis': now,
       },
     );
     await db.into(db.operations).insert(OperationsCompanion.insert(
           uuid: operation.uuid,
           data: Value(jsonEncode(operation.data)),
+          updatedAtMillis: Value(now),
         ));
     onChange?.call();
     return operation;
@@ -90,17 +117,46 @@ class OperationsRepository {
     return row == null ? null : _operationFromRow(row);
   }
 
+  /// Reactive single-operation query — emits the current row and every later
+  /// version (counter refreshes, detail/activity/location edits, and the
+  /// `localData` scoring summary a rescore writes). Lets views bind the
+  /// operation instead of manually re-fetching after each mutating action, so
+  /// there's no stale copy or hand-rolled `localData` merge to keep in sync.
+  /// Emits null if the operation doesn't exist (or is hard-deleted).
+  Stream<Operation?> watchOperation(String uuid) {
+    return (db.select(db.operations)..where((op) => op.uuid.equals(uuid)))
+        .watchSingleOrNull()
+        .map((row) => row == null ? null : _operationFromRow(row));
+  }
+
   Future<void> saveData(Operation operation) async {
+    final now = _nowMillis();
+    final data = {...operation.data, 'updatedAtMillis': now};
     await (db.update(db.operations)..where((op) => op.uuid.equals(operation.uuid))).write(
-      OperationsCompanion(data: Value(jsonEncode(operation.data)), synced: const Value(false)),
+      OperationsCompanion(
+        data: Value(jsonEncode(data)),
+        synced: const Value(false),
+        updatedAtMillis: Value(now),
+      ),
     );
     onChange?.call();
   }
 
   Future<void> softDelete(String uuid) async {
-    await (db.update(db.operations)..where((op) => op.uuid.equals(uuid))).write(
-      const OperationsCompanion(deleted: Value(true), synced: Value(false)),
+    // Re-stamps `data.updatedAtMillis` too (not just the flags): the delete
+    // must sync as a revision newer than the record it tombstones, or other
+    // devices' merge comparison would discard it as stale.
+    final now = _nowMillis();
+    final operation = await get(uuid);
+    var companion = OperationsCompanion(
+      deleted: const Value(true),
+      synced: const Value(false),
+      updatedAtMillis: Value(now),
     );
+    if (operation != null) {
+      companion = companion.copyWith(data: Value(jsonEncode({...operation.data, 'updatedAtMillis': now})));
+    }
+    await (db.update(db.operations)..where((op) => op.uuid.equals(uuid))).write(companion);
     onChange?.call();
   }
 
@@ -132,11 +188,24 @@ class OperationsRepository {
     return row != null;
   }
 
-  Future<void> markSynced(Iterable<String> uuids) async {
-    if (uuids.isEmpty) return;
-    await (db.update(db.operations)..where((op) => op.uuid.isIn(uuids))).write(
-      const OperationsCompanion(synced: Value(true)),
-    );
+  /// Flips the sent rows to `synced = true` — but only those whose revision
+  /// stamp still matches what was actually sent. A row edited while the
+  /// sync round's network call was in flight has a newer stamp (and
+  /// `synced = false` again); marking it unconditionally would silently
+  /// swallow that edit forever.
+  Future<void> markSynced(Iterable<Operation> sent) async {
+    final list = sent.toList();
+    if (list.isEmpty) return;
+    await db.transaction(() async {
+      for (final o in list) {
+        final stamp = o.updatedAtMillis;
+        await (db.update(db.operations)
+              ..where((op) =>
+                  op.uuid.equals(o.uuid) &
+                  (stamp == null ? op.updatedAtMillis.isNull() : op.updatedAtMillis.equals(stamp))))
+            .write(const OperationsCompanion(synced: Value(true)));
+      }
+    });
   }
 
   /// Total and pending-sync counts, reported in the sync payload's `meta`
@@ -165,19 +234,39 @@ class OperationsRepository {
   /// mirroring app-polo's `mergeSyncOperations`.
   Future<SyncWatermark> mergeFromSync(List<Map<String, dynamic>> operations) async {
     final watermark = SyncWatermark();
-    for (final incoming in operations) {
-      final uuid = incoming['uuid'] as String?;
-      if (uuid == null) continue;
-      final data = Map<String, dynamic>.from(incoming)..remove('uuid');
-      final deleted = data.remove('deleted') == true;
-      watermark.include((data['syncedAtMillis'] as num?)?.toInt());
-      await db.into(db.operations).insertOnConflictUpdate(OperationsCompanion(
-            uuid: Value(uuid),
-            data: Value(jsonEncode(data)),
-            deleted: Value(deleted),
-            synced: const Value(true),
-          ));
-    }
+    final incomingUuids = [for (final m in operations) m['uuid']].whereType<String>().toList();
+    await db.transaction(() async {
+      final existingRows = incomingUuids.isEmpty
+          ? const <OperationRow>[]
+          : await (db.select(db.operations)..where((op) => op.uuid.isIn(incomingUuids))).get();
+      final existingByUuid = {for (final r in existingRows) r.uuid: r};
+
+      for (final incoming in operations) {
+        final uuid = incoming['uuid'] as String?;
+        if (uuid == null) continue;
+        final data = Map<String, dynamic>.from(incoming)..remove('uuid');
+        final deleted = data.remove('deleted') == true;
+        watermark.include((data['syncedAtMillis'] as num?)?.toInt());
+
+        final existing = existingByUuid[uuid];
+        if (existing != null &&
+            _inboundIsStale(
+              existingUpdatedAtMillis: existing.updatedAtMillis,
+              existingSynced: existing.synced,
+              incomingUpdatedAtMillis: (data['updatedAtMillis'] as num?)?.toInt(),
+            )) {
+          continue;
+        }
+
+        await db.into(db.operations).insertOnConflictUpdate(OperationsCompanion(
+              uuid: Value(uuid),
+              data: Value(jsonEncode(data)),
+              deleted: Value(deleted),
+              synced: const Value(true),
+              updatedAtMillis: Value((data['updatedAtMillis'] as num?)?.toInt()),
+            ));
+      }
+    });
     // No onChange() here: everything just written is already marked
     // synced, so there's nothing new for the outbound side to react to.
     return watermark;
@@ -258,6 +347,7 @@ class QsosRepository {
     final data = Map<String, dynamic>.from(qsoData);
     data['startAtMillis'] ??= DateTime.now().toUtc().millisecondsSinceEpoch;
     data['uuid'] ??= _uuidGenerator.v4();
+    data['updatedAtMillis'] = _nowMillis();
 
     final qso = Qso(uuid: data['uuid'] as String, operationUuid: operationUuid, data: data);
 
@@ -279,22 +369,44 @@ class QsosRepository {
   }
 
   Future<void> update(Qso qso) async {
+    final stamped = _restamped(qso);
     await db.transaction(() async {
-      await (db.update(db.qsos)..where((q) => q.uuid.equals(qso.uuid))).write(_companionFor(qso));
-      await _refreshOperationCounters(qso.operationUuid);
+      await (db.update(db.qsos)..where((q) => q.uuid.equals(stamped.uuid))).write(_companionFor(stamped));
+      await _refreshOperationCounters(stamped.operationUuid);
     });
     onChange?.call();
   }
 
   Future<void> softDelete(Qso qso) async {
+    // Re-stamps `data.updatedAtMillis` (rewriting `data`, not just flags):
+    // the delete must sync as a revision newer than the record it
+    // tombstones, or other devices' merge comparison would discard it.
+    final stamped = _restamped(qso);
     await db.transaction(() async {
-      await (db.update(db.qsos)..where((q) => q.uuid.equals(qso.uuid))).write(
-        const QsosCompanion(deleted: Value(true), synced: Value(false)),
+      await (db.update(db.qsos)..where((q) => q.uuid.equals(stamped.uuid))).write(
+        QsosCompanion(
+          deleted: const Value(true),
+          synced: const Value(false),
+          data: Value(jsonEncode(stamped.data)),
+          updatedAtMillis: Value(stamped.updatedAtMillis),
+        ),
       );
-      await _refreshOperationCounters(qso.operationUuid);
+      await _refreshOperationCounters(stamped.operationUuid);
     });
     onChange?.call();
   }
+
+  /// A copy of [qso] with a fresh revision stamp in its data — every local
+  /// write goes through this so `data.updatedAtMillis` and the mirrored
+  /// column never diverge (a divergent pair would make `markSynced`'s
+  /// stamp comparison fail forever and the row re-push in a loop).
+  Qso _restamped(Qso qso) => Qso(
+        uuid: qso.uuid,
+        operationUuid: qso.operationUuid,
+        data: {...qso.data, 'updatedAtMillis': _nowMillis()},
+        deleted: qso.deleted,
+        scoreCache: qso.scoreCache,
+      );
 
   Stream<List<Qso>> watchForOperation(String operationUuid, {bool includeDeleted = false}) {
     final query = (db.select(db.qsos)
@@ -320,9 +432,22 @@ class QsosRepository {
     return row != null;
   }
 
-  Future<void> markSynced(Iterable<String> uuids) async {
-    if (uuids.isEmpty) return;
-    await (db.update(db.qsos)..where((q) => q.uuid.isIn(uuids))).write(const QsosCompanion(synced: Value(true)));
+  /// See `OperationsRepository.markSynced` — only rows whose revision stamp
+  /// still matches the sent copy are marked, so an edit made while the
+  /// round's network call was in flight stays dirty and re-pushes.
+  Future<void> markSynced(Iterable<Qso> sent) async {
+    final list = sent.toList();
+    if (list.isEmpty) return;
+    await db.transaction(() async {
+      for (final q in list) {
+        final stamp = q.updatedAtMillis;
+        await (db.update(db.qsos)
+              ..where((row) =>
+                  row.uuid.equals(q.uuid) &
+                  (stamp == null ? row.updatedAtMillis.isNull() : row.updatedAtMillis.equals(stamp))))
+            .write(const QsosCompanion(synced: Value(true)));
+      }
+    });
   }
 
   /// See `OperationsRepository.syncCounts`.
@@ -343,7 +468,13 @@ class QsosRepository {
   Future<SyncWatermark> mergeFromSync(List<Map<String, dynamic>> qsos) async {
     final watermark = SyncWatermark();
     final affectedOperations = <String>{};
+    final incomingUuids = [for (final m in qsos) m['uuid']].whereType<String>().toList();
     await db.transaction(() async {
+      final existingRows = incomingUuids.isEmpty
+          ? const <QsoRow>[]
+          : await (db.select(db.qsos)..where((q) => q.uuid.isIn(incomingUuids))).get();
+      final existingByUuid = {for (final r in existingRows) r.uuid: r};
+
       for (final incoming in qsos) {
         final uuid = incoming['uuid'] as String?;
         final operationUuid = incoming['operation'] as String?;
@@ -352,6 +483,17 @@ class QsosRepository {
         final data = Map<String, dynamic>.from(incoming)..remove('operation');
         final deleted = data.remove('deleted') == true;
         watermark.include((data['syncedAtMillis'] as num?)?.toInt());
+
+        final existing = existingByUuid[uuid];
+        if (existing != null &&
+            _inboundIsStale(
+              existingUpdatedAtMillis: existing.updatedAtMillis,
+              existingSynced: existing.synced,
+              incomingUpdatedAtMillis: (data['updatedAtMillis'] as num?)?.toInt(),
+            )) {
+          continue;
+        }
+
         final qso = Qso(uuid: uuid, operationUuid: operationUuid, data: data);
 
         await db.into(db.qsos).insertOnConflictUpdate(
@@ -428,6 +570,7 @@ class QsosRepository {
         startAtMillis: Value(qso.startAtMillis),
         data: Value(jsonEncode(qso.data)),
         synced: const Value(false),
+        updatedAtMillis: Value(qso.updatedAtMillis),
       );
 
   /// `qsoCount`/`startAtMillisMin/Max` are a locally derived cache — never

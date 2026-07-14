@@ -335,6 +335,24 @@ class Translations$qsoList$en {
 
 	/// en: 'Edit time'
 	String get editEventTime => 'Edit time';
+
+	/// en: 'Today'
+	String get today => 'Today';
+
+	/// en: 'Yesterday'
+	String get yesterday => 'Yesterday';
+
+	/// en: 'Tomorrow'
+	String get tomorrow => 'Tomorrow';
+
+	/// en: 'Operation started'
+	String get eventStarted => 'Operation started';
+
+	/// en: 'Break'
+	String get eventBreak => 'Break';
+
+	/// en: 'Operation ended'
+	String get eventEnded => 'Operation ended';
 }
 
 // Path: loggingPanel
@@ -389,8 +407,8 @@ class Translations$settings$en {
 
 	late final Translations$settings$fontScaleOpts$en fontScaleOpts = Translations$settings$fontScaleOpts$en.internal(_root);
 
-	/// en: 'Affects text size throughout the app'
-	String get fontScaleDescription => 'Affects text size throughout the app';
+	/// en: 'Scales the whole interface — text, controls, and spacing'
+	String get fontScaleDescription => 'Scales the whole interface — text, controls, and spacing';
 
 	/// en: 'Operator Callsign'
 	String get operatorCall => 'Operator Callsign';
@@ -703,6 +721,12 @@ extension on Translations {
 			'qsoEditForm.notes' => 'Notes',
 			'qsoList.empty' => 'No QSOs yet — work someone!',
 			'qsoList.editEventTime' => 'Edit time',
+			'qsoList.today' => 'Today',
+			'qsoList.yesterday' => 'Yesterday',
+			'qsoList.tomorrow' => 'Tomorrow',
+			'qsoList.eventStarted' => 'Operation started',
+			'qsoList.eventBreak' => 'Break',
+			'qsoList.eventEnded' => 'Operation ended',
 			'loggingPanel.station' => 'Station',
 			'loggingPanel.byBand' => 'By band',
 			'loggingPanel.byMode' => 'By mode',
@@ -725,7 +749,7 @@ extension on Translations {
 			'settings.fontScaleOpts.normal' => 'Normal',
 			'settings.fontScaleOpts.larger' => 'Larger',
 			'settings.fontScaleOpts.largest' => 'Largest',
-			'settings.fontScaleDescription' => 'Affects text size throughout the app',
+			'settings.fontScaleDescription' => 'Scales the whole interface — text, controls, and spacing',
 			'settings.operatorCall' => 'Operator Callsign',
 			'settings.sync.title' => 'Sync Settings',
 			'settings.sync.enable' => 'Enable Sync',

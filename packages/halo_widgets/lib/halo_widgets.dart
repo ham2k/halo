@@ -14,4 +14,5 @@ export 'src/secondary_control_row.dart';
 export 'src/section_header.dart';
 export 'src/status_bar.dart';
 export 'src/theme.dart';
+export 'src/ui_scale.dart';
 export 'src/form_renderer.dart';

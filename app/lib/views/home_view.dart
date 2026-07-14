@@ -179,10 +179,10 @@ class _HomeViewState extends State<HomeView> {
     final theme = Theme.of(context);
     return Scaffold(
       appBar: AppBar(
-        leadingWidth: isMacOSChromelessWindow ? 48 + macOSTrafficLightInset + macOSTrafficLightGap : null,
+        leadingWidth: isMacOSChromelessWindow ? 48 + macOSTrafficLightClearance(context) : null,
         leading: Padding(
           padding: EdgeInsets.fromLTRB(
-            2 + (isMacOSChromelessWindow ? macOSTrafficLightInset + macOSTrafficLightGap : 0),
+            2 + (isMacOSChromelessWindow ? macOSTrafficLightClearance(context) : 0),
             1,
             2,
             1,

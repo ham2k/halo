@@ -28,6 +28,7 @@ import 'services/radio_service.dart';
 import 'services/scoring_service.dart';
 import 'services/settings_service.dart';
 import 'services/status_bar_service.dart';
+import 'services/window_chrome_service.dart';
 import 'services/update_service.dart';
 import 'services/data_file_manager.dart';
 import 'i18n/strings.g.dart';
@@ -98,7 +99,8 @@ Future<HaLoServices> bootstrap({
     });
     await settings.setQrzCredentials(username: '', password: '');
   }
-  services.extensions.setSyncCredentials(deviceKey: settings.syncDeviceKey, operatorCall: settings.operatorCall);
+  final syncDeviceKey = await settings.ensureSyncDeviceKey();
+  services.extensions.setSyncCredentials(deviceKey: syncDeviceKey, operatorCall: settings.operatorCall);
   services.syncEngine.start();
 
   // Await the extension system being fully booted, then initialize and sync data files
@@ -144,6 +146,7 @@ class HaLoServices {
     qsos: qsos,
     transport: _syncTransportCall,
     settings: settings,
+    log: debugPrint,
   );
 
   HaLoServices(
@@ -168,7 +171,10 @@ class HaLoServices {
   /// identity + operator callsign.
   Future<void> setOperatorCall(String call) async {
     await settings.setOperatorCall(call);
-    await extensions.setSyncCredentials(deviceKey: settings.syncDeviceKey, operatorCall: settings.operatorCall);
+    await extensions.setSyncCredentials(
+      deviceKey: await settings.ensureSyncDeviceKey(),
+      operatorCall: settings.operatorCall,
+    );
   }
 
   Future<void> setSyncEnabled(bool enabled) async {
@@ -335,90 +341,24 @@ class _HaLoAppState extends State<HaLoApp> {
         home: HomeView(services: widget.services),
         builder: (context, child) {
           if (child == null) return const SizedBox.shrink();
-          final settings = widget.services.settings;
-          final mediaQueryData = MediaQuery.of(context);
-          final scale = settings.fontScale.scaleFactor;
+          final scale = widget.services.settings.fontScale.scaleFactor;
 
-          final baseTheme = Theme.of(context);
-          final scaledTheme = baseTheme.copyWith(
-            iconTheme: baseTheme.iconTheme.copyWith(
-              size: (baseTheme.iconTheme.size ?? 24.0) * scale,
-            ),
-            primaryIconTheme: baseTheme.primaryIconTheme.copyWith(
-              size: (baseTheme.primaryIconTheme.size ?? 24.0) * scale,
-            ),
-            appBarTheme: baseTheme.appBarTheme.copyWith(
-              toolbarHeight: (baseTheme.appBarTheme.toolbarHeight ?? 48.0) * scale,
-              iconTheme: (baseTheme.appBarTheme.iconTheme ?? const IconThemeData()).copyWith(
-                size: (baseTheme.appBarTheme.iconTheme?.size ?? 24.0) * scale,
-                color: baseTheme.appBarTheme.foregroundColor ?? baseTheme.colorScheme.onPrimary,
-              ),
-              actionsIconTheme: (baseTheme.appBarTheme.actionsIconTheme ?? const IconThemeData()).copyWith(
-                size: (baseTheme.appBarTheme.actionsIconTheme?.size ?? 24.0) * scale,
-                color: baseTheme.appBarTheme.foregroundColor ?? baseTheme.colorScheme.onPrimary,
-              ),
-            ),
-            chipTheme: baseTheme.chipTheme.copyWith(
-              labelStyle: baseTheme.chipTheme.labelStyle?.copyWith(
-                fontSize: (baseTheme.chipTheme.labelStyle?.fontSize ?? 14.0) * scale,
-              ),
-              iconTheme: (baseTheme.chipTheme.iconTheme ?? const IconThemeData()).copyWith(
-                size: (baseTheme.chipTheme.iconTheme?.size ?? 24.0) * scale,
-              ),
-              padding: baseTheme.chipTheme.padding != null
-                  ? baseTheme.chipTheme.padding! * scale
-                  : EdgeInsets.symmetric(horizontal: 12.0 * scale, vertical: 8.0 * scale),
-            ),
-            floatingActionButtonTheme: baseTheme.floatingActionButtonTheme.copyWith(
-              sizeConstraints: BoxConstraints.tightFor(
-                width: 56.0 * scale,
-                height: 56.0 * scale,
-              ),
-              extendedSizeConstraints: BoxConstraints.tightFor(
-                height: 48.0 * scale,
-              ),
-            ),
-            segmentedButtonTheme: SegmentedButtonThemeData(
-              style: baseTheme.segmentedButtonTheme.style?.copyWith(
-                padding: WidgetStateProperty.all(
-                  EdgeInsets.symmetric(horizontal: 12.0 * scale, vertical: 8.0 * scale),
-                ),
-              ),
-            ),
-            filledButtonTheme: FilledButtonThemeData(
-              style: baseTheme.filledButtonTheme.style?.copyWith(
-                padding: WidgetStateProperty.all(
-                  EdgeInsets.symmetric(horizontal: 24.0 * scale, vertical: 12.0 * scale),
-                ),
-              ),
-            ),
-            elevatedButtonTheme: ElevatedButtonThemeData(
-              style: baseTheme.elevatedButtonTheme.style?.copyWith(
-                padding: WidgetStateProperty.all(
-                  EdgeInsets.symmetric(horizontal: 24.0 * scale, vertical: 12.0 * scale),
-                ),
-              ),
-            ),
-            outlinedButtonTheme: OutlinedButtonThemeData(
-              style: baseTheme.outlinedButtonTheme.style?.copyWith(
-                padding: WidgetStateProperty.all(
-                  EdgeInsets.symmetric(horizontal: 24.0 * scale, vertical: 12.0 * scale),
-                ),
-              ),
-            ),
-          );
+          // One knob scales the WHOLE interface (UiScale, halo_widgets) — not
+          // just text and icons but every layout dimension, uniformly, so
+          // ordinary widget code stays scale-agnostic and proportions never
+          // drift. The base theme's dimensions are unchanged; UiScale does the
+          // scaling.
+          //
+          // The native macOS traffic lights float over the AppBar and stay a
+          // fixed system size, so they center in the on-screen header
+          // height = the base AppBar height scaled by UiScale below (see
+          // WindowChromeService; deduped, so calling it every build is fine).
+          final baseToolbarHeight = Theme.of(context).appBarTheme.toolbarHeight ?? 48.0;
+          WindowChromeService.reportTitleBarHeight(baseToolbarHeight * scale);
 
-          return MediaQuery(
-            data: mediaQueryData.copyWith(
-              textScaler: RelativeTextScaler(mediaQueryData.textScaler, scale),
-            ),
-            child: Theme(
-              data: scaledTheme,
-              child: IconTheme(
-                data: scaledTheme.iconTheme,
-                child: _StatusBarOverlay(services: widget.services, child: child),
-              ),
-            ),
+          return UiScale(
+            scale: scale,
+            child: _StatusBarOverlay(services: widget.services, child: child),
           );
         },
       ),
@@ -485,16 +425,3 @@ class _StatusBarOverlay extends StatelessWidget {
   }
 }
 
-class RelativeTextScaler extends TextScaler {
-  final TextScaler parent;
-  final double scaleFactor;
-
-  const RelativeTextScaler(this.parent, this.scaleFactor);
-
-  @override
-  // ignore: deprecated_member_use
-  double get textScaleFactor => parent.textScaleFactor * scaleFactor;
-
-  @override
-  double scale(double fontSize) => parent.scale(fontSize) * scaleFactor;
-}

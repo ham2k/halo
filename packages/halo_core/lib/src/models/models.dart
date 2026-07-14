@@ -42,6 +42,10 @@ class Operation {
       startAtMillisMax == null ? null : DateTime.fromMillisecondsSinceEpoch(startAtMillisMax!, isUtc: true);
 
   int? get createdAtMillis => data['createdAtMillis'] as int?;
+
+  /// Revision stamp, set by the repositories on every local write (app-polo
+  /// convention: it lives in the QSON so it round-trips through sync).
+  int? get updatedAtMillis => (data['updatedAtMillis'] as num?)?.toInt();
 }
 
 /// One contact. QSON shape (same as app-polo):
@@ -109,6 +113,9 @@ class Qso {
   int? get startAtMillis => (data['startAtMillis'] as num?)?.toInt();
   DateTime? get startAt =>
       startAtMillis == null ? null : DateTime.fromMillisecondsSinceEpoch(startAtMillis!, isUtc: true);
+
+  /// See `Operation.updatedAtMillis`.
+  int? get updatedAtMillis => (data['updatedAtMillis'] as num?)?.toInt();
 
   List<Map<String, dynamic>> get refs =>
       ((data['refs'] as List?) ?? const []).whereType<Map<String, dynamic>>().toList();

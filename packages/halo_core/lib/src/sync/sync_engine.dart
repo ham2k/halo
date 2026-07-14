@@ -65,6 +65,10 @@ class SyncEngine {
   final SyncTransportCall transport;
   final SyncSettings settings;
 
+  /// Diagnostic sink (e.g. `debugPrint` in the app). Sync failures degrade
+  /// silently into backoff by design, but they must not be *invisible*.
+  final void Function(String message)? log;
+
   static const smallBatchSize = 10;
   static const defaultLargeBatchSize = 10; // matches sync.js's actual (not its stale comment)
   static const debounceDelay = Duration(milliseconds: 500);
@@ -72,16 +76,44 @@ class SyncEngine {
   static const defaultLoopDelay = Duration(seconds: 20);
   static const maxErrorBackoffShift = 8; // caps the exponential backoff at 2^8s; the loop itself never gives up
 
+  /// Cap for [_backfillLimitBoost] — see `_processResponseMeta`'s
+  /// stuck-cursor handling.
+  static const maxBackfillLimitBoost = 64;
+
   int _largeBatchSize = defaultLargeBatchSize;
   Duration _loopDelay = defaultLoopDelay;
   int _errorCount = 0;
   bool _running = false;
+  bool _disposed = false;
+
+  /// Bumped by [resolveAccountChange]/[forceFullResync] so a round whose
+  /// network call was in flight when the tables were wiped (or the account
+  /// switched) abandons its response instead of marking rows synced,
+  /// merging a pre-wipe page into freshly cleared tables, or clobbering the
+  /// just-reset sync state with its stale snapshot.
+  int _generation = 0;
+
+  /// Multiplier on the backfill pull limit, doubled whenever a full page
+  /// fails to advance the cursor (every record sharing one syncedAtMillis)
+  /// and reset once it moves — see `_processResponseMeta`.
+  int _backfillLimitBoost = 1;
+
+  /// True once the boost has hit its cap without the cursor moving: the
+  /// loop then falls back to the ordinary delay instead of hammering the
+  /// server with an identical full-page request at zero delay.
+  bool _backfillStuckAtCap = false;
 
   Timer? _debounceTimer;
   DateTime? _debounceStartedAt;
   Timer? _loopTimer;
 
-  SyncEngine({required this.operations, required this.qsos, required this.transport, required this.settings});
+  SyncEngine({
+    required this.operations,
+    required this.qsos,
+    required this.transport,
+    required this.settings,
+    this.log,
+  });
 
   void start() {
     if (!settings.enabled) return;
@@ -89,6 +121,10 @@ class SyncEngine {
   }
 
   void dispose() {
+    // The flag matters as much as the cancels: a round already executing
+    // reaches _scheduleLoop when it finishes and would otherwise resurrect
+    // the loop against a disposed engine (and a closed database).
+    _disposed = true;
     _debounceTimer?.cancel();
     _loopTimer?.cancel();
   }
@@ -118,10 +154,9 @@ class SyncEngine {
   /// Reconciles local data per [choice], clears the pending state, resets
   /// backfill bookkeeping, and kicks off a round immediately.
   Future<void> resolveAccountChange(SyncAccountChoice choice) async {
+    _generation++; // invalidate any round whose transport call is in flight
     if (choice == SyncAccountChoice.replace) {
-      final backupId = DateTime.now().toUtc().toIso8601String();
-      await operations.backupAndClearAll(backupId);
-      await qsos.backupAndClearAll(backupId);
+      await _backupAndClearAll();
     } else {
       await operations.resetSyncedStatus();
       await qsos.resetSyncedStatus();
@@ -135,6 +170,8 @@ class SyncEngine {
       'completedFullSync': false,
       'earliestOperationSyncedAtMillis': null,
       'earliestQSOSyncedAtMillis': null,
+      'latestOperationSyncedAtMillis': null,
+      'latestQSOSyncedAtMillis': null,
     });
     _scheduleLoop(Duration.zero);
   }
@@ -144,9 +181,8 @@ class SyncEngine {
   /// [SyncAccountChoice.replace]'s mechanism, but there's no account change
   /// here — `lastSyncAccountUUID`/`pendingAccountUUID` are left alone.
   Future<void> forceFullResync() async {
-    final backupId = DateTime.now().toUtc().toIso8601String();
-    await operations.backupAndClearAll(backupId);
-    await qsos.backupAndClearAll(backupId);
+    _generation++; // see resolveAccountChange
+    await _backupAndClearAll();
 
     final state = settings.state;
     await settings.setState({
@@ -154,8 +190,22 @@ class SyncEngine {
       'completedFullSync': false,
       'earliestOperationSyncedAtMillis': null,
       'earliestQSOSyncedAtMillis': null,
+      'latestOperationSyncedAtMillis': null,
+      'latestQSOSyncedAtMillis': null,
     });
     _scheduleLoop(Duration.zero);
+  }
+
+  /// Backs up and clears operations and QSOs as one transaction — a crash
+  /// between the two would otherwise leave every QSO orphaned (parents
+  /// gone) yet still counted and eligible for push. Both repositories share
+  /// one database; their own inner transactions nest inside this one.
+  Future<void> _backupAndClearAll() async {
+    final backupId = DateTime.now().toUtc().toIso8601String();
+    await operations.db.transaction(() async {
+      await operations.backupAndClearAll(backupId);
+      await qsos.backupAndClearAll(backupId);
+    });
   }
 
   /// Selects the next batch to send: unsynced QSOs first (bringing along
@@ -199,6 +249,11 @@ class SyncEngine {
   Future<void> runOneRound({bool smallBatch = false}) async {
     if (!settings.enabled || _running) return;
     _running = true;
+    // Snapshot the reconciliation generation: if resolveAccountChange or
+    // forceFullResync runs while this round awaits the network, everything
+    // this round knows (its batch, its backfill flags, its state snapshot)
+    // describes a world that no longer exists — abandon the response.
+    final generation = _generation;
     try {
       final state = settings.state;
 
@@ -209,6 +264,7 @@ class SyncEngine {
 
       if (state['lastSyncAccountUUID'] == null) {
         final response = await transport('getAccountData', const {});
+        if (generation != _generation) return _abandonRound();
         final accountUuid = (response['current_account'] as Map?)?['uuid'] as String?;
         if (accountUuid != null) {
           await settings.setState({...settings.state, 'pendingAccountUUID': accountUuid});
@@ -219,6 +275,10 @@ class SyncEngine {
 
       final backfilling = state['completedFullSync'] != true;
       final batchSize = smallBatch ? smallBatchSize : _largeBatchSize;
+      // The pull limit grows past the push batch size only while a backfill
+      // cursor is stuck on a page of identical timestamps — see
+      // _processResponseMeta.
+      final pullLimit = backfilling ? batchSize * _backfillLimitBoost : batchSize;
       final batch = await selectBatch(qsoBatchSize: batchSize, operationBatchSize: batchSize);
 
       if (batch.isEmpty && smallBatch) return;
@@ -226,31 +286,38 @@ class SyncEngine {
       final pull = !smallBatch;
       final response = await transport(
         'sync',
-        await _buildPayload(batch, pull: pull, backfilling: backfilling, limit: batchSize),
+        await _buildPayload(batch, pull: pull, backfilling: backfilling, limit: pullLimit),
       );
+      if (generation != _generation) return _abandonRound();
 
       final responseAccountUuid = (response['account'] as Map?)?['uuid'] as String?;
       if (responseAccountUuid != null && responseAccountUuid != state['lastSyncAccountUUID']) {
         // Re-registered under a different account mid-stream: don't mark
         // anything synced or merge this response — same pause-and-ask
-        // treatment as a fresh link.
-        await settings.setState({...state, 'pendingAccountUUID': responseAccountUuid});
+        // treatment as a fresh link. (Fresh state read: the snapshot above
+        // predates the network call.)
+        await settings.setState({...settings.state, 'pendingAccountUUID': responseAccountUuid});
         return;
       }
 
-      await operations.markSynced(batch.operations.map((o) => o.uuid));
-      await qsos.markSynced(batch.qsos.map((q) => q.uuid));
+      // Passes the sent models, not just uuids: markSynced compares each
+      // row's revision stamp against the copy that actually went out, so an
+      // edit made during the network await above stays dirty and re-pushes.
+      await operations.markSynced(batch.operations);
+      await qsos.markSynced(batch.qsos);
 
       final inboundOperations = (response['operations'] as List?)?.cast<Map<String, dynamic>>() ?? const [];
       final inboundQsos = (response['qsos'] as List?)?.cast<Map<String, dynamic>>() ?? const [];
+      if (generation != _generation) return _abandonRound();
       final opWatermark = inboundOperations.isEmpty ? null : await operations.mergeFromSync(inboundOperations);
       final qsoWatermark = inboundQsos.isEmpty ? null : await qsos.mergeFromSync(inboundQsos);
 
+      if (generation != _generation) return _abandonRound();
       await _processResponseMeta(
         response,
         pull: pull,
         backfilling: backfilling,
-        limit: batchSize,
+        limit: pullLimit,
         inboundOperationsCount: inboundOperations.length,
         inboundQsosCount: inboundQsos.length,
         opWatermark: opWatermark,
@@ -260,18 +327,19 @@ class SyncEngine {
 
       if (!smallBatch) {
         final morePending = await operations.hasUnsynced() || await qsos.hasUnsynced();
-        final fullPage = inboundOperations.length >= batchSize || inboundQsos.length >= batchSize;
-        _scheduleLoop((morePending || fullPage) ? Duration.zero : _loopDelay);
+        final fullPage = inboundOperations.length >= pullLimit || inboundQsos.length >= pullLimit;
+        _scheduleLoop((morePending || (fullPage && !_backfillStuckAtCap)) ? Duration.zero : _loopDelay);
       }
-    } catch (_) {
+    } catch (e) {
       _errorCount++;
-      if (!smallBatch) {
-        // Keep retrying no matter how many failures pile up (an extended
-        // outage shouldn't permanently stop the periodic loop) — just cap
-        // how far the backoff grows.
-        final backoffShift = _errorCount < maxErrorBackoffShift ? _errorCount : maxErrorBackoffShift;
-        _scheduleLoop(_loopDelay + Duration(seconds: 1 << backoffShift));
-      }
+      log?.call('[sync] round failed (error #$_errorCount${smallBatch ? ', small batch' : ''}): $e');
+      // Keep retrying no matter how many failures pile up (an extended
+      // outage shouldn't permanently stop the periodic loop) — just cap
+      // how far the backoff grows. A failed small-batch round pulls the
+      // next periodic round forward too: its data would otherwise sit
+      // dirty until whatever _loopDelay the server last suggested.
+      final backoffShift = _errorCount < maxErrorBackoffShift ? _errorCount : maxErrorBackoffShift;
+      _scheduleLoop(_loopDelay + Duration(seconds: 1 << backoffShift));
     } finally {
       _running = false;
     }
@@ -374,44 +442,91 @@ class SyncEngine {
     final state = settings.state;
     final updates = <String, dynamic>{};
 
+    // The forward watermark accumulates from every merged record's
+    // server-side syncedAtMillis — during backfill too. Substituting the
+    // local clock at backfill completion (the old behavior) permanently
+    // skipped records other devices synced *while* this backfill ran (their
+    // stamps fall between the backfill cursor and "now"), and anything in a
+    // local-vs-server clock-skew window. Server stamps only, app-polo style.
+    final newOpWatermark = opWatermark?.latestSyncedAtMillis;
+    if (newOpWatermark != null) {
+      final current = (state['latestOperationSyncedAtMillis'] as num?)?.toInt() ?? 0;
+      if (newOpWatermark > current) updates['latestOperationSyncedAtMillis'] = newOpWatermark;
+    }
+    final newQsoWatermark = qsoWatermark?.latestSyncedAtMillis;
+    if (newQsoWatermark != null) {
+      final current = (state['latestQSOSyncedAtMillis'] as num?)?.toInt() ?? 0;
+      if (newQsoWatermark > current) updates['latestQSOSyncedAtMillis'] = newQsoWatermark;
+    }
+
     if (backfilling) {
-      final newEarliestOp = opWatermark?.earliestSyncedAtMillis;
-      if (newEarliestOp != null) {
-        final current = (state['earliestOperationSyncedAtMillis'] as num?)?.toInt();
-        if (current == null || newEarliestOp < current) updates['earliestOperationSyncedAtMillis'] = newEarliestOp;
+      var cursorAdvanced = false;
+      var timestampTieStuck = false;
+
+      // The next cursor is the page's earliest stamp *plus one*, not the
+      // stamp itself: several records can share one syncedAtMillis (server
+      // bulk imports), and a page can end mid-tie. Asking "older than
+      // earliest" next would silently skip the tie's remaining records;
+      // "older than earliest+1" re-covers every record sharing that stamp
+      // (idempotent — mergeFromSync skips what's already current) under
+      // both `<` and `<=` server paging semantics.
+      void advanceCursor(String key, SyncWatermark? watermark, int inboundCount) {
+        final earliest = watermark?.earliestSyncedAtMillis;
+        if (earliest == null) return;
+        final newCursor = earliest + 1;
+        final current = (state[key] as num?)?.toInt();
+        if (current == null || newCursor < current) {
+          updates[key] = newCursor;
+          cursorAdvanced = true;
+        } else if (inboundCount >= limit && earliest == watermark?.latestSyncedAtMillis) {
+          // A full page of one single timestamp that can't move the cursor:
+          // the tie is larger than the page and only a bigger page reaches
+          // its remainder.
+          timestampTieStuck = true;
+        }
       }
-      final newEarliestQso = qsoWatermark?.earliestSyncedAtMillis;
-      if (newEarliestQso != null) {
-        final current = (state['earliestQSOSyncedAtMillis'] as num?)?.toInt();
-        if (current == null || newEarliestQso < current) updates['earliestQSOSyncedAtMillis'] = newEarliestQso;
-      }
+
+      advanceCursor('earliestOperationSyncedAtMillis', opWatermark, inboundOperationsCount);
+      advanceCursor('earliestQSOSyncedAtMillis', qsoWatermark, inboundQsosCount);
 
       if (inboundOperationsCount < limit && inboundQsosCount < limit) {
         // Both sides came back short: nothing older is left server-side.
-        // Backfill is done — hand off to forward mode, watermarked from now.
-        final nowMillis = DateTime.now().millisecondsSinceEpoch;
+        // Backfill is done — forward mode picks up from the largest
+        // server stamp accumulated above.
         updates['completedFullSync'] = true;
-        updates['latestOperationSyncedAtMillis'] = nowMillis;
-        updates['latestQSOSyncedAtMillis'] = nowMillis;
-      }
-    } else {
-      final newOpWatermark = opWatermark?.latestSyncedAtMillis;
-      if (newOpWatermark != null) {
-        final current = (state['latestOperationSyncedAtMillis'] as num?)?.toInt() ?? 0;
-        if (newOpWatermark > current) updates['latestOperationSyncedAtMillis'] = newOpWatermark;
-      }
-      final newQsoWatermark = qsoWatermark?.latestSyncedAtMillis;
-      if (newQsoWatermark != null) {
-        final current = (state['latestQSOSyncedAtMillis'] as num?)?.toInt() ?? 0;
-        if (newQsoWatermark > current) updates['latestQSOSyncedAtMillis'] = newQsoWatermark;
+        _backfillLimitBoost = 1;
+        _backfillStuckAtCap = false;
+      } else if (timestampTieStuck) {
+        if (_backfillLimitBoost < maxBackfillLimitBoost) {
+          _backfillLimitBoost *= 2;
+          log?.call('[sync] backfill cursor stuck on a timestamp tie; growing pull limit to ${_backfillLimitBoost}x');
+        } else if (!cursorAdvanced) {
+          _backfillStuckAtCap = true;
+          log?.call('[sync] backfill cursor still stuck at the maximum pull limit; retrying at the loop delay');
+        }
+      } else {
+        _backfillLimitBoost = 1;
+        _backfillStuckAtCap = false;
       }
     }
 
-    if (updates.isNotEmpty) await settings.setState({...state, ...updates});
+    // Fresh read, not the `state` snapshot from before this round's network
+    // call — anything written during the await (e.g. a server-suggested
+    // knob, an account flag) must not be clobbered by re-spreading it.
+    if (updates.isNotEmpty) await settings.setState({...settings.state, ...updates});
+  }
+
+  /// A round overtaken by a reconciliation: its response was discarded, but
+  /// the round the reconciliation itself scheduled may already have no-op'd
+  /// against `_running` while this one held it — reschedule so the fresh
+  /// generation actually gets its round.
+  void _abandonRound() {
+    log?.call('[sync] round abandoned: a reconciliation ran while its network call was in flight');
+    _scheduleLoop(Duration.zero);
   }
 
   void _scheduleLoop(Duration delay) {
-    if (!settings.enabled) return;
+    if (!settings.enabled || _disposed) return;
     _loopTimer?.cancel();
     _loopTimer = Timer(delay, () => unawaited(runOneRound(smallBatch: false)));
   }

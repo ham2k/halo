@@ -102,7 +102,13 @@
   },
   "qsoList": {
     "empty": "Aún no hay QSOs — ¡haz un contacto!",
-    "editEventTime": "Editar hora"
+    "editEventTime": "Editar hora",
+    "today": "Hoy",
+    "yesterday": "Ayer",
+    "tomorrow": "Mañana",
+    "eventStarted": "Operación iniciada",
+    "eventBreak": "Descanso",
+    "eventEnded": "Operación finalizada"
   },
   "loggingPanel": {
     "station": "Estación",
@@ -135,7 +141,7 @@
       "larger": "Grande",
       "largest": "Más grande"
     },
-    "fontScaleDescription": "Afecta el tamaño del texto en toda la app",
+    "fontScaleDescription": "Escala toda la interfaz: texto, controles y espaciado",
     "operatorCall": "Indicativo del Operador",
     "sync": {
       "title": "Configuración de Sincronización",

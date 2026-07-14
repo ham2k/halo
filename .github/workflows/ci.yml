@@ -1,0 +1,35 @@
+# Copyright ©️ 2026 Sebastian Delmont <sd@ham2k.com>
+# SPDX-License-Identifier: MPL-2.0
+#
+# Runs the same checks as `mise run test` locally (scripts/test.sh): typecheck
+# and unit-test the TS extensions, rebuild the bundles, then analyze and test
+# every Dart package. Rebuilding the (gitignored) bundles before the Dart
+# tests is the point — the halo_extension_host integration tests load them.
+
+name: CI
+
+on:
+  push:
+    branches: [main, main-public, main-dist-private, dist]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: extensions/package-lock.json
+
+      # mise provides the Flutter version pinned in mise.toml, so CI and local
+      # runs use exactly the same toolchain.
+      - name: Set up mise (Flutter toolchain)
+        uses: jdx/mise-action@v2
+
+      - name: Run all checks
+        run: ./scripts/test.sh

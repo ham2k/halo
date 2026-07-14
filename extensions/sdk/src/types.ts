@@ -64,6 +64,10 @@ export interface Spot {
   band?: string
   mode?: string
   refs?: SpotRef[]
+  /// MDI or FontAwesome ('fa-') icon name, same convention as activity
+  /// controls — a source hint the spots board can show (e.g. SOTA's summit
+  /// glyph).
+  icon?: string
   spot: {
     timeInMillis: number
     source: string
@@ -411,6 +415,13 @@ export interface RegisterHookParams {
 
 export interface ActivationApi {
   registerHook(category: string, params: RegisterHookParams): void
+
+  /// Privileged host-call function bound by the kernel to THIS extension's
+  /// identity (host-manifest-derived) — identity params (`ns`, `kvKey`,
+  /// `extensionKey`) are injected kernel-side and cannot be spoofed. The
+  /// SDK captures it at activation; extension code normally never touches
+  /// it directly and just uses the `host` API.
+  hostCall(method: string, params: Record<string, unknown>): Promise<unknown>
 }
 
 export interface ExtensionDefinition {

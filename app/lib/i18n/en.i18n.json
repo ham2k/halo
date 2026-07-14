@@ -102,7 +102,13 @@
   },
   "qsoList": {
     "empty": "No QSOs yet — work someone!",
-    "editEventTime": "Edit time"
+    "editEventTime": "Edit time",
+    "today": "Today",
+    "yesterday": "Yesterday",
+    "tomorrow": "Tomorrow",
+    "eventStarted": "Operation started",
+    "eventBreak": "Break",
+    "eventEnded": "Operation ended"
   },
   "loggingPanel": {
     "station": "Station",
@@ -135,7 +141,7 @@
       "larger": "Larger",
       "largest": "Largest"
     },
-    "fontScaleDescription": "Affects text size throughout the app",
+    "fontScaleDescription": "Scales the whole interface — text, controls, and spacing",
     "operatorCall": "Operator Callsign",
     "sync": {
       "title": "Sync Settings",

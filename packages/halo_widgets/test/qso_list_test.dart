@@ -724,6 +724,30 @@ void main() {
         );
         expect(find.text('Dec 6 2022'), findsOneWidget);
       });
+
+      testWidgets('a day two or more in the future is not mislabeled "Yesterday"', (tester) async {
+        // A date typo or a clock-skewed synced device can produce a
+        // future-dated QSO; it should read as a calendar date, not
+        // "Yesterday" (the pre-fix behavior — any diffInDays <= 2 matched).
+        await pumpHeader(tester, dayOf(now.add(const Duration(days: 3))));
+        expect(find.text('Yesterday'), findsNothing);
+        expect(find.text('Sat 13'), findsOneWidget);
+      });
+
+      testWidgets('uses the injected locale vocabulary', (tester) async {
+        const es = QsoListLabels(
+          weekdayAbbrs: ['lun', 'mar', 'mié', 'jue', 'vie', 'sáb', 'dom'],
+          monthAbbrs: ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'],
+          today: 'Hoy',
+          yesterday: 'Ayer',
+          tomorrow: 'Mañana',
+          eventLabels: {'start': 'Operación iniciada', 'break': 'Descanso', 'end': 'Operación finalizada'},
+        );
+        await tester.pumpWidget(MaterialApp(
+          home: Scaffold(body: DayHeaderRow(dayMillis: dayOf(now), count: 1, now: now, labels: es)),
+        ));
+        expect(find.text('Hoy'), findsOneWidget);
+      });
     });
   });
 

@@ -99,6 +99,40 @@ void main() {
     expect(await operations.watchAll().first, isEmpty);
   });
 
+  test('watchOperation emits counter refreshes and localData updates', () async {
+    final op = await operations.create(stationCall: 'KI2D', title: 'Reactive');
+    final emissions = <Operation?>[];
+    final sub = operations.watchOperation(op.uuid).listen(emissions.add);
+    await pumpEventQueue();
+
+    // A QSO add refreshes the operation's counters — the stream must see it
+    // without any manual re-fetch.
+    await qsos.add(op.uuid, {'their': {'call': 'W1AW'}, 'startAtMillis': 1000});
+    await pumpEventQueue();
+
+    // A localData write (the shape ScoringService uses for day/op summaries)
+    // must flow through too — this is what keeps day-header badges fresh.
+    await operations.updateLocalData(op.uuid, {'scoring': {'operationSummary': {'dupe': 0}}});
+    await pumpEventQueue();
+
+    expect(emissions.first?.title, 'Reactive');
+    expect(emissions.map((o) => o?.qsoCount), containsAllInOrder([0, 1]));
+    expect(emissions.last?.localData['scoring'], isNotNull);
+    await sub.cancel();
+  });
+
+  test('watchOperation emits null once the operation is hard-deleted', () async {
+    final op = await operations.create(stationCall: 'KI2D');
+    final emissions = <Operation?>[];
+    final sub = operations.watchOperation(op.uuid).listen(emissions.add);
+    await pumpEventQueue();
+    await operations.backupAndClearAll('backup-1');
+    await pumpEventQueue();
+
+    expect(emissions.last, isNull);
+    await sub.cancel();
+  });
+
   test('a brand-new operation with no QSOs sorts to the top, not the bottom', () async {
     final active = await operations.create(stationCall: 'KI2D', title: 'Active op');
     await qsos.add(active.uuid, {'their': {'call': 'W1AW'}, 'startAtMillis': 1000});
@@ -124,6 +158,149 @@ void main() {
       op2.title,
       op1.title,
     ]);
+  });
+
+  group('sync revision stamps (updatedAtMillis)', () {
+    test('markSynced only flips rows whose revision stamp still matches the sent copy', () async {
+      final op = await operations.create(stationCall: 'KI2D');
+      final sent = await qsos.add(op.uuid, {'their': {'call': 'W1AW'}});
+
+      // An edit lands while the sync round's network call is in flight: the
+      // row is re-stamped after `sent` was snapshotted for the payload.
+      await Future<void>.delayed(const Duration(milliseconds: 5));
+      final edited = (await qsos.watchForOperation(op.uuid).first).single;
+      await qsos.update(Qso(
+        uuid: edited.uuid,
+        operationUuid: edited.operationUuid,
+        data: {...edited.data, 'notes': 'edited mid-flight'},
+      ));
+
+      await qsos.markSynced([sent]);
+      // The edit survives as dirty — marking it synced here would silently
+      // swallow it forever (the server only ever saw the pre-edit copy).
+      expect(await qsos.hasUnsynced(), isTrue);
+
+      // An untouched row does get marked.
+      final current = (await qsos.watchForOperation(op.uuid).first).single;
+      await qsos.markSynced([current]);
+      expect(await qsos.hasUnsynced(), isFalse);
+    });
+
+    test('markSynced (operations) respects the revision stamp the same way', () async {
+      final op = await operations.create(stationCall: 'KI2D');
+      await Future<void>.delayed(const Duration(milliseconds: 5));
+      await operations.saveData(Operation(uuid: op.uuid, data: {...op.data, 'title': 'Renamed mid-flight'}));
+
+      await operations.markSynced([op]);
+      expect(await operations.hasUnsynced(), isTrue);
+
+      final current = (await operations.byUuids([op.uuid])).single;
+      await operations.markSynced([current]);
+      expect(await operations.hasUnsynced(), isFalse);
+    });
+
+    test('mergeFromSync never overwrites a newer local revision', () async {
+      final op = await operations.create(stationCall: 'KI2D');
+      final qso = await qsos.add(op.uuid, {'their': {'call': 'W1AW'}, 'notes': 'local edit'});
+
+      // An older copy coming back down — e.g. this device's own earlier
+      // push returning during a "combine" backfill. It must not clobber
+      // the newer local row nor mark it synced.
+      await qsos.mergeFromSync([
+        {
+          'uuid': qso.uuid,
+          'operation': op.uuid,
+          'their': {'call': 'W1AW'},
+          'notes': 'stale server copy',
+          'updatedAtMillis': qso.updatedAtMillis! - 1000,
+          'syncedAtMillis': 1,
+        },
+      ]);
+      expect((await qsos.watchForOperation(op.uuid).first).single.notes, 'local edit');
+      expect(await qsos.hasUnsynced(), isTrue);
+
+      // A genuinely newer inbound revision (another device's later edit)
+      // does win.
+      await qsos.mergeFromSync([
+        {
+          'uuid': qso.uuid,
+          'operation': op.uuid,
+          'their': {'call': 'W1AW'},
+          'notes': 'newer from another device',
+          'updatedAtMillis': qso.updatedAtMillis! + 1000,
+          'syncedAtMillis': 2,
+        },
+      ]);
+      expect((await qsos.watchForOperation(op.uuid).first).single.notes, 'newer from another device');
+      expect(await qsos.hasUnsynced(), isFalse);
+    });
+
+    test('mergeFromSync (operations) applies the same staleness rule', () async {
+      final op = await operations.create(stationCall: 'KI2D', title: 'Local title');
+
+      await operations.mergeFromSync([
+        {
+          'uuid': op.uuid,
+          'stationCall': 'KI2D',
+          'title': 'Stale server title',
+          'updatedAtMillis': op.updatedAtMillis! - 1000,
+          'syncedAtMillis': 1,
+        },
+      ]);
+      expect((await operations.byUuids([op.uuid])).single.title, 'Local title');
+      expect(await operations.hasUnsynced(), isTrue);
+    });
+
+    test('an inbound record with no revision stamp only overwrites rows with nothing left to push', () async {
+      final op = await operations.create(stationCall: 'KI2D');
+      final qso = await qsos.add(op.uuid, {'their': {'call': 'W1AW'}, 'notes': 'unpushed edit'});
+
+      // Dirty local row: protected from stampless (pre-stamp history) data.
+      await qsos.mergeFromSync([
+        {'uuid': qso.uuid, 'operation': op.uuid, 'their': {'call': 'W1AW'}, 'notes': 'stampless copy'},
+      ]);
+      expect((await qsos.watchForOperation(op.uuid).first).single.notes, 'unpushed edit');
+
+      // Once pushed (clean), a stampless inbound record is accepted.
+      await qsos.markSynced([qso]);
+      await qsos.mergeFromSync([
+        {'uuid': qso.uuid, 'operation': op.uuid, 'their': {'call': 'W1AW'}, 'notes': 'stampless copy'},
+      ]);
+      expect((await qsos.watchForOperation(op.uuid).first).single.notes, 'stampless copy');
+    });
+
+    test('softDelete re-stamps the record so the delete syncs as the newest revision', () async {
+      final op = await operations.create(stationCall: 'KI2D');
+      final qso = await qsos.add(op.uuid, {'their': {'call': 'W1AW'}});
+
+      await Future<void>.delayed(const Duration(milliseconds: 5));
+      await qsos.softDelete(qso);
+
+      final deleted = (await qsos.watchForOperation(op.uuid, includeDeleted: true).first).single;
+      expect(deleted.deleted, isTrue);
+      expect(deleted.updatedAtMillis, greaterThan(qso.updatedAtMillis!));
+    });
+
+    test('caching scores never bumps updatedAtMillis — the invariant live rescore depends on', () async {
+      // OperationView drives live rescoring off a fingerprint built from
+      // updatedAtMillis. A rescore writes score_cache and localData; if
+      // either bumped updatedAtMillis the fingerprint would move and the
+      // rescore would re-trigger itself forever. Guard that here.
+      final op = await operations.create(stationCall: 'KI2D');
+      final qso = await qsos.add(op.uuid, {'their': {'call': 'W1AW'}, 'startAtMillis': 1000});
+      final beforeQso = qso.updatedAtMillis;
+      final beforeOp = (await operations.byUuids([op.uuid])).single.updatedAtMillis;
+
+      await qsos.updateScoreCache({qso.uuid: '{"dupe":false}'});
+      await operations.updateLocalData(op.uuid, {'scoring': {'operationSummary': {'dupe': 0}}});
+
+      final afterQso = (await qsos.watchForOperation(op.uuid).first).single;
+      final afterOp = (await operations.byUuids([op.uuid])).single;
+      expect(afterQso.updatedAtMillis, beforeQso);
+      expect(afterQso.scores, {'dupe': false}); // the cache did land
+      expect(afterOp.updatedAtMillis, beforeOp);
+      expect(afterOp.localData['scoring'], isNotNull); // localData did land
+    });
   });
 
   test('LookupRepository: insert, query, geo-query, delete stale', () async {

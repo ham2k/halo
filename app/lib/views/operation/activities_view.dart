@@ -364,8 +364,8 @@ class _ActivitiesViewState extends State<ActivitiesView> {
     return Scaffold(
       backgroundColor: theme.colorScheme.surfaceContainerHighest,
       appBar: AppBar(
-        leadingWidth: macOSAwareLeadingWidth,
-        leading: macOSAwareBackButton(),
+        leadingWidth: macOSAwareLeadingWidth(context),
+        leading: macOSAwareBackButton(context),
         title: Text(t.title),
       ),
       body: Column(

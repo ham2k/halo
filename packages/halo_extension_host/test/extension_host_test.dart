@@ -21,11 +21,16 @@ __polo.defineExtension({
   name: 'Test Extension',
   version: '0.0.1',
   onActivation: function (api) {
+    // KV (like every identity-bearing host call) goes through the
+    // activation-scoped api.hostCall — the raw __polo.hostCall refuses it.
+    boundHostCall = api.hostCall
     api.registerHook('lookup', { key: 'good', priority: 10, hook: goodHook })
     api.registerHook('lookup', { key: 'bad', priority: 5, hook: badHook })
     api.registerHook('kv', { key: 'kv', hook: kvHook })
   },
 })
+
+var boundHostCall = null
 
 var goodHook = {
   lookupCall: async function (args) {
@@ -41,8 +46,8 @@ var badHook = {
 
 var kvHook = {
   roundTrip: async function (args) {
-    await __polo.hostCall('kvSet', { ns: 'test-extension', key: args.key, value: args.value })
-    return await __polo.hostCall('kvGet', { ns: 'test-extension', key: args.key })
+    await boundHostCall('kvSet', { key: args.key, value: args.value })
+    return await boundHostCall('kvGet', { key: args.key })
   },
 }
 ''';
@@ -677,5 +682,318 @@ __polo.defineExtension({
 
     final dynamicResult = await host.invokeHook('testTrigger', key: 'trigger', method: 'runDynamicForm', args: {});
     expect(dynamicResult, {'call': 'KI2D'});
+  });
+
+  test('invokeHookAll reports an unserializable aggregate as an error, not a timeout', () async {
+    if (!kernelFile.existsSync()) {
+      markTestSkipped('kernel.js not built — run `npm run build` in extensions/ first');
+      return;
+    }
+
+    final host = await ExtensionHost.start(
+      kernelSource: kernelFile.readAsStringSync(),
+      extensions: const [
+        ExtensionBundle(
+          key: 'circular-extension',
+          source: '''
+__polo.defineExtension({
+  key: 'circular-extension',
+  name: 'Circular Extension',
+  version: '0.0.1',
+  onActivation: function (api) {
+    api.registerHook('circularTest', {
+      key: 'circular-extension',
+      hook: {
+        makeCircle: async function () {
+          var a = {}
+          a.self = a
+          return a
+        }
+      }
+    })
+  },
+})
+'''
+        )
+      ],
+      useIsolate: false,
+    );
+    addTearDown(host.dispose);
+
+    // The per-record try/catch can't see this failure — it happens when the
+    // aggregate is stringified for posting. Without invokeHookAll's outer
+    // catch it became an unhandled rejection and the caller burned its full
+    // timeout reporting "timed out" instead of the real error.
+    await expectLater(
+      host.invokeHookAll('circularTest', method: 'makeCircle', timeout: const Duration(seconds: 3)),
+      throwsA(isA<ExtensionHostException>().having((e) => e.message, 'message', isNot(contains('timed out')))),
+    );
+  });
+
+  test('a host call whose handler returns an unencodable value fails the hook instead of wedging it', () async {
+    if (!kernelFile.existsSync()) {
+      markTestSkipped('kernel.js not built — run `npm run build` in extensions/ first');
+      return;
+    }
+
+    final host = await ExtensionHost.start(
+      kernelSource: kernelFile.readAsStringSync(),
+      extensions: const [
+        ExtensionBundle(
+          key: 'weird-extension',
+          source: '''
+__polo.defineExtension({
+  key: 'weird-extension',
+  name: 'Weird Extension',
+  version: '0.0.1',
+  onActivation: function (api) {
+    api.registerHook('weirdTest', {
+      key: 'weird-extension',
+      hook: {
+        callWeird: async function () {
+          return await __polo.hostCall('weird', {})
+        }
+      }
+    })
+  },
+})
+'''
+        )
+      ],
+      useIsolate: false,
+      onHostCall: (method, params) async {
+        if (method == 'weird') return Object(); // not JSON-encodable
+        return null;
+      },
+    );
+    addTearDown(host.dispose);
+
+    // Encode-before-deliver: the failure must come back as the hook's error
+    // (ok:false hostResponse), never as an undelivered response that leaks
+    // the kernel's pending call and times the hook out.
+    await expectLater(
+      host.invokeHook('weirdTest', key: 'weird-extension', method: 'callWeird', timeout: const Duration(seconds: 3)),
+      throwsA(isA<ExtensionHostException>().having((e) => e.message, 'message', contains('unencodable'))),
+    );
+  });
+
+  test('a never-settling hook times out without poisoning later calls', () async {
+    if (!kernelFile.existsSync()) {
+      markTestSkipped('kernel.js not built — run `npm run build` in extensions/ first');
+      return;
+    }
+
+    final host = await ExtensionHost.start(
+      kernelSource: kernelFile.readAsStringSync(),
+      extensions: const [
+        ExtensionBundle(
+          key: 'stuck-extension',
+          source: '''
+__polo.defineExtension({
+  key: 'stuck-extension',
+  name: 'Stuck Extension',
+  version: '0.0.1',
+  onActivation: function (api) {
+    api.registerHook('stuckTest', {
+      key: 'stuck-extension',
+      hook: {
+        never: function () { return new Promise(function () {}) }
+      }
+    })
+  },
+})
+'''
+        )
+      ],
+      useIsolate: false,
+    );
+    addTearDown(host.dispose);
+
+    await expectLater(
+      host.invokeHook('stuckTest', key: 'stuck-extension', method: 'never', timeout: const Duration(milliseconds: 300)),
+      throwsA(isA<ExtensionHostException>().having((e) => e.message, 'message', contains('timed out'))),
+    );
+
+    // The abandoned call must not leave the host in a bad state.
+    final echo = await host.invokeHook('bench', key: 'kernel', method: 'echo', args: {'ok': true});
+    expect(echo, {'ok': true});
+  });
+
+  test('an extension cannot read another extension KV namespace by spoofing ns', () async {
+    if (!kernelFile.existsSync()) {
+      markTestSkipped('kernel.js not built — run `npm run build` in extensions/ first');
+      return;
+    }
+
+    final host = await ExtensionHost.start(
+      kernelSource: kernelFile.readAsStringSync(),
+      extensions: const [
+        ExtensionBundle(
+          key: 'attacker',
+          source: '''
+__polo.defineExtension({
+  key: 'attacker',
+  name: 'Attacker',
+  version: '0.0.1',
+  onActivation: function (api) {
+    boundHostCall = api.hostCall
+    api.registerHook('attack', { key: 'attacker', hook: {
+      // Tries to read the victim's namespace two ways: the bound call with
+      // a spoofed ns (kernel overrides it), and the raw kernel hostCall
+      // (refused outright for identity-bearing methods).
+      viaBound: async function () { return await boundHostCall('kvGet', { ns: 'victim', key: 'secret' }) },
+      viaRaw: async function () { return await __polo.hostCall('kvGet', { ns: 'victim', key: 'secret' }) }
+    } })
+  },
+})
+var boundHostCall = null
+'''
+        )
+      ],
+      useIsolate: false,
+    );
+    addTearDown(host.dispose);
+
+    host.setKV('victim', 'secret', 'TOP-SECRET');
+
+    // Bound call: ns is overridden to 'attacker', so the victim's key isn't
+    // visible — comes back null, not the secret.
+    final viaBound = await host.invokeHook('attack', key: 'attacker', method: 'viaBound');
+    expect(viaBound, isNull);
+
+    // Raw kernel hostCall refuses identity-bearing methods entirely.
+    await expectLater(
+      host.invokeHook('attack', key: 'attacker', method: 'viaRaw'),
+      throwsA(isA<ExtensionHostException>().having((e) => e.message, 'message', contains('SDK host API'))),
+    );
+  });
+
+  test('a bundle cannot define an extension key it was not loaded under', () async {
+    if (!kernelFile.existsSync()) {
+      markTestSkipped('kernel.js not built — run `npm run build` in extensions/ first');
+      return;
+    }
+
+    final host = await ExtensionHost.start(
+      kernelSource: kernelFile.readAsStringSync(),
+      extensions: const [
+        ExtensionBundle(
+          // The host loads this bundle as 'honest', but its source tries to
+          // also mint a 'victim' identity — the kernel rejects it.
+          key: 'honest',
+          source: '''
+__polo.defineExtension({ key: 'honest', name: 'Honest', version: '0.0.1', onActivation: function () {} })
+__polo.defineExtension({ key: 'victim', name: 'Impersonator', version: '0.0.1', onActivation: function (api) {
+  api.registerHook('impersonate', { key: 'victim', hook: { ping: async function () { return 'i am victim' } } })
+} })
+'''
+        )
+      ],
+      useIsolate: false,
+    );
+    addTearDown(host.dispose);
+
+    final logs = host.logLines.join('\n');
+    expect(logs, contains("tried to define extension 'victim'"));
+    // The spoofed hook never registered.
+    await expectLater(
+      host.invokeHook('impersonate', key: 'victim', method: 'ping'),
+      throwsA(isA<ExtensionHostException>()),
+    );
+  });
+
+  test('host.fetch is refused for a domain the extension did not declare', () async {
+    if (!kernelFile.existsSync()) {
+      markTestSkipped('kernel.js not built — run `npm run build` in extensions/ first');
+      return;
+    }
+
+    final host = await ExtensionHost.start(
+      kernelSource: kernelFile.readAsStringSync(),
+      extensions: const [
+        ExtensionBundle(
+          key: 'fetcher',
+          source: '''
+__polo.defineExtension({
+  key: 'fetcher',
+  name: 'Fetcher',
+  version: '0.0.1',
+  onActivation: function (api) {
+    boundFetch = api.hostCall
+    api.registerHook('fetchTest', { key: 'fetcher', hook: {
+      grab: async function (args) {
+        try { await boundFetch('fetch', { url: args.url }); return 'allowed' }
+        catch (e) { return 'blocked: ' + e.message }
+      }
+    } })
+  },
+})
+var boundFetch = null
+'''
+        )
+      ],
+      useIsolate: false,
+      fetchAllowlists: const {'fetcher': ['api.allowed.example']},
+    );
+    addTearDown(host.dispose);
+
+    // A declared host would pass the gate (and then fail the real network,
+    // which we don't exercise); an undeclared one is blocked before any I/O.
+    final blocked = await host.invokeHook('fetchTest', key: 'fetcher', method: 'grab',
+        args: {'url': 'https://evil.example/steal'});
+    expect(blocked, startsWith('blocked:'));
+    expect(blocked, contains('declared domains'));
+  });
+
+  test('hook context (settings) is cached across an invokeAll fan-out and drops on invalidation', () async {
+    if (!kernelFile.existsSync()) {
+      markTestSkipped('kernel.js not built — run `npm run build` in extensions/ first');
+      return;
+    }
+
+    var getSettingsCalls = 0;
+    final host = await ExtensionHost.start(
+      kernelSource: kernelFile.readAsStringSync(),
+      extensions: const [
+        ExtensionBundle(
+          key: 'ctx-extension',
+          source: '''
+__polo.defineExtension({
+  key: 'ctx-extension',
+  name: 'Ctx Extension',
+  version: '0.0.1',
+  onActivation: function (api) {
+    api.registerHook('ctxTest', { key: 'ctx-extension', priority: 10, hook: { probe: async function (args, ctx) { return ctx.locale } } })
+    api.registerHook('ctxTest', { key: 'ctx-extension_b', priority: 5, hook: { probe: async function (args, ctx) { return ctx.locale } } })
+  },
+})
+'''
+        )
+      ],
+      useIsolate: false,
+      onHostCall: (method, params) async {
+        if (method == 'getSettings') {
+          getSettingsCalls++;
+          return {'locale': 'es'};
+        }
+        return null;
+      },
+    );
+    addTearDown(host.dispose);
+
+    // Two hooks in one fan-out used to mean two getSettings round trips
+    // (and for account-owning extensions, two keychain reads) — per call.
+    final all = await host.invokeHookAll('ctxTest', method: 'probe');
+    expect(all.map((e) => e['value']), ['es', 'es']);
+    expect(getSettingsCalls, 1);
+
+    // Still cached on the next call...
+    await host.invokeHookAll('ctxTest', method: 'probe');
+    expect(getSettingsCalls, 1);
+
+    // ...until the host says settings changed.
+    host.invalidateHookContext();
+    await host.invokeHookAll('ctxTest', method: 'probe');
+    expect(getSettingsCalls, 2);
   });
 }

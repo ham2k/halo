@@ -7,6 +7,7 @@ This is a multi-platform app for Amateur Radio Logging, called "Ham2K Logger" (o
 
 - [DESIGN.md](file:///Users/sd/Work/ham2k/app-halo/DESIGN.md) contains high-level design documentation.
 - User interface conventions are listed in [user-interface.md](file:///Users/sd/Work/ham2k/app-halo/docs/design/user-interface.md) and branding is documented in [branding.md](file:///Users/sd/Work/ham2k/app-halo/docs/design/branding.md).
+- The Font Scale setting scales the **whole** UI from one root wrapper ([ui-scaling.md](file:///Users/sd/Work/ham2k/app-halo/docs/design/ui-scaling.md)). Write all dimensions in plain logical pixels and **never multiply a size, padding, or font size by the font scale** — that double-scales it. Read ui-scaling.md before any scaling-, layout-, or macOS-window-related change.
 - The extension system and hooks are defined under `docs/extensions/`.
 - We often mention app-polo and web-lofi, which are the existing mobile version and a web-based log browser that shares a lot of logic with PoLo. These are available in separate sibling repositories that can be used for reference.
 

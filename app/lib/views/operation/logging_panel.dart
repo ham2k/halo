@@ -5,10 +5,32 @@ import 'package:flutter/material.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:halo_core/halo_core.dart';
 import 'package:halo_widgets/halo_widgets.dart';
+import 'package:intl/intl.dart';
 
 import '../../main.dart';
 import '../operation_dialogs.dart';
 import '../../i18n/strings.g.dart';
+
+/// Builds the QSO list's day-header/event-row vocabulary for the active
+/// locale. Month/weekday abbreviations come from `intl`'s `DateFormat`
+/// (already initialized for the app's locales by
+/// `GlobalMaterialLocalizations`), so they localize for free; the relative
+/// and event words come from the app's own translations. 2024-01-01 is a
+/// Monday, so a 7-day walk from it yields Mon…Sun in order.
+QsoListLabels _qsoListLabelsFor(BuildContext context) {
+  final locale = Localizations.localeOf(context).toLanguageTag();
+  final weekday = DateFormat.E(locale);
+  final month = DateFormat.MMM(locale);
+  final t = context.t.qsoList;
+  return QsoListLabels(
+    weekdayAbbrs: [for (var i = 0; i < 7; i++) weekday.format(DateTime.utc(2024, 1, 1 + i))],
+    monthAbbrs: [for (var m = 1; m <= 12; m++) month.format(DateTime.utc(2024, m))],
+    today: t.today,
+    yesterday: t.yesterday,
+    tomorrow: t.tomorrow,
+    eventLabels: {'start': t.eventStarted, 'break': t.eventBreak, 'end': t.eventEnded},
+  );
+}
 
 class LoggingPanel extends StatefulWidget {
   final Operation operation;
@@ -106,6 +128,7 @@ class _LoggingPanelState extends State<LoggingPanel> {
       activityControls: widget.loggingControls,
       ourEntityPrefix: widget.ourEntityPrefix,
       daySections: daySections,
+      labels: _qsoListLabelsFor(context),
     );
 
     return Column(

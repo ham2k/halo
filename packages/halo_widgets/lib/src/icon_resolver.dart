@@ -29,10 +29,15 @@ IconData resolveIconName(String? name) {
   if (name.startsWith('fa-')) {
     final codepoint = faSolidCodepoints[name.substring(3)];
     if (codepoint == null) return MdiIcons.puzzleOutline;
+    // Runtime codepoint by design — extensions name icons as data
+    // (docs/extensions/hooks.md), so the set can't be const/tree-shaken;
+    // the app already builds with --no-tree-shake-icons.
+    // ignore: non_const_argument_for_const_parameter
     return IconData(codepoint, fontFamily: 'FontAwesome6Solid');
   }
 
   final codepoint = mdiCodepoints[name];
   if (codepoint == null) return MdiIcons.puzzleOutline;
+  // ignore: non_const_argument_for_const_parameter
   return IconData(codepoint, fontFamily: 'MaterialDesignIcons');
 }

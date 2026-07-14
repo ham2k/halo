@@ -260,8 +260,8 @@ void main() {
       // Check number field attributes (decimal & signed keyboard, formatters)
       final powerFieldFinder = find.widgetWithText(TextField, 'Power Field');
       final powerTextField = tester.widget<TextField>(powerFieldFinder);
-      expect(powerTextField.keyboardType!.decimal, isTrue);
-      expect(powerTextField.keyboardType!.signed, isTrue);
+      expect(powerTextField.keyboardType.decimal, isTrue);
+      expect(powerTextField.keyboardType.signed, isTrue);
       expect(powerTextField.inputFormatters, isNotEmpty);
 
       // Focus the name field, enter 'invalid', then focus another field (to blur)

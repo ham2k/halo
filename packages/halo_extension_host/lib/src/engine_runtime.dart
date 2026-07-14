@@ -44,6 +44,10 @@ abstract class EngineRuntime {
   void invokeAll(int id, String category, String method, String argsJson);
   void hostResponse(int callId, bool ok, String resultJson);
 
+  /// Drops the kernel's cached hook context (settings, account credentials)
+  /// so the next hook call re-fetches — called after the host writes either.
+  void invalidateContext();
+
   /// Pumps the engine's job queue, for backends (QuickJS) that don't have a
   /// real event loop and need manual pumping to process microtasks/promises.
   /// A no-op for backends (Worker) with a real event loop.

@@ -2,16 +2,18 @@
 // SPDX-License-Identifier: MPL-2.0
 //
 // Small app-wide preferences that need to survive a restart: theme mode,
-// QRZ.com credentials, operator callsign, and sync state. Backed by
-// SharedPreferences — plain, unencrypted storage, same caveat as
-// ExtensionHost's in-memory KV store had ("platform keychain when settings
-// become persistent"): fine for a dev-stage app, but the QRZ password
-// deserves real secure storage before this ships for real.
+// operator callsign, and sync state — backed by SharedPreferences (plain,
+// unencrypted, fine for non-secret preferences). The one secret here, the
+// sync device key (the bearer credential for the account's synced log),
+// lives in the platform keychain via FlutterSecureStorage instead; QRZ
+// credentials likewise moved to secure storage (migrated at boot in
+// main.dart, then handled by ExtensionService's account storage).
 
 import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:halo_core/halo_core.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uuid/uuid.dart';
@@ -39,7 +41,18 @@ class SettingsService extends ChangeNotifier implements SyncSettings {
 
   final SharedPreferences _prefs;
 
-  SettingsService(this._prefs);
+  /// The sync device key is the de-facto bearer credential for the account's
+  /// synced log, so it lives in the platform keychain, not SharedPreferences.
+  final FlutterSecureStorage _secureStorage;
+
+  String? _cachedDeviceKey;
+
+  SettingsService(this._prefs, {FlutterSecureStorage? secureStorage})
+      : _secureStorage = secureStorage ??
+            const FlutterSecureStorage(
+              mOptions: MacOsOptions(usesDataProtectionKeychain: false, accountName: 'Ham2K Logger'),
+              iOptions: IOSOptions(accountName: 'Ham2K Logger'),
+            );
 
   SharedPreferences get prefs => _prefs;
 
@@ -92,14 +105,29 @@ class SettingsService extends ChangeNotifier implements SyncSettings {
 
   /// A stable opaque per-install identifier for the LoFi sync server (the
   /// Flutter equivalent of app-polo's `DeviceInfo.syncUniqueId()`), generated
-  /// once on first access and persisted forever after.
-  String get syncDeviceKey {
-    final existing = _prefs.getString(_syncDeviceKeyKey);
-    if (existing != null && existing.isNotEmpty) return existing;
-    final generated = _uuidGenerator.v4();
-    unawaited(_prefs.setString(_syncDeviceKeyKey, generated));
-    return generated;
+  /// once and persisted in the platform keychain forever after. Since it's
+  /// the bearer credential for the account's synced log, it must be loaded
+  /// (and migrated off any old SharedPreferences copy) before first use —
+  /// call [ensureSyncDeviceKey] at boot.
+  Future<String> ensureSyncDeviceKey() async {
+    if (_cachedDeviceKey != null) return _cachedDeviceKey!;
+
+    final fromSecure = await _secureStorage.read(key: _syncDeviceKeyKey);
+    if (fromSecure != null && fromSecure.isNotEmpty) {
+      return _cachedDeviceKey = fromSecure;
+    }
+
+    // One-time migration: earlier builds kept the key in SharedPreferences.
+    final legacy = _prefs.getString(_syncDeviceKeyKey);
+    final key = (legacy != null && legacy.isNotEmpty) ? legacy : _uuidGenerator.v4();
+    await _secureStorage.write(key: _syncDeviceKeyKey, value: key);
+    if (legacy != null) await _prefs.remove(_syncDeviceKeyKey);
+    return _cachedDeviceKey = key;
   }
+
+  /// The already-loaded device key, or null before [ensureSyncDeviceKey] has
+  /// run — for display only (e.g. Settings → System Information).
+  String? get syncDeviceKey => _cachedDeviceKey;
 
   /// Free-form sync bookkeeping (last-synced account uuid, server-tunable
   /// overrides) — see the design note in DESIGN.md §6: this is a handful of
@@ -241,6 +269,11 @@ enum FontScale {
   larger(1.20, 'Larger'),
   largest(1.40, 'Largest');
 
+  /// The uniform UI zoom factor. Consumed in exactly ONE place — `main.dart`'s
+  /// `MaterialApp.builder`, which feeds it to `UiScale` to scale the entire
+  /// interface at the root. Do NOT multiply widget/theme dimensions by this
+  /// anywhere else: everything below `UiScale` already scales, so a second
+  /// multiply double-scales. See docs/design/ui-scaling.md.
   final double scaleFactor;
   final String label;
 

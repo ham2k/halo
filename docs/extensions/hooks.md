@@ -102,7 +102,9 @@ interface SpotsHook {
 ```
 
 Map upstream spots into QSON-shaped spot objects; filter out QRT/stale
-entries at the source. Implemented by: `pota`.
+entries at the source. `Spot` may also carry an `icon` (MDI/FontAwesome
+name, same convention as `activity` controls). Implemented by: `pota`,
+`sota` (SOTAWatch).
 
 ## ✅ `export` — log file generation
 
@@ -198,21 +200,24 @@ it fans out to **every** registered `command` hook via `invokeHookAll` and
 applies the first non-null result, in priority order.
 
 ```ts
-interface CommandResult {
-  freq?: number
-  band?: string
-  mode?: string
-}
-
 interface CommandHook {
-  tryCommand(args: { input: string }, ctx): Promise<CommandResult | null>
+  interpret(
+    args: { input: string; operation?; qso? },
+    ctx,
+  ): Promise<CommandInterpretation | null>
 }
+// CommandInterpretation: {expectsParams?, describe?, confirm?, commands?: CommandAction[]}
+// CommandAction (closed set): {setVfo?, updateQso?, addQso?, sendSpots?,
+//   syncAll?, updateSettings?, reloadDataFiles?, devNotice?, devStatus?, devProgress?}
 ```
 
-Each hook does its own regex matching internally and returns `null` for "not
-mine" — the host never compiles extension-supplied regex source itself.
-Results mutate only through the closed `CommandResult` field set (DESIGN.md
-§4's "whitelisted field-change operations"), never arbitrary state.
+Each hook does its own matching internally and returns `null` for "not mine"
+— the host never compiles extension-supplied regex source itself. A match
+returns an interpretation the core previews (`describe`) and, on confirm,
+applies: state changes go only through the closed `CommandAction` field set
+(DESIGN.md §4's "whitelisted field-change operations"), never arbitrary
+state. `expectsParams: true` is the "recognized prefix, keep typing" signal
+described below.
 
 Implemented by `radio-commands` (band/frequency/mode shortcuts — "20m ",
 "14285 ", "14.285 ", "cw "), ported from app-polo's `RadioCommands`
@@ -286,14 +291,44 @@ extensions.
 
 ---
 
+## ✅ `syncTransport` — sync backends
+
+The transport seam for LoFi (and future) sync. The Dart core owns the
+loop, batching, and dirty flags (`packages/halo_core`'s `SyncEngine`); the
+hook only moves an already-selected payload over the network, so sync keeps
+working even if the JS runtime is wedged (DESIGN.md §4). Registered as a
+single object with `sync`/`getAccountData`/`linkClientWithEmail` methods.
+Implemented by: `ham2k-lofi`.
+
+## ✅ `settingsPanel` — extension settings forms
+
+Declarative settings panels rendered by the core's `FormRenderer` — full
+schema, kernel dispatch, `ExtensionService`, and `SettingsView` wiring; see
+[settings.md](./settings.md). Complementary to `account`, not a replacement.
+Implemented by: `settings` (the core General panel).
+
+## ✅ `account` — account connections
+
+Account connections (QRZ, LoFi): credential fields, `testCredentials`, and
+optional OAuth2, surfaced in `SettingsView`'s Accounts panel via
+`ExtensionService.getAccounts`/`testCredentials`. Credentials live in the
+platform keychain, keyed by the account's `kvKey`. Implemented by: `qrz`.
+
+## ✅ `dataFile` — offline reference datasets
+
+Large offline datasets (park/summit lists) the core downloads, caches, and
+refreshes on a schedule; the extension supplies the URL and a
+row/entry→`LookupRow` transform. See `DataFileManager`
+(`app/lib/services/data_file_manager.dart`). Implemented by: `pota`
+(`pota-all-parks`), `sota` (`sota-all-summits`).
+
+---
+
 ## 🔜 Planned categories
 
 | Category | Role | Notes |
 |---|---|---|
-| `syncTransport` | LoFi (and future) sync backends | The Dart core keeps the loop/batching/dirty flags; the hook only transports payloads. Sync must survive a wedged runtime. |
 | `confirmation` | QSL/confirmation sources (spot-history cross-checking) | |
-| `settingsPanel` | extension settings forms via the declarative catalog | Fully implemented — schema, kernel dispatch, `ExtensionService`, `FormRenderer` rendering, and `SettingsView` wiring; see [settings.md](./settings.md). Complementary to `account` below, not a replacement. Table placement kept here (not moved to the ✅ section above) since no real extension registers it yet. |
-| `account` | account connections (QRZ, LoFi) | Implemented today (`ExtensionService.getAccounts`/`testCredentials`, `SettingsView`'s Accounts panel); table placement is stale, not a `settingsPanel` migration target. |
 | `opSetting` | per-operation settings contributions | |
 
 When one of these lands, move it above the line with its real signature.

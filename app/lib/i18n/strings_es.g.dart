@@ -194,6 +194,12 @@ class _Translations$qsoList$es extends Translations$qsoList$en {
 	// Translations
 	@override String get empty => 'Aún no hay QSOs — ¡haz un contacto!';
 	@override String get editEventTime => 'Editar hora';
+	@override String get today => 'Hoy';
+	@override String get yesterday => 'Ayer';
+	@override String get tomorrow => 'Mañana';
+	@override String get eventStarted => 'Operación iniciada';
+	@override String get eventBreak => 'Descanso';
+	@override String get eventEnded => 'Operación finalizada';
 }
 
 // Path: loggingPanel
@@ -225,7 +231,7 @@ class _Translations$settings$es extends Translations$settings$en {
 	@override late final _Translations$settings$themeDescription$es themeDescription = _Translations$settings$themeDescription$es._(_root);
 	@override String get fontScale => 'Tamaño de Letra';
 	@override late final _Translations$settings$fontScaleOpts$es fontScaleOpts = _Translations$settings$fontScaleOpts$es._(_root);
-	@override String get fontScaleDescription => 'Afecta el tamaño del texto en toda la app';
+	@override String get fontScaleDescription => 'Escala toda la interfaz: texto, controles y espaciado';
 	@override String get operatorCall => 'Indicativo del Operador';
 	@override late final _Translations$settings$sync$es sync = _Translations$settings$sync$es._(_root);
 	@override late final _Translations$settings$qrz$es qrz = _Translations$settings$qrz$es._(_root);
@@ -447,6 +453,12 @@ extension on TranslationsEs {
 			'qsoEditForm.notes' => 'Notas',
 			'qsoList.empty' => 'Aún no hay QSOs — ¡haz un contacto!',
 			'qsoList.editEventTime' => 'Editar hora',
+			'qsoList.today' => 'Hoy',
+			'qsoList.yesterday' => 'Ayer',
+			'qsoList.tomorrow' => 'Mañana',
+			'qsoList.eventStarted' => 'Operación iniciada',
+			'qsoList.eventBreak' => 'Descanso',
+			'qsoList.eventEnded' => 'Operación finalizada',
 			'loggingPanel.station' => 'Estación',
 			'loggingPanel.byBand' => 'Por banda',
 			'loggingPanel.byMode' => 'Por modo',
@@ -469,7 +481,7 @@ extension on TranslationsEs {
 			'settings.fontScaleOpts.normal' => 'Normal',
 			'settings.fontScaleOpts.larger' => 'Grande',
 			'settings.fontScaleOpts.largest' => 'Más grande',
-			'settings.fontScaleDescription' => 'Afecta el tamaño del texto en toda la app',
+			'settings.fontScaleDescription' => 'Escala toda la interfaz: texto, controles y espaciado',
 			'settings.operatorCall' => 'Indicativo del Operador',
 			'settings.sync.title' => 'Configuración de Sincronización',
 			'settings.sync.enable' => 'Habilitar Sincronización',

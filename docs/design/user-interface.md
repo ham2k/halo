@@ -52,6 +52,16 @@ The list of primary controls is very limited and focused on information exchange
 
 Pressing tab or space should rotate focus between primary controls. If an input is in a mode that allows spaces, then pressing space once just enters the space character, but space twice in a row deletes the first space entered and then moves focus to the next primary control.
 
+## Interface Scaling
+
+The **Font Scale** setting scales the entire interface — text, controls,
+spacing, everything — by one uniform factor, from a single root wrapper. It is
+not a text-only setting. The mechanism and, crucially, the rules that keep it
+working (never scale dimensions by hand; write plain logical pixels; macOS
+traffic-light clearance) are documented in
+[ui-scaling.md](ui-scaling.md) — read it before touching anything scaling-,
+layout-, or macOS-window-related.
+
 ## General Layout
 
 #### Header

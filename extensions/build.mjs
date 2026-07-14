@@ -46,6 +46,14 @@ function sharedLibsPlugin(extensionDependencies = {}) {
     setup(build) {
       build.onResolve({ filter: /^(@ham2k\/lib-|i18next$)/ }, (args) => {
         const packageName = args.path
+        // NOTE: today every extension shares the workspace-root package.json
+        // (there are no per-extension manifests), so `extensionDependencies`
+        // is always the root deps and this range check is effectively "the
+        // host has it" — it can't currently catch a version mismatch because
+        // there's only one declared version. The machinery stays for when
+        // per-extension dependency ranges are introduced (the OTA-extension
+        // story in DESIGN.md §3), at which point pass that extension's own
+        // `dependencies` here instead of the root's.
         const requestedRange = extensionDependencies[packageName] || '*'
         const hostVersion = hostSharedVersions[packageName]
 
@@ -68,6 +76,11 @@ function sharedLibsPlugin(extensionDependencies = {}) {
   }
 }
 
+// `domains` is each extension's declared network capability (DESIGN.md §3's
+// manifest allowlist, in embryo): the Dart host refuses host.fetch calls to
+// any host not listed. Entries are exact hostnames; '*.example.com' matches
+// subdomains; a lone '*' means any https host (only ham2k-lofi, whose sync
+// server is user-configurable). No entry (or []) means no network at all.
 const bundles = [
   { key: 'kernel', entry: 'sdk/src/kernel.ts', kind: 'kernel' },
   { key: 'settings', entry: 'core/settings/src/index.ts', kind: 'extension' },
@@ -77,11 +90,11 @@ const bundles = [
   { key: 'radio-commands', entry: 'core/radio-commands/src/index.ts', kind: 'extension' },
   { key: 'dev-commands', entry: 'core/dev-commands/src/index.ts', kind: 'extension' },
   { key: 'note-command', entry: 'core/note-command/src/index.ts', kind: 'extension' },
-  { key: 'hamdb', entry: 'lookups/hamdb/src/index.ts', kind: 'extension' },
-  { key: 'qrz', entry: 'lookups/qrz/src/index.ts', kind: 'extension' },
-  { key: 'pota', entry: 'activities/pota/src/index.ts', kind: 'extension' },
-  { key: 'sota', entry: 'activities/sota/src/index.ts', kind: 'extension' },
-  { key: 'ham2k-lofi', entry: 'sync/ham2k-lofi/src/index.ts', kind: 'extension' },
+  { key: 'hamdb', entry: 'lookups/hamdb/src/index.ts', kind: 'extension', domains: ['api.hamdb.org'] },
+  { key: 'qrz', entry: 'lookups/qrz/src/index.ts', kind: 'extension', domains: ['xmldata.qrz.com', 'logbook.qrz.com'] },
+  { key: 'pota', entry: 'activities/pota/src/index.ts', kind: 'extension', domains: ['api.pota.app', 'pota.app'] },
+  { key: 'sota', entry: 'activities/sota/src/index.ts', kind: 'extension', domains: ['api2.sota.org.uk'] },
+  { key: 'ham2k-lofi', entry: 'sync/ham2k-lofi/src/index.ts', kind: 'extension', domains: ['*'] },
 ]
 
 await mkdir(outDir, { recursive: true })
@@ -96,7 +109,14 @@ for (const bundle of bundles) {
     mainFields: ['module', 'main'],
     target: 'es2020',
     outfile: join(outDir, `${bundle.key}.js`),
-    alias: { '@ham2k/polo-sdk': join(root, 'sdk/src/index.ts') },
+    alias: {
+      '@ham2k/polo-sdk': join(root, 'sdk/src/index.ts'),
+      // camelcase@8 (pulled in by @ham2k/lib-qson-cabrillo) uses \p{...}
+      // regex literals that the QuickJS builds flutter_js ships cannot even
+      // parse, so bundling it breaks the kernel on Android/Windows/Linux.
+      // See shims/camelcase.ts for the ASCII replacement.
+      'camelcase': join(root, 'shims/camelcase.ts'),
+    },
     logLevel: 'warning',
     metafile: true,
   }
@@ -119,7 +139,9 @@ await writeFile(
   JSON.stringify(
     {
       kernel: 'kernel.js',
-      extensions: bundles.filter((b) => b.kind === 'extension').map((b) => ({ key: b.key, file: `${b.key}.js` })),
+      extensions: bundles
+        .filter((b) => b.kind === 'extension')
+        .map((b) => ({ key: b.key, file: `${b.key}.js`, domains: b.domains ?? [] })),
     },
     null,
     2,

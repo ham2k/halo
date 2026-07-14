@@ -308,6 +308,16 @@ class _LoggingControlsState extends State<LoggingControls> {
   /// Which secondary control (if any) currently has its input expanded.
   String? _selectedControlKey;
 
+  /// The last command message pushed to the parent via
+  /// `onCommandMessageChanged`. Every keystroke used to fire that callback
+  /// with `null` unconditionally, and the parent (LoggingPanel) answered
+  /// with a setState that rebuilds the whole QsoList — day-bucketing,
+  /// per-column TextPainter measurement, the scores map, all O(n) over the
+  /// log, per keystroke. Deduping here means the callback only fires on a
+  /// real change. Starts null, matching the parent's own initial "no
+  /// message" state, so a redundant null is a no-op.
+  String? _lastSentCommandMessage;
+
   /// Overrides the QSO's timestamp when set via the Time control; null
   /// means "use the current time at the moment of logging."
   int? _manualStartAtMillis;
@@ -523,8 +533,14 @@ class _LoggingControlsState extends State<LoggingControls> {
     final theirGuess = their['guess'] as Map<String, dynamic>? ?? const {};
     _gridController.text = (their['grid'] as String?) ?? (theirGuess['grid'] as String?) ?? '';
     _stateController.text = (their['state'] as String?) ?? (theirGuess['state'] as String?) ?? '';
+    // Restore the name override too, or wipe-then-undo would silently drop a
+    // name set via the "More" dialog (it round-trips as `their.name`).
+    final theirName = (their['name'] as String?)?.trim();
+    _theirNameOverride = (theirName == null || theirName.isEmpty) ? null : theirName;
     final freq = (data['freq'] as num?)?.toDouble();
-    _freqController.text = freq != null ? fmtFreq(freq).replaceAll(',', '') : '';
+    // Full precision (not fmtFreq's 100Hz display rounding): selecting a QSO
+    // logged at 14074.25 must not flag it as changed or save "14074.3" back.
+    _freqController.text = freq != null ? fmtFreqInput(freq) : '';
     _mode = data['mode'] as String? ?? _mode;
     _manualBand = freq == null ? data['band'] as String? : null;
     _currentQsoExtra
@@ -568,7 +584,7 @@ class _LoggingControlsState extends State<LoggingControls> {
     final vfo = widget.radioService?.vfoA;
     if (vfo == null) return;
     final freq = vfo.freq;
-    _freqController.text = freq != null ? fmtFreq(freq).replaceAll(',', '') : '';
+    _freqController.text = freq != null ? fmtFreqInput(freq) : '';
     _manualBand = freq == null ? vfo.band : null;
     if (vfo.mode != null) _mode = vfo.mode!;
   }
@@ -833,11 +849,19 @@ class _LoggingControlsState extends State<LoggingControls> {
     final dt = millis != null
         ? DateTime.fromMillisecondsSinceEpoch(millis, isUtc: true)
         : DateTime.now().toUtc();
+    // Display-only refresh: without the _populating guard, these programmatic
+    // sets fire _onTimeOrDateFieldChanged, which would read the seeded value
+    // back as a manual override — freezing auto-timestamping just for opening
+    // the Time chip, and making "Now" re-freeze the clock it just released.
+    final wasPopulating = _populating;
+    _populating = true;
     _timeController.text = _fmtTime(dt);
     _dateController.text = _fmtDate(dt);
+    _populating = wasPopulating;
   }
 
   void _onTimeOrDateFieldChanged() {
+    if (_populating) return;
     final time = _timeController.text.split(':');
     final date = _dateController.text.split('-');
     if (time.length != 2 || date.length != 3) return;
@@ -1221,7 +1245,7 @@ class _LoggingControlsState extends State<LoggingControls> {
               _commandExpectsParams = result != null && result['expectsParams'] == true;
               _commandMessage = (result != null && result['describe'] is String) ? result['describe'] as String : null;
             });
-            widget.onCommandMessageChanged?.call(_commandMessage);
+            _notifyCommandMessage(_commandMessage);
           }
           if (result != null && result['expectsParams'] == true) {
             _insertAtCursor(_callController, ' ');
@@ -1300,9 +1324,7 @@ class _LoggingControlsState extends State<LoggingControls> {
           final band = params['band'];
           final mode = params['mode'];
           if (freq is num) {
-            _freqController.text = fmtFreq(
-              freq.toDouble(),
-            ).replaceAll(',', '');
+            _freqController.text = fmtFreqInput(freq.toDouble());
             _manualBand = null;
           } else if (band is String) {
             _manualBand = band;
@@ -1457,6 +1479,11 @@ class _LoggingControlsState extends State<LoggingControls> {
     // into a deliberately-touched, sticky value (see _gridTouched's doc).
     final gridBeforeDialog = _gridController.text.trim();
     final stateBeforeDialog = _stateController.text.trim();
+    // Same displayed-vs-edited distinction for date/time: while composing,
+    // the dialog shows the live clock, and saving an untouched value must
+    // not turn it into a manual override that freezes auto-timestamping.
+    final dateBeforeDialog = _fmtDate(dt);
+    final timeBeforeDialog = _fmtTime(dt);
 
     final result = await showFormDialog(
       context,
@@ -1508,7 +1535,7 @@ class _LoggingControlsState extends State<LoggingControls> {
 
       final freq = result['freq'];
       if (freq is num) {
-        _freqController.text = fmtFreq(freq.toDouble()).replaceAll(',', '');
+        _freqController.text = fmtFreqInput(freq.toDouble());
         _manualBand = null;
       } else {
         _freqController.clear();
@@ -1520,7 +1547,8 @@ class _LoggingControlsState extends State<LoggingControls> {
 
       final dateParts = ((result['date'] as String?) ?? '').split('-');
       final timeParts = ((result['time'] as String?) ?? '').split(':');
-      if (dateParts.length == 3 && timeParts.length == 2) {
+      final dateOrTimeEdited = result['date'] != dateBeforeDialog || result['time'] != timeBeforeDialog;
+      if (dateOrTimeEdited && dateParts.length == 3 && timeParts.length == 2) {
         final year = int.tryParse(dateParts[0]);
         final month = int.tryParse(dateParts[1]);
         final day = int.tryParse(dateParts[2]);
@@ -1624,6 +1652,14 @@ class _LoggingControlsState extends State<LoggingControls> {
 
   // ---- Lookup enrichment ----
 
+  /// Pushes a command message to the parent, but only when it actually
+  /// changed — see `_lastSentCommandMessage`.
+  void _notifyCommandMessage(String? message) {
+    if (_lastSentCommandMessage == message) return;
+    _lastSentCommandMessage = message;
+    widget.onCommandMessageChanged?.call(message);
+  }
+
   void _onCallChanged() {
     if (_populating) return;
     setState(() {});
@@ -1634,7 +1670,7 @@ class _LoggingControlsState extends State<LoggingControls> {
     _executeMessageTimer?.cancel();
     _currentInterpretation = null;
     _commandMessage = null;
-    widget.onCommandMessageChanged?.call(null);
+    _notifyCommandMessage(null);
 
     final call = _call;
     if (call.isEmpty) {
@@ -1669,7 +1705,7 @@ class _LoggingControlsState extends State<LoggingControls> {
             _commandMessage = null;
           }
         });
-        widget.onCommandMessageChanged?.call(_commandMessage);
+        _notifyCommandMessage(_commandMessage);
       });
     }
 
@@ -1769,6 +1805,8 @@ class _LoggingControlsState extends State<LoggingControls> {
     _applyDefaultRSTs();
     _gridController.clear();
     _stateController.clear();
+    _theirNameOverride = null;
+    _unmatchedRefs = [];
     _gridTouched = false;
     _stateTouched = false;
     _lookupDebounce?.cancel();
@@ -1788,7 +1826,7 @@ class _LoggingControlsState extends State<LoggingControls> {
       _commandExpectsParams = false;
       _updateClockTicker();
     });
-    widget.onCommandMessageChanged?.call(null);
+    _notifyCommandMessage(null);
   }
 
   // ---- Wipe/undo, delete/undo, revert-changes: the info row's second button ----
@@ -1802,6 +1840,7 @@ class _LoggingControlsState extends State<LoggingControls> {
       _call.isNotEmpty ||
       (widget.radioService == null && (_freqController.text.trim().isNotEmpty || _manualBand != null)) ||
       _manualStartAtMillis != null ||
+      _theirNameOverride != null ||
       _controlRefs.values.any((refs) => refs.isNotEmpty) ||
       _unmatchedRefs.isNotEmpty ||
       _currentQsoExtra.isNotEmpty ||
@@ -1973,14 +2012,14 @@ class _LoggingControlsState extends State<LoggingControls> {
                   setState(() {
                     _commandMessage = null;
                   });
-                  widget.onCommandMessageChanged?.call(null);
+                  _notifyCommandMessage(null);
                 }
               });
             } else {
               _commandMessage = null;
             }
           });
-          widget.onCommandMessageChanged?.call(_commandMessage);
+          _notifyCommandMessage(_commandMessage);
 
           final commands = interpretation['commands'];
           if (commands is List) {
@@ -2495,7 +2534,9 @@ class _LoggingControlsState extends State<LoggingControls> {
           data: message,
           styleSheet: MarkdownStyleSheet.fromTheme(theme).copyWith(
             p: theme.textTheme.bodyMedium?.copyWith(
-              color: Colors.black,
+              // The info area sits on the panel's tertiaryContainer fill —
+              // hardcoded black rendered black-on-dark-brown in dark mode.
+              color: theme.colorScheme.onTertiaryContainer,
               fontWeight: FontWeight.w500,
             ),
           ),
@@ -2520,7 +2561,7 @@ class _LoggingControlsState extends State<LoggingControls> {
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
                 style: theme.textTheme.bodyMedium?.copyWith(
-                  color: Colors.black,
+                  color: theme.colorScheme.onTertiaryContainer,
                 ),
               ),
             ),

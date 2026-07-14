@@ -101,6 +101,17 @@ class $OperationsTable extends Operations
     ),
     defaultValue: const Constant(false),
   );
+  static const VerificationMeta _updatedAtMillisMeta = const VerificationMeta(
+    'updatedAtMillis',
+  );
+  @override
+  late final GeneratedColumn<int> updatedAtMillis = GeneratedColumn<int>(
+    'updated_at_millis',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
   @override
   List<GeneratedColumn> get $columns => [
     uuid,
@@ -111,6 +122,7 @@ class $OperationsTable extends Operations
     qsoCount,
     deleted,
     synced,
+    updatedAtMillis,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -180,6 +192,15 @@ class $OperationsTable extends Operations
         synced.isAcceptableOrUnknown(data['synced']!, _syncedMeta),
       );
     }
+    if (data.containsKey('updated_at_millis')) {
+      context.handle(
+        _updatedAtMillisMeta,
+        updatedAtMillis.isAcceptableOrUnknown(
+          data['updated_at_millis']!,
+          _updatedAtMillisMeta,
+        ),
+      );
+    }
     return context;
   }
 
@@ -221,6 +242,10 @@ class $OperationsTable extends Operations
         DriftSqlType.bool,
         data['${effectivePrefix}synced'],
       )!,
+      updatedAtMillis: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}updated_at_millis'],
+      ),
     );
   }
 
@@ -241,6 +266,12 @@ class OperationRow extends DataClass implements Insertable<OperationRow> {
   final int qsoCount;
   final bool deleted;
   final bool synced;
+
+  /// Mirrors `data.updatedAtMillis` (stamped on every local write, app-polo
+  /// convention) so sync can compare revisions without decoding the blob:
+  /// `markSynced` only flips rows whose stamp still matches what was sent,
+  /// and `mergeFromSync` skips inbound records older than the local row.
+  final int? updatedAtMillis;
   const OperationRow({
     required this.uuid,
     required this.data,
@@ -250,6 +281,7 @@ class OperationRow extends DataClass implements Insertable<OperationRow> {
     required this.qsoCount,
     required this.deleted,
     required this.synced,
+    this.updatedAtMillis,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -268,6 +300,9 @@ class OperationRow extends DataClass implements Insertable<OperationRow> {
     map['qso_count'] = Variable<int>(qsoCount);
     map['deleted'] = Variable<bool>(deleted);
     map['synced'] = Variable<bool>(synced);
+    if (!nullToAbsent || updatedAtMillis != null) {
+      map['updated_at_millis'] = Variable<int>(updatedAtMillis);
+    }
     return map;
   }
 
@@ -287,6 +322,9 @@ class OperationRow extends DataClass implements Insertable<OperationRow> {
       qsoCount: Value(qsoCount),
       deleted: Value(deleted),
       synced: Value(synced),
+      updatedAtMillis: updatedAtMillis == null && nullToAbsent
+          ? const Value.absent()
+          : Value(updatedAtMillis),
     );
   }
 
@@ -304,6 +342,7 @@ class OperationRow extends DataClass implements Insertable<OperationRow> {
       qsoCount: serializer.fromJson<int>(json['qsoCount']),
       deleted: serializer.fromJson<bool>(json['deleted']),
       synced: serializer.fromJson<bool>(json['synced']),
+      updatedAtMillis: serializer.fromJson<int?>(json['updatedAtMillis']),
     );
   }
   @override
@@ -318,6 +357,7 @@ class OperationRow extends DataClass implements Insertable<OperationRow> {
       'qsoCount': serializer.toJson<int>(qsoCount),
       'deleted': serializer.toJson<bool>(deleted),
       'synced': serializer.toJson<bool>(synced),
+      'updatedAtMillis': serializer.toJson<int?>(updatedAtMillis),
     };
   }
 
@@ -330,6 +370,7 @@ class OperationRow extends DataClass implements Insertable<OperationRow> {
     int? qsoCount,
     bool? deleted,
     bool? synced,
+    Value<int?> updatedAtMillis = const Value.absent(),
   }) => OperationRow(
     uuid: uuid ?? this.uuid,
     data: data ?? this.data,
@@ -343,6 +384,9 @@ class OperationRow extends DataClass implements Insertable<OperationRow> {
     qsoCount: qsoCount ?? this.qsoCount,
     deleted: deleted ?? this.deleted,
     synced: synced ?? this.synced,
+    updatedAtMillis: updatedAtMillis.present
+        ? updatedAtMillis.value
+        : this.updatedAtMillis,
   );
   OperationRow copyWithCompanion(OperationsCompanion data) {
     return OperationRow(
@@ -358,6 +402,9 @@ class OperationRow extends DataClass implements Insertable<OperationRow> {
       qsoCount: data.qsoCount.present ? data.qsoCount.value : this.qsoCount,
       deleted: data.deleted.present ? data.deleted.value : this.deleted,
       synced: data.synced.present ? data.synced.value : this.synced,
+      updatedAtMillis: data.updatedAtMillis.present
+          ? data.updatedAtMillis.value
+          : this.updatedAtMillis,
     );
   }
 
@@ -371,7 +418,8 @@ class OperationRow extends DataClass implements Insertable<OperationRow> {
           ..write('startAtMillisMax: $startAtMillisMax, ')
           ..write('qsoCount: $qsoCount, ')
           ..write('deleted: $deleted, ')
-          ..write('synced: $synced')
+          ..write('synced: $synced, ')
+          ..write('updatedAtMillis: $updatedAtMillis')
           ..write(')'))
         .toString();
   }
@@ -386,6 +434,7 @@ class OperationRow extends DataClass implements Insertable<OperationRow> {
     qsoCount,
     deleted,
     synced,
+    updatedAtMillis,
   );
   @override
   bool operator ==(Object other) =>
@@ -398,7 +447,8 @@ class OperationRow extends DataClass implements Insertable<OperationRow> {
           other.startAtMillisMax == this.startAtMillisMax &&
           other.qsoCount == this.qsoCount &&
           other.deleted == this.deleted &&
-          other.synced == this.synced);
+          other.synced == this.synced &&
+          other.updatedAtMillis == this.updatedAtMillis);
 }
 
 class OperationsCompanion extends UpdateCompanion<OperationRow> {
@@ -410,6 +460,7 @@ class OperationsCompanion extends UpdateCompanion<OperationRow> {
   final Value<int> qsoCount;
   final Value<bool> deleted;
   final Value<bool> synced;
+  final Value<int?> updatedAtMillis;
   final Value<int> rowid;
   const OperationsCompanion({
     this.uuid = const Value.absent(),
@@ -420,6 +471,7 @@ class OperationsCompanion extends UpdateCompanion<OperationRow> {
     this.qsoCount = const Value.absent(),
     this.deleted = const Value.absent(),
     this.synced = const Value.absent(),
+    this.updatedAtMillis = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   OperationsCompanion.insert({
@@ -431,6 +483,7 @@ class OperationsCompanion extends UpdateCompanion<OperationRow> {
     this.qsoCount = const Value.absent(),
     this.deleted = const Value.absent(),
     this.synced = const Value.absent(),
+    this.updatedAtMillis = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : uuid = Value(uuid);
   static Insertable<OperationRow> custom({
@@ -442,6 +495,7 @@ class OperationsCompanion extends UpdateCompanion<OperationRow> {
     Expression<int>? qsoCount,
     Expression<bool>? deleted,
     Expression<bool>? synced,
+    Expression<int>? updatedAtMillis,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -453,6 +507,7 @@ class OperationsCompanion extends UpdateCompanion<OperationRow> {
       if (qsoCount != null) 'qso_count': qsoCount,
       if (deleted != null) 'deleted': deleted,
       if (synced != null) 'synced': synced,
+      if (updatedAtMillis != null) 'updated_at_millis': updatedAtMillis,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -466,6 +521,7 @@ class OperationsCompanion extends UpdateCompanion<OperationRow> {
     Value<int>? qsoCount,
     Value<bool>? deleted,
     Value<bool>? synced,
+    Value<int?>? updatedAtMillis,
     Value<int>? rowid,
   }) {
     return OperationsCompanion(
@@ -477,6 +533,7 @@ class OperationsCompanion extends UpdateCompanion<OperationRow> {
       qsoCount: qsoCount ?? this.qsoCount,
       deleted: deleted ?? this.deleted,
       synced: synced ?? this.synced,
+      updatedAtMillis: updatedAtMillis ?? this.updatedAtMillis,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -508,6 +565,9 @@ class OperationsCompanion extends UpdateCompanion<OperationRow> {
     if (synced.present) {
       map['synced'] = Variable<bool>(synced.value);
     }
+    if (updatedAtMillis.present) {
+      map['updated_at_millis'] = Variable<int>(updatedAtMillis.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -525,6 +585,7 @@ class OperationsCompanion extends UpdateCompanion<OperationRow> {
           ..write('qsoCount: $qsoCount, ')
           ..write('deleted: $deleted, ')
           ..write('synced: $synced, ')
+          ..write('updatedAtMillis: $updatedAtMillis, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -656,6 +717,17 @@ class $QsosTable extends Qsos with TableInfo<$QsosTable, QsoRow> {
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _updatedAtMillisMeta = const VerificationMeta(
+    'updatedAtMillis',
+  );
+  @override
+  late final GeneratedColumn<int> updatedAtMillis = GeneratedColumn<int>(
+    'updated_at_millis',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
   @override
   List<GeneratedColumn> get $columns => [
     uuid,
@@ -669,6 +741,7 @@ class $QsosTable extends Qsos with TableInfo<$QsosTable, QsoRow> {
     deleted,
     synced,
     scoreCache,
+    updatedAtMillis,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -755,6 +828,15 @@ class $QsosTable extends Qsos with TableInfo<$QsosTable, QsoRow> {
         scoreCache.isAcceptableOrUnknown(data['score_cache']!, _scoreCacheMeta),
       );
     }
+    if (data.containsKey('updated_at_millis')) {
+      context.handle(
+        _updatedAtMillisMeta,
+        updatedAtMillis.isAcceptableOrUnknown(
+          data['updated_at_millis']!,
+          _updatedAtMillisMeta,
+        ),
+      );
+    }
     return context;
   }
 
@@ -808,6 +890,10 @@ class $QsosTable extends Qsos with TableInfo<$QsosTable, QsoRow> {
         DriftSqlType.string,
         data['${effectivePrefix}score_cache'],
       ),
+      updatedAtMillis: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}updated_at_millis'],
+      ),
     );
   }
 
@@ -832,6 +918,9 @@ class QsoRow extends DataClass implements Insertable<QsoRow> {
   /// Cached plugin scoring results so list rendering never waits on the
   /// plugin runtime (DESIGN.md §4). Unused until the scoring hooks land.
   final String? scoreCache;
+
+  /// See `Operations.updatedAtMillis`.
+  final int? updatedAtMillis;
   const QsoRow({
     required this.uuid,
     required this.operation,
@@ -844,6 +933,7 @@ class QsoRow extends DataClass implements Insertable<QsoRow> {
     required this.deleted,
     required this.synced,
     this.scoreCache,
+    this.updatedAtMillis,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -871,6 +961,9 @@ class QsoRow extends DataClass implements Insertable<QsoRow> {
     if (!nullToAbsent || scoreCache != null) {
       map['score_cache'] = Variable<String>(scoreCache);
     }
+    if (!nullToAbsent || updatedAtMillis != null) {
+      map['updated_at_millis'] = Variable<int>(updatedAtMillis);
+    }
     return map;
   }
 
@@ -895,6 +988,9 @@ class QsoRow extends DataClass implements Insertable<QsoRow> {
       scoreCache: scoreCache == null && nullToAbsent
           ? const Value.absent()
           : Value(scoreCache),
+      updatedAtMillis: updatedAtMillis == null && nullToAbsent
+          ? const Value.absent()
+          : Value(updatedAtMillis),
     );
   }
 
@@ -915,6 +1011,7 @@ class QsoRow extends DataClass implements Insertable<QsoRow> {
       deleted: serializer.fromJson<bool>(json['deleted']),
       synced: serializer.fromJson<bool>(json['synced']),
       scoreCache: serializer.fromJson<String?>(json['scoreCache']),
+      updatedAtMillis: serializer.fromJson<int?>(json['updatedAtMillis']),
     );
   }
   @override
@@ -932,6 +1029,7 @@ class QsoRow extends DataClass implements Insertable<QsoRow> {
       'deleted': serializer.toJson<bool>(deleted),
       'synced': serializer.toJson<bool>(synced),
       'scoreCache': serializer.toJson<String?>(scoreCache),
+      'updatedAtMillis': serializer.toJson<int?>(updatedAtMillis),
     };
   }
 
@@ -947,6 +1045,7 @@ class QsoRow extends DataClass implements Insertable<QsoRow> {
     bool? deleted,
     bool? synced,
     Value<String?> scoreCache = const Value.absent(),
+    Value<int?> updatedAtMillis = const Value.absent(),
   }) => QsoRow(
     uuid: uuid ?? this.uuid,
     operation: operation ?? this.operation,
@@ -961,6 +1060,9 @@ class QsoRow extends DataClass implements Insertable<QsoRow> {
     deleted: deleted ?? this.deleted,
     synced: synced ?? this.synced,
     scoreCache: scoreCache.present ? scoreCache.value : this.scoreCache,
+    updatedAtMillis: updatedAtMillis.present
+        ? updatedAtMillis.value
+        : this.updatedAtMillis,
   );
   QsoRow copyWithCompanion(QsosCompanion data) {
     return QsoRow(
@@ -979,6 +1081,9 @@ class QsoRow extends DataClass implements Insertable<QsoRow> {
       scoreCache: data.scoreCache.present
           ? data.scoreCache.value
           : this.scoreCache,
+      updatedAtMillis: data.updatedAtMillis.present
+          ? data.updatedAtMillis.value
+          : this.updatedAtMillis,
     );
   }
 
@@ -995,7 +1100,8 @@ class QsoRow extends DataClass implements Insertable<QsoRow> {
           ..write('data: $data, ')
           ..write('deleted: $deleted, ')
           ..write('synced: $synced, ')
-          ..write('scoreCache: $scoreCache')
+          ..write('scoreCache: $scoreCache, ')
+          ..write('updatedAtMillis: $updatedAtMillis')
           ..write(')'))
         .toString();
   }
@@ -1013,6 +1119,7 @@ class QsoRow extends DataClass implements Insertable<QsoRow> {
     deleted,
     synced,
     scoreCache,
+    updatedAtMillis,
   );
   @override
   bool operator ==(Object other) =>
@@ -1028,7 +1135,8 @@ class QsoRow extends DataClass implements Insertable<QsoRow> {
           other.data == this.data &&
           other.deleted == this.deleted &&
           other.synced == this.synced &&
-          other.scoreCache == this.scoreCache);
+          other.scoreCache == this.scoreCache &&
+          other.updatedAtMillis == this.updatedAtMillis);
 }
 
 class QsosCompanion extends UpdateCompanion<QsoRow> {
@@ -1043,6 +1151,7 @@ class QsosCompanion extends UpdateCompanion<QsoRow> {
   final Value<bool> deleted;
   final Value<bool> synced;
   final Value<String?> scoreCache;
+  final Value<int?> updatedAtMillis;
   final Value<int> rowid;
   const QsosCompanion({
     this.uuid = const Value.absent(),
@@ -1056,6 +1165,7 @@ class QsosCompanion extends UpdateCompanion<QsoRow> {
     this.deleted = const Value.absent(),
     this.synced = const Value.absent(),
     this.scoreCache = const Value.absent(),
+    this.updatedAtMillis = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   QsosCompanion.insert({
@@ -1070,6 +1180,7 @@ class QsosCompanion extends UpdateCompanion<QsoRow> {
     this.deleted = const Value.absent(),
     this.synced = const Value.absent(),
     this.scoreCache = const Value.absent(),
+    this.updatedAtMillis = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : uuid = Value(uuid),
        operation = Value(operation);
@@ -1085,6 +1196,7 @@ class QsosCompanion extends UpdateCompanion<QsoRow> {
     Expression<bool>? deleted,
     Expression<bool>? synced,
     Expression<String>? scoreCache,
+    Expression<int>? updatedAtMillis,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -1099,6 +1211,7 @@ class QsosCompanion extends UpdateCompanion<QsoRow> {
       if (deleted != null) 'deleted': deleted,
       if (synced != null) 'synced': synced,
       if (scoreCache != null) 'score_cache': scoreCache,
+      if (updatedAtMillis != null) 'updated_at_millis': updatedAtMillis,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -1115,6 +1228,7 @@ class QsosCompanion extends UpdateCompanion<QsoRow> {
     Value<bool>? deleted,
     Value<bool>? synced,
     Value<String?>? scoreCache,
+    Value<int?>? updatedAtMillis,
     Value<int>? rowid,
   }) {
     return QsosCompanion(
@@ -1129,6 +1243,7 @@ class QsosCompanion extends UpdateCompanion<QsoRow> {
       deleted: deleted ?? this.deleted,
       synced: synced ?? this.synced,
       scoreCache: scoreCache ?? this.scoreCache,
+      updatedAtMillis: updatedAtMillis ?? this.updatedAtMillis,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -1169,6 +1284,9 @@ class QsosCompanion extends UpdateCompanion<QsoRow> {
     if (scoreCache.present) {
       map['score_cache'] = Variable<String>(scoreCache.value);
     }
+    if (updatedAtMillis.present) {
+      map['updated_at_millis'] = Variable<int>(updatedAtMillis.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -1189,6 +1307,7 @@ class QsosCompanion extends UpdateCompanion<QsoRow> {
           ..write('deleted: $deleted, ')
           ..write('synced: $synced, ')
           ..write('scoreCache: $scoreCache, ')
+          ..write('updatedAtMillis: $updatedAtMillis, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -2805,6 +2924,7 @@ typedef $$OperationsTableCreateCompanionBuilder =
       Value<int> qsoCount,
       Value<bool> deleted,
       Value<bool> synced,
+      Value<int?> updatedAtMillis,
       Value<int> rowid,
     });
 typedef $$OperationsTableUpdateCompanionBuilder =
@@ -2817,6 +2937,7 @@ typedef $$OperationsTableUpdateCompanionBuilder =
       Value<int> qsoCount,
       Value<bool> deleted,
       Value<bool> synced,
+      Value<int?> updatedAtMillis,
       Value<int> rowid,
     });
 
@@ -2866,6 +2987,11 @@ class $$OperationsTableFilterComposer
 
   ColumnFilters<bool> get synced => $composableBuilder(
     column: $table.synced,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get updatedAtMillis => $composableBuilder(
+    column: $table.updatedAtMillis,
     builder: (column) => ColumnFilters(column),
   );
 }
@@ -2918,6 +3044,11 @@ class $$OperationsTableOrderingComposer
     column: $table.synced,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<int> get updatedAtMillis => $composableBuilder(
+    column: $table.updatedAtMillis,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$OperationsTableAnnotationComposer
@@ -2956,6 +3087,11 @@ class $$OperationsTableAnnotationComposer
 
   GeneratedColumn<bool> get synced =>
       $composableBuilder(column: $table.synced, builder: (column) => column);
+
+  GeneratedColumn<int> get updatedAtMillis => $composableBuilder(
+    column: $table.updatedAtMillis,
+    builder: (column) => column,
+  );
 }
 
 class $$OperationsTableTableManager
@@ -2997,6 +3133,7 @@ class $$OperationsTableTableManager
                 Value<int> qsoCount = const Value.absent(),
                 Value<bool> deleted = const Value.absent(),
                 Value<bool> synced = const Value.absent(),
+                Value<int?> updatedAtMillis = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => OperationsCompanion(
                 uuid: uuid,
@@ -3007,6 +3144,7 @@ class $$OperationsTableTableManager
                 qsoCount: qsoCount,
                 deleted: deleted,
                 synced: synced,
+                updatedAtMillis: updatedAtMillis,
                 rowid: rowid,
               ),
           createCompanionCallback:
@@ -3019,6 +3157,7 @@ class $$OperationsTableTableManager
                 Value<int> qsoCount = const Value.absent(),
                 Value<bool> deleted = const Value.absent(),
                 Value<bool> synced = const Value.absent(),
+                Value<int?> updatedAtMillis = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => OperationsCompanion.insert(
                 uuid: uuid,
@@ -3029,6 +3168,7 @@ class $$OperationsTableTableManager
                 qsoCount: qsoCount,
                 deleted: deleted,
                 synced: synced,
+                updatedAtMillis: updatedAtMillis,
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0
@@ -3069,6 +3209,7 @@ typedef $$QsosTableCreateCompanionBuilder =
       Value<bool> deleted,
       Value<bool> synced,
       Value<String?> scoreCache,
+      Value<int?> updatedAtMillis,
       Value<int> rowid,
     });
 typedef $$QsosTableUpdateCompanionBuilder =
@@ -3084,6 +3225,7 @@ typedef $$QsosTableUpdateCompanionBuilder =
       Value<bool> deleted,
       Value<bool> synced,
       Value<String?> scoreCache,
+      Value<int?> updatedAtMillis,
       Value<int> rowid,
     });
 
@@ -3147,6 +3289,11 @@ class $$QsosTableFilterComposer extends Composer<_$HaLoDatabase, $QsosTable> {
 
   ColumnFilters<String> get scoreCache => $composableBuilder(
     column: $table.scoreCache,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get updatedAtMillis => $composableBuilder(
+    column: $table.updatedAtMillis,
     builder: (column) => ColumnFilters(column),
   );
 }
@@ -3213,6 +3360,11 @@ class $$QsosTableOrderingComposer extends Composer<_$HaLoDatabase, $QsosTable> {
     column: $table.scoreCache,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<int> get updatedAtMillis => $composableBuilder(
+    column: $table.updatedAtMillis,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$QsosTableAnnotationComposer
@@ -3260,6 +3412,11 @@ class $$QsosTableAnnotationComposer
     column: $table.scoreCache,
     builder: (column) => column,
   );
+
+  GeneratedColumn<int> get updatedAtMillis => $composableBuilder(
+    column: $table.updatedAtMillis,
+    builder: (column) => column,
+  );
 }
 
 class $$QsosTableTableManager
@@ -3301,6 +3458,7 @@ class $$QsosTableTableManager
                 Value<bool> deleted = const Value.absent(),
                 Value<bool> synced = const Value.absent(),
                 Value<String?> scoreCache = const Value.absent(),
+                Value<int?> updatedAtMillis = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => QsosCompanion(
                 uuid: uuid,
@@ -3314,6 +3472,7 @@ class $$QsosTableTableManager
                 deleted: deleted,
                 synced: synced,
                 scoreCache: scoreCache,
+                updatedAtMillis: updatedAtMillis,
                 rowid: rowid,
               ),
           createCompanionCallback:
@@ -3329,6 +3488,7 @@ class $$QsosTableTableManager
                 Value<bool> deleted = const Value.absent(),
                 Value<bool> synced = const Value.absent(),
                 Value<String?> scoreCache = const Value.absent(),
+                Value<int?> updatedAtMillis = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => QsosCompanion.insert(
                 uuid: uuid,
@@ -3342,6 +3502,7 @@ class $$QsosTableTableManager
                 deleted: deleted,
                 synced: synced,
                 scoreCache: scoreCache,
+                updatedAtMillis: updatedAtMillis,
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0
