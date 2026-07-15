@@ -312,12 +312,12 @@ one batched transaction) and `daySections`/`operationSummary` into the
 operation's `local_data` (`OperationsRepository.updateLocalData`) — never
 synced content, so list scroll and score displays both read from SQLite and
 never wait on the JS runtime. Triggered on operation open; per-edit debounced
-rescoring is not wired up yet (DESIGN.md §11).
+rescoring is not wired up yet (see [backlog.md](../backlog.md)).
 
 Implemented by: `scoring` (key `core`) — three rules so far: duplicate-contact
 detection, DXCC entities worked (via `@ham2k/lib-country-files`'
 `useBuiltinCountryFile`, no network needed), and bands/modes worked. US
-States and Canadian Provinces rules are deferred (DESIGN.md §11).
+States and Canadian Provinces rules are deferred (see [backlog.md](../backlog.md)).
 
 ## ✅ `bench` — kernel diagnostics
 

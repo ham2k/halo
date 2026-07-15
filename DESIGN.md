@@ -2,8 +2,10 @@
 
 *Ham2K Portable Logger, next generation: a Flutter core with TypeScript extensions.*
 
-Status: **draft / pre-implementation**
-Last updated: 2026-07-05
+Status: **living document.** Steps 1–2 of the plan in §10 are complete;
+steps 3–5 are largely built; steps 6–7 remain. Open work is tracked in
+[docs/backlog.md](docs/backlog.md) and GitHub issues.
+Last updated: 2026-07-15
 
 ---
 
@@ -230,9 +232,9 @@ update is pure Dart. Extensions get debounced, async involvement (lookup
 enrichment, command matching, validation) — which matches how they behave
 today anyway.
 
-> Discipline note: extensions will always want "just one custom widget." Catalog
-> additions are core PRs. The day the catalog becomes Turing-complete we have
-> rebuilt React, badly.
+> Discipline note: extensions will always want "just one custom widget."
+> Catalog additions are deliberate core PRs; keeping the catalog small and
+> declarative is the point.
 
 ---
 
@@ -319,7 +321,7 @@ multi-window API. Tear-off windows stay **out of the v1 critical path**.
 ## 9. Repository layout
 
 ```
-app-polo-next/
+app-halo/
   app/                    # Flutter app (thin: wiring + distro config)
   packages/
     halo_core/            # Dart: models, db, sync engine, services
@@ -348,7 +350,7 @@ app-polo-next/
 
 ## 10. Sequencing
 
-1. **Spike the riskiest joint (2–3 weeks).** QuickJS on an isolate + bridge +
+1. **Spike the riskiest piece (2–3 weeks).** QuickJS on an isolate + bridge +
    the QRZ lookup extension + POTA spots extension against a stub UI. Measure:
    bridge latency, memory on a low-end Android device, cold-start cost of
    loading ~40 bundles.
@@ -377,12 +379,9 @@ app-polo-next/
 | Flutter multi-window immaturity | SQLite-as-bus design; tear-off windows out of v1 |
 | JS runtime wedged / extension crash | Sync and logging fast path are pure Dart; timeouts degrade features, never the app |
 | Startup cost of many extensions | Lazy-load bundles on first activation |
-| **⚠️ TODO — credentials stored in plaintext** | `SettingsService` (`app/lib/services/settings_service.dart`) persists QRZ.com username/password via plain `SharedPreferences` — unencrypted on disk. Fine for early dev, **not acceptable before a real release**: swap for platform secure storage (Keychain/Keystore, e.g. `flutter_secure_storage`) before shipping. |
-| **⚠️ TODO — Windows/Linux desktop map backend unimplemented** | The Map tab's desktop Mapbox backend (`app/lib/screens/map/mapbox_webview_map_view.dart`) uses `flutter_inappwebview`, which claims Windows/Linux support, but neither platform is scaffolded into this project (`app/windows/`, `app/linux/` don't exist) nor verified — needs `flutter create --platforms=windows,linux .` and its own spike before relying on it there. |
-| **⚠️ TODO — Map tab has no web backend** | `app/web/` isn't scaffolded either, and `mapbox_maps_flutter`'s web support is Public Preview only as of `3.0.0-alpha.1`. The Map tab's `kIsWeb` branch falls back to the OSM/`flutter_map` backend — revisit once Mapbox's web support leaves preview, or a Mapbox GL JS `<script>`-tag/iframe approach is spiked (a webview doesn't make sense on web, since the app itself is already running in a browser). |
-| **⚠️ TODO — sync onboarding UX is a bare-minimum banner, not a guided flow** | `SyncEngine` (`packages/halo_core/lib/src/sync/sync_engine.dart`) now does pause-and-ask account reconciliation (combine/replace, backed by a full backfill — `syncedUntilMillis`/`anyClient: true`, paging backward until caught up, mirroring app-polo's `sync.js`) and a `SYNCALL` debug command reusing the same backup-and-clear mechanism. What's still missing is app-polo's four onboarding *scenarios* as a guided UX (`app-polo/src/store/sync/README.md`) — new-install-vs-existing-account framing, waiting-for-email-confirmation states, etc. Settings just shows a plain Combine/Replace banner with no narrative around it. |
-| **⚠️ TODO — scoring handlers ported from web-lofi are incomplete** | The `scoring` hook (`docs/extensions/hooks.md`) is implemented as a single coarse-batched extension (`extensions/core/scoring`) rather than web-lofi's per-ref-type bridge hooks, and covers three rules so far: duplicate-contact detection, DXCC entities worked (resolved locally via `@ham2k/lib-country-files`' `useBuiltinCountryFile`), and bands/modes worked. `USStatesScoringHandler` and `CanadianProvincesScoringHandler` are still deferred — no state/province reference data lib has been wired in yet. |
-| **⚠️ TODO — scores only refresh on operation open, not per-edit** | `ScoringService.rescoreOperation` (`app/lib/services/scoring_service.dart`) is called once from `OperationView._load()`. There's no debounced rescore after each QSO add/edit/delete yet — the score cache written by a rescore is itself a write to the `qsos` table, and naively re-triggering off `QsosRepository.watchForOperation`'s stream would make that write re-trigger its own listener. Needs a change-fingerprint (e.g. uuids + `startAtMillis`, excluding `score_cache`) or a dedicated non-cache-writing change signal before wiring live rescoring. |
+
+Larger known gaps in the implementation (incomplete features, unverified
+platforms) are tracked in [docs/backlog.md](docs/backlog.md), not here.
 
 ---
 

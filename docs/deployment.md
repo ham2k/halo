@@ -1,9 +1,13 @@
 # Web Deployment & Cloudflare Hosting
 
-This document explains how to build, deploy, and host the web version of **Ham2K Logger** (HaLo Next) on **Cloudflare Pages**, including URL redirections and CORS proxy setup.
+How to build, deploy, and host the web version of **Ham2K Logger** on
+**Cloudflare Pages**, including URL redirections and CORS proxy setup. For the
+overall versioning and distribution architecture, see [releases.md](releases.md).
 
 ## Overview
-Flutter Web builds compile into 100% static assets (HTML, CSS, JS, WASM, and CanvasKit graphics engines). These are hosted directly on Cloudflare Pages, providing globally cached Edge delivery and automatic SSL/TLS termination.
+Flutter web builds compile to static assets (HTML, CSS, JS, WASM, and the
+CanvasKit graphics engine). We host them on Cloudflare Pages, which provides
+edge caching and SSL termination.
 
 ---
 

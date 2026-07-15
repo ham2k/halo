@@ -6,7 +6,7 @@ This is a multi-platform app for Amateur Radio Logging, called "Ham2K Logger" (o
 ## Design & Architecture
 
 - [DESIGN.md](file:///Users/sd/Work/ham2k/app-halo/DESIGN.md) contains high-level design documentation.
-- User interface conventions are listed in [user-interface.md](file:///Users/sd/Work/ham2k/app-halo/docs/design/user-interface.md) and branding is documented in [branding.md](file:///Users/sd/Work/ham2k/app-halo/docs/design/branding.md).
+- User interface conventions and branding are documented in [user-interface.md](file:///Users/sd/Work/ham2k/app-halo/docs/design/user-interface.md).
 - The Font Scale setting scales the **whole** UI from one root wrapper ([ui-scaling.md](file:///Users/sd/Work/ham2k/app-halo/docs/design/ui-scaling.md)). Write all dimensions in plain logical pixels and **never multiply a size, padding, or font size by the font scale** — that double-scales it. Read ui-scaling.md before any scaling-, layout-, or macOS-window-related change.
 - The extension system and hooks are defined under `docs/extensions/`.
 - We often mention app-polo and web-lofi, which are the existing mobile version and a web-based log browser that shares a lot of logic with PoLo. These are available in separate sibling repositories that can be used for reference.
@@ -19,6 +19,7 @@ This is a multi-platform app for Amateur Radio Logging, called "Ham2K Logger" (o
 - We do most work on the `app-halo-dist` repository, with branches out of the `main-dist-private` branch. We use "squash-and-merge" to merge PRs. Any commits that include changes to `app_dist` are split into separate commits in `app-halo-dist`. The non `app_dist` changes are then cherry-picked to `main-public`.
 - New branches should be pushed to the `app-halo-dist` origin, never to regular `origin`.
 - Branches for Issues should be named using the convention `<issue-number>-<short-description>` and should be based off the `dist` branch of the `app-halo-dist` repository (available as `main-dist-private` locally).
+- PRs should mention relevant Issues if possible, with the keyword "closes", "fixes" or "resolves" as appropriate.
 
 
 ## Tooling

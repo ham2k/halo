@@ -1,86 +1,101 @@
-# Issues
+# Backlog
 
-* Do data files work on web?
+Known gaps and planned work not yet turned into GitHub issues. Architectural
+*risks* (things that could invalidate the design) stay in
+[DESIGN.md](../DESIGN.md) §11; this file tracks incomplete features and
+unverified platforms.
 
-# Features
+Most of the original feature backlog (secondary controls, QSO row layout,
+radio/VFO service, exports panel, activities view, status bar, call stacking)
+has shipped and was removed from this file on 2026-07-15.
 
-## Secondary Controls
+## Windows map backend unverified; Linux has no Mapbox path
 
-The time widget should show :00 if the qso data has no seconds
+The Map tab routes Windows to the `flutter_inappwebview` Mapbox backend
+(`app/lib/views/map/mapbox_webview_map_view.dart`) — structurally supported
+but never run on a Windows machine.
 
-The user should be able to drag to scroll.
+Linux is routed to the OSM/`flutter_map` backend (markers/lines/callouts,
+no globe) because the `flutter_inappwebview` we pin (6.1.5, latest stable)
+ships no Linux implementation and `mapbox_maps_flutter` is mobile-only.
+**Trigger to revisit (decided 2026-07-15): when `flutter_inappwebview` 6.2
+goes stable.** 6.2.0-beta.3 endorses a WPE WebKit Linux implementation
+(`flutter_inappwebview_linux`), so the fix is a version bump plus adding
+`Platform.isLinux` to the webview branch of `map_panel.dart`'s routing —
+the shared `map_gl_script.dart` means Linux then gets the exact same
+markers/lines/popups/globe as macOS/Windows/web. Needs WPE WebKit 2.0
+system libraries and a Linux machine to verify; adopting the beta early
+was rejected to avoid moving the verified macOS webview onto a beta.
+(CEF-based alternatives were considered and rejected: ~100MB+ payload and
+a third parallel backend.)
 
-There should be a caret to expand the area into up to 4 rows of controls.
+## Web map backend needs a real-deployment shakeout
 
-There should be a settings button at the end, which opens a dialog where the user can select which controls to show or hide. Time and Radio are not optional. Items in this dialog's list should have a grab handle that lets the user reorder them.
+The web Map backend (`app/lib/views/map/mapbox_web_map_view.dart`) mounts
+Mapbox GL JS on an `HtmlElementView` div via `<script>`-tag loading and
+`js_interop`, sharing the marker/line/popup JS (`map_gl_script.dart`) with
+the desktop webview backend. Verified against a dev
+`flutter run -d web-server` build; still to check on a real deployment: CSP
+headers allowing `api.mapbox.com`, and the Mapbox token's URL restrictions
+covering the production origin.
 
-When in edit mode, the pills should display with a background color.
+## Sync onboarding UX is a bare-minimum banner, not a guided flow
 
-There should not be borders around the pills.
+`SyncEngine` (`packages/halo_core/lib/src/sync/sync_engine.dart`) does
+pause-and-ask account reconciliation (combine/replace, backed by a full
+backfill — `syncedUntilMillis`/`anyClient: true`, paging backward until
+caught up, mirroring app-polo's `sync.js`) and a `SYNCALL` debug command
+reusing the same backup-and-clear mechanism.
 
-The extended area for secondary controls should have the same background color as the pills.
+What's missing is app-polo's four onboarding *scenarios* as a guided UX
+(`app-polo/src/store/sync/README.md`): new-install-vs-existing-account
+framing, waiting-for-email-confirmation states, etc. Settings just shows a
+plain Combine/Replace banner with no narrative around it.
 
-### Logging View Settings
+## Scoring handlers ported from web-lofi are incomplete
 
-A "..." menu on the top right of the logging view, with options to show/hide RST fields, state field, grid field, show deleted qsos and show numbers row.
+The `scoring` hook ([extensions/hooks.md](extensions/hooks.md)) is
+implemented as a single coarse-batched extension (`extensions/core/scoring`)
+rather than web-lofi's per-ref-type bridge hooks, and covers three rules so
+far: duplicate-contact detection, DXCC entities worked (resolved locally via
+`@ham2k/lib-country-files`' `useBuiltinCountryFile`), and bands/modes
+worked. `USStatesScoringHandler` and `CanadianProvincesScoringHandler` are
+still deferred — no state/province reference data lib has been wired in yet.
 
-### QSO Rows
+## Contest support: exchange controls and an archetype extension
 
-* Number (Optional)
-* Time - HH:MMz
-* Frequency - Mhz bolded, then KHz regular weight, then, if needed, Hz regular weight in a smaller font size, all separated by periods.  For Hz, decide how many digits to display based on all the qsos in the operation and how many digits are needed to represent their Hz while padding zeroes on the right.  If no frequency is available, display mode.
-* Mode - only if the qsos in the operation use more than one mode.
-* Callsign - wide enough to fit the longest callsign in all qsos
-* Emoji(s), Name - this row expands to use available space
-* References - Using the icons from their extensions, with "x2" indicating multiple references of the same type.
-* Exchange or RST
+DESIGN.md §10's step 3 called for a contest archetype extension (NAQP or a
+QSO party) alongside POTA and QRZ; it was never built. The UI catalog also
+still only ships `refList` — a contest exchange needs a `textField` control
+kind (deferred in work phases 4 and 5), and scoring needs contest rules
+beyond the three core ones above.
 
-Add an option in the logging view settings menu to "Show QSO Numbers"
+## Callsign lookup results are not cached
 
+app-polo caches lookup results in the `lookups` table; HaLo re-queries QRZ/
+HamDB on every enrichment pass (deferred in phase 3, still true — no lookup
+cache exists in `extensions/core/lookups` or `ExtensionService`). Offline
+*datasets* are covered by the `dataFile` hook; this is about per-callsign
+lookup results.
 
-## Radio Service
+## Deferred from the 2026-07-14 architecture review
 
-Keep state of the radio(s) in use in the operation
-Wire secondary controls to a state for "VFO" that provides `freq`, `mode` and `band` for up to 4 VFOs objects as `vfoA`, `vfoB`, `vfoC` and `vfoD`.
+All P0/P1 findings from the 2026-07-14 architecture review were fixed in its
+same-day remediation (Milestones A–D, annotated inline in the review — in
+git history at `docs/reviews/2026-07-14-architecture-review.md`, removed
+from the tree 2026-07-15). Three items were deferred by design and are
+tracked only here:
 
-For now, we'll only use vfoA, but the structure allows for up to 4 VFOs to be used in the future.
-
-
-## Exports
-
-Operation Exports Panel: Provide a list of exports as suggested by extensions, allow selecting multiple exports and saving them to disk (or share, in mobile platforms). Display a summary of sync status for the operation and qsos.
-
-## Activities
-
-Operation Activities View: List the activities/references in the operation. If the operation has start, break or end events, display them as headers on the list. Each ref gets its own row. Use a fab to add new activities, or to add breaks.
-
-Start, end and break events allow editing their times
-
-Implement a view/dialog to manage the activities for the current operation. Tapping the activity opens a view to edit their details, based on a form definition provided by the extension, along with an option to remove the activity.
-
-This view/dialog also has a list of suggestions provided by the extensions, which are given the current operation, including location and callsign, and above the list of suggestions there is a search bar. The search bar asks each extension to provide suggestions with the search term. Results are combined, sorted by distance multiplied by relevance (returned by the extension as part of the data). Finally followed, after a separator, by a list of active extensions
-
-
-
-## Location
-
-Implement the location options in the Operation Settings Panel
-
-
-## Callsign Input
-
-When switching between logging fields, the next field's text should not be selected, just the cursor placed at the end.
-
-Callsign input should support call stacking.
-
-
-
-### Status bar
-
-A status bar on the bottom of the screen, which in mobile apps is hidden unless there is important information to display.  It can show transient single line text messages, progress bars, or notices. Each can have an icon, a title and markdown text. Notices can have richer content, multi-line text, and action buttons (see app-polo for examples).
-
-Extensions and app components can add messages programmatically, and messages and progress status can have a key (prefixed with the extension key automatically, extensions cannot modify other extension messages) that allows them to update or remove existing messages.
-
-If there are multiple items active, it shows the last one but can be tapped to expand it and see at least five lines in a scrollable area. If there are notices, they are displayed as a stack of post-it like rectangles on top of the rest of the active items scrollable area.r
-
-On the settings screen, in the about section, there should be a link to a screen that shows "Recent Notices" where they are still displayed as post-it notes but one after another, with most recent on top.
+- **Hard extension isolation.** The shipped containment is soft and
+  single-realm — a hostile bundle can tamper with shared globals (`__polo`
+  itself) — and there is no true execution-time interrupt on any platform
+  (a `while(true)` hook is caught by the Dart-side timeout + host restart,
+  not pre-empted). Both need DESIGN.md §3's direct-FFI QuickJS binding.
+  Prerequisite for the third-party/OTA extension channel.
+- **SDK contract versioning and a discriminated `Hook` union.** No
+  `minCatalog`-style negotiation exists for the OTA channel, and the `Hook`
+  type's `| Record<string, unknown>` arm erases misspelled-method errors.
+  Also a third-party-channel prerequisite.
+- **`LoggingControls` decomposition.** The ~2,600-line widget mixes keyboard
+  shortcuts, command dispatch, VFO mirroring, undo, and form building; a
+  structural refactor with no behavior change, deserving its own pass.

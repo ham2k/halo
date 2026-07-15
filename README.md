@@ -10,16 +10,15 @@ while keeping the extension ecosystem in TypeScript, updatable without app
 releases.
 
 **Start here: [DESIGN.md](DESIGN.md)** — architecture, extension model, hook
-taxonomy, data layer, sequencing plan. For writing extensions, see
-[docs/extensions/](docs/extensions/README.md). For web deployment setup, see
-[docs/deployment.md](docs/deployment.md).
+taxonomy, data layer, sequencing plan. The full documentation index is at
+[docs/README.md](docs/README.md); for writing extensions, see
+[docs/extensions/](docs/extensions/README.md).
 
 ## Status
 
-- **Spike 01 — extension bridge**: done, all platforms green
-  ([docs/spike-01-extension-bridge.md](docs/spike-01-extension-bridge.md)).
-- **Phase 2 — core logging loop**: operations, QSO entry, reactive QSO list
-  on drift/SQLite ([docs/phase-02-core-logging.md](docs/phase-02-core-logging.md)).
+The core architecture is built and working: logging loop, extension runtime
+and bridge, declarative UI catalog, sync, spots, map, scoring, and exports.
+Remaining gaps are tracked in [docs/backlog.md](docs/backlog.md).
 
 ```sh
 cd extensions && npm install && npm run build   # extension bundles → app assets

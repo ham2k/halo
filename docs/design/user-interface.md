@@ -1,104 +1,139 @@
-# User Interface Design for Ham2K HaLo Next
+# User Interface Design
 
 ## Concepts
 
-We'll use "Views" to refer to the different screens or windows that the user interacts with. "Panels" to refer to the main components of a view (which may be laid out next to each other, or as tabs), and "Areas" to sections or groups inside a Panel.
+- **Views** are the screens or windows the user interacts with.
+- **Panels** are the main components of a view, laid out next to each other
+  or as tabs.
+- **Areas** are sections or groups inside a panel.
 
-## Main Views
+## Branding
 
-The app currently has three main views:
+The app is formally called "Ham2K Logger". On desktop it identifies itself as
+"Ham2K Logger"; on mobile, "Ham2K Portable Logger".
 
-- Home View: a list of all operations, along with a button to start a new operation
+- The package name / identifier is `com.ham2k.logger`.
+- "HaLo" (or "halo") is used internally — package names, identifiers — but
+  never in content shown to users.
+- Where the app name stands alone (headers, dialog titles), use the Ham2K
+  wordmark graphic plus the text "Logger" or "Portable Logger", either to the
+  right of the logo (left-aligned, vertically centered) or below it
+  (centered).
+- When mentioning the app in text, use the formal name "Ham2K Logger" or
+  "Ham2K Portable Logger" — never "HaLo".
 
-- Operation View: the main view for an operation, showing the list of QSOs, logging controls and related information
+## Main views
 
-- Settings View: allows the user to configure the app's settings
+The app has three main views:
 
-### The Home View
+- **Home View** — a list of all operations, plus a button to start a new one.
+- **Operation View** — the main view for an operation: its QSOs, logging
+  controls, and related information.
+- **Settings View** — app configuration.
 
-The home view is a list of all operations in an "Operation List Panel", sorted most recent first,along with a button to start a new operation. 
+### Home View
 
-The header shows "Desktop Logger" in desktop platforms and "Portable Logger" in mobile ones. It also has a button to navigate to the Settings View.
+The Home View shows all operations in an "Operation List Panel", sorted most
+recent first, with a button to start a new operation.
 
-In the bottom there's a "Quick Lookup Panel", comprised of afield that allows the user to enter a callsign and see information about it, as well as enter commands. Information is displayed just above the field.
+The header shows "Desktop Logger" on desktop platforms and "Portable Logger"
+on mobile, plus a button that opens the Settings View.
 
-### The Operation View
+At the bottom, a "Quick Lookup Panel" has a field where the user can enter a
+callsign to see information about it, or enter commands. Results appear just
+above the field.
 
-The operation view has four main panels: 
+### Operation View
 
-- Logging Panel: a list of QSOs for the current operation, and a set of logging controls to add or edit QSOs
-- Spots Panel: a list of spots relevant to the operation
-- Map Panel: a map showing all the QSOs for the operation.
-- Operation Settings Panel: a panel that allows the user to configure settings for the current operation.
+The Operation View has four main panels:
 
-Normally all four panels are displayed as tabs, with the logging panel tab showing the count of QSOs.
+- **Logging Panel** — the QSOs of the current operation, plus logging
+  controls to add or edit QSOs.
+- **Spots Panel** — spots relevant to the operation.
+- **Map Panel** — a map of the operation's QSOs.
+- **Operation Settings Panel** — settings for the current operation.
 
-If the view is wide enough, the logging panel is displayed on the left, and the remaining panels are grouped as tabs on the right, with a split that can be resized by the user.
+Normally all four panels display as tabs, with the Logging Panel tab showing
+the QSO count. If the view is wide enough, the Logging Panel moves to the
+left and the other panels group as tabs on the right, with a user-resizable
+split between them.
 
+### Logging controls
 
-### The Logging Controls
+The logging controls are the area of the Logging Panel for adding or editing
+QSOs. They have three parts: the main logging controls, the information
+area, and the secondary logging controls.
 
-The logging controls are an area of the Logging Panel dedicated to adding or editing QSOs. It is divided in three main areas: the main logging controls, the information area, and the secondary logging controls.
+**Main controls.** Always start with the callsign input (also used for
+commands), followed by the exchange inputs (unless disabled), then controls
+defined by active extensions and operation references, and finally
+user-enabled ones like state or grid. This list is deliberately short,
+focused on information exchanged over the air on every contact; most other
+details belong in the secondary controls.
 
-The main logging controls include the callsign input that's also used for commands, inputs such as their exchange, our exchange, state, grid, and other controls defined by active extensions and operation references.
+Pressing Tab or Space rotates focus between main controls. If an input
+allows spaces, one press enters a space; two presses in a row delete that
+space and move focus to the next control.
 
-The secondary logging controls are pills that show current state of some QSO attributes, both built-in ones like time and radio, as well as extension-defined pills. The pills can be selected to display a richer set of controls in a stripe above the secondary control area. This secondary control strip can scroll past the visible area, and the pills act like mutually exclusive tabs to display their controls.  The strip can be expanded to show all controls in multiple rows, or collapsed to a single row with scrolling to conserve screen space.
+**Secondary controls.** Pills that show the current state of QSO attributes
+— built-ins like time and radio, plus extension-defined ones. Selecting a
+pill opens its editable controls in a strip above the pill row; the pills
+act as mutually exclusive tabs. The strip scrolls horizontally, and can be
+expanded to show all controls in multiple rows or collapsed back to a single
+scrolling row to save screen space.
 
-The information area is used to present information to the user, like details for the current callsign, or a summary of operation statistics when no callsign is entered. The data displayed in it is usually conveyed by extensions using markdown, and it can contain links to external resources or internal navigation. Tapping on the information area can take the user to a screen or pane with more detailed information.
+**Information area.** Presents information to the user: details for the
+current callsign, or a summary of operation statistics when no callsign is
+entered. Content usually comes from extensions as markdown and can link to
+external resources or internal navigation. Tapping the area can open a
+screen or pane with more detail.
 
-The set of primary logging controls always starts with the callsign input, followed by the exchange inputs if the user has not disabled them, and then come the controls defined by active extensions and finally user-enabled ones like state or grid. 
-
-The list of primary controls is very limited and focused on information exchanged over the air for every single contact. Most of the time the secondary controls should be used instead for other details.
-
-Pressing tab or space should rotate focus between primary controls. If an input is in a mode that allows spaces, then pressing space once just enters the space character, but space twice in a row deletes the first space entered and then moves focus to the next primary control.
-
-## Interface Scaling
+## Interface scaling
 
 The **Font Scale** setting scales the entire interface — text, controls,
-spacing, everything — by one uniform factor, from a single root wrapper. It is
-not a text-only setting. The mechanism and, crucially, the rules that keep it
-working (never scale dimensions by hand; write plain logical pixels; macOS
-traffic-light clearance) are documented in
+spacing, everything — by one uniform factor from a single root wrapper. It
+is not a text-only setting. The mechanism and, crucially, the rules that
+keep it working (never scale dimensions by hand; write plain logical pixels;
+macOS traffic-light clearance) are documented in
 [ui-scaling.md](ui-scaling.md) — read it before touching anything scaling-,
 layout-, or macOS-window-related.
 
-## General Layout
+## General layout
 
-#### Header
+### Header
 
-Windows (or screens in mobile platforms) have a header, which can display a title and optional subtitle, along with a logo or back arrow on the left side, and one or more buttons on the right side.
+Windows (or screens on mobile) have a header with a title and optional
+subtitle, a logo or back arrow on the left, and one or more buttons on the
+right. When the window is wide enough for split views, the title and
+subtitle are left-aligned; on narrow windows they are centered.
 
-When the window is wide enough for split views, the header title and subtitle text is left aligned. On narrow windows or screens, the text is centered.
+### Footer
 
-#### Footer
+A footer at the bottom of the window can show a progress bar for sync
+activity and other status information. On mobile devices it hides while the
+keyboard is open. It includes padding so rounded screen corners don't cover
+it.
 
-A footer is displayed at the bottom of the window or screen, and might show a progress bar for sync activity, and other status information.
+## Dialogs
 
-In mobile devices, the footer is hidden when they keyboard is open.
+Dialogs can have a title and subtitle pinned at the top, content in the
+middle, and a set of action buttons pinned at the bottom. Clicking outside
+the dialog or pressing Escape dismisses it.
 
-The footer should include padding to avoid being hidden by rounded corners.
+## Forms
 
-
-# Dialogs
-
-Dialogs can have a title and subtitle that are pinned on the top, then the dialog content and finally a set of actions (buttons) that are pinned at the bottom.
-
-Clicking outside of the dialog or pressing the escape key will dismiss the dialog.
-
-# Forms
-
-Forms should have a clear and consistent layout, with labels and fields aligned properly.
-
-When rendering forms in a View, instead of a dialog, the actions should be pinned at the bottom just like on dialogs.
+Forms use a clear, consistent layout, with labels and fields aligned
+properly. When a form renders in a view instead of a dialog, its actions are
+pinned at the bottom, same as in a dialog.
 
 ## Future directions
 
-* We will implement a layout mechanism that lets users drag and drop secondary controls to reorder them, and they can drag a secondary control outside of the current secondary area to create a separate secondary control strip where the user can leave a control open independently from the original secondary control strip.
-
-* We will implement a more modular layout system, where a JSON-based layout definition can be used to customize the layout of different windows or screens in the app.
-
-* We will add support for multiple windows, each with a separate "Current Operation" context.
-
-* We will add support for customizing the layout of the QSO List, so that the logging controls appear on top and the list is sorted from most recent first, as well as the current set up where the controls are below the list and it is sorted from oldest first.
-
-* We might add support for theming, allowing users to customize the appearance of the app.
+- A layout mechanism to drag-reorder secondary controls, and to drag one out
+  of the strip into its own independent strip that stays open on its own.
+- A more modular layout system, driven by JSON layout definitions per window
+  or screen.
+- Multiple windows, each with its own "current operation" context.
+- A QSO List layout option with the logging controls on top and the list
+  sorted most recent first (in addition to the current controls-below,
+  oldest-first layout).
+- Possibly theming, letting users customize the app's appearance.
