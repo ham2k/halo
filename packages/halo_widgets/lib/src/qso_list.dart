@@ -4,7 +4,7 @@
 // Reactive QSO list, styled after app-polo's log rows: Roboto Mono data
 // columns, hairline dividers, newest QSO at the bottom edge next to the
 // logging panel. Row layout follows ham2k/app-halo-dist#2's field list and
-// order: Number (optional) | Time | Frequency (or Mode, if no frequency) |
+// order: Number (optional) | Time | Frequency (or Band, if no frequency) |
 // Mode (only when the operation uses more than one) | Callsign |
 // Emoji(s)/Name | References | RST.
 
@@ -398,11 +398,11 @@ class _QsoListState extends State<QsoList> {
       }
 
       // Frequency bolded-MHz/regular-kHz/smaller-Hz, dot-separated; falls
-      // back to the mode when the QSO has no frequency at all.
+      // back to the band when the QSO has no frequency at all.
       final freqKHz = qso.freq;
       final Widget freqField;
       if (freqKHz == null) {
-        freqField = Text(qso.mode ?? '', style: rowMono);
+        freqField = Text(qso.band ?? '', style: rowMono);
       } else {
         final parts = freqDisplayParts(freqKHz, hzDigits: hzDigits);
         freqField = Row(

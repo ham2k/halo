@@ -166,12 +166,13 @@ void main() {
       },
     );
 
-    testWidgets('shows the mode instead when the QSO has no frequency', (
+    testWidgets('shows the band instead when the QSO has no frequency', (
       tester,
     ) async {
       final operation = await operations.create(stationCall: 'KI2D');
       final qso = await qsos.add(operation.uuid, {
         'their': {'call': 'W1AW'},
+        'band': '40m',
         'mode': 'CW',
         'startAtMillis': 1000,
       });
@@ -184,15 +185,13 @@ void main() {
         ),
       );
 
-      expect(find.text('CW'), findsOneWidget);
+      expect(find.text('40m'), findsOneWidget);
     });
   });
 
   group('mode column', () {
     testWidgets('hidden when every QSO uses the same mode', (tester) async {
       final operation = await operations.create(stationCall: 'KI2D');
-      // A frequency on both QSOs keeps 'SSB' from also appearing via the
-      // no-frequency mode fallback, isolating what's under test here.
       final first = await qsos.add(operation.uuid, {
         'their': {'call': 'W1AW'},
         'freq': 14074,
