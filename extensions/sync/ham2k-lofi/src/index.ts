@@ -29,7 +29,7 @@ defineExtension({
   version: '0.1.0',
   description: 'Cloud backup and sync for Ham2K apps',
   onActivation({ registerHook }) {
-    registerHook('syncTransport', { hook: { sync, getAccountData, linkClientWithEmail } })
+    registerHook('syncTransport', { hook: { sync, getAccountData, linkClient, linkClientWithEmail } })
     registerHook('command', { key: 'ham2k-lofi-syncall', hook: { interpret: syncAllCommand } })
   },
 })
@@ -78,6 +78,17 @@ async function registerClient(): Promise<string> {
   return cachedToken
 }
 
+/// A non-2xx server reply, kept distinct from plain Errors so linkClient
+/// can turn "the server said no" (with its status) into flow data while
+/// genuine transport failures keep propagating.
+class LoFiRequestError extends Error {
+  status: number
+  constructor(message: string, status: number) {
+    super(message)
+    this.status = status
+  }
+}
+
 /// Authenticated request with the same retry-once-on-401 shape as the RN
 /// extension: an expired/invalid token drops just the token (key/secret
 /// still identify this device), never the caller's request.
@@ -110,7 +121,7 @@ async function request(method: 'GET' | 'POST', path: string, body?: JSONValue): 
     }
     const json = parseJson(response.body)
     if (response.status < 200 || response.status >= 300) {
-      throw new Error(`LoFi request failed: ${(json.error as string) ?? `HTTP ${response.status}`}`)
+      throw new LoFiRequestError(`LoFi request failed: ${(json.error as string) ?? `HTTP ${response.status}`}`, response.status)
     }
     return json
   }
@@ -131,6 +142,26 @@ async function sync(payload: SyncPayload, _ctx: HookContext): Promise<SyncRespon
 
 async function getAccountData(_args: Record<string, never>, _ctx: HookContext): Promise<Record<string, JSONValue>> {
   return request('GET', 'v1/accounts')
+}
+
+/// Requests a link permission from the server (app-polo's `linkClient` /
+/// `prepareBlankPermission`). With an email, a pending permission on that
+/// account — the response's `permission.challenge_token` is the code the
+/// user confirms from a device already linked to it (or `status: 'active'`
+/// right away when this client already holds a permission there, which is
+/// how quick account switching works). With no email, a blank "orphaned"
+/// permission whose client uuid + challenge_token get encoded into a QR
+/// code for an already-linked device to scan and approve. Server rejections
+/// are part of the UI flow here (404 = "no account with that email"), so
+/// they come back as `{ error, error_status }` data instead of a thrown
+/// error — only genuine transport failures still throw.
+async function linkClient({ email }: { email?: string }, _ctx: HookContext): Promise<Record<string, JSONValue>> {
+  try {
+    return await request('POST', 'v1/client/permissions', email ? { email } : {})
+  } catch (e) {
+    if (e instanceof LoFiRequestError) return { error: e.message, error_status: e.status }
+    throw e
+  }
 }
 
 async function linkClientWithEmail(

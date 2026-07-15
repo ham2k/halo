@@ -162,6 +162,34 @@ void main() {
     expect(await qsos.hasUnsynced(), isFalse);
   });
 
+  test('server tuning knobs nested under meta.flags (the real server shape) are honored', () async {
+    final op = await operations.create(stationCall: 'KI2D');
+    for (var i = 0; i < 120; i++) {
+      await qsos.add(op.uuid, {'their': {'call': 'W1AW$i'}, 'startAtMillis': i});
+    }
+
+    var round = 0;
+    transport.responder = (method, args) {
+      round++;
+      if (round == 1) {
+        // api-lofi's Client#meta_for_client: snake_case, nested in flags —
+        // NOT top-level camelCase. Reading only the latter silently keeps
+        // the defaults and the loop then hammers the server's cooldown.
+        return {
+          'meta': {
+            'flags': {'suggested_sync_batch_size': 20, 'suggested_sync_loop_delay': 35000},
+          },
+        };
+      }
+      expect((args['qsos'] as List).length, 20);
+      return const {};
+    };
+
+    await engine.runOneRound();
+    await engine.runOneRound();
+    expect(round, 2);
+  });
+
   test('a periodic round pulls even when there is nothing local to push', () async {
     transport.responder = (method, args) {
       expect(args.containsKey('operations'), isFalse);
@@ -468,6 +496,72 @@ void main() {
 
       expect(settings.state['completedFullSync'], isTrue);
       expect(await qsos.watchForOperation('op1').first, hasLength(totalAvailable));
+    });
+
+    test('backfill rounds report server counts as progress, ending with a terminal update', () async {
+      settings.state = {'lastSyncAccountUUID': 'acct-1'};
+      final reports = <SyncProgress>[];
+      engine.dispose();
+      engine = SyncEngine(
+        operations: operations,
+        qsos: qsos,
+        settings: settings,
+        transport: transport.call,
+        onProgress: reports.add,
+      );
+
+      // Round 1: a page plus counts. Round 2: a cooldown-gated response —
+      // counts but NO records. Round 3: nothing left — backfill completes.
+      var round = 0;
+      transport.responder = (method, args) {
+        round++;
+        if (round == 1) {
+          return {
+            'qsos': [
+              {'uuid': 'q1', 'operation': 'op1', 'their': {'call': 'W1AW'}, 'syncedAtMillis': 100},
+            ],
+            'meta': {
+              'qsos': {'records_left': 41, 'total_records': 42},
+              'operations': {'records_left': 0, 'total_records': 1},
+            },
+          };
+        }
+        if (round == 2) {
+          return {
+            'meta': {
+              'qsos': {'records_left': 30, 'total_records': 42},
+              'operations': {'records_left': 0, 'total_records': 1},
+            },
+          };
+        }
+        return {
+          'meta': {
+            'qsos': {'records_left': 0, 'total_records': 42},
+            'operations': {'records_left': 0, 'total_records': 1},
+          },
+        };
+      };
+
+      await engine.runOneRound();
+      expect(reports, hasLength(1));
+      expect(reports.single.backfilling, isTrue);
+      expect(reports.single.qsosLeft, 41);
+      expect(reports.single.qsosTotal, 42);
+
+      // A cooldown response still refreshes progress — no records needed.
+      await engine.runOneRound();
+      expect(reports, hasLength(2));
+      expect(reports.last.backfilling, isTrue);
+      expect(reports.last.qsosLeft, 30);
+      expect(settings.state['completedFullSync'], isNot(true));
+
+      await engine.runOneRound();
+      expect(reports, hasLength(3));
+      // The terminal update lets the surface (status bar) complete and
+      // dismiss itself instead of showing a stale bar forever.
+      expect(reports.last.backfilling, isFalse);
+      expect(reports.last.qsosLeft, 0);
+      expect(settings.state['completedFullSync'], isTrue);
     });
 
     test('a reconciliation during an in-flight round abandons that round\'s response', () async {

@@ -423,6 +423,14 @@ export interface SyncResponse {
 export interface SyncTransportHook {
   sync(payload: SyncPayload, ctx: HookContext): Promise<SyncResponse>
   getAccountData(args: Record<string, never>, ctx: HookContext): Promise<Record<string, JSONValue>>
+  /// Requests a link permission: with an email, a pending permission on
+  /// that account (immediately active when this client already has one —
+  /// account switching); with no email, a blank permission for QR-code
+  /// linking. Server rejections come back as `{ error, error_status }`
+  /// data rather than a thrown error. Optional so transports written
+  /// against the pre-linking contract keep compiling — the host degrades
+  /// gracefully when it's missing.
+  linkClient?(args: { email?: string }, ctx: HookContext): Promise<Record<string, JSONValue>>
   linkClientWithEmail(args: { email: string }, ctx: HookContext): Promise<Record<string, JSONValue>>
 }
 

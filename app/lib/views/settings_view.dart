@@ -20,8 +20,10 @@ import 'package:http/http.dart' as http;
 import '../main.dart';
 import '../services/extension_service.dart';
 import '../services/settings_service.dart';
+import '../services/status_bar_service.dart';
 import 'notice_history_view.dart';
 import 'operation_dialogs.dart';
+import 'switch_accounts_dialog.dart';
 
 const _appVersion = '0.1.0'; // keep in sync with app/pubspec.yaml
 
@@ -366,22 +368,20 @@ class _SyncPanelState extends State<_SyncPanel> {
     }
   }
 
-  Future<void> _linkByEmail() async {
-    final email = await editOneFieldDialog(
+  Future<void> _switchAccounts() async {
+    final linked = await showSwitchAccountsDialog(
       context,
-      title: 'Link to an existing account',
-      fieldLabel: 'Email address',
-      fieldInitial: '',
-      saveLabel: 'Send link',
+      fetchAccountData: widget.services.extensions.syncAccountData,
+      linkClient: widget.services.extensions.syncLinkClient,
+      linkClientWithEmail: widget.services.extensions.syncLinkClientWithEmail,
     );
-    if (email == null || email.trim().isEmpty) return;
-
-    final result = await widget.services.extensions.syncLinkClientWithEmail(email.trim());
-    if (!mounted) return;
-    final message = result == null
-        ? 'Could not reach the sync server. Try again later.'
-        : 'Check $email for a confirmation link.';
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+    if (linked == true) {
+      // The server-side account just changed: run a round now so the
+      // engine's account-identity gating raises the combine/replace banner
+      // immediately instead of on the next loop tick.
+      unawaited(widget.services.syncEngine.runOneRound());
+      unawaited(_refreshSyncAccount());
+    }
   }
 
   Future<void> _combineAccount() async {
@@ -456,6 +456,30 @@ class _SyncPanelState extends State<_SyncPanel> {
             ),
             if (settings.syncState['pendingAccountUUID'] != null)
               _PendingAccountBanner(onCombine: _combineAccount, onReplace: _replaceAccount),
+            // The footer status bar isn't visible on this screen, so mirror
+            // the backfill-progress item here while it's active.
+            ListenableBuilder(
+              listenable: widget.services.statusBar,
+              builder: (context, _) {
+                StatusBarItem? progress;
+                for (final item in widget.services.statusBar.items) {
+                  if (item.key == HaLoServices.syncProgressStatusKey) progress = item;
+                }
+                if (progress == null || !settings.syncEnabled) return const SizedBox.shrink();
+                return ListTile(
+                  leading: Icon(resolveIconName(progress.icon ?? 'cloud-sync-outline')),
+                  title: Text(progress.title ?? 'Syncing'),
+                  subtitle: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      if (progress.text != null) Text(progress.text!),
+                      const SizedBox(height: 6),
+                      LinearProgressIndicator(value: progress.progressValue),
+                    ],
+                  ),
+                );
+              },
+            ),
             if (settings.syncEnabled) ...[
               ListTile(
                 leading: Icon(resolveIconName('account-check-outline')),
@@ -469,10 +493,10 @@ class _SyncPanelState extends State<_SyncPanel> {
                 ),
               ),
               ListTile(
-                leading: Icon(resolveIconName('email-outline')),
-                title: const Text('Link to an existing account'),
-                subtitle: const Text('Sync this device into an account you already use elsewhere'),
-                onTap: _linkByEmail,
+                leading: Icon(resolveIconName('account-switch-outline')),
+                title: const Text('Switch Accounts'),
+                subtitle: const Text('Link this device to another account with a QR code or email'),
+                onTap: _switchAccounts,
                 mouseCursor: SystemMouseCursors.click,
               ),
             ],

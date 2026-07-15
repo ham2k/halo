@@ -333,7 +333,11 @@ The transport seam for LoFi (and future) sync. The Dart core owns the
 loop, batching, and dirty flags (`packages/halo_core`'s `SyncEngine`); the
 hook only moves an already-selected payload over the network, so sync keeps
 working even if the JS runtime is wedged (DESIGN.md §4). Registered as a
-single object with `sync`/`getAccountData`/`linkClientWithEmail` methods.
+single object with `sync`/`getAccountData`/`linkClient`/
+`linkClientWithEmail` methods — `linkClient` (optional) requests a link
+permission (pending challenge code for an email, immediately-active for an
+already-permitted account, or a blank permission for QR-code linking) and
+returns server rejections as `{ error, error_status }` data.
 Implemented by: `ham2k-lofi`.
 
 ## ✅ `settingsPanel` — extension settings forms

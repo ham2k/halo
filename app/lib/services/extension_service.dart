@@ -1099,6 +1099,28 @@ class ExtensionService {
     }
   }
 
+  /// Requests a link permission from the sync server: a pending challenge
+  /// for [email] (or an immediate switch when this client already has a
+  /// permission on that account), or — with null — a blank permission for
+  /// QR-code linking. Server rejections (e.g. no account with that email)
+  /// come back as `{'error': ..., 'error_status': ...}` in the map; null
+  /// means the server couldn't be reached at all.
+  Future<Map<String, dynamic>?> syncLinkClient(String? email) async {
+    final host = _host;
+    if (host == null) return null;
+    try {
+      final result = await host.invokeHook(
+        'syncTransport',
+        method: 'linkClient',
+        args: {if (email != null) 'email': email},
+      );
+      return result is Map ? result.cast<String, dynamic>() : null;
+    } on ExtensionHostException catch (e) {
+      debugPrint('[extensions] syncLinkClient failed: $e');
+      return null;
+    }
+  }
+
   /// Requests a link-by-email challenge from the sync server. Returns null
   /// on failure; callers should surface that as "couldn't reach the server".
   Future<Map<String, dynamic>?> syncLinkClientWithEmail(String email) async {

@@ -147,7 +147,48 @@ class HaLoServices {
     transport: _syncTransportCall,
     settings: settings,
     log: debugPrint,
+    onProgress: _showSyncProgress,
   );
+
+  /// Status-bar item key for backfill progress; the Sync settings panel
+  /// renders the same item inline (see `settings_view.dart`).
+  static const syncProgressStatusKey = 'sync_backfill_progress';
+
+  /// Surfaces backfill progress in the footer. Backfill can take a while on
+  /// a large account (the server cooldown-gates fetch rounds), so without
+  /// this the app looks idle while history is still arriving. Completion
+  /// pushes the bar to 1.0, which StatusBarService auto-clears shortly
+  /// after.
+  void _showSyncProgress(SyncProgress progress) {
+    final total = (progress.qsosTotal ?? 0) + (progress.operationsTotal ?? 0);
+    if (!progress.backfilling) {
+      // Only announce completion if progress was actually shown: a fresh
+      // empty account completes backfill on its first round, and "history
+      // downloaded" out of nowhere would just confuse.
+      if (statusBar.items.any((item) => item.key == syncProgressStatusKey)) {
+        statusBar.setProgress(
+          key: syncProgressStatusKey,
+          icon: 'cloud-sync-outline',
+          title: 'Sync',
+          text: 'Account history downloaded',
+          value: 1.0,
+        );
+      }
+      return;
+    }
+    if (total <= 0) return;
+    final left = (progress.qsosLeft ?? 0) + (progress.operationsLeft ?? 0);
+    final done = (total - left).clamp(0, total);
+    final qsoTotal = progress.qsosTotal ?? 0;
+    final qsoDone = (qsoTotal - (progress.qsosLeft ?? 0)).clamp(0, qsoTotal);
+    statusBar.setProgress(
+      key: syncProgressStatusKey,
+      icon: 'cloud-sync-outline',
+      title: 'Syncing account history',
+      text: qsoTotal > 0 ? '$qsoDone of $qsoTotal QSOs' : '$done of $total records',
+      value: done / total,
+    );
+  }
 
   HaLoServices(
     this.db,

@@ -47,6 +47,28 @@ class SyncBatch {
   bool get isEmpty => operations.isEmpty && qsos.isEmpty;
 }
 
+/// Server-reported sync progress, for the app layer to surface (status bar,
+/// Settings). The counts come from the sync response's per-side meta
+/// (`records_left` / `total_records`) — the server includes them even in
+/// cooldown-gated responses that carry no records, so progress stays fresh
+/// between real pages. [backfilling] flips false on the round that
+/// completes the backfill, so the surface can finish and dismiss itself.
+class SyncProgress {
+  final bool backfilling;
+  final int? qsosTotal;
+  final int? qsosLeft;
+  final int? operationsTotal;
+  final int? operationsLeft;
+
+  const SyncProgress({
+    required this.backfilling,
+    this.qsosTotal,
+    this.qsosLeft,
+    this.operationsTotal,
+    this.operationsLeft,
+  });
+}
+
 /// How to reconcile this device's local data with a new (or newly
 /// different) account, once the user answers the Settings banner.
 enum SyncAccountChoice {
@@ -68,6 +90,11 @@ class SyncEngine {
   /// Diagnostic sink (e.g. `debugPrint` in the app). Sync failures degrade
   /// silently into backoff by design, but they must not be *invisible*.
   final void Function(String message)? log;
+
+  /// Called with server-reported counts after each backfill round (and once
+  /// more, with `backfilling: false`, on the round that completes it) — see
+  /// [SyncProgress]. Null when the app layer doesn't surface progress.
+  final void Function(SyncProgress progress)? onProgress;
 
   static const smallBatchSize = 10;
   static const defaultLargeBatchSize = 100; // matches sync.js since app-polo 20a23100 restored it from a debug value
@@ -113,6 +140,7 @@ class SyncEngine {
     required this.transport,
     required this.settings,
     this.log,
+    this.onProgress,
   });
 
   void start() {
@@ -427,10 +455,19 @@ class SyncEngine {
   }) async {
     final meta = (response['meta'] as Map?)?.cast<String, dynamic>() ?? const {};
 
-    final suggestedBatchSize = (meta['suggestedSyncBatchSize'] as num?)?.toInt();
+    // The real server nests its tuning knobs under `meta.flags` in
+    // snake_case (api-lofi's Client#meta_for_client); accept app-polo's
+    // full fallback chain — top-level camelCase, top-level snake_case, then
+    // flags. Reading only top-level camelCase silently ignored every real
+    // server response, so the loop kept its 20s default delay and each
+    // post-page follow-up request landed inside the server's sync cooldown.
+    final flags = (meta['flags'] as Map?)?.cast<String, dynamic>() ?? const {};
+    int? knob(String camel, String snake) => ((meta[camel] ?? meta[snake] ?? flags[snake]) as num?)?.toInt();
+
+    final suggestedBatchSize = knob('suggestedSyncBatchSize', 'suggested_sync_batch_size');
     if (suggestedBatchSize != null && suggestedBatchSize > 0) _largeBatchSize = suggestedBatchSize;
 
-    final suggestedLoopDelayMillis = (meta['suggestedSyncLoopDelay'] as num?)?.toInt();
+    final suggestedLoopDelayMillis = knob('suggestedSyncLoopDelay', 'suggested_sync_loop_delay');
     if (suggestedLoopDelayMillis != null && suggestedLoopDelayMillis > 0) {
       _loopDelay = Duration(milliseconds: suggestedLoopDelayMillis);
     }
@@ -519,12 +556,41 @@ class SyncEngine {
         _backfillLimitBoost = 1;
         _backfillStuckAtCap = false;
       }
+
+      _reportProgress(meta, completed: updates['completedFullSync'] == true);
     }
 
     // Fresh read, not the `state` snapshot from before this round's network
     // call — anything written during the await (e.g. a server-suggested
     // knob, an account flag) must not be clobbered by re-spreading it.
     if (updates.isNotEmpty) await settings.setState({...settings.state, ...updates});
+  }
+
+  /// Emits [onProgress] from a backfill round's response meta. Counts are
+  /// read per side as `records_left`/`total_records` (either spelling) —
+  /// present on real pages and cooldown responses alike. A response with no
+  /// counts at all emits nothing (unless the backfill just completed, so
+  /// the surface always gets its terminal update).
+  void _reportProgress(Map<String, dynamic> meta, {required bool completed}) {
+    if (onProgress == null) return;
+    int? count(String side, String camel, String snake) {
+      final sideMeta = meta[side] as Map?;
+      return ((sideMeta?[camel] ?? sideMeta?[snake]) as num?)?.toInt();
+    }
+
+    final qsosLeft = count('qsos', 'recordsLeft', 'records_left');
+    final qsosTotal = count('qsos', 'totalRecords', 'total_records');
+    final operationsLeft = count('operations', 'recordsLeft', 'records_left');
+    final operationsTotal = count('operations', 'totalRecords', 'total_records');
+    if (!completed && qsosLeft == null && qsosTotal == null && operationsLeft == null && operationsTotal == null) return;
+
+    onProgress!(SyncProgress(
+      backfilling: !completed,
+      qsosTotal: qsosTotal,
+      qsosLeft: completed ? 0 : qsosLeft,
+      operationsTotal: operationsTotal,
+      operationsLeft: completed ? 0 : operationsLeft,
+    ));
   }
 
   /// A round overtaken by a reconciliation: its response was discarded, but
