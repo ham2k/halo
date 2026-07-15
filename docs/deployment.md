@@ -15,7 +15,7 @@ We have automated the build and deploy pipeline. You can run it directly using `
 mise run deploy-web
 ```
 
-*By default, this builds and deploys to the Cloudflare project name `ham2k-halo-dev`. If you want to deploy to a custom project name, run:*
+*By default, this builds and deploys to the Cloudflare project name `halo-dev-ham2k-net`. If you want to deploy to a custom project name, run:*
 ```bash
 ./scripts/deploy-web.sh --project <your-project-name>
 ```
@@ -24,6 +24,16 @@ mise run deploy-web
 1. Installs dependencies and builds the TypeScript extension bundles in `extensions/` (moving the output JS files to `app/assets/extensions/`).
 2. Runs the Flutter compiler in release mode with icon tree-shaking disabled (`flutter build web --release --no-tree-shake-icons`).
 3. Checks for the local `wrangler` installation and uploads the compiled assets in `app/build/web` to your Cloudflare Pages account.
+
+---
+
+## 1b. Automatic Deployment from CI
+
+Every push to the `dist` branch of `app-halo-dist` triggers the **Deploy Web** GitHub Actions workflow (`.github/workflows/deploy-web.yml`), which runs the same build steps as the local script and deploys to the `halo-dev-ham2k-net` Pages project via wrangler direct upload. It can also be run manually from the Actions tab (`workflow_dispatch`).
+
+The workflow requires two repository secrets on `app-halo-dist`:
+- `CLOUDFLARE_API_TOKEN` — an API token with the **Cloudflare Pages: Edit** permission (create at Cloudflare Dashboard → My Profile → API Tokens).
+- `CLOUDFLARE_ACCOUNT_ID` — the account id (visible in the dashboard URL or on any zone's overview page).
 
 ---
 
@@ -43,11 +53,11 @@ npx wrangler login
 2. Navigate to **Workers & Pages** in the left sidebar.
 3. Click **Create Application** at the top, and select the **Pages** tab.
 4. Select **Upload assets** *(we deploy pre-built static files locally rather than using Git integration)*.
-5. Set the project name to: `ham2k-halo-dev`.
+5. Set the project name to: `halo-dev-ham2k-net`.
 6. Click **Create project** (you can skip the zip file upload step).
 
 ### Step C: Bind the Custom Domain (`halo-dev.ham2k.net`)
-1. Open the project settings for your `ham2k-halo-dev` Pages application.
+1. Open the project settings for your `halo-dev-ham2k-net` Pages application.
 2. Select the **Custom Domains** tab.
 3. Click **Set up a Custom Domain**.
 4. Enter `halo-dev.ham2k.net`.
