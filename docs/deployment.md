@@ -29,7 +29,7 @@ mise run deploy-web
 
 ## 1b. Automatic Deployment from CI
 
-Every push to the `dist` branch of `app-halo-dist` triggers the **Deploy Web** GitHub Actions workflow (`.github/workflows/deploy-web.yml`), which runs the same build steps as the local script and deploys to the `halo-dev-ham2k-net` Pages project via wrangler direct upload. It can also be run manually from the Actions tab (`workflow_dispatch`).
+Every push to the `dist` branch of `app-halo-dist` runs CI, and when CI passes, the **Deploy Web** GitHub Actions workflow (`.github/workflows/deploy-web.yml`) runs the same build steps as the local script and deploys to the `halo-dev-ham2k-net` Pages project via wrangler direct upload. A CI failure skips the deploy silently. The workflow can also be run manually from the Actions tab (`workflow_dispatch`), bypassing the CI gate.
 
 The workflow requires two repository secrets on `app-halo-dist`:
 - `CLOUDFLARE_API_TOKEN` — an API token with the **Cloudflare Pages: Edit** permission (create at Cloudflare Dashboard → My Profile → API Tokens).
