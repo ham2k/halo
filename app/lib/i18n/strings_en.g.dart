@@ -291,6 +291,9 @@ class Translations$loggingControls$en {
 	/// en: 'Undo delete'
 	String get undoDelete => 'Undo delete';
 
+	/// en: 'Restore'
+	String get restore => 'Restore';
+
 	/// en: 'Wipe'
 	String get wipe => 'Wipe';
 
@@ -299,6 +302,9 @@ class Translations$loggingControls$en {
 
 	/// en: 'QSO will be deleted when you save'
 	String get pendingDeleteWarning => 'QSO will be deleted when you save';
+
+	/// en: 'Deleted QSO'
+	String get deletedQsoWarning => 'Deleted QSO';
 
 	/// en: 'Time'
 	String get timeControl => 'Time';
@@ -978,9 +984,11 @@ extension on Translations {
 			'loggingControls.more' => 'More',
 			'loggingControls.revert' => 'Revert',
 			'loggingControls.undoDelete' => 'Undo delete',
+			'loggingControls.restore' => 'Restore',
 			'loggingControls.wipe' => 'Wipe',
 			'loggingControls.undo' => 'Undo',
 			'loggingControls.pendingDeleteWarning' => 'QSO will be deleted when you save',
+			'loggingControls.deletedQsoWarning' => 'Deleted QSO',
 			'loggingControls.timeControl' => 'Time',
 			'loggingControls.radioControl' => 'Radio',
 			'loggingControls.controlSettings' => 'Logging Controls',

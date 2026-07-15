@@ -175,9 +175,11 @@ class _Translations$loggingControls$es extends Translations$loggingControls$en {
 	@override String get more => 'Más';
 	@override String get revert => 'Revertir';
 	@override String get undoDelete => 'Deshacer eliminación';
+	@override String get restore => 'Restaurar';
 	@override String get wipe => 'Borrar';
 	@override String get undo => 'Deshacer';
 	@override String get pendingDeleteWarning => 'El QSO se eliminará al guardar';
+	@override String get deletedQsoWarning => 'QSO eliminado';
 	@override String get timeControl => 'Hora';
 	@override String get radioControl => 'Radio';
 	@override String get controlSettings => 'Controles de registro';
@@ -598,9 +600,11 @@ extension on TranslationsEs {
 			'loggingControls.more' => 'Más',
 			'loggingControls.revert' => 'Revertir',
 			'loggingControls.undoDelete' => 'Deshacer eliminación',
+			'loggingControls.restore' => 'Restaurar',
 			'loggingControls.wipe' => 'Borrar',
 			'loggingControls.undo' => 'Deshacer',
 			'loggingControls.pendingDeleteWarning' => 'El QSO se eliminará al guardar',
+			'loggingControls.deletedQsoWarning' => 'QSO eliminado',
 			'loggingControls.timeControl' => 'Hora',
 			'loggingControls.radioControl' => 'Radio',
 			'loggingControls.controlSettings' => 'Controles de registro',

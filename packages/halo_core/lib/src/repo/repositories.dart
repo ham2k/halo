@@ -378,23 +378,39 @@ class QsosRepository {
     onChange?.call();
   }
 
-  Future<void> softDelete(Qso qso) async {
-    // Re-stamps `data.updatedAtMillis` (rewriting `data`, not just flags):
-    // the delete must sync as a revision newer than the record it
-    // tombstones, or other devices' merge comparison would discard it.
-    final stamped = _restamped(qso);
+  Future<void> softDelete(Qso qso) => _writeDeleted(qso, deleted: true);
+
+  /// Restores a soft-deleted QSO (ham2k/app-halo-dist#59). Pushing sends
+  /// `deleted` only when true (see `SyncEngine._buildPayload`), so the
+  /// restored record's payload simply omits the key.
+  Future<void> undelete(Qso qso) => _writeDeleted(qso, deleted: false);
+
+  /// Flips the deleted flag, re-stamping `data.updatedAtMillis` (rewriting
+  /// `data`, not just flags): the write must sync as a revision newer than
+  /// the record it tombstones/restores, or other devices' merge comparison
+  /// would discard it. Re-reads the row inside the transaction rather than
+  /// trusting the caller's [qso] — that's a selection-time snapshot which
+  /// can sit on screen indefinitely, and sync may have merged a newer
+  /// revision since; restamping the snapshot would clobber those edits on
+  /// every device.
+  Future<void> _writeDeleted(Qso qso, {required bool deleted}) async {
+    var changed = false;
     await db.transaction(() async {
+      final row = await (db.select(db.qsos)..where((q) => q.uuid.equals(qso.uuid))).getSingleOrNull();
+      if (row == null) return; // hard-deleted since selection — nothing to flip
+      final stamped = _restamped(_qsoFromRow(row));
       await (db.update(db.qsos)..where((q) => q.uuid.equals(stamped.uuid))).write(
         QsosCompanion(
-          deleted: const Value(true),
+          deleted: Value(deleted),
           synced: const Value(false),
           data: Value(jsonEncode(stamped.data)),
           updatedAtMillis: Value(stamped.updatedAtMillis),
         ),
       );
       await _refreshOperationCounters(stamped.operationUuid);
+      changed = true;
     });
-    onChange?.call();
+    if (changed) onChange?.call();
   }
 
   /// A copy of [qso] with a fresh revision stamp in its data — every local

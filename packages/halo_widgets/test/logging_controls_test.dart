@@ -1907,6 +1907,58 @@ void main() {
       expect(find.byIcon(deleteIcon), findsOneWidget);
       expect(find.byIcon(undoIcon), findsNothing);
     });
+
+    testWidgets('viewing a deleted QSO locks the fields and offers restore; tapping it undeletes (issue #59)', (tester) async {
+      final restoreIcon = resolveIconName('delete-restore');
+      final deletedQso = (await tester.runAsync(() async {
+        final qso = await qsos.add(operation.uuid, {
+          'their': {'call': 'W1AW', 'sent': '59'},
+          'mode': 'SSB',
+        });
+        await qsos.softDelete(qso);
+        return (await qsos.watchForOperation(operation.uuid, includeDeleted: true).first).single;
+      }))!;
+
+      var editCanceled = false;
+      await tester.pumpWidget(MaterialApp(
+        home: Scaffold(
+          body: LoggingControls(
+            operation: operation,
+            qsosRepository: qsos,
+            editingQso: deletedQso,
+            onEditCanceled: () => editCanceled = true,
+          ),
+        ),
+      ));
+
+      // Restore replaces delete/revert entirely, the fields are read-only,
+      // and both save paths (button and Enter) are inert until restored.
+      expect(find.textContaining('Deleted QSO'), findsOneWidget);
+      expect(find.byIcon(deleteIcon), findsNothing);
+      expect(secondButton(tester, restoreIcon).onPressed, isNotNull);
+      final callField = tester.widget<TextField>(find.widgetWithText(TextField, 'Their call'));
+      expect(callField.enabled, isFalse);
+      expect(tester.widget<FilledButton>(find.byType(FilledButton)).onPressed, isNull);
+      await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+      var stored = (await tester.runAsync(() => qsos.watchForOperation(operation.uuid, includeDeleted: true).first))!;
+      expect(stored.single.deleted, isTrue);
+
+      // Escape must not blank the locked view either — the fields are the
+      // deleted record's only display and can't repopulate without
+      // reselecting it.
+      await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+      await tester.pump();
+      expect(callField.controller!.text, 'W1AW');
+
+      await tester.tap(find.byIcon(restoreIcon));
+      for (var i = 0; i < 20 && !editCanceled; i++) {
+        await tester.pump(const Duration(milliseconds: 10));
+      }
+
+      stored = (await tester.runAsync(() => qsos.watchForOperation(operation.uuid).first))!;
+      expect(stored.single.deleted, isFalse);
+      expect(editCanceled, isTrue);
+    });
   });
 }
 

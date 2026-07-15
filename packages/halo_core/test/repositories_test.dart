@@ -281,6 +281,53 @@ void main() {
       expect(deleted.updatedAtMillis, greaterThan(qso.updatedAtMillis!));
     });
 
+    test('undelete restores the QSO, refreshes counters, and re-stamps so it syncs newer than the tombstone', () async {
+      final op = await operations.create(stationCall: 'KI2D');
+      final qso = await qsos.add(op.uuid, {'their': {'call': 'W1AW'}});
+      await qsos.softDelete(qso);
+      final tombstone = (await qsos.watchForOperation(op.uuid, includeDeleted: true).first).single;
+      await qsos.markSynced([tombstone]);
+
+      await Future<void>.delayed(const Duration(milliseconds: 5));
+      await qsos.undelete(tombstone);
+
+      final restored = (await qsos.watchForOperation(op.uuid).first).single;
+      expect(restored.deleted, isFalse);
+      expect(restored.updatedAtMillis, greaterThan(tombstone.updatedAtMillis!));
+      expect(await qsos.hasUnsynced(), isTrue); // dirty again, so the undelete pushes
+      expect((await operations.get(op.uuid))!.qsoCount, 1);
+    });
+
+    test('undelete flips the flag on the row\'s current data, not the caller\'s stale snapshot', () async {
+      // The UI holds the QSO selected at tap time, and a deleted QSO can sit
+      // on screen indefinitely; if sync merges a newer revision meanwhile,
+      // restoring must not restamp the stale snapshot over it — that would
+      // silently revert the other device's edits everywhere.
+      final op = await operations.create(stationCall: 'KI2D');
+      final qso = await qsos.add(op.uuid, {'their': {'call': 'W1AW'}, 'notes': 'original'});
+      await qsos.softDelete(qso);
+      final tombstone = (await qsos.watchForOperation(op.uuid, includeDeleted: true).first).single;
+      await qsos.markSynced([tombstone]);
+
+      // Another device restored and edited this QSO; the merge lands while
+      // the stale tombstone snapshot is still selected on this one.
+      await qsos.mergeFromSync([
+        {
+          'uuid': qso.uuid,
+          'operation': op.uuid,
+          'their': {'call': 'W1AW'},
+          'notes': 'edited remotely',
+          'updatedAtMillis': tombstone.updatedAtMillis! + 1000,
+        },
+      ]);
+
+      await qsos.undelete(tombstone);
+
+      final restored = (await qsos.watchForOperation(op.uuid).first).single;
+      expect(restored.deleted, isFalse);
+      expect(restored.notes, 'edited remotely');
+    });
+
     test('caching scores never bumps updatedAtMillis — the invariant live rescore depends on', () async {
       // OperationView drives live rescoring off a fingerprint built from
       // updatedAtMillis. A rescore writes score_cache and localData; if

@@ -232,9 +232,11 @@ class LoggingControls extends StatefulWidget {
   final String? revertLabel;
   final String? deleteLabel;
   final String? undoDeleteLabel;
+  final String? restoreLabel;
   final String? wipeLabel;
   final String? undoLabel;
   final String? pendingDeleteWarning;
+  final String? deletedQsoWarning;
   final String? qsoEditFormTitle;
   final String? theirNameLabel;
   final String? theirGridLabel;
@@ -309,9 +311,11 @@ class LoggingControls extends StatefulWidget {
     this.revertLabel,
     this.deleteLabel,
     this.undoDeleteLabel,
+    this.restoreLabel,
     this.wipeLabel,
     this.undoLabel,
     this.pendingDeleteWarning,
+    this.deletedQsoWarning,
     this.qsoEditFormTitle,
     this.theirNameLabel,
     this.theirGridLabel,
@@ -431,6 +435,12 @@ class _LoggingControlsState extends State<LoggingControls> {
   /// Set while editing an existing QSO and Delete has been tapped but not
   /// yet saved — mirrors app-polo's `_willBeDeleted` staged-delete flag.
   bool _pendingDelete = false;
+
+  /// Whether the form is a read-only view: a staged delete, or an
+  /// already-deleted QSO awaiting restore (ham2k/app-halo-dist#59). Every
+  /// input path — fields, save, keyboard shortcuts — must consult this,
+  /// not `_pendingDelete` alone.
+  bool get _fieldsLocked => _pendingDelete || (widget.editingQso?.deleted ?? false);
 
   /// Their name override, settable only via the "More" edit dialog —
   /// deliberately not a full inline field, to avoid growing the primary
@@ -2167,6 +2177,14 @@ class _LoggingControlsState extends State<LoggingControls> {
 
   // ---- Logging ----
 
+  /// Escape wipes the compose form, but must not blank the read-only view
+  /// of a staged-delete or deleted QSO — the fields are the record's only
+  /// display and can't be repopulated without reselecting it.
+  void _handleEscape() {
+    if (_fieldsLocked) return;
+    _wipe();
+  }
+
   void _wipe() {
     _callController.clear();
     _applyDefaultRSTs();
@@ -2239,6 +2257,21 @@ class _LoggingControlsState extends State<LoggingControls> {
     _populating = false;
   }
 
+  /// Restores (undeletes) the deleted QSO being viewed, then ends the
+  /// editing session — the caller clears its selection and the list row
+  /// loses its strikethrough via the repository watch.
+  Future<void> _handleRestoreTap(Qso editingQso) async {
+    if (_isLogging) return;
+    _isLogging = true;
+    try {
+      await widget.qsosRepository.undelete(editingQso);
+      if (!mounted) return;
+      widget.onEditCanceled?.call();
+    } finally {
+      _isLogging = false;
+    }
+  }
+
   /// Deep, order-insensitive-for-lists equality — used to detect whether
   /// the fields being edited still match the stored record. Lists compare
   /// as multisets (via sorted JSON) rather than element-by-element, since
@@ -2307,6 +2340,13 @@ class _LoggingControlsState extends State<LoggingControls> {
         tooltip = widget.wipeLabel ?? 'Wipe';
         onPressed = _hasComposedValues ? _handleWipeTap : null;
       }
+    } else if (editingQso.deleted) {
+      // An already-deleted QSO (selected via the "show deleted QSOs"
+      // toggle) — one tap restores it immediately (ham2k/app-halo-dist#59);
+      // no staged-until-save step, since restoring isn't destructive.
+      icon = resolveIconName('delete-restore');
+      tooltip = widget.restoreLabel ?? 'Restore';
+      onPressed = () => _handleRestoreTap(editingQso);
     } else if (_pendingDelete) {
       icon = resolveIconName('undo');
       tooltip = widget.undoDeleteLabel ?? 'Undo delete';
@@ -2400,6 +2440,10 @@ class _LoggingControlsState extends State<LoggingControls> {
     }
 
     final editingQso = widget.editingQso;
+
+    // Viewing a deleted QSO: the save button is disabled, but Enter is
+    // also bound to _log — nothing to save until it's restored.
+    if (editingQso != null && editingQso.deleted) return;
 
     if (editingQso != null && _pendingDelete) {
       _isLogging = true;
@@ -2559,6 +2603,11 @@ class _LoggingControlsState extends State<LoggingControls> {
     // HaLoColors extension too, so SecondaryControlRow's chips (which read
     // HaLoColors.of(context)/Theme.of(context) ambiently) pick it up.
     final editing = widget.editingQso != null;
+    // Viewing an already-deleted QSO: fields are read-only, same as a
+    // staged delete — the only actions are restoring it (the second
+    // button) or selecting away (ham2k/app-halo-dist#59).
+    final deletedQso = widget.editingQso?.deleted ?? false;
+    final fieldsLocked = _fieldsLocked;
     final accentPoloColors = editing
         ? poloColors.copyWith(tertiaryLight: poloColors.secondaryLight)
         : poloColors;
@@ -2576,7 +2625,7 @@ class _LoggingControlsState extends State<LoggingControls> {
 
     return CallbackShortcuts(
       bindings: {
-        const SingleActivator(LogicalKeyboardKey.escape): _wipe,
+        const SingleActivator(LogicalKeyboardKey.escape): _handleEscape,
         const SingleActivator(LogicalKeyboardKey.enter): _log,
         const SingleActivator(LogicalKeyboardKey.numpadEnter): _log,
         const SingleActivator(LogicalKeyboardKey.space): _handleSpace,
@@ -2643,9 +2692,9 @@ class _LoggingControlsState extends State<LoggingControls> {
                     children: [
                       SizedBox(height: _selectedControlKey != null ? 0 : 6),
                       AbsorbPointer(
-                        absorbing: _pendingDelete,
+                        absorbing: fieldsLocked,
                         child: Opacity(
-                          opacity: _pendingDelete ? 0.5 : 1,
+                          opacity: fieldsLocked ? 0.5 : 1,
                           child: SecondaryControlRow(
                             controls: _buildSecondaryControls(accentTheme, accentPoloColors),
                             selectedKey: _selectedControlKey,
@@ -2685,7 +2734,7 @@ class _LoggingControlsState extends State<LoggingControls> {
                             // before it rather than rendering underneath.
                             child: Padding(
                               padding: EdgeInsets.only(right: (_editButtonDiameter ?? 44) + 8),
-                              child: _pendingDelete
+                              child: fieldsLocked
                                   ? Align(
                                       alignment: Alignment.centerLeft,
                                       child: Row(
@@ -2698,7 +2747,9 @@ class _LoggingControlsState extends State<LoggingControls> {
                                           const SizedBox(width: 4),
                                           Expanded(
                                             child: Text(
-                                              widget.pendingDeleteWarning ?? 'QSO will be deleted when you save',
+                                              deletedQso
+                                                  ? (widget.deletedQsoWarning ?? 'Deleted QSO')
+                                                  : (widget.pendingDeleteWarning ?? 'QSO will be deleted when you save'),
                                               maxLines: 2,
                                               overflow: TextOverflow.ellipsis,
                                               style: theme.textTheme.bodyMedium?.copyWith(
@@ -2742,7 +2793,7 @@ class _LoggingControlsState extends State<LoggingControls> {
                               // cursor-at-end placement — this is the only
                               // way to actually suppress it.
                               selectAllOnFocus: false,
-                              enabled: !_pendingDelete,
+                              enabled: !fieldsLocked,
                               autofocus: true,
                               autocorrect: _commandExpectsParams,
                               enableSuggestions: _commandExpectsParams,
@@ -2776,7 +2827,7 @@ class _LoggingControlsState extends State<LoggingControls> {
                                 controller: _sentController,
                                 focusNode: _sentFocus,
                                 selectAllOnFocus: false,
-                                enabled: !_pendingDelete,
+                                enabled: !fieldsLocked,
                                 style: _primaryFieldStyle(context, fontWeight: FontWeight.w500),
                                 inputFormatters: [
                                   FilteringTextInputFormatter.allow(
@@ -2795,7 +2846,7 @@ class _LoggingControlsState extends State<LoggingControls> {
                                 controller: _rcvdController,
                                 focusNode: _rcvdFocus,
                                 selectAllOnFocus: false,
-                                enabled: !_pendingDelete,
+                                enabled: !fieldsLocked,
                                 style: _primaryFieldStyle(context, fontWeight: FontWeight.w500),
                                 inputFormatters: [
                                   FilteringTextInputFormatter.allow(
@@ -2816,7 +2867,7 @@ class _LoggingControlsState extends State<LoggingControls> {
                                 controller: _stateController,
                                 focusNode: _stateFocus,
                                 selectAllOnFocus: false,
-                                enabled: !_pendingDelete,
+                                enabled: !fieldsLocked,
                                 textCapitalization: TextCapitalization.characters,
                                 style: _primaryFieldStyle(context, fontWeight: FontWeight.w500),
                                 decoration: _primaryFieldDecoration(context, widget.theirStateLabel ?? 'State'),
@@ -2833,7 +2884,7 @@ class _LoggingControlsState extends State<LoggingControls> {
                                 controller: _gridController,
                                 focusNode: _gridFocus,
                                 selectAllOnFocus: false,
-                                enabled: !_pendingDelete,
+                                enabled: !fieldsLocked,
                                 textCapitalization: TextCapitalization.characters,
                                 style: _primaryFieldStyle(context, fontWeight: FontWeight.w500),
                                 decoration: _primaryFieldDecoration(context, widget.theirGridLabel ?? 'Grid'),
@@ -2857,7 +2908,9 @@ class _LoggingControlsState extends State<LoggingControls> {
                             child: MouseRegion(
                               cursor: SystemMouseCursors.click,
                               child: FilledButton(
-                                onPressed: (_pendingDelete || _canLog) ? _log : null,
+                                // Disabled while viewing a deleted QSO —
+                                // there's nothing to save; restore first.
+                                onPressed: (!deletedQso && (_pendingDelete || _canLog)) ? _log : null,
                                 style: FilledButton.styleFrom(
                                   backgroundColor:
                                       accentTheme.colorScheme.tertiary,
