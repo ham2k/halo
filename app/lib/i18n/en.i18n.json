@@ -100,6 +100,12 @@
       }
     }
   },
+  "map": {
+    "emptyState": "No QSO locations yet.\nQSOs with a grid square, state, or country will show up here.",
+    "qthPopupTitle": "QTH: ${grid}",
+    "distanceKm": "${distance} km",
+    "distanceMiles": "${distance} mi"
+  },
   "activitiesView": {
     "title": "Activities",
     "activitiesCountZero": "No Current Activities",
@@ -197,6 +203,12 @@
       "largest": "Largest"
     },
     "fontScaleDescription": "Scales the whole interface — text, controls, and spacing",
+    "distanceUnits": "Distance Units",
+    "distanceUnitsOpts": {
+      "kilometers": "Kilometers",
+      "miles": "Miles"
+    },
+    "distanceUnitsDescription": "For distances shown on the map",
     "operatorCall": "Operator Callsign",
     "sync": {
       "title": "Sync Settings",

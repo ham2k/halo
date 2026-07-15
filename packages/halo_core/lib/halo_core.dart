@@ -4,6 +4,8 @@
 library;
 
 export 'src/db/database.dart';
+export 'src/ham/entity_locations.dart';
+export 'src/ham/geo.dart';
 export 'src/ham/grid.dart';
 export 'src/ham/radio.dart';
 export 'src/models/models.dart';

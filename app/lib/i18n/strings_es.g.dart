@@ -43,6 +43,7 @@ class TranslationsEs extends Translations with BaseTranslations<AppLocale, Trans
 	@override late final _Translations$home$es home = _Translations$home$es._(_root);
 	@override late final _Translations$dialogs$es dialogs = _Translations$dialogs$es._(_root);
 	@override late final _Translations$operation$es operation = _Translations$operation$es._(_root);
+	@override late final _Translations$map$es map = _Translations$map$es._(_root);
 	@override late final _Translations$activitiesView$es activitiesView = _Translations$activitiesView$es._(_root);
 	@override late final _Translations$loggingControls$es loggingControls = _Translations$loggingControls$es._(_root);
 	@override late final _Translations$qsoEditForm$es qsoEditForm = _Translations$qsoEditForm$es._(_root);
@@ -113,6 +114,19 @@ class _Translations$operation$es extends Translations$operation$en {
 	@override late final _Translations$operation$menu$es menu = _Translations$operation$menu$es._(_root);
 	@override late final _Translations$operation$export$es export = _Translations$operation$export$es._(_root);
 	@override late final _Translations$operation$spots$es spots = _Translations$operation$spots$es._(_root);
+}
+
+// Path: map
+class _Translations$map$es extends Translations$map$en {
+	_Translations$map$es._(TranslationsEs root) : this._root = root, super.internal(root);
+
+	final TranslationsEs _root; // ignore: unused_field
+
+	// Translations
+	@override String get emptyState => 'Aún no hay ubicaciones de QSO.\nLos QSOs con cuadrícula, estado o país aparecerán aquí.';
+	@override String qthPopupTitle({required Object grid}) => 'QTH: ${grid}';
+	@override String distanceKm({required Object distance}) => '${distance} km';
+	@override String distanceMiles({required Object distance}) => '${distance} mi';
 }
 
 // Path: activitiesView
@@ -238,6 +252,9 @@ class _Translations$settings$es extends Translations$settings$en {
 	@override String get fontScale => 'Tamaño de Letra';
 	@override late final _Translations$settings$fontScaleOpts$es fontScaleOpts = _Translations$settings$fontScaleOpts$es._(_root);
 	@override String get fontScaleDescription => 'Escala toda la interfaz: texto, controles y espaciado';
+	@override String get distanceUnits => 'Unidades de distancia';
+	@override late final _Translations$settings$distanceUnitsOpts$es distanceUnitsOpts = _Translations$settings$distanceUnitsOpts$es._(_root);
+	@override String get distanceUnitsDescription => 'Para las distancias mostradas en el mapa';
 	@override String get operatorCall => 'Indicativo del Operador';
 	@override late final _Translations$settings$sync$es sync = _Translations$settings$sync$es._(_root);
 	@override late final _Translations$settings$qrz$es qrz = _Translations$settings$qrz$es._(_root);
@@ -390,6 +407,17 @@ class _Translations$settings$fontScaleOpts$es extends Translations$settings$font
 	@override String get largest => 'Más grande';
 }
 
+// Path: settings.distanceUnitsOpts
+class _Translations$settings$distanceUnitsOpts$es extends Translations$settings$distanceUnitsOpts$en {
+	_Translations$settings$distanceUnitsOpts$es._(TranslationsEs root) : this._root = root, super.internal(root);
+
+	final TranslationsEs _root; // ignore: unused_field
+
+	// Translations
+	@override String get kilometers => 'Kilómetros';
+	@override String get miles => 'Millas';
+}
+
 // Path: settings.sync
 class _Translations$settings$sync$es extends Translations$settings$sync$en {
 	_Translations$settings$sync$es._(TranslationsEs root) : this._root = root, super.internal(root);
@@ -536,6 +564,10 @@ extension on TranslationsEs {
 			'operation.spots.filters.sortByTime' => 'Por hora del spot',
 			'operation.spots.filters.sortByFrequency' => 'Por frecuencia',
 			'operation.spots.filters.groupCallsWithNotes' => 'Agrupar indicativos destacados',
+			'map.emptyState' => 'Aún no hay ubicaciones de QSO.\nLos QSOs con cuadrícula, estado o país aparecerán aquí.',
+			'map.qthPopupTitle' => ({required Object grid}) => 'QTH: ${grid}',
+			'map.distanceKm' => ({required Object distance}) => '${distance} km',
+			'map.distanceMiles' => ({required Object distance}) => '${distance} mi',
 			'activitiesView.title' => 'Actividades',
 			'activitiesView.activitiesCountZero' => 'Sin actividades actuales',
 			'activitiesView.activitiesCountOne' => 'Una actividad actual',
@@ -616,6 +648,10 @@ extension on TranslationsEs {
 			'settings.fontScaleOpts.larger' => 'Grande',
 			'settings.fontScaleOpts.largest' => 'Más grande',
 			'settings.fontScaleDescription' => 'Escala toda la interfaz: texto, controles y espaciado',
+			'settings.distanceUnits' => 'Unidades de distancia',
+			'settings.distanceUnitsOpts.kilometers' => 'Kilómetros',
+			'settings.distanceUnitsOpts.miles' => 'Millas',
+			'settings.distanceUnitsDescription' => 'Para las distancias mostradas en el mapa',
 			'settings.operatorCall' => 'Indicativo del Operador',
 			'settings.sync.title' => 'Configuración de Sincronización',
 			'settings.sync.enable' => 'Habilitar Sincronización',

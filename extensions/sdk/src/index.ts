@@ -131,8 +131,13 @@ export const host = {
   /// LocaleSettings, text scaling), not just in some extension's own
   /// storage. For the core/settings extension's General panel; not
   /// intended for arbitrary extension use.
-  async getCoreSettings(): Promise<{ themeMode: string; locale: string; fontScale: string }> {
-    return (await hostCallFn()('getCoreSettings', {})) as { themeMode: string; locale: string; fontScale: string }
+  async getCoreSettings(): Promise<{ themeMode: string; locale: string; fontScale: string; distanceUnits: string }> {
+    return (await hostCallFn()('getCoreSettings', {})) as {
+      themeMode: string
+      locale: string
+      fontScale: string
+      distanceUnits: string
+    }
   },
 
   async setCoreSetting(key: string, value: JSONValue): Promise<void> {

@@ -45,6 +45,10 @@ const TRANSLATION_KEYS = [
   "settings.fontScaleOpts.larger",
   "settings.fontScaleOpts.largest",
   "settings.fontScaleDescription",
+  "settings.distanceUnits",
+  "settings.distanceUnitsOpts.kilometers",
+  "settings.distanceUnitsOpts.miles",
+  "settings.distanceUnitsDescription",
 ] as const
 
 type TranslationKey = (typeof TRANSLATION_KEYS)[number]
@@ -126,6 +130,19 @@ defineExtension({
                   { label: s["settings.fontScaleOpts.normal"], value: "normal" },
                   { label: s["settings.fontScaleOpts.larger"], value: "larger" },
                   { label: s["settings.fontScaleOpts.largest"], value: "largest" },
+                ],
+              },
+              {
+                type: "field",
+                fieldType: "select",
+                key: "distanceUnits",
+                label: s["settings.distanceUnits"],
+                icon: "map-marker-distance",
+                description: s["settings.distanceUnitsDescription"],
+                value: current.distanceUnits,
+                options: [
+                  { label: s["settings.distanceUnitsOpts.kilometers"], value: "kilometers" },
+                  { label: s["settings.distanceUnitsOpts.miles"], value: "miles" },
                 ],
               },
             ],

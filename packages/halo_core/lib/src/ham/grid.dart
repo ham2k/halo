@@ -11,6 +11,16 @@ class GridLocation {
   final double longitude;
 
   const GridLocation(this.latitude, this.longitude);
+
+  /// Value equality so map data built from locations (marker/line lists)
+  /// can be compared with `listEquals` to tell rebuilds from real changes.
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is GridLocation && latitude == other.latitude && longitude == other.longitude);
+
+  @override
+  int get hashCode => Object.hash(latitude, longitude);
 }
 
 /// Decodes a 4- or 6-character Maidenhead grid locator to the lat/lon of

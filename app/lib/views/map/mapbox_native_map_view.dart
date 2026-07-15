@@ -6,19 +6,31 @@
 // mobile (MapLibre Native, the open-source fork, doesn't have it; only
 // MapLibre GL JS does, which is why desktop uses a webview instead of
 // MapLibre here — see the Map tab planning notes).
+//
+// QSOs are band-colored circle annotations, the QTH a black one, connected
+// by great-circle polyline annotations. Tapping a circle shows a Flutter
+// callout card overlaid at the circle's screen position (kept in place
+// through camera moves via pixelForCoordinate); tapping the map dismisses.
 
 import 'package:flutter/foundation.dart';
-import 'package:flutter/material.dart';
+import 'package:flutter/material.dart' hide Visibility;
 import 'package:mapbox_maps_flutter/mapbox_maps_flutter.dart';
 
 import '../../config/mapbox_token.dart';
 import 'map_marker_data.dart';
+import 'map_popup.dart';
 
 class MapboxNativeMapView extends StatefulWidget {
   final List<MapMarkerData> markers;
+  final List<MapLineData> lines;
   final MapProjection projection;
 
-  const MapboxNativeMapView({super.key, required this.markers, required this.projection});
+  const MapboxNativeMapView({
+    super.key,
+    required this.markers,
+    this.lines = const [],
+    required this.projection,
+  });
 
   @override
   State<MapboxNativeMapView> createState() => _MapboxNativeMapViewState();
@@ -26,7 +38,34 @@ class MapboxNativeMapView extends StatefulWidget {
 
 class _MapboxNativeMapViewState extends State<MapboxNativeMapView> {
   MapboxMap? _map;
-  PointAnnotationManager? _annotations;
+  CircleAnnotationManager? _circles;
+  PolylineAnnotationManager? _polylines;
+
+  /// Created annotation id → its marker, so the tap handler can find what
+  /// was hit.
+  final _markersByAnnotationId = <String, MapMarkerData>{};
+
+  /// Selection is tracked by marker id, not by MapMarkerData value, so a
+  /// data refresh of the selected QSO (a lookup filling in details) updates
+  /// the open callout instead of dismissing it — matching OsmMapView.
+  String? _selectedMarkerId;
+  Offset? _selectedScreenPoint;
+
+  /// Serializes _applyAnnotations runs: an unserialized overlap would
+  /// interleave deleteAll/createMulti between two runs, leaving duplicate
+  /// annotations on the map and a stale _markersByAnnotationId.
+  Future<void> _annotationApplications = Future.value();
+
+  MapMarkerData? get _selectedMarker {
+    final id = _selectedMarkerId;
+    if (id == null) return null;
+    return widget.markers.where((m) => m.id == id).firstOrNull;
+  }
+
+  /// A circle tap also reaches the map's own tap listener right after —
+  /// this flag keeps that second event from instantly dismissing the popup
+  /// the first one just opened.
+  bool _ignoreNextMapTap = false;
 
   @override
   void initState() {
@@ -38,7 +77,9 @@ class _MapboxNativeMapViewState extends State<MapboxNativeMapView> {
   void didUpdateWidget(MapboxNativeMapView oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.projection != widget.projection) _applyProjection();
-    if (!listEquals(oldWidget.markers, widget.markers)) _applyMarkers();
+    if (!listEquals(oldWidget.markers, widget.markers) || !listEquals(oldWidget.lines, widget.lines)) {
+      _applyAnnotations();
+    }
   }
 
   Future<void> _applyProjection() async {
@@ -46,28 +87,51 @@ class _MapboxNativeMapViewState extends State<MapboxNativeMapView> {
       MapProjection.mercator => StyleProjectionName.mercator,
       MapProjection.globe => StyleProjectionName.globe,
     }));
+    _repositionPopup();
   }
 
-  Future<void> _applyMarkers() async {
-    final annotations = _annotations;
-    final map = _map;
-    if (annotations == null || map == null) return;
+  void _applyAnnotations() {
+    _annotationApplications = _annotationApplications
+        .then((_) => _applyAnnotationsNow())
+        .catchError((Object e) => debugPrint('[map] annotation update failed: $e'));
+  }
 
-    await annotations.deleteAll();
-    await annotations.createMulti([
-      for (final marker in widget.markers)
-        PointAnnotationOptions(
-          geometry: Point(coordinates: Position(marker.longitude, marker.latitude)),
-          textField: [marker.label, if (marker.sublabel != null) marker.sublabel!].join(' — '),
-          textOffset: [0, 1.2],
-          textColor: Colors.black.toARGB32(),
-          textHaloColor: Colors.white.toARGB32(),
-          textHaloWidth: 1.5,
-          iconImage: 'marker-15',
-          iconColor: marker.color.toARGB32(),
-          iconSize: marker.kind == MapMarkerKind.qth ? 1.5 : 1.0,
+  Future<void> _applyAnnotationsNow() async {
+    final circles = _circles;
+    final polylines = _polylines;
+    final map = _map;
+    if (circles == null || polylines == null || map == null) return;
+
+    if (_selectedMarkerId != null && _selectedMarker == null) _dismissPopup();
+
+    await polylines.deleteAll();
+    await polylines.createMulti([
+      for (final line in widget.lines)
+        PolylineAnnotationOptions(
+          geometry: LineString(coordinates: [
+            for (final p in line.points) Position(p.longitude, p.latitude),
+          ]),
+          lineColor: line.color.toARGB32(),
+          lineWidth: 1.5,
         ),
     ]);
+
+    await circles.deleteAll();
+    _markersByAnnotationId.clear();
+    final created = await circles.createMulti([
+      for (final marker in widget.markers)
+        CircleAnnotationOptions(
+          geometry: Point(coordinates: Position(marker.longitude, marker.latitude)),
+          circleRadius: marker.kind == MapMarkerKind.qth ? 6 : 7 * marker.sizeFactor,
+          circleColor: marker.color.toARGB32(),
+          circleStrokeColor: (marker.kind == MapMarkerKind.qth ? Colors.white : Colors.black87).toARGB32(),
+          circleStrokeWidth: marker.kind == MapMarkerKind.qth ? 2 : 1.5,
+        ),
+    ]);
+    for (var i = 0; i < created.length && i < widget.markers.length; i++) {
+      final annotation = created[i];
+      if (annotation != null) _markersByAnnotationId[annotation.id] = widget.markers[i];
+    }
 
     if (widget.markers.isNotEmpty) {
       final camera = await map.cameraForCoordinatesPadding(
@@ -78,21 +142,82 @@ class _MapboxNativeMapViewState extends State<MapboxNativeMapView> {
         null,
       );
       await map.setCamera(camera);
+      _repositionPopup();
     }
+  }
+
+  void _onCircleTapped(CircleAnnotation annotation) {
+    final marker = _markersByAnnotationId[annotation.id];
+    if (marker == null) return;
+    _ignoreNextMapTap = true;
+    setState(() => _selectedMarkerId = marker.id);
+    _repositionPopup();
+  }
+
+  void _dismissPopup() {
+    if (_selectedMarkerId == null) return;
+    setState(() {
+      _selectedMarkerId = null;
+      _selectedScreenPoint = null;
+    });
+  }
+
+  /// Re-projects the selected marker to screen space — called on every
+  /// camera change so the callout tracks its circle while panning/zooming.
+  Future<void> _repositionPopup() async {
+    final map = _map;
+    final marker = _selectedMarker;
+    if (map == null || marker == null) return;
+    final screen = await map.pixelForCoordinate(
+      Point(coordinates: Position(marker.longitude, marker.latitude)),
+    );
+    if (!mounted || _selectedMarkerId != marker.id) return;
+    setState(() => _selectedScreenPoint = Offset(screen.x, screen.y));
   }
 
   Future<void> _onMapCreated(MapboxMap map) async {
     _map = map;
-    _annotations = await map.annotations.createPointAnnotationManager();
+    map.addInteraction(TapInteraction.onMap((_) {
+      if (_ignoreNextMapTap) {
+        _ignoreNextMapTap = false;
+        return;
+      }
+      _dismissPopup();
+    }));
+    _polylines = await map.annotations.createPolylineAnnotationManager();
+    _circles = await map.annotations.createCircleAnnotationManager();
+    _circles!.tapEvents(onTap: _onCircleTapped);
     await _applyProjection();
-    await _applyMarkers();
+    _applyAnnotations();
   }
 
   @override
   Widget build(BuildContext context) {
-    return MapWidget(
-      styleUri: MapboxStyles.STANDARD,
-      onMapCreated: _onMapCreated,
+    final popupPoint = _selectedScreenPoint;
+    return Stack(
+      children: [
+        Positioned.fill(
+          child: MapWidget(
+            styleUri: MapboxStyles.STANDARD,
+            onMapCreated: _onMapCreated,
+            onCameraChangeListener: (_) => _repositionPopup(),
+          ),
+        ),
+        if (_selectedMarker != null && popupPoint != null)
+          Positioned(
+            left: popupPoint.dx - MapPopupCard.maxWidth / 2,
+            bottom: null,
+            top: popupPoint.dy - 96 - 14,
+            width: MapPopupCard.maxWidth,
+            height: 96,
+            child: IgnorePointer(
+              child: Align(
+                alignment: Alignment.bottomCenter,
+                child: MapPopupCard(marker: _selectedMarker!),
+              ),
+            ),
+          ),
+      ],
     );
   }
 }

@@ -38,6 +38,7 @@ class SettingsService extends ChangeNotifier implements SyncSettings {
   static const _showGridFieldKey = 'showGridField';
   static const _showDeletedQSOsKey = 'showDeletedQSOs';
   static const _showQsoNumbersKey = 'showQsoNumbers';
+  static const _distanceUnitsKey = 'distanceUnits';
   static const _spottingFiltersKey = 'spottingFilters';
 
   final SharedPreferences _prefs;
@@ -279,7 +280,30 @@ class SettingsService extends ChangeNotifier implements SyncSettings {
     await _prefs.setBool(_showQsoNumbersKey, value);
     notifyListeners();
   }
+
+  /// Distances (the Map tab's popups) in km or miles. Until the user picks
+  /// one, defaults by operator callsign the way app-polo does: miles for the
+  /// non-metric entities (US, UK, Liberia, Myanmar), km everywhere else.
+  DistanceUnits get distanceUnits {
+    final value = _prefs.getString(_distanceUnitsKey);
+    for (final unit in DistanceUnits.values) {
+      if (unit.name == value) return unit;
+    }
+    // US prefixes K/N/W/AA–AL, UK G/M/2xx, Liberia EL/A8/5L/6Z/D5, Myanmar
+    // XY/XZ — matching on the raw callsign since Dart has no callsign parser
+    // (app-polo checks the parsed entityPrefix instead).
+    final call = operatorCall;
+    final miles = RegExp(r'^(A[A-L]|A8|[KNW]|G|M|2|EL|5L|6Z|D5|XY|XZ)').hasMatch(call);
+    return miles ? DistanceUnits.miles : DistanceUnits.kilometers;
+  }
+
+  Future<void> setDistanceUnits(DistanceUnits units) async {
+    await _prefs.setString(_distanceUnitsKey, units.name);
+    notifyListeners();
+  }
 }
+
+enum DistanceUnits { kilometers, miles }
 
 enum FontScale {
   smallest(0.70, 'Smallest'),

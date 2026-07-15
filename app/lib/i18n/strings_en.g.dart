@@ -44,6 +44,7 @@ class Translations with BaseTranslations<AppLocale, Translations> {
 	late final Translations$home$en home = Translations$home$en.internal(_root);
 	late final Translations$dialogs$en dialogs = Translations$dialogs$en.internal(_root);
 	late final Translations$operation$en operation = Translations$operation$en.internal(_root);
+	late final Translations$map$en map = Translations$map$en.internal(_root);
 	late final Translations$activitiesView$en activitiesView = Translations$activitiesView$en.internal(_root);
 	late final Translations$loggingControls$en loggingControls = Translations$loggingControls$en.internal(_root);
 	late final Translations$qsoEditForm$en qsoEditForm = Translations$qsoEditForm$en.internal(_root);
@@ -160,6 +161,27 @@ class Translations$operation$en {
 	late final Translations$operation$menu$en menu = Translations$operation$menu$en.internal(_root);
 	late final Translations$operation$export$en export = Translations$operation$export$en.internal(_root);
 	late final Translations$operation$spots$en spots = Translations$operation$spots$en.internal(_root);
+}
+
+// Path: map
+class Translations$map$en {
+	Translations$map$en.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'No QSO locations yet. QSOs with a grid square, state, or country will show up here.'
+	String get emptyState => 'No QSO locations yet.\nQSOs with a grid square, state, or country will show up here.';
+
+	/// en: 'QTH: ${grid}'
+	String qthPopupTitle({required Object grid}) => 'QTH: ${grid}';
+
+	/// en: '${distance} km'
+	String distanceKm({required Object distance}) => '${distance} km';
+
+	/// en: '${distance} mi'
+	String distanceMiles({required Object distance}) => '${distance} mi';
 }
 
 // Path: activitiesView
@@ -423,6 +445,14 @@ class Translations$settings$en {
 
 	/// en: 'Scales the whole interface — text, controls, and spacing'
 	String get fontScaleDescription => 'Scales the whole interface — text, controls, and spacing';
+
+	/// en: 'Distance Units'
+	String get distanceUnits => 'Distance Units';
+
+	late final Translations$settings$distanceUnitsOpts$en distanceUnitsOpts = Translations$settings$distanceUnitsOpts$en.internal(_root);
+
+	/// en: 'For distances shown on the map'
+	String get distanceUnitsDescription => 'For distances shown on the map';
 
 	/// en: 'Operator Callsign'
 	String get operatorCall => 'Operator Callsign';
@@ -707,6 +737,21 @@ class Translations$settings$fontScaleOpts$en {
 	String get largest => 'Largest';
 }
 
+// Path: settings.distanceUnitsOpts
+class Translations$settings$distanceUnitsOpts$en {
+	Translations$settings$distanceUnitsOpts$en.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Kilometers'
+	String get kilometers => 'Kilometers';
+
+	/// en: 'Miles'
+	String get miles => 'Miles';
+}
+
 // Path: settings.sync
 class Translations$settings$sync$en {
 	Translations$settings$sync$en.internal(this._root);
@@ -899,6 +944,10 @@ extension on Translations {
 			'operation.spots.filters.sortByTime' => 'By Spot Time',
 			'operation.spots.filters.sortByFrequency' => 'By Frequency',
 			'operation.spots.filters.groupCallsWithNotes' => 'Group Calls with Notes',
+			'map.emptyState' => 'No QSO locations yet.\nQSOs with a grid square, state, or country will show up here.',
+			'map.qthPopupTitle' => ({required Object grid}) => 'QTH: ${grid}',
+			'map.distanceKm' => ({required Object distance}) => '${distance} km',
+			'map.distanceMiles' => ({required Object distance}) => '${distance} mi',
 			'activitiesView.title' => 'Activities',
 			'activitiesView.activitiesCountZero' => 'No Current Activities',
 			'activitiesView.activitiesCountOne' => 'One Current Activity',
@@ -979,6 +1028,10 @@ extension on Translations {
 			'settings.fontScaleOpts.larger' => 'Larger',
 			'settings.fontScaleOpts.largest' => 'Largest',
 			'settings.fontScaleDescription' => 'Scales the whole interface — text, controls, and spacing',
+			'settings.distanceUnits' => 'Distance Units',
+			'settings.distanceUnitsOpts.kilometers' => 'Kilometers',
+			'settings.distanceUnitsOpts.miles' => 'Miles',
+			'settings.distanceUnitsDescription' => 'For distances shown on the map',
 			'settings.operatorCall' => 'Operator Callsign',
 			'settings.sync.title' => 'Sync Settings',
 			'settings.sync.enable' => 'Enable Sync',

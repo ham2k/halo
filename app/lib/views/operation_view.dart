@@ -389,7 +389,7 @@ class _OperationViewState extends State<OperationView> with SingleTickerProvider
             _KeepAlive(
               child: SpotsPanel(operation: operation, services: widget.services, onSuggestQso: _suggestQso),
             ),
-            _KeepAlive(child: MapPanel(operation: operation, qsos: qsos)),
+            _KeepAlive(child: MapPanel(operation: operation, qsos: qsos, settings: widget.services.settings)),
             OperationSettingsPanel(
               operation: operation,
               qsoCount: realQsoCount,

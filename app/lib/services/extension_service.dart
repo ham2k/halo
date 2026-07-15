@@ -652,6 +652,7 @@ class ExtensionService {
           'themeMode': settings?.themeMode.name ?? 'system',
           'locale': settings?.locale ?? 'en',
           'fontScale': settings?.fontScale.name ?? 'normal',
+          'distanceUnits': settings?.distanceUnits.name ?? 'kilometers',
         };
       case 'setCoreSetting':
         final settingKey = params['key'] as String;
@@ -678,6 +679,13 @@ class ExtensionService {
               return null;
             }
             await settings?.setFontScale(scale);
+          case 'distanceUnits':
+            final units = _enumByNameOrNull(DistanceUnits.values, value);
+            if (units == null) {
+              debugPrint('[extensions] setCoreSetting: "distanceUnits" got an unrecognized value ($value) — ignored');
+              return null;
+            }
+            await settings?.setDistanceUnits(units);
           default:
             debugPrint('[extensions] setCoreSetting: unknown key "$settingKey"');
         }

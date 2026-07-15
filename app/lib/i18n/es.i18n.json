@@ -100,6 +100,12 @@
       }
     }
   },
+  "map": {
+    "emptyState": "Aún no hay ubicaciones de QSO.\nLos QSOs con cuadrícula, estado o país aparecerán aquí.",
+    "qthPopupTitle": "QTH: ${grid}",
+    "distanceKm": "${distance} km",
+    "distanceMiles": "${distance} mi"
+  },
   "activitiesView": {
     "title": "Actividades",
     "activitiesCountZero": "Sin actividades actuales",
@@ -197,6 +203,12 @@
       "largest": "Más grande"
     },
     "fontScaleDescription": "Escala toda la interfaz: texto, controles y espaciado",
+    "distanceUnits": "Unidades de distancia",
+    "distanceUnitsOpts": {
+      "kilometers": "Kilómetros",
+      "miles": "Millas"
+    },
+    "distanceUnitsDescription": "Para las distancias mostradas en el mapa",
     "operatorCall": "Indicativo del Operador",
     "sync": {
       "title": "Configuración de Sincronización",

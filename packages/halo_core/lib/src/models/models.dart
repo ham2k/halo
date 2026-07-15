@@ -89,6 +89,13 @@ class Qso {
   Map<String, dynamic> get _theirGuess => (_their['guess'] as Map<String, dynamic>?) ?? const {};
 
   String get ourCall => (_our['call'] as String?) ?? '';
+
+  /// Our own grid at the time of this QSO, when captured — QSON allows the
+  /// station to move mid-operation (e.g. a location change across a break),
+  /// so consumers like the Map tab prefer this over `Operation.grid` when
+  /// present. Nothing in HaLo writes it yet; imports/sync may carry it.
+  String? get ourGrid => _our['grid'] as String?;
+
   String get theirCall => (_their['call'] as String?) ?? '';
   // `guess` (the merged lookup result — see the Lookups feature,
   // ham2k/app-halo-dist#8) stays nested rather than flattened onto `their`,
