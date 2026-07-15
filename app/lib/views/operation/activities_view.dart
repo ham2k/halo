@@ -1,13 +1,15 @@
 // Copyright ©️ 2026 Sebastian Delmont <sd@ham2k.com>
 // SPDX-License-Identifier: MPL-2.0
 //
-// Full-screen Activities view (replaces the old _editActivities AlertDialog):
-// three accordion sections — "Current Activities" (title shows the count;
-// one row per ref, tap to edit, delete button to remove; open by default),
-// "Suggestions & Search" (the search field itself is the header; open by
-// default and expands to fill the remaining space) and "All Options" (every
-// active activity type, for adding one manually; closed by default).
-// Start/break/end events are deferred — this view is activities-only for
+// The Activities pane, shown via showModalPane (docs/design/layouts.md —
+// full screen on phones, a dialog on wide layouts) with `scrollable: false`
+// since its sections divide the pane's height themselves: three accordion
+// sections — "Current Activities" (title shows the count; one row per ref,
+// tap to edit, delete button to remove; open by default), "Suggestions &
+// Search" (the search field itself is the header; open by default and
+// expands to fill the remaining space) and "All Options" (every active
+// activity type, for adding one manually; closed by default).
+// Start/break/end events are deferred — this pane is activities-only for
 // now.
 //
 // A plain ExpansionTile can't "fill the remaining space" (it always sizes
@@ -67,17 +69,17 @@ String? gridToAdoptAfterAddingRef({
   return (firstGrid != null && firstGrid.isNotEmpty) ? firstGrid : null;
 }
 
-class ActivitiesView extends StatefulWidget {
+class ActivitiesPane extends StatefulWidget {
   final HaLoServices services;
   final Operation operation;
 
-  const ActivitiesView({super.key, required this.services, required this.operation});
+  const ActivitiesPane({super.key, required this.services, required this.operation});
 
   @override
-  State<ActivitiesView> createState() => _ActivitiesViewState();
+  State<ActivitiesPane> createState() => _ActivitiesPaneState();
 }
 
-class _ActivitiesViewState extends State<ActivitiesView> {
+class _ActivitiesPaneState extends State<ActivitiesPane> {
   late Operation _operation;
   List<Map<String, dynamic>> _controls = const [];
 
@@ -353,22 +355,19 @@ class _ActivitiesViewState extends State<ActivitiesView> {
     final refs = _operation.refs;
     final accordionColor = _greenerDesaturated(theme.colorScheme.primaryContainer);
     final onAccordionColor = theme.colorScheme.onPrimaryContainer;
-    // Rows paint an opaque white so they read distinctly from the view's
-    // gray background (Scaffold.backgroundColor below), which otherwise
-    // shows straight through wherever a filling section has no row to draw.
+    // Rows paint an opaque white so they read distinctly from the pane's
+    // gray background (the ColoredBox below), which otherwise shows
+    // straight through wherever a filling section has no row to draw. The
+    // pane brings this background itself so both Modal Pane presentations
+    // (full screen and dialog card) look the same.
     final rowColor = theme.colorScheme.surface;
     // Current Activities only takes the flexible remaining space when
     // Search isn't there to claim it.
     final activitiesFill = !_searchExpanded;
 
-    return Scaffold(
-      backgroundColor: theme.colorScheme.surfaceContainerHighest,
-      appBar: AppBar(
-        leadingWidth: macOSAwareLeadingWidth(context),
-        leading: macOSAwareBackButton(context),
-        title: Text(t.title),
-      ),
-      body: Column(
+    return ColoredBox(
+      color: theme.colorScheme.surfaceContainerHighest,
+      child: Column(
         children: [
           _AccordionSection(
             title: Padding(

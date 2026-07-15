@@ -48,6 +48,23 @@ class MainFlutterWindow: NSWindow {
         self.titleBarHeight = CGFloat(height)
         self.positionTrafficLights()
         result(nil)
+      } else if call.method == "setMinimumSize",
+        let args = call.arguments as? [String: Any],
+        let width = args["width"] as? Double,
+        let height = args["height"] as? Double
+      {
+        // The resize floor (layouts.md's minWindowSize), already multiplied
+        // by the UI scale on the Flutter side — don't re-derive it here.
+        self.contentMinSize = NSSize(width: width, height: height)
+        // contentMinSize only constrains FUTURE user resizes; a floor that
+        // grew (font-scale increase) must also lift the current window, or
+        // it stays below minimum until the user happens to drag an edge.
+        let current = self.contentRect(forFrameRect: self.frame).size
+        if current.width < width || current.height < height {
+          self.setContentSize(
+            NSSize(width: max(current.width, width), height: max(current.height, height)))
+        }
+        result(nil)
       } else {
         result(FlutterMethodNotImplemented)
       }

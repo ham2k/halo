@@ -11,6 +11,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:halo_widgets/halo_widgets.dart';
 import 'package:ham2k_logger/views/switch_accounts_dialog.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 
@@ -35,9 +36,14 @@ Future<void> pumpDialog(
       home: Builder(
         builder: (context) => TextButton(
           onPressed: () async {
-            final result = await showDialog<bool>(
-              context: context,
-              builder: (context) => SwitchAccountsDialog(
+            // The production path (showSwitchAccountsDialog) is a Modal
+            // Pane; opened here directly so tests can inject the poll
+            // interval and clock.
+            final result = await showModalPane<bool>(
+              context,
+              title: 'Switch Accounts',
+              barrierDismissible: false,
+              builder: (context) => SwitchAccountsPane(
                 fetchAccountData: fetchAccountData,
                 linkClient: linkClient,
                 linkClientWithEmail: linkClientWithEmail ?? (email) async => {},

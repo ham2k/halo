@@ -5,11 +5,14 @@ library;
 
 export 'src/activity_controls.dart';
 export 'src/icon_resolver.dart';
+export 'src/layout.dart';
 export 'src/logging_controls.dart';
 export 'src/mdi_icons.dart';
+export 'src/modal_pane.dart';
 export 'src/platform_chrome.dart';
 export 'src/qso_list.dart';
 export 'src/ref_chips_input.dart';
+export 'src/resizable_split_view.dart';
 export 'src/secondary_control_row.dart';
 export 'src/section_header.dart';
 export 'src/status_bar.dart';

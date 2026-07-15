@@ -433,6 +433,9 @@ class _HaLoAppState extends State<HaLoApp> {
           // WindowChromeService; deduped, so calling it every build is fine).
           final baseToolbarHeight = Theme.of(context).appBarTheme.toolbarHeight ?? 48.0;
           WindowChromeService.reportTitleBarHeight(baseToolbarHeight * scale);
+          // The window's resize floor is an XS phone's footprint in the
+          // UiScale-divided space (layouts.md), so it scales the same way.
+          WindowChromeService.reportMinimumSize(minWindowSize * scale);
 
           return UiScale(
             scale: scale,

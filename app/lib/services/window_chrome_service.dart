@@ -20,6 +20,7 @@ class WindowChromeService {
   static bool get _supported => !kIsWeb && defaultTargetPlatform == TargetPlatform.macOS;
 
   static double? _lastReported;
+  static Size? _lastMinimumSize;
 
   /// Tells the native window the current AppBar height so it can center the
   /// traffic-light buttons in it. Deduped: a no-op unless the height actually
@@ -29,5 +30,17 @@ class WindowChromeService {
     if (_lastReported != null && (_lastReported! - height).abs() < 0.5) return;
     _lastReported = height;
     _channel.invokeMethod('setTitleBarHeight', {'height': height});
+  }
+
+  /// Tells the native window the smallest size the user may resize it to —
+  /// `minWindowSize` (docs/design/layouts.md) times the current UI scale, so
+  /// the floor holds in the UiScale-divided space the layouts measure in.
+  /// Deduped like [reportTitleBarHeight]; called from the same builder so it
+  /// re-reports when the font scale changes.
+  static void reportMinimumSize(Size size) {
+    if (!_supported) return;
+    if (_lastMinimumSize == size) return;
+    _lastMinimumSize = size;
+    _channel.invokeMethod('setMinimumSize', {'width': size.width, 'height': size.height});
   }
 }

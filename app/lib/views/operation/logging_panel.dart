@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: MPL-2.0
 
 import 'package:flutter/material.dart';
-import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:halo_core/halo_core.dart';
 import 'package:halo_widgets/halo_widgets.dart';
 import 'package:intl/intl.dart';
@@ -45,6 +44,12 @@ class LoggingPanel extends StatefulWidget {
   final String? ourEntityPrefix;
   final Map<String, dynamic>? suggestedQso;
 
+  /// Forwards LoggingControls' command output up to the operation view,
+  /// which shows it on the Info pane (this panel used to render it in its
+  /// own >=900px side area — that layout is the operation view's job now,
+  /// see docs/design/layouts.md).
+  final ValueChanged<String?>? onCommandMessageChanged;
+
   const LoggingPanel({
     super.key,
     required this.operation,
@@ -58,6 +63,7 @@ class LoggingPanel extends StatefulWidget {
     this.showQsoNumbers = true,
     this.ourEntityPrefix,
     this.suggestedQso,
+    this.onCommandMessageChanged,
   });
 
   @override
@@ -65,7 +71,6 @@ class LoggingPanel extends StatefulWidget {
 }
 
 class _LoggingPanelState extends State<LoggingPanel> {
-  String? _commandMarkdown;
   Qso? _selectedQso;
   late List<String> _controlOrder =
       widget.services.settings.secondaryControlsOrder;
@@ -111,7 +116,6 @@ class _LoggingPanelState extends State<LoggingPanel> {
 
   @override
   Widget build(BuildContext context) {
-    final wide = MediaQuery.sizeOf(context).width >= 900;
     // Cached by `ScoringService.rescoreOperation` into `Operation.localData`
     // (never synced — DESIGN.md §4); absent until the first rescore lands.
     final scoring =
@@ -135,23 +139,7 @@ class _LoggingPanelState extends State<LoggingPanel> {
 
     return Column(
       children: [
-        Expanded(
-          child: wide
-              ? Row(
-                  children: [
-                    Expanded(flex: 2, child: list),
-                    const VerticalDivider(width: 1),
-                    Expanded(
-                      child: InformationArea(
-                        operation: widget.operation,
-                        qsos: widget.qsos,
-                        commandMarkdown: _commandMarkdown,
-                      ),
-                    ),
-                  ],
-                )
-              : list,
-        ),
+        Expanded(child: list),
         LoggingControls(
           operation: widget.operation,
           qsosRepository: widget.services.qsos,
@@ -164,11 +152,7 @@ class _LoggingPanelState extends State<LoggingPanel> {
               .loggingControls(widget.operation.data, qso: qso),
           decorateRef: widget.services.extensions.decorateRef,
           interpretCommand: widget.services.extensions.interpretCommand,
-          onCommandMessageChanged: (message) {
-            setState(() {
-              _commandMarkdown = message;
-            });
-          },
+          onCommandMessageChanged: (message) => widget.onCommandMessageChanged?.call(message),
           onCommandAction: widget.onCommandAction,
           suggestSpotSources: widget.services.extensions.suggestSpotSources,
           sendSpot: widget.services.extensions.sendSpot,
@@ -224,83 +208,6 @@ class _LoggingPanelState extends State<LoggingPanel> {
           notesLabel: context.t.qsoEditForm.notes,
           bandLabel: context.t.qsoEditForm.band,
         ),
-      ],
-    );
-  }
-}
-
-class InformationArea extends StatelessWidget {
-  final Operation operation;
-  final List<Qso> qsos;
-  final String? commandMarkdown;
-
-  const InformationArea({
-    super.key,
-    required this.operation,
-    required this.qsos,
-    this.commandMarkdown,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final byBand = <String, int>{};
-    final byMode = <String, int>{};
-    for (final qso in qsos) {
-      if (!qso.isRealContact) continue;
-      byBand.update(qso.band ?? '?', (count) => count + 1, ifAbsent: () => 1);
-      byMode.update(qso.mode ?? '?', (count) => count + 1, ifAbsent: () => 1);
-    }
-
-    // Cached by `ScoringService.rescoreOperation` into `Operations.localData`
-    // (never synced — DESIGN.md §4) each time this operation is (re)scored;
-    // absent until the first rescore completes.
-    final scoring = operation.localData['scoring'] as Map<String, dynamic>?;
-    final operationSummary =
-        scoring?['operationSummary'] as Map<String, dynamic>?;
-    final dxcc = operationSummary?['dxcc'] as Map<String, dynamic>?;
-    final dxccCount = (dxcc?['entities'] as Map?)?.length ?? 0;
-    final duplicateCount =
-        ((operationSummary?['qsoCount'] as Map?)?['duplicates'] as num?)
-            ?.toInt() ??
-        0;
-
-    final theme = Theme.of(context);
-    return ListView(
-      padding: const EdgeInsets.all(16),
-      children: [
-        if (commandMarkdown != null) ...[
-          MarkdownBody(
-            data: commandMarkdown!,
-            styleSheet: MarkdownStyleSheet.fromTheme(theme).copyWith(
-              p: theme.textTheme.bodyLarge?.copyWith(
-                color: theme.colorScheme.primary,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-          ),
-          const SizedBox(height: 16),
-          const Divider(),
-          const SizedBox(height: 16),
-        ],
-        Text(context.t.loggingPanel.station, style: theme.textTheme.titleSmall),
-        Text(operation.stationCall, style: theme.textTheme.headlineSmall),
-        const SizedBox(height: 16),
-        Text(context.t.loggingPanel.byBand, style: theme.textTheme.titleSmall),
-        for (final entry in byBand.entries)
-          Text('${entry.key}: ${entry.value}'),
-        const SizedBox(height: 16),
-        Text(context.t.loggingPanel.byMode, style: theme.textTheme.titleSmall),
-        for (final entry in byMode.entries)
-          Text('${entry.key}: ${entry.value}'),
-        if (operationSummary != null) ...[
-          const SizedBox(height: 16),
-          Text(
-            context.t.loggingPanel.scoring,
-            style: theme.textTheme.titleSmall,
-          ),
-          Text('${context.t.loggingPanel.dxccEntities}: $dxccCount'),
-          Text('${context.t.loggingPanel.duplicates}: $duplicateCount'),
-        ],
       ],
     );
   }

@@ -17,6 +17,7 @@ import 'package:halo_core/halo_core.dart';
 import 'package:halo_widgets/halo_widgets.dart';
 import 'package:http/http.dart' as http;
 
+import '../app_info.dart';
 import '../main.dart';
 import '../services/extension_service.dart';
 import '../services/settings_service.dart';
@@ -24,10 +25,6 @@ import '../services/status_bar_service.dart';
 import 'notice_history_view.dart';
 import 'operation_dialogs.dart';
 import 'switch_accounts_dialog.dart';
-
-const _appVersion = '0.1.0'; // keep in sync with app/pubspec.yaml
-
-const double _wideLayoutThreshold = 720.0;
 
 /// A sidebar entry: `key` identifies it (a fixed core key, or an
 /// extension's `panelKey`); `descriptor` is null for core panels and the
@@ -45,7 +42,13 @@ class _SettingsPanelEntry {
   final int order;
   final Map<String, dynamic>? descriptor;
 
-  const _SettingsPanelEntry({required this.key, required this.title, required this.icon, required this.order, this.descriptor});
+  const _SettingsPanelEntry({
+    required this.key,
+    required this.title,
+    required this.icon,
+    required this.order,
+    this.descriptor,
+  });
 }
 
 // "General" isn't here — it's the core/settings extension's own
@@ -99,7 +102,8 @@ class _SettingsViewState extends State<SettingsView> {
         key: 'settings_extensions_unavailable',
         icon: 'alert-circle-outline',
         title: 'Some settings are unavailable',
-        text: 'The extension runtime failed to start, so extension-contributed settings (including General) are missing.',
+        text:
+            'The extension runtime failed to start, so extension-contributed settings (including General) are missing.',
       );
     }
     if (mounted) {
@@ -122,7 +126,12 @@ class _SettingsViewState extends State<SettingsView> {
           descriptor: p,
         ),
       if (settings.developerMode)
-        const _SettingsPanelEntry(key: 'developer', title: 'Developer Settings', icon: Icons.bug_report_outlined, order: _developerPanelOrder),
+        const _SettingsPanelEntry(
+          key: 'developer',
+          title: 'Developer Settings',
+          icon: Icons.bug_report_outlined,
+          order: _developerPanelOrder,
+        ),
       const _SettingsPanelEntry(key: 'about', title: 'About', icon: Icons.info_outline, order: _aboutPanelOrder),
     ];
     entries.sort((a, b) => a.order.compareTo(b.order));
@@ -133,15 +142,11 @@ class _SettingsViewState extends State<SettingsView> {
   Widget build(BuildContext context) {
     final settings = widget.services.settings;
 
-    return ListenableBuilder(
-      listenable: settings,
-      builder: (context, _) => _buildContent(context, settings),
-    );
+    return ListenableBuilder(listenable: settings, builder: (context, _) => _buildContent(context, settings));
   }
 
   Widget _buildContent(BuildContext context, SettingsService settings) {
-    final double width = MediaQuery.sizeOf(context).width;
-    final bool isWide = width >= _wideLayoutThreshold;
+    final bool isWide = ShirtSize.of(context).isTwoPane;
 
     final panels = _buildPanelEntries(settings);
     final selectionExists = panels.any((p) => p.key == _selectedPanel);
@@ -153,69 +158,26 @@ class _SettingsViewState extends State<SettingsView> {
     }
 
     if (isWide) {
-      final theme = Theme.of(context);
-      final bool isDark = theme.brightness == Brightness.dark;
-      
-      final appBarColor = theme.appBarTheme.backgroundColor ?? theme.colorScheme.surface;
-      final Color headerDividerColor;
-      if (isDark) {
-        headerDividerColor = Colors.grey[600]!;
-      } else {
-        final appBarHsl = HSLColor.fromColor(appBarColor);
-        headerDividerColor = appBarHsl.withLightness((appBarHsl.lightness - 0.15).clamp(0.0, 1.0)).toColor();
-      }
-
-      final bodyColor = theme.colorScheme.surface;
-      final Color bodyDividerColor;
-      if (isDark) {
-        bodyDividerColor = Colors.grey[600]!;
-      } else {
-        final bodyHsl = HSLColor.fromColor(bodyColor);
-        bodyDividerColor = bodyHsl.withLightness((bodyHsl.lightness - 0.15).clamp(0.0, 1.0)).toColor();
-      }
-
-      return Scaffold(
-        appBar: PreferredSize(
-          preferredSize: Size.fromHeight(Theme.of(context).appBarTheme.toolbarHeight ?? 56.0),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              SizedBox(
-                width: 320,
-                child: AppBar(
-                  leadingWidth: macOSAwareLeadingWidth(context),
-                  leading: macOSAwareBackButton(context),
-                  title: const Text('Settings'),
-                ),
-              ),
-              Container(
-                width: 1,
-                color: headerDividerColor,
-              ),
-              Expanded(
-                child: AppBar(
-                  title: Text(effectivePanel.title),
-                  automaticallyImplyLeading: false,
-                ),
-              ),
-            ],
+      // Each side is its own Scaffold with its own AppBar, so the header
+      // splits at the same draggable divider as the body. Only the LEFT
+      // pane's AppBar reserves macOS traffic-light clearance — the right
+      // one sits mid-window (layouts.md rule 5).
+      return ResizableSplitView(
+        preferredPrimaryWidth: settings.layoutDimension(LayoutKeys.settingsLeftColumn) ?? 320,
+        minPrimaryWidth: 240,
+        maxPrimaryWidth: idealPaneWidth,
+        onPreferredPrimaryWidthChanged: (width) => settings.setLayoutDimension(LayoutKeys.settingsLeftColumn, width),
+        primary: Scaffold(
+          appBar: AppBar(
+            leadingWidth: macOSAwareLeadingWidth(context),
+            leading: macOSAwareBackButton(context),
+            title: const Text('Settings'),
           ),
+          body: _buildSidebar(context, isWide: true, panels: panels, selectedKey: effectivePanel.key),
         ),
-        body: Row(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            SizedBox(
-              width: 320,
-              child: _buildSidebar(context, isWide: true, panels: panels, selectedKey: effectivePanel.key),
-            ),
-            Container(
-              width: 1,
-              color: bodyDividerColor,
-            ),
-            Expanded(
-              child: _buildPanelContent(effectivePanel, widget.services),
-            ),
-          ],
+        secondary: Scaffold(
+          appBar: AppBar(title: Text(effectivePanel.title), automaticallyImplyLeading: false),
+          body: _buildPanelContent(effectivePanel, widget.services),
         ),
       );
     } else {
@@ -253,10 +215,7 @@ class _SettingsViewState extends State<SettingsView> {
             if (!isWide) {
               Navigator.of(context).push(
                 MaterialPageRoute(
-                  builder: (context) => _SettingsPanelScreen(
-                    panel: panel,
-                    services: widget.services,
-                  ),
+                  builder: (context) => _SettingsPanelScreen(panel: panel, services: widget.services),
                 ),
               );
             }
@@ -276,10 +235,16 @@ class _SettingsPanelScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (MediaQuery.sizeOf(context).width >= _wideLayoutThreshold) {
+    if (ShirtSize.of(context).isTwoPane) {
+      // Remove THIS screen's route specifically — Navigator.pop() takes the
+      // top-most route, which may be a Modal Pane stacked above (an account
+      // pane opened from a panel on a narrow window): popping that instead
+      // would destroy the pane mid-edit on a resize it's designed to
+      // survive. removeRoute leaves anything above this screen intact.
+      final route = ModalRoute.of(context);
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (Navigator.of(context).canPop()) {
-          Navigator.of(context).pop();
+        if (route != null && route.isActive && !route.isFirst) {
+          Navigator.of(context).removeRoute(route);
         }
       });
       return const Scaffold(body: SizedBox.shrink());
@@ -533,7 +498,9 @@ class _AccountsPanelState extends State<_AccountsPanel> {
     for (final account in accounts) {
       final kvKey = account['kvKey'] as String;
       final creds = await widget.services.extensions.getAccountCredentials(kvKey);
-      final subtitle = creds.isEmpty ? 'Not configured' : (ExtensionService.identityFromCredentials(creds) ?? 'Configured');
+      final subtitle = creds.isEmpty
+          ? 'Not configured'
+          : (ExtensionService.identityFromCredentials(creds) ?? 'Configured');
       subtitles[kvKey] = subtitle;
     }
     if (mounted) {
@@ -546,14 +513,11 @@ class _AccountsPanelState extends State<_AccountsPanel> {
   }
 
   Future<void> _openAccountDialog(Map<String, dynamic> account) async {
-    await showDialog<void>(
-      context: context,
+    await showModalPane<void>(
+      context,
+      title: account['label'] as String,
       barrierDismissible: false,
-      builder: (context) => _AccountDialog(
-        services: widget.services,
-        account: account,
-        onSaved: _loadAccounts,
-      ),
+      builder: (context) => _AccountPane(services: widget.services, account: account, onSaved: _loadAccounts),
     );
   }
 
@@ -568,9 +532,7 @@ class _AccountsPanelState extends State<_AccountsPanel> {
       children: [
         const SectionHeader('Accounts & Services'),
         if (_accounts!.isEmpty)
-          const ListTile(
-            title: Text('No active extensions with accounts'),
-          )
+          const ListTile(title: Text('No active extensions with accounts'))
         else
           ..._accounts!.map((account) {
             final kvKey = account['kvKey'] as String;
@@ -759,10 +721,11 @@ class _ExtensionSettingsPanelState extends State<_ExtensionSettingsPanel> {
       }
     }
     if (account == null || !mounted) return;
-    await showDialog<void>(
-      context: context,
+    await showModalPane<void>(
+      context,
+      title: account['label'] as String,
       barrierDismissible: false,
-      builder: (context) => _AccountDialog(
+      builder: (context) => _AccountPane(
         services: widget.services,
         account: account!,
         onSaved: () {
@@ -824,9 +787,9 @@ class _DeveloperPanel extends StatelessWidget {
             Text(
               'Developer Options',
               style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    color: Theme.of(context).colorScheme.primary,
-                    fontWeight: FontWeight.bold,
-                  ),
+                color: Theme.of(context).colorScheme.primary,
+                fontWeight: FontWeight.bold,
+              ),
             ),
             const SizedBox(height: 16),
             SwitchListTile(
@@ -862,10 +825,7 @@ class _DeveloperPanel extends StatelessWidget {
                       'label': 'Biography',
                       'placeholder': 'Tell us about yourself...',
                     },
-                    {
-                      'type': 'divider',
-                      'title': 'Contact Details',
-                    },
+                    {'type': 'divider', 'title': 'Contact Details'},
                     {
                       'type': 'field',
                       'fieldType': 'email',
@@ -887,14 +847,8 @@ class _DeveloperPanel extends StatelessWidget {
                       'label': 'Power Output (Watts)',
                       'placeholder': '100',
                     },
-                    {
-                      'type': 'markdown',
-                      'text': 'Please make sure to **validate** the information before saving.',
-                    },
-                    {
-                      'type': 'divider',
-                      'title': 'Preferences',
-                    },
+                    {'type': 'markdown', 'text': 'Please make sure to **validate** the information before saving.'},
+                    {'type': 'divider', 'title': 'Preferences'},
                     {
                       'type': 'field',
                       'fieldType': 'select',
@@ -917,20 +871,11 @@ class _DeveloperPanel extends StatelessWidget {
                         {'label': 'Digital (FT8, RTTY)', 'value': 'digital'},
                       ],
                     },
-                    {
-                      'type': 'field',
-                      'fieldType': 'checkbox',
-                      'key': 'subscribe',
-                      'label': 'Subscribe to newsletter',
-                    },
+                    {'type': 'field', 'fieldType': 'checkbox', 'key': 'subscribe', 'label': 'Subscribe to newsletter'},
                   ],
                 };
 
-                final initialState = {
-                  'name': 'Sebastian Delmont',
-                  'license': 'extra',
-                  'subscribe': true,
-                };
+                final initialState = {'name': 'Sebastian Delmont', 'license': 'extra', 'subscribe': true};
 
                 final result = await showFormDialog(
                   context,
@@ -968,9 +913,7 @@ class _DeveloperPanel extends StatelessWidget {
                 );
 
                 if (context.mounted && result != null) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Saved: ${result.toString()}')),
-                  );
+                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Saved: ${result.toString()}')));
                 }
               },
               child: const Text('Test Custom Form Dialog'),
@@ -980,13 +923,11 @@ class _DeveloperPanel extends StatelessWidget {
             const SizedBox(height: 16),
             Text(
               'System Information',
-              style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
+              style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 8),
             _infoRow(context, 'Sync Device Key', settings.syncDeviceKey ?? '(loading…)'),
-            _infoRow(context, 'App Version', '$_appVersion (dev build)'),
+            _infoRow(context, 'App Version', appVersionLabel),
           ],
         );
       },
@@ -1003,21 +944,12 @@ class _DeveloperPanel extends StatelessWidget {
             flex: 2,
             child: Text(
               label,
-              style: TextStyle(
-                color: Theme.of(context).colorScheme.onSurfaceVariant,
-                fontWeight: FontWeight.w500,
-              ),
+              style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontWeight: FontWeight.w500),
             ),
           ),
           Expanded(
             flex: 3,
-            child: SelectableText(
-              value,
-              style: const TextStyle(
-                fontFamily: 'monospace',
-                fontSize: 13,
-              ),
-            ),
+            child: SelectableText(value, style: const TextStyle(fontFamily: 'monospace', fontSize: 13)),
           ),
         ],
       ),
@@ -1047,27 +979,17 @@ class _AboutPanel extends StatelessWidget {
               const SizedBox(height: 16),
               Text(
                 'Ham2K Logger',
-                style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                      fontWeight: FontWeight.bold,
-                    ),
+                style: Theme.of(context).textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 8),
-              const Text(
-                'Version $_appVersion (dev build)',
-                style: TextStyle(fontSize: 15, color: Colors.grey),
-              ),
+              const Text('Version $appVersionLabel', style: TextStyle(fontSize: 15, color: Colors.grey)),
               const SizedBox(height: 24),
             ],
           ),
         ),
         const Divider(),
         const SizedBox(height: 16),
-        Text(
-          'About the App',
-          style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.bold,
-              ),
-        ),
+        Text('About the App', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
         const SizedBox(height: 8),
         const Text(
           'Ham2K Logger is the next-generation Portable Logger for amateur radio operators. '
@@ -1079,9 +1001,9 @@ class _AboutPanel extends StatelessWidget {
           contentPadding: EdgeInsets.zero,
           leading: const Icon(Icons.notifications_outlined),
           title: const Text('Recent Notices'),
-          onTap: () => Navigator.of(context).push(
-            MaterialPageRoute(builder: (context) => NoticeHistoryView(services: services)),
-          ),
+          onTap: () => Navigator.of(
+            context,
+          ).push(MaterialPageRoute(builder: (context) => NoticeHistoryView(services: services))),
           mouseCursor: SystemMouseCursors.click,
         ),
       ],
@@ -1144,22 +1066,23 @@ class _PendingAccountBanner extends StatelessWidget {
   }
 }
 
-class _AccountDialog extends StatefulWidget {
+/// One extension account's credentials, shown as a Modal Pane
+/// (docs/design/layouts.md): a dialog on wide layouts, a full screen on
+/// phones, where the old AlertDialog was cramped. The route provides the
+/// title and chrome; the action row renders here because it depends on
+/// this State (_testing, _loggedIn).
+class _AccountPane extends StatefulWidget {
   final HaLoServices services;
   final Map<String, dynamic> account;
   final VoidCallback onSaved;
 
-  const _AccountDialog({
-    required this.services,
-    required this.account,
-    required this.onSaved,
-  });
+  const _AccountPane({required this.services, required this.account, required this.onSaved});
 
   @override
-  State<_AccountDialog> createState() => _AccountDialogState();
+  State<_AccountPane> createState() => _AccountPaneState();
 }
 
-class _AccountDialogState extends State<_AccountDialog> {
+class _AccountPaneState extends State<_AccountPane> {
   final Map<String, TextEditingController> _controllers = {};
   bool _testing = false;
   String? _testResult;
@@ -1175,8 +1098,7 @@ class _AccountDialogState extends State<_AccountDialog> {
   List<Map<String, dynamic>> get _fields =>
       (widget.account['fields'] as List? ?? const []).cast<Map<String, dynamic>>();
 
-  Map<String, dynamic>? get _oauth2 =>
-      widget.account['oauth2'] as Map<String, dynamic>?;
+  Map<String, dynamic>? get _oauth2 => widget.account['oauth2'] as Map<String, dynamic>?;
 
   String get _kvKey => widget.account['kvKey'] as String;
 
@@ -1239,10 +1161,7 @@ class _AccountDialogState extends State<_AccountDialog> {
       creds = _controllers.map((key, controller) => MapEntry(key, controller.text.trim()));
     }
 
-    final res = await widget.services.extensions.testCredentials(
-      widget.account['key'] as String,
-      creds,
-    );
+    final res = await widget.services.extensions.testCredentials(widget.account['key'] as String, creds);
 
     if (mounted) {
       setState(() {
@@ -1271,15 +1190,17 @@ class _AccountDialogState extends State<_AccountDialog> {
       final codeChallenge = _sha256Challenge(codeVerifier);
       final state = _randomString(16);
 
-      final authUri = Uri.parse(authEndpoint).replace(queryParameters: {
-        'response_type': 'code',
-        'client_id': clientId,
-        'redirect_uri': redirectUrl,
-        'scope': scopes.join(' '),
-        'state': state,
-        'code_challenge': codeChallenge,
-        'code_challenge_method': 'S256',
-      });
+      final authUri = Uri.parse(authEndpoint).replace(
+        queryParameters: {
+          'response_type': 'code',
+          'client_id': clientId,
+          'redirect_uri': redirectUrl,
+          'scope': scopes.join(' '),
+          'state': state,
+          'code_challenge': codeChallenge,
+          'code_challenge_method': 'S256',
+        },
+      );
 
       if (!mounted) return;
 
@@ -1298,10 +1219,7 @@ class _AccountDialogState extends State<_AccountDialog> {
             ),
             body: InAppWebView(
               initialUrlRequest: URLRequest(url: WebUri(authUri.toString())),
-              initialSettings: InAppWebViewSettings(
-                javaScriptEnabled: true,
-                useShouldOverrideUrlLoading: true,
-              ),
+              initialSettings: InAppWebViewSettings(javaScriptEnabled: true, useShouldOverrideUrlLoading: true),
               shouldOverrideUrlLoading: (controller, navigationAction) async {
                 final url = navigationAction.request.url?.toString();
                 if (url != null && url.startsWith(redirectUrl)) {
@@ -1355,7 +1273,6 @@ class _AccountDialogState extends State<_AccountDialog> {
         _testing = false;
       });
       widget.onSaved();
-
     } catch (e) {
       if (mounted) {
         setState(() => _testing = false);
@@ -1380,115 +1297,90 @@ class _AccountDialogState extends State<_AccountDialog> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-    return AlertDialog(
-      title: Text(widget.account['label'] as String),
-      content: SingleChildScrollView(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            if (_oauth2 != null) ...[
-              if (_loggedIn) ...[
-                Text(
-                  'Connected to ${widget.account['label']}',
-                  style: theme.textTheme.bodyMedium,
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: 16),
-                OutlinedButton(
-                  onPressed: _clear,
-                  child: const Text('Disconnect'),
-                ),
-              ] else ...[
-                OutlinedButton(
-                  onPressed: _testing ? null : _doOAuth,
-                  child: const Text('Login'),
-                ),
-              ],
-            ] else ...[
-              ..._fields.map((field) {
-                final key = field['key'] as String;
-                final preface = field['preface'] as String?;
-                final postface = field['postface'] as String?;
-                final controller = _controllers[key];
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        if (_oauth2 != null) ...[
+          if (_loggedIn) ...[
+            Text(
+              'Connected to ${widget.account['label']}',
+              style: theme.textTheme.bodyMedium,
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 16),
+            OutlinedButton(onPressed: _clear, child: const Text('Disconnect')),
+          ] else ...[
+            OutlinedButton(onPressed: _testing ? null : _doOAuth, child: const Text('Login')),
+          ],
+        ] else ...[
+          ..._fields.map((field) {
+            final key = field['key'] as String;
+            final preface = field['preface'] as String?;
+            final postface = field['postface'] as String?;
+            final controller = _controllers[key];
 
-                if (controller == null) return const SizedBox.shrink();
+            if (controller == null) return const SizedBox.shrink();
 
-                return Padding(
-                  padding: const EdgeInsets.only(bottom: 12),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      if (preface != null && preface.isNotEmpty) ...[
-                        MarkdownBody(data: preface),
-                        const SizedBox(height: 8),
-                      ],
-                      TextField(
-                        controller: controller,
-                        style: theme.textTheme.bodyLarge?.copyWith(fontSize: 15),
-                        obscureText: field['type'] == 'secret',
-                        keyboardType: field['type'] == 'email'
-                            ? TextInputType.emailAddress
-                            : TextInputType.text,
-                        decoration: poloFieldDecoration(context, field['label'] as String).copyWith(
-                          errorText: _fieldError(key, controller.text),
-                        ),
-                        onChanged: (_) => setState(() {}),
-                      ),
-                      if (postface != null && postface.isNotEmpty) ...[
-                        const SizedBox(height: 8),
-                        MarkdownBody(data: postface),
-                      ],
-                    ],
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  if (preface != null && preface.isNotEmpty) ...[
+                    MarkdownBody(data: preface),
+                    const SizedBox(height: 8),
+                  ],
+                  TextField(
+                    controller: controller,
+                    style: theme.textTheme.bodyLarge?.copyWith(fontSize: 15),
+                    obscureText: field['type'] == 'secret',
+                    keyboardType: field['type'] == 'email' ? TextInputType.emailAddress : TextInputType.text,
+                    decoration: poloFieldDecoration(
+                      context,
+                      field['label'] as String,
+                    ).copyWith(errorText: _fieldError(key, controller.text)),
+                    onChanged: (_) => setState(() {}),
                   ),
-                );
-              }),
-            ],
-            if (_testResult != null) ...[
-              const SizedBox(height: 16),
-              const Divider(),
-              const SizedBox(height: 8),
-              Text(
-                'Test Connection Result:',
-                style: theme.textTheme.titleSmall?.copyWith(color: theme.colorScheme.primary),
+                  if (postface != null && postface.isNotEmpty) ...[
+                    const SizedBox(height: 8),
+                    MarkdownBody(data: postface),
+                  ],
+                ],
               ),
-              const SizedBox(height: 8),
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: theme.colorScheme.surfaceContainerHighest,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: MarkdownBody(data: _testResult!),
-              ),
-            ],
-            if (_testing) ...[
-              const SizedBox(height: 16),
-              const Center(child: CircularProgressIndicator()),
-            ],
+            );
+          }),
+        ],
+        if (_testResult != null) ...[
+          const SizedBox(height: 16),
+          const Divider(),
+          const SizedBox(height: 8),
+          Text(
+            'Test Connection Result:',
+            style: theme.textTheme.titleSmall?.copyWith(color: theme.colorScheme.primary),
+          ),
+          const SizedBox(height: 8),
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: theme.colorScheme.surfaceContainerHighest,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: MarkdownBody(data: _testResult!),
+          ),
+        ],
+        if (_testing) ...[const SizedBox(height: 16), const Center(child: CircularProgressIndicator())],
+        const SizedBox(height: 24),
+        OverflowBar(
+          alignment: MainAxisAlignment.end,
+          spacing: 8,
+          children: [
+            TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Cancel')),
+            if (_oauth2 == null && _loggedIn) TextButton(onPressed: _clear, child: const Text('Clear')),
+            if (!_testing) TextButton(onPressed: _test, child: const Text('Test')),
+            if (_oauth2 == null) FilledButton(onPressed: _save, child: const Text('Save')),
           ],
         ),
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(),
-          child: const Text('Cancel'),
-        ),
-        if (_oauth2 == null && _loggedIn)
-          TextButton(
-            onPressed: _clear,
-            child: const Text('Clear'),
-          ),
-        if (!_testing)
-          TextButton(
-            onPressed: _test,
-            child: const Text('Test'),
-          ),
-        if (_oauth2 == null)
-          FilledButton(
-            onPressed: _save,
-            child: const Text('Save'),
-          ),
       ],
     );
   }

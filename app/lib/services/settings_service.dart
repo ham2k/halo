@@ -40,6 +40,7 @@ class SettingsService extends ChangeNotifier implements SyncSettings {
   static const _showQsoNumbersKey = 'showQsoNumbers';
   static const _distanceUnitsKey = 'distanceUnits';
   static const _spottingFiltersKey = 'spottingFilters';
+  static const _layoutKey = 'layout';
 
   final SharedPreferences _prefs;
 
@@ -50,11 +51,12 @@ class SettingsService extends ChangeNotifier implements SyncSettings {
   String? _cachedDeviceKey;
 
   SettingsService(this._prefs, {FlutterSecureStorage? secureStorage})
-      : _secureStorage = secureStorage ??
-            const FlutterSecureStorage(
-              mOptions: MacOsOptions(usesDataProtectionKeychain: false, accountName: 'Ham2K Logger'),
-              iOptions: IOSOptions(accountName: 'Ham2K Logger'),
-            );
+    : _secureStorage =
+          secureStorage ??
+          const FlutterSecureStorage(
+            mOptions: MacOsOptions(usesDataProtectionKeychain: false, accountName: 'Ham2K Logger'),
+            iOptions: IOSOptions(accountName: 'Ham2K Logger'),
+          );
 
   SharedPreferences get prefs => _prefs;
 
@@ -131,12 +133,10 @@ class SettingsService extends ChangeNotifier implements SyncSettings {
   /// run — for display only (e.g. Settings → System Information).
   String? get syncDeviceKey => _cachedDeviceKey;
 
-  /// Free-form sync bookkeeping (last-synced account uuid, server-tunable
-  /// overrides) — see the design note in DESIGN.md §6: this is a handful of
-  /// scalars, not per-row data, so it lives here rather than in a drift
-  /// table.
-  Map<String, dynamic> get syncState {
-    final raw = _prefs.getString(_syncStateKey);
+  /// A JSON map stored under one prefs key. Corrupt or missing data reads
+  /// as empty — callers own their defaults.
+  Map<String, dynamic> _jsonMapPref(String key) {
+    final raw = _prefs.getString(key);
     if (raw == null || raw.isEmpty) return const {};
     try {
       return (jsonDecode(raw) as Map).cast<String, dynamic>();
@@ -144,6 +144,12 @@ class SettingsService extends ChangeNotifier implements SyncSettings {
       return const {};
     }
   }
+
+  /// Free-form sync bookkeeping (last-synced account uuid, server-tunable
+  /// overrides) — see the design note in DESIGN.md §6: this is a handful of
+  /// scalars, not per-row data, so it lives here rather than in a drift
+  /// table.
+  Map<String, dynamic> get syncState => _jsonMapPref(_syncStateKey);
 
   Future<void> setSyncState(Map<String, dynamic> state) async {
     await _prefs.setString(_syncStateKey, jsonEncode(state));
@@ -153,20 +159,31 @@ class SettingsService extends ChangeNotifier implements SyncSettings {
   /// The Spots Panel's persisted band/mode/age/sources/continents/sort/
   /// group filters — device-wide, like [syncState], for the same reason:
   /// a handful of viewing-preference scalars, not per-row data.
-  Map<String, dynamic> get spottingFilters {
-    final raw = _prefs.getString(_spottingFiltersKey);
-    if (raw == null || raw.isEmpty) return const {};
-    try {
-      return (jsonDecode(raw) as Map).cast<String, dynamic>();
-    } catch (_) {
-      return const {};
-    }
-  }
+  Map<String, dynamic> get spottingFilters => _jsonMapPref(_spottingFiltersKey);
 
   Future<void> setSpottingFilters(Map<String, dynamic> filters) async {
     await _prefs.setString(_spottingFiltersKey, jsonEncode(filters));
     notifyListeners();
   }
+
+  /// User-dragged pane widths (docs/design/layouts.md), keyed by
+  /// [LayoutKeys] — one JSON map under a single prefs key, like
+  /// [spottingFilters]. Callers own the defaults; a missing key returns
+  /// null. Cached because layouts read this from build methods that rerun
+  /// on every window-resize frame; only [setLayoutDimension] changes it.
+  double? layoutDimension(String key) {
+    final value = (_layoutCache ??= _jsonMapPref(_layoutKey))[key];
+    return value is num ? value.toDouble() : null;
+  }
+
+  Future<void> setLayoutDimension(String key, double value) async {
+    final updated = {...(_layoutCache ??= _jsonMapPref(_layoutKey)), key: value};
+    _layoutCache = updated;
+    await _prefs.setString(_layoutKey, jsonEncode(updated));
+    notifyListeners();
+  }
+
+  Map<String, dynamic>? _layoutCache;
 
   @override
   bool get developerMode => _prefs.getBool(_developerModeKey) ?? false;
@@ -195,10 +212,7 @@ class SettingsService extends ChangeNotifier implements SyncSettings {
 
   FontScale get fontScale {
     final value = _prefs.getString(_fontScaleKey);
-    return FontScale.values.firstWhere(
-      (e) => e.name == value,
-      orElse: () => FontScale.normal,
-    );
+    return FontScale.values.firstWhere((e) => e.name == value, orElse: () => FontScale.normal);
   }
 
   Future<void> setFontScale(FontScale scale) async {
@@ -321,4 +335,14 @@ enum FontScale {
   final String label;
 
   const FontScale(this.scaleFactor, this.label);
+}
+
+/// The dotted keys for [SettingsService.layoutDimension] /
+/// [SettingsService.setLayoutDimension] — constants so a divider's read and
+/// write can't typo apart (a forked key would silently reset the pane width
+/// on every launch, and only across restarts).
+abstract final class LayoutKeys {
+  static const homeLeftColumn = 'home.leftColumn';
+  static const operationLeftColumn = 'operation.leftColumn';
+  static const settingsLeftColumn = 'settings.leftColumn';
 }

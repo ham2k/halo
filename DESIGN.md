@@ -296,6 +296,9 @@ and subscribing to DB streams:
   Enter-to-log, ESC-to-wipe, function keys. This is the biggest UX payoff of
   going desktop and the hardest thing to retrofit.
 
+The concrete size breakpoints, resizable splits, and modal-pane mechanics
+are specified in [docs/design/layouts.md](docs/design/layouts.md).
+
 ---
 
 ## 8. Multi-window

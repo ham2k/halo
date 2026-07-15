@@ -41,8 +41,11 @@ Because everything the app draws lives in that one logical space:
    size, which scales the painted result back up to fill the real window. The
    fill factor works out to exactly the scale factor.
 3. It publishes the scale to descendants via an inherited widget, read with
-   `UiScale.of(context)` (needed only by the macOS traffic-light clearance —
-   see below).
+   `UiScale.of(context)`. Only two things need it: the macOS traffic-light
+   clearance (see below) and the split divider's device-pixel-grid snapping
+   (`resizable_split_view.dart` — scale-neutral rounding, not a hand-scaled
+   dimension). Reaching for it anywhere else is almost certainly rule 1's
+   bug.
 
 Text and vector icons stay crisp at any scale: Flutter records the scene as
 vector drawing commands and rasterizes *after* the transform, so glyphs and
@@ -78,14 +81,15 @@ scales via the transform, along with everything else. (There used to be a
 OS accessibility text-scale preference still composes on top — that's
 intentional.
 
-**4. Responsive breakpoints read the divided width — by design.** Checks like
-`MediaQuery.sizeOf(context).width >= 900` (logging panel) or
-`_wideLayoutThreshold` (settings) see the *scaled* logical width, so a larger
-font scale reflows to narrower layouts sooner (genuinely less fits on screen).
-This is the behavior you want; keep new breakpoints on `MediaQuery` size too.
-Only if a specific breakpoint must key off the *physical* window regardless of
-zoom — a deliberate, rare exception — read `View.of(context).physicalSize /
-devicePixelRatio` for that one check, and comment why.
+**4. Responsive breakpoints read the divided width — by design.**
+`ShirtSize.of(context)` ([layouts.md](layouts.md), the one breakpoint
+vocabulary — don't invent per-view width checks) reads `MediaQuery.sizeOf`,
+which sees the *scaled* logical width, so a larger font scale reflows to
+narrower layouts sooner (genuinely less fits on screen). This is the
+behavior you want. Only if a specific check must key off the *physical*
+window regardless of zoom — a deliberate, rare exception — read
+`View.of(context).physicalSize / devicePixelRatio` for that one check, and
+comment why.
 
 **5. Raster images and platform views scale as textures.** Vector content
 (text, MDI/FontAwesome glyphs, `Icon`s, `CustomPaint`) re-rasterizes crisply.

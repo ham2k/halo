@@ -55,8 +55,9 @@ The Operation View has four main panels:
 
 Normally all four panels display as tabs, with the Logging Panel tab showing
 the QSO count. If the view is wide enough, the Logging Panel moves to the
-left and the other panels group as tabs on the right, with a user-resizable
-split between them.
+left and the other panels group as tabs on the right — with an extra "Info"
+tab first — and a user-resizable split between them. The size thresholds and
+split mechanics are defined in [layouts.md](layouts.md).
 
 ### Logging controls
 
@@ -100,6 +101,10 @@ layout-, or macOS-window-related.
 
 ## General layout
 
+How views arrange their panes at each window size — the shirt-size
+breakpoints, the ideal pane width, resizable splits, and Modal Panes — is
+specified in [layouts.md](layouts.md).
+
 ### Header
 
 Windows (or screens on mobile) have a header with a title and optional
@@ -119,6 +124,9 @@ it.
 Dialogs can have a title and subtitle pinned at the top, content in the
 middle, and a set of action buttons pinned at the bottom. Clicking outside
 the dialog or pressing Escape dismisses it.
+
+Pane-sized dialogs — "Modal Panes" — additionally present as full screens on
+phone-sized windows; see [layouts.md](layouts.md).
 
 ## Forms
 

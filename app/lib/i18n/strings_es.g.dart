@@ -291,6 +291,7 @@ class _Translations$operation$tabs$es extends Translations$operation$tabs$en {
 
 	// Translations
 	@override String qsos({required Object count}) => '${count} QSOs';
+	@override String get info => 'INFO';
 	@override String get spots => 'SPOTS';
 	@override String get map => 'MAPA';
 	@override String get operation => 'OPERACIÓN';
@@ -504,6 +505,7 @@ extension on TranslationsEs {
 			'dialogs.operationDetails' => 'Detalles de la operación',
 			'dialogs.activities' => 'Actividades',
 			'operation.tabs.qsos' => ({required Object count}) => '${count} QSOs',
+			'operation.tabs.info' => 'INFO',
 			'operation.tabs.spots' => 'SPOTS',
 			'operation.tabs.map' => 'MAPA',
 			'operation.tabs.operation' => 'OPERACIÓN',

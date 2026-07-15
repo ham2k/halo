@@ -523,6 +523,9 @@ class Translations$operation$tabs$en {
 	/// en: '${count} QSOs'
 	String qsos({required Object count}) => '${count} QSOs';
 
+	/// en: 'INFO'
+	String get info => 'INFO';
+
 	/// en: 'SPOTS'
 	String get spots => 'SPOTS';
 
@@ -888,6 +891,7 @@ extension on Translations {
 			'dialogs.operationDetails' => 'Operation details',
 			'dialogs.activities' => 'Activities',
 			'operation.tabs.qsos' => ({required Object count}) => '${count} QSOs',
+			'operation.tabs.info' => 'INFO',
 			'operation.tabs.spots' => 'SPOTS',
 			'operation.tabs.map' => 'MAP',
 			'operation.tabs.operation' => 'OPERATION',

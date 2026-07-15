@@ -15,8 +15,10 @@ import 'package:halo_core/halo_core.dart';
 import 'package:halo_widgets/halo_widgets.dart';
 
 import '../main.dart';
+import '../services/settings_service.dart';
 import 'operation_dialogs.dart';
 import 'operation/activities_view.dart';
+import 'operation/information_panel.dart';
 import 'operation/logging_panel.dart';
 import 'operation/map_panel.dart';
 import 'operation/operation_export_screen.dart';
@@ -107,9 +109,54 @@ class _OperationViewState extends State<OperationView> with SingleTickerProvider
   /// reference here is harmless.
   Map<String, dynamic>? _suggestedQso;
 
+  /// The last logging command's output, shown on the Info pane. Lives here
+  /// (not in LoggingPanel, which produces it) because on two-pane layouts
+  /// the producer and the display are sibling panes.
+  String? _commandMarkdown;
+
+  /// Keep the pane subtrees' State alive when the layout flips between the
+  /// narrow tab arrangement and the wide split (docs/design/layouts.md rule
+  /// 2): Flutter reparents a GlobalKey'd subtree instead of rebuilding it,
+  /// so a half-typed callsign survives a window resize across the S/L
+  /// boundary. Both arrangements come from the one build below — the keys
+  /// are never mounted twice in a frame (rule 3).
+  ///
+  /// Adoption only happens for subtrees BUILT in the new arrangement's
+  /// first frame: the logging pane always is (always-visible in wide;
+  /// didChangeDependencies snaps to its tab going narrow), and so is the
+  /// selected right-side tab. A visited-but-unselected Spots/Map pane lives
+  /// in the TabBarView's keep-alive bucket, which doesn't carry across the
+  /// flip — those reset. Known limitation, preferable to the alternatives
+  /// (transferring the bucket wholesale defers the page warp past the
+  /// frame, which would dispose the logging pane instead).
+  final _loggingKey = GlobalKey();
+  final _spotsKey = GlobalKey();
+  final _mapKey = GlobalKey();
+
+  /// Tracks the arrangement across dependency changes so the flip can be
+  /// detected BEFORE build (see didChangeDependencies). Null until first
+  /// resolved.
+  bool? _wasTwoPane;
+
   void _suggestQso(Map<String, dynamic> qso) {
     setState(() => _suggestedQso = qso);
-    _tabController.animateTo(0);
+    // On two-pane layouts the logging pane is already visible on the left —
+    // and tab 0 is Info there, so switching would be wrong twice over.
+    if (!ShirtSize.of(context).isTwoPane) _tabController.animateTo(0);
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final isTwoPane = ShirtSize.of(context).isTwoPane;
+    // Flipping to narrow, land on the QSOs tab: the logging pane was the
+    // always-visible left pane, so it's the natural continuation — and it
+    // MUST be the selected tab for its GlobalKey'd subtree to be built (and
+    // its State adopted) in the narrow TabBarView's first frame; on any
+    // other index, page 0 wouldn't be inflated and the in-progress QSO
+    // entry would be disposed.
+    if (_wasTwoPane == true && !isTwoPane) _tabController.index = 0;
+    _wasTwoPane = isTwoPane;
   }
 
   @override
@@ -190,19 +237,28 @@ class _OperationViewState extends State<OperationView> with SingleTickerProvider
     _rescoreDebounce?.cancel();
     _rescoreDebounce = Timer(const Duration(milliseconds: 750), () async {
       final operation = _operation;
-      if (operation == null || widget.services.extensions.host == null) return; // not ready — retried on the next change
+      if (operation == null || widget.services.extensions.host == null) {
+        return; // not ready — retried on the next change
+      }
       _lastScoredFingerprint = fingerprint;
       await widget.services.scoring.rescoreOperation(operation);
     });
   }
 
-  String _fingerprintFor(List<Qso> qsos) =>
-      qsos.map((q) => '${q.uuid}:${q.updatedAtMillis ?? ''}').join(',');
+  String _fingerprintFor(List<Qso> qsos) => qsos.map((q) => '${q.uuid}:${q.updatedAtMillis ?? ''}').join(',');
 
   Future<void> _editActivities(Operation operation) async {
     // No manual re-fetch on pop: watchOperation streams the change back.
-    await Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => ActivitiesView(services: widget.services, operation: operation)),
+    // Non-scrollable: the pane's accordion sections divide its height
+    // themselves (see activities_view.dart). Not barrier/Escape-dismissible:
+    // as a pushed screen this had explicit-back dismissal only, and Escape
+    // while typing in the suggestions search would close the whole pane.
+    await showModalPane<void>(
+      context,
+      title: context.t.activitiesView.title,
+      scrollable: false,
+      barrierDismissible: false,
+      builder: (_) => ActivitiesPane(services: widget.services, operation: operation),
     );
   }
 
@@ -227,7 +283,9 @@ class _OperationViewState extends State<OperationView> with SingleTickerProvider
   Future<void> _editLocation(Operation operation) async {
     // No manual re-fetch on pop: watchOperation streams the change back.
     await Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => OperationLocationScreen(services: widget.services, operation: operation)),
+      MaterialPageRoute(
+        builder: (_) => OperationLocationScreen(services: widget.services, operation: operation),
+      ),
     );
   }
 
@@ -238,7 +296,9 @@ class _OperationViewState extends State<OperationView> with SingleTickerProvider
 
   Future<void> _export(Operation operation) async {
     await Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => OperationExportScreen(services: widget.services, operation: operation)),
+      MaterialPageRoute(
+        builder: (_) => OperationExportScreen(services: widget.services, operation: operation),
+      ),
     );
   }
 
@@ -277,6 +337,89 @@ class _OperationViewState extends State<OperationView> with SingleTickerProvider
         // the user excludes them, matching scoring/export.
         final realQsoCount = qsos.where((q) => q.isRealContact).length;
         final refsLine = operation.refs.map((r) => r['shortLabel'] ?? r['ref']).whereType<String>().join(' • ');
+
+        final isTwoPane = ShirtSize.of(context).isTwoPane;
+
+        // The pane subtrees, built once and placed by whichever arrangement
+        // is active (their GlobalKeys carry the State across a flip).
+        final loggingPanel = KeyedSubtree(
+          key: _loggingKey,
+          child: LoggingPanel(
+            operation: operation,
+            services: widget.services,
+            qsos: qsos,
+            loggingControls: _loggingControls,
+            onCommandAction: _handleCommandAction,
+            showRSTFields: _showRSTFields,
+            showStateField: _showStateField,
+            showGridField: _showGridField,
+            showQsoNumbers: _showQsoNumbers,
+            ourEntityPrefix: _ourEntityPrefix,
+            suggestedQso: _suggestedQso,
+            onCommandMessageChanged: (message) => setState(() {
+              final appeared = message != null && _commandMarkdown == null;
+              _commandMarkdown = message;
+              // On two-pane layouts the output renders on the Info tab; the
+              // old >=900 layout kept it always co-visible with the controls,
+              // so surface it when a command starts producing output and
+              // another tab is hiding it.
+              if (appeared && ShirtSize.of(context).isTwoPane && _tabController.index != 0) {
+                _tabController.animateTo(0);
+              }
+            }),
+          ),
+        );
+        final spotsPanel = KeyedSubtree(
+          key: _spotsKey,
+          child: _KeepAlive(
+            child: SpotsPanel(operation: operation, services: widget.services, onSuggestQso: _suggestQso),
+          ),
+        );
+        final mapPanel = KeyedSubtree(
+          key: _mapKey,
+          child: _KeepAlive(
+            child: MapPanel(operation: operation, qsos: qsos, settings: widget.services.settings),
+          ),
+        );
+        final settingsPanel = OperationSettingsPanel(
+          operation: operation,
+          qsoCount: realQsoCount,
+          onEditDetails: () => _editDetails(operation),
+          onEditActivities: () => _editActivities(operation),
+          onEditLocation: () => _editLocation(operation),
+          onExport: realQsoCount == 0 ? null : () => _export(operation),
+          onDelete: () => _delete(operation),
+        );
+
+        // ONE tab bar and one page list serve both arrangements — only slot
+        // 0 differs (the logging pane is a tab when narrow, the always-
+        // visible left pane when wide, with Info taking its tab). Keeping a
+        // single declaration means labels, styling, and page pairing can't
+        // drift between the two layouts; the shared _tabController's
+        // length: 4 and _suggestQso's slot-0 assumption complete the
+        // contract.
+        final tabBar = TabBar(
+          controller: _tabController,
+          indicatorSize: TabBarIndicatorSize.tab,
+          indicatorWeight: 4,
+          tabs: [
+            Tab(text: isTwoPane ? context.t.operation.tabs.info : context.t.operation.tabs.qsos(count: realQsoCount)),
+            Tab(text: context.t.operation.tabs.spots),
+            Tab(text: context.t.operation.tabs.map),
+            Tab(text: context.t.operation.tabs.operation),
+          ],
+        );
+        final tabView = TabBarView(
+          controller: _tabController,
+          children: [
+            isTwoPane
+                ? InformationPanel(operation: operation, qsos: qsos, commandMarkdown: _commandMarkdown)
+                : _KeepAlive(child: loggingPanel),
+            spotsPanel,
+            mapPanel,
+            settingsPanel,
+          ],
+        );
 
         return Scaffold(
           appBar: AppBar(
@@ -352,54 +495,40 @@ class _OperationViewState extends State<OperationView> with SingleTickerProvider
                     Text(
                       refsLine,
                       style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                            color: Theme.of(context).colorScheme.onPrimary.withValues(alpha: 0.85),
-                          ),
+                        color: Theme.of(context).colorScheme.onPrimary.withValues(alpha: 0.85),
+                      ),
                     ),
                 ],
               ),
             ),
-            bottom: TabBar(
-              controller: _tabController,
-              indicatorSize: TabBarIndicatorSize.tab,
-              indicatorWeight: 4,
-              tabs: [
-                Tab(text: context.t.operation.tabs.qsos(count: realQsoCount)),
-                Tab(text: context.t.operation.tabs.spots),
-                Tab(text: context.t.operation.tabs.map),
-                Tab(text: context.t.operation.tabs.operation),
-              ],
-            ),
+            // On two-pane layouts the tabs move into the right-side pane
+            // below.
+            bottom: isTwoPane ? null : tabBar,
           ),
-          body: TabBarView(controller: _tabController, children: [
-            _KeepAlive(
-              child: LoggingPanel(
-                operation: operation,
-                services: widget.services,
-                qsos: qsos,
-                loggingControls: _loggingControls,
-                onCommandAction: _handleCommandAction,
-                showRSTFields: _showRSTFields,
-                showStateField: _showStateField,
-                showGridField: _showGridField,
-                showQsoNumbers: _showQsoNumbers,
-                ourEntityPrefix: _ourEntityPrefix,
-                suggestedQso: _suggestedQso,
-              ),
-            ),
-            _KeepAlive(
-              child: SpotsPanel(operation: operation, services: widget.services, onSuggestQso: _suggestQso),
-            ),
-            _KeepAlive(child: MapPanel(operation: operation, qsos: qsos, settings: widget.services.settings)),
-            OperationSettingsPanel(
-              operation: operation,
-              qsoCount: realQsoCount,
-              onEditDetails: () => _editDetails(operation),
-              onEditActivities: () => _editActivities(operation),
-              onEditLocation: () => _editLocation(operation),
-              onExport: realQsoCount == 0 ? null : () => _export(operation),
-              onDelete: () => _delete(operation),
-            ),
-          ]),
+          // One tab set either way, always 4 tabs on the one controller —
+          // it is never recreated, so the selected index carries across a
+          // flip: index 0 maps QSOs ↔ Info, which is sensible since logging
+          // is always visible in the wide split.
+          body: isTwoPane
+              ? ResizableSplitView(
+                  preferredPrimaryWidth:
+                      widget.services.settings.layoutDimension(LayoutKeys.operationLeftColumn) ?? idealPaneWidth,
+                  onPreferredPrimaryWidthChanged: (width) =>
+                      widget.services.settings.setLayoutDimension(LayoutKeys.operationLeftColumn, width),
+                  primary: loggingPanel,
+                  secondary: Column(
+                    children: [
+                      Material(
+                        // The TabBar theme assumes it sits on the AppBar's
+                        // color (see theme.dart's tabBarTheme note).
+                        color: Theme.of(context).appBarTheme.backgroundColor ?? Theme.of(context).colorScheme.primary,
+                        child: tabBar,
+                      ),
+                      Expanded(child: tabView),
+                    ],
+                  ),
+                )
+              : tabView,
         );
       },
     );
@@ -459,10 +588,11 @@ class OperationSettingsPanel extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final refsLine = operation.refs.map((r) => r['shortLabel'] ?? r['ref']).whereType<String>().join(' • ');
-    final locationLine = [operation.grid, operation.data['state'], operation.data['county']]
-        .whereType<String>()
-        .where((s) => s.isNotEmpty)
-        .join(' • ');
+    final locationLine = [
+      operation.grid,
+      operation.data['state'],
+      operation.data['county'],
+    ].whereType<String>().where((s) => s.isNotEmpty).join(' • ');
 
     return ListView(
       children: [

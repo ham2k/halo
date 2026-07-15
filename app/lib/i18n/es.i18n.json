@@ -24,6 +24,7 @@
   "operation": {
     "tabs": {
       "qsos": "${count} QSOs",
+      "info": "INFO",
       "spots": "SPOTS",
       "map": "MAPA",
       "operation": "OPERACIÓN"

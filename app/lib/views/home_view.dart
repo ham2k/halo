@@ -5,7 +5,9 @@ import 'package:halo_core/halo_core.dart';
 import 'package:halo_widgets/halo_widgets.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 
+import '../app_info.dart';
 import '../main.dart';
+import '../services/settings_service.dart';
 import 'operation_dialogs.dart';
 import 'operation_view.dart';
 import 'settings_view.dart';
@@ -29,55 +31,66 @@ class _OperationRow extends StatelessWidget {
     return Material(
       color: theme.colorScheme.surface,
       child: InkWell(
-        onTap: () => Navigator.of(context).push(MaterialPageRoute(
-          builder: (_) => OperationView(services: services, operationUuid: operation.uuid),
-        )),
+        onTap: () => Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) => OperationView(services: services, operationUuid: operation.uuid),
+          ),
+        ),
         onLongPress: () => confirmDeleteOperation(context, services.operations, operation),
         mouseCursor: SystemMouseCursors.click,
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Row(children: [
-              Expanded(
-                child: Text.rich(
-                  TextSpan(children: [
-                    TextSpan(
-                      text: operation.stationCall,
-                      style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800),
-                    ),
-                    if (operation.title.isNotEmpty)
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Expanded(
+                    child: Text.rich(
                       TextSpan(
-                        text: ' ${operation.title}',
-                        style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+                        children: [
+                          TextSpan(
+                            text: operation.stationCall,
+                            style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800),
+                          ),
+                          if (operation.title.isNotEmpty)
+                            TextSpan(
+                              text: ' ${operation.title}',
+                              style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+                            ),
+                        ],
                       ),
-                  ]),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: theme.colorScheme.surfaceContainerHighest,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text('${operation.qsoCount}', style: theme.textTheme.labelLarge),
+                  ),
+                ],
               ),
-              const SizedBox(width: 8),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
-                decoration: BoxDecoration(
-                  color: theme.colorScheme.surfaceContainerHighest,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Text('${operation.qsoCount}', style: theme.textTheme.labelLarge),
+              const SizedBox(height: 2),
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      subtitle,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+                    ),
+                  ),
+                  Text(dateLabel, style: theme.textTheme.bodyMedium),
+                ],
               ),
-            ]),
-            const SizedBox(height: 2),
-            Row(children: [
-              Expanded(
-                child: Text(
-                  subtitle,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-                ),
-              ),
-              Text(dateLabel, style: theme.textTheme.bodyMedium),
-            ]),
-          ]),
+            ],
+          ),
         ),
       ),
     );
@@ -91,11 +104,7 @@ class OperationListPanel extends StatelessWidget {
   final HaLoServices services;
   final List<Operation> operations;
 
-  const OperationListPanel({
-    super.key,
-    required this.services,
-    required this.operations,
-  });
+  const OperationListPanel({super.key, required this.services, required this.operations});
 
   @override
   Widget build(BuildContext context) {
@@ -129,6 +138,12 @@ class HomeView extends StatefulWidget {
 
 class _HomeViewState extends State<HomeView> {
   bool _isFabExtended = true;
+
+  /// Memoized: build now depends on MediaQuery.sizeOf (ShirtSize.of), so it
+  /// reruns on every window-resize frame — watchAll() returns a NEW drift
+  /// stream per call, and an inline `stream:` would make the StreamBuilder
+  /// resubscribe (and re-run the SELECT) each of those frames.
+  late final Stream<List<Operation>> _operationsStream = widget.services.operations.watchAll();
 
   Future<void> _newOperation(BuildContext context) async {
     final callController = TextEditingController();
@@ -168,9 +183,11 @@ class _HomeViewState extends State<HomeView> {
       title: titleController.text.trim(),
     );
     if (context.mounted) {
-      Navigator.of(context).push(MaterialPageRoute(
-        builder: (_) => OperationView(services: widget.services, operationUuid: operation.uuid),
-      ));
+      Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) => OperationView(services: widget.services, operationUuid: operation.uuid),
+        ),
+      );
     }
   }
 
@@ -198,112 +215,154 @@ class _HomeViewState extends State<HomeView> {
           IconButton(
             tooltip: context.t.settings.title,
             icon: Icon(MdiIcons.cog),
-            onPressed: () => Navigator.of(context).push(
-              MaterialPageRoute(builder: (_) => SettingsView(services: widget.services)),
-            ),
+            onPressed: () =>
+                Navigator.of(context).push(MaterialPageRoute(builder: (_) => SettingsView(services: widget.services))),
             mouseCursor: SystemMouseCursors.click,
           ),
           const SizedBox(width: 8),
         ],
       ),
-      body: Column(
-        children: [
-          Expanded(
-            child: NotificationListener<ScrollNotification>(
-              onNotification: (ScrollNotification notification) {
-                final pixels = notification.metrics.pixels;
-                if (pixels > 10 && _isFabExtended) {
-                  setState(() {
-                    _isFabExtended = false;
-                  });
-                } else if (pixels <= 10 && !_isFabExtended) {
-                  setState(() {
-                    _isFabExtended = true;
-                  });
-                }
-                return false;
-              },
-              child: Stack(
-                children: [
-                  Positioned.fill(
-                    child: StreamBuilder<List<Operation>>(
-                      stream: widget.services.operations.watchAll(),
-                      builder: (context, snapshot) {
-                        final operations = snapshot.data ?? const <Operation>[];
-                        return OperationListPanel(services: widget.services, operations: operations);
-                      },
-                    ),
-                  ),
-                  Positioned(
-                    bottom: 16,
-                    right: 16,
-                    child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 300),
-                      curve: Curves.easeInOut,
-                      height: 56,
-                      width: _isFabExtended ? 168 : 56,
-                      decoration: BoxDecoration(
-                        color: theme.colorScheme.primaryContainer,
-                        borderRadius: BorderRadius.circular(16),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.15),
-                            blurRadius: 6,
-                            offset: const Offset(0, 3),
-                          ),
-                        ],
+      // Two-pane on L+ (docs/design/layouts.md): the list column keeps the
+      // ideal pane width and the branding pane takes the rest. Single-pane
+      // sizes pass a null secondary so the list subtree stays mounted (and
+      // keeps its scroll position) across a live resize.
+      body: ResizableSplitView(
+        secondary: ShirtSize.of(context).isTwoPane ? const _BrandingPane() : null,
+        preferredPrimaryWidth: widget.services.settings.layoutDimension(LayoutKeys.homeLeftColumn) ?? idealPaneWidth,
+        maxPrimaryWidth: idealPaneWidth,
+        onPreferredPrimaryWidthChanged: (width) =>
+            widget.services.settings.setLayoutDimension(LayoutKeys.homeLeftColumn, width),
+        primary: Column(
+          children: [
+            Expanded(
+              child: NotificationListener<ScrollNotification>(
+                onNotification: (ScrollNotification notification) {
+                  final pixels = notification.metrics.pixels;
+                  if (pixels > 10 && _isFabExtended) {
+                    setState(() {
+                      _isFabExtended = false;
+                    });
+                  } else if (pixels <= 10 && !_isFabExtended) {
+                    setState(() {
+                      _isFabExtended = true;
+                    });
+                  }
+                  return false;
+                },
+                child: Stack(
+                  children: [
+                    Positioned.fill(
+                      child: StreamBuilder<List<Operation>>(
+                        stream: _operationsStream,
+                        builder: (context, snapshot) {
+                          final operations = snapshot.data ?? const <Operation>[];
+                          return OperationListPanel(services: widget.services, operations: operations);
+                        },
                       ),
-                      child: Material(
-                        color: Colors.transparent,
-                        child: InkWell(
+                    ),
+                    Positioned(
+                      bottom: 16,
+                      right: 16,
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 300),
+                        curve: Curves.easeInOut,
+                        height: 56,
+                        width: _isFabExtended ? 168 : 56,
+                        decoration: BoxDecoration(
+                          color: theme.colorScheme.primaryContainer,
                           borderRadius: BorderRadius.circular(16),
-                          onTap: () => _newOperation(context),
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 16),
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Icon(
-                                  MdiIcons.plus,
-                                  color: theme.colorScheme.onPrimaryContainer,
-                                ),
-                                AnimatedSize(
-                                  duration: const Duration(milliseconds: 300),
-                                  curve: Curves.easeInOut,
-                                  child: Container(
-                                    width: _isFabExtended ? 104 : 0,
-                                    alignment: Alignment.center,
-                                    child: AnimatedOpacity(
-                                      duration: const Duration(milliseconds: 300),
-                                      curve: Curves.easeInOut,
-                                      opacity: _isFabExtended ? 1.0 : 0.0,
-                                      child: Padding(
-                                        padding: const EdgeInsets.only(left: 8),
-                                        child: Text(
-                                          context.t.home.newOperation,
-                                          maxLines: 1,
-                                          softWrap: false,
-                                          style: theme.textTheme.labelLarge?.copyWith(
-                                            color: theme.colorScheme.onPrimaryContainer,
-                                            fontWeight: FontWeight.bold,
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.15),
+                              blurRadius: 6,
+                              offset: const Offset(0, 3),
+                            ),
+                          ],
+                        ),
+                        child: Material(
+                          color: Colors.transparent,
+                          child: InkWell(
+                            borderRadius: BorderRadius.circular(16),
+                            onTap: () => _newOperation(context),
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 16),
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(MdiIcons.plus, color: theme.colorScheme.onPrimaryContainer),
+                                  AnimatedSize(
+                                    duration: const Duration(milliseconds: 300),
+                                    curve: Curves.easeInOut,
+                                    child: Container(
+                                      width: _isFabExtended ? 104 : 0,
+                                      alignment: Alignment.center,
+                                      child: AnimatedOpacity(
+                                        duration: const Duration(milliseconds: 300),
+                                        curve: Curves.easeInOut,
+                                        opacity: _isFabExtended ? 1.0 : 0.0,
+                                        child: Padding(
+                                          padding: const EdgeInsets.only(left: 8),
+                                          child: Text(
+                                            context.t.home.newOperation,
+                                            maxLines: 1,
+                                            softWrap: false,
+                                            style: theme.textTheme.labelLarge?.copyWith(
+                                              color: theme.colorScheme.onPrimaryContainer,
+                                              fontWeight: FontWeight.bold,
+                                            ),
                                           ),
                                         ),
                                       ),
                                     ),
                                   ),
-                                ),
-                              ],
+                                ],
+                              ),
                             ),
                           ),
                         ),
                       ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
+            HomeQuickLookup(services: widget.services),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// The home view's right column on two-pane layouts: the operation list has
+/// nothing useful to spend the extra width on, so it shows the wordmark and
+/// version instead (issue #85).
+class _BrandingPane extends StatelessWidget {
+  const _BrandingPane();
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Container(
+      color: theme.colorScheme.surfaceContainerHighest,
+      alignment: Alignment.center,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Image.asset('assets/images/ham2k-logo.png', width: 180),
+          const SizedBox(height: 4),
+          // The wordmark graphic already says "Ham2K", so per the branding
+          // rules (docs/design/user-interface.md) only "Logger" / "Portable
+          // Logger" goes below it.
+          Text(
+            isWindowedPlatform ? 'Logger' : 'Portable Logger',
+            style: theme.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w800),
           ),
-          HomeQuickLookup(services: widget.services),
+          const SizedBox(height: 16),
+          Text(
+            'Version $appVersionLabel',
+            style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+          ),
         ],
       ),
     );
@@ -398,11 +457,7 @@ class _HomeQuickLookupState extends State<HomeQuickLookup> {
     _lookupDebounce = Timer(const Duration(milliseconds: 300), () async {
       // No in-progress QSO/operation context on this quick-log/command bar
       // — QSO-scoped lookup hooks (e.g. POTA) simply find nothing to do.
-      final result = await widget.services.extensions.lookupCall(
-        text,
-        qso: const {},
-        operation: const {},
-      );
+      final result = await widget.services.extensions.lookupCall(text, qso: const {}, operation: const {});
       if (!mounted || _controller.text.trim() != text) return;
       setState(() {
         _lookupFor = text;
@@ -480,7 +535,9 @@ class _HomeQuickLookupState extends State<HomeQuickLookup> {
         await widget.services.handleCommandAction('devProgress', (map['devProgress'] as Map).cast<String, dynamic>());
       } else if (map['reloadDataFiles'] is Map) {
         await widget.services.handleCommandAction(
-            'reloadDataFiles', (map['reloadDataFiles'] as Map).cast<String, dynamic>());
+          'reloadDataFiles',
+          (map['reloadDataFiles'] as Map).cast<String, dynamic>(),
+        );
       }
     }
   }
@@ -558,9 +615,7 @@ class _HomeQuickLookupState extends State<HomeQuickLookup> {
               16,
               8,
               16,
-              MediaQuery.paddingOf(context).bottom > 8.0
-                  ? MediaQuery.paddingOf(context).bottom
-                  : 8.0,
+              MediaQuery.paddingOf(context).bottom > 8.0 ? MediaQuery.paddingOf(context).bottom : 8.0,
             ),
             child: TextField(
               controller: _controller,
@@ -570,9 +625,7 @@ class _HomeQuickLookupState extends State<HomeQuickLookup> {
               inputFormatters: [
                 if (isMobilePlatform) MobileDotToSlashFormatter(),
                 TextInputFormatter.withFunction(
-                  (oldValue, newValue) => newValue.copyWith(
-                    text: newValue.text.toUpperCase(),
-                  ),
+                  (oldValue, newValue) => newValue.copyWith(text: newValue.text.toUpperCase()),
                 ),
               ],
               decoration: InputDecoration(
@@ -589,10 +642,7 @@ class _HomeQuickLookupState extends State<HomeQuickLookup> {
                     : null,
                 hintText: context.t.home.quickLookup,
                 isDense: true,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(24.0),
-                  borderSide: BorderSide.none,
-                ),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(24.0), borderSide: BorderSide.none),
               ),
               onSubmitted: (_) => _submit(),
             ),

@@ -36,16 +36,19 @@ String linkClientQrUrl({required String clientUuid, required String challengeTok
 
 /// Returns true when the device ended up linked to a different account (the
 /// caller should kick a sync round so reconciliation starts right away).
+/// A Modal Pane (docs/design/layouts.md): a dialog on wide layouts, a full
+/// screen on phones — the QR/code flows want the room there.
 Future<bool?> showSwitchAccountsDialog(
   BuildContext context, {
   required Future<Map<String, dynamic>?> Function() fetchAccountData,
   required Future<Map<String, dynamic>?> Function(String? email) linkClient,
   required Future<Map<String, dynamic>?> Function(String email) linkClientWithEmail,
 }) {
-  return showDialog<bool>(
-    context: context,
+  return showModalPane<bool>(
+    context,
+    title: 'Switch Accounts',
     barrierDismissible: false,
-    builder: (context) => SwitchAccountsDialog(
+    builder: (context) => SwitchAccountsPane(
       fetchAccountData: fetchAccountData,
       linkClient: linkClient,
       linkClientWithEmail: linkClientWithEmail,
@@ -55,7 +58,7 @@ Future<bool?> showSwitchAccountsDialog(
 
 enum _Mode { menu, email, code, emailSent, qr }
 
-class SwitchAccountsDialog extends StatefulWidget {
+class SwitchAccountsPane extends StatefulWidget {
   final Future<Map<String, dynamic>?> Function() fetchAccountData;
   final Future<Map<String, dynamic>?> Function(String? email) linkClient;
   final Future<Map<String, dynamic>?> Function(String email) linkClientWithEmail;
@@ -66,7 +69,7 @@ class SwitchAccountsDialog extends StatefulWidget {
   /// Injectable clock so tests can expire a challenge without real waits.
   final DateTime Function() now;
 
-  const SwitchAccountsDialog({
+  const SwitchAccountsPane({
     super.key,
     required this.fetchAccountData,
     required this.linkClient,
@@ -76,10 +79,10 @@ class SwitchAccountsDialog extends StatefulWidget {
   });
 
   @override
-  State<SwitchAccountsDialog> createState() => _SwitchAccountsDialogState();
+  State<SwitchAccountsPane> createState() => _SwitchAccountsPaneState();
 }
 
-class _SwitchAccountsDialogState extends State<SwitchAccountsDialog> {
+class _SwitchAccountsPaneState extends State<SwitchAccountsPane> {
   _Mode _mode = _Mode.menu;
   Map<String, dynamic>? _accountData;
   bool _loadingAccountData = true;
@@ -131,8 +134,10 @@ class _SwitchAccountsDialogState extends State<SwitchAccountsDialog> {
     });
   }
 
-  List<Map<String, dynamic>> get _otherAccounts =>
-      ((_accountData?['accounts'] as List?) ?? const []).whereType<Map>().map((a) => a.cast<String, dynamic>()).toList();
+  List<Map<String, dynamic>> get _otherAccounts => ((_accountData?['accounts'] as List?) ?? const [])
+      .whereType<Map>()
+      .map((a) => a.cast<String, dynamic>())
+      .toList();
 
   /// "N QSOs · M operations", or null when the server sent no counts at all
   /// (e.g. an account payload without stats).
@@ -154,10 +159,7 @@ class _SwitchAccountsDialogState extends State<SwitchAccountsDialog> {
   }) {
     final call = account['call'] as String?;
     final email = account['email'] as String?;
-    final firstLine = [
-      if (call?.isNotEmpty == true) call!,
-      if (email?.isNotEmpty == true) email!,
-    ].join(' — ');
+    final firstLine = [if (call?.isNotEmpty == true) call!, if (email?.isNotEmpty == true) email!].join(' — ');
     final counts = _countsLine(qsoCount, operationCount);
     return ListTile(
       contentPadding: EdgeInsets.zero,
@@ -224,10 +226,10 @@ class _SwitchAccountsDialogState extends State<SwitchAccountsDialog> {
   /// Records a pending permission's code + expiry (returned as a closure so
   /// callers compose it into their own setState).
   VoidCallback _applyChallenge(Map<String, dynamic> permission) => () {
-        _challengeCode = permission['challenge_token'] as String?;
-        final expires = permission['challenge_expires_at'] as String?;
-        _challengeExpiresAt = expires != null ? DateTime.tryParse(expires) : null;
-      };
+    _challengeCode = permission['challenge_token'] as String?;
+    final expires = permission['challenge_expires_at'] as String?;
+    _challengeExpiresAt = expires != null ? DateTime.tryParse(expires) : null;
+  };
 
   /// Shared shape of every `linkClient` result: null → unreachable,
   /// `error` → the server said no. Returns the map only when usable.
@@ -367,20 +369,25 @@ class _SwitchAccountsDialogState extends State<SwitchAccountsDialog> {
 
   @override
   Widget build(BuildContext context) {
-    return AlertDialog(
-      title: const Text('Switch Accounts'),
-      content: SizedBox(
-        // Keeps the dialog from reflowing as modes swap content of very
-        // different natural widths (account list vs. QR square).
-        width: 400,
-        child: SingleChildScrollView(child: _buildContent(context)),
-      ),
-      actions: [
-        if (_mode != _Mode.menu)
-          TextButton(onPressed: _busy ? null : _backToMenu, child: const Text('Back')),
-        if (_mode == _Mode.email)
-          FilledButton(onPressed: _busy ? null : _submitEmail, child: const Text('Link account')),
-        TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('Cancel')),
+    // The Modal Pane route provides the chrome (title, scrolling, width);
+    // the action row lives here because it depends on this State (_mode,
+    // _busy) — the same coupling AlertDialog had.
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _buildContent(context),
+        const SizedBox(height: 24),
+        OverflowBar(
+          alignment: MainAxisAlignment.end,
+          spacing: 8,
+          children: [
+            if (_mode != _Mode.menu) TextButton(onPressed: _busy ? null : _backToMenu, child: const Text('Back')),
+            if (_mode == _Mode.email)
+              FilledButton(onPressed: _busy ? null : _submitEmail, child: const Text('Link account')),
+            TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('Cancel')),
+          ],
+        ),
       ],
     );
   }
@@ -427,18 +434,16 @@ class _SwitchAccountsDialogState extends State<SwitchAccountsDialog> {
           if (others.isNotEmpty) ...[
             const SizedBox(height: 12),
             Text('Other accounts', style: theme.textTheme.titleSmall),
-            ...others.map(
-              (account) {
-                final stats = (account['stats'] as Map?)?.cast<String, dynamic>();
-                return _accountTile(
-                  account: account,
-                  iconName: 'account-outline',
-                  qsoCount: (stats?['qso_count'] as num?)?.toInt(),
-                  operationCount: (stats?['operation_count'] as num?)?.toInt(),
-                  onTap: _busy ? null : () => _quickSwitch(account),
-                );
-              },
-            ),
+            ...others.map((account) {
+              final stats = (account['stats'] as Map?)?.cast<String, dynamic>();
+              return _accountTile(
+                account: account,
+                iconName: 'account-outline',
+                qsoCount: (stats?['qso_count'] as num?)?.toInt(),
+                operationCount: (stats?['operation_count'] as num?)?.toInt(),
+                onTap: _busy ? null : () => _quickSwitch(account),
+              );
+            }),
           ],
         ],
         const SizedBox(height: 12),
@@ -495,7 +500,9 @@ class _SwitchAccountsDialogState extends State<SwitchAccountsDialog> {
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Text('Open the Ham2K app on a device already linked with $_pendingEmail and enter this code to approve the request:'),
+        Text(
+          'Open the Ham2K app on a device already linked with $_pendingEmail and enter this code to approve the request:',
+        ),
         const SizedBox(height: 16),
         Center(
           child: Text(
@@ -527,10 +534,7 @@ class _SwitchAccountsDialogState extends State<SwitchAccountsDialog> {
         const Center(child: Text('Waiting for confirmation…')),
         const SizedBox(height: 12),
         Center(
-          child: OutlinedButton(
-            onPressed: _busy ? null : _sendConfirmationEmail,
-            child: const Text('Resend email'),
-          ),
+          child: OutlinedButton(onPressed: _busy ? null : _sendConfirmationEmail, child: const Text('Resend email')),
         ),
         ..._errorAndBusy(context),
       ],
@@ -543,7 +547,9 @@ class _SwitchAccountsDialogState extends State<SwitchAccountsDialog> {
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        const Text('Scan this QR code from a device already linked to the account you want — for example with Ham2K Portable Logger on your phone.'),
+        const Text(
+          'Scan this QR code from a device already linked to the account you want — for example with Ham2K Portable Logger on your phone.',
+        ),
         const SizedBox(height: 16),
         Center(
           child: url == null
@@ -557,10 +563,7 @@ class _SwitchAccountsDialogState extends State<SwitchAccountsDialog> {
                   child: QrImageView(key: ValueKey(url), data: url, size: 200),
                 ),
         ),
-        if (url != null) ...[
-          const SizedBox(height: 16),
-          const Center(child: Text('Waiting for confirmation…')),
-        ],
+        if (url != null) ...[const SizedBox(height: 16), const Center(child: Text('Waiting for confirmation…'))],
         ..._errorAndBusy(context),
       ],
     );
@@ -573,10 +576,7 @@ class _SwitchAccountsDialogState extends State<SwitchAccountsDialog> {
         const SizedBox(height: 12),
         Text(_error!, style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.error)),
       ],
-      if (_busy) ...[
-        const SizedBox(height: 12),
-        const Center(child: CircularProgressIndicator()),
-      ],
+      if (_busy) ...[const SizedBox(height: 12), const Center(child: CircularProgressIndicator())],
     ];
   }
 }

@@ -1,0 +1,147 @@
+// Copyright ©️ 2026 Sebastian Delmont <sd@ham2k.com>
+// SPDX-License-Identifier: MPL-2.0
+//
+// The Operation View's adaptive layout (issue #85, docs/design/layouts.md):
+// narrow shirt sizes tab through QSOs/Spots/Map/Operation, two-pane sizes
+// pin the logging pane left with Info/Spots/Map/Operation tabs on the
+// right. The load-bearing guarantees: the arrangement flips LIVE on a
+// window resize, and the logging pane's GlobalKey carries its State — a
+// half-typed callsign — across the flip instead of rebuilding it.
+
+import 'package:drift/native.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:halo_core/halo_core.dart';
+import 'package:halo_extension_host/halo_extension_host.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
+import 'package:ham2k_logger/i18n/strings.g.dart';
+import 'package:ham2k_logger/main.dart';
+import 'package:ham2k_logger/services/extension_service.dart';
+import 'package:ham2k_logger/services/settings_service.dart';
+import 'package:ham2k_logger/views/operation_view.dart';
+
+void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+
+  testWidgets('flips between tabs and split on resize, preserving logging input', (tester) async {
+    tester.view.physicalSize = const Size(1000, 800);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+
+    SharedPreferences.setMockInitialValues({});
+    final settings = SettingsService(await SharedPreferences.getInstance());
+    final db = HaLoDatabase(NativeDatabase.memory());
+    final extensions = ExtensionServiceWithMockHost(MockExtensionHost(const {}))..settings = settings;
+    final services = HaLoServices(db, settings, extensions: extensions);
+    final operation = await services.operations.create(stationCall: 'N0CALL', title: 'Test Op');
+
+    await tester.pumpWidget(TranslationProvider(
+      child: MaterialApp(
+        home: OperationView(services: services, operationUuid: operation.uuid),
+      ),
+    ));
+    await tester.pumpAndSettle();
+
+    // 1000 logical px → L: split layout with the Info tab, logging pane
+    // visible on the left, and no QSO-count tab (logging isn't a tab here).
+    expect(find.text('INFO'), findsOneWidget);
+    expect(find.text('0 QSOs'), findsNothing);
+    expect(find.widgetWithText(TextField, 'Their call'), findsOneWidget);
+
+    // Type into the logging pane, then flip to narrow.
+    await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'W1AW');
+    await tester.pump(const Duration(milliseconds: 500));
+
+    tester.view.physicalSize = const Size(430, 800);
+    await tester.pump(const Duration(milliseconds: 500));
+    await tester.pump(const Duration(milliseconds: 500));
+
+    // 430 → S: the tab arrangement, with the QSO-count tab back and Info
+    // gone. Index 0 was Info, so tab 0 (QSOs = the logging pane) shows —
+    // with the in-progress callsign intact (GlobalKey reparenting).
+    expect(find.text('INFO'), findsNothing);
+    expect(find.text('0 QSOs'), findsOneWidget);
+    expect(find.text('W1AW'), findsOneWidget);
+
+    // And back to wide: split returns, input still intact.
+    tester.view.physicalSize = const Size(1000, 800);
+    await tester.pump(const Duration(milliseconds: 500));
+    await tester.pump(const Duration(milliseconds: 500));
+
+    expect(find.text('INFO'), findsOneWidget);
+    expect(find.text('W1AW'), findsOneWidget);
+
+    // Flip with a NON-ZERO tab selected — the regression case. Wide with
+    // Spots selected, then narrow: the tab snaps to QSOs (the logging pane
+    // was the always-visible left pane) and the typed callsign survives,
+    // because page 0 must be the inflated page for the GlobalKey'd logging
+    // subtree to be adopted.
+    await tester.tap(find.text('SPOTS'));
+    await tester.pumpAndSettle();
+
+    tester.view.physicalSize = const Size(430, 800);
+    await tester.pump(const Duration(milliseconds: 500));
+    await tester.pump(const Duration(milliseconds: 500));
+    expect(tester.takeException(), isNull);
+    expect(find.text('W1AW'), findsOneWidget, reason: 'logging input survives a flip made from the Spots tab');
+
+    // Narrow with Spots selected, then wide: the logging subtree is stolen
+    // from the TabBarView's keep-alive bucket into the split's left pane.
+    await tester.tap(find.text('SPOTS'));
+    await tester.pumpAndSettle();
+
+    tester.view.physicalSize = const Size(1000, 800);
+    await tester.pump(const Duration(milliseconds: 500));
+    await tester.pump(const Duration(milliseconds: 500));
+    expect(tester.takeException(), isNull);
+    expect(find.text('W1AW'), findsOneWidget, reason: 'logging input survives a flip made with Spots selected');
+    expect(find.text('INFO'), findsOneWidget);
+
+    // Tear the tree down and drain the services' debounce timers (rescore,
+    // lookup) so the binding's pending-timer invariant passes.
+    await tester.pumpWidget(const SizedBox());
+    await tester.pump(const Duration(seconds: 5));
+  });
+}
+
+class MockExtensionHost implements ExtensionHost {
+  final Map<String, dynamic> mockHookResults;
+  const MockExtensionHost(this.mockHookResults);
+
+  @override
+  Future<dynamic> invokeHook(
+    String category, {
+    String? key,
+    required String method,
+    Object? args,
+    Duration timeout = const Duration(seconds: 10),
+  }) async {
+    return mockHookResults['$category:$key:$method'];
+  }
+
+  @override
+  Future<List<Map<String, dynamic>>> invokeHookAll(
+    String category, {
+    required String method,
+    Object? args,
+    Duration timeout = const Duration(seconds: 10),
+  }) async {
+    final res = mockHookResults['$category:*:$method'];
+    return res == null ? const [] : (res as List).cast<Map<String, dynamic>>();
+  }
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+class ExtensionServiceWithMockHost extends ExtensionService {
+  final MockExtensionHost mockHost;
+  ExtensionServiceWithMockHost(this.mockHost);
+
+  @override
+  ExtensionHost? get host => mockHost;
+
+  @override
+  Future<void> start() async {}
+}
