@@ -137,7 +137,7 @@ void main() {
 
   test('a suggested batch size from the server is applied to the next round', () async {
     final op = await operations.create(stationCall: 'KI2D');
-    for (var i = 0; i < 15; i++) {
+    for (var i = 0; i < 120; i++) {
       await qsos.add(op.uuid, {'their': {'call': 'W1AW$i'}, 'startAtMillis': i});
     }
 
@@ -146,12 +146,12 @@ void main() {
       round++;
       final sent = (args['qsos'] as List).length;
       if (round == 1) {
-        expect(sent, SyncEngine.defaultLargeBatchSize); // capped at the default (10) the first time
+        expect(sent, SyncEngine.defaultLargeBatchSize); // capped at the default (100) the first time
         return {
           'meta': {'suggestedSyncBatchSize': 20},
         };
       }
-      expect(sent, 5); // the remaining 15 - 10 QSOs, now that the cap is 20
+      expect(sent, 20); // the remaining 120 - 100 QSOs, now that the cap is 20
       return const {};
     };
 
@@ -229,11 +229,11 @@ void main() {
   });
 
   test('a full page of inbound records reschedules the loop immediately', () async {
-    // A server with 15 pending QSOs to hand back: a full page (10) the
-    // first call, a partial page (5) once the client's advancing
+    // A server with 150 pending QSOs to hand back: a full page (100) the
+    // first call, a partial page (50) once the client's advancing
     // syncedSinceMillis catches up — the same "keep looping until caught
     // up" shape as app-polo's `receivedAllUpdates`.
-    const totalAvailable = 15;
+    const totalAvailable = 150;
     transport.responder = (method, args) {
       final since = (((args['meta'] as Map)['sync'] as Map)['qsos'] as Map)['syncedSinceMillis'] as int;
       final remaining = [
@@ -250,12 +250,12 @@ void main() {
     };
 
     await engine.runOneRound();
-    expect(transport.calls, hasLength(1)); // first page: 10 records, a full page
+    expect(transport.calls, hasLength(1)); // first page: 100 records, a full page
 
     // A full page implies more is waiting server-side, so the loop
     // reschedules with no delay rather than waiting defaultLoopDelay (20s).
     await Future<void>.delayed(const Duration(milliseconds: 50));
-    expect(transport.calls, hasLength(2)); // second page: the remaining 5, not a full page — loop settles
+    expect(transport.calls, hasLength(2)); // second page: the remaining 50, not a full page — loop settles
   });
 
   test('notifyChanged debounces into a small-batch round', () async {
@@ -347,11 +347,13 @@ void main() {
 
     test('backfill pages backward and hands off to forward mode once caught up', () async {
       settings.state = {'lastSyncAccountUUID': 'acct-1'}; // linked, but completedFullSync is not yet true
-      const totalAvailable = 15;
-      // A server holding 15 historical QSOs (syncedAtMillis 0..14, oldest
+      const totalAvailable = 250;
+      // A server holding 250 historical QSOs (syncedAtMillis 0..249, oldest
       // first). Each call returns whatever's strictly older than `until`,
       // newest-first, capped at the page limit — the same "keep asking for
-      // what's older than my cursor" shape the real server implements.
+      // what's older than my cursor" shape the real server implements. It
+      // reports no recordsLeft meta, so this also covers the legacy-server
+      // fallback: completion inferred from a shorter-than-limit page.
       transport.responder = (method, args) {
         final until = (((args['meta'] as Map)['sync'] as Map)['qsos'] as Map)['syncedUntilMillis'] as int;
         expect((((args['meta'] as Map)['sync'] as Map)['qsos'] as Map)['anyClient'], isTrue);
@@ -374,7 +376,7 @@ void main() {
       await engine.runOneRound();
       expect(settings.state['completedFullSync'], isNot(true));
 
-      // Keep running rounds until the (small, 15-record) history is
+      // Keep running rounds until the (250-record) history is
       // exhausted and the engine flips over to forward mode.
       var guard = 0;
       while (settings.state['completedFullSync'] != true && guard < 10) {
@@ -384,7 +386,7 @@ void main() {
 
       expect(settings.state['completedFullSync'], isTrue);
       // The forward watermark is the largest *server* stamp seen across the
-      // backfill (14) — never the local clock, which would permanently skip
+      // backfill (249) — never the local clock, which would permanently skip
       // records other devices synced while this backfill ran (or anything
       // in a clock-skew window).
       expect(settings.state['latestQSOSyncedAtMillis'], totalAvailable - 1);
@@ -392,13 +394,54 @@ void main() {
       expect(merged, hasLength(totalAvailable));
     });
 
+    test('an empty backfill page with recordsLeft pending never completes backfill early', () async {
+      settings.state = {'lastSyncAccountUUID': 'acct-1'};
+      // A cooldown-gated server: it reports 5 records still waiting but
+      // returns none of them for a while. Inferring completion from the
+      // short page (the pre-20a23100 app-polo bug) would permanently set
+      // completedFullSync and skip those records forever.
+      var gated = true;
+      transport.responder = (method, args) {
+        if (gated) {
+          return {
+            'meta': {'qsos': {'recordsLeft': 5}},
+          };
+        }
+        return {
+          'qsos': [
+            for (var s = 0; s < 5; s++)
+              {
+                'uuid': 'hist-$s',
+                'operation': 'op1',
+                'their': {'call': 'W1AW$s'},
+                'startAtMillis': s,
+                'syncedAtMillis': s,
+              },
+          ],
+          // snake_case on purpose — the server has sent both spellings and
+          // the engine must accept either, like app-polo does.
+          'meta': {'qsos': {'records_left': 0}},
+        };
+      };
+
+      await engine.runOneRound();
+      await engine.runOneRound();
+      expect(settings.state['completedFullSync'], isNot(true)); // empty pages, but the server says 5 remain
+
+      gated = false;
+      await engine.runOneRound();
+      expect(settings.state['completedFullSync'], isTrue);
+      expect(await qsos.watchForOperation('op1').first, hasLength(5));
+    });
+
     test('backfill survives a page-sized timestamp tie without skipping records or hot-looping', () async {
       settings.state = {'lastSyncAccountUUID': 'acct-1'};
-      // 25 QSOs all sharing syncedAtMillis 100 — a server-side bulk import.
-      // The server pages with strict `<` semantics: once the cursor reaches
-      // the tie's own stamp, a naive client would get an empty page and
-      // conclude backfill was complete, silently missing 15 records.
-      const totalAvailable = 25;
+      // 120 QSOs all sharing syncedAtMillis 100 — a server-side bulk import
+      // larger than a full page (100). The server pages with strict `<`
+      // semantics: once the cursor reaches the tie's own stamp, a naive
+      // client would get an empty page and conclude backfill was complete,
+      // silently missing the tie's remaining 20 records.
+      const totalAvailable = 120;
       transport.responder = (method, args) {
         final sync = ((args['meta'] as Map)['sync'] as Map)['qsos'] as Map;
         final until = sync['syncedUntilMillis'] as int;

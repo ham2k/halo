@@ -70,7 +70,7 @@ class SyncEngine {
   final void Function(String message)? log;
 
   static const smallBatchSize = 10;
-  static const defaultLargeBatchSize = 10; // matches sync.js's actual (not its stale comment)
+  static const defaultLargeBatchSize = 100; // matches sync.js since app-polo 20a23100 restored it from a debug value
   static const debounceDelay = Duration(milliseconds: 500);
   static const debounceMaxWait = Duration(seconds: 3);
   static const defaultLoopDelay = Duration(seconds: 20);
@@ -489,10 +489,21 @@ class SyncEngine {
       advanceCursor('earliestOperationSyncedAtMillis', opWatermark, inboundOperationsCount);
       advanceCursor('earliestQSOSyncedAtMillis', qsoWatermark, inboundQsosCount);
 
-      if (inboundOperationsCount < limit && inboundQsosCount < limit) {
-        // Both sides came back short: nothing older is left server-side.
-        // Backfill is done — forward mode picks up from the largest
-        // server stamp accumulated above.
+      // Trust the server's own records-left counts to decide whether older
+      // history remains (app-polo 20a23100): a cooldown-gated or otherwise
+      // short response must never be mistaken for "nothing left", or
+      // completedFullSync flips permanently with a hole in the history.
+      // Only when the server doesn't report a count does the old inference
+      // — a page shorter than what was asked for — apply.
+      bool sideDone(String key, int inboundCount) {
+        final side = meta[key] as Map?;
+        final left = ((side?['recordsLeft'] ?? side?['records_left']) as num?)?.toInt();
+        return left != null ? left == 0 : inboundCount < limit;
+      }
+
+      if (sideDone('operations', inboundOperationsCount) && sideDone('qsos', inboundQsosCount)) {
+        // Nothing older is left server-side. Backfill is done — forward
+        // mode picks up from the largest server stamp accumulated above.
         updates['completedFullSync'] = true;
         _backfillLimitBoost = 1;
         _backfillStuckAtCap = false;
