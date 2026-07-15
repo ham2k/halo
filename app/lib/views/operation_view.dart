@@ -4,8 +4,8 @@
 // The logging view: four tabs, ported from app-polo's OperationView —
 // "N QSOs" (list + logging panel; a wide-layout info side panel appears
 // there too, the first step toward the module-docking layout of
-// DESIGN.md §7), Spots (placeholder for now), Map, and Operation
-// (settings/activities/data, a scoped-down OpSettingsTab).
+// DESIGN.md §7), Spots, Map, and Operation (settings/activities/data, a
+// scoped-down OpSettingsTab).
 
 import 'dart:async';
 import 'dart:convert';
@@ -21,6 +21,7 @@ import 'operation/logging_panel.dart';
 import 'operation/map_panel.dart';
 import 'operation/operation_export_screen.dart';
 import 'operation/operation_location_screen.dart';
+import 'operation/spots_panel.dart';
 import '../i18n/strings.g.dart';
 
 class OperationView extends StatefulWidget {
@@ -33,7 +34,7 @@ class OperationView extends StatefulWidget {
   State<OperationView> createState() => _OperationViewState();
 }
 
-class _OperationViewState extends State<OperationView> {
+class _OperationViewState extends State<OperationView> with SingleTickerProviderStateMixin {
   Operation? _operation;
   List<Map<String, dynamic>> _loggingControls = const [];
   late bool _showRSTFields = widget.services.settings.showRSTFields;
@@ -86,6 +87,31 @@ class _OperationViewState extends State<OperationView> {
 
   bool _sideInitStarted = false;
 
+  /// Explicit (not `DefaultTabController`) so `_suggestQso` can switch to
+  /// the QSOs tab programmatically — this is its only use in the app.
+  /// Because of this, the `Scaffold` below is NOT wrapped in a
+  /// `DefaultTabController` — `TabBar`/`TabBarView` are given this
+  /// controller directly. `DefaultTabController` always creates its own
+  /// internal controller, so it can't be combined with an externally-owned
+  /// one without the two drifting out of sync. If a future descendant widget
+  /// calls `DefaultTabController.of(context)` here, it will throw (no
+  /// ancestor found) — reach for `_tabController` directly instead, or
+  /// thread it down explicitly.
+  late final TabController _tabController = TabController(length: 4, vsync: this);
+
+  /// A QSON-shaped `{their: {call}, freq?, band?, mode?, refs?}` map handed
+  /// from the Spots tab (tapping a spot — see `SpotsPanel.onSuggestQso`) to
+  /// prefill the Logging tab's fields. Not cleared after being applied —
+  /// `LoggingControls` only re-applies a suggestion when this becomes a NEW
+  /// map instance (see its `suggestedQso` doc comment), so a stale
+  /// reference here is harmless.
+  Map<String, dynamic>? _suggestedQso;
+
+  void _suggestQso(Map<String, dynamic> qso) {
+    setState(() => _suggestedQso = qso);
+    _tabController.animateTo(0);
+  }
+
   @override
   void initState() {
     super.initState();
@@ -101,6 +127,7 @@ class _OperationViewState extends State<OperationView> {
     _operationSub?.cancel();
     _rescoreSub?.cancel();
     _rescoreDebounce?.cancel();
+    _tabController.dispose();
     super.dispose();
   }
 
@@ -251,127 +278,128 @@ class _OperationViewState extends State<OperationView> {
         final realQsoCount = qsos.where((q) => q.isRealContact).length;
         final refsLine = operation.refs.map((r) => r['shortLabel'] ?? r['ref']).whereType<String>().join(' • ');
 
-        return DefaultTabController(
-          length: 4,
-          child: Scaffold(
-            appBar: AppBar(
-              leadingWidth: macOSAwareLeadingWidth(context),
-              leading: macOSAwareBackButton(context),
-              actions: [
-                PopupMenuButton<VoidCallback>(
-                  icon: Icon(resolveIconName('dots-vertical')),
-                  onSelected: (toggle) => toggle(),
-                  itemBuilder: (context) => [
-                    CheckedPopupMenuItem<VoidCallback>(
-                      checked: _showRSTFields,
-                      value: () => _toggleMenuSetting(
-                        current: _showRSTFields,
-                        apply: (v) => _showRSTFields = v,
-                        persist: widget.services.settings.setShowRSTFields,
-                      ),
-                      child: Text(context.t.operation.menu.showRstFields),
+        return Scaffold(
+          appBar: AppBar(
+            leadingWidth: macOSAwareLeadingWidth(context),
+            leading: macOSAwareBackButton(context),
+            actions: [
+              PopupMenuButton<VoidCallback>(
+                icon: Icon(resolveIconName('dots-vertical')),
+                onSelected: (toggle) => toggle(),
+                itemBuilder: (context) => [
+                  CheckedPopupMenuItem<VoidCallback>(
+                    checked: _showRSTFields,
+                    value: () => _toggleMenuSetting(
+                      current: _showRSTFields,
+                      apply: (v) => _showRSTFields = v,
+                      persist: widget.services.settings.setShowRSTFields,
                     ),
-                    CheckedPopupMenuItem<VoidCallback>(
-                      checked: _showStateField,
-                      value: () => _toggleMenuSetting(
-                        current: _showStateField,
-                        apply: (v) => _showStateField = v,
-                        persist: widget.services.settings.setShowStateField,
-                      ),
-                      child: Text(context.t.operation.menu.showStateField),
+                    child: Text(context.t.operation.menu.showRstFields),
+                  ),
+                  CheckedPopupMenuItem<VoidCallback>(
+                    checked: _showStateField,
+                    value: () => _toggleMenuSetting(
+                      current: _showStateField,
+                      apply: (v) => _showStateField = v,
+                      persist: widget.services.settings.setShowStateField,
                     ),
-                    CheckedPopupMenuItem<VoidCallback>(
-                      checked: _showGridField,
-                      value: () => _toggleMenuSetting(
-                        current: _showGridField,
-                        apply: (v) => _showGridField = v,
-                        persist: widget.services.settings.setShowGridField,
-                      ),
-                      child: Text(context.t.operation.menu.showGridField),
+                    child: Text(context.t.operation.menu.showStateField),
+                  ),
+                  CheckedPopupMenuItem<VoidCallback>(
+                    checked: _showGridField,
+                    value: () => _toggleMenuSetting(
+                      current: _showGridField,
+                      apply: (v) => _showGridField = v,
+                      persist: widget.services.settings.setShowGridField,
                     ),
-                    CheckedPopupMenuItem<VoidCallback>(
-                      checked: _showDeletedQSOs,
-                      value: () => _toggleMenuSetting(
-                        current: _showDeletedQSOs,
-                        apply: (v) => _showDeletedQSOs = v,
-                        persist: widget.services.settings.setShowDeletedQSOs,
-                      ),
-                      child: Text(context.t.operation.menu.showDeletedQsos),
+                    child: Text(context.t.operation.menu.showGridField),
+                  ),
+                  CheckedPopupMenuItem<VoidCallback>(
+                    checked: _showDeletedQSOs,
+                    value: () => _toggleMenuSetting(
+                      current: _showDeletedQSOs,
+                      apply: (v) => _showDeletedQSOs = v,
+                      persist: widget.services.settings.setShowDeletedQSOs,
                     ),
-                    CheckedPopupMenuItem<VoidCallback>(
-                      checked: _showQsoNumbers,
-                      value: () => _toggleMenuSetting(
-                        current: _showQsoNumbers,
-                        apply: (v) => _showQsoNumbers = v,
-                        persist: widget.services.settings.setShowQsoNumbers,
-                      ),
-                      child: Text(context.t.operation.menu.showQsoNumbers),
+                    child: Text(context.t.operation.menu.showDeletedQsos),
+                  ),
+                  CheckedPopupMenuItem<VoidCallback>(
+                    checked: _showQsoNumbers,
+                    value: () => _toggleMenuSetting(
+                      current: _showQsoNumbers,
+                      apply: (v) => _showQsoNumbers = v,
+                      persist: widget.services.settings.setShowQsoNumbers,
                     ),
-                  ],
-                ),
-                const SizedBox(width: 8),
-              ],
-              title: InkWell(
-                onTap: () => _editActivities(operation),
-                mouseCursor: SystemMouseCursors.click,
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      operation.title.isEmpty ? operation.stationCall : '${operation.stationCall} ${operation.title}',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    if (refsLine.isNotEmpty)
-                      Text(
-                        refsLine,
-                        style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                              color: Theme.of(context).colorScheme.onPrimary.withValues(alpha: 0.85),
-                            ),
-                      ),
-                  ],
-                ),
+                    child: Text(context.t.operation.menu.showQsoNumbers),
+                  ),
+                ],
               ),
-              bottom: TabBar(
-                indicatorSize: TabBarIndicatorSize.tab,
-                indicatorWeight: 4,
-                tabs: [
-                  Tab(text: context.t.operation.tabs.qsos(count: realQsoCount)),
-                  Tab(text: context.t.operation.tabs.spots),
-                  Tab(text: context.t.operation.tabs.map),
-                  Tab(text: context.t.operation.tabs.operation),
+              const SizedBox(width: 8),
+            ],
+            title: InkWell(
+              onTap: () => _editActivities(operation),
+              mouseCursor: SystemMouseCursors.click,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    operation.title.isEmpty ? operation.stationCall : '${operation.stationCall} ${operation.title}',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  if (refsLine.isNotEmpty)
+                    Text(
+                      refsLine,
+                      style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                            color: Theme.of(context).colorScheme.onPrimary.withValues(alpha: 0.85),
+                          ),
+                    ),
                 ],
               ),
             ),
-            body: TabBarView(children: [
-              _KeepAlive(
-                child: LoggingPanel(
-                  operation: operation,
-                  services: widget.services,
-                  qsos: qsos,
-                  loggingControls: _loggingControls,
-                  onCommandAction: _handleCommandAction,
-                  showRSTFields: _showRSTFields,
-                  showStateField: _showStateField,
-                  showGridField: _showGridField,
-                  showQsoNumbers: _showQsoNumbers,
-                  ourEntityPrefix: _ourEntityPrefix,
-                ),
-              ),
-              _PlaceholderTab(label: context.t.operation.tabs.spots),
-              _KeepAlive(child: MapPanel(operation: operation, qsos: qsos)),
-              OperationSettingsPanel(
-                operation: operation,
-                qsoCount: realQsoCount,
-                onEditDetails: () => _editDetails(operation),
-                onEditActivities: () => _editActivities(operation),
-                onEditLocation: () => _editLocation(operation),
-                onExport: realQsoCount == 0 ? null : () => _export(operation),
-                onDelete: () => _delete(operation),
-              ),
-            ]),
+            bottom: TabBar(
+              controller: _tabController,
+              indicatorSize: TabBarIndicatorSize.tab,
+              indicatorWeight: 4,
+              tabs: [
+                Tab(text: context.t.operation.tabs.qsos(count: realQsoCount)),
+                Tab(text: context.t.operation.tabs.spots),
+                Tab(text: context.t.operation.tabs.map),
+                Tab(text: context.t.operation.tabs.operation),
+              ],
+            ),
           ),
+          body: TabBarView(controller: _tabController, children: [
+            _KeepAlive(
+              child: LoggingPanel(
+                operation: operation,
+                services: widget.services,
+                qsos: qsos,
+                loggingControls: _loggingControls,
+                onCommandAction: _handleCommandAction,
+                showRSTFields: _showRSTFields,
+                showStateField: _showStateField,
+                showGridField: _showGridField,
+                showQsoNumbers: _showQsoNumbers,
+                ourEntityPrefix: _ourEntityPrefix,
+                suggestedQso: _suggestedQso,
+              ),
+            ),
+            _KeepAlive(
+              child: SpotsPanel(operation: operation, services: widget.services, onSuggestQso: _suggestQso),
+            ),
+            _KeepAlive(child: MapPanel(operation: operation, qsos: qsos)),
+            OperationSettingsPanel(
+              operation: operation,
+              qsoCount: realQsoCount,
+              onEditDetails: () => _editDetails(operation),
+              onEditActivities: () => _editActivities(operation),
+              onEditLocation: () => _editLocation(operation),
+              onExport: realQsoCount == 0 ? null : () => _export(operation),
+              onDelete: () => _delete(operation),
+            ),
+          ]),
         );
       },
     );
@@ -399,23 +427,6 @@ class _KeepAliveState extends State<_KeepAlive> with AutomaticKeepAliveClientMix
   Widget build(BuildContext context) {
     super.build(context);
     return widget.child;
-  }
-}
-
-class _PlaceholderTab extends StatelessWidget {
-  final String label;
-
-  const _PlaceholderTab({required this.label});
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Center(
-      child: Text(
-        context.t.operation.comingSoon(label: label),
-        style: theme.textTheme.bodyLarge?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-      ),
-    );
   }
 }
 

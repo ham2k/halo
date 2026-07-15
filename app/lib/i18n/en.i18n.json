@@ -4,7 +4,8 @@
     "cancel": "Cancel",
     "delete": "Delete",
     "create": "Create",
-    "error": "Error"
+    "error": "Error",
+    "apply": "Apply"
   },
   "home": {
     "title": "Portable Logger",
@@ -27,7 +28,6 @@
       "map": "MAP",
       "operation": "OPERATION"
     },
-    "comingSoon": "${label} — coming soon",
     "noActivities": "No activities available (extension runtime still starting?)",
     "sections": {
       "stationOperator": "Station & operator",
@@ -61,6 +61,43 @@
       "share": "Share",
       "saveSuccess": "Saved to ${path}",
       "exportFailed": "Export failed: ${error}"
+    },
+    "spots": {
+      "empty": "No spots match your filters",
+      "error": "Failed to load spots: ${error}",
+      "unknownBand": "Other",
+      "auto": "Auto",
+      "autoValue": "Auto (${value})",
+      "any": "Any",
+      "allBands": "All Bands",
+      "allModes": "All Modes",
+      "notDigital": "Not digital",
+      "spotsCount": "${count} spots",
+      "spotsCountFiltered": "Showing ${count} of ${total} spots",
+      "ageMinutes": "${minutes} minutes",
+      "mostRecentSpots": "Most Recent Spots",
+      "callsOfNote": "Calls of Note",
+      "continents": {
+        "af": "Africa",
+        "as": "Asia",
+        "eu": "Europe",
+        "na": "North America",
+        "oc": "Oceania",
+        "sa": "South America",
+        "an": "Antarctica"
+      },
+      "filters": {
+        "title": "Filter Spots",
+        "band": "Band",
+        "mode": "Mode",
+        "age": "Age",
+        "sources": "Sources",
+        "continent": "Continent",
+        "sorting": "Sorting",
+        "sortByTime": "By Spot Time",
+        "sortByFrequency": "By Frequency",
+        "groupCallsWithNotes": "Group Calls with Notes"
+      }
     }
   },
   "activitiesView": {

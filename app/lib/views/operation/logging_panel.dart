@@ -43,6 +43,7 @@ class LoggingPanel extends StatefulWidget {
   final bool showGridField;
   final bool showQsoNumbers;
   final String? ourEntityPrefix;
+  final Map<String, dynamic>? suggestedQso;
 
   const LoggingPanel({
     super.key,
@@ -56,6 +57,7 @@ class LoggingPanel extends StatefulWidget {
     this.showGridField = false,
     this.showQsoNumbers = true,
     this.ourEntityPrefix,
+    this.suggestedQso,
   });
 
   @override
@@ -179,6 +181,7 @@ class _LoggingPanelState extends State<LoggingPanel> {
           spotNoFreqLabel: context.t.loggingControls.spotNoFreq,
           spotCommentHint: context.t.loggingControls.spotComment,
           editingQso: _selectedQso,
+          suggestedQso: widget.suggestedQso,
           onEditCanceled: () => setState(() => _selectedQso = null),
           onLogged: (_) => setState(() => _selectedQso = null),
           // A comma-separated call list (issue #7) logs several QSOs at

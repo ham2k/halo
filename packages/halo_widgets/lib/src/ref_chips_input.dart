@@ -391,3 +391,177 @@ class _RefChipsInputState extends State<RefChipsInput> {
     );
   }
 }
+
+/// A plain text field for activity references, with no chips and no
+/// separate add step — the field's text IS the reference list, comma
+/// separated when there's more than one. Used for LoggingControls'
+/// secondary-control row, where the full chips-and-lookup `RefChipsInput`
+/// (DESIGN.md §5's `refList` component) is more control than the space
+/// affords.
+class RefTextInput extends StatefulWidget {
+  final String refType;
+  final String label;
+  final String? placeholder;
+
+  /// Regex source from the control descriptor; a comma-separated segment
+  /// only becomes a ref once it matches.
+  final String? pattern;
+  final List<RefTransform> transforms;
+  final List<Map<String, dynamic>> refs;
+  final ValueChanged<List<Map<String, dynamic>>> onChanged;
+  final RefDecorator? decorate;
+  final Color? labelColor;
+
+  const RefTextInput({
+    super.key,
+    required this.refType,
+    required this.label,
+    required this.refs,
+    required this.onChanged,
+    this.placeholder,
+    this.pattern,
+    this.transforms = const [],
+    this.decorate,
+    this.labelColor,
+  });
+
+  @override
+  State<RefTextInput> createState() => _RefTextInputState();
+}
+
+class _RefTextInputState extends State<RefTextInput> {
+  late final _controller = TextEditingController(text: _joined(widget.refs));
+  final _focus = FocusNode();
+
+  /// Decorated ref data by code, so a code already resolved this session
+  /// (including ones the parent handed us in `widget.refs`) doesn't need a
+  /// fresh `decorate()` round trip just because the user edited a sibling
+  /// code in the same field.
+  final Map<String, Map<String, dynamic>> _decorations = {};
+
+  String _joined(List<Map<String, dynamic>> refs) => refs.map((r) => r['ref'] as String? ?? '').join(', ');
+
+  RegExp? get _regex {
+    final pattern = widget.pattern;
+    if (pattern == null) return null;
+    try {
+      return RegExp('^(?:$pattern)\$', caseSensitive: false);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    for (final ref in widget.refs) {
+      final code = ref['ref'] as String?;
+      if (code != null) _decorations[code] = ref;
+    }
+    // Place the cursor at the end on focus rather than selecting the
+    // existing text — matches every other logging field.
+    _focus.addListener(() {
+      if (_focus.hasFocus) {
+        _controller.selection = TextSelection.collapsed(offset: _controller.text.length);
+      }
+    });
+  }
+
+  @override
+  void didUpdateWidget(RefTextInput oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Only resync the field's text from the parent's refs while it isn't
+    // focused — otherwise a decorate() round trip landing mid-keystroke
+    // would fight the user's typing.
+    if (!_focus.hasFocus && !identical(oldWidget.refs, widget.refs)) {
+      _controller.text = _joined(widget.refs);
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    _focus.dispose();
+    super.dispose();
+  }
+
+  /// The field's whole text is the source of truth: every comma-separated
+  /// segment that matches the pattern becomes a ref, in order, on every
+  /// keystroke — there's no separate add step to commit to.
+  void _emit(String text) {
+    final regex = _regex;
+    final codes = text.split(',').map((s) => s.trim().toUpperCase()).where((s) => s.isNotEmpty).toList();
+    final refs = [
+      for (final code in codes)
+        if (regex == null || regex.hasMatch(code)) _decorations[code] ?? <String, dynamic>{'type': widget.refType, 'ref': code},
+    ];
+    widget.onChanged(refs);
+
+    final decorate = widget.decorate;
+    if (decorate == null) return;
+    for (final code in codes) {
+      if (_decorations.containsKey(code)) continue;
+      if (regex != null && !regex.hasMatch(code)) continue;
+      unawaited(_decorateOne(code, decorate));
+    }
+  }
+
+  Future<void> _decorateOne(String code, RefDecorator decorate) async {
+    final decorated = await decorate({'type': widget.refType, 'ref': code});
+    if (!mounted) return;
+    _decorations[code] = decorated;
+    _emit(_controller.text);
+  }
+
+  /// Types [text] at the cursor, same as an ordinary keystroke — used to
+  /// override LoggingControls' panel-wide space-advances-focus shortcut so a
+  /// space can be a literal separator between multiple references in this
+  /// field instead.
+  void _insertAtCursor(String text) {
+    final oldValue = _controller.value;
+    final selection = oldValue.selection;
+    final start = selection.start < 0 ? oldValue.text.length : selection.start;
+    final end = selection.end < 0 ? oldValue.text.length : selection.end;
+    var newValue = oldValue.copyWith(
+      text: oldValue.text.replaceRange(start, end, text),
+      selection: TextSelection.collapsed(offset: start + text.length),
+      composing: TextRange.empty,
+    );
+    newValue = _upperCaseFormatter.formatEditUpdate(oldValue, newValue);
+    if (widget.transforms.isNotEmpty) {
+      newValue = _RefTransformFormatter(widget.transforms).formatEditUpdate(oldValue, newValue);
+    }
+    _controller.value = newValue;
+    _emit(newValue.text);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return CallbackShortcuts(
+      bindings: {
+        const SingleActivator(LogicalKeyboardKey.space): () => _insertAtCursor(' '),
+      },
+      child: TextField(
+        controller: _controller,
+        focusNode: _focus,
+        // Desktop platforms select-all on focus by default, which runs
+        // after our own focus listener above and overwrites its
+        // cursor-at-end placement.
+        selectAllOnFocus: false,
+        decoration: poloFieldDecoration(
+          context,
+          widget.label,
+          hintText: widget.placeholder,
+          labelColor: widget.labelColor,
+        ),
+        textCapitalization: TextCapitalization.characters,
+        inputFormatters: [
+          FilteringTextInputFormatter.allow(RegExp(r'[a-zA-Z0-9\-, ]')),
+          _upperCaseFormatter,
+          if (widget.transforms.isNotEmpty) _RefTransformFormatter(widget.transforms),
+        ],
+        onChanged: _emit,
+      ),
+    );
+  }
+}

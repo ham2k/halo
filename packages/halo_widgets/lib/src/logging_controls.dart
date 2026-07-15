@@ -174,6 +174,17 @@ class LoggingControls extends StatefulWidget {
   /// no "automatic" time to reset back to for a historical record).
   final Qso? editingQso;
 
+  /// A QSON-shaped `{their: {call}, freq?, band?, mode?, refs?}` map to
+  /// prefill a new QSO's fields from — e.g. tapping a spot in the Spots
+  /// Panel. Applied via the same field-population path as `editingQso`
+  /// (`_applyFieldsFromData`), but never switches this widget into editing
+  /// mode: Save still calls `.add`, not `.update`, and a suggestion arriving
+  /// while `editingQso` is already set is ignored rather than overwriting
+  /// that edit. Re-applies whenever a NEW map (by identity, not deep
+  /// equality — same convention as `operation.data['refs']` change
+  /// detection below) is passed in.
+  final Map<String, dynamic>? suggestedQso;
+
   /// Fires when an editing session ends without necessarily going through
   /// `onLogged` — a save of an existing QSO, a delete, or an explicit
   /// revert. The caller (which owns the selected-QSO state) clears its
@@ -278,6 +289,7 @@ class LoggingControls extends StatefulWidget {
     this.onCommandMessageChanged,
     this.onCommandAction,
     this.editingQso,
+    this.suggestedQso,
     this.onEditCanceled,
     this.settings,
     this.radioService,
@@ -494,6 +506,10 @@ class _LoggingControlsState extends State<LoggingControls> {
       _applyFieldsFromData(widget.editingQso!.data);
     } else {
       _seedFromRadioService();
+      // Wins over the generic VFO seed above — a suggestion is specific
+      // operator intent ("log THIS call"), the VFO seed is just ambient
+      // radio state.
+      if (widget.suggestedQso != null) _applySuggestedQso(widget.suggestedQso!);
     }
     _seedTimeFields();
     _updateClockTicker();
@@ -549,13 +565,7 @@ class _LoggingControlsState extends State<LoggingControls> {
   void didUpdateWidget(LoggingControls oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.editingQso?.uuid != widget.editingQso?.uuid) {
-      _pendingDelete = false;
-      _theirNameOverride = null;
-      _gridTouched = false;
-      _stateTouched = false;
-      _undoExpireTimer?.cancel();
-      _undoExpireTimer = null;
-      _undoQsoData = null;
+      _resetEditingSessionState();
       if (widget.editingQso != null) {
         _populateFromEditingQso(widget.editingQso!);
       } else {
@@ -568,13 +578,46 @@ class _LoggingControlsState extends State<LoggingControls> {
       _spotSources = const [];
       _spotStatus.clear();
       _refreshSpotSources();
-    } else if (widget.editingQso == null &&
-        !identical(oldWidget.operation.data['refs'], widget.operation.data['refs'])) {
-      // While composing a new QSO, self-spot eligibility depends on the
-      // operation's own activation refs (not editingQso, which stays null
-      // throughout) — refresh when those refs change too.
+      return;
+    }
+    // Nothing below applies while editing an existing QSO — a suggestion or
+    // a refs change must never clobber an in-progress edit.
+    if (widget.editingQso != null) return;
+
+    // While composing a new QSO, self-spot eligibility depends on the
+    // operation's own activation refs (not editingQso, which stays null
+    // throughout) — refresh when those refs change too.
+    if (!identical(oldWidget.operation.data['refs'], widget.operation.data['refs'])) {
       _refreshSpotSources();
     }
+
+    // A new suggestion (e.g. tapping a different spot) — same reset scope
+    // as the editingQso-change branch above, applied for it instead.
+    // Deliberately independent from the refs check above (not `else if`),
+    // so both can fire in the same call — e.g. an operation-refs change and
+    // a spot tap landing in the same frame would otherwise let one silently
+    // suppress the other.
+    if (widget.suggestedQso != null && !identical(oldWidget.suggestedQso, widget.suggestedQso)) {
+      _resetEditingSessionState();
+      _applySuggestedQso(widget.suggestedQso!);
+      _updateClockTicker();
+      _spotSources = const [];
+      _spotStatus.clear();
+      _refreshSpotSources();
+    }
+  }
+
+  /// Editing-session bookkeeping that must never leak from one QSO context
+  /// into the next — shared by the editingQso-change and suggestedQso-change
+  /// paths in `didUpdateWidget`, which both start a fresh context.
+  void _resetEditingSessionState() {
+    _pendingDelete = false;
+    _theirNameOverride = null;
+    _gridTouched = false;
+    _stateTouched = false;
+    _undoExpireTimer?.cancel();
+    _undoExpireTimer = null;
+    _undoQsoData = null;
   }
 
   /// Which `spots` hooks currently offer self- or other-spotting, for the
@@ -594,6 +637,30 @@ class _LoggingControlsState extends State<LoggingControls> {
     _populating = true;
     _applyFieldsFromData(qso.data);
     _manualStartAtMillis = null; // _effectiveStartAtMillis falls back to editingQso.startAtMillis
+    setState(() {});
+    _populating = false;
+  }
+
+  /// Populates controllers/state from a `suggestedQso` map (e.g. tapping a
+  /// spot) — same wrapping as `_populateFromEditingQso`, for a QSO being
+  /// composed rather than an existing one being edited.
+  ///
+  /// Unlike `editingQso` (a real saved record, where a blank Sent/Rcvd
+  /// faithfully represents stored data), a suggestion composes a NEW QSO —
+  /// `_applyFieldsFromData` unconditionally blanks Sent/Rcvd when the
+  /// suggestion doesn't carry RST (spots never do today), which would
+  /// wipe out the normal new-QSO default RST and — via `_rstsTouched` —
+  /// suppress it from ever coming back on a mode change. If the suggestion
+  /// DID carry RST (`our.sent`/`their.sent` — e.g. a future deeplink), keep
+  /// it, matching `_applyFieldsFromData`'s own behavior for editingQso.
+  void _applySuggestedQso(Map<String, dynamic> data) {
+    _populating = true;
+    _applyFieldsFromData(data);
+    final our = data['our'] as Map<String, dynamic>? ?? const {};
+    final their = data['their'] as Map<String, dynamic>? ?? const {};
+    final hasRst = (our['sent'] as String?)?.isNotEmpty == true || (their['sent'] as String?)?.isNotEmpty == true;
+    if (!hasRst) _applyDefaultRSTs();
+    _manualStartAtMillis = null;
     setState(() {});
     _populating = false;
   }
@@ -1439,21 +1506,23 @@ class _LoggingControlsState extends State<LoggingControls> {
         key: control['key'] as String,
         icon: resolveIconName(control['icon'] as String?),
         summary: (control['label'] as String?) ?? control['key'] as String,
-        expandedBuilder: (context) => RefChipsInput(
-          refType: (control['input'] as Map)['refType'] as String,
-          label: (control['label'] as String?) ?? '',
-          placeholder: (control['input'] as Map)['placeholder'] as String?,
-          pattern: (control['input'] as Map)['pattern'] as String?,
-          transforms: [
-            for (final t in ((control['input'] as Map)['transforms'] as List?) ?? const [])
-              RefTransform.fromMap((t as Map).cast<String, dynamic>()),
-          ],
-          refs: _controlRefs[control['key']] ?? const [],
-          onChanged: (refs) =>
-              setState(() => _controlRefs[control['key'] as String] = refs),
-          decorate: widget.decorateRef,
-          dense: true,
-          labelColor: Theme.of(context).colorScheme.onTertiaryContainer,
+        expandedBuilder: (context) => SizedBox(
+          width: 160,
+          child: RefTextInput(
+            refType: (control['input'] as Map)['refType'] as String,
+            label: (control['label'] as String?) ?? '',
+            placeholder: (control['input'] as Map)['placeholder'] as String?,
+            pattern: (control['input'] as Map)['pattern'] as String?,
+            transforms: [
+              for (final t in ((control['input'] as Map)['transforms'] as List?) ?? const [])
+                RefTransform.fromMap((t as Map).cast<String, dynamic>()),
+            ],
+            refs: _controlRefs[control['key']] ?? const [],
+            onChanged: (refs) =>
+                setState(() => _controlRefs[control['key'] as String] = refs),
+            decorate: widget.decorateRef,
+            labelColor: Theme.of(context).colorScheme.onTertiaryContainer,
+          ),
         ),
       );
 
@@ -1520,9 +1589,9 @@ class _LoggingControlsState extends State<LoggingControls> {
       _advancePrimaryFocus();
     }
     // Space is inert in any other field with no override of its own. Ref
-    // chip inputs (RefChipsInput) are the one exception — they bind Space
-    // locally to type a literal separator instead, taking priority over
-    // this panel-wide shortcut.
+    // inputs (RefTextInput, RefChipsInput) are the one exception — they bind
+    // Space locally to type a literal separator instead, taking priority
+    // over this panel-wide shortcut.
   }
 
   /// Space cycles through whichever primary exchange fields are currently

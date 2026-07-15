@@ -40,6 +40,7 @@ void main() {
     CommandActionHandler? onCommandAction,
     VfoStore? radioService,
     Qso? editingQso,
+    Map<String, dynamic>? suggestedQso,
     SuggestSpotSources? suggestSpotSources,
     SendSpot? sendSpot,
   }) {
@@ -54,6 +55,7 @@ void main() {
           onCommandAction: onCommandAction,
           radioService: radioService,
           editingQso: editingQso,
+          suggestedQso: suggestedQso,
           suggestSpotSources: suggestSpotSources,
           sendSpot: sendSpot,
           spottingControlLabel: 'Spotting',
@@ -748,9 +750,7 @@ void main() {
     await openControl(tester, MdiIcons.pineTree);
 
     await tester.enterText(find.widgetWithText(TextField, 'POTA'), 'US-1234');
-    await tester.testTextInput.receiveAction(TextInputAction.done);
     await tester.pump();
-    expect(find.widgetWithText(InputChip, 'US-1234'), findsOneWidget);
 
     await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'W1AW');
     await tester.pump();
@@ -761,8 +761,45 @@ void main() {
       {'type': 'pota', 'ref': 'US-1234'},
     ]);
 
-    // Wipe cleared the control's chips too.
-    expect(find.byType(InputChip), findsNothing);
+    // Wipe cleared the control's field too.
+    await openControl(tester, MdiIcons.pineTree);
+    final potaField = tester.widget<TextField>(find.widgetWithText(TextField, 'POTA'));
+    expect(potaField.controller?.text, '');
+  });
+
+  testWidgets('activity refList control accepts a comma-separated list of references', (tester) async {
+    const controls = [
+      {
+        'key': 'pota/hunter',
+        'label': 'POTA',
+        'icon': 'pine-tree',
+        'input': {'kind': 'refList', 'refType': 'pota', 'placeholder': 'US-1234', 'pattern': r'[A-Z0-9]+-[0-9]{4,5}'},
+      },
+    ];
+
+    await tester.pumpWidget(MaterialApp(
+      home: Scaffold(
+        body: LoggingControls(
+          operation: operation,
+          qsosRepository: qsos,
+          activityControls: controls,
+        ),
+      ),
+    ));
+    await openControl(tester, MdiIcons.pineTree);
+
+    await tester.enterText(find.widgetWithText(TextField, 'POTA'), 'US-1234, US-5678');
+    await tester.pump();
+
+    await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'W1AW');
+    await tester.pump();
+    await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+
+    final logged = await waitForQsos(tester, 1);
+    expect(logged.single.refs, [
+      {'type': 'pota', 'ref': 'US-1234'},
+      {'type': 'pota', 'ref': 'US-5678'},
+    ]);
   });
 
   testWidgets('space advances focus call → sent → rcvd → call', (tester) async {
@@ -1207,6 +1244,52 @@ void main() {
 
     final freqField = tester.widget<TextField>(find.widgetWithText(TextField, 'Frequency'));
     expect(freqField.controller!.text, '7100');
+  });
+
+  testWidgets('a suggestedQso populates call/freq/band/mode for a new QSO', (tester) async {
+    await tester.pumpWidget(host(suggestedQso: {
+      'their': {'call': 'W1AW'},
+      'freq': 14074.0,
+      'mode': 'FT8',
+    }));
+
+    expect(tester.widget<TextField>(find.widgetWithText(TextField, 'Their call')).controller!.text, 'W1AW');
+
+    await openControl(tester, MdiIcons.radio);
+    expect(tester.widget<TextField>(find.widgetWithText(TextField, 'Frequency')).controller!.text, '14074');
+    expect(find.text('20m'), findsWidgets);
+  });
+
+  testWidgets('a suggestedQso is ignored while editingQso is set — it never clobbers an in-progress edit', (tester) async {
+    final existingQso = Qso(
+      uuid: 'existing-uuid',
+      operationUuid: operation.uuid,
+      data: {
+        'their': {'call': 'W1AW'},
+        'freq': 7100,
+      },
+    );
+
+    await tester.pumpWidget(host(editingQso: existingQso, suggestedQso: {
+      'their': {'call': 'K1ABC'},
+      'freq': 14074.0,
+    }));
+
+    expect(tester.widget<TextField>(find.widgetWithText(TextField, 'Their call')).controller!.text, 'W1AW');
+  });
+
+  testWidgets('a new suggestedQso (different Map instance) re-applies over the previous one', (tester) async {
+    await tester.pumpWidget(host(suggestedQso: {
+      'their': {'call': 'W1AW'},
+      'freq': 14074.0,
+    }));
+    expect(tester.widget<TextField>(find.widgetWithText(TextField, 'Their call')).controller!.text, 'W1AW');
+
+    await tester.pumpWidget(host(suggestedQso: {
+      'their': {'call': 'K1ABC'},
+      'freq': 7100.0,
+    }));
+    expect(tester.widget<TextField>(find.widgetWithText(TextField, 'Their call')).controller!.text, 'K1ABC');
   });
 
   testWidgets('editing an existing QSO applies Radio control changes to the QSO, not the VFO', (tester) async {

@@ -18,7 +18,11 @@ class BandInfo {
 /// Generous (region-agnostic) band edges; validation against a specific
 /// band plan is plugin territory.
 const List<BandInfo> bands = [
-  BandInfo('2200m', 135.7, 137.8),
+  // Named '2190m' (not the more common '2200m') to match the extension
+  // runtime's own band table (@ham2k/lib-operation-data's bandForFrequency)
+  // — spot/QSO band strings are compared for exact equality against this
+  // list, so the two must agree.
+  BandInfo('2190m', 135.7, 137.8),
   BandInfo('630m', 472, 479),
   BandInfo('160m', 1800, 2000),
   BandInfo('80m', 3500, 4000),

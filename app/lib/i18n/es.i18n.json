@@ -4,7 +4,8 @@
     "cancel": "Cancelar",
     "delete": "Eliminar",
     "create": "Crear",
-    "error": "Error"
+    "error": "Error",
+    "apply": "Aplicar"
   },
   "home": {
     "title": "Registrador Portátil",
@@ -27,7 +28,6 @@
       "map": "MAPA",
       "operation": "OPERACIÓN"
     },
-    "comingSoon": "${label} — próximamente",
     "noActivities": "No hay actividades disponibles (¿el motor de extensiones aún está iniciando?)",
     "sections": {
       "stationOperator": "Estación y operador",
@@ -61,6 +61,43 @@
       "share": "Compartir",
       "saveSuccess": "Guardado en ${path}",
       "exportFailed": "Exportación fallida: ${error}"
+    },
+    "spots": {
+      "empty": "Ningún spot coincide con tus filtros",
+      "error": "No se pudieron cargar los spots: ${error}",
+      "unknownBand": "Otras",
+      "auto": "Auto",
+      "autoValue": "Auto (${value})",
+      "any": "Cualquiera",
+      "allBands": "Todas las bandas",
+      "allModes": "Todos los modos",
+      "notDigital": "No digital",
+      "spotsCount": "${count} spots",
+      "spotsCountFiltered": "Mostrando ${count} de ${total} spots",
+      "ageMinutes": "${minutes} minutos",
+      "mostRecentSpots": "Spots más recientes",
+      "callsOfNote": "Indicativos destacados",
+      "continents": {
+        "af": "África",
+        "as": "Asia",
+        "eu": "Europa",
+        "na": "Norteamérica",
+        "oc": "Oceanía",
+        "sa": "Sudamérica",
+        "an": "Antártida"
+      },
+      "filters": {
+        "title": "Filtrar spots",
+        "band": "Banda",
+        "mode": "Modo",
+        "age": "Antigüedad",
+        "sources": "Fuentes",
+        "continent": "Continente",
+        "sorting": "Orden",
+        "sortByTime": "Por hora del spot",
+        "sortByFrequency": "Por frecuencia",
+        "groupCallsWithNotes": "Agrupar indicativos destacados"
+      }
     }
   },
   "activitiesView": {

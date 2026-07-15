@@ -76,37 +76,54 @@ class ExtensionService {
     }
   }
 
-  /// Every export option offered by every `export` hook (Exports Panel,
-  /// ham2k/app-halo-dist#4), each tagged with `hookKey` — the hook's own
-  /// registration key — so a later `generateExport` call can be routed back
-  /// to the hook that offered it. Hooks that don't implement
-  /// `suggestExportOptions` are silently absent from the list.
-  Future<List<Map<String, dynamic>>> getExportOptions(Map<String, dynamic> args) async {
+  /// Fans a call out to every hook in `category` via `invokeHookAll`,
+  /// flattens each hook's returned list, and tags every item with
+  /// `hookKey` — the hook's own registration key — so a later call can be
+  /// routed back to the hook that offered it. Hooks that don't implement
+  /// `method`, or whose call fails, are silently absent from the result
+  /// (a failing source never poisons the others). Shared by `getExportOptions`
+  /// and `getSpots`, which otherwise just differ by category/method/args.
+  Future<List<Map<String, dynamic>>> _collectHookResults(
+    String category, {
+    required String method,
+    required Object? args,
+    required String debugLabel,
+  }) async {
     final host = _host;
     if (host == null) return const [];
     try {
       final entries = await host.invokeHookAll(
-        'export',
-        method: 'suggestExportOptions',
+        category,
+        method: method,
         args: args,
         timeout: const Duration(seconds: 10),
       );
-      final options = <Map<String, dynamic>>[];
+      final results = <Map<String, dynamic>>[];
       for (final entry in entries) {
         if (entry['ok'] != true || entry['value'] is! List) continue;
         final hookKey = entry['key'] as String?;
-        for (final option in (entry['value'] as List)) {
-          if (option is Map) {
-            options.add({...option.cast<String, dynamic>(), 'hookKey': hookKey});
+        for (final item in (entry['value'] as List)) {
+          if (item is Map) {
+            results.add({...item.cast<String, dynamic>(), 'hookKey': hookKey});
           }
         }
       }
-      return options;
+      return results;
     } catch (e) {
-      debugPrint('[extensions] getExportOptions failed: $e');
+      debugPrint('[extensions] $debugLabel failed: $e');
       return const [];
     }
   }
+
+  /// Every export option offered by every `export` hook (Exports Panel,
+  /// ham2k/app-halo-dist#4). Hooks that don't implement
+  /// `suggestExportOptions` are silently absent from the list.
+  Future<List<Map<String, dynamic>>> getExportOptions(Map<String, dynamic> args) => _collectHookResults(
+        'export',
+        method: 'suggestExportOptions',
+        args: args,
+        debugLabel: 'getExportOptions',
+      );
 
   /// Every `spots` hook currently willing to post a spot (Spotting control,
   /// ham2k/app-halo-dist#10), each tagged with `hookKey` so a later
@@ -135,6 +152,36 @@ class ExtensionService {
     } catch (e) {
       debugPrint('[extensions] suggestSpotSources failed: $e');
       return const [];
+    }
+  }
+
+  /// Every spot offered by every `spots` hook (Spots Panel,
+  /// ham2k/app-halo-dist#9), each tagged with `hookKey` so the panel can
+  /// group/filter by source.
+  Future<List<Map<String, dynamic>>> getSpots() => _collectHookResults(
+        'spots',
+        method: 'fetchSpots',
+        args: const {},
+        debugLabel: 'getSpots',
+      );
+
+  /// `{hookKey: sourceName}` for every `spots` hook, for the Spots Panel's
+  /// source filter labels (e.g. `pota` -> "POTA.app"). `sourceName` is a
+  /// plain data member on each hook, not a method — `invokeHookAll` returns
+  /// it directly without an args/ctx round-trip, same as any other field
+  /// access through the hook-call bridge.
+  Future<Map<String, String>> getSpotSourceNames() async {
+    final host = _host;
+    if (host == null) return const {};
+    try {
+      final entries = await host.invokeHookAll('spots', method: 'sourceName', timeout: const Duration(seconds: 5));
+      return {
+        for (final entry in entries)
+          if (entry['ok'] == true && entry['value'] is String) entry['key'] as String: entry['value'] as String,
+      };
+    } catch (e) {
+      debugPrint('[extensions] getSpotSourceNames failed: $e');
+      return const {};
     }
   }
 

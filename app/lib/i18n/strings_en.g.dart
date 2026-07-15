@@ -75,6 +75,9 @@ class Translations$common$en {
 
 	/// en: 'Error'
 	String get error => 'Error';
+
+	/// en: 'Apply'
+	String get apply => 'Apply';
 }
 
 // Path: home
@@ -134,9 +137,6 @@ class Translations$operation$en {
 	// Translations
 	late final Translations$operation$tabs$en tabs = Translations$operation$tabs$en.internal(_root);
 
-	/// en: '${label} — coming soon'
-	String comingSoon({required Object label}) => '${label} — coming soon';
-
 	/// en: 'No activities available (extension runtime still starting?)'
 	String get noActivities => 'No activities available (extension runtime still starting?)';
 
@@ -159,6 +159,7 @@ class Translations$operation$en {
 
 	late final Translations$operation$menu$en menu = Translations$operation$menu$en.internal(_root);
 	late final Translations$operation$export$en export = Translations$operation$export$en.internal(_root);
+	late final Translations$operation$spots$en spots = Translations$operation$spots$en.internal(_root);
 }
 
 // Path: activitiesView
@@ -589,6 +590,60 @@ class Translations$operation$export$en {
 	String exportFailed({required Object error}) => 'Export failed: ${error}';
 }
 
+// Path: operation.spots
+class Translations$operation$spots$en {
+	Translations$operation$spots$en.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'No spots match your filters'
+	String get empty => 'No spots match your filters';
+
+	/// en: 'Failed to load spots: ${error}'
+	String error({required Object error}) => 'Failed to load spots: ${error}';
+
+	/// en: 'Other'
+	String get unknownBand => 'Other';
+
+	/// en: 'Auto'
+	String get auto => 'Auto';
+
+	/// en: 'Auto (${value})'
+	String autoValue({required Object value}) => 'Auto (${value})';
+
+	/// en: 'Any'
+	String get any => 'Any';
+
+	/// en: 'All Bands'
+	String get allBands => 'All Bands';
+
+	/// en: 'All Modes'
+	String get allModes => 'All Modes';
+
+	/// en: 'Not digital'
+	String get notDigital => 'Not digital';
+
+	/// en: '${count} spots'
+	String spotsCount({required Object count}) => '${count} spots';
+
+	/// en: 'Showing ${count} of ${total} spots'
+	String spotsCountFiltered({required Object count, required Object total}) => 'Showing ${count} of ${total} spots';
+
+	/// en: '${minutes} minutes'
+	String ageMinutes({required Object minutes}) => '${minutes} minutes';
+
+	/// en: 'Most Recent Spots'
+	String get mostRecentSpots => 'Most Recent Spots';
+
+	/// en: 'Calls of Note'
+	String get callsOfNote => 'Calls of Note';
+
+	late final Translations$operation$spots$continents$en continents = Translations$operation$spots$continents$en.internal(_root);
+	late final Translations$operation$spots$filters$en filters = Translations$operation$spots$filters$en.internal(_root);
+}
+
 // Path: settings.theme
 class Translations$settings$theme$en {
 	Translations$settings$theme$en.internal(this._root);
@@ -688,6 +743,75 @@ class Translations$settings$qrz$en {
 	String get password => 'Password';
 }
 
+// Path: operation.spots.continents
+class Translations$operation$spots$continents$en {
+	Translations$operation$spots$continents$en.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Africa'
+	String get af => 'Africa';
+
+	/// en: 'Asia'
+	String get as => 'Asia';
+
+	/// en: 'Europe'
+	String get eu => 'Europe';
+
+	/// en: 'North America'
+	String get na => 'North America';
+
+	/// en: 'Oceania'
+	String get oc => 'Oceania';
+
+	/// en: 'South America'
+	String get sa => 'South America';
+
+	/// en: 'Antarctica'
+	String get an => 'Antarctica';
+}
+
+// Path: operation.spots.filters
+class Translations$operation$spots$filters$en {
+	Translations$operation$spots$filters$en.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Filter Spots'
+	String get title => 'Filter Spots';
+
+	/// en: 'Band'
+	String get band => 'Band';
+
+	/// en: 'Mode'
+	String get mode => 'Mode';
+
+	/// en: 'Age'
+	String get age => 'Age';
+
+	/// en: 'Sources'
+	String get sources => 'Sources';
+
+	/// en: 'Continent'
+	String get continent => 'Continent';
+
+	/// en: 'Sorting'
+	String get sorting => 'Sorting';
+
+	/// en: 'By Spot Time'
+	String get sortByTime => 'By Spot Time';
+
+	/// en: 'By Frequency'
+	String get sortByFrequency => 'By Frequency';
+
+	/// en: 'Group Calls with Notes'
+	String get groupCallsWithNotes => 'Group Calls with Notes';
+}
+
 /// The flat map containing all translations for locale <en>.
 /// Only for edge cases! For simple maps, use the map function of this library.
 ///
@@ -701,6 +825,7 @@ extension on Translations {
 			'common.delete' => 'Delete',
 			'common.create' => 'Create',
 			'common.error' => 'Error',
+			'common.apply' => 'Apply',
 			'home.title' => 'Portable Logger',
 			'home.titleDesktop' => 'Desktop Logger',
 			'home.newOperation' => 'New operation',
@@ -715,7 +840,6 @@ extension on Translations {
 			'operation.tabs.spots' => 'SPOTS',
 			'operation.tabs.map' => 'MAP',
 			'operation.tabs.operation' => 'OPERATION',
-			'operation.comingSoon' => ({required Object label}) => '${label} — coming soon',
 			'operation.noActivities' => 'No activities available (extension runtime still starting?)',
 			'operation.sections.stationOperator' => 'Station & operator',
 			'operation.sections.activities' => 'Activities',
@@ -744,6 +868,37 @@ extension on Translations {
 			'operation.export.share' => 'Share',
 			'operation.export.saveSuccess' => ({required Object path}) => 'Saved to ${path}',
 			'operation.export.exportFailed' => ({required Object error}) => 'Export failed: ${error}',
+			'operation.spots.empty' => 'No spots match your filters',
+			'operation.spots.error' => ({required Object error}) => 'Failed to load spots: ${error}',
+			'operation.spots.unknownBand' => 'Other',
+			'operation.spots.auto' => 'Auto',
+			'operation.spots.autoValue' => ({required Object value}) => 'Auto (${value})',
+			'operation.spots.any' => 'Any',
+			'operation.spots.allBands' => 'All Bands',
+			'operation.spots.allModes' => 'All Modes',
+			'operation.spots.notDigital' => 'Not digital',
+			'operation.spots.spotsCount' => ({required Object count}) => '${count} spots',
+			'operation.spots.spotsCountFiltered' => ({required Object count, required Object total}) => 'Showing ${count} of ${total} spots',
+			'operation.spots.ageMinutes' => ({required Object minutes}) => '${minutes} minutes',
+			'operation.spots.mostRecentSpots' => 'Most Recent Spots',
+			'operation.spots.callsOfNote' => 'Calls of Note',
+			'operation.spots.continents.af' => 'Africa',
+			'operation.spots.continents.as' => 'Asia',
+			'operation.spots.continents.eu' => 'Europe',
+			'operation.spots.continents.na' => 'North America',
+			'operation.spots.continents.oc' => 'Oceania',
+			'operation.spots.continents.sa' => 'South America',
+			'operation.spots.continents.an' => 'Antarctica',
+			'operation.spots.filters.title' => 'Filter Spots',
+			'operation.spots.filters.band' => 'Band',
+			'operation.spots.filters.mode' => 'Mode',
+			'operation.spots.filters.age' => 'Age',
+			'operation.spots.filters.sources' => 'Sources',
+			'operation.spots.filters.continent' => 'Continent',
+			'operation.spots.filters.sorting' => 'Sorting',
+			'operation.spots.filters.sortByTime' => 'By Spot Time',
+			'operation.spots.filters.sortByFrequency' => 'By Frequency',
+			'operation.spots.filters.groupCallsWithNotes' => 'Group Calls with Notes',
 			'activitiesView.title' => 'Activities',
 			'activitiesView.activitiesCountZero' => 'No Current Activities',
 			'activitiesView.activitiesCountOne' => 'One Current Activity',

@@ -38,6 +38,7 @@ class SettingsService extends ChangeNotifier implements SyncSettings {
   static const _showGridFieldKey = 'showGridField';
   static const _showDeletedQSOsKey = 'showDeletedQSOs';
   static const _showQsoNumbersKey = 'showQsoNumbers';
+  static const _spottingFiltersKey = 'spottingFilters';
 
   final SharedPreferences _prefs;
 
@@ -145,6 +146,24 @@ class SettingsService extends ChangeNotifier implements SyncSettings {
 
   Future<void> setSyncState(Map<String, dynamic> state) async {
     await _prefs.setString(_syncStateKey, jsonEncode(state));
+    notifyListeners();
+  }
+
+  /// The Spots Panel's persisted band/mode/age/sources/continents/sort/
+  /// group filters — device-wide, like [syncState], for the same reason:
+  /// a handful of viewing-preference scalars, not per-row data.
+  Map<String, dynamic> get spottingFilters {
+    final raw = _prefs.getString(_spottingFiltersKey);
+    if (raw == null || raw.isEmpty) return const {};
+    try {
+      return (jsonDecode(raw) as Map).cast<String, dynamic>();
+    } catch (_) {
+      return const {};
+    }
+  }
+
+  Future<void> setSpottingFilters(Map<String, dynamic> filters) async {
+    await _prefs.setString(_spottingFiltersKey, jsonEncode(filters));
     notifyListeners();
   }
 

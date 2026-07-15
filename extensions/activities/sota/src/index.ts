@@ -27,6 +27,7 @@ import type {
   LookupRow,
 } from "@ham2k/halo-extension-sdk"
 import { REFERENCE_REGEX, TRANSFORMS } from "./refFormatting.ts"
+import { summitGlyphFromDetails } from "./summitGlyph.ts"
 
 export { REFERENCE_REGEX, TRANSFORMS } from "./refFormatting.ts"
 
@@ -381,6 +382,7 @@ const SpotsHook = {
       const freqMHz = parseFloat(spot.frequency)
       const freq = freqMHz ? freqMHz * 1000 : 0
       const ref = `${spot.associationCode}/${spot.summitCode}`.toUpperCase()
+      const pointsGlyph = summitGlyphFromDetails(spot.summitDetails)
       return {
         their: { call: spot.activatorCallsign },
         freq: freq || undefined,
@@ -391,7 +393,7 @@ const SpotsHook = {
           timeInMillis: Date.parse(spot.timeStamp.endsWith('Z') ? spot.timeStamp : spot.timeStamp + 'Z'),
           source: 'sota',
           icon: 'image-filter-hdr',
-          label: `${ref}: ${spot.summitDetails}`,
+          label: `${pointsGlyph ? pointsGlyph + ' ' : ''}${ref}: ${spot.summitDetails}`,
           sourceInfo: {
             id: spot.id,
             comments: spot.comments ?? '',

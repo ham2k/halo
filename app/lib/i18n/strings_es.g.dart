@@ -64,6 +64,7 @@ class _Translations$common$es extends Translations$common$en {
 	@override String get delete => 'Eliminar';
 	@override String get create => 'Crear';
 	@override String get error => 'Error';
+	@override String get apply => 'Aplicar';
 }
 
 // Path: home
@@ -102,7 +103,6 @@ class _Translations$operation$es extends Translations$operation$en {
 
 	// Translations
 	@override late final _Translations$operation$tabs$es tabs = _Translations$operation$tabs$es._(_root);
-	@override String comingSoon({required Object label}) => '${label} — próximamente';
 	@override String get noActivities => 'No hay actividades disponibles (¿el motor de extensiones aún está iniciando?)';
 	@override late final _Translations$operation$sections$es sections = _Translations$operation$sections$es._(_root);
 	@override String get stationCallsignNone => 'Sin indicativo de estación';
@@ -112,6 +112,7 @@ class _Translations$operation$es extends Translations$operation$en {
 	@override String get locationNone => 'Sin definir';
 	@override late final _Translations$operation$menu$es menu = _Translations$operation$menu$es._(_root);
 	@override late final _Translations$operation$export$es export = _Translations$operation$export$es._(_root);
+	@override late final _Translations$operation$spots$es spots = _Translations$operation$spots$es._(_root);
 }
 
 // Path: activitiesView
@@ -325,6 +326,31 @@ class _Translations$operation$export$es extends Translations$operation$export$en
 	@override String exportFailed({required Object error}) => 'Exportación fallida: ${error}';
 }
 
+// Path: operation.spots
+class _Translations$operation$spots$es extends Translations$operation$spots$en {
+	_Translations$operation$spots$es._(TranslationsEs root) : this._root = root, super.internal(root);
+
+	final TranslationsEs _root; // ignore: unused_field
+
+	// Translations
+	@override String get empty => 'Ningún spot coincide con tus filtros';
+	@override String error({required Object error}) => 'No se pudieron cargar los spots: ${error}';
+	@override String get unknownBand => 'Otras';
+	@override String get auto => 'Auto';
+	@override String autoValue({required Object value}) => 'Auto (${value})';
+	@override String get any => 'Cualquiera';
+	@override String get allBands => 'Todas las bandas';
+	@override String get allModes => 'Todos los modos';
+	@override String get notDigital => 'No digital';
+	@override String spotsCount({required Object count}) => '${count} spots';
+	@override String spotsCountFiltered({required Object count, required Object total}) => 'Mostrando ${count} de ${total} spots';
+	@override String ageMinutes({required Object minutes}) => '${minutes} minutos';
+	@override String get mostRecentSpots => 'Spots más recientes';
+	@override String get callsOfNote => 'Indicativos destacados';
+	@override late final _Translations$operation$spots$continents$es continents = _Translations$operation$spots$continents$es._(_root);
+	@override late final _Translations$operation$spots$filters$es filters = _Translations$operation$spots$filters$es._(_root);
+}
+
 // Path: settings.theme
 class _Translations$settings$theme$es extends Translations$settings$theme$en {
 	_Translations$settings$theme$es._(TranslationsEs root) : this._root = root, super.internal(root);
@@ -388,6 +414,41 @@ class _Translations$settings$qrz$es extends Translations$settings$qrz$en {
 	@override String get password => 'Contraseña';
 }
 
+// Path: operation.spots.continents
+class _Translations$operation$spots$continents$es extends Translations$operation$spots$continents$en {
+	_Translations$operation$spots$continents$es._(TranslationsEs root) : this._root = root, super.internal(root);
+
+	final TranslationsEs _root; // ignore: unused_field
+
+	// Translations
+	@override String get af => 'África';
+	@override String get as => 'Asia';
+	@override String get eu => 'Europa';
+	@override String get na => 'Norteamérica';
+	@override String get oc => 'Oceanía';
+	@override String get sa => 'Sudamérica';
+	@override String get an => 'Antártida';
+}
+
+// Path: operation.spots.filters
+class _Translations$operation$spots$filters$es extends Translations$operation$spots$filters$en {
+	_Translations$operation$spots$filters$es._(TranslationsEs root) : this._root = root, super.internal(root);
+
+	final TranslationsEs _root; // ignore: unused_field
+
+	// Translations
+	@override String get title => 'Filtrar spots';
+	@override String get band => 'Banda';
+	@override String get mode => 'Modo';
+	@override String get age => 'Antigüedad';
+	@override String get sources => 'Fuentes';
+	@override String get continent => 'Continente';
+	@override String get sorting => 'Orden';
+	@override String get sortByTime => 'Por hora del spot';
+	@override String get sortByFrequency => 'Por frecuencia';
+	@override String get groupCallsWithNotes => 'Agrupar indicativos destacados';
+}
+
 /// The flat map containing all translations for locale <es>.
 /// Only for edge cases! For simple maps, use the map function of this library.
 ///
@@ -401,6 +462,7 @@ extension on TranslationsEs {
 			'common.delete' => 'Eliminar',
 			'common.create' => 'Crear',
 			'common.error' => 'Error',
+			'common.apply' => 'Aplicar',
 			'home.title' => 'Registrador Portátil',
 			'home.titleDesktop' => 'Registrador de Escritorio',
 			'home.newOperation' => 'Nueva operación',
@@ -415,7 +477,6 @@ extension on TranslationsEs {
 			'operation.tabs.spots' => 'SPOTS',
 			'operation.tabs.map' => 'MAPA',
 			'operation.tabs.operation' => 'OPERACIÓN',
-			'operation.comingSoon' => ({required Object label}) => '${label} — próximamente',
 			'operation.noActivities' => 'No hay actividades disponibles (¿el motor de extensiones aún está iniciando?)',
 			'operation.sections.stationOperator' => 'Estación y operador',
 			'operation.sections.activities' => 'Actividades',
@@ -444,6 +505,37 @@ extension on TranslationsEs {
 			'operation.export.share' => 'Compartir',
 			'operation.export.saveSuccess' => ({required Object path}) => 'Guardado en ${path}',
 			'operation.export.exportFailed' => ({required Object error}) => 'Exportación fallida: ${error}',
+			'operation.spots.empty' => 'Ningún spot coincide con tus filtros',
+			'operation.spots.error' => ({required Object error}) => 'No se pudieron cargar los spots: ${error}',
+			'operation.spots.unknownBand' => 'Otras',
+			'operation.spots.auto' => 'Auto',
+			'operation.spots.autoValue' => ({required Object value}) => 'Auto (${value})',
+			'operation.spots.any' => 'Cualquiera',
+			'operation.spots.allBands' => 'Todas las bandas',
+			'operation.spots.allModes' => 'Todos los modos',
+			'operation.spots.notDigital' => 'No digital',
+			'operation.spots.spotsCount' => ({required Object count}) => '${count} spots',
+			'operation.spots.spotsCountFiltered' => ({required Object count, required Object total}) => 'Mostrando ${count} de ${total} spots',
+			'operation.spots.ageMinutes' => ({required Object minutes}) => '${minutes} minutos',
+			'operation.spots.mostRecentSpots' => 'Spots más recientes',
+			'operation.spots.callsOfNote' => 'Indicativos destacados',
+			'operation.spots.continents.af' => 'África',
+			'operation.spots.continents.as' => 'Asia',
+			'operation.spots.continents.eu' => 'Europa',
+			'operation.spots.continents.na' => 'Norteamérica',
+			'operation.spots.continents.oc' => 'Oceanía',
+			'operation.spots.continents.sa' => 'Sudamérica',
+			'operation.spots.continents.an' => 'Antártida',
+			'operation.spots.filters.title' => 'Filtrar spots',
+			'operation.spots.filters.band' => 'Banda',
+			'operation.spots.filters.mode' => 'Modo',
+			'operation.spots.filters.age' => 'Antigüedad',
+			'operation.spots.filters.sources' => 'Fuentes',
+			'operation.spots.filters.continent' => 'Continente',
+			'operation.spots.filters.sorting' => 'Orden',
+			'operation.spots.filters.sortByTime' => 'Por hora del spot',
+			'operation.spots.filters.sortByFrequency' => 'Por frecuencia',
+			'operation.spots.filters.groupCallsWithNotes' => 'Agrupar indicativos destacados',
 			'activitiesView.title' => 'Actividades',
 			'activitiesView.activitiesCountZero' => 'Sin actividades actuales',
 			'activitiesView.activitiesCountOne' => 'Una actividad actual',
