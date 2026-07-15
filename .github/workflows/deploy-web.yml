@@ -55,6 +55,12 @@ jobs:
           npm ci
           npm run build
 
+      # lib/config/mapbox_token.dart is gitignored; the blank template is a
+      # supported configuration (the Map tab falls back to OpenStreetMap, and
+      # the web build never uses Mapbox). Same fallback as scripts/test.sh.
+      - name: Use blank Mapbox token template
+        run: cp app/lib/config/mapbox_token.dart.example app/lib/config/mapbox_token.dart
+
       - name: Build Flutter web app
         run: |
           cd app
