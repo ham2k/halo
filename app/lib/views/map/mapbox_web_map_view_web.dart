@@ -1,0 +1,138 @@
+// Copyright ©️ 2026 Sebastian Delmont <sd@ham2k.com>
+// SPDX-License-Identifier: MPL-2.0
+//
+// Mapbox backend for Flutter web: the app is already running in a browser,
+// so instead of a webview (see DESIGN.md §11) this mounts a plain div as an
+// HtmlElementView, loads Mapbox GL JS with a <script> tag once, and drives
+// the shared map script (map_gl_script.dart — same markers/lines/popups as
+// the desktop webview backend) directly through js_interop. Globe
+// projection works, since that's a Mapbox GL JS feature.
+
+import 'dart:async';
+import 'dart:convert';
+import 'dart:js_interop';
+import 'dart:js_interop_unsafe';
+import 'dart:ui_web' as ui_web;
+
+import 'package:flutter/foundation.dart';
+import 'package:flutter/widgets.dart';
+import 'package:web/web.dart' as web;
+
+import '../../config/mapbox_token.dart';
+import 'map_gl_script.dart';
+import 'map_marker_data.dart';
+
+const _mapboxGlVersion = 'v3.9.0';
+
+/// Loads mapbox-gl.js/.css and injects the shared map script, once per page.
+Future<void>? _glLoading;
+
+Future<void> _ensureGlLoaded() {
+  return _glLoading ??= () async {
+    final head = web.document.head!;
+
+    head.append(web.HTMLLinkElement()
+      ..rel = 'stylesheet'
+      ..href = 'https://api.mapbox.com/mapbox-gl-js/$_mapboxGlVersion/mapbox-gl.css');
+    // Popup styling the webview backend gets from its own page's <style>.
+    head.append(web.HTMLStyleElement()
+      ..textContent = '.mapboxgl-popup-content { padding: 6px 10px; border-radius: 8px; }');
+
+    final script = web.HTMLScriptElement()
+      ..src = 'https://api.mapbox.com/mapbox-gl-js/$_mapboxGlVersion/mapbox-gl.js';
+    final loaded = Completer<void>();
+    script.addEventListener(
+        'load', ((web.Event _) => loaded.complete()).toJS);
+    script.addEventListener(
+        'error', ((web.Event _) => loaded.completeError(StateError('mapbox-gl.js failed to load'))).toJS);
+    head.append(script);
+    await loaded.future;
+
+    head.append(web.HTMLScriptElement()..textContent = mapGlScript);
+  }();
+}
+
+class MapboxWebMapView extends StatefulWidget {
+  final List<MapMarkerData> markers;
+  final List<MapLineData> lines;
+  final MapProjection projection;
+
+  const MapboxWebMapView({super.key, required this.markers, this.lines = const [], required this.projection});
+
+  @override
+  State<MapboxWebMapView> createState() => _MapboxWebMapViewState();
+}
+
+class _MapboxWebMapViewState extends State<MapboxWebMapView> {
+  static int _instanceCounter = 0;
+
+  /// Each State registers its own factory so the div (and the map handle
+  /// created on it) is per-instance — platform view factories are global
+  /// and can't be unregistered.
+  late final String _viewType = 'polo-mapbox-web-map-${_instanceCounter++}';
+
+  web.HTMLDivElement? _container;
+  JSObject? _handle;
+
+  @override
+  void initState() {
+    super.initState();
+    ui_web.platformViewRegistry.registerViewFactory(_viewType, (int viewId) {
+      final div = web.HTMLDivElement();
+      div.style
+        ..width = '100%'
+        ..height = '100%';
+      _container = div;
+      unawaited(_createMap());
+      return div;
+    });
+  }
+
+  Future<void> _createMap() async {
+    await _ensureGlLoaded();
+    if (!mounted || _container == null || _handle != null) return;
+    final gl = web.window.getProperty<JSObject>('poloMapGl'.toJS);
+    _handle = gl.callMethod<JSObject>('create'.toJS, _container!, mapboxAccessToken.toJS);
+    _applyProjection();
+    // Defer the data (and its camera fit) one frame so the div has been
+    // attached and laid out — fitBounds on a still-zero-sized container
+    // computes a nonsense camera. The shared script's ResizeObserver keeps
+    // the canvas itself tracking the layout after that.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      _applyMarkers();
+      _applyLines();
+    });
+  }
+
+  @override
+  void didUpdateWidget(MapboxWebMapView oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (_handle == null) return;
+    if (oldWidget.projection != widget.projection) _applyProjection();
+    if (!listEquals(oldWidget.markers, widget.markers)) _applyMarkers();
+    if (!listEquals(oldWidget.lines, widget.lines)) _applyLines();
+  }
+
+  void _applyProjection() {
+    _handle?.callMethod('setProjection'.toJS, widget.projection.name.toJS);
+  }
+
+  void _applyMarkers() {
+    _handle?.callMethod('setMarkersJson'.toJS, jsonEncode(mapMarkersPayload(widget.markers)).toJS);
+  }
+
+  void _applyLines() {
+    _handle?.callMethod('setLinesJson'.toJS, jsonEncode(mapLinesPayload(widget.lines)).toJS);
+  }
+
+  @override
+  void dispose() {
+    _handle?.callMethod('remove'.toJS);
+    _handle = null;
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => HtmlElementView(viewType: _viewType);
+}

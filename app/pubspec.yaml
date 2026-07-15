@@ -27,6 +27,8 @@ dependencies:
   intl: any
   flutter_map: ^8.3.1
   latlong2: ^0.10.1
+  # DOM/js interop for the Flutter-web Mapbox backend (mapbox_web_map_view).
+  web: ^1.1.0
   geolocator: ^14.0.3
   mapbox_maps_flutter: ^2.25.1
   flutter_inappwebview: ^6.1.5

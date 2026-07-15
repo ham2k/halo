@@ -119,3 +119,45 @@ class MapLineData {
   int get hashCode =>
       Object.hash(id, color, points.length, points.isEmpty ? null : points.first, points.isEmpty ? null : points.last);
 }
+
+/// '#RRGGBB' for CSS/GL consumption (alpha stripped — see [mapLinesPayload]).
+String mapColorToHex(Color color) => '#${color.toARGB32().toRadixString(16).padLeft(8, '0').substring(2)}';
+
+/// The JSON shapes consumed by the shared Mapbox GL script (map_gl_script.dart)
+/// — one encoder for the two backends that feed it (desktop webview and
+/// Flutter web), so the wire format can't drift from the JS that reads it.
+List<Map<String, dynamic>> mapMarkersPayload(List<MapMarkerData> markers) => [
+      for (final m in markers)
+        {
+          'id': m.id,
+          'latitude': m.latitude,
+          'longitude': m.longitude,
+          'label': m.label,
+          'kind': m.kind.name,
+          'color': mapColorToHex(m.color),
+          'sizeFactor': m.sizeFactor,
+          'popupTitle': m.popupTitle,
+          'popupDetailPrefix': m.popupDetailPrefix,
+          'popupBand': m.popupBand,
+          'popupDetailSuffix': m.popupDetailSuffix,
+        },
+    ];
+
+/// Opacity travels separately — the GL layer paints a flat hex line-color,
+/// with the (shared) alpha applied as line-opacity.
+Map<String, dynamic> mapLinesPayload(List<MapLineData> lines) => {
+      'opacity': lines.isEmpty ? 1.0 : lines.first.color.a.clamp(0.0, 1.0),
+      'features': [
+        for (final line in lines)
+          {
+            'type': 'Feature',
+            'properties': {'color': mapColorToHex(line.color)},
+            'geometry': {
+              'type': 'LineString',
+              'coordinates': [
+                for (final p in line.points) [p.longitude, p.latitude],
+              ],
+            },
+          },
+      ],
+    };

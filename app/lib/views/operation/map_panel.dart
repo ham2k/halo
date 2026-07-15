@@ -31,6 +31,7 @@ import '../../i18n/strings.g.dart';
 import '../../services/settings_service.dart';
 import '../map/map_marker_data.dart';
 import '../map/mapbox_native_map_view.dart';
+import '../map/mapbox_web_map_view.dart';
 import '../map/mapbox_webview_map_view.dart';
 import '../map/osm_map_view.dart';
 
@@ -99,16 +100,24 @@ class _MapPanelState extends State<MapPanel> {
       );
     }
 
-    // Neither Mapbox backend covers web yet (mapbox_maps_flutter's web
-    // support is prerelease-only) — TODO(map-web): revisit once it isn't.
-    final usesMapbox = !kIsWeb && mapboxAccessToken.isNotEmpty;
-    final isMobile = !kIsWeb && (Platform.isIOS || Platform.isAndroid);
-
-    final Widget map = !usesMapbox
-        ? OsmMapView(markers: _markers, lines: _lines)
-        : isMobile
-            ? MapboxNativeMapView(markers: _markers, lines: _lines, projection: _projection)
-            : MapboxWebviewMapView(markers: _markers, lines: _lines, projection: _projection);
+    final Widget map;
+    var usesMapbox = mapboxAccessToken.isNotEmpty;
+    if (usesMapbox && kIsWeb) {
+      // The app already runs in a browser — Mapbox GL JS mounts directly on
+      // a platform-view div, no webview needed.
+      map = MapboxWebMapView(markers: _markers, lines: _lines, projection: _projection);
+    } else if (usesMapbox && (Platform.isIOS || Platform.isAndroid)) {
+      map = MapboxNativeMapView(markers: _markers, lines: _lines, projection: _projection);
+    } else if (usesMapbox && (Platform.isMacOS || Platform.isWindows)) {
+      map = MapboxWebviewMapView(markers: _markers, lines: _lines, projection: _projection);
+    } else {
+      // No token — or Linux, where no Mapbox path exists (flutter_inappwebview
+      // ships no Linux implementation and mapbox_maps_flutter is
+      // mobile-only), so the OSM backend is the real Linux map, not a
+      // stopgap. It has markers/lines/callouts, just no globe projection.
+      usesMapbox = false;
+      map = OsmMapView(markers: _markers, lines: _lines);
+    }
 
     return Stack(
       children: [
