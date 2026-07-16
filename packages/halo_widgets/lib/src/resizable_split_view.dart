@@ -6,8 +6,9 @@
 // the divider consumes no layout space. It is a transparent drag overlay on
 // the secondary's leftmost `dividerWidth` pixels (so tab strips, headers,
 // and backgrounds stretch to the very boundary), the boundary itself is
-// drawn by the drop shadow on the primary's right edge, and secondary
-// content that wants clearance from the grab area pads itself. Pass
+// drawn by the shadow the divider casts rightward onto the secondary (a
+// glow in dark mode), and secondary content that wants clearance from the
+// grab area pads itself. Pass
 // `secondary: null` on single-pane shirt sizes instead of swapping widget
 // trees — the primary subtree stays mounted across the flip (scroll
 // positions and in-progress input survive) and its width animates between
@@ -61,13 +62,16 @@ class ResizableSplitView extends StatefulWidget {
   /// secondary pane's left edge (no layout space of its own).
   static const double dividerWidth = 11.0;
 
-  /// Width of the drop shadow the divider casts onto the primary pane's
-  /// right edge. Pure paint (rendered under an IgnorePointer), so controls
-  /// and scrollbars underneath stay fully clickable.
+  /// Width of the shadow (glow, in dark mode) the divider casts rightward
+  /// onto the secondary pane. Pure paint (rendered under an IgnorePointer),
+  /// so controls and scrollbars underneath stay fully clickable.
   static const double dividerShadowWidth = 12.0;
 
-  /// The shadow gradient's darkest alpha, at the divider edge.
+  /// The shadow gradient's strongest alpha, at the divider edge. The dark-
+  /// mode glow needs less strength than the light-mode shadow to read as
+  /// the same weight.
   static const double dividerShadowAlpha = 0.16;
+  static const double dividerShadowAlphaDark = 0.10;
 
   /// LOAD-BEARING, not decoration: the engine only routes pointer events
   /// over a native platform view (the Mapbox webview) back to Flutter where
@@ -230,7 +234,18 @@ class _ResizableSplitViewState extends State<ResizableSplitView> {
         final resized = _lastTotal != null && _lastTotal != total;
         _lastTotal = total;
         final duration = (_dragging || resized) ? Duration.zero : layoutAnimationDuration;
-        final shadowColor = Theme.of(context).colorScheme.shadow;
+        // In dark mode a black shadow disappears into dark pane surfaces —
+        // the boundary reads better as a light "shadow" (a glow) instead,
+        // and the hairline flips the other way: dark gray on light
+        // surfaces, lighter gray on dark ones.
+        final theme = Theme.of(context);
+        final dark = theme.brightness == Brightness.dark;
+        final shadowColor = dark ? Colors.white : theme.colorScheme.shadow;
+        // The hairline only exists in dark mode, where the subdued glow
+        // alone doesn't mark the boundary crisply enough; in light mode the
+        // shadow does the whole job.
+        final borderColor = dark ? Colors.grey.shade700 : null;
+        final shadowAlpha = dark ? ResizableSplitView.dividerShadowAlphaDark : ResizableSplitView.dividerShadowAlpha;
 
         // The divider owns NO layout space: the secondary pane stretches to
         // the primary's very edge and the handle is a transparent overlay
@@ -254,46 +269,7 @@ class _ResizableSplitViewState extends State<ResizableSplitView> {
                 // single-pane rest so no right-edge gap.
                 return SizedBox(width: width >= total ? total : snapFloor(width), child: child);
               },
-              // The Stack is present in BOTH modes so the primary's
-              // wrapper structure never changes across a shirt-size
-              // flip — a structural swap would re-inflate un-keyed
-              // primaries and lose their state (scroll position,
-              // in-progress input). The shadow strip is paint-only:
-              // IgnorePointer keeps every control and scrollbar under
-              // it clickable.
-              child: Stack(
-                fit: StackFit.expand,
-                children: [
-                  widget.primary,
-                  Positioned(
-                    top: 0,
-                    bottom: 0,
-                    right: 0,
-                    width: ResizableSplitView.dividerShadowWidth,
-                    // Plain Opacity, not AnimatedOpacity: a two-pane flip
-                    // always coincides with a width change, which sets
-                    // `duration` to zero on exactly that frame — a fade
-                    // here could never actually play.
-                    child: IgnorePointer(
-                      child: Opacity(
-                        opacity: twoPane ? 1 : 0,
-                        child: DecoratedBox(
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              begin: Alignment.centerRight,
-                              end: Alignment.centerLeft,
-                              colors: [
-                                shadowColor.withValues(alpha: ResizableSplitView.dividerShadowAlpha),
-                                shadowColor.withValues(alpha: 0.0),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
+              child: widget.primary,
             ),
             Expanded(
               child: widget.secondary == null
@@ -308,6 +284,41 @@ class _ResizableSplitViewState extends State<ResizableSplitView> {
                           // backgrounds and rows still render edge-to-edge.
                           child: PaneSafeArea(left: ResizableSplitView.dividerWidth, child: widget.secondary!),
                         ),
+                        // The divider casts its shadow (a glow in dark
+                        // mode) RIGHTWARD onto the secondary pane — the
+                        // primary stays untouched. Paint-only: IgnorePointer
+                        // keeps everything under it clickable; only the
+                        // grab strip below intercepts.
+                        Positioned(
+                          left: 0,
+                          top: 0,
+                          bottom: 0,
+                          width: ResizableSplitView.dividerShadowWidth,
+                          child: IgnorePointer(
+                            child: DecoratedBox(
+                              decoration: BoxDecoration(
+                                gradient: LinearGradient(
+                                  begin: Alignment.centerLeft,
+                                  end: Alignment.centerRight,
+                                  colors: [
+                                    shadowColor.withValues(alpha: shadowAlpha),
+                                    shadowColor.withValues(alpha: 0.0),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                        // A crisp hairline at the boundary itself, on top
+                        // of the glow's brightest edge (dark mode only).
+                        if (borderColor != null)
+                          Positioned(
+                            left: 0,
+                            top: 0,
+                            bottom: 0,
+                            width: 1,
+                            child: IgnorePointer(child: ColoredBox(color: borderColor)),
+                          ),
                         Positioned(
                           left: 0,
                           top: 0,
@@ -409,25 +420,39 @@ class _DividerHandleState extends State<_DividerHandle> {
             color: Colors.black.withValues(alpha: ResizableSplitView._platformViewHitWashAlpha),
             child: Center(
               // Subdued until the pointer is over the strip (or dragging):
-              // the dots are an invitation, not furniture. Hover changes
-              // never coincide with the resize-snap frames, so this fade
-              // actually plays (unlike a flip-driven one).
-              child: AnimatedOpacity(
-                opacity: (_hovered || widget.dragging) ? 1.0 : _DividerHandle.restingDotOpacity,
-                duration: const Duration(milliseconds: 150),
-                curve: Curves.easeOut,
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    for (var i = 0; i < 3; i++)
-                      Container(
-                        width: 4,
-                        height: 4,
-                        margin: const EdgeInsets.symmetric(vertical: 2.5),
-                        decoration: BoxDecoration(color: colors.onSurfaceVariant, shape: BoxShape.circle),
-                      ),
-                  ],
-                ),
+              // the dots are an invitation, not furniture. Light mode dims
+              // them via opacity; dark mode instead rests them at pure
+              // black and lets hover bring up the usual light color (a
+              // half-transparent light dot would just vanish against the
+              // glow). Hover changes never coincide with the resize-snap
+              // frames, so these transitions actually play (unlike
+              // flip-driven ones).
+              child: Builder(
+                builder: (context) {
+                  final dark = Theme.of(context).brightness == Brightness.dark;
+                  final active = _hovered || widget.dragging;
+                  final opacity = active || dark ? 1.0 : _DividerHandle.restingDotOpacity;
+                  final dotColor = dark && !active ? Colors.black : colors.onSurfaceVariant;
+                  return AnimatedOpacity(
+                    opacity: opacity,
+                    duration: const Duration(milliseconds: 150),
+                    curve: Curves.easeOut,
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        for (var i = 0; i < 3; i++)
+                          AnimatedContainer(
+                            duration: const Duration(milliseconds: 150),
+                            curve: Curves.easeOut,
+                            width: 4,
+                            height: 4,
+                            margin: const EdgeInsets.symmetric(vertical: 2.5),
+                            decoration: BoxDecoration(color: dotColor, shape: BoxShape.circle),
+                          ),
+                      ],
+                    ),
+                  );
+                },
               ),
             ),
           ),

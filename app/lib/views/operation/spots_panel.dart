@@ -643,7 +643,10 @@ class _SpotsSectionHeader extends StatelessWidget {
         ),
       ),
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+        // Background stays edge-to-edge; the label insets by the split's
+        // grab-strip clearance like the spot rows below it.
+        padding: EdgeInsets.symmetric(horizontal: 12, vertical: 4)
+            .add(EdgeInsets.only(left: PaneSafeArea.leftOf(context))),
         child: Text(
           label,
           style: theme.textTheme.bodyMedium?.copyWith(

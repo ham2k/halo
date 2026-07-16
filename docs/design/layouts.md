@@ -75,8 +75,10 @@ Side-by-side panes are composed with
 a primary pane with a preferred width and an expanding secondary pane. The
 divider consumes no layout space — it is a transparent drag overlay (with
 grab dots) on the secondary's leftmost pixels, so the secondary's own
-background and content stretch to the very boundary, and the drop shadow on
-the primary's edge is what draws the separation. The strip deliberately
+background and content stretch to the very boundary, and the separation is
+drawn by the shadow the divider casts rightward onto the secondary pane (a
+white glow in dark mode, where a black shadow would vanish into dark
+surfaces). The strip deliberately
 blocks clicks, hover, and scrolling (it exists only to resize); content
 that needs interactivity near that edge reads `PaneSafeArea.leftOf(context)`
 and insets itself — rows and backgrounds still render edge-to-edge, only
