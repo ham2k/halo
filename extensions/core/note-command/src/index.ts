@@ -9,14 +9,21 @@
 // (spaces, normal capitalization) until the rest is typed.
 
 import { defineExtension } from "@ham2k/halo-extension-sdk"
-import type { CommandInterpretation, HookContext } from "@ham2k/halo-extension-sdk"
+import type { CommandInterpretation, HookContext, JSONValue } from "@ham2k/halo-extension-sdk"
 
 const NOTE_MATCH = /^NOTE(?:\s+(.*))?$/i
 
 const NoteCommand = {
-  async interpret({ input }: { input: string }, _ctx: HookContext): Promise<CommandInterpretation | null> {
+  async interpret(
+    { input, operation }: { input: string; operation?: Record<string, JSONValue> },
+    _ctx: HookContext,
+  ): Promise<CommandInterpretation | null> {
     const match = NOTE_MATCH.exec(input.trim())
     if (!match) return null
+
+    // NOTE writes to the in-progress QSO — outside an operation's logging
+    // panel (e.g. the home screen's quick search) there isn't one.
+    if (!operation) return { error: 'NOTE needs an open operation' }
 
     // `mixedCase` on both results: the note text is free prose, so the call
     // field must not force it to uppercase — and it stays typed-as-is even

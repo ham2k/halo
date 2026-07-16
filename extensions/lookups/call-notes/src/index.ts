@@ -1,7 +1,7 @@
 // Copyright ©️ 2026 Sebastian Delmont <sd@ham2k.com>
 // SPDX-License-Identifier: MPL-2.0
 //
-// Callsign Notes ("Hams of Note", ham2k/app-halo-dist#17). Three hooks:
+// Callsign Notes ("Hams of Note", ham2k/app-halo-dist#17). Four hooks:
 //
 //  - `dataFile`: fetches https://ham2k.com/data/hams-of-note.txt daily and
 //    keeps the parsed index in module memory. `fetchType: 'raw'` means the
@@ -14,6 +14,8 @@
 //    when that entry reads as a plain comma list of calls (see
 //    expansionValueFor). Leading "//" never parses as call stacking (a
 //    stack's first segment would be empty), so the two syntaxes coexist.
+//  - `callNotes`: in-runtime directory of the noted calls, for other
+//    extensions (see DirectoryHook below).
 
 import { defineExtension } from "@ham2k/halo-extension-sdk"
 import type {
@@ -74,6 +76,17 @@ async function lookupCall(
   return [result]
 }
 
+// Lets other extensions enumerate the noted calls (dev-commands' SEED draws
+// its callsign pool from here) via in-runtime composition
+// (`hooks.invokeAll('callNotes', 'allCalls', {})`) — the index lives in this
+// module's memory, unreachable from other bundles. Keys come back raw,
+// including expansion keywords; callers filter for callsign-shaped entries.
+const DirectoryHook = {
+  async allCalls(_args: Record<string, never>, _ctx: HookContext): Promise<string[]> {
+    return Object.keys(notesByCall)
+  },
+}
+
 const EXPAND_MATCH = /^\/\/(\S+)$/
 
 const ExpandCommand = {
@@ -100,5 +113,6 @@ defineExtension({
     registerHook('dataFile', { hook: notesDataFile, key: 'call-notes' })
     registerHook('lookup', { hook: { lookupCall }, key: 'call-notes', priority: 100 })
     registerHook('command', { hook: ExpandCommand, key: 'call-notes', priority: 100 })
+    registerHook('callNotes', { hook: DirectoryHook, key: 'call-notes' })
   },
 })

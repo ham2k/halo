@@ -204,6 +204,8 @@ class HaLoServices {
     this.extensions.settings = settings;
     this.extensions.lookups = lookups;
     this.extensions.statusBar = statusBar;
+    this.extensions.operations = operations;
+    this.extensions.qsos = qsos;
   }
 
 

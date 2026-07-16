@@ -51,6 +51,13 @@ class ExtensionService {
   LookupRepository? lookups;
   StatusBarService? statusBar;
 
+  /// Back the `getOperation`/`getQsos` host calls (HookContext.getOperation/
+  /// getQsos in the SDK). Optional like the other service references — a
+  /// host without them (bench harnesses, focused tests) answers those calls
+  /// with null/empty instead of failing.
+  OperationsRepository? operations;
+  QsosRepository? qsos;
+
   bool get ready => _host != null;
   ExtensionHost? get host => _host;
 
@@ -700,6 +707,24 @@ class ExtensionService {
         return {
           for (final key in keys) key: (t[key] is String ? t[key] : null),
         };
+      case 'getOperation':
+        final uuid = params['uuid'] as String;
+        final operation = await operations?.get(uuid);
+        // Same shape as qsonPayloadFor's `operation`: the QSON with `uuid`
+        // folded in.
+        return operation == null ? null : {...operation.data, 'uuid': operation.uuid};
+      case 'getQsos':
+        final operationUuid = params['operationUuid'] as String;
+        // Null — not an empty list — when the operation is unknown or this
+        // host has no log access, so callers can tell "no such operation"
+        // from "operation with no QSOs yet" (see HookContext.getQsos).
+        if (operations == null || qsos == null) return null;
+        if (await operations!.get(operationUuid) == null) return null;
+        // One-shot read via the watch stream's first emission — the same
+        // convention ScoringService/ExportService use. Excludes soft-deleted
+        // records, keeps event markers; oldest first.
+        final list = await qsos!.watchForOperation(operationUuid).first;
+        return [for (final qso in list) qso.data];
       case 'dbLookupSelectOne':
         final category = params['category'] as String;
         final key = params['key'] as String;
@@ -958,10 +983,15 @@ class ExtensionService {
   /// Asks every registered `command` hook (priority order) to interpret the input command.
   /// Returns the first non-null interpretation result: `{describe, confirm, commands}`.
   /// Returns null when nothing matched, the input is empty, or the runtime isn't up.
+  /// [execute] should be true only for the final call made right before
+  /// actually running a complete interpretation — see CommandHook.interpret's
+  /// `execute` doc (extensions/sdk/src/types.ts). Every other call (the
+  /// typing-debounce describe preview) should leave it false.
   Future<Map<String, dynamic>?> interpretCommand(
     String input, [
     Map<String, dynamic>? operation,
     Map<String, dynamic>? qso,
+    bool execute = false,
   ]) async {
     final host = _host;
     if (host == null || input.isEmpty) return null;
@@ -973,6 +1003,7 @@ class ExtensionService {
           'input': input,
           'operation': ?operation,
           'qso': ?qso,
+          if (execute) 'execute': true,
         },
         timeout: const Duration(seconds: 2),
       );

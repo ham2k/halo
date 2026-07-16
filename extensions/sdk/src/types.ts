@@ -16,6 +16,20 @@ export interface HookContext {
   // external service or file (e.g. a spot's "source" field, an ADIF
   // PROGRAMID header).
   appName?: string
+  /// Fetches one operation's QSON by uuid, with `uuid` folded in — the same
+  /// shape hooks receive as an `operation` argument (see `qsonPayloadFor`
+  /// on the Dart side). Resolves null when the uuid is unknown. For hooks
+  /// that only receive part of the picture (e.g. a `command` hook handed
+  /// the operation it's typed into, wanting fresher or fuller data).
+  getOperation?(uuid: string): Promise<Record<string, JSONValue> | null>
+  /// Fetches every QSO logged in an operation — each entry the QSO's raw
+  /// QSON `data` — oldest first, excluding soft-deleted records but
+  /// including event markers (`band: 'event'`). Resolves null when the
+  /// operation is unknown or the host has no log access — distinct from
+  /// `[]`, which means the operation exists and simply has no QSOs yet. A
+  /// whole-log read crossing the bridge: fine for command execution or an
+  /// export-sized job, not for per-keystroke paths.
+  getQsos?(operationUuid: string): Promise<Record<string, JSONValue>[] | null>
 }
 
 export type { CallInfo, CallInfoLookup, AnnotatedCallInfo } from "@ham2k/lib-qson-tools"
@@ -380,6 +394,13 @@ export interface CommandInterpretation {
   /// typing parameters; it is never executed even if Enter is pressed while
   /// still set.
   expectsParams?: boolean
+  /// Set when the input IS a recognized command but can't run in the
+  /// current context — e.g. an operation-scoped command (SEED, NOTE, SPOT)
+  /// typed into the home screen's quick search, where no operation is open.
+  /// The UI presents it as an error message; the interpretation is never
+  /// executed and the typed input is left in place. Mutually exclusive with
+  /// `describe`/`confirm`/`commands`.
+  error?: string
   /// Set when the command's parameter is free prose (e.g. NOTE's text), so
   /// the call field should allow mixed-case input while this interpretation
   /// is current. Without it the field keeps its uppercase-only rule even in
@@ -400,7 +421,21 @@ export interface CommandInterpretation {
 /// regex source itself.
 export interface CommandHook {
   interpret(
-    args: { input: string; operation?: Record<string, JSONValue>; qso?: Record<string, JSONValue> },
+    args: {
+      input: string
+      operation?: Record<string, JSONValue>
+      qso?: Record<string, JSONValue>
+      /// True only when the host is about to actually RUN this command
+      /// (Enter/Space on a complete interpretation) and needs `commands` to
+      /// reflect real work. False/undefined for the live describe-preview
+      /// call fired on the call field's typing debounce — which reruns on
+      /// every keystroke pause, so a hook whose `commands` are expensive to
+      /// compute (e.g. dev-commands' SEED, which reads the whole log and
+      /// looks up every generated call) should skip that work and return a
+      /// cheap `describe`-only result when this is falsy. Hooks whose
+      /// `commands` are always cheap can ignore this entirely.
+      execute?: boolean
+    },
     ctx: HookContext,
   ): Promise<CommandInterpretation | null>
 }

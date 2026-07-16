@@ -29,11 +29,19 @@ void main() {
     await db.close();
   });
 
-  Future<Map<String, dynamic>?> interpret(String input) async {
+  // NOTE is operation-scoped, so the tests pass the operation map the
+  // logging panel would; the no-operation case is its own test below.
+  Future<Map<String, dynamic>?> interpret(
+    String input, {
+    Map<String, dynamic>? operation = const {'stationCall': 'KI2D'},
+  }) async {
     final entries = await extensions.host!.invokeHookAll(
       'command',
       method: 'interpret',
-      args: {'input': input},
+      args: {
+        'input': input,
+        if (operation != null) 'operation': operation,
+      },
     );
     for (final entry in entries) {
       if (entry['ok'] == true && entry['value'] is Map) {
@@ -70,6 +78,11 @@ void main() {
 
     test('text that does not start with NOTE is not a command', () async {
       expect(await interpret('W1AW'), isNull);
+    });
+
+    test('without an operation (home quick search), NOTE is an error, not a silent non-match', () async {
+      final result = await interpret('NOTE This is nice', operation: null);
+      expect(result, {'error': 'NOTE needs an open operation'});
     });
   });
 }

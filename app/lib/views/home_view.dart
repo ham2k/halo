@@ -386,6 +386,12 @@ class _HomeQuickLookupState extends State<HomeQuickLookup> {
 
   String? _commandMessage;
   bool _isConfirmation = false;
+
+  /// True while `_commandMessage` is a CommandInterpretation `error` — a
+  /// recognized command that can't run here (e.g. SEED with no open
+  /// operation). Rendered with an alert icon, and Enter keeps the typed
+  /// input instead of executing or clearing.
+  bool _isError = false;
   Map<String, dynamic>? _currentInterpretation;
   Timer? _commandDescribeDebounce;
   Timer? _executeMessageTimer;
@@ -424,12 +430,14 @@ class _HomeQuickLookupState extends State<HomeQuickLookup> {
         _lookupFor = null;
         _lookupResult = null;
         _commandMessage = null;
+        _isError = false;
       });
       return;
     }
 
     setState(() {
       _commandMessage = null;
+      _isError = false;
     });
 
     if (widget.services.extensions.ready) {
@@ -439,10 +447,15 @@ class _HomeQuickLookupState extends State<HomeQuickLookup> {
         setState(() {
           _currentInterpretation = result;
           _isConfirmation = false;
-          if (result != null && result['describe'] is String) {
+          if (result != null && result['error'] is String) {
+            _commandMessage = result['error'] as String;
+            _isError = true;
+          } else if (result != null && result['describe'] is String) {
             _commandMessage = result['describe'] as String;
+            _isError = false;
           } else {
             _commandMessage = null;
+            _isError = false;
           }
         });
       });
@@ -472,21 +485,46 @@ class _HomeQuickLookupState extends State<HomeQuickLookup> {
     final text = _controller.text.trim();
     if (text.isEmpty) return;
 
-    final interpretation = _currentInterpretation ?? await widget.services.extensions.interpretCommand(text);
-    if (!mounted) return;
+    var interpretation = _currentInterpretation;
+    if (interpretation == null) {
+      interpretation = await widget.services.extensions.interpretCommand(text);
+      if (!mounted || _controller.text.trim() != text) return; // stale — the field changed while awaiting
+    }
+
+    // A recognized command that can't run in this context (e.g. SEED with
+    // no open operation) — present its error and keep the typed input for
+    // editing; there's nothing to execute.
+    if (interpretation != null && interpretation['error'] is String) {
+      setState(() {
+        _commandMessage = interpretation!['error'] as String;
+        _isError = true;
+        _isConfirmation = false;
+      });
+      return;
+    }
 
     // A command still awaiting parameters (expectsParams) isn't complete —
     // leave the field as-is so the user can keep typing, rather than
     // treating it as executable (mirrors logging_controls.dart's _log()).
     if (interpretation != null && interpretation['expectsParams'] != true) {
+      // The interpretation above may just be the debounce-time preview,
+      // whose `commands` a hook like SEED deliberately left cheap/empty
+      // (see CommandHook.interpret's `execute` doc) — re-interpret with
+      // execute:true now that we're actually about to run it, so those
+      // hooks generate the real commands instead of a stale preview's.
+      final executable = await widget.services.extensions.interpretCommand(text, null, null, true);
+      if (!mounted || _controller.text.trim() != text) return; // stale — the field changed while awaiting
+      if (executable == null) return;
+
       _controller.clear();
       _commandDescribeDebounce?.cancel();
       _executeMessageTimer?.cancel();
 
-      final confirm = interpretation['confirm'];
+      final confirm = executable['confirm'];
       setState(() {
         _currentInterpretation = null;
         _isConfirmation = true;
+        _isError = false;
         if (confirm is String) {
           _commandMessage = confirm;
           _executeMessageTimer = Timer(const Duration(seconds: 5), () {
@@ -503,7 +541,7 @@ class _HomeQuickLookupState extends State<HomeQuickLookup> {
         }
       });
 
-      final commands = interpretation['commands'];
+      final commands = executable['commands'];
       if (commands is List) {
         await _dispatchActions(commands);
       }
@@ -514,6 +552,7 @@ class _HomeQuickLookupState extends State<HomeQuickLookup> {
         _lookupFor = null;
         _lookupResult = null;
         _commandMessage = null;
+        _isError = false;
       });
     }
   }
@@ -540,6 +579,16 @@ class _HomeQuickLookupState extends State<HomeQuickLookup> {
           'reloadDataFiles',
           (map['reloadDataFiles'] as Map).cast<String, dynamic>(),
         );
+      } else {
+        // Nothing above recognized this action's key(s) — most likely a
+        // command that's scoped to the logging panel (addQso, updateQso,
+        // sendSpots, setCallField) matched here on the home screen's
+        // operation-less quick search, or a new CommandAction field with no
+        // matching branch here yet. Either way this must not fail silently:
+        // see logging_controls.dart's own _dispatchActions and its
+        // regression test for `reloadDataFiles` shipping without this
+        // branch.
+        debugPrint('[extensions] no dispatch branch for command action: ${map.keys}');
       }
     }
   }
@@ -582,16 +631,26 @@ class _HomeQuickLookupState extends State<HomeQuickLookup> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   if (_commandMessage != null)
-                    MarkdownBody(
-                      data: _commandMessage!,
-                      styleSheet: MarkdownStyleSheet.fromTheme(theme).copyWith(
-                        p: theme.textTheme.bodyLarge?.copyWith(
-                          color: _isConfirmation
-                              ? theme.colorScheme.onPrimary
-                              : theme.colorScheme.onPrimary.withValues(alpha: 0.85),
-                          fontWeight: FontWeight.w600,
+                    Row(
+                      children: [
+                        if (_isError) ...[
+                          Icon(resolveIconName('alert-circle-outline'), size: 16, color: theme.colorScheme.onPrimary),
+                          const SizedBox(width: 8),
+                        ],
+                        Expanded(
+                          child: MarkdownBody(
+                            data: _commandMessage!,
+                            styleSheet: MarkdownStyleSheet.fromTheme(theme).copyWith(
+                              p: theme.textTheme.bodyLarge?.copyWith(
+                                color: _isConfirmation
+                                    ? theme.colorScheme.onPrimary
+                                    : theme.colorScheme.onPrimary.withValues(alpha: 0.85),
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
                         ),
-                      ),
+                      ],
                     ),
                   if (_commandMessage == null && lookupLine != null)
                     Row(

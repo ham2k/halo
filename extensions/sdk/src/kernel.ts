@@ -260,7 +260,24 @@ async function callHookMethod(record: HookRecord, method: string, args: unknown,
   if (settings?.locale) {
     locale = settings.locale
   }
-  const ctx = { online, account, developerMode, locale, appName: settings?.appName }
+  const ctx = {
+    online,
+    account,
+    developerMode,
+    locale,
+    appName: settings?.appName,
+    // Log-data reads (HookContext.getOperation/getQsos in types.ts). Built
+    // per call like the rest of ctx but deliberately NOT cached like
+    // settings/account above — log data changes with every QSO, and a
+    // 3s-stale QSO list is exactly what a caller like SEED can't tolerate.
+    // Not identity-bearing (no ns/kvKey), so plain dispatchHostCall is fine.
+    getOperation: async (uuid: string) =>
+      ((await dispatchHostCall('getOperation', { uuid })) as Record<string, unknown> | null) ?? null,
+    // Null (unknown operation / no log access) passes through untouched —
+    // it means something different from [] (see HookContext.getQsos).
+    getQsos: async (operationUuid: string) =>
+      (await dispatchHostCall('getQsos', { operationUuid })) as Record<string, unknown>[] | null,
+  }
   return await member.call(record.hook, args, ctx)
 }
 

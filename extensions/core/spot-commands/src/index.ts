@@ -18,15 +18,28 @@
 // globals `defineExtension` depends on.
 
 import { defineExtension } from "@ham2k/halo-extension-sdk"
-import type { CommandInterpretation, HookContext } from "@ham2k/halo-extension-sdk"
+import type { CommandInterpretation, HookContext, JSONValue } from "@ham2k/halo-extension-sdk"
 import { parseSelfSpotCommand, isLastSpotCommand } from "./spotCommandParsing.ts"
 
+// Both hooks are operation-scoped: a self-spot advertises the operation and
+// SPOTLAST spots its most recent QSO, so outside an operation's logging
+// panel (e.g. the home screen's quick search) they answer with an `error`
+// the UI presents rather than a silent non-match.
 const SelfSpotCommand = {
-  async interpret({ input }: { input: string }, _ctx: HookContext): Promise<CommandInterpretation | null> {
+  async interpret(
+    { input, operation }: { input: string; operation?: Record<string, JSONValue> },
+    _ctx: HookContext,
+  ): Promise<CommandInterpretation | null> {
     const parsed = parseSelfSpotCommand(input)
     if (!parsed) return null
+    if (!operation) return { error: 'Spotting needs an open operation' }
     const { comment } = parsed
     return {
+      // The comment is free prose for other operators (same as the Spotting
+      // control's own comment field), so the call field must not force it
+      // to uppercase or treat space as advance-focus. mixedCase, not
+      // expectsParams: a bare "SPOT" is already executable on Enter.
+      mixedCase: true,
       describe: comment ? `Self-spot with comment "${comment}"?` : 'Self-spot?',
       confirm: comment ? `Self-spotting: ${comment}` : 'Self-spotting…',
       commands: [{ sendSpots: { comment: comment || undefined, target: 'self' } }],
@@ -35,8 +48,12 @@ const SelfSpotCommand = {
 }
 
 const LastSpotCommand = {
-  async interpret({ input }: { input: string }, _ctx: HookContext): Promise<CommandInterpretation | null> {
+  async interpret(
+    { input, operation }: { input: string; operation?: Record<string, JSONValue> },
+    _ctx: HookContext,
+  ): Promise<CommandInterpretation | null> {
     if (!isLastSpotCommand(input)) return null
+    if (!operation) return { error: 'Spotting needs an open operation' }
     return {
       describe: 'Spot the last logged QSO?',
       confirm: 'Spotting last QSO…',

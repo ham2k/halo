@@ -18,6 +18,17 @@ hook method receives `(args, ctx)` where `ctx: HookContext` is:
   desktop, "Ham2K Portable Logger" on mobile) — use this instead of a
   hardcoded name when identifying the app to an external service or file
   (e.g. a spot's `source` field, an ADIF `PROGRAMID` header).
+* `getOperation?(uuid)` / `getQsos?(operationUuid)` — log-data reads, for
+  hooks that only receive part of the picture as arguments (e.g. a `command`
+  hook handed the operation it's typed into, needing the existing QSOs —
+  dev-commands' SEED). `getOperation` resolves the operation's QSON with
+  `uuid` folded in (null for an unknown uuid); `getQsos` resolves every QSO's
+  raw QSON, oldest first, excluding soft-deleted records but *including*
+  event markers (`band: 'event'`) — or null when the operation is unknown or
+  the host has no log access, distinct from `[]` (the operation exists and
+  simply has no QSOs yet). Each call is a bridge round-trip carrying a whole
+  log — fine at command-execution or export scale, not on per-keystroke
+  paths.
 
 Status legend: ✅ implemented · 🔜 planned (design in DESIGN.md §4).
 
@@ -234,11 +245,11 @@ applies the first non-null result, in priority order.
 ```ts
 interface CommandHook {
   interpret(
-    args: { input: string; operation?; qso? },
+    args: { input: string; operation?; qso?; execute? },
     ctx,
   ): Promise<CommandInterpretation | null>
 }
-// CommandInterpretation: {expectsParams?, mixedCase?, describe?, confirm?, commands?: CommandAction[]}
+// CommandInterpretation: {expectsParams?, mixedCase?, error?, describe?, confirm?, commands?: CommandAction[]}
 // CommandAction (closed set): {setVfo?, updateQso?, addQso?, sendSpots?,
 //   syncAll?, updateSettings?, setCallField?, reloadDataFiles?, devNotice?,
 //   devStatus?, devProgress?}
@@ -251,6 +262,26 @@ applies: state changes go only through the closed `CommandAction` field set
 (DESIGN.md §4's "whitelisted field-change operations"), never arbitrary
 state. `expectsParams: true` is the "recognized prefix, keep typing" signal
 described below.
+
+A command that IS recognized but can't run in the current context returns
+`{ error: '…' }` instead of matching silently or pretending to succeed —
+e.g. the operation-scoped commands (SEED, NOTE, SPOT/SPOTLAST) typed into
+the home screen's quick search, where no operation is open. The UI presents
+the error message, never executes the interpretation, and leaves the typed
+input in place for editing. Commands that work anywhere (DEVMODE, RELOAD,
+band/frequency/mode…) never need it.
+
+`interpret` is called on **every** keystroke pause (the call field's 150ms
+typing-debounce, for the live `describe` preview), not just once when the
+command actually runs — so a hook whose `commands` are expensive to build
+must not compute them unconditionally. `execute: true` is the signal that
+this particular call IS the one about to run the command (the host makes a
+final `interpret` call with it set, right before dispatching `commands`,
+discarding whatever a stale preview may have returned); it's false/undefined
+on every describe-preview call. A hook with cheap `commands` can ignore this
+entirely. `SEED` (below) is the one hook that needs it: skips its `ctx.getQsos`
+read and per-generated-QSO lookups — real bridge/network-ish work — unless
+`execute` is set, returning a cheap describe-only result otherwise.
 
 Implemented by `radio-commands` (band/frequency/mode shortcuts — "20m ",
 "14285 ", "14.285 ", "cw "), ported from app-polo's `RadioCommands`
@@ -266,7 +297,18 @@ exercising that UI without a real extension driving it; RELOAD forces a
 "RELOAD SOTA" target one activity's data file(s) by category, "RELOAD ALL",
 "RELOADALL", or bare "RELOAD!" target every data file, and it bypasses ETag caching
 since a manual reload is usually about our own `csvToLookupEntry` mapping
-changing, not the source data), `note-command` (NOTE <text> sets the
+changing, not the source data; SEED fills the current log with generated
+QSOs via `addQso` actions — "SEED" adds 10, "SEED 20" adds 20, "SEED 15 3H"
+spreads 15 over the 3 hours up to now, or over the 3 hours *ending at the
+earliest existing QSO* when the log's own time span is under a third of
+that spread. Calls come from the Callsign Notes data — call-notes exposes
+its parsed index to other extensions through an in-runtime `callNotes`/
+`allCalls` hook — and are mutated 80% of the time by swapping the digit or
+a suffix letter; RSTs lean heavily toward 55/57/59; each generated QSO gets
+the lookup service's offline `their.guess` decoration. The placement rule
+needs the existing log: SEED reads it through `ctx.getQsos`, using the
+`uuid` the logging panel folds into the `operation` map it passes to
+`interpret`), `note-command` (NOTE <text> sets the
 in-progress QSO's notes field via `updateQso`), and `call-notes` (`//KEY`
 expands a Callsign Notes entry whose note is a plain comma list of calls
 into the call field via `setCallField` — issue #17; leading "//" never
@@ -286,7 +328,11 @@ interpretation also says `mixedCase: true` — for commands whose parameter
 is free prose (NOTE's text), which lifts the uppercase rule. Return
 `mixedCase` on both the bare-prefix result and the complete result, so
 continued typing after the command is already complete ("NOTE Hello…")
-isn't snapped back to uppercase.
+isn't snapped back to uppercase. `mixedCase` is also what keeps Space a
+literal character once a command is *already complete* — `expectsParams`
+can't, since it also blocks execution — which is why SEED returns it on
+every result despite its parameters not being prose: bare "SEED" must be
+executable (default count) yet still extendable to "SEED 15 3H".
 
 ## ✅ `scoring` — per-operation score batches
 

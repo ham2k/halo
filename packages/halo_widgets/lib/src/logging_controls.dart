@@ -63,10 +63,16 @@ typedef CallLookup = Future<Map<String, dynamic>?> Function(
 /// shortcuts, and eventually spotting/operator commands). Returns a
 /// field-change map (`{freq?, band?, mode?}`) or a named `{action: ...}`
 /// (e.g. `SYNCALL`), or null for "not a command". Must never throw.
+/// [execute] is true only for the final call made right before actually
+/// running a complete interpretation — see CommandHook.interpret's `execute`
+/// doc (extensions/sdk/src/types.ts): a hook whose `commands` are expensive
+/// to compute (e.g. SEED) may return a cheap describe-only result otherwise,
+/// since this is also the function called on every typing-debounce preview.
 typedef CommandInterpreter = Future<Map<String, dynamic>?> Function(
   String input, [
   Map<String, dynamic>? operation,
   Map<String, dynamic>? qso,
+  bool execute,
 ]);
 
 /// Handles a named command action — a closed set the core recognizes, not
@@ -877,6 +883,16 @@ class _LoggingControlsState extends State<LoggingControls> {
   /// is safe to use in place of `_call` for that one purpose.
   String get _commandInput => _callController.text.trim();
 
+  /// The operation QSON with `uuid` folded in — same shape as the Dart
+  /// side's `qsonPayloadFor` gives every coarse hook call. Command hooks
+  /// need the uuid to fetch log data through the runtime's
+  /// `ctx.getOperation`/`ctx.getQsos` (e.g. dev-commands' SEED reading the
+  /// existing log's time range); the QSON alone doesn't carry it.
+  Map<String, dynamic> get _operationDataForCommands => {
+        ...widget.operation.data,
+        'uuid': widget.operation.uuid,
+      };
+
   /// Comma-separated calls typed into the call field — "W1AW, K1ABC" logs
   /// one QSO per call (issue #7) rather than one QSO whose call is the
   /// literal joined string. A single call with no comma is just a one-item
@@ -1629,7 +1645,7 @@ class _LoggingControlsState extends State<LoggingControls> {
           if (result == null) {
             _commandDescribeDebounce?.cancel();
             final qsoData = _getCurrentQsoData();
-            result = await widget.interpretCommand!(_commandInput, widget.operation.data, qsoData);
+            result = await widget.interpretCommand!(_commandInput, _operationDataForCommands, qsoData);
             if (!mounted || _call != call) return; // stale — the call changed while awaiting
             setState(() {
               _currentInterpretation = result;
@@ -2137,7 +2153,7 @@ class _LoggingControlsState extends State<LoggingControls> {
         final qsoData = _getCurrentQsoData();
         final result = await widget.interpretCommand!(
           rawInput,
-          widget.operation.data,
+          _operationDataForCommands,
           qsoData,
         );
         if (!mounted || _call != call) return;
@@ -2466,18 +2482,21 @@ class _LoggingControlsState extends State<LoggingControls> {
     if (widget.editingQso == null && call.isNotEmpty && widget.interpretCommand != null) {
       _commandDescribeDebounce?.cancel();
       final qsoData = _getCurrentQsoData();
-      final interpretation = _currentInterpretation ?? await widget.interpretCommand!(
-        _commandInput,
-        widget.operation.data,
-        qsoData,
-      );
-      if (!mounted) return;
+      var interpretation = _currentInterpretation;
+      if (interpretation == null) {
+        interpretation = await widget.interpretCommand!(
+          _commandInput,
+          _operationDataForCommands,
+          qsoData,
+        );
+        if (!mounted || _call != call) return; // stale — the call changed while awaiting
+      }
       // A recognized command that can't run in this context (its `error`
       // field is set — see CommandInterpretation) — surface the message,
       // keep the typed input for editing, and execute nothing.
       if (interpretation != null && interpretation['error'] is String) {
         setState(() {
-          _commandMessage = interpretation['error'] as String;
+          _commandMessage = interpretation!['error'] as String;
         });
         _notifyCommandMessage(_commandMessage);
         return;
@@ -2489,11 +2508,25 @@ class _LoggingControlsState extends State<LoggingControls> {
       if (interpretation != null && interpretation['expectsParams'] != true) {
         _isLogging = true;
         try {
+          // The interpretation above may just be the debounce-time preview,
+          // whose `commands` a hook like SEED deliberately left cheap/empty
+          // (see CommandHook.interpret's `execute` doc) — re-interpret with
+          // execute:true now that we're actually about to run it, so those
+          // hooks generate the real commands instead of a stale preview's.
+          final executable = await widget.interpretCommand!(
+            _commandInput,
+            _operationDataForCommands,
+            qsoData,
+            true,
+          );
+          if (!mounted || _call != call) return; // stale — the call changed while awaiting
+          if (executable == null) return;
+
           _callController.clear();
           _currentInterpretation = null;
           _executeMessageTimer?.cancel();
 
-          final confirmMarkdown = interpretation['confirm'];
+          final confirmMarkdown = executable['confirm'];
           setState(() {
             _currentInterpretation = null;
             if (confirmMarkdown is String) {
@@ -2512,7 +2545,7 @@ class _LoggingControlsState extends State<LoggingControls> {
           });
           _notifyCommandMessage(_commandMessage);
 
-          final commands = interpretation['commands'];
+          final commands = executable['commands'];
           if (commands is List) {
             await _dispatchActions(commands);
           }

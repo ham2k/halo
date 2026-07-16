@@ -83,6 +83,7 @@ void main() {
     String input, [
     Map<String, dynamic>? operation,
     Map<String, dynamic>? qso,
+    bool execute = false,
   ]) async {
     final band = RegExp(r'^(2200|630|160|80|60|40|30|20|17|15|12|10|6|4|2)M?$', caseSensitive: false).firstMatch(input);
     if (band != null) {
@@ -886,6 +887,7 @@ void main() {
       String input, [
       Map<String, dynamic>? operation,
       Map<String, dynamic>? qso,
+      bool execute = false,
     ]) async {
       if (input.trim().toUpperCase() == 'RELOAD') return {'expectsParams': true};
       return null;
@@ -927,6 +929,7 @@ void main() {
       String input, [
       Map<String, dynamic>? operation,
       Map<String, dynamic>? qso,
+      bool execute = false,
     ]) async {
       final match = RegExp(r'^NOTE(?:\s+(.*))?$', caseSensitive: false).firstMatch(input.trim());
       if (match == null) return null;
@@ -1001,6 +1004,7 @@ void main() {
       String input, [
       Map<String, dynamic>? operation,
       Map<String, dynamic>? qso,
+      bool execute = false,
     ]) async {
       final match = RegExp(r'^NOTE(?:\s+(.*))?$', caseSensitive: false).firstMatch(input.trim());
       if (match == null) return null;
@@ -1051,6 +1055,7 @@ void main() {
       String input, [
       Map<String, dynamic>? operation,
       Map<String, dynamic>? qso,
+      bool execute = false,
     ]) async {
       final match = RegExp(r'^NOTE(?:\s+(.*))?$', caseSensitive: false).firstMatch(input.trim());
       if (match == null) return null;
@@ -1103,6 +1108,7 @@ void main() {
       String input, [
       Map<String, dynamic>? operation,
       Map<String, dynamic>? qso,
+      bool execute = false,
     ]) async {
       if (input.trim().toUpperCase() == 'RELOAD') return {'expectsParams': true};
       return null;
@@ -1133,6 +1139,7 @@ void main() {
       String input, [
       Map<String, dynamic>? operation,
       Map<String, dynamic>? qso,
+      bool execute = false,
     ]) async {
       seenInputs.add(input);
       // mixedCase, like the real note-command: without it the field's own
@@ -1165,6 +1172,7 @@ void main() {
       String input, [
       Map<String, dynamic>? operation,
       Map<String, dynamic>? qso,
+      bool execute = false,
     ]) async {
       if (input.trim().toUpperCase() != 'RELOADALL') return null;
       return {
@@ -1222,6 +1230,7 @@ void main() {
       String input, [
       Map<String, dynamic>? operation,
       Map<String, dynamic>? qso,
+      bool execute = false,
     ]) async {
       if (input.trim().toUpperCase() != 'SPOTLAST') return null;
       return {
@@ -1324,6 +1333,7 @@ void main() {
       String input, [
       Map<String, dynamic>? operation,
       Map<String, dynamic>? qso,
+      bool execute = false,
     ]) async {
       if (input.trim().toUpperCase() != '//DAN') return null;
       return {
