@@ -142,6 +142,16 @@ void main() {
   Future<void> openControl(WidgetTester tester, IconData icon) async {
     await tester.tap(find.ancestor(of: find.byIcon(icon), matching: find.byType(ChoiceChip)));
     await tester.pump();
+    // The panel slides into/out of place over SecondaryControlRow's fixed
+    // 200ms animation — a bounded pump (rather than pumpAndSettle, which
+    // would also chase the Time control's Timer.periodic clock tick and
+    // never settle) gets it fully in view (or fully gone, when this
+    // closes a panel) before callers interact with its fields. Slightly
+    // over 200ms, plus a trailing zero-duration pump, so AnimatedSwitcher's
+    // own post-animation cleanup (dropping the outgoing child) has
+    // actually run rather than landing exactly on the animation's edge.
+    await tester.pump(const Duration(milliseconds: 250));
+    await tester.pump();
   }
 
   testWidgets('Enter logs a QSO with mode, band and default RSTs', (tester) async {

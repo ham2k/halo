@@ -2762,12 +2762,14 @@ class _LoggingControlsState extends State<LoggingControls> {
             children: [
               Container(height: 2, color: accentPoloColors.tertiaryLight),
               Padding(
-                // No top inset while a control is expanded — that gap would
-                // otherwise show as bare panel background between the
-                // divider above and the expanded control's own background.
+                // No top inset at all — SecondaryControlRow's expanded
+                // panel slides out flush against the divider above, and the
+                // row itself animates the border→pills gap, so any padding
+                // here would show as bare panel background above the
+                // panel's dark area.
                 padding: EdgeInsets.fromLTRB(
                   _secondaryPanelHorizontalInset,
-                  _selectedControlKey != null ? 0 : 4,
+                  0,
                   _secondaryPanelHorizontalInset,
                   8,
                 ),
@@ -2809,7 +2811,6 @@ class _LoggingControlsState extends State<LoggingControls> {
                     mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      SizedBox(height: _selectedControlKey != null ? 0 : 6),
                       AbsorbPointer(
                         absorbing: fieldsLocked,
                         child: Opacity(

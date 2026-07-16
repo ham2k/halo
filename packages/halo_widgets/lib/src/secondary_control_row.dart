@@ -91,13 +91,30 @@ class SecondaryControlRow extends StatefulWidget {
   State<SecondaryControlRow> createState() => _SecondaryControlRowState();
 }
 
-class _SecondaryControlRowState extends State<SecondaryControlRow> {
+class _SecondaryControlRowState extends State<SecondaryControlRow> with SingleTickerProviderStateMixin {
   final _rowKey = GlobalKey();
-  final _expandedKey = GlobalKey();
+  final Map<String, GlobalKey> _expandedKeys = {};
   final Map<String, GlobalKey> _chipKeys = {};
+  final Map<String, GlobalKey> _animatedChipKeys = {};
+
+  static const _duration = Duration(milliseconds: 200);
 
   /// Whether the caret has expanded the strip into a multi-row grid.
   bool _gridExpanded = false;
+
+  /// Chip keys currently rendered, including ones mid-exit, in display
+  /// order. Rebuilt from `widget.controls` on every reconcile (so a
+  /// reorder — e.g. via the settings dialog's drag list — is reflected
+  /// immediately), with still-exiting keys appended after: a control
+  /// dropped from `widget.controls` (hidden via settings, or an activity
+  /// control that stopped applying) isn't removed from here right away —
+  /// it's flagged in [_exitingKeys] and fades out via [_AnimatedChip]
+  /// first, actually leaving once that chip's own fade-out animation
+  /// completes (see `_handleChipExited`), so the strip doesn't just snap
+  /// when a chip disappears.
+  final List<String> _displayOrder = [];
+  final Map<String, SecondaryControlSpec> _specByKey = {};
+  final Set<String> _exitingKeys = {};
 
   /// A single chip's rendered height, measured post-frame from whichever
   /// chip happens to be built first — used to cap the expanded grid at
@@ -106,30 +123,158 @@ class _SecondaryControlRowState extends State<SecondaryControlRow> {
   double _chipHeight = 32;
 
   /// Where the expanded panel's content sits within its (full-width)
-  /// background: a chip in the left quarter of the row aligns the panel
-  /// left, one in the right quarter aligns it right, and anything in the
-  /// middle half centers the panel *on the chip itself* (not on the whole
-  /// row) — computed from the chip's and panel's own measured widths so the
-  /// panel visually hangs below the pill that opened it. Defaults to left
-  /// until the first post-frame measurement lands.
+  /// background: centered on the pill that opened it, snapping to the
+  /// pill's near edge (panel edge to pill edge, not to the row's edge)
+  /// when centering wouldn't fit — computed in `_measure` from the chip's
+  /// and panel's own measured widths so the panel visually hangs below its
+  /// pill. Defaults to left until the first post-frame measurement lands.
   Alignment _expandedAlignment = Alignment.centerLeft;
 
   GlobalKey _chipKeyFor(String key) => _chipKeys.putIfAbsent(key, GlobalKey.new);
 
+  // A GlobalKey per control (rather than one shared key) since the panel's
+  // outgoing and incoming children can briefly coexist mid cross-fade
+  // (AnimatedSwitcher in build) when one control is tapped right after
+  // another — a shared key would collide. didUpdateWidget additionally
+  // mints a FRESH key on every selection change (see there) so a control
+  // re-selected while its previous panel instance is still retiring in
+  // the switcher never sees the same GlobalKey mounted twice.
+  GlobalKey _expandedKeyFor(String key) => _expandedKeys.putIfAbsent(key, GlobalKey.new);
+
+  /// Bumped on every selection change; folded into the panel content's
+  /// switcher key so re-selecting a control whose outgoing panel is still
+  /// mid cross-fade produces a DIFFERENT child key — AnimatedSwitcher only
+  /// compares against its current child, so an identical key re-entering
+  /// while an outgoing copy retires would otherwise crash with duplicate
+  /// keys (rapid X→Y→X pill taps).
+  int _panelGeneration = 0;
+
+  // A GlobalKey (rather than a plain ValueKey) so the same `_AnimatedChip`
+  // — and so its live AnimationController — carries over when the caret
+  // toggles between the one-line row and the grid: those two layouts are
+  // structurally different widgets (a scrolling Row vs. a Wrap), so without
+  // a GlobalKey each chip would be torn down and rebuilt on every toggle,
+  // replaying its entrance fade for chips that never actually left.
+  GlobalKey _animatedChipKeyFor(String key) => _animatedChipKeys.putIfAbsent(key, GlobalKey.new);
+
+  /// Drives the expanded panel's slide: 0 = tucked away behind the top
+  /// border, 1 = fully out. The content itself is fully built and laid out
+  /// the whole time — this only controls how much of the area has slid up
+  /// into view (and how much of the border→pills gap has been given up to
+  /// it).
+  late final AnimationController _panelController = AnimationController(vsync: this, duration: _duration)
+    ..addStatusListener((status) {
+      // Only once the close slide fully lands does the retained content
+      // actually get dropped (freeing focus nodes etc.); mid-slide it must
+      // stay built so it can ride back up.
+      if (status == AnimationStatus.dismissed) setState(() => _panelSpec = null);
+    });
+  late final CurvedAnimation _panelReveal = CurvedAnimation(parent: _panelController, curve: Curves.easeInOut);
+
+  /// The control whose panel content is showing. Retained through the
+  /// close animation (when `widget.selectedKey` has already gone null) so
+  /// the panel slides away still populated instead of blanking first.
+  SecondaryControlSpec? _panelSpec;
+
   @override
   void initState() {
     super.initState();
+    if (widget.selectedKey != null) _panelController.value = 1;
     _scheduleMeasure();
+    _reconcileControls();
   }
+
+  /// Whether the panel should currently be out: a control is selected AND
+  /// it still exists in `widget.controls`. The second half matters when
+  /// the selected control is removed (hidden via settings, or an activity
+  /// control that stopped applying) without the caller clearing its
+  /// selection — the panel must close rather than stay stuck open showing
+  /// a control that no longer exists.
+  bool get _panelShouldBeOpen =>
+      widget.selectedKey != null && widget.controls.any((c) => c.key == widget.selectedKey);
 
   @override
   void didUpdateWidget(covariant SecondaryControlRow oldWidget) {
     super.didUpdateWidget(oldWidget);
+    if (widget.selectedKey != oldWidget.selectedKey && widget.selectedKey != null) {
+      _panelGeneration++;
+      _expandedKeys[widget.selectedKey!] = GlobalKey();
+    }
+    // Driven from the derived state rather than just selectedKey changes,
+    // so the panel also closes when its control disappears from
+    // widget.controls with the selection left stale. forward() at 1 /
+    // reverse() at 0 are no-ops, so calling on every update is fine.
+    _panelShouldBeOpen ? _panelController.forward() : _panelController.reverse();
     _scheduleMeasure();
+    _reconcileControls();
+  }
+
+  /// Updates [_displayOrder]/[_specByKey]/[_exitingKeys] from
+  /// `widget.controls`, ahead of this frame's `build` — called from
+  /// `initState`/`didUpdateWidget` rather than via `setState` since a
+  /// rebuild is already about to happen (or, for `initState`, hasn't
+  /// happened yet) either way. Actual removal of a departed key happens
+  /// later, from `_handleChipExited` once that chip's own fade-out
+  /// animation reports it's done — tying removal to the animation
+  /// finishing (rather than a fixed `Timer`) means a control that
+  /// disappears and reappears within the fade window is simply left alone,
+  /// instead of a stale timer force-removing it after the fact.
+  void _reconcileControls() {
+    final incoming = {for (final control in widget.controls) control.key: control};
+
+    for (final key in _specByKey.keys) {
+      if (!incoming.containsKey(key)) _exitingKeys.add(key);
+    }
+    _exitingKeys.removeAll(incoming.keys);
+
+    _specByKey.removeWhere((key, _) => !incoming.containsKey(key) && !_exitingKeys.contains(key));
+    _specByKey.addAll(incoming);
+
+    _displayOrder
+      ..clear()
+      ..addAll(incoming.keys)
+      ..addAll(_exitingKeys);
+
+    // Keys with no chip left showing (fully reconciled away) don't need
+    // their measurement/animation GlobalKeys held onto forever. The panel
+    // spec's key stays live even after its chip is gone — the panel can
+    // still be mid close-slide with that Builder mounted, and dropping its
+    // GlobalKey here would mint a fresh one next build, remounting (and
+    // blanking) the closing panel's content mid-animation.
+    final live = _displayOrder.toSet();
+    if (_panelSpec case final spec?) live.add(spec.key);
+    _chipKeys.removeWhere((key, _) => !live.contains(key));
+    _expandedKeys.removeWhere((key, _) => !live.contains(key));
+    _animatedChipKeys.removeWhere((key, _) => !live.contains(key));
+  }
+
+  /// Called by a chip's own `_AnimatedChip` once its fade-out animation
+  /// finishes — the point at which it's actually safe to drop it from
+  /// display state, rather than guessing at a fixed delay.
+  void _handleChipExited(String key) {
+    if (!mounted || !_exitingKeys.contains(key)) return;
+    setState(() {
+      _displayOrder.remove(key);
+      _specByKey.remove(key);
+      _exitingKeys.remove(key);
+      _chipKeys.remove(key);
+      // The panel spec's GlobalKey survives the chip (see the matching
+      // guard in _reconcileControls): its Builder can still be mounted for
+      // the tail of the panel's close slide.
+      if (_panelSpec?.key != key) _expandedKeys.remove(key);
+      _animatedChipKeys.remove(key);
+    });
   }
 
   void _scheduleMeasure() {
     WidgetsBinding.instance.addPostFrameCallback((_) => _measure());
+  }
+
+  @override
+  void dispose() {
+    _panelReveal.dispose();
+    _panelController.dispose();
+    super.dispose();
   }
 
   void _measure() {
@@ -151,32 +296,63 @@ class _SecondaryControlRowState extends State<SecondaryControlRow> {
     if (rowBox == null || chipBox == null || !rowBox.attached || !chipBox.attached) return;
 
     final chipLeft = chipBox.localToGlobal(Offset.zero, ancestor: rowBox).dx;
-    final chipCenter = chipLeft + chipBox.size.width / 2;
+    final chipWidth = chipBox.size.width;
+    final chipCenter = chipLeft + chipWidth / 2;
     final availableWidth = rowBox.size.width;
 
+    // The panel centers on the pill that opened it. When centering would
+    // push it past the row's edge, it snaps to the PILL's near edge (panel
+    // left edge to pill left edge, or panel right edge to pill right edge)
+    // rather than flushing against the row's own edge — keeping the panel
+    // visually attached to its pill. A final clamp still keeps it on
+    // screen for pills scrolled partially off the strip.
+    final expandedBox = _expandedKeys[widget.selectedKey]?.currentContext?.findRenderObject() as RenderBox?;
+    final expandedWidth = expandedBox != null && expandedBox.attached ? expandedBox.size.width : null;
     Alignment alignment;
-    if (chipCenter < availableWidth * 0.25) {
-      alignment = Alignment.centerLeft;
-    } else if (chipCenter > availableWidth * 0.75) {
-      alignment = Alignment.centerRight;
+    if (expandedWidth == null || expandedWidth >= availableWidth) {
+      alignment = Alignment.center;
     } else {
-      // Center the panel on the chip's own position rather than the whole
-      // row: solve Align's placement formula for the x that puts the
-      // panel's midpoint at chipCenter, using the panel's own measured
-      // width (falls back to plain center pending that measurement).
-      final expandedBox = _expandedKey.currentContext?.findRenderObject() as RenderBox?;
-      final expandedWidth = expandedBox != null && expandedBox.attached ? expandedBox.size.width : null;
-      if (expandedWidth == null || expandedWidth >= availableWidth) {
-        alignment = Alignment.center;
+      final centered = chipCenter - expandedWidth / 2;
+      // Mutually exclusive branches: a panel that overflows BOTH ways when
+      // centered (very wide panel, pill near an edge) takes only the
+      // branch for the side it ran off of, and the clamp resolves the
+      // rest — chaining both snaps would fling it to the far edge instead.
+      double panelLeft;
+      if (centered < 0) {
+        panelLeft = chipLeft;
+      } else if (centered + expandedWidth > availableWidth) {
+        panelLeft = chipLeft + chipWidth - expandedWidth;
       } else {
-        final x = 2 * (chipCenter - expandedWidth / 2) / (availableWidth - expandedWidth) - 1;
-        alignment = Alignment(x.clamp(-1.0, 1.0), 0);
+        panelLeft = centered;
       }
+      panelLeft = panelLeft.clamp(0.0, availableWidth - expandedWidth);
+      final x = 2 * panelLeft / (availableWidth - expandedWidth) - 1;
+      alignment = Alignment(x.clamp(-1.0, 1.0), 0);
     }
     if (alignment != _expandedAlignment) {
       setState(() => _expandedAlignment = alignment);
     }
   }
+
+  /// Every control's panel gets at least this much content height (the
+  /// tallest built-in panel — Radio's field row — sets the bar), so the
+  /// area doesn't jump between sizes when switching controls and shorter
+  /// panels (Time) don't open a skinnier strip than the design intends.
+  static const double _panelMinContentHeight = 56;
+
+  /// Border→pills spacing when the panel is closed, and panel→pills
+  /// spacing once it's fully out — the panel "absorbs" most of the closed
+  /// gap as it slides up, ending closer to the pills than the border was.
+  static const double _closedGap = 14;
+  static const double _openGap = 4;
+
+  /// Width of the gradient mask over the one-line strip's trailing edge.
+  /// The scroll content ends with a spacer of the same width, so at
+  /// maximum scroll the last pill (settings gear / DUPE) clears the mask
+  /// and can actually be seen — the mask sits permanently over the
+  /// viewport's last stretch, so without the spacer that pill could never
+  /// escape it.
+  static const double _maskWidth = 64;
 
   @override
   Widget build(BuildContext context) {
@@ -184,17 +360,32 @@ class _SecondaryControlRowState extends State<SecondaryControlRow> {
     for (final control in widget.controls) {
       if (control.key == widget.selectedKey) selected = control;
     }
+    // Retain the outgoing control's spec while the close slide plays (the
+    // status listener clears it once dismissed); refresh to the live spec
+    // whenever there is one so summaries/inputs stay current.
+    if (selected != null) _panelSpec = selected;
 
     final theme = Theme.of(context);
     const spacing = 6.0;
+
     final chips = [
-      for (final control in widget.controls)
-        _ControlChip(
-          key: _chipKeyFor(control.key),
-          control: control,
-          selected: control.key == widget.selectedKey,
-          onTap: () => widget.onSelect(control.key == widget.selectedKey ? null : control.key),
-        ),
+      for (final key in _displayOrder)
+        if (_specByKey[key] case final control?)
+          _AnimatedChip(
+            key: _animatedChipKeyFor(key),
+            duration: _duration,
+            exiting: _exitingKeys.contains(key),
+            onExited: () => _handleChipExited(key),
+            child: _ControlChip(
+              key: _chipKeyFor(key),
+              control: control,
+              // Excludes a mid-exit chip: it's no longer in widget.controls,
+              // so a stale widget.selectedKey pointing at it (the caller
+              // hasn't cleared selection yet) shouldn't still highlight it.
+              selected: key == widget.selectedKey && !_exitingKeys.contains(key),
+              onTap: () => widget.onSelect(key == widget.selectedKey ? null : key),
+            ),
+          ),
       ?widget.trailing,
       if (widget.onOpenSettings != null) _SettingsPill(height: _chipHeight, onTap: widget.onOpenSettings!),
     ];
@@ -204,72 +395,201 @@ class _SecondaryControlRowState extends State<SecondaryControlRow> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       mainAxisSize: MainAxisSize.min,
       children: [
-        if (selected case final selected?)
-          LayoutBuilder(
-            builder: (context, constraints) => OverflowBox(
-              // Bleeds past the parent's own horizontal padding so the
-              // background below reaches the view's true edges instead of
-              // stopping short at that padding. OverflowBox (rather than a
-              // negative Padding, which Flutter rejects outright) lets a
-              // child be wider than the space its parent offered.
-              minWidth: 0,
-              maxWidth: constraints.maxWidth + widget.horizontalBleed * 2,
-              // The Column above sizes to its children (mainAxisSize.min),
-              // handing this an unbounded height — deferToChild sizes the
-              // OverflowBox to its child's own height instead of trying to
-              // fill that infinite constraint.
-              fit: OverflowBoxFit.deferToChild,
-              child: Container(
-                // Same solid color as a selected pill — this is the
-                // "extended area" that gets the pill background, not the
-                // chip strip itself — full width, flush against the top
-                // and sides, with its own regular inner padding around
-                // the content.
-                width: constraints.maxWidth + widget.horizontalBleed * 2,
-                color: theme.colorScheme.tertiary,
-                // Horizontal inset matches the pill row's own — that row
-                // has no padding of its own, so its chips sit exactly
-                // `horizontalBleed` in from the true edge (the parent's own
-                // padding, which this panel otherwise bleeds past).
-                padding: EdgeInsets.symmetric(horizontal: widget.horizontalBleed, vertical: 8),
-                child: Align(
-                  alignment: _expandedAlignment,
-                  child: Builder(key: _expandedKey, builder: selected.expandedBuilder),
-                ),
-              ),
+        LayoutBuilder(
+          builder: (context, constraints) => OverflowBox(
+            // Bleeds past the parent's own horizontal padding so the
+            // background below reaches the view's true edges instead of
+            // stopping short at that padding. OverflowBox (rather than a
+            // negative Padding, which Flutter rejects outright) lets a
+            // child be wider than the space its parent offered.
+            minWidth: 0,
+            maxWidth: constraints.maxWidth + widget.horizontalBleed * 2,
+            // The Column above sizes to its children (mainAxisSize.min),
+            // handing this an unbounded height — deferToChild sizes the
+            // OverflowBox to its child's own height instead of trying to
+            // fill that infinite constraint.
+            fit: OverflowBoxFit.deferToChild,
+            // The panel area lives tucked "behind" the border above; since
+            // the whole logging panel is bottom-anchored, growing this slot
+            // pushes the border upward — the dark area, with its content
+            // already fully built and laid out inside it, rides up with
+            // that top edge (topCenter pins the child to the top of the
+            // reveal window). Closing reverses the same slide.
+            child: SizeTransition(
+              sizeFactor: _panelReveal,
+              alignment: Alignment.topCenter,
+              child: _panelSpec == null
+                  ? SizedBox(width: constraints.maxWidth)
+                  : Container(
+                      // Same solid color as a selected pill — this is the
+                      // "extended area" that gets the pill background, not
+                      // the chip strip itself — full width, flush against
+                      // the top and sides, with its own regular inner
+                      // padding around the content.
+                      width: constraints.maxWidth + widget.horizontalBleed * 2,
+                      color: theme.colorScheme.tertiary,
+                      // Horizontal inset matches the pill row's own — that
+                      // row has no padding of its own, so its chips sit
+                      // exactly `horizontalBleed` in from the true edge
+                      // (the parent's own padding, which this panel
+                      // otherwise bleeds past).
+                      padding: EdgeInsets.symmetric(horizontal: widget.horizontalBleed, vertical: 8),
+                      child: ConstrainedBox(
+                        constraints: const BoxConstraints(minHeight: _panelMinContentHeight),
+                        // A closing panel's fields stay mounted for the
+                        // 200ms slide, but must not keep keyboard focus —
+                        // keystrokes right after deselecting would land in
+                        // the invisible field (and Enter would submit it)
+                        // instead of the main entry row.
+                        child: ExcludeFocus(
+                          excluding: !_panelShouldBeOpen,
+                          // Switching straight between two controls while
+                          // the panel is out (the slide controller stays
+                          // at 1) cross-fades just the content, inside the
+                          // steady dark area. The generation in the key
+                          // makes every switch a fresh child, so rapidly
+                          // re-selecting a control whose outgoing panel is
+                          // still retiring can't collide with it.
+                          child: AnimatedSwitcher(
+                            duration: _duration,
+                            child: KeyedSubtree(
+                              key: ValueKey('${_panelSpec!.key}#$_panelGeneration'),
+                              child: Align(
+                                alignment: _expandedAlignment,
+                                child: Builder(
+                                  key: _expandedKeyFor(_panelSpec!.key),
+                                  builder: _panelSpec!.expandedBuilder,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
             ),
           ),
-        const SizedBox(height: 4),
+        ),
+        // The border→pills breathing room shrinks as the panel slides out,
+        // ceding most of itself to the panel: closed, the pills sit
+        // _closedGap below the border; open, they sit only _openGap below
+        // the panel's bottom edge.
+        AnimatedBuilder(
+          animation: _panelReveal,
+          builder: (context, _) => SizedBox(height: _closedGap - (_closedGap - _openGap) * _panelReveal.value),
+        ),
         Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Expanded(
-              child: _gridExpanded
-                  ? ConstrainedBox(
-                      constraints: BoxConstraints(maxHeight: _chipHeight * 4 + spacing * 3),
-                      child: SingleChildScrollView(
-                        child: Wrap(
-                          spacing: spacing,
-                          runSpacing: spacing,
-                          children: chips,
-                        ),
-                      ),
-                    )
-                  : ScrollConfiguration(
-                      behavior: _DragScrollBehavior(),
-                      child: SingleChildScrollView(
-                        scrollDirection: Axis.horizontal,
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            for (final chip in chips) ...[
-                              chip,
-                              if (chip != chips.last) const SizedBox(width: spacing),
-                            ],
-                          ],
+              child: Stack(
+                // The one-line strip below deliberately paints past this
+                // Stack's left edge (OverflowBox bleed to the window edge)
+                // — default hardEdge clipping would cut that off.
+                clipBehavior: Clip.none,
+                children: [
+                  // AnimatedSize (rather than a manual cross-fade) animates
+                  // the height change between the single-line strip and the
+                  // multi-row grid — the content swap itself stays instant
+                  // (only one of the two is ever built, matching the row's
+                  // pre-animation behavior). The Row and Wrap below are
+                  // different widget types, so Flutter already rebuilds
+                  // this subtree fresh on every toggle regardless — each
+                  // chip's GlobalKey (`_animatedChipKeyFor`) is what
+                  // actually carries its live AnimationController across
+                  // that rebuild, not an extra key on this container.
+                  AnimatedSize(
+                    duration: _duration,
+                    curve: Curves.easeInOut,
+                    alignment: Alignment.topLeft,
+                    child: _gridExpanded
+                        ? ConstrainedBox(
+                            constraints: BoxConstraints(maxHeight: _chipHeight * 4 + spacing * 3),
+                            child: SingleChildScrollView(
+                              child: Wrap(
+                                spacing: spacing,
+                                runSpacing: spacing,
+                                children: chips,
+                              ),
+                            ),
+                          )
+                        : LayoutBuilder(
+                            // The strip's viewport bleeds left past the
+                            // parent's padding to the window's true edge
+                            // (right-aligned OverflowBox: all the extra
+                            // width goes leftward), so scrolled chips run
+                            // off the screen edge instead of clipping at
+                            // the padding. The leading spacer inside the
+                            // scroll content re-establishes that same inset
+                            // for the strip at rest, so the first chip
+                            // still lines up with everything else.
+                            builder: (context, strip) => OverflowBox(
+                              minWidth: 0,
+                              maxWidth: strip.maxWidth + widget.horizontalBleed,
+                              alignment: Alignment.centerRight,
+                              fit: OverflowBoxFit.deferToChild,
+                              child: ScrollConfiguration(
+                                behavior: _DragScrollBehavior(),
+                                child: SingleChildScrollView(
+                                  scrollDirection: Axis.horizontal,
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      SizedBox(width: widget.horizontalBleed),
+                                      for (final chip in chips) ...[
+                                        chip,
+                                        if (chip != chips.last) const SizedBox(width: spacing),
+                                      ],
+                                      // Lets the last pill scroll clear of
+                                      // the trailing gradient mask (see
+                                      // _maskWidth).
+                                      const SizedBox(width: _maskWidth),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                  ),
+                  // Painted OVER the strip's trailing edge (an overlay in
+                  // this Stack, not a sibling — a sibling would sit beside
+                  // the already-clipped strip and never actually cover the
+                  // chips): a background-colored mask ramping from
+                  // transparent at its left edge to solid at the strip's
+                  // right edge, so chips scrolling toward the caret
+                  // dissolve across it instead of hard-clipping at the
+                  // strip's edge. Paint-only; IgnorePointer keeps the chips
+                  // under it scrollable/tappable. Only for the one-line
+                  // strip — the grid wraps instead of clipping sideways.
+                  Positioned(
+                    right: 0,
+                    top: 0,
+                    width: _maskWidth,
+                    height: _chipHeight,
+                    child: IgnorePointer(
+                      child: AnimatedOpacity(
+                        duration: _duration,
+                        opacity: _gridExpanded ? 0 : 1,
+                        child: DecoratedBox(
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              begin: Alignment.centerLeft,
+                              end: Alignment.centerRight,
+                              // Fully opaque 8px shy of the right edge
+                              // (0.875 of the 64px width), so the chips are
+                              // completely gone a beat before the caret.
+                              stops: const [0, 0.875],
+                              colors: [
+                                theme.colorScheme.tertiaryContainer.withValues(alpha: 0),
+                                theme.colorScheme.tertiaryContainer,
+                              ],
+                            ),
+                          ),
                         ),
                       ),
                     ),
+                  ),
+                ],
+              ),
             ),
             IconButton(
               tooltip: _gridExpanded ? 'Collapse' : 'Expand',
@@ -277,12 +597,85 @@ class _SecondaryControlRowState extends State<SecondaryControlRow> {
               style: IconButton.styleFrom(
                 backgroundColor: HaLoColors.of(context).tertiaryLight.withValues(alpha: 0.5),
               ),
-              icon: Icon(_gridExpanded ? Icons.expand_less : Icons.expand_more),
+              icon: AnimatedRotation(
+                turns: _gridExpanded ? 0.5 : 0,
+                duration: _duration,
+                curve: Curves.easeInOut,
+                child: const Icon(Icons.expand_more),
+              ),
               onPressed: () => setState(() => _gridExpanded = !_gridExpanded),
             ),
           ],
         ),
       ],
+    );
+  }
+}
+
+/// Fades a chip in when it's newly added to the strip, and back out when
+/// [exiting] flips true — calling [onExited] once that fade-out actually
+/// finishes, which is the parent's cue to drop the chip for good. Opacity-
+/// only (rather than also shrinking its width via `SizeTransition`) so the
+/// chip's laid-out size — and so its tap target and its contribution to
+/// `_measure`'s zone math — stays stable across the fade instead of
+/// animating through partial sizes.
+class _AnimatedChip extends StatefulWidget {
+  final Widget child;
+  final bool exiting;
+  final Duration duration;
+  final VoidCallback onExited;
+
+  const _AnimatedChip({
+    super.key,
+    required this.child,
+    required this.exiting,
+    required this.duration,
+    required this.onExited,
+  });
+
+  @override
+  State<_AnimatedChip> createState() => _AnimatedChipState();
+}
+
+class _AnimatedChipState extends State<_AnimatedChip> with SingleTickerProviderStateMixin {
+  late final AnimationController _controller = AnimationController(vsync: this, duration: widget.duration)
+    ..addStatusListener(_handleStatusChanged)
+    ..forward();
+
+  void _handleStatusChanged(AnimationStatus status) {
+    // Only reachable by actually finishing a reverse (never interrupted by
+    // a forward() call in between — see didUpdateWidget), so there's no
+    // stale-callback risk equivalent to a fixed-delay Timer: if `exiting`
+    // flips back to false first, forward() takes over and dismissed is
+    // never reached for this reverse.
+    if (status == AnimationStatus.dismissed && widget.exiting) widget.onExited();
+  }
+
+  @override
+  void didUpdateWidget(covariant _AnimatedChip oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.exiting != oldWidget.exiting) {
+      widget.exiting ? _controller.reverse() : _controller.forward();
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return IgnorePointer(
+      // A chip mid-exit is no longer part of widget.controls, so tapping it
+      // shouldn't be able to call onSelect with a key the caller no longer
+      // recognizes.
+      ignoring: widget.exiting,
+      child: FadeTransition(
+        opacity: CurvedAnimation(parent: _controller, curve: Curves.easeOut),
+        child: widget.child,
+      ),
     );
   }
 }

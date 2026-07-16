@@ -414,6 +414,10 @@ class _OperationViewState extends State<OperationView> with SingleTickerProvider
         );
         final tabView = TabBarView(
           controller: _tabController,
+          // Tabs change only via the tab bar — horizontal swipes would
+          // fight the logging strip's own horizontal scrolling (and map
+          // panning), so page-swiping is disabled in both layouts.
+          physics: const NeverScrollableScrollPhysics(),
           children: [
             isTwoPane
                 ? InformationPanel(operation: operation, qsos: qsos, commandMarkdown: _commandMarkdown)
