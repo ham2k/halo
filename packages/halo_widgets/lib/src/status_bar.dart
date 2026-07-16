@@ -88,6 +88,26 @@ class StatusBarFooter extends StatefulWidget {
 class _StatusBarFooterState extends State<StatusBarFooter> {
   bool _expanded = false;
 
+  // AnimatedSwitcher requires each transition's key to be unique for as long
+  // as the outgoing child is still animating out — reusing one throws a
+  // duplicate-key error. Deriving the key straight from `(last.key,
+  // items.length)` isn't safe: both can revert to a prior value within one
+  // 200ms transition (e.g. two data-file syncs finishing back-to-back flips
+  // the count 2 -> 3 -> 2), so a later build can mint a key identical to one
+  // still mid-exit-animation. A monotonically increasing generation, bumped
+  // only when the identity actually changes, is never reused.
+  String? _lastSwitchIdentity;
+  int _switchGeneration = 0;
+
+  Key _collapsedSwitchKey(StatusBarItemData? last) {
+    final identity = last == null ? null : '${last.key}|${widget.items.length}';
+    if (identity != _lastSwitchIdentity) {
+      _lastSwitchIdentity = identity;
+      _switchGeneration++;
+    }
+    return ValueKey(_switchGeneration);
+  }
+
   @override
   Widget build(BuildContext context) {
     final hasItems = widget.items.isNotEmpty;
@@ -137,7 +157,7 @@ class _StatusBarFooterState extends State<StatusBarFooter> {
           : AnimatedSwitcher(
               duration: const Duration(milliseconds: 200),
               child: Padding(
-                key: ValueKey('${last.key}|${widget.items.length}'),
+                key: _collapsedSwitchKey(last),
                 padding: const EdgeInsets.symmetric(horizontal: 12),
                 child: Row(
                   children: [
