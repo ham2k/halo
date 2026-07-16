@@ -4,7 +4,7 @@
 // The QSO entry controls — the hottest path in the whole app. Keyboard
 // ergonomics are the contract (DESIGN.md §7), ported from app-polo:
 //   Enter   logs the QSO from anywhere in the controls
-//   Esc     wipes the current entry
+//   Esc     wipes the current entry (same as the wipe button, undo included)
 //   Space   in the call field: runs command shortcuts (frequency, band,
 //           mode — "14285 ", "20m ", "cw ") or advances to Sent;
 //           in Sent/Rcvd: advances focus, cycling back to the call
@@ -2269,10 +2269,18 @@ class _LoggingControlsState extends State<LoggingControls> {
 
   /// Escape wipes the compose form, but must not blank the read-only view
   /// of a staged-delete or deleted QSO — the fields are the record's only
-  /// display and can't be repopulated without reselecting it.
+  /// display and can't be repopulated without reselecting it. When
+  /// composing a new QSO it goes through the wipe button's path, so the
+  /// 5-second undo offer applies to Esc too; while editing, or with
+  /// nothing composed, there is nothing the undo button could restore
+  /// (it only shows for new QSOs), so it wipes directly.
   void _handleEscape() {
     if (_fieldsLocked) return;
-    _wipe();
+    if (widget.editingQso == null && _hasComposedValues) {
+      _handleWipeTap();
+    } else {
+      _wipe();
+    }
   }
 
   void _wipe() {

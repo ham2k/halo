@@ -691,7 +691,7 @@ void main() {
     expect(logged.single.theirGrid, 'FN31pr');
   });
 
-  testWidgets('Escape wipes the entry', (tester) async {
+  testWidgets('Escape wipes the entry and offers the same undo as the wipe button', (tester) async {
     await tester.pumpWidget(host());
 
     await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'W1AW');
@@ -702,6 +702,21 @@ void main() {
     final callField = tester.widget<TextField>(find.widgetWithText(TextField, 'Their call'));
     expect(callField.controller!.text, isEmpty);
     expect(await waitForQsos(tester, 1), isEmpty);
+
+    // Esc goes through the wipe button's path, so the 5s undo offer applies.
+    final undoIcon = resolveIconName('undo');
+    expect(find.byIcon(undoIcon), findsOneWidget);
+    await tester.tap(find.byIcon(undoIcon));
+    await tester.pump();
+    expect(callField.controller!.text, 'W1AW');
+    expect(find.byIcon(undoIcon), findsNothing);
+
+    // With nothing composed, Esc doesn't stash an empty entry as undoable.
+    await tester.enterText(find.widgetWithText(TextField, 'Their call'), '');
+    await tester.pump();
+    await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+    await tester.pump();
+    expect(find.byIcon(undoIcon), findsNothing);
   });
 
   testWidgets('debounced lookup enriches the entry line and the logged QSO', (tester) async {
