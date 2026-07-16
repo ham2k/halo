@@ -430,6 +430,7 @@ class _OperationViewState extends State<OperationView> with SingleTickerProvider
 
         return Scaffold(
           appBar: AppBar(
+            flexibleSpace: macOSHeaderDoubleClickArea(),
             leadingWidth: macOSAwareLeadingWidth(context),
             leading: macOSAwareBackButton(context),
             actions: [

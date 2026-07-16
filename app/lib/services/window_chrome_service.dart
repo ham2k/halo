@@ -10,9 +10,15 @@
 // drifts out of sync the moment the header changes — Flutter is the single
 // source of truth and pushes the real height across this channel whenever it
 // changes.
+//
+// The same channel also carries header double-click reports, sent from
+// halo_widgets' platform_chrome.dart (macOSHeaderDoubleClickArea) since
+// that's where the AppBar helpers live, and full-screen transitions pushed
+// from the native side (received in [WindowChromeService.init]).
 
 import 'package:flutter/foundation.dart' show TargetPlatform, defaultTargetPlatform, kIsWeb;
 import 'package:flutter/services.dart';
+import 'package:halo_widgets/halo_widgets.dart' show macOSWindowIsFullScreen;
 
 class WindowChromeService {
   static const _channel = MethodChannel('ham2k/window_chrome');
@@ -21,6 +27,21 @@ class WindowChromeService {
 
   static double? _lastReported;
   static Size? _lastMinimumSize;
+
+  /// Registers the receiving end of the channel. Call once at startup.
+  /// Currently one native push: full-screen transitions, which feed
+  /// halo_widgets' [macOSWindowIsFullScreen] so the header can drop the
+  /// traffic-light clearance while the buttons live in the system's
+  /// auto-hiding titlebar overlay.
+  static void init() {
+    if (!_supported) return;
+    _channel.setMethodCallHandler((call) async {
+      if (call.method == 'fullScreenChanged') {
+        macOSWindowIsFullScreen.value = call.arguments as bool? ?? false;
+      }
+      return null;
+    });
+  }
 
   /// Tells the native window the current AppBar height so it can center the
   /// traffic-light buttons in it. Deduped: a no-op unless the height actually

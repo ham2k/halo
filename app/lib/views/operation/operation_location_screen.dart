@@ -128,6 +128,7 @@ class _OperationLocationScreenState extends State<OperationLocationScreen> {
 
     return Scaffold(
       appBar: AppBar(
+        flexibleSpace: macOSHeaderDoubleClickArea(),
         leadingWidth: macOSAwareLeadingWidth(context),
         leading: macOSAwareBackButton(context),
         title: Text(t.title),

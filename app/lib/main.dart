@@ -37,6 +37,7 @@ final navigatorKey = GlobalKey<NavigatorState>();
 
 void main() async {
   final services = await bootstrap();
+  WindowChromeService.init();
   runApp(TranslationProvider(child: HaLoApp(services: services)));
 
   // Dev nicety: launch with POLO_OPEN_FIRST_OP=1 in the environment (e.g.
@@ -439,9 +440,19 @@ class _HaLoAppState extends State<HaLoApp> {
           // UiScale-divided space (layouts.md), so it scales the same way.
           WindowChromeService.reportMinimumSize(minWindowSize * scale);
 
-          return UiScale(
-            scale: scale,
-            child: _StatusBarOverlay(services: widget.services, child: child),
+          // Full-screen toggles change the traffic-light clearance the
+          // headers reserve (macOSTrafficLightClearance → 0 while the
+          // buttons live in the system's auto-hiding overlay). The scope is
+          // the delivery mechanism — see MacOSFullScreenScope's own comment.
+          return ValueListenableBuilder<bool>(
+            valueListenable: macOSWindowIsFullScreen,
+            builder: (context, isFullScreen, _) => MacOSFullScreenScope(
+              isFullScreen: isFullScreen,
+              child: UiScale(
+                scale: scale,
+                child: _StatusBarOverlay(services: widget.services, child: child),
+              ),
+            ),
           );
         },
       ),

@@ -11,6 +11,7 @@
 
 import 'package:flutter/foundation.dart' show TargetPlatform, defaultTargetPlatform, kIsWeb;
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import 'ui_scale.dart';
 
@@ -29,12 +30,42 @@ const double macOSTrafficLightInset = 70;
 /// immediately at their edge. Physical, like [macOSTrafficLightInset].
 const double macOSTrafficLightGap = 16;
 
+/// True while the macOS window is in native full screen — pushed from
+/// MainFlutterWindow.swift over the window-chrome channel (the app's
+/// WindowChromeService registers the receiving handler). The app root feeds
+/// it into a [MacOSFullScreenScope]; header code reads the scope, not this
+/// notifier, so the views that reserved traffic-light clearance rebuild on
+/// the transition.
+final ValueNotifier<bool> macOSWindowIsFullScreen = ValueNotifier<bool>(false);
+
+/// Scope distributing the full-screen state to header builders. An
+/// InheritedWidget (rather than reading [macOSWindowIsFullScreen] directly)
+/// because the notifier alone can't reach them: MaterialApp.builder wraps a
+/// prebuilt Navigator `child`, so a root rebuild short-circuits at the
+/// identical child widget — only an inherited dependency makes the AppBars
+/// below re-run their build when the value flips.
+class MacOSFullScreenScope extends InheritedWidget {
+  final bool isFullScreen;
+
+  const MacOSFullScreenScope({super.key, required this.isFullScreen, required super.child});
+
+  /// False when no scope is above (tests, non-app embeddings).
+  static bool of(BuildContext context) =>
+      context.dependOnInheritedWidgetOfExactType<MacOSFullScreenScope>()?.isFullScreen ?? false;
+
+  @override
+  bool updateShouldNotify(MacOSFullScreenScope oldWidget) => oldWidget.isFullScreen != isFullScreen;
+}
+
 /// The traffic-light clearance in the AppBar's (scaled) coordinate space, so
 /// it renders at a constant physical size that always clears the native
 /// buttons regardless of UI scale. Use this instead of the raw constants for
-/// any custom leading layout (see [macOSAwareLeadingWidth]).
-double macOSTrafficLightClearance(BuildContext context) =>
-    (macOSTrafficLightInset + macOSTrafficLightGap) / UiScale.of(context);
+/// any custom leading layout (see [macOSAwareLeadingWidth]). Zero in native
+/// full screen, where the buttons leave the header for the system's
+/// auto-hiding titlebar overlay and leading content aligns with the edge.
+double macOSTrafficLightClearance(BuildContext context) => MacOSFullScreenScope.of(context)
+    ? 0
+    : (macOSTrafficLightInset + macOSTrafficLightGap) / UiScale.of(context);
 
 /// True on desktop/windowed platforms (macOS, Windows, Linux) and web, where
 /// an AppBar title reads like a windowed app's title bar and should sit
@@ -84,3 +115,23 @@ Widget macOSAwareBackButton(BuildContext context, {VoidCallback? onPressed}) => 
             )
           : BackButton(onPressed: onPressed),
     );
+
+// The same channel MainFlutterWindow.swift listens on for the app's
+// WindowChromeService height reports; this end only ever sends.
+const _windowChromeChannel = MethodChannel('ham2k/window_chrome');
+
+/// `AppBar.flexibleSpace` for headers that sit at the top of the window:
+/// double-clicking the header's empty background performs the native
+/// title-bar double-click action (zoom, or minimize/nothing per the user's
+/// System Settings choice — resolved in MainFlutterWindow.swift), since the
+/// chromeless window has no real title bar to provide it. flexibleSpace
+/// renders BEHIND the toolbar row in the AppBar's stack, so buttons and
+/// title keep winning hit-testing and only clicks on empty background land
+/// here. Null when not [isMacOSChromelessWindow].
+Widget? macOSHeaderDoubleClickArea() => isMacOSChromelessWindow
+    ? GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onDoubleTap: () => _windowChromeChannel.invokeMethod('performHeaderDoubleClickAction'),
+        child: const SizedBox.expand(),
+      )
+    : null;

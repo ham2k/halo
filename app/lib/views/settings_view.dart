@@ -170,6 +170,7 @@ class _SettingsViewState extends State<SettingsView> {
         onPreferredPrimaryWidthChanged: (width) => settings.setLayoutDimension(LayoutKeys.settingsLeftColumn, width),
         primary: Scaffold(
           appBar: AppBar(
+            flexibleSpace: macOSHeaderDoubleClickArea(),
             leadingWidth: macOSAwareLeadingWidth(context),
             leading: macOSAwareBackButton(context),
             title: const Text('Settings'),
@@ -184,6 +185,7 @@ class _SettingsViewState extends State<SettingsView> {
           final safeLeft = PaneSafeArea.leftOf(context);
           return Scaffold(
             appBar: AppBar(
+              flexibleSpace: macOSHeaderDoubleClickArea(),
               // Default title inset (16) plus the clearance, so the title
               // lines up with the padded content below.
               titleSpacing: 16 + safeLeft,
@@ -200,6 +202,7 @@ class _SettingsViewState extends State<SettingsView> {
     } else {
       return Scaffold(
         appBar: AppBar(
+          flexibleSpace: macOSHeaderDoubleClickArea(),
           leadingWidth: macOSAwareLeadingWidth(context),
           leading: macOSAwareBackButton(context),
           title: const Text('Settings'),
@@ -269,6 +272,7 @@ class _SettingsPanelScreen extends StatelessWidget {
 
     return Scaffold(
       appBar: AppBar(
+        flexibleSpace: macOSHeaderDoubleClickArea(),
         leadingWidth: macOSAwareLeadingWidth(context),
         leading: macOSAwareBackButton(context),
         title: Text(panel.title),
@@ -1240,6 +1244,7 @@ class _AccountPaneState extends State<_AccountPane> {
         MaterialPageRoute(
           builder: (context) => Scaffold(
             appBar: AppBar(
+              flexibleSpace: macOSHeaderDoubleClickArea(),
               title: Text('Connect to ${widget.account['label']}'),
               leadingWidth: macOSAwareLeadingWidth(context),
               leading: isMacOSChromelessWindow

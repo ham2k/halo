@@ -197,6 +197,7 @@ class _HomeViewState extends State<HomeView> {
     final theme = Theme.of(context);
     return Scaffold(
       appBar: AppBar(
+        flexibleSpace: macOSHeaderDoubleClickArea(),
         leadingWidth: isMacOSChromelessWindow ? 48 + macOSTrafficLightClearance(context) : null,
         leading: Padding(
           padding: EdgeInsets.fromLTRB(
