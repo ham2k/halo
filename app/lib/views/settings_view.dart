@@ -175,10 +175,26 @@ class _SettingsViewState extends State<SettingsView> {
           ),
           body: _buildSidebar(context, isWide: true, panels: panels, selectedKey: effectivePanel.key),
         ),
-        secondary: Scaffold(
-          appBar: AppBar(title: Text(effectivePanel.title), automaticallyImplyLeading: false),
-          body: _buildPanelContent(effectivePanel, widget.services),
-        ),
+        // The Builder gets a context under the split's PaneSafeArea: the
+        // whole right panel — title included — shifts right by the grab
+        // strip's clearance, keeping the AppBar title aligned with the
+        // panel elements below it.
+        secondary: Builder(builder: (context) {
+          final safeLeft = PaneSafeArea.leftOf(context);
+          return Scaffold(
+            appBar: AppBar(
+              // Default title inset (16) plus the clearance, so the title
+              // lines up with the padded content below.
+              titleSpacing: 16 + safeLeft,
+              title: Text(effectivePanel.title),
+              automaticallyImplyLeading: false,
+            ),
+            body: Padding(
+              padding: EdgeInsets.only(left: safeLeft),
+              child: _buildPanelContent(effectivePanel, widget.services),
+            ),
+          );
+        }),
       );
     } else {
       return Scaffold(

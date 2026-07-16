@@ -4,6 +4,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:halo_core/halo_core.dart';
+import 'package:halo_widgets/halo_widgets.dart';
 
 import '../../i18n/strings.g.dart';
 
@@ -49,7 +50,8 @@ class InformationPanel extends StatelessWidget {
 
     final theme = Theme.of(context);
     return ListView(
-      padding: const EdgeInsets.all(16),
+      // Extra left inset: the split's grab strip overlays this pane's edge.
+      padding: EdgeInsets.all(16).add(EdgeInsets.only(left: PaneSafeArea.leftOf(context))),
       children: [
         if (commandMarkdown != null) ...[
           MarkdownBody(

@@ -164,7 +164,7 @@ void main() {
       ResizableSplitView.dividerWidth,
       reason: 'secondary content insets by the grab strip when it needs interactivity at the edge',
     );
-    expect(primaryLeft, 0, reason: 'the primary has no overlay on its edges (the shadow is paint-only)');
+    expect(primaryLeft, 0, reason: 'nothing overlays the primary');
   });
 
   testWidgets('the grab dots rest at half opacity and brighten on hover', (tester) async {
@@ -195,33 +195,73 @@ void main() {
     expect(dots().opacity, 0.5, reason: 'leaving the strip dims them again');
   });
 
+  testWidgets('the divider shadow is dark in light mode and light in dark mode', (tester) async {
+    // A black shadow disappears into dark-mode pane surfaces; the boundary
+    // needs a light "shadow" (glow) there instead.
+    tester.view.physicalSize = const Size(1000, 600);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+
+    Widget build(ThemeData theme) => MediaQuery(
+      data: const MediaQueryData(size: Size(1000, 600)),
+      child: MaterialApp(
+        theme: theme,
+        home: const Scaffold(
+          body: ResizableSplitView(primary: primary, secondary: secondary, preferredPrimaryWidth: 500),
+        ),
+      ),
+    );
+
+    Color shadowEdgeColor() {
+      final box = tester.widget<DecoratedBox>(
+        find.descendant(
+          of: find.byType(IgnorePointer),
+          matching: find.byWidgetPredicate(
+            (w) => w is DecoratedBox && (w.decoration as BoxDecoration).gradient != null,
+          ),
+        ),
+      );
+      return ((box.decoration as BoxDecoration).gradient! as LinearGradient).colors.first;
+    }
+
+    await tester.pumpWidget(build(ThemeData(brightness: Brightness.light)));
+    await tester.pumpAndSettle();
+    final light = shadowEdgeColor();
+    expect(light.computeLuminance(), lessThan(0.5), reason: 'light mode: a dark shadow');
+
+    await tester.pumpWidget(build(ThemeData(brightness: Brightness.dark)));
+    await tester.pumpAndSettle();
+    final dark = shadowEdgeColor();
+    expect(dark.computeLuminance(), greaterThan(0.5), reason: 'dark mode: a light glow');
+  });
+
   testWidgets('the divider shadow never blocks clicks on controls beneath it', (tester) async {
     tester.view.physicalSize = const Size(1000, 600);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.reset);
 
-    // A button hugging the primary's right edge, fully under the shadow
-    // strip (which is paint-only via IgnorePointer).
+    // A full-pane button as the secondary; the shadow band extends one
+    // pixel past the grab strip (shadowWidth 12 vs strip 11) — a tap in
+    // that shadow-only sliver must reach the button (the shadow is
+    // paint-only; ONLY the strip intercepts).
     var taps = 0;
     await tester.pumpWidget(
       harness(
         child: ResizableSplitView(
-          primary: Align(
-            alignment: Alignment.centerRight,
-            child: SizedBox(
-              width: ResizableSplitView.dividerShadowWidth,
-              height: 40,
-              child: GestureDetector(key: const Key('edge-button'), onTap: () => taps++),
-            ),
+          primary: primary,
+          secondary: GestureDetector(
+            key: const Key('pane-button'),
+            behavior: HitTestBehavior.opaque,
+            onTap: () => taps++,
           ),
-          secondary: secondary,
           preferredPrimaryWidth: 500,
         ),
       ),
     );
     await tester.pumpAndSettle();
 
-    await tester.tap(find.byKey(const Key('edge-button')));
+    // x = 500 (primary) + 11.5: inside the shadow band, outside the strip.
+    await tester.tapAt(const Offset(500 + 11.5, 300));
     expect(taps, 1, reason: 'the shadow overlay must be paint-only');
   });
 
