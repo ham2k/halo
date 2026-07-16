@@ -7,6 +7,7 @@
 // user actually dragged to; and a null secondary keeps the primary subtree
 // mounted at full width so state survives shirt-size flips.
 
+import 'package:flutter/gestures.dart' show PointerDeviceKind;
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:halo_widgets/halo_widgets.dart';
@@ -164,6 +165,34 @@ void main() {
       reason: 'secondary content insets by the grab strip when it needs interactivity at the edge',
     );
     expect(primaryLeft, 0, reason: 'the primary has no overlay on its edges (the shadow is paint-only)');
+  });
+
+  testWidgets('the grab dots rest at half opacity and brighten on hover', (tester) async {
+    tester.view.physicalSize = const Size(1000, 600);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+
+    await tester.pumpWidget(
+      harness(
+        child: const ResizableSplitView(primary: primary, secondary: secondary, preferredPrimaryWidth: 500),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    AnimatedOpacity dots() =>
+        tester.widget<AnimatedOpacity>(find.descendant(of: dividerHandle, matching: find.byType(AnimatedOpacity)));
+    expect(dots().opacity, 0.5, reason: 'resting: an invitation, not furniture');
+
+    final mouse = await tester.createGesture(kind: PointerDeviceKind.mouse);
+    await mouse.addPointer(location: Offset.zero);
+    addTearDown(mouse.removePointer);
+    await mouse.moveTo(tester.getCenter(dividerHandle));
+    await tester.pumpAndSettle();
+    expect(dots().opacity, 1.0, reason: 'hover brightens the dots');
+
+    await mouse.moveTo(Offset.zero);
+    await tester.pumpAndSettle();
+    expect(dots().opacity, 0.5, reason: 'leaving the strip dims them again');
   });
 
   testWidgets('the divider shadow never blocks clicks on controls beneath it', (tester) async {
@@ -401,22 +430,32 @@ void main() {
     await tester.pumpAndSettle();
 
     // Overshoot far past the right edge: the width pins at
-    // total - minSecondary - divider, and the drag doesn't accumulate
-    // invisible overshoot the user would have to drag back through.
+    // total - minSecondary - divider while the VIRTUAL drag position keeps
+    // tracking the pointer — so a reversal is ignored until the pointer
+    // has traveled all the way back to the divider (otherwise the divider
+    // would start moving far away from the cursor).
     final divider = dividerHandle;
     final gesture = await tester.startGesture(tester.getCenter(divider));
+    const overshootTo = 500.0 + 5000.0; // virtual position after the move
     await gesture.moveBy(const Offset(5000, 0));
     await tester.pump();
     final pinned = 1000 - 280 - ResizableSplitView.dividerWidth;
     expect(primaryWidth(tester), pinned);
 
-    await gesture.moveBy(const Offset(-1, 0));
+    // Reversing while the cursor is still far past the limit: no movement.
+    await gesture.moveBy(const Offset(-1000, 0));
     await tester.pump();
-    expect(primaryWidth(tester), pinned - 1, reason: 'reversal takes effect immediately');
+    expect(primaryWidth(tester), pinned, reason: 'reversal is ignored until the pointer is back at the divider');
+
+    // Travel the rest of the way back to the divider, then 10 more: now it
+    // follows the cursor again.
+    await gesture.moveBy(Offset(-(overshootTo - 1000 - pinned) - 10, 0));
+    await tester.pump();
+    expect(primaryWidth(tester), pinned - 10, reason: 'movement resumes once the pointer reaches the divider');
 
     await gesture.up();
     await tester.pump();
-    expect(reported, [pinned - 1]);
+    expect(reported, [pinned - 10]);
   });
 
   testWidgets('mid-animation frames never overflow the Row', (tester) async {

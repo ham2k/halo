@@ -101,15 +101,23 @@ class _ResizableSplitViewState extends State<ResizableSplitView> {
   double? _preferredBeforeDrag;
   bool _dragMoved = false;
 
+  /// The UNCLAMPED drag position, tracking the pointer 1:1 including
+  /// overshoot past the limits. The divider lays out (and persists) the
+  /// clamped [_preferredWidth]; accumulating the overshoot here means a
+  /// direction reversal is ignored until the pointer has traveled back to
+  /// the divider — without it, the divider would start moving the instant
+  /// the mouse reverses, far away from the cursor.
+  double _dragPosition = 0;
+
   /// The available width from the previous build — a change means the
   /// WINDOW is being resized, and widths must track it instantly (see
   /// build); only preference changes and mode flips animate.
   double? _lastTotal;
 
   /// The clamp bounds from the most recent layout, so drag updates (which
-  /// happen outside build) can keep the width inside what currently fits —
-  /// otherwise overshooting the edge would accumulate invisible width that
-  /// the user has to drag back through, and would persist out-of-range.
+  /// happen outside build) keep the laid-out and persisted width inside
+  /// what currently fits — only [_dragPosition] deliberately runs past
+  /// them.
   double _dragLowerBound = minPaneWidth;
   double _dragUpperBound = double.infinity;
 
@@ -139,13 +147,16 @@ class _ResizableSplitViewState extends State<ResizableSplitView> {
       // Turn the default into an explicit base so deltas can accumulate;
       // reverted unless the gesture actually moves.
       _preferredWidth ??= _effectiveWidthForDrag;
+      // The pointer starts ON the divider: virtual position = actual.
+      _dragPosition = _preferredWidth!.clamp(_dragLowerBound, _dragUpperBound);
     });
   }
 
   void _handleDragUpdate(DragUpdateDetails details) {
     setState(() {
       _dragMoved = true;
-      _preferredWidth = (_preferredWidth! + details.delta.dx).clamp(_dragLowerBound, _dragUpperBound);
+      _dragPosition += details.delta.dx;
+      _preferredWidth = _dragPosition.clamp(_dragLowerBound, _dragUpperBound);
     });
   }
 
@@ -307,6 +318,7 @@ class _ResizableSplitViewState extends State<ResizableSplitView> {
                             onDragUpdate: _handleDragUpdate,
                             onDragEnd: _handleDragEnd,
                             onDragCancel: _handleDragCancel,
+                            dragging: _dragging,
                           ),
                         ),
                       ],
@@ -341,18 +353,34 @@ class PaneSafeArea extends InheritedWidget {
   bool updateShouldNotify(PaneSafeArea oldWidget) => left != oldWidget.left || right != oldWidget.right;
 }
 
-class _DividerHandle extends StatelessWidget {
+class _DividerHandle extends StatefulWidget {
   final VoidCallback onDragStart;
   final ValueChanged<DragUpdateDetails> onDragUpdate;
   final VoidCallback onDragEnd;
   final VoidCallback onDragCancel;
+
+  /// Keeps the dots at full strength while a drag is in progress even if
+  /// the pointer overshoots off the strip (which would end the hover).
+  final bool dragging;
 
   const _DividerHandle({
     required this.onDragStart,
     required this.onDragUpdate,
     required this.onDragEnd,
     required this.onDragCancel,
+    required this.dragging,
   });
+
+  /// The grab dots' resting opacity; hovering (or dragging) raises them to
+  /// full strength.
+  static const double restingDotOpacity = 0.5;
+
+  @override
+  State<_DividerHandle> createState() => _DividerHandleState();
+}
+
+class _DividerHandleState extends State<_DividerHandle> {
+  bool _hovered = false;
 
   @override
   Widget build(BuildContext context) {
@@ -362,12 +390,14 @@ class _DividerHandle extends StatelessWidget {
     // scale math here.
     return MouseRegion(
       cursor: SystemMouseCursors.resizeLeftRight,
+      onEnter: (_) => setState(() => _hovered = true),
+      onExit: (_) => setState(() => _hovered = false),
       child: GestureDetector(
         behavior: HitTestBehavior.opaque,
-        onHorizontalDragStart: (_) => onDragStart(),
-        onHorizontalDragUpdate: onDragUpdate,
-        onHorizontalDragEnd: (_) => onDragEnd(),
-        onHorizontalDragCancel: onDragCancel,
+        onHorizontalDragStart: (_) => widget.onDragStart(),
+        onHorizontalDragUpdate: widget.onDragUpdate,
+        onHorizontalDragEnd: (_) => widget.onDragEnd(),
+        onHorizontalDragCancel: widget.onDragCancel,
         // Visually transparent: the secondary pane's own background shows
         // through (its content stretches to the very edge — tabs, headers,
         // all of it), and the drop shadow on the primary marks the
@@ -378,17 +408,26 @@ class _DividerHandle extends StatelessWidget {
           child: ColoredBox(
             color: Colors.black.withValues(alpha: ResizableSplitView._platformViewHitWashAlpha),
             child: Center(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  for (var i = 0; i < 3; i++)
-                    Container(
-                      width: 4,
-                      height: 4,
-                      margin: const EdgeInsets.symmetric(vertical: 2.5),
-                      decoration: BoxDecoration(color: colors.onSurfaceVariant, shape: BoxShape.circle),
-                    ),
-                ],
+              // Subdued until the pointer is over the strip (or dragging):
+              // the dots are an invitation, not furniture. Hover changes
+              // never coincide with the resize-snap frames, so this fade
+              // actually plays (unlike a flip-driven one).
+              child: AnimatedOpacity(
+                opacity: (_hovered || widget.dragging) ? 1.0 : _DividerHandle.restingDotOpacity,
+                duration: const Duration(milliseconds: 150),
+                curve: Curves.easeOut,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    for (var i = 0; i < 3; i++)
+                      Container(
+                        width: 4,
+                        height: 4,
+                        margin: const EdgeInsets.symmetric(vertical: 2.5),
+                        decoration: BoxDecoration(color: colors.onSurfaceVariant, shape: BoxShape.circle),
+                      ),
+                  ],
+                ),
               ),
             ),
           ),
