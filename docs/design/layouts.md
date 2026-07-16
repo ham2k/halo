@@ -26,8 +26,11 @@ ideal pane width.** No view invents its own numbers.
 There is deliberately **no M**. Between S and L lies the **ideal pane width**
 (`idealPaneWidth = 500`) — the width most panes are *designed* for. A window
 around that width simply shows one pane at its best size; it isn't a distinct
-layout mode. When a view goes two-pane at L, its primary pane sits at the
-ideal width by default.
+layout mode. When a view goes two-pane at L and the user has never dragged
+that divider, the primary pane defaults to about two thirds of the available
+width, capped at the S boundary (`ShirtSize.sMax`) — content designed for a
+pane reads fine up to the widest single-pane phone layout, and beyond that
+the extra width serves the secondary pane better.
 
 All values live in
 [`packages/halo_widgets/lib/src/layout.dart`](../../packages/halo_widgets/lib/src/layout.dart):
@@ -56,8 +59,8 @@ still tolerate them; users just can't *drag* a window below it.
 
 | View | XS / S | L / XL |
 |---|---|---|
-| **Home** | Operation list with Quick Lookup below, full width | List + Quick Lookup in a left column (ideal width, resizable); right column shows branding (logo, name, version) on a tinted background |
-| **Operation** | Four tabs: QSOs, Spots, Map, Operation | Logging pane on the left (ideal width, resizable); right side tabs: Info, Spots, Map, Operation |
+| **Home** | Operation list with Quick Lookup below, full width | List + Quick Lookup in a left column (~2/3 width, resizable); right column shows branding (logo, name, version) on a tinted background |
+| **Operation** | Four tabs: QSOs, Spots, Map, Operation | Logging pane on the left (~2/3 width, resizable); right side tabs: Info, Spots, Map, Operation |
 | **Settings** | Settings list; each panel pushes a full screen | Settings list stays as a left column (resizable); selected panel on the right |
 
 Mode switches are **hard cuts within a single build** — a view's `build`
@@ -69,11 +72,21 @@ other. Width changes *within* a mode animate (300ms, ease-in-out, via
 
 Side-by-side panes are composed with
 [`ResizableSplitView`](../../packages/halo_widgets/lib/src/resizable_split_view.dart):
-a primary pane with a preferred width, a draggable divider handle, and an
-expanding secondary pane. When `secondary` is null the primary fills the
-window — pass null on XS/S rather than swapping widget trees, so the primary
-subtree stays mounted (scroll positions and in-progress input survive the
-flip).
+a primary pane with a preferred width and an expanding secondary pane. The
+divider consumes no layout space — it is a transparent drag overlay (with
+grab dots) on the secondary's leftmost pixels, so the secondary's own
+background and content stretch to the very boundary, and the drop shadow on
+the primary's edge is what draws the separation. The strip deliberately
+blocks clicks, hover, and scrolling (it exists only to resize); content
+that needs interactivity near that edge reads `PaneSafeArea.leftOf(context)`
+and insets itself — rows and backgrounds still render edge-to-edge, only
+their content shifts. Over native platform views (the map) the strip stays
+near-invisibly painted so its events route through Flutter — that wash is
+load-bearing, see `ResizableSplitView._platformViewHitWashAlpha`. When
+`secondary` is null
+the primary fills the window — pass null on XS/S rather than swapping
+widget trees, so the primary subtree stays mounted (scroll positions and
+in-progress input survive the flip).
 
 The user's dragged width is a **preference, persisted per divider** through
 `SettingsService.layoutDimension` / `setLayoutDimension`

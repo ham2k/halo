@@ -715,7 +715,11 @@ class _SpotTile extends StatelessWidget {
     final refIcon = iconForRefType(activityControls, refType) ?? _iconOf(spot) ?? 'radio-tower';
 
     final tile = Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      // Rows render edge-to-edge (the ink below spans the full width); the
+      // left content inset grows by the split's grab-strip clearance so
+      // nothing interactive sits under the divider overlay.
+      padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6)
+          .add(EdgeInsets.only(left: PaneSafeArea.leftOf(context))),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [

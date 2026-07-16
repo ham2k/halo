@@ -45,7 +45,155 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(primaryWidth(tester), 500);
-    expect(tester.getSize(find.byKey(const Key('secondary'))).width, 1000 - 500 - ResizableSplitView.dividerWidth);
+    expect(tester.getSize(find.byKey(const Key('secondary'))).width, 1000 - 500);
+  });
+
+  testWidgets('no preference defaults primary to 2/3 of the width, capped at sMax', (tester) async {
+    tester.view.physicalSize = const Size(900, 600);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+
+    // 900 * 2/3 = 600.
+    await tester.pumpWidget(
+      harness(
+        width: 900,
+        child: const ResizableSplitView(primary: primary, secondary: secondary),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(primaryWidth(tester), 600);
+
+    // 1200 * 2/3 = 800 → capped at sMax (720).
+    tester.view.physicalSize = const Size(1200, 600);
+    await tester.pumpWidget(
+      harness(
+        width: 1200,
+        child: const ResizableSplitView(primary: primary, secondary: secondary),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(primaryWidth(tester), ShirtSize.sMax);
+  });
+
+  testWidgets('a drag from the default seeds the preference at the shown width', (tester) async {
+    tester.view.physicalSize = const Size(900, 600);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+
+    final reported = <double>[];
+    await tester.pumpWidget(
+      harness(
+        width: 900,
+        child: ResizableSplitView(primary: primary, secondary: secondary, onPreferredPrimaryWidthChanged: reported.add),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    // Default is 600 (2/3 of 900); a -50 drag lands at 550, i.e. relative
+    // to the width the user actually saw, not to some hidden constant.
+    // (Dragging outward would clamp: the default sits near the upper bound
+    // 900 - minSecondary - grab strip = 609.)
+    final gesture = await tester.startGesture(tester.getCenter(dividerHandle));
+    await gesture.moveBy(const Offset(-50, 0));
+    await tester.pump();
+    expect(primaryWidth(tester), 550);
+
+    await gesture.up();
+    await tester.pump();
+    expect(reported, [550]);
+  });
+
+  testWidgets('a mere click on the divider neither persists nor freezes the adaptive default', (tester) async {
+    tester.view.physicalSize = const Size(900, 600);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+
+    final reported = <double>[];
+    Widget build(double width) => harness(
+      width: width,
+      child: ResizableSplitView(primary: primary, secondary: secondary, onPreferredPrimaryWidthChanged: reported.add),
+    );
+
+    await tester.pumpWidget(build(900));
+    await tester.pumpAndSettle();
+    expect(primaryWidth(tester), 600); // 2/3 default
+
+    // A tap (down + up, no movement) is not a resize.
+    await tester.tap(dividerHandle, warnIfMissed: false);
+    await tester.pumpAndSettle();
+    expect(reported, isEmpty, reason: 'a click must not persist a preference');
+
+    // And the default must still adapt to the window afterwards.
+    tester.view.physicalSize = const Size(1050, 600);
+    await tester.pumpWidget(build(1050));
+    await tester.pumpAndSettle();
+    expect(primaryWidth(tester), 700, reason: 'still 2/3-adaptive: a click must not freeze the width');
+  });
+
+  testWidgets('PaneSafeArea advises the secondary of the grab-strip clearance', (tester) async {
+    tester.view.physicalSize = const Size(1000, 600);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+
+    double? secondaryLeft;
+    double? primaryLeft;
+    await tester.pumpWidget(
+      harness(
+        child: ResizableSplitView(
+          primary: Builder(
+            builder: (context) {
+              primaryLeft = PaneSafeArea.leftOf(context);
+              return primary;
+            },
+          ),
+          secondary: Builder(
+            builder: (context) {
+              secondaryLeft = PaneSafeArea.leftOf(context);
+              return secondary;
+            },
+          ),
+          preferredPrimaryWidth: 500,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(
+      secondaryLeft,
+      ResizableSplitView.dividerWidth,
+      reason: 'secondary content insets by the grab strip when it needs interactivity at the edge',
+    );
+    expect(primaryLeft, 0, reason: 'the primary has no overlay on its edges (the shadow is paint-only)');
+  });
+
+  testWidgets('the divider shadow never blocks clicks on controls beneath it', (tester) async {
+    tester.view.physicalSize = const Size(1000, 600);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+
+    // A button hugging the primary's right edge, fully under the shadow
+    // strip (which is paint-only via IgnorePointer).
+    var taps = 0;
+    await tester.pumpWidget(
+      harness(
+        child: ResizableSplitView(
+          primary: Align(
+            alignment: Alignment.centerRight,
+            child: SizedBox(
+              width: ResizableSplitView.dividerShadowWidth,
+              height: 40,
+              child: GestureDetector(key: const Key('edge-button'), onTap: () => taps++),
+            ),
+          ),
+          secondary: secondary,
+          preferredPrimaryWidth: 500,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key('edge-button')));
+    expect(taps, 1, reason: 'the shadow overlay must be paint-only');
   });
 
   testWidgets('null secondary gives primary the full width and keeps its state', (tester) async {
@@ -93,7 +241,7 @@ void main() {
         child: ResizableSplitView(
           primary: primary,
           secondary: secondary,
-          preferredPrimaryWidth: 600, // doesn't fit: 700 - minSecondary(280) - divider
+          preferredPrimaryWidth: 600, // doesn't fit: 700 - minSecondary(280) - grab strip
           onPreferredPrimaryWidthChanged: reported.add,
         ),
       ),

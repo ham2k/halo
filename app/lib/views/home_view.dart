@@ -228,8 +228,10 @@ class _HomeViewState extends State<HomeView> {
       // keeps its scroll position) across a live resize.
       body: ResizableSplitView(
         secondary: ShirtSize.of(context).isTwoPane ? const _BrandingPane() : null,
-        preferredPrimaryWidth: widget.services.settings.layoutDimension(LayoutKeys.homeLeftColumn) ?? idealPaneWidth,
-        maxPrimaryWidth: idealPaneWidth,
+        // Null when never dragged → the split's own 2/3-capped-at-sMax
+        // default applies.
+        preferredPrimaryWidth: widget.services.settings.layoutDimension(LayoutKeys.homeLeftColumn),
+        maxPrimaryWidth: ShirtSize.sMax,
         onPreferredPrimaryWidthChanged: (width) =>
             widget.services.settings.setLayoutDimension(LayoutKeys.homeLeftColumn, width),
         primary: Column(

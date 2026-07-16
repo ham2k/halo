@@ -378,6 +378,9 @@ class _OperationViewState extends State<OperationView> with SingleTickerProvider
         final mapPanel = KeyedSubtree(
           key: _mapKey,
           child: _KeepAlive(
+            // Stretches to the split's very edge: the divider overlay's
+            // near-invisible wash (see resizable_split_view.dart) is what
+            // keeps the native map view from stealing drags on the strip.
             child: MapPanel(operation: operation, qsos: qsos, settings: widget.services.settings),
           ),
         );
@@ -511,8 +514,9 @@ class _OperationViewState extends State<OperationView> with SingleTickerProvider
           // is always visible in the wide split.
           body: isTwoPane
               ? ResizableSplitView(
-                  preferredPrimaryWidth:
-                      widget.services.settings.layoutDimension(LayoutKeys.operationLeftColumn) ?? idealPaneWidth,
+                  // Null when never dragged → the split's own 2/3-capped-
+                  // at-sMax default applies.
+                  preferredPrimaryWidth: widget.services.settings.layoutDimension(LayoutKeys.operationLeftColumn),
                   onPreferredPrimaryWidthChanged: (width) =>
                       widget.services.settings.setLayoutDimension(LayoutKeys.operationLeftColumn, width),
                   primary: loggingPanel,
@@ -520,7 +524,11 @@ class _OperationViewState extends State<OperationView> with SingleTickerProvider
                     children: [
                       Material(
                         // The TabBar theme assumes it sits on the AppBar's
-                        // color (see theme.dart's tabBarTheme note).
+                        // color (see theme.dart's tabBarTheme note). Tabs
+                        // deliberately do NOT inset by PaneSafeArea: they
+                        // stretch to the split's very edge (the grab strip
+                        // shaving a sliver off the first tab's tap area is
+                        // fine for a wide target like a tab).
                         color: Theme.of(context).appBarTheme.backgroundColor ?? Theme.of(context).colorScheme.primary,
                         child: tabBar,
                       ),
@@ -594,9 +602,19 @@ class OperationSettingsPanel extends StatelessWidget {
       operation.data['county'],
     ].whereType<String>().where((s) => s.isNotEmpty).join(' • ');
 
-    return ListView(
+    // Rows render edge-to-edge; their CONTENT insets by the split's
+    // grab-strip clearance (PaneSafeArea — zero when this panel is a
+    // narrow-mode tab), and section headers shift with them so text stays
+    // aligned.
+    final safeLeft = PaneSafeArea.leftOf(context);
+    Widget header(String title, {Color? color}) =>
+        Padding(padding: EdgeInsets.only(left: safeLeft), child: SectionHeader(title, color: color));
+
+    return ListTileTheme.merge(
+      contentPadding: EdgeInsets.only(left: 16 + safeLeft, right: 16),
+      child: ListView(
       children: [
-        SectionHeader(context.t.operation.sections.stationOperator),
+        header(context.t.operation.sections.stationOperator),
         ListTile(
           leading: Icon(MdiIcons.radioTower),
           title: Text(operation.stationCall.isEmpty ? context.t.operation.stationCallsignNone : operation.stationCall),
@@ -604,7 +622,7 @@ class OperationSettingsPanel extends StatelessWidget {
           onTap: onEditDetails,
           mouseCursor: SystemMouseCursors.click,
         ),
-        SectionHeader(context.t.operation.sections.activities),
+        header(context.t.operation.sections.activities),
         ListTile(
           leading: Icon(MdiIcons.pineTree),
           title: Text(context.t.operation.sections.activities),
@@ -612,7 +630,7 @@ class OperationSettingsPanel extends StatelessWidget {
           onTap: onEditActivities,
           mouseCursor: SystemMouseCursors.click,
         ),
-        SectionHeader(context.t.operation.sections.location),
+        header(context.t.operation.sections.location),
         ListTile(
           leading: Icon(resolveIconName('map-marker-outline')),
           title: Text(context.t.operation.sections.location),
@@ -620,7 +638,7 @@ class OperationSettingsPanel extends StatelessWidget {
           onTap: onEditLocation,
           mouseCursor: SystemMouseCursors.click,
         ),
-        SectionHeader(context.t.operation.sections.operationData),
+        header(context.t.operation.sections.operationData),
         ListTile(
           leading: Icon(MdiIcons.fileExportOutline),
           title: Text(context.t.operation.export.title),
@@ -628,7 +646,7 @@ class OperationSettingsPanel extends StatelessWidget {
           onTap: onExport,
           mouseCursor: SystemMouseCursors.click,
         ),
-        SectionHeader(context.t.operation.sections.dangerZone, color: theme.colorScheme.error),
+        header(context.t.operation.sections.dangerZone, color: theme.colorScheme.error),
         ListTile(
           leading: Icon(MdiIcons.delete, color: theme.colorScheme.error),
           title: Text(context.t.operation.deleteOperation, style: TextStyle(color: theme.colorScheme.error)),
@@ -636,6 +654,7 @@ class OperationSettingsPanel extends StatelessWidget {
           mouseCursor: SystemMouseCursors.click,
         ),
       ],
+      ),
     );
   }
 }
