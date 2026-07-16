@@ -6,6 +6,8 @@
 // S/L boundary while open (not pop-and-reshow), and `Navigator.pop(result)`
 // must resolve the caller's `await` identically from either presentation.
 
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:halo_widgets/halo_widgets.dart';
@@ -235,5 +237,80 @@ void main() {
     await tester.tapAt(const Offset(10, 400));
     await tester.pumpAndSettle();
     expect(find.text('pane body'), findsOneWidget);
+  });
+
+  group('showFormPane', () {
+    testWidgets('close button cannot dismiss the pane while a submit is in flight', (tester) async {
+      // The old showFormDialog guaranteed a form could never be dismissed
+      // mid-save (barrierDismissible: false + disabled Cancel). The pane's
+      // title-bar X goes through Navigator.maybePop, so the PopScope
+      // showFormPane installs while submitting must block it — otherwise a
+      // tap on X while an async validator runs pops null and edits the
+      // user explicitly saved are silently discarded.
+      setWidth(tester, 900);
+      addTearDown(tester.view.reset);
+      final context = await pumpHost(tester);
+
+      final validatorGate = Completer<String?>();
+      final result = showFormPane(
+        context,
+        formDefinition: {
+          'title': 'Edit QSO',
+          'elements': [
+            {'type': 'field', 'key': 'theirName', 'fieldType': 'text', 'label': 'Name'},
+          ],
+        },
+        initialState: {'theirName': 'Hiram'},
+        validator: (key, value, state) => validatorGate.future,
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.widgetWithText(FilledButton, 'Save'));
+      await tester.pump();
+
+      // Submit is now awaiting the validator: X must not dismiss. Fixed
+      // pumps, not pumpAndSettle — the submitting spinner animates forever.
+      await tester.tap(find.byIcon(Icons.close));
+      await tester.pump(const Duration(milliseconds: 300));
+      await tester.pump(const Duration(milliseconds: 300));
+      expect(find.text('Edit QSO'), findsOneWidget);
+
+      // Validator resolves clean → the submit completes with the values.
+      validatorGate.complete(null);
+      await tester.pumpAndSettle();
+      expect(find.text('Edit QSO'), findsNothing);
+      expect((await result)?['theirName'], 'Hiram');
+    });
+
+    testWidgets("the 'uppercase' flag works on every text-like field type, not just 'text'", (tester) async {
+      // The SDK doc promises the flag works on the text-like types; the
+      // icon-row compact path always honored it, so the standard form path
+      // must too or the same definition would case data differently by
+      // layout.
+      setWidth(tester, 900);
+      addTearDown(tester.view.reset);
+      final context = await pumpHost(tester);
+
+      showFormPane(
+        context,
+        formDefinition: {
+          'title': 'Casing',
+          'elements': [
+            {'type': 'field', 'key': 'exchange', 'fieldType': 'multiline', 'label': 'Exchange', 'uppercase': true},
+            {'type': 'field', 'key': 'notes', 'fieldType': 'multiline', 'label': 'Notes'},
+          ],
+        },
+        initialState: const {},
+      );
+      await tester.pumpAndSettle();
+
+      await tester.enterText(find.widgetWithText(TextField, 'Exchange'), 'br from fl');
+      await tester.enterText(find.widgetWithText(TextField, 'Notes'), 'mixed Case stays');
+      await tester.pump();
+
+      TextField field(String label) => tester.widget<TextField>(find.widgetWithText(TextField, label));
+      expect(field('Exchange').controller!.text, 'BR FROM FL');
+      expect(field('Notes').controller!.text, 'mixed Case stays');
+    });
   });
 }

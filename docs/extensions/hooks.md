@@ -238,7 +238,7 @@ interface CommandHook {
     ctx,
   ): Promise<CommandInterpretation | null>
 }
-// CommandInterpretation: {expectsParams?, describe?, confirm?, commands?: CommandAction[]}
+// CommandInterpretation: {expectsParams?, mixedCase?, describe?, confirm?, commands?: CommandAction[]}
 // CommandAction (closed set): {setVfo?, updateQso?, addQso?, sendSpots?,
 //   syncAll?, updateSettings?, setCallField?, reloadDataFiles?, devNotice?,
 //   devStatus?, devProgress?}
@@ -277,11 +277,16 @@ register in the same category and compete on priority with these.
 A command that recognizes its own prefix but needs more typed input before
 it can run (e.g. bare "RELOAD", before its target word) returns
 `{ expectsParams: true }` instead of `null` or a full result. That switches
-the call field to normal free-text entry — spaces and lowercase allowed,
-platform-normal capitalization — instead of the uppercase-only callsign
-restriction, and space no longer advances focus to the next field while it's
-set; the interpretation is never executed even if Enter is pressed while it
-still just says `expectsParams`.
+the call field to free-text entry — spaces allowed, no callsign character
+restriction — and space no longer advances focus to the next field while
+it's set; the interpretation is never executed even if Enter is pressed
+while it still just says `expectsParams`. The field stays uppercase-only
+(all logging input is uppercase unless explicitly mixed-case) unless the
+interpretation also says `mixedCase: true` — for commands whose parameter
+is free prose (NOTE's text), which lifts the uppercase rule. Return
+`mixedCase` on both the bare-prefix result and the complete result, so
+continued typing after the command is already complete ("NOTE Hello…")
+isn't snapped back to uppercase.
 
 ## ✅ `scoring` — per-operation score batches
 

@@ -18,10 +18,14 @@ const NoteCommand = {
     const match = NOTE_MATCH.exec(input.trim())
     if (!match) return null
 
+    // `mixedCase` on both results: the note text is free prose, so the call
+    // field must not force it to uppercase — and it stays typed-as-is even
+    // once the input is a complete command (see CommandInterpretation).
     const text = match[1]?.trim()
-    if (!text) return { expectsParams: true } // "NOTE" alone — recognized, but nothing to save yet
+    if (!text) return { expectsParams: true, mixedCase: true } // "NOTE" alone — recognized, but nothing to save yet
 
     return {
+      mixedCase: true,
       describe: `Add note "${text}"?`,
       confirm: 'Note added',
       commands: [{ updateQso: { notes: text } }],

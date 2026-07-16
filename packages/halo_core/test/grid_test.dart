@@ -34,4 +34,31 @@ void main() {
       expect(gridToLocation('FNaa'), isNull); // square chars must be digits
     });
   });
+
+  group('normalizeGrid', () {
+    // Grid input fields are uppercase-only like every other logging
+    // control, so stored values depend on this restoring the conventional
+    // Maidenhead casing — without it, a typed FN31PR and a lookup-guessed
+    // FN31pr would count as different values (e.g. the More pane's
+    // touched-vs-displayed comparison).
+    test('restores conventional casing regardless of input case', () {
+      expect(normalizeGrid('FN31PR'), 'FN31pr');
+      expect(normalizeGrid('fn31pr'), 'FN31pr');
+      expect(normalizeGrid('fn31PR'), 'FN31pr');
+      expect(normalizeGrid('fn31'), 'FN31');
+      expect(normalizeGrid('fn31pr60'), 'FN31pr60');
+      expect(normalizeGrid('fn31pr60ax'), 'FN31pr60ax');
+    });
+
+    test('trims whitespace', () {
+      expect(normalizeGrid(' fn31pr '), 'FN31pr');
+    });
+
+    test('leaves non-locator text unchanged — it formats, not validates', () {
+      expect(normalizeGrid('W1AW'), 'W1AW'); // a callsign, not a grid
+      expect(normalizeGrid('fn3'), 'fn3'); // too short
+      expect(normalizeGrid('YZ31pr'), 'YZ31pr'); // field letters out of range
+      expect(normalizeGrid(''), '');
+    });
+  });
 }

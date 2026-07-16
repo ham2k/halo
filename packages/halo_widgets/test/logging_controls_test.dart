@@ -43,6 +43,8 @@ void main() {
     Map<String, dynamic>? suggestedQso,
     SuggestSpotSources? suggestSpotSources,
     SendSpot? sendSpot,
+    bool showStateField = false,
+    bool showGridField = false,
   }) {
     return MaterialApp(
       home: Scaffold(
@@ -58,6 +60,8 @@ void main() {
           suggestedQso: suggestedQso,
           suggestSpotSources: suggestSpotSources,
           sendSpot: sendSpot,
+          showStateField: showStateField,
+          showGridField: showGridField,
           spottingControlLabel: 'Spotting',
           spottingLabel: 'Spotting',
           spottingSelfLabel: 'Self-spotting',
@@ -496,14 +500,19 @@ void main() {
       ),
     ));
 
-    // Drive the "More" dialog to set an explicit name+grid override. The
+    // Drive the "More" pane to set an explicit name+grid override. The
     // icon sits inside a horizontally-scrolling chip row — same harmless
     // "off the hit-test center" artifact as the DropdownMenu taps elsewhere
-    // in this file.
+    // in this file. Grid is typed lowercase on purpose: the pane's Grid
+    // field is `uppercase: true` (logging INPUT is uppercase unless
+    // explicitly mixed-case), but the stored value gets the conventional
+    // Maidenhead casing back via normalizeGrid — so it must land as FN99xx
+    // below — while Name is an explicitly mixed-case field and survives
+    // exactly as typed.
     await tester.tap(find.byIcon(resolveIconName('pencil')), warnIfMissed: false);
     await tester.pumpAndSettle();
     await tester.enterText(find.widgetWithText(TextField, 'Name'), 'Corrected Name');
-    await tester.enterText(find.widgetWithText(TextField, 'Grid'), 'FN99zz');
+    await tester.enterText(find.widgetWithText(TextField, 'Grid'), 'fn99xx');
     await tester.tap(find.widgetWithText(FilledButton, 'Save'));
     await tester.pumpAndSettle();
 
@@ -517,13 +526,13 @@ void main() {
     final k1abc = logged.firstWhere((q) => q.theirCall == 'K1ABC');
     // The record being edited keeps both — same as before this feature.
     expect(w1aw.theirName, 'Corrected Name');
-    expect(w1aw.theirGrid, 'FN99zz');
+    expect(w1aw.theirGrid, 'FN99xx');
     // The newly added call inherits the grid override, but not the name.
-    expect(k1abc.theirGrid, 'FN99zz');
+    expect(k1abc.theirGrid, 'FN99xx');
     expect(k1abc.theirName, isNot('Corrected Name'));
   });
 
-  testWidgets('a name set via the More dialog does not leak onto the next QSO after logging', (tester) async {
+  testWidgets('a name set via the More pane does not leak onto the next QSO after logging', (tester) async {
     await tester.pumpWidget(host());
 
     await tester.tap(find.byIcon(resolveIconName('pencil')), warnIfMissed: false);
@@ -872,7 +881,7 @@ void main() {
     expect(logged.single.mode, 'CW');
   });
 
-  testWidgets('call-field command awaiting params (expectsParams) allows space and lowercase, and Enter does not execute it', (tester) async {
+  testWidgets('call-field command awaiting params (expectsParams) allows space but stays uppercase, and Enter does not execute it', (tester) async {
     Future<Map<String, dynamic>?> fakeReloadPrefix(
       String input, [
       Map<String, dynamic>? operation,
@@ -894,16 +903,194 @@ void main() {
     expect(field('Their call').controller!.text, 'RELOAD ');
     expect(field('Their call').focusNode!.hasFocus, isTrue);
 
-    // Lowercase text is preserved — no forced uppercasing while expectsParams.
+    // Typed lowercase is still uppercased: expectsParams alone lifts the
+    // callsign character restriction (spaces), but only a command that
+    // declares `mixedCase: true` lifts the uppercase-only rule — all
+    // logging input is uppercase unless explicitly mixed-case.
     await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'RELOAD pota');
     await tester.pump();
-    expect(field('Their call').controller!.text, 'RELOAD pota');
+    expect(field('Their call').controller!.text, 'RELOAD POTA');
 
     // Enter doesn't execute or clear an incomplete command.
     await tester.pump(const Duration(milliseconds: 200));
     await tester.sendKeyEvent(LogicalKeyboardKey.enter);
     await tester.pump(const Duration(milliseconds: 200));
-    expect(field('Their call').controller!.text, 'RELOAD pota');
+    expect(field('Their call').controller!.text, 'RELOAD POTA');
+  });
+
+  testWidgets('call-field command declaring mixedCase keeps lowercase, even once the command is complete', (tester) async {
+    // Mirrors the real note-command extension: `mixedCase: true` on BOTH
+    // the bare-prefix result and the complete result. The second half is
+    // what keeps "NOTE Called Bob," + more typing from being snapped back
+    // to uppercase after the debounced interpret() sees a complete command.
+    Future<Map<String, dynamic>?> fakeNoteCommand(
+      String input, [
+      Map<String, dynamic>? operation,
+      Map<String, dynamic>? qso,
+    ]) async {
+      final match = RegExp(r'^NOTE(?:\s+(.*))?$', caseSensitive: false).firstMatch(input.trim());
+      if (match == null) return null;
+      final text = match.group(1)?.trim();
+      if (text == null || text.isEmpty) return {'expectsParams': true, 'mixedCase': true};
+      return {
+        'mixedCase': true,
+        'describe': 'Add note "$text"?',
+        'commands': [
+          {'updateQso': {'notes': text}},
+        ],
+      };
+    }
+
+    await tester.pumpWidget(host(interpretCommand: fakeNoteCommand));
+    TextField field(String label) => tester.widget<TextField>(find.widgetWithText(TextField, label));
+
+    await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'NOTE');
+    await tester.pump(const Duration(milliseconds: 200));
+
+    // Lowercase is preserved while the command awaits its parameter.
+    await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'NOTE Called Bob');
+    await tester.pump(const Duration(milliseconds: 200)); // interpret() now sees a COMPLETE command
+
+    // Space stays literal and further lowercase still isn't uppercased —
+    // the complete interpretation's mixedCase keeps the field free-text.
+    await tester.sendKeyEvent(LogicalKeyboardKey.space);
+    await tester.pump();
+    expect(field('Their call').controller!.text, 'NOTE Called Bob ');
+    await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'NOTE Called Bob on the phone');
+    await tester.pump();
+    expect(field('Their call').controller!.text, 'NOTE Called Bob on the phone');
+  });
+
+  testWidgets('primary State and Grid fields uppercase typed input', (tester) async {
+    // A formatter, not just TextCapitalization (a soft-keyboard hint that
+    // does nothing for hardware keyboards): logging values are uppercase
+    // unless explicitly mixed-case.
+    await tester.pumpWidget(host(showStateField: true, showGridField: true));
+    TextField field(String label) => tester.widget<TextField>(find.widgetWithText(TextField, label));
+
+    await tester.enterText(find.widgetWithText(TextField, 'State'), 'fl');
+    await tester.enterText(find.widgetWithText(TextField, 'Grid'), 'fn31pr');
+    await tester.pump();
+    expect(field('State').controller!.text, 'FL');
+    expect(field('Grid').controller!.text, 'FN31PR');
+  });
+
+  testWidgets('Sent/Rcvd accept letter RSTs and uppercase them', (tester) async {
+    // Letters are legitimate in RSTs (CW's "5NN", aurora "59A"), and the
+    // Edit QSO pane accepts them — a digits-only filter here would silently
+    // strip a pane-saved letter on the next inline keystroke, because
+    // filtering formatters re-run over the whole text.
+    await tester.pumpWidget(host());
+    TextField field(String label) => tester.widget<TextField>(find.widgetWithText(TextField, label));
+
+    await tester.enterText(find.widgetWithText(TextField, 'Sent'), '5nn');
+    await tester.enterText(find.widgetWithText(TextField, 'Rcvd'), '59a');
+    await tester.pump();
+    expect(field('Sent').controller!.text, '5NN');
+    expect(field('Rcvd').controller!.text, '59A');
+  });
+
+  testWidgets('abandoning a mixed-case command does not collapse the typed prose on the next keystroke', (tester) async {
+    // Regression test: after "NOTE Called Bob" is edited into "NOT Called
+    // Bob" (no longer a command), snapping the field straight back to
+    // callsign mode would make the next keystroke re-run the callsign
+    // character filter over the ENTIRE text — silently deleting every
+    // space ("NOTCALLEDBOB…") with no undo. The retained free-text mode
+    // must survive until the field is cleared instead.
+    Future<Map<String, dynamic>?> fakeNoteCommand(
+      String input, [
+      Map<String, dynamic>? operation,
+      Map<String, dynamic>? qso,
+    ]) async {
+      final match = RegExp(r'^NOTE(?:\s+(.*))?$', caseSensitive: false).firstMatch(input.trim());
+      if (match == null) return null;
+      final text = match.group(1)?.trim();
+      if (text == null || text.isEmpty) return {'expectsParams': true, 'mixedCase': true};
+      return {
+        'mixedCase': true,
+        'describe': 'Add note "$text"?',
+        'commands': [
+          {'updateQso': {'notes': text}},
+        ],
+      };
+    }
+
+    await tester.pumpWidget(host(interpretCommand: fakeNoteCommand));
+    TextField field(String label) => tester.widget<TextField>(find.widgetWithText(TextField, label));
+
+    await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'NOTE');
+    await tester.pump(const Duration(milliseconds: 200));
+    await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'NOTE Called Bob');
+    await tester.pump(const Duration(milliseconds: 200));
+
+    // Break the command prefix, let the debounced interpret() see it's no
+    // longer a command, then keep typing.
+    await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'NOT Called Bob');
+    await tester.pump(const Duration(milliseconds: 200));
+    await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'NOT Called Bobs');
+    await tester.pump();
+    expect(field('Their call').controller!.text, 'NOT Called Bobs');
+
+    // Clearing the field ends the retained free-text mode: a callsign typed
+    // next is uppercased normally again.
+    await tester.enterText(find.widgetWithText(TextField, 'Their call'), '');
+    await tester.pump();
+    await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'w1aw');
+    await tester.pump();
+    expect(field('Their call').controller!.text, 'W1AW');
+  });
+
+  testWidgets('populating from a suggested QSO clears a lingering command state', (tester) async {
+    // Regression test: type a complete NOTE command, then tap a spot — the
+    // populate path runs under _populating, which suppresses
+    // _onCallChanged's own per-keystroke reset, so without an explicit
+    // reset the call field would show W1AW while still in the note's
+    // free-prose mode, and the stale interpretation would make Space
+    // insert a literal space instead of advancing focus.
+    Future<Map<String, dynamic>?> fakeNoteCommand(
+      String input, [
+      Map<String, dynamic>? operation,
+      Map<String, dynamic>? qso,
+    ]) async {
+      final match = RegExp(r'^NOTE(?:\s+(.*))?$', caseSensitive: false).firstMatch(input.trim());
+      if (match == null) return null;
+      final text = match.group(1)?.trim();
+      if (text == null || text.isEmpty) return {'expectsParams': true, 'mixedCase': true};
+      return {
+        'mixedCase': true,
+        'describe': 'Add note "$text"?',
+        'commands': [
+          {'updateQso': {'notes': text}},
+        ],
+      };
+    }
+
+    await tester.pumpWidget(host(interpretCommand: fakeNoteCommand));
+    TextField field(String label) => tester.widget<TextField>(find.widgetWithText(TextField, label));
+
+    await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'NOTE hi');
+    await tester.pump(const Duration(milliseconds: 200)); // complete mixedCase interpretation stored
+
+    // Tap a spot: didUpdateWidget applies the suggestion.
+    await tester.pumpWidget(host(
+      interpretCommand: fakeNoteCommand,
+      suggestedQso: {
+        'their': {'call': 'W1AW'},
+      },
+    ));
+    await tester.pump();
+    expect(field('Their call').controller!.text, 'W1AW');
+
+    // Space advances focus (no stale literal-space insertion)…
+    await tester.sendKeyEvent(LogicalKeyboardKey.space);
+    await tester.pump();
+    expect(field('Their call').controller!.text, 'W1AW');
+    expect(field('Sent').focusNode!.hasFocus, isTrue);
+
+    // …and the field is back in callsign mode: lowercase gets uppercased.
+    await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'w1aw/p');
+    await tester.pump();
+    expect(field('Their call').controller!.text, 'W1AW/P');
   });
 
   testWidgets('call-field command awaiting params: space typed immediately (before the debounce resolves) is still recognized, not lost', (tester) async {
@@ -948,7 +1135,10 @@ void main() {
       Map<String, dynamic>? qso,
     ]) async {
       seenInputs.add(input);
-      if (input.trim().toUpperCase() == 'NOTE') return {'expectsParams': true};
+      // mixedCase, like the real note-command: without it the field's own
+      // uppercase formatter would destroy the lowercase before
+      // interpretCommand could ever see it.
+      if (input.trim().toUpperCase() == 'NOTE') return {'expectsParams': true, 'mixedCase': true};
       return null;
     }
 
@@ -1637,7 +1827,7 @@ void main() {
       expect(find.widgetWithText(TextButton, 'Now'), findsNothing);
     });
 
-    testWidgets('saving the More dialog without editing date/time keeps automatic timestamping', (tester) async {
+    testWidgets('saving the More pane without editing date/time keeps automatic timestamping', (tester) async {
       await tester.pumpWidget(host());
 
       await tester.tap(find.byIcon(resolveIconName('pencil')), warnIfMissed: false);

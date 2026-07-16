@@ -380,6 +380,14 @@ export interface CommandInterpretation {
   /// typing parameters; it is never executed even if Enter is pressed while
   /// still set.
   expectsParams?: boolean
+  /// Set when the command's parameter is free prose (e.g. NOTE's text), so
+  /// the call field should allow mixed-case input while this interpretation
+  /// is current. Without it the field keeps its uppercase-only rule even in
+  /// `expectsParams` free-text mode — all logging input is uppercase unless
+  /// explicitly mixed-case. Return it on BOTH the bare-prefix
+  /// (`expectsParams`) result and the complete result, or the field snaps
+  /// back to uppercasing while the parameter is still being typed.
+  mixedCase?: boolean
   describe?: string
   confirm?: string
   commands?: CommandAction[]
@@ -602,6 +610,12 @@ export interface FormField {
   label: string
   value?: any
   placeholder?: string
+  /// Forces typed input to uppercase (formatter, not just a soft-keyboard
+  /// capitalization hint) on the text-like field types. `callsign` fields
+  /// are always uppercase without this flag; use it for other logging data
+  /// that follows the uppercase-unless-explicitly-mixed-case rule (grids,
+  /// states, RSTs) while free-prose fields (names, notes) stay unflagged.
+  uppercase?: boolean
   options?: FormFieldOption[]
   validate?: (value: any, state: Record<string, any>) => string | null | undefined | Promise<string | null | undefined>
   transform?: (value: any, state: Record<string, any>) => any | Promise<any>

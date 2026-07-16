@@ -150,7 +150,12 @@ class _ModalPaneScaffold extends StatelessWidget {
         backgroundColor: Colors.transparent,
         body: GestureDetector(
           behavior: HitTestBehavior.opaque,
-          onTap: route.barrierDismissible ? () => Navigator.of(context).pop() : null,
+          // maybePop, not pop: dismissals (barrier, close button, Escape,
+          // the full-screen back button) must respect a PopScope inside the
+          // pane's own content — e.g. showFormPane blocks dismissal while a
+          // submit is in flight. Deliberate pops (a pane's own Save/Cancel)
+          // still call Navigator.pop directly.
+          onTap: route.barrierDismissible ? () => Navigator.of(context).maybePop() : null,
           child: SafeArea(
             child: Center(
               child: GestureDetector(
@@ -188,7 +193,8 @@ class _ModalPaneScaffold extends StatelessWidget {
                               IconButton(
                                 icon: const Icon(Icons.close),
                                 tooltip: 'Close',
-                                onPressed: () => Navigator.of(context).pop(),
+                                // maybePop — see the barrier handler above.
+                                onPressed: () => Navigator.of(context).maybePop(),
                               ),
                             ],
                           ),

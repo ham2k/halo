@@ -42,6 +42,7 @@ import 'mdi_icons.dart';
 import 'platform_chrome.dart';
 import 'ref_chips_input.dart';
 import 'secondary_control_row.dart';
+import 'text_formatters.dart';
 import 'theme.dart';
 
 /// Async callsign enrichment (name, location, grid…) from lookup sources —
@@ -269,7 +270,7 @@ class LoggingControls extends StatefulWidget {
 
   /// Logging view "..." menu toggles (ham2k/app-halo-dist#1) — gate the
   /// Sent/Rcvd RST fields and add optional inline State/Grid fields. The
-  /// underlying data (State/Grid) is always editable via the "More" dialog
+  /// underlying data (State/Grid) is always editable via the "More" pane
   /// regardless of these flags; they only control the primary controls'
   /// permanent footprint.
   final bool showRSTFields;
@@ -410,15 +411,54 @@ class _LoggingControlsState extends State<LoggingControls> {
 
   Map<String, dynamic>? _currentInterpretation;
   Timer? _commandDescribeDebounce;
-  // Deliberately NOT derived from _currentInterpretation, even though it's
-  // only ever set from `_currentInterpretation['expectsParams']`: the latter
-  // resets synchronously on every keystroke (_onCallChanged, for the
-  // describe-message UI), but the call field's formatters/capitalization
-  // must NOT flicker back to uppercase-only on every keystroke while the
-  // user is still typing a command's parameters — so this field persists
-  // across keystrokes until the next debounced interpret() result actually
-  // changes it, instead of resetting in lockstep with _currentInterpretation.
-  bool _commandExpectsParams = false;
+
+  /// The last interpret() result retained for the call field's INPUT MODE —
+  /// deliberately a separate field from [_currentInterpretation], which
+  /// resets synchronously on every keystroke (for the describe-message UI):
+  /// the field's formatters/capitalization must not flicker back to
+  /// uppercase-only between keystrokes while a command's parameters are
+  /// still being typed. Updated only through [_retainInterpretation]; reset
+  /// when the field empties, on log/wipe, and whenever a QSO context is
+  /// populated (spot tap, edit selection, undo restore). One retained map
+  /// instead of parallel per-flag booleans, so a reset site can't clear one
+  /// flag and miss another.
+  Map<String, dynamic>? _retainedInterpretation;
+
+  /// Whether the retained command is a recognized prefix still awaiting its
+  /// parameters ("RELOAD" before its target) — space is a literal character
+  /// and the callsign character filter is lifted, but input stays
+  /// uppercase-only unless [_commandMixedCase] also holds.
+  bool get _commandExpectsParams => _retainedInterpretation?['expectsParams'] == true;
+
+  /// Whether the retained command declared `mixedCase: true` — only such
+  /// commands (e.g. NOTE, whose parameter is free prose) release the call
+  /// field from its uppercase-only rule. Extensions return it on BOTH the
+  /// bare-prefix and complete results (see CommandInterpretation in the SDK
+  /// types), so it stays in effect while "NOTE Hello…" keeps being typed.
+  bool get _commandMixedCase => _retainedInterpretation?['mixedCase'] == true;
+
+  /// Matches text the callsign-mode formatters would pass through except
+  /// for case — see [_retainInterpretation].
+  static final _callsignModeSafeText = RegExp(r'^[a-zA-Z0-9/.,]*$');
+
+  /// Folds a fresh interpret() result into [_retainedInterpretation]. A
+  /// non-null result always replaces the previous one. A null result (the
+  /// text no longer matches any command) only clears it when the current
+  /// text would survive the returning callsign formatters: those rewrite
+  /// the ENTIRE field on the next keystroke, so snapping back while it
+  /// holds free prose ("NOT Called Bob" after backspacing a typo in
+  /// "NOTE") would irrecoverably strip every space. Uppercasing alone is
+  /// the field's normal behavior, so case differences don't block the
+  /// reset — only characters the filter would delete do. The retained mode
+  /// then clears via the empty-field/log/wipe/populate resets instead.
+  void _retainInterpretation(Map<String, dynamic>? result) {
+    if (result != null) {
+      _retainedInterpretation = result;
+    } else if (_callsignModeSafeText.hasMatch(_callController.text)) {
+      _retainedInterpretation = null;
+    }
+  }
+
   Timer? _executeMessageTimer;
   String? _commandMessage;
   final Map<String, dynamic> _currentQsoExtra = {};
@@ -442,7 +482,7 @@ class _LoggingControlsState extends State<LoggingControls> {
   /// not `_pendingDelete` alone.
   bool get _fieldsLocked => _pendingDelete || (widget.editingQso?.deleted ?? false);
 
-  /// Their name override, settable only via the "More" edit dialog —
+  /// Their name override, settable only via the "More" edit pane —
   /// deliberately not a full inline field, to avoid growing the primary
   /// controls' footprint for rarely-edited data. Grid/State have their own
   /// controllers (`_gridController`/`_stateController`) instead, since they
@@ -451,7 +491,7 @@ class _LoggingControlsState extends State<LoggingControls> {
   String? _theirNameOverride;
 
   /// Whether the user has actually edited Grid/State (inline field or the
-  /// "More" dialog) for the QSO currently being composed/edited — as
+  /// "More" pane) for the QSO currently being composed/edited — as
   /// opposed to `_gridController`/`_stateController` merely displaying a
   /// value populated from `editingQso.theirGrid`/`theirState` on load. Only
   /// a deliberate edit is sticky across a comma-separated call list (see
@@ -690,7 +730,7 @@ class _LoggingControlsState extends State<LoggingControls> {
     _gridController.text = (their['grid'] as String?) ?? (theirGuess['grid'] as String?) ?? '';
     _stateController.text = (their['state'] as String?) ?? (theirGuess['state'] as String?) ?? '';
     // Restore the name override too, or wipe-then-undo would silently drop a
-    // name set via the "More" dialog (it round-trips as `their.name`).
+    // name set via the "More" pane (it round-trips as `their.name`).
     final theirName = (their['name'] as String?)?.trim();
     _theirNameOverride = (theirName == null || theirName.isEmpty) ? null : theirName;
     final freq = (data['freq'] as num?)?.toDouble();
@@ -730,6 +770,17 @@ class _LoggingControlsState extends State<LoggingControls> {
     _lookupResult = null;
     _refreshedActivityControls = null;
     _selectedControlKey = null;
+    // Command state must never survive into a freshly populated QSO
+    // context: this runs under `_populating`, so _onCallChanged's own
+    // per-keystroke reset is suppressed. Without this, typing "NOTE hi",
+    // then tapping a spot, would leave the call field showing a real
+    // callsign while still in the note's mixed-case free-text mode — and a
+    // stale complete interpretation would make Space insert a literal
+    // space (or Enter execute the old command) instead of acting on the
+    // callsign.
+    _currentInterpretation = null;
+    _retainedInterpretation = null;
+    _commandMessage = null;
   }
 
   /// Seeds freq/band/mode from the operation's `vfoA` when composing a new
@@ -784,7 +835,7 @@ class _LoggingControlsState extends State<LoggingControls> {
     setState(() {
       _commandMessage = null;
       _currentInterpretation = null;
-      _commandExpectsParams = false;
+      _retainedInterpretation = null;
     });
     _populating = false;
   }
@@ -1465,6 +1516,8 @@ class _LoggingControlsState extends State<LoggingControls> {
               width: 160,
               child: TextField(
                 controller: _spotCommentController,
+                // Explicitly mixed-case, like Name/Notes: a spot comment is
+                // free prose for other operators, not logging data.
                 style: haloMonoStyle(context, fontSize: 15, fontWeight: FontWeight.w500),
                 decoration: poloFieldDecoration(
                   context,
@@ -1541,7 +1594,7 @@ class _LoggingControlsState extends State<LoggingControls> {
         icon: resolveIconName('pencil'),
         summary: widget.moreLabel ?? 'More',
         // Never actually shown — _onSelectControl special-cases 'more' to
-        // open the full-edit dialog instead of expanding inline.
+        // open the full-edit pane instead of expanding inline.
         expandedBuilder: (context) => const SizedBox.shrink(),
       );
 
@@ -1580,12 +1633,18 @@ class _LoggingControlsState extends State<LoggingControls> {
             if (!mounted || _call != call) return; // stale — the call changed while awaiting
             setState(() {
               _currentInterpretation = result;
-              _commandExpectsParams = result != null && result['expectsParams'] == true;
-              _commandMessage = (result != null && result['describe'] is String) ? result['describe'] as String : null;
+              _retainInterpretation(result);
+              _commandMessage = (result != null && result['describe'] is String)
+                  ? result['describe'] as String
+                  : (result != null && result['error'] is String)
+                      ? result['error'] as String
+                      : null;
             });
             _notifyCommandMessage(_commandMessage);
           }
-          if (result != null && result['expectsParams'] == true) {
+          // A complete mixedCase command (e.g. "NOTE Hello") also keeps
+          // space literal — its free-prose parameter is still being typed.
+          if (result != null && (result['expectsParams'] == true || result['mixedCase'] == true)) {
             _insertAtCursor(_callController, ' ');
             return;
           }
@@ -1787,8 +1846,11 @@ class _LoggingControlsState extends State<LoggingControls> {
         // Once touched, though, write it unconditionally — including empty
         // — so deliberately clearing the field actually clears the stored
         // value instead of leaving the old one from `...?(base['their'])`.
-        if (_gridTouched) 'grid': _gridController.text.trim(),
-        if (_stateTouched) 'state': _stateController.text.trim(),
+        // Grid input is uppercase-only like every logging control, but the
+        // stored value gets the conventional Maidenhead casing back
+        // (FN31pr) via normalizeGrid; states are plain uppercase.
+        if (_gridTouched) 'grid': normalizeGrid(_gridController.text.trim()),
+        if (_stateTouched) 'state': _stateController.text.trim().toUpperCase(),
         'call': call,
         'sent': _rcvdController.text.trim(),
         // Matches the `AnnotatedCallInfo` TS type (`CallInfo & {guess?:
@@ -1807,13 +1869,17 @@ class _LoggingControlsState extends State<LoggingControls> {
     };
   }
 
-  // ---- "More" full-edit dialog ----
+  // ---- "More" full-edit pane ----
   //
   // A secondary control that bypasses the usual inline-expand behavior
-  // (special-cased in _onSelectControl) to open a dialog covering fields
-  // the primary/secondary controls don't otherwise expose: their name,
-  // grid, and notes. Reuses the existing FormRenderer/showFormDialog
-  // engine (see form_renderer.dart) rather than a new navigation route.
+  // (special-cased in _onSelectControl) to open a Modal Pane covering
+  // fields the primary/secondary controls don't otherwise expose: their
+  // name, grid, and notes. Reuses the existing FormRenderer engine via
+  // showFormPane (see form_renderer.dart) rather than a new navigation
+  // route. Fields are `uppercase: true` per the logging-wide rule —
+  // uppercase unless explicitly mixed-case: Name and Notes are free prose,
+  // and Band's canonical names are lowercase ("20m", matching the `bands`
+  // table, which is compared by exact equality).
 
   Map<String, dynamic> _buildQsoEditFormDefinition() {
     return {
@@ -1821,10 +1887,10 @@ class _LoggingControlsState extends State<LoggingControls> {
       'elements': [
         {'type': 'field', 'key': 'theirCall', 'fieldType': 'callsign', 'label': widget.theirCallLabel ?? 'Their call'},
         {'type': 'field', 'key': 'theirName', 'fieldType': 'text', 'label': widget.theirNameLabel ?? 'Name'},
-        {'type': 'field', 'key': 'theirGrid', 'fieldType': 'text', 'label': widget.theirGridLabel ?? 'Grid'},
-        {'type': 'field', 'key': 'theirState', 'fieldType': 'text', 'label': widget.theirStateLabel ?? 'State'},
-        {'type': 'field', 'key': 'sent', 'fieldType': 'text', 'label': widget.sentLabel ?? 'Sent'},
-        {'type': 'field', 'key': 'rcvd', 'fieldType': 'text', 'label': widget.rcvdLabel ?? 'Rcvd'},
+        {'type': 'field', 'key': 'theirGrid', 'fieldType': 'text', 'label': widget.theirGridLabel ?? 'Grid', 'uppercase': true},
+        {'type': 'field', 'key': 'theirState', 'fieldType': 'text', 'label': widget.theirStateLabel ?? 'State', 'uppercase': true},
+        {'type': 'field', 'key': 'sent', 'fieldType': 'text', 'label': widget.sentLabel ?? 'Sent', 'uppercase': true},
+        {'type': 'field', 'key': 'rcvd', 'fieldType': 'text', 'label': widget.rcvdLabel ?? 'Rcvd', 'uppercase': true},
         {'type': 'field', 'key': 'freq', 'fieldType': 'number', 'label': widget.freqLabel ?? 'Frequency'},
         {'type': 'field', 'key': 'band', 'fieldType': 'text', 'label': widget.bandLabel ?? 'Band'},
         {
@@ -1847,25 +1913,25 @@ class _LoggingControlsState extends State<LoggingControls> {
         ? DateTime.fromMillisecondsSinceEpoch(millis, isUtc: true)
         : DateTime.now().toUtc();
     // Captured so the Save handler below can tell "the user actually edited
-    // Grid/State in this dialog" from "the dialog merely displayed whatever
+    // Grid/State in this pane" from "the pane merely displayed whatever
     // was already there" — the latter must not turn a passive lookup guess
     // into a deliberately-touched, sticky value (see _gridTouched's doc).
-    final gridBeforeDialog = _gridController.text.trim();
-    final stateBeforeDialog = _stateController.text.trim();
+    final gridBeforePane = _gridController.text.trim();
+    final stateBeforePane = _stateController.text.trim();
     // Same displayed-vs-edited distinction for date/time: while composing,
-    // the dialog shows the live clock, and saving an untouched value must
+    // the pane shows the live clock, and saving an untouched value must
     // not turn it into a manual override that freezes auto-timestamping.
-    final dateBeforeDialog = _fmtDate(dt);
-    final timeBeforeDialog = _fmtTime(dt);
+    final dateBeforePane = _fmtDate(dt);
+    final timeBeforePane = _fmtTime(dt);
 
-    final result = await showFormDialog(
+    final result = await showFormPane(
       context,
       formDefinition: _buildQsoEditFormDefinition(),
       initialState: {
         'theirCall': _call,
         'theirName': _theirNameOverride ?? widget.editingQso?.theirName ?? '',
-        'theirGrid': gridBeforeDialog,
-        'theirState': stateBeforeDialog,
+        'theirGrid': gridBeforePane,
+        'theirState': stateBeforePane,
         'sent': _sentController.text.trim(),
         'rcvd': _rcvdController.text.trim(),
         'freq': _freq,
@@ -1887,7 +1953,7 @@ class _LoggingControlsState extends State<LoggingControls> {
     );
     if (result == null || !mounted) return;
 
-    // Same as the setVfo command dispatch: a deliberate dialog Save, not
+    // Same as the setVfo command dispatch: a deliberate pane Save, not
     // raw typing — push immediately rather than via _onFreqChanged's
     // debounce, and only while composing (rule: editing an existing QSO
     // applies changes to the QSO, never the VFO).
@@ -1896,10 +1962,16 @@ class _LoggingControlsState extends State<LoggingControls> {
       _callController.text = ((result['theirCall'] as String?) ?? '').toUpperCase();
       final name = (result['theirName'] as String?)?.trim();
       _theirNameOverride = (name == null || name.isEmpty) ? null : name;
-      final grid = ((result['theirGrid'] as String?) ?? '').trim();
-      final state = ((result['theirState'] as String?) ?? '').trim();
-      _gridTouched = _gridTouched || grid != gridBeforeDialog;
-      _stateTouched = _stateTouched || state != stateBeforeDialog;
+      final grid = normalizeGrid(((result['theirGrid'] as String?) ?? '').trim());
+      final state = ((result['theirState'] as String?) ?? '').trim().toUpperCase();
+      // Normalized comparison, not raw string inequality: the pane's
+      // uppercase formatter rewrites the WHOLE field on any keystroke, so
+      // a net no-op edit over a lookup-guessed 'FN31pr' would come back
+      // 'FN31PR' and a raw compare would falsely promote the passive guess
+      // to a sticky touched override (see _gridTouched's doc). Case is not
+      // a deliberate edit; only a real value change is.
+      _gridTouched = _gridTouched || grid != normalizeGrid(gridBeforePane);
+      _stateTouched = _stateTouched || state != stateBeforePane.toUpperCase();
       _gridController.text = grid;
       _stateController.text = state;
       _sentController.text = (result['sent'] as String?) ?? '';
@@ -1920,7 +1992,7 @@ class _LoggingControlsState extends State<LoggingControls> {
 
       final dateParts = ((result['date'] as String?) ?? '').split('-');
       final timeParts = ((result['time'] as String?) ?? '').split(':');
-      final dateOrTimeEdited = result['date'] != dateBeforeDialog || result['time'] != timeBeforeDialog;
+      final dateOrTimeEdited = result['date'] != dateBeforePane || result['time'] != timeBeforePane;
       if (dateOrTimeEdited && dateParts.length == 3 && timeParts.length == 2) {
         final year = int.tryParse(dateParts[0]);
         final month = int.tryParse(dateParts[1]);
@@ -2047,12 +2119,12 @@ class _LoggingControlsState extends State<LoggingControls> {
 
     final call = _call;
     if (call.isEmpty) {
-      if (_lookupFor != null || _commandExpectsParams) {
+      if (_lookupFor != null || _retainedInterpretation != null) {
         setState(() {
           _lookupFor = null;
           _lookupResult = null;
           _refreshedActivityControls = null;
-          _commandExpectsParams = false;
+          _retainedInterpretation = null;
         });
       }
       return;
@@ -2071,9 +2143,11 @@ class _LoggingControlsState extends State<LoggingControls> {
         if (!mounted || _call != call) return;
         setState(() {
           _currentInterpretation = result;
-          _commandExpectsParams = result != null && result['expectsParams'] == true;
+          _retainInterpretation(result);
           if (result != null && result['describe'] is String) {
             _commandMessage = result['describe'] as String;
+          } else if (result != null && result['error'] is String) {
+            _commandMessage = result['error'] as String;
           } else {
             _commandMessage = null;
           }
@@ -2208,7 +2282,7 @@ class _LoggingControlsState extends State<LoggingControls> {
     setState(() {
       _commandMessage = null;
       _currentInterpretation = null;
-      _commandExpectsParams = false;
+      _retainedInterpretation = null;
       _updateClockTicker();
     });
     _notifyCommandMessage(null);
@@ -2398,6 +2472,16 @@ class _LoggingControlsState extends State<LoggingControls> {
         qsoData,
       );
       if (!mounted) return;
+      // A recognized command that can't run in this context (its `error`
+      // field is set — see CommandInterpretation) — surface the message,
+      // keep the typed input for editing, and execute nothing.
+      if (interpretation != null && interpretation['error'] is String) {
+        setState(() {
+          _commandMessage = interpretation['error'] as String;
+        });
+        _notifyCommandMessage(_commandMessage);
+        return;
+      }
       // A command still awaiting parameters (expectsParams) isn't complete
       // — Enter shouldn't execute or clear the field, just fall through to
       // ordinary logging (which _canLog below will normally reject, since
@@ -2539,8 +2623,10 @@ class _LoggingControlsState extends State<LoggingControls> {
             'call': call,
             'sent': _rcvdController.text.trim(),
             if (keepOriginal && _theirNameOverride != null) 'name': _theirNameOverride,
-            if (_gridTouched) 'grid': _gridController.text.trim(),
-            if (_stateTouched) 'state': _stateController.text.trim(),
+            // Same normalization as _getCurrentQsoData: canonical Maidenhead
+            // casing for grids, uppercase for states.
+            if (_gridTouched) 'grid': normalizeGrid(_gridController.text.trim()),
+            if (_stateTouched) 'state': _stateController.text.trim().toUpperCase(),
           },
           'startAtMillis': baseStartAtMillis + index * 5000,
         };
@@ -2795,25 +2881,30 @@ class _LoggingControlsState extends State<LoggingControls> {
                               selectAllOnFocus: false,
                               enabled: !fieldsLocked,
                               autofocus: true,
-                              autocorrect: _commandExpectsParams,
-                              enableSuggestions: _commandExpectsParams,
+                              autocorrect: _commandMixedCase,
+                              enableSuggestions: _commandMixedCase,
                               // A command awaiting parameters (expectsParams)
-                              // switches the field to normal free-text entry
-                              // — spaces and lowercase allowed, platform's
-                              // usual sentence capitalization — instead of
-                              // the uppercase-only callsign restriction.
-                              textCapitalization: _commandExpectsParams
+                              // switches the field to free-text entry —
+                              // spaces allowed, no callsign character
+                              // restriction — but stays uppercase-only
+                              // unless the command itself declared
+                              // `mixedCase: true` (e.g. NOTE, whose
+                              // parameter is free prose): all logging input
+                              // is uppercase unless explicitly mixed-case.
+                              textCapitalization: _commandMixedCase
                                   ? TextCapitalization.sentences
                                   : TextCapitalization.characters,
-                              inputFormatters: _commandExpectsParams
+                              inputFormatters: _commandMixedCase
                                   ? null
-                                  : [
-                                      FilteringTextInputFormatter.allow(
-                                        RegExp(r'[a-zA-Z0-9/.,]'),
-                                      ),
-                                      if (isMobilePlatform) MobileDotToSlashFormatter(),
-                                      _UpperCaseFormatter(),
-                                    ],
+                                  : _commandExpectsParams
+                                      ? const [UpperCaseTextFormatter()]
+                                      : [
+                                          FilteringTextInputFormatter.allow(
+                                            RegExp(r'[a-zA-Z0-9/.,]'),
+                                          ),
+                                          if (isMobilePlatform) MobileDotToSlashFormatter(),
+                                          const UpperCaseTextFormatter(),
+                                        ],
                               style: _primaryFieldStyle(context, fontWeight: FontWeight.w500),
                               decoration: _primaryFieldDecoration(context, widget.theirCallLabel ?? 'Their call'),
                               onSubmitted: (_) => _log(),
@@ -2829,10 +2920,18 @@ class _LoggingControlsState extends State<LoggingControls> {
                                 selectAllOnFocus: false,
                                 enabled: !fieldsLocked,
                                 style: _primaryFieldStyle(context, fontWeight: FontWeight.w500),
+                                // Letters are legitimate in RSTs (CW's "5NN"
+                                // shorthand, aurora "59A") and the Edit QSO
+                                // pane accepts them — a digits-only filter
+                                // here would silently strip a pane-saved
+                                // letter on the next keystroke, since
+                                // filtering formatters re-run over the whole
+                                // text. Uppercased like all logging input.
                                 inputFormatters: [
                                   FilteringTextInputFormatter.allow(
-                                    RegExp(r'[0-9+\-]'),
+                                    RegExp(r'[0-9a-zA-Z+\-]'),
                                   ),
+                                  const UpperCaseTextFormatter(),
                                 ],
                                 decoration: _primaryFieldDecoration(context, widget.sentLabel ?? 'Sent'),
                                 onChanged: (_) => _rstsTouched = true,
@@ -2848,10 +2947,12 @@ class _LoggingControlsState extends State<LoggingControls> {
                                 selectAllOnFocus: false,
                                 enabled: !fieldsLocked,
                                 style: _primaryFieldStyle(context, fontWeight: FontWeight.w500),
+                                // Same letter-friendly rule as Sent above.
                                 inputFormatters: [
                                   FilteringTextInputFormatter.allow(
-                                    RegExp(r'[0-9+\-]'),
+                                    RegExp(r'[0-9a-zA-Z+\-]'),
                                   ),
+                                  const UpperCaseTextFormatter(),
                                 ],
                                 decoration: _primaryFieldDecoration(context, widget.rcvdLabel ?? 'Rcvd'),
                                 onChanged: (_) => _rstsTouched = true,
@@ -2869,6 +2970,7 @@ class _LoggingControlsState extends State<LoggingControls> {
                                 selectAllOnFocus: false,
                                 enabled: !fieldsLocked,
                                 textCapitalization: TextCapitalization.characters,
+                                inputFormatters: const [UpperCaseTextFormatter()],
                                 style: _primaryFieldStyle(context, fontWeight: FontWeight.w500),
                                 decoration: _primaryFieldDecoration(context, widget.theirStateLabel ?? 'State'),
                                 onChanged: (_) => _stateTouched = true,
@@ -2886,6 +2988,7 @@ class _LoggingControlsState extends State<LoggingControls> {
                                 selectAllOnFocus: false,
                                 enabled: !fieldsLocked,
                                 textCapitalization: TextCapitalization.characters,
+                                inputFormatters: const [UpperCaseTextFormatter()],
                                 style: _primaryFieldStyle(context, fontWeight: FontWeight.w500),
                                 decoration: _primaryFieldDecoration(context, widget.theirGridLabel ?? 'Grid'),
                                 onChanged: (_) => _gridTouched = true,
@@ -3017,15 +3120,5 @@ class MobileDotToSlashFormatter extends TextInputFormatter {
       return newValue;
     }
     return newValue.copyWith(text: text.replaceAll('.', '/'));
-  }
-}
-
-class _UpperCaseFormatter extends TextInputFormatter {
-  @override
-  TextEditingValue formatEditUpdate(
-    TextEditingValue oldValue,
-    TextEditingValue newValue,
-  ) {
-    return newValue.copyWith(text: newValue.text.toUpperCase());
   }
 }

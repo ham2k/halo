@@ -36,6 +36,7 @@ export interface FormField {
   label: string;
   value?: any; // initial state value if not provided in host call state
   placeholder?: string;
+  uppercase?: boolean; // force typed input to uppercase (callsign fields always are)
   options?: FormFieldOption[]; // required for select/radio
   validate?: (value: any, state: Record<string, any>) => string | null | undefined | Promise<string | null | undefined>;
   transform?: (value: any, state: Record<string, any>) => any | Promise<any>;

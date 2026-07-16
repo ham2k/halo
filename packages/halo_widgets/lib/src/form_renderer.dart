@@ -7,6 +7,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import 'icon_resolver.dart';
+import 'modal_pane.dart';
+import 'text_formatters.dart';
 import 'theme.dart';
 
 typedef FormValidator = Future<String?> Function(String fieldKey, dynamic value, Map<String, dynamic> state);
@@ -18,6 +20,40 @@ typedef FormManageAccount = void Function(String accountKey, String? subkey);
 /// Substitutes `${key}` placeholders in [template] with values from [item].
 String _templateString(String template, Map<String, dynamic> item) {
   return template.replaceAllMapped(RegExp(r'\$\{([^}]+)\}'), (m) => item[m.group(1)]?.toString() ?? '');
+}
+
+/// The Cancel/Save (+ submitting spinner) row shared by every presenter of
+/// a [FormRenderer] — the renderer's own `showActions` footer,
+/// [showFormDialog]'s action bar, [showFormPane]'s pinned footer, and
+/// [FormView]'s bottom bar. Only the row lives here; each presenter keeps
+/// its own chrome (tinted container, SafeArea, padding) around it, so a
+/// change to the submission UX lands in all four at once.
+Widget _formActionsRow({
+  required bool isSubmitting,
+  required VoidCallback? onCancel,
+  required VoidCallback? onSave,
+}) {
+  return Row(
+    mainAxisAlignment: MainAxisAlignment.end,
+    children: [
+      TextButton(
+        onPressed: isSubmitting ? null : onCancel,
+        child: const Text('Cancel'),
+      ),
+      const SizedBox(width: 12),
+      if (isSubmitting)
+        const SizedBox(
+          width: 24,
+          height: 24,
+          child: CircularProgressIndicator(strokeWidth: 2),
+        )
+      else
+        FilledButton(
+          onPressed: onSave,
+          child: const Text('Save'),
+        ),
+    ],
+  );
 }
 
 /// Renders a form from a dynamic JSON definition, coordinating input fields,
@@ -380,27 +416,7 @@ class FormRendererState extends State<FormRenderer> {
           ),
           if (widget.showActions) ...[
             const SizedBox(height: 24),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                TextButton(
-                  onPressed: _isSubmitting ? null : widget.onCancel,
-                  child: const Text('Cancel'),
-                ),
-                const SizedBox(width: 12),
-                if (_isSubmitting)
-                  const SizedBox(
-                    width: 24,
-                    height: 24,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
-                else
-                  FilledButton(
-                    onPressed: submit,
-                    child: const Text('Save'),
-                  ),
-              ],
-            ),
+            _formActionsRow(isSubmitting: _isSubmitting, onCancel: widget.onCancel, onSave: submit),
           ],
         ],
       ),
@@ -502,6 +518,8 @@ class FormRendererState extends State<FormRenderer> {
         return TextField(
           controller: _controllers[key],
           focusNode: _focusNodes[key],
+          textCapitalization: _capitalizationFor('text', el),
+          inputFormatters: _inputFormattersFor('text', el),
           autofillHints: _getAutofillHints(key, 'text'),
           textInputAction: TextInputAction.done,
           onSubmitted: (_) => submit(),
@@ -513,6 +531,8 @@ class FormRendererState extends State<FormRenderer> {
           focusNode: _focusNodes[key],
           maxLines: null,
           minLines: 3,
+          textCapitalization: _capitalizationFor('multiline', el),
+          inputFormatters: _inputFormattersFor('multiline', el),
           autofillHints: _getAutofillHints(key, 'multiline'),
           decoration: poloFieldDecoration(context, label, hintText: placeholder, errorText: errorText, labelColor: devModeColor),
         );
@@ -521,6 +541,8 @@ class FormRendererState extends State<FormRenderer> {
           controller: _controllers[key],
           focusNode: _focusNodes[key],
           keyboardType: TextInputType.emailAddress,
+          textCapitalization: _capitalizationFor('email', el),
+          inputFormatters: _inputFormattersFor('email', el),
           autofillHints: _getAutofillHints(key, 'email'),
           textInputAction: TextInputAction.done,
           onSubmitted: (_) => submit(),
@@ -530,10 +552,8 @@ class FormRendererState extends State<FormRenderer> {
         return TextField(
           controller: _controllers[key],
           focusNode: _focusNodes[key],
-          textCapitalization: TextCapitalization.characters,
-          inputFormatters: [
-            TextInputFormatter.withFunction((oldValue, newValue) => newValue.copyWith(text: newValue.text.toUpperCase())),
-          ],
+          textCapitalization: _capitalizationFor('callsign', el),
+          inputFormatters: _inputFormattersFor('callsign', el),
           autofillHints: _getAutofillHints(key, 'callsign'),
           textInputAction: TextInputAction.done,
           onSubmitted: (_) => submit(),
@@ -742,10 +762,22 @@ class FormRendererState extends State<FormRenderer> {
         _ => null,
       };
 
-  List<TextInputFormatter>? _inputFormattersFor(String fieldType) => switch (fieldType) {
-        'callsign' => [TextInputFormatter.withFunction((oldValue, newValue) => newValue.copyWith(text: newValue.text.toUpperCase()))],
+  /// The one predicate for "does this field force uppercase?": callsign
+  /// fields always do; any other text-like field opts in with
+  /// `uppercase: true` in its definition (see FormField in the SDK's
+  /// types.ts). Both the standard builders (_buildField's text/multiline/
+  /// email/callsign cases) and the compact icon-row path derive BOTH
+  /// capitalization and formatters from this, so the two layouts can't
+  /// disagree on a field's casing.
+  bool _isUppercase(String fieldType, Map<String, dynamic> el) =>
+      fieldType == 'callsign' || el['uppercase'] == true;
+
+  TextCapitalization _capitalizationFor(String fieldType, Map<String, dynamic> el) =>
+      _isUppercase(fieldType, el) ? TextCapitalization.characters : TextCapitalization.none;
+
+  List<TextInputFormatter>? _inputFormattersFor(String fieldType, Map<String, dynamic> el) => switch (fieldType) {
         'number' => [FilteringTextInputFormatter.allow(RegExp(r'[0-9.-]'))],
-        _ => null,
+        _ => _isUppercase(fieldType, el) ? const [UpperCaseTextFormatter()] : null,
       };
 
   /// `expanded` is the narrow-layout, stacked-under-the-title form: full
@@ -796,9 +828,9 @@ class FormRendererState extends State<FormRenderer> {
           obscureText: fieldType == 'secret',
           maxLines: fieldType == 'multiline' ? null : 1,
           minLines: fieldType == 'multiline' ? 3 : null,
-          textCapitalization: fieldType == 'callsign' ? TextCapitalization.characters : TextCapitalization.none,
+          textCapitalization: _capitalizationFor(fieldType, el),
           keyboardType: _keyboardTypeFor(fieldType),
-          inputFormatters: _inputFormattersFor(fieldType),
+          inputFormatters: _inputFormattersFor(fieldType, el),
           autofillHints: fieldType == 'secret' ? const [AutofillHints.password] : _getAutofillHints(key, fieldType),
           textInputAction: TextInputAction.done,
           onSubmitted: (_) => submit(),
@@ -1096,31 +1128,102 @@ Future<Map<String, dynamic>?> showFormDialog(
                 ),
               ),
               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.end,
-                children: [
-                  TextButton(
-                    onPressed: isSubmitting ? null : () => Navigator.of(context).pop(null),
-                    child: const Text('Cancel'),
-                  ),
-                  const SizedBox(width: 12),
-                  if (isSubmitting)
-                    const SizedBox(
-                      width: 24,
-                      height: 24,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  else
-                    FilledButton(
-                      onPressed: () => formKey.currentState?.submit(),
-                      child: const Text('Save'),
-                    ),
-                ],
+              child: _formActionsRow(
+                isSubmitting: isSubmitting,
+                onCancel: () => Navigator.of(context).pop(null),
+                onSave: () => formKey.currentState?.submit(),
               ),
             );
           },
         ),
       ],
+    ),
+  );
+}
+
+/// [showFormDialog]'s Modal Pane counterpart (see modal_pane.dart): the same
+/// form-definition engine presented via [showModalPane], so on XS/S shirt
+/// sizes it fills the screen instead of cramming a fixed-width AlertDialog.
+/// For pane-sized forms (the QSO full editor); one-or-two-field prompts
+/// should keep using [showFormDialog]. Completes with the submitted values,
+/// or null on Cancel/close. `barrierDismissible: false` for the same reason
+/// showFormDialog passes it to showDialog — a stray tap outside must not
+/// discard in-progress edits (the title bar's close button still cancels).
+///
+/// `scrollable: false` + own Cancel/Save footer, NOT FormRenderer's built-in
+/// `showActions` row: that row sits at the bottom of the form content, so on
+/// a form taller than the pane it scrolls out of reach — Save must stay
+/// pinned below the scrolling fields, same as showFormDialog's action bar.
+Future<Map<String, dynamic>?> showFormPane(
+  BuildContext context, {
+  required Map<String, dynamic> formDefinition,
+  required Map<String, dynamic> initialState,
+  FormValidator? validator,
+  FormTransformer? transformer,
+  FormOnChange? onChange,
+  FormAction? onAction,
+  FormManageAccount? onManageAccount,
+  bool developerMode = false,
+}) {
+  final formKey = GlobalKey<FormRendererState>();
+  final submittingNotifier = ValueNotifier<bool>(false);
+
+  return showModalPane<Map<String, dynamic>>(
+    context,
+    title: formDefinition['title'] as String?,
+    barrierDismissible: false,
+    scrollable: false,
+    builder: (context) => ValueListenableBuilder<bool>(
+      valueListenable: submittingNotifier,
+      // While a submit's async validators/transformers are in flight the
+      // pane must not be dismissible — the old AlertDialog guaranteed this
+      // with barrierDismissible:false plus a disabled Cancel, but the
+      // pane's title-bar close button, Escape, and the XS/S back button
+      // would otherwise pop null mid-submit and silently discard edits the
+      // user explicitly saved (submit()'s mounted guard drops the result).
+      // All three dismissal paths go through Navigator.maybePop (see
+      // modal_pane.dart), which this PopScope blocks; the deliberate pops
+      // below (Save's onSubmit, the footer's Cancel) call pop() directly
+      // and are unaffected.
+      builder: (context, isSubmitting, child) => PopScope(canPop: !isSubmitting, child: child!),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Expanded(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(24, 12, 24, 12),
+              child: FormRenderer(
+                key: formKey,
+                formDefinition: formDefinition,
+                initialState: initialState,
+                validator: validator,
+                transformer: transformer,
+                onChange: onChange,
+                onAction: onAction,
+                onManageAccount: onManageAccount,
+                developerMode: developerMode,
+                // The pane's own title bar already shows formDefinition['title'].
+                showTitle: false,
+                showActions: false,
+                submittingNotifier: submittingNotifier,
+                onSubmit: (values) => Navigator.of(context).pop(values),
+                onCancel: () => Navigator.of(context).pop(null),
+              ),
+            ),
+          ),
+          ValueListenableBuilder<bool>(
+            valueListenable: submittingNotifier,
+            builder: (context, isSubmitting, _) => Padding(
+              padding: const EdgeInsets.fromLTRB(24, 8, 24, 16),
+              child: _formActionsRow(
+                isSubmitting: isSubmitting,
+                onCancel: () => Navigator.of(context).pop(null),
+                onSave: () => formKey.currentState?.submit(),
+              ),
+            ),
+          ),
+        ],
+      ),
     ),
   );
 }
@@ -1214,26 +1317,10 @@ class _FormViewState extends State<FormView> {
             child: SafeArea(
               child: Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.end,
-                  children: [
-                    TextButton(
-                      onPressed: isSubmitting ? null : widget.onCancel,
-                      child: const Text('Cancel'),
-                    ),
-                    const SizedBox(width: 12),
-                    if (isSubmitting)
-                      const SizedBox(
-                        width: 24,
-                        height: 24,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    else
-                      FilledButton(
-                        onPressed: () => _formKey.currentState?.submit(),
-                        child: const Text('Save'),
-                      ),
-                  ],
+                child: _formActionsRow(
+                  isSubmitting: isSubmitting,
+                  onCancel: widget.onCancel,
+                  onSave: () => _formKey.currentState?.submit(),
                 ),
               ),
             ),

@@ -12,6 +12,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import 'text_formatters.dart';
 import 'theme.dart';
 
 /// Async ref decoration via the plugin runtime. Receives `{type, ref}` and
@@ -43,10 +44,9 @@ class RefTransform {
 /// References are always uppercase, live as the user types — not just at
 /// submit time (`_add` already uppercased there) — since `toUpperCase()` is
 /// length-preserving for the characters this field allows, the selection
-/// from `newValue` carries over unchanged.
-final _upperCaseFormatter = TextInputFormatter.withFunction(
-  (oldValue, newValue) => newValue.copyWith(text: newValue.text.toUpperCase()),
-);
+/// from `newValue` carries over unchanged. Shares the package-wide
+/// [UpperCaseTextFormatter] (text_formatters.dart).
+const _upperCaseFormatter = UpperCaseTextFormatter();
 
 /// Applies an ordered list of [RefTransform]s to text on every edit — the
 /// native side of the extension's declarative reformatting contract.

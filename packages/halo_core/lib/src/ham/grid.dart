@@ -56,6 +56,29 @@ GridLocation? gridToLocation(String? grid) {
   return GridLocation(lat + 0.5, lon + 1);
 }
 
+/// A well-formed Maidenhead locator: field pair, square digits, then
+/// optional subsquare pair, extended-square digits, and sub-subsquare pair
+/// (4, 6, 8, or 10 characters), any case.
+final _gridShape = RegExp(
+  r'^[A-R]{2}[0-9]{2}(?:[A-X]{2}(?:[0-9]{2}(?:[A-X]{2})?)?)?$',
+  caseSensitive: false,
+);
+
+/// Normalizes a Maidenhead locator to its conventional case combination —
+/// uppercase field pair, lowercase subsquare letters ("fn31PR" → "FN31pr").
+/// Grid *input* fields are uppercase-only like every other logging control,
+/// so this runs where the value is stored/compared, restoring the canonical
+/// mixed case. Anything that isn't a well-formed locator is returned
+/// unchanged (beyond trimming) — this formats, it doesn't validate.
+String normalizeGrid(String grid) {
+  final g = grid.trim();
+  if (!_gridShape.hasMatch(g)) return g;
+  // Positions 0-3 are the field pair (uppercase) and square digits;
+  // everything after is either digits (case-less) or subsquare letters
+  // (lowercase).
+  return g.substring(0, 4).toUpperCase() + (g.length > 4 ? g.substring(4).toLowerCase() : '');
+}
+
 /// Encodes a latitude/longitude as a 6-character Maidenhead grid locator
 /// (e.g. `EM89hu`) — the inverse of [gridToLocation], used to show the
 /// device's current GPS position as a grid. Same algorithm as app-polo's

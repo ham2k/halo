@@ -49,16 +49,23 @@ void main() {
       expect(result, isNotNull);
       final commands = (result!['commands'] as List).cast<Map>();
       expect(commands.single['updateQso'], {'notes': 'This is nice'});
+      // The COMPLETE result must also carry mixedCase — without it, the call
+      // field would snap back to uppercase-only while the note is still
+      // being typed past the first word.
+      expect(result['mixedCase'], isTrue);
     });
 
     test('a bare "NOTE" expects params — it is recognized but not executable yet', () async {
       final result = await interpret('NOTE');
-      expect(result, {'expectsParams': true});
+      // mixedCase: NOTE's parameter is free prose, so the call field must
+      // not force it to uppercase (logging input is uppercase unless a
+      // command explicitly allows mixed case).
+      expect(result, {'expectsParams': true, 'mixedCase': true});
     });
 
     test('"NOTE" followed only by whitespace also expects params', () async {
       final result = await interpret('NOTE   ');
-      expect(result, {'expectsParams': true});
+      expect(result, {'expectsParams': true, 'mixedCase': true});
     });
 
     test('text that does not start with NOTE is not a command', () async {
