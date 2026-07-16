@@ -13,11 +13,11 @@ import 'package:crypto/crypto.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:halo_core/halo_core.dart';
 import 'package:halo_widgets/halo_widgets.dart';
 import 'package:http/http.dart' as http;
 
-import '../app_info.dart';
 import '../main.dart';
 import '../services/extension_service.dart';
 import '../services/settings_service.dart';
@@ -25,6 +25,7 @@ import '../services/status_bar_service.dart';
 import 'notice_history_view.dart';
 import 'operation_dialogs.dart';
 import 'switch_accounts_dialog.dart';
+import 'version_label.dart';
 
 /// A sidebar entry: `key` identifies it (a fixed core key, or an
 /// extension's `panelKey`); `descriptor` is null for core panels and the
@@ -943,7 +944,11 @@ class _DeveloperPanel extends StatelessWidget {
             ),
             const SizedBox(height: 8),
             _infoRow(context, 'Sync Device Key', settings.syncDeviceKey ?? '(loading…)'),
-            _infoRow(context, 'App Version', appVersionLabel),
+            _infoRowWidget(
+              context,
+              'App Version',
+              const VersionLabel(style: TextStyle(fontFamily: 'monospace', fontSize: 13)),
+            ),
           ],
         );
       },
@@ -951,6 +956,20 @@ class _DeveloperPanel extends StatelessWidget {
   }
 
   Widget _infoRow(BuildContext context, String label, String value) {
+    return _infoRowWidget(
+      context,
+      label,
+      SelectableText(
+        value,
+        style: const TextStyle(
+          fontFamily: 'monospace',
+          fontSize: 13,
+        ),
+      ),
+    );
+  }
+
+  Widget _infoRowWidget(BuildContext context, String label, Widget value) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 6),
       child: Row(
@@ -963,10 +982,7 @@ class _DeveloperPanel extends StatelessWidget {
               style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontWeight: FontWeight.w500),
             ),
           ),
-          Expanded(
-            flex: 3,
-            child: SelectableText(value, style: const TextStyle(fontFamily: 'monospace', fontSize: 13)),
-          ),
+          Expanded(flex: 3, child: value),
         ],
       ),
     );
@@ -988,17 +1004,17 @@ class _AboutPanel extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             children: [
               const SizedBox(height: 24),
-              ClipRRect(
-                borderRadius: BorderRadius.circular(16),
-                child: Image.asset('assets/images/ham2k-icon.png', width: 96, height: 96),
-              ),
+              SvgPicture.asset('assets/images/ham2k-wordmark.svg', width: 96, height: 96),
               const SizedBox(height: 16),
               Text(
                 'Ham2K Logger',
                 style: Theme.of(context).textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 8),
-              const Text('Version $appVersionLabel', style: TextStyle(fontSize: 15, color: Colors.grey)),
+              const VersionLabel(
+                prefix: 'Version ',
+                style: TextStyle(fontSize: 15, color: Colors.grey),
+              ),
               const SizedBox(height: 24),
             ],
           ),

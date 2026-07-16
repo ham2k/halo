@@ -1,16 +1,17 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:halo_core/halo_core.dart';
 import 'package:halo_widgets/halo_widgets.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 
-import '../app_info.dart';
 import '../main.dart';
 import '../services/settings_service.dart';
 import 'operation_dialogs.dart';
 import 'operation_view.dart';
 import 'settings_view.dart';
+import 'version_label.dart';
 import '../i18n/strings.g.dart';
 
 /// HaLo home-screen style row: bold "CALL title" line with count pill,
@@ -199,12 +200,12 @@ class _HomeViewState extends State<HomeView> {
         leadingWidth: isMacOSChromelessWindow ? 48 + macOSTrafficLightClearance(context) : null,
         leading: Padding(
           padding: EdgeInsets.fromLTRB(
-            2 + (isMacOSChromelessWindow ? macOSTrafficLightClearance(context) : 0),
-            1,
-            2,
-            1,
+            8 + (isMacOSChromelessWindow ? macOSTrafficLightClearance(context) : 0),
+            8,
+            8,
+            8,
           ),
-          child: Image.asset('assets/images/ham2k-logo.png'),
+          child: SvgPicture.asset('assets/images/ham2k-wordmark.svg', width: 22, height: 22),
         ),
         // "Desktop Logger" / "Portable Logger" is the in-app main-screen
         // title — independent of the OS-level app name ("Ham2K Logger" on
@@ -351,7 +352,7 @@ class _BrandingPane extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Image.asset('assets/images/ham2k-logo.png', width: 180),
+          SvgPicture.asset('assets/images/ham2k-wordmark.svg', width: 180),
           const SizedBox(height: 4),
           // The wordmark graphic already says "Ham2K", so per the branding
           // rules (docs/design/user-interface.md) only "Logger" / "Portable
@@ -361,8 +362,8 @@ class _BrandingPane extends StatelessWidget {
             style: theme.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w800),
           ),
           const SizedBox(height: 16),
-          Text(
-            'Version $appVersionLabel',
+          VersionLabel(
+            prefix: 'Version ',
             style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant),
           ),
         ],

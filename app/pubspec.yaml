@@ -17,6 +17,8 @@ dependencies:
     path: ../packages/halo_core
   halo_widgets:
     path: ../packages/halo_widgets
+  halo_build_tools:
+    path: ../packages/halo_build_tools
   drift: ^2.28.0
   drift_flutter: ^0.2.4
   file_selector: ^1.1.0
@@ -42,6 +44,8 @@ dependencies:
   slang_flutter: ^4.0.0
   url_launcher: ^6.3.1
   qr_flutter: ^4.1.0
+  package_info_plus: ^10.2.0
+  flutter_svg: ^2.3.0
 
 dev_dependencies:
   flutter_test:
