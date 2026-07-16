@@ -126,7 +126,7 @@ class HaLoServices {
   late final OperationsRepository operations = OperationsRepository(db, onChange: () => syncEngine.notifyChanged());
   late final QsosRepository qsos = QsosRepository(db, onChange: () => syncEngine.notifyChanged());
   late final LookupRepository lookups = LookupRepository(db);
-  late final ExportService exports = ExportService(extensions: extensions, qsos: qsos);
+  late final ExportService exports = ExportService(extensions: extensions, qsos: qsos, settings: settings);
   late final ScoringService scoring = ScoringService(extensions: extensions, qsos: qsos, operations: operations);
   late final RadioService radio = RadioService(settings.prefs);
   final LocationService location = LocationService();

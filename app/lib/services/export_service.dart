@@ -7,6 +7,7 @@
 // owns file I/O and the save dialog/share sheet. One coarse bridge call per
 // hook carries the whole operation.
 
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:file_selector/file_selector.dart';
@@ -16,6 +17,7 @@ import 'package:share_plus/share_plus.dart';
 import 'package:halo_core/halo_core.dart';
 
 import 'extension_service.dart';
+import 'settings_service.dart';
 
 class ExportException implements Exception {
   final String message;
@@ -28,8 +30,33 @@ class ExportException implements Exception {
 class ExportService {
   final ExtensionService extensions;
   final QsosRepository qsos;
+  final SettingsService settings;
 
-  ExportService({required this.extensions, required this.qsos});
+  ExportService({required this.extensions, required this.qsos, required this.settings});
+
+  /// Raw QSON dump (the same payload every hook receives), offered only in
+  /// developer mode — same as app-polo's devMode extension. Generated here in
+  /// Dart, no extension involved.
+  static const _qsonHookKey = 'core-devmode';
+  static const _qsonExportType = 'devmode-qson';
+
+  bool _isQsonOption(Map<String, dynamic> option) =>
+      option['hookKey'] == _qsonHookKey && option['exportType'] == _qsonExportType;
+
+  Map<String, dynamic> _qsonOptionFor(Operation operation) {
+    final date = (operation.startAtMax ?? DateTime.now().toUtc()).toIso8601String().substring(0, 10);
+    final call = operation.stationCall.replaceAll('/', '-');
+    final shortUuid = operation.uuid.split('-').first;
+    return {
+      'hookKey': _qsonHookKey,
+      'exportType': _qsonExportType,
+      'label': 'Developer Mode: QSON Export',
+      'filename': '$date.$call.$shortUuid.qson',
+      'icon': 'briefcase-upload',
+      'priority': -100,
+      'selectedByDefault': false,
+    };
+  }
 
   Future<List<Qso>> _qsoListFor(Operation operation) async {
     final qsoList = (await qsos.watchForOperation(operation.uuid).first).where((q) => !q.isEvent).toList();
@@ -43,7 +70,11 @@ class ExportService {
   /// the Exports Panel's checkbox list.
   Future<List<Map<String, dynamic>>> getExportOptions(Operation operation) async {
     final qsoList = await _qsoListFor(operation);
-    return extensions.getExportOptions(qsonPayloadFor(operation: operation, qsos: qsoList));
+    final options = await extensions.getExportOptions(qsonPayloadFor(operation: operation, qsos: qsoList));
+    if (settings.developerMode) {
+      return [...options, _qsonOptionFor(operation)];
+    }
+    return options;
   }
 
   /// Generates file content for the given (previously listed) options.
@@ -54,7 +85,7 @@ class ExportService {
     List<Map<String, dynamic>> selectedOptions,
   ) async {
     final host = extensions.host;
-    if (host == null) {
+    if (host == null && selectedOptions.any((o) => !_isQsonOption(o))) {
       throw ExportException('Extension runtime is not ready yet — try again in a moment.');
     }
     final qsoList = await _qsoListFor(operation);
@@ -64,7 +95,14 @@ class ExportService {
     // ordering dependency, so run them concurrently rather than paying for
     // N sequential bridge round-trips.
     final results = await Future.wait(selectedOptions.map((option) async {
-      final result = await host.invokeHook(
+      if (_isQsonOption(option)) {
+        return {
+          'filename': _qsonOptionFor(operation)['filename'],
+          'mimeType': 'application/json',
+          'content': jsonEncode(payload),
+        };
+      }
+      final result = await host!.invokeHook(
         'export',
         key: option['hookKey'] as String?,
         method: 'generateExport',
