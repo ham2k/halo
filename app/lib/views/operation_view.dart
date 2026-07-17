@@ -30,7 +30,15 @@ class OperationView extends StatefulWidget {
   final HaLoServices services;
   final String operationUuid;
 
-  const OperationView({super.key, required this.services, required this.operationUuid});
+  /// Open the Activities pane as soon as the operation loads — the
+  /// new-operation flow skips its old call/title dialog and lands here, so
+  /// picking activities is the first step of setting up an operation.
+  /// Fallback until an onboarding flow exists: when the active profile has
+  /// no callsign yet, the callsign editor opens instead (see
+  /// [_OperationViewState._promptForCallsign]).
+  final bool openActivities;
+
+  const OperationView({super.key, required this.services, required this.operationUuid, this.openActivities = false});
 
   @override
   State<OperationView> createState() => _OperationViewState();
@@ -88,6 +96,10 @@ class _OperationViewState extends State<OperationView> with SingleTickerProvider
   String? _lastScoredFingerprint;
 
   bool _sideInitStarted = false;
+
+  /// Whether [OperationView.openActivities] has fired — the operation stream
+  /// re-emits on every change, and the pane must only auto-open once.
+  bool _openedActivities = false;
 
   /// Explicit (not `DefaultTabController`) so `_suggestQso` can switch to
   /// the QSOs tab programmatically — this is its only use in the app.
@@ -184,6 +196,22 @@ class _OperationViewState extends State<OperationView> with SingleTickerProvider
     setState(() => _operation = operation);
     if (operation == null) return;
 
+    // Post-frame: the view must be laid out before showModalPane can size
+    // itself against it. With no profile callsign yet (fresh install — no
+    // onboarding flow exists), the callsign editor takes the Activities
+    // pane's place: setting an identity comes first.
+    if (widget.openActivities && !_openedActivities) {
+      _openedActivities = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        if (widget.services.settings.activeProfile.operatorCall.isEmpty) {
+          _promptForCallsign(operation);
+        } else {
+          _editActivities(operation);
+        }
+      });
+    }
+
     if (!_sideInitStarted) {
       _sideInitStarted = true;
       unawaited(_initExtensionState(operation));
@@ -246,6 +274,36 @@ class _OperationViewState extends State<OperationView> with SingleTickerProvider
   }
 
   String _fingerprintFor(List<Qso> qsos) => qsos.map((q) => '${q.uuid}:${q.updatedAtMillis ?? ''}').join(',');
+
+  /// The same Callsign field as Settings → Callsign, offered when a new
+  /// operation was started with no profile callsign: the save lands in the
+  /// profile (like the settings panel) AND on this operation, which was
+  /// created before the callsign existed. Cancelling leaves both unset —
+  /// the operation's own settings can fix it later.
+  Future<void> _promptForCallsign(Operation operation) async {
+    final result = await editOneFieldDialog(
+      context,
+      title: 'Callsign',
+      fieldLabel: 'Callsign',
+      fieldInitial: '',
+      fieldCapitalization: TextCapitalization.characters,
+    );
+    if (result == null || result.trim().isEmpty) return;
+    // Operation first: it's the local, can't-fail write. setOperatorCall
+    // also pushes sync credentials (keychain + extension bridge), and a
+    // failure there must not leave the operation callsign-less.
+    await widget.services.operations.saveData(
+      Operation(
+        uuid: operation.uuid,
+        data: {...operation.data, 'stationCall': result.trim().toUpperCase()},
+        qsoCount: operation.qsoCount,
+        startAtMillisMin: operation.startAtMillisMin,
+        startAtMillisMax: operation.startAtMillisMax,
+        localData: operation.localData,
+      ),
+    );
+    await widget.services.setOperatorCall(result);
+  }
 
   Future<void> _editActivities(Operation operation) async {
     // No manual re-fetch on pop: watchOperation streams the change back.

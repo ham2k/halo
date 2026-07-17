@@ -215,6 +215,58 @@
       "miles": "Millas"
     },
     "distanceUnitsDescription": "Para las distancias mostradas en el mapa",
+    "userInterface": "Interfaz de Usuario",
+    "logging": {
+      "title": "Registro",
+      "leftieMode": {
+        "title": "Modo Zurdo",
+        "descriptionOn": "Usar diseño para zurdos",
+        "descriptionOff": "Usar diseño para diestros"
+      },
+      "fieldsOnTop": {
+        "title": "Campos arriba",
+        "descriptionOn": "Campos de registro encima de la lista de QSOs, más recientes primero",
+        "descriptionOff": "Campos de registro debajo de la lista de QSOs"
+      },
+      "countryFlags": {
+        "title": "Banderas de País",
+        "dx": "Mostrar solo para contactos DX",
+        "all": "Mostrar banderas para todos los contactos",
+        "none": "No mostrar banderas"
+      },
+      "showBearing": {
+        "title": "Mostrar Rumbo",
+        "descriptionOn": "Mostrar rumbo estimado a la estación",
+        "descriptionOff": "No mostrar información de rumbo"
+      },
+      "switchSentRcvd": {
+        "title": "Cambiar orden de reportes de señal",
+        "sentFirst": "Enviado primero, Recibido después",
+        "rcvdFirst": "Recibido primero, Enviado después"
+      },
+      "jumpAfterRST": {
+        "title": "Saltar al siguiente campo al ingresar RST",
+        "descriptionOn": "Saltar después de ingresar el RST",
+        "descriptionOff": "No saltar automáticamente"
+      },
+      "bands": "Bandas",
+      "modes": "Modos"
+    },
+    "privacy": {
+      "title": "Privacidad",
+      "shareAppData": {
+        "title": "Compartir datos de uso",
+        "descriptionOn": "Ayúdanos a mejorar la app compartiendo datos de uso, fallos y rendimiento",
+        "descriptionOff": "Mantener privados los datos de uso.\nEl equipo de Ham2K no podrá detectar fallos u otros problemas."
+      },
+      "shareOpData": {
+        "title": "Compartir datos de operaciones",
+        "descriptionOn": "Compartir algunos datos de operaciones públicamente y con otros usuarios",
+        "descriptionOff": "Mantener privados los datos de operaciones"
+      },
+      "privacyPolicy": "Política de Privacidad",
+      "termsOfService": "Términos de Servicio"
+    },
     "operatorCall": "Indicativo del Operador",
     "sync": {
       "title": "Configuración de Sincronización",

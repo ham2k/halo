@@ -271,6 +271,11 @@ class ExtensionService {
     _host?.invalidateHookContext();
   }
 
+  /// Drops the kernel's cached HookContext so the next hook call sees fresh
+  /// core state — call after mutating anything a HookContext carries
+  /// (locale, theme, developer mode). No-op before the runtime is up.
+  void invalidateHookContext() => _host?.invalidateHookContext();
+
   /// Every panel across every extension's `settingsPanel` registration, one
   /// entry per PANEL (not per registration — a Tier 2 hook's `getPanels()`
   /// can fan one registration out to several), sorted by `order`. Each
@@ -649,54 +654,50 @@ class ExtensionService {
         await _secureStorage.write(key: 'account_session_$kvKey', value: jsonEncode(session));
         return null;
       case 'getSettings':
+        // The full read view of the app's settings — resolved typed values
+        // with defaults applied, so extensions never re-derive fallbacks.
+        // Deliberately absent: credentials and accounts (those live in the
+        // platform keychain via the account hook system, never in
+        // SettingsService) and device identifiers.
         return {
           'developerMode': settings?.developerMode ?? false,
           'locale': settings?.locale ?? 'en',
           'appName': ham2kAppName,
-        };
-      case 'getCoreSettings':
-        return {
           'themeMode': settings?.themeMode.name ?? 'system',
-          'locale': settings?.locale ?? 'en',
           'fontScale': settings?.fontScale.name ?? 'normal',
           'distanceUnits': settings?.distanceUnits.name ?? 'kilometers',
+          'syncEnabled': settings?.syncEnabled ?? false,
+          'operatorCall': settings?.activeProfile.operatorCall ?? '',
+          'leftieMode': settings?.leftieMode ?? false,
+          'fieldsOnTop': settings?.fieldsOnTop ?? false,
+          'dxFlags': settings?.dxFlags.name ?? 'dx',
+          'showBearing': settings?.showBearing ?? false,
+          'switchSentRcvd': settings?.switchSentRcvd ?? false,
+          'jumpAfterRST': settings?.jumpAfterRST ?? false,
+          'bands': settings?.enabledBands ?? SettingsService.defaultBands,
+          'modes': settings?.enabledModes ?? SettingsService.defaultModes,
+          'showRSTFields': settings?.showRSTFields ?? true,
+          'showStateField': settings?.showStateField ?? false,
+          'showGridField': settings?.showGridField ?? false,
+          'showDeletedQSOs': settings?.showDeletedQSOs ?? false,
+          'showQsoNumbers': settings?.showQsoNumbers ?? true,
+          'consentAppData': settings?.consentAppData ?? false,
+          'consentOpData': settings?.consentOpData ?? false,
+          // Extension-owned groups, raw — every extension can read every
+          // group (settings are not secrets); writes are another matter.
+          'extensions': settings?.extensionSettingsGroups() ?? const {},
         };
-      case 'setCoreSetting':
-        final settingKey = params['key'] as String;
-        final value = params['value'];
-        if (value is! String) {
-          debugPrint('[extensions] setCoreSetting: "$settingKey" got a non-string value ($value) — ignored');
+      case 'setSettings':
+        // Writes are namespaced to the calling extension's own group
+        // (`extension_<ns>`), enforced here by the SDK-injected ns — an
+        // extension can never write core settings or another extension's.
+        final ns = params['ns'] as String?;
+        final values = params['values'];
+        if (ns == null || ns.isEmpty || values is! Map) {
+          debugPrint('[extensions] setSettings: missing ns or values — ignored');
           return null;
         }
-        switch (settingKey) {
-          case 'themeMode':
-            final mode = _enumByNameOrNull(ThemeMode.values, value);
-            if (mode == null) {
-              debugPrint('[extensions] setCoreSetting: "themeMode" got an unrecognized value ($value) — ignored');
-              return null;
-            }
-            await settings?.setThemeMode(mode);
-          case 'locale':
-            await settings?.setLocale(value);
-            LocaleSettings.setLocaleRaw(value);
-          case 'fontScale':
-            final scale = _enumByNameOrNull(FontScale.values, value);
-            if (scale == null) {
-              debugPrint('[extensions] setCoreSetting: "fontScale" got an unrecognized value ($value) — ignored');
-              return null;
-            }
-            await settings?.setFontScale(scale);
-          case 'distanceUnits':
-            final units = _enumByNameOrNull(DistanceUnits.values, value);
-            if (units == null) {
-              debugPrint('[extensions] setCoreSetting: "distanceUnits" got an unrecognized value ($value) — ignored');
-              return null;
-            }
-            await settings?.setDistanceUnits(units);
-          default:
-            debugPrint('[extensions] setCoreSetting: unknown key "$settingKey"');
-        }
-        _host?.invalidateHookContext();
+        await settings?.updateSettingsGroup('extension_$ns', values.cast<String, dynamic>());
         return null;
       case 'translate':
         final key = params['key'] as String;
@@ -1089,7 +1090,7 @@ class ExtensionService {
     final gridLocation = gridToLocation(grid) ?? fallbackLocation;
     final callsign = (operationData['stationCall'] as String?)?.isNotEmpty == true
         ? operationData['stationCall'] as String
-        : settings?.operatorCall;
+        : settings?.activeProfile.operatorCall;
 
     try {
       final entries = await host.invokeHookAll(
@@ -1128,12 +1129,28 @@ class ExtensionService {
   /// The current LoFi account/device/client info, for display in Settings.
   /// Returns null if the runtime isn't up or the request failed (e.g. no
   /// network) — callers should treat that as "status unknown", not "no sync".
+  ///
+  /// Every fresh fetch also persists the snapshot into
+  /// `settings.syncState['accountData']` — the static copy the declarative
+  /// sync settings group displays, so building a settings schema never
+  /// needs a network round-trip. Only this method (called from the Sync
+  /// panel's refreshes and post-link flows) updates it.
   Future<Map<String, dynamic>?> syncAccountData() async {
     final host = _host;
     if (host == null) return null;
     try {
       final result = await host.invokeHook('syncTransport', method: 'getAccountData', args: const {});
-      return result is Map ? result.cast<String, dynamic>() : null;
+      final data = result is Map ? result.cast<String, dynamic>() : null;
+      final currentSettings = settings;
+      if (data != null && currentSettings != null) {
+        final state = currentSettings.syncState;
+        // Only write (and notify) on a real change — the Sync panel
+        // refreshes on every open.
+        if (jsonEncode(state['accountData']) != jsonEncode(data)) {
+          await currentSettings.setSyncState({...state, 'accountData': data});
+        }
+      }
+      return data;
     } on ExtensionHostException catch (e) {
       debugPrint('[extensions] syncAccountData failed: $e');
       return null;
@@ -1174,19 +1191,6 @@ class ExtensionService {
       debugPrint('[extensions] syncLinkClientWithEmail failed: $e');
       return null;
     }
-  }
-
-  /// `Enum.values.byName` throws for any name that isn't an exact match —
-  /// too strict for a value crossing the extension bridge, where a stale
-  /// bundle or a third-party extension could send anything. Used by
-  /// setCoreSetting so an unrecognized value degrades the same way an
-  /// unrecognized settingKey or a non-String value already does: logged and
-  /// ignored, not an uncaught exception.
-  static T? _enumByNameOrNull<T extends Enum>(List<T> values, String name) {
-    for (final value in values) {
-      if (value.name == name) return value;
-    }
-    return null;
   }
 
   /// Decorates a ref (park name, location…) via its `ref:<type>` handler.

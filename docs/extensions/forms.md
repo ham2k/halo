@@ -94,7 +94,20 @@ export interface FormActionElement {
   devMode?: boolean;
 }
 
-export type FormElement = FormField | FormHeader | FormSectionDivider | FormMarkdownBlock | FormActionElement;
+// A row that opens an external URL (icon-row-styled tile with an
+// open-in-new icon button); how it opens is app policy. Links carry no
+// value and never appear in form state.
+export interface FormLinkElement {
+  type: 'link';
+  key?: string;
+  label: string;
+  url: string;
+  icon?: string;
+  description?: string;
+  devMode?: boolean;
+}
+
+export type FormElement = FormField | FormHeader | FormSectionDivider | FormMarkdownBlock | FormActionElement | FormLinkElement;
 
 export interface FormDefinition {
   title?: string;

@@ -253,7 +253,9 @@ async function callHookMethod(record: HookRecord, method: string, args: unknown,
   const account = (await getAccountContext(record.extensionKey)) as { credentials?: Record<string, string>; session?: Record<string, string> } | undefined
   let developerMode = false
   let locale = 'en'
-  const settings = (await getSettingsContext()) as { developerMode?: boolean; locale?: string; appName?: string } | undefined
+  const settings = (await getSettingsContext()) as
+    | { developerMode?: boolean; locale?: string; appName?: string; distanceUnits?: string }
+    | undefined
   if (settings?.developerMode) {
     developerMode = true
   }
@@ -266,6 +268,7 @@ async function callHookMethod(record: HookRecord, method: string, args: unknown,
     developerMode,
     locale,
     appName: settings?.appName,
+    distanceUnits: settings?.distanceUnits ?? 'kilometers',
     // Log-data reads (HookContext.getOperation/getQsos in types.ts). Built
     // per call like the rest of ctx but deliberately NOT cached like
     // settings/account above — log data changes with every QSO, and a

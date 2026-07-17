@@ -18,12 +18,15 @@ import 'package:halo_core/halo_core.dart';
 import 'package:halo_widgets/halo_widgets.dart';
 import 'package:http/http.dart' as http;
 
+import 'package:url_launcher/url_launcher.dart';
+
 import '../config/release_notes.dart';
 import '../config/version.dart';
 import '../main.dart';
 import '../services/extension_service.dart';
 import '../services/settings_service.dart';
 import '../services/status_bar_service.dart';
+import '../settings/settings_registry.dart';
 import 'ham2k_logo.dart';
 import 'notice_history_view.dart';
 import 'operation_dialogs.dart';
@@ -36,10 +39,7 @@ import 'version_label.dart';
 /// raw `getSettingsPanels()` entry for extension-contributed ones (needed
 /// downstream by `_buildPanelContent` to route the definition fetch).
 /// `order` places it among every other panel — core and extension-
-/// contributed alike sort together by this one value, which is how the
-/// core/settings extension's "General" panel (order 0, see its
-/// `getPanels()`) lands first despite not being one of the hardcoded
-/// entries below.
+/// contributed alike sort together by this one value.
 class _SettingsPanelEntry {
   final String key;
   final String title;
@@ -47,23 +47,39 @@ class _SettingsPanelEntry {
   final int order;
   final Map<String, dynamic>? descriptor;
 
+  /// Panel-screen AppBar title, when the sidebar title carries extra state
+  /// (Profiles' "Callsign: KI2D") that would read oddly as a heading.
+  final String? screenTitle;
+
   const _SettingsPanelEntry({
     required this.key,
     required this.title,
     required this.icon,
     required this.order,
     this.descriptor,
+    this.screenTitle,
   });
+
+  String get effectiveScreenTitle => screenTitle ?? title;
 }
 
-// "General" isn't here — it's the core/settings extension's own
-// settingsPanel now (extensions/core/settings), same as any other
-// extension-contributed panel, just always installed.
 const _fixedCorePanels = [
-  _SettingsPanelEntry(key: 'sync', title: 'Sync', icon: Icons.sync, order: 10),
+  // The whitelisted subset of the declarative settings registry (see
+  // settings_registry.dart); the full set lives under All Settings.
+  _SettingsPanelEntry(key: 'settings', title: 'Common Settings', icon: Icons.settings_outlined, order: 0),
+  _SettingsPanelEntry(key: 'sync', title: 'Sync', screenTitle: 'Sync Settings', icon: Icons.sync, order: 10),
   _SettingsPanelEntry(key: 'accounts', title: 'Accounts', icon: Icons.vpn_key_outlined, order: 20),
+  _SettingsPanelEntry(key: 'privacy', title: 'Privacy', icon: Icons.privacy_tip_outlined, order: 30),
   _SettingsPanelEntry(key: 'notices', title: 'Notices & Messages', icon: Icons.notifications_outlined, order: 80),
+  // After the extension-contributed panels (default order 50) and Notices,
+  // before Developer/About: every declared group — core, sync, and
+  // extension — in one place.
+  _SettingsPanelEntry(key: 'all_settings', title: 'All Settings', icon: Icons.tune, order: 85),
 ];
+// Before Common Settings (order 0) — the Profiles panel leads the list.
+// Internally "profiles"; until multi-profile features are enabled it
+// presents itself as just "Callsign".
+const _profilesPanelOrder = -10;
 const _developerPanelOrder = 90;
 const _aboutPanelOrder = 100;
 const _extensionPanelDefaultOrder = 50;
@@ -78,13 +94,15 @@ class SettingsView extends StatefulWidget {
 }
 
 class _SettingsViewState extends State<SettingsView> {
+  // The wide layout defaults to Common Settings even though the Profiles
+  // ("Callsign") panel sorts first in the sidebar.
   String _selectedPanel = 'settings';
   List<Map<String, dynamic>> _extensionPanels = [];
-  // 'settings' (the core/settings extension's General panel) only appears
-  // in _buildPanelEntries once _loadExtensionPanels's bridge call resolves.
-  // Until then, the wide-layout auto-correct below would see _selectedPanel
-  // match nothing, snap to whatever's first (Sync), and never revisit it
-  // once the real panel list arrives — so it's gated on this flag.
+  // Extension-contributed panels only appear in _buildPanelEntries once
+  // _loadExtensionPanels's bridge call resolves. Until then, the wide-layout
+  // auto-correct below must not treat a selected-but-not-yet-loaded panel
+  // key as gone and snap the selection elsewhere — so it's gated on this
+  // flag.
   bool _extensionPanelsLoaded = false;
 
   @override
@@ -101,15 +119,14 @@ class _SettingsViewState extends State<SettingsView> {
     // single misbehaving extension's getPanels() failing is caught and
     // isolated per-hook, so it only silently drops its own panels — no
     // signal to surface for that). If the whole runtime never came up,
-    // General (and everything else extension-contributed) is missing with
-    // no other indication, so show it rather than fail silently.
+    // everything extension-contributed is missing with no other indication,
+    // so show it rather than fail silently.
     if (!widget.services.extensions.ready) {
       widget.services.statusBar.showNotice(
         key: 'settings_extensions_unavailable',
         icon: 'alert-circle-outline',
         title: 'Some settings are unavailable',
-        text:
-            'The extension runtime failed to start, so extension-contributed settings (including General) are missing.',
+        text: 'The extension runtime failed to start, so extension-contributed settings are missing.',
       );
     }
     if (mounted) {
@@ -121,7 +138,15 @@ class _SettingsViewState extends State<SettingsView> {
   }
 
   List<_SettingsPanelEntry> _buildPanelEntries(SettingsService settings) {
+    final operatorCall = settings.activeProfile.operatorCall;
     final entries = [
+      _SettingsPanelEntry(
+        key: 'profiles',
+        title: operatorCall.isEmpty ? 'Callsign' : 'Callsign: $operatorCall',
+        screenTitle: 'Station Profiles',
+        icon: resolveIconName('account-outline'),
+        order: _profilesPanelOrder,
+      ),
       ..._fixedCorePanels,
       for (final p in _extensionPanels)
         _SettingsPanelEntry(
@@ -194,7 +219,7 @@ class _SettingsViewState extends State<SettingsView> {
               // Default title inset (16) plus the clearance, so the title
               // lines up with each panel's own row content below.
               titleSpacing: 16 + safeLeft,
-              title: Text(effectivePanel.title),
+              title: Text(effectivePanel.effectiveScreenTitle),
               automaticallyImplyLeading: false,
               actions: [windowsCaptionSpacer(context)],
             ),
@@ -290,7 +315,7 @@ class _SettingsPanelScreen extends StatelessWidget {
         flexibleSpace: windowHeaderGestureArea(),
         leadingWidth: macOSAwareLeadingWidth(context),
         leading: macOSAwareBackButton(context),
-        title: Text(panel.title),
+        title: Text(panel.effectiveScreenTitle),
         actions: [windowsCaptionSpacer(context)],
       ),
       body: _buildPanelContent(panel, services),
@@ -300,6 +325,14 @@ class _SettingsPanelScreen extends StatelessWidget {
 
 Widget _buildPanelContent(_SettingsPanelEntry panel, HaLoServices services) {
   switch (panel.key) {
+    case 'profiles':
+      return _ProfilesPanel(services: services);
+    case 'settings':
+      return _CommonSettingsPanel(services: services);
+    case 'privacy':
+      return _RegistryGroupPanel(services: services, groupKey: 'privacy');
+    case 'all_settings':
+      return _AllSettingsPanel(services: services);
     case 'sync':
       return _SyncPanel(services: services);
     case 'accounts':
@@ -314,6 +347,337 @@ Widget _buildPanelContent(_SettingsPanelEntry panel, HaLoServices services) {
       final descriptor = panel.descriptor;
       if (descriptor == null) return const SizedBox.shrink();
       return _ExtensionSettingsPanel(services: services, descriptor: descriptor);
+  }
+}
+
+/// The "profiles" panel — callsign profiles. Until multi-profile features
+/// are enabled it presents itself as just "Callsign": a single field, saved
+/// as the default profile's `operatorCall` (see [SettingsService.activeProfile]).
+class _ProfilesPanel extends StatelessWidget {
+  final HaLoServices services;
+
+  const _ProfilesPanel({required this.services});
+
+  Future<void> _editCallsign(BuildContext context) async {
+    final result = await editOneFieldDialog(
+      context,
+      title: 'Callsign',
+      fieldLabel: 'Callsign',
+      fieldInitial: services.settings.activeProfile.operatorCall,
+      fieldCapitalization: TextCapitalization.characters,
+    );
+    if (result == null) return;
+    await services.setOperatorCall(result);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final settings = services.settings;
+
+    return ListenableBuilder(
+      listenable: settings,
+      builder: (context, _) {
+        final call = settings.activeProfile.operatorCall;
+        return ListView(
+          padding: const EdgeInsets.symmetric(vertical: 8),
+          children: [
+            ListTile(
+              leading: Icon(resolveIconName('account-outline')),
+              title: const Text('Callsign'),
+              subtitle: Text(call.isEmpty ? 'Not set' : call),
+              onTap: () => _editCallsign(context),
+              mouseCursor: SystemMouseCursors.click,
+            ),
+          ],
+        );
+      },
+    );
+  }
+}
+
+/// One declared settings group rendered as an autosaving form: the group's
+/// title as a section header, then its elements. Values refresh whenever
+/// the group's [SettingsGroup.listenable] fires (a keyboard shortcut, the
+/// "..." menu, another panel) — same external-change contract as
+/// [_ExtensionSettingsPanel], including its reload coalescing (commit
+/// notifies SettingsService synchronously, mid-autosave).
+class _SettingsGroupForm extends StatefulWidget {
+  final HaLoServices services;
+  final SettingsGroup group;
+
+  /// Element keys to keep — the Common Settings whitelist. Null shows all.
+  final Set<String>? fieldFilter;
+
+  /// Off when the group renders as a standalone panel whose pane header
+  /// already names it.
+  final bool showHeader;
+
+  /// All Settings' search query (lowercased); when it matches nothing in
+  /// this group, the whole section — header included — renders empty.
+  final String searchQuery;
+
+  const _SettingsGroupForm({
+    required this.services,
+    required this.group,
+    this.fieldFilter,
+    this.showHeader = true,
+    this.searchQuery = '',
+  });
+
+  @override
+  State<_SettingsGroupForm> createState() => _SettingsGroupFormState();
+}
+
+class _SettingsGroupFormState extends State<_SettingsGroupForm> {
+  List<Map<String, dynamic>>? _elements;
+  bool _reloading = false;
+  bool _reloadPending = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+    widget.group.listenable?.addListener(_load);
+  }
+
+  @override
+  void dispose() {
+    widget.group.listenable?.removeListener(_load);
+    super.dispose();
+  }
+
+  Future<void> _load() async {
+    if (_reloading) {
+      _reloadPending = true;
+      return;
+    }
+    _reloading = true;
+    try {
+      do {
+        _reloadPending = false;
+        var elements = await widget.services.systemLists.resolveInElements(await widget.group.buildElements());
+        final filter = widget.fieldFilter;
+        if (filter != null) {
+          elements = [
+            for (final el in elements)
+              if (filter.contains(el['key'])) el,
+          ];
+        }
+        if (mounted) setState(() => _elements = elements);
+      } while (_reloadPending && mounted);
+    } finally {
+      _reloading = false;
+    }
+  }
+
+  Future<Map<String, dynamic>?> _autosave(String fieldKey, dynamic value, Map<String, dynamic> state) async {
+    await widget.group.commit(fieldKey, value);
+    // Re-fetch so value-dependent icons/descriptions (theme icon, consent
+    // wording) follow the new value.
+    if (mounted) await _load();
+    return null;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    var elements = _elements;
+    if (elements == null) {
+      return const Padding(padding: EdgeInsets.all(24), child: Center(child: CircularProgressIndicator()));
+    }
+    if (widget.searchQuery.isNotEmpty) {
+      elements = [
+        for (final el in elements)
+          if (_elementMatchesQuery(el, widget.searchQuery)) el,
+      ];
+      if (elements.isEmpty) return const SizedBox.shrink();
+    }
+    return FormRenderer(
+      formDefinition: {
+        'elements': [
+          if (widget.showHeader) {'type': 'header', 'title': widget.group.title, 'style': 'section'},
+          ...elements,
+        ],
+      },
+      initialState: const {},
+      showActions: false,
+      showTitle: false,
+      developerMode: widget.services.settings.developerMode,
+      onChange: _autosave,
+      onOpenLink: _openLink,
+      onSubmit: (_) {},
+      onCancel: () {},
+    );
+  }
+}
+
+void _openLink(String url) {
+  unawaited(launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication));
+}
+
+/// The All Settings search predicate: does this element's key, label
+/// (title), or description mention [query]? Chrome elements (headers,
+/// dividers, markdown) never match — while filtering, only the settings
+/// themselves show.
+bool _elementMatchesQuery(Map<String, dynamic> el, String query) {
+  if (query.isEmpty) return true;
+  final type = el['type'];
+  if (type != 'field' && type != 'link' && type != 'action') return false;
+  bool has(dynamic v) => v is String && v.toLowerCase().contains(query);
+  return has(el['key']) || has(el['label']) || has(el['description']);
+}
+
+/// A single registry group as its own standalone panel (Privacy). The pane
+/// header already names it, so the group's section header is omitted.
+class _RegistryGroupPanel extends StatelessWidget {
+  final HaLoServices services;
+  final String groupKey;
+
+  const _RegistryGroupPanel({required this.services, required this.groupKey});
+
+  @override
+  Widget build(BuildContext context) {
+    final group = services.settingsRegistry[groupKey];
+    if (group == null) return const SizedBox.shrink();
+    // FormRenderer rows zero their own contentPadding, so the wide layout's
+    // grab-strip clearance must come from this panel's padding (layouts.md).
+    final safeLeft = PaneSafeArea.leftOf(context);
+    return SingleChildScrollView(
+      padding: EdgeInsets.fromLTRB(16 + safeLeft, 16, 16, 16),
+      child: _SettingsGroupForm(services: services, group: group, showHeader: false),
+    );
+  }
+}
+
+/// The whitelisted subset of the settings registry ([commonSettingsFields])
+/// — the panel most users ever need.
+class _CommonSettingsPanel extends StatelessWidget {
+  final HaLoServices services;
+
+  const _CommonSettingsPanel({required this.services});
+
+  @override
+  Widget build(BuildContext context) {
+    final sections = <Widget>[];
+    for (final group in services.settingsRegistry.groups) {
+      final prefix = '${group.key}.';
+      final keys = {
+        for (final id in commonSettingsFields)
+          if (id.startsWith(prefix)) id.substring(prefix.length),
+      };
+      if (keys.isEmpty) continue;
+      sections.add(_SettingsGroupForm(services: services, group: group, fieldFilter: keys));
+    }
+    // FormRenderer rows zero their own contentPadding, so the wide layout's
+    // grab-strip clearance must come from this panel's padding (layouts.md).
+    final safeLeft = PaneSafeArea.leftOf(context);
+    return SingleChildScrollView(
+      padding: EdgeInsets.fromLTRB(16 + safeLeft, 16, 16, 16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [for (final section in sections) ...[section, const SizedBox(height: 24)]],
+      ),
+    );
+  }
+}
+
+/// Every declared settings group — core and sync from the registry, then
+/// each extension-contributed panel as its own `extension_{panelKey}`
+/// section (full validate/transform/commit behavior via
+/// [_ExtensionSettingsPanel] in embedded mode).
+class _AllSettingsPanel extends StatefulWidget {
+  final HaLoServices services;
+
+  const _AllSettingsPanel({required this.services});
+
+  @override
+  State<_AllSettingsPanel> createState() => _AllSettingsPanelState();
+}
+
+class _AllSettingsPanelState extends State<_AllSettingsPanel> {
+  List<Map<String, dynamic>>? _extensionPanels;
+  final _searchController = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+    _loadExtensionPanels();
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _loadExtensionPanels() async {
+    await widget.services.extensions.start();
+    final panels = await widget.services.extensions.getSettingsPanels();
+    if (mounted) setState(() => _extensionPanels = panels);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final extensionPanels = _extensionPanels;
+    final query = _searchController.text.trim().toLowerCase();
+    // FormRenderer rows zero their own contentPadding, so the wide layout's
+    // grab-strip clearance must come from this panel's padding (layouts.md).
+    final safeLeft = PaneSafeArea.leftOf(context);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        // Pinned above the scroll: filters every section below by setting
+        // key, title, and description; sections with no match disappear
+        // entirely, title included.
+        Padding(
+          padding: EdgeInsets.fromLTRB(16 + safeLeft, 16, 16, 0),
+          child: TextField(
+            key: const ValueKey('all-settings-search'),
+            controller: _searchController,
+            onChanged: (_) => setState(() {}),
+            decoration: InputDecoration(
+              isDense: true,
+              prefixIcon: const Icon(Icons.search, size: 18),
+              suffixIcon: query.isEmpty
+                  ? null
+                  : IconButton(
+                      icon: const Icon(Icons.close, size: 18),
+                      tooltip: 'Clear',
+                      onPressed: () => setState(() => _searchController.clear()),
+                    ),
+              hintText: 'Search settings',
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+            ),
+          ),
+        ),
+        Expanded(
+          child: SingleChildScrollView(
+            padding: EdgeInsets.fromLTRB(16 + safeLeft, 16, 16, 16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                for (final group in widget.services.settingsRegistry.groups) ...[
+                  _SettingsGroupForm(services: widget.services, group: group, searchQuery: query),
+                  const SizedBox(height: 24),
+                ],
+                if (extensionPanels == null)
+                  const Padding(padding: EdgeInsets.all(24), child: Center(child: CircularProgressIndicator()))
+                else
+                  for (final descriptor in extensionPanels) ...[
+                    _ExtensionSettingsPanel(
+                      services: widget.services,
+                      descriptor: descriptor,
+                      embedded: true,
+                      sectionTitle: (descriptor['title'] as String?) ?? (descriptor['panelKey'] as String),
+                      searchQuery: query,
+                    ),
+                    const SizedBox(height: 24),
+                  ],
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
   }
 }
 
@@ -347,20 +711,6 @@ class _SyncPanelState extends State<_SyncPanel> {
       _syncAccount = account;
       _loadingSyncAccount = false;
     });
-  }
-
-  Future<void> _editOperatorCall() async {
-    final settings = widget.services.settings;
-    final result = await editOneFieldDialog(
-      context,
-      title: 'Operator callsign',
-      fieldLabel: 'Callsign',
-      fieldInitial: settings.operatorCall,
-      fieldCapitalization: TextCapitalization.characters,
-    );
-    if (result == null) return;
-    await widget.services.setOperatorCall(result);
-    if (mounted) setState(() {});
   }
 
   Future<void> _toggleSync(bool enabled) async {
@@ -440,13 +790,8 @@ class _SyncPanelState extends State<_SyncPanel> {
           padding: const EdgeInsets.symmetric(vertical: 8),
           children: [
             Padding(padding: EdgeInsets.only(left: safeLeft), child: const SectionHeader('Sync Configuration')),
-            ListTile(
-              leading: Icon(resolveIconName('account-outline')),
-              title: const Text('Operator callsign'),
-              subtitle: Text(settings.operatorCall.isEmpty ? 'Not set' : settings.operatorCall),
-              onTap: _editOperatorCall,
-              mouseCursor: SystemMouseCursors.click,
-            ),
+            // The operator-callsign row moved to the Station Profiles panel
+            // (settings.activeProfile).
             SwitchListTile(
               secondary: Icon(resolveIconName(settings.syncEnabled ? 'cloud-sync-outline' : 'cloud-off-outline')),
               title: const Text('Sync with Ham2K Log Filer'),
@@ -608,7 +953,25 @@ class _ExtensionSettingsPanel extends StatefulWidget {
   final HaLoServices services;
   final Map<String, dynamic> descriptor;
 
-  const _ExtensionSettingsPanel({required this.services, required this.descriptor});
+  /// Embedded: rendered as a shrink-wrapped section inside the All Settings
+  /// scroll view instead of a standalone scrolling panel.
+  final bool embedded;
+
+  /// Section title rendered above the form in embedded mode — lives here
+  /// (not in the parent) so a search query that empties this section hides
+  /// its title along with it.
+  final String? sectionTitle;
+
+  /// All Settings' search query (lowercased); empty shows everything.
+  final String searchQuery;
+
+  const _ExtensionSettingsPanel({
+    required this.services,
+    required this.descriptor,
+    this.embedded = false,
+    this.sectionTitle,
+    this.searchQuery = '',
+  });
 
   @override
   State<_ExtensionSettingsPanel> createState() => _ExtensionSettingsPanelState();
@@ -670,11 +1033,19 @@ class _ExtensionSettingsPanelState extends State<_ExtensionSettingsPanel> {
     try {
       do {
         _reloadPending = false;
-        final definition = await widget.services.extensions.getSettingsPanelDefinition(
+        var definition = await widget.services.extensions.getSettingsPanelDefinition(
           hookKey: _hookKey,
           panelKey: _panelKey,
           kind: _kind,
         );
+        // Extension-declared fields can reference system lists too.
+        if (definition?['elements'] is List) {
+          definition = {
+            ...definition!,
+            'elements': await widget.services.systemLists
+                .resolveInElements((definition['elements'] as List).cast<Map<String, dynamic>>()),
+          };
+        }
         if (mounted) {
           setState(() {
             _definition = definition;
@@ -784,33 +1155,64 @@ class _ExtensionSettingsPanelState extends State<_ExtensionSettingsPanel> {
   @override
   Widget build(BuildContext context) {
     if (_loading) {
-      return const Center(child: CircularProgressIndicator());
+      return widget.embedded
+          ? const Padding(padding: EdgeInsets.all(24), child: Center(child: CircularProgressIndicator()))
+          : const Center(child: CircularProgressIndicator());
     }
-    final definition = _definition;
+    var definition = _definition;
     if (definition == null) {
       return const Center(child: Text('Could not load this settings panel.'));
     }
+    if (widget.searchQuery.isNotEmpty) {
+      final filtered = [
+        for (final el in (definition['elements'] as List? ?? const []).cast<Map<String, dynamic>>())
+          if (_elementMatchesQuery(el, widget.searchQuery)) el,
+      ];
+      if (filtered.isEmpty) return const SizedBox.shrink();
+      definition = {...definition, 'elements': filtered};
+    }
+
+    final form = FormRenderer(
+      formDefinition: definition,
+      initialState: const {},
+      showActions: false,
+      // The embedded section already renders sectionTitle — the form's own
+      // definition title would double it.
+      showTitle: !(widget.embedded && widget.sectionTitle != null),
+      developerMode: widget.services.settings.developerMode,
+      validator: _validate,
+      onChange: _autosave,
+      onAction: (actionKey, method, state) => widget.services.extensions.runSettingsAction(
+        hookKey: _hookKey,
+        panelKey: _panelKey,
+        method: method,
+        state: state,
+      ),
+      onManageAccount: _manageAccount,
+      onOpenLink: _openLink,
+      onSubmit: (_) {},
+      onCancel: () {},
+    );
+    if (widget.embedded) {
+      final title = widget.sectionTitle;
+      if (title == null) return form;
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Padding(
+            padding: const EdgeInsets.only(bottom: 16),
+            child: Text(title, style: Theme.of(context).textTheme.titleSmall?.copyWith(color: Theme.of(context).colorScheme.primary)),
+          ),
+          form,
+        ],
+      );
+    }
+
     final safeLeft = PaneSafeArea.leftOf(context);
 
     return SingleChildScrollView(
       padding: EdgeInsets.fromLTRB(16 + safeLeft, 16, 16, 16),
-      child: FormRenderer(
-        formDefinition: definition,
-        initialState: const {},
-        showActions: false,
-        developerMode: widget.services.settings.developerMode,
-        validator: _validate,
-        onChange: _autosave,
-        onAction: (actionKey, method, state) => widget.services.extensions.runSettingsAction(
-          hookKey: _hookKey,
-          panelKey: _panelKey,
-          method: method,
-          state: state,
-        ),
-        onManageAccount: _manageAccount,
-        onSubmit: (_) {},
-        onCancel: () {},
-      ),
+      child: form,
     );
   }
 }

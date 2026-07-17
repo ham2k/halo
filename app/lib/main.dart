@@ -32,6 +32,9 @@ import 'services/radio_service.dart';
 import 'services/scoring_service.dart';
 import 'services/settings_service.dart';
 import 'services/status_bar_service.dart';
+import 'settings/core_settings_groups.dart';
+import 'settings/settings_registry.dart';
+import 'settings/system_lists.dart';
 import 'services/window_chrome_service.dart';
 import 'services/update_service.dart';
 import 'services/data_file_manager.dart';
@@ -220,7 +223,7 @@ Future<HaLoServices> bootstrap({
     await settings.setQrzCredentials(username: '', password: '');
   }
   final syncDeviceKey = await settings.ensureSyncDeviceKey();
-  services.extensions.setSyncCredentials(deviceKey: syncDeviceKey, operatorCall: settings.operatorCall);
+  services.extensions.setSyncCredentials(deviceKey: syncDeviceKey, operatorCall: settings.activeProfile.operatorCall);
   services.syncEngine.start();
 
   // Await the extension system being fully booted, then initialize and sync data files
@@ -257,6 +260,21 @@ class HaLoServices {
     statusBar: statusBar,
   );
   late final StatusBarService statusBar = StatusBarService(settings.prefs);
+
+  /// Named option vocabularies for `options: "$name"` settings
+  /// declarations (see settings/system_lists.dart).
+  late final SystemLists systemLists = SystemLists();
+
+  /// The declarative settings groups (docs in settings/settings_registry.dart)
+  /// rendered by the Common Settings and All Settings panels. Extension
+  /// panels aren't registered here — the All Settings panel composes them
+  /// from [ExtensionService.getSettingsPanels] at build time (the runtime
+  /// boots asynchronously).
+  late final SettingsRegistry settingsRegistry = SettingsRegistry()
+    ..register(GeneralSettingsGroup(settings, extensions))
+    ..register(LoggingSettingsGroup(settings))
+    ..register(PrivacySettingsGroup(settings))
+    ..register(SyncSettingsGroup(settings, onToggle: setSyncEnabled));
 
   /// Fires on DEVSPLASH (`handleCommandAction`'s `devSplash` case) —
   /// `_ReleaseOverlayGateState` listens for this to force-show the release
@@ -336,12 +354,14 @@ class HaLoServices {
 
 
   /// Same one-call pattern as `setQrzCredentials`, for the sync device
-  /// identity + operator callsign.
+  /// identity + operator callsign. Writes to the default profile — the
+  /// Callsign settings panel edits that one; sync follows the ACTIVE
+  /// profile's callsign (the same profile until multi-profile lands).
   Future<void> setOperatorCall(String call) async {
-    await settings.setOperatorCall(call);
+    await settings.setProfileOperatorCall(SettingsService.defaultProfileId, call);
     await extensions.setSyncCredentials(
       deviceKey: await settings.ensureSyncDeviceKey(),
-      operatorCall: settings.operatorCall,
+      operatorCall: settings.activeProfile.operatorCall,
     );
   }
 
@@ -449,7 +469,7 @@ class HaLoServices {
       freq: freq,
       mode: params['mode'] as String?,
       comment: params['comment'] as String?,
-      spotterCall: settings.operatorCall,
+      spotterCall: settings.activeProfile.operatorCall,
     );
 
     final summaries = <String>[];

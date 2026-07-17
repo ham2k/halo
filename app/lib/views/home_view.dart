@@ -151,49 +151,43 @@ class _HomeViewState extends State<HomeView> {
   /// resubscribe (and re-run the SELECT) each of those frames.
   late final Stream<List<Operation>> _operationsStream = widget.services.operations.watchAll();
 
+  /// The old dialog's modal barrier blocked a second tap while _newOperation
+  /// was in flight; without it, a fast double-tap could create two
+  /// operations before the pushed route starts absorbing pointer events.
+  bool _creatingOperation = false;
+
+  /// No call/title dialog: the station call comes from the active profile's
+  /// callsign, and the operation screen opens straight into the Activities
+  /// pane (title and everything else are editable there and in the
+  /// operation's own settings).
   Future<void> _newOperation(BuildContext context) async {
-    final callController = TextEditingController();
-    final titleController = TextEditingController();
-
-    final created = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text(context.t.home.newOperation),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: callController,
-              autofocus: true,
-              textCapitalization: TextCapitalization.characters,
-              decoration: poloFieldDecoration(context, context.t.home.stationCallsign),
-            ),
-            const SizedBox(height: 8),
-            TextField(
-              controller: titleController,
-              decoration: poloFieldDecoration(context, context.t.home.titleOptional),
-              onSubmitted: (_) => Navigator.of(context).pop(true),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.of(context).pop(false), child: Text(context.t.common.cancel)),
-          FilledButton(onPressed: () => Navigator.of(context).pop(true), child: Text(context.t.common.create)),
-        ],
-      ),
-    );
-
-    if (created != true || callController.text.trim().isEmpty) return;
-    final operation = await widget.services.operations.create(
-      stationCall: callController.text.trim(),
-      title: titleController.text.trim(),
-    );
-    if (context.mounted) {
-      Navigator.of(context).push(
-        MaterialPageRoute(
-          builder: (_) => OperationView(services: widget.services, operationUuid: operation.uuid),
-        ),
+    if (_creatingOperation) return;
+    _creatingOperation = true;
+    try {
+      final operation = await widget.services.operations.create(
+        stationCall: widget.services.settings.activeProfile.operatorCall,
       );
+      if (context.mounted) {
+        // The guard stays up until the pushed route pops back to this
+        // screen — the home screen remains hit-testable during the push
+        // transition, so releasing right after push would reopen the
+        // double-tap window the removed dialog's barrier used to close.
+        unawaited(
+          Navigator.of(context)
+              .push(
+                MaterialPageRoute(
+                  builder: (_) =>
+                      OperationView(services: widget.services, operationUuid: operation.uuid, openActivities: true),
+                ),
+              )
+              .whenComplete(() => _creatingOperation = false),
+        );
+      } else {
+        _creatingOperation = false;
+      }
+    } catch (_) {
+      _creatingOperation = false;
+      rethrow;
     }
   }
 

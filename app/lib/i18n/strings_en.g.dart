@@ -473,6 +473,12 @@ class Translations$settings$en {
 	/// en: 'For distances shown on the map'
 	String get distanceUnitsDescription => 'For distances shown on the map';
 
+	/// en: 'User Interface'
+	String get userInterface => 'User Interface';
+
+	late final Translations$settings$logging$en logging = Translations$settings$logging$en.internal(_root);
+	late final Translations$settings$privacy$en privacy = Translations$settings$privacy$en.internal(_root);
+
 	/// en: 'Operator Callsign'
 	String get operatorCall => 'Operator Callsign';
 
@@ -774,6 +780,52 @@ class Translations$settings$distanceUnitsOpts$en {
 	String get miles => 'Miles';
 }
 
+// Path: settings.logging
+class Translations$settings$logging$en {
+	Translations$settings$logging$en.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Logging'
+	String get title => 'Logging';
+
+	late final Translations$settings$logging$leftieMode$en leftieMode = Translations$settings$logging$leftieMode$en.internal(_root);
+	late final Translations$settings$logging$fieldsOnTop$en fieldsOnTop = Translations$settings$logging$fieldsOnTop$en.internal(_root);
+	late final Translations$settings$logging$countryFlags$en countryFlags = Translations$settings$logging$countryFlags$en.internal(_root);
+	late final Translations$settings$logging$showBearing$en showBearing = Translations$settings$logging$showBearing$en.internal(_root);
+	late final Translations$settings$logging$switchSentRcvd$en switchSentRcvd = Translations$settings$logging$switchSentRcvd$en.internal(_root);
+	late final Translations$settings$logging$jumpAfterRST$en jumpAfterRST = Translations$settings$logging$jumpAfterRST$en.internal(_root);
+
+	/// en: 'Bands'
+	String get bands => 'Bands';
+
+	/// en: 'Modes'
+	String get modes => 'Modes';
+}
+
+// Path: settings.privacy
+class Translations$settings$privacy$en {
+	Translations$settings$privacy$en.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Privacy'
+	String get title => 'Privacy';
+
+	late final Translations$settings$privacy$shareAppData$en shareAppData = Translations$settings$privacy$shareAppData$en.internal(_root);
+	late final Translations$settings$privacy$shareOpData$en shareOpData = Translations$settings$privacy$shareOpData$en.internal(_root);
+
+	/// en: 'Privacy Policy'
+	String get privacyPolicy => 'Privacy Policy';
+
+	/// en: 'Terms of Service'
+	String get termsOfService => 'Terms of Service';
+}
+
 // Path: settings.sync
 class Translations$settings$sync$en {
 	Translations$settings$sync$en.internal(this._root);
@@ -877,6 +929,153 @@ class Translations$operation$spots$filters$en {
 
 	/// en: 'Group Calls with Notes'
 	String get groupCallsWithNotes => 'Group Calls with Notes';
+}
+
+// Path: settings.logging.leftieMode
+class Translations$settings$logging$leftieMode$en {
+	Translations$settings$logging$leftieMode$en.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Leftie Mode'
+	String get title => 'Leftie Mode';
+
+	/// en: 'Use layout for left-handed users'
+	String get descriptionOn => 'Use layout for left-handed users';
+
+	/// en: 'Use layout for right-handed users'
+	String get descriptionOff => 'Use layout for right-handed users';
+}
+
+// Path: settings.logging.fieldsOnTop
+class Translations$settings$logging$fieldsOnTop$en {
+	Translations$settings$logging$fieldsOnTop$en.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Fields on top'
+	String get title => 'Fields on top';
+
+	/// en: 'Logging fields above the QSO list, most recent first'
+	String get descriptionOn => 'Logging fields above the QSO list, most recent first';
+
+	/// en: 'Logging fields below the QSO list'
+	String get descriptionOff => 'Logging fields below the QSO list';
+}
+
+// Path: settings.logging.countryFlags
+class Translations$settings$logging$countryFlags$en {
+	Translations$settings$logging$countryFlags$en.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Country Flags'
+	String get title => 'Country Flags';
+
+	/// en: 'Show only for DX contacts'
+	String get dx => 'Show only for DX contacts';
+
+	/// en: 'Show flags for all contacts'
+	String get all => 'Show flags for all contacts';
+
+	/// en: 'Don't show any flags'
+	String get none => 'Don\'t show any flags';
+}
+
+// Path: settings.logging.showBearing
+class Translations$settings$logging$showBearing$en {
+	Translations$settings$logging$showBearing$en.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Show Bearing'
+	String get title => 'Show Bearing';
+
+	/// en: 'Show estimated bearing to station'
+	String get descriptionOn => 'Show estimated bearing to station';
+
+	/// en: 'Don't show bearing information'
+	String get descriptionOff => 'Don\'t show bearing information';
+}
+
+// Path: settings.logging.switchSentRcvd
+class Translations$settings$logging$switchSentRcvd$en {
+	Translations$settings$logging$switchSentRcvd$en.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Switch signal report order'
+	String get title => 'Switch signal report order';
+
+	/// en: 'Sent first, Rcvd second'
+	String get sentFirst => 'Sent first, Rcvd second';
+
+	/// en: 'Rcvd first, Sent second'
+	String get rcvdFirst => 'Rcvd first, Sent second';
+}
+
+// Path: settings.logging.jumpAfterRST
+class Translations$settings$logging$jumpAfterRST$en {
+	Translations$settings$logging$jumpAfterRST$en.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Jump to next field on RST entry'
+	String get title => 'Jump to next field on RST entry';
+
+	/// en: 'Jump after RST is entered'
+	String get descriptionOn => 'Jump after RST is entered';
+
+	/// en: 'Don't jump automatically'
+	String get descriptionOff => 'Don\'t jump automatically';
+}
+
+// Path: settings.privacy.shareAppData
+class Translations$settings$privacy$shareAppData$en {
+	Translations$settings$privacy$shareAppData$en.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Share app usage data'
+	String get title => 'Share app usage data';
+
+	/// en: 'Help us improve the app by sharing usage, crash and performance data'
+	String get descriptionOn => 'Help us improve the app by sharing usage, crash and performance data';
+
+	/// en: 'Keep app usage data private. The Ham2K team won't be able to detect crashes or other issues.'
+	String get descriptionOff => 'Keep app usage data private.\nThe Ham2K team won\'t be able to detect crashes or other issues.';
+}
+
+// Path: settings.privacy.shareOpData
+class Translations$settings$privacy$shareOpData$en {
+	Translations$settings$privacy$shareOpData$en.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Share operation data'
+	String get title => 'Share operation data';
+
+	/// en: 'Share some operation data publicly and with other users'
+	String get descriptionOn => 'Share some operation data publicly and with other users';
+
+	/// en: 'Keep operation data private'
+	String get descriptionOff => 'Keep operation data private';
 }
 
 /// The flat map containing all translations for locale <en>.
@@ -1058,6 +1257,38 @@ extension on Translations {
 			'settings.distanceUnitsOpts.kilometers' => 'Kilometers',
 			'settings.distanceUnitsOpts.miles' => 'Miles',
 			'settings.distanceUnitsDescription' => 'For distances shown on the map',
+			'settings.userInterface' => 'User Interface',
+			'settings.logging.title' => 'Logging',
+			'settings.logging.leftieMode.title' => 'Leftie Mode',
+			'settings.logging.leftieMode.descriptionOn' => 'Use layout for left-handed users',
+			'settings.logging.leftieMode.descriptionOff' => 'Use layout for right-handed users',
+			'settings.logging.fieldsOnTop.title' => 'Fields on top',
+			'settings.logging.fieldsOnTop.descriptionOn' => 'Logging fields above the QSO list, most recent first',
+			'settings.logging.fieldsOnTop.descriptionOff' => 'Logging fields below the QSO list',
+			'settings.logging.countryFlags.title' => 'Country Flags',
+			'settings.logging.countryFlags.dx' => 'Show only for DX contacts',
+			'settings.logging.countryFlags.all' => 'Show flags for all contacts',
+			'settings.logging.countryFlags.none' => 'Don\'t show any flags',
+			'settings.logging.showBearing.title' => 'Show Bearing',
+			'settings.logging.showBearing.descriptionOn' => 'Show estimated bearing to station',
+			'settings.logging.showBearing.descriptionOff' => 'Don\'t show bearing information',
+			'settings.logging.switchSentRcvd.title' => 'Switch signal report order',
+			'settings.logging.switchSentRcvd.sentFirst' => 'Sent first, Rcvd second',
+			'settings.logging.switchSentRcvd.rcvdFirst' => 'Rcvd first, Sent second',
+			'settings.logging.jumpAfterRST.title' => 'Jump to next field on RST entry',
+			'settings.logging.jumpAfterRST.descriptionOn' => 'Jump after RST is entered',
+			'settings.logging.jumpAfterRST.descriptionOff' => 'Don\'t jump automatically',
+			'settings.logging.bands' => 'Bands',
+			'settings.logging.modes' => 'Modes',
+			'settings.privacy.title' => 'Privacy',
+			'settings.privacy.shareAppData.title' => 'Share app usage data',
+			'settings.privacy.shareAppData.descriptionOn' => 'Help us improve the app by sharing usage, crash and performance data',
+			'settings.privacy.shareAppData.descriptionOff' => 'Keep app usage data private.\nThe Ham2K team won\'t be able to detect crashes or other issues.',
+			'settings.privacy.shareOpData.title' => 'Share operation data',
+			'settings.privacy.shareOpData.descriptionOn' => 'Share some operation data publicly and with other users',
+			'settings.privacy.shareOpData.descriptionOff' => 'Keep operation data private',
+			'settings.privacy.privacyPolicy' => 'Privacy Policy',
+			'settings.privacy.termsOfService' => 'Terms of Service',
 			'settings.operatorCall' => 'Operator Callsign',
 			'settings.sync.title' => 'Sync Settings',
 			'settings.sync.enable' => 'Enable Sync',
