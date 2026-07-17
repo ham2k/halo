@@ -133,6 +133,52 @@ Widget macOSAwareBackButton(BuildContext context, {VoidCallback? onPressed}) => 
           : BackButton(onPressed: onPressed),
     );
 
+/// A rectangle in the AppBar's own background color, floating over the header's
+/// top-left corner beneath the native traffic lights. Overlaid at the app root
+/// (main.dart) — the macOS counterpart to [WindowsCaptionButtons] on the
+/// opposite edge. The reserved clearance keeps header content out of this
+/// corner at rest, but content that *animates* through it (a title cross-fading
+/// on a route change, an action button sliding in) would otherwise flash out
+/// from the gaps around the buttons; this mask hides it. Its right edge is a
+/// transparent gradient so masked content dissolves across it instead of
+/// hard-clipping at a vertical line — the mirror of the secondary-control caret
+/// mask. `IgnorePointer` so the header's drag/double-click gesture area
+/// underneath still gets pointer events in the gaps between the native buttons.
+/// Collapses to nothing off macOS and in native full screen, where the buttons
+/// (and the clearance) are gone.
+class MacOSTrafficLightMask extends StatelessWidget {
+  const MacOSTrafficLightMask({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final clearance = isMacOSChromelessWindow ? macOSTrafficLightClearance(context) : 0.0;
+    if (clearance == 0) return const SizedBox.shrink();
+
+    final theme = Theme.of(context);
+    final color = theme.appBarTheme.backgroundColor ?? theme.colorScheme.primary;
+    // Solid across the buttons' fixed-physical zone, fading to transparent over
+    // the trailing gap so nothing hard-clips at the mask's edge.
+    final opaqueStop = macOSTrafficLightInset / (macOSTrafficLightInset + macOSTrafficLightGap);
+
+    return IgnorePointer(
+      child: SizedBox(
+        width: clearance,
+        height: theme.appBarTheme.toolbarHeight ?? kToolbarHeight,
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.centerLeft,
+              end: Alignment.centerRight,
+              stops: [opaqueStop, 1.0],
+              colors: [color, color.withValues(alpha: 0)],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 // The same channel MainFlutterWindow.swift listens on for the app's
 // WindowChromeService height reports; this end only ever sends.
 const _windowChromeChannel = MethodChannel('ham2k/window_chrome');

@@ -615,13 +615,22 @@ class _HaLoAppState extends State<HaLoApp> {
           // float over every route's header from here — the same "window
           // chrome above app content" role the native traffic lights play
           // on macOS. Headers reserve trailing room via
-          // windowsCaptionClearance.
-          final content = isWindowsChromelessWindow
-              ? Stack(children: [
-                  child,
-                  const Positioned(top: 0, right: 0, child: WindowsCaptionButtons()),
-                ])
-              : child;
+          // windowsCaptionClearance. On macOS the native traffic lights
+          // already float there; we overlay a same-colored mask beneath them
+          // (MacOSTrafficLightMask) so header content animating through the
+          // top-left corner doesn't flash out around the buttons.
+          Widget content = child;
+          if (isWindowsChromelessWindow) {
+            content = Stack(children: [
+              content,
+              const Positioned(top: 0, right: 0, child: WindowsCaptionButtons()),
+            ]);
+          } else if (isMacOSChromelessWindow) {
+            content = Stack(children: [
+              content,
+              const Positioned(top: 0, left: 0, child: MacOSTrafficLightMask()),
+            ]);
+          }
 
           return ValueListenableBuilder<bool>(
             valueListenable: macOSWindowIsFullScreen,
