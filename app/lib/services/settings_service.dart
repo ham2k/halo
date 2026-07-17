@@ -188,6 +188,16 @@ class SettingsService extends ChangeNotifier implements SyncSettings {
     return Profile(id, data is Map ? data.cast<String, dynamic>() : const {});
   }
 
+  /// Whether the default profile has EVER had a callsign set — the
+  /// onboarding trigger. Distinct from `activeProfile.operatorCall.isEmpty`:
+  /// an explicitly-empty '' (the user skipped onboarding) counts as
+  /// defined, so onboarding only shows while the key has never been
+  /// written at all.
+  bool get defaultProfileCallsignDefined {
+    final profile = _profilesData[defaultProfileId];
+    return profile is Map && profile.containsKey('operatorCall');
+  }
+
   Future<void> setProfileOperatorCall(String profileId, String call) async {
     await _prefs.setString(
       _profilesKey,
@@ -200,11 +210,14 @@ class SettingsService extends ChangeNotifier implements SyncSettings {
   }
 
   /// One-time migration: earlier builds kept the operator callsign as a
-  /// scalar pref; it now lives in the default profile.
+  /// scalar pref; it now lives in the default profile. An EMPTY legacy
+  /// value still counts as answered — it migrates to a defined-empty
+  /// profile key, so an upgrading user isn't greeted with first-run
+  /// onboarding (see [defaultProfileCallsignDefined]).
   Future<void> _migrateLegacyOperatorCall() async {
     final legacy = _prefs.getString(_legacyOperatorCallKey);
     if (legacy == null) return;
-    if (legacy.isNotEmpty && _profile(defaultProfileId).operatorCall.isEmpty) {
+    if (!defaultProfileCallsignDefined) {
       await setProfileOperatorCall(defaultProfileId, legacy);
     }
     await _prefs.remove(_legacyOperatorCallKey);

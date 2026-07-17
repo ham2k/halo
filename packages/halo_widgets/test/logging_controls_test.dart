@@ -1234,6 +1234,40 @@ void main() {
     expect(dispatched.single.value, {'target': 'ALL'});
   });
 
+  testWidgets('devOnboard forwards to onCommandAction (same whitelist trap as reloadDataFiles)', (tester) async {
+    // DEVONBOARD shipped interpreting fine but silently no-oping on
+    // execution because _dispatchActions' whitelist lacked its branch —
+    // the exact failure mode the test above documents.
+    final dispatched = <String>[];
+    Future<Map<String, dynamic>?> fakeDevOnboardCommand(
+      String input, [
+      Map<String, dynamic>? operation,
+      Map<String, dynamic>? qso,
+      bool execute = false,
+    ]) async {
+      if (input.trim().toUpperCase() != 'DEVONBOARD') return null;
+      return {
+        'describe': 'Show the onboarding overlay?',
+        'confirm': 'Showing the onboarding overlay',
+        'commands': [
+          {'devOnboard': <String, dynamic>{}},
+        ],
+      };
+    }
+
+    await tester.pumpWidget(host(
+      interpretCommand: fakeDevOnboardCommand,
+      onCommandAction: (action, [params]) async => dispatched.add(action),
+    ));
+
+    await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'DEVONBOARD');
+    await tester.pump();
+    await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+    await tester.pump(const Duration(milliseconds: 200));
+
+    expect(dispatched, ['devOnboard']);
+  });
+
   testWidgets('SPOTLAST resolves to the last real QSO, skipping trailing event markers (ham2k/app-halo-dist#10)', (tester) async {
     // `qsos` is oldest-first (matches watchForOperation's ORDER BY
     // startAtMillis) — the event marker logged after both real QSOs must

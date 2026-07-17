@@ -390,6 +390,10 @@ export interface CommandAction {
   /// bypassing its normal "once per version" gate — see
   /// `app/lib/main.dart`'s `_ReleaseOverlayGate`.
   devSplash?: Record<string, never>
+  /// Developer-only: re-shows the first-run onboarding overlay (DEVONBOARD),
+  /// bypassing its callsign-undefined gate — see `app/lib/main.dart`'s
+  /// `_OnboardingGate`.
+  devOnboard?: Record<string, never>
   [actionName: string]: unknown
 }
 

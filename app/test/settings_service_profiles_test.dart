@@ -80,12 +80,15 @@ void main() {
       expect(settings.prefs.getString('operatorCall'), isNull);
     });
 
-    test('an empty legacy pref is just cleaned up', () async {
+    test('an empty legacy pref migrates as a defined-empty callsign', () async {
       SharedPreferences.setMockInitialValues({'operatorCall': ''});
       final settings = await SettingsService.load();
 
       expect(settings.activeProfile.operatorCall, '');
       expect(settings.prefs.getString('operatorCall'), isNull);
+      // The upgrading user HAD answered (with empty) — first-run onboarding
+      // must not greet them.
+      expect(settings.defaultProfileCallsignDefined, isTrue);
     });
   });
 }

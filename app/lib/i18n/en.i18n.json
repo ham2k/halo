@@ -7,6 +7,29 @@
     "error": "Error",
     "apply": "Apply"
   },
+  "onboarding": {
+    "welcomeTitle": "Welcome to Ham2K Portable Logger!",
+    "welcomeTitleDesktop": "Welcome to Ham2K Logger!",
+    "welcomeBody": "We have a few questions to help us better suit your needs.",
+    "skip": "Skip",
+    "continue": "Continue",
+    "back": "Back",
+    "next": "Next",
+    "done": "Done",
+    "callsignTitle": "What's your callsign?",
+    "callsignBody": "You need an Amateur Radio Operator License in order to find this app useful",
+    "callsignLabel": "Operator's Callsign",
+    "activitiesTitle": "Favorite Activities",
+    "activitiesBody": "Are you interested in any of these popular activation programs?",
+    "activitiesFooter": "(You can find more options in the Settings)",
+    "activityPota": "Parks On The Air",
+    "activitySota": "Summits On The Air",
+    "consentTitle": "Data & Privacy",
+    "consentUsageBody": "To help us make the app better, we'd like to collect performance, crash, and app usage data.",
+    "consentUsageLabel": "Share Usage Data",
+    "consentOperationBody": "Some features might involve sharing your operation data with other users. You can opt-out at any time.",
+    "consentOperationLabel": "Share Operation Data"
+  },
   "startScreen": {
     "credits": "by KI2D and friends"
   },

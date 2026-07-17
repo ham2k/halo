@@ -14,7 +14,6 @@
 
 import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:halo_core/halo_core.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -25,26 +24,8 @@ import 'package:ham2k_logger/services/settings_service.dart';
 import 'package:ham2k_logger/views/operation/activities_view.dart';
 import 'package:ham2k_logger/views/operation_view.dart';
 
+import 'fake_secure_storage.dart';
 import 'operation_view_layout_test.dart' show MockExtensionHost, ExtensionServiceWithMockHost;
-
-/// In-memory stand-in for the keychain: `read`/`write` served from a map via
-/// noSuchMethod (the real signatures carry per-platform options params not
-/// worth spelling out here); anything else throws.
-class _FakeSecureStorage implements FlutterSecureStorage {
-  final Map<String, String> _store = {};
-
-  @override
-  dynamic noSuchMethod(Invocation invocation) {
-    if (invocation.memberName == #read) {
-      return Future<String?>.value(_store[invocation.namedArguments[#key] as String]);
-    }
-    if (invocation.memberName == #write) {
-      _store[invocation.namedArguments[#key] as String] = invocation.namedArguments[#value] as String;
-      return Future<void>.value();
-    }
-    return super.noSuchMethod(invocation);
-  }
-}
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -96,7 +77,7 @@ void main() {
     SharedPreferences.setMockInitialValues({});
     // The fake secure storage keeps setOperatorCall's ensureSyncDeviceKey off
     // the (absent-in-tests) keychain platform channel.
-    final settings = SettingsService(await SharedPreferences.getInstance(), secureStorage: _FakeSecureStorage());
+    final settings = SettingsService(await SharedPreferences.getInstance(), secureStorage: FakeSecureStorage());
     final db = HaLoDatabase(NativeDatabase.memory());
     final extensions = ExtensionServiceWithMockHost(const MockExtensionHost({}))..settings = settings;
     final services = HaLoServices(db, settings, extensions: extensions);

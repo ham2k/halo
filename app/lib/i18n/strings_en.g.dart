@@ -41,6 +41,7 @@ class Translations with BaseTranslations<AppLocale, Translations> {
 
 	// Translations
 	late final Translations$common$en common = Translations$common$en.internal(_root);
+	late final Translations$onboarding$en onboarding = Translations$onboarding$en.internal(_root);
 	late final Translations$startScreen$en startScreen = Translations$startScreen$en.internal(_root);
 	late final Translations$home$en home = Translations$home$en.internal(_root);
 	late final Translations$dialogs$en dialogs = Translations$dialogs$en.internal(_root);
@@ -80,6 +81,78 @@ class Translations$common$en {
 
 	/// en: 'Apply'
 	String get apply => 'Apply';
+}
+
+// Path: onboarding
+class Translations$onboarding$en {
+	Translations$onboarding$en.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Welcome to Ham2K Portable Logger!'
+	String get welcomeTitle => 'Welcome to Ham2K Portable Logger!';
+
+	/// en: 'Welcome to Ham2K Logger!'
+	String get welcomeTitleDesktop => 'Welcome to Ham2K Logger!';
+
+	/// en: 'We have a few questions to help us better suit your needs.'
+	String get welcomeBody => 'We have a few questions to help us better suit your needs.';
+
+	/// en: 'Skip'
+	String get skip => 'Skip';
+
+	/// en: 'Continue'
+	String get kContinue => 'Continue';
+
+	/// en: 'Back'
+	String get back => 'Back';
+
+	/// en: 'Next'
+	String get next => 'Next';
+
+	/// en: 'Done'
+	String get done => 'Done';
+
+	/// en: 'What's your callsign?'
+	String get callsignTitle => 'What\'s your callsign?';
+
+	/// en: 'You need an Amateur Radio Operator License in order to find this app useful'
+	String get callsignBody => 'You need an Amateur Radio Operator License in order to find this app useful';
+
+	/// en: 'Operator's Callsign'
+	String get callsignLabel => 'Operator\'s Callsign';
+
+	/// en: 'Favorite Activities'
+	String get activitiesTitle => 'Favorite Activities';
+
+	/// en: 'Are you interested in any of these popular activation programs?'
+	String get activitiesBody => 'Are you interested in any of these popular activation programs?';
+
+	/// en: '(You can find more options in the Settings)'
+	String get activitiesFooter => '(You can find more options in the Settings)';
+
+	/// en: 'Parks On The Air'
+	String get activityPota => 'Parks On The Air';
+
+	/// en: 'Summits On The Air'
+	String get activitySota => 'Summits On The Air';
+
+	/// en: 'Data & Privacy'
+	String get consentTitle => 'Data & Privacy';
+
+	/// en: 'To help us make the app better, we'd like to collect performance, crash, and app usage data.'
+	String get consentUsageBody => 'To help us make the app better, we\'d like to collect performance, crash, and app usage data.';
+
+	/// en: 'Share Usage Data'
+	String get consentUsageLabel => 'Share Usage Data';
+
+	/// en: 'Some features might involve sharing your operation data with other users. You can opt-out at any time.'
+	String get consentOperationBody => 'Some features might involve sharing your operation data with other users. You can opt-out at any time.';
+
+	/// en: 'Share Operation Data'
+	String get consentOperationLabel => 'Share Operation Data';
 }
 
 // Path: startScreen
@@ -1092,6 +1165,27 @@ extension on Translations {
 			'common.create' => 'Create',
 			'common.error' => 'Error',
 			'common.apply' => 'Apply',
+			'onboarding.welcomeTitle' => 'Welcome to Ham2K Portable Logger!',
+			'onboarding.welcomeTitleDesktop' => 'Welcome to Ham2K Logger!',
+			'onboarding.welcomeBody' => 'We have a few questions to help us better suit your needs.',
+			'onboarding.skip' => 'Skip',
+			'onboarding.kContinue' => 'Continue',
+			'onboarding.back' => 'Back',
+			'onboarding.next' => 'Next',
+			'onboarding.done' => 'Done',
+			'onboarding.callsignTitle' => 'What\'s your callsign?',
+			'onboarding.callsignBody' => 'You need an Amateur Radio Operator License in order to find this app useful',
+			'onboarding.callsignLabel' => 'Operator\'s Callsign',
+			'onboarding.activitiesTitle' => 'Favorite Activities',
+			'onboarding.activitiesBody' => 'Are you interested in any of these popular activation programs?',
+			'onboarding.activitiesFooter' => '(You can find more options in the Settings)',
+			'onboarding.activityPota' => 'Parks On The Air',
+			'onboarding.activitySota' => 'Summits On The Air',
+			'onboarding.consentTitle' => 'Data & Privacy',
+			'onboarding.consentUsageBody' => 'To help us make the app better, we\'d like to collect performance, crash, and app usage data.',
+			'onboarding.consentUsageLabel' => 'Share Usage Data',
+			'onboarding.consentOperationBody' => 'Some features might involve sharing your operation data with other users. You can opt-out at any time.',
+			'onboarding.consentOperationLabel' => 'Share Operation Data',
 			'startScreen.credits' => 'by KI2D and friends',
 			'home.title' => 'Portable Logger',
 			'home.titleDesktop' => 'Desktop Logger',

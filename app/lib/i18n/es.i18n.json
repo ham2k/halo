@@ -7,6 +7,29 @@
     "error": "Error",
     "apply": "Aplicar"
   },
+  "onboarding": {
+    "welcomeTitle": "¡Bienvenido a Ham2K Portable Logger!",
+    "welcomeTitleDesktop": "¡Bienvenido a Ham2K Logger!",
+    "welcomeBody": "Tenemos algunas preguntas para ayudarnos a servirte mejor.",
+    "skip": "Omitir",
+    "continue": "Continuar",
+    "back": "Atrás",
+    "next": "Siguiente",
+    "done": "Listo",
+    "callsignTitle": "¿Cuál es tu indicativo?",
+    "callsignBody": "Necesitas una licencia de radioaficionado para que esta app te resulte útil",
+    "callsignLabel": "Indicativo del operador",
+    "activitiesTitle": "Actividades favoritas",
+    "activitiesBody": "¿Te interesa alguno de estos populares programas de activación?",
+    "activitiesFooter": "(Encontrarás más opciones en la Configuración)",
+    "activityPota": "Parks On The Air",
+    "activitySota": "Summits On The Air",
+    "consentTitle": "Datos y Privacidad",
+    "consentUsageBody": "Para ayudarnos a mejorar la app, nos gustaría recopilar datos de rendimiento, fallos y uso.",
+    "consentUsageLabel": "Compartir datos de uso",
+    "consentOperationBody": "Algunas funciones pueden implicar compartir datos de tus operaciones con otros usuarios. Puedes desactivarlo en cualquier momento.",
+    "consentOperationLabel": "Compartir datos de operaciones"
+  },
   "startScreen": {
     "credits": "por KI2D y amigos"
   },

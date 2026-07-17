@@ -600,6 +600,8 @@ class _HomeQuickLookupState extends State<HomeQuickLookup> {
         await widget.services.handleCommandAction('devProgress', (map['devProgress'] as Map).cast<String, dynamic>());
       } else if (map['devSplash'] is Map) {
         await widget.services.handleCommandAction('devSplash');
+      } else if (map['devOnboard'] is Map) {
+        await widget.services.handleCommandAction('devOnboard');
       } else if (map['reloadDataFiles'] is Map) {
         await widget.services.handleCommandAction(
           'reloadDataFiles',

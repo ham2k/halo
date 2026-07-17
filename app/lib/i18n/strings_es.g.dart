@@ -40,6 +40,7 @@ class TranslationsEs extends Translations with BaseTranslations<AppLocale, Trans
 
 	// Translations
 	@override late final _Translations$common$es common = _Translations$common$es._(_root);
+	@override late final _Translations$onboarding$es onboarding = _Translations$onboarding$es._(_root);
 	@override late final _Translations$startScreen$es startScreen = _Translations$startScreen$es._(_root);
 	@override late final _Translations$home$es home = _Translations$home$es._(_root);
 	@override late final _Translations$dialogs$es dialogs = _Translations$dialogs$es._(_root);
@@ -67,6 +68,36 @@ class _Translations$common$es extends Translations$common$en {
 	@override String get create => 'Crear';
 	@override String get error => 'Error';
 	@override String get apply => 'Aplicar';
+}
+
+// Path: onboarding
+class _Translations$onboarding$es extends Translations$onboarding$en {
+	_Translations$onboarding$es._(TranslationsEs root) : this._root = root, super.internal(root);
+
+	final TranslationsEs _root; // ignore: unused_field
+
+	// Translations
+	@override String get welcomeTitle => '¡Bienvenido a Ham2K Portable Logger!';
+	@override String get welcomeTitleDesktop => '¡Bienvenido a Ham2K Logger!';
+	@override String get welcomeBody => 'Tenemos algunas preguntas para ayudarnos a servirte mejor.';
+	@override String get skip => 'Omitir';
+	@override String get kContinue => 'Continuar';
+	@override String get back => 'Atrás';
+	@override String get next => 'Siguiente';
+	@override String get done => 'Listo';
+	@override String get callsignTitle => '¿Cuál es tu indicativo?';
+	@override String get callsignBody => 'Necesitas una licencia de radioaficionado para que esta app te resulte útil';
+	@override String get callsignLabel => 'Indicativo del operador';
+	@override String get activitiesTitle => 'Actividades favoritas';
+	@override String get activitiesBody => '¿Te interesa alguno de estos populares programas de activación?';
+	@override String get activitiesFooter => '(Encontrarás más opciones en la Configuración)';
+	@override String get activityPota => 'Parks On The Air';
+	@override String get activitySota => 'Summits On The Air';
+	@override String get consentTitle => 'Datos y Privacidad';
+	@override String get consentUsageBody => 'Para ayudarnos a mejorar la app, nos gustaría recopilar datos de rendimiento, fallos y uso.';
+	@override String get consentUsageLabel => 'Compartir datos de uso';
+	@override String get consentOperationBody => 'Algunas funciones pueden implicar compartir datos de tus operaciones con otros usuarios. Puedes desactivarlo en cualquier momento.';
+	@override String get consentOperationLabel => 'Compartir datos de operaciones';
 }
 
 // Path: startScreen
@@ -637,6 +668,27 @@ extension on TranslationsEs {
 			'common.create' => 'Crear',
 			'common.error' => 'Error',
 			'common.apply' => 'Aplicar',
+			'onboarding.welcomeTitle' => '¡Bienvenido a Ham2K Portable Logger!',
+			'onboarding.welcomeTitleDesktop' => '¡Bienvenido a Ham2K Logger!',
+			'onboarding.welcomeBody' => 'Tenemos algunas preguntas para ayudarnos a servirte mejor.',
+			'onboarding.skip' => 'Omitir',
+			'onboarding.kContinue' => 'Continuar',
+			'onboarding.back' => 'Atrás',
+			'onboarding.next' => 'Siguiente',
+			'onboarding.done' => 'Listo',
+			'onboarding.callsignTitle' => '¿Cuál es tu indicativo?',
+			'onboarding.callsignBody' => 'Necesitas una licencia de radioaficionado para que esta app te resulte útil',
+			'onboarding.callsignLabel' => 'Indicativo del operador',
+			'onboarding.activitiesTitle' => 'Actividades favoritas',
+			'onboarding.activitiesBody' => '¿Te interesa alguno de estos populares programas de activación?',
+			'onboarding.activitiesFooter' => '(Encontrarás más opciones en la Configuración)',
+			'onboarding.activityPota' => 'Parks On The Air',
+			'onboarding.activitySota' => 'Summits On The Air',
+			'onboarding.consentTitle' => 'Datos y Privacidad',
+			'onboarding.consentUsageBody' => 'Para ayudarnos a mejorar la app, nos gustaría recopilar datos de rendimiento, fallos y uso.',
+			'onboarding.consentUsageLabel' => 'Compartir datos de uso',
+			'onboarding.consentOperationBody' => 'Algunas funciones pueden implicar compartir datos de tus operaciones con otros usuarios. Puedes desactivarlo en cualquier momento.',
+			'onboarding.consentOperationLabel' => 'Compartir datos de operaciones',
 			'startScreen.credits' => 'por KI2D y amigos',
 			'home.title' => 'Registrador Portátil',
 			'home.titleDesktop' => 'Registrador de Escritorio',
