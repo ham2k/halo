@@ -43,6 +43,7 @@ class Translations with BaseTranslations<AppLocale, Translations> {
 	late final Translations$common$en common = Translations$common$en.internal(_root);
 	late final Translations$onboarding$en onboarding = Translations$onboarding$en.internal(_root);
 	late final Translations$startScreen$en startScreen = Translations$startScreen$en.internal(_root);
+	late final Translations$extensionsPanel$en extensionsPanel = Translations$extensionsPanel$en.internal(_root);
 	late final Translations$home$en home = Translations$home$en.internal(_root);
 	late final Translations$dialogs$en dialogs = Translations$dialogs$en.internal(_root);
 	late final Translations$operation$en operation = Translations$operation$en.internal(_root);
@@ -165,6 +166,33 @@ class Translations$startScreen$en {
 
 	/// en: 'by KI2D and friends'
 	String get credits => 'by KI2D and friends';
+}
+
+// Path: extensionsPanel
+class Translations$extensionsPanel$en {
+	Translations$extensionsPanel$en.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Activities'
+	String get categoryActivity => 'Activities';
+
+	/// en: 'Callsign Lookups'
+	String get categoryLookup => 'Callsign Lookups';
+
+	/// en: 'Other Extensions'
+	String get categoryOther => 'Other Extensions';
+
+	/// en: 'Search extensions'
+	String get searchHint => 'Search extensions';
+
+	/// en: 'Activating extension changes, this may take a moment…'
+	String get applying => 'Activating extension changes, this may take a moment…';
+
+	/// en: 'No extensions match your search'
+	String get noMatches => 'No extensions match your search';
 }
 
 // Path: home
@@ -1190,6 +1218,12 @@ extension on Translations {
 			'onboarding.consentOperationBody' => 'Some features might involve sharing your operation data with other users. You can opt-out at any time.',
 			'onboarding.consentOperationLabel' => 'Share Operation Data',
 			'startScreen.credits' => 'by KI2D and friends',
+			'extensionsPanel.categoryActivity' => 'Activities',
+			'extensionsPanel.categoryLookup' => 'Callsign Lookups',
+			'extensionsPanel.categoryOther' => 'Other Extensions',
+			'extensionsPanel.searchHint' => 'Search extensions',
+			'extensionsPanel.applying' => 'Activating extension changes, this may take a moment…',
+			'extensionsPanel.noMatches' => 'No extensions match your search',
 			'home.title' => 'Portable Logger',
 			'home.titleDesktop' => 'Desktop Logger',
 			'home.newOperation' => 'New operation',

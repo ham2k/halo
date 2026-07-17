@@ -27,6 +27,7 @@ import '../services/extension_service.dart';
 import '../services/settings_service.dart';
 import '../services/status_bar_service.dart';
 import '../settings/settings_registry.dart';
+import 'extensions_panel.dart';
 import 'ham2k_logo.dart';
 import 'notice_history_view.dart';
 import 'operation_dialogs.dart';
@@ -70,6 +71,7 @@ const _fixedCorePanels = [
   _SettingsPanelEntry(key: 'sync', title: 'Sync', screenTitle: 'Sync Settings', icon: Icons.sync, order: 10),
   _SettingsPanelEntry(key: 'accounts', title: 'Accounts', icon: Icons.vpn_key_outlined, order: 20),
   _SettingsPanelEntry(key: 'privacy', title: 'Privacy', icon: Icons.privacy_tip_outlined, order: 30),
+  _SettingsPanelEntry(key: 'extensions', title: 'Extensions', icon: Icons.extension_outlined, order: 40),
   _SettingsPanelEntry(key: 'notices', title: 'Notices & Messages', icon: Icons.notifications_outlined, order: 80),
   // After the extension-contributed panels (default order 50) and Notices,
   // before Developer/About: every declared group — core, sync, and
@@ -109,11 +111,22 @@ class _SettingsViewState extends State<SettingsView> {
   void initState() {
     super.initState();
     _loadExtensionPanels();
+    // A runtime restart (extension enabled/disabled) changes which panels
+    // exist — re-fetch so a disabled extension's panel disappears (the
+    // missing-selection auto-correct below handles it being selected).
+    widget.services.extensions.runtimeGeneration.addListener(_loadExtensionPanels);
+  }
+
+  @override
+  void dispose() {
+    widget.services.extensions.runtimeGeneration.removeListener(_loadExtensionPanels);
+    super.dispose();
   }
 
   Future<void> _loadExtensionPanels() async {
     await widget.services.extensions.start();
     final panels = await widget.services.extensions.getSettingsPanels();
+    if (!mounted) return;
     // The extension runtime failing to start is the one failure mode that's
     // both detectable here and not already self-reported elsewhere (a
     // single misbehaving extension's getPanels() failing is caught and
@@ -331,6 +344,8 @@ Widget _buildPanelContent(_SettingsPanelEntry panel, HaLoServices services) {
       return _CommonSettingsPanel(services: services);
     case 'privacy':
       return _RegistryGroupPanel(services: services, groupKey: 'privacy');
+    case 'extensions':
+      return ExtensionsPanel(services: services);
     case 'all_settings':
       return _AllSettingsPanel(services: services);
     case 'sync':
@@ -601,10 +616,13 @@ class _AllSettingsPanelState extends State<_AllSettingsPanel> {
   void initState() {
     super.initState();
     _loadExtensionPanels();
+    // Extension toggles restart the runtime with a different panel set.
+    widget.services.extensions.runtimeGeneration.addListener(_loadExtensionPanels);
   }
 
   @override
   void dispose() {
+    widget.services.extensions.runtimeGeneration.removeListener(_loadExtensionPanels);
     _searchController.dispose();
     super.dispose();
   }
@@ -1381,6 +1399,15 @@ class _DeveloperPanel extends StatelessWidget {
               'App Version',
               const VersionLabel(style: TextStyle(fontFamily: 'monospace', fontSize: 13)),
             ),
+            const SizedBox(height: 16),
+            const Divider(),
+            const SizedBox(height: 16),
+            Text(
+              'Active Extensions',
+              style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 8),
+            _ActiveExtensionsList(services: services),
           ],
         );
       },
@@ -1417,6 +1444,107 @@ class _DeveloperPanel extends StatelessWidget {
           Expanded(flex: 3, child: value),
         ],
       ),
+    );
+  }
+}
+
+/// The Developer panel's live listing of activated extensions with their
+/// versions — served by the kernel's own `kernel-info` extension, the one
+/// place versions exist (they're deliberately absent from the build index).
+/// Refreshes on runtime restarts (extension toggles).
+class _ActiveExtensionsList extends StatefulWidget {
+  final HaLoServices services;
+
+  const _ActiveExtensionsList({required this.services});
+
+  @override
+  State<_ActiveExtensionsList> createState() => _ActiveExtensionsListState();
+}
+
+class _ActiveExtensionsListState extends State<_ActiveExtensionsList> {
+  List<Map<String, dynamic>>? _extensions;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+    widget.services.extensions.runtimeGeneration.addListener(_load);
+  }
+
+  @override
+  void dispose() {
+    widget.services.extensions.runtimeGeneration.removeListener(_load);
+    super.dispose();
+  }
+
+  Future<void> _load() async {
+    await widget.services.extensions.start();
+    final extensions = await widget.services.extensions.listActiveExtensions();
+    if (mounted) {
+      setState(() => _extensions = extensions..sort((a, b) => (a['key'] as String).compareTo(b['key'] as String)));
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final extensions = _extensions;
+    if (extensions == null) return const Text('(loading…)');
+    if (extensions.isEmpty) return const Text('Extension runtime not available.');
+
+    // Category comes from the build index (the runtime listing carries only
+    // key/name/version); anything the index doesn't categorize — core
+    // extensions and the kernel's own built-ins — lands under Core.
+    final categoryByKey = {
+      for (final info in widget.services.extensions.availableExtensions)
+        if (info.category != null) info.key: info.category!,
+    };
+    const categoryTitles = {'activity': 'Activities', 'lookup': 'Callsign Lookups', 'core': 'Core & Runtime'};
+    final grouped = <String, List<Map<String, dynamic>>>{};
+    for (final ext in extensions) {
+      grouped.putIfAbsent(categoryByKey[ext['key']] ?? 'core', () => []).add(ext);
+    }
+    final categories = [
+      ...['activity', 'lookup'].where(grouped.containsKey),
+      ...grouped.keys.where((c) => c != 'activity' && c != 'lookup'),
+    ];
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        for (final category in categories) ...[
+          Padding(
+            padding: const EdgeInsets.only(top: 8, bottom: 2),
+            child: Text(
+              categoryTitles[category] ?? category,
+              style: Theme.of(context).textTheme.labelMedium?.copyWith(color: Theme.of(context).colorScheme.primary),
+            ),
+          ),
+          for (final ext in grouped[category]!)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 6),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    flex: 2,
+                    child: Text(
+                      (ext['name'] as String?) ?? (ext['key'] as String? ?? '?'),
+                      style:
+                          TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontWeight: FontWeight.w500),
+                    ),
+                  ),
+                  Expanded(
+                    flex: 3,
+                    child: SelectableText(
+                      '${ext['key']}@${ext['version']}',
+                      style: const TextStyle(fontFamily: 'monospace', fontSize: 13),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+        ],
+      ],
     );
   }
 }

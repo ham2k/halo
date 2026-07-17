@@ -103,6 +103,46 @@ void main() {
     });
   });
 
+  group('extension overrides', () {
+    test('round-trips as a top-level pref, excluded from the extension-facing view', () async {
+      SharedPreferences.setMockInitialValues({});
+      final settings = SettingsService(await SharedPreferences.getInstance());
+
+      expect(settings.extensionOverrides, isEmpty);
+      await settings.setExtensionOverrides({'pota': true, 'sota': false});
+      expect(settings.extensionOverrides, {'pota': true, 'sota': false});
+
+      // NOT part of what getSettings exposes to extensions.
+      await settings.updateSettingsGroup('extension_qrz', {'foo': 1});
+      expect(settings.extensionSettingsGroups().keys, ['extension_qrz']);
+    });
+
+    test('legacy onboarding enabled flags fold into overrides once', () async {
+      SharedPreferences.setMockInitialValues({
+        'profiles': '{"default": {"operatorCall": "KI2D"}}',
+        'settings.extension_pota': '{"enabled": true, "other": 1}',
+        'settings.extension_sota': '{"enabled": false}',
+      });
+      final settings = await SettingsService.load();
+
+      expect(settings.extensionOverrides, {'pota': true, 'sota': false});
+      // The stale flags are dropped; unrelated keys survive.
+      expect(settings.settingsGroup('extension_pota'), {'other': 1});
+      expect(settings.settingsGroup('extension_sota'), isEmpty);
+    });
+
+    test('an existing override wins over the legacy flag', () async {
+      SharedPreferences.setMockInitialValues({
+        'profiles': '{"default": {"operatorCall": "KI2D"}}',
+        'extensionOverrides': '{"pota": false}',
+        'settings.extension_pota': '{"enabled": true}',
+      });
+      final settings = await SettingsService.load();
+      expect(settings.extensionOverrides['pota'], isFalse);
+      expect(settings.settingsGroup('extension_pota').containsKey('enabled'), isFalse);
+    });
+  });
+
   group('scalar-to-group migration', () {
     test('load() moves legacy scalar prefs into their groups and removes them', () async {
       SharedPreferences.setMockInitialValues({

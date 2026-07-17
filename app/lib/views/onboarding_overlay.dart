@@ -188,11 +188,12 @@ class _OnboardingOverlayViewState extends State<OnboardingOverlayView> {
 
   Future<void> _persistChoices() async {
     final settings = widget.services.settings;
-    // Nothing consumes the activity picks yet — stored in each extension's
-    // own settings group (the same place host.setSettings writes) so the
-    // extensions can honor them when activity toggling lands.
-    await settings.updateSettingsGroup('extension_pota', {'enabled': _pota});
-    await settings.updateSettingsGroup('extension_sota', {'enabled': _sota});
+    // The activity picks are real extension enable/disable overrides
+    // (Extensions settings panel, issue #25). Not awaited: the overrides
+    // persist synchronously inside before any runtime restart, and the
+    // restart — only when the effective set actually changed — can run
+    // behind the overlay.
+    unawaited(widget.services.extensions.setExtensionsEnabled({'pota': _pota, 'sota': _sota}));
     await settings.updateSettingsGroup(SettingsService.privacyGroup, {
       'consentAppData': _consentAppData,
       'consentOpData': _consentOpData,

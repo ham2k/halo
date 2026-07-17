@@ -668,6 +668,26 @@ const kernel = {
   error: (...args: unknown[]) => log('ERROR ' + args.map(String).join(' ')),
 }
 
+// Built-in runtime introspection: the Developer panel's "Active Extensions"
+// listing calls this — versions live only in each bundle's defineExtension
+// manifest, so the runtime is the one place they can be read from.
+kernel.defineExtension({
+  key: 'kernel-info',
+  name: 'Kernel info',
+  version: '0.0.1',
+  onActivation({ registerHook }) {
+    registerHook('runtime', {
+      key: 'kernel',
+      hook: {
+        listExtensions: async () =>
+          Object.values(extensions)
+            .filter((def) => activated.has(def.key))
+            .map((def) => ({ key: def.key, name: def.name, version: def.version, description: def.description ?? null })),
+      },
+    })
+  },
+})
+
 // Built-in bench hooks, used to measure pure bridge round-trip latency
 // (echo) and JS compute throughput (spin) with no extension code involved.
 kernel.defineExtension({

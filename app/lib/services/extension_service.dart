@@ -9,6 +9,7 @@
 import 'dart:async';
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart' show setEquals;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show rootBundle;
 import 'package:flutter_markdown/flutter_markdown.dart';
@@ -564,16 +565,22 @@ class ExtensionService {
     try {
       final index = jsonDecode(await rootBundle.loadString('assets/extensions/index.json')) as Map<String, dynamic>;
       final kernelSource = await rootBundle.loadString('assets/extensions/${index['kernel']}');
+      final available = await loadAvailableExtensions(index: index);
       final bundles = <ExtensionBundle>[];
       final fetchAllowlists = <String, List<String>>{};
-      for (final entry in (index['extensions'] as List).cast<Map<String, dynamic>>()) {
-        final key = entry['key'] as String;
+      final loaded = <String>{};
+      for (final info in available) {
+        // Disabled extensions are simply never loaded — their hooks,
+        // settings panels, and commands are absent until a re-enable
+        // restarts the runtime with them included.
+        if (!isExtensionEnabled(info)) continue;
+        loaded.add(info.key);
         bundles.add(ExtensionBundle(
-          key: key,
-          source: await rootBundle.loadString('assets/extensions/${entry['file']}'),
+          key: info.key,
+          source: await rootBundle.loadString('assets/extensions/${info.file}'),
         ));
         // The manifest's declared network capability (build.mjs `domains`).
-        fetchAllowlists[key] = ((entry['domains'] as List?) ?? const []).cast<String>();
+        fetchAllowlists[info.key] = info.domains;
       }
       _host = await ExtensionHost.start(
         kernelSource: kernelSource,
@@ -581,6 +588,7 @@ class ExtensionService {
         onHostCall: _handleHostCall,
         fetchAllowlists: fetchAllowlists,
       );
+      _loadedExtensionKeys = loaded;
       _host!.logs.listen((line) => debugPrint('[extensions] $line'));
       for (final line in _host!.logLines) {
         debugPrint('[extensions] $line');
@@ -590,12 +598,107 @@ class ExtensionService {
       // don't stay dark until app restart.
       _host!.fatalErrors.listen((error) => _scheduleRestart('runtime died: $error'));
       _restartAttempts = 0;
+      runtimeGeneration.value++;
     } catch (e) {
       debugPrint('[extensions] failed to start extension runtime: $e');
       // A transient boot failure (asset hiccup, engine init) used to leave
       // extensions off for the rest of the session ("_starting" memoized
       // the failure). Retry with backoff instead.
       _scheduleRestart('start failed: $e');
+    }
+  }
+
+  /// The extensions the build index declares, with their user-facing
+  /// metadata — readable without booting (or evaluating) any JS, so the
+  /// Extensions panel can list DISABLED extensions and still render when
+  /// the runtime is down. Memoized; [index] lets [_start] reuse its own
+  /// parse.
+  Future<List<ExtensionInfo>> loadAvailableExtensions({Map<String, dynamic>? index}) async {
+    if (_availableExtensions != null) return _availableExtensions!;
+    final parsed = index ?? jsonDecode(await rootBundle.loadString('assets/extensions/index.json')) as Map<String, dynamic>;
+    return _availableExtensions = [
+      for (final entry in (parsed['extensions'] as List).cast<Map<String, dynamic>>()) ExtensionInfo.fromJson(entry),
+    ];
+  }
+
+  /// The already-loaded metadata, or empty before [loadAvailableExtensions]
+  /// first resolves.
+  List<ExtensionInfo> get availableExtensions => _availableExtensions ?? const [];
+  List<ExtensionInfo>? _availableExtensions;
+
+  @visibleForTesting
+  void debugSetAvailableExtensions(List<ExtensionInfo> extensions) => _availableExtensions = extensions;
+
+  /// Which extension keys the CURRENT runtime was started with — compared
+  /// against the desired set to decide whether a toggle needs a restart.
+  Set<String> _loadedExtensionKeys = const {};
+
+  /// Bumped after every successful runtime (re)start — panels listen to
+  /// re-fetch extension-contributed content (settings panels, listings).
+  final ValueNotifier<int> runtimeGeneration = ValueNotifier(0);
+
+  /// Core extensions are always on; the rest follow the user's override,
+  /// falling back to the build index's default. A null [settings] (tests,
+  /// benches) resolves to defaults.
+  bool isExtensionEnabled(ExtensionInfo info) =>
+      info.core || (settings?.extensionOverrides[info.key] ?? info.enabledByDefault);
+
+  /// Persists enable/disable choices and applies them by restarting the
+  /// runtime with the filtered bundle set — but only when the effective
+  /// set actually changes (and the runtime is up; a pending boot picks the
+  /// fresh overrides up on its own). The overrides land BEFORE any restart,
+  /// so a quit mid-apply loses nothing.
+  Future<void> setExtensionsEnabled(Map<String, bool> changes) async {
+    final currentSettings = settings;
+    if (currentSettings == null || changes.isEmpty) return;
+    await currentSettings.setExtensionOverrides({...currentSettings.extensionOverrides, ...changes});
+    await _updateDisabledSince(currentSettings);
+    final desired = {
+      for (final info in availableExtensions)
+        if (isExtensionEnabled(info)) info.key,
+    };
+    if (_host == null || setEquals(desired, _loadedExtensionKeys)) return;
+    await restartRuntime();
+  }
+
+  /// Stamps the moment each non-core extension became disabled, and clears
+  /// the stamp when it's enabled again — the clock DataFileManager's
+  /// grace-period purge reads. Only meaningful for extensions that could
+  /// own data, but harmless (and simpler) to track for all non-core keys.
+  Future<void> _updateDisabledSince(SettingsService settings) async {
+    final disabledSince = {...settings.extensionDisabledSince};
+    final now = DateTime.now().millisecondsSinceEpoch;
+    var changed = false;
+    for (final info in availableExtensions) {
+      if (info.core) continue;
+      final disabled = !isExtensionEnabled(info);
+      if (disabled && !disabledSince.containsKey(info.key)) {
+        disabledSince[info.key] = now;
+        changed = true;
+      } else if (!disabled && disabledSince.remove(info.key) != null) {
+        changed = true;
+      }
+    }
+    if (changed) await settings.setExtensionDisabledSince(disabledSince);
+  }
+
+  Future<void> setExtensionEnabled(String key, bool enabled) => setExtensionsEnabled({key: enabled});
+
+  /// The activated extensions of the LIVE runtime, with versions — served
+  /// by the kernel's own `kernel-info` extension (the one place versions
+  /// exist). Empty when the runtime is down.
+  Future<List<Map<String, dynamic>>> listActiveExtensions() async {
+    // `this.host`, not the field: mock-host test subclasses override the
+    // getter.
+    final host = this.host;
+    if (host == null) return const [];
+    try {
+      final result = await host.invokeHook('runtime',
+          key: 'kernel', method: 'listExtensions', timeout: const Duration(seconds: 2));
+      return result is List ? result.cast<Map>().map((e) => e.cast<String, dynamic>()).toList() : const [];
+    } on ExtensionHostException catch (e) {
+      debugPrint('[extensions] listActiveExtensions failed: $e');
+      return const [];
     }
   }
 
@@ -610,32 +713,50 @@ class ExtensionService {
     debugPrint('[extensions] $reason — restarting runtime in ${delay.inSeconds}s (attempt $_restartAttempts)');
     _restartTimer = Timer(delay, () async {
       _restartTimer = null;
-      if (_restarting) return;
-      _restarting = true;
-      try {
-        // A boot may already be in flight (e.g. setSyncCredentials calls
-        // start()); replacing the host under it would leak a live runtime.
-        final inFlight = _starting;
-        if (inFlight != null) await inFlight;
-        if (_host != null && !_host!.isDead) return; // recovered on its own
-
-        final old = _host;
-        _host = null;
-        _starting = null;
-        await old?.dispose();
-        await start();
-        if (_host != null) {
-          // The fresh runtime lost all seeded KV state (it's in-memory).
-          final creds = _lastSyncCredentials;
-          if (creds != null) {
-            await setSyncCredentials(deviceKey: creds.deviceKey, operatorCall: creds.operatorCall);
-          }
-          debugPrint('[extensions] runtime restarted');
-        }
-      } finally {
-        _restarting = false;
-      }
+      // onlyIfDead: by the time the backoff fires the runtime may have
+      // recovered on its own (a crash reports through several channels) —
+      // don't replace a healthy host.
+      await _replaceRuntime(onlyIfDead: true);
     });
+  }
+
+  /// Restarts a LIVE runtime deliberately — extension enable/disable
+  /// toggles use this to apply the new bundle set. Any pending crash-backoff
+  /// timer is superseded (the replacement it wanted is happening now).
+  Future<void> restartRuntime() {
+    _restartTimer?.cancel();
+    _restartTimer = null;
+    return _replaceRuntime(onlyIfDead: false);
+  }
+
+  /// The one runtime-replacement path: dispose + fresh [start] + re-seed of
+  /// the in-memory sync KV. Serialized behind [_restarting].
+  Future<void> _replaceRuntime({required bool onlyIfDead}) async {
+    if (_restarting) return;
+    _restarting = true;
+    try {
+      // A boot may already be in flight (e.g. setSyncCredentials calls
+      // start()); replacing the host under it would leak a live runtime.
+      final inFlight = _starting;
+      if (inFlight != null) await inFlight;
+      if (onlyIfDead && _host != null && !_host!.isDead) return; // recovered on its own
+
+      final old = _host;
+      _host = null;
+      _starting = null;
+      await old?.dispose();
+      await start();
+      if (_host != null) {
+        // The fresh runtime lost all seeded KV state (it's in-memory).
+        final creds = _lastSyncCredentials;
+        if (creds != null) {
+          await setSyncCredentials(deviceKey: creds.deviceKey, operatorCall: creds.operatorCall);
+        }
+        debugPrint('[extensions] runtime restarted');
+      }
+    } finally {
+      _restarting = false;
+    }
   }
 
   Future<dynamic> _handleHostCall(String method, Map<String, dynamic> params) async {
@@ -1207,4 +1328,51 @@ class ExtensionService {
     }
     return ref;
   }
+}
+
+/// One entry of the build index (assets/extensions/index.json) — the static,
+/// user-facing metadata build.mjs emits so the app can describe every
+/// extension (including disabled ones whose bundles never load). Core
+/// entries are always enabled and never listed in the Extensions panel;
+/// versions deliberately live only in the runtime (see listActiveExtensions).
+class ExtensionInfo {
+  final String key;
+  final String file;
+  final List<String> domains;
+  final bool core;
+  final String name;
+  final String? category;
+  final bool enabledByDefault;
+
+  /// MDI icon name (resolveIconName), mirroring the icon the extension's
+  /// own hooks use (e.g. POTA's 'pine-tree'); null falls back to a
+  /// category icon in the panel.
+  final String? icon;
+  final String? description;
+
+  const ExtensionInfo({
+    required this.key,
+    required this.file,
+    this.domains = const [],
+    required this.core,
+    required this.name,
+    this.category,
+    this.enabledByDefault = true,
+    this.icon,
+    this.description,
+  });
+
+  factory ExtensionInfo.fromJson(Map<String, dynamic> json) => ExtensionInfo(
+        key: json['key'] as String,
+        file: json['file'] as String? ?? '${json['key']}.js',
+        domains: ((json['domains'] as List?) ?? const []).cast<String>(),
+        // A stale index without metadata degrades to "everything core" —
+        // the fail-safe: nothing gets silently disabled.
+        core: json['core'] as bool? ?? true,
+        name: json['name'] as String? ?? json['key'] as String,
+        category: json['category'] as String?,
+        enabledByDefault: json['enabledByDefault'] as bool? ?? true,
+        icon: json['icon'] as String?,
+        description: json['description'] as String?,
+      );
 }

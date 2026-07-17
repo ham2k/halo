@@ -232,6 +232,9 @@ Future<HaLoServices> bootstrap({
   unawaited(extensions.start().then((_) async {
     await services.dataFiles.loadRawDataFiles();
     await services.dataFiles.syncAllDataFiles();
+    // After the enabled extensions have refreshed their data-file ownership
+    // records, drop the data of any extension disabled long enough ago.
+    await services.dataFiles.purgeStaleExtensionData(settings.extensionDisabledSince);
   }).catchError((e) {
     debugPrint('[boot] failed to initialize data files: $e');
   }));

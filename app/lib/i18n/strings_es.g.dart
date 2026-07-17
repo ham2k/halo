@@ -42,6 +42,7 @@ class TranslationsEs extends Translations with BaseTranslations<AppLocale, Trans
 	@override late final _Translations$common$es common = _Translations$common$es._(_root);
 	@override late final _Translations$onboarding$es onboarding = _Translations$onboarding$es._(_root);
 	@override late final _Translations$startScreen$es startScreen = _Translations$startScreen$es._(_root);
+	@override late final _Translations$extensionsPanel$es extensionsPanel = _Translations$extensionsPanel$es._(_root);
 	@override late final _Translations$home$es home = _Translations$home$es._(_root);
 	@override late final _Translations$dialogs$es dialogs = _Translations$dialogs$es._(_root);
 	@override late final _Translations$operation$es operation = _Translations$operation$es._(_root);
@@ -108,6 +109,21 @@ class _Translations$startScreen$es extends Translations$startScreen$en {
 
 	// Translations
 	@override String get credits => 'por KI2D y amigos';
+}
+
+// Path: extensionsPanel
+class _Translations$extensionsPanel$es extends Translations$extensionsPanel$en {
+	_Translations$extensionsPanel$es._(TranslationsEs root) : this._root = root, super.internal(root);
+
+	final TranslationsEs _root; // ignore: unused_field
+
+	// Translations
+	@override String get categoryActivity => 'Actividades';
+	@override String get categoryLookup => 'Búsqueda de indicativos';
+	@override String get categoryOther => 'Otras extensiones';
+	@override String get searchHint => 'Buscar extensiones';
+	@override String get applying => 'Activando cambios de extensiones, esto puede tardar un momento…';
+	@override String get noMatches => 'Ninguna extensión coincide con tu búsqueda';
 }
 
 // Path: home
@@ -691,6 +707,12 @@ extension on TranslationsEs {
 			'onboarding.consentOperationBody' => 'Algunas funciones pueden implicar compartir datos de tus operaciones con otros usuarios. Puedes desactivarlo en cualquier momento.',
 			'onboarding.consentOperationLabel' => 'Compartir datos de operaciones',
 			'startScreen.credits' => 'por KI2D y amigos',
+			'extensionsPanel.categoryActivity' => 'Actividades',
+			'extensionsPanel.categoryLookup' => 'Búsqueda de indicativos',
+			'extensionsPanel.categoryOther' => 'Otras extensiones',
+			'extensionsPanel.searchHint' => 'Buscar extensiones',
+			'extensionsPanel.applying' => 'Activando cambios de extensiones, esto puede tardar un momento…',
+			'extensionsPanel.noMatches' => 'Ninguna extensión coincide con tu búsqueda',
 			'home.title' => 'Registrador Portátil',
 			'home.titleDesktop' => 'Registrador de Escritorio',
 			'home.newOperation' => 'Nueva operación',

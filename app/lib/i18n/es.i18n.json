@@ -33,6 +33,14 @@
   "startScreen": {
     "credits": "por KI2D y amigos"
   },
+  "extensionsPanel": {
+    "categoryActivity": "Actividades",
+    "categoryLookup": "Búsqueda de indicativos",
+    "categoryOther": "Otras extensiones",
+    "searchHint": "Buscar extensiones",
+    "applying": "Activando cambios de extensiones, esto puede tardar un momento…",
+    "noMatches": "Ninguna extensión coincide con tu búsqueda"
+  },
   "home": {
     "title": "Registrador Portátil",
     "titleDesktop": "Registrador de Escritorio",

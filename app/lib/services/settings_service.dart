@@ -67,7 +67,57 @@ class SettingsService extends ChangeNotifier implements SyncSettings {
     final settings = SettingsService(await SharedPreferences.getInstance());
     await settings._migrateLegacyOperatorCall();
     await settings._migrateScalarPrefsToGroups();
+    await settings._migrateExtensionEnabledFlags();
     return settings;
+  }
+
+  /// Per-extension enable/disable overrides ({key: bool}), consulted against
+  /// each extension's `enabledByDefault` from the build index (see
+  /// ExtensionService.isExtensionEnabled). Deliberately a TOP-LEVEL pref,
+  /// outside the `settings.*` group system: it is app infrastructure, not a
+  /// setting — and being top-level keeps it out of the extension-facing
+  /// getSettings view ([extensionSettingsGroups] only scans group keys).
+  static const _extensionOverridesKey = 'extensionOverrides';
+
+  Map<String, bool> get extensionOverrides =>
+      {for (final e in _jsonMapPref(_extensionOverridesKey).entries) if (e.value is bool) e.key: e.value as bool};
+
+  Future<void> setExtensionOverrides(Map<String, bool> overrides) async {
+    await _prefs.setString(_extensionOverridesKey, jsonEncode(overrides));
+    notifyListeners();
+  }
+
+  /// When each currently-disabled extension was disabled ({key: epochMillis}).
+  /// A disabled extension's downloaded data (data files) is KEPT so a
+  /// re-enable is instant; only after it's been disabled for the grace
+  /// period does DataFileManager purge that data. Stamped/cleared by
+  /// ExtensionService as extensions toggle; an entry vanishes on re-enable.
+  static const _extensionDisabledSinceKey = 'extensionDisabledSince';
+
+  Map<String, int> get extensionDisabledSince =>
+      {for (final e in _jsonMapPref(_extensionDisabledSinceKey).entries) if (e.value is int) e.key: e.value as int};
+
+  Future<void> setExtensionDisabledSince(Map<String, int> disabledSince) async {
+    await _prefs.setString(_extensionDisabledSinceKey, jsonEncode(disabledSince));
+    notifyListeners();
+  }
+
+  /// One-time migration: early onboarding builds wrote activity picks as
+  /// `settings.extension_pota/sota {'enabled': bool}` — an accidental
+  /// contract superseded by [extensionOverrides]. Fold those into overrides
+  /// (an existing override wins) and drop the group keys so the stale flags
+  /// can't disagree with the real store.
+  Future<void> _migrateExtensionEnabledFlags() async {
+    for (final key in const ['pota', 'sota']) {
+      final group = settingsGroup('extension_$key');
+      final legacy = group['enabled'];
+      if (legacy is! bool) continue;
+      final overrides = extensionOverrides;
+      if (!overrides.containsKey(key)) {
+        await setExtensionOverrides({...overrides, key: legacy});
+      }
+      await _prefs.setString(_groupPrefsKey('extension_$key'), jsonEncode({...group}..remove('enabled')));
+    }
   }
 
   // ---------------------------------------------------------------------
