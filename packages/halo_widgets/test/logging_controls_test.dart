@@ -1553,6 +1553,19 @@ void main() {
     expect(find.widgetWithText(MenuItemButton, '630m'), findsNothing);
   });
 
+  testWidgets('Radio dropdowns render at the same height as the sibling text fields', (tester) async {
+    await tester.pumpWidget(host());
+    await openControl(tester, MdiIcons.radio);
+
+    // The trailing arrow's default 48px min tap target used to make the
+    // dropdowns a few pixels taller than the Frequency field beside them.
+    final freqHeight = tester.getSize(find.widgetWithText(TextField, 'Frequency')).height;
+    final dropdowns = find.byType(DropdownMenu<String>);
+    expect(dropdowns, findsNWidgets(2));
+    expect(tester.getSize(dropdowns.at(0)).height, freqHeight);
+    expect(tester.getSize(dropdowns.at(1)).height, freqHeight);
+  });
+
   testWidgets('an open Band menu holds its scroll position across the clock-tick rebuilds', (tester) async {
     // A selected band matters: the rebuild-time re-scroll only fires when
     // the field text matches an entry. Null enabled lists → the full

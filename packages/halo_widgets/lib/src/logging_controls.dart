@@ -1363,6 +1363,11 @@ class _LoggingControlsState extends State<LoggingControls> {
                     color: theme.colorScheme.onTertiaryContainer,
                   ),
                   contentPadding: const EdgeInsets.fromLTRB(4, 6, 4, 8),
+                  // Without this the trailing arrow's 48px min tap target
+                  // makes the field taller (56px) than the sibling
+                  // poloFieldDecoration TextFields (53px); the whole field
+                  // is tappable, so the shrunken icon target costs nothing.
+                  suffixIconConstraints: const BoxConstraints(maxHeight: 38, maxWidth: 40),
                 ),
                 dropdownMenuEntries: [
                   for (final b in bandEntries) DropdownMenuEntry(value: b, label: b),
@@ -1436,6 +1441,8 @@ class _LoggingControlsState extends State<LoggingControls> {
                     color: theme.colorScheme.onTertiaryContainer,
                   ),
                   contentPadding: const EdgeInsets.fromLTRB(4, 6, 4, 8),
+                  // Same height trim as the Band dropdown above.
+                  suffixIconConstraints: const BoxConstraints(maxHeight: 38, maxWidth: 40),
                 ),
                 dropdownMenuEntries: [
                   for (final m in modeEntries) DropdownMenuEntry(value: m, label: m),
