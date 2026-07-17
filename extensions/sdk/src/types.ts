@@ -383,6 +383,10 @@ export interface CommandAction {
   /// Developer-only: posts a progress bar (DEVPROGRESS); omit `percent` for
   /// an indeterminate bar.
   devProgress?: { icon?: string; title?: string; percent?: number }
+  /// Developer-only: re-shows the startup release-notes overlay (DEVSPLASH),
+  /// bypassing its normal "once per version" gate — see
+  /// `app/lib/main.dart`'s `_ReleaseOverlayGate`.
+  devSplash?: Record<string, never>
   [actionName: string]: unknown
 }
 

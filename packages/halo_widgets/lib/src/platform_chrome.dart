@@ -104,6 +104,13 @@ bool get isMobilePlatform =>
 String get ham2kAppName =>
     isWindowedPlatform ? 'Ham2K Logger' : 'Ham2K Portable Logger';
 
+/// [ham2kAppName] with the "Ham2K" brand name dropped — for places that show
+/// the HAM2K arc wordmark graphic (`assets/images/ham2k-arc.svg`) and need
+/// only the product-name suffix as text beneath it: `Logger` (desktop) or
+/// `Portable Logger` (mobile). See `Ham2kBrandMark` in the app's
+/// `views/ham2k_logo.dart`.
+String get ham2kProductName => isWindowedPlatform ? 'Logger' : 'Portable Logger';
+
 /// `AppBar.leadingWidth` for a plain back button that reserves clearance for
 /// the traffic-light buttons — pair with [macOSAwareBackButton]. Every
 /// pushed view's AppBar needs this (or the equivalent custom-leading math

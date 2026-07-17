@@ -104,21 +104,26 @@ class _OperationRow extends StatelessWidget {
 class OperationListPanel extends StatelessWidget {
   final HaLoServices services;
   final List<Operation> operations;
+  // Whether the operations stream hasn't emitted its first snapshot yet —
+  // distinct from an emitted empty list. While true, `operations` is a
+  // placeholder empty list, not a confirmed one, so the "no operations yet"
+  // text must not show yet (it would flash for a frame on every startup,
+  // even for accounts with operations).
+  final bool loading;
 
-  const OperationListPanel({super.key, required this.services, required this.operations});
+  const OperationListPanel({super.key, required this.services, required this.operations, required this.loading});
 
   @override
   Widget build(BuildContext context) {
+    final color = Theme.of(context).colorScheme.surfaceContainerHighest;
     if (operations.isEmpty) {
-      return Container(
-        color: Theme.of(context).colorScheme.surfaceContainerHighest,
-        child: Center(child: Text(context.t.home.emptyList)),
-      );
+      if (loading) return ColoredBox(color: color);
+      return Container(color: color, child: Center(child: Text(context.t.home.emptyList)));
     }
     return Container(
       // Shows through below the last row when there aren't enough
       // operations to fill the screen.
-      color: Theme.of(context).colorScheme.surfaceContainerHighest,
+      color: color,
       child: ListView.separated(
         itemCount: operations.length,
         separatorBuilder: (context, index) => const Divider(),
@@ -260,8 +265,17 @@ class _HomeViewState extends State<HomeView> {
                       child: StreamBuilder<List<Operation>>(
                         stream: _operationsStream,
                         builder: (context, snapshot) {
-                          final operations = snapshot.data ?? const <Operation>[];
-                          return OperationListPanel(services: widget.services, operations: operations);
+                          return OperationListPanel(
+                            services: widget.services,
+                            // `snapshot.hasData` distinguishes "the stream
+                            // hasn't emitted its first snapshot yet" from "it
+                            // emitted an empty list" — collapsing both into
+                            // `snapshot.data ?? []` was what previously made
+                            // OperationListPanel need to guess (via a fixed
+                            // delay) how long "still loading" might last.
+                            loading: !snapshot.hasData,
+                            operations: snapshot.data ?? const <Operation>[],
+                          );
                         },
                       ),
                     ),
@@ -590,6 +604,8 @@ class _HomeQuickLookupState extends State<HomeQuickLookup> {
         await widget.services.handleCommandAction('devStatus', (map['devStatus'] as Map).cast<String, dynamic>());
       } else if (map['devProgress'] is Map) {
         await widget.services.handleCommandAction('devProgress', (map['devProgress'] as Map).cast<String, dynamic>());
+      } else if (map['devSplash'] is Map) {
+        await widget.services.handleCommandAction('devSplash');
       } else if (map['reloadDataFiles'] is Map) {
         await widget.services.handleCommandAction(
           'reloadDataFiles',

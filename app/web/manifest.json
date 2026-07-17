@@ -3,9 +3,9 @@
     "short_name": "Ham2K Logger",
     "start_url": ".",
     "display": "standalone",
-    "background_color": "#0175C2",
-    "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "background_color": "#FBFCFE",
+    "theme_color": "#006783",
+    "description": "Ham2K Logger — a modern amateur radio logging app.",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

@@ -41,4 +41,34 @@ void main() {
 
     expect(find.byType(SelectableText), findsOneWidget);
   });
+
+  testWidgets('detailed mode splits into two lines — version name, then "Version x.y.z[ - Build n]"',
+      (tester) async {
+    await tester.pumpWidget(const MaterialApp(home: VersionLabel(detailed: true)));
+    await tester.pumpAndSettle();
+
+    // find.text() (rather than reading each SelectableText's own `data`)
+    // proved order-dependent on the shared, module-cached PackageInfo future
+    // this file's other tests also resolve — reading the two SelectableText
+    // widgets directly sidesteps that. The build-number suffix itself is
+    // already covered by the non-detailed test above (same snapshot logic,
+    // just a different template), so this only pins down what's new here:
+    // two lines, the first being the bare version name.
+    final lines = tester.widgetList<SelectableText>(find.byType(SelectableText)).map((w) => w.data).toList();
+    expect(lines, hasLength(2));
+    expect(lines[0], kVersionName);
+    expect(lines[1], startsWith('Version $kPublicVersion'));
+  });
+
+  testWidgets('detailed mode\'s second line is smaller than the first', (tester) async {
+    await tester.pumpWidget(
+      const MaterialApp(home: VersionLabel(detailed: true, style: TextStyle(fontSize: 15))),
+    );
+    await tester.pumpAndSettle();
+
+    final lines = tester.widgetList<SelectableText>(find.byType(SelectableText)).toList();
+    expect(lines, hasLength(2));
+    expect(lines[0].style?.fontSize, 15);
+    expect(lines[1].style?.fontSize, lessThan(lines[0].style!.fontSize!));
+  });
 }

@@ -40,6 +40,7 @@ class TranslationsEs extends Translations with BaseTranslations<AppLocale, Trans
 
 	// Translations
 	@override late final _Translations$common$es common = _Translations$common$es._(_root);
+	@override late final _Translations$startScreen$es startScreen = _Translations$startScreen$es._(_root);
 	@override late final _Translations$home$es home = _Translations$home$es._(_root);
 	@override late final _Translations$dialogs$es dialogs = _Translations$dialogs$es._(_root);
 	@override late final _Translations$operation$es operation = _Translations$operation$es._(_root);
@@ -66,6 +67,16 @@ class _Translations$common$es extends Translations$common$en {
 	@override String get create => 'Crear';
 	@override String get error => 'Error';
 	@override String get apply => 'Aplicar';
+}
+
+// Path: startScreen
+class _Translations$startScreen$es extends Translations$startScreen$en {
+	_Translations$startScreen$es._(TranslationsEs root) : this._root = root, super.internal(root);
+
+	final TranslationsEs _root; // ignore: unused_field
+
+	// Translations
+	@override String get credits => 'por KI2D y amigos';
 }
 
 // Path: home
@@ -494,6 +505,7 @@ extension on TranslationsEs {
 			'common.create' => 'Crear',
 			'common.error' => 'Error',
 			'common.apply' => 'Aplicar',
+			'startScreen.credits' => 'por KI2D y amigos',
 			'home.title' => 'Registrador Portátil',
 			'home.titleDesktop' => 'Registrador de Escritorio',
 			'home.newOperation' => 'Nueva operación',

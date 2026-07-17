@@ -7,6 +7,9 @@
     "error": "Error",
     "apply": "Aplicar"
   },
+  "startScreen": {
+    "credits": "por KI2D y amigos"
+  },
   "home": {
     "title": "Registrador Portátil",
     "titleDesktop": "Registrador de Escritorio",

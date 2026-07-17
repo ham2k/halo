@@ -292,7 +292,10 @@ required 3+ digits before any decimal point; the extension delegates to
 handles this correctly. Also implemented by `dev-commands` (DEVMODE toggles
 developer mode; DEVNOTICE/DEVSTATUS/DEVPROGRESS post sample items to the
 status bar via the `devNotice`/`devStatus`/`devProgress` action fields, for
-exercising that UI without a real extension driving it; RELOAD forces a
+exercising that UI without a real extension driving it; DEVSPLASH re-shows
+the startup release-notes overlay (Issue #42) via the `devSplash` action
+field, bypassing its normal once-per-version gate — for previewing that
+overlay on demand instead of only once per release; RELOAD forces a
 `dataFile` re-sync via the `reloadDataFiles` action field — "RELOAD POTA"/
 "RELOAD SOTA" target one activity's data file(s) by category, "RELOAD ALL",
 "RELOADALL", or bare "RELOAD!" target every data file, and it bypasses ETag caching

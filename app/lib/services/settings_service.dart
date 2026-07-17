@@ -41,6 +41,7 @@ class SettingsService extends ChangeNotifier implements SyncSettings {
   static const _distanceUnitsKey = 'distanceUnits';
   static const _spottingFiltersKey = 'spottingFilters';
   static const _layoutKey = 'layout';
+  static const _lastSeenReleaseVersionKey = 'lastSeenReleaseVersion';
 
   final SharedPreferences _prefs;
 
@@ -75,6 +76,16 @@ class SettingsService extends ChangeNotifier implements SyncSettings {
 
   Future<void> setThemeMode(ThemeMode mode) async {
     await _prefs.setString(_themeModeKey, mode.name);
+    notifyListeners();
+  }
+
+  /// The `kPublicVersion` the user last dismissed the startup release
+  /// overlay for (release_overlay.dart) — the overlay shows again once
+  /// `kPublicVersion` no longer matches this.
+  String get lastSeenReleaseVersion => _prefs.getString(_lastSeenReleaseVersionKey) ?? '';
+
+  Future<void> setLastSeenReleaseVersion(String version) async {
+    await _prefs.setString(_lastSeenReleaseVersionKey, version);
     notifyListeners();
   }
 

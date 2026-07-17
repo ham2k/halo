@@ -1813,6 +1813,8 @@ class _LoggingControlsState extends State<LoggingControls> {
         await widget.onCommandAction?.call('devStatus', (map['devStatus'] as Map).cast<String, dynamic>());
       } else if (map['devProgress'] is Map) {
         await widget.onCommandAction?.call('devProgress', (map['devProgress'] as Map).cast<String, dynamic>());
+      } else if (map['devSplash'] is Map) {
+        await widget.onCommandAction?.call('devSplash');
       } else if (map['reloadDataFiles'] is Map) {
         await widget.onCommandAction?.call('reloadDataFiles', (map['reloadDataFiles'] as Map).cast<String, dynamic>());
       } else {

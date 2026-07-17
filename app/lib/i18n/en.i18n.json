@@ -7,6 +7,9 @@
     "error": "Error",
     "apply": "Apply"
   },
+  "startScreen": {
+    "credits": "by KI2D and friends"
+  },
   "home": {
     "title": "Portable Logger",
     "titleDesktop": "Desktop Logger",

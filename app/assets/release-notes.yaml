@@ -1,0 +1,21 @@
+# Release notes shown in the startup "what's new" overlay and in
+# Settings → About → Recent Changes. Keyed by the full public version
+# (config/version.dart's kPublicVersion). Each entry under `changes` is
+# rendered as markdown, so multi-line notes can use YAML block scalars.
+#
+# The cover photo for a release lives at
+# assets/images/releases/<MAJOR.MINOR>-photo.jpg (shared across patches
+# of the same main version).
+
+"26.8.0":
+  name: "August '26"
+  photoCaption: "M1SDH at GB-4724"
+  changes:
+    - "Welcome to Ham2K Logger — the first release of the next-generation Portable Logger for amateur radio operators"
+    - "Interactive Map for browsing spots and planning activations"
+    - "Live Spotting and a Spots Panel"
+    - "Switch Accounts: link and swap between operator accounts with QR codes and challenge codes"
+    - "New resizable Layout System with splits and Modal Panes"
+    - "Operation Exports Panel"
+    - "Callsign Notes"
+    - "Faster, more consistent uppercase input across logging fields"

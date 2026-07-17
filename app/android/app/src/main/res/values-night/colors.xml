@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Matches app/lib/views/splash_view.dart's _splashBackgroundDark
+         (colorScheme.surfaceContainerHighest, dark) — see values/colors.xml
+         for the light counterpart. -->
+    <color name="launch_background">#40484C</color>
+</resources>

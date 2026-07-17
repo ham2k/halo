@@ -18,7 +18,9 @@
 
   <meta charset="UTF-8">
   <meta content="IE=Edge" http-equiv="X-UA-Compatible">
-  <meta name="description" content="A new Flutter project.">
+  <meta name="description" content="Ham2K Logger — a modern amateur radio logging app.">
+  <meta name="theme-color" content="#006783">
+  <meta name="background-color" content="#FBFCFE">
 
   <!-- iOS meta tags & icons -->
   <meta name="mobile-web-app-capable" content="yes">
@@ -31,8 +33,97 @@
 
   <title>Ham2K Logger</title>
   <link rel="manifest" href="manifest.json">
+
+  <style>
+    /* Shown the instant the page loads, before the Flutter engine (a
+       multi-MB download) has even started. Background matches
+       lib/views/splash_view.dart's SplashScreen (which takes over once
+       Flutter paints) and, past that, the empty-operations-list state
+       (colorScheme.surfaceContainerHighest) — so there's no visible color
+       change across any of this app's loading stages. Follows the system
+       light/dark setting, same as SplashScreen (the in-app override lives
+       in SettingsService, which isn't loaded yet at this point either).
+       Colors are halo_widgets/theme.dart's buildHaLoTheme() literals.
+       Faded out as soon as Flutter paints — see the script below — since by
+       then it's indistinguishable from SplashScreen underneath; a fast fade
+       instead of an instant swap avoids a one-frame flicker between the two
+       (different rendering pipelines — the browser compositor vs. Flutter's
+       canvas — don't swap on exactly the same frame). */
+    #startup-splash {
+      position: fixed;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background: #DCE4E9;
+      z-index: 9999;
+      opacity: 1;
+      transition: opacity 50ms linear;
+    }
+    #startup-splash.startup-splash-hidden {
+      opacity: 0;
+    }
+    #startup-splash img {
+      /* The column below is centered as a whole, but the spinner's own
+         height + margin (32px + 32px = 64px) only sits below the logo, not
+         above it — without this, that pushes the logo above true center.
+         Matching top margin balances it back to dead center, same position
+         as lib/views/splash_view.dart's SplashScreen (which has no spinner
+         to make room for). */
+      margin-top: 64px;
+      width: 180px;
+      height: 180px;
+    }
+    #startup-splash .spinner {
+      margin-top: 32px;
+      width: 32px;
+      height: 32px;
+      border: 3px solid rgba(0, 103, 131, 0.25);
+      border-top-color: #006783;
+      border-radius: 50%;
+      animation: startup-splash-spin 0.8s linear infinite;
+    }
+    @keyframes startup-splash-spin {
+      to { transform: rotate(360deg); }
+    }
+    @media (prefers-color-scheme: dark) {
+      #startup-splash {
+        background: #40484C;
+      }
+    }
+  </style>
 </head>
 <body>
+  <div id="startup-splash">
+    <img src="ham2k-square.svg" alt="">
+    <div class="spinner"></div>
+  </div>
+  <script>
+    function removeSplash() {
+      const splash = document.getElementById('startup-splash');
+      if (!splash) return;
+      splash.classList.add('startup-splash-hidden');
+      setTimeout(() => splash.remove(), 50);
+    }
+
+    // The documented hook: Flutter's own bootstrap dispatches this once its
+    // first frame is actually painted — almost always Flutter's own
+    // SplashScreen widget (lib/views/splash_view.dart), not the real app,
+    // since bootstrap() is usually still running at that point. That's fine
+    // here on purpose: SplashScreen uses the exact same background and logo
+    // (and centering — see the img margin-top above) as this HTML splash, so
+    // the swap is an intentional no-op visually. main.dart's _BootGate then
+    // fades from SplashScreen into the real app once bootstrap() resolves.
+    window.addEventListener('flutter-first-frame', removeSplash);
+
+    // Last-resort timeout so a genuinely stuck load (a network failure
+    // downloading the engine, a bug that hangs before bootstrap() settles,
+    // etc.) doesn't leave the user staring at a spinner forever with no way
+    // to tell something's wrong.
+    setTimeout(removeSplash, 20000);
+  </script>
+
   <!--
     You can customize the "flutter_bootstrap.js" script.
     This is useful to provide a custom configuration to the Flutter loader
