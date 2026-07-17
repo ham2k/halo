@@ -430,7 +430,7 @@ class _OperationViewState extends State<OperationView> with SingleTickerProvider
 
         return Scaffold(
           appBar: AppBar(
-            flexibleSpace: macOSHeaderDoubleClickArea(),
+            flexibleSpace: windowHeaderGestureArea(),
             leadingWidth: macOSAwareLeadingWidth(context),
             leading: macOSAwareBackButton(context),
             actions: [
@@ -486,6 +486,7 @@ class _OperationViewState extends State<OperationView> with SingleTickerProvider
                 ],
               ),
               const SizedBox(width: 8),
+              windowsCaptionSpacer(context),
             ],
             title: InkWell(
               onTap: () => _editActivities(operation),

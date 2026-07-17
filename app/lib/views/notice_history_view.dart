@@ -22,10 +22,11 @@ class NoticeHistoryView extends StatelessWidget {
 
     return Scaffold(
       appBar: AppBar(
-        flexibleSpace: macOSHeaderDoubleClickArea(),
+        flexibleSpace: windowHeaderGestureArea(),
         leadingWidth: macOSAwareLeadingWidth(context),
         leading: macOSAwareBackButton(context),
         title: const Text('Recent Notices'),
+        actions: [windowsCaptionSpacer(context)],
       ),
       body: history.isEmpty
           ? const Center(child: Text('No notices yet'))

@@ -444,13 +444,25 @@ class _HaLoAppState extends State<HaLoApp> {
           // headers reserve (macOSTrafficLightClearance → 0 while the
           // buttons live in the system's auto-hiding overlay). The scope is
           // the delivery mechanism — see MacOSFullScreenScope's own comment.
+          // On chromeless Windows the caption buttons are Flutter-drawn and
+          // float over every route's header from here — the same "window
+          // chrome above app content" role the native traffic lights play
+          // on macOS. Headers reserve trailing room via
+          // windowsCaptionClearance.
+          final content = isWindowsChromelessWindow
+              ? Stack(children: [
+                  child,
+                  const Positioned(top: 0, right: 0, child: WindowsCaptionButtons()),
+                ])
+              : child;
+
           return ValueListenableBuilder<bool>(
             valueListenable: macOSWindowIsFullScreen,
             builder: (context, isFullScreen, _) => MacOSFullScreenScope(
               isFullScreen: isFullScreen,
               child: UiScale(
                 scale: scale,
-                child: _StatusBarOverlay(services: widget.services, child: child),
+                child: _StatusBarOverlay(services: widget.services, child: content),
               ),
             ),
           );

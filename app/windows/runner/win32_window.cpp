@@ -1,7 +1,10 @@
 #include "win32_window.h"
 
+#include <commctrl.h>
 #include <dwmapi.h>
 #include <flutter_windows.h>
+#include <shellapi.h>
+#include <windowsx.h>
 
 #include "resource.h"
 
@@ -36,6 +39,46 @@ using EnableNonClientDpiScaling = BOOL __stdcall(HWND hwnd);
 int Scale(int source, double scale_factor) {
   return static_cast<int>(source * scale_factor);
 }
+
+// Thickness (physical pixels) of the invisible resize band along the top
+// edge of the chromeless window — the same metric the standard frame uses
+// for its grips.
+int TopResizeBandThickness(HWND hwnd) {
+  UINT dpi = GetDpiForWindow(hwnd);
+  return GetSystemMetricsForDpi(SM_CYSIZEFRAME, dpi) +
+         GetSystemMetricsForDpi(SM_CXPADDEDBORDER, dpi);
+}
+
+// Whether a screen point falls in the chromeless window's top resize band.
+// The ONE definition both hit-test halves share: the child subclass forwards
+// (HTTRANSPARENT) exactly the points the top-level handler classifies as top
+// grips — if these tests ever disagreed, top-edge resizing would silently
+// break.
+bool InTopResizeBand(HWND top_level, POINT screen_point) {
+  if (IsZoomed(top_level)) {
+    return false;
+  }
+  RECT window_rect;
+  GetWindowRect(top_level, &window_rect);
+  return screen_point.y < window_rect.top + TopResizeBandThickness(top_level);
+}
+
+// The extra outer size the window frame adds around the client area, so
+// client-size floors can be converted to the outer sizes the tracking
+// APIs work in.
+SIZE FrameOutsets(HWND hwnd) {
+  RECT window_rect;
+  RECT client_rect;
+  GetWindowRect(hwnd, &window_rect);
+  GetClientRect(hwnd, &client_rect);
+  return SIZE{
+      (window_rect.right - window_rect.left) - client_rect.right,
+      (window_rect.bottom - window_rect.top) - client_rect.bottom,
+  };
+}
+
+// Identifier for the subclass installed on the Flutter child view.
+constexpr UINT_PTR kChildHitTestSubclassId = 1;
 
 // Dynamically loads the |EnableNonClientDpiScaling| from the User32 module.
 // This API is only needed for PerMonitor V1 awareness mode.
@@ -146,6 +189,15 @@ bool Win32Window::Create(const std::wstring& title,
 
   UpdateTheme(window);
 
+  // The chromeless frame (WM_NCCALCSIZE above) only applies when Windows
+  // recalculates the frame; the initial frame from CreateWindow used the
+  // default calculation, so without this kick the standard title bar and
+  // borders stay until the first user resize. Done before OnCreate so the
+  // Flutter view is created at the enlarged (caption-free) client size.
+  SetWindowPos(window, nullptr, 0, 0, 0, 0,
+               SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE |
+                   SWP_FRAMECHANGED);
+
   return OnCreate();
 }
 
@@ -179,6 +231,93 @@ Win32Window::MessageHandler(HWND hwnd,
                             WPARAM const wparam,
                             LPARAM const lparam) noexcept {
   switch (message) {
+    // Chromeless window: no title bar, no visible border — the app's own
+    // header reaches the very top, mirroring the macOS runner's transparent
+    // titlebar (MainFlutterWindow.swift). Keeping WS_OVERLAPPEDWINDOW and
+    // reshaping the frame here (instead of WS_POPUP) preserves the native
+    // resize grips, minimize/maximize animations, Aero Snap, and the DWM
+    // shadow.
+    case WM_NCCALCSIZE: {
+      if (!wparam) {
+        break;
+      }
+      auto* params = reinterpret_cast<NCCALCSIZE_PARAMS*>(lparam);
+      const LONG original_top = params->rgrc[0].top;
+      // Let the default frame compute its insets, then restore the top so
+      // the caption disappears while the side/bottom resize borders (which
+      // live in the invisible band OUTSIDE the visible edge) stay intact.
+      const LRESULT def_result =
+          DefWindowProc(hwnd, WM_NCCALCSIZE, wparam, lparam);
+      if (def_result != 0) {
+        return def_result;
+      }
+      params->rgrc[0].top = original_top;
+      // A maximized window hangs past the monitor edge by the frame width;
+      // without re-adding that inset at the top, the header's top band would
+      // sit offscreen.
+      if (IsZoomed(hwnd)) {
+        params->rgrc[0].top += TopResizeBandThickness(hwnd);
+        // Leave one pixel for a top-docked auto-hide taskbar, or hovering
+        // the top edge could never summon it while we're maximized (the
+        // same shave Windows Terminal and Chromium apply).
+        MONITORINFO monitor_info = {sizeof(MONITORINFO)};
+        if (GetMonitorInfo(MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST),
+                           &monitor_info)) {
+          APPBARDATA autohide = {sizeof(APPBARDATA)};
+          autohide.uEdge = ABE_TOP;
+          autohide.rc = monitor_info.rcMonitor;
+          if (SHAppBarMessage(ABM_GETAUTOHIDEBAREX, &autohide)) {
+            params->rgrc[0].top += 1;
+          }
+        }
+      }
+      return 0;
+    }
+
+    case WM_NCHITTEST: {
+      // With the caption removed, the client area reaches the window top,
+      // so the default proc reports HTCLIENT there. Points in the top band
+      // only arrive here after the Flutter child returns HTTRANSPARENT for
+      // them (ChildHitTestProc) — translate them to the resize grips the
+      // standard frame would have offered.
+      const LRESULT hit = DefWindowProc(hwnd, WM_NCHITTEST, wparam, lparam);
+      if (hit == HTCLIENT) {
+        const POINT point = {GET_X_LPARAM(lparam), GET_Y_LPARAM(lparam)};
+        if (InTopResizeBand(hwnd, point)) {
+          RECT window_rect;
+          GetWindowRect(hwnd, &window_rect);
+          const int band = TopResizeBandThickness(hwnd);
+          if (point.x < window_rect.left + 2 * band) {
+            return HTTOPLEFT;
+          }
+          if (point.x >= window_rect.right - 2 * band) {
+            return HTTOPRIGHT;
+          }
+          return HTTOP;
+        }
+      }
+      return hit;
+    }
+
+    case WM_GETMINMAXINFO: {
+      if (min_content_width_ > 0 && min_content_height_ > 0) {
+        UINT dpi = GetDpiForWindow(hwnd);
+        double scale_factor = dpi / 96.0;
+        // ptMinTrackSize constrains the OUTER rect; the floor is a CLIENT
+        // size, so add the frame's outsets (the invisible side/bottom
+        // resize borders the custom WM_NCCALCSIZE keeps) or the client
+        // could be dragged below the layouts.md minimum.
+        const SIZE frame = FrameOutsets(hwnd);
+        auto* info = reinterpret_cast<MINMAXINFO*>(lparam);
+        info->ptMinTrackSize.x =
+            Scale(static_cast<int>(min_content_width_), scale_factor) + frame.cx;
+        info->ptMinTrackSize.y =
+            Scale(static_cast<int>(min_content_height_), scale_factor) + frame.cy;
+        return 0;
+      }
+      break;
+    }
+
     case WM_DESTROY:
       window_handle_ = nullptr;
       Destroy();
@@ -241,12 +380,69 @@ Win32Window* Win32Window::GetThisFromHandle(HWND const window) noexcept {
 void Win32Window::SetChildContent(HWND content) {
   child_content_ = content;
   SetParent(content, window_handle_);
+  // The child covers the entire client area, which in the chromeless window
+  // includes the top resize band; without this subclass every hit-test up
+  // there would stop at the child and the top edge couldn't be resized.
+  SetWindowSubclass(content, ChildHitTestProc, kChildHitTestSubclassId,
+                    reinterpret_cast<DWORD_PTR>(this));
   RECT frame = GetClientArea();
 
   MoveWindow(content, frame.left, frame.top, frame.right - frame.left,
              frame.bottom - frame.top, true);
 
   SetFocus(child_content_);
+}
+
+// static
+LRESULT CALLBACK Win32Window::ChildHitTestProc(HWND hwnd,
+                                               UINT message,
+                                               WPARAM wparam,
+                                               LPARAM lparam,
+                                               UINT_PTR /* subclass_id */,
+                                               DWORD_PTR ref_data) {
+  if (message == WM_NCHITTEST) {
+    auto* that = reinterpret_cast<Win32Window*>(ref_data);
+    HWND top_level = that->window_handle_;
+    const POINT point = {GET_X_LPARAM(lparam), GET_Y_LPARAM(lparam)};
+    if (top_level && InTopResizeBand(top_level, point)) {
+      // Fall through to the top-level window, whose WM_NCHITTEST turns
+      // this band into the top resize grips.
+      return HTTRANSPARENT;
+    }
+  }
+  return DefSubclassProc(hwnd, message, wparam, lparam);
+}
+
+void Win32Window::SetMinimumContentSize(double width, double height) {
+  min_content_width_ = width;
+  min_content_height_ = height;
+  // Never resize a maximized window in place — that leaves WS_MAXIMIZE set
+  // on bounds that no longer match (stale restore rect, wrong caption
+  // glyph). The floor re-applies through WM_GETMINMAXINFO on the next
+  // user-driven track anyway.
+  if (IsZoomed(window_handle_)) {
+    return;
+  }
+  // WM_GETMINMAXINFO only constrains FUTURE resizes; a floor that grew must
+  // also lift the current window (same reasoning as the macOS runner's
+  // setMinimumSize handler).
+  RECT client = GetClientArea();
+  UINT dpi = GetDpiForWindow(window_handle_);
+  double scale_factor = dpi / 96.0;
+  LONG min_w = Scale(static_cast<int>(width), scale_factor);
+  LONG min_h = Scale(static_cast<int>(height), scale_factor);
+  LONG current_w = client.right - client.left;
+  LONG current_h = client.bottom - client.top;
+  if (current_w < min_w || current_h < min_h) {
+    RECT window_rect;
+    GetWindowRect(window_handle_, &window_rect);
+    LONG frame_w = (window_rect.right - window_rect.left) - current_w;
+    LONG frame_h = (window_rect.bottom - window_rect.top) - current_h;
+    SetWindowPos(window_handle_, nullptr, 0, 0,
+                 (current_w < min_w ? min_w : current_w) + frame_w,
+                 (current_h < min_h ? min_h : current_h) + frame_h,
+                 SWP_NOMOVE | SWP_NOZORDER | SWP_NOACTIVATE);
+  }
 }
 
 RECT Win32Window::GetClientArea() {

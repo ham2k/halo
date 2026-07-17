@@ -170,7 +170,7 @@ class _SettingsViewState extends State<SettingsView> {
         onPreferredPrimaryWidthChanged: (width) => settings.setLayoutDimension(LayoutKeys.settingsLeftColumn, width),
         primary: Scaffold(
           appBar: AppBar(
-            flexibleSpace: macOSHeaderDoubleClickArea(),
+            flexibleSpace: windowHeaderGestureArea(),
             leadingWidth: macOSAwareLeadingWidth(context),
             leading: macOSAwareBackButton(context),
             title: const Text('Settings'),
@@ -185,12 +185,13 @@ class _SettingsViewState extends State<SettingsView> {
           final safeLeft = PaneSafeArea.leftOf(context);
           return Scaffold(
             appBar: AppBar(
-              flexibleSpace: macOSHeaderDoubleClickArea(),
+              flexibleSpace: windowHeaderGestureArea(),
               // Default title inset (16) plus the clearance, so the title
               // lines up with the padded content below.
               titleSpacing: 16 + safeLeft,
               title: Text(effectivePanel.title),
               automaticallyImplyLeading: false,
+              actions: [windowsCaptionSpacer(context)],
             ),
             body: Padding(
               padding: EdgeInsets.only(left: safeLeft),
@@ -202,10 +203,11 @@ class _SettingsViewState extends State<SettingsView> {
     } else {
       return Scaffold(
         appBar: AppBar(
-          flexibleSpace: macOSHeaderDoubleClickArea(),
+          flexibleSpace: windowHeaderGestureArea(),
           leadingWidth: macOSAwareLeadingWidth(context),
           leading: macOSAwareBackButton(context),
           title: const Text('Settings'),
+          actions: [windowsCaptionSpacer(context)],
         ),
         body: _buildSidebar(context, isWide: false, panels: panels, selectedKey: effectivePanel.key),
       );
@@ -272,10 +274,11 @@ class _SettingsPanelScreen extends StatelessWidget {
 
     return Scaffold(
       appBar: AppBar(
-        flexibleSpace: macOSHeaderDoubleClickArea(),
+        flexibleSpace: windowHeaderGestureArea(),
         leadingWidth: macOSAwareLeadingWidth(context),
         leading: macOSAwareBackButton(context),
         title: Text(panel.title),
+        actions: [windowsCaptionSpacer(context)],
       ),
       body: _buildPanelContent(panel, services),
     );
@@ -1244,8 +1247,9 @@ class _AccountPaneState extends State<_AccountPane> {
         MaterialPageRoute(
           builder: (context) => Scaffold(
             appBar: AppBar(
-              flexibleSpace: macOSHeaderDoubleClickArea(),
+              flexibleSpace: windowHeaderGestureArea(),
               title: Text('Connect to ${widget.account['label']}'),
+              actions: [windowsCaptionSpacer(context)],
               leadingWidth: macOSAwareLeadingWidth(context),
               leading: isMacOSChromelessWindow
                   ? Padding(

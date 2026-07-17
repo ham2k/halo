@@ -98,8 +98,10 @@ webview) are scaled as bitmaps, so they can soften at large scale. If a raster
 asset needs to stay razor-sharp, ship it as SVG or at higher resolution — do
 **not** try to counter-scale it.
 
-**6. Any new top-level AppBar on macOS needs traffic-light clearance.** See the
-next section — this is the one place scaling interacts with native chrome.
+**6. Any new top-level AppBar needs window-chrome clearance.** macOS reserves
+LEADING space for the native traffic lights; Windows reserves TRAILING space
+for the Flutter-drawn caption buttons. See the next section — this is the one
+place scaling interacts with window chrome.
 
 ---
 
@@ -129,14 +131,16 @@ Two consequences:
   clears the buttons at *every* scale. A raw constant would scale with the UI
   and overlap the buttons at small scales.
 
-**Whenever you add an AppBar that can be a top-level route on macOS, reserve
-the clearance:**
+**Whenever you add an AppBar that can be a top-level route, reserve the
+clearance on BOTH edges:**
 
 ```dart
 AppBar(
+  flexibleSpace: windowHeaderGestureArea(),        // drag / double-click chrome
   leadingWidth: macOSAwareLeadingWidth(context),   // null off macOS
   leading: macOSAwareBackButton(context),          // plain BackButton off macOS
   title: Text(...),
+  actions: [..., windowsCaptionSpacer(context)],   // zero-width off Windows
 )
 ```
 
@@ -145,6 +149,15 @@ For a non-back leading widget (e.g. a `CloseButton`), pad it with
 missing reservation shows up as the back arrow / logo sitting *under* the
 traffic lights — most visible at large font scales, where the layout reflows to
 narrow and previously-unreached pushed AppBars appear.
+
+**Windows scales the OTHER way — deliberately.** The Windows build is also
+chromeless (`windows/runner/win32_window.cpp`), but its caption buttons are
+**Flutter-drawn** (`WindowsCaptionButtons`, overlaid at the app root), not
+native controls — so unlike the traffic lights they simply scale with the UI
+like any other widget, and `windowsCaptionClearance` is a plain logical
+constant with **no** `/ UiScale` division. Don't "fix" either side to match
+the other: physical-size math is only for clearing controls Flutter doesn't
+draw.
 
 ---
 
@@ -155,10 +168,12 @@ narrow and previously-unreached pushed AppBars appear.
 | The scaling widget | `packages/halo_widgets/lib/src/ui_scale.dart` |
 | Applied once at the root | `app/lib/main.dart` (`MaterialApp.builder`) |
 | Font-scale factors | `app/lib/services/settings_service.dart` (`enum FontScale`) |
-| macOS traffic-light clearance helpers | `packages/halo_widgets/lib/src/platform_chrome.dart` |
-| macOS header-height bridge (Dart) | `app/lib/services/window_chrome_service.dart` |
+| Window-chrome clearance helpers, caption buttons, header gestures | `packages/halo_widgets/lib/src/platform_chrome.dart` |
+| Window-chrome bridge (Dart, both platforms) | `app/lib/services/window_chrome_service.dart` |
 | macOS header-height + button positioning (native) | `app/macos/Runner/MainFlutterWindow.swift` |
-| Tests | `app/test/font_scale_test.dart` |
+| Windows custom frame + resize/min-size handling (native) | `app/windows/runner/win32_window.cpp` |
+| Windows window-chrome channel (native) | `app/windows/runner/flutter_window.cpp` |
+| Tests | `app/test/font_scale_test.dart`, `packages/halo_widgets/test/platform_chrome_test.dart` |
 
 ## How to verify a change
 

@@ -3,7 +3,7 @@
 //
 // The chromeless macOS window (MainFlutterWindow.swift) has no native title
 // bar, so double-click-to-zoom would be lost entirely unless the app's own
-// header provides it — macOSHeaderDoubleClickArea is that replacement. These
+// header provides it — windowHeaderGestureArea is that replacement. These
 // tests pin the two halves of its contract: the empty header background
 // reports double-clicks over the window-chrome channel, and header buttons
 // still win hit-testing (a double-click on a button must act on the button,
@@ -21,7 +21,7 @@ void main() {
   Widget host({VoidCallback? onSettingsPressed}) => MaterialApp(
         home: Scaffold(
           appBar: AppBar(
-            flexibleSpace: macOSHeaderDoubleClickArea(),
+            flexibleSpace: windowHeaderGestureArea(),
             title: const Text('Title'),
             actions: [
               IconButton(icon: const Icon(Icons.settings), onPressed: onSettingsPressed ?? () {}),
@@ -111,12 +111,73 @@ void main() {
     }
   });
 
-  testWidgets('off macOS the helper contributes no flexibleSpace', (tester) async {
+  testWidgets('off macOS and Windows the helper contributes no flexibleSpace', (tester) async {
     debugDefaultTargetPlatformOverride = TargetPlatform.android;
     try {
-      expect(macOSHeaderDoubleClickArea(), isNull);
+      expect(windowHeaderGestureArea(), isNull);
     } finally {
       debugDefaultTargetPlatformOverride = null;
+    }
+  });
+
+  testWidgets('on Windows, dragging the empty header background starts a window drag', (tester) async {
+    // The chromeless Windows window has no caption at all, so the header
+    // drag is the ONLY way to move the window.
+    debugDefaultTargetPlatformOverride = TargetPlatform.windows;
+    try {
+      final calls = <MethodCall>[];
+      tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(channel, (call) async {
+        calls.add(call);
+        return null;
+      });
+
+      await tester.pumpWidget(host());
+
+      final appBar = tester.getRect(find.byType(AppBar));
+      final titleRight = tester.getTopRight(find.text('Title')).dx;
+      final actionLeft = tester.getTopLeft(find.byIcon(Icons.settings)).dx;
+      final empty = Offset((titleRight + actionLeft) / 2, appBar.center.dy);
+
+      await tester.dragFrom(empty, const Offset(40, 0));
+      // Flush the sibling double-tap recognizer's timeout.
+      await tester.pump(const Duration(milliseconds: 400));
+
+      expect(calls.map((c) => c.method), ['startWindowDrag']);
+    } finally {
+      debugDefaultTargetPlatformOverride = null;
+      tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(channel, null);
+    }
+  });
+
+  testWidgets('Windows caption buttons drive the window over the channel', (tester) async {
+    debugDefaultTargetPlatformOverride = TargetPlatform.windows;
+    try {
+      final calls = <MethodCall>[];
+      tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(channel, (call) async {
+        calls.add(call);
+        return null;
+      });
+
+      await tester.pumpWidget(const MaterialApp(
+        home: Scaffold(body: Align(alignment: Alignment.topRight, child: WindowsCaptionButtons())),
+      ));
+
+      await tester.tap(find.byIcon(MdiIcons.windowMinimize));
+      await tester.tap(find.byIcon(MdiIcons.windowMaximize));
+      await tester.tap(find.byIcon(MdiIcons.windowClose));
+
+      expect(calls.map((c) => c.method), ['minimizeWindow', 'toggleMaximizeWindow', 'closeWindow']);
+
+      // The native side pushes the maximize state; the middle button's glyph
+      // must follow it so it reads restore-vs-maximize truthfully.
+      windowsWindowIsMaximized.value = true;
+      await tester.pump();
+      expect(find.byIcon(MdiIcons.windowRestore), findsOneWidget);
+      expect(find.byIcon(MdiIcons.windowMaximize), findsNothing);
+    } finally {
+      windowsWindowIsMaximized.value = false;
+      debugDefaultTargetPlatformOverride = null;
+      tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(channel, null);
     }
   });
 }

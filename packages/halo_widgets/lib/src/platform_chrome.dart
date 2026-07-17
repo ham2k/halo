@@ -13,10 +13,20 @@ import 'package:flutter/foundation.dart' show TargetPlatform, defaultTargetPlatf
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import 'mdi_icons.dart';
 import 'ui_scale.dart';
 
 bool get isMacOSChromelessWindow =>
     !kIsWeb && defaultTargetPlatform == TargetPlatform.macOS;
+
+/// On Windows the runner strips the native title bar and frame the same way
+/// (custom-frame WM_NCCALCSIZE in win32_window.cpp), but unlike macOS there
+/// are no native buttons left at all — the caption controls are Flutter-drawn
+/// ([WindowsCaptionButtons], overlaid at the app root) and sit at the top
+/// RIGHT, so headers reserve trailing clearance ([windowsCaptionClearance])
+/// instead of leading.
+bool get isWindowsChromelessWindow =>
+    !kIsWeb && defaultTargetPlatform == TargetPlatform.windows;
 
 /// Horizontal space to reserve for the traffic-light buttons when
 /// [isMacOSChromelessWindow]. A PHYSICAL measurement: the native buttons are
@@ -121,17 +131,164 @@ Widget macOSAwareBackButton(BuildContext context, {VoidCallback? onPressed}) => 
 const _windowChromeChannel = MethodChannel('ham2k/window_chrome');
 
 /// `AppBar.flexibleSpace` for headers that sit at the top of the window:
-/// double-clicking the header's empty background performs the native
-/// title-bar double-click action (zoom, or minimize/nothing per the user's
-/// System Settings choice — resolved in MainFlutterWindow.swift), since the
-/// chromeless window has no real title bar to provide it. flexibleSpace
-/// renders BEHIND the toolbar row in the AppBar's stack, so buttons and
-/// title keep winning hit-testing and only clicks on empty background land
-/// here. Null when not [isMacOSChromelessWindow].
-Widget? macOSHeaderDoubleClickArea() => isMacOSChromelessWindow
-    ? GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onDoubleTap: () => _windowChromeChannel.invokeMethod('performHeaderDoubleClickAction'),
-        child: const SizedBox.expand(),
-      )
-    : null;
+/// the chromeless window has no real title bar, so the header's empty
+/// background stands in for it. Double-clicking performs the native
+/// title-bar double-click action (macOS: zoom, or minimize/nothing per the
+/// user's System Settings choice, resolved in MainFlutterWindow.swift;
+/// Windows: maximize/restore). On Windows a drag also moves the window —
+/// without a caption there is no other way to move it (macOS keeps the
+/// system's invisible drag strip at the very top, so it needs no Flutter
+/// drag). flexibleSpace renders BEHIND the toolbar row in the AppBar's
+/// stack, so buttons and title keep winning hit-testing and only gestures
+/// on empty background land here. Null on all other platforms.
+Widget? windowHeaderGestureArea() {
+  if (!isMacOSChromelessWindow && !isWindowsChromelessWindow) return null;
+  return GestureDetector(
+    behavior: HitTestBehavior.opaque,
+    onDoubleTap: () => _windowChromeChannel.invokeMethod('performHeaderDoubleClickAction'),
+    // The native side takes over the pointer (WM_NCLBUTTONDOWN enters the
+    // system move loop), so onPanStart is the whole gesture.
+    onPanStart: isWindowsChromelessWindow
+        ? (_) => _windowChromeChannel.invokeMethod('startWindowDrag')
+        : null,
+    // Right-clicking a real Windows title bar opens the window system menu
+    // (Restore/Move/Size/…); the native side shows it at the cursor.
+    onSecondaryTap: isWindowsChromelessWindow
+        ? () => _windowChromeChannel.invokeMethod('showSystemMenu')
+        : null,
+    child: const SizedBox.expand(),
+  );
+}
+
+/// True while the Windows window is maximized — pushed from the native
+/// runner (flutter_window.cpp) over the window-chrome channel and received
+/// by the app's WindowChromeService. Drives [WindowsCaptionButtons]'
+/// maximize/restore glyph; the buttons listen directly, so no scope is
+/// needed (nothing else lays out differently when maximized).
+final ValueNotifier<bool> windowsWindowIsMaximized = ValueNotifier<bool>(false);
+
+/// Width of one Flutter-drawn caption button ([WindowsCaptionButtons]) —
+/// the native Windows caption metric, in logical pixels (scales with the
+/// UI like the rest of the header, unlike the fixed-physical macOS traffic
+/// lights, which are native controls we can't scale).
+const double windowsCaptionButtonWidth = 46;
+
+/// Trailing space a window-top AppBar's `actions` must reserve so they
+/// don't sit under the caption-button overlay when
+/// [isWindowsChromelessWindow]; zero elsewhere, so it can be applied
+/// unconditionally as a trailing SizedBox.
+double windowsCaptionClearance(BuildContext context) =>
+    isWindowsChromelessWindow ? 3 * windowsCaptionButtonWidth + 8 : 0;
+
+/// The trailing spacer every window-top AppBar puts at the END of its
+/// `actions` (adding one if it has none): it keeps action buttons — and,
+/// by constraining the title's width, long titles — from rendering under
+/// the caption-button overlay. Collapses to zero width off Windows. The
+/// counterpart of the macOS side's leading clearance
+/// ([macOSAwareLeadingWidth]), just on the opposite edge.
+Widget windowsCaptionSpacer(BuildContext context) => SizedBox(width: windowsCaptionClearance(context));
+
+/// The minimize / maximize-restore / close buttons for the chromeless
+/// Windows window, overlaid at the app root's top-right corner (main.dart)
+/// so they float over every route's header — the same "window chrome above
+/// app content" role the native traffic lights play on macOS. Actions go
+/// over the window-chrome channel to the native runner.
+class WindowsCaptionButtons extends StatelessWidget {
+  const WindowsCaptionButtons({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final height = theme.appBarTheme.toolbarHeight ?? kToolbarHeight;
+    // Header foreground color, so the glyphs read on the AppBar background
+    // they float over.
+    final glyphColor = theme.appBarTheme.foregroundColor ??
+        (theme.brightness == Brightness.dark ? Colors.white : Colors.black);
+
+    return SizedBox(
+      height: height,
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          _CaptionButton(
+            semanticLabel: 'Minimize',
+            icon: MdiIcons.windowMinimize,
+            glyphColor: glyphColor,
+            onPressed: () => _windowChromeChannel.invokeMethod('minimizeWindow'),
+          ),
+          ValueListenableBuilder<bool>(
+            valueListenable: windowsWindowIsMaximized,
+            builder: (context, isMaximized, _) => _CaptionButton(
+              semanticLabel: isMaximized ? 'Restore' : 'Maximize',
+              icon: isMaximized ? MdiIcons.windowRestore : MdiIcons.windowMaximize,
+              glyphColor: glyphColor,
+              onPressed: () => _windowChromeChannel.invokeMethod('toggleMaximizeWindow'),
+            ),
+          ),
+          _CaptionButton(
+            semanticLabel: 'Close',
+            icon: MdiIcons.windowClose,
+            glyphColor: glyphColor,
+            // Windows convention: close lights up red on hover.
+            hoverColor: const Color(0xFFC42B1C),
+            hoverGlyphColor: Colors.white,
+            onPressed: () => _windowChromeChannel.invokeMethod('closeWindow'),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _CaptionButton extends StatefulWidget {
+  final String semanticLabel;
+  final IconData icon;
+  final Color glyphColor;
+  final Color? hoverColor;
+  final Color? hoverGlyphColor;
+  final VoidCallback onPressed;
+
+  const _CaptionButton({
+    required this.semanticLabel,
+    required this.icon,
+    required this.glyphColor,
+    required this.onPressed,
+    this.hoverColor,
+    this.hoverGlyphColor,
+  });
+
+  @override
+  State<_CaptionButton> createState() => _CaptionButtonState();
+}
+
+class _CaptionButtonState extends State<_CaptionButton> {
+  bool _hovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final hoverColor = widget.hoverColor ?? widget.glyphColor.withValues(alpha: 0.12);
+    return Semantics(
+      button: true,
+      label: widget.semanticLabel,
+      child: MouseRegion(
+        onEnter: (_) => setState(() => _hovered = true),
+        onExit: (_) => setState(() => _hovered = false),
+        child: GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: widget.onPressed,
+          child: Container(
+            width: windowsCaptionButtonWidth,
+            height: double.infinity,
+            color: _hovered ? hoverColor : Colors.transparent,
+            alignment: Alignment.center,
+            child: Icon(
+              widget.icon,
+              size: 16,
+              color: _hovered ? (widget.hoverGlyphColor ?? widget.glyphColor) : widget.glyphColor,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}

@@ -197,7 +197,7 @@ class _HomeViewState extends State<HomeView> {
     final theme = Theme.of(context);
     return Scaffold(
       appBar: AppBar(
-        flexibleSpace: macOSHeaderDoubleClickArea(),
+        flexibleSpace: windowHeaderGestureArea(),
         leadingWidth: isMacOSChromelessWindow ? 48 + macOSTrafficLightClearance(context) : null,
         leading: Padding(
           padding: EdgeInsets.fromLTRB(
@@ -222,6 +222,7 @@ class _HomeViewState extends State<HomeView> {
             mouseCursor: SystemMouseCursors.click,
           ),
           const SizedBox(width: 8),
+          windowsCaptionSpacer(context),
         ],
       ),
       // Two-pane on L+ (docs/design/layouts.md): the list column keeps the

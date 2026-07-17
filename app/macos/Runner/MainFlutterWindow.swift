@@ -67,7 +67,7 @@ class MainFlutterWindow: NSWindow {
         result(nil)
       } else if call.method == "performHeaderDoubleClickAction" {
         // Flutter reports double-clicks on the header's empty background
-        // (platform_chrome.dart's macOSHeaderDoubleClickArea) — the
+        // (platform_chrome.dart's windowHeaderGestureArea) — the
         // chromeless window has no real title bar, so we apply the same
         // System Settings choice ("Double-click a window's title bar to…")
         // a native title bar would honor. Default when unset is zoom.
