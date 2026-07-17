@@ -541,6 +541,15 @@ class _OperationViewState extends State<OperationView> with SingleTickerProvider
                     ),
                     child: Text(context.t.operation.menu.showQsoNumbers),
                   ),
+                  const PopupMenuDivider(),
+                  PopupMenuItem<VoidCallback>(
+                    // Refreshes lookup data (QRZ, HamDB…) for the whole log
+                    // via the background queue — progress shows in the
+                    // status bar, and rows repaint as results land. The
+                    // queue itself filters out event markers etc.
+                    value: () => widget.services.lookupQueue.enqueueAll(qsos),
+                    child: Text(context.t.operation.menu.lookupAllQsos),
+                  ),
                 ],
               ),
               const SizedBox(width: 8),

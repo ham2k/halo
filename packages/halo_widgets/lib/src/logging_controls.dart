@@ -144,6 +144,18 @@ class LoggingControls extends StatefulWidget {
   /// Optional lookup enrichment; fired debounced, off the keystroke path.
   final CallLookup? lookup;
 
+  /// Hands a just-saved QSO to the caller's background lookup queue, so
+  /// online enrichment happens after the record is on screen instead of
+  /// delaying the save (no network ⇒ no stall). Fired for every newly ADDED
+  /// QSO — single calls, comma-list entries, stacked ("//") calls, and
+  /// command actions (e.g. SEED) — but never for the record being edited
+  /// (its stored data is deliberately left alone). The queue itself skips
+  /// QSOs that already carry online lookup data (e.g. a single call whose
+  /// debounced preview resolved before Enter), so handing over everything
+  /// is safe and lets a fast Enter that beat the preview still get
+  /// enriched.
+  final void Function(Qso qso)? enqueueLookup;
+
   /// Declarative activity control descriptors from extensions (UI catalog).
   /// v0 supports `input.kind == 'refList'`; each becomes a chip in the
   /// secondary control row alongside the built-in Time and Radio controls.
@@ -303,6 +315,7 @@ class LoggingControls extends StatefulWidget {
     this.onLogged,
     this.onCallListLogged,
     this.lookup,
+    this.enqueueLookup,
     this.activityControls = const [],
     this.refreshActivityControls,
     this.decorateRef,
@@ -1805,6 +1818,10 @@ class _LoggingControlsState extends State<LoggingControls> {
         final params = (map['addQso'] as Map).cast<String, dynamic>();
         final qso = await widget.qsosRepository.add(widget.operation.uuid, params);
         widget.onLogged?.call(qso);
+        // Command-added QSOs (e.g. SEED's batch) carry at most the fast
+        // offline guess the extension attached itself — queue each for a
+        // full online lookup in the background.
+        widget.enqueueLookup?.call(qso);
       } else if (map.containsKey('updateSettings')) {
         final params = (map['updateSettings'] as Map).cast<String, dynamic>();
         if (widget.settings != null) {
@@ -2669,6 +2686,7 @@ class _LoggingControlsState extends State<LoggingControls> {
             _getCurrentQsoData(callOverride: stacked.call),
           );
           widget.onLogged?.call(qso);
+          widget.enqueueLookup?.call(qso);
 
           _wipe();
           _callController.text = stacked.remainder;
@@ -2699,34 +2717,22 @@ class _LoggingControlsState extends State<LoggingControls> {
       // The record being edited (index 0, when editing) survives untouched
       // even once more calls are added to its list — same as an ordinary
       // single-call edit, no fresh lookup, nothing suppressed. Every other,
-      // newly-added entry in a multi-call list gets its own fresh,
-      // independent lookup instead of inheriting whatever single
-      // guessed/looked-up name/grid was cached for a different call. A
-      // manually entered grid override is more often a station-wide
+      // newly-added entry in a multi-call list is saved bare and handed to
+      // `enqueueLookup` (below) for its own fresh, independent background
+      // lookup, instead of inheriting whatever single guessed/looked-up
+      // name/grid was cached for a different call — and instead of blocking
+      // the save on N sequential network lookups (a stall with no network).
+      // A manually entered grid override is more often a station-wide
       // correction, so it's fine for that to still apply to every new
       // entry — but a manually entered name is specific to whoever the
       // override was actually typed for, so it isn't duplicated onto a
       // different, newly-added call.
-      Future<Map<String, dynamic>> dataFor(String call, int index) async {
+      Map<String, dynamic> dataFor(String call, int index) {
         final keepOriginal = !isList || (editingQso != null && index == 0);
-        // Online only — this is about to be written to the record, not a
-        // UI preview, so there's no value in a separate fast offline pass.
-        final freshLookup = !keepOriginal && widget.lookup != null
-            ? await widget.lookup!(
-                call,
-                qso: {...baseData, 'their': {'call': call}},
-                operation: widget.operation.data,
-                online: true,
-              )
-            : null;
         return {
           ...baseData,
           'their': {
             if (keepOriginal) ...?(baseData['their'] as Map<String, dynamic>?),
-            // Nested, per the `AnnotatedCallInfo` TS convention — see the
-            // matching comment in `_getCurrentQsoData`.
-            if (freshLookup != null) 'guess': freshLookup['guess'],
-            if (freshLookup != null) 'lookups': freshLookup['lookups'],
             'call': call,
             'sent': _rcvdController.text.trim(),
             if (keepOriginal && _theirNameOverride != null) 'name': _theirNameOverride,
@@ -2744,17 +2750,17 @@ class _LoggingControlsState extends State<LoggingControls> {
           Qso(
             uuid: editingQso.uuid,
             operationUuid: widget.operation.uuid,
-            data: await dataFor(calls.first, 0),
+            data: dataFor(calls.first, 0),
           ),
         );
         for (var i = 1; i < calls.length; i++) {
           // The base data carries the edited QSO's own uuid (baseData came
           // from its record) — strip it so add() generates a fresh one for
           // this new QSO instead of colliding with the original.
-          final data = await dataFor(calls[i], i)
-            ..remove('uuid');
+          final data = dataFor(calls[i], i)..remove('uuid');
           final qso = await widget.qsosRepository.add(widget.operation.uuid, data);
           widget.onLogged?.call(qso);
+          widget.enqueueLookup?.call(qso);
         }
         widget.onEditCanceled?.call();
       } else {
@@ -2767,8 +2773,9 @@ class _LoggingControlsState extends State<LoggingControls> {
           _pushVfoToRadioService();
         }
         for (var i = 0; i < calls.length; i++) {
-          final qso = await widget.qsosRepository.add(widget.operation.uuid, await dataFor(calls[i], i));
+          final qso = await widget.qsosRepository.add(widget.operation.uuid, dataFor(calls[i], i));
           widget.onLogged?.call(qso);
+          widget.enqueueLookup?.call(qso);
         }
         _wipe();
       }

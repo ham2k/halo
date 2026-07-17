@@ -674,6 +674,9 @@ class Translations$operation$menu$en {
 
 	/// en: 'Show QSO Numbers'
 	String get showQsoNumbers => 'Show QSO Numbers';
+
+	/// en: 'Lookup all QSOs'
+	String get lookupAllQsos => 'Lookup all QSOs';
 }
 
 // Path: operation.export
@@ -1218,6 +1221,7 @@ extension on Translations {
 			'operation.menu.showGridField' => 'Show Grid field',
 			'operation.menu.showDeletedQsos' => 'Show deleted QSOs',
 			'operation.menu.showQsoNumbers' => 'Show QSO Numbers',
+			'operation.menu.lookupAllQsos' => 'Lookup all QSOs',
 			'operation.export.title' => 'Export',
 			'operation.export.syncedOperation' => 'Operation is synced',
 			'operation.export.unsyncedOperation' => 'Operation has unsynced changes',

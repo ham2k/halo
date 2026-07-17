@@ -155,6 +155,7 @@ class _LoggingPanelState extends State<LoggingPanel> {
           enabledModes: _enabledModes,
           radioService: widget.services.radio,
           lookup: widget.services.extensions.lookupCall,
+          enqueueLookup: widget.services.lookupQueue.enqueue,
           activityControls: widget.loggingControls,
           refreshActivityControls: (qso) => widget.services.extensions
               .loggingControls(widget.operation.data, qso: qso),

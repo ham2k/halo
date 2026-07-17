@@ -368,6 +368,7 @@ class _Translations$operation$menu$es extends Translations$operation$menu$en {
 	@override String get showGridField => 'Mostrar campo Locador';
 	@override String get showDeletedQsos => 'Mostrar QSOs eliminados';
 	@override String get showQsoNumbers => 'Mostrar números de QSO';
+	@override String get lookupAllQsos => 'Buscar datos de todos los QSOs';
 }
 
 // Path: operation.export
@@ -721,6 +722,7 @@ extension on TranslationsEs {
 			'operation.menu.showGridField' => 'Mostrar campo Locador',
 			'operation.menu.showDeletedQsos' => 'Mostrar QSOs eliminados',
 			'operation.menu.showQsoNumbers' => 'Mostrar números de QSO',
+			'operation.menu.lookupAllQsos' => 'Buscar datos de todos los QSOs',
 			'operation.export.title' => 'Exportar',
 			'operation.export.syncedOperation' => 'La operación está sincronizada',
 			'operation.export.unsyncedOperation' => 'La operación tiene cambios sin sincronizar',

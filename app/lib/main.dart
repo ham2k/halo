@@ -27,6 +27,7 @@ import 'config/version.dart';
 import 'services/export_service.dart';
 import 'services/extension_service.dart';
 import 'services/location_service.dart';
+import 'services/lookup_queue_service.dart';
 import 'services/metrics_service.dart';
 import 'services/purchase_service.dart';
 import 'services/radio_service.dart';
@@ -261,6 +262,13 @@ class HaLoServices {
     statusBar: statusBar,
   );
   late final StatusBarService statusBar = StatusBarService(settings.prefs);
+  late final LookupQueueService lookupQueue = LookupQueueService(
+    lookup: extensions.lookupCall,
+    qsos: qsos,
+    operations: operations,
+    statusBar: statusBar,
+    lookupReady: () => extensions.ready,
+  );
 
   /// Named option vocabularies for `options: "$name"` settings
   /// declarations (see settings/system_lists.dart).

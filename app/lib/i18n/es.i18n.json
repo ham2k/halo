@@ -73,7 +73,8 @@
       "showStateField": "Mostrar campo Estado/Provincia",
       "showGridField": "Mostrar campo Locador",
       "showDeletedQsos": "Mostrar QSOs eliminados",
-      "showQsoNumbers": "Mostrar números de QSO"
+      "showQsoNumbers": "Mostrar números de QSO",
+      "lookupAllQsos": "Buscar datos de todos los QSOs"
     },
     "export": {
       "title": "Exportar",

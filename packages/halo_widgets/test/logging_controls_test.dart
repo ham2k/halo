@@ -47,6 +47,7 @@ void main() {
     bool showGridField = false,
     List<String>? enabledBands,
     List<String>? enabledModes,
+    void Function(Qso qso)? enqueueLookup,
   }) {
     return MaterialApp(
       home: Scaffold(
@@ -54,6 +55,7 @@ void main() {
           operation: operation,
           qsosRepository: qsos,
           qsos: existing,
+          enqueueLookup: enqueueLookup,
           interpretCommand: interpretCommand,
           onCommandMessageChanged: onCommandMessageChanged,
           onCommandAction: onCommandAction,
@@ -429,55 +431,65 @@ void main() {
     expect(find.textContaining('ARRL HQ'), findsOneWidget);
   });
 
-  testWidgets('logging a comma-separated call list fetches a fresh, independent lookup per call rather than duplicating one cached result', (tester) async {
+  testWidgets('logging a comma-separated call list saves immediately without inline lookups; each entry is enqueued for background lookup', (tester) async {
+    // Saving a call list must never block on N network lookups (a stall
+    // with no connectivity): the QSOs land bare and each is handed to the
+    // caller's background queue, which enriches them after the fact.
+    final lookedUp = <String>[];
     Future<Map<String, dynamic>?> lookup(
       String call, {
       required Map<String, dynamic> qso,
       required Map<String, dynamic> operation,
       required bool online,
     }) async {
-      if (call == 'W1AW') return {'guess': {'name': 'ARRL HQ', 'grid': 'FN31pr'}};
-      if (call == 'K1ABC') return {'guess': {'name': 'Someone Else', 'grid': 'FN42aa'}};
-      return null;
+      lookedUp.add(call);
+      return {'guess': {'name': 'Should Not Be Saved Inline'}};
     }
 
+    final enqueued = <Qso>[];
     await tester.pumpWidget(MaterialApp(
-      home: Scaffold(body: LoggingControls(operation: operation, qsosRepository: qsos, lookup: lookup)),
+      home: Scaffold(
+        body: LoggingControls(
+          operation: operation,
+          qsosRepository: qsos,
+          lookup: lookup,
+          enqueueLookup: enqueued.add,
+        ),
+      ),
     ));
 
     await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'W1AW, K1ABC');
-    await tester.pump(const Duration(milliseconds: 400)); // let the on-screen preview lookup settle first
+    // Enter before the 300ms preview debounce fires — the save must not
+    // depend on any lookup having started, let alone completed.
     await tester.sendKeyEvent(LogicalKeyboardKey.enter);
 
     final logged = await waitForQsos(tester, 2);
-    final w1aw = logged.firstWhere((q) => q.theirCall == 'W1AW');
-    final k1abc = logged.firstWhere((q) => q.theirCall == 'K1ABC');
-    expect(w1aw.theirName, 'ARRL HQ');
-    expect(w1aw.theirGrid, 'FN31pr');
-    expect(k1abc.theirName, 'Someone Else');
-    expect(k1abc.theirGrid, 'FN42aa');
+    expect(logged, hasLength(2));
+    // No lookup ran as part of the save, and nothing got attached inline...
+    expect(lookedUp, isEmpty);
+    expect(logged.every((q) => q.theirName == null), isTrue);
+    // ...instead every new QSO was queued for background enrichment, in
+    // logging order — a fresh, independent lookup per call, never one
+    // cached result duplicated across different calls.
+    expect(enqueued.map((q) => q.theirCall).toList(), ['W1AW', 'K1ABC']);
+    expect(enqueued.map((q) => q.uuid).toSet(), logged.map((q) => q.uuid).toSet());
   });
 
-  testWidgets('editing a QSO into a comma-separated list: the original record survives untouched; only the newly added call gets a fresh lookup', (tester) async {
+  testWidgets('editing a QSO into a comma-separated list: the original record survives untouched; only the newly added call is enqueued for background lookup', (tester) async {
     final existingQso = (await tester.runAsync(() => qsos.add(operation.uuid, {
           'their': {'call': 'W1AW', 'name': 'Stale Cached Name', 'grid': 'FN31pr'},
           'startAtMillis': 1000000,
         })))!;
 
-    Future<Map<String, dynamic>?> lookup(
-      String call, {
-      required Map<String, dynamic> qso,
-      required Map<String, dynamic> operation,
-      required bool online,
-    }) async {
-      if (call == 'W1AW') return {'guess': {'name': 'ARRL HQ Fresh', 'grid': 'FN99xx'}};
-      if (call == 'K1ABC') return {'guess': {'name': 'Someone Else', 'grid': 'FN42aa'}};
-      return null;
-    }
-
+    final enqueued = <Qso>[];
     await tester.pumpWidget(MaterialApp(
       home: Scaffold(
-        body: LoggingControls(operation: operation, qsosRepository: qsos, editingQso: existingQso, lookup: lookup),
+        body: LoggingControls(
+          operation: operation,
+          qsosRepository: qsos,
+          editingQso: existingQso,
+          enqueueLookup: enqueued.add,
+        ),
       ),
     ));
 
@@ -488,13 +500,88 @@ void main() {
     final logged = await waitForQsos(tester, 2);
     final w1aw = logged.firstWhere((q) => q.theirCall == 'W1AW');
     final k1abc = logged.firstWhere((q) => q.theirCall == 'K1ABC');
-    // The record being edited is untouched — no fresh lookup, its own
-    // already-stored data survives exactly as before.
+    // The record being edited is untouched — not re-looked-up (inline or
+    // via the queue), its own already-stored data survives exactly as
+    // before: a background refresh would overwrite `guess` data the
+    // operator may already be relying on.
     expect(w1aw.theirName, 'Stale Cached Name');
     expect(w1aw.theirGrid, 'FN31pr');
-    // The newly added call gets its own independent, fresh lookup.
-    expect(k1abc.theirName, 'Someone Else');
-    expect(k1abc.theirGrid, 'FN42aa');
+    // The newly added call is saved bare and queued for its own
+    // independent background lookup, rather than inheriting anything
+    // cached for the original call.
+    expect(k1abc.theirName, isNull);
+    expect(enqueued.map((q) => q.uuid).toList(), [k1abc.uuid]);
+  });
+
+  testWidgets('a single-call log keeps its debounced preview result and is still handed to the background queue', (tester) async {
+    final enqueued = <Qso>[];
+    Future<Map<String, dynamic>?> lookup(
+      String call, {
+      required Map<String, dynamic> qso,
+      required Map<String, dynamic> operation,
+      required bool online,
+    }) async {
+      return {'guess': {'name': 'ARRL HQ'}};
+    }
+
+    await tester.pumpWidget(MaterialApp(
+      home: Scaffold(
+        body: LoggingControls(
+          operation: operation,
+          qsosRepository: qsos,
+          lookup: lookup,
+          enqueueLookup: enqueued.add,
+        ),
+      ),
+    ));
+
+    await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'W1AW');
+    await tester.pump(const Duration(milliseconds: 400)); // let the preview lookup settle
+    await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+
+    final logged = await waitForQsos(tester, 1);
+    // The cached preview result is written with the QSO...
+    expect(logged.single.theirName, 'ARRL HQ');
+    // ...and the saved record is still handed to the queue: the QUEUE
+    // decides whether more lookup work is needed (it skips records that
+    // already carry online data), so an Enter that beats the 300ms preview
+    // debounce — leaving the record bare — still gets enriched.
+    expect(enqueued.map((q) => q.uuid).toList(), [logged.single.uuid]);
+  });
+
+  testWidgets('command actions that add QSOs (e.g. SEED) enqueue each added QSO for background lookup', (tester) async {
+    // The extension side only attaches fast offline guesses when seeding
+    // (network lookups there would stall the whole command) — the full
+    // online enrichment is the queue's job, after the QSOs are on screen.
+    Future<Map<String, dynamic>?> interpret(
+      String input, [
+      Map<String, dynamic>? operation,
+      Map<String, dynamic>? qso,
+      bool execute = false,
+    ]) async {
+      if (input != 'SEED') return null;
+      return {
+        'describe': 'Add seed QSOs?',
+        'confirm': 'Added',
+        'commands': [
+          {'addQso': {'their': {'call': 'W1AW'}, 'startAtMillis': 1000000}},
+          {'addQso': {'their': {'call': 'K1ABC'}, 'startAtMillis': 2000000}},
+        ],
+      };
+    }
+
+    final enqueued = <Qso>[];
+    await tester.pumpWidget(host(interpretCommand: interpret, enqueueLookup: enqueued.add));
+
+    await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'SEED');
+    await tester.pump();
+    await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+    await tester.pump(const Duration(milliseconds: 200));
+
+    final logged = await waitForQsos(tester, 2);
+    expect(logged, hasLength(2));
+    expect(enqueued.map((q) => q.theirCall).toList(), ['W1AW', 'K1ABC']);
+    expect(enqueued.map((q) => q.uuid).toSet(), logged.map((q) => q.uuid).toSet());
   });
 
   testWidgets('a manually entered name override does not duplicate onto a newly added call, but a grid override does', (tester) async {
@@ -679,8 +766,16 @@ void main() {
       };
     }
 
+    final enqueued = <Qso>[];
     await tester.pumpWidget(MaterialApp(
-      home: Scaffold(body: LoggingControls(operation: operation, qsosRepository: qsos, lookup: lookup)),
+      home: Scaffold(
+        body: LoggingControls(
+          operation: operation,
+          qsosRepository: qsos,
+          lookup: lookup,
+          enqueueLookup: enqueued.add,
+        ),
+      ),
     ));
 
     // Cursor ends up at the end (last segment, "W1AW") after enterText.
@@ -693,6 +788,10 @@ void main() {
     expect(logged.single.theirCall, 'W1AW');
     expect(logged.single.theirName, 'ARRL HQ');
     expect(logged.single.theirGrid, 'FN31pr');
+    // The stacked save is handed to the background queue like any other new
+    // QSO — had Enter beaten the preview debounce, the queue would still
+    // enrich it (the queue skips records that already carry online data).
+    expect(enqueued.map((q) => q.uuid).toList(), [logged.single.uuid]);
   });
 
   testWidgets('Escape wipes the entry and offers the same undo as the wipe button', (tester) async {

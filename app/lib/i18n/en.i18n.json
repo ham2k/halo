@@ -73,7 +73,8 @@
       "showStateField": "Show State field",
       "showGridField": "Show Grid field",
       "showDeletedQsos": "Show deleted QSOs",
-      "showQsoNumbers": "Show QSO Numbers"
+      "showQsoNumbers": "Show QSO Numbers",
+      "lookupAllQsos": "Lookup all QSOs"
     },
     "export": {
       "title": "Export",

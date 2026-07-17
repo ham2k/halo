@@ -369,6 +369,11 @@ class QsosRepository {
     });
   }
 
+  Future<Qso?> get(String uuid) async {
+    final row = await (db.select(db.qsos)..where((q) => q.uuid.equals(uuid))).getSingleOrNull();
+    return row == null ? null : _qsoFromRow(row);
+  }
+
   Future<void> update(Qso qso) async {
     final stamped = _restamped(qso);
     await db.transaction(() async {
