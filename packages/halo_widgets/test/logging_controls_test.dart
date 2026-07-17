@@ -946,7 +946,7 @@ void main() {
   });
 
   testWidgets('call-field command declaring mixedCase keeps lowercase, even once the command is complete', (tester) async {
-    // Mirrors the real note-command extension: `mixedCase: true` on BOTH
+    // Mirrors the real annotation-commands NOTE: `mixedCase: true` on BOTH
     // the bare-prefix result and the complete result. The second half is
     // what keeps "NOTE Called Bob," + more typing from being snapped back
     // to uppercase after the debounced interpret() sees a complete command.
@@ -1167,7 +1167,7 @@ void main() {
       bool execute = false,
     ]) async {
       seenInputs.add(input);
-      // mixedCase, like the real note-command: without it the field's own
+      // mixedCase, like the real NOTE command: without it the field's own
       // uppercase formatter would destroy the lowercase before
       // interpretCommand could ever see it.
       if (input.trim().toUpperCase() == 'NOTE') return {'expectsParams': true, 'mixedCase': true};

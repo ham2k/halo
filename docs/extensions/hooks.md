@@ -308,8 +308,16 @@ a suffix letter; RSTs lean heavily toward 55/57/59; each generated QSO gets
 the lookup service's offline `their.guess` decoration. The placement rule
 needs the existing log: SEED reads it through `ctx.getQsos`, using the
 `uuid` the logging panel folds into the `operation` map it passes to
-`interpret`), `note-command` (NOTE <text> sets the
-in-progress QSO's notes field via `updateQso`), and `call-notes` (`//KEY`
+`interpret`), `annotation-commands` (ham2k/app-halo-dist#64, ported from
+app-polo's AnnotationCommands: NOTE/TODO `<text>`, SOLAR, and WEATHER each
+add an annotation row to the log — an event pseudo-QSO, `band: 'event'`,
+via `addQso`, rendered as a yellow row by the QSO list. SOLAR fetches
+hamqsl.com's solar indices and WEATHER fetches Open-Meteo conditions for
+the operation's grid square, both only when `execute` is set — never on
+the describe preview — storing the raw readings in the event's `data` and
+the emoji summary line in its `description`. This superseded the original
+`note-command` extension, whose NOTE wrote to the in-progress QSO's notes
+field instead of the timeline), and `call-notes` (`//KEY`
 expands a Callsign Notes entry whose note is a plain comma list of calls
 into the call field via `setCallField` — issue #17; leading "//" never
 parses as call stacking, whose first segment would be empty, so the two

@@ -2503,6 +2503,9 @@ class _LoggingControlsState extends State<LoggingControls> {
       // field is set — see CommandInterpretation) — surface the message,
       // keep the typed input for editing, and execute nothing.
       if (interpretation != null && interpretation['error'] is String) {
+        // A confirm-clear timer from a previous command would wipe this
+        // message moments after it appears — the error owns the slot now.
+        _executeMessageTimer?.cancel();
         setState(() {
           _commandMessage = interpretation!['error'] as String;
         });
@@ -2529,6 +2532,21 @@ class _LoggingControlsState extends State<LoggingControls> {
           );
           if (!mounted || _call != call) return; // stale — the call changed while awaiting
           if (executable == null) return;
+
+          // A command can also fail at execute time (e.g. SOLAR/WEATHER's
+          // network fetch, or the hook timing out entirely — see
+          // interpretCommand) — surface the message and keep the typed
+          // input, same treatment as the preview-time `error` branch above,
+          // including cancelling any pending confirm-clear timer that would
+          // otherwise wipe the error moments after it appears.
+          if (executable['error'] is String) {
+            _executeMessageTimer?.cancel();
+            setState(() {
+              _commandMessage = executable['error'] as String;
+            });
+            _notifyCommandMessage(_commandMessage);
+            return;
+          }
 
           _callController.clear();
           _currentInterpretation = null;

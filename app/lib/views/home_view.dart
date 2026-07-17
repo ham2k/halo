@@ -518,6 +518,19 @@ class _HomeQuickLookupState extends State<HomeQuickLookup> {
       if (!mounted || _controller.text.trim() != text) return; // stale — the field changed while awaiting
       if (executable == null) return;
 
+      // A command can also fail at execute time (mirrors _log() in
+      // logging_controls.dart) — show the message and keep the typed input
+      // instead of clearing the field as if it had succeeded.
+      if (executable['error'] is String) {
+        _executeMessageTimer?.cancel();
+        setState(() {
+          _commandMessage = executable['error'] as String;
+          _isError = true;
+          _isConfirmation = false;
+        });
+        return;
+      }
+
       _controller.clear();
       _commandDescribeDebounce?.cancel();
       _executeMessageTimer?.cancel();
