@@ -48,34 +48,41 @@ void main() {
     List<String>? enabledBands,
     List<String>? enabledModes,
     void Function(Qso qso)? enqueueLookup,
+    Widget? trailing,
   }) {
+    final controls = LoggingControls(
+      operation: operation,
+      qsosRepository: qsos,
+      qsos: existing,
+      enqueueLookup: enqueueLookup,
+      interpretCommand: interpretCommand,
+      onCommandMessageChanged: onCommandMessageChanged,
+      onCommandAction: onCommandAction,
+      radioService: radioService,
+      editingQso: editingQso,
+      suggestedQso: suggestedQso,
+      suggestSpotSources: suggestSpotSources,
+      sendSpot: sendSpot,
+      showStateField: showStateField,
+      showGridField: showGridField,
+      enabledBands: enabledBands,
+      enabledModes: enabledModes,
+      spottingControlLabel: 'Spotting',
+      spottingLabel: 'Spotting',
+      spottingSelfLabel: 'Self-spotting',
+      spotSelfLabel: (freq) => 'Self-spot at $freq',
+      spotOtherLabel: (call, freq) => 'Spot $call at $freq',
+      spotTooLateLabel: (call) => 'Too late to spot $call',
+      spotNoFreqLabel: 'First set a frequency to spot',
+    );
     return MaterialApp(
       home: Scaffold(
-        body: LoggingControls(
-          operation: operation,
-          qsosRepository: qsos,
-          qsos: existing,
-          enqueueLookup: enqueueLookup,
-          interpretCommand: interpretCommand,
-          onCommandMessageChanged: onCommandMessageChanged,
-          onCommandAction: onCommandAction,
-          radioService: radioService,
-          editingQso: editingQso,
-          suggestedQso: suggestedQso,
-          suggestSpotSources: suggestSpotSources,
-          sendSpot: sendSpot,
-          showStateField: showStateField,
-          showGridField: showGridField,
-          enabledBands: enabledBands,
-          enabledModes: enabledModes,
-          spottingControlLabel: 'Spotting',
-          spottingLabel: 'Spotting',
-          spottingSelfLabel: 'Self-spotting',
-          spotSelfLabel: (freq) => 'Self-spot at $freq',
-          spotOtherLabel: (call, freq) => 'Spot $call at $freq',
-          spotTooLateLabel: (call) => 'Too late to spot $call',
-          spotNoFreqLabel: 'First set a frequency to spot',
-        ),
+        // `trailing` stands in for the QSO list above the panel — a
+        // focusable sibling OUTSIDE the controls, so a test can prove Tab
+        // never lands on it.
+        body: trailing == null
+            ? controls
+            : Column(mainAxisSize: MainAxisSize.min, children: [controls, trailing]),
       ),
     );
   }
@@ -966,6 +973,35 @@ void main() {
     // keystroke right after cycling back shouldn't wipe out what's typed.
     expect(field('Their call').controller!.selection.isCollapsed, isTrue);
     expect(field('Their call').controller!.selection.baseOffset, field('Their call').controller!.text.length);
+  });
+
+  testWidgets('Tab cycles focus only through the logging controls, never escaping to a sibling', (tester) async {
+    final outside = FocusNode(debugLabel: 'outside');
+    addTearDown(outside.dispose);
+    // A focusable field sits below the panel, standing in for the QSO list.
+    await tester.pumpWidget(host(
+      trailing: TextField(focusNode: outside, decoration: const InputDecoration(labelText: 'Outside')),
+    ));
+
+    await tester.tap(find.widgetWithText(TextField, 'Their call'));
+    await tester.pump();
+
+    // Tab far more times than there are controls: focus must wrap within
+    // the panel and never land on the sibling outside it.
+    for (var i = 0; i < 12; i++) {
+      await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+      await tester.pump();
+      expect(outside.hasFocus, isFalse, reason: 'Tab escaped the logging controls on press ${i + 1}');
+    }
+
+    // Shift+Tab (reverse) is confined too.
+    await tester.sendKeyDownEvent(LogicalKeyboardKey.shiftLeft);
+    for (var i = 0; i < 12; i++) {
+      await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+      await tester.pump();
+      expect(outside.hasFocus, isFalse, reason: 'Shift+Tab escaped the logging controls on press ${i + 1}');
+    }
+    await tester.sendKeyUpEvent(LogicalKeyboardKey.shiftLeft);
   });
 
   testWidgets('call-field commands: frequency, band, and mode via space', (tester) async {

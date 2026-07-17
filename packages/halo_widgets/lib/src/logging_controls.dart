@@ -2823,7 +2823,7 @@ class _LoggingControlsState extends State<LoggingControls> {
           )
         : theme;
 
-    return CallbackShortcuts(
+    final panel = CallbackShortcuts(
       bindings: {
         const SingleActivator(LogicalKeyboardKey.escape): _handleEscape,
         const SingleActivator(LogicalKeyboardKey.enter): _log,
@@ -3159,6 +3159,13 @@ class _LoggingControlsState extends State<LoggingControls> {
         ),
       ),
     );
+
+    // Trap Tab (and Shift+Tab) inside the logging controls: a FocusScope
+    // confines traversal to its descendants and wraps at the ends, the same
+    // primitive a dialog uses. Without it, Tab past the last field escapes
+    // into the QSO list above. Programmatic focus moves and mouse clicks
+    // still cross the boundary freely — only keyboard traversal is confined.
+    return FocusScope(child: panel);
   }
 
   Widget _buildInfoArea(ThemeData theme) {
