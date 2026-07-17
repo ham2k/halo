@@ -1701,6 +1701,167 @@ void main() {
     expect(tester.getSize(dropdowns.at(1)).height, freqHeight);
   });
 
+  testWidgets('typing in the Band dropdown filters the menu; focus-away selects the first match', (tester) async {
+    await tester.pumpWidget(host(radioService: fakeRadio, enabledBands: ['80m', '40m', '20m', '17m']));
+    await openControl(tester, MdiIcons.radio);
+
+    await tester.tap(find.widgetWithText(TextField, 'Band'));
+    await tester.pump();
+    await tester.enterText(find.widgetWithText(TextField, 'Band'), '4');
+    await tester.pump();
+    // hitTestable: DropdownMenu keeps an offstage copy of the ORIGINAL
+    // entries for width measurement — only the live menu reflects the
+    // filter.
+    expect(find.widgetWithText(MenuItemButton, '40m').hitTestable(), findsOneWidget);
+    expect(find.widgetWithText(MenuItemButton, '20m').hitTestable(), findsNothing);
+
+    // Moving focus away commits the first match as if it had been picked:
+    // the field text resolves, the VFO hears about it, and the menu closes.
+    await tester.tap(find.widgetWithText(TextField, 'Frequency'));
+    await tester.pump();
+    expect(tester.widget<TextField>(find.widgetWithText(TextField, 'Band')).controller!.text, '40m');
+    expect(fakeRadio.vfoA.band, '40m');
+    expect(find.byType(MenuItemButton).hitTestable(), findsNothing);
+    // Type-to-filter is a desktop affordance — on touch platforms the
+    // dropdown stays a pick-only button, so run these desktop-only.
+  }, variant: TargetPlatformVariant.only(TargetPlatform.macOS));
+
+  testWidgets('arrow keys step the Band selection while the menu is closed', (tester) async {
+    fakeRadio.setVfo('vfoA', freq: 14285);
+    await tester.pumpWidget(host(radioService: fakeRadio, enabledBands: ['80m', '40m', '20m']));
+    await openControl(tester, MdiIcons.radio);
+
+    // Tabbing into the field focuses it WITHOUT opening the menu (a tap
+    // always opens it) — the closed-menu arrow path is a keyboard flow.
+    await tester.tap(find.widgetWithText(TextField, 'Frequency'));
+    await tester.pump();
+    await tester.sendKeyDownEvent(LogicalKeyboardKey.shiftLeft);
+    await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+    await tester.sendKeyUpEvent(LogicalKeyboardKey.shiftLeft);
+    await tester.pump();
+    expect(
+      tester.widget<TextField>(find.widgetWithText(TextField, 'Band')).focusNode!.hasFocus,
+      isTrue,
+    );
+    expect(find.byType(MenuItemButton).hitTestable(), findsNothing);
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowUp);
+    await tester.pump();
+    expect(fakeRadio.vfoA.band, '40m');
+    expect(tester.widget<TextField>(find.widgetWithText(TextField, 'Band')).controller!.text, '40m');
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
+    await tester.pump();
+    expect(fakeRadio.vfoA.band, '20m');
+  }, variant: TargetPlatformVariant.only(TargetPlatform.macOS));
+
+  testWidgets('arrow keys walk the open Mode menu and blur commits the highlighted entry', (tester) async {
+    await tester.pumpWidget(host(radioService: fakeRadio, enabledModes: ['SSB', 'CW', 'FT8']));
+    await openControl(tester, MdiIcons.radio);
+
+    await tester.tap(find.widgetWithText(TextField, 'Mode'));
+    await tester.pump();
+    // Two downs from the initial SSB: highlight SSB, then CW — walking
+    // across a clock tick must not reset the highlight back to the top.
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
+    await tester.pump(const Duration(seconds: 1));
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
+    await tester.pump();
+    expect(tester.widget<TextField>(find.widgetWithText(TextField, 'Mode')).controller!.text, 'CW');
+
+    // Blur commits the walked-to entry and hides the menu.
+    await tester.tap(find.widgetWithText(TextField, 'Frequency'));
+    await tester.pump();
+    expect(fakeRadio.vfoA.mode, 'CW');
+    expect(find.byType(MenuItemButton).hitTestable(), findsNothing);
+  }, variant: TargetPlatformVariant.only(TargetPlatform.macOS));
+
+  testWidgets('typing a complete short band name narrows the menu instead of showing every band', (tester) async {
+    // Regression: the filter used to switch OFF the moment the typed text
+    // equalled a full option, so completing "2m" re-expanded the menu to
+    // the whole catalog on the last keystroke.
+    await tester.pumpWidget(host(radioService: fakeRadio, enabledBands: ['80m', '40m', '20m', '2m']));
+    await openControl(tester, MdiIcons.radio);
+
+    await tester.tap(find.widgetWithText(TextField, 'Band'));
+    await tester.pump();
+    await tester.enterText(find.widgetWithText(TextField, 'Band'), '2m');
+    await tester.pump();
+    // "2m" matches only 2m (20m/80m/40m don't contain "2m"); the menu stays
+    // narrowed rather than reverting to the full list.
+    expect(find.widgetWithText(MenuItemButton, '2m').hitTestable(), findsOneWidget);
+    expect(find.widgetWithText(MenuItemButton, '20m').hitTestable(), findsNothing);
+    expect(find.widgetWithText(MenuItemButton, '80m').hitTestable(), findsNothing);
+  }, variant: TargetPlatformVariant.only(TargetPlatform.macOS));
+
+  testWidgets('Enter from a focused Band dropdown commits the band and logs the QSO', (tester) async {
+    await tester.pumpWidget(host(radioService: fakeRadio, enabledBands: ['80m', '40m', '20m']));
+    await openControl(tester, MdiIcons.radio);
+    await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'W1AW');
+    await tester.pump();
+    await tester.tap(find.widgetWithText(TextField, 'Band'));
+    await tester.pump();
+    await tester.enterText(find.widgetWithText(TextField, 'Band'), '40');
+    await tester.pump();
+    // Enter both commits the typed band and reaches the root log shortcut.
+    await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+    final logged = await waitForQsos(tester, 1);
+    expect(logged, hasLength(1));
+    expect(logged.first.band, '40m');
+  }, variant: TargetPlatformVariant.only(TargetPlatform.macOS));
+
+  testWidgets('arrow keys keep a typed filter while walking the open menu', (tester) async {
+    await tester.pumpWidget(host(radioService: fakeRadio, enabledModes: ['SSB', 'CW', 'FT8', 'FT4', 'FM']));
+    await openControl(tester, MdiIcons.radio);
+
+    await tester.tap(find.widgetWithText(TextField, 'Mode'));
+    await tester.pump();
+    await tester.enterText(find.widgetWithText(TextField, 'Mode'), 'F');
+    await tester.pump();
+    // Filtered to the F-modes; SSB/CW gone.
+    expect(find.widgetWithText(MenuItemButton, 'FT8').hitTestable(), findsOneWidget);
+    expect(find.widgetWithText(MenuItemButton, 'SSB').hitTestable(), findsNothing);
+
+    // Arrows walk WITHIN the filtered set, and the menu stays filtered —
+    // the full-label writes the walk produces must not reset the filter,
+    // not even across a clock tick. First down highlights FT8, second FT4.
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
+    await tester.pump(const Duration(seconds: 1));
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
+    await tester.pump();
+    expect(find.widgetWithText(MenuItemButton, 'SSB').hitTestable(), findsNothing);
+    expect(find.widgetWithText(MenuItemButton, 'FT4').hitTestable(), findsOneWidget);
+    expect(tester.widget<TextField>(find.widgetWithText(TextField, 'Mode')).controller!.text, 'FT4');
+
+    await tester.tap(find.widgetWithText(TextField, 'Frequency'));
+    await tester.pump();
+    expect(fakeRadio.vfoA.mode, 'FT4');
+  }, variant: TargetPlatformVariant.only(TargetPlatform.macOS));
+
+  testWidgets('Enter commits the first matching mode; garbage text reverts', (tester) async {
+    await tester.pumpWidget(host(radioService: fakeRadio, enabledModes: ['SSB', 'CW', 'FT8']));
+    await openControl(tester, MdiIcons.radio);
+
+    await tester.tap(find.widgetWithText(TextField, 'Mode'));
+    await tester.pump();
+    await tester.enterText(find.widgetWithText(TextField, 'Mode'), 'f');
+    await tester.pump();
+    await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+    await tester.pump();
+    expect(tester.widget<TextField>(find.widgetWithText(TextField, 'Mode')).controller!.text, 'FT8');
+    expect(fakeRadio.vfoA.mode, 'FT8');
+
+    // Text matching nothing must not change the selection — it reverts.
+    await tester.tap(find.widgetWithText(TextField, 'Mode'));
+    await tester.pump();
+    await tester.enterText(find.widgetWithText(TextField, 'Mode'), 'zz');
+    await tester.pump();
+    await tester.tap(find.widgetWithText(TextField, 'Frequency'));
+    await tester.pump();
+    expect(tester.widget<TextField>(find.widgetWithText(TextField, 'Mode')).controller!.text, 'FT8');
+    expect(fakeRadio.vfoA.mode, 'FT8');
+  }, variant: TargetPlatformVariant.only(TargetPlatform.macOS));
+
   testWidgets('an open Band menu holds its scroll position across the clock-tick rebuilds', (tester) async {
     // A selected band matters: the rebuild-time re-scroll only fires when
     // the field text matches an entry. Null enabled lists → the full

@@ -31,6 +31,7 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
 
 import 'package:halo_core/halo_core.dart';
@@ -389,6 +390,30 @@ class _LoggingControlsState extends State<LoggingControls> {
   final _dateController = TextEditingController();
   final _gridController = TextEditingController();
   final _stateController = TextEditingController();
+  // The Radio control's Band/Mode dropdown text. Owned here (not left to
+  // DropdownMenu's internal controller) so typed text can drive the entry
+  // filter and be committed to the first match — see
+  // `_commitBandDropdownText` / `_commitModeDropdownText`.
+  final _bandDropdownController = TextEditingController();
+  final _modeDropdownController = TextEditingController();
+  final _bandMenuController = MenuController();
+  final _modeMenuController = MenuController();
+  // The active menu filter — what the user actually typed — kept separate
+  // from the field's display text, which arrow navigation overwrites with
+  // full option labels. Reset when a field gains focus, so each fresh
+  // interaction starts unfiltered.
+  String _bandFilter = '';
+  String _modeFilter = '';
+  // True while an arrow key is stepping/walking the selection, so the
+  // resulting display-text write (ours when the menu is closed,
+  // DropdownMenu's own when it's open) is not mistaken for typed input and
+  // does not clobber the filter.
+  bool _navigatingDropdown = false;
+  // Built in initState (not a `late final` initializer), so `dispose` never
+  // forces their construction just to tear them down when the Radio control
+  // was never expanded.
+  late final FocusNode _bandDropdownFocus;
+  late final FocusNode _modeDropdownFocus;
   final _callFocus = FocusNode();
   final _sentFocus = FocusNode();
   final _rcvdFocus = FocusNode();
@@ -578,6 +603,18 @@ class _LoggingControlsState extends State<LoggingControls> {
   @override
   void initState() {
     super.initState();
+    _bandDropdownFocus = _dropdownCommitFocusNode(
+      commit: _commitBandDropdownText,
+      clearFilter: () => _bandFilter = '',
+      menu: _bandMenuController,
+      step: _stepBandSelection,
+    );
+    _modeDropdownFocus = _dropdownCommitFocusNode(
+      commit: _commitModeDropdownText,
+      clearFilter: () => _modeFilter = '',
+      menu: _modeMenuController,
+      step: _stepModeSelection,
+    );
     _applyDefaultRSTs();
     // Population normally happens in didUpdateWidget, as editingQso
     // transitions from null to a selected QSO — but if this widget is ever
@@ -611,6 +648,8 @@ class _LoggingControlsState extends State<LoggingControls> {
     // an optional Grid/State field changes too.
     _gridController.addListener(_onSentOrRcvdChanged);
     _stateController.addListener(_onSentOrRcvdChanged);
+    _bandDropdownController.addListener(_onBandDropdownTextChanged);
+    _modeDropdownController.addListener(_onModeDropdownTextChanged);
     // All fields place the cursor at the end on focus, rather than selecting
     // the existing text — switching fields (e.g. cycling back to the call
     // field via space without logging) shouldn't put you one keystroke away
@@ -891,6 +930,10 @@ class _LoggingControlsState extends State<LoggingControls> {
     _dateController.dispose();
     _gridController.dispose();
     _stateController.dispose();
+    _bandDropdownController.dispose();
+    _modeDropdownController.dispose();
+    _bandDropdownFocus.dispose();
+    _modeDropdownFocus.dispose();
     _callFocus.dispose();
     _sentFocus.dispose();
     _rcvdFocus.dispose();
@@ -1325,32 +1368,264 @@ class _LoggingControlsState extends State<LoggingControls> {
         ),
       );
 
+  /// The Band dropdown's options: the enabled list ([LoggingControls.enabledBands]),
+  /// the common tier when that's empty, the full catalog when null — with
+  /// the current value appended when it's not in the list (see the field's
+  /// doc for why each fallback exists).
+  List<String> _bandDropdownOptions() {
+    final enabled = widget.enabledBands;
+    final options = enabled == null
+        ? [for (final b in bands) b.name]
+        : enabled.isEmpty
+            ? popularBands
+            : enabled;
+    final band = _band;
+    return [...options, if (band != null && !options.contains(band)) band];
+  }
+
+  List<String> _modeDropdownOptions() {
+    final enabled = widget.enabledModes;
+    final options = enabled == null
+        ? modes
+        : enabled.isEmpty
+            ? mainModes
+            : enabled;
+    return [...options, if (!options.contains(_mode)) _mode];
+  }
+
+  /// Menu entries for the active [filter]: a case-insensitive contains
+  /// match. An empty filter (nothing typed, or cleared on focus) and a
+  /// filter matching nothing both mean "no filter" — the latter so a typo
+  /// shows the full menu rather than an empty one. The filter only ever
+  /// holds genuinely typed text (see [_onDropdownTextChanged]), so typing a
+  /// complete short name like "2m" narrows to it rather than showing all.
+  List<String> _filteredOptions(List<String> options, String filter) {
+    final typed = filter.trim();
+    if (typed.isEmpty) return options;
+    final q = typed.toLowerCase();
+    final matches = [for (final o in options) if (o.toLowerCase().contains(q)) o];
+    return matches.isEmpty ? options : matches;
+  }
+
+  /// An exact (case-insensitive) match wins over the first contains-match,
+  /// so e.g. "2m" can never resolve to another band that merely contains
+  /// it as a substring.
+  String? _firstMatch(List<String> options, String text) {
+    final q = text.toLowerCase();
+    for (final o in options) {
+      if (o.toLowerCase() == q) return o;
+    }
+    for (final o in options) {
+      if (o.toLowerCase().contains(q)) return o;
+    }
+    return null;
+  }
+
+  // The menu-entry lists are memoized on the joined option values and reused
+  // while unchanged: DropdownMenu compares entries by LIST IDENTITY in
+  // didUpdateWidget and resets its highlight state on any change, so passing
+  // a freshly built list on every rebuild (this widget rebuilds each second
+  // for the clock alone) would break walking the open menu with the arrow
+  // keys. Keyed on the values rather than deep-compared, so re-deriving the
+  // entries costs one join, not an element-wise scan.
+  String? _bandMenuKey;
+  String? _modeMenuKey;
+  List<DropdownMenuEntry<String>> _bandMenuEntries = const [];
+  List<DropdownMenuEntry<String>> _modeMenuEntries = const [];
+
+  /// Returns [cache] unchanged when [values] matches [cacheKey], else
+  /// rebuilds the entries and updates [cacheKey] via [setKey]. ` `
+  /// joins the values — a separator that can't appear in a band/mode name,
+  /// so distinct value lists never collide on the same key.
+  List<DropdownMenuEntry<String>> _memoEntries(
+    String? cacheKey,
+    List<DropdownMenuEntry<String>> cache,
+    List<String> values,
+    void Function(String key) setKey,
+  ) {
+    final key = values.join(' ');
+    if (key == cacheKey) return cache;
+    setKey(key);
+    return [for (final v in values) DropdownMenuEntry(value: v, label: v)];
+  }
+
+  void _onBandDropdownTextChanged() =>
+      _onDropdownTextChanged((f) => _bandFilter = f, _bandDropdownController.text, _band ?? '');
+  void _onModeDropdownTextChanged() =>
+      _onDropdownTextChanged((f) => _modeFilter = f, _modeDropdownController.text, _mode);
+
+  /// Captures genuinely typed text as the menu [filter] and rebuilds so the
+  /// menu re-filters. Two kinds of controller write must NOT become a
+  /// filter: arrow navigation ([_navigatingDropdown]), and the full-label
+  /// writes a pick / external selection change / commit push through the
+  /// controller — those equal the current [selection], and treating them as
+  /// a filter would narrow the menu down to just the selected entry (and,
+  /// for the arrow-step's rebuild-time [DropdownMenu.initialSelection] sync,
+  /// strand the stepping on a single entry). The rebuild is deferred when
+  /// the change lands during build — DropdownMenu writes to the controller
+  /// from its own initState/didUpdateWidget, where a synchronous setState
+  /// would throw.
+  void _onDropdownTextChanged(ValueChanged<String> setFilter, String text, String selection) {
+    if (!mounted) return;
+    if (!_navigatingDropdown && text != selection) setFilter(text);
+    if (SchedulerBinding.instance.schedulerPhase == SchedulerPhase.persistentCallbacks) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) setState(() {});
+      });
+    } else {
+      setState(() {});
+    }
+  }
+
+  /// Applies typed-but-not-picked Band text: the first matching option
+  /// becomes the selection, exactly as if picked from the menu; no match
+  /// reverts the text to the current selection. Runs on Enter (before the
+  /// root CallbackShortcuts logs the QSO, so the QSO gets the new band) and
+  /// when focus leaves the dropdown. The `mounted` guard matters because
+  /// this is invoked from a `scheduleMicrotask` in the blur handler, which
+  /// can outlive the widget (e.g. the operation view closing while a
+  /// dropdown holds focus) — `setState` on a defunct State would throw.
+  void _commitBandDropdownText() {
+    if (!mounted) return;
+    final text = _bandDropdownController.text.trim();
+    if (text.isNotEmpty && text != (_band ?? '')) {
+      final match = _firstMatch(_bandDropdownOptions(), text);
+      if (match != null && match != _band) _applyBandPick(match);
+    }
+    _bandFilter = '';
+    _bandDropdownController.text = _band ?? '';
+  }
+
+  void _commitModeDropdownText() {
+    if (!mounted) return;
+    final text = _modeDropdownController.text.trim();
+    if (text.isNotEmpty && text != _mode) {
+      final match = _firstMatch(_modeDropdownOptions(), text);
+      if (match != null && match != _mode) _setMode(match);
+    }
+    _modeFilter = '';
+    _modeDropdownController.text = _mode;
+  }
+
+  /// A dropdown field's focus node, wired to [commit] typed text on Enter
+  /// (letting the event continue toward the root Enter-logs-the-QSO
+  /// shortcut, so a logged QSO gets the just-committed value) and on focus
+  /// leaving the field — which also closes [menu], so the overlay doesn't
+  /// linger after a Tab or a click elsewhere. The focus-loss commit is
+  /// deferred a microtask: clicking a menu entry can move focus out before
+  /// onSelected fires, and the pick must win over the typed text. Gaining
+  /// focus [clearFilter]s, so each fresh interaction starts unfiltered.
+  ///
+  /// Arrow keys with the menu CLOSED [step] the actual selection directly;
+  /// with the menu open they're left to DropdownMenu's own shortcuts, which
+  /// walk the highlight and write each entry into the field. Either way the
+  /// stepping stays within the current filter — [_navigatingDropdown]
+  /// guards the resulting text write from resetting it.
+  FocusNode _dropdownCommitFocusNode({
+    required VoidCallback commit,
+    required VoidCallback clearFilter,
+    required MenuController menu,
+    required void Function(int delta) step,
+  }) {
+    final node = FocusNode();
+    node.addListener(() {
+      if (node.hasFocus) {
+        clearFilter();
+      } else {
+        if (menu.isOpen) menu.close();
+        scheduleMicrotask(commit);
+      }
+    });
+    node.onKeyEvent = (n, event) {
+      if (event is! KeyDownEvent && event is! KeyRepeatEvent) return KeyEventResult.ignored;
+      final key = event.logicalKey;
+      if (key == LogicalKeyboardKey.enter || key == LogicalKeyboardKey.numpadEnter) {
+        commit();
+        return KeyEventResult.ignored;
+      }
+      if (key == LogicalKeyboardKey.arrowDown || key == LogicalKeyboardKey.arrowUp) {
+        // The upcoming display-text write — ours below, or DropdownMenu's
+        // own when the menu is open — must not be read back as a new
+        // filter. Cleared next microtask, once this event is fully handled.
+        _navigatingDropdown = true;
+        scheduleMicrotask(() => _navigatingDropdown = false);
+        if (!menu.isOpen) {
+          step(key == LogicalKeyboardKey.arrowDown ? 1 : -1);
+          return KeyEventResult.handled;
+        }
+      }
+      return KeyEventResult.ignored;
+    };
+    return node;
+  }
+
+  /// The Band dropdown's onSelected effect, shared with the typed-text
+  /// commit and the arrow-key step: picking a band directly is mutually
+  /// exclusive with a manual frequency, since `_band` prefers the
+  /// freq-derived value whenever `_freq` is set (matches the
+  /// `setVfo{band: ...}` command action's convention — see
+  /// `_dispatchActions`). Only while composing — editing an existing QSO
+  /// applies changes to the QSO, never the VFO.
+  void _applyBandPick(String value) {
+    setState(() {
+      _manualBand = value;
+      _freqController.clear();
+    });
+    if (widget.editingQso == null) widget.radioService?.setVfo('vfoA', band: value);
+  }
+
+  void _stepBandSelection(int delta) {
+    final next = _steppedOption(_filteredOptions(_bandDropdownOptions(), _bandFilter), _band, delta);
+    if (next == null) return;
+    _applyBandPick(next);
+    _bandDropdownController.text = next;
+  }
+
+  void _stepModeSelection(int delta) {
+    final next = _steppedOption(_filteredOptions(_modeDropdownOptions(), _modeFilter), _mode, delta);
+    if (next == null) return;
+    _setMode(next);
+    _modeDropdownController.text = next;
+  }
+
+  /// The option [delta] steps away from [current], wrapping like the open
+  /// menu's own highlight does. No current value: down starts at the first
+  /// option, up at the last.
+  String? _steppedOption(List<String> options, String? current, int delta) {
+    if (options.isEmpty) return null;
+    final i = current == null ? -1 : options.indexOf(current);
+    if (i < 0) return delta > 0 ? options.first : options.last;
+    return options[(i + delta) % options.length];
+  }
+
   SecondaryControlSpec _radioControlSpec(ThemeData theme) => SecondaryControlSpec(
         key: 'radio',
         icon: MdiIcons.radio,
         summary: _radioSummary,
         expandedBuilder: (context) {
-          final enabledBands = widget.enabledBands;
-          final enabledModes = widget.enabledModes;
-          final bandOptions = enabledBands == null
-              ? [for (final b in bands) b.name]
-              : enabledBands.isEmpty
-                  ? popularBands
-                  : enabledBands;
-          final modeOptions = enabledModes == null
-              ? modes
-              : enabledModes.isEmpty
-                  ? mainModes
-                  : enabledModes;
-          // See `enabledBands`' doc: the current value stays pickable even
-          // when it's not an enabled option.
           final band = _band;
-          final bandEntries = [...bandOptions, if (band != null && !bandOptions.contains(band)) band];
-          final modeEntries = [...modeOptions, if (!modeOptions.contains(_mode)) _mode];
+          _bandMenuEntries = _memoEntries(_bandMenuKey, _bandMenuEntries,
+              _filteredOptions(_bandDropdownOptions(), _bandFilter), (k) => _bandMenuKey = k);
+          _modeMenuEntries = _memoEntries(_modeMenuKey, _modeMenuEntries,
+              _filteredOptions(_modeDropdownOptions(), _modeFilter), (k) => _modeMenuKey = k);
+          // DropdownMenu treats an explicit focusNode's canRequestFocus as
+          // overriding its per-platform requestFocusOnTap default, so
+          // restore that default here: type-to-filter is a keyboard
+          // (desktop) affordance; on touch platforms tapping stays a plain
+          // pick, without popping the on-screen keyboard.
+          final typeable = switch (Theme.of(context).platform) {
+            TargetPlatform.iOS || TargetPlatform.android || TargetPlatform.fuchsia => false,
+            _ => true,
+          };
+          _bandDropdownFocus.canRequestFocus = typeable;
+          _modeDropdownFocus.canRequestFocus = typeable;
           return Row(
             mainAxisSize: MainAxisSize.min,
             children: [
               DropdownMenu<String>(
+                controller: _bandDropdownController,
+                focusNode: _bandDropdownFocus,
+                menuController: _bandMenuController,
                 initialSelection: band,
                 label: Text(widget.bandLabel ?? 'Band'),
                 width: 104,
@@ -1382,25 +1657,13 @@ class _LoggingControlsState extends State<LoggingControls> {
                   // is tappable, so the shrunken icon target costs nothing.
                   suffixIconConstraints: const BoxConstraints(maxHeight: 38, maxWidth: 40),
                 ),
-                dropdownMenuEntries: [
-                  for (final b in bandEntries) DropdownMenuEntry(value: b, label: b),
-                ],
+                dropdownMenuEntries: _bandMenuEntries,
                 onSelected: (value) {
                   if (value == null) return;
-                  setState(() {
-                    // Matches the `setVfo{band: ...}` command action's
-                    // convention (see `_dispatchActions`): picking a band
-                    // directly is mutually exclusive with a manual frequency,
-                    // since `_band` prefers the freq-derived value whenever
-                    // `_freq` is set.
-                    _manualBand = value;
-                    _freqController.clear();
-                  });
-                  // A discrete dropdown pick, not a keystroke — push
-                  // immediately rather than debouncing like frequency typing.
-                  // Only while composing — editing an existing QSO applies
-                  // changes to the QSO, never the VFO.
-                  if (widget.editingQso == null) widget.radioService?.setVfo('vfoA', band: value);
+                  // A discrete dropdown pick, not a keystroke — push to the
+                  // VFO immediately rather than debouncing like frequency
+                  // typing (see _applyBandPick).
+                  _applyBandPick(value);
                   _callFocus.requestFocus();
                 },
               ),
@@ -1432,6 +1695,9 @@ class _LoggingControlsState extends State<LoggingControls> {
               ),
               const SizedBox(width: 6),
               DropdownMenu<String>(
+                controller: _modeDropdownController,
+                focusNode: _modeDropdownFocus,
+                menuController: _modeMenuController,
                 initialSelection: _mode,
                 label: Text(widget.modeLabel ?? 'Mode'),
                 width: 104,
@@ -1457,9 +1723,7 @@ class _LoggingControlsState extends State<LoggingControls> {
                   // Same height trim as the Band dropdown above.
                   suffixIconConstraints: const BoxConstraints(maxHeight: 38, maxWidth: 40),
                 ),
-                dropdownMenuEntries: [
-                  for (final m in modeEntries) DropdownMenuEntry(value: m, label: m),
-                ],
+                dropdownMenuEntries: _modeMenuEntries,
                 onSelected: (value) {
                   if (value == null) return;
                   _setMode(value);
