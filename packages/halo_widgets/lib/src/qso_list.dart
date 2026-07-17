@@ -43,6 +43,13 @@ double _textWidth(BuildContext context, String text, TextStyle style) {
   return painter.width;
 }
 
+/// The list's UTC time-column label — `HH:MMz`, or a placeholder when the
+/// record has no start time. Shared by the QSO, event, and annotation rows
+/// so their time columns can never drift apart.
+String _utcTimeLabel(DateTime? time) => time == null
+    ? '--:--z'
+    : '${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}z';
+
 /// One UTC calendar day in milliseconds — QSOs are grouped by truncating
 /// `startAtMillis` to this boundary, matching the scoring extension's own
 /// day-sectioning (`extensions/core/scoring/src/index.ts`'s `DAY_IN_MILLIS`),
@@ -321,19 +328,29 @@ class _QsoListState extends State<QsoList> {
       final qso = qsos[chronologicalIndex];
 
       if (qso.isEvent) {
-        return EventRow(
+        // Operation segment markers keep their centered-label treatment;
+        // every other event kind (note/todo/solar/weather — the annotation
+        // commands, ham2k/app-halo-dist#64) renders as a yellow annotation
+        // row in the timeline, following app-polo's QSOList dispatch.
+        final kind = qso.eventKind;
+        if (kind == 'start' || kind == 'break' || kind == 'end') {
+          return EventRow(
+            qso: qso,
+            selected: qso.uuid == selectedUuid,
+            onTap: () => (onSelectEvent ?? onSelect)(qso),
+            labels: widget.labels,
+          );
+        }
+        return AnnotationRow(
           qso: qso,
           selected: qso.uuid == selectedUuid,
           onTap: () => (onSelectEvent ?? onSelect)(qso),
-          labels: widget.labels,
+          leadingWidth: showQsoNumbers ? numberWidth + _columnGap : 0,
         );
       }
 
       final number = numbers[chronologicalIndex];
-      final time = qso.startAt;
-      final timeLabel = time == null
-          ? '--:--z'
-          : '${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}z';
+      final timeLabel = _utcTimeLabel(qso.startAt);
       final selected = qso.uuid == selectedUuid;
 
       // Selected treatment matches app-polo's QSOList: secondaryContainer
@@ -806,10 +823,7 @@ class EventRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final kind = qso.eventKind;
-    final time = qso.startAt;
-    final timeLabel = time == null
-        ? '--:--z'
-        : '${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}z';
+    final timeLabel = _utcTimeLabel(qso.startAt);
 
     return Material(
       color: selected
@@ -843,6 +857,127 @@ class EventRow extends StatelessWidget {
                   context,
                   fontSize: 12,
                   color: theme.colorScheme.outline,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// A note/todo/solar/weather annotation row in [QsoList] — an event
+/// pseudo-QSO added by the annotation commands (ham2k/app-halo-dist#64,
+/// `extensions/core/annotation-commands`). Unlike [EventRow]'s centered
+/// segment markers, annotations are timeline entries: they keep the QSO
+/// rows' time column (left-aligned, [leadingWidth] preserving the Number
+/// column's indent), followed by the event's icon and its text. The yellow
+/// "sticky note" treatment is ported from app-polo's QSOList `eventRow`/
+/// `eventContent` styles.
+class AnnotationRow extends StatelessWidget {
+  final Qso qso;
+  final bool selected;
+  final VoidCallback onTap;
+
+  /// Width of the (optional) QSO-number column plus its gap, so the time
+  /// column lines up with the QSO rows around it.
+  final double leadingWidth;
+
+  const AnnotationRow({
+    super.key,
+    required this.qso,
+    required this.onTap,
+    this.selected = false,
+    this.leadingWidth = 0,
+  });
+
+  /// app-polo's `eventRow` background, `rgb(252, 244, 167)` — blended over
+  /// the surface at app-polo's row opacity (0.85 light / 0.65 dark) so the
+  /// dark theme gets the same muted yellow instead of a full-brightness slab.
+  static const _yellow = Color(0xFFFCF4A7);
+
+  /// app-polo's `eventContent` text color, `rgb(21, 20, 10)` — near-black
+  /// ink that stays readable on the yellow in both themes.
+  static const _ink = Color(0xFF15140A);
+
+  /// A to-do's icon tracks its state (same logic as app-polo's
+  /// EventNoteItem): done shows a check, deleted hollows out. Everything
+  /// else uses the icon the command stored on the event. The done flag is
+  /// read from `data.done` with a fallback to a bare `done` — app-polo
+  /// reads both, and synced logs contain the older bare shape.
+  String get _iconName {
+    final event = qso.event;
+    if (qso.eventKind == 'todo') {
+      final data = event?['data'];
+      final done = (data is Map && data['done'] == true) || event?['done'] == true;
+      if (qso.deleted) return 'sticker-outline';
+      return done ? 'sticker-check-outline' : 'sticker';
+    }
+    return (event?['icon'] as String?) ?? 'information-outline';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final event = qso.event;
+    final timeLabel = _utcTimeLabel(qso.startAt);
+    final text = (event?['description'] as String?) ??
+        (event?['note'] as String?) ??
+        qso.eventKind?.toUpperCase() ??
+        'Event';
+
+    final background = selected
+        ? theme.colorScheme.secondaryContainer
+        : Color.alphaBlend(
+            _yellow.withValues(alpha: isDark ? 0.65 : 0.85),
+            theme.colorScheme.surface,
+          );
+    var ink = selected ? theme.colorScheme.onSecondaryContainer : _ink;
+    // SOLAR/WEATHER descriptions mix emoji into the text, so the style
+    // needs the bundled color-emoji font as an explicit fallback — the web
+    // renderer never falls back to an OS emoji font on its own (see
+    // theme.dart's `emojiFontFamily`).
+    var textStyle = theme.textTheme.bodyMedium?.copyWith(
+      color: ink,
+      fontFamilyFallback: const [emojiFontFamily],
+    );
+    var timeStyle = haloMonoStyle(context, fontSize: 14, color: ink);
+    // Deleted annotations follow the QSO rows' "show deleted" treatment:
+    // struck-through and faded, still in the timeline.
+    if (qso.deleted) {
+      ink = ink.withValues(alpha: 0.5);
+      textStyle = textStyle?.copyWith(
+        color: ink,
+        decoration: TextDecoration.lineThrough,
+      );
+      timeStyle = timeStyle.copyWith(
+        color: ink,
+        decoration: TextDecoration.lineThrough,
+      );
+    }
+
+    return Material(
+      color: background,
+      child: InkWell(
+        onTap: onTap,
+        mouseCursor: SystemMouseCursors.click,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+          child: Row(
+            children: [
+              SizedBox(width: leadingWidth),
+              Text(timeLabel, style: timeStyle),
+              const SizedBox(width: _columnGap),
+              Icon(resolveIconName(_iconName), size: 16, color: ink),
+              const SizedBox(width: _columnGap),
+              Expanded(
+                child: Text(
+                  text,
+                  style: textStyle,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
             ],

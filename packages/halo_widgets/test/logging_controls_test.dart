@@ -142,6 +142,16 @@ void main() {
   Future<void> openControl(WidgetTester tester, IconData icon) async {
     await tester.tap(find.ancestor(of: find.byIcon(icon), matching: find.byType(ChoiceChip)));
     await tester.pump();
+    // The panel slides into/out of place over SecondaryControlRow's fixed
+    // 200ms animation — a bounded pump (rather than pumpAndSettle, which
+    // would also chase the Time control's Timer.periodic clock tick and
+    // never settle) gets it fully in view (or fully gone, when this
+    // closes a panel) before callers interact with its fields. Slightly
+    // over 200ms, plus a trailing zero-duration pump, so AnimatedSwitcher's
+    // own post-animation cleanup (dropping the outgoing child) has
+    // actually run rather than landing exactly on the animation's edge.
+    await tester.pump(const Duration(milliseconds: 250));
+    await tester.pump();
   }
 
   testWidgets('Enter logs a QSO with mode, band and default RSTs', (tester) async {
@@ -681,7 +691,7 @@ void main() {
     expect(logged.single.theirGrid, 'FN31pr');
   });
 
-  testWidgets('Escape wipes the entry', (tester) async {
+  testWidgets('Escape wipes the entry and offers the same undo as the wipe button', (tester) async {
     await tester.pumpWidget(host());
 
     await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'W1AW');
@@ -692,6 +702,21 @@ void main() {
     final callField = tester.widget<TextField>(find.widgetWithText(TextField, 'Their call'));
     expect(callField.controller!.text, isEmpty);
     expect(await waitForQsos(tester, 1), isEmpty);
+
+    // Esc goes through the wipe button's path, so the 5s undo offer applies.
+    final undoIcon = resolveIconName('undo');
+    expect(find.byIcon(undoIcon), findsOneWidget);
+    await tester.tap(find.byIcon(undoIcon));
+    await tester.pump();
+    expect(callField.controller!.text, 'W1AW');
+    expect(find.byIcon(undoIcon), findsNothing);
+
+    // With nothing composed, Esc doesn't stash an empty entry as undoable.
+    await tester.enterText(find.widgetWithText(TextField, 'Their call'), '');
+    await tester.pump();
+    await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+    await tester.pump();
+    expect(find.byIcon(undoIcon), findsNothing);
   });
 
   testWidgets('debounced lookup enriches the entry line and the logged QSO', (tester) async {
@@ -921,7 +946,7 @@ void main() {
   });
 
   testWidgets('call-field command declaring mixedCase keeps lowercase, even once the command is complete', (tester) async {
-    // Mirrors the real note-command extension: `mixedCase: true` on BOTH
+    // Mirrors the real annotation-commands NOTE: `mixedCase: true` on BOTH
     // the bare-prefix result and the complete result. The second half is
     // what keeps "NOTE Called Bob," + more typing from being snapped back
     // to uppercase after the debounced interpret() sees a complete command.
@@ -1142,7 +1167,7 @@ void main() {
       bool execute = false,
     ]) async {
       seenInputs.add(input);
-      // mixedCase, like the real note-command: without it the field's own
+      // mixedCase, like the real NOTE command: without it the field's own
       // uppercase formatter would destroy the lowercase before
       // interpretCommand could ever see it.
       if (input.trim().toUpperCase() == 'NOTE') return {'expectsParams': true, 'mixedCase': true};

@@ -65,6 +65,31 @@ class MainFlutterWindow: NSWindow {
             NSSize(width: max(current.width, width), height: max(current.height, height)))
         }
         result(nil)
+      } else if call.method == "performHeaderDoubleClickAction" {
+        // Flutter reports double-clicks on the header's empty background
+        // (platform_chrome.dart's windowHeaderGestureArea) — the
+        // chromeless window has no real title bar, so we apply the same
+        // System Settings choice ("Double-click a window's title bar to…")
+        // a native title bar would honor. Default when unset is zoom.
+        //
+        // Not in native full screen, though: the header stays visible there
+        // (fullSizeContentView), but a real title bar's double-click surface
+        // doesn't exist in full screen — miniaturize would just beep and
+        // zoom can disturb the frame restored on exit.
+        if self.styleMask.contains(.fullScreen) {
+          result(nil)
+          return
+        }
+        let action = UserDefaults.standard.string(forKey: "AppleActionOnDoubleClick") ?? "Maximize"
+        switch action {
+        case "Minimize":
+          self.performMiniaturize(nil)
+        case "None":
+          break
+        default:
+          self.zoom(nil)
+        }
+        result(nil)
       } else {
         result(FlutterMethodNotImplemented)
       }
@@ -83,6 +108,25 @@ class MainFlutterWindow: NSWindow {
       NotificationCenter.default.addObserver(
         self, selector: #selector(positionTrafficLights), name: name, object: self)
     }
+
+    // Header layout depends on full-screen state on both sides: Flutter
+    // drops the traffic-light clearance (the buttons leave the header for
+    // the system's auto-hiding titlebar overlay), and positionTrafficLights
+    // must stand down (see its guard). The will- notifications fire as the
+    // transition animation starts, so the header realigns while the buttons
+    // are already gone (entering) or not yet back (exiting).
+    for name: Notification.Name in [
+      NSWindow.willEnterFullScreenNotification,
+      NSWindow.willExitFullScreenNotification,
+    ] {
+      NotificationCenter.default.addObserver(
+        self, selector: #selector(fullScreenChanged(_:)), name: name, object: self)
+    }
+  }
+
+  @objc private func fullScreenChanged(_ notification: Notification) {
+    let entering = notification.name == NSWindow.willEnterFullScreenNotification
+    windowChromeChannel?.invokeMethod("fullScreenChanged", arguments: entering)
   }
 
   // AppKit keeps re-laying the traffic-light buttons out to their own default
@@ -97,6 +141,13 @@ class MainFlutterWindow: NSWindow {
   // the group is shifted by the resulting delta, preserving AppKit's own
   // inter-button spacing; running it twice changes nothing the second time.
   @objc private func positionTrafficLights() {
+    // In native full screen the buttons live in the system's auto-hiding
+    // titlebar overlay, not our header. Placing them with main-window
+    // coordinates (frame.height is the whole screen there) throws them far
+    // outside the ~28pt overlay — they'd flash into view and vanish on the
+    // next didUpdate. AppKit owns their layout until full screen exits.
+    if styleMask.contains(.fullScreen) { return }
+
     guard let close = standardWindowButton(.closeButton),
       let miniaturize = standardWindowButton(.miniaturizeButton),
       let zoom = standardWindowButton(.zoomButton),

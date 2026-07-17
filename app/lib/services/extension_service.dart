@@ -1005,7 +1005,11 @@ class ExtensionService {
           'qso': ?qso,
           if (execute) 'execute': true,
         },
-        timeout: const Duration(seconds: 2),
+        // The describe preview must stay snappy (it reruns on every
+        // keystroke pause), but the one execute call is where hooks do
+        // real work — SEED's log read + lookups, SOLAR/WEATHER's network
+        // fetch — so it gets room to breathe instead of dying at 2s.
+        timeout: execute ? const Duration(seconds: 30) : const Duration(seconds: 2),
       );
       for (final entry in entries) {
         if (entry['ok'] == true && entry['value'] is Map) {
@@ -1014,6 +1018,12 @@ class ExtensionService {
       }
     } on ExtensionHostException catch (e) {
       debugPrint('[extensions] interpretCommand failed: $e');
+      // At execute time the user pressed Enter on a recognized command —
+      // returning null here would read as "no command matched" and the UI
+      // would silently do nothing after a long wait (a hook exceeding its
+      // timeout, e.g. a stalled SOLAR/WEATHER fetch, lands here). Surface
+      // it through the same `error` channel a hook itself would use.
+      if (execute) return {'error': 'The command failed to run'};
     }
     return null;
   }

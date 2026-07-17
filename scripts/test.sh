@@ -42,7 +42,7 @@ if [[ ! -f "$ROOT_DIR/app/lib/config/mapbox_token.dart" ]]; then
   cp "$ROOT_DIR/app/lib/config/mapbox_token.dart.example" "$ROOT_DIR/app/lib/config/mapbox_token.dart"
 fi
 
-for pkg in packages/halo_core packages/halo_extension_host packages/halo_widgets app; do
+for pkg in packages/halo_core packages/halo_build_tools packages/halo_extension_host packages/halo_widgets app; do
   echo "▶ $pkg: pub get, analyze, test"
   cd "$ROOT_DIR/$pkg"
   flutter pub get

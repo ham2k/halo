@@ -1,16 +1,17 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:halo_core/halo_core.dart';
 import 'package:halo_widgets/halo_widgets.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 
-import '../app_info.dart';
 import '../main.dart';
 import '../services/settings_service.dart';
 import 'operation_dialogs.dart';
 import 'operation_view.dart';
 import 'settings_view.dart';
+import 'version_label.dart';
 import '../i18n/strings.g.dart';
 
 /// HaLo home-screen style row: bold "CALL title" line with count pill,
@@ -103,21 +104,26 @@ class _OperationRow extends StatelessWidget {
 class OperationListPanel extends StatelessWidget {
   final HaLoServices services;
   final List<Operation> operations;
+  // Whether the operations stream hasn't emitted its first snapshot yet —
+  // distinct from an emitted empty list. While true, `operations` is a
+  // placeholder empty list, not a confirmed one, so the "no operations yet"
+  // text must not show yet (it would flash for a frame on every startup,
+  // even for accounts with operations).
+  final bool loading;
 
-  const OperationListPanel({super.key, required this.services, required this.operations});
+  const OperationListPanel({super.key, required this.services, required this.operations, required this.loading});
 
   @override
   Widget build(BuildContext context) {
+    final color = Theme.of(context).colorScheme.surfaceContainerHighest;
     if (operations.isEmpty) {
-      return Container(
-        color: Theme.of(context).colorScheme.surfaceContainerHighest,
-        child: Center(child: Text(context.t.home.emptyList)),
-      );
+      if (loading) return ColoredBox(color: color);
+      return Container(color: color, child: Center(child: Text(context.t.home.emptyList)));
     }
     return Container(
       // Shows through below the last row when there aren't enough
       // operations to fill the screen.
-      color: Theme.of(context).colorScheme.surfaceContainerHighest,
+      color: color,
       child: ListView.separated(
         itemCount: operations.length,
         separatorBuilder: (context, index) => const Divider(),
@@ -196,15 +202,16 @@ class _HomeViewState extends State<HomeView> {
     final theme = Theme.of(context);
     return Scaffold(
       appBar: AppBar(
+        flexibleSpace: windowHeaderGestureArea(),
         leadingWidth: isMacOSChromelessWindow ? 48 + macOSTrafficLightClearance(context) : null,
         leading: Padding(
           padding: EdgeInsets.fromLTRB(
-            2 + (isMacOSChromelessWindow ? macOSTrafficLightClearance(context) : 0),
-            1,
-            2,
-            1,
+            8 + (isMacOSChromelessWindow ? macOSTrafficLightClearance(context) : 0),
+            8,
+            8,
+            8,
           ),
-          child: Image.asset('assets/images/ham2k-logo.png'),
+          child: SvgPicture.asset('assets/images/ham2k-wordmark.svg', width: 22, height: 22),
         ),
         // "Desktop Logger" / "Portable Logger" is the in-app main-screen
         // title — independent of the OS-level app name ("Ham2K Logger" on
@@ -220,6 +227,7 @@ class _HomeViewState extends State<HomeView> {
             mouseCursor: SystemMouseCursors.click,
           ),
           const SizedBox(width: 8),
+          windowsCaptionSpacer(context),
         ],
       ),
       // Two-pane on L+ (docs/design/layouts.md): the list column keeps the
@@ -257,8 +265,17 @@ class _HomeViewState extends State<HomeView> {
                       child: StreamBuilder<List<Operation>>(
                         stream: _operationsStream,
                         builder: (context, snapshot) {
-                          final operations = snapshot.data ?? const <Operation>[];
-                          return OperationListPanel(services: widget.services, operations: operations);
+                          return OperationListPanel(
+                            services: widget.services,
+                            // `snapshot.hasData` distinguishes "the stream
+                            // hasn't emitted its first snapshot yet" from "it
+                            // emitted an empty list" — collapsing both into
+                            // `snapshot.data ?? []` was what previously made
+                            // OperationListPanel need to guess (via a fixed
+                            // delay) how long "still loading" might last.
+                            loading: !snapshot.hasData,
+                            operations: snapshot.data ?? const <Operation>[],
+                          );
                         },
                       ),
                     ),
@@ -351,7 +368,7 @@ class _BrandingPane extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Image.asset('assets/images/ham2k-logo.png', width: 180),
+          SvgPicture.asset('assets/images/ham2k-wordmark.svg', width: 180),
           const SizedBox(height: 4),
           // The wordmark graphic already says "Ham2K", so per the branding
           // rules (docs/design/user-interface.md) only "Logger" / "Portable
@@ -361,8 +378,8 @@ class _BrandingPane extends StatelessWidget {
             style: theme.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w800),
           ),
           const SizedBox(height: 16),
-          Text(
-            'Version $appVersionLabel',
+          VersionLabel(
+            prefix: 'Version ',
             style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant),
           ),
         ],
@@ -516,6 +533,19 @@ class _HomeQuickLookupState extends State<HomeQuickLookup> {
       if (!mounted || _controller.text.trim() != text) return; // stale — the field changed while awaiting
       if (executable == null) return;
 
+      // A command can also fail at execute time (mirrors _log() in
+      // logging_controls.dart) — show the message and keep the typed input
+      // instead of clearing the field as if it had succeeded.
+      if (executable['error'] is String) {
+        _executeMessageTimer?.cancel();
+        setState(() {
+          _commandMessage = executable['error'] as String;
+          _isError = true;
+          _isConfirmation = false;
+        });
+        return;
+      }
+
       _controller.clear();
       _commandDescribeDebounce?.cancel();
       _executeMessageTimer?.cancel();
@@ -574,6 +604,8 @@ class _HomeQuickLookupState extends State<HomeQuickLookup> {
         await widget.services.handleCommandAction('devStatus', (map['devStatus'] as Map).cast<String, dynamic>());
       } else if (map['devProgress'] is Map) {
         await widget.services.handleCommandAction('devProgress', (map['devProgress'] as Map).cast<String, dynamic>());
+      } else if (map['devSplash'] is Map) {
+        await widget.services.handleCommandAction('devSplash');
       } else if (map['reloadDataFiles'] is Map) {
         await widget.services.handleCommandAction(
           'reloadDataFiles',

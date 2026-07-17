@@ -55,6 +55,12 @@ class Win32Window {
   // Return a RECT representing the bounds of the current client area.
   RECT GetClientArea();
 
+  // Smallest client size (logical pixels; converted per-monitor via the
+  // window DPI) the user may resize the window to. Enforced through
+  // WM_GETMINMAXINFO; pushed from Flutter over the window-chrome channel
+  // (see flutter_window.cpp), mirroring the macOS contentMinSize floor.
+  void SetMinimumContentSize(double width, double height);
+
  protected:
   // Processes and route salient window messages for mouse handling,
   // size change and DPI. Delegates handling of these to member overloads that
@@ -90,7 +96,23 @@ class Win32Window {
   // Update the window frame's theme to match the system theme.
   static void UpdateTheme(HWND const window);
 
+  // Subclass proc installed on the Flutter child view (SetChildContent): the
+  // child covers the whole client area of the chromeless window, so it must
+  // return HTTRANSPARENT in the top resize band for the parent to receive
+  // the hit-test and offer the top resize grip (see MessageHandler's
+  // WM_NCHITTEST).
+  static LRESULT CALLBACK ChildHitTestProc(HWND hwnd,
+                                           UINT message,
+                                           WPARAM wparam,
+                                           LPARAM lparam,
+                                           UINT_PTR subclass_id,
+                                           DWORD_PTR ref_data);
+
   bool quit_on_close_ = false;
+
+  // Resize floor in logical pixels; 0 means "not set" (no floor).
+  double min_content_width_ = 0;
+  double min_content_height_ = 0;
 
   // window handle for top level window.
   HWND window_handle_ = nullptr;

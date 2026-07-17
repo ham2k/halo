@@ -292,7 +292,10 @@ required 3+ digits before any decimal point; the extension delegates to
 handles this correctly. Also implemented by `dev-commands` (DEVMODE toggles
 developer mode; DEVNOTICE/DEVSTATUS/DEVPROGRESS post sample items to the
 status bar via the `devNotice`/`devStatus`/`devProgress` action fields, for
-exercising that UI without a real extension driving it; RELOAD forces a
+exercising that UI without a real extension driving it; DEVSPLASH re-shows
+the startup release-notes overlay (Issue #42) via the `devSplash` action
+field, bypassing its normal once-per-version gate — for previewing that
+overlay on demand instead of only once per release; RELOAD forces a
 `dataFile` re-sync via the `reloadDataFiles` action field — "RELOAD POTA"/
 "RELOAD SOTA" target one activity's data file(s) by category, "RELOAD ALL",
 "RELOADALL", or bare "RELOAD!" target every data file, and it bypasses ETag caching
@@ -308,8 +311,16 @@ a suffix letter; RSTs lean heavily toward 55/57/59; each generated QSO gets
 the lookup service's offline `their.guess` decoration. The placement rule
 needs the existing log: SEED reads it through `ctx.getQsos`, using the
 `uuid` the logging panel folds into the `operation` map it passes to
-`interpret`), `note-command` (NOTE <text> sets the
-in-progress QSO's notes field via `updateQso`), and `call-notes` (`//KEY`
+`interpret`), `annotation-commands` (ham2k/app-halo-dist#64, ported from
+app-polo's AnnotationCommands: NOTE/TODO `<text>`, SOLAR, and WEATHER each
+add an annotation row to the log — an event pseudo-QSO, `band: 'event'`,
+via `addQso`, rendered as a yellow row by the QSO list. SOLAR fetches
+hamqsl.com's solar indices and WEATHER fetches Open-Meteo conditions for
+the operation's grid square, both only when `execute` is set — never on
+the describe preview — storing the raw readings in the event's `data` and
+the emoji summary line in its `description`. This superseded the original
+`note-command` extension, whose NOTE wrote to the in-progress QSO's notes
+field instead of the timeline), and `call-notes` (`//KEY`
 expands a Callsign Notes entry whose note is a plain comma list of calls
 into the call field via `setCallField` — issue #17; leading "//" never
 parses as call stacking, whose first segment would be empty, so the two

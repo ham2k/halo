@@ -11,20 +11,25 @@ import 'dart:math';
 
 import 'package:crypto/crypto.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:halo_core/halo_core.dart';
 import 'package:halo_widgets/halo_widgets.dart';
 import 'package:http/http.dart' as http;
 
-import '../app_info.dart';
+import '../config/release_notes.dart';
+import '../config/version.dart';
 import '../main.dart';
 import '../services/extension_service.dart';
 import '../services/settings_service.dart';
 import '../services/status_bar_service.dart';
+import 'ham2k_logo.dart';
 import 'notice_history_view.dart';
 import 'operation_dialogs.dart';
+import 'release_overlay.dart';
 import 'switch_accounts_dialog.dart';
+import 'version_label.dart';
 
 /// A sidebar entry: `key` identifies it (a fixed core key, or an
 /// extension's `panelKey`); `descriptor` is null for core panels and the
@@ -57,6 +62,7 @@ class _SettingsPanelEntry {
 const _fixedCorePanels = [
   _SettingsPanelEntry(key: 'sync', title: 'Sync', icon: Icons.sync, order: 10),
   _SettingsPanelEntry(key: 'accounts', title: 'Accounts', icon: Icons.vpn_key_outlined, order: 20),
+  _SettingsPanelEntry(key: 'notices', title: 'Notices & Messages', icon: Icons.notifications_outlined, order: 80),
 ];
 const _developerPanelOrder = 90;
 const _aboutPanelOrder = 100;
@@ -169,6 +175,7 @@ class _SettingsViewState extends State<SettingsView> {
         onPreferredPrimaryWidthChanged: (width) => settings.setLayoutDimension(LayoutKeys.settingsLeftColumn, width),
         primary: Scaffold(
           appBar: AppBar(
+            flexibleSpace: windowHeaderGestureArea(),
             leadingWidth: macOSAwareLeadingWidth(context),
             leading: macOSAwareBackButton(context),
             title: const Text('Settings'),
@@ -183,14 +190,24 @@ class _SettingsViewState extends State<SettingsView> {
           final safeLeft = PaneSafeArea.leftOf(context);
           return Scaffold(
             appBar: AppBar(
+              flexibleSpace: windowHeaderGestureArea(),
               // Default title inset (16) plus the clearance, so the title
-              // lines up with the padded content below.
+              // lines up with each panel's own row content below.
               titleSpacing: 16 + safeLeft,
               title: Text(effectivePanel.title),
               automaticallyImplyLeading: false,
+              actions: [windowsCaptionSpacer(context)],
             ),
-            body: Padding(
-              padding: EdgeInsets.only(left: safeLeft),
+            // No ambient left Padding here (that would inset the whole
+            // body — row backgrounds/dividers included — same mistake
+            // operation_view.dart's OperationSettingsPanel comment warns
+            // against). Each panel insets its own row CONTENT instead, via
+            // this ListTileTheme default (ListTile-based panels) or its own
+            // explicit padding (panels that aren't ListTile-based) — so
+            // row backgrounds and dividers still reach the pane's true
+            // edge, right up to the grab-strip clearance this cancels.
+            body: ListTileTheme.merge(
+              contentPadding: EdgeInsets.only(left: 16 + safeLeft, right: 16),
               child: _buildPanelContent(effectivePanel, widget.services),
             ),
           );
@@ -199,9 +216,11 @@ class _SettingsViewState extends State<SettingsView> {
     } else {
       return Scaffold(
         appBar: AppBar(
+          flexibleSpace: windowHeaderGestureArea(),
           leadingWidth: macOSAwareLeadingWidth(context),
           leading: macOSAwareBackButton(context),
           title: const Text('Settings'),
+          actions: [windowsCaptionSpacer(context)],
         ),
         body: _buildSidebar(context, isWide: false, panels: panels, selectedKey: effectivePanel.key),
       );
@@ -268,9 +287,11 @@ class _SettingsPanelScreen extends StatelessWidget {
 
     return Scaffold(
       appBar: AppBar(
+        flexibleSpace: windowHeaderGestureArea(),
         leadingWidth: macOSAwareLeadingWidth(context),
         leading: macOSAwareBackButton(context),
         title: Text(panel.title),
+        actions: [windowsCaptionSpacer(context)],
       ),
       body: _buildPanelContent(panel, services),
     );
@@ -283,10 +304,12 @@ Widget _buildPanelContent(_SettingsPanelEntry panel, HaLoServices services) {
       return _SyncPanel(services: services);
     case 'accounts':
       return _AccountsPanel(services: services);
+    case 'notices':
+      return NoticeHistoryView(services: services);
     case 'developer':
       return _DeveloperPanel(services: services);
     case 'about':
-      return _AboutPanel(services: services);
+      return const _AboutPanel();
     default:
       final descriptor = panel.descriptor;
       if (descriptor == null) return const SizedBox.shrink();
@@ -408,6 +431,7 @@ class _SyncPanelState extends State<_SyncPanel> {
   @override
   Widget build(BuildContext context) {
     final settings = widget.services.settings;
+    final safeLeft = PaneSafeArea.leftOf(context);
 
     return ListenableBuilder(
       listenable: settings,
@@ -415,7 +439,7 @@ class _SyncPanelState extends State<_SyncPanel> {
         return ListView(
           padding: const EdgeInsets.symmetric(vertical: 8),
           children: [
-            const SectionHeader('Sync Configuration'),
+            Padding(padding: EdgeInsets.only(left: safeLeft), child: const SectionHeader('Sync Configuration')),
             ListTile(
               leading: Icon(resolveIconName('account-outline')),
               title: const Text('Operator callsign'),
@@ -436,7 +460,11 @@ class _SyncPanelState extends State<_SyncPanel> {
               mouseCursor: SystemMouseCursors.click,
             ),
             if (settings.syncState['pendingAccountUUID'] != null)
-              _PendingAccountBanner(onCombine: _combineAccount, onReplace: _replaceAccount),
+              _PendingAccountBanner(
+                onCombine: _combineAccount,
+                onReplace: _replaceAccount,
+                extraLeftMargin: safeLeft,
+              ),
             // The footer status bar isn't visible on this screen, so mirror
             // the backfill-progress item here while it's active.
             ListenableBuilder(
@@ -542,11 +570,12 @@ class _AccountsPanelState extends State<_AccountsPanel> {
     if (_accounts == null) {
       return const Center(child: CircularProgressIndicator());
     }
+    final safeLeft = PaneSafeArea.leftOf(context);
 
     return ListView(
       padding: const EdgeInsets.symmetric(vertical: 8),
       children: [
-        const SectionHeader('Accounts & Services'),
+        Padding(padding: EdgeInsets.only(left: safeLeft), child: const SectionHeader('Accounts & Services')),
         if (_accounts!.isEmpty)
           const ListTile(title: Text('No active extensions with accounts'))
         else
@@ -761,9 +790,10 @@ class _ExtensionSettingsPanelState extends State<_ExtensionSettingsPanel> {
     if (definition == null) {
       return const Center(child: Text('Could not load this settings panel.'));
     }
+    final safeLeft = PaneSafeArea.leftOf(context);
 
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
+      padding: EdgeInsets.fromLTRB(16 + safeLeft, 16, 16, 16),
       child: FormRenderer(
         formDefinition: definition,
         initialState: const {},
@@ -793,12 +823,13 @@ class _DeveloperPanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final settings = services.settings;
+    final safeLeft = PaneSafeArea.leftOf(context);
 
     return ListenableBuilder(
       listenable: settings,
       builder: (context, _) {
         return ListView(
-          padding: const EdgeInsets.all(16),
+          padding: EdgeInsets.fromLTRB(16 + safeLeft, 16, 16, 16),
           children: [
             Text(
               'Developer Options',
@@ -943,7 +974,11 @@ class _DeveloperPanel extends StatelessWidget {
             ),
             const SizedBox(height: 8),
             _infoRow(context, 'Sync Device Key', settings.syncDeviceKey ?? '(loading…)'),
-            _infoRow(context, 'App Version', appVersionLabel),
+            _infoRowWidget(
+              context,
+              'App Version',
+              const VersionLabel(style: TextStyle(fontFamily: 'monospace', fontSize: 13)),
+            ),
           ],
         );
       },
@@ -951,6 +986,20 @@ class _DeveloperPanel extends StatelessWidget {
   }
 
   Widget _infoRow(BuildContext context, String label, String value) {
+    return _infoRowWidget(
+      context,
+      label,
+      SelectableText(
+        value,
+        style: const TextStyle(
+          fontFamily: 'monospace',
+          fontSize: 13,
+        ),
+      ),
+    );
+  }
+
+  Widget _infoRowWidget(BuildContext context, String label, Widget value) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 6),
       child: Row(
@@ -963,66 +1012,216 @@ class _DeveloperPanel extends StatelessWidget {
               style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontWeight: FontWeight.w500),
             ),
           ),
-          Expanded(
-            flex: 3,
-            child: SelectableText(value, style: const TextStyle(fontFamily: 'monospace', fontSize: 13)),
-          ),
+          Expanded(flex: 3, child: value),
         ],
       ),
     );
   }
 }
 
-class _AboutPanel extends StatelessWidget {
-  final HaLoServices services;
+/// How many releases' notes show in the About screen's "Release Notes"
+/// preview/modal — a handful of the most recent, not the full history (the
+/// old "last 20 releases as cards" design this replaced).
+const _aboutRecentReleaseCount = 3;
 
-  const _AboutPanel({required this.services});
+/// Tapping the About screen's version row copies the full app name and
+/// version details — handy for pasting into a bug report or support email.
+Future<void> _copyVersionDetailsToClipboard(BuildContext context) async {
+  final details = await versionDetailsText();
+  await Clipboard.setData(ClipboardData(text: '$ham2kAppName\n$details'));
+  if (!context.mounted) return;
+  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Copied version details to clipboard')));
+}
+
+class _AboutPanel extends StatelessWidget {
+  const _AboutPanel();
 
   @override
   Widget build(BuildContext context) {
-    return ListView(
-      padding: const EdgeInsets.all(16),
-      children: [
-        Center(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const SizedBox(height: 24),
-              ClipRRect(
-                borderRadius: BorderRadius.circular(16),
-                child: Image.asset('assets/images/ham2k-icon.png', width: 96, height: 96),
+    return FutureBuilder<List<ReleaseNotesEntry>>(
+      future: loadReleaseNotes(),
+      builder: (context, snapshot) {
+        final releaseNotes = snapshot.data ?? const [];
+        final recentReleases = releaseNotes.take(_aboutRecentReleaseCount).toList();
+        final theme = Theme.of(context);
+        // Match the running version explicitly rather than assuming
+        // `releaseNotes.first` is it — release-notes.yaml's newest-first
+        // order is a hand-maintained authoring convention, not something
+        // the loader enforces, so notes written ahead of an actual version
+        // bump (or a hotfix/rollback) could otherwise show a different
+        // release here than the VersionLabel row below it. Falls back to
+        // `.first` only when the running version has no entry yet.
+        final currentRelease = releaseNotes.isEmpty
+            ? null
+            : releaseNotes.firstWhere((entry) => entry.version == kPublicVersion, orElse: () => releaseNotes.first);
+        final safeLeft = PaneSafeArea.leftOf(context);
+
+        // CustomScrollView + SliverFillRemaining(hasScrollBody: false)
+        // rather than a plain Column: on a short viewport (a phone in
+        // landscape, or a resized-short desktop window) the fixed-height
+        // rows above (240px header + two dividers + version row + title)
+        // alone can exceed the available height, and a bare Column has no
+        // scroll fallback for that — it just overflows. This fills the
+        // remaining space normally when there's room (matching the old
+        // Column+Expanded look) and degrades to a scrollable, naturally-
+        // sized preview when there isn't, instead of throwing.
+        return CustomScrollView(
+          slivers: [
+            SliverToBoxAdapter(child: _AboutHeader(release: currentRelease)),
+            const SliverToBoxAdapter(child: Divider(height: 1)),
+            SliverToBoxAdapter(
+              child: ListTile(
+                leading: const Icon(Icons.info_outline),
+                // VersionLabel renders SelectableText, whose own tap
+                // recognizer (for cursor placement) would otherwise win
+                // the gesture arena over this ListTile's onTap —
+                // IgnorePointer keeps the whole row a single tap target
+                // instead of a text-selection field.
+                title: const IgnorePointer(
+                  child: VersionLabel(
+                    detailed: true,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    boldFirstLine: true,
+                  ),
+                ),
+                onTap: () => _copyVersionDetailsToClipboard(context),
+                mouseCursor: SystemMouseCursors.click,
               ),
-              const SizedBox(height: 16),
-              Text(
-                'Ham2K Logger',
-                style: Theme.of(context).textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.bold),
+            ),
+            const SliverToBoxAdapter(child: Divider(height: 1)),
+            if (recentReleases.isNotEmpty) ...[
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: EdgeInsets.fromLTRB(16 + safeLeft, 12, 16, 8),
+                  child: Align(
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      'Release Notes',
+                      style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                ),
               ),
-              const SizedBox(height: 8),
-              const Text('Version $appVersionLabel', style: TextStyle(fontSize: 15, color: Colors.grey)),
-              const SizedBox(height: 24),
+              SliverFillRemaining(
+                hasScrollBody: false,
+                child: _ReleaseNotesPreview(releases: recentReleases),
+              ),
             ],
+          ],
+        );
+      },
+    );
+  }
+}
+
+/// The last few releases' notes as one markdown block — shared by the
+/// clipped/faded preview and the modal pane's full (unclipped) view, so
+/// they always show identical content.
+String _combinedReleaseNotesMarkdown(List<ReleaseNotesEntry> releases) {
+  final lines = <String>[];
+  for (final release in releases) {
+    lines.add('**${release.name}**');
+    lines.add('');
+    lines.addAll(release.changes.map((change) => '- $change'));
+    lines.add('');
+  }
+  return lines.join('\n');
+}
+
+/// Tapping the preview opens the same content in a Modal Pane, scrollable
+/// and un-clipped — the preview itself never scrolls (`ClipRect` fades it
+/// out at the bottom instead), same non-scrollable-`SingleChildScrollView`
+/// trick as `release_overlay.dart`'s collapsed notes: it gives the
+/// `MarkdownBody` unbounded height along the scroll axis so its natural
+/// (taller-than-available) size never trips a RenderFlex overflow.
+class _ReleaseNotesPreview extends StatelessWidget {
+  final List<ReleaseNotesEntry> releases;
+
+  const _ReleaseNotesPreview({required this.releases});
+
+  @override
+  Widget build(BuildContext context) {
+    final markdown = _combinedReleaseNotesMarkdown(releases);
+    final styleSheet = MarkdownStyleSheet.fromTheme(Theme.of(context));
+    final safeLeft = PaneSafeArea.leftOf(context);
+    return GestureDetector(
+      key: const Key('aboutReleaseNotesPreview'),
+      behavior: HitTestBehavior.opaque,
+      onTap: () => showModalPane<void>(
+        context,
+        title: 'Release Notes',
+        builder: (context) => MarkdownBody(data: markdown, styleSheet: styleSheet),
+      ),
+      child: ClipRect(
+        child: ShaderMask(
+          shaderCallback: (bounds) => const LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [Colors.white, Colors.white, Colors.transparent],
+            stops: [0, 0.85, 1],
+          ).createShader(bounds),
+          blendMode: BlendMode.dstIn,
+          child: SingleChildScrollView(
+            physics: const NeverScrollableScrollPhysics(),
+            padding: EdgeInsets.only(left: 16 + safeLeft, right: 16),
+            child: MarkdownBody(data: markdown, styleSheet: styleSheet),
           ),
         ),
-        const Divider(),
-        const SizedBox(height: 16),
-        Text('About the App', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
-        const SizedBox(height: 8),
-        const Text(
-          'Ham2K Logger is the next-generation Portable Logger for amateur radio operators. '
-          'It is designed to be lightweight, cross-platform, and extensible.',
-          style: TextStyle(height: 1.4, fontSize: 14),
-        ),
-        const SizedBox(height: 8),
-        ListTile(
-          contentPadding: EdgeInsets.zero,
-          leading: const Icon(Icons.notifications_outlined),
-          title: const Text('Recent Notices'),
-          onTap: () => Navigator.of(
-            context,
-          ).push(MaterialPageRoute(builder: (context) => NoticeHistoryView(services: services))),
-          mouseCursor: SystemMouseCursors.click,
-        ),
-      ],
+      ),
+    );
+  }
+}
+
+/// The About screen's top banner: the current release's cover photo fading
+/// into the surface color (same technique as `ReleaseOverlayView`), with the
+/// ham2k arc and app name over it — Issue #42's "Recent Changes" header
+/// treatment.
+class _AboutHeader extends StatelessWidget {
+  final ReleaseNotesEntry? release;
+
+  const _AboutHeader({required this.release});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    // No ambient panel-body inset to cancel here (see _buildContent) — this
+    // Stack already spans the pane's true width.
+    return SizedBox(
+      height: 240,
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          if (release != null)
+            Image.asset(
+              release!.imageAssetPath,
+              fit: BoxFit.cover,
+              errorBuilder: (context, error, stackTrace) => ColoredBox(color: theme.colorScheme.primaryContainer),
+            )
+          else
+            ColoredBox(color: theme.colorScheme.primaryContainer),
+          DecoratedBox(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [theme.colorScheme.surface.withValues(alpha: 0.3), theme.colorScheme.surface],
+                stops: const [0.0, 0.9],
+              ),
+            ),
+          ),
+          Align(
+            alignment: Alignment.topCenter,
+            child: Padding(
+              padding: const EdgeInsets.only(top: 16),
+              child: GestureDetector(
+                key: const Key('aboutWordmark'),
+                onTap: () => showPhotoWordmarkModal(context, release: release),
+                child: const Ham2kBrandMark(logoWidth: 140, showShadow: true),
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -1034,14 +1233,15 @@ class _AboutPanel extends StatelessWidget {
 class _PendingAccountBanner extends StatelessWidget {
   final VoidCallback onCombine;
   final VoidCallback onReplace;
+  final double extraLeftMargin;
 
-  const _PendingAccountBanner({required this.onCombine, required this.onReplace});
+  const _PendingAccountBanner({required this.onCombine, required this.onReplace, this.extraLeftMargin = 0});
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return Card(
-      margin: const EdgeInsets.fromLTRB(16, 4, 16, 12),
+      margin: EdgeInsets.fromLTRB(16 + extraLeftMargin, 4, 16, 12),
       color: theme.colorScheme.tertiaryContainer,
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -1224,7 +1424,9 @@ class _AccountPaneState extends State<_AccountPane> {
         MaterialPageRoute(
           builder: (context) => Scaffold(
             appBar: AppBar(
+              flexibleSpace: windowHeaderGestureArea(),
               title: Text('Connect to ${widget.account['label']}'),
+              actions: [windowsCaptionSpacer(context)],
               leadingWidth: macOSAwareLeadingWidth(context),
               leading: isMacOSChromelessWindow
                   ? Padding(

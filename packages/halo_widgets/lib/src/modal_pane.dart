@@ -120,11 +120,15 @@ class _ModalPaneScaffold extends StatelessWidget {
     return ScaffoldMessenger(
       child: Scaffold(
         appBar: AppBar(
+          // Full-screen presentation puts this AppBar at the window top, so
+          // it doubles as the window header.
+          flexibleSpace: windowHeaderGestureArea(),
           // The back button is the dismissal — same Navigator.pop as the
           // dialog presentation's close button.
           leadingWidth: macOSAwareLeadingWidth(context),
           leading: macOSAwareBackButton(context),
           title: route.title == null ? null : Text(route.title!),
+          actions: [windowsCaptionSpacer(context)],
         ),
         body: SafeArea(
           child: route.scrollable ? SingleChildScrollView(padding: const EdgeInsets.all(24), child: _body()) : _body(),

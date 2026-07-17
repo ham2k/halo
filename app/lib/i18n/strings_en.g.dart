@@ -41,6 +41,7 @@ class Translations with BaseTranslations<AppLocale, Translations> {
 
 	// Translations
 	late final Translations$common$en common = Translations$common$en.internal(_root);
+	late final Translations$startScreen$en startScreen = Translations$startScreen$en.internal(_root);
 	late final Translations$home$en home = Translations$home$en.internal(_root);
 	late final Translations$dialogs$en dialogs = Translations$dialogs$en.internal(_root);
 	late final Translations$operation$en operation = Translations$operation$en.internal(_root);
@@ -79,6 +80,18 @@ class Translations$common$en {
 
 	/// en: 'Apply'
 	String get apply => 'Apply';
+}
+
+// Path: startScreen
+class Translations$startScreen$en {
+	Translations$startScreen$en.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'by KI2D and friends'
+	String get credits => 'by KI2D and friends';
 }
 
 // Path: home
@@ -880,6 +893,7 @@ extension on Translations {
 			'common.create' => 'Create',
 			'common.error' => 'Error',
 			'common.apply' => 'Apply',
+			'startScreen.credits' => 'by KI2D and friends',
 			'home.title' => 'Portable Logger',
 			'home.titleDesktop' => 'Desktop Logger',
 			'home.newOperation' => 'New operation',

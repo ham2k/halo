@@ -138,6 +138,173 @@ void main() {
     },
   );
 
+  group('annotation rows (note/todo/solar/weather events, ham2k/app-halo-dist#64)', () {
+    // The event pseudo-QSO shape the annotation-commands extension emits
+    // through its `addQso` action.
+    Future<Qso> addAnnotation(
+      String operationUuid,
+      String kind, {
+      String? note,
+      String? description,
+      String? icon,
+      Map<String, dynamic>? data,
+      int atMillis = 1500,
+    }) {
+      return qsos.add(operationUuid, {
+        'band': 'event',
+        'freq': 0,
+        'mode': kind,
+        'startAtMillis': atMillis,
+        'our': {'call': 'EVENT'},
+        'their': {'call': kind.toUpperCase()},
+        'event': {
+          'event': kind,
+          'icon': ?icon,
+          'note': ?note,
+          'description': ?description,
+          'data': ?data,
+        },
+      });
+    }
+
+    testWidgets(
+      'a note shows its text on a yellow row, keeps the time column, and consumes no QSO number',
+      (tester) async {
+        final operation = await operations.create(stationCall: 'KI2D');
+        final first = await qsos.add(operation.uuid, {
+          'their': {'call': 'W1AW'},
+          'band': '20m',
+          'mode': 'SSB',
+          'startAtMillis': 1000,
+        });
+        final note = await addAnnotation(
+          operation.uuid,
+          'note',
+          note: 'THIS IS WHEN THE COPS SHOWED UP',
+          icon: 'sticker-text-outline',
+          atMillis: 1500,
+        );
+        final second = await qsos.add(operation.uuid, {
+          'their': {'call': 'K2HAM'},
+          'band': '20m',
+          'mode': 'SSB',
+          'startAtMillis': 2000,
+        });
+
+        Qso? tapped;
+        await tester.pumpWidget(
+          MaterialApp(
+            home: Scaffold(
+              body: QsoList(
+                qsos: [first, note, second],
+                onSelect: (_) {},
+                onSelectEvent: (qso) => tapped = qso,
+              ),
+            ),
+          ),
+        );
+
+        expect(find.text('THIS IS WHEN THE COPS SHOWED UP'), findsOneWidget);
+        // Timeline entry, not a centered marker: the annotation keeps the
+        // QSO rows' HH:MMz time column (1500ms UTC → 00:00z, same as the
+        // neighboring rows' format).
+        expect(
+          find.descendant(of: find.byType(AnnotationRow), matching: find.text('00:00z')),
+          findsOneWidget,
+        );
+        // Real QSOs still number 1 and 2 — annotations don't consume one.
+        expect(find.text('1'), findsOneWidget);
+        expect(find.text('2'), findsOneWidget);
+
+        // app-polo's eventRow yellow, blended over the surface at light-mode
+        // opacity — the "sticky note" treatment the styling is ported from.
+        final material = tester.widget<Material>(
+          find.descendant(of: find.byType(AnnotationRow), matching: find.byType(Material)),
+        );
+        final theme = Theme.of(tester.element(find.byType(AnnotationRow)));
+        expect(
+          material.color,
+          Color.alphaBlend(
+            const Color(0xFFFCF4A7).withValues(alpha: 0.85),
+            theme.colorScheme.surface,
+          ),
+        );
+
+        await tester.tap(find.text('THIS IS WHEN THE COPS SHOWED UP'));
+        expect(tapped?.uuid, note.uuid);
+      },
+    );
+
+    testWidgets('solar/weather annotations show their description line', (tester) async {
+      final operation = await operations.create(stationCall: 'KI2D');
+      final solar = await addAnnotation(
+        operation.uuid,
+        'solar',
+        description: '🟡SFI 117 • 🟢A 14 • 🟢K 1 • 😎SN 60',
+        icon: 'sun-wireless',
+      );
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: QsoList(qsos: [solar], onSelect: (_) {}),
+          ),
+        ),
+      );
+
+      expect(find.text('🟡SFI 117 • 🟢A 14 • 🟢K 1 • 😎SN 60'), findsOneWidget);
+      final icon = tester.widget<Icon>(
+        find.descendant(of: find.byType(AnnotationRow), matching: find.byType(Icon)),
+      );
+      expect(icon.icon, resolveIconName('sun-wireless'));
+    });
+
+    testWidgets('a todo\'s icon tracks its done state, not the stored icon', (tester) async {
+      final operation = await operations.create(stationCall: 'KI2D');
+      final pending = await addAnnotation(
+        operation.uuid,
+        'todo',
+        note: 'FIX THIS CALL',
+        icon: 'sticker-outline',
+        data: {'done': false},
+        atMillis: 1000,
+      );
+      final done = await addAnnotation(
+        operation.uuid,
+        'todo',
+        note: 'ALREADY HANDLED',
+        icon: 'sticker-outline',
+        data: {'done': true},
+        atMillis: 2000,
+      );
+      // app-polo's older todo shape keeps `done` directly on the event, not
+      // under `data` — synced logs contain it, and app-polo itself reads
+      // both (`data.done ?? done`).
+      final legacyDone = await qsos.add(operation.uuid, {
+        'band': 'event',
+        'startAtMillis': 3000,
+        'event': {'event': 'todo', 'note': 'LEGACY SHAPE', 'done': true},
+      });
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: QsoList(qsos: [pending, done, legacyDone], onSelect: (_) {}),
+          ),
+        ),
+      );
+
+      final icons = tester
+          .widgetList<Icon>(
+            find.descendant(of: find.byType(AnnotationRow), matching: find.byType(Icon)),
+          )
+          .toList();
+      expect(icons[0].icon, resolveIconName('sticker'));
+      expect(icons[1].icon, resolveIconName('sticker-check-outline'));
+      expect(icons[2].icon, resolveIconName('sticker-check-outline'));
+    });
+  });
+
   group('frequency', () {
     testWidgets(
       'splits MHz (bold) / kHz, with no Hz segment for a whole-kHz frequency',

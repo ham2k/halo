@@ -1,0 +1,11 @@
+name: halo_build_tools
+description: "HaLo Next build tooling: version and build-id computation for CI. Pure Dart — no Flutter dependency."
+version: 0.0.1
+publish_to: 'none'
+
+environment:
+  sdk: ^3.12.2
+
+dev_dependencies:
+  lints: ^6.0.0
+  test: ^1.25.6

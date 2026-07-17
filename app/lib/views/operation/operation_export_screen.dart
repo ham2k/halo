@@ -100,9 +100,11 @@ class _OperationExportScreenState extends State<OperationExportScreen> {
 
     return Scaffold(
       appBar: AppBar(
+        flexibleSpace: windowHeaderGestureArea(),
         leadingWidth: macOSAwareLeadingWidth(context),
         leading: macOSAwareBackButton(context),
         title: Text(t.operation.export.title),
+        actions: [windowsCaptionSpacer(context)],
       ),
       body: _loading
           ? const Center(child: CircularProgressIndicator())

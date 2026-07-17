@@ -89,7 +89,7 @@ const bundles = [
   { key: 'lookups', entry: 'core/lookups/src/index.ts', kind: 'extension' },
   { key: 'radio-commands', entry: 'core/radio-commands/src/index.ts', kind: 'extension' },
   { key: 'dev-commands', entry: 'core/dev-commands/src/index.ts', kind: 'extension' },
-  { key: 'note-command', entry: 'core/note-command/src/index.ts', kind: 'extension' },
+  { key: 'annotation-commands', entry: 'core/annotation-commands/src/index.ts', kind: 'extension', domains: ['www.hamqsl.com', 'api.open-meteo.com'] },
   { key: 'spot-commands', entry: 'core/spot-commands/src/index.ts', kind: 'extension' },
   { key: 'hamdb', entry: 'lookups/hamdb/src/index.ts', kind: 'extension', domains: ['api.hamdb.org'] },
   { key: 'qrz', entry: 'lookups/qrz/src/index.ts', kind: 'extension', domains: ['xmldata.qrz.com', 'logbook.qrz.com'] },

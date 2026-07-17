@@ -4,7 +4,7 @@
 // The QSO entry controls — the hottest path in the whole app. Keyboard
 // ergonomics are the contract (DESIGN.md §7), ported from app-polo:
 //   Enter   logs the QSO from anywhere in the controls
-//   Esc     wipes the current entry
+//   Esc     wipes the current entry (same as the wipe button, undo included)
 //   Space   in the call field: runs command shortcuts (frequency, band,
 //           mode — "14285 ", "20m ", "cw ") or advances to Sent;
 //           in Sent/Rcvd: advances focus, cycling back to the call
@@ -1813,6 +1813,8 @@ class _LoggingControlsState extends State<LoggingControls> {
         await widget.onCommandAction?.call('devStatus', (map['devStatus'] as Map).cast<String, dynamic>());
       } else if (map['devProgress'] is Map) {
         await widget.onCommandAction?.call('devProgress', (map['devProgress'] as Map).cast<String, dynamic>());
+      } else if (map['devSplash'] is Map) {
+        await widget.onCommandAction?.call('devSplash');
       } else if (map['reloadDataFiles'] is Map) {
         await widget.onCommandAction?.call('reloadDataFiles', (map['reloadDataFiles'] as Map).cast<String, dynamic>());
       } else {
@@ -2269,10 +2271,18 @@ class _LoggingControlsState extends State<LoggingControls> {
 
   /// Escape wipes the compose form, but must not blank the read-only view
   /// of a staged-delete or deleted QSO — the fields are the record's only
-  /// display and can't be repopulated without reselecting it.
+  /// display and can't be repopulated without reselecting it. When
+  /// composing a new QSO it goes through the wipe button's path, so the
+  /// 5-second undo offer applies to Esc too; while editing, or with
+  /// nothing composed, there is nothing the undo button could restore
+  /// (it only shows for new QSOs), so it wipes directly.
   void _handleEscape() {
     if (_fieldsLocked) return;
-    _wipe();
+    if (widget.editingQso == null && _hasComposedValues) {
+      _handleWipeTap();
+    } else {
+      _wipe();
+    }
   }
 
   void _wipe() {
@@ -2495,6 +2505,9 @@ class _LoggingControlsState extends State<LoggingControls> {
       // field is set — see CommandInterpretation) — surface the message,
       // keep the typed input for editing, and execute nothing.
       if (interpretation != null && interpretation['error'] is String) {
+        // A confirm-clear timer from a previous command would wipe this
+        // message moments after it appears — the error owns the slot now.
+        _executeMessageTimer?.cancel();
         setState(() {
           _commandMessage = interpretation!['error'] as String;
         });
@@ -2521,6 +2534,21 @@ class _LoggingControlsState extends State<LoggingControls> {
           );
           if (!mounted || _call != call) return; // stale — the call changed while awaiting
           if (executable == null) return;
+
+          // A command can also fail at execute time (e.g. SOLAR/WEATHER's
+          // network fetch, or the hook timing out entirely — see
+          // interpretCommand) — surface the message and keep the typed
+          // input, same treatment as the preview-time `error` branch above,
+          // including cancelling any pending confirm-clear timer that would
+          // otherwise wipe the error moments after it appears.
+          if (executable['error'] is String) {
+            _executeMessageTimer?.cancel();
+            setState(() {
+              _commandMessage = executable['error'] as String;
+            });
+            _notifyCommandMessage(_commandMessage);
+            return;
+          }
 
           _callController.clear();
           _currentInterpretation = null;
@@ -2762,12 +2790,14 @@ class _LoggingControlsState extends State<LoggingControls> {
             children: [
               Container(height: 2, color: accentPoloColors.tertiaryLight),
               Padding(
-                // No top inset while a control is expanded — that gap would
-                // otherwise show as bare panel background between the
-                // divider above and the expanded control's own background.
+                // No top inset at all — SecondaryControlRow's expanded
+                // panel slides out flush against the divider above, and the
+                // row itself animates the border→pills gap, so any padding
+                // here would show as bare panel background above the
+                // panel's dark area.
                 padding: EdgeInsets.fromLTRB(
                   _secondaryPanelHorizontalInset,
-                  _selectedControlKey != null ? 0 : 4,
+                  0,
                   _secondaryPanelHorizontalInset,
                   8,
                 ),
@@ -2809,7 +2839,6 @@ class _LoggingControlsState extends State<LoggingControls> {
                     mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      SizedBox(height: _selectedControlKey != null ? 0 : 6),
                       AbsorbPointer(
                         absorbing: fieldsLocked,
                         child: Opacity(

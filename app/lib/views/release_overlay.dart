@@ -1,0 +1,453 @@
+// Copyright ©️ 2026 Sebastian Delmont <sd@ham2k.com>
+// SPDX-License-Identifier: MPL-2.0
+//
+// The dismissible "what's new" overlay shown once per new version on
+// startup (Issue #42). Shown by `_StartupGate` in main.dart when
+// `config/release_notes.dart`'s current entry hasn't been dismissed yet
+// (SettingsService.lastSeenReleaseVersion); dismissing it persists that
+// version so it doesn't show again until the next release.
+
+import 'dart:math' as math;
+import 'dart:ui' show ImageFilter;
+
+import 'package:flutter/material.dart';
+import 'package:flutter_markdown/flutter_markdown.dart';
+import 'package:halo_widgets/halo_widgets.dart';
+
+import '../config/release_notes.dart';
+import '../i18n/strings.g.dart';
+import 'ham2k_logo.dart';
+
+const _creditsAndVersionShadows = [Shadow(color: Colors.black54, offset: Offset(1, 2), blurRadius: 4)];
+// Fixed regardless of the app's theme mode — halo_widgets/theme.dart's light
+// ColorScheme.surface/primaryContainer values, hardcoded here rather than
+// read from Theme.of(context) so this panel never picks up dark mode.
+const _panelBackground = Color(0xFFFBFCFE);
+const _photoFallbackColor = Color(0xFFBCE9FF);
+const _bandColor = Colors.white;
+const _bandOpacityCollapsed = 0.35;
+const _bandOpacityExpanded = 0.75;
+const _bandHeightFactorCollapsed = 0.25;
+const _bandHeightFactorExpanded = 2 / 3;
+const _bandAnimationDuration = Duration(milliseconds: 250);
+
+/// The "KI2D" callsign in the credits line ("by KI2D and friends"/"por KI2D
+/// y amigos") reads as a monospace callsign rather than plain prose — every
+/// translation keeps the callsign untranslated, so splitting on the literal
+/// substring works across locales.
+Widget _creditsText(String text, TextStyle style) {
+  const callsign = 'KI2D';
+  final index = text.indexOf(callsign);
+  if (index < 0) return Text(text, textAlign: TextAlign.center, style: style);
+  return Text.rich(
+    TextSpan(
+      style: style,
+      children: [
+        TextSpan(text: text.substring(0, index)),
+        TextSpan(
+          text: callsign,
+          style: style.copyWith(fontFamily: 'RobotoMono'),
+        ),
+        TextSpan(text: text.substring(index + callsign.length)),
+      ],
+    ),
+    textAlign: TextAlign.center,
+  );
+}
+
+class ReleaseOverlayView extends StatefulWidget {
+  final ReleaseNotesEntry release;
+  final VoidCallback onDismiss;
+
+  const ReleaseOverlayView({super.key, required this.release, required this.onDismiss});
+
+  @override
+  State<ReleaseOverlayView> createState() => _ReleaseOverlayViewState();
+}
+
+class _ReleaseOverlayViewState extends State<ReleaseOverlayView> {
+  bool _expanded = false;
+
+  void _toggleExpanded() => setState(() => _expanded = !_expanded);
+
+  @override
+  Widget build(BuildContext context) {
+    final release = widget.release;
+    // This panel's colors are fixed regardless of the app's light/dark theme
+    // mode (it sits over a photo, not the app chrome). `theme` is still
+    // `Theme.of(context)` — a standalone `buildHaLoTheme()` call isn't fully
+    // resolved the way a Theme threaded through the widget tree is (its
+    // textTheme font sizes come back null, tripping flutter_markdown's
+    // assertion) — but every color pulled from it below is overridden with a
+    // fixed value instead of the theme's, so nothing here can flip with
+    // light/dark mode.
+    final theme = Theme.of(context);
+    final versionLabelStyle = theme.textTheme.titleMedium?.copyWith(
+      fontSize: (theme.textTheme.titleMedium?.fontSize ?? 16) * 2,
+      fontWeight: FontWeight.bold,
+      color: Colors.white,
+      shadows: _creditsAndVersionShadows,
+    );
+    final creditsStyle = TextStyle(
+      fontSize: (versionLabelStyle?.fontSize ?? 32) * 0.75 * 0.85,
+      color: Colors.white,
+      shadows: _creditsAndVersionShadows,
+    );
+    // flutter_markdown's `fromTheme` bases `p`/`listBullet` on bodyMedium.
+    // `color: Colors.black` is explicit on all three — bodyMedium's own
+    // color isn't set, so without this they'd inherit whatever color
+    // Flutter's default TextTheme picks for the (fixed, but still
+    // technically light) `theme` above.
+    final notesFontSize = (theme.textTheme.bodyMedium?.fontSize ?? 14) * 1.2;
+    final notesStyleSheet = MarkdownStyleSheet.fromTheme(theme).copyWith(
+      p: theme.textTheme.bodyMedium?.copyWith(fontSize: notesFontSize, color: Colors.black),
+      listBullet: theme.textTheme.bodyMedium?.copyWith(fontSize: notesFontSize, color: Colors.black),
+      strong: theme.textTheme.bodyMedium?.copyWith(
+        fontSize: notesFontSize * 1.15,
+        fontWeight: FontWeight.bold,
+        color: Colors.black,
+      ),
+    );
+
+    // "What's new in this release" is bold via markdown's `**...**` rather
+    // than a separate Text, so `strong` above is the only place its
+    // size/weight is set.
+    final notesLines = <String>[
+      "**What's new in this release**",
+      '',
+      ...release.changes.map((change) => '- $change'),
+    ];
+    final notesMarkdown = notesLines.join('\n');
+
+    return Material(
+      color: _panelBackground,
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          // The band's own available height (not the screen's) — matters on
+          // the desktop modal presentation, where this widget is confined to
+          // a pane-sized box smaller than the window (see main.dart).
+          final totalHeight = constraints.maxHeight;
+          final bandHeight = totalHeight * (_expanded ? _bandHeightFactorExpanded : _bandHeightFactorCollapsed);
+          final bandOpacity = _expanded ? _bandOpacityExpanded : _bandOpacityCollapsed;
+
+          // Tapping anywhere in the view dismisses it, EXCEPT the notes text
+          // (its own GestureDetector below toggles expand/collapse instead)
+          // and the Continue button (its own tap target) — both are
+          // descendants with their own `onTap`, which (same pattern as
+          // halo_widgets' modal_pane.dart barrier/card split) wins over this
+          // outer handler for their specific regions instead of also
+          // triggering it.
+          return GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: widget.onDismiss,
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                Positioned.fill(
+                  child: Image.asset(
+                    release.imageAssetPath,
+                    fit: BoxFit.cover,
+                    errorBuilder: (context, error, stackTrace) => ColoredBox(color: _photoFallbackColor),
+                  ),
+                ),
+                SafeArea(
+                  bottom: false,
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        const SizedBox(height: 16),
+                        const Center(child: Ham2kBrandMark(logoWidth: 180, showShadow: true)),
+                        const SizedBox(height: 8),
+                        _creditsText(context.t.startScreen.credits, creditsStyle),
+                        const SizedBox(height: 4),
+                        Text(release.name, textAlign: TextAlign.center, style: versionLabelStyle),
+                      ],
+                    ),
+                  ),
+                ),
+                // The caption and the notes band are siblings in ONE
+                // Positioned/Column, not two separate Positioned widgets — a
+                // standalone Positioned here for just the caption previously
+                // broke the photo's rendering (a reproducible CanvasKit
+                // compositing issue with this many overlapping top-level
+                // Positioned layers), so it stays folded in alongside the band
+                // instead. Tapping the notes area (not the Continue button)
+                // toggles between a short, non-scrollable preview and an
+                // expanded, scrollable view; the band's height/opacity and the
+                // caption's fade-out both animate off of `_expanded`.
+                Positioned(
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      if (release.photoCaption.isNotEmpty)
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(24, 0, 24, 8),
+                          child: AnimatedOpacity(
+                            duration: _bandAnimationDuration,
+                            curve: Curves.easeInOut,
+                            opacity: _expanded ? 0 : 1,
+                            child: Text(
+                              release.photoCaption,
+                              textAlign: TextAlign.center,
+                              style: creditsStyle.copyWith(
+                                fontFamily: 'RobotoMono',
+                                fontSize: creditsStyle.fontSize! * 0.85,
+                              ),
+                            ),
+                          ),
+                        ),
+                      AnimatedContainer(
+                        duration: _bandAnimationDuration,
+                        curve: Curves.easeInOut,
+                        height: bandHeight,
+                        color: _bandColor.withValues(alpha: bandOpacity),
+                        child: SafeArea(
+                          top: false,
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                Expanded(
+                                  child: GestureDetector(
+                                    behavior: HitTestBehavior.opaque,
+                                    onTap: _toggleExpanded,
+                                    child: ClipRect(
+                                      child: _expanded
+                                          ? SingleChildScrollView(
+                                              child: MarkdownBody(data: notesMarkdown, styleSheet: notesStyleSheet),
+                                            )
+                                          // A `ShaderMask` in `dstIn` mode fades
+                                          // the notes' own alpha directly
+                                          // (revealing whatever's underneath,
+                                          // same as a real fade-to-transparent)
+                                          // — a decorative gradient-colored box
+                                          // painted on top instead (the
+                                          // previous approach) only approximates
+                                          // that, and didn't read as a fade at
+                                          // all against the band's own
+                                          // semi-transparent color.
+                                          : ShaderMask(
+                                              shaderCallback: (bounds) => const LinearGradient(
+                                                begin: Alignment.topCenter,
+                                                end: Alignment.bottomCenter,
+                                                colors: [Colors.white, Colors.white, Colors.transparent],
+                                                stops: [0, 0.75, 1],
+                                              ).createShader(bounds),
+                                              blendMode: BlendMode.dstIn,
+                                              // `SingleChildScrollView`
+                                              // (scrolling disabled) rather
+                                              // than the bare `MarkdownBody`
+                                              // directly: it gives its child
+                                              // unbounded height along the
+                                              // scroll axis, so the notes'
+                                              // natural (taller-than-the-band)
+                                              // size never trips a RenderFlex
+                                              // overflow — `ClipRect` above
+                                              // still clips it to the band's
+                                              // height.
+                                              child: SingleChildScrollView(
+                                                physics: const NeverScrollableScrollPhysics(),
+                                                child: MarkdownBody(data: notesMarkdown, styleSheet: notesStyleSheet),
+                                              ),
+                                            ),
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(height: 8),
+                                Align(
+                                  alignment: Alignment.centerRight,
+                                  child: FilledButton(onPressed: widget.onDismiss, child: const Text('Continue')),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          );
+        },
+      ),
+    );
+  }
+}
+
+/// The shared "blurred backdrop + centered elevated card" chrome behind
+/// both the startup release overlay (main.dart's `_ReleaseOverlayGateState`)
+/// and the About screen's photo modal below — wide/two-pane layouts only;
+/// each caller handles the narrow-layout (full-screen, no chrome) branch
+/// itself, since they differ in where [child] paints from (an existing
+/// `Stack` vs. a fresh `Navigator` route).
+///
+/// Fixed (not just max-bounded) width/height: content inside [child] that
+/// needs a determinate parent size to divide (an `Expanded`/scrollable
+/// section) requires this — same reasoning as `modal_pane.dart`'s
+/// non-scrollable dialog case (its own `minHeight: maxPaneHeight`). Sized
+/// deliberately outside `modal_pane.dart`'s usual `idealPaneWidth`/96
+/// conventions: 70% of the window's width, and a 48 (half the usual 96)
+/// top+bottom margin.
+Widget wideModalChrome({required BuildContext context, required Widget child, required VoidCallback onDismiss}) {
+  final windowSize = MediaQuery.sizeOf(context);
+  final paneWidth = windowSize.width * 0.7;
+  final maxPaneHeight = math.max(0.0, windowSize.height - 48);
+  return BackdropFilter(
+    // Blurs whatever's painted just behind this in the same compositing
+    // layer (the home screen, or — for the About modal — the settings pane).
+    filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+    // Tapping the barrier (outside the card) dismisses, same as
+    // ModalPaneRoute's dialog barrier (modal_pane.dart). [child] is expected
+    // to have its own top-level GestureDetector(onDismiss) covering the card
+    // itself, which — same absorption pattern as modal_pane.dart's
+    // barrier/card split — wins over this one for taps that land on the
+    // card, so there's no need to separately guard against double-dismissal.
+    child: GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: onDismiss,
+      child: ColoredBox(
+        color: Colors.black.withValues(alpha: 0.2),
+        child: Center(
+          child: SizedBox(
+            width: paneWidth,
+            height: maxPaneHeight,
+            // Same elevated-card convention as ModalPaneRoute's dialog
+            // presentation (modal_pane.dart) — Material's elevation gives a
+            // drop shadow that follows the rounded corners, which a plain
+            // ClipRRect (no shadow of its own) didn't have.
+            child: Material(
+              elevation: 12,
+              shadowColor: Colors.black,
+              borderRadius: BorderRadius.circular(28),
+              clipBehavior: Clip.antiAlias,
+              child: child,
+            ),
+          ),
+        ),
+      ),
+    ),
+  );
+}
+
+/// The About screen's wordmark, tapped, opens this — same blurred-backdrop
+/// full-bleed-photo look as the startup release overlay above, and the same
+/// top section (brand mark, credits, release name) and photo-credit caption
+/// at the bottom, but nothing to read or act on below that: no notes band,
+/// no Continue button — dismissed by a tap anywhere instead.
+Future<void> showPhotoWordmarkModal(BuildContext context, {required ReleaseNotesEntry? release}) {
+  return showGeneralDialog<void>(
+    context: context,
+    barrierDismissible: true,
+    barrierLabel: 'Dismiss',
+    barrierColor: Colors.transparent,
+    pageBuilder: (context, animation, secondaryAnimation) => _PhotoWordmarkOverlay(release: release),
+  );
+}
+
+class _PhotoWordmarkOverlay extends StatelessWidget {
+  final ReleaseNotesEntry? release;
+
+  const _PhotoWordmarkOverlay({required this.release});
+
+  @override
+  Widget build(BuildContext context) {
+    void dismiss() => Navigator.of(context).pop();
+
+    if (!ShirtSize.of(context).isTwoPane) {
+      return _PhotoWordmarkContent(release: release, onDismiss: dismiss);
+    }
+    return wideModalChrome(
+      context: context,
+      onDismiss: dismiss,
+      child: _PhotoWordmarkContent(release: release, onDismiss: dismiss),
+    );
+  }
+}
+
+class _PhotoWordmarkContent extends StatelessWidget {
+  final ReleaseNotesEntry? release;
+  final VoidCallback onDismiss;
+
+  const _PhotoWordmarkContent({required this.release, required this.onDismiss});
+
+  @override
+  Widget build(BuildContext context) {
+    // Same sizing math as ReleaseOverlayView above, so the brand mark,
+    // credits, release name, and caption all read at the same relative
+    // scale here as they do on the startup overlay.
+    final theme = Theme.of(context);
+    final versionLabelStyle = theme.textTheme.titleMedium?.copyWith(
+      fontSize: (theme.textTheme.titleMedium?.fontSize ?? 16) * 2,
+      fontWeight: FontWeight.bold,
+      color: Colors.white,
+      shadows: _creditsAndVersionShadows,
+    );
+    final creditsStyle = TextStyle(
+      fontSize: (versionLabelStyle?.fontSize ?? 32) * 0.75 * 0.85,
+      color: Colors.white,
+      shadows: _creditsAndVersionShadows,
+    );
+    final caption = release?.photoCaption;
+
+    return GestureDetector(
+      onTap: onDismiss,
+      child: Material(
+        color: _photoFallbackColor,
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            if (release != null)
+              Image.asset(
+                release!.imageAssetPath,
+                fit: BoxFit.cover,
+                errorBuilder: (context, error, stackTrace) => const SizedBox.shrink(),
+              ),
+            SafeArea(
+              bottom: false,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    const SizedBox(height: 16),
+                    const Center(child: Ham2kBrandMark(logoWidth: 180, showShadow: true)),
+                    const SizedBox(height: 8),
+                    _creditsText(context.t.startScreen.credits, creditsStyle),
+                    if (release != null) ...[
+                      const SizedBox(height: 4),
+                      Text(release!.name, textAlign: TextAlign.center, style: versionLabelStyle),
+                    ],
+                  ],
+                ),
+              ),
+            ),
+            if (caption != null && caption.isNotEmpty)
+              Align(
+                alignment: Alignment.bottomCenter,
+                child: SafeArea(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(24, 0, 24, 16),
+                    child: Text(
+                      caption,
+                      textAlign: TextAlign.center,
+                      style: creditsStyle.copyWith(fontFamily: 'RobotoMono', fontSize: creditsStyle.fontSize! * 0.85),
+                    ),
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}

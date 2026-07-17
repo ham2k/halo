@@ -5,7 +5,9 @@
 // (moved here from radio-commands — it's a dev tool, not a radio one), and
 // DEVNOTICE/DEVSTATUS/DEVPROGRESS post sample items to the status bar so
 // the footer/notice UI can be exercised without a real extension driving
-// it. RELOAD forces a data-file re-sync (bypassing the normal 30-day
+// it. DEVSPLASH re-shows the startup release-notes overlay (Issue #42) on
+// demand, bypassing its normal "once per version" gate. RELOAD forces a
+// data-file re-sync (bypassing the normal 30-day
 // staleness check), for both developers iterating on `csvToLookupEntry`
 // mapping logic and anyone troubleshooting stale/missing lookup data.
 // SEED fills the current log with generated QSOs for exercising list/
@@ -108,6 +110,17 @@ const DevProgressCommand = {
       describe: percent === undefined ? 'Show an indeterminate dev progress bar?' : `Show a dev progress bar at ${percent}%?`,
       confirm: percent === undefined ? 'Added an indeterminate progress bar' : `Added a progress bar at ${percent}%`,
       commands: [{ devProgress: { icon: 'progress-clock', title: 'Dev progress', percent } }],
+    }
+  },
+}
+
+const DevSplashCommand = {
+  async interpret({ input }: { input: string }, _ctx: HookContext): Promise<CommandInterpretation | null> {
+    if (input.trim().toUpperCase() !== 'DEVSPLASH') return null
+    return {
+      describe: 'Show the startup release-notes overlay?',
+      confirm: 'Showing the release-notes overlay',
+      commands: [{ devSplash: {} }],
     }
   },
 }
@@ -290,12 +303,14 @@ defineExtension({
   key: 'dev-commands',
   name: 'Developer Commands',
   version: '0.0.1',
-  description: 'Call-field shortcuts for developer tools: DEVMODE, DEVNOTICE, DEVSTATUS, DEVPROGRESS, RELOAD, SEED',
+  description:
+    'Call-field shortcuts for developer tools: DEVMODE, DEVNOTICE, DEVSTATUS, DEVPROGRESS, DEVSPLASH, RELOAD, SEED',
   onActivation({ registerHook }) {
     registerHook('command', { key: 'dev-commands-devmode', hook: DevModeCommand, priority: 100 })
     registerHook('command', { key: 'dev-commands-devnotice', hook: DevNoticeCommand, priority: 100 })
     registerHook('command', { key: 'dev-commands-devstatus', hook: DevStatusCommand, priority: 100 })
     registerHook('command', { key: 'dev-commands-devprogress', hook: DevProgressCommand, priority: 100 })
+    registerHook('command', { key: 'dev-commands-devsplash', hook: DevSplashCommand, priority: 100 })
     registerHook('command', { key: 'dev-commands-reload', hook: ReloadCommand, priority: 100 })
     registerHook('command', { key: 'dev-commands-seed', hook: SeedCommand, priority: 100 })
   },

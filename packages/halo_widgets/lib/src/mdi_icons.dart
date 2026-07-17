@@ -36,4 +36,8 @@ class MdiIcons {
   static const IconData whiteBalanceSunny = IconData(0xf05a8, fontFamily: 'MaterialDesignIcons');
   static const IconData weatherNight = IconData(0xf0594, fontFamily: 'MaterialDesignIcons');
   static const IconData informationOutline = IconData(0xf02fd, fontFamily: 'MaterialDesignIcons');
+  static const IconData windowClose = IconData(0xf05ad, fontFamily: 'MaterialDesignIcons');
+  static const IconData windowMaximize = IconData(0xf05af, fontFamily: 'MaterialDesignIcons');
+  static const IconData windowMinimize = IconData(0xf05b0, fontFamily: 'MaterialDesignIcons');
+  static const IconData windowRestore = IconData(0xf05b2, fontFamily: 'MaterialDesignIcons');
 }

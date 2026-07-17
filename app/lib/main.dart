@@ -19,6 +19,10 @@ import 'package:halo_widgets/halo_widgets.dart';
 
 import 'views/operation_view.dart';
 import 'views/home_view.dart';
+import 'views/release_overlay.dart';
+import 'views/splash_view.dart';
+import 'config/release_notes.dart';
+import 'config/version.dart';
 import 'services/export_service.dart';
 import 'services/extension_service.dart';
 import 'services/location_service.dart';
@@ -35,26 +39,142 @@ import 'i18n/strings.g.dart';
 
 final navigatorKey = GlobalKey<NavigatorState>();
 
-void main() async {
-  final services = await bootstrap();
-  runApp(TranslationProvider(child: HaLoApp(services: services)));
+void main() {
+  WidgetsFlutterBinding.ensureInitialized();
+  WindowChromeService.init();
+  // Kicked off before runApp (not awaited here) so the splash screen paints
+  // on the very first frame instead of waiting on the DB/extension/settings
+  // boot sequence — see `_BootGate`.
+  final servicesFuture = bootstrap();
+  runApp(TranslationProvider(child: _BootGate(servicesFuture: servicesFuture)));
 
-  // Dev nicety: launch with POLO_OPEN_FIRST_OP=1 in the environment (e.g.
-  // SIMCTL_CHILD_POLO_OPEN_FIRST_OP=1 simctl launch ...) to jump straight
-  // into the most recent operation.
-  const openFirstOpDefine = bool.fromEnvironment('POLO_OPEN_FIRST_OP');
-  final openFirstOp = openFirstOpDefine || (!kIsWeb && Platform.environment['POLO_OPEN_FIRST_OP'] == '1');
-  debugPrint('[boot] openFirstOp=$openFirstOp (define=$openFirstOpDefine)');
-  if (openFirstOp) {
-    WidgetsBinding.instance.addPostFrameCallback((_) async {
-      await Future<void>.delayed(const Duration(milliseconds: 300));
-      final operations = await services.operations.watchAll().first;
-      if (operations.isNotEmpty) {
-        navigatorKey.currentState?.push(MaterialPageRoute(
-          builder: (_) => OperationView(services: services, operationUuid: operations.first.uuid),
+  servicesFuture.then((services) async {
+    // Dev nicety: launch with POLO_OPEN_FIRST_OP=1 in the environment (e.g.
+    // SIMCTL_CHILD_POLO_OPEN_FIRST_OP=1 simctl launch ...) to jump straight
+    // into the most recent operation.
+    const openFirstOpDefine = bool.fromEnvironment('POLO_OPEN_FIRST_OP');
+    final openFirstOp = openFirstOpDefine || (!kIsWeb && Platform.environment['POLO_OPEN_FIRST_OP'] == '1');
+    debugPrint('[boot] openFirstOp=$openFirstOp (define=$openFirstOpDefine)');
+    if (openFirstOp) {
+      WidgetsBinding.instance.addPostFrameCallback((_) async {
+        await Future<void>.delayed(const Duration(milliseconds: 300));
+        final operations = await services.operations.watchAll().first;
+        if (operations.isNotEmpty) {
+          navigatorKey.currentState?.push(MaterialPageRoute(
+            builder: (_) => OperationView(services: services, operationUuid: operations.first.uuid),
+          ));
+        }
+      });
+    }
+  }).catchError((Object error, StackTrace stackTrace) {
+    // _BootGate's own catchError (below) is what surfaces this to the user;
+    // this one only exists so bootstrap() failing doesn't also throw an
+    // unrelated unhandled-rejection for the openFirstOp dev nicety above.
+    debugPrint('[boot] bootstrap() failed: $error');
+  });
+}
+
+/// Shows `SplashScreen` on the very first frame — before `bootstrap()`'s
+/// async services are ready — then fades into the real `HaLoApp` once they
+/// resolve. Nothing is interactive during the splash (no routes have been
+/// pushed yet), so swapping to a second, fully-formed `MaterialApp` instance
+/// for the real app is safe: there's no Navigator state to lose.
+///
+/// Deliberately NOT `AnimatedSwitcher`: its default transition fades the
+/// outgoing screen out at the same time as it fades the incoming one in, so
+/// for the middle third of the transition both are semi-transparent at once
+/// — the splash's logo shows through, ghosted, on top of the home screen's
+/// background, and the double-transparency washes the whole frame out
+/// (reported as "flashing"). Keeping the outgoing screen fully opaque and
+/// only fading the incoming one in on top removes both the ghosting and the
+/// wash-out: at every point during the transition there's exactly one
+/// opaque screen plus one partially-visible screen layered on it, not two.
+class _BootGate extends StatefulWidget {
+  final Future<HaLoServices> servicesFuture;
+
+  const _BootGate({required this.servicesFuture});
+
+  @override
+  State<_BootGate> createState() => _BootGateState();
+}
+
+class _BootGateState extends State<_BootGate> with SingleTickerProviderStateMixin {
+  static const _transitionDuration = Duration(milliseconds: 200);
+
+  late final AnimationController _fadeController = AnimationController(vsync: this, duration: _transitionDuration)..value = 1;
+
+  Widget _currentChild = const MaterialApp(
+    key: ValueKey('splash'),
+    debugShowCheckedModeBanner: false,
+    home: SplashScreen(),
+  );
+  Widget? _previousChild;
+
+  @override
+  void initState() {
+    super.initState();
+    widget.servicesFuture.then((services) {
+      if (!mounted) return;
+      // Wrapped separately from the `.catchError` below: that one exists to
+      // catch `bootstrap()` itself failing, and without this try/catch it
+      // would also swallow an unrelated error thrown by `_switchTo` here,
+      // mislabeling it as a boot failure in the debug log.
+      try {
+        _switchTo(HaLoApp(key: const ValueKey('app'), services: services));
+      } catch (error, stackTrace) {
+        debugPrint('[boot] unexpected error building HaLoApp (not a bootstrap() failure): $error\n$stackTrace');
+        _switchTo(MaterialApp(
+          key: const ValueKey('boot-error'),
+          debugShowCheckedModeBanner: false,
+          home: BootErrorScreen(error: error),
+        ));
+      }
+    }).catchError((Object error, StackTrace stackTrace) {
+      // Fail loud: previously `await bootstrap()` in main() let a boot
+      // failure throw before runApp() ever ran; now that runApp() happens
+      // first, an unhandled rejection here would otherwise strand the user
+      // on the splash screen forever with no visible error.
+      debugPrint('[boot] bootstrap() failed: $error\n$stackTrace');
+      if (mounted) {
+        _switchTo(MaterialApp(
+          key: const ValueKey('boot-error'),
+          debugShowCheckedModeBanner: false,
+          home: BootErrorScreen(error: error),
         ));
       }
     });
+  }
+
+  void _switchTo(Widget next) {
+    setState(() {
+      _previousChild = _currentChild;
+      _currentChild = next;
+    });
+    _fadeController.value = 0;
+    _fadeController.forward().whenCompleteOrCancel(() {
+      if (mounted) setState(() => _previousChild = null);
+    });
+  }
+
+  @override
+  void dispose() {
+    _fadeController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    // `_BootGate` sits above `TranslationProvider`/`MaterialApp`, so there's
+    // no `Directionality` ancestor yet — `Stack`'s default alignment
+    // (`AlignmentDirectional.topStart`) needs one; `Alignment.topLeft`
+    // doesn't, since it's not text-direction-relative.
+    return Stack(
+      alignment: Alignment.topLeft,
+      children: [
+        if (_previousChild != null) _previousChild!,
+        FadeTransition(opacity: _fadeController, child: _currentChild),
+      ],
+    );
   }
 }
 
@@ -137,6 +257,11 @@ class HaLoServices {
     statusBar: statusBar,
   );
   late final StatusBarService statusBar = StatusBarService(settings.prefs);
+
+  /// Fires on DEVSPLASH (`handleCommandAction`'s `devSplash` case) —
+  /// `_ReleaseOverlayGateState` listens for this to force-show the release
+  /// overlay on demand, bypassing its normal once-per-version gate.
+  final DevSplashTrigger devSplashTrigger = DevSplashTrigger();
 
   /// The dirty-flag sync loop (DESIGN.md §4) — batching and bookkeeping stay
   /// here in Dart; only the network call crosses into the `ham2k-lofi`
@@ -292,6 +417,9 @@ class HaLoServices {
           value: percent == null ? null : percent.toDouble() / 100,
         );
         return null;
+      case 'devSplash':
+        devSplashTrigger.trigger();
+        return null;
       case 'sendSpots':
         return _sendSpot(params ?? const {});
       default:
@@ -439,14 +567,139 @@ class _HaLoAppState extends State<HaLoApp> {
           // UiScale-divided space (layouts.md), so it scales the same way.
           WindowChromeService.reportMinimumSize(minWindowSize * scale);
 
-          return UiScale(
-            scale: scale,
-            child: _StatusBarOverlay(services: widget.services, child: child),
+          // Full-screen toggles change the traffic-light clearance the
+          // headers reserve (macOSTrafficLightClearance → 0 while the
+          // buttons live in the system's auto-hiding overlay). The scope is
+          // the delivery mechanism — see MacOSFullScreenScope's own comment.
+          // On chromeless Windows the caption buttons are Flutter-drawn and
+          // float over every route's header from here — the same "window
+          // chrome above app content" role the native traffic lights play
+          // on macOS. Headers reserve trailing room via
+          // windowsCaptionClearance.
+          final content = isWindowsChromelessWindow
+              ? Stack(children: [
+                  child,
+                  const Positioned(top: 0, right: 0, child: WindowsCaptionButtons()),
+                ])
+              : child;
+
+          return ValueListenableBuilder<bool>(
+            valueListenable: macOSWindowIsFullScreen,
+            builder: (context, isFullScreen, _) => MacOSFullScreenScope(
+              isFullScreen: isFullScreen,
+              child: UiScale(
+                scale: scale,
+                child: _ReleaseOverlayGate(
+                  services: widget.services,
+                  child: _StatusBarOverlay(services: widget.services, child: content),
+                ),
+              ),
+            ),
           );
         },
       ),
     );
   }
+}
+
+/// Shows `ReleaseOverlayView` once per new `kPublicVersion`, on top of the
+/// whole app (same one-integration-point wrapping as `_StatusBarOverlay`
+/// below, which it wraps). Gated on `SettingsService.lastSeenReleaseVersion`
+/// (release_notes.dart, settings_service.dart) — dismissing it persists
+/// `kPublicVersion` there, so it won't show again until the next release.
+class _ReleaseOverlayGate extends StatefulWidget {
+  final HaLoServices services;
+  final Widget child;
+
+  const _ReleaseOverlayGate({required this.services, required this.child});
+
+  @override
+  State<_ReleaseOverlayGate> createState() => _ReleaseOverlayGateState();
+}
+
+class _ReleaseOverlayGateState extends State<_ReleaseOverlayGate> {
+  ReleaseNotesEntry? _pending;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkForNewRelease();
+    widget.services.devSplashTrigger.addListener(_showDevSplash);
+  }
+
+  @override
+  void dispose() {
+    widget.services.devSplashTrigger.removeListener(_showDevSplash);
+    super.dispose();
+  }
+
+  Future<void> _checkForNewRelease() async {
+    if (widget.services.settings.lastSeenReleaseVersion == kPublicVersion) return;
+    final notes = await loadReleaseNotes();
+    ReleaseNotesEntry? current;
+    for (final entry in notes) {
+      if (entry.version == kPublicVersion) {
+        current = entry;
+        break;
+      }
+    }
+    if (current == null || !mounted) return;
+    setState(() => _pending = current);
+  }
+
+  /// DEVSPLASH (dev-commands extension) — always shows the newest release's
+  /// notes, ignoring `lastSeenReleaseVersion` entirely (unlike
+  /// `_checkForNewRelease`), since the whole point is re-previewing it on
+  /// demand.
+  Future<void> _showDevSplash() async {
+    final notes = await loadReleaseNotes();
+    if (notes.isEmpty || !mounted) return;
+    setState(() => _pending = notes.first);
+  }
+
+  void _dismiss() {
+    widget.services.settings.setLastSeenReleaseVersion(kPublicVersion);
+    setState(() => _pending = null);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final pending = _pending;
+    return Stack(
+      children: [
+        widget.child,
+        if (pending != null) _buildOverlay(context, pending),
+      ],
+    );
+  }
+
+  /// Same shirt-size logic as halo_widgets' Modal Panes
+  /// (packages/halo_widgets/lib/src/modal_pane.dart): full screen on
+  /// XS/S, a centered pane-sized modal over the home screen on L/XL. This
+  /// overlay isn't a pushed route and keeps its own full-bleed photo
+  /// design rather than `ModalPaneRoute`'s AppBar/dialog-card chrome, so
+  /// the presentation split is reimplemented here instead of reusing
+  /// `showModalPane` directly. The wide-mode chrome itself is shared with
+  /// the About screen's photo modal — see `wideModalChrome`.
+  Widget _buildOverlay(BuildContext context, ReleaseNotesEntry release) {
+    if (!ShirtSize.of(context).isTwoPane) {
+      return ReleaseOverlayView(release: release, onDismiss: _dismiss);
+    }
+    return Positioned.fill(
+      child: wideModalChrome(
+        context: context,
+        onDismiss: _dismiss,
+        child: ReleaseOverlayView(release: release, onDismiss: _dismiss),
+      ),
+    );
+  }
+}
+
+/// A bare `notifyListeners()` signal — `HaLoServices.devSplashTrigger`'s
+/// only job is telling `_ReleaseOverlayGateState` "show the release overlay
+/// now" (DEVSPLASH), so it carries no state of its own.
+class DevSplashTrigger extends ChangeNotifier {
+  void trigger() => notifyListeners();
 }
 
 /// Wraps the whole app (every route, since `MaterialApp.builder` wraps the
