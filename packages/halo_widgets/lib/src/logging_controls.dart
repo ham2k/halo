@@ -256,6 +256,18 @@ class LoggingControls extends StatefulWidget {
   final String? saveLabel;
   final String? cancelLabel;
 
+  /// The band/mode options offered by the Radio control's dropdowns — the
+  /// user's enabled lists from Settings (Logging → Bands/Modes). Null falls
+  /// back to the full catalogs from halo_core; empty falls back to the
+  /// "common" tier (`popularBands`/`mainModes`, the same subset the settings
+  /// multiselect flags common) — the multiselect enforces no minimum, and
+  /// deselecting everything must not leave the Band dropdown with zero
+  /// entries. The current QSO's value is always offered even when it's not
+  /// in the list, so editing a QSO logged on a since-disabled band/mode
+  /// doesn't show an empty control.
+  final List<String>? enabledBands;
+  final List<String>? enabledModes;
+
   /// Spotting control (ham2k/app-halo-dist#10) — null (either) disables the
   /// control's icon-row/send-button UI, matching how `radioService: null`
   /// degrades the Radio control elsewhere in this widget.
@@ -334,6 +346,8 @@ class LoggingControls extends StatefulWidget {
     this.controlSettingsTitle,
     this.saveLabel,
     this.cancelLabel,
+    this.enabledBands,
+    this.enabledModes,
     this.suggestSpotSources,
     this.sendSpot,
     this.spottingControlLabel,
@@ -1218,7 +1232,7 @@ class _LoggingControlsState extends State<LoggingControls> {
         case 'time':
           specs.add(_timeControlSpec());
         case 'radio':
-          specs.add(_radioControlSpec(theme, poloColors));
+          specs.add(_radioControlSpec(theme));
         case 'spotting':
           specs.add(_spottingControlSpec(theme, poloColors));
         case 'more':
@@ -1298,120 +1312,143 @@ class _LoggingControlsState extends State<LoggingControls> {
         ),
       );
 
-  SecondaryControlSpec _radioControlSpec(ThemeData theme, HaLoColors poloColors) => SecondaryControlSpec(
+  SecondaryControlSpec _radioControlSpec(ThemeData theme) => SecondaryControlSpec(
         key: 'radio',
         icon: MdiIcons.radio,
         summary: _radioSummary,
-        expandedBuilder: (context) => Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            DropdownMenu<String>(
-              initialSelection: _band,
-              label: Text(widget.bandLabel ?? 'Band'),
-              width: 104,
-              textStyle: haloMonoStyle(
-                context,
-                fontSize: 15,
-                fontWeight: FontWeight.w500,
-              ),
-              inputDecorationTheme: InputDecorationTheme(
-                isDense: true,
-                filled: true,
-                fillColor: theme.colorScheme.surface,
-                floatingLabelBehavior: FloatingLabelBehavior.always,
-                floatingLabelStyle: TextStyle(
-                  fontSize: 14,
-                  color: theme.colorScheme.onTertiaryContainer,
-                ),
-                contentPadding: const EdgeInsets.fromLTRB(4, 6, 4, 8),
-              ),
-              dropdownMenuEntries: [
-                for (final b in bands)
-                  DropdownMenuEntry(
-                    value: b.name,
-                    label: b.name,
-                    style: MenuItemButton.styleFrom(
-                      foregroundColor: poloColors.bandColor(b.name),
-                    ),
-                  ),
-              ],
-              onSelected: (value) {
-                if (value == null) return;
-                setState(() {
-                  // Matches the `setVfo{band: ...}` command action's
-                  // convention (see `_dispatchActions`): picking a band
-                  // directly is mutually exclusive with a manual frequency,
-                  // since `_band` prefers the freq-derived value whenever
-                  // `_freq` is set.
-                  _manualBand = value;
-                  _freqController.clear();
-                });
-                // A discrete dropdown pick, not a keystroke — push
-                // immediately rather than debouncing like frequency typing.
-                // Only while composing — editing an existing QSO applies
-                // changes to the QSO, never the VFO.
-                if (widget.editingQso == null) widget.radioService?.setVfo('vfoA', band: value);
-                _callFocus.requestFocus();
-              },
-            ),
-            const SizedBox(width: 6),
-            SizedBox(
-              width: 100,
-              child: TextField(
-                controller: _freqController,
-                focusNode: _freqFocus,
-                selectAllOnFocus: false,
-                style: haloMonoStyle(
+        expandedBuilder: (context) {
+          final enabledBands = widget.enabledBands;
+          final enabledModes = widget.enabledModes;
+          final bandOptions = enabledBands == null
+              ? [for (final b in bands) b.name]
+              : enabledBands.isEmpty
+                  ? popularBands
+                  : enabledBands;
+          final modeOptions = enabledModes == null
+              ? modes
+              : enabledModes.isEmpty
+                  ? mainModes
+                  : enabledModes;
+          // See `enabledBands`' doc: the current value stays pickable even
+          // when it's not an enabled option.
+          final band = _band;
+          final bandEntries = [...bandOptions, if (band != null && !bandOptions.contains(band)) band];
+          final modeEntries = [...modeOptions, if (!modeOptions.contains(_mode)) _mode];
+          return Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              DropdownMenu<String>(
+                initialSelection: band,
+                label: Text(widget.bandLabel ?? 'Band'),
+                width: 104,
+                menuHeight: dropdownMenuMaxHeight(context),
+                // Pick-only menus. With search on (the default), every
+                // rebuild whose field text matches an entry re-runs
+                // scrollToHighlight — and this widget rebuilds every second
+                // (the Time chip's clock), so an open menu kept snapping
+                // back to the selected item while the user scrolled.
+                enableSearch: false,
+                textStyle: haloMonoStyle(
                   context,
                   fontSize: 15,
                   fontWeight: FontWeight.w500,
                 ),
-                decoration: poloFieldDecoration(
-                  context,
-                  widget.freqLabel ?? 'Frequency',
-                  labelColor: Theme.of(context).colorScheme.onTertiaryContainer,
+                inputDecorationTheme: InputDecorationTheme(
+                  isDense: true,
+                  filled: true,
+                  fillColor: theme.colorScheme.surface,
+                  floatingLabelBehavior: FloatingLabelBehavior.always,
+                  floatingLabelStyle: TextStyle(
+                    fontSize: 14,
+                    color: theme.colorScheme.onTertiaryContainer,
+                  ),
+                  contentPadding: const EdgeInsets.fromLTRB(4, 6, 4, 8),
                 ),
-                keyboardType: const TextInputType.numberWithOptions(
-                  decimal: true,
-                ),
-                inputFormatters: [
-                  FilteringTextInputFormatter.allow(RegExp(r'[0-9.,]')),
+                dropdownMenuEntries: [
+                  for (final b in bandEntries) DropdownMenuEntry(value: b, label: b),
                 ],
-                onSubmitted: (_) => _log(),
+                onSelected: (value) {
+                  if (value == null) return;
+                  setState(() {
+                    // Matches the `setVfo{band: ...}` command action's
+                    // convention (see `_dispatchActions`): picking a band
+                    // directly is mutually exclusive with a manual frequency,
+                    // since `_band` prefers the freq-derived value whenever
+                    // `_freq` is set.
+                    _manualBand = value;
+                    _freqController.clear();
+                  });
+                  // A discrete dropdown pick, not a keystroke — push
+                  // immediately rather than debouncing like frequency typing.
+                  // Only while composing — editing an existing QSO applies
+                  // changes to the QSO, never the VFO.
+                  if (widget.editingQso == null) widget.radioService?.setVfo('vfoA', band: value);
+                  _callFocus.requestFocus();
+                },
               ),
-            ),
-            const SizedBox(width: 6),
-            DropdownMenu<String>(
-              initialSelection: _mode,
-              label: Text(widget.modeLabel ?? 'Mode'),
-              width: 104,
-              textStyle: haloMonoStyle(
-                context,
-                fontSize: 15,
-                fontWeight: FontWeight.w500,
-              ),
-              inputDecorationTheme: InputDecorationTheme(
-                isDense: true,
-                filled: true,
-                fillColor: theme.colorScheme.surface,
-                floatingLabelBehavior: FloatingLabelBehavior.always,
-                floatingLabelStyle: TextStyle(
-                  fontSize: 14,
-                  color: theme.colorScheme.onTertiaryContainer,
+              const SizedBox(width: 6),
+              SizedBox(
+                width: 100,
+                child: TextField(
+                  controller: _freqController,
+                  focusNode: _freqFocus,
+                  selectAllOnFocus: false,
+                  style: haloMonoStyle(
+                    context,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w500,
+                  ),
+                  decoration: poloFieldDecoration(
+                    context,
+                    widget.freqLabel ?? 'Frequency',
+                    labelColor: Theme.of(context).colorScheme.onTertiaryContainer,
+                  ),
+                  keyboardType: const TextInputType.numberWithOptions(
+                    decimal: true,
+                  ),
+                  inputFormatters: [
+                    FilteringTextInputFormatter.allow(RegExp(r'[0-9.,]')),
+                  ],
+                  onSubmitted: (_) => _log(),
                 ),
-                contentPadding: const EdgeInsets.fromLTRB(4, 6, 4, 8),
               ),
-              dropdownMenuEntries: [
-                for (final m in modes) DropdownMenuEntry(value: m, label: m),
-              ],
-              onSelected: (value) {
-                if (value == null) return;
-                _setMode(value);
-                _callFocus.requestFocus();
-              },
-            ),
-          ],
-        ),
+              const SizedBox(width: 6),
+              DropdownMenu<String>(
+                initialSelection: _mode,
+                label: Text(widget.modeLabel ?? 'Mode'),
+                width: 104,
+                menuHeight: dropdownMenuMaxHeight(context),
+                // See the Band dropdown: search off so rebuilds don't
+                // re-scroll the open menu to the selection.
+                enableSearch: false,
+                textStyle: haloMonoStyle(
+                  context,
+                  fontSize: 15,
+                  fontWeight: FontWeight.w500,
+                ),
+                inputDecorationTheme: InputDecorationTheme(
+                  isDense: true,
+                  filled: true,
+                  fillColor: theme.colorScheme.surface,
+                  floatingLabelBehavior: FloatingLabelBehavior.always,
+                  floatingLabelStyle: TextStyle(
+                    fontSize: 14,
+                    color: theme.colorScheme.onTertiaryContainer,
+                  ),
+                  contentPadding: const EdgeInsets.fromLTRB(4, 6, 4, 8),
+                ),
+                dropdownMenuEntries: [
+                  for (final m in modeEntries) DropdownMenuEntry(value: m, label: m),
+                ],
+                onSelected: (value) {
+                  if (value == null) return;
+                  _setMode(value);
+                  _callFocus.requestFocus();
+                },
+              ),
+            ],
+          );
+        },
       );
 
   /// UI-level policy, not a per-source value: how recently a QSO must have

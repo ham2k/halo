@@ -605,6 +605,7 @@ class FormRendererState extends State<FormRenderer> {
         return DropdownButtonFormField<dynamic>(
           value: _values[key],
           focusNode: _focusNodes[key],
+          menuMaxHeight: dropdownMenuMaxHeight(context),
           decoration: poloFieldDecoration(context, label, hintText: placeholder, errorText: errorText, labelColor: devModeColor),
           hint: placeholder != null ? Text(placeholder) : null,
           items: [
@@ -851,6 +852,7 @@ class FormRendererState extends State<FormRenderer> {
         final dropdown = DropdownButtonHideUnderline(
           child: DropdownButton<dynamic>(
             value: _values[key],
+            menuMaxHeight: dropdownMenuMaxHeight(context),
             isExpanded: expanded || fill,
             alignment: fill && !expanded ? AlignmentDirectional.centerEnd : AlignmentDirectional.centerStart,
             items: [for (final opt in options) DropdownMenuItem(value: opt['value'], child: Text(opt['label'] as String))],

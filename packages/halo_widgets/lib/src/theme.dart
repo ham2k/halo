@@ -180,6 +180,20 @@ const String emojiFontFamily = 'NotoColorEmoji';
 /// the issue's "emoji and name...use a proportional font".
 TextStyle emojiStyle({double fontSize = 16}) => TextStyle(fontSize: fontSize, fontFamily: emojiFontFamily);
 
+/// Height cap for dropdown overlays — [DropdownMenu.menuHeight] /
+/// [DropdownButton.menuMaxHeight]. Two limits, whichever is smaller: the
+/// menu never spans past the app header nor closer to the bottom edge than
+/// that same header height, and it never shows more than 10½ entries — the
+/// half entry as a there's-more-to-scroll cue. Assumes stock entry rows
+/// ([kMinInteractiveDimension] tall); plain logical pixels per
+/// docs/design/ui-scaling.md (the `MediaQuery` size is already divided by
+/// the UI scale).
+double dropdownMenuMaxHeight(BuildContext context) {
+  final headerHeight = Theme.of(context).appBarTheme.toolbarHeight ?? kToolbarHeight;
+  final available = MediaQuery.sizeOf(context).height - 2 * headerHeight;
+  return available.clamp(kMinInteractiveDimension, kMinInteractiveDimension * 10.5);
+}
+
 /// Ham2K's compact text-field decoration, used for every text field in the
 /// app: the label always floating at the top-left corner (not Material's
 /// "large placeholder until focused" default), and tight, consistent

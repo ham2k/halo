@@ -45,6 +45,8 @@ void main() {
     SendSpot? sendSpot,
     bool showStateField = false,
     bool showGridField = false,
+    List<String>? enabledBands,
+    List<String>? enabledModes,
   }) {
     return MaterialApp(
       home: Scaffold(
@@ -62,6 +64,8 @@ void main() {
           sendSpot: sendSpot,
           showStateField: showStateField,
           showGridField: showGridField,
+          enabledBands: enabledBands,
+          enabledModes: enabledModes,
           spottingControlLabel: 'Spotting',
           spottingLabel: 'Spotting',
           spottingSelfLabel: 'Self-spotting',
@@ -1469,6 +1473,77 @@ void main() {
 
     final freqField = tester.widget<TextField>(find.widgetWithText(TextField, 'Frequency'));
     expect(freqField.controller!.text, '7100');
+  });
+
+  testWidgets('Radio dropdowns offer the settings-enabled bands/modes, uncolored, plus the current value', (tester) async {
+    await tester.pumpWidget(host(enabledBands: ['40m', '20m'], enabledModes: ['CW', 'FT8']));
+    await openControl(tester, MdiIcons.radio);
+
+    // Band menu: only the enabled bands — no colored entries (issue: band
+    // colors made the dropdown hard to read).
+    await tester.tap(find.widgetWithText(TextField, 'Band'));
+    await tester.pump();
+    // DropdownMenu instantiates each entry twice (one offstage copy for
+    // width measurement), so "present" is findsWidgets, not findsOneWidget.
+    expect(find.widgetWithText(MenuItemButton, '40m'), findsWidgets);
+    expect(find.widgetWithText(MenuItemButton, '20m'), findsWidgets);
+    expect(find.widgetWithText(MenuItemButton, '80m'), findsNothing);
+    final bandItem = tester.widget<MenuItemButton>(find.widgetWithText(MenuItemButton, '40m').first);
+    expect(bandItem.style?.foregroundColor, isNull);
+    // Selecting an entry closes the menu.
+    await tester.tap(find.widgetWithText(MenuItemButton, '40m').last);
+    await tester.pump(const Duration(milliseconds: 250));
+    await tester.pump();
+
+    // Mode menu: the enabled modes plus the current mode (SSB, the compose
+    // default), which stays pickable even though it's not in the enabled
+    // list — same rule keeps a QSO on a since-disabled band/mode editable.
+    await tester.tap(find.widgetWithText(TextField, 'Mode'));
+    await tester.pump();
+    expect(find.widgetWithText(MenuItemButton, 'CW'), findsWidgets);
+    expect(find.widgetWithText(MenuItemButton, 'FT8'), findsWidgets);
+    expect(find.widgetWithText(MenuItemButton, 'SSB'), findsWidgets);
+    expect(find.widgetWithText(MenuItemButton, 'FM'), findsNothing);
+  });
+
+  testWidgets('empty enabled lists fall back to the common tier — deselecting every band must not empty the dropdown',
+      (tester) async {
+    await tester.pumpWidget(host(enabledBands: [], enabledModes: []));
+    await openControl(tester, MdiIcons.radio);
+
+    // popularBands, not the full catalog: 160m is common, 630m is not.
+    await tester.tap(find.widgetWithText(TextField, 'Band'));
+    await tester.pump();
+    expect(find.widgetWithText(MenuItemButton, '80m'), findsWidgets);
+    expect(find.widgetWithText(MenuItemButton, '160m'), findsWidgets);
+    expect(find.widgetWithText(MenuItemButton, '630m'), findsNothing);
+  });
+
+  testWidgets('an open Band menu holds its scroll position across the clock-tick rebuilds', (tester) async {
+    // A selected band matters: the rebuild-time re-scroll only fires when
+    // the field text matches an entry. Null enabled lists → the full
+    // 19-band catalog, taller than the 10.5-entry menu cap, so it scrolls.
+    fakeRadio.setVfo('vfoA', freq: 14285, mode: 'CW');
+    await tester.pumpWidget(host(radioService: fakeRadio));
+    await openControl(tester, MdiIcons.radio);
+    await tester.tap(find.widgetWithText(TextField, 'Band'));
+    await tester.pump();
+
+    final menuScrollable = find.ancestor(
+      of: find.widgetWithText(MenuItemButton, '2190m').last,
+      matching: find.byType(Scrollable),
+    );
+    final position = tester.widget<Scrollable>(menuScrollable.first).controller!.position;
+    position.jumpTo(200);
+    await tester.pump();
+    expect(position.pixels, 200);
+
+    // The Time chip's Timer.periodic setState rebuilds this widget every
+    // second; with enableSearch on, each rebuild re-scrolled the menu back
+    // to the selected entry, so the user could never scroll the list.
+    await tester.pump(const Duration(seconds: 1));
+    await tester.pump();
+    expect(position.pixels, 200);
   });
 
   testWidgets('a suggestedQso populates call/freq/band/mode for a new QSO', (tester) async {

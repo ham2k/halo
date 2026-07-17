@@ -1147,6 +1147,10 @@ class _SpotsFilterControls extends StatelessWidget {
           child: DropdownMenu<String>(
             initialSelection: bandFilter,
             width: _dropdownWidth,
+            menuHeight: dropdownMenuMaxHeight(context),
+            // Pick-only; search's rebuild-time scrollToHighlight would snap
+            // the open menu back to the selection whenever spots stream in.
+            enableSearch: false,
             label: Text(t.operation.spots.filters.band),
             dropdownMenuEntries: [
               for (final option in bandOptions)
@@ -1162,6 +1166,8 @@ class _SpotsFilterControls extends StatelessWidget {
           child: DropdownMenu<String>(
             initialSelection: modeFilter,
             width: _dropdownWidth,
+            menuHeight: dropdownMenuMaxHeight(context),
+            enableSearch: false,
             label: Text(t.operation.spots.filters.mode),
             dropdownMenuEntries: [
               for (final option in modeOptions)
@@ -1177,6 +1183,8 @@ class _SpotsFilterControls extends StatelessWidget {
           child: DropdownMenu<int?>(
             initialSelection: ageMinutes,
             width: _dropdownWidth,
+            menuHeight: dropdownMenuMaxHeight(context),
+            enableSearch: false,
             label: Text(t.operation.spots.filters.age),
             dropdownMenuEntries: [
               DropdownMenuEntry(value: null, label: '${t.operation.spots.any} ($totalSpotCount)'),
