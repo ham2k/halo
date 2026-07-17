@@ -11,6 +11,7 @@
 
 import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:halo_core/halo_core.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -152,6 +153,33 @@ void main() {
     expect(settings.consentOpData, isTrue);
     expect(settings.settingValue('extension_pota', 'enabled'), isTrue);
     expect(settings.settingValue('extension_sota', 'enabled'), isTrue);
+    await drainTimers(tester);
+  });
+
+  testWidgets('Enter advances every step like its primary button', (tester) async {
+    final services = await makeServices();
+    await pumpApp(tester, services);
+
+    // Welcome → Callsign — even with no text field focused, Enter must
+    // reach the overlay's shortcut.
+    await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+    await tester.pumpAndSettle();
+    expect(find.text("What's your callsign?"), findsOneWidget);
+
+    await tester.enterText(find.widgetWithText(TextField, "Operator's Callsign"), 'ki2d');
+    await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+    await tester.pumpAndSettle();
+    expect(find.text('Favorite Activities'), findsOneWidget);
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+    await tester.pumpAndSettle();
+    expect(find.text('Data & Privacy'), findsOneWidget);
+
+    // Done: the flow finishes with the answers persisted.
+    await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+    await tester.pumpAndSettle();
+    expect(find.byType(OnboardingOverlayView), findsNothing);
+    expect(services.settings.activeProfile.operatorCall, 'KI2D');
     await drainTimers(tester);
   });
 }

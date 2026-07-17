@@ -14,6 +14,7 @@ import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:halo_widgets/halo_widgets.dart';
 
 import '../config/release_notes.dart';
@@ -92,6 +93,34 @@ class _OnboardingOverlayViewState extends State<OnboardingOverlayView> {
     });
   }
 
+  /// Enter anywhere acts like the step's primary button (Continue/Next/
+  /// Done). A HardwareKeyboard handler — the same app-level hook main.dart
+  /// uses for the zoom keys — rather than a focus-chain shortcut, because
+  /// most steps have no focusable field and primary focus stays on the
+  /// route scope beneath this modal overlay. Returning true also stops the
+  /// event from reaching the callsign field's IME, so onSubmitted (kept for
+  /// the mobile soft keyboard) can't double-fire.
+  bool _handleKeyEvent(KeyEvent event) {
+    if (event is! KeyDownEvent) return false;
+    final key = event.logicalKey;
+    if (key != LogicalKeyboardKey.enter && key != LogicalKeyboardKey.numpadEnter) return false;
+    _primaryAction();
+    return true;
+  }
+
+  void _primaryAction() {
+    switch (_step) {
+      case _OnboardingStep.welcome:
+        _goTo(_OnboardingStep.callsign);
+      case _OnboardingStep.callsign:
+        _nextFromCallsign();
+      case _OnboardingStep.activities:
+        _goTo(_OnboardingStep.consent);
+      case _OnboardingStep.consent:
+        _finish();
+    }
+  }
+
   // app-polo's onboarding defaults: POTA pre-checked, the rest off;
   // usage-data consent pre-checked, operation-data off.
   bool _pota = true;
@@ -100,7 +129,19 @@ class _OnboardingOverlayViewState extends State<OnboardingOverlayView> {
   bool _consentOpData = false;
 
   @override
+  void initState() {
+    super.initState();
+    // Drop whatever held focus beneath the overlay (a DEVONBOARD re-show
+    // can arrive over a focused call field, whose own Enter shortcut would
+    // fire alongside _handleKeyEvent) — matches first-run conditions, where
+    // nothing is focused yet.
+    FocusManager.instance.primaryFocus?.unfocus();
+    HardwareKeyboard.instance.addHandler(_handleKeyEvent);
+  }
+
+  @override
   void dispose() {
+    HardwareKeyboard.instance.removeHandler(_handleKeyEvent);
     _navLockTimer?.cancel();
     _callsignController.dispose();
     super.dispose();
