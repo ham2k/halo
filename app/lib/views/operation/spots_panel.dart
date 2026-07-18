@@ -546,7 +546,16 @@ class _SpotsPanelState extends State<SpotsPanel> {
           totalCount: summary.total,
           onTap: _openFilterDialog,
         ),
-        Expanded(child: _buildSpotsList(context, summary.filtered)),
+        // Clears the bottom safe area (home indicator) itself, now that the
+        // status footer no longer reserves it globally; the panel fills behind.
+        Expanded(
+          child: SafeArea(
+            top: false,
+            left: false,
+            right: false,
+            child: _buildSpotsList(context, summary.filtered),
+          ),
+        ),
       ],
     );
   }

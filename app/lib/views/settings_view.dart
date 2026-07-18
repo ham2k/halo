@@ -271,7 +271,14 @@ class _SettingsViewState extends State<SettingsView> {
     required List<_SettingsPanelEntry> panels,
     required String selectedKey,
   }) {
-    return ListView.builder(
+    // The status footer no longer reserves the home indicator globally (it
+    // collapses when empty), so the list clears the bottom safe area itself;
+    // the Scaffold canvas fills behind it.
+    return SafeArea(
+      top: false,
+      left: false,
+      right: false,
+      child: ListView.builder(
       itemCount: panels.length,
       itemBuilder: (context, index) {
         final panel = panels[index];
@@ -296,6 +303,7 @@ class _SettingsViewState extends State<SettingsView> {
           mouseCursor: SystemMouseCursors.click,
         );
       },
+      ),
     );
   }
 }
@@ -337,6 +345,7 @@ class _SettingsPanelScreen extends StatelessWidget {
 }
 
 Widget _buildPanelContent(_SettingsPanelEntry panel, HaLoServices services) {
+  final Widget content;
   switch (panel.key) {
     case 'profiles':
       return _ProfilesPanel(services: services);
@@ -349,20 +358,25 @@ Widget _buildPanelContent(_SettingsPanelEntry panel, HaLoServices services) {
     case 'all_settings':
       return _AllSettingsPanel(services: services);
     case 'sync':
-      return _SyncPanel(services: services);
+      content = _SyncPanel(services: services);
     case 'accounts':
-      return _AccountsPanel(services: services);
+      content = _AccountsPanel(services: services);
     case 'notices':
-      return NoticeHistoryView(services: services);
+      content = NoticeHistoryView(services: services);
     case 'developer':
-      return _DeveloperPanel(services: services);
+      content = _DeveloperPanel(services: services);
     case 'about':
-      return const _AboutPanel();
+      content = const _AboutPanel();
     default:
       final descriptor = panel.descriptor;
-      if (descriptor == null) return const SizedBox.shrink();
-      return _ExtensionSettingsPanel(services: services, descriptor: descriptor);
+      content = descriptor == null
+          ? const SizedBox.shrink()
+          : _ExtensionSettingsPanel(services: services, descriptor: descriptor);
   }
+  // Each panel's scroll view clears the bottom safe area itself now that the
+  // status footer no longer reserves the home indicator globally (it
+  // collapses when empty); the Scaffold canvas fills behind it.
+  return SafeArea(top: false, left: false, right: false, child: content);
 }
 
 /// The "profiles" panel — callsign profiles. Until multi-profile features

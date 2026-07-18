@@ -281,6 +281,18 @@
         "descriptionOn": "Saltar después de ingresar el RST",
         "descriptionOff": "No saltar automáticamente"
       },
+      "numbersRow": {
+        "title": "Fila de Números",
+        "description": "Muestra una fila de teclas numéricas sobre el teclado al registrar"
+      },
+      "numbersRowExtra": {
+        "title": "Tecla de barra y punto",
+        "description": "Añade una tecla contextual: «/» para indicativos, «.» para números"
+      },
+      "numbersRowVibrate": {
+        "title": "Vibrar al pulsar",
+        "description": "Respuesta háptica al pulsar una tecla numérica"
+      },
       "bands": "Bandas",
       "modes": "Modos"
     },

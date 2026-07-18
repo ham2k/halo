@@ -487,6 +487,12 @@ class _OperationViewState extends State<OperationView> with SingleTickerProvider
         );
 
         return Scaffold(
+          // The body extends full height behind the on-screen keyboard, so
+          // each pane paints its own background there (and a two-pane split
+          // reflects for free). The logging panel keeps its fields above the
+          // keyboard with its own bottom spacer (see LoggingControls); the
+          // Quick Lookup / branding panes do the same on Home.
+          resizeToAvoidBottomInset: false,
           appBar: AppBar(
             flexibleSpace: windowHeaderGestureArea(),
             leadingWidth: macOSAwareLeadingWidth(context),
@@ -685,7 +691,13 @@ class OperationSettingsPanel extends StatelessWidget {
 
     return ListTileTheme.merge(
       contentPadding: EdgeInsets.only(left: 16 + safeLeft, right: 16),
-      child: ListView(
+      // Clears the bottom safe area (home indicator) itself, now that the
+      // status footer no longer reserves it globally; the panel fills behind.
+      child: SafeArea(
+        top: false,
+        left: false,
+        right: false,
+        child: ListView(
       children: [
         header(context.t.operation.sections.stationOperator),
         ListTile(
@@ -727,6 +739,7 @@ class OperationSettingsPanel extends StatelessWidget {
           mouseCursor: SystemMouseCursors.click,
         ),
       ],
+      ),
       ),
     );
   }

@@ -901,6 +901,9 @@ class Translations$settings$logging$en {
 	late final Translations$settings$logging$showBearing$en showBearing = Translations$settings$logging$showBearing$en.internal(_root);
 	late final Translations$settings$logging$switchSentRcvd$en switchSentRcvd = Translations$settings$logging$switchSentRcvd$en.internal(_root);
 	late final Translations$settings$logging$jumpAfterRST$en jumpAfterRST = Translations$settings$logging$jumpAfterRST$en.internal(_root);
+	late final Translations$settings$logging$numbersRow$en numbersRow = Translations$settings$logging$numbersRow$en.internal(_root);
+	late final Translations$settings$logging$numbersRowExtra$en numbersRowExtra = Translations$settings$logging$numbersRowExtra$en.internal(_root);
+	late final Translations$settings$logging$numbersRowVibrate$en numbersRowVibrate = Translations$settings$logging$numbersRowVibrate$en.internal(_root);
 
 	/// en: 'Bands'
 	String get bands => 'Bands';
@@ -1144,6 +1147,51 @@ class Translations$settings$logging$jumpAfterRST$en {
 
 	/// en: 'Don't jump automatically'
 	String get descriptionOff => 'Don\'t jump automatically';
+}
+
+// Path: settings.logging.numbersRow
+class Translations$settings$logging$numbersRow$en {
+	Translations$settings$logging$numbersRow$en.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Numbers Row'
+	String get title => 'Numbers Row';
+
+	/// en: 'Show a row of number keys above the keyboard while logging'
+	String get description => 'Show a row of number keys above the keyboard while logging';
+}
+
+// Path: settings.logging.numbersRowExtra
+class Translations$settings$logging$numbersRowExtra$en {
+	Translations$settings$logging$numbersRowExtra$en.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Slash and period key'
+	String get title => 'Slash and period key';
+
+	/// en: 'Adds a contextual key: “/” for callsigns, “.” for numbers'
+	String get description => 'Adds a contextual key: “/” for callsigns, “.” for numbers';
+}
+
+// Path: settings.logging.numbersRowVibrate
+class Translations$settings$logging$numbersRowVibrate$en {
+	Translations$settings$logging$numbersRowVibrate$en.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Vibrate on key press'
+	String get title => 'Vibrate on key press';
+
+	/// en: 'Haptic feedback when you tap a number key'
+	String get description => 'Haptic feedback when you tap a number key';
 }
 
 // Path: settings.privacy.shareAppData
@@ -1410,6 +1458,12 @@ extension on Translations {
 			'settings.logging.jumpAfterRST.title' => 'Jump to next field on RST entry',
 			'settings.logging.jumpAfterRST.descriptionOn' => 'Jump after RST is entered',
 			'settings.logging.jumpAfterRST.descriptionOff' => 'Don\'t jump automatically',
+			'settings.logging.numbersRow.title' => 'Numbers Row',
+			'settings.logging.numbersRow.description' => 'Show a row of number keys above the keyboard while logging',
+			'settings.logging.numbersRowExtra.title' => 'Slash and period key',
+			'settings.logging.numbersRowExtra.description' => 'Adds a contextual key: “/” for callsigns, “.” for numbers',
+			'settings.logging.numbersRowVibrate.title' => 'Vibrate on key press',
+			'settings.logging.numbersRowVibrate.description' => 'Haptic feedback when you tap a number key',
 			'settings.logging.bands' => 'Bands',
 			'settings.logging.modes' => 'Modes',
 			'settings.privacy.title' => 'Privacy',

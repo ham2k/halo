@@ -120,6 +120,14 @@ class _StatusBarFooterState extends State<StatusBarFooter> {
     final backgroundColor = theme.appBarTheme.backgroundColor ?? theme.colorScheme.primary;
     final foregroundColor = theme.appBarTheme.foregroundColor ?? theme.colorScheme.onPrimary;
 
+    // With no items the footer collapses to nothing, so each screen's own
+    // content fills the bottom safe area with its own colour — teal Quick
+    // Lookup on Home, the canvas on Settings, the separate split panes in
+    // landscape — rather than one footer colour imposed over every screen.
+    if (!hasItems) {
+      return const SizedBox.shrink();
+    }
+
     return Material(
       color: backgroundColor,
       child: SafeArea(
@@ -133,9 +141,7 @@ class _StatusBarFooterState extends State<StatusBarFooter> {
           child: AnimatedSize(
             duration: const Duration(milliseconds: 150),
             alignment: Alignment.bottomCenter,
-            child: !hasItems
-                ? const SizedBox.shrink()
-                : (expanded ? _buildExpanded(context, foregroundColor) : _buildCollapsed(context, foregroundColor)),
+            child: expanded ? _buildExpanded(context, foregroundColor) : _buildCollapsed(context, foregroundColor),
           ),
         ),
       ),

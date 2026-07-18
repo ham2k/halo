@@ -229,6 +229,33 @@ class LoggingSettingsGroup extends SettingsGroup {
         description: settings.jumpAfterRST ? s.jumpAfterRST.descriptionOn : s.jumpAfterRST.descriptionOff,
         value: settings.jumpAfterRST,
       ),
+      // The mobile numbers row (issue #27). Its two sub-options only make
+      // sense while the row is on, so they appear only then — buildElements
+      // re-runs on every settings change (listenable: settings), so they
+      // show/hide as the master toggle flips.
+      _toggle(
+        key: 'showNumbersRow',
+        label: s.numbersRow.title,
+        icon: 'dialpad',
+        description: s.numbersRow.description,
+        value: settings.showNumbersRow,
+      ),
+      if (settings.showNumbersRow) ...[
+        _toggle(
+          key: 'showExtraInNumbersRow',
+          label: s.numbersRowExtra.title,
+          icon: 'slash-forward',
+          description: s.numbersRowExtra.description,
+          value: settings.showExtraInNumbersRow,
+        ),
+        _toggle(
+          key: 'vibrateNumbersRow',
+          label: s.numbersRowVibrate.title,
+          icon: 'vibrate',
+          description: s.numbersRowVibrate.description,
+          value: settings.vibrateNumbersRow,
+        ),
+      ],
       {
         'type': 'field',
         'fieldType': 'multiselect',

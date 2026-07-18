@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_svg/flutter_svg.dart';
@@ -195,6 +196,11 @@ class _HomeViewState extends State<HomeView> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return Scaffold(
+      // Full height behind the on-screen keyboard so each pane paints its own
+      // bottom — the Quick Lookup bar's teal on the left, the branding on the
+      // right — and a two-pane split reflects through. Each keeps its content
+      // above the keyboard itself (HomeQuickLookup / _BrandingPane).
+      resizeToAvoidBottomInset: false,
       appBar: AppBar(
         flexibleSpace: windowHeaderGestureArea(),
         leadingWidth: isMacOSChromelessWindow ? 48 + macOSTrafficLightClearance(context) : null,
@@ -359,7 +365,16 @@ class _BrandingPane extends StatelessWidget {
     return Container(
       color: theme.colorScheme.surfaceContainerHighest,
       alignment: Alignment.center,
-      child: Column(
+      // Centre the branding in the space above the keyboard (the pane extends
+      // full height behind it, so the grey fills the gap); the padding is
+      // inside the coloured Container, so the fill still reaches the bottom.
+      padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(context).bottom),
+      // Scale the branding down rather than overflow when the pane is short —
+      // e.g. landscape two-pane with the keyboard up shrinks it well below
+      // the logo+text's natural height. No effect at full height.
+      child: FittedBox(
+        fit: BoxFit.scaleDown,
+        child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
           SvgPicture.asset('assets/images/ham2k-wordmark.svg', width: 180),
@@ -377,6 +392,7 @@ class _BrandingPane extends StatelessWidget {
             style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant),
           ),
         ],
+        ),
       ),
     );
   }
@@ -415,16 +431,64 @@ class _HomeQuickLookupState extends State<HomeQuickLookup> {
   void initState() {
     super.initState();
     _controller.addListener(_onTextChanged);
+    // The mobile numbers row shows only while this field has focus, so rebuild
+    // as focus comes and goes (issue #27).
+    _focusNode.addListener(_onFocusChanged);
   }
 
   @override
   void dispose() {
+    _focusNode.removeListener(_onFocusChanged);
     _controller.dispose();
     _focusNode.dispose();
     _commandDescribeDebounce?.cancel();
     _executeMessageTimer?.cancel();
     _lookupDebounce?.cancel();
     super.dispose();
+  }
+
+  void _onFocusChanged() {
+    if (mounted) setState(() {});
+  }
+
+  /// Whether to float the mobile numbers row above the keyboard right now: the
+  /// setting is on, we're on a phone/tablet, this field has focus, and a real
+  /// on-screen keyboard is up. The >100px check ignores iOS's thin
+  /// hardware-keyboard accessory bar (~45–55px) — matches LoggingControls'
+  /// `_minKeyboardInset`. MediaQuery works here (the Home Scaffold doesn't
+  /// resize, so it doesn't strip the inset), so this rebuilds on its own as
+  /// the keyboard opens/closes.
+  bool _shouldShowNumbersRow(MediaQueryData mq) =>
+      isMobilePlatform &&
+      widget.services.settings.showNumbersRow &&
+      _focusNode.hasFocus &&
+      mq.viewInsets.bottom > 100;
+
+  /// The contextual extra key: "/" once a callsign (letters, not just digits)
+  /// is being composed — for portable calls like W1AW/P — otherwise ".". Same
+  /// rule as the logging panel; null when the extra key is turned off.
+  String? get _numbersRowExtraKey {
+    if (!widget.services.settings.showExtraInNumbersRow) return null;
+    final text = _controller.text;
+    final hasLetter = RegExp(r'[A-Za-z]').hasMatch(text);
+    final onlyDigits = RegExp(r'^[0-9]+$').hasMatch(text);
+    return (hasLetter && !onlyDigits) ? '/' : '.';
+  }
+
+  /// Inserts a tapped numbers-row character at the cursor. Sets the controller
+  /// value directly (bypassing the field's input formatters, which is fine —
+  /// digits and "/"/"." need no transform), which fires `_onTextChanged` so
+  /// the lookup/command interpretation runs just as if it were typed.
+  void _handleNumberKey(String key) {
+    final value = _controller.value;
+    final selection = value.selection;
+    final start = selection.start < 0 ? value.text.length : selection.start;
+    final end = selection.end < 0 ? value.text.length : selection.end;
+    _controller.value = value.copyWith(
+      text: value.text.replaceRange(start, end, key),
+      selection: TextSelection.collapsed(offset: start + key.length),
+      composing: TextRange.empty,
+    );
   }
 
   void _onTextChanged() {
@@ -645,6 +709,17 @@ class _HomeQuickLookupState extends State<HomeQuickLookup> {
 
     final hasContent = _commandMessage != null || lookupLine != null;
 
+    // The Home Scaffold no longer resizes for the keyboard, and the status
+    // footer below now collapses to nothing, so this bar reserves the space
+    // itself below the field (and the numbers row, when shown): the larger of
+    // the keyboard inset and the bottom safe area. A MAX (not a sum) because
+    // the keyboard, when up, already covers the home indicator. The bar's
+    // Material fills that strip, so its teal both shows behind the keyboard and
+    // forms the home-indicator strip when the keyboard is down.
+    final mq = MediaQuery.of(context);
+    final bottomReserve = math.max(mq.viewInsets.bottom, mq.viewPadding.bottom);
+    final showNumbersRow = _shouldShowNumbersRow(mq);
+
     return Material(
       elevation: 8,
       color: theme.appBarTheme.backgroundColor ?? theme.colorScheme.surface,
@@ -700,12 +775,7 @@ class _HomeQuickLookupState extends State<HomeQuickLookup> {
               ),
             ),
           Padding(
-            padding: EdgeInsets.fromLTRB(
-              16,
-              8,
-              16,
-              MediaQuery.paddingOf(context).bottom > 8.0 ? MediaQuery.paddingOf(context).bottom : 8.0,
-            ),
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
             child: TextField(
               controller: _controller,
               focusNode: _focusNode,
@@ -736,6 +806,19 @@ class _HomeQuickLookupState extends State<HomeQuickLookup> {
               onSubmitted: (_) => _submit(),
             ),
           ),
+          // The mobile numbers row (issue #27), same setting as the logging
+          // panel — digits (plus one contextual "/"/".") a tap away while the
+          // lookup field has focus. Sits just above the keyboard, which the
+          // spacer below reserves.
+          if (showNumbersRow)
+            NumberKeys(
+              onKey: _handleNumberKey,
+              extraKey: _numbersRowExtraKey,
+              vibrate: widget.services.settings.vibrateNumbersRow,
+              backgroundColor: theme.appBarTheme.backgroundColor ?? theme.colorScheme.primary,
+              foregroundColor: theme.appBarTheme.foregroundColor ?? theme.colorScheme.onPrimary,
+            ),
+          if (bottomReserve > 0) SizedBox(width: double.infinity, height: bottomReserve),
         ],
       ),
     );

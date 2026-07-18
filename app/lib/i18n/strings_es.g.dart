@@ -497,6 +497,9 @@ class _Translations$settings$logging$es extends Translations$settings$logging$en
 	@override late final _Translations$settings$logging$showBearing$es showBearing = _Translations$settings$logging$showBearing$es._(_root);
 	@override late final _Translations$settings$logging$switchSentRcvd$es switchSentRcvd = _Translations$settings$logging$switchSentRcvd$es._(_root);
 	@override late final _Translations$settings$logging$jumpAfterRST$es jumpAfterRST = _Translations$settings$logging$jumpAfterRST$es._(_root);
+	@override late final _Translations$settings$logging$numbersRow$es numbersRow = _Translations$settings$logging$numbersRow$es._(_root);
+	@override late final _Translations$settings$logging$numbersRowExtra$es numbersRowExtra = _Translations$settings$logging$numbersRowExtra$es._(_root);
+	@override late final _Translations$settings$logging$numbersRowVibrate$es numbersRowVibrate = _Translations$settings$logging$numbersRowVibrate$es._(_root);
 	@override String get bands => 'Bandas';
 	@override String get modes => 'Modos';
 }
@@ -645,6 +648,39 @@ class _Translations$settings$logging$jumpAfterRST$es extends Translations$settin
 	@override String get title => 'Saltar al siguiente campo al ingresar RST';
 	@override String get descriptionOn => 'Saltar después de ingresar el RST';
 	@override String get descriptionOff => 'No saltar automáticamente';
+}
+
+// Path: settings.logging.numbersRow
+class _Translations$settings$logging$numbersRow$es extends Translations$settings$logging$numbersRow$en {
+	_Translations$settings$logging$numbersRow$es._(TranslationsEs root) : this._root = root, super.internal(root);
+
+	final TranslationsEs _root; // ignore: unused_field
+
+	// Translations
+	@override String get title => 'Fila de Números';
+	@override String get description => 'Muestra una fila de teclas numéricas sobre el teclado al registrar';
+}
+
+// Path: settings.logging.numbersRowExtra
+class _Translations$settings$logging$numbersRowExtra$es extends Translations$settings$logging$numbersRowExtra$en {
+	_Translations$settings$logging$numbersRowExtra$es._(TranslationsEs root) : this._root = root, super.internal(root);
+
+	final TranslationsEs _root; // ignore: unused_field
+
+	// Translations
+	@override String get title => 'Tecla de barra y punto';
+	@override String get description => 'Añade una tecla contextual: «/» para indicativos, «.» para números';
+}
+
+// Path: settings.logging.numbersRowVibrate
+class _Translations$settings$logging$numbersRowVibrate$es extends Translations$settings$logging$numbersRowVibrate$en {
+	_Translations$settings$logging$numbersRowVibrate$es._(TranslationsEs root) : this._root = root, super.internal(root);
+
+	final TranslationsEs _root; // ignore: unused_field
+
+	// Translations
+	@override String get title => 'Vibrar al pulsar';
+	@override String get description => 'Respuesta háptica al pulsar una tecla numérica';
 }
 
 // Path: settings.privacy.shareAppData
@@ -899,6 +935,12 @@ extension on TranslationsEs {
 			'settings.logging.jumpAfterRST.title' => 'Saltar al siguiente campo al ingresar RST',
 			'settings.logging.jumpAfterRST.descriptionOn' => 'Saltar después de ingresar el RST',
 			'settings.logging.jumpAfterRST.descriptionOff' => 'No saltar automáticamente',
+			'settings.logging.numbersRow.title' => 'Fila de Números',
+			'settings.logging.numbersRow.description' => 'Muestra una fila de teclas numéricas sobre el teclado al registrar',
+			'settings.logging.numbersRowExtra.title' => 'Tecla de barra y punto',
+			'settings.logging.numbersRowExtra.description' => 'Añade una tecla contextual: «/» para indicativos, «.» para números',
+			'settings.logging.numbersRowVibrate.title' => 'Vibrar al pulsar',
+			'settings.logging.numbersRowVibrate.description' => 'Respuesta háptica al pulsar una tecla numérica',
 			'settings.logging.bands' => 'Bandas',
 			'settings.logging.modes' => 'Modos',
 			'settings.privacy.title' => 'Privacidad',

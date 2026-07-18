@@ -29,6 +29,7 @@
 
 import 'dart:async';
 import 'dart:convert';
+import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
@@ -40,6 +41,7 @@ import 'package:flutter_markdown/flutter_markdown.dart';
 import 'form_renderer.dart';
 import 'icon_resolver.dart';
 import 'mdi_icons.dart';
+import 'number_keys.dart';
 import 'platform_chrome.dart';
 import 'ref_chips_input.dart';
 import 'secondary_control_row.dart';
@@ -308,6 +310,15 @@ class LoggingControls extends StatefulWidget {
   final bool showStateField;
   final bool showGridField;
 
+  /// The mobile numbers row (issue #27) — a bar of digit keys floated above
+  /// the on-screen keyboard while a logging field has focus. Only ever shown
+  /// on mobile platforms with the keyboard up (see `_buildNumberKeys`).
+  /// [showExtraInNumbersRow] adds the contextual "/" (callsign) / "."
+  /// (numeric) key; [vibrateNumbersRow] toggles the key-press haptic.
+  final bool showNumbersRow;
+  final bool showExtraInNumbersRow;
+  final bool vibrateNumbersRow;
+
   const LoggingControls({
     super.key,
     required this.operation,
@@ -375,13 +386,16 @@ class LoggingControls extends StatefulWidget {
     this.showRSTFields = true,
     this.showStateField = false,
     this.showGridField = false,
+    this.showNumbersRow = false,
+    this.showExtraInNumbersRow = true,
+    this.vibrateNumbersRow = true,
   });
 
   @override
   State<LoggingControls> createState() => _LoggingControlsState();
 }
 
-class _LoggingControlsState extends State<LoggingControls> {
+class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingObserver {
   final _callController = TextEditingController();
   final _sentController = TextEditingController();
   final _rcvdController = TextEditingController();
@@ -603,6 +617,10 @@ class _LoggingControlsState extends State<LoggingControls> {
   @override
   void initState() {
     super.initState();
+    // Observe metrics so the numbers row appears/disappears with the on-screen
+    // keyboard — MediaQuery can't tell us (Scaffold strips the inset, see
+    // `_keyboardIsUp`), so `didChangeMetrics` is the rebuild trigger.
+    WidgetsBinding.instance.addObserver(this);
     _bandDropdownFocus = _dropdownCommitFocusNode(
       commit: _commitBandDropdownText,
       clearFilter: () => _bandFilter = '',
@@ -678,6 +696,8 @@ class _LoggingControlsState extends State<LoggingControls> {
             _pushVfoToRadioService();
           }
         }
+        // Keep the mobile numbers row in sync with which field has focus.
+        _rebuildForNumbersRow();
       });
     }
     _refreshSpotSources();
@@ -914,6 +934,7 @@ class _LoggingControlsState extends State<LoggingControls> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _clockTicker?.cancel();
     _lookupDebounce?.cancel();
     _vfoDebounce?.cancel();
@@ -2038,6 +2059,85 @@ class _LoggingControlsState extends State<LoggingControls> {
       selection: TextSelection.collapsed(offset: start + text.length),
       composing: TextRange.empty,
     );
+  }
+
+  // ── Mobile numbers row (issue #27) ──────────────────────────────────────
+
+  /// The logging fields the numbers row can type into, each paired with its
+  /// controller. The primary text fields only — Freq/Time (behind the
+  /// secondary control row) already raise their own numeric keyboards, where
+  /// a digits row would be redundant. Fields that aren't currently shown
+  /// never hold focus (their TextField isn't built), so listing them all
+  /// unconditionally is safe. Built once — the FocusNode/controller
+  /// references are stable; focus is read live via `.hasFocus`.
+  late final List<(FocusNode, TextEditingController)> _numberKeyFields = [
+    (_callFocus, _callController),
+    (_sentFocus, _sentController),
+    (_rcvdFocus, _rcvdController),
+    (_stateFocus, _stateController),
+    (_gridFocus, _gridController),
+  ];
+
+  /// Whichever numbers-row field currently holds focus, or null — the target
+  /// for an inserted key and the gate for showing the bar at all.
+  (FocusNode, TextEditingController)? get _focusedNumberField {
+    for (final field in _numberKeyFields) {
+      if (field.$1.hasFocus) return field;
+    }
+    return null;
+  }
+
+  /// The contextual extra key: "/" only while the call field holds a partial
+  /// callsign (a letter present, not a bare number — a serial being typed
+  /// ahead of letters still reads as numeric), "." for every numeric field.
+  /// Null when the extra key is turned off. Mirrors app-polo's callsign vs
+  /// numbers mode split (H2kCallsignInput / H2kRSTInput).
+  String? get _numbersRowExtraKey {
+    if (!widget.showExtraInNumbersRow) return null;
+    if (_callFocus.hasFocus) {
+      final text = _callController.text;
+      final hasLetter = RegExp(r'[A-Za-z]').hasMatch(text);
+      final onlyDigits = RegExp(r'^[0-9]+$').hasMatch(text);
+      if (hasLetter && !onlyDigits) return '/';
+    }
+    return '.';
+  }
+
+  /// Inserts a numbers-row key at the focused field's cursor. `_insertAtCursor`
+  /// writes the controller value directly, which fires the controller
+  /// listeners (lookup/dupe/rebuild) but NOT the TextField's `onChanged` — so
+  /// the "touched" flags those onChanged handlers set are replicated here,
+  /// else a tapped digit wouldn't mark RST/Grid/State as user-edited.
+  void _handleNumberKey(String key) {
+    final field = _focusedNumberField;
+    if (field == null || _fieldsLocked) return;
+    final (focus, controller) = field;
+    _insertAtCursor(controller, key);
+    if (identical(focus, _sentFocus) || identical(focus, _rcvdFocus)) {
+      _rstsTouched = true;
+    } else if (identical(focus, _gridFocus)) {
+      _gridTouched = true;
+    } else if (identical(focus, _stateFocus)) {
+      _stateTouched = true;
+    }
+  }
+
+  /// Rebuilds so the bar's visibility and contextual "/"→"." key track the
+  /// focused field. Focus notifications can arrive mid-build (autofocus on
+  /// the first frame), so a rebuild is only requested synchronously when
+  /// we're safely between frames; otherwise it's deferred to the frame in
+  /// progress. Only runs while the feature is on, so it costs nothing
+  /// otherwise.
+  void _rebuildForNumbersRow() {
+    if (!widget.showNumbersRow || !mounted) return;
+    final phase = WidgetsBinding.instance.schedulerPhase;
+    if (phase == SchedulerPhase.idle || phase == SchedulerPhase.postFrameCallbacks) {
+      setState(() {});
+    } else {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) setState(() {});
+      });
+    }
   }
 
   Future<void> _dispatchActions(List<dynamic> actions) async {
@@ -3418,6 +3518,30 @@ class _LoggingControlsState extends State<LoggingControls> {
                   ),
                 ),
               ),
+              // The numbers row, when a field has focus and the keyboard is
+              // up (mobile only). See `_shouldShowNumbersRow`.
+              if (_shouldShowNumbersRow(context))
+                _buildNumberKeys(accentTheme),
+              // Reserve space at the bottom so the fields (and numbers row)
+              // clear whatever is down there — the Scaffold no longer resizes
+              // for the keyboard, it extends full height so each pane fills
+              // behind it, and the status footer no longer reserves the home
+              // indicator globally. That's the larger of the keyboard inset and
+              // the bottom safe area (a MAX — the keyboard covers the indicator
+              // when up). The spacer takes the numbers row's colour when it's
+              // showing (so the row reads as continuing behind the keyboard);
+              // otherwise it's the panel's own background (Material above), so
+              // the home-indicator strip matches the panel.
+              if (_bottomReserve > 0)
+                SizedBox(
+                  width: double.infinity,
+                  height: _bottomReserve,
+                  child: _shouldShowNumbersRow(context)
+                      ? ColoredBox(
+                          color: accentTheme.appBarTheme.backgroundColor ?? accentTheme.colorScheme.primary,
+                        )
+                      : null,
+                ),
             ],
           ),
         ),
@@ -3430,6 +3554,87 @@ class _LoggingControlsState extends State<LoggingControls> {
     // into the QSO list above. Programmatic focus moves and mouse clicks
     // still cross the boundary freely — only keyboard traversal is confined.
     return FocusScope(child: panel);
+  }
+
+  /// Rebuilds when the on-screen keyboard opens or closes. The operation
+  /// Scaffold no longer resizes for the keyboard (it extends full height so
+  /// each pane paints its own bottom) — this panel keeps its own fields above
+  /// it with a bottom spacer (see build), whose height tracks the keyboard.
+  /// `didChangeMetrics` is the trigger: the raw view inset ([_keyboardInset])
+  /// has no MediaQuery dependency to rebuild on.
+  @override
+  void didChangeMetrics() {
+    if (isMobilePlatform && mounted) setState(() {});
+  }
+
+  /// The on-screen keyboard's height in logical pixels, or 0 off mobile /
+  /// keyboard down. Read from the raw `FlutterView` (see [_keyboardIsUp]).
+  /// The panel reserves this much at its bottom so the fields and numbers row
+  /// stay above the keyboard.
+  double get _keyboardInset {
+    if (!isMobilePlatform) return 0;
+    final view = View.of(context);
+    return view.viewInsets.bottom / view.devicePixelRatio;
+  }
+
+  /// The bottom safe area (home indicator) in logical pixels, or 0 off mobile
+  /// / on a device without one. Read from the raw `FlutterView` like
+  /// [_keyboardInset]; `viewPadding` (unlike `MediaQuery.padding`) keeps the
+  /// indicator's height even while the keyboard is up, which is why the two
+  /// combine as a MAX.
+  double get _bottomSafeInset {
+    if (!isMobilePlatform) return 0;
+    final view = View.of(context);
+    return view.viewPadding.bottom / view.devicePixelRatio;
+  }
+
+  /// How much to reserve below the fields: the keyboard when it's up, the home
+  /// indicator when it's down (see the spacer in build).
+  double get _bottomReserve => math.max(_keyboardInset, _bottomSafeInset);
+
+  /// A bottom inset (logical px) below this isn't a real virtual keyboard.
+  /// iOS raises a thin shortcuts/assistant bar (~45–55px) when a HARDWARE
+  /// keyboard is attached — that bumps `viewInsets` too, but the numbers row
+  /// isn't wanted then (the user already has physical number keys). Every
+  /// real on-screen keyboard is far taller (landscape iPhone, the shortest
+  /// case, is still ~150px+), so this threshold cleanly separates the two.
+  static const _minKeyboardInset = 100.0;
+
+  /// Whether a full on-screen ("virtual") keyboard is up. Read from the raw
+  /// `FlutterView` inset rather than MediaQuery: inside a `Scaffold` body
+  /// (the logging panel's home) `MediaQuery.viewInsetsOf(context).bottom` is
+  /// always 0 because the Scaffold already consumed the keyboard inset to
+  /// resize the body. `viewInsets` is in physical pixels, so divide by the
+  /// device pixel ratio before comparing against the logical threshold.
+  bool get _keyboardIsUp {
+    final view = View.of(context);
+    return view.viewInsets.bottom / view.devicePixelRatio > _minKeyboardInset;
+  }
+
+  /// Whether to show the mobile numbers row right now — the setting is on,
+  /// we're on a phone/tablet, the QSO isn't a read-only (staged/already
+  /// deleted) view, the on-screen keyboard is up, and one of our logging
+  /// fields actually holds the focus (issue #27).
+  bool _shouldShowNumbersRow(BuildContext context) {
+    return widget.showNumbersRow &&
+        isMobilePlatform &&
+        !_fieldsLocked &&
+        _keyboardIsUp &&
+        _focusedNumberField != null;
+  }
+
+  Widget _buildNumberKeys(ThemeData theme) {
+    return NumberKeys(
+      onKey: _handleNumberKey,
+      extraKey: _numbersRowExtraKey,
+      vibrate: widget.vibrateNumbersRow,
+      // The AppBar/footer colour — the app's chrome — deliberately NOT the
+      // editing-swappable tertiary/secondary accent, so the row reads as
+      // chrome in every mode. (appBarTheme isn't remapped by the editing
+      // accent, so `theme` here being the accent theme is fine.)
+      backgroundColor: theme.appBarTheme.backgroundColor ?? theme.colorScheme.primary,
+      foregroundColor: theme.appBarTheme.foregroundColor ?? theme.colorScheme.onPrimary,
+    );
   }
 
   Widget _buildInfoArea(ThemeData theme) {

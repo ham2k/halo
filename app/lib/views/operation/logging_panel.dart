@@ -83,6 +83,43 @@ class _LoggingPanelState extends State<LoggingPanel> {
   late final List<String> _enabledBands = widget.services.settings.enabledBands;
   late final List<String> _enabledModes = widget.services.settings.enabledModes;
 
+  // The mobile numbers row (issue #27). Unlike the per-operation view
+  // toggles, these live in the global General settings screen, so they can
+  // change while this panel is alive — mirrored here and refreshed via the
+  // listener below.
+  late bool _showNumbersRow = widget.services.settings.showNumbersRow;
+  late bool _showExtraInNumbersRow =
+      widget.services.settings.showExtraInNumbersRow;
+  late bool _vibrateNumbersRow = widget.services.settings.vibrateNumbersRow;
+
+  @override
+  void initState() {
+    super.initState();
+    widget.services.settings.addListener(_onSettingsChanged);
+  }
+
+  @override
+  void dispose() {
+    widget.services.settings.removeListener(_onSettingsChanged);
+    super.dispose();
+  }
+
+  /// Only rebuild when a numbers-row setting actually changes —
+  /// SettingsService also notifies on frequent sync-state writes, and this
+  /// panel's QsoList is expensive to rebuild.
+  void _onSettingsChanged() {
+    final s = widget.services.settings;
+    if (s.showNumbersRow != _showNumbersRow ||
+        s.showExtraInNumbersRow != _showExtraInNumbersRow ||
+        s.vibrateNumbersRow != _vibrateNumbersRow) {
+      setState(() {
+        _showNumbersRow = s.showNumbersRow;
+        _showExtraInNumbersRow = s.showExtraInNumbersRow;
+        _vibrateNumbersRow = s.vibrateNumbersRow;
+      });
+    }
+  }
+
   void _handleSelectQso(Qso qso) {
     setState(() {
       _selectedQso = _selectedQso?.uuid == qso.uuid ? null : qso;
@@ -187,6 +224,9 @@ class _LoggingPanelState extends State<LoggingPanel> {
           showRSTFields: widget.showRSTFields,
           showStateField: widget.showStateField,
           showGridField: widget.showGridField,
+          showNumbersRow: _showNumbersRow,
+          showExtraInNumbersRow: _showExtraInNumbersRow,
+          vibrateNumbersRow: _vibrateNumbersRow,
           timeControlLabel: context.t.loggingControls.timeControl,
           radioControlLabel: context.t.loggingControls.radioControl,
           controlSettingsTitle: context.t.loggingControls.controlSettings,

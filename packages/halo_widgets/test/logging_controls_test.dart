@@ -45,6 +45,9 @@ void main() {
     SendSpot? sendSpot,
     bool showStateField = false,
     bool showGridField = false,
+    bool showNumbersRow = false,
+    bool showExtraInNumbersRow = true,
+    bool vibrateNumbersRow = true,
     List<String>? enabledBands,
     List<String>? enabledModes,
     void Function(Qso qso)? enqueueLookup,
@@ -65,6 +68,9 @@ void main() {
       sendSpot: sendSpot,
       showStateField: showStateField,
       showGridField: showGridField,
+      showNumbersRow: showNumbersRow,
+      showExtraInNumbersRow: showExtraInNumbersRow,
+      vibrateNumbersRow: vibrateNumbersRow,
       enabledBands: enabledBands,
       enabledModes: enabledModes,
       spottingControlLabel: 'Spotting',
@@ -77,14 +83,35 @@ void main() {
     );
     return MaterialApp(
       home: Scaffold(
-        // `trailing` stands in for the QSO list above the panel — a
-        // focusable sibling OUTSIDE the controls, so a test can prove Tab
-        // never lands on it.
-        body: trailing == null
-            ? controls
-            : Column(mainAxisSize: MainAxisSize.min, children: [controls, trailing]),
+        // Matches the operation view: the Scaffold doesn't resize for the
+        // keyboard (LoggingControls reserves its own bottom spacer), and the
+        // panel is bottom-anchored with the rest of the height above it (the
+        // QsoList in the app). `trailing` stands in for that QSO list — a
+        // focusable sibling OUTSIDE the controls, so a Tab-trap test can prove
+        // focus never lands on it.
+        resizeToAvoidBottomInset: false,
+        body: Column(
+          children: [
+            const Expanded(child: SizedBox.shrink()),
+            controls,
+            if (trailing != null) trailing,
+          ],
+        ),
       ),
     );
+  }
+
+  // The on-screen keyboard, as the widget tree actually sees it: raise the
+  // real FlutterView's bottom inset (Scaffold hides it from MediaQuery, so
+  // that's the only faithful signal — the very thing `_keyboardIsUp` reads).
+  // Insets are physical px, so scale by the pixel ratio pinned here;
+  // `logicalHeight` stands in either a full keyboard (default) or the thin
+  // ~50px shortcuts bar iOS shows when a HARDWARE keyboard is attached.
+  void raiseKeyboard(WidgetTester tester, {double logicalHeight = 300}) {
+    tester.view.devicePixelRatio = 3.0;
+    tester.view.viewInsets = FakeViewPadding(bottom: logicalHeight * 3.0);
+    addTearDown(tester.view.resetViewInsets);
+    addTearDown(tester.view.resetDevicePixelRatio);
   }
 
   /// Stand-in for the real `radio-commands` extension (see
@@ -271,6 +298,142 @@ void main() {
     } finally {
       debugDefaultTargetPlatformOverride = null;
     }
+  });
+
+  group('mobile numbers row (issue #27)', () {
+    Finder keyInRow(String glyph) =>
+        find.descendant(of: find.byType(NumberKeys), matching: find.text(glyph));
+
+    testWidgets('shows above the keyboard on mobile when enabled and a field has focus', (tester) async {
+      debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
+      try {
+        raiseKeyboard(tester);
+        await tester.pumpWidget(host(showNumbersRow: true));
+        await tester.pump();
+        expect(find.byType(NumberKeys), findsOneWidget);
+        // The full digit set is there…
+        for (final d in ['0', '1', '5', '9']) {
+          expect(keyInRow(d), findsOneWidget);
+        }
+        // …and the empty call field reads as numeric, so the extra key is ".".
+        expect(keyInRow('.'), findsOneWidget);
+        expect(keyInRow('/'), findsNothing);
+      } finally {
+        debugDefaultTargetPlatformOverride = null;
+      }
+    });
+
+    testWidgets('is hidden when the setting is off', (tester) async {
+      debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
+      try {
+        raiseKeyboard(tester);
+        await tester.pumpWidget(host(showNumbersRow: false));
+        await tester.pump();
+        expect(find.byType(NumberKeys), findsNothing);
+      } finally {
+        debugDefaultTargetPlatformOverride = null;
+      }
+    });
+
+    testWidgets('is hidden while the keyboard is down', (tester) async {
+      debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
+      try {
+        // No raiseKeyboard — the keyboard is down.
+        await tester.pumpWidget(host(showNumbersRow: true));
+        await tester.pump();
+        expect(find.byType(NumberKeys), findsNothing);
+      } finally {
+        debugDefaultTargetPlatformOverride = null;
+      }
+    });
+
+    testWidgets('stays hidden for the hardware-keyboard accessory bar, not a full keyboard', (tester) async {
+      debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
+      try {
+        // iOS raises only a ~50px shortcuts bar when a hardware keyboard is
+        // attached — that bumps viewInsets, but it isn't a virtual keyboard,
+        // so the numbers row (redundant with physical number keys) stays away.
+        raiseKeyboard(tester, logicalHeight: 50);
+        await tester.pumpWidget(host(showNumbersRow: true));
+        await tester.pump();
+        expect(find.byType(NumberKeys), findsNothing);
+      } finally {
+        debugDefaultTargetPlatformOverride = null;
+      }
+    });
+
+    testWidgets('never shows off mobile, even with the keyboard up', (tester) async {
+      debugDefaultTargetPlatformOverride = TargetPlatform.macOS;
+      try {
+        raiseKeyboard(tester);
+        await tester.pumpWidget(host(showNumbersRow: true));
+        await tester.pump();
+        expect(find.byType(NumberKeys), findsNothing);
+      } finally {
+        debugDefaultTargetPlatformOverride = null;
+      }
+    });
+
+    testWidgets('tapping a digit inserts it at the focused field', (tester) async {
+      debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
+      try {
+        raiseKeyboard(tester);
+        await tester.pumpWidget(host(showNumbersRow: true));
+        await tester.pump(); // let the call field autofocus
+
+        await tester.tap(keyInRow('5'));
+        await tester.pump();
+        await tester.tap(keyInRow('9'));
+        await tester.pump();
+
+        final callField = tester.widget<TextField>(find.widgetWithText(TextField, 'Their call'));
+        expect(callField.controller!.text, '59');
+      } finally {
+        debugDefaultTargetPlatformOverride = null;
+      }
+    });
+
+    testWidgets('extra key is "/" while composing a callsign, "." in a numeric field', (tester) async {
+      debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
+      try {
+        raiseKeyboard(tester);
+        await tester.pumpWidget(host(showNumbersRow: true));
+
+        // A partial callsign in the (focused) call field → "/".
+        await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'W1AW');
+        await tester.pump();
+        expect(keyInRow('/'), findsOneWidget);
+        expect(keyInRow('.'), findsNothing);
+
+        // Tapping it appends the slash the mobile keyboard buries a layer down.
+        await tester.tap(keyInRow('/'));
+        await tester.pump();
+        final callField = tester.widget<TextField>(find.widgetWithText(TextField, 'Their call'));
+        expect(callField.controller!.text, 'W1AW/');
+
+        // Moving focus to the numeric Sent field flips the extra key to ".".
+        await tester.enterText(find.widgetWithText(TextField, 'Sent'), '59');
+        await tester.pump();
+        expect(keyInRow('.'), findsOneWidget);
+        expect(keyInRow('/'), findsNothing);
+      } finally {
+        debugDefaultTargetPlatformOverride = null;
+      }
+    });
+
+    testWidgets('the extra key can be turned off', (tester) async {
+      debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
+      try {
+        raiseKeyboard(tester);
+        await tester.pumpWidget(host(showNumbersRow: true, showExtraInNumbersRow: false));
+        await tester.pump();
+        expect(find.byType(NumberKeys), findsOneWidget);
+        expect(keyInRow('.'), findsNothing);
+        expect(keyInRow('/'), findsNothing);
+      } finally {
+        debugDefaultTargetPlatformOverride = null;
+      }
+    });
   });
 
   testWidgets('a comma-separated call list logs one QSO per call, 5 seconds apart', (tester) async {

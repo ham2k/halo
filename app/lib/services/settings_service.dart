@@ -459,6 +459,16 @@ class SettingsService extends ChangeNotifier implements SyncSettings {
   bool get switchSentRcvd => _loggingBool('switchSentRcvd', false);
   bool get jumpAfterRST => _loggingBool('jumpAfterRST', false);
 
+  /// The mobile "numbers row" — a bar of digit keys the logging panel floats
+  /// above the on-screen keyboard while a logging field has focus (issue
+  /// #27). Off by default (opt-in), matching app-polo's `showNumbersRow`.
+  /// The two settings below only take effect while this is on: the extra
+  /// contextual key ("/" while composing a callsign, "." in numeric fields,
+  /// on by default) and haptic feedback on each key press (on by default).
+  bool get showNumbersRow => _loggingBool('showNumbersRow', false);
+  bool get showExtraInNumbersRow => _loggingBool('showExtraInNumbersRow', true);
+  bool get vibrateNumbersRow => _loggingBool('vibrateNumbersRow', true);
+
   /// Which contacts get a country flag next to them.
   DxFlags get dxFlags {
     final value = settingValue(loggingGroup, 'dxFlags');

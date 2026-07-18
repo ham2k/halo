@@ -43,4 +43,35 @@ void main() {
       expect(tester.takeException(), isNull);
     },
   );
+
+  testWidgets(
+    'an empty footer collapses to nothing, so the screen content behind it '
+    'fills the bottom safe area with its own colour instead of one footer '
+    'colour being imposed over every screen',
+    (tester) async {
+      tester.view.devicePixelRatio = 3.0;
+      tester.view.viewPadding = const FakeViewPadding(bottom: 102); // 34 logical px
+      addTearDown(tester.view.resetViewPadding);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      // In the real status-bar overlay the footer is the last child of a
+      // Column whose Expanded screen sits above it; collapsing to zero lets
+      // that screen (its Scaffold, Quick Lookup, or split panes) paint the
+      // safe area itself, so the home-indicator strip matches the screen.
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Column(
+            children: [
+              const Expanded(child: SizedBox.shrink()),
+              StatusBarFooter(items: const [], onDismiss: _noop),
+            ],
+          ),
+        ),
+      );
+
+      expect(tester.getSize(find.byType(StatusBarFooter)).height, 0);
+    },
+  );
 }
+
+void _noop(String _) {}

@@ -9,6 +9,7 @@ export 'src/layout.dart';
 export 'src/logging_controls.dart';
 export 'src/mdi_icons.dart';
 export 'src/modal_pane.dart';
+export 'src/number_keys.dart';
 export 'src/platform_chrome.dart';
 export 'src/qso_list.dart';
 export 'src/ref_chips_input.dart';

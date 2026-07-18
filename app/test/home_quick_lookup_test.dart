@@ -9,9 +9,11 @@
 // commands (DEVMODE) still clear the field and show their confirm text.
 
 import 'package:drift/native.dart';
+import 'package:flutter/foundation.dart' show debugDefaultTargetPlatformOverride, TargetPlatform;
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:halo_core/halo_core.dart';
+import 'package:halo_widgets/halo_widgets.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:ham2k_logger/i18n/strings.g.dart';
@@ -104,5 +106,105 @@ void main() {
     // Drain the confirm message's 5s auto-clear timer for the binding's
     // pending-timer invariant.
     await tester.pump(const Duration(seconds: 5));
+  });
+
+  group('mobile numbers row on the quick lookup (issue #27)', () {
+    Future<HaLoServices> makeServices({bool showNumbersRow = false}) async {
+      SharedPreferences.setMockInitialValues({});
+      final settings = SettingsService(await SharedPreferences.getInstance());
+      if (showNumbersRow) {
+        await settings.setSettingValue(SettingsService.loggingGroup, 'showNumbersRow', true);
+      }
+      final db = HaLoDatabase(NativeDatabase.memory());
+      addTearDown(db.close);
+      return HaLoServices(db, settings, extensions: _CannedCommandExtensions());
+    }
+
+    // The numbers row keys off the raw FlutterView inset (the Home Scaffold
+    // doesn't resize, so MediaQuery keeps it); insets are physical px, so
+    // scale by the pixel ratio pinned here. 300 logical px is a full keyboard.
+    void raiseKeyboard(WidgetTester tester, {double logicalHeight = 300}) {
+      tester.view.devicePixelRatio = 3.0;
+      tester.view.viewInsets = FakeViewPadding(bottom: logicalHeight * 3.0);
+      addTearDown(tester.view.resetViewInsets);
+      addTearDown(tester.view.resetDevicePixelRatio);
+    }
+
+    Future<void> pumpHome(WidgetTester tester, HaLoServices services) => tester.pumpWidget(
+          TranslationProvider(
+            child: MaterialApp(
+              // Matches the real Home Scaffold, so MediaQuery keeps the inset.
+              home: Scaffold(resizeToAvoidBottomInset: false, body: HomeQuickLookup(services: services)),
+            ),
+          ),
+        );
+
+    Finder keyInRow(String glyph) => find.descendant(of: find.byType(NumberKeys), matching: find.text(glyph));
+
+    testWidgets('appears above the keyboard only once the lookup field has focus', (tester) async {
+      debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
+      try {
+        raiseKeyboard(tester);
+        await pumpHome(tester, await makeServices(showNumbersRow: true));
+
+        // The field doesn't autofocus, so nothing shows until it's tapped.
+        expect(find.byType(NumberKeys), findsNothing);
+
+        await tester.tap(find.byType(TextField));
+        await tester.pump();
+
+        expect(find.byType(NumberKeys), findsOneWidget);
+        for (final d in ['0', '1', '9']) {
+          expect(keyInRow(d), findsOneWidget);
+        }
+        // The empty field reads as numeric, so the extra key is ".".
+        expect(keyInRow('.'), findsOneWidget);
+        expect(keyInRow('/'), findsNothing);
+      } finally {
+        debugDefaultTargetPlatformOverride = null;
+      }
+    });
+
+    testWidgets('stays hidden when the setting is off', (tester) async {
+      debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
+      try {
+        raiseKeyboard(tester);
+        await pumpHome(tester, await makeServices(showNumbersRow: false));
+        await tester.tap(find.byType(TextField));
+        await tester.pump();
+        expect(find.byType(NumberKeys), findsNothing);
+      } finally {
+        debugDefaultTargetPlatformOverride = null;
+      }
+    });
+
+    testWidgets('tapping a digit inserts it; the extra key becomes "/" for a callsign', (tester) async {
+      debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
+      try {
+        raiseKeyboard(tester);
+        await pumpHome(tester, await makeServices(showNumbersRow: true));
+        await tester.tap(find.byType(TextField));
+        await tester.pump();
+
+        await tester.tap(keyInRow('7'));
+        await tester.pump();
+        expect(tester.widget<TextField>(find.byType(TextField)).controller!.text, '7');
+
+        // A partial callsign (letters, not just digits) flips the extra key.
+        await tester.enterText(find.byType(TextField), 'W1AW');
+        await tester.pump();
+        expect(keyInRow('/'), findsOneWidget);
+        expect(keyInRow('.'), findsNothing);
+
+        await tester.tap(keyInRow('/'));
+        await tester.pump();
+        expect(tester.widget<TextField>(find.byType(TextField)).controller!.text, 'W1AW/');
+
+        // Drain the describe/lookup debounce timers the edits scheduled.
+        await tester.pump(const Duration(milliseconds: 500));
+      } finally {
+        debugDefaultTargetPlatformOverride = null;
+      }
+    });
   });
 }

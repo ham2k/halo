@@ -281,6 +281,18 @@
         "descriptionOn": "Jump after RST is entered",
         "descriptionOff": "Don't jump automatically"
       },
+      "numbersRow": {
+        "title": "Numbers Row",
+        "description": "Show a row of number keys above the keyboard while logging"
+      },
+      "numbersRowExtra": {
+        "title": "Slash and period key",
+        "description": "Adds a contextual key: “/” for callsigns, “.” for numbers"
+      },
+      "numbersRowVibrate": {
+        "title": "Vibrate on key press",
+        "description": "Haptic feedback when you tap a number key"
+      },
       "bands": "Bands",
       "modes": "Modes"
     },
