@@ -106,6 +106,20 @@ foreach(bundled_library ${PLUGIN_BUNDLED_LIBRARIES})
     COMPONENT Runtime)
 endforeach(bundled_library)
 
+# QUIRK: flutter_js 0.8.7 registers its prebuilt quickjs bridge library under
+# a misnamed CMake variable (flutter_qjs_bundled_libraries instead of
+# flutter_js_bundled_libraries), so it never reaches PLUGIN_BUNDLED_LIBRARIES
+# above — Flutter doesn't bundle it and the extension runtime fails to dlopen
+# it at runtime. Bundle it explicitly from the plugin's ephemeral symlink.
+# See docs/quirks.md.
+set(QUICKJS_BRIDGE_LIB
+  "${CMAKE_CURRENT_SOURCE_DIR}/flutter/ephemeral/.plugin_symlinks/flutter_js/linux/shared/libquickjs_c_bridge_plugin.so")
+if(EXISTS "${QUICKJS_BRIDGE_LIB}")
+  install(FILES "${QUICKJS_BRIDGE_LIB}"
+    DESTINATION "${INSTALL_BUNDLE_LIB_DIR}"
+    COMPONENT Runtime)
+endif()
+
 # Copy the native assets provided by the build.dart from all packages.
 set(NATIVE_ASSETS_DIR "${PROJECT_BUILD_DIR}native_assets/linux/")
 install(DIRECTORY "${NATIVE_ASSETS_DIR}"
