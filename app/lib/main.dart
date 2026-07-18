@@ -19,6 +19,7 @@ import 'package:halo_widgets/halo_widgets.dart';
 
 import 'views/operation_view.dart';
 import 'views/home_view.dart';
+import 'views/notice_actions.dart';
 import 'views/onboarding_overlay.dart';
 import 'views/release_overlay.dart';
 import 'views/splash_view.dart';
@@ -40,6 +41,7 @@ import 'settings/system_lists.dart';
 import 'services/window_chrome_service.dart';
 import 'services/update_service.dart';
 import 'services/data_file_manager.dart';
+import 'services/flags_service.dart';
 import 'i18n/strings.g.dart';
 
 final navigatorKey = GlobalKey<NavigatorState>();
@@ -239,6 +241,15 @@ Future<HaLoServices> bootstrap({
     debugPrint('[boot] failed to initialize data files: $e');
   }));
 
+  // Fetch feature flags + notices for the current callsign once the runtime
+  // is up (the callsign→DXCC-entity annotation needs it). Fire-and-forget;
+  // failures leave flags empty and are logged inside the service.
+  unawaited(extensions.start().then((_) {
+    return services.flags.refreshForCall(settings.activeProfile.operatorCall);
+  }).catchError((e) {
+    debugPrint('[boot] failed to fetch feature flags: $e');
+  }));
+
   return services;
 }
 
@@ -271,6 +282,21 @@ class HaLoServices {
     operations: operations,
     statusBar: statusBar,
     lookupReady: () => extensions.ready,
+  );
+
+  /// Server-driven feature flags + notices for the active profile callsign
+  /// (see FlagsService). Refreshed at boot and whenever the callsign changes
+  /// via [setOperatorCall] — not per operation. The callsign is annotated
+  /// through the extension runtime's offline lookup to derive the DXCC entity
+  /// used to pick per-entity/per-call flag files.
+  late final FlagsService flags = FlagsService(
+    statusBar: statusBar,
+    annotate: (call) async {
+      final result = await extensions.lookupCall(call, qso: const {}, operation: const {}, online: false);
+      final guess = result?['guess'];
+      return guess is Map ? guess.cast<String, dynamic>() : null;
+    },
+    onNoticeAction: handleNoticeAction,
   );
 
   /// Named option vocabularies for `options: "$name"` settings
@@ -380,6 +406,10 @@ class HaLoServices {
       deviceKey: await settings.ensureSyncDeviceKey(),
       operatorCall: settings.activeProfile.operatorCall,
     );
+    // Flags are callsign-specific — refresh them (a no-op if the callsign
+    // didn't actually change). Not awaited: the callsign edit shouldn't block
+    // on a network round-trip.
+    unawaited(flags.refreshForCall(settings.activeProfile.operatorCall));
   }
 
   Future<void> setSyncEnabled(bool enabled) async {
