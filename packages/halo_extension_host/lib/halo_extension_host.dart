@@ -39,6 +39,31 @@ class HookCallSample {
   const HookCallSample({required this.label, required this.totalMillis, required this.jsMillis});
 }
 
+/// The `User-Agent` a `host.fetch` should send. HaLo's [canonical] UA wins,
+/// so every request identifies the app consistently — *unless* the calling
+/// [extensionKey] is in [overrides] (the manifest's `allowUserAgentOverride`)
+/// and [callerHeaders] already carries a `User-Agent`, in which case that one
+/// is kept. A whitelisted extension that sets none still gets [canonical], so
+/// the request is never left unidentified. See docs/design/network.md.
+@visibleForTesting
+String? resolveFetchUserAgent({
+  required String? canonical,
+  required String? extensionKey,
+  required Set<String> overrides,
+  required Map<String, String> callerHeaders,
+}) {
+  String? callerUA;
+  for (final entry in callerHeaders.entries) {
+    if (entry.key.toLowerCase() == 'user-agent') {
+      callerUA = entry.value;
+      break;
+    }
+  }
+  final mayOverride = extensionKey != null && overrides.contains(extensionKey) && callerUA != null;
+  if (mayOverride) return callerUA;
+  return canonical ?? callerUA;
+}
+
 class ExtensionHost {
   final bool runningInIsolate;
   final String engine;
@@ -93,12 +118,24 @@ class ExtensionHost {
   /// `host.fetch` may reach (the manifest's declared network capability):
   /// exact hosts, `*.example.com` for subdomains, or a lone `*` for any
   /// https host. Extensions with no entry get no network access.
+  ///
+  /// [userAgent], when set, is stamped as the `User-Agent` on every
+  /// `host.fetch` request — overriding any the extension supplied — so all
+  /// extension traffic identifies HaLo consistently (see
+  /// docs/design/network.md). The app passes its canonical UA here.
+  ///
+  /// [userAgentOverrides] lists the extension keys exempt from that override:
+  /// a whitelisted extension that sets its own `User-Agent` keeps it (the
+  /// manifest's `allowUserAgentOverride` capability). Everyone else, and any
+  /// whitelisted extension that sets none, still gets [userAgent].
   static Future<ExtensionHost> start({
     required String kernelSource,
     required List<ExtensionBundle> extensions,
     bool useIsolate = true,
     HostCallHandler? onHostCall,
     Map<String, List<String>> fetchAllowlists = const {},
+    String? userAgent,
+    Set<String> userAgentOverrides = const {},
   }) async {
     // On web there are no Dart isolates — the "in-process" core runs a Web
     // Worker anyway, so extension work is still off the UI thread. Branching
@@ -106,20 +143,20 @@ class ExtensionHost {
     // "isolate mode failed" warning out of every web boot.
     if (useIsolate && !kIsWeb) {
       try {
-        return await _startInIsolate(kernelSource, extensions, onHostCall, fetchAllowlists);
+        return await _startInIsolate(kernelSource, extensions, onHostCall, fetchAllowlists, userAgent, userAgentOverrides);
       } catch (e) {
         // Fall through to in-process mode; the spike wants to know when this
         // happens, so surface it loudly on the first log line.
-        final host = await _startInProcess(kernelSource, extensions, onHostCall, fetchAllowlists);
+        final host = await _startInProcess(kernelSource, extensions, onHostCall, fetchAllowlists, userAgent, userAgentOverrides);
         host._log('WARN isolate mode failed ($e), running in-process');
         return host;
       }
     }
-    return _startInProcess(kernelSource, extensions, onHostCall, fetchAllowlists);
+    return _startInProcess(kernelSource, extensions, onHostCall, fetchAllowlists, userAgent, userAgentOverrides);
   }
 
   static Future<ExtensionHost> _startInIsolate(String kernelSource, List<ExtensionBundle> extensions, HostCallHandler? onHostCall,
-      Map<String, List<String>> fetchAllowlists) async {
+      Map<String, List<String>> fetchAllowlists, String? userAgent, Set<String> userAgentOverrides) async {
     final fromIsolate = ReceivePort();
     final onError = ReceivePort();
     final onExit = ReceivePort();
@@ -157,6 +194,8 @@ class ExtensionHost {
         kernelSource: kernelSource,
         bundles: [for (final p in extensions) [p.key, p.source]],
         fetchAllowlists: fetchAllowlists,
+        userAgent: userAgent,
+        userAgentOverrides: userAgentOverrides,
       ),
       errorsAreFatal: true,
       onError: onError.sendPort,
@@ -208,11 +247,13 @@ class ExtensionHost {
   }
 
   static Future<ExtensionHost> _startInProcess(String kernelSource, List<ExtensionBundle> extensions, HostCallHandler? onHostCall,
-      Map<String, List<String>> fetchAllowlists) async {
+      Map<String, List<String>> fetchAllowlists, String? userAgent, Set<String> userAgentOverrides) async {
     final earlyMessages = <Map<String, dynamic>>[];
     ExtensionHost? host;
     final core = _HostCore(
         fetchAllowlists: fetchAllowlists,
+        userAgent: userAgent,
+        userAgentOverrides: userAgentOverrides,
         emit: (msg) {
           if (host == null) {
             earlyMessages.add(msg);
@@ -437,12 +478,16 @@ class _HostIsolateInit {
   final String kernelSource;
   final List<List<String>> bundles;
   final Map<String, List<String>> fetchAllowlists;
+  final String? userAgent;
+  final Set<String> userAgentOverrides;
 
   const _HostIsolateInit({
     required this.mainPort,
     required this.kernelSource,
     required this.bundles,
     required this.fetchAllowlists,
+    required this.userAgent,
+    required this.userAgentOverrides,
   });
 }
 
@@ -450,7 +495,11 @@ Future<void> _hostIsolateMain(_HostIsolateInit init) async {
   final receive = ReceivePort();
   init.mainPort.send({'type': 'port', 'port': receive.sendPort});
 
-  final core = _HostCore(emit: init.mainPort.send, fetchAllowlists: init.fetchAllowlists);
+  final core = _HostCore(
+      emit: init.mainPort.send,
+      fetchAllowlists: init.fetchAllowlists,
+      userAgent: init.userAgent,
+      userAgentOverrides: init.userAgentOverrides);
   try {
     final loadMillis = await core.init(
       init.kernelSource,
@@ -486,6 +535,14 @@ class _HostCore {
   /// Per-extension fetch capability — see [ExtensionHost.start].
   final Map<String, List<String>> fetchAllowlists;
 
+  /// Canonical `User-Agent` stamped on every `host.fetch` — see
+  /// [ExtensionHost.start] and docs/design/network.md.
+  final String? userAgent;
+
+  /// Extension keys allowed to keep their own `User-Agent` — see
+  /// [ExtensionHost.start].
+  final Set<String> userAgentOverrides;
+
   late final EngineRuntime _js;
   final _http = http.Client();
   final Map<String, Map<String, Object?>> _kv = {};
@@ -498,7 +555,7 @@ class _HostCore {
   /// hook's own late result eventually arrives too.
   final Set<int> _outstandingIds = {};
 
-  _HostCore({required this.emit, this.fetchAllowlists = const {}});
+  _HostCore({required this.emit, this.fetchAllowlists = const {}, this.userAgent, this.userAgentOverrides = const {}});
 
   String get engineDescription => _js.engineDescription;
 
@@ -713,6 +770,17 @@ class _HostCore {
     final headers = ((params['headers'] ?? const {}) as Map).cast<String, String>();
 
     final request = http.Request(method, uri)..headers.addAll(headers);
+    // Set last so it wins over anything addAll put in: http.Request.headers
+    // is case-insensitive, so this stamps HaLo's canonical UA on every call —
+    // except for whitelisted extensions that supplied their own (see
+    // resolveFetchUserAgent and docs/design/network.md).
+    final effectiveUA = resolveFetchUserAgent(
+      canonical: userAgent,
+      extensionKey: params['extensionKey'] as String?,
+      overrides: userAgentOverrides,
+      callerHeaders: headers,
+    );
+    if (effectiveUA != null) request.headers['User-Agent'] = effectiveUA;
     if (params['body'] != null) request.body = params['body'] as String;
 
     final streamed = await _http.send(request).timeout(const Duration(seconds: 15));

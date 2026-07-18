@@ -20,6 +20,7 @@ import 'package:url_launcher/url_launcher.dart';
 import 'settings_service.dart';
 import 'status_bar_service.dart';
 import 'package:halo_widgets/halo_widgets.dart';
+import '../config/user_agent.dart';
 import '../i18n/strings.g.dart';
 import '../main.dart';
 
@@ -568,6 +569,7 @@ class ExtensionService {
       final available = await loadAvailableExtensions(index: index);
       final bundles = <ExtensionBundle>[];
       final fetchAllowlists = <String, List<String>>{};
+      final userAgentOverrides = <String>{};
       final loaded = <String>{};
       for (final info in available) {
         // Disabled extensions are simply never loaded — their hooks,
@@ -579,14 +581,18 @@ class ExtensionService {
           key: info.key,
           source: await rootBundle.loadString('assets/extensions/${info.file}'),
         ));
-        // The manifest's declared network capability (build.mjs `domains`).
+        // The manifest's declared network capabilities (build.mjs `domains`
+        // and `allowUserAgentOverride`).
         fetchAllowlists[info.key] = info.domains;
+        if (info.allowUserAgentOverride) userAgentOverrides.add(info.key);
       }
       _host = await ExtensionHost.start(
         kernelSource: kernelSource,
         extensions: bundles,
         onHostCall: _handleHostCall,
         fetchAllowlists: fetchAllowlists,
+        userAgent: await ham2kUserAgent(),
+        userAgentOverrides: userAgentOverrides,
       );
       _loadedExtensionKeys = loaded;
       _host!.logs.listen((line) => debugPrint('[extensions] $line'));
@@ -1339,6 +1345,12 @@ class ExtensionInfo {
   final String key;
   final String file;
   final List<String> domains;
+
+  /// Whether this extension may set its own `User-Agent` on host.fetch
+  /// (build.mjs `allowUserAgentOverride`). Off by default: the host stamps
+  /// HaLo's canonical UA — see docs/design/network.md.
+  final bool allowUserAgentOverride;
+
   final bool core;
   final String name;
   final String? category;
@@ -1354,6 +1366,7 @@ class ExtensionInfo {
     required this.key,
     required this.file,
     this.domains = const [],
+    this.allowUserAgentOverride = false,
     required this.core,
     required this.name,
     this.category,
@@ -1366,6 +1379,7 @@ class ExtensionInfo {
         key: json['key'] as String,
         file: json['file'] as String? ?? '${json['key']}.js',
         domains: ((json['domains'] as List?) ?? const []).cast<String>(),
+        allowUserAgentOverride: json['allowUserAgentOverride'] as bool? ?? false,
         // A stale index without metadata degrades to "everything core" —
         // the fail-safe: nothing gets silently disabled.
         core: json['core'] as bool? ?? true,

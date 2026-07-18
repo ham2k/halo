@@ -18,3 +18,12 @@ final kPublicVersion = _publicVersionInfo.value;
 
 /// e.g. `August '26`, `August '26 patch 2`, `August '26 pre 1`.
 final kVersionName = _publicVersionInfo.displayName;
+
+/// The product-line/build channel, part of the release identity — see
+/// user_agent.dart. `next` is the Ham2K Logger Next line; a stable line would
+/// set a different value here. This is the *product line*, not the `-preN`
+/// pre-release counter ([PublicVersion.preRelease]) — the two are orthogonal,
+/// so it lives here (bumped deliberately at release time) rather than being
+/// derived. Kept beside [kPublicVersion] so both move together when cutting a
+/// release.
+const kAppFlavor = 'next';

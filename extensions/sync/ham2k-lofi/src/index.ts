@@ -21,7 +21,8 @@ import type { CommandInterpretation, HookContext, JSONValue, SyncPayload, SyncRe
 
 export const DEFAULT_LOFI_SERVER = 'https://lofi.ham2k.net'
 const DEFAULT_SECRET = 'no-secret'
-const USER_AGENT = 'Ham2K HaLo Next/0.1.0'
+// The host stamps HaLo's canonical User-Agent on every host.fetch call (see
+// docs/design/network.md), so this extension no longer sets its own.
 
 defineExtension({
   key: 'ham2k-lofi',
@@ -62,7 +63,7 @@ async function registerClient(): Promise<string> {
 
   const response = await host.fetch(`${server}/v1/client`, {
     method: 'POST',
-    headers: { 'User-Agent': USER_AGENT, 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       client: { key, name: 'HaLo Next', secret: secret || DEFAULT_SECRET },
       account: { call: call || undefined },
@@ -107,7 +108,6 @@ async function request(method: 'GET' | 'POST', path: string, body?: JSONValue): 
     const response = await host.fetch(`${server}/${path}`, {
       method,
       headers: {
-        'User-Agent': USER_AGENT,
         'Content-Type': 'application/json',
         Authorization: `Bearer ${cachedToken}`,
       },

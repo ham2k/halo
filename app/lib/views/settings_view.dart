@@ -21,6 +21,7 @@ import 'package:http/http.dart' as http;
 import 'package:url_launcher/url_launcher.dart';
 
 import '../config/release_notes.dart';
+import '../config/user_agent.dart';
 import '../config/version.dart';
 import '../main.dart';
 import '../services/extension_service.dart';
@@ -1939,8 +1940,9 @@ class _AccountPaneState extends State<_AccountPane> {
     final scopes = (oauth2['scopes'] as List).cast<String>();
 
     try {
+      final userAgent = await ham2kUserAgent();
       final discoveryUrl = Uri.parse('$issuer/.well-known/openid-configuration');
-      final response = await http.get(discoveryUrl);
+      final response = await http.get(discoveryUrl, headers: {'User-Agent': userAgent});
       if (response.statusCode != 200) throw Exception('Failed to load OIDC discovery: ${response.statusCode}');
       final discovery = jsonDecode(response.body) as Map<String, dynamic>;
       final authEndpoint = discovery['authorization_endpoint'] as String;
@@ -2008,7 +2010,7 @@ class _AccountPaneState extends State<_AccountPane> {
 
       final tokenResponse = await http.post(
         Uri.parse(tokenEndpoint),
-        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+        headers: {'Content-Type': 'application/x-www-form-urlencoded', 'User-Agent': userAgent},
         body: {
           'grant_type': 'authorization_code',
           'client_id': clientId,

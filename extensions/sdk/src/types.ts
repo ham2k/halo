@@ -570,6 +570,12 @@ export interface ExtensionDefinition {
 
 export interface FetchOptions {
   method?: 'GET' | 'POST' | 'PUT' | 'DELETE'
+  /**
+   * Extra request headers. Note: the host stamps HaLo's canonical
+   * `User-Agent` on every request and it overrides any you set here, so
+   * don't provide your own — unless your extension declares
+   * `allowUserAgentOverride` in build.mjs (see docs/design/network.md).
+   */
   headers?: Record<string, string>
   body?: string
 }

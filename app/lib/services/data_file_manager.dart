@@ -9,6 +9,7 @@ import 'package:http/http.dart' as http;
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../config/user_agent.dart';
 import 'extension_service.dart';
 import 'status_bar_service.dart';
 
@@ -73,6 +74,7 @@ class DataFileManager {
     final resolvedUrl = _resolveFetchUrl(resolveDownloadUrl(url));
     final client = http.Client();
     final request = http.Request('GET', Uri.parse(resolvedUrl));
+    request.headers['User-Agent'] = await ham2kUserAgent();
     final etagKey = 'data_file_etag_$key';
     final cachedEtag = force ? null : prefs.getString(etagKey);
     if (cachedEtag != null) {
