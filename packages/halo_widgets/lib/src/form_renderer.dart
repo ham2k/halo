@@ -16,6 +16,7 @@ typedef FormTransformer = Future<dynamic> Function(String fieldKey, dynamic valu
 typedef FormOnChange = Future<Map<String, dynamic>?> Function(String fieldKey, dynamic value, Map<String, dynamic> state);
 typedef FormAction = Future<String?> Function(String actionKey, String method, Map<String, dynamic> state);
 typedef FormManageAccount = void Function(String accountKey, String? subkey);
+typedef FormOpenLink = void Function(String url);
 
 /// Substitutes `${key}` placeholders in [template] with values from [item].
 String _templateString(String template, Map<String, dynamic> item) {
@@ -67,6 +68,10 @@ class FormRenderer extends StatefulWidget {
   final FormOnChange? onChange;
   final FormAction? onAction;
   final FormManageAccount? onManageAccount;
+
+  /// Opens a `type: 'link'` element's URL. The renderer stays free of any
+  /// url_launcher dependency — the app decides how links open.
+  final FormOpenLink? onOpenLink;
   final void Function(Map<String, dynamic> values) onSubmit;
   final VoidCallback onCancel;
   final bool showActions;
@@ -86,6 +91,7 @@ class FormRenderer extends StatefulWidget {
     this.onChange,
     this.onAction,
     this.onManageAccount,
+    this.onOpenLink,
     required this.onSubmit,
     required this.onCancel,
     this.showActions = true,
@@ -198,6 +204,8 @@ class FormRendererState extends State<FormRenderer> {
         val = false;
       } else if (fieldType == 'list') {
         val = <Map<String, dynamic>>[];
+      } else if (fieldType == 'multiselect') {
+        val = <String>[];
       } else if (['select', 'radio', 'number', 'account'].contains(fieldType)) {
         val = null;
       } else {
@@ -407,6 +415,8 @@ class FormRendererState extends State<FormRenderer> {
                   return _buildMarkdown(el, theme);
                 case 'field':
                   return _buildField(el, theme);
+                case 'link':
+                  return _buildLink(el, theme);
                 case 'action':
                   return _buildActionElement(el, theme);
                 default:
@@ -509,7 +519,10 @@ class FormRendererState extends State<FormRenderer> {
     final key = el['key'] as String;
     final label = el['label'] as String? ?? '';
     final placeholder = el['placeholder'] as String?;
-    final options = (el['options'] as List? ?? const []).cast<Map<String, dynamic>>();
+    // `options` may be an app-resolved '$name' String that a caller failed
+    // to resolve — degrade to no options instead of crashing the form.
+    final options =
+        (el['options'] is List) ? (el['options'] as List).cast<Map<String, dynamic>>() : const <Map<String, dynamic>>[];
     final errorText = _errors[key];
     final devModeColor = _devModeColor(el);
 
@@ -584,12 +597,15 @@ class FormRendererState extends State<FormRenderer> {
         );
       case 'list':
         return _buildListField(el, theme);
+      case 'multiselect':
+        return _buildMultiselectField(el, theme);
       case 'account':
         return _buildAccountField(el, theme);
       case 'select':
         return DropdownButtonFormField<dynamic>(
           value: _values[key],
           focusNode: _focusNodes[key],
+          menuMaxHeight: dropdownMenuMaxHeight(context),
           decoration: poloFieldDecoration(context, label, hintText: placeholder, errorText: errorText, labelColor: devModeColor),
           hint: placeholder != null ? Text(placeholder) : null,
           items: [
@@ -698,6 +714,11 @@ class FormRendererState extends State<FormRenderer> {
   /// [_buildField] switch renders. Below [_iconRowStackBreakpoint], the
   /// control instead renders full-width on its own row underneath, unless
   /// it's a toggle (checkbox), which always stays trailing.
+  ///
+  /// Side-by-side, resizable controls (text-likes and selects — not the
+  /// checkbox Switch, which keeps its intrinsic size) fill exactly a third
+  /// of the row width, so the controls form a consistent column across the
+  /// panel instead of each row's control sizing to its own content.
   Widget _buildIconRowField(Map<String, dynamic> el, String fieldType, ThemeData theme) {
     final key = el['key'] as String;
     final label = el['label'] as String? ?? '';
@@ -734,7 +755,10 @@ class FormRendererState extends State<FormRenderer> {
             leading: leading,
             title: title,
             subtitle: subtitle,
-            trailing: _buildCompactControl(el, fieldType, devModeColor, expanded: false),
+            trailing: SizedBox(
+              width: constraints.maxWidth / 3,
+              child: _buildCompactControl(el, fieldType, devModeColor, expanded: false, fill: true),
+            ),
           );
         }
         return Padding(
@@ -753,6 +777,32 @@ class FormRendererState extends State<FormRenderer> {
           ),
         );
       },
+    );
+  }
+
+  /// `{type: 'link', label, url, icon?, description?}` — an icon-row-styled
+  /// tile that hands its URL to [FormRenderer.onOpenLink] (no-op when the
+  /// presenter didn't wire one).
+  Widget _buildLink(Map<String, dynamic> el, ThemeData theme) {
+    final label = el['label'] as String? ?? '';
+    final description = el['description'] as String?;
+    final icon = el['icon'] as String?;
+    final url = el['url'] as String? ?? '';
+    final devModeColor = _devModeColor(el);
+
+    final open = url.isEmpty || widget.onOpenLink == null ? null : () => widget.onOpenLink!(url);
+    return ListTile(
+      contentPadding: EdgeInsets.zero,
+      leading: icon != null ? Icon(resolveIconName(icon), color: devModeColor) : null,
+      title: Text(label, style: theme.textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.bold, color: devModeColor)),
+      subtitle: description != null && description.isNotEmpty ? Text(description, style: TextStyle(color: devModeColor)) : null,
+      trailing: IconButton(
+        icon: Icon(resolveIconName('open-in-new'), size: 22, color: devModeColor),
+        tooltip: 'Open page',
+        onPressed: open,
+      ),
+      onTap: open,
+      mouseCursor: SystemMouseCursors.click,
     );
   }
 
@@ -784,16 +834,27 @@ class FormRendererState extends State<FormRenderer> {
   /// width instead of a fixed compact size, start-aligned text instead of
   /// end-aligned (there's no label/description to its left to align
   /// against anymore). Ignored for 'checkbox', which is never stacked.
-  Widget _buildCompactControl(Map<String, dynamic> el, String fieldType, Color? devModeColor, {required bool expanded}) {
+  ///
+  /// `fill` is the side-by-side form's width contract: the caller wraps
+  /// this in a fixed-width box (a third of the row) that the control must
+  /// fill, keeping trailing (end) alignment. Checkboxes ignore it — the
+  /// Switch keeps its intrinsic size.
+  Widget _buildCompactControl(Map<String, dynamic> el, String fieldType, Color? devModeColor,
+      {required bool expanded, bool fill = false}) {
     final key = el['key'] as String;
-    final options = (el['options'] as List? ?? const []).cast<Map<String, dynamic>>();
+    // `options` may be an app-resolved '$name' String that a caller failed
+    // to resolve — degrade to no options instead of crashing the form.
+    final options =
+        (el['options'] is List) ? (el['options'] as List).cast<Map<String, dynamic>>() : const <Map<String, dynamic>>[];
 
     switch (fieldType) {
       case 'select':
         final dropdown = DropdownButtonHideUnderline(
           child: DropdownButton<dynamic>(
             value: _values[key],
-            isExpanded: expanded,
+            menuMaxHeight: dropdownMenuMaxHeight(context),
+            isExpanded: expanded || fill,
+            alignment: fill && !expanded ? AlignmentDirectional.centerEnd : AlignmentDirectional.centerStart,
             items: [for (final opt in options) DropdownMenuItem(value: opt['value'], child: Text(opt['label'] as String))],
             onChanged: _isSubmitting
                 ? null
@@ -836,125 +897,443 @@ class FormRendererState extends State<FormRenderer> {
           onSubmitted: (_) => submit(),
           decoration: const InputDecoration(border: InputBorder.none, isDense: true, contentPadding: EdgeInsets.zero),
         );
-        return expanded ? field : SizedBox(width: 140, child: field);
+        // `fill`: the caller's fixed-width box provides the size; bare 140
+        // is the legacy compact width for callers without one.
+        return expanded || fill ? field : SizedBox(width: 140, child: field);
     }
   }
 
-  /// A `fieldType: 'list'` field: a summary row per item plus an "Add" row.
-  /// Editing or adding an item reopens the same form renderer recursively
-  /// (via [showFormDialog]) scoped to `itemFields`, so there's no separate
-  /// "list item editor" widget — just a smaller [FormDefinition].
+  String _listItemTitle(Map<String, dynamic> el, Map<String, dynamic> item) {
+    final template = el['itemTitle'] as String?;
+    return template != null
+        ? _templateString(template, item)
+        : item.values.firstWhere((v) => v != null && v.toString().isNotEmpty, orElse: () => '').toString();
+  }
+
+  /// A `fieldType: 'list'` field: a single row summarizing the current
+  /// items as a comma-separated list; tapping it opens [_openListEditor]'s
+  /// dialog where the actual add/edit/delete/reorder happens.
   Widget _buildListField(Map<String, dynamic> el, ThemeData theme) {
     final key = el['key'] as String;
     final label = el['label'] as String? ?? '';
-    final itemFields = (el['itemFields'] as List? ?? const []).cast<Map<String, dynamic>>();
-    final itemTitleTemplate = el['itemTitle'] as String?;
-    final orderable = el['orderable'] == true;
+    final description = el['description'] as String?;
+    final icon = el['icon'] as String?;
     final errorText = _errors[key];
     final items = ((_values[key] as List?) ?? const []).cast<Map<String, dynamic>>();
     final devModeColor = _devModeColor(el);
+    final summary = [
+      for (final item in items)
+        if (_listItemTitle(el, item).isNotEmpty) _listItemTitle(el, item),
+    ].join(', ');
 
-    Future<void> commit(List<Map<String, dynamic>> newItems) async {
-      setState(() {
-        _values[key] = newItems;
-        _errors.remove(key);
-      });
-      await _handleFieldBlurOrInteraction(key, newItems);
+    Widget? subtitle;
+    if (errorText != null) {
+      subtitle = Text(errorText, style: TextStyle(color: theme.colorScheme.error, fontSize: 12));
+    } else if (summary.isNotEmpty) {
+      subtitle = Text(summary, style: TextStyle(color: devModeColor));
+    } else if (description != null && description.isNotEmpty) {
+      subtitle = Text(description, style: TextStyle(color: devModeColor));
     }
 
-    Future<void> editItem(int? index) async {
-      final itemPath = '$key[${index ?? items.length}]';
-      final initial = index != null ? Map<String, dynamic>.from(items[index]) : <String, dynamic>{};
-      final result = await showFormDialog(
-        context,
-        formDefinition: {
-          'title': index != null ? 'Edit $label' : 'Add $label',
-          'elements': itemFields,
-        },
-        initialState: initial,
-        validator: widget.validator == null
-            ? null
-            : (fieldKey, value, state) => widget.validator!('$itemPath.$fieldKey', value, state),
-        transformer: widget.transformer == null
-            ? null
-            : (fieldKey, value, state) => widget.transformer!('$itemPath.$fieldKey', value, state),
-        developerMode: widget.developerMode,
-      );
-      if (result == null) return;
-      final newItems = List<Map<String, dynamic>>.from(items);
-      if (index != null) {
-        newItems[index] = result;
-      } else {
-        newItems.add(result);
-      }
-      await commit(newItems);
-    }
-
-    void deleteItem(int index) {
-      final newItems = List<Map<String, dynamic>>.from(items)..removeAt(index);
-      commit(newItems);
-    }
-
-    void reorder(int oldIndex, int newIndex) {
-      final newItems = List<Map<String, dynamic>>.from(items);
-      if (newIndex > oldIndex) newIndex -= 1;
-      newItems.insert(newIndex, newItems.removeAt(oldIndex));
-      commit(newItems);
-    }
-
-    Widget rowFor(int index) {
-      final item = items[index];
-      final title = itemTitleTemplate != null
-          ? _templateString(itemTitleTemplate, item)
-          : item.values.firstWhere((v) => v != null && v.toString().isNotEmpty, orElse: () => '').toString();
-      return ListTile(
-        key: ValueKey('$key-item-$index'),
-        dense: true,
-        contentPadding: EdgeInsets.zero,
-        title: Text(title.isEmpty ? '(untitled)' : title),
-        onTap: _isSubmitting ? null : () => editItem(index),
-        trailing: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            if (orderable) const Icon(Icons.drag_handle, size: 20),
-            IconButton(
-              icon: const Icon(Icons.delete_outline, size: 20),
-              onPressed: _isSubmitting ? null : () => deleteItem(index),
-            ),
-          ],
-        ),
-      );
-    }
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          label,
-          style: theme.textTheme.labelMedium?.copyWith(color: devModeColor ?? theme.colorScheme.onSurfaceVariant),
-        ),
-        const SizedBox(height: 4),
-        if (orderable)
-          ReorderableListView(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            onReorder: reorder,
-            children: [for (var i = 0; i < items.length; i++) rowFor(i)],
-          )
-        else
-          for (var i = 0; i < items.length; i++) rowFor(i),
-        TextButton.icon(
-          onPressed: _isSubmitting ? null : () => editItem(null),
-          icon: const Icon(Icons.add, size: 18),
-          label: Text('Add $label'),
-        ),
-        if (errorText != null)
-          Padding(
-            padding: const EdgeInsets.only(top: 4, left: 4),
-            child: Text(errorText, style: TextStyle(color: theme.colorScheme.error, fontSize: 12)),
-          ),
-      ],
+    return ListTile(
+      contentPadding: EdgeInsets.zero,
+      leading: icon != null ? Icon(resolveIconName(icon), color: devModeColor) : null,
+      title: Text(label, style: theme.textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.bold, color: devModeColor)),
+      subtitle: subtitle,
+      trailing: Icon(resolveIconName('chevron-right'), color: devModeColor ?? theme.colorScheme.onSurfaceVariant),
+      onTap: _isSubmitting ? null : () => _openListEditor(el),
+      mouseCursor: SystemMouseCursors.click,
     );
+  }
+
+  /// The list field's editor dialog: a summary row per item plus an "Add"
+  /// row. Every mutation commits immediately (autosave, like every other
+  /// field) — Done just closes. Editing or adding an item reopens the same
+  /// form renderer recursively (via [showFormDialog]) scoped to
+  /// `itemFields`, so there's no separate "list item editor" widget — just
+  /// a smaller [FormDefinition].
+  Future<void> _openListEditor(Map<String, dynamic> el) async {
+    final key = el['key'] as String;
+    final label = el['label'] as String? ?? '';
+    final itemFields = (el['itemFields'] as List? ?? const []).cast<Map<String, dynamic>>();
+    final orderable = el['orderable'] == true;
+
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (dialogContext, setDialogState) {
+          // Read through _values each build so both this dialog and the
+          // summary row behind it stay live.
+          final items = ((_values[key] as List?) ?? const []).cast<Map<String, dynamic>>();
+
+          Future<void> commit(List<Map<String, dynamic>> newItems) async {
+            setState(() {
+              _values[key] = newItems;
+              _errors.remove(key);
+            });
+            setDialogState(() {});
+            await _handleFieldBlurOrInteraction(key, newItems);
+          }
+
+          Future<void> editItem(int? index) async {
+            final itemPath = '$key[${index ?? items.length}]';
+            final initial = index != null ? Map<String, dynamic>.from(items[index]) : <String, dynamic>{};
+            final result = await showFormDialog(
+              dialogContext,
+              formDefinition: {
+                'title': index != null ? 'Edit $label' : 'Add $label',
+                'elements': itemFields,
+              },
+              initialState: initial,
+              validator: widget.validator == null
+                  ? null
+                  : (fieldKey, value, state) => widget.validator!('$itemPath.$fieldKey', value, state),
+              transformer: widget.transformer == null
+                  ? null
+                  : (fieldKey, value, state) => widget.transformer!('$itemPath.$fieldKey', value, state),
+              developerMode: widget.developerMode,
+            );
+            if (result == null) return;
+            final newItems = List<Map<String, dynamic>>.from(items);
+            if (index != null) {
+              newItems[index] = result;
+            } else {
+              newItems.add(result);
+            }
+            await commit(newItems);
+          }
+
+          void deleteItem(int index) {
+            final newItems = List<Map<String, dynamic>>.from(items)..removeAt(index);
+            commit(newItems);
+          }
+
+          void reorder(int oldIndex, int newIndex) {
+            final newItems = List<Map<String, dynamic>>.from(items);
+            if (newIndex > oldIndex) newIndex -= 1;
+            newItems.insert(newIndex, newItems.removeAt(oldIndex));
+            commit(newItems);
+          }
+
+          Widget rowFor(int index) {
+            final title = _listItemTitle(el, items[index]);
+            return ListTile(
+              key: ValueKey('$key-item-$index'),
+              dense: true,
+              contentPadding: EdgeInsets.zero,
+              title: Text(title.isEmpty ? '(untitled)' : title),
+              onTap: _isSubmitting ? null : () => editItem(index),
+              trailing: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (orderable) const Icon(Icons.drag_handle, size: 20),
+                  IconButton(
+                    icon: const Icon(Icons.delete_outline, size: 20),
+                    onPressed: _isSubmitting ? null : () => deleteItem(index),
+                  ),
+                ],
+              ),
+            );
+          }
+
+          return AlertDialog(
+            title: Text(label),
+            content: SizedBox(
+              width: 420,
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    if (orderable)
+                      ReorderableListView(
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
+                        onReorder: reorder,
+                        children: [for (var i = 0; i < items.length; i++) rowFor(i)],
+                      )
+                    else
+                      for (var i = 0; i < items.length; i++) rowFor(i),
+                    TextButton.icon(
+                      onPressed: _isSubmitting ? null : () => editItem(null),
+                      icon: const Icon(Icons.add, size: 18),
+                      label: Text('Add $label'),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            actions: [
+              TextButton(onPressed: () => Navigator.of(dialogContext).pop(), child: const Text('Done')),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
+  /// A `fieldType: 'multiselect'` field: pick several values from a fixed
+  /// vocabulary — a single row summarizing the selection as a
+  /// comma-separated list, tapping opens [_openMultiselectEditor]. The
+  /// dialect: `value` is a plain string list; `options` is
+  /// `[{label, value, common?}]` (or an app-resolved `"$system.list"`
+  /// name — an unresolved string renders as no options). Options flagged
+  /// `common: true` show upfront; the rest sit behind "Show all". The
+  /// selection always keeps the canonical order of `options` (`orderable`
+  /// is reserved for a future manual-ordering variant).
+  Widget _buildMultiselectField(Map<String, dynamic> el, ThemeData theme) {
+    final key = el['key'] as String;
+    final label = el['label'] as String? ?? '';
+    final description = el['description'] as String?;
+    final icon = el['icon'] as String?;
+    final errorText = _errors[key];
+    final devModeColor = _devModeColor(el);
+    final options = (el['options'] is List) ? (el['options'] as List).cast<Map<String, dynamic>>() : const <Map<String, dynamic>>[];
+    final selected = ((_values[key] as List?) ?? const []).cast<String>();
+    final labelFor = {for (final opt in options) opt['value']: opt['label'] as String?};
+    final summary = [for (final v in selected) labelFor[v] ?? v].join(', ');
+
+    Widget? subtitle;
+    if (errorText != null) {
+      subtitle = Text(errorText, style: TextStyle(color: theme.colorScheme.error, fontSize: 12));
+    } else if (summary.isNotEmpty) {
+      subtitle = Text(summary, style: TextStyle(color: devModeColor));
+    } else if (description != null && description.isNotEmpty) {
+      subtitle = Text(description, style: TextStyle(color: devModeColor));
+    }
+
+    return ListTile(
+      contentPadding: EdgeInsets.zero,
+      leading: icon != null ? Icon(resolveIconName(icon), color: devModeColor) : null,
+      title: Text(label, style: theme.textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.bold, color: devModeColor)),
+      subtitle: subtitle,
+      trailing: Icon(resolveIconName('chevron-right'), color: devModeColor ?? theme.colorScheme.onSurfaceVariant),
+      onTap: _isSubmitting || options.isEmpty ? null : () => _openMultiselectEditor(el, options),
+      mouseCursor: SystemMouseCursors.click,
+    );
+  }
+
+  /// The multiselect editor dialog: a switch per option, common ones
+  /// upfront, the rest behind a disclosure toggle on the action row (two-
+  /// or three-tier — see `tierOf` below). Toggles commit immediately in
+  /// canonical `options` order; Done just closes.
+  Future<void> _openMultiselectEditor(Map<String, dynamic> el, List<Map<String, dynamic>> options) async {
+    final key = el['key'] as String;
+    final label = el['label'] as String? ?? '';
+    final defaultValue = el['defaultValue'] is List ? (el['defaultValue'] as List).toSet() : null;
+
+    // Three disclosure tiers: `common: true` options at level 0, unflagged
+    // at level 1, `uncommon: true` at level 2. With no uncommon options the
+    // toggle is two-state (Show all / Show fewer); with them it cycles
+    // Show more → Show all → Show fewer. A vocabulary with no common
+    // options at all opens fully expanded with no toggle — collapsing it
+    // would leave an empty list.
+    int tierOf(Map<String, dynamic> opt) =>
+        opt['common'] == true ? 0 : (opt['uncommon'] == true ? 2 : 1);
+    final hasCommon = options.any((opt) => tierOf(opt) == 0);
+    final hasUncommon = options.any((opt) => tierOf(opt) == 2);
+    final hasDisclosure = hasCommon && options.any((opt) => tierOf(opt) > 0);
+    var level = hasCommon ? 0 : 2;
+
+    // Vocabularies past browsing size get a search field pinned under the
+    // list. While a query is active it matches the ENTIRE vocabulary
+    // (ignoring disclosure tiers — that's the point of searching).
+    final searchable = options.length > 20;
+    final searchController = searchable ? TextEditingController() : null;
+
+    // Uncommon values that earned a place in the common-only view: selected
+    // when the dialog opened, or selected at any point while it's open.
+    // They stay visible (even deselected, even after "Show fewer") for the
+    // dialog's lifetime, so a just-toggled row can't vanish mid-interaction.
+    final pinned = ((_values[key] as List?) ?? const []).toSet();
+
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (dialogContext, setDialogState) {
+          final theme = Theme.of(dialogContext);
+          // Values are treated as opaque (FormFieldOption.value is `any` in
+          // the SDK) — membership by equality, never a String cast.
+          final currentValue = ((_values[key] as List?) ?? const []);
+          final selected = currentValue.toSet();
+
+          // Stored values outside the vocabulary (written by another build,
+          // or synced from an app with a newer band/mode table) must
+          // neither disappear from the editor nor be silently dropped from
+          // the committed value — they render as synthesized rows and are
+          // preserved until the user explicitly toggles them off.
+          final optionValues = {for (final opt in options) opt['value']};
+          List<dynamic> unknownIn(Set<dynamic> values) =>
+              [for (final v in currentValue) if (values.contains(v) && !optionValues.contains(v)) v];
+
+          Future<void> commit(Set<dynamic> newSelected) async {
+            // Canonical order: filter the vocabulary, don't append; unknown
+            // selected values keep their stored order at the end.
+            final newValue = [
+              for (final opt in options)
+                if (newSelected.contains(opt['value'])) opt['value'],
+              ...unknownIn(newSelected),
+            ];
+            setState(() {
+              _values[key] = newValue;
+              _errors.remove(key);
+            });
+            setDialogState(() {});
+            await _handleFieldBlurOrInteraction(key, newValue);
+          }
+
+          Future<void> toggle(dynamic value, bool on) {
+            final newSelected = {...selected};
+            if (on) {
+              newSelected.add(value);
+              pinned.add(value);
+            } else {
+              newSelected.remove(value);
+            }
+            return commit(newSelected);
+          }
+
+          final query = searchController?.text.trim().toLowerCase() ?? '';
+          final filtering = query.isNotEmpty;
+          final unknownRows = [
+            for (final v in currentValue)
+              if (!optionValues.contains(v)) {'label': v.toString(), 'value': v},
+          ];
+          final visible = [
+            ...filtering
+                ? [
+                    for (final opt in options)
+                      if (((opt['label'] as String?) ?? opt['value'].toString()).toLowerCase().contains(query)) opt,
+                  ]
+                : [
+                    for (final opt in options)
+                      if (tierOf(opt) <= level || pinned.contains(opt['value'])) opt,
+                  ],
+            ...filtering ? unknownRows.where((r) => (r['label'] as String).toLowerCase().contains(query)) : unknownRows,
+          ];
+          return AlertDialog(
+            title: Text(label),
+            content: SizedBox(
+              width: 360,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Flexible(
+                    child: SingleChildScrollView(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          for (final opt in visible)
+                            SwitchListTile(
+                              dense: true,
+                              contentPadding: EdgeInsets.zero,
+                              // Selected values read bold, unselected ones
+                              // greyed, so the states scan apart without
+                              // hunting for the switch thumbs.
+                              title: Text(
+                                (opt['label'] as String?) ?? opt['value'].toString(),
+                                style: selected.contains(opt['value'])
+                                    ? const TextStyle(fontWeight: FontWeight.bold)
+                                    : TextStyle(color: theme.disabledColor),
+                              ),
+                              value: selected.contains(opt['value']),
+                              onChanged: _isSubmitting ? null : (on) => toggle(opt['value'], on),
+                            ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  // The filter status sits between the list and the search
+                  // field it describes. Both slots carry keys: when the
+                  // status row pops in/out the field shifts index, and
+                  // without a key Flutter would remold the field's element
+                  // into the status row and recreate the field — dropping
+                  // its focus mid-typing.
+                  if (filtering)
+                    Padding(
+                      key: const ValueKey('multiselect-status'),
+                      padding: const EdgeInsets.only(top: 8),
+                      child: Text(
+                        'Showing ${visible.length} of ${options.length} (${selected.length} selected)',
+                        style: TextStyle(color: theme.colorScheme.onSurfaceVariant),
+                      ),
+                    ),
+                  if (searchable)
+                    Padding(
+                      key: const ValueKey('multiselect-search'),
+                      padding: const EdgeInsets.only(top: 8),
+                      child: TextField(
+                        controller: searchController,
+                        onChanged: (_) => setDialogState(() {}),
+                        decoration: InputDecoration(
+                          isDense: true,
+                          prefixIcon: const Icon(Icons.search, size: 18),
+                          suffixIcon: !filtering
+                              ? null
+                              : IconButton(
+                                  icon: const Icon(Icons.close, size: 18),
+                                  tooltip: 'Clear',
+                                  onPressed: () => setDialogState(() => searchController!.clear()),
+                                ),
+                          hintText: 'Search',
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+            actions: [
+              // One full-width row: the disclosure toggle and Reset live
+              // outside the scroll area, on the action row's left, with
+              // Done on the right.
+              Row(
+                children: [
+                  // Tier disclosure is meaningless while a query overrides
+                  // it — the status row's Reveal takes its place.
+                  if (hasDisclosure && !filtering)
+                    TextButton.icon(
+                      onPressed: () => setDialogState(() {
+                        level = switch (level) {
+                          0 => hasUncommon ? 1 : 2,
+                          1 => 2,
+                          _ => 0,
+                        };
+                      }),
+                      icon: Icon(level >= 2 ? Icons.unfold_less : Icons.unfold_more, size: 18),
+                      label: Text(switch (level) {
+                        0 when hasUncommon => 'Show more',
+                        0 => 'Show all',
+                        1 => 'Show all',
+                        _ => 'Show fewer',
+                      }),
+                    ),
+                  if (defaultValue != null)
+                    TextButton.icon(
+                      // Restored defaults pin so uncommon ones stay
+                      // visible. Deliberately drops any out-of-vocabulary
+                      // stored values — Defaults means the declared set.
+                      onPressed: _isSubmitting
+                          ? null
+                          : () {
+                              pinned.addAll(defaultValue);
+                              commit({...defaultValue});
+                            },
+                      icon: const Icon(Icons.restore, size: 18),
+                      label: const Text('Defaults'),
+                    ),
+                  const Spacer(),
+                  TextButton(onPressed: () => Navigator.of(dialogContext).pop(), child: const Text('Done')),
+                ],
+              ),
+            ],
+          );
+        },
+      ),
+    );
+    searchController?.dispose();
   }
 
   /// A `fieldType: 'account'` field: a read-only reference into the
@@ -1041,6 +1420,7 @@ Future<Map<String, dynamic>?> showFormDialog(
   FormOnChange? onChange,
   FormAction? onAction,
   FormManageAccount? onManageAccount,
+  FormOpenLink? onOpenLink,
   bool developerMode = false,
 }) {
   final theme = Theme.of(context);
@@ -1103,6 +1483,7 @@ Future<Map<String, dynamic>?> showFormDialog(
             onChange: onChange,
             onAction: onAction,
             onManageAccount: onManageAccount,
+            onOpenLink: onOpenLink,
             developerMode: developerMode,
             showActions: false,
             showTitle: false,
@@ -1163,6 +1544,7 @@ Future<Map<String, dynamic>?> showFormPane(
   FormOnChange? onChange,
   FormAction? onAction,
   FormManageAccount? onManageAccount,
+  FormOpenLink? onOpenLink,
   bool developerMode = false,
 }) {
   final formKey = GlobalKey<FormRendererState>();
@@ -1201,6 +1583,7 @@ Future<Map<String, dynamic>?> showFormPane(
                 onChange: onChange,
                 onAction: onAction,
                 onManageAccount: onManageAccount,
+                onOpenLink: onOpenLink,
                 developerMode: developerMode,
                 // The pane's own title bar already shows formDefinition['title'].
                 showTitle: false,
@@ -1237,6 +1620,7 @@ class FormView extends StatefulWidget {
   final FormOnChange? onChange;
   final FormAction? onAction;
   final FormManageAccount? onManageAccount;
+  final FormOpenLink? onOpenLink;
   final void Function(Map<String, dynamic> values) onSubmit;
   final VoidCallback onCancel;
   final bool developerMode;
@@ -1250,6 +1634,7 @@ class FormView extends StatefulWidget {
     this.onChange,
     this.onAction,
     this.onManageAccount,
+    this.onOpenLink,
     required this.onSubmit,
     required this.onCancel,
     this.developerMode = false,
@@ -1291,6 +1676,7 @@ class _FormViewState extends State<FormView> {
               onChange: widget.onChange,
               onAction: widget.onAction,
               onManageAccount: widget.onManageAccount,
+              onOpenLink: widget.onOpenLink,
               developerMode: widget.developerMode,
               showActions: false,
               showTitle: false,

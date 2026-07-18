@@ -7,8 +7,39 @@
     "error": "Error",
     "apply": "Apply"
   },
+  "onboarding": {
+    "welcomeTitle": "Welcome to Ham2K Portable Logger!",
+    "welcomeTitleDesktop": "Welcome to Ham2K Logger!",
+    "welcomeBody": "We have a few questions to help us better suit your needs.",
+    "skip": "Skip",
+    "continue": "Continue",
+    "back": "Back",
+    "next": "Next",
+    "done": "Done",
+    "callsignTitle": "What's your callsign?",
+    "callsignBody": "You need an Amateur Radio Operator License in order to find this app useful",
+    "callsignLabel": "Operator's Callsign",
+    "activitiesTitle": "Favorite Activities",
+    "activitiesBody": "Are you interested in any of these popular activation programs?",
+    "activitiesFooter": "(You can find more options in the Settings)",
+    "activityPota": "Parks On The Air",
+    "activitySota": "Summits On The Air",
+    "consentTitle": "Data & Privacy",
+    "consentUsageBody": "To help us make the app better, we'd like to collect performance, crash, and app usage data.",
+    "consentUsageLabel": "Share Usage Data",
+    "consentOperationBody": "Some features might involve sharing your operation data with other users. You can opt-out at any time.",
+    "consentOperationLabel": "Share Operation Data"
+  },
   "startScreen": {
     "credits": "by KI2D and friends"
+  },
+  "extensionsPanel": {
+    "categoryActivity": "Activities",
+    "categoryLookup": "Callsign Lookups",
+    "categoryOther": "Other Extensions",
+    "searchHint": "Search extensions",
+    "applying": "Activating extension changes, this may take a moment…",
+    "noMatches": "No extensions match your search"
   },
   "home": {
     "title": "Portable Logger",
@@ -50,7 +81,8 @@
       "showStateField": "Show State field",
       "showGridField": "Show Grid field",
       "showDeletedQsos": "Show deleted QSOs",
-      "showQsoNumbers": "Show QSO Numbers"
+      "showQsoNumbers": "Show QSO Numbers",
+      "lookupAllQsos": "Lookup all QSOs"
     },
     "export": {
       "title": "Export",
@@ -215,6 +247,58 @@
       "miles": "Miles"
     },
     "distanceUnitsDescription": "For distances shown on the map",
+    "userInterface": "User Interface",
+    "logging": {
+      "title": "Logging",
+      "leftieMode": {
+        "title": "Leftie Mode",
+        "descriptionOn": "Use layout for left-handed users",
+        "descriptionOff": "Use layout for right-handed users"
+      },
+      "fieldsOnTop": {
+        "title": "Fields on top",
+        "descriptionOn": "Logging fields above the QSO list, most recent first",
+        "descriptionOff": "Logging fields below the QSO list"
+      },
+      "countryFlags": {
+        "title": "Country Flags",
+        "dx": "Show only for DX contacts",
+        "all": "Show flags for all contacts",
+        "none": "Don't show any flags"
+      },
+      "showBearing": {
+        "title": "Show Bearing",
+        "descriptionOn": "Show estimated bearing to station",
+        "descriptionOff": "Don't show bearing information"
+      },
+      "switchSentRcvd": {
+        "title": "Switch signal report order",
+        "sentFirst": "Sent first, Rcvd second",
+        "rcvdFirst": "Rcvd first, Sent second"
+      },
+      "jumpAfterRST": {
+        "title": "Jump to next field on RST entry",
+        "descriptionOn": "Jump after RST is entered",
+        "descriptionOff": "Don't jump automatically"
+      },
+      "bands": "Bands",
+      "modes": "Modes"
+    },
+    "privacy": {
+      "title": "Privacy",
+      "shareAppData": {
+        "title": "Share app usage data",
+        "descriptionOn": "Help us improve the app by sharing usage, crash and performance data",
+        "descriptionOff": "Keep app usage data private.\nThe Ham2K team won't be able to detect crashes or other issues."
+      },
+      "shareOpData": {
+        "title": "Share operation data",
+        "descriptionOn": "Share some operation data publicly and with other users",
+        "descriptionOff": "Keep operation data private"
+      },
+      "privacyPolicy": "Privacy Policy",
+      "termsOfService": "Terms of Service"
+    },
     "operatorCall": "Operator Callsign",
     "sync": {
       "title": "Sync Settings",

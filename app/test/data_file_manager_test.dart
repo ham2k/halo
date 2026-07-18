@@ -9,6 +9,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:halo_extension_host/halo_extension_host.dart';
 import 'package:ham2k_logger/services/data_file_manager.dart';
 import 'package:ham2k_logger/services/extension_service.dart';
+import 'package:ham2k_logger/services/status_bar_service.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -262,6 +263,81 @@ REF-002,Summit Two,45.56,-122.78
     // Only the entry that got far enough to determine its category counts.
     expect(matched, 1);
   });
+
+  group('stale extension data purge', () {
+    // Syncs a CSV data file owned by extension `pota` (category `pota`), so
+    // ownership + lookup rows exist to purge. Returns the manager holding
+    // that state.
+    late StatusBarService statusBar;
+    Future<TestDataFileManager> syncPotaDataFile() async {
+      statusBar = StatusBarService(prefs);
+      final host = MockExtensionHost({
+        'dataFile:*:getDefinition': [
+          {
+            'key': 'pota-all-parks',
+            'ok': true,
+            'value': {
+              'key': 'pota-all-parks',
+              'extensionKey': 'pota',
+              'name': 'Parks',
+              'description': '',
+              'url': 'https://example.com/parks.csv',
+              'maxAgeInDays': 10,
+              'fetchType': 'csv',
+              'category': 'pota',
+            },
+          },
+        ],
+        'dataFile:pota-all-parks:mapCsvBatch': (args) => [
+              for (final r in (args['rows'] as List)) {'key': (r as Map)['ref'], 'name': r['name']},
+            ],
+      });
+      final m = TestDataFileManager(
+        lookups: lookups,
+        extensions: MockExtensionService(host),
+        prefs: prefs,
+        statusBar: statusBar,
+      )..mockDownloadBody = 'ref,name\nUS-0001,A Park\n';
+      await m.syncAllDataFiles();
+      return m;
+    }
+
+    test('purges data of an extension disabled beyond the grace period', () async {
+      final m = await syncPotaDataFile();
+      expect(await lookups.getLookup('pota', 'US-0001'), isNotNull);
+      expect(prefs.getString('data_file_ownership'), contains('pota'));
+
+      final now = DateTime.fromMillisecondsSinceEpoch(1000 * 24 * 3600 * 1000);
+      // Disabled 8 days ago → past the 7-day grace.
+      await m.purgeStaleExtensionData(
+        {'pota': now.subtract(const Duration(days: 8)).millisecondsSinceEpoch},
+        now: now,
+      );
+
+      expect(await lookups.getLookup('pota', 'US-0001'), isNull, reason: 'stale data purged');
+      expect(prefs.getString('data_file_ownership'), isNot(contains('pota')), reason: 'ownership pruned');
+      expect(prefs.getString('data_file_updated_pota-all-parks'), isNull);
+      // A status message reports the cleanup.
+      final notice = statusBar.items.firstWhere((i) => i.key == 'dataFile:purge');
+      expect(notice.text, contains('1 data file'));
+    });
+
+    test('keeps data of an extension disabled within the grace period', () async {
+      final m = await syncPotaDataFile();
+      final now = DateTime.fromMillisecondsSinceEpoch(1000 * 24 * 3600 * 1000);
+      await m.purgeStaleExtensionData(
+        {'pota': now.subtract(const Duration(days: 3)).millisecondsSinceEpoch},
+        now: now,
+      );
+      expect(await lookups.getLookup('pota', 'US-0001'), isNotNull, reason: 'recent disable keeps data');
+    });
+
+    test('leaves an enabled extension (no disabledSince entry) untouched', () async {
+      final m = await syncPotaDataFile();
+      await m.purgeStaleExtensionData(const {});
+      expect(await lookups.getLookup('pota', 'US-0001'), isNotNull);
+    });
+  });
 }
 
 class MockExtensionHost implements ExtensionHost {
@@ -320,6 +396,7 @@ class TestDataFileManager extends DataFileManager {
     required super.lookups,
     required super.extensions,
     required super.prefs,
+    super.statusBar,
   });
 
   @override

@@ -139,6 +139,11 @@ class DataFileManager {
         if (categoryFilter != null && category != categoryFilter) return;
         matched++;
 
+        // Remember which extension owns this data file (and its lookup
+        // category) so the stale-data purge can find it later, when the
+        // extension is disabled and can no longer describe itself.
+        await _recordOwnership(key, def);
+
         final maxAgeDays = def['maxAgeInDays'] as int? ?? 14;
         final lastUpdateKey = 'data_file_updated_$key';
         final lastUpdateTime = prefs.getInt(lastUpdateKey) ?? 0;
@@ -336,6 +341,99 @@ class DataFileManager {
             }
           }
         }
+      }
+    }
+  }
+
+  static const _ownershipKey = 'data_file_ownership';
+
+  /// `{dataFileKey: {ext, category}}` — persisted so the stale-data purge
+  /// can identify (and delete) a disabled extension's data even though the
+  /// extension is no longer loaded to describe it.
+  Map<String, dynamic> _ownership() {
+    final raw = prefs.getString(_ownershipKey);
+    if (raw == null || raw.isEmpty) return {};
+    try {
+      return (jsonDecode(raw) as Map).cast<String, dynamic>();
+    } catch (_) {
+      return {};
+    }
+  }
+
+  Future<void> _recordOwnership(String key, Map<String, dynamic> def) async {
+    final ext = def['extensionKey'] as String?;
+    if (ext == null) return;
+    final category = def['category'] as String? ?? key;
+    final all = _ownership();
+    final existing = all[key];
+    if (existing is Map && existing['ext'] == ext && existing['category'] == category) return;
+    all[key] = {'ext': ext, 'category': category};
+    await prefs.setString(_ownershipKey, jsonEncode(all));
+  }
+
+  /// Purges the downloaded data of extensions that have been DISABLED for at
+  /// least [grace] (default 7 days) — their lookup rows, raw cache files,
+  /// and bookkeeping prefs. Data of extensions that are enabled, or
+  /// recently disabled (a re-enable inside the window keeps everything), is
+  /// left untouched. [disabledSince] is `settings.extensionDisabledSince`.
+  /// Runs at startup, after the runtime is up and the enabled extensions
+  /// have refreshed their ownership records.
+  Future<void> purgeStaleExtensionData(
+    Map<String, int> disabledSince, {
+    Duration grace = const Duration(days: 7),
+    DateTime? now,
+  }) async {
+    final cutoff = (now ?? DateTime.now()).millisecondsSinceEpoch - grace.inMilliseconds;
+    final staleExtensions = {
+      for (final e in disabledSince.entries)
+        if (e.value <= cutoff) e.key,
+    };
+    if (staleExtensions.isEmpty) return;
+
+    final all = _ownership();
+    var purged = 0;
+    for (final entry in all.entries.toList()) {
+      final owner = entry.value;
+      if (owner is! Map || !staleExtensions.contains(owner['ext'])) continue;
+      final key = entry.key;
+      final category = owner['category'] as String? ?? key;
+      debugPrint('[data-file] Purging data for $key (extension ${owner['ext']} disabled > ${grace.inDays}d)');
+      await _purgeDataFileData(key, category);
+      all.remove(key);
+      purged++;
+    }
+    if (purged > 0) {
+      await prefs.setString(_ownershipKey, jsonEncode(all));
+      // A completed-progress item auto-dismisses after the usual delay.
+      statusBar?.setProgress(
+        key: 'dataFile:purge',
+        icon: 'delete-clock-outline',
+        title: 'Cleaned up extension data',
+        text: 'Removed data for $purged data file${purged == 1 ? '' : 's'} from disabled extensions.',
+        value: 1.0,
+      );
+    }
+  }
+
+  /// The Dart-side deletion a data file leaves behind — lookup rows, raw
+  /// cache file, and etag/last-update prefs. Unlike [removeDataFile] it does
+  /// NOT call the extension's `onRemoveRawData` hook (a purge targets
+  /// DISABLED extensions, which aren't loaded to receive it) and uses the
+  /// recorded lookup category rather than assuming it equals the key.
+  Future<void> _purgeDataFileData(String key, String category) async {
+    await prefs.remove('data_file_etag_$key');
+    await prefs.remove('data_file_updated_$key');
+    await lookups.deleteCategory(category);
+    if (!kIsWeb) {
+      // The lookup rows and prefs are the substance; a leftover cache file
+      // is minor and self-heals on re-sync, so a filesystem hiccup here
+      // mustn't abort the purge.
+      try {
+        final dir = await getApplicationDocumentsDirectory();
+        final cacheFile = File(p.join(dir.path, 'data_files', '$key.json'));
+        if (await cacheFile.exists()) await cacheFile.delete();
+      } catch (e) {
+        debugPrint('[data-file] could not delete cache file for $key: $e');
       }
     }
   }

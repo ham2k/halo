@@ -31,6 +31,7 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
 
 import 'package:halo_core/halo_core.dart';
@@ -144,6 +145,18 @@ class LoggingControls extends StatefulWidget {
   /// Optional lookup enrichment; fired debounced, off the keystroke path.
   final CallLookup? lookup;
 
+  /// Hands a just-saved QSO to the caller's background lookup queue, so
+  /// online enrichment happens after the record is on screen instead of
+  /// delaying the save (no network ⇒ no stall). Fired for every newly ADDED
+  /// QSO — single calls, comma-list entries, stacked ("//") calls, and
+  /// command actions (e.g. SEED) — but never for the record being edited
+  /// (its stored data is deliberately left alone). The queue itself skips
+  /// QSOs that already carry online lookup data (e.g. a single call whose
+  /// debounced preview resolved before Enter), so handing over everything
+  /// is safe and lets a fast Enter that beat the preview still get
+  /// enriched.
+  final void Function(Qso qso)? enqueueLookup;
+
   /// Declarative activity control descriptors from extensions (UI catalog).
   /// v0 supports `input.kind == 'refList'`; each becomes a chip in the
   /// secondary control row alongside the built-in Time and Radio controls.
@@ -256,6 +269,18 @@ class LoggingControls extends StatefulWidget {
   final String? saveLabel;
   final String? cancelLabel;
 
+  /// The band/mode options offered by the Radio control's dropdowns — the
+  /// user's enabled lists from Settings (Logging → Bands/Modes). Null falls
+  /// back to the full catalogs from halo_core; empty falls back to the
+  /// "common" tier (`popularBands`/`mainModes`, the same subset the settings
+  /// multiselect flags common) — the multiselect enforces no minimum, and
+  /// deselecting everything must not leave the Band dropdown with zero
+  /// entries. The current QSO's value is always offered even when it's not
+  /// in the list, so editing a QSO logged on a since-disabled band/mode
+  /// doesn't show an empty control.
+  final List<String>? enabledBands;
+  final List<String>? enabledModes;
+
   /// Spotting control (ham2k/app-halo-dist#10) — null (either) disables the
   /// control's icon-row/send-button UI, matching how `radioService: null`
   /// degrades the Radio control elsewhere in this widget.
@@ -291,6 +316,7 @@ class LoggingControls extends StatefulWidget {
     this.onLogged,
     this.onCallListLogged,
     this.lookup,
+    this.enqueueLookup,
     this.activityControls = const [],
     this.refreshActivityControls,
     this.decorateRef,
@@ -334,6 +360,8 @@ class LoggingControls extends StatefulWidget {
     this.controlSettingsTitle,
     this.saveLabel,
     this.cancelLabel,
+    this.enabledBands,
+    this.enabledModes,
     this.suggestSpotSources,
     this.sendSpot,
     this.spottingControlLabel,
@@ -362,6 +390,30 @@ class _LoggingControlsState extends State<LoggingControls> {
   final _dateController = TextEditingController();
   final _gridController = TextEditingController();
   final _stateController = TextEditingController();
+  // The Radio control's Band/Mode dropdown text. Owned here (not left to
+  // DropdownMenu's internal controller) so typed text can drive the entry
+  // filter and be committed to the first match — see
+  // `_commitBandDropdownText` / `_commitModeDropdownText`.
+  final _bandDropdownController = TextEditingController();
+  final _modeDropdownController = TextEditingController();
+  final _bandMenuController = MenuController();
+  final _modeMenuController = MenuController();
+  // The active menu filter — what the user actually typed — kept separate
+  // from the field's display text, which arrow navigation overwrites with
+  // full option labels. Reset when a field gains focus, so each fresh
+  // interaction starts unfiltered.
+  String _bandFilter = '';
+  String _modeFilter = '';
+  // True while an arrow key is stepping/walking the selection, so the
+  // resulting display-text write (ours when the menu is closed,
+  // DropdownMenu's own when it's open) is not mistaken for typed input and
+  // does not clobber the filter.
+  bool _navigatingDropdown = false;
+  // Built in initState (not a `late final` initializer), so `dispose` never
+  // forces their construction just to tear them down when the Radio control
+  // was never expanded.
+  late final FocusNode _bandDropdownFocus;
+  late final FocusNode _modeDropdownFocus;
   final _callFocus = FocusNode();
   final _sentFocus = FocusNode();
   final _rcvdFocus = FocusNode();
@@ -551,6 +603,18 @@ class _LoggingControlsState extends State<LoggingControls> {
   @override
   void initState() {
     super.initState();
+    _bandDropdownFocus = _dropdownCommitFocusNode(
+      commit: _commitBandDropdownText,
+      clearFilter: () => _bandFilter = '',
+      menu: _bandMenuController,
+      step: _stepBandSelection,
+    );
+    _modeDropdownFocus = _dropdownCommitFocusNode(
+      commit: _commitModeDropdownText,
+      clearFilter: () => _modeFilter = '',
+      menu: _modeMenuController,
+      step: _stepModeSelection,
+    );
     _applyDefaultRSTs();
     // Population normally happens in didUpdateWidget, as editingQso
     // transitions from null to a selected QSO — but if this widget is ever
@@ -584,6 +648,8 @@ class _LoggingControlsState extends State<LoggingControls> {
     // an optional Grid/State field changes too.
     _gridController.addListener(_onSentOrRcvdChanged);
     _stateController.addListener(_onSentOrRcvdChanged);
+    _bandDropdownController.addListener(_onBandDropdownTextChanged);
+    _modeDropdownController.addListener(_onModeDropdownTextChanged);
     // All fields place the cursor at the end on focus, rather than selecting
     // the existing text — switching fields (e.g. cycling back to the call
     // field via space without logging) shouldn't put you one keystroke away
@@ -864,6 +930,10 @@ class _LoggingControlsState extends State<LoggingControls> {
     _dateController.dispose();
     _gridController.dispose();
     _stateController.dispose();
+    _bandDropdownController.dispose();
+    _modeDropdownController.dispose();
+    _bandDropdownFocus.dispose();
+    _modeDropdownFocus.dispose();
     _callFocus.dispose();
     _sentFocus.dispose();
     _rcvdFocus.dispose();
@@ -1218,7 +1288,7 @@ class _LoggingControlsState extends State<LoggingControls> {
         case 'time':
           specs.add(_timeControlSpec());
         case 'radio':
-          specs.add(_radioControlSpec(theme, poloColors));
+          specs.add(_radioControlSpec(theme));
         case 'spotting':
           specs.add(_spottingControlSpec(theme, poloColors));
         case 'more':
@@ -1298,120 +1368,371 @@ class _LoggingControlsState extends State<LoggingControls> {
         ),
       );
 
-  SecondaryControlSpec _radioControlSpec(ThemeData theme, HaLoColors poloColors) => SecondaryControlSpec(
+  /// The Band dropdown's options: the enabled list ([LoggingControls.enabledBands]),
+  /// the common tier when that's empty, the full catalog when null — with
+  /// the current value appended when it's not in the list (see the field's
+  /// doc for why each fallback exists).
+  List<String> _bandDropdownOptions() {
+    final enabled = widget.enabledBands;
+    final options = enabled == null
+        ? [for (final b in bands) b.name]
+        : enabled.isEmpty
+            ? popularBands
+            : enabled;
+    final band = _band;
+    return [...options, if (band != null && !options.contains(band)) band];
+  }
+
+  List<String> _modeDropdownOptions() {
+    final enabled = widget.enabledModes;
+    final options = enabled == null
+        ? modes
+        : enabled.isEmpty
+            ? mainModes
+            : enabled;
+    return [...options, if (!options.contains(_mode)) _mode];
+  }
+
+  /// Menu entries for the active [filter]: a case-insensitive contains
+  /// match. An empty filter (nothing typed, or cleared on focus) and a
+  /// filter matching nothing both mean "no filter" — the latter so a typo
+  /// shows the full menu rather than an empty one. The filter only ever
+  /// holds genuinely typed text (see [_onDropdownTextChanged]), so typing a
+  /// complete short name like "2m" narrows to it rather than showing all.
+  List<String> _filteredOptions(List<String> options, String filter) {
+    final typed = filter.trim();
+    if (typed.isEmpty) return options;
+    final q = typed.toLowerCase();
+    final matches = [for (final o in options) if (o.toLowerCase().contains(q)) o];
+    return matches.isEmpty ? options : matches;
+  }
+
+  /// An exact (case-insensitive) match wins over the first contains-match,
+  /// so e.g. "2m" can never resolve to another band that merely contains
+  /// it as a substring.
+  String? _firstMatch(List<String> options, String text) {
+    final q = text.toLowerCase();
+    for (final o in options) {
+      if (o.toLowerCase() == q) return o;
+    }
+    for (final o in options) {
+      if (o.toLowerCase().contains(q)) return o;
+    }
+    return null;
+  }
+
+  // The menu-entry lists are memoized on the joined option values and reused
+  // while unchanged: DropdownMenu compares entries by LIST IDENTITY in
+  // didUpdateWidget and resets its highlight state on any change, so passing
+  // a freshly built list on every rebuild (this widget rebuilds each second
+  // for the clock alone) would break walking the open menu with the arrow
+  // keys. Keyed on the values rather than deep-compared, so re-deriving the
+  // entries costs one join, not an element-wise scan.
+  String? _bandMenuKey;
+  String? _modeMenuKey;
+  List<DropdownMenuEntry<String>> _bandMenuEntries = const [];
+  List<DropdownMenuEntry<String>> _modeMenuEntries = const [];
+
+  /// Returns [cache] unchanged when [values] matches [cacheKey], else
+  /// rebuilds the entries and updates [cacheKey] via [setKey]. ` `
+  /// joins the values — a separator that can't appear in a band/mode name,
+  /// so distinct value lists never collide on the same key.
+  List<DropdownMenuEntry<String>> _memoEntries(
+    String? cacheKey,
+    List<DropdownMenuEntry<String>> cache,
+    List<String> values,
+    void Function(String key) setKey,
+  ) {
+    final key = values.join(' ');
+    if (key == cacheKey) return cache;
+    setKey(key);
+    return [for (final v in values) DropdownMenuEntry(value: v, label: v)];
+  }
+
+  void _onBandDropdownTextChanged() =>
+      _onDropdownTextChanged((f) => _bandFilter = f, _bandDropdownController.text, _band ?? '');
+  void _onModeDropdownTextChanged() =>
+      _onDropdownTextChanged((f) => _modeFilter = f, _modeDropdownController.text, _mode);
+
+  /// Captures genuinely typed text as the menu [filter] and rebuilds so the
+  /// menu re-filters. Two kinds of controller write must NOT become a
+  /// filter: arrow navigation ([_navigatingDropdown]), and the full-label
+  /// writes a pick / external selection change / commit push through the
+  /// controller — those equal the current [selection], and treating them as
+  /// a filter would narrow the menu down to just the selected entry (and,
+  /// for the arrow-step's rebuild-time [DropdownMenu.initialSelection] sync,
+  /// strand the stepping on a single entry). The rebuild is deferred when
+  /// the change lands during build — DropdownMenu writes to the controller
+  /// from its own initState/didUpdateWidget, where a synchronous setState
+  /// would throw.
+  void _onDropdownTextChanged(ValueChanged<String> setFilter, String text, String selection) {
+    if (!mounted) return;
+    if (!_navigatingDropdown && text != selection) setFilter(text);
+    if (SchedulerBinding.instance.schedulerPhase == SchedulerPhase.persistentCallbacks) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) setState(() {});
+      });
+    } else {
+      setState(() {});
+    }
+  }
+
+  /// Applies typed-but-not-picked Band text: the first matching option
+  /// becomes the selection, exactly as if picked from the menu; no match
+  /// reverts the text to the current selection. Runs on Enter (before the
+  /// root CallbackShortcuts logs the QSO, so the QSO gets the new band) and
+  /// when focus leaves the dropdown. The `mounted` guard matters because
+  /// this is invoked from a `scheduleMicrotask` in the blur handler, which
+  /// can outlive the widget (e.g. the operation view closing while a
+  /// dropdown holds focus) — `setState` on a defunct State would throw.
+  void _commitBandDropdownText() {
+    if (!mounted) return;
+    final text = _bandDropdownController.text.trim();
+    if (text.isNotEmpty && text != (_band ?? '')) {
+      final match = _firstMatch(_bandDropdownOptions(), text);
+      if (match != null && match != _band) _applyBandPick(match);
+    }
+    _bandFilter = '';
+    _bandDropdownController.text = _band ?? '';
+  }
+
+  void _commitModeDropdownText() {
+    if (!mounted) return;
+    final text = _modeDropdownController.text.trim();
+    if (text.isNotEmpty && text != _mode) {
+      final match = _firstMatch(_modeDropdownOptions(), text);
+      if (match != null && match != _mode) _setMode(match);
+    }
+    _modeFilter = '';
+    _modeDropdownController.text = _mode;
+  }
+
+  /// A dropdown field's focus node, wired to [commit] typed text on Enter
+  /// (letting the event continue toward the root Enter-logs-the-QSO
+  /// shortcut, so a logged QSO gets the just-committed value) and on focus
+  /// leaving the field — which also closes [menu], so the overlay doesn't
+  /// linger after a Tab or a click elsewhere. The focus-loss commit is
+  /// deferred a microtask: clicking a menu entry can move focus out before
+  /// onSelected fires, and the pick must win over the typed text. Gaining
+  /// focus [clearFilter]s, so each fresh interaction starts unfiltered.
+  ///
+  /// Arrow keys with the menu CLOSED [step] the actual selection directly;
+  /// with the menu open they're left to DropdownMenu's own shortcuts, which
+  /// walk the highlight and write each entry into the field. Either way the
+  /// stepping stays within the current filter — [_navigatingDropdown]
+  /// guards the resulting text write from resetting it.
+  FocusNode _dropdownCommitFocusNode({
+    required VoidCallback commit,
+    required VoidCallback clearFilter,
+    required MenuController menu,
+    required void Function(int delta) step,
+  }) {
+    final node = FocusNode();
+    node.addListener(() {
+      if (node.hasFocus) {
+        clearFilter();
+      } else {
+        if (menu.isOpen) menu.close();
+        scheduleMicrotask(commit);
+      }
+    });
+    node.onKeyEvent = (n, event) {
+      if (event is! KeyDownEvent && event is! KeyRepeatEvent) return KeyEventResult.ignored;
+      final key = event.logicalKey;
+      if (key == LogicalKeyboardKey.enter || key == LogicalKeyboardKey.numpadEnter) {
+        commit();
+        return KeyEventResult.ignored;
+      }
+      if (key == LogicalKeyboardKey.arrowDown || key == LogicalKeyboardKey.arrowUp) {
+        // The upcoming display-text write — ours below, or DropdownMenu's
+        // own when the menu is open — must not be read back as a new
+        // filter. Cleared next microtask, once this event is fully handled.
+        _navigatingDropdown = true;
+        scheduleMicrotask(() => _navigatingDropdown = false);
+        if (!menu.isOpen) {
+          step(key == LogicalKeyboardKey.arrowDown ? 1 : -1);
+          return KeyEventResult.handled;
+        }
+      }
+      return KeyEventResult.ignored;
+    };
+    return node;
+  }
+
+  /// The Band dropdown's onSelected effect, shared with the typed-text
+  /// commit and the arrow-key step: picking a band directly is mutually
+  /// exclusive with a manual frequency, since `_band` prefers the
+  /// freq-derived value whenever `_freq` is set (matches the
+  /// `setVfo{band: ...}` command action's convention — see
+  /// `_dispatchActions`). Only while composing — editing an existing QSO
+  /// applies changes to the QSO, never the VFO.
+  void _applyBandPick(String value) {
+    setState(() {
+      _manualBand = value;
+      _freqController.clear();
+    });
+    if (widget.editingQso == null) widget.radioService?.setVfo('vfoA', band: value);
+  }
+
+  void _stepBandSelection(int delta) {
+    final next = _steppedOption(_filteredOptions(_bandDropdownOptions(), _bandFilter), _band, delta);
+    if (next == null) return;
+    _applyBandPick(next);
+    _bandDropdownController.text = next;
+  }
+
+  void _stepModeSelection(int delta) {
+    final next = _steppedOption(_filteredOptions(_modeDropdownOptions(), _modeFilter), _mode, delta);
+    if (next == null) return;
+    _setMode(next);
+    _modeDropdownController.text = next;
+  }
+
+  /// The option [delta] steps away from [current], wrapping like the open
+  /// menu's own highlight does. No current value: down starts at the first
+  /// option, up at the last.
+  String? _steppedOption(List<String> options, String? current, int delta) {
+    if (options.isEmpty) return null;
+    final i = current == null ? -1 : options.indexOf(current);
+    if (i < 0) return delta > 0 ? options.first : options.last;
+    return options[(i + delta) % options.length];
+  }
+
+  SecondaryControlSpec _radioControlSpec(ThemeData theme) => SecondaryControlSpec(
         key: 'radio',
         icon: MdiIcons.radio,
         summary: _radioSummary,
-        expandedBuilder: (context) => Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            DropdownMenu<String>(
-              initialSelection: _band,
-              label: Text(widget.bandLabel ?? 'Band'),
-              width: 104,
-              textStyle: haloMonoStyle(
-                context,
-                fontSize: 15,
-                fontWeight: FontWeight.w500,
-              ),
-              inputDecorationTheme: InputDecorationTheme(
-                isDense: true,
-                filled: true,
-                fillColor: theme.colorScheme.surface,
-                floatingLabelBehavior: FloatingLabelBehavior.always,
-                floatingLabelStyle: TextStyle(
-                  fontSize: 14,
-                  color: theme.colorScheme.onTertiaryContainer,
-                ),
-                contentPadding: const EdgeInsets.fromLTRB(4, 6, 4, 8),
-              ),
-              dropdownMenuEntries: [
-                for (final b in bands)
-                  DropdownMenuEntry(
-                    value: b.name,
-                    label: b.name,
-                    style: MenuItemButton.styleFrom(
-                      foregroundColor: poloColors.bandColor(b.name),
-                    ),
-                  ),
-              ],
-              onSelected: (value) {
-                if (value == null) return;
-                setState(() {
-                  // Matches the `setVfo{band: ...}` command action's
-                  // convention (see `_dispatchActions`): picking a band
-                  // directly is mutually exclusive with a manual frequency,
-                  // since `_band` prefers the freq-derived value whenever
-                  // `_freq` is set.
-                  _manualBand = value;
-                  _freqController.clear();
-                });
-                // A discrete dropdown pick, not a keystroke — push
-                // immediately rather than debouncing like frequency typing.
-                // Only while composing — editing an existing QSO applies
-                // changes to the QSO, never the VFO.
-                if (widget.editingQso == null) widget.radioService?.setVfo('vfoA', band: value);
-                _callFocus.requestFocus();
-              },
-            ),
-            const SizedBox(width: 6),
-            SizedBox(
-              width: 100,
-              child: TextField(
-                controller: _freqController,
-                focusNode: _freqFocus,
-                selectAllOnFocus: false,
-                style: haloMonoStyle(
+        expandedBuilder: (context) {
+          final band = _band;
+          _bandMenuEntries = _memoEntries(_bandMenuKey, _bandMenuEntries,
+              _filteredOptions(_bandDropdownOptions(), _bandFilter), (k) => _bandMenuKey = k);
+          _modeMenuEntries = _memoEntries(_modeMenuKey, _modeMenuEntries,
+              _filteredOptions(_modeDropdownOptions(), _modeFilter), (k) => _modeMenuKey = k);
+          // DropdownMenu treats an explicit focusNode's canRequestFocus as
+          // overriding its per-platform requestFocusOnTap default, so
+          // restore that default here: type-to-filter is a keyboard
+          // (desktop) affordance; on touch platforms tapping stays a plain
+          // pick, without popping the on-screen keyboard.
+          final typeable = switch (Theme.of(context).platform) {
+            TargetPlatform.iOS || TargetPlatform.android || TargetPlatform.fuchsia => false,
+            _ => true,
+          };
+          _bandDropdownFocus.canRequestFocus = typeable;
+          _modeDropdownFocus.canRequestFocus = typeable;
+          return Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              DropdownMenu<String>(
+                controller: _bandDropdownController,
+                focusNode: _bandDropdownFocus,
+                menuController: _bandMenuController,
+                initialSelection: band,
+                label: Text(widget.bandLabel ?? 'Band'),
+                width: 104,
+                menuHeight: dropdownMenuMaxHeight(context),
+                // Pick-only menus. With search on (the default), every
+                // rebuild whose field text matches an entry re-runs
+                // scrollToHighlight — and this widget rebuilds every second
+                // (the Time chip's clock), so an open menu kept snapping
+                // back to the selected item while the user scrolled.
+                enableSearch: false,
+                textStyle: haloMonoStyle(
                   context,
                   fontSize: 15,
                   fontWeight: FontWeight.w500,
                 ),
-                decoration: poloFieldDecoration(
+                inputDecorationTheme: InputDecorationTheme(
+                  isDense: true,
+                  filled: true,
+                  fillColor: theme.colorScheme.surface,
+                  floatingLabelBehavior: FloatingLabelBehavior.always,
+                  floatingLabelStyle: TextStyle(
+                    fontSize: 14,
+                    color: theme.colorScheme.onTertiaryContainer,
+                  ),
+                  contentPadding: const EdgeInsets.fromLTRB(4, 6, 4, 8),
+                  // Without this the trailing arrow's 48px min tap target
+                  // makes the field taller (56px) than the sibling
+                  // poloFieldDecoration TextFields (53px); the whole field
+                  // is tappable, so the shrunken icon target costs nothing.
+                  suffixIconConstraints: const BoxConstraints(maxHeight: 38, maxWidth: 40),
+                ),
+                dropdownMenuEntries: _bandMenuEntries,
+                onSelected: (value) {
+                  if (value == null) return;
+                  // A discrete dropdown pick, not a keystroke — push to the
+                  // VFO immediately rather than debouncing like frequency
+                  // typing (see _applyBandPick).
+                  _applyBandPick(value);
+                  _callFocus.requestFocus();
+                },
+              ),
+              const SizedBox(width: 6),
+              SizedBox(
+                width: 100,
+                child: TextField(
+                  controller: _freqController,
+                  focusNode: _freqFocus,
+                  selectAllOnFocus: false,
+                  style: haloMonoStyle(
+                    context,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w500,
+                  ),
+                  decoration: poloFieldDecoration(
+                    context,
+                    widget.freqLabel ?? 'Frequency',
+                    labelColor: Theme.of(context).colorScheme.onTertiaryContainer,
+                  ),
+                  keyboardType: const TextInputType.numberWithOptions(
+                    decimal: true,
+                  ),
+                  inputFormatters: [
+                    FilteringTextInputFormatter.allow(RegExp(r'[0-9.,]')),
+                  ],
+                  onSubmitted: (_) => _log(),
+                ),
+              ),
+              const SizedBox(width: 6),
+              DropdownMenu<String>(
+                controller: _modeDropdownController,
+                focusNode: _modeDropdownFocus,
+                menuController: _modeMenuController,
+                initialSelection: _mode,
+                label: Text(widget.modeLabel ?? 'Mode'),
+                width: 104,
+                menuHeight: dropdownMenuMaxHeight(context),
+                // See the Band dropdown: search off so rebuilds don't
+                // re-scroll the open menu to the selection.
+                enableSearch: false,
+                textStyle: haloMonoStyle(
                   context,
-                  widget.freqLabel ?? 'Frequency',
-                  labelColor: Theme.of(context).colorScheme.onTertiaryContainer,
+                  fontSize: 15,
+                  fontWeight: FontWeight.w500,
                 ),
-                keyboardType: const TextInputType.numberWithOptions(
-                  decimal: true,
+                inputDecorationTheme: InputDecorationTheme(
+                  isDense: true,
+                  filled: true,
+                  fillColor: theme.colorScheme.surface,
+                  floatingLabelBehavior: FloatingLabelBehavior.always,
+                  floatingLabelStyle: TextStyle(
+                    fontSize: 14,
+                    color: theme.colorScheme.onTertiaryContainer,
+                  ),
+                  contentPadding: const EdgeInsets.fromLTRB(4, 6, 4, 8),
+                  // Same height trim as the Band dropdown above.
+                  suffixIconConstraints: const BoxConstraints(maxHeight: 38, maxWidth: 40),
                 ),
-                inputFormatters: [
-                  FilteringTextInputFormatter.allow(RegExp(r'[0-9.,]')),
-                ],
-                onSubmitted: (_) => _log(),
+                dropdownMenuEntries: _modeMenuEntries,
+                onSelected: (value) {
+                  if (value == null) return;
+                  _setMode(value);
+                  _callFocus.requestFocus();
+                },
               ),
-            ),
-            const SizedBox(width: 6),
-            DropdownMenu<String>(
-              initialSelection: _mode,
-              label: Text(widget.modeLabel ?? 'Mode'),
-              width: 104,
-              textStyle: haloMonoStyle(
-                context,
-                fontSize: 15,
-                fontWeight: FontWeight.w500,
-              ),
-              inputDecorationTheme: InputDecorationTheme(
-                isDense: true,
-                filled: true,
-                fillColor: theme.colorScheme.surface,
-                floatingLabelBehavior: FloatingLabelBehavior.always,
-                floatingLabelStyle: TextStyle(
-                  fontSize: 14,
-                  color: theme.colorScheme.onTertiaryContainer,
-                ),
-                contentPadding: const EdgeInsets.fromLTRB(4, 6, 4, 8),
-              ),
-              dropdownMenuEntries: [
-                for (final m in modes) DropdownMenuEntry(value: m, label: m),
-              ],
-              onSelected: (value) {
-                if (value == null) return;
-                _setMode(value);
-                _callFocus.requestFocus();
-              },
-            ),
-          ],
-        ),
+            ],
+          );
+        },
       );
 
   /// UI-level policy, not a per-source value: how recently a QSO must have
@@ -1761,6 +2082,10 @@ class _LoggingControlsState extends State<LoggingControls> {
         final params = (map['addQso'] as Map).cast<String, dynamic>();
         final qso = await widget.qsosRepository.add(widget.operation.uuid, params);
         widget.onLogged?.call(qso);
+        // Command-added QSOs (e.g. SEED's batch) carry at most the fast
+        // offline guess the extension attached itself — queue each for a
+        // full online lookup in the background.
+        widget.enqueueLookup?.call(qso);
       } else if (map.containsKey('updateSettings')) {
         final params = (map['updateSettings'] as Map).cast<String, dynamic>();
         if (widget.settings != null) {
@@ -1815,6 +2140,8 @@ class _LoggingControlsState extends State<LoggingControls> {
         await widget.onCommandAction?.call('devProgress', (map['devProgress'] as Map).cast<String, dynamic>());
       } else if (map['devSplash'] is Map) {
         await widget.onCommandAction?.call('devSplash');
+      } else if (map['devOnboard'] is Map) {
+        await widget.onCommandAction?.call('devOnboard');
       } else if (map['reloadDataFiles'] is Map) {
         await widget.onCommandAction?.call('reloadDataFiles', (map['reloadDataFiles'] as Map).cast<String, dynamic>());
       } else {
@@ -2623,6 +2950,7 @@ class _LoggingControlsState extends State<LoggingControls> {
             _getCurrentQsoData(callOverride: stacked.call),
           );
           widget.onLogged?.call(qso);
+          widget.enqueueLookup?.call(qso);
 
           _wipe();
           _callController.text = stacked.remainder;
@@ -2653,34 +2981,22 @@ class _LoggingControlsState extends State<LoggingControls> {
       // The record being edited (index 0, when editing) survives untouched
       // even once more calls are added to its list — same as an ordinary
       // single-call edit, no fresh lookup, nothing suppressed. Every other,
-      // newly-added entry in a multi-call list gets its own fresh,
-      // independent lookup instead of inheriting whatever single
-      // guessed/looked-up name/grid was cached for a different call. A
-      // manually entered grid override is more often a station-wide
+      // newly-added entry in a multi-call list is saved bare and handed to
+      // `enqueueLookup` (below) for its own fresh, independent background
+      // lookup, instead of inheriting whatever single guessed/looked-up
+      // name/grid was cached for a different call — and instead of blocking
+      // the save on N sequential network lookups (a stall with no network).
+      // A manually entered grid override is more often a station-wide
       // correction, so it's fine for that to still apply to every new
       // entry — but a manually entered name is specific to whoever the
       // override was actually typed for, so it isn't duplicated onto a
       // different, newly-added call.
-      Future<Map<String, dynamic>> dataFor(String call, int index) async {
+      Map<String, dynamic> dataFor(String call, int index) {
         final keepOriginal = !isList || (editingQso != null && index == 0);
-        // Online only — this is about to be written to the record, not a
-        // UI preview, so there's no value in a separate fast offline pass.
-        final freshLookup = !keepOriginal && widget.lookup != null
-            ? await widget.lookup!(
-                call,
-                qso: {...baseData, 'their': {'call': call}},
-                operation: widget.operation.data,
-                online: true,
-              )
-            : null;
         return {
           ...baseData,
           'their': {
             if (keepOriginal) ...?(baseData['their'] as Map<String, dynamic>?),
-            // Nested, per the `AnnotatedCallInfo` TS convention — see the
-            // matching comment in `_getCurrentQsoData`.
-            if (freshLookup != null) 'guess': freshLookup['guess'],
-            if (freshLookup != null) 'lookups': freshLookup['lookups'],
             'call': call,
             'sent': _rcvdController.text.trim(),
             if (keepOriginal && _theirNameOverride != null) 'name': _theirNameOverride,
@@ -2698,17 +3014,17 @@ class _LoggingControlsState extends State<LoggingControls> {
           Qso(
             uuid: editingQso.uuid,
             operationUuid: widget.operation.uuid,
-            data: await dataFor(calls.first, 0),
+            data: dataFor(calls.first, 0),
           ),
         );
         for (var i = 1; i < calls.length; i++) {
           // The base data carries the edited QSO's own uuid (baseData came
           // from its record) — strip it so add() generates a fresh one for
           // this new QSO instead of colliding with the original.
-          final data = await dataFor(calls[i], i)
-            ..remove('uuid');
+          final data = dataFor(calls[i], i)..remove('uuid');
           final qso = await widget.qsosRepository.add(widget.operation.uuid, data);
           widget.onLogged?.call(qso);
+          widget.enqueueLookup?.call(qso);
         }
         widget.onEditCanceled?.call();
       } else {
@@ -2721,8 +3037,9 @@ class _LoggingControlsState extends State<LoggingControls> {
           _pushVfoToRadioService();
         }
         for (var i = 0; i < calls.length; i++) {
-          final qso = await widget.qsosRepository.add(widget.operation.uuid, await dataFor(calls[i], i));
+          final qso = await widget.qsosRepository.add(widget.operation.uuid, dataFor(calls[i], i));
           widget.onLogged?.call(qso);
+          widget.enqueueLookup?.call(qso);
         }
         _wipe();
       }
@@ -2770,7 +3087,7 @@ class _LoggingControlsState extends State<LoggingControls> {
           )
         : theme;
 
-    return CallbackShortcuts(
+    final panel = CallbackShortcuts(
       bindings: {
         const SingleActivator(LogicalKeyboardKey.escape): _handleEscape,
         const SingleActivator(LogicalKeyboardKey.enter): _log,
@@ -3106,6 +3423,13 @@ class _LoggingControlsState extends State<LoggingControls> {
         ),
       ),
     );
+
+    // Trap Tab (and Shift+Tab) inside the logging controls: a FocusScope
+    // confines traversal to its descendants and wraps at the ends, the same
+    // primitive a dialog uses. Without it, Tab past the last field escapes
+    // into the QSO list above. Programmatic focus moves and mouse clicks
+    // still cross the boundary freely — only keyboard traversal is confined.
+    return FocusScope(child: panel);
   }
 
   Widget _buildInfoArea(ThemeData theme) {

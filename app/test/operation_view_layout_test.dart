@@ -144,4 +144,9 @@ class ExtensionServiceWithMockHost extends ExtensionService {
 
   @override
   Future<void> start() async {}
+
+  // The real one pushes into the extension host's KV store, which the mock
+  // host doesn't implement.
+  @override
+  Future<void> setSyncCredentials({required String deviceKey, required String operatorCall}) async {}
 }

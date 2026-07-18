@@ -26,6 +26,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:halo_widgets/halo_widgets.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 
@@ -494,6 +495,14 @@ class _SwitchAccountsPaneState extends State<SwitchAccountsPane> {
     );
   }
 
+  Future<void> _copyChallengeCode(BuildContext context) async {
+    final code = _challengeCode;
+    if (code == null) return;
+    await Clipboard.setData(ClipboardData(text: code));
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Copied code to clipboard')));
+  }
+
   Widget _buildCode(BuildContext context) {
     final theme = Theme.of(context);
     return Column(
@@ -505,9 +514,23 @@ class _SwitchAccountsPaneState extends State<SwitchAccountsPane> {
         ),
         const SizedBox(height: 16),
         Center(
-          child: Text(
-            _challengeCode ?? '—',
-            style: theme.textTheme.displayMedium?.copyWith(fontFamily: 'RobotoMono', letterSpacing: 4),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                _challengeCode ?? '—',
+                style: theme.textTheme.displayMedium?.copyWith(fontFamily: 'RobotoMono', letterSpacing: 4),
+              ),
+              if (_challengeCode != null) ...[
+                const SizedBox(width: 8),
+                IconButton(
+                  icon: Icon(resolveIconName('content-copy')),
+                  tooltip: 'Copy code',
+                  onPressed: () => _copyChallengeCode(context),
+                  mouseCursor: SystemMouseCursors.click,
+                ),
+              ],
+            ],
           ),
         ),
         const SizedBox(height: 16),

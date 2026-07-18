@@ -253,7 +253,9 @@ async function callHookMethod(record: HookRecord, method: string, args: unknown,
   const account = (await getAccountContext(record.extensionKey)) as { credentials?: Record<string, string>; session?: Record<string, string> } | undefined
   let developerMode = false
   let locale = 'en'
-  const settings = (await getSettingsContext()) as { developerMode?: boolean; locale?: string; appName?: string } | undefined
+  const settings = (await getSettingsContext()) as
+    | { developerMode?: boolean; locale?: string; appName?: string; distanceUnits?: string }
+    | undefined
   if (settings?.developerMode) {
     developerMode = true
   }
@@ -266,6 +268,7 @@ async function callHookMethod(record: HookRecord, method: string, args: unknown,
     developerMode,
     locale,
     appName: settings?.appName,
+    distanceUnits: settings?.distanceUnits ?? 'kilometers',
     // Log-data reads (HookContext.getOperation/getQsos in types.ts). Built
     // per call like the rest of ctx but deliberately NOT cached like
     // settings/account above — log data changes with every QSO, and a
@@ -664,6 +667,26 @@ const kernel = {
   warn: (...args: unknown[]) => log('WARN ' + args.map(String).join(' ')),
   error: (...args: unknown[]) => log('ERROR ' + args.map(String).join(' ')),
 }
+
+// Built-in runtime introspection: the Developer panel's "Active Extensions"
+// listing calls this — versions live only in each bundle's defineExtension
+// manifest, so the runtime is the one place they can be read from.
+kernel.defineExtension({
+  key: 'kernel-info',
+  name: 'Kernel info',
+  version: '0.0.1',
+  onActivation({ registerHook }) {
+    registerHook('runtime', {
+      key: 'kernel',
+      hook: {
+        listExtensions: async () =>
+          Object.values(extensions)
+            .filter((def) => activated.has(def.key))
+            .map((def) => ({ key: def.key, name: def.name, version: def.version, description: def.description ?? null })),
+      },
+    })
+  },
+})
 
 // Built-in bench hooks, used to measure pure bridge round-trip latency
 // (echo) and JS compute throughput (spin) with no extension code involved.

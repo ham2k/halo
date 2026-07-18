@@ -45,31 +45,44 @@ void main() {
     SendSpot? sendSpot,
     bool showStateField = false,
     bool showGridField = false,
+    List<String>? enabledBands,
+    List<String>? enabledModes,
+    void Function(Qso qso)? enqueueLookup,
+    Widget? trailing,
   }) {
+    final controls = LoggingControls(
+      operation: operation,
+      qsosRepository: qsos,
+      qsos: existing,
+      enqueueLookup: enqueueLookup,
+      interpretCommand: interpretCommand,
+      onCommandMessageChanged: onCommandMessageChanged,
+      onCommandAction: onCommandAction,
+      radioService: radioService,
+      editingQso: editingQso,
+      suggestedQso: suggestedQso,
+      suggestSpotSources: suggestSpotSources,
+      sendSpot: sendSpot,
+      showStateField: showStateField,
+      showGridField: showGridField,
+      enabledBands: enabledBands,
+      enabledModes: enabledModes,
+      spottingControlLabel: 'Spotting',
+      spottingLabel: 'Spotting',
+      spottingSelfLabel: 'Self-spotting',
+      spotSelfLabel: (freq) => 'Self-spot at $freq',
+      spotOtherLabel: (call, freq) => 'Spot $call at $freq',
+      spotTooLateLabel: (call) => 'Too late to spot $call',
+      spotNoFreqLabel: 'First set a frequency to spot',
+    );
     return MaterialApp(
       home: Scaffold(
-        body: LoggingControls(
-          operation: operation,
-          qsosRepository: qsos,
-          qsos: existing,
-          interpretCommand: interpretCommand,
-          onCommandMessageChanged: onCommandMessageChanged,
-          onCommandAction: onCommandAction,
-          radioService: radioService,
-          editingQso: editingQso,
-          suggestedQso: suggestedQso,
-          suggestSpotSources: suggestSpotSources,
-          sendSpot: sendSpot,
-          showStateField: showStateField,
-          showGridField: showGridField,
-          spottingControlLabel: 'Spotting',
-          spottingLabel: 'Spotting',
-          spottingSelfLabel: 'Self-spotting',
-          spotSelfLabel: (freq) => 'Self-spot at $freq',
-          spotOtherLabel: (call, freq) => 'Spot $call at $freq',
-          spotTooLateLabel: (call) => 'Too late to spot $call',
-          spotNoFreqLabel: 'First set a frequency to spot',
-        ),
+        // `trailing` stands in for the QSO list above the panel — a
+        // focusable sibling OUTSIDE the controls, so a test can prove Tab
+        // never lands on it.
+        body: trailing == null
+            ? controls
+            : Column(mainAxisSize: MainAxisSize.min, children: [controls, trailing]),
       ),
     );
   }
@@ -425,55 +438,65 @@ void main() {
     expect(find.textContaining('ARRL HQ'), findsOneWidget);
   });
 
-  testWidgets('logging a comma-separated call list fetches a fresh, independent lookup per call rather than duplicating one cached result', (tester) async {
+  testWidgets('logging a comma-separated call list saves immediately without inline lookups; each entry is enqueued for background lookup', (tester) async {
+    // Saving a call list must never block on N network lookups (a stall
+    // with no connectivity): the QSOs land bare and each is handed to the
+    // caller's background queue, which enriches them after the fact.
+    final lookedUp = <String>[];
     Future<Map<String, dynamic>?> lookup(
       String call, {
       required Map<String, dynamic> qso,
       required Map<String, dynamic> operation,
       required bool online,
     }) async {
-      if (call == 'W1AW') return {'guess': {'name': 'ARRL HQ', 'grid': 'FN31pr'}};
-      if (call == 'K1ABC') return {'guess': {'name': 'Someone Else', 'grid': 'FN42aa'}};
-      return null;
+      lookedUp.add(call);
+      return {'guess': {'name': 'Should Not Be Saved Inline'}};
     }
 
+    final enqueued = <Qso>[];
     await tester.pumpWidget(MaterialApp(
-      home: Scaffold(body: LoggingControls(operation: operation, qsosRepository: qsos, lookup: lookup)),
+      home: Scaffold(
+        body: LoggingControls(
+          operation: operation,
+          qsosRepository: qsos,
+          lookup: lookup,
+          enqueueLookup: enqueued.add,
+        ),
+      ),
     ));
 
     await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'W1AW, K1ABC');
-    await tester.pump(const Duration(milliseconds: 400)); // let the on-screen preview lookup settle first
+    // Enter before the 300ms preview debounce fires — the save must not
+    // depend on any lookup having started, let alone completed.
     await tester.sendKeyEvent(LogicalKeyboardKey.enter);
 
     final logged = await waitForQsos(tester, 2);
-    final w1aw = logged.firstWhere((q) => q.theirCall == 'W1AW');
-    final k1abc = logged.firstWhere((q) => q.theirCall == 'K1ABC');
-    expect(w1aw.theirName, 'ARRL HQ');
-    expect(w1aw.theirGrid, 'FN31pr');
-    expect(k1abc.theirName, 'Someone Else');
-    expect(k1abc.theirGrid, 'FN42aa');
+    expect(logged, hasLength(2));
+    // No lookup ran as part of the save, and nothing got attached inline...
+    expect(lookedUp, isEmpty);
+    expect(logged.every((q) => q.theirName == null), isTrue);
+    // ...instead every new QSO was queued for background enrichment, in
+    // logging order — a fresh, independent lookup per call, never one
+    // cached result duplicated across different calls.
+    expect(enqueued.map((q) => q.theirCall).toList(), ['W1AW', 'K1ABC']);
+    expect(enqueued.map((q) => q.uuid).toSet(), logged.map((q) => q.uuid).toSet());
   });
 
-  testWidgets('editing a QSO into a comma-separated list: the original record survives untouched; only the newly added call gets a fresh lookup', (tester) async {
+  testWidgets('editing a QSO into a comma-separated list: the original record survives untouched; only the newly added call is enqueued for background lookup', (tester) async {
     final existingQso = (await tester.runAsync(() => qsos.add(operation.uuid, {
           'their': {'call': 'W1AW', 'name': 'Stale Cached Name', 'grid': 'FN31pr'},
           'startAtMillis': 1000000,
         })))!;
 
-    Future<Map<String, dynamic>?> lookup(
-      String call, {
-      required Map<String, dynamic> qso,
-      required Map<String, dynamic> operation,
-      required bool online,
-    }) async {
-      if (call == 'W1AW') return {'guess': {'name': 'ARRL HQ Fresh', 'grid': 'FN99xx'}};
-      if (call == 'K1ABC') return {'guess': {'name': 'Someone Else', 'grid': 'FN42aa'}};
-      return null;
-    }
-
+    final enqueued = <Qso>[];
     await tester.pumpWidget(MaterialApp(
       home: Scaffold(
-        body: LoggingControls(operation: operation, qsosRepository: qsos, editingQso: existingQso, lookup: lookup),
+        body: LoggingControls(
+          operation: operation,
+          qsosRepository: qsos,
+          editingQso: existingQso,
+          enqueueLookup: enqueued.add,
+        ),
       ),
     ));
 
@@ -484,13 +507,88 @@ void main() {
     final logged = await waitForQsos(tester, 2);
     final w1aw = logged.firstWhere((q) => q.theirCall == 'W1AW');
     final k1abc = logged.firstWhere((q) => q.theirCall == 'K1ABC');
-    // The record being edited is untouched — no fresh lookup, its own
-    // already-stored data survives exactly as before.
+    // The record being edited is untouched — not re-looked-up (inline or
+    // via the queue), its own already-stored data survives exactly as
+    // before: a background refresh would overwrite `guess` data the
+    // operator may already be relying on.
     expect(w1aw.theirName, 'Stale Cached Name');
     expect(w1aw.theirGrid, 'FN31pr');
-    // The newly added call gets its own independent, fresh lookup.
-    expect(k1abc.theirName, 'Someone Else');
-    expect(k1abc.theirGrid, 'FN42aa');
+    // The newly added call is saved bare and queued for its own
+    // independent background lookup, rather than inheriting anything
+    // cached for the original call.
+    expect(k1abc.theirName, isNull);
+    expect(enqueued.map((q) => q.uuid).toList(), [k1abc.uuid]);
+  });
+
+  testWidgets('a single-call log keeps its debounced preview result and is still handed to the background queue', (tester) async {
+    final enqueued = <Qso>[];
+    Future<Map<String, dynamic>?> lookup(
+      String call, {
+      required Map<String, dynamic> qso,
+      required Map<String, dynamic> operation,
+      required bool online,
+    }) async {
+      return {'guess': {'name': 'ARRL HQ'}};
+    }
+
+    await tester.pumpWidget(MaterialApp(
+      home: Scaffold(
+        body: LoggingControls(
+          operation: operation,
+          qsosRepository: qsos,
+          lookup: lookup,
+          enqueueLookup: enqueued.add,
+        ),
+      ),
+    ));
+
+    await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'W1AW');
+    await tester.pump(const Duration(milliseconds: 400)); // let the preview lookup settle
+    await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+
+    final logged = await waitForQsos(tester, 1);
+    // The cached preview result is written with the QSO...
+    expect(logged.single.theirName, 'ARRL HQ');
+    // ...and the saved record is still handed to the queue: the QUEUE
+    // decides whether more lookup work is needed (it skips records that
+    // already carry online data), so an Enter that beats the 300ms preview
+    // debounce — leaving the record bare — still gets enriched.
+    expect(enqueued.map((q) => q.uuid).toList(), [logged.single.uuid]);
+  });
+
+  testWidgets('command actions that add QSOs (e.g. SEED) enqueue each added QSO for background lookup', (tester) async {
+    // The extension side only attaches fast offline guesses when seeding
+    // (network lookups there would stall the whole command) — the full
+    // online enrichment is the queue's job, after the QSOs are on screen.
+    Future<Map<String, dynamic>?> interpret(
+      String input, [
+      Map<String, dynamic>? operation,
+      Map<String, dynamic>? qso,
+      bool execute = false,
+    ]) async {
+      if (input != 'SEED') return null;
+      return {
+        'describe': 'Add seed QSOs?',
+        'confirm': 'Added',
+        'commands': [
+          {'addQso': {'their': {'call': 'W1AW'}, 'startAtMillis': 1000000}},
+          {'addQso': {'their': {'call': 'K1ABC'}, 'startAtMillis': 2000000}},
+        ],
+      };
+    }
+
+    final enqueued = <Qso>[];
+    await tester.pumpWidget(host(interpretCommand: interpret, enqueueLookup: enqueued.add));
+
+    await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'SEED');
+    await tester.pump();
+    await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+    await tester.pump(const Duration(milliseconds: 200));
+
+    final logged = await waitForQsos(tester, 2);
+    expect(logged, hasLength(2));
+    expect(enqueued.map((q) => q.theirCall).toList(), ['W1AW', 'K1ABC']);
+    expect(enqueued.map((q) => q.uuid).toSet(), logged.map((q) => q.uuid).toSet());
   });
 
   testWidgets('a manually entered name override does not duplicate onto a newly added call, but a grid override does', (tester) async {
@@ -675,8 +773,16 @@ void main() {
       };
     }
 
+    final enqueued = <Qso>[];
     await tester.pumpWidget(MaterialApp(
-      home: Scaffold(body: LoggingControls(operation: operation, qsosRepository: qsos, lookup: lookup)),
+      home: Scaffold(
+        body: LoggingControls(
+          operation: operation,
+          qsosRepository: qsos,
+          lookup: lookup,
+          enqueueLookup: enqueued.add,
+        ),
+      ),
     ));
 
     // Cursor ends up at the end (last segment, "W1AW") after enterText.
@@ -689,6 +795,10 @@ void main() {
     expect(logged.single.theirCall, 'W1AW');
     expect(logged.single.theirName, 'ARRL HQ');
     expect(logged.single.theirGrid, 'FN31pr');
+    // The stacked save is handed to the background queue like any other new
+    // QSO — had Enter beaten the preview debounce, the queue would still
+    // enrich it (the queue skips records that already carry online data).
+    expect(enqueued.map((q) => q.uuid).toList(), [logged.single.uuid]);
   });
 
   testWidgets('Escape wipes the entry and offers the same undo as the wipe button', (tester) async {
@@ -863,6 +973,35 @@ void main() {
     // keystroke right after cycling back shouldn't wipe out what's typed.
     expect(field('Their call').controller!.selection.isCollapsed, isTrue);
     expect(field('Their call').controller!.selection.baseOffset, field('Their call').controller!.text.length);
+  });
+
+  testWidgets('Tab cycles focus only through the logging controls, never escaping to a sibling', (tester) async {
+    final outside = FocusNode(debugLabel: 'outside');
+    addTearDown(outside.dispose);
+    // A focusable field sits below the panel, standing in for the QSO list.
+    await tester.pumpWidget(host(
+      trailing: TextField(focusNode: outside, decoration: const InputDecoration(labelText: 'Outside')),
+    ));
+
+    await tester.tap(find.widgetWithText(TextField, 'Their call'));
+    await tester.pump();
+
+    // Tab far more times than there are controls: focus must wrap within
+    // the panel and never land on the sibling outside it.
+    for (var i = 0; i < 12; i++) {
+      await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+      await tester.pump();
+      expect(outside.hasFocus, isFalse, reason: 'Tab escaped the logging controls on press ${i + 1}');
+    }
+
+    // Shift+Tab (reverse) is confined too.
+    await tester.sendKeyDownEvent(LogicalKeyboardKey.shiftLeft);
+    for (var i = 0; i < 12; i++) {
+      await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+      await tester.pump();
+      expect(outside.hasFocus, isFalse, reason: 'Shift+Tab escaped the logging controls on press ${i + 1}');
+    }
+    await tester.sendKeyUpEvent(LogicalKeyboardKey.shiftLeft);
   });
 
   testWidgets('call-field commands: frequency, band, and mode via space', (tester) async {
@@ -1230,6 +1369,40 @@ void main() {
     expect(dispatched.single.value, {'target': 'ALL'});
   });
 
+  testWidgets('devOnboard forwards to onCommandAction (same whitelist trap as reloadDataFiles)', (tester) async {
+    // DEVONBOARD shipped interpreting fine but silently no-oping on
+    // execution because _dispatchActions' whitelist lacked its branch —
+    // the exact failure mode the test above documents.
+    final dispatched = <String>[];
+    Future<Map<String, dynamic>?> fakeDevOnboardCommand(
+      String input, [
+      Map<String, dynamic>? operation,
+      Map<String, dynamic>? qso,
+      bool execute = false,
+    ]) async {
+      if (input.trim().toUpperCase() != 'DEVONBOARD') return null;
+      return {
+        'describe': 'Show the onboarding overlay?',
+        'confirm': 'Showing the onboarding overlay',
+        'commands': [
+          {'devOnboard': <String, dynamic>{}},
+        ],
+      };
+    }
+
+    await tester.pumpWidget(host(
+      interpretCommand: fakeDevOnboardCommand,
+      onCommandAction: (action, [params]) async => dispatched.add(action),
+    ));
+
+    await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'DEVONBOARD');
+    await tester.pump();
+    await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+    await tester.pump(const Duration(milliseconds: 200));
+
+    expect(dispatched, ['devOnboard']);
+  });
+
   testWidgets('SPOTLAST resolves to the last real QSO, skipping trailing event markers (ham2k/app-halo-dist#10)', (tester) async {
     // `qsos` is oldest-first (matches watchForOperation's ORDER BY
     // startAtMillis) — the event marker logged after both real QSOs must
@@ -1469,6 +1642,251 @@ void main() {
 
     final freqField = tester.widget<TextField>(find.widgetWithText(TextField, 'Frequency'));
     expect(freqField.controller!.text, '7100');
+  });
+
+  testWidgets('Radio dropdowns offer the settings-enabled bands/modes, uncolored, plus the current value', (tester) async {
+    await tester.pumpWidget(host(enabledBands: ['40m', '20m'], enabledModes: ['CW', 'FT8']));
+    await openControl(tester, MdiIcons.radio);
+
+    // Band menu: only the enabled bands — no colored entries (issue: band
+    // colors made the dropdown hard to read).
+    await tester.tap(find.widgetWithText(TextField, 'Band'));
+    await tester.pump();
+    // DropdownMenu instantiates each entry twice (one offstage copy for
+    // width measurement), so "present" is findsWidgets, not findsOneWidget.
+    expect(find.widgetWithText(MenuItemButton, '40m'), findsWidgets);
+    expect(find.widgetWithText(MenuItemButton, '20m'), findsWidgets);
+    expect(find.widgetWithText(MenuItemButton, '80m'), findsNothing);
+    final bandItem = tester.widget<MenuItemButton>(find.widgetWithText(MenuItemButton, '40m').first);
+    expect(bandItem.style?.foregroundColor, isNull);
+    // Selecting an entry closes the menu.
+    await tester.tap(find.widgetWithText(MenuItemButton, '40m').last);
+    await tester.pump(const Duration(milliseconds: 250));
+    await tester.pump();
+
+    // Mode menu: the enabled modes plus the current mode (SSB, the compose
+    // default), which stays pickable even though it's not in the enabled
+    // list — same rule keeps a QSO on a since-disabled band/mode editable.
+    await tester.tap(find.widgetWithText(TextField, 'Mode'));
+    await tester.pump();
+    expect(find.widgetWithText(MenuItemButton, 'CW'), findsWidgets);
+    expect(find.widgetWithText(MenuItemButton, 'FT8'), findsWidgets);
+    expect(find.widgetWithText(MenuItemButton, 'SSB'), findsWidgets);
+    expect(find.widgetWithText(MenuItemButton, 'FM'), findsNothing);
+  });
+
+  testWidgets('empty enabled lists fall back to the common tier — deselecting every band must not empty the dropdown',
+      (tester) async {
+    await tester.pumpWidget(host(enabledBands: [], enabledModes: []));
+    await openControl(tester, MdiIcons.radio);
+
+    // popularBands, not the full catalog: 160m is common, 630m is not.
+    await tester.tap(find.widgetWithText(TextField, 'Band'));
+    await tester.pump();
+    expect(find.widgetWithText(MenuItemButton, '80m'), findsWidgets);
+    expect(find.widgetWithText(MenuItemButton, '160m'), findsWidgets);
+    expect(find.widgetWithText(MenuItemButton, '630m'), findsNothing);
+  });
+
+  testWidgets('Radio dropdowns render at the same height as the sibling text fields', (tester) async {
+    await tester.pumpWidget(host());
+    await openControl(tester, MdiIcons.radio);
+
+    // The trailing arrow's default 48px min tap target used to make the
+    // dropdowns a few pixels taller than the Frequency field beside them.
+    final freqHeight = tester.getSize(find.widgetWithText(TextField, 'Frequency')).height;
+    final dropdowns = find.byType(DropdownMenu<String>);
+    expect(dropdowns, findsNWidgets(2));
+    expect(tester.getSize(dropdowns.at(0)).height, freqHeight);
+    expect(tester.getSize(dropdowns.at(1)).height, freqHeight);
+  });
+
+  testWidgets('typing in the Band dropdown filters the menu; focus-away selects the first match', (tester) async {
+    await tester.pumpWidget(host(radioService: fakeRadio, enabledBands: ['80m', '40m', '20m', '17m']));
+    await openControl(tester, MdiIcons.radio);
+
+    await tester.tap(find.widgetWithText(TextField, 'Band'));
+    await tester.pump();
+    await tester.enterText(find.widgetWithText(TextField, 'Band'), '4');
+    await tester.pump();
+    // hitTestable: DropdownMenu keeps an offstage copy of the ORIGINAL
+    // entries for width measurement — only the live menu reflects the
+    // filter.
+    expect(find.widgetWithText(MenuItemButton, '40m').hitTestable(), findsOneWidget);
+    expect(find.widgetWithText(MenuItemButton, '20m').hitTestable(), findsNothing);
+
+    // Moving focus away commits the first match as if it had been picked:
+    // the field text resolves, the VFO hears about it, and the menu closes.
+    await tester.tap(find.widgetWithText(TextField, 'Frequency'));
+    await tester.pump();
+    expect(tester.widget<TextField>(find.widgetWithText(TextField, 'Band')).controller!.text, '40m');
+    expect(fakeRadio.vfoA.band, '40m');
+    expect(find.byType(MenuItemButton).hitTestable(), findsNothing);
+    // Type-to-filter is a desktop affordance — on touch platforms the
+    // dropdown stays a pick-only button, so run these desktop-only.
+  }, variant: TargetPlatformVariant.only(TargetPlatform.macOS));
+
+  testWidgets('arrow keys step the Band selection while the menu is closed', (tester) async {
+    fakeRadio.setVfo('vfoA', freq: 14285);
+    await tester.pumpWidget(host(radioService: fakeRadio, enabledBands: ['80m', '40m', '20m']));
+    await openControl(tester, MdiIcons.radio);
+
+    // Tabbing into the field focuses it WITHOUT opening the menu (a tap
+    // always opens it) — the closed-menu arrow path is a keyboard flow.
+    await tester.tap(find.widgetWithText(TextField, 'Frequency'));
+    await tester.pump();
+    await tester.sendKeyDownEvent(LogicalKeyboardKey.shiftLeft);
+    await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+    await tester.sendKeyUpEvent(LogicalKeyboardKey.shiftLeft);
+    await tester.pump();
+    expect(
+      tester.widget<TextField>(find.widgetWithText(TextField, 'Band')).focusNode!.hasFocus,
+      isTrue,
+    );
+    expect(find.byType(MenuItemButton).hitTestable(), findsNothing);
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowUp);
+    await tester.pump();
+    expect(fakeRadio.vfoA.band, '40m');
+    expect(tester.widget<TextField>(find.widgetWithText(TextField, 'Band')).controller!.text, '40m');
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
+    await tester.pump();
+    expect(fakeRadio.vfoA.band, '20m');
+  }, variant: TargetPlatformVariant.only(TargetPlatform.macOS));
+
+  testWidgets('arrow keys walk the open Mode menu and blur commits the highlighted entry', (tester) async {
+    await tester.pumpWidget(host(radioService: fakeRadio, enabledModes: ['SSB', 'CW', 'FT8']));
+    await openControl(tester, MdiIcons.radio);
+
+    await tester.tap(find.widgetWithText(TextField, 'Mode'));
+    await tester.pump();
+    // Two downs from the initial SSB: highlight SSB, then CW — walking
+    // across a clock tick must not reset the highlight back to the top.
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
+    await tester.pump(const Duration(seconds: 1));
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
+    await tester.pump();
+    expect(tester.widget<TextField>(find.widgetWithText(TextField, 'Mode')).controller!.text, 'CW');
+
+    // Blur commits the walked-to entry and hides the menu.
+    await tester.tap(find.widgetWithText(TextField, 'Frequency'));
+    await tester.pump();
+    expect(fakeRadio.vfoA.mode, 'CW');
+    expect(find.byType(MenuItemButton).hitTestable(), findsNothing);
+  }, variant: TargetPlatformVariant.only(TargetPlatform.macOS));
+
+  testWidgets('typing a complete short band name narrows the menu instead of showing every band', (tester) async {
+    // Regression: the filter used to switch OFF the moment the typed text
+    // equalled a full option, so completing "2m" re-expanded the menu to
+    // the whole catalog on the last keystroke.
+    await tester.pumpWidget(host(radioService: fakeRadio, enabledBands: ['80m', '40m', '20m', '2m']));
+    await openControl(tester, MdiIcons.radio);
+
+    await tester.tap(find.widgetWithText(TextField, 'Band'));
+    await tester.pump();
+    await tester.enterText(find.widgetWithText(TextField, 'Band'), '2m');
+    await tester.pump();
+    // "2m" matches only 2m (20m/80m/40m don't contain "2m"); the menu stays
+    // narrowed rather than reverting to the full list.
+    expect(find.widgetWithText(MenuItemButton, '2m').hitTestable(), findsOneWidget);
+    expect(find.widgetWithText(MenuItemButton, '20m').hitTestable(), findsNothing);
+    expect(find.widgetWithText(MenuItemButton, '80m').hitTestable(), findsNothing);
+  }, variant: TargetPlatformVariant.only(TargetPlatform.macOS));
+
+  testWidgets('Enter from a focused Band dropdown commits the band and logs the QSO', (tester) async {
+    await tester.pumpWidget(host(radioService: fakeRadio, enabledBands: ['80m', '40m', '20m']));
+    await openControl(tester, MdiIcons.radio);
+    await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'W1AW');
+    await tester.pump();
+    await tester.tap(find.widgetWithText(TextField, 'Band'));
+    await tester.pump();
+    await tester.enterText(find.widgetWithText(TextField, 'Band'), '40');
+    await tester.pump();
+    // Enter both commits the typed band and reaches the root log shortcut.
+    await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+    final logged = await waitForQsos(tester, 1);
+    expect(logged, hasLength(1));
+    expect(logged.first.band, '40m');
+  }, variant: TargetPlatformVariant.only(TargetPlatform.macOS));
+
+  testWidgets('arrow keys keep a typed filter while walking the open menu', (tester) async {
+    await tester.pumpWidget(host(radioService: fakeRadio, enabledModes: ['SSB', 'CW', 'FT8', 'FT4', 'FM']));
+    await openControl(tester, MdiIcons.radio);
+
+    await tester.tap(find.widgetWithText(TextField, 'Mode'));
+    await tester.pump();
+    await tester.enterText(find.widgetWithText(TextField, 'Mode'), 'F');
+    await tester.pump();
+    // Filtered to the F-modes; SSB/CW gone.
+    expect(find.widgetWithText(MenuItemButton, 'FT8').hitTestable(), findsOneWidget);
+    expect(find.widgetWithText(MenuItemButton, 'SSB').hitTestable(), findsNothing);
+
+    // Arrows walk WITHIN the filtered set, and the menu stays filtered —
+    // the full-label writes the walk produces must not reset the filter,
+    // not even across a clock tick. First down highlights FT8, second FT4.
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
+    await tester.pump(const Duration(seconds: 1));
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
+    await tester.pump();
+    expect(find.widgetWithText(MenuItemButton, 'SSB').hitTestable(), findsNothing);
+    expect(find.widgetWithText(MenuItemButton, 'FT4').hitTestable(), findsOneWidget);
+    expect(tester.widget<TextField>(find.widgetWithText(TextField, 'Mode')).controller!.text, 'FT4');
+
+    await tester.tap(find.widgetWithText(TextField, 'Frequency'));
+    await tester.pump();
+    expect(fakeRadio.vfoA.mode, 'FT4');
+  }, variant: TargetPlatformVariant.only(TargetPlatform.macOS));
+
+  testWidgets('Enter commits the first matching mode; garbage text reverts', (tester) async {
+    await tester.pumpWidget(host(radioService: fakeRadio, enabledModes: ['SSB', 'CW', 'FT8']));
+    await openControl(tester, MdiIcons.radio);
+
+    await tester.tap(find.widgetWithText(TextField, 'Mode'));
+    await tester.pump();
+    await tester.enterText(find.widgetWithText(TextField, 'Mode'), 'f');
+    await tester.pump();
+    await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+    await tester.pump();
+    expect(tester.widget<TextField>(find.widgetWithText(TextField, 'Mode')).controller!.text, 'FT8');
+    expect(fakeRadio.vfoA.mode, 'FT8');
+
+    // Text matching nothing must not change the selection — it reverts.
+    await tester.tap(find.widgetWithText(TextField, 'Mode'));
+    await tester.pump();
+    await tester.enterText(find.widgetWithText(TextField, 'Mode'), 'zz');
+    await tester.pump();
+    await tester.tap(find.widgetWithText(TextField, 'Frequency'));
+    await tester.pump();
+    expect(tester.widget<TextField>(find.widgetWithText(TextField, 'Mode')).controller!.text, 'FT8');
+    expect(fakeRadio.vfoA.mode, 'FT8');
+  }, variant: TargetPlatformVariant.only(TargetPlatform.macOS));
+
+  testWidgets('an open Band menu holds its scroll position across the clock-tick rebuilds', (tester) async {
+    // A selected band matters: the rebuild-time re-scroll only fires when
+    // the field text matches an entry. Null enabled lists → the full
+    // 19-band catalog, taller than the 10.5-entry menu cap, so it scrolls.
+    fakeRadio.setVfo('vfoA', freq: 14285, mode: 'CW');
+    await tester.pumpWidget(host(radioService: fakeRadio));
+    await openControl(tester, MdiIcons.radio);
+    await tester.tap(find.widgetWithText(TextField, 'Band'));
+    await tester.pump();
+
+    final menuScrollable = find.ancestor(
+      of: find.widgetWithText(MenuItemButton, '2190m').last,
+      matching: find.byType(Scrollable),
+    );
+    final position = tester.widget<Scrollable>(menuScrollable.first).controller!.position;
+    position.jumpTo(200);
+    await tester.pump();
+    expect(position.pixels, 200);
+
+    // The Time chip's Timer.periodic setState rebuilds this widget every
+    // second; with enableSearch on, each rebuild re-scrolled the menu back
+    // to the selected entry, so the user could never scroll the list.
+    await tester.pump(const Duration(seconds: 1));
+    await tester.pump();
+    expect(position.pixels, 200);
   });
 
   testWidgets('a suggestedQso populates call/freq/band/mode for a new QSO', (tester) async {

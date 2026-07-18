@@ -16,6 +16,9 @@ export interface HookContext {
   // external service or file (e.g. a spot's "source" field, an ADIF
   // PROGRAMID header).
   appName?: string
+  /// The user's distance-units preference ('kilometers' | 'miles') — for
+  /// extensions that localize units (e.g. WEATHER's °F vs °C).
+  distanceUnits?: string
   /// Fetches one operation's QSON by uuid, with `uuid` folded in — the same
   /// shape hooks receive as an `operation` argument (see `qsonPayloadFor`
   /// on the Dart side). Resolves null when the uuid is unknown. For hooks
@@ -387,6 +390,10 @@ export interface CommandAction {
   /// bypassing its normal "once per version" gate — see
   /// `app/lib/main.dart`'s `_ReleaseOverlayGate`.
   devSplash?: Record<string, never>
+  /// Developer-only: re-shows the first-run onboarding overlay (DEVONBOARD),
+  /// bypassing its callsign-undefined gate — see `app/lib/main.dart`'s
+  /// `_OnboardingGate`.
+  devOnboard?: Record<string, never>
   [actionName: string]: unknown
 }
 
@@ -635,11 +642,19 @@ export type FormFieldType =
   | 'checkbox'
   | 'secret'
   | 'list'
+  | 'multiselect'
   | 'account'
 
 export interface FormFieldOption {
   label: string;
   value: any;
+  /// Only used when fieldType === 'multiselect': disclosure tiers.
+  /// `common: true` options show upfront; unflagged ones sit behind the
+  /// first disclosure step; `uncommon: true` ones behind the second (the
+  /// toggle then cycles Show more → Show all → Show fewer; without any
+  /// uncommon options it's just Show all / Show fewer).
+  common?: boolean;
+  uncommon?: boolean;
 }
 
 export interface FormField {
@@ -655,17 +670,25 @@ export interface FormField {
   /// that follows the uppercase-unless-explicitly-mixed-case rule (grids,
   /// states, RSTs) while free-prose fields (names, notes) stay unflagged.
   uppercase?: boolean
-  options?: FormFieldOption[]
+  /// The choices for 'select', 'radio', and 'multiselect'. Either inline
+  /// options, or the `$`-prefixed name of a system list (e.g.
+  /// `"$core.bands"`) — a named vocabulary the app resolves before
+  /// rendering; see docs/extensions/settings.md's "System lists".
+  options?: FormFieldOption[] | string
   validate?: (value: any, state: Record<string, any>) => string | null | undefined | Promise<string | null | undefined>
   transform?: (value: any, state: Record<string, any>) => any | Promise<any>
   /// Only used when fieldType === 'list'. `value` is then a
   /// Record<string, any>[], each item matching the shape described by
-  /// `itemFields`. Rows render as a summary (from `itemTitle`, templated
-  /// against the item's values) with edit/delete; edit/add reuse the same
-  /// form renderer recursively, scoped to `itemFields`, in a dialog.
+  /// `itemFields`. The field renders as a single row summarizing the items
+  /// (comma-separated `itemTitle`s); tapping opens an editor dialog with
+  /// per-item rows and add/edit/delete (edit/add reuse the same form
+  /// renderer recursively, scoped to `itemFields`, in a nested dialog).
   itemFields?: FormField[]
   itemTitle?: string
   orderable?: boolean
+  /// Only used when fieldType === 'multiselect': the selection the editor's
+  /// Defaults button restores. Omit it and no Defaults button is offered.
+  defaultValue?: any[]
   /// Only used when fieldType === 'account'. A read-only reference into the
   /// separate `account` hook system (see AccountHook) — renders a
   /// connection-status row (Connected as X / Not Connected) with a
@@ -737,7 +760,22 @@ export interface FormActionElement {
   devMode?: boolean
 }
 
-export type FormElement = FormField | FormHeader | FormSectionDivider | FormMarkdownBlock | FormActionElement
+/// A row that opens an external URL (rendered as an icon-row-styled tile
+/// with an open-in-new icon button). How the URL opens is app policy — the
+/// element only declares the destination.
+export interface FormLinkElement {
+  type: 'link'
+  /// Identifies the element (e.g. to search); not a field — links carry no
+  /// value and never appear in form state.
+  key?: string
+  label: string
+  url: string
+  icon?: string
+  description?: string
+  devMode?: boolean
+}
+
+export type FormElement = FormField | FormHeader | FormSectionDivider | FormMarkdownBlock | FormActionElement | FormLinkElement
 
 export interface FormDefinition {
   title?: string

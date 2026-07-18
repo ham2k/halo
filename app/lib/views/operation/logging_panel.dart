@@ -76,6 +76,12 @@ class _LoggingPanelState extends State<LoggingPanel> {
       widget.services.settings.secondaryControlsOrder;
   late Set<String> _hiddenControls =
       widget.services.settings.hiddenSecondaryControls;
+  // Read once, not per build: each getter re-parses the logging prefs JSON,
+  // and this panel rebuilds on every QSO-stream emission. Fresh values
+  // arrive with a fresh panel — the settings view is only reachable from
+  // Home, so this state never survives a bands/modes edit.
+  late final List<String> _enabledBands = widget.services.settings.enabledBands;
+  late final List<String> _enabledModes = widget.services.settings.enabledModes;
 
   void _handleSelectQso(Qso qso) {
     setState(() {
@@ -145,8 +151,11 @@ class _LoggingPanelState extends State<LoggingPanel> {
           qsosRepository: widget.services.qsos,
           qsos: widget.qsos,
           settings: widget.services.settings,
+          enabledBands: _enabledBands,
+          enabledModes: _enabledModes,
           radioService: widget.services.radio,
           lookup: widget.services.extensions.lookupCall,
+          enqueueLookup: widget.services.lookupQueue.enqueue,
           activityControls: widget.loggingControls,
           refreshActivityControls: (qso) => widget.services.extensions
               .loggingControls(widget.operation.data, qso: qso),

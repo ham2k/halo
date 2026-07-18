@@ -40,7 +40,9 @@ class TranslationsEs extends Translations with BaseTranslations<AppLocale, Trans
 
 	// Translations
 	@override late final _Translations$common$es common = _Translations$common$es._(_root);
+	@override late final _Translations$onboarding$es onboarding = _Translations$onboarding$es._(_root);
 	@override late final _Translations$startScreen$es startScreen = _Translations$startScreen$es._(_root);
+	@override late final _Translations$extensionsPanel$es extensionsPanel = _Translations$extensionsPanel$es._(_root);
 	@override late final _Translations$home$es home = _Translations$home$es._(_root);
 	@override late final _Translations$dialogs$es dialogs = _Translations$dialogs$es._(_root);
 	@override late final _Translations$operation$es operation = _Translations$operation$es._(_root);
@@ -69,6 +71,36 @@ class _Translations$common$es extends Translations$common$en {
 	@override String get apply => 'Aplicar';
 }
 
+// Path: onboarding
+class _Translations$onboarding$es extends Translations$onboarding$en {
+	_Translations$onboarding$es._(TranslationsEs root) : this._root = root, super.internal(root);
+
+	final TranslationsEs _root; // ignore: unused_field
+
+	// Translations
+	@override String get welcomeTitle => '¡Bienvenido a Ham2K Portable Logger!';
+	@override String get welcomeTitleDesktop => '¡Bienvenido a Ham2K Logger!';
+	@override String get welcomeBody => 'Tenemos algunas preguntas para ayudarnos a servirte mejor.';
+	@override String get skip => 'Omitir';
+	@override String get kContinue => 'Continuar';
+	@override String get back => 'Atrás';
+	@override String get next => 'Siguiente';
+	@override String get done => 'Listo';
+	@override String get callsignTitle => '¿Cuál es tu indicativo?';
+	@override String get callsignBody => 'Necesitas una licencia de radioaficionado para que esta app te resulte útil';
+	@override String get callsignLabel => 'Indicativo del operador';
+	@override String get activitiesTitle => 'Actividades favoritas';
+	@override String get activitiesBody => '¿Te interesa alguno de estos populares programas de activación?';
+	@override String get activitiesFooter => '(Encontrarás más opciones en la Configuración)';
+	@override String get activityPota => 'Parks On The Air';
+	@override String get activitySota => 'Summits On The Air';
+	@override String get consentTitle => 'Datos y Privacidad';
+	@override String get consentUsageBody => 'Para ayudarnos a mejorar la app, nos gustaría recopilar datos de rendimiento, fallos y uso.';
+	@override String get consentUsageLabel => 'Compartir datos de uso';
+	@override String get consentOperationBody => 'Algunas funciones pueden implicar compartir datos de tus operaciones con otros usuarios. Puedes desactivarlo en cualquier momento.';
+	@override String get consentOperationLabel => 'Compartir datos de operaciones';
+}
+
 // Path: startScreen
 class _Translations$startScreen$es extends Translations$startScreen$en {
 	_Translations$startScreen$es._(TranslationsEs root) : this._root = root, super.internal(root);
@@ -77,6 +109,21 @@ class _Translations$startScreen$es extends Translations$startScreen$en {
 
 	// Translations
 	@override String get credits => 'por KI2D y amigos';
+}
+
+// Path: extensionsPanel
+class _Translations$extensionsPanel$es extends Translations$extensionsPanel$en {
+	_Translations$extensionsPanel$es._(TranslationsEs root) : this._root = root, super.internal(root);
+
+	final TranslationsEs _root; // ignore: unused_field
+
+	// Translations
+	@override String get categoryActivity => 'Actividades';
+	@override String get categoryLookup => 'Búsqueda de indicativos';
+	@override String get categoryOther => 'Otras extensiones';
+	@override String get searchHint => 'Buscar extensiones';
+	@override String get applying => 'Activando cambios de extensiones, esto puede tardar un momento…';
+	@override String get noMatches => 'Ninguna extensión coincide con tu búsqueda';
 }
 
 // Path: home
@@ -268,6 +315,9 @@ class _Translations$settings$es extends Translations$settings$en {
 	@override String get distanceUnits => 'Unidades de distancia';
 	@override late final _Translations$settings$distanceUnitsOpts$es distanceUnitsOpts = _Translations$settings$distanceUnitsOpts$es._(_root);
 	@override String get distanceUnitsDescription => 'Para las distancias mostradas en el mapa';
+	@override String get userInterface => 'Interfaz de Usuario';
+	@override late final _Translations$settings$logging$es logging = _Translations$settings$logging$es._(_root);
+	@override late final _Translations$settings$privacy$es privacy = _Translations$settings$privacy$es._(_root);
 	@override String get operatorCall => 'Indicativo del Operador';
 	@override late final _Translations$settings$sync$es sync = _Translations$settings$sync$es._(_root);
 	@override late final _Translations$settings$qrz$es qrz = _Translations$settings$qrz$es._(_root);
@@ -334,6 +384,7 @@ class _Translations$operation$menu$es extends Translations$operation$menu$en {
 	@override String get showGridField => 'Mostrar campo Locador';
 	@override String get showDeletedQsos => 'Mostrar QSOs eliminados';
 	@override String get showQsoNumbers => 'Mostrar números de QSO';
+	@override String get lookupAllQsos => 'Buscar datos de todos los QSOs';
 }
 
 // Path: operation.export
@@ -432,6 +483,38 @@ class _Translations$settings$distanceUnitsOpts$es extends Translations$settings$
 	@override String get miles => 'Millas';
 }
 
+// Path: settings.logging
+class _Translations$settings$logging$es extends Translations$settings$logging$en {
+	_Translations$settings$logging$es._(TranslationsEs root) : this._root = root, super.internal(root);
+
+	final TranslationsEs _root; // ignore: unused_field
+
+	// Translations
+	@override String get title => 'Registro';
+	@override late final _Translations$settings$logging$leftieMode$es leftieMode = _Translations$settings$logging$leftieMode$es._(_root);
+	@override late final _Translations$settings$logging$fieldsOnTop$es fieldsOnTop = _Translations$settings$logging$fieldsOnTop$es._(_root);
+	@override late final _Translations$settings$logging$countryFlags$es countryFlags = _Translations$settings$logging$countryFlags$es._(_root);
+	@override late final _Translations$settings$logging$showBearing$es showBearing = _Translations$settings$logging$showBearing$es._(_root);
+	@override late final _Translations$settings$logging$switchSentRcvd$es switchSentRcvd = _Translations$settings$logging$switchSentRcvd$es._(_root);
+	@override late final _Translations$settings$logging$jumpAfterRST$es jumpAfterRST = _Translations$settings$logging$jumpAfterRST$es._(_root);
+	@override String get bands => 'Bandas';
+	@override String get modes => 'Modos';
+}
+
+// Path: settings.privacy
+class _Translations$settings$privacy$es extends Translations$settings$privacy$en {
+	_Translations$settings$privacy$es._(TranslationsEs root) : this._root = root, super.internal(root);
+
+	final TranslationsEs _root; // ignore: unused_field
+
+	// Translations
+	@override String get title => 'Privacidad';
+	@override late final _Translations$settings$privacy$shareAppData$es shareAppData = _Translations$settings$privacy$shareAppData$es._(_root);
+	@override late final _Translations$settings$privacy$shareOpData$es shareOpData = _Translations$settings$privacy$shareOpData$es._(_root);
+	@override String get privacyPolicy => 'Política de Privacidad';
+	@override String get termsOfService => 'Términos de Servicio';
+}
+
 // Path: settings.sync
 class _Translations$settings$sync$es extends Translations$settings$sync$en {
 	_Translations$settings$sync$es._(TranslationsEs root) : this._root = root, super.internal(root);
@@ -491,6 +574,103 @@ class _Translations$operation$spots$filters$es extends Translations$operation$sp
 	@override String get groupCallsWithNotes => 'Agrupar indicativos destacados';
 }
 
+// Path: settings.logging.leftieMode
+class _Translations$settings$logging$leftieMode$es extends Translations$settings$logging$leftieMode$en {
+	_Translations$settings$logging$leftieMode$es._(TranslationsEs root) : this._root = root, super.internal(root);
+
+	final TranslationsEs _root; // ignore: unused_field
+
+	// Translations
+	@override String get title => 'Modo Zurdo';
+	@override String get descriptionOn => 'Usar diseño para zurdos';
+	@override String get descriptionOff => 'Usar diseño para diestros';
+}
+
+// Path: settings.logging.fieldsOnTop
+class _Translations$settings$logging$fieldsOnTop$es extends Translations$settings$logging$fieldsOnTop$en {
+	_Translations$settings$logging$fieldsOnTop$es._(TranslationsEs root) : this._root = root, super.internal(root);
+
+	final TranslationsEs _root; // ignore: unused_field
+
+	// Translations
+	@override String get title => 'Campos arriba';
+	@override String get descriptionOn => 'Campos de registro encima de la lista de QSOs, más recientes primero';
+	@override String get descriptionOff => 'Campos de registro debajo de la lista de QSOs';
+}
+
+// Path: settings.logging.countryFlags
+class _Translations$settings$logging$countryFlags$es extends Translations$settings$logging$countryFlags$en {
+	_Translations$settings$logging$countryFlags$es._(TranslationsEs root) : this._root = root, super.internal(root);
+
+	final TranslationsEs _root; // ignore: unused_field
+
+	// Translations
+	@override String get title => 'Banderas de País';
+	@override String get dx => 'Mostrar solo para contactos DX';
+	@override String get all => 'Mostrar banderas para todos los contactos';
+	@override String get none => 'No mostrar banderas';
+}
+
+// Path: settings.logging.showBearing
+class _Translations$settings$logging$showBearing$es extends Translations$settings$logging$showBearing$en {
+	_Translations$settings$logging$showBearing$es._(TranslationsEs root) : this._root = root, super.internal(root);
+
+	final TranslationsEs _root; // ignore: unused_field
+
+	// Translations
+	@override String get title => 'Mostrar Rumbo';
+	@override String get descriptionOn => 'Mostrar rumbo estimado a la estación';
+	@override String get descriptionOff => 'No mostrar información de rumbo';
+}
+
+// Path: settings.logging.switchSentRcvd
+class _Translations$settings$logging$switchSentRcvd$es extends Translations$settings$logging$switchSentRcvd$en {
+	_Translations$settings$logging$switchSentRcvd$es._(TranslationsEs root) : this._root = root, super.internal(root);
+
+	final TranslationsEs _root; // ignore: unused_field
+
+	// Translations
+	@override String get title => 'Cambiar orden de reportes de señal';
+	@override String get sentFirst => 'Enviado primero, Recibido después';
+	@override String get rcvdFirst => 'Recibido primero, Enviado después';
+}
+
+// Path: settings.logging.jumpAfterRST
+class _Translations$settings$logging$jumpAfterRST$es extends Translations$settings$logging$jumpAfterRST$en {
+	_Translations$settings$logging$jumpAfterRST$es._(TranslationsEs root) : this._root = root, super.internal(root);
+
+	final TranslationsEs _root; // ignore: unused_field
+
+	// Translations
+	@override String get title => 'Saltar al siguiente campo al ingresar RST';
+	@override String get descriptionOn => 'Saltar después de ingresar el RST';
+	@override String get descriptionOff => 'No saltar automáticamente';
+}
+
+// Path: settings.privacy.shareAppData
+class _Translations$settings$privacy$shareAppData$es extends Translations$settings$privacy$shareAppData$en {
+	_Translations$settings$privacy$shareAppData$es._(TranslationsEs root) : this._root = root, super.internal(root);
+
+	final TranslationsEs _root; // ignore: unused_field
+
+	// Translations
+	@override String get title => 'Compartir datos de uso';
+	@override String get descriptionOn => 'Ayúdanos a mejorar la app compartiendo datos de uso, fallos y rendimiento';
+	@override String get descriptionOff => 'Mantener privados los datos de uso.\nEl equipo de Ham2K no podrá detectar fallos u otros problemas.';
+}
+
+// Path: settings.privacy.shareOpData
+class _Translations$settings$privacy$shareOpData$es extends Translations$settings$privacy$shareOpData$en {
+	_Translations$settings$privacy$shareOpData$es._(TranslationsEs root) : this._root = root, super.internal(root);
+
+	final TranslationsEs _root; // ignore: unused_field
+
+	// Translations
+	@override String get title => 'Compartir datos de operaciones';
+	@override String get descriptionOn => 'Compartir algunos datos de operaciones públicamente y con otros usuarios';
+	@override String get descriptionOff => 'Mantener privados los datos de operaciones';
+}
+
 /// The flat map containing all translations for locale <es>.
 /// Only for edge cases! For simple maps, use the map function of this library.
 ///
@@ -505,7 +685,34 @@ extension on TranslationsEs {
 			'common.create' => 'Crear',
 			'common.error' => 'Error',
 			'common.apply' => 'Aplicar',
+			'onboarding.welcomeTitle' => '¡Bienvenido a Ham2K Portable Logger!',
+			'onboarding.welcomeTitleDesktop' => '¡Bienvenido a Ham2K Logger!',
+			'onboarding.welcomeBody' => 'Tenemos algunas preguntas para ayudarnos a servirte mejor.',
+			'onboarding.skip' => 'Omitir',
+			'onboarding.kContinue' => 'Continuar',
+			'onboarding.back' => 'Atrás',
+			'onboarding.next' => 'Siguiente',
+			'onboarding.done' => 'Listo',
+			'onboarding.callsignTitle' => '¿Cuál es tu indicativo?',
+			'onboarding.callsignBody' => 'Necesitas una licencia de radioaficionado para que esta app te resulte útil',
+			'onboarding.callsignLabel' => 'Indicativo del operador',
+			'onboarding.activitiesTitle' => 'Actividades favoritas',
+			'onboarding.activitiesBody' => '¿Te interesa alguno de estos populares programas de activación?',
+			'onboarding.activitiesFooter' => '(Encontrarás más opciones en la Configuración)',
+			'onboarding.activityPota' => 'Parks On The Air',
+			'onboarding.activitySota' => 'Summits On The Air',
+			'onboarding.consentTitle' => 'Datos y Privacidad',
+			'onboarding.consentUsageBody' => 'Para ayudarnos a mejorar la app, nos gustaría recopilar datos de rendimiento, fallos y uso.',
+			'onboarding.consentUsageLabel' => 'Compartir datos de uso',
+			'onboarding.consentOperationBody' => 'Algunas funciones pueden implicar compartir datos de tus operaciones con otros usuarios. Puedes desactivarlo en cualquier momento.',
+			'onboarding.consentOperationLabel' => 'Compartir datos de operaciones',
 			'startScreen.credits' => 'por KI2D y amigos',
+			'extensionsPanel.categoryActivity' => 'Actividades',
+			'extensionsPanel.categoryLookup' => 'Búsqueda de indicativos',
+			'extensionsPanel.categoryOther' => 'Otras extensiones',
+			'extensionsPanel.searchHint' => 'Buscar extensiones',
+			'extensionsPanel.applying' => 'Activando cambios de extensiones, esto puede tardar un momento…',
+			'extensionsPanel.noMatches' => 'Ninguna extensión coincide con tu búsqueda',
 			'home.title' => 'Registrador Portátil',
 			'home.titleDesktop' => 'Registrador de Escritorio',
 			'home.newOperation' => 'Nueva operación',
@@ -537,6 +744,7 @@ extension on TranslationsEs {
 			'operation.menu.showGridField' => 'Mostrar campo Locador',
 			'operation.menu.showDeletedQsos' => 'Mostrar QSOs eliminados',
 			'operation.menu.showQsoNumbers' => 'Mostrar números de QSO',
+			'operation.menu.lookupAllQsos' => 'Buscar datos de todos los QSOs',
 			'operation.export.title' => 'Exportar',
 			'operation.export.syncedOperation' => 'La operación está sincronizada',
 			'operation.export.unsyncedOperation' => 'La operación tiene cambios sin sincronizar',
@@ -670,6 +878,38 @@ extension on TranslationsEs {
 			'settings.distanceUnitsOpts.kilometers' => 'Kilómetros',
 			'settings.distanceUnitsOpts.miles' => 'Millas',
 			'settings.distanceUnitsDescription' => 'Para las distancias mostradas en el mapa',
+			'settings.userInterface' => 'Interfaz de Usuario',
+			'settings.logging.title' => 'Registro',
+			'settings.logging.leftieMode.title' => 'Modo Zurdo',
+			'settings.logging.leftieMode.descriptionOn' => 'Usar diseño para zurdos',
+			'settings.logging.leftieMode.descriptionOff' => 'Usar diseño para diestros',
+			'settings.logging.fieldsOnTop.title' => 'Campos arriba',
+			'settings.logging.fieldsOnTop.descriptionOn' => 'Campos de registro encima de la lista de QSOs, más recientes primero',
+			'settings.logging.fieldsOnTop.descriptionOff' => 'Campos de registro debajo de la lista de QSOs',
+			'settings.logging.countryFlags.title' => 'Banderas de País',
+			'settings.logging.countryFlags.dx' => 'Mostrar solo para contactos DX',
+			'settings.logging.countryFlags.all' => 'Mostrar banderas para todos los contactos',
+			'settings.logging.countryFlags.none' => 'No mostrar banderas',
+			'settings.logging.showBearing.title' => 'Mostrar Rumbo',
+			'settings.logging.showBearing.descriptionOn' => 'Mostrar rumbo estimado a la estación',
+			'settings.logging.showBearing.descriptionOff' => 'No mostrar información de rumbo',
+			'settings.logging.switchSentRcvd.title' => 'Cambiar orden de reportes de señal',
+			'settings.logging.switchSentRcvd.sentFirst' => 'Enviado primero, Recibido después',
+			'settings.logging.switchSentRcvd.rcvdFirst' => 'Recibido primero, Enviado después',
+			'settings.logging.jumpAfterRST.title' => 'Saltar al siguiente campo al ingresar RST',
+			'settings.logging.jumpAfterRST.descriptionOn' => 'Saltar después de ingresar el RST',
+			'settings.logging.jumpAfterRST.descriptionOff' => 'No saltar automáticamente',
+			'settings.logging.bands' => 'Bandas',
+			'settings.logging.modes' => 'Modos',
+			'settings.privacy.title' => 'Privacidad',
+			'settings.privacy.shareAppData.title' => 'Compartir datos de uso',
+			'settings.privacy.shareAppData.descriptionOn' => 'Ayúdanos a mejorar la app compartiendo datos de uso, fallos y rendimiento',
+			'settings.privacy.shareAppData.descriptionOff' => 'Mantener privados los datos de uso.\nEl equipo de Ham2K no podrá detectar fallos u otros problemas.',
+			'settings.privacy.shareOpData.title' => 'Compartir datos de operaciones',
+			'settings.privacy.shareOpData.descriptionOn' => 'Compartir algunos datos de operaciones públicamente y con otros usuarios',
+			'settings.privacy.shareOpData.descriptionOff' => 'Mantener privados los datos de operaciones',
+			'settings.privacy.privacyPolicy' => 'Política de Privacidad',
+			'settings.privacy.termsOfService' => 'Términos de Servicio',
 			'settings.operatorCall' => 'Indicativo del Operador',
 			'settings.sync.title' => 'Configuración de Sincronización',
 			'settings.sync.enable' => 'Habilitar Sincronización',

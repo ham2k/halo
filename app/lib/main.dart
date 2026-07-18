@@ -19,6 +19,7 @@ import 'package:halo_widgets/halo_widgets.dart';
 
 import 'views/operation_view.dart';
 import 'views/home_view.dart';
+import 'views/onboarding_overlay.dart';
 import 'views/release_overlay.dart';
 import 'views/splash_view.dart';
 import 'config/release_notes.dart';
@@ -26,12 +27,16 @@ import 'config/version.dart';
 import 'services/export_service.dart';
 import 'services/extension_service.dart';
 import 'services/location_service.dart';
+import 'services/lookup_queue_service.dart';
 import 'services/metrics_service.dart';
 import 'services/purchase_service.dart';
 import 'services/radio_service.dart';
 import 'services/scoring_service.dart';
 import 'services/settings_service.dart';
 import 'services/status_bar_service.dart';
+import 'settings/core_settings_groups.dart';
+import 'settings/settings_registry.dart';
+import 'settings/system_lists.dart';
 import 'services/window_chrome_service.dart';
 import 'services/update_service.dart';
 import 'services/data_file_manager.dart';
@@ -220,13 +225,16 @@ Future<HaLoServices> bootstrap({
     await settings.setQrzCredentials(username: '', password: '');
   }
   final syncDeviceKey = await settings.ensureSyncDeviceKey();
-  services.extensions.setSyncCredentials(deviceKey: syncDeviceKey, operatorCall: settings.operatorCall);
+  services.extensions.setSyncCredentials(deviceKey: syncDeviceKey, operatorCall: settings.activeProfile.operatorCall);
   services.syncEngine.start();
 
   // Await the extension system being fully booted, then initialize and sync data files
   unawaited(extensions.start().then((_) async {
     await services.dataFiles.loadRawDataFiles();
     await services.dataFiles.syncAllDataFiles();
+    // After the enabled extensions have refreshed their data-file ownership
+    // records, drop the data of any extension disabled long enough ago.
+    await services.dataFiles.purgeStaleExtensionData(settings.extensionDisabledSince);
   }).catchError((e) {
     debugPrint('[boot] failed to initialize data files: $e');
   }));
@@ -257,11 +265,38 @@ class HaLoServices {
     statusBar: statusBar,
   );
   late final StatusBarService statusBar = StatusBarService(settings.prefs);
+  late final LookupQueueService lookupQueue = LookupQueueService(
+    lookup: extensions.lookupCall,
+    qsos: qsos,
+    operations: operations,
+    statusBar: statusBar,
+    lookupReady: () => extensions.ready,
+  );
+
+  /// Named option vocabularies for `options: "$name"` settings
+  /// declarations (see settings/system_lists.dart).
+  late final SystemLists systemLists = SystemLists();
+
+  /// The declarative settings groups (docs in settings/settings_registry.dart)
+  /// rendered by the Common Settings and All Settings panels. Extension
+  /// panels aren't registered here — the All Settings panel composes them
+  /// from [ExtensionService.getSettingsPanels] at build time (the runtime
+  /// boots asynchronously).
+  late final SettingsRegistry settingsRegistry = SettingsRegistry()
+    ..register(GeneralSettingsGroup(settings, extensions))
+    ..register(LoggingSettingsGroup(settings))
+    ..register(PrivacySettingsGroup(settings))
+    ..register(SyncSettingsGroup(settings, onToggle: setSyncEnabled));
 
   /// Fires on DEVSPLASH (`handleCommandAction`'s `devSplash` case) —
   /// `_ReleaseOverlayGateState` listens for this to force-show the release
   /// overlay on demand, bypassing its normal once-per-version gate.
-  final DevSplashTrigger devSplashTrigger = DevSplashTrigger();
+  final DevOverlayTrigger devSplashTrigger = DevOverlayTrigger();
+
+  /// DEVONBOARD's counterpart: `_OnboardingGateState` listens for this to
+  /// force-show the onboarding overlay, bypassing its callsign-undefined
+  /// gate.
+  final DevOverlayTrigger devOnboardTrigger = DevOverlayTrigger();
 
   /// The dirty-flag sync loop (DESIGN.md §4) — batching and bookkeeping stay
   /// here in Dart; only the network call crosses into the `ham2k-lofi`
@@ -336,12 +371,14 @@ class HaLoServices {
 
 
   /// Same one-call pattern as `setQrzCredentials`, for the sync device
-  /// identity + operator callsign.
+  /// identity + operator callsign. Writes to the default profile — the
+  /// Callsign settings panel edits that one; sync follows the ACTIVE
+  /// profile's callsign (the same profile until multi-profile lands).
   Future<void> setOperatorCall(String call) async {
-    await settings.setOperatorCall(call);
+    await settings.setProfileOperatorCall(SettingsService.defaultProfileId, call);
     await extensions.setSyncCredentials(
       deviceKey: await settings.ensureSyncDeviceKey(),
-      operatorCall: settings.operatorCall,
+      operatorCall: settings.activeProfile.operatorCall,
     );
   }
 
@@ -420,6 +457,9 @@ class HaLoServices {
       case 'devSplash':
         devSplashTrigger.trigger();
         return null;
+      case 'devOnboard':
+        devOnboardTrigger.trigger();
+        return null;
       case 'sendSpots':
         return _sendSpot(params ?? const {});
       default:
@@ -449,7 +489,7 @@ class HaLoServices {
       freq: freq,
       mode: params['mode'] as String?,
       comment: params['comment'] as String?,
-      spotterCall: settings.operatorCall,
+      spotterCall: settings.activeProfile.operatorCall,
     );
 
     final summaries = <String>[];
@@ -575,13 +615,22 @@ class _HaLoAppState extends State<HaLoApp> {
           // float over every route's header from here — the same "window
           // chrome above app content" role the native traffic lights play
           // on macOS. Headers reserve trailing room via
-          // windowsCaptionClearance.
-          final content = isWindowsChromelessWindow
-              ? Stack(children: [
-                  child,
-                  const Positioned(top: 0, right: 0, child: WindowsCaptionButtons()),
-                ])
-              : child;
+          // windowsCaptionClearance. On macOS the native traffic lights
+          // already float there; we overlay a same-colored mask beneath them
+          // (MacOSTrafficLightMask) so header content animating through the
+          // top-left corner doesn't flash out around the buttons.
+          Widget content = child;
+          if (isWindowsChromelessWindow) {
+            content = Stack(children: [
+              content,
+              const Positioned(top: 0, right: 0, child: WindowsCaptionButtons()),
+            ]);
+          } else if (isMacOSChromelessWindow) {
+            content = Stack(children: [
+              content,
+              const Positioned(top: 0, left: 0, child: MacOSTrafficLightMask()),
+            ]);
+          }
 
           return ValueListenableBuilder<bool>(
             valueListenable: macOSWindowIsFullScreen,
@@ -589,15 +638,139 @@ class _HaLoAppState extends State<HaLoApp> {
               isFullScreen: isFullScreen,
               child: UiScale(
                 scale: scale,
-                child: _ReleaseOverlayGate(
+                child: _OnboardingGate(
                   services: widget.services,
-                  child: _StatusBarOverlay(services: widget.services, child: content),
+                  child: _ReleaseOverlayGate(
+                    services: widget.services,
+                    child: _StatusBarOverlay(services: widget.services, child: content),
+                  ),
                 ),
               ),
             ),
           );
         },
       ),
+    );
+  }
+}
+
+/// First-run onboarding (Issue #43): wraps the release overlay gate so the
+/// onboarding paints on top of everything, whenever the default profile has
+/// NEVER had a callsign set — undefined, not '' (an explicit empty from a
+/// previous Skip counts as answered). Same presentation split as the
+/// release overlay: full screen on XS/S, `wideModalChrome` on L/XL — but
+/// with no barrier dismissal; the flow's own Skip/Done are the exits.
+class _OnboardingGate extends StatefulWidget {
+  final HaLoServices services;
+  final Widget child;
+
+  const _OnboardingGate({required this.services, required this.child});
+
+  @override
+  State<_OnboardingGate> createState() => _OnboardingGateState();
+}
+
+class _OnboardingGateState extends State<_OnboardingGate> {
+  bool _pending = false;
+  ReleaseNotesEntry? _release;
+
+  /// Whether the current showing is the organic first run (vs a DEVONBOARD
+  /// re-show) — only the first run stamps the release notes as seen.
+  bool _firstRun = false;
+
+  @override
+  void initState() {
+    super.initState();
+    if (!widget.services.settings.defaultProfileCallsignDefined) {
+      _firstRun = true;
+      _show();
+    }
+    widget.services.devOnboardTrigger.addListener(_show);
+  }
+
+  @override
+  void dispose() {
+    widget.services.devOnboardTrigger.removeListener(_show);
+    super.dispose();
+  }
+
+  /// First run, or DEVONBOARD (which bypasses the callsign-undefined gate
+  /// for iterating on the flow — and is real: its Done writes settings).
+  /// Re-triggering during the dismissal fade re-arms the overlay.
+  void _show() {
+    if (!mounted) return;
+    setState(() {
+      _pending = true;
+      _dismissing = false;
+    });
+    // The background photo is the newest release's — same imagery as the
+    // release overlay. Fine to arrive late (or never): the overlay shows
+    // a plain backdrop until then.
+    loadReleaseNotes().then((notes) {
+      if (mounted && notes.isNotEmpty) setState(() => _release = notes.first);
+    });
+  }
+
+  /// True while the finished overlay dissolves into the home screen —
+  /// removed from the tree only once the fade completes.
+  bool _dismissing = false;
+
+  void _dismiss() {
+    if (_dismissing) return;
+    // A fresh install doesn't need "what's new" for the version it just
+    // installed — mark it seen so the release overlay doesn't follow the
+    // onboarding (its own gate also skips while onboarding is pending).
+    // NOT on DEVONBOARD re-shows: those never displayed any notes, and
+    // stamping would suppress a pending release overlay.
+    if (_firstRun) widget.services.settings.setLastSeenReleaseVersion(kPublicVersion);
+    setState(() => _dismissing = true);
+  }
+
+  void _finalizeDismiss() {
+    if (!mounted || !_dismissing) return;
+    setState(() {
+      _pending = false;
+      _dismissing = false;
+      _firstRun = false;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    Widget? overlay;
+    if (_pending) {
+      Widget view = OnboardingOverlayView(
+        // A fresh State per showing (matters for DEVONBOARD re-shows —
+        // step position and toggles reset).
+        key: ValueKey('onboarding-$_firstRun-$_pending'),
+        services: widget.services,
+        release: _release,
+        onDone: _dismiss,
+      );
+      if (ShirtSize.of(context).isTwoPane) {
+        // No barrier dismissal — onboarding exits through its own Skip/Done.
+        view = wideModalChrome(context: context, onDismiss: () {}, child: view);
+      }
+      // The onboarding subtree mounts inside its OWN Overlay (Overlay.wrap):
+      // this gate sits in MaterialApp.builder, above the Navigator, and the
+      // callsign step's TextField requires an Overlay ancestor. Done/Skip
+      // dissolve the whole overlay (chrome included) into the home screen
+      // rather than cutting away.
+      overlay = Positioned.fill(
+        child: AnimatedOpacity(
+          opacity: _dismissing ? 0 : 1,
+          duration: const Duration(milliseconds: 350),
+          curve: Curves.easeOut,
+          onEnd: _finalizeDismiss,
+          child: IgnorePointer(ignoring: _dismissing, child: Overlay.wrap(child: view)),
+        ),
+      );
+    }
+    return Stack(
+      children: [
+        widget.child,
+        if (overlay != null) overlay,
+      ],
     );
   }
 }
@@ -634,6 +807,9 @@ class _ReleaseOverlayGateState extends State<_ReleaseOverlayGate> {
   }
 
   Future<void> _checkForNewRelease() async {
+    // First run: onboarding is showing (see _OnboardingGate) and marks this
+    // version seen on dismissal — don't stack "what's new" behind it.
+    if (!widget.services.settings.defaultProfileCallsignDefined) return;
     if (widget.services.settings.lastSeenReleaseVersion == kPublicVersion) return;
     final notes = await loadReleaseNotes();
     ReleaseNotesEntry? current;
@@ -695,10 +871,11 @@ class _ReleaseOverlayGateState extends State<_ReleaseOverlayGate> {
   }
 }
 
-/// A bare `notifyListeners()` signal — `HaLoServices.devSplashTrigger`'s
-/// only job is telling `_ReleaseOverlayGateState` "show the release overlay
-/// now" (DEVSPLASH), so it carries no state of its own.
-class DevSplashTrigger extends ChangeNotifier {
+/// A bare `notifyListeners()` signal for the dev commands that force-show a
+/// startup overlay: `devSplashTrigger` (DEVSPLASH → release overlay) and
+/// `devOnboardTrigger` (DEVONBOARD → onboarding overlay). Carries no state
+/// of its own.
+class DevOverlayTrigger extends ChangeNotifier {
   void trigger() => notifyListeners();
 }
 

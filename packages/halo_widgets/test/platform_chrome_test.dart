@@ -149,6 +149,108 @@ void main() {
     }
   });
 
+  testWidgets('the traffic-light mask paints the header colour fading to transparent, at fixed clearance width',
+      (tester) async {
+    // The mask hides header content that animates through the top-left corner
+    // under the native buttons: it must be the header's own colour (invisible
+    // against the header) and fade to transparent toward the content so masked
+    // elements dissolve rather than hard-clip at its edge.
+    debugDefaultTargetPlatformOverride = TargetPlatform.macOS;
+    try {
+      const headerColor = Color(0xFF123456);
+      await tester.pumpWidget(MaterialApp(
+        theme: ThemeData(appBarTheme: const AppBarTheme(backgroundColor: headerColor, toolbarHeight: 48)),
+        home: const Scaffold(body: Align(alignment: Alignment.topLeft, child: MacOSTrafficLightMask())),
+      ));
+
+      final box = tester.widget<DecoratedBox>(find.descendant(
+        of: find.byType(MacOSTrafficLightMask),
+        matching: find.byType(DecoratedBox),
+      ));
+      final gradient = (box.decoration as BoxDecoration).gradient! as LinearGradient;
+      // Opaque header colour on the left (under the buttons)…
+      expect(gradient.colors.first, headerColor);
+      expect(gradient.begin, Alignment.centerLeft);
+      // …fading to fully transparent on the right (toward the header content).
+      expect(gradient.colors.last, headerColor.withValues(alpha: 0));
+      expect(gradient.end, Alignment.centerRight);
+
+      // Fixed physical clearance width (the buttons don't scale), full header
+      // height.
+      final size = tester.getSize(find.byType(MacOSTrafficLightMask));
+      expect(size.width, macOSTrafficLightInset + macOSTrafficLightGap);
+      expect(size.height, 48);
+    } finally {
+      debugDefaultTargetPlatformOverride = null;
+    }
+  });
+
+  testWidgets('the traffic-light mask lets the header zoom gesture through underneath it', (tester) async {
+    // The mask overlays the header's top-left corner, but the native buttons
+    // don't fill it — a double-click in the gaps must still reach the header
+    // gesture area and zoom the window, so the mask has to be transparent to
+    // pointers.
+    debugDefaultTargetPlatformOverride = TargetPlatform.macOS;
+    try {
+      final calls = <MethodCall>[];
+      tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(channel, (call) async {
+        calls.add(call);
+        return null;
+      });
+
+      // Mirror main.dart: the mask is overlaid on top of the header.
+      await tester.pumpWidget(MaterialApp(
+        home: Stack(children: [
+          Scaffold(
+            appBar: AppBar(automaticallyImplyLeading: false, flexibleSpace: windowHeaderGestureArea()),
+            body: const SizedBox.expand(),
+          ),
+          const Positioned(top: 0, left: 0, child: MacOSTrafficLightMask()),
+        ]),
+      ));
+
+      await doubleTapAt(tester, tester.getRect(find.byType(MacOSTrafficLightMask)).center);
+
+      expect(calls.map((c) => c.method), ['performHeaderDoubleClickAction']);
+    } finally {
+      debugDefaultTargetPlatformOverride = null;
+      tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(channel, null);
+    }
+  });
+
+  testWidgets('the traffic-light mask collapses to nothing in native full screen', (tester) async {
+    // No buttons float over the header in full screen (they move to the
+    // system's auto-hiding overlay), so there is nothing to mask.
+    debugDefaultTargetPlatformOverride = TargetPlatform.macOS;
+    try {
+      await tester.pumpWidget(const MacOSFullScreenScope(
+        isFullScreen: true,
+        child: MaterialApp(home: Scaffold(body: MacOSTrafficLightMask())),
+      ));
+
+      expect(
+        find.descendant(of: find.byType(MacOSTrafficLightMask), matching: find.byType(DecoratedBox)),
+        findsNothing,
+      );
+    } finally {
+      debugDefaultTargetPlatformOverride = null;
+    }
+  });
+
+  testWidgets('off macOS the traffic-light mask renders nothing', (tester) async {
+    debugDefaultTargetPlatformOverride = TargetPlatform.windows;
+    try {
+      await tester.pumpWidget(const MaterialApp(home: Scaffold(body: MacOSTrafficLightMask())));
+
+      expect(
+        find.descendant(of: find.byType(MacOSTrafficLightMask), matching: find.byType(DecoratedBox)),
+        findsNothing,
+      );
+    } finally {
+      debugDefaultTargetPlatformOverride = null;
+    }
+  });
+
   testWidgets('Windows caption buttons drive the window over the channel', (tester) async {
     debugDefaultTargetPlatformOverride = TargetPlatform.windows;
     try {

@@ -34,8 +34,9 @@ const _bandAnimationDuration = Duration(milliseconds: 250);
 /// The "KI2D" callsign in the credits line ("by KI2D and friends"/"por KI2D
 /// y amigos") reads as a monospace callsign rather than plain prose — every
 /// translation keeps the callsign untranslated, so splitting on the literal
-/// substring works across locales.
-Widget _creditsText(String text, TextStyle style) {
+/// substring works across locales. Public: the onboarding overlay renders
+/// the same credits line.
+Widget overlayCreditsText(String text, TextStyle style) {
   const callsign = 'KI2D';
   final index = text.indexOf(callsign);
   if (index < 0) return Text(text, textAlign: TextAlign.center, style: style);
@@ -54,6 +55,22 @@ Widget _creditsText(String text, TextStyle style) {
     textAlign: TextAlign.center,
   );
 }
+
+/// The photo-overlay header typography shared by the release overlay, the
+/// About photo modal, and the onboarding overlay — one source of truth so
+/// the brand header reads at the same scale on all three.
+TextStyle? overlayVersionLabelStyle(ThemeData theme) => theme.textTheme.titleMedium?.copyWith(
+      fontSize: (theme.textTheme.titleMedium?.fontSize ?? 16) * 2,
+      fontWeight: FontWeight.bold,
+      color: Colors.white,
+      shadows: _creditsAndVersionShadows,
+    );
+
+TextStyle overlayCreditsStyle(ThemeData theme) => TextStyle(
+      fontSize: (overlayVersionLabelStyle(theme)?.fontSize ?? 32) * 0.75 * 0.85,
+      color: Colors.white,
+      shadows: _creditsAndVersionShadows,
+    );
 
 class ReleaseOverlayView extends StatefulWidget {
   final ReleaseNotesEntry release;
@@ -82,17 +99,8 @@ class _ReleaseOverlayViewState extends State<ReleaseOverlayView> {
     // fixed value instead of the theme's, so nothing here can flip with
     // light/dark mode.
     final theme = Theme.of(context);
-    final versionLabelStyle = theme.textTheme.titleMedium?.copyWith(
-      fontSize: (theme.textTheme.titleMedium?.fontSize ?? 16) * 2,
-      fontWeight: FontWeight.bold,
-      color: Colors.white,
-      shadows: _creditsAndVersionShadows,
-    );
-    final creditsStyle = TextStyle(
-      fontSize: (versionLabelStyle?.fontSize ?? 32) * 0.75 * 0.85,
-      color: Colors.white,
-      shadows: _creditsAndVersionShadows,
-    );
+    final versionLabelStyle = overlayVersionLabelStyle(theme);
+    final creditsStyle = overlayCreditsStyle(theme);
     // flutter_markdown's `fromTheme` bases `p`/`listBullet` on bodyMedium.
     // `color: Colors.black` is explicit on all three — bodyMedium's own
     // color isn't set, so without this they'd inherit whatever color
@@ -161,7 +169,7 @@ class _ReleaseOverlayViewState extends State<ReleaseOverlayView> {
                         const SizedBox(height: 16),
                         const Center(child: Ham2kBrandMark(logoWidth: 180, showShadow: true)),
                         const SizedBox(height: 8),
-                        _creditsText(context.t.startScreen.credits, creditsStyle),
+                        overlayCreditsText(context.t.startScreen.credits, creditsStyle),
                         const SizedBox(height: 4),
                         Text(release.name, textAlign: TextAlign.center, style: versionLabelStyle),
                       ],
@@ -385,17 +393,8 @@ class _PhotoWordmarkContent extends StatelessWidget {
     // credits, release name, and caption all read at the same relative
     // scale here as they do on the startup overlay.
     final theme = Theme.of(context);
-    final versionLabelStyle = theme.textTheme.titleMedium?.copyWith(
-      fontSize: (theme.textTheme.titleMedium?.fontSize ?? 16) * 2,
-      fontWeight: FontWeight.bold,
-      color: Colors.white,
-      shadows: _creditsAndVersionShadows,
-    );
-    final creditsStyle = TextStyle(
-      fontSize: (versionLabelStyle?.fontSize ?? 32) * 0.75 * 0.85,
-      color: Colors.white,
-      shadows: _creditsAndVersionShadows,
-    );
+    final versionLabelStyle = overlayVersionLabelStyle(theme);
+    final creditsStyle = overlayCreditsStyle(theme);
     final caption = release?.photoCaption;
 
     return GestureDetector(
@@ -422,7 +421,7 @@ class _PhotoWordmarkContent extends StatelessWidget {
                     const SizedBox(height: 16),
                     const Center(child: Ham2kBrandMark(logoWidth: 180, showShadow: true)),
                     const SizedBox(height: 8),
-                    _creditsText(context.t.startScreen.credits, creditsStyle),
+                    overlayCreditsText(context.t.startScreen.credits, creditsStyle),
                     if (release != null) ...[
                       const SizedBox(height: 4),
                       Text(release!.name, textAlign: TextAlign.center, style: versionLabelStyle),

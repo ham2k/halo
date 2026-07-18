@@ -81,9 +81,16 @@ function sharedLibsPlugin(extensionDependencies = {}) {
 // any host not listed. Entries are exact hostnames; '*.example.com' matches
 // subdomains; a lone '*' means any https host (only ham2k-lofi, whose sync
 // server is user-configurable). No entry (or []) means no network at all.
+// Toggleable extensions additionally carry USER-FACING metadata (`name`,
+// `category`, `enabledByDefault`, optional `description`) that index.json
+// surfaces to the Dart host. `name`/`description` deliberately duplicate the
+// bundle's own defineExtension() manifest: the Extensions settings panel
+// must list DISABLED extensions, whose bundles are never evaluated — so the
+// metadata has to be readable without running any JS. Versions are NOT
+// duplicated here (they stay runtime-only, via the kernel's listExtensions).
+// Entries without a `category` are core: always enabled, never listed.
 const bundles = [
   { key: 'kernel', entry: 'sdk/src/kernel.ts', kind: 'kernel' },
-  { key: 'settings', entry: 'core/settings/src/index.ts', kind: 'extension' },
   { key: 'adif', entry: 'core/adif/src/index.ts', kind: 'extension' },
   { key: 'scoring', entry: 'core/scoring/src/index.ts', kind: 'extension' },
   { key: 'lookups', entry: 'core/lookups/src/index.ts', kind: 'extension' },
@@ -91,11 +98,21 @@ const bundles = [
   { key: 'dev-commands', entry: 'core/dev-commands/src/index.ts', kind: 'extension' },
   { key: 'annotation-commands', entry: 'core/annotation-commands/src/index.ts', kind: 'extension', domains: ['www.hamqsl.com', 'api.open-meteo.com'] },
   { key: 'spot-commands', entry: 'core/spot-commands/src/index.ts', kind: 'extension' },
-  { key: 'hamdb', entry: 'lookups/hamdb/src/index.ts', kind: 'extension', domains: ['api.hamdb.org'] },
-  { key: 'qrz', entry: 'lookups/qrz/src/index.ts', kind: 'extension', domains: ['xmldata.qrz.com', 'logbook.qrz.com'] },
-  { key: 'call-notes', entry: 'lookups/call-notes/src/index.ts', kind: 'extension', domains: ['ham2k.com'] },
-  { key: 'pota', entry: 'activities/pota/src/index.ts', kind: 'extension', domains: ['api.pota.app', 'pota.app'] },
-  { key: 'sota', entry: 'activities/sota/src/index.ts', kind: 'extension', domains: ['api2.sota.org.uk'] },
+  { key: 'hamdb', entry: 'lookups/hamdb/src/index.ts', kind: 'extension', domains: ['api.hamdb.org'],
+    name: 'HamDB Callsign Lookups', category: 'lookup', enabledByDefault: true,
+    description: 'Looks up callsign details on HamDB.org' },
+  { key: 'qrz', entry: 'lookups/qrz/src/index.ts', kind: 'extension', domains: ['xmldata.qrz.com', 'logbook.qrz.com'],
+    name: 'QRZ.com Callsign Lookups', category: 'lookup', enabledByDefault: true,
+    description: 'Looks up callsign details with a QRZ.com account' },
+  { key: 'call-notes', entry: 'lookups/call-notes/src/index.ts', kind: 'extension', domains: ['ham2k.com'],
+    name: 'Callsign Notes', category: 'lookup', enabledByDefault: true,
+    description: 'Annotates calls from shared notes files' },
+  { key: 'pota', entry: 'activities/pota/src/index.ts', kind: 'extension', domains: ['api.pota.app', 'pota.app'],
+    name: 'Parks on the Air', category: 'activity', enabledByDefault: true, icon: 'pine-tree',
+    description: 'Park references, spots, and activation logging' },
+  { key: 'sota', entry: 'activities/sota/src/index.ts', kind: 'extension', domains: ['api2.sota.org.uk'],
+    name: 'Summits on the Air', category: 'activity', enabledByDefault: true, icon: 'image-filter-hdr',
+    description: 'Summit references, spots, and activation logging' },
   { key: 'ham2k-lofi', entry: 'sync/ham2k-lofi/src/index.ts', kind: 'extension', domains: ['*'] },
 ]
 
@@ -143,7 +160,21 @@ await writeFile(
       kernel: 'kernel.js',
       extensions: bundles
         .filter((b) => b.kind === 'extension')
-        .map((b) => ({ key: b.key, file: `${b.key}.js`, domains: b.domains ?? [] })),
+        .map((b) => ({
+          key: b.key,
+          file: `${b.key}.js`,
+          domains: b.domains ?? [],
+          core: !b.category,
+          ...(b.category
+            ? {
+                name: b.name ?? b.key,
+                category: b.category,
+                enabledByDefault: b.enabledByDefault ?? true,
+                ...(b.icon ? { icon: b.icon } : {}),
+                ...(b.description ? { description: b.description } : {}),
+              }
+            : {}),
+        })),
     },
     null,
     2,

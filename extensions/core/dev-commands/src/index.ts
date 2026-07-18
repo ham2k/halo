@@ -125,6 +125,21 @@ const DevSplashCommand = {
   },
 }
 
+// DEVSPLASH's sibling for the first-run onboarding overlay (Issue #43):
+// re-shows it on demand, bypassing its "default profile callsign undefined"
+// gate — for iterating on the flow. The overlay is live: completing it
+// (Done) applies its choices; Skip leaves existing settings untouched.
+const DevOnboardCommand = {
+  async interpret({ input }: { input: string }, _ctx: HookContext): Promise<CommandInterpretation | null> {
+    if (input.trim().toUpperCase() !== 'DEVONBOARD') return null
+    return {
+      describe: 'Show the onboarding overlay?',
+      confirm: 'Showing the onboarding overlay — completing it applies its choices',
+      commands: [{ devOnboard: {} }],
+    }
+  },
+}
+
 // "RELOAD POTA" / "RELOAD SOTA" -> reload data files whose category matches
 // that word; "RELOAD ALL", "RELOADALL", or bare "RELOAD!" -> reload every
 // data file. Bare "RELOAD" (no target, no ALL/!) isn't executable by itself,
@@ -311,6 +326,7 @@ defineExtension({
     registerHook('command', { key: 'dev-commands-devstatus', hook: DevStatusCommand, priority: 100 })
     registerHook('command', { key: 'dev-commands-devprogress', hook: DevProgressCommand, priority: 100 })
     registerHook('command', { key: 'dev-commands-devsplash', hook: DevSplashCommand, priority: 100 })
+    registerHook('command', { key: 'dev-commands-devonboard', hook: DevOnboardCommand, priority: 100 })
     registerHook('command', { key: 'dev-commands-reload', hook: ReloadCommand, priority: 100 })
     registerHook('command', { key: 'dev-commands-seed', hook: SeedCommand, priority: 100 })
   },

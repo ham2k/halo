@@ -116,6 +116,24 @@ export const host = {
     return (await hostCallFn()('kvGet', { ns: currentExtensionKey, key })) as JSONValue | null
   },
 
+  /// The app's settings, read-only: resolved core values (theme, locale,
+  /// units, logging toggles, bands/modes, privacy consents, the active
+  /// profile's operatorCall, ...) plus every extension's settings group
+  /// under `extensions`. Never includes credentials or accounts — those
+  /// live in the platform keychain via the account hook system, not in
+  /// settings.
+  async getSettings(): Promise<Record<string, JSONValue>> {
+    return (await hostCallFn()('getSettings', {})) as Record<string, JSONValue>
+  },
+
+  /// Writes settings into THIS extension's own group (surfaced to other
+  /// readers as `extensions.extension_<key>` in getSettings). The namespace
+  /// is injected here — core settings and other extensions' groups are not
+  /// writable.
+  async setSettings(values: Record<string, JSONValue>): Promise<void> {
+    await hostCallFn()('setSettings', { ns: currentExtensionKey, values })
+  },
+
   async kvSet(key: string, value: JSONValue): Promise<void> {
     await hostCallFn()('kvSet', { ns: currentExtensionKey, key, value })
   },
@@ -123,25 +141,6 @@ export const host = {
   async setAccountSession(session: Record<string, string>): Promise<void> {
     const kvKey = kernel().getAccountKvKey(currentExtensionKey)
     await hostCallFn()('setAccountSession', { ns: currentExtensionKey, kvKey, session })
-  },
-
-  /// The app's own core settings (theme/locale/font scale) — not a generic
-  /// KV store, these read/write SettingsService directly so a change here
-  /// takes effect everywhere else in the app (MaterialApp's themeMode,
-  /// LocaleSettings, text scaling), not just in some extension's own
-  /// storage. For the core/settings extension's General panel; not
-  /// intended for arbitrary extension use.
-  async getCoreSettings(): Promise<{ themeMode: string; locale: string; fontScale: string; distanceUnits: string }> {
-    return (await hostCallFn()('getCoreSettings', {})) as {
-      themeMode: string
-      locale: string
-      fontScale: string
-      distanceUnits: string
-    }
-  },
-
-  async setCoreSetting(key: string, value: JSONValue): Promise<void> {
-    await hostCallFn()('setCoreSetting', { key, value })
   },
 
   /// Looks up a string from the app's own translations (app/lib/i18n/

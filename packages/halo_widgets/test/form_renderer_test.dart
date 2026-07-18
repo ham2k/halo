@@ -130,6 +130,39 @@ void main() {
       expect(find.text('Agree Field'), findsOneWidget);
     });
 
+    testWidgets('link elements hand their URL to onOpenLink', (tester) async {
+      String? openedUrl;
+      await tester.pumpWidget(MaterialApp(
+        home: Scaffold(
+          body: SingleChildScrollView(
+            child: FormRenderer(
+              formDefinition: const {
+                'elements': [
+                  {
+                    'type': 'link',
+                    'label': 'Privacy Policy',
+                    'description': 'How we handle your data',
+                    'icon': 'shield-account-outline',
+                    'url': 'https://example.com/privacy',
+                  },
+                ],
+              },
+              initialState: const {},
+              onOpenLink: (url) => openedUrl = url,
+              onSubmit: (_) {},
+              onCancel: () {},
+            ),
+          ),
+        ),
+      ));
+
+      expect(find.text('Privacy Policy'), findsOneWidget);
+      expect(find.text('How we handle your data'), findsOneWidget);
+
+      await tester.tap(find.text('Privacy Policy'));
+      expect(openedUrl, 'https://example.com/privacy');
+    });
+
     testWidgets('gathers input, runs async validation and transformation on submit', (tester) async {
       Map<String, dynamic>? submittedValues;
       var validatorCalled = false;
@@ -393,16 +426,22 @@ void main() {
         ),
       ));
 
-      // No items yet, just the label and the "Add" row.
+      // The form itself shows only the summary row — no inline list editing.
       expect(find.text('Presets'), findsOneWidget);
+      expect(find.widgetWithText(TextButton, 'Add Presets'), findsNothing);
+
+      // Tapping the row opens the editor dialog with the "Add" row.
+      await tester.tap(find.text('Presets'));
+      await tester.pumpAndSettle();
       expect(find.widgetWithText(TextButton, 'Add Presets'), findsOneWidget);
 
       // Item add/edit dialogs have their own Save button, distinct from the
-      // outer form's — scope taps to the dialog to avoid ambiguity.
+      // outer form's — scope taps to the dialog to avoid ambiguity (the
+      // list editor dialog itself only has Done, so Save stays unique).
       Finder dialogSaveButton() =>
           find.descendant(of: find.byType(AlertDialog), matching: find.widgetWithText(FilledButton, 'Save'));
 
-      // Add an item through the nested dialog.
+      // Add an item through the nested item dialog.
       await tester.tap(find.widgetWithText(TextButton, 'Add Presets'));
       await tester.pumpAndSettle();
       await tester.enterText(find.widgetWithText(TextField, 'Name'), 'Field Day');
@@ -410,11 +449,15 @@ void main() {
       await tester.tap(dialogSaveButton());
       await tester.pumpAndSettle();
 
-      // Summary row uses the itemTitle template.
-      expect(find.text('Field Day — 1A NNJ'), findsOneWidget);
+      // Editor row uses the itemTitle template.
+      expect(find.text('Field Day — 1A NNJ'), findsWidgets);
 
-      // Edit the item: tapping the row reopens the dialog pre-filled.
-      await tester.tap(find.text('Field Day — 1A NNJ'));
+      // Edit the item: tapping its editor row reopens the item dialog
+      // pre-filled (scoped to the dialog — the summary row behind the
+      // barrier shows the same string).
+      await tester.tap(
+        find.descendant(of: find.byType(AlertDialog), matching: find.text('Field Day — 1A NNJ')),
+      );
       await tester.pumpAndSettle();
       expect(find.widgetWithText(TextField, 'Name'), findsOneWidget);
       final nameField = tester.widget<TextField>(find.widgetWithText(TextField, 'Name'));
@@ -422,6 +465,11 @@ void main() {
       await tester.enterText(find.widgetWithText(TextField, 'Exchange'), '2A NNJ');
       await tester.tap(dialogSaveButton());
       await tester.pumpAndSettle();
+
+      // Close the editor: the summary row shows the comma-separated values.
+      await tester.tap(find.widgetWithText(TextButton, 'Done'));
+      await tester.pumpAndSettle();
+      expect(find.byType(AlertDialog), findsNothing);
       expect(find.text('Field Day — 2A NNJ'), findsOneWidget);
 
       // Submitting the outer form includes the edited list.
@@ -431,10 +479,192 @@ void main() {
         {'name': 'Field Day', 'exchange': '2A NNJ'},
       ]);
 
-      // Delete removes the row.
+      // Delete (back in the editor) empties the list and the summary.
+      await tester.tap(find.text('Presets'));
+      await tester.pumpAndSettle();
       await tester.tap(find.byIcon(Icons.delete_outline));
       await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(TextButton, 'Done'));
+      await tester.pumpAndSettle();
       expect(find.text('Field Day — 2A NNJ'), findsNothing);
+    });
+
+    testWidgets('multiselect toggles from a fixed vocabulary with common-subset disclosure', (tester) async {
+      Map<String, dynamic>? submittedValues;
+      await tester.pumpWidget(MaterialApp(
+        home: Scaffold(
+          body: FormRenderer(
+            formDefinition: const {
+              'elements': [
+                {
+                  'type': 'field',
+                  'fieldType': 'multiselect',
+                  'key': 'bands',
+                  'label': 'Bands',
+                  'value': ['80m', '40m'],
+                  'defaultValue': ['80m', '40m'],
+                  'options': [
+                    {'label': '80m', 'value': '80m', 'common': true},
+                    {'label': '40m', 'value': '40m', 'common': true},
+                    {'label': '20m', 'value': '20m', 'common': true},
+                    {'label': '630m', 'value': '630m'},
+                    {'label': 'submm', 'value': 'submm', 'uncommon': true},
+                  ],
+                },
+              ],
+            },
+            initialState: {},
+            onSubmit: (vals) => submittedValues = vals,
+            onCancel: () {},
+          ),
+        ),
+      ));
+
+      // The row summarizes the selection; no editor inline.
+      expect(find.text('80m, 40m'), findsOneWidget);
+      expect(find.byType(SwitchListTile), findsNothing);
+
+      // Open the editor: common options visible, uncommon hidden. Small
+      // vocabularies (≤20 options) get no search field.
+      await tester.tap(find.text('Bands'));
+      await tester.pumpAndSettle();
+      expect(find.widgetWithText(SwitchListTile, '20m'), findsOneWidget);
+      expect(find.widgetWithText(SwitchListTile, '630m'), findsNothing);
+      expect(find.descendant(of: find.byType(AlertDialog), matching: find.byType(TextField)), findsNothing);
+
+      // Selected rows read bold; unselected ones use the disabled color.
+      Text rowLabel(String label) => tester.widget<Text>(
+          find.descendant(of: find.widgetWithText(SwitchListTile, label), matching: find.text(label)));
+      expect(rowLabel('80m').style?.fontWeight, FontWeight.bold);
+      expect(rowLabel('20m').style?.fontWeight, isNot(FontWeight.bold));
+      expect(rowLabel('20m').style?.color, isNotNull);
+
+      // With an uncommon tier present, disclosure is a three-step cycle:
+      // "Show more" reveals the unflagged middle tier…
+      await tester.tap(find.widgetWithText(TextButton, 'Show more'));
+      await tester.pumpAndSettle();
+      expect(find.widgetWithText(SwitchListTile, '630m'), findsOneWidget);
+      expect(find.widgetWithText(SwitchListTile, 'submm'), findsNothing);
+
+      // …and "Show all" reveals the uncommon tier too.
+      await tester.tap(find.widgetWithText(TextButton, 'Show all'));
+      await tester.pumpAndSettle();
+      expect(find.widgetWithText(SwitchListTile, 'submm'), findsOneWidget);
+
+      // Select in non-canonical order (630m before 20m)…
+      await tester.tap(find.widgetWithText(SwitchListTile, '630m'));
+      await tester.pumpAndSettle();
+
+      // A once-selected uncommon value stays visible for the dialog's
+      // lifetime: through "Show fewer", and even while toggled back off.
+      await tester.tap(find.widgetWithText(TextButton, 'Show fewer'));
+      await tester.pumpAndSettle();
+      expect(find.widgetWithText(SwitchListTile, '630m'), findsOneWidget);
+      expect(find.widgetWithText(SwitchListTile, 'submm'), findsNothing, reason: 'unselected uncommon collapses again');
+      await tester.tap(find.widgetWithText(SwitchListTile, '630m'));
+      await tester.pumpAndSettle();
+      expect(find.widgetWithText(SwitchListTile, '630m'), findsOneWidget);
+      await tester.tap(find.widgetWithText(SwitchListTile, '630m'));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.widgetWithText(SwitchListTile, '20m'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(TextButton, 'Done'));
+      await tester.pumpAndSettle();
+
+      // …and the summary keeps the vocabulary's canonical order.
+      expect(find.byType(AlertDialog), findsNothing);
+      expect(find.text('80m, 40m, 20m, 630m'), findsOneWidget);
+
+      // Submitting carries the plain string list.
+      await tester.tap(find.widgetWithText(FilledButton, 'Save'));
+      await tester.pumpAndSettle();
+      expect(submittedValues!['bands'], ['80m', '40m', '20m', '630m']);
+
+      // Reset restores the declared defaultValue.
+      await tester.tap(find.text('Bands'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(TextButton, 'Defaults'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(TextButton, 'Done'));
+      await tester.pumpAndSettle();
+      expect(find.text('80m, 40m'), findsOneWidget);
+    });
+
+    testWidgets('multiselect search filters large vocabularies with a reveal row', (tester) async {
+      await tester.pumpWidget(MaterialApp(
+        home: Scaffold(
+          body: FormRenderer(
+            formDefinition: {
+              'elements': [
+                {
+                  'type': 'field',
+                  'fieldType': 'multiselect',
+                  'key': 'things',
+                  'label': 'Things',
+                  'value': const ['Alpha 1', 'Alpha 3'],
+                  'options': [
+                    for (var i = 1; i <= 12; i++) {'label': 'Alpha $i', 'value': 'Alpha $i', 'common': i <= 3},
+                    for (var i = 1; i <= 12; i++) {'label': 'Bravo $i', 'value': 'Bravo $i'},
+                  ],
+                },
+              ],
+            },
+            initialState: const {},
+            onSubmit: (_) {},
+            onCancel: () {},
+          ),
+        ),
+      ));
+
+      // 24 options → the search field is pinned under the list.
+      await tester.tap(find.text('Things'));
+      await tester.pumpAndSettle();
+      final searchField = find.descendant(of: find.byType(AlertDialog), matching: find.byType(TextField));
+      expect(searchField, findsOneWidget);
+
+      // No status row or clear button until a query is typed.
+      expect(find.textContaining('Showing '), findsNothing);
+      expect(find.byIcon(Icons.close), findsNothing);
+
+      // Focus survives the status row popping in on the FIRST letter and
+      // out again on deleting it (the field shifts index in its column —
+      // regression: without keys it was rebuilt and dropped focus).
+      bool searchHasFocus() => tester
+          .widget<EditableText>(find.descendant(of: searchField, matching: find.byType(EditableText)))
+          .focusNode
+          .hasFocus;
+      await tester.enterText(searchField, 'B');
+      await tester.pumpAndSettle();
+      expect(searchHasFocus(), isTrue, reason: 'typing the first letter must not drop focus');
+      await tester.enterText(searchField, '');
+      await tester.pumpAndSettle();
+      expect(searchHasFocus(), isTrue, reason: 'deleting the only letter must not drop focus');
+
+      // A query matches the WHOLE vocabulary, ignoring tiers, hides the
+      // disclosure toggle, and shows the status row above the field.
+      await tester.enterText(searchField, 'Bravo 1');
+      await tester.pumpAndSettle();
+      expect(find.widgetWithText(SwitchListTile, 'Bravo 1'), findsOneWidget);
+      expect(find.widgetWithText(SwitchListTile, 'Bravo 12'), findsOneWidget);
+      expect(find.widgetWithText(SwitchListTile, 'Alpha 1'), findsNothing);
+      expect(find.widgetWithText(TextButton, 'Show more'), findsNothing);
+      // Matches: Bravo 1, 10, 11, 12.
+      expect(find.text('Showing 4 of 24 (2 selected)'), findsOneWidget);
+
+      // Selecting a match updates the counts.
+      await tester.tap(find.widgetWithText(SwitchListTile, 'Bravo 1'));
+      await tester.pumpAndSettle();
+      expect(find.text('Showing 4 of 24 (3 selected)'), findsOneWidget);
+
+      // The X button clears the filter and restores the tier view.
+      await tester.tap(find.byIcon(Icons.close));
+      await tester.pumpAndSettle();
+      expect(find.textContaining('Showing '), findsNothing);
+      expect(find.widgetWithText(SwitchListTile, 'Alpha 1'), findsOneWidget);
+      expect(find.widgetWithText(TextButton, 'Show all'), findsOneWidget);
+      // Bravo 1 was selected mid-filter, so it stays visible (pinned).
+      expect(find.widgetWithText(SwitchListTile, 'Bravo 1'), findsOneWidget);
     });
 
     testWidgets('action element invokes onAction with its key and method, and shows the result', (tester) async {

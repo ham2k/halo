@@ -174,14 +174,84 @@ declarative-only too, same as every other Tier 1 field; a `validate`/
 `transform` closure inside a Tier 1 list item is a type error, not a
 silently-ignored one.
 
-The list renders as a column of summary rows (from `itemTitle`, templated
-against the item's values) with edit/delete affordances and an "Add" row.
-Editing or adding an item opens the same form renderer recursively, scoped
-to `itemFields`, in a dialog — there is no separate "list item editor"
-widget, just `FormRenderer` given a smaller `FormDefinition`.
+The list renders as a single row summarizing the current items as a
+comma-separated list of `itemTitle`s (templated against each item's
+values). Tapping it opens an editor dialog with a row per item plus an
+"Add" row; every mutation commits immediately and "Done" closes the
+dialog. Editing or adding an item opens the same form renderer
+recursively, scoped to `itemFields`, in a nested dialog — there is no
+separate "list item editor" widget, just `FormRenderer` given a smaller
+`FormDefinition`.
 
-Set `orderable: true` to allow drag-to-reorder; omit it for lists where
-order doesn't matter.
+Set `orderable: true` to allow drag-to-reorder in the editor; omit it for
+lists where order doesn't matter.
+
+## The `multiselect` field type
+
+Picking several values from a fixed vocabulary — the user cannot enter new
+ones (that's what `list` is for). `value` is a plain string list; `options`
+is the vocabulary, each option optionally flagged `common: true`:
+
+```ts
+{
+  type: "field",
+  fieldType: "multiselect",
+  key: "bands",
+  label: "Bands",
+  icon: "radio",
+  value: ["80m", "40m", "20m"],
+  options: "$core.bands"   // or inline: [{ label: "80m", value: "80m", common: true }, ...]
+}
+```
+
+Like `list`, it renders as a single row summarizing the selection
+comma-separated; tapping opens an editor dialog with a switch per option.
+Options disclose in up to three tiers: `common: true` ones show upfront,
+unflagged ones behind the first disclosure step, and `uncommon: true`
+ones behind the second — the action-row toggle cycles Show more → Show
+all → Show fewer (or just Show all / Show fewer when no option is flagged
+uncommon). A hidden-tier value that has been selected stays visible for
+the dialog's lifetime. Declare `defaultValue` (a string list) to offer a
+Defaults button restoring that selection; omit it and none is shown. The
+selection always keeps the canonical order of `options` — `orderable` is
+reserved for a future manual-ordering variant and currently ignored.
+
+## Reading and writing settings from extensions
+
+Extensions access settings through two host calls:
+
+- `host.getSettings()` — the full read view: resolved core values (theme,
+  locale, font scale, distance units, logging toggles, bands/modes,
+  privacy consents, the active profile's `operatorCall`, `syncEnabled`,
+  `developerMode`, `appName`) plus every extension's own settings group
+  under `extensions` (keyed `extension_<key>`). Reading is unrestricted —
+  settings are not secrets. Credentials and accounts are deliberately
+  absent: they live in the platform keychain via the account hook system,
+  never in settings.
+- `host.setSettings({ key: value, ... })` — writes into the calling
+  extension's OWN group only (`extension_<key>`; the namespace is injected
+  by the SDK). Core settings and other extensions' groups are read-only.
+
+## System lists
+
+A field's `options` can name a **system list** instead of inlining the
+choices: a `$`-prefixed identifier, `$<namespace>.<list>`, resolved by the
+app before the definition reaches the renderer. This keeps vocabularies
+owned elsewhere (halo_core's band table, runtime-contributed controls) out
+of settings declarations — both core settings groups and extension
+settingsPanels can reference them.
+
+Currently defined (see `app/lib/settings/system_lists.dart`):
+
+- `$core.bands` — the extended band vocabulary (halo_core's snapshot of
+  lib-operation-data's `EXTENDED_BANDS`); `POPULAR_BANDS` flagged `common`.
+- `$core.modes` — every ADIF mode and submode (snapshot of
+  `ADIF_MODES_AND_SUBMODES`); `MAIN_MODES` flagged `common`.
+
+The `$extensions.*` namespace is reserved for runtime-derived lists (e.g. a
+future `$extensions.secondaryLoggingControls`). An unknown name resolves to
+no options — logged, and the field renders disabled rather than failing
+the panel.
 
 ## The `secret` field type
 

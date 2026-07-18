@@ -19,6 +19,9 @@ dependencies:
     path: ../packages/halo_widgets
   halo_build_tools:
     path: ../packages/halo_build_tools
+  # DeepCollectionEquality for the lookup queue's changed-result check;
+  # version left to Flutter's own pin of this package.
+  collection: any
   drift: ^2.28.0
   drift_flutter: ^0.2.4
   file_selector: ^1.1.0

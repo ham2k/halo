@@ -10,6 +10,7 @@
 // changed. These tests pin those promises, not widget cosmetics.
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:halo_widgets/halo_widgets.dart';
 import 'package:ham2k_logger/views/switch_accounts_dialog.dart';
@@ -122,6 +123,37 @@ void main() {
     // The code the OTHER device must type is displayed here, verbatim.
     expect(find.text('A1B2C3'), findsOneWidget);
     expect(find.textContaining('friend@example.com'), findsOneWidget);
+  });
+
+  testWidgets('email flow: the challenge code can be copied to the clipboard', (tester) async {
+    // Typing the code onto another device is error-prone; a copy button
+    // puts it on the clipboard verbatim.
+    String? copied;
+    tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(SystemChannels.platform, (call) async {
+      if (call.method == 'Clipboard.setData') copied = (call.arguments as Map)['text'] as String;
+      return null;
+    });
+    addTearDown(() => tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(SystemChannels.platform, null));
+
+    await pumpDialog(
+      tester,
+      fetchAccountData: () async => accountData(),
+      linkClient: (email) async => {
+        'permission': {'status': 'pending', 'challenge_token': 'A1B2C3'},
+      },
+    );
+
+    await tester.tap(find.text('Link with an email address'));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextField), 'friend@example.com');
+    await tester.tap(find.text('Link account'));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byTooltip('Copy code'));
+    await tester.pumpAndSettle();
+
+    expect(copied, 'A1B2C3');
+    expect(find.text('Copied code to clipboard'), findsOneWidget);
   });
 
   testWidgets('email flow: a 404 tells the user no account matched, not a generic failure', (tester) async {

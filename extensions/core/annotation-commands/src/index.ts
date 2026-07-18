@@ -144,7 +144,7 @@ const SolarCommand = {
 const WeatherCommand = {
   async interpret(
     { input, operation, execute }: { input: string; operation?: Operation; execute?: boolean },
-    _ctx: HookContext,
+    ctx: HookContext,
   ): Promise<CommandInterpretation | null> {
     if (input.trim().toUpperCase() !== 'WEATHER') return null
 
@@ -165,11 +165,12 @@ const WeatherCommand = {
     let weatherData: Record<string, JSONValue>
     try {
       const [latitude, longitude] = gridToLocation(grid)
-      const { distanceUnits } = await host.getCoreSettings()
+      // Fahrenheit for miles users, Celsius otherwise — the same units
+      // preference the map's distances follow, via HookContext.
       const params: Record<string, string> = {
         latitude: String(latitude),
         longitude: String(longitude),
-        temperature_unit: distanceUnits === 'miles' ? 'fahrenheit' : 'celsius',
+        temperature_unit: ctx.distanceUnits === 'miles' ? 'fahrenheit' : 'celsius',
         current: 'temperature_2m,relative_humidity_2m,wind_speed_10m,precipitation,weather_code,wind_direction_10m,wind_gusts_10m,is_day',
         daily: 'sunrise,sunset',
       }

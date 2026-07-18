@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: MPL-2.0
 //
 // Small app-wide preferences that need to survive a restart: theme mode,
-// operator callsign, and sync state — backed by SharedPreferences (plain,
+// callsign profiles, and sync state — backed by SharedPreferences (plain,
 // unencrypted, fine for non-secret preferences). The one secret here, the
 // sync device key (the bearer credential for the account's synced log),
 // lives in the platform keychain via FlutterSecureStorage instead; QRZ
@@ -24,7 +24,9 @@ class SettingsService extends ChangeNotifier implements SyncSettings {
   static const _themeModeKey = 'themeMode';
   static const _qrzUsernameKey = 'qrzUsername';
   static const _qrzPasswordKey = 'qrzPassword';
-  static const _operatorCallKey = 'operatorCall';
+  static const _legacyOperatorCallKey = 'operatorCall';
+  static const _profilesKey = 'profiles';
+  static const _activeProfileKey = 'activeProfile';
   static const _syncEnabledKey = 'syncEnabled';
   static const _syncDeviceKeyKey = 'syncDeviceKey';
   static const _syncStateKey = 'syncState';
@@ -61,10 +63,129 @@ class SettingsService extends ChangeNotifier implements SyncSettings {
 
   SharedPreferences get prefs => _prefs;
 
-  static Future<SettingsService> load() async => SettingsService(await SharedPreferences.getInstance());
+  static Future<SettingsService> load() async {
+    final settings = SettingsService(await SharedPreferences.getInstance());
+    await settings._migrateLegacyOperatorCall();
+    await settings._migrateScalarPrefsToGroups();
+    await settings._migrateExtensionEnabledFlags();
+    return settings;
+  }
+
+  /// Per-extension enable/disable overrides ({key: bool}), consulted against
+  /// each extension's `enabledByDefault` from the build index (see
+  /// ExtensionService.isExtensionEnabled). Deliberately a TOP-LEVEL pref,
+  /// outside the `settings.*` group system: it is app infrastructure, not a
+  /// setting — and being top-level keeps it out of the extension-facing
+  /// getSettings view ([extensionSettingsGroups] only scans group keys).
+  static const _extensionOverridesKey = 'extensionOverrides';
+
+  Map<String, bool> get extensionOverrides =>
+      {for (final e in _jsonMapPref(_extensionOverridesKey).entries) if (e.value is bool) e.key: e.value as bool};
+
+  Future<void> setExtensionOverrides(Map<String, bool> overrides) async {
+    await _prefs.setString(_extensionOverridesKey, jsonEncode(overrides));
+    notifyListeners();
+  }
+
+  /// When each currently-disabled extension was disabled ({key: epochMillis}).
+  /// A disabled extension's downloaded data (data files) is KEPT so a
+  /// re-enable is instant; only after it's been disabled for the grace
+  /// period does DataFileManager purge that data. Stamped/cleared by
+  /// ExtensionService as extensions toggle; an entry vanishes on re-enable.
+  static const _extensionDisabledSinceKey = 'extensionDisabledSince';
+
+  Map<String, int> get extensionDisabledSince =>
+      {for (final e in _jsonMapPref(_extensionDisabledSinceKey).entries) if (e.value is int) e.key: e.value as int};
+
+  Future<void> setExtensionDisabledSince(Map<String, int> disabledSince) async {
+    await _prefs.setString(_extensionDisabledSinceKey, jsonEncode(disabledSince));
+    notifyListeners();
+  }
+
+  /// One-time migration: early onboarding builds wrote activity picks as
+  /// `settings.extension_pota/sota {'enabled': bool}` — an accidental
+  /// contract superseded by [extensionOverrides]. Fold those into overrides
+  /// (an existing override wins) and drop the group keys so the stale flags
+  /// can't disagree with the real store.
+  Future<void> _migrateExtensionEnabledFlags() async {
+    for (final key in const ['pota', 'sota']) {
+      final group = settingsGroup('extension_$key');
+      final legacy = group['enabled'];
+      if (legacy is! bool) continue;
+      final overrides = extensionOverrides;
+      if (!overrides.containsKey(key)) {
+        await setExtensionOverrides({...overrides, key: legacy});
+      }
+      await _prefs.setString(_groupPrefsKey('extension_$key'), jsonEncode({...group}..remove('enabled')));
+    }
+  }
+
+  // ---------------------------------------------------------------------
+  // Declarative settings groups (docs: the FormRenderer element dialect is
+  // the declaration schema — see app/lib/settings/settings_registry.dart).
+  // Core settings are stored one JSON map per group under a `settings.`
+  // prefix (mirroring the Tier 1 extension convention of
+  // `settingsPanel.<panelKey>.<fieldKey>`), with typed getters below as
+  // thin wrappers so hot-path consumers keep their existing API.
+
+  static const generalGroup = 'general';
+  static const loggingGroup = 'logging';
+  static const privacyGroup = 'privacy';
+
+  String _groupPrefsKey(String group) => 'settings.$group';
+
+  Map<String, dynamic> settingsGroup(String group) => _jsonMapPref(_groupPrefsKey(group));
+
+  dynamic settingValue(String group, String key) => settingsGroup(group)[key];
+
+  Future<void> setSettingValue(String group, String key, dynamic value) async {
+    await _prefs.setString(_groupPrefsKey(group), jsonEncode({...settingsGroup(group), key: value}));
+    notifyListeners();
+  }
+
+  /// Batch form of [setSettingValue]: one write, one notify.
+  Future<void> updateSettingsGroup(String group, Map<String, dynamic> changes) async {
+    if (changes.isEmpty) return;
+    await _prefs.setString(_groupPrefsKey(group), jsonEncode({...settingsGroup(group), ...changes}));
+    notifyListeners();
+  }
+
+  /// Every extension-owned settings group (`settings.extension_<key>`),
+  /// keyed by the bare `extension_<key>` group name — for the extension
+  /// bridge's getSettings read view.
+  Map<String, Map<String, dynamic>> extensionSettingsGroups() {
+    const prefix = 'settings.extension_';
+    return {
+      for (final prefsKey in _prefs.getKeys())
+        if (prefsKey.startsWith(prefix)) prefsKey.substring('settings.'.length): _jsonMapPref(prefsKey),
+    };
+  }
+
+  /// One-time migration: these all began life as individual scalar prefs;
+  /// they now live in the per-group JSON maps. Existing group values win
+  /// (the migration ran before, or a newer build wrote the group).
+  Future<void> _migrateScalarPrefsToGroups() async {
+    const groupedKeys = {
+      generalGroup: [_themeModeKey, _localeKey, _fontScaleKey, _distanceUnitsKey],
+      loggingGroup: [_showRSTFieldsKey, _showStateFieldKey, _showGridFieldKey, _showDeletedQSOsKey, _showQsoNumbersKey],
+    };
+    for (final entry in groupedKeys.entries) {
+      final migrated = <String, dynamic>{};
+      for (final key in entry.value) {
+        if (!_prefs.containsKey(key)) continue;
+        migrated[key] = _prefs.get(key);
+        await _prefs.remove(key);
+      }
+      if (migrated.isEmpty) continue;
+      await _prefs.setString(
+        _groupPrefsKey(entry.key),
+        jsonEncode({...migrated, ...settingsGroup(entry.key)}),
+      );
+    }
+  }
 
   ThemeMode get themeMode {
-    switch (_prefs.getString(_themeModeKey)) {
+    switch (settingValue(generalGroup, _themeModeKey)) {
       case 'light':
         return ThemeMode.light;
       case 'dark':
@@ -74,10 +195,7 @@ class SettingsService extends ChangeNotifier implements SyncSettings {
     }
   }
 
-  Future<void> setThemeMode(ThemeMode mode) async {
-    await _prefs.setString(_themeModeKey, mode.name);
-    notifyListeners();
-  }
+  Future<void> setThemeMode(ThemeMode mode) => setSettingValue(generalGroup, _themeModeKey, mode.name);
 
   /// The `kPublicVersion` the user last dismissed the startup release
   /// overlay for (release_overlay.dart) — the overlay shows again once
@@ -99,15 +217,60 @@ class SettingsService extends ChangeNotifier implements SyncSettings {
     notifyListeners();
   }
 
-  /// The operator's own callsign — a global default, distinct from
-  /// `Operation.stationCall` (which is per-operation and may differ, e.g.
-  /// a club callsign). Sync needs one identity to register the device's
-  /// account under.
-  String get operatorCall => _prefs.getString(_operatorCallKey) ?? '';
+  /// Callsign profiles, keyed by profile id — one JSON map under a single
+  /// prefs key, like [syncState]. Today there's only the [defaultProfileId]
+  /// profile holding the operator's callsign (a global default, distinct
+  /// from `Operation.stationCall`, which is per-operation and may differ,
+  /// e.g. a club callsign); multi-profile support is planned, so consumers
+  /// read profile data through [activeProfile] rather than a scalar pref.
+  static const defaultProfileId = 'default';
 
-  Future<void> setOperatorCall(String call) async {
-    await _prefs.setString(_operatorCallKey, call.trim().toUpperCase());
+  Map<String, dynamic> get _profilesData => _jsonMapPref(_profilesKey);
+
+  /// Which profile is active — the default profile until multi-profile
+  /// support lands.
+  String get activeProfileId => _prefs.getString(_activeProfileKey) ?? defaultProfileId;
+
+  Profile get activeProfile => _profile(activeProfileId);
+
+  Profile _profile(String id) {
+    final data = _profilesData[id];
+    return Profile(id, data is Map ? data.cast<String, dynamic>() : const {});
+  }
+
+  /// Whether the default profile has EVER had a callsign set — the
+  /// onboarding trigger. Distinct from `activeProfile.operatorCall.isEmpty`:
+  /// an explicitly-empty '' (the user skipped onboarding) counts as
+  /// defined, so onboarding only shows while the key has never been
+  /// written at all.
+  bool get defaultProfileCallsignDefined {
+    final profile = _profilesData[defaultProfileId];
+    return profile is Map && profile.containsKey('operatorCall');
+  }
+
+  Future<void> setProfileOperatorCall(String profileId, String call) async {
+    await _prefs.setString(
+      _profilesKey,
+      jsonEncode({
+        ..._profilesData,
+        profileId: {..._profile(profileId).data, 'operatorCall': call.trim().toUpperCase()},
+      }),
+    );
     notifyListeners();
+  }
+
+  /// One-time migration: earlier builds kept the operator callsign as a
+  /// scalar pref; it now lives in the default profile. An EMPTY legacy
+  /// value still counts as answered — it migrates to a defined-empty
+  /// profile key, so an upgrading user isn't greeted with first-run
+  /// onboarding (see [defaultProfileCallsignDefined]).
+  Future<void> _migrateLegacyOperatorCall() async {
+    final legacy = _prefs.getString(_legacyOperatorCallKey);
+    if (legacy == null) return;
+    if (!defaultProfileCallsignDefined) {
+      await setProfileOperatorCall(defaultProfileId, legacy);
+    }
+    await _prefs.remove(_legacyOperatorCallKey);
   }
 
   /// Sync is opt-in — off until the user turns it on in Settings.
@@ -214,22 +377,16 @@ class SettingsService extends ChangeNotifier implements SyncSettings {
   @override
   Future<void> setState(Map<String, dynamic> state) => setSyncState(state);
 
-  String get locale => _prefs.getString(_localeKey) ?? 'en';
+  String get locale => (settingValue(generalGroup, _localeKey) as String?) ?? 'en';
 
-  Future<void> setLocale(String localeCode) async {
-    await _prefs.setString(_localeKey, localeCode);
-    notifyListeners();
-  }
+  Future<void> setLocale(String localeCode) => setSettingValue(generalGroup, _localeKey, localeCode);
 
   FontScale get fontScale {
-    final value = _prefs.getString(_fontScaleKey);
+    final value = settingValue(generalGroup, _fontScaleKey);
     return FontScale.values.firstWhere((e) => e.name == value, orElse: () => FontScale.normal);
   }
 
-  Future<void> setFontScale(FontScale scale) async {
-    await _prefs.setString(_fontScaleKey, scale.name);
-    notifyListeners();
-  }
+  Future<void> setFontScale(FontScale scale) => setSettingValue(generalGroup, _fontScaleKey, scale.name);
 
   Future<void> increaseFontScale() async {
     final current = fontScale;
@@ -267,68 +424,99 @@ class SettingsService extends ChangeNotifier implements SyncSettings {
     notifyListeners();
   }
 
+  bool _loggingBool(String key, bool fallback) => (settingValue(loggingGroup, key) as bool?) ?? fallback;
+
   /// Logging view "..." menu toggles (ham2k/app-halo-dist#1).
-  bool get showRSTFields => _prefs.getBool(_showRSTFieldsKey) ?? true;
+  bool get showRSTFields => _loggingBool(_showRSTFieldsKey, true);
 
-  Future<void> setShowRSTFields(bool value) async {
-    await _prefs.setBool(_showRSTFieldsKey, value);
-    notifyListeners();
-  }
+  Future<void> setShowRSTFields(bool value) => setSettingValue(loggingGroup, _showRSTFieldsKey, value);
 
-  bool get showStateField => _prefs.getBool(_showStateFieldKey) ?? false;
+  bool get showStateField => _loggingBool(_showStateFieldKey, false);
 
-  Future<void> setShowStateField(bool value) async {
-    await _prefs.setBool(_showStateFieldKey, value);
-    notifyListeners();
-  }
+  Future<void> setShowStateField(bool value) => setSettingValue(loggingGroup, _showStateFieldKey, value);
 
-  bool get showGridField => _prefs.getBool(_showGridFieldKey) ?? false;
+  bool get showGridField => _loggingBool(_showGridFieldKey, false);
 
-  Future<void> setShowGridField(bool value) async {
-    await _prefs.setBool(_showGridFieldKey, value);
-    notifyListeners();
-  }
+  Future<void> setShowGridField(bool value) => setSettingValue(loggingGroup, _showGridFieldKey, value);
 
   /// Off by default — deleted QSOs are hidden from the list unless the user
   /// opts in, matching `QsoRepository.watchForOperation`'s previous
   /// hardcoded behavior of always excluding them.
-  bool get showDeletedQSOs => _prefs.getBool(_showDeletedQSOsKey) ?? false;
+  bool get showDeletedQSOs => _loggingBool(_showDeletedQSOsKey, false);
 
-  Future<void> setShowDeletedQSOs(bool value) async {
-    await _prefs.setBool(_showDeletedQSOsKey, value);
-    notifyListeners();
+  Future<void> setShowDeletedQSOs(bool value) => setSettingValue(loggingGroup, _showDeletedQSOsKey, value);
+
+  bool get showQsoNumbers => _loggingBool(_showQsoNumbersKey, true);
+
+  Future<void> setShowQsoNumbers(bool value) => setSettingValue(loggingGroup, _showQsoNumbersKey, value);
+
+  // New logging settings, defaults matching app-polo. Declared in the
+  // settings registry and persisted here, but NOT yet consumed by the
+  // logging UI — wiring the behavior is follow-up work per setting.
+  bool get leftieMode => _loggingBool('leftieMode', false);
+  bool get fieldsOnTop => _loggingBool('fieldsOnTop', false);
+  bool get showBearing => _loggingBool('showBearing', false);
+  bool get switchSentRcvd => _loggingBool('switchSentRcvd', false);
+  bool get jumpAfterRST => _loggingBool('jumpAfterRST', false);
+
+  /// Which contacts get a country flag next to them.
+  DxFlags get dxFlags {
+    final value = settingValue(loggingGroup, 'dxFlags');
+    return DxFlags.values.firstWhere((e) => e.name == value, orElse: () => DxFlags.dx);
   }
 
-  bool get showQsoNumbers => _prefs.getBool(_showQsoNumbersKey) ?? true;
-
-  Future<void> setShowQsoNumbers(bool value) async {
-    await _prefs.setBool(_showQsoNumbersKey, value);
-    notifyListeners();
+  List<String> _loggingList(String key, List<String> fallback) {
+    final value = settingValue(loggingGroup, key);
+    return value is List ? value.whereType<String>().toList() : fallback;
   }
+
+  static const defaultBands = ['80m', '40m', '30m', '20m', '17m', '15m', '12m', '10m', '6m', '2m'];
+  static const defaultModes = ['SSB', 'CW', 'FT8', 'FT4', 'FM'];
+
+  List<String> get enabledBands => _loggingList('bands', defaultBands);
+  List<String> get enabledModes => _loggingList('modes', defaultModes);
+
+  /// Privacy consents, both opt-in (default false). Same keys as app-polo
+  /// (`consentAppData`/`consentOpData`) for cross-app parity. Nothing in the
+  /// OSS app consumes them yet — MetricsService is a no-op — but
+  /// distribution builds gate their telemetry on these.
+  bool get consentAppData => (settingValue(privacyGroup, 'consentAppData') as bool?) ?? false;
+  bool get consentOpData => (settingValue(privacyGroup, 'consentOpData') as bool?) ?? false;
 
   /// Distances (the Map tab's popups) in km or miles. Until the user picks
   /// one, defaults by operator callsign the way app-polo does: miles for the
   /// non-metric entities (US, UK, Liberia, Myanmar), km everywhere else.
   DistanceUnits get distanceUnits {
-    final value = _prefs.getString(_distanceUnitsKey);
+    final value = settingValue(generalGroup, _distanceUnitsKey);
     for (final unit in DistanceUnits.values) {
       if (unit.name == value) return unit;
     }
     // US prefixes K/N/W/AA–AL, UK G/M/2xx, Liberia EL/A8/5L/6Z/D5, Myanmar
     // XY/XZ — matching on the raw callsign since Dart has no callsign parser
     // (app-polo checks the parsed entityPrefix instead).
-    final call = operatorCall;
+    final call = activeProfile.operatorCall;
     final miles = RegExp(r'^(A[A-L]|A8|[KNW]|G|M|2|EL|5L|6Z|D5|XY|XZ)').hasMatch(call);
     return miles ? DistanceUnits.miles : DistanceUnits.kilometers;
   }
 
-  Future<void> setDistanceUnits(DistanceUnits units) async {
-    await _prefs.setString(_distanceUnitsKey, units.name);
-    notifyListeners();
-  }
+  Future<void> setDistanceUnits(DistanceUnits units) => setSettingValue(generalGroup, _distanceUnitsKey, units.name);
+}
+
+/// One callsign profile from [SettingsService.activeProfile] — an id plus a
+/// free-form data map, so profile fields can grow without schema churn.
+class Profile {
+  final String id;
+  final Map<String, dynamic> data;
+
+  const Profile(this.id, this.data);
+
+  String get operatorCall => (data['operatorCall'] as String?) ?? '';
 }
 
 enum DistanceUnits { kilometers, miles }
+
+/// Country flags on contacts: DX only (app-polo's default), everyone, or off.
+enum DxFlags { dx, all, none }
 
 enum FontScale {
   smallest(0.70, 'Smallest'),
