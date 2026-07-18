@@ -9,7 +9,7 @@
 import 'dart:async';
 import 'dart:convert';
 
-import 'package:flutter/foundation.dart' show setEquals;
+import 'package:flutter/foundation.dart' show kReleaseMode, setEquals;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show rootBundle;
 import 'package:flutter_markdown/flutter_markdown.dart';
@@ -39,15 +39,92 @@ class ExtensionService {
   int _restartAttempts = 0;
   bool _restarting = false;
   ({String deviceKey, String operatorCall})? _lastSyncCredentials;
+
+  static const _keychainAccountName = 'Ham2K Logger';
+
   final _secureStorage = const FlutterSecureStorage(
     mOptions: MacOsOptions(
-      usesDataProtectionKeychain: false,
-      accountName: 'Ham2K Logger',
+      // Release: the data-protection keychain (entitlement-gated, no consent
+      // prompt). Debug: the file keychain, which needs no keychain-access-group
+      // and so works under ad-hoc signing (see README "Building locally on
+      // macOS"). kReleaseMode is a compile-time const, so this stays const.
+      usesDataProtectionKeychain: kReleaseMode,
+      accountName: _keychainAccountName,
     ),
     iOptions: IOSOptions(
-      accountName: 'Ham2K Logger',
+      accountName: _keychainAccountName,
     ),
   );
+
+  /// Per-account iCloud Keychain sync flag (`kSecAttrSynchronizable`), keyed
+  /// by account `kvKey`, as declared by each extension's `account` hook
+  /// (`synchronizable`, default false). Resolved ONCE from the account
+  /// definitions at runtime start (see [_refreshAccountSynchronizable], called
+  /// from [_start], which also covers every restart) so that every read/write/
+  /// delete for a given key uses the SAME flag: a synchronizable and a
+  /// non-synchronizable item are DISTINCT keychain entries, so a mismatch
+  /// would silently miss. An unknown key defaults to false — the fail-safe is
+  /// "never accidentally sync". Only `account_creds_`/`account_session_` items
+  /// consult this; secret settings fields stay device-local (the default).
+  final Map<String, bool> _accountSynchronizable = {};
+
+  /// Completes once [_refreshAccountSynchronizable] has resolved the flags for
+  /// the current runtime generation (or start failed) — reset per [_start],
+  /// completed in its `finally`. Account access awaits this so an early lookup
+  /// (the lookup queue gates on [ready], which flips true before the flags are
+  /// cached) can't read a synchronizable account under the wrong flag and miss
+  /// it. A fresh, never-started service leaves it pending, so
+  /// [_accountKeychainOptions] only awaits it when a start is actually in play.
+  Completer<void> _accountSyncReady = Completer<void>();
+
+  /// Rebuilds [_accountSynchronizable] from the current account definitions.
+  /// Best-effort: a failure leaves accounts device-local, never crashes boot.
+  Future<void> _refreshAccountSynchronizable() async {
+    try {
+      final accounts = await getAccounts();
+      _accountSynchronizable
+        ..clear()
+        ..addEntries(accounts
+            .where((a) => a['kvKey'] is String)
+            .map((a) => MapEntry(a['kvKey'] as String, a['synchronizable'] == true)));
+    } catch (e) {
+      debugPrint('[extensions] refreshAccountSynchronizable failed: $e');
+    }
+  }
+
+  /// The complete keychain options for one account's items, matching the
+  /// instance defaults but with the account's declared `synchronizable` flag.
+  /// Per-call options REPLACE (don't merge with) the instance defaults, so
+  /// the data-protection-keychain and account-name settings are repeated here.
+  ///
+  /// Awaits [_accountSyncReady] first (only while a start is in flight, so a
+  /// never-started service doesn't hang) so the flag is resolved before the
+  /// first read/write. Near-free once the flags are cached.
+  ///
+  /// macOS: a synchronizable item requires the data-protection keychain, which
+  /// the app only uses in release (debug stays on the file keychain so ad-hoc
+  /// local builds work); pairing `synchronizable` with the file keychain is
+  /// unsupported on macOS. So an account only actually syncs on macOS in
+  /// release. iOS always uses the data-protection keychain, so it syncs in any
+  /// build. Both keep `synchronizable` and `usesDataProtectionKeychain` from
+  /// ever contradicting.
+  Future<({MacOsOptions mOptions, IOSOptions iOptions})> _accountKeychainOptions(String kvKey) async {
+    if (!_accountSyncReady.isCompleted && (_starting != null || _host != null)) {
+      await _accountSyncReady.future;
+    }
+    final declared = _accountSynchronizable[kvKey] ?? false;
+    return (
+      mOptions: MacOsOptions(
+        usesDataProtectionKeychain: kReleaseMode,
+        accountName: _keychainAccountName,
+        synchronizable: declared && kReleaseMode,
+      ),
+      iOptions: IOSOptions(
+        accountName: _keychainAccountName,
+        synchronizable: declared,
+      ),
+    );
+  }
 
   SettingsService? settings;
   LookupRepository? lookups;
@@ -251,7 +328,8 @@ class ExtensionService {
   }
 
   Future<Map<String, String>> getAccountCredentials(String kvKey) async {
-    final raw = await _secureStorage.read(key: 'account_creds_$kvKey');
+    final o = await _accountKeychainOptions(kvKey);
+    final raw = await _secureStorage.read(key: 'account_creds_$kvKey', mOptions: o.mOptions, iOptions: o.iOptions);
     if (raw == null) return const {};
     try {
       return (jsonDecode(raw) as Map).cast<String, String>();
@@ -261,15 +339,22 @@ class ExtensionService {
   }
 
   Future<void> setAccountCredentials(String kvKey, Map<String, String> credentials) async {
-    await _secureStorage.write(key: 'account_creds_$kvKey', value: jsonEncode(credentials));
+    final o = await _accountKeychainOptions(kvKey);
+    await _secureStorage.write(
+      key: 'account_creds_$kvKey',
+      value: jsonEncode(credentials),
+      mOptions: o.mOptions,
+      iOptions: o.iOptions,
+    );
     // Fresh credentials must reach the very next hook call, not whatever
     // the kernel's context cache still holds.
     _host?.invalidateHookContext();
   }
 
   Future<void> clearAccount(String kvKey) async {
-    await _secureStorage.delete(key: 'account_creds_$kvKey');
-    await _secureStorage.delete(key: 'account_session_$kvKey');
+    final o = await _accountKeychainOptions(kvKey);
+    await _secureStorage.delete(key: 'account_creds_$kvKey', mOptions: o.mOptions, iOptions: o.iOptions);
+    await _secureStorage.delete(key: 'account_session_$kvKey', mOptions: o.mOptions, iOptions: o.iOptions);
     _host?.invalidateHookContext();
   }
 
@@ -563,6 +648,10 @@ class ExtensionService {
   }
 
   Future<void> _start() async {
+    // Fresh gate per generation: account access blocks on it until the
+    // synchronizable flags are resolved (or start fails), so an early lookup
+    // can't read an account under the wrong sync flag. Completed in `finally`.
+    _accountSyncReady = Completer<void>();
     try {
       final index = jsonDecode(await rootBundle.loadString('assets/extensions/index.json')) as Map<String, dynamic>;
       final kernelSource = await rootBundle.loadString('assets/extensions/${index['kernel']}');
@@ -591,7 +680,10 @@ class ExtensionService {
         extensions: bundles,
         onHostCall: _handleHostCall,
         fetchAllowlists: fetchAllowlists,
-        userAgent: await ham2kUserAgent(),
+        // Resolve the UA resiliently: a missing native build number (headless
+        // test host, or an early-boot platform channel not yet ready) must
+        // not throw here and leave every extension dark.
+        userAgent: await ham2kUserAgentOrFallback(),
         userAgentOverrides: userAgentOverrides,
       );
       _loadedExtensionKeys = loaded;
@@ -605,12 +697,21 @@ class ExtensionService {
       _host!.fatalErrors.listen((error) => _scheduleRestart('runtime died: $error'));
       _restartAttempts = 0;
       runtimeGeneration.value++;
+      // Resolve each account's synchronizable flag; account access blocks on
+      // _accountSyncReady (completed below) until this is done, so every
+      // keychain op for a key uses a consistent flag. Covers restarts too:
+      // _replaceRuntime routes back through start()/_start().
+      await _refreshAccountSynchronizable();
     } catch (e) {
       debugPrint('[extensions] failed to start extension runtime: $e');
       // A transient boot failure (asset hiccup, engine init) used to leave
       // extensions off for the rest of the session ("_starting" memoized
       // the failure). Retry with backoff instead.
       _scheduleRestart('start failed: $e');
+    } finally {
+      // Never leave account access blocked, even if start threw before the
+      // refresh ran — the empty cache then yields device-local defaults.
+      if (!_accountSyncReady.isCompleted) _accountSyncReady.complete();
     }
   }
 
@@ -769,16 +870,23 @@ class ExtensionService {
     switch (method) {
       case 'getAccount':
         final kvKey = params['kvKey'] as String;
-        final credsStr = await _secureStorage.read(key: 'account_creds_$kvKey');
-        final sessionStr = await _secureStorage.read(key: 'account_session_$kvKey');
+        final o = await _accountKeychainOptions(kvKey);
+        final credsStr = await _secureStorage.read(key: 'account_creds_$kvKey', mOptions: o.mOptions, iOptions: o.iOptions);
+        final sessionStr = await _secureStorage.read(key: 'account_session_$kvKey', mOptions: o.mOptions, iOptions: o.iOptions);
         return {
           'credentials': credsStr != null ? jsonDecode(credsStr) : const {},
           'session': sessionStr != null ? jsonDecode(sessionStr) : const {},
         };
       case 'setAccountSession':
         final kvKey = params['kvKey'] as String;
+        final o = await _accountKeychainOptions(kvKey);
         final session = params['session'] as Map<dynamic, dynamic>;
-        await _secureStorage.write(key: 'account_session_$kvKey', value: jsonEncode(session));
+        await _secureStorage.write(
+          key: 'account_session_$kvKey',
+          value: jsonEncode(session),
+          mOptions: o.mOptions,
+          iOptions: o.iOptions,
+        );
         return null;
       case 'getSettings':
         // The full read view of the app's settings — resolved typed values

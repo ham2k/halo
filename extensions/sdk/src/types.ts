@@ -523,6 +523,16 @@ export interface AccountHook {
   kvKey?: string
   fields?: AccountField[]
   oauth2?: OAuth2Config
+  /// Whether this account's stored credentials and session sync across the
+  /// user's Apple devices via iCloud Keychain (`kSecAttrSynchronizable`).
+  /// Defaults to `false` — device-local. Set `true` ONLY for account-level
+  /// logins that are legitimately the same on every device (e.g. a QRZ.com
+  /// username/password). NEVER set it for per-device identifiers or bearer
+  /// tokens (e.g. a sync client/device key), where each install must stay
+  /// distinct. No effect on non-Apple platforms. Note: flipping this on an
+  /// account that already has stored credentials makes the old (non-synced)
+  /// entry invisible — those credentials must be re-entered once.
+  synchronizable?: boolean
   testCredentials(credentials: Record<string, string>, ctx: HookContext): Promise<string>
 }
 

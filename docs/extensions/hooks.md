@@ -416,6 +416,25 @@ optional OAuth2, surfaced in `SettingsView`'s Accounts panel via
 `ExtensionService.getAccounts`/`testCredentials`. Credentials live in the
 platform keychain, keyed by the account's `kvKey`. Implemented by: `qrz`.
 
+**`synchronizable`** (optional, default `false`) — on Apple platforms (macOS
+and iOS), when `true` the account's stored credentials and session sync across
+the user's devices via iCloud Keychain (`kSecAttrSynchronizable`); when `false`
+they stay device-local. No effect on other platforms. Set it `true` only for
+account-level logins that are genuinely the same on every device — QRZ.com sets
+it, since one QRZ login is shared across a user's installs. **Never** set it for
+per-device identifiers or bearer tokens: the LoFi sync **device key** is a
+per-install identifier and deliberately stays device-local (it isn't even an
+`account` hook — it lives in `SettingsService`, non-synchronizable, and must
+stay that way, or two devices would present as the same sync client).
+
+The flag must be consistent for a `kvKey` across its whole lifetime: a
+synchronizable and a non-synchronizable keychain item are *distinct entries*,
+so the host resolves each account's flag once at runtime start
+(`ExtensionService._accountSynchronizable`) and applies it to every
+read/write/delete. Flipping the flag on an account that already has stored
+credentials makes the old entry invisible — the credentials must be re-entered
+once (there is no automatic migration between the two entries).
+
 ## ✅ `dataFile` — offline reference datasets
 
 Large offline datasets (park/summit lists) the core downloads, caches, and

@@ -420,6 +420,7 @@ const kernel = {
               kvKey: record.hook.kvKey ?? record.key ?? record.extensionKey,
               fields: record.hook.fields ?? [],
               oauth2: record.hook.oauth2 ?? null,
+              synchronizable: record.hook.synchronizable ?? false,
             }
           }
         })

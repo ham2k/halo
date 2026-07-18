@@ -23,6 +23,10 @@ defineExtension({
       hook: {
         label: 'QRZ.com Callsign Lookups',
         kvKey: 'qrz',
+        // A QRZ.com login is the same on every device, so sync it across the
+        // user's Apple devices via iCloud Keychain. Contrast the LoFi sync
+        // device key, which is per-install and must stay device-local.
+        synchronizable: true,
         fields: [
           {
             key: 'username',

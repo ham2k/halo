@@ -12,6 +12,7 @@
 import 'dart:async';
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart' show kReleaseMode;
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:halo_core/halo_core.dart';
@@ -49,6 +50,15 @@ class SettingsService extends ChangeNotifier implements SyncSettings {
 
   /// The sync device key is the de-facto bearer credential for the account's
   /// synced log, so it lives in the platform keychain, not SharedPreferences.
+  ///
+  /// It must stay PER-DEVICE: these options never set `synchronizable`, so the
+  /// key is device-local (`kSecAttrSynchronizable` defaults to false) and never
+  /// reaches iCloud Keychain. Do NOT make it synchronizable — it's a
+  /// per-install identifier (LoFi's `syncUniqueId`), and syncing it would make
+  /// two of the user's devices present as the same sync client. Account-level
+  /// logins that ARE the same everywhere (e.g. QRZ) opt into syncing through
+  /// the extension account hook's `synchronizable` flag instead — see
+  /// ExtensionService.
   final FlutterSecureStorage _secureStorage;
 
   String? _cachedDeviceKey;
@@ -57,7 +67,10 @@ class SettingsService extends ChangeNotifier implements SyncSettings {
     : _secureStorage =
           secureStorage ??
           const FlutterSecureStorage(
-            mOptions: MacOsOptions(usesDataProtectionKeychain: false, accountName: 'Ham2K Logger'),
+            // Release uses the data-protection keychain (no consent prompt);
+            // debug uses the file keychain so ad-hoc-signed local builds work.
+            // See ExtensionService._secureStorage for the full rationale.
+            mOptions: MacOsOptions(usesDataProtectionKeychain: kReleaseMode, accountName: 'Ham2K Logger'),
             iOptions: IOSOptions(accountName: 'Ham2K Logger'),
           );
 
