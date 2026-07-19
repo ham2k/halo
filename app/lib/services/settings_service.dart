@@ -6,8 +6,8 @@
 // unencrypted, fine for non-secret preferences). The one secret here, the
 // sync device key (the bearer credential for the account's synced log),
 // lives in the platform keychain via FlutterSecureStorage instead; QRZ
-// credentials likewise moved to secure storage (migrated at boot in
-// main.dart, then handled by ExtensionService's account storage).
+// credentials live in secure storage too, handled by ExtensionService's
+// account storage.
 
 import 'dart:async';
 import 'dart:convert';
@@ -23,9 +23,6 @@ const _uuidGenerator = Uuid();
 
 class SettingsService extends ChangeNotifier implements SyncSettings {
   static const _themeModeKey = 'themeMode';
-  static const _qrzUsernameKey = 'qrzUsername';
-  static const _qrzPasswordKey = 'qrzPassword';
-  static const _legacyOperatorCallKey = 'operatorCall';
   static const _profilesKey = 'profiles';
   static const _activeProfileKey = 'activeProfile';
   static const _syncEnabledKey = 'syncEnabled';
@@ -77,11 +74,7 @@ class SettingsService extends ChangeNotifier implements SyncSettings {
   SharedPreferences get prefs => _prefs;
 
   static Future<SettingsService> load() async {
-    final settings = SettingsService(await SharedPreferences.getInstance());
-    await settings._migrateLegacyOperatorCall();
-    await settings._migrateScalarPrefsToGroups();
-    await settings._migrateExtensionEnabledFlags();
-    return settings;
+    return SettingsService(await SharedPreferences.getInstance());
   }
 
   /// Per-extension enable/disable overrides ({key: bool}), consulted against
@@ -113,24 +106,6 @@ class SettingsService extends ChangeNotifier implements SyncSettings {
   Future<void> setExtensionDisabledSince(Map<String, int> disabledSince) async {
     await _prefs.setString(_extensionDisabledSinceKey, jsonEncode(disabledSince));
     notifyListeners();
-  }
-
-  /// One-time migration: early onboarding builds wrote activity picks as
-  /// `settings.extension_pota/sota {'enabled': bool}` — an accidental
-  /// contract superseded by [extensionOverrides]. Fold those into overrides
-  /// (an existing override wins) and drop the group keys so the stale flags
-  /// can't disagree with the real store.
-  Future<void> _migrateExtensionEnabledFlags() async {
-    for (final key in const ['pota', 'sota']) {
-      final group = settingsGroup('extension_$key');
-      final legacy = group['enabled'];
-      if (legacy is! bool) continue;
-      final overrides = extensionOverrides;
-      if (!overrides.containsKey(key)) {
-        await setExtensionOverrides({...overrides, key: legacy});
-      }
-      await _prefs.setString(_groupPrefsKey('extension_$key'), jsonEncode({...group}..remove('enabled')));
-    }
   }
 
   // ---------------------------------------------------------------------
@@ -174,29 +149,6 @@ class SettingsService extends ChangeNotifier implements SyncSettings {
     };
   }
 
-  /// One-time migration: these all began life as individual scalar prefs;
-  /// they now live in the per-group JSON maps. Existing group values win
-  /// (the migration ran before, or a newer build wrote the group).
-  Future<void> _migrateScalarPrefsToGroups() async {
-    const groupedKeys = {
-      generalGroup: [_themeModeKey, _localeKey, _fontScaleKey, _distanceUnitsKey],
-      loggingGroup: [_showRSTFieldsKey, _showStateFieldKey, _showGridFieldKey, _showDeletedQSOsKey, _showQsoNumbersKey],
-    };
-    for (final entry in groupedKeys.entries) {
-      final migrated = <String, dynamic>{};
-      for (final key in entry.value) {
-        if (!_prefs.containsKey(key)) continue;
-        migrated[key] = _prefs.get(key);
-        await _prefs.remove(key);
-      }
-      if (migrated.isEmpty) continue;
-      await _prefs.setString(
-        _groupPrefsKey(entry.key),
-        jsonEncode({...migrated, ...settingsGroup(entry.key)}),
-      );
-    }
-  }
-
   ThemeMode get themeMode {
     switch (settingValue(generalGroup, _themeModeKey)) {
       case 'light':
@@ -217,16 +169,6 @@ class SettingsService extends ChangeNotifier implements SyncSettings {
 
   Future<void> setLastSeenReleaseVersion(String version) async {
     await _prefs.setString(_lastSeenReleaseVersionKey, version);
-    notifyListeners();
-  }
-
-  String get qrzUsername => _prefs.getString(_qrzUsernameKey) ?? '';
-  String get qrzPassword => _prefs.getString(_qrzPasswordKey) ?? '';
-  bool get hasQrzCredentials => qrzUsername.isNotEmpty && qrzPassword.isNotEmpty;
-
-  Future<void> setQrzCredentials({required String username, required String password}) async {
-    await _prefs.setString(_qrzUsernameKey, username);
-    await _prefs.setString(_qrzPasswordKey, password);
     notifyListeners();
   }
 
@@ -272,20 +214,6 @@ class SettingsService extends ChangeNotifier implements SyncSettings {
     notifyListeners();
   }
 
-  /// One-time migration: earlier builds kept the operator callsign as a
-  /// scalar pref; it now lives in the default profile. An EMPTY legacy
-  /// value still counts as answered — it migrates to a defined-empty
-  /// profile key, so an upgrading user isn't greeted with first-run
-  /// onboarding (see [defaultProfileCallsignDefined]).
-  Future<void> _migrateLegacyOperatorCall() async {
-    final legacy = _prefs.getString(_legacyOperatorCallKey);
-    if (legacy == null) return;
-    if (!defaultProfileCallsignDefined) {
-      await setProfileOperatorCall(defaultProfileId, legacy);
-    }
-    await _prefs.remove(_legacyOperatorCallKey);
-  }
-
   /// Sync is opt-in — off until the user turns it on in Settings.
   bool get syncEnabled => _prefs.getBool(_syncEnabledKey) ?? false;
 
@@ -298,8 +226,7 @@ class SettingsService extends ChangeNotifier implements SyncSettings {
   /// Flutter equivalent of app-polo's `DeviceInfo.syncUniqueId()`), generated
   /// once and persisted in the platform keychain forever after. Since it's
   /// the bearer credential for the account's synced log, it must be loaded
-  /// (and migrated off any old SharedPreferences copy) before first use —
-  /// call [ensureSyncDeviceKey] at boot.
+  /// before first use — call [ensureSyncDeviceKey] at boot.
   Future<String> ensureSyncDeviceKey() async {
     if (_cachedDeviceKey != null) return _cachedDeviceKey!;
 
@@ -308,11 +235,8 @@ class SettingsService extends ChangeNotifier implements SyncSettings {
       return _cachedDeviceKey = fromSecure;
     }
 
-    // One-time migration: earlier builds kept the key in SharedPreferences.
-    final legacy = _prefs.getString(_syncDeviceKeyKey);
-    final key = (legacy != null && legacy.isNotEmpty) ? legacy : _uuidGenerator.v4();
+    final key = _uuidGenerator.v4();
     await _secureStorage.write(key: _syncDeviceKeyKey, value: key);
-    if (legacy != null) await _prefs.remove(_syncDeviceKeyKey);
     return _cachedDeviceKey = key;
   }
 

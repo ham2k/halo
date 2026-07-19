@@ -219,13 +219,6 @@ Future<HaLoServices> bootstrap({
     purchases: purchases,
     updates: updates,
   );
-  if (settings.hasQrzCredentials) {
-    await services.extensions.setAccountCredentials('qrz', {
-      'username': settings.qrzUsername,
-      'password': settings.qrzPassword,
-    });
-    await settings.setQrzCredentials(username: '', password: '');
-  }
   final syncDeviceKey = await settings.ensureSyncDeviceKey();
   services.extensions.setSyncCredentials(deviceKey: syncDeviceKey, operatorCall: settings.activeProfile.operatorCall);
   services.syncEngine.start();
@@ -400,8 +393,8 @@ class HaLoServices {
 
 
 
-  /// Same one-call pattern as `setQrzCredentials`, for the sync device
-  /// identity + operator callsign. Writes to the default profile — the
+  /// Sets the sync device identity + operator callsign in one call. Writes
+  /// to the default profile — the
   /// Callsign settings panel edits that one; sync follows the ACTIVE
   /// profile's callsign (the same profile until multi-profile lands).
   Future<void> setOperatorCall(String call) async {
