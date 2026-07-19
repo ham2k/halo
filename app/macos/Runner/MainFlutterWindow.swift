@@ -95,6 +95,9 @@ class MainFlutterWindow: NSWindow {
       }
     }
     self.windowChromeChannel = channel
+    // The app-menu actions (About, Preferences…) are handled by the app
+    // delegate; hand it the channel so it can forward them to Flutter.
+    (NSApp.delegate as? AppDelegate)?.windowChromeChannel = channel
 
     super.awakeFromNib()
 

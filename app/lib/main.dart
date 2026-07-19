@@ -19,6 +19,7 @@ import 'package:halo_widgets/halo_widgets.dart';
 
 import 'views/operation_view.dart';
 import 'views/home_view.dart';
+import 'views/settings_view.dart';
 import 'views/notice_actions.dart';
 import 'views/onboarding_overlay.dart';
 import 'views/release_overlay.dart';
@@ -223,6 +224,13 @@ Future<HaLoServices> bootstrap({
   final syncDeviceKey = await settings.ensureSyncDeviceKey();
   services.extensions.setSyncCredentials(deviceKey: syncDeviceKey, operatorCall: settings.activeProfile.operatorCall);
   services.syncEngine.start();
+
+  // macOS app-menu actions (see WindowChromeService and macos/Runner): "About"
+  // shows the release overlay, "Preferences…" (⌘,) opens the Settings view.
+  WindowChromeService.onShowReleaseOverlay = services.devSplashTrigger.trigger;
+  WindowChromeService.onOpenSettings = () => navigatorKey.currentState?.push(
+        MaterialPageRoute(builder: (_) => SettingsView(services: services)),
+      );
 
   // Await the extension system being fully booted, then initialize and sync data files
   unawaited(extensions.start().then((_) async {
