@@ -122,6 +122,11 @@ class StatusBarService extends ChangeNotifier {
 
   List<StatusBarItem> get items => _items.values.toList()..sort((a, b) => a.updatedAt.compareTo(b.updatedAt));
 
+  /// The active progress/message item under [key], or null — a direct map
+  /// lookup, so callers watching one keyed item (a data file's download, a
+  /// sync round) don't scan and sort the whole [items] list to find it.
+  StatusBarItem? itemForKey(String key) => _items[key];
+
   List<StatusBarNotice> get activeNotices => _notices.where((n) => n.dismissedAt == null).toList();
 
   /// Most-recent-first, including dismissed notices.

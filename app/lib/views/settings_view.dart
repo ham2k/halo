@@ -24,9 +24,9 @@ import '../config/release_notes.dart';
 import '../config/user_agent.dart';
 import '../config/version.dart';
 import '../main.dart';
+import '../services/data_file_manager.dart';
 import '../services/extension_service.dart';
 import '../services/settings_service.dart';
-import '../services/status_bar_service.dart';
 import '../settings/settings_registry.dart';
 import 'extensions_panel.dart';
 import 'ham2k_logo.dart';
@@ -162,6 +162,16 @@ class _SettingsViewState extends State<SettingsView> {
         order: _profilesPanelOrder,
       ),
       ..._fixedCorePanels,
+      // After the extension-contributed panels (default order 50): data
+      // files are contributed by extensions too, so they sit alongside
+      // them. Not in the const _fixedCorePanels because its icon resolves
+      // an MDI name at runtime.
+      _SettingsPanelEntry(
+        key: 'data_files',
+        title: 'Data Files',
+        icon: resolveIconName('file-cabinet'),
+        order: 60,
+      ),
       for (final p in _extensionPanels)
         _SettingsPanelEntry(
           key: p['panelKey'] as String,
@@ -362,6 +372,8 @@ Widget _buildPanelContent(_SettingsPanelEntry panel, HaLoServices services) {
       content = _SyncPanel(services: services);
     case 'accounts':
       content = _AccountsPanel(services: services);
+    case 'data_files':
+      content = _DataFilesPanel(services: services);
     case 'notices':
       content = NoticeHistoryView(services: services);
     case 'developer':
@@ -848,10 +860,7 @@ class _SyncPanelState extends State<_SyncPanel> {
             ListenableBuilder(
               listenable: widget.services.statusBar,
               builder: (context, _) {
-                StatusBarItem? progress;
-                for (final item in widget.services.statusBar.items) {
-                  if (item.key == HaLoServices.syncProgressStatusKey) progress = item;
-                }
+                final progress = widget.services.statusBar.itemForKey(HaLoServices.syncProgressStatusKey);
                 if (progress == null || !settings.syncEnabled) return const SizedBox.shrink();
                 return ListTile(
                   leading: Icon(resolveIconName(progress.icon ?? 'cloud-sync-outline')),
@@ -972,6 +981,156 @@ class _AccountsPanelState extends State<_AccountsPanel> {
       ],
     );
   }
+}
+
+/// The Data Files panel: every data file the enabled extensions register
+/// (POTA parks, SOTA summits, callsign notes…), each showing when it was
+/// last downloaded and a Refresh button that forces a fresh fetch. The list
+/// re-loads when the extension runtime restarts (a toggle changes which
+/// files exist). Country data (Big CTY) is bundled, not a downloaded data
+/// file, so it doesn't appear here.
+class _DataFilesPanel extends StatefulWidget {
+  final HaLoServices services;
+
+  const _DataFilesPanel({required this.services});
+
+  @override
+  State<_DataFilesPanel> createState() => _DataFilesPanelState();
+}
+
+class _DataFilesPanelState extends State<_DataFilesPanel> {
+  List<DataFileStatus>? _files;
+  final Set<String> _refreshing = {};
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+    widget.services.extensions.runtimeGeneration.addListener(_load);
+  }
+
+  @override
+  void dispose() {
+    widget.services.extensions.runtimeGeneration.removeListener(_load);
+    super.dispose();
+  }
+
+  Future<void> _load() async {
+    await widget.services.extensions.start();
+    final files = await widget.services.dataFiles.listDataFiles();
+    if (mounted) setState(() => _files = files);
+  }
+
+  Future<void> _refresh(DataFileStatus file) async {
+    setState(() => _refreshing.add(file.key));
+    try {
+      // The stamped time comes back from the refresh, so the row updates
+      // from it directly — no second listDataFiles round-trip.
+      final updatedAt = await widget.services.dataFiles.refreshDataFile(file.key);
+      if (mounted && updatedAt != null) _applyUpdatedAt(file.key, updatedAt);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Could not refresh ${file.name}: $e')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _refreshing.remove(file.key));
+    }
+  }
+
+  void _applyUpdatedAt(String key, DateTime updatedAt) {
+    final files = _files;
+    if (files == null) return;
+    final index = files.indexWhere((f) => f.key == key);
+    if (index < 0) return;
+    setState(() => _files = [...files]..[index] = files[index].withUpdatedAt(updatedAt));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final files = _files;
+    if (files == null) return const Center(child: CircularProgressIndicator());
+    final safeLeft = PaneSafeArea.leftOf(context);
+
+    return ListView(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      children: [
+        Padding(padding: EdgeInsets.only(left: safeLeft), child: const SectionHeader('Offline Data')),
+        if (files.isEmpty)
+          const ListTile(
+            title: Text('No data files'),
+            subtitle: Text('Enable activity or lookup extensions to download their offline data here.'),
+          )
+        else
+          for (final file in files) _buildRow(context, file),
+      ],
+    );
+  }
+
+  Widget _buildRow(BuildContext context, DataFileStatus file) {
+    final icon = Icon(resolveIconName(file.icon ?? 'file-document-outline'));
+
+    // While refreshing, mirror this data file's live status-bar progress
+    // item (keyed `dataFile:$key`, set by DataFileManager) as the subtitle —
+    // the footer status bar isn't visible on this screen.
+    if (_refreshing.contains(file.key)) {
+      return ListenableBuilder(
+        listenable: widget.services.statusBar,
+        builder: (context, _) {
+          final progress = widget.services.statusBar.itemForKey('dataFile:${file.key}');
+          return ListTile(
+            leading: icon,
+            title: Text(file.name),
+            subtitle: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(progress?.text ?? 'Refreshing…'),
+                const SizedBox(height: 6),
+                LinearProgressIndicator(value: progress?.progressValue),
+              ],
+            ),
+            trailing: const SizedBox(
+              width: 24,
+              height: 24,
+              child: Padding(padding: EdgeInsets.all(2), child: CircularProgressIndicator(strokeWidth: 2)),
+            ),
+          );
+        },
+      );
+    }
+
+    return ListTile(
+      leading: icon,
+      title: Text(file.name),
+      subtitle: Text(_dataFileUpdatedLabel(file.updatedAt)),
+      trailing: IconButton(
+        icon: Icon(resolveIconName('refresh')),
+        tooltip: 'Refresh',
+        onPressed: () => _refresh(file),
+        mouseCursor: SystemMouseCursors.click,
+      ),
+    );
+  }
+}
+
+/// "Updated 2d 7h ago" / "Never downloaded" — the same day+hour granularity
+/// app-polo's data settings use.
+String _dataFileUpdatedLabel(DateTime? updatedAt) {
+  if (updatedAt == null) return 'Never downloaded';
+  final diff = DateTime.now().difference(updatedAt);
+  if (diff.isNegative || diff.inSeconds < 60) return 'Updated just now';
+  final days = diff.inDays;
+  if (days > 0) {
+    final hours = diff.inHours % 24;
+    return hours == 0 ? 'Updated ${days}d ago' : 'Updated ${days}d ${hours}h ago';
+  }
+  final hours = diff.inHours;
+  if (hours > 0) {
+    final minutes = diff.inMinutes % 60;
+    return minutes == 0 ? 'Updated ${hours}h ago' : 'Updated ${hours}h ${minutes}m ago';
+  }
+  return 'Updated ${diff.inMinutes}m ago';
 }
 
 /// Renders one extension-contributed `settingsPanel` panel — the

@@ -269,12 +269,14 @@ class HaLoServices {
   late final ScoringService scoring = ScoringService(extensions: extensions, qsos: qsos, operations: operations);
   late final RadioService radio = RadioService(settings.prefs);
   final LocationService location = LocationService();
-  late final DataFileManager dataFiles = DataFileManager(
-    lookups: lookups,
-    extensions: extensions,
-    prefs: settings.prefs,
-    statusBar: statusBar,
-  );
+  final DataFileManager? _dataFilesOverride;
+  late final DataFileManager dataFiles = _dataFilesOverride ??
+      DataFileManager(
+        lookups: lookups,
+        extensions: extensions,
+        prefs: settings.prefs,
+        statusBar: statusBar,
+      );
   late final StatusBarService statusBar = StatusBarService(settings.prefs);
   late final LookupQueueService lookupQueue = LookupQueueService(
     lookup: extensions.lookupCall,
@@ -383,10 +385,12 @@ class HaLoServices {
     MetricsService? metrics,
     PurchaseService? purchases,
     UpdateService? updates,
+    DataFileManager? dataFiles,
   })  : extensions = extensions ?? ExtensionService(),
         metrics = metrics ?? const NoopMetricsService(),
         purchases = purchases ?? const NoopPurchaseService(),
-        updates = updates ?? const NoopUpdateService() {
+        updates = updates ?? const NoopUpdateService(),
+        _dataFilesOverride = dataFiles {
     this.extensions.settings = settings;
     this.extensions.lookups = lookups;
     this.extensions.statusBar = statusBar;

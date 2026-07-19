@@ -13,6 +13,31 @@ import '../config/user_agent.dart';
 import 'extension_service.dart';
 import 'status_bar_service.dart';
 
+/// One registered data file's definition plus its last-download time, for
+/// the Data Files settings panel. [updatedAt] is null when the file has
+/// never been downloaded on this device.
+class DataFileStatus {
+  final String key;
+  final String name;
+
+  /// The extension's own icon name (MDI, resolved via resolveIconName), if
+  /// it declared one — today's [DataFileDefinition] doesn't, so this is
+  /// almost always null and the panel falls back to a generic icon.
+  final String? icon;
+
+  final DateTime? updatedAt;
+
+  DataFileStatus({
+    required this.key,
+    required this.name,
+    this.icon,
+    this.updatedAt,
+  });
+
+  DataFileStatus withUpdatedAt(DateTime updatedAt) =>
+      DataFileStatus(key: key, name: name, icon: icon, updatedAt: updatedAt);
+}
+
 class DataFileManager {
   final LookupRepository lookups;
   final ExtensionService extensions;
@@ -25,6 +50,64 @@ class DataFileManager {
     required this.prefs,
     this.statusBar,
   });
+
+  /// The serializable definitions every enabled extension contributes
+  /// through the `dataFile`/`getDefinition` hook. Malformed or failed
+  /// entries are dropped rather than throwing, same as [syncAllDataFiles].
+  Future<List<Map<String, dynamic>>> _fetchDefinitions() async {
+    final host = extensions.host;
+    if (host == null) return const [];
+    final List<dynamic> entries;
+    try {
+      entries = await host.invokeHookAll('dataFile', method: 'getDefinition');
+    } catch (e) {
+      debugPrint('[data-file] failed to fetch definitions: $e');
+      return const [];
+    }
+    return [
+      for (final entry in entries)
+        if (entry is Map && entry['ok'] == true && entry['value'] != null)
+          Map<String, dynamic>.from(entry['value'] as Map),
+    ];
+  }
+
+  /// Lists every registered data file with its last-download time (read
+  /// from the `data_file_updated_$key` prefs the sync/refresh paths stamp),
+  /// sorted by name — the Data Files settings panel's data source.
+  Future<List<DataFileStatus>> listDataFiles() async {
+    final files = <DataFileStatus>[];
+    for (final def in await _fetchDefinitions()) {
+      final key = def['key'] as String?;
+      if (key == null) continue;
+      final millis = prefs.getInt('data_file_updated_$key');
+      files.add(DataFileStatus(
+        key: key,
+        name: def['name'] as String? ?? key,
+        icon: def['icon'] as String?,
+        updatedAt: millis == null ? null : DateTime.fromMillisecondsSinceEpoch(millis),
+      ));
+    }
+    files.sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
+    return files;
+  }
+
+  /// Forces a fresh download + reprocess of the single data file [key]
+  /// (bypassing ETag caching, like [syncAllDataFiles] with `force`) and
+  /// re-stamps its last-download time, which it returns so the caller can
+  /// update its row without re-listing. Returns null if no registered data
+  /// file has that key. Progress and errors surface through the status bar
+  /// (see [processDataFile]); the exception is rethrown so the caller can
+  /// react too.
+  Future<DateTime?> refreshDataFile(String key) async {
+    for (final def in await _fetchDefinitions()) {
+      if (def['key'] != key) continue;
+      await processDataFile(key, def, force: true);
+      final now = DateTime.now();
+      await prefs.setInt('data_file_updated_$key', now.millisecondsSinceEpoch);
+      return now;
+    }
+    return null;
+  }
 
   /// Resolves direct URLs from sharing links for known file sharing systems.
   String resolveDownloadUrl(String url) {
