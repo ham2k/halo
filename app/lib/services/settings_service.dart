@@ -21,6 +21,15 @@ import 'package:uuid/uuid.dart';
 
 const _uuidGenerator = Uuid();
 
+/// The theme mode the light/dark toggle (⌘⇧D) switches to: always the opposite
+/// of what's currently on screen, resolving [ThemeMode.system] against the
+/// current [platformBrightness] so the first press flips what the user sees.
+ThemeMode toggledThemeMode(ThemeMode current, Brightness platformBrightness) {
+  final showingDark =
+      current == ThemeMode.dark || (current == ThemeMode.system && platformBrightness == Brightness.dark);
+  return showingDark ? ThemeMode.light : ThemeMode.dark;
+}
+
 class SettingsService extends ChangeNotifier implements SyncSettings {
   static const _themeModeKey = 'themeMode';
   static const _profilesKey = 'profiles';

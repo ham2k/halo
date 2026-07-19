@@ -579,6 +579,14 @@ class _HaLoAppState extends State<HaLoApp> {
     final key = event.logicalKey;
     final settings = widget.services.settings;
 
+    if (HardwareKeyboard.instance.isShiftPressed && key == LogicalKeyboardKey.keyD) {
+      // ⌘⇧D (⌃⇧D on non-Mac): flip between light and dark themes.
+      settings.setThemeMode(
+        toggledThemeMode(settings.themeMode, WidgetsBinding.instance.platformDispatcher.platformBrightness),
+      );
+      return true;
+    }
+
     if (key == LogicalKeyboardKey.equal ||
         key == LogicalKeyboardKey.add ||
         key == LogicalKeyboardKey.numpadAdd) {
