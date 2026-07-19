@@ -550,6 +550,11 @@ class HaLoApp extends StatefulWidget {
 }
 
 class _HaLoAppState extends State<HaLoApp> {
+  // Held as a field (not rebuilt per frame) so its route count survives
+  // MaterialApp rebuilds; drives `modalBarrierIsVisible` for the window-chrome
+  // mask. See navigatorObservers below.
+  final _modalBarrierObserver = ModalBarrierRouteObserver();
+
   @override
   void initState() {
     super.initState();
@@ -606,6 +611,7 @@ class _HaLoAppState extends State<HaLoApp> {
         // android's AndroidManifest.xml label "HaLo").
         title: isWindowedPlatform ? 'Ham2K Logger' : 'HaLo',
         navigatorKey: navigatorKey,
+        navigatorObservers: [_modalBarrierObserver],
         locale: TranslationProvider.of(context).locale.flutterLocale,
         supportedLocales: AppLocaleUtils.supportedLocales,
         localizationsDelegates: GlobalMaterialLocalizations.delegates,

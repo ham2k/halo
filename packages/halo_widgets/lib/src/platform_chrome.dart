@@ -149,6 +149,58 @@ Widget macOSAwareBackButton(BuildContext context, {VoidCallback? onPressed}) => 
           : BackButton(onPressed: onPressed),
     );
 
+/// True while a dimming modal — a `showDialog` dialog or a `showModalPane`
+/// pane — sits on top of the root navigator. The window-chrome mask
+/// ([MacOSTrafficLightMask]) hides itself while this is set: a modal barrier
+/// dims the whole window, and the mask's bright same-as-header rectangle
+/// floating in the top-left corner over that dimmed backdrop reads as a stray
+/// box. The release/onboarding overlays already sit ABOVE the mask, so they
+/// hide it by z-order; dialogs are pushed onto the navigator BELOW it, so they
+/// need this signal instead. Driven by [ModalBarrierRouteObserver], installed
+/// in `MaterialApp.navigatorObservers` at the app root.
+final ValueNotifier<bool> modalBarrierIsVisible = ValueNotifier<bool>(false);
+
+/// Keeps [modalBarrierIsVisible] in sync with the navigator's route stack.
+/// Counts live routes that actually dim the window (a non-transparent
+/// [ModalRoute.barrierColor]) so it stays correct across stacked dialogs;
+/// opaque page routes (no barrier) and transparent-barrier popups (dropdown /
+/// menu overlays) are deliberately ignored — the mask only hides for the
+/// dimming dialogs and panes the design cares about.
+class ModalBarrierRouteObserver extends NavigatorObserver {
+  int _count = 0;
+
+  bool _dims(Route<dynamic>? route) {
+    final color = route is ModalRoute ? route.barrierColor : null;
+    return color != null && color.a > 0;
+  }
+
+  void _bump(int delta) {
+    _count = (_count + delta).clamp(0, 1 << 30);
+    modalBarrierIsVisible.value = _count > 0;
+  }
+
+  @override
+  void didPush(Route<dynamic> route, Route<dynamic>? previousRoute) {
+    if (_dims(route)) _bump(1);
+  }
+
+  @override
+  void didPop(Route<dynamic> route, Route<dynamic>? previousRoute) {
+    if (_dims(route)) _bump(-1);
+  }
+
+  @override
+  void didRemove(Route<dynamic> route, Route<dynamic>? previousRoute) {
+    if (_dims(route)) _bump(-1);
+  }
+
+  @override
+  void didReplace({Route<dynamic>? newRoute, Route<dynamic>? oldRoute}) {
+    if (_dims(oldRoute)) _bump(-1);
+    if (_dims(newRoute)) _bump(1);
+  }
+}
+
 /// A rectangle in the AppBar's own background color, floating over the header's
 /// top-left corner beneath the native traffic lights. Overlaid at the app root
 /// (main.dart) — the macOS counterpart to [WindowsCaptionButtons] on the
@@ -176,7 +228,7 @@ class MacOSTrafficLightMask extends StatelessWidget {
     // the trailing gap so nothing hard-clips at the mask's edge.
     final opaqueStop = macOSTrafficLightInset / (macOSTrafficLightInset + macOSTrafficLightGap);
 
-    return IgnorePointer(
+    final mask = IgnorePointer(
       child: SizedBox(
         width: clearance,
         height: theme.appBarTheme.toolbarHeight ?? kToolbarHeight,
@@ -191,6 +243,18 @@ class MacOSTrafficLightMask extends StatelessWidget {
           ),
         ),
       ),
+    );
+
+    // Hide while a dimming dialog/pane covers the window: its barrier darkens
+    // the header behind it, so this bright same-as-header box would read as a
+    // stray rectangle over the dim. Matches how the release/onboarding overlays
+    // (which sit above the mask) already hide it. The mask only exists to catch
+    // header content ANIMATING through this corner, and nothing animates behind
+    // a static modal barrier, so dropping it here loses nothing.
+    return ValueListenableBuilder<bool>(
+      valueListenable: modalBarrierIsVisible,
+      builder: (context, barrierVisible, child) => barrierVisible ? const SizedBox.shrink() : child!,
+      child: mask,
     );
   }
 }

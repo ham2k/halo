@@ -282,4 +282,57 @@ void main() {
       tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(channel, null);
     }
   });
+
+  testWidgets('the traffic-light mask hides while a dialog barrier dims the window', (tester) async {
+    // A modal barrier darkens the whole header; a bright same-as-header box in
+    // the corner over that dim would read as a stray rectangle, so the mask
+    // steps aside (as the release/onboarding overlays already do by z-order).
+    debugDefaultTargetPlatformOverride = TargetPlatform.macOS;
+    try {
+      Finder maskBox() =>
+          find.descendant(of: find.byType(MacOSTrafficLightMask), matching: find.byType(DecoratedBox));
+      await tester.pumpWidget(const MaterialApp(home: Scaffold(body: MacOSTrafficLightMask())));
+      expect(maskBox(), findsOneWidget);
+
+      modalBarrierIsVisible.value = true;
+      await tester.pump();
+      expect(maskBox(), findsNothing);
+
+      modalBarrierIsVisible.value = false;
+      await tester.pump();
+      expect(maskBox(), findsOneWidget);
+    } finally {
+      modalBarrierIsVisible.value = false;
+      debugDefaultTargetPlatformOverride = null;
+    }
+  });
+
+  testWidgets('ModalBarrierRouteObserver flips the signal for dimming dialogs, not plain page routes', (tester) async {
+    try {
+      await tester.pumpWidget(MaterialApp(
+        navigatorObservers: [ModalBarrierRouteObserver()],
+        home: const Scaffold(body: SizedBox()),
+      ));
+      final navigator = tester.state<NavigatorState>(find.byType(Navigator));
+      expect(modalBarrierIsVisible.value, isFalse);
+
+      // An opaque page route has no barrier — it must NOT hide the mask.
+      navigator.push(MaterialPageRoute<void>(builder: (_) => const Scaffold(body: SizedBox())));
+      await tester.pumpAndSettle();
+      expect(modalBarrierIsVisible.value, isFalse);
+      navigator.pop();
+      await tester.pumpAndSettle();
+
+      // A dialog dims the window — on while it's up, off once dismissed.
+      showDialog<void>(context: navigator.context, builder: (_) => const AlertDialog(content: Text('hi')));
+      await tester.pumpAndSettle();
+      expect(modalBarrierIsVisible.value, isTrue);
+
+      navigator.pop();
+      await tester.pumpAndSettle();
+      expect(modalBarrierIsVisible.value, isFalse);
+    } finally {
+      modalBarrierIsVisible.value = false;
+    }
+  });
 }
