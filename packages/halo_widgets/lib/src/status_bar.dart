@@ -12,6 +12,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 
 import 'icon_resolver.dart';
+import 'layout.dart';
 import 'theme.dart';
 
 /// One row in the footer: a transient message or progress bar. Mirrors the
@@ -64,22 +65,25 @@ class StatusBarNoticeData {
 
 const _collapsedHeight = 28.0;
 const _expandedRowHeight = 36.0;
-const _expandedVisibleRows = 5;
 
-/// Cap on a progress item's title width when it sits beside the bar
-/// (instead of above/below it), so the bar itself still gets the bulk of
-/// the row.
-const _progressTitleWidth = 96.0;
+/// A progress item splits its row evenly: the title takes the left half and
+/// the bar the right half, so the bar never spans more than half the message.
+const _progressBarFlex = 1;
+const _progressTitleFlex = 1;
 
 /// The collapsed/expandable status bar. Shows the most-recently-updated
-/// [items] entry collapsed; tap to expand into a scrollable list of at least
-/// [_expandedVisibleRows] rows. Collapses to zero height on every platform
-/// when [items] is empty.
+/// [items] entry collapsed; tap to expand into a scrollable list, capped at
+/// 40% of the screen height. Collapses to zero height on every platform when
+/// [items] is empty.
 class StatusBarFooter extends StatefulWidget {
   final List<StatusBarItemData> items;
   final void Function(String key) onDismiss;
 
-  const StatusBarFooter({super.key, required this.items, required this.onDismiss});
+  const StatusBarFooter({
+    super.key,
+    required this.items,
+    required this.onDismiss,
+  });
 
   @override
   State<StatusBarFooter> createState() => _StatusBarFooterState();
@@ -117,8 +121,10 @@ class _StatusBarFooterState extends State<StatusBarFooter> {
     final canExpand = widget.items.length > 1;
     final theme = Theme.of(context);
     final expanded = _expanded && canExpand;
-    final backgroundColor = theme.appBarTheme.backgroundColor ?? theme.colorScheme.primary;
-    final foregroundColor = theme.appBarTheme.foregroundColor ?? theme.colorScheme.onPrimary;
+    final backgroundColor =
+        theme.appBarTheme.backgroundColor ?? theme.colorScheme.primary;
+    final foregroundColor =
+        theme.appBarTheme.foregroundColor ?? theme.colorScheme.onPrimary;
 
     // With no items the footer collapses to nothing, so each screen's own
     // content fills the bottom safe area with its own colour — teal Quick
@@ -133,7 +139,9 @@ class _StatusBarFooterState extends State<StatusBarFooter> {
       child: SafeArea(
         top: false,
         child: InkWell(
-          onTap: canExpand ? () => setState(() => _expanded = !_expanded) : null,
+          onTap: canExpand
+              ? () => setState(() => _expanded = !_expanded)
+              : null,
           // Animates every size change this widget can go through: an item
           // being added/dismissed while collapsed (changes the collapsed
           // row's natural height not at all, but empty<->non-empty toggles
@@ -141,7 +149,9 @@ class _StatusBarFooterState extends State<StatusBarFooter> {
           child: AnimatedSize(
             duration: const Duration(milliseconds: 150),
             alignment: Alignment.bottomCenter,
-            child: expanded ? _buildExpanded(context, foregroundColor) : _buildCollapsed(context, foregroundColor),
+            child: expanded
+                ? _buildExpanded(context, foregroundColor)
+                : _buildCollapsed(context, foregroundColor),
           ),
         ),
       ),
@@ -165,44 +175,71 @@ class _StatusBarFooterState extends State<StatusBarFooter> {
               child: Padding(
                 key: _collapsedSwitchKey(last),
                 padding: const EdgeInsets.symmetric(horizontal: 12),
-                child: Row(
-                  children: [
-                    if (showGroups)
-                      for (final group in _groupByIcon(widget.items))
-                        Padding(
-                          padding: const EdgeInsets.only(right: 4),
-                          child: _IconCountPill(icon: group.key, count: group.value, color: foregroundColor),
-                        ),
-                    if (last.icon != null) ...[
-                      Icon(resolveIconName(last.icon), size: 16, color: foregroundColor),
-                      const SizedBox(width: 6),
-                    ],
-                    if (last.isProgress) ...[
-                      if (last.title != null) ...[
-                        SizedBox(
-                          width: _progressTitleWidth,
-                          child: Text(
-                            last.title!,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: theme.textTheme.bodySmall?.copyWith(color: foregroundColor),
+                // Hold the message to the ideal pane width, centered, rather
+                // than letting it stretch across a wide window.
+                child: Center(
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: idealPaneWidth),
+                    child: Row(
+                      children: [
+                        if (showGroups)
+                          for (final group in _groupByIcon(widget.items))
+                            Padding(
+                              padding: const EdgeInsets.only(right: 4),
+                              child: _IconCountPill(
+                                icon: group.key,
+                                count: group.value,
+                                color: foregroundColor,
+                              ),
+                            ),
+                        if (last.icon != null) ...[
+                          Icon(
+                            resolveIconName(last.icon),
+                            size: 16,
+                            color: foregroundColor,
                           ),
+                          const SizedBox(width: 6),
+                        ],
+                        if (last.isProgress) ...[
+                          Expanded(
+                            flex: _progressTitleFlex,
+                            child: Text(
+                              last.title ?? last.text ?? '',
+                              textAlign: TextAlign.left,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                color: foregroundColor,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            flex: _progressBarFlex,
+                            child: _StatusBarProgressIndicator(
+                              item: last,
+                              color: foregroundColor,
+                            ),
+                          ),
+                        ] else
+                          Expanded(
+                            child: Text(
+                              last.title ?? last.text ?? '',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                color: foregroundColor,
+                              ),
+                            ),
+                          ),
+                        const SizedBox(width: 4),
+                        _DismissButton(
+                          color: foregroundColor,
+                          onPressed: () => widget.onDismiss(last.key),
                         ),
-                        const SizedBox(width: 8),
                       ],
-                      Expanded(child: _StatusBarProgressIndicator(item: last, color: foregroundColor)),
-                    ] else
-                      Expanded(
-                        child: Text(
-                          last.title ?? last.text ?? '',
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: theme.textTheme.bodySmall?.copyWith(color: foregroundColor),
-                        ),
-                      ),
-                    const SizedBox(width: 4),
-                    _DismissButton(color: foregroundColor, onPressed: () => widget.onDismiss(last.key)),
-                  ],
+                    ),
+                  ),
                 ),
               ),
             ),
@@ -211,16 +248,19 @@ class _StatusBarFooterState extends State<StatusBarFooter> {
 
   Widget _buildExpanded(BuildContext context, Color foregroundColor) {
     final list = widget.items.reversed.toList();
-    // Only as tall as the actual item count needs, capped at
-    // _expandedVisibleRows (scrollable beyond that) — no reason to reserve
-    // 5 rows' worth of height for 1 or 2 items.
-    final visibleRows = list.length.clamp(1, _expandedVisibleRows);
+    // Only as tall as the actual item count needs, but never more than 40% of
+    // the screen (scrollable beyond that) — floored at one row so a single
+    // item still shows.
+    final maxHeight = MediaQuery.sizeOf(context).height * 0.4;
+    final contentHeight = _expandedRowHeight * list.length;
+    final cap = maxHeight < _expandedRowHeight ? _expandedRowHeight : maxHeight;
     return SizedBox(
-      height: _expandedRowHeight * visibleRows,
+      height: contentHeight.clamp(_expandedRowHeight, cap),
       child: ListView.separated(
         padding: const EdgeInsets.symmetric(vertical: 4),
         itemCount: list.length,
-        separatorBuilder: (context, index) => Divider(height: 1, color: foregroundColor.withValues(alpha: 0.3)),
+        separatorBuilder: (context, index) =>
+            Divider(height: 1, color: foregroundColor.withValues(alpha: 0.3)),
         itemBuilder: (context, index) => _StatusBarItemRow(
           item: list[index],
           color: foregroundColor,
@@ -246,7 +286,11 @@ class _IconCountPill extends StatelessWidget {
   final int count;
   final Color color;
 
-  const _IconCountPill({required this.icon, required this.count, required this.color});
+  const _IconCountPill({
+    required this.icon,
+    required this.count,
+    required this.color,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -265,7 +309,11 @@ class _IconCountPill extends StatelessWidget {
           ],
           Text(
             '$count',
-            style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: color),
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.bold,
+              color: color,
+            ),
           ),
         ],
       ),
@@ -302,7 +350,11 @@ class _StatusBarProgressIndicator extends StatelessWidget {
     final trackColor = color.withValues(alpha: 0.3);
     return item.isIndeterminateProgress
         ? LinearProgressIndicator(color: color, backgroundColor: trackColor)
-        : LinearProgressIndicator(value: item.progressValue, color: color, backgroundColor: trackColor);
+        : LinearProgressIndicator(
+            value: item.progressValue,
+            color: color,
+            backgroundColor: trackColor,
+          );
   }
 }
 
@@ -311,7 +363,11 @@ class _StatusBarItemRow extends StatelessWidget {
   final Color color;
   final VoidCallback onDismiss;
 
-  const _StatusBarItemRow({required this.item, required this.color, required this.onDismiss});
+  const _StatusBarItemRow({
+    required this.item,
+    required this.color,
+    required this.onDismiss,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -320,52 +376,67 @@ class _StatusBarItemRow extends StatelessWidget {
       height: _expandedRowHeight,
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 12),
-        child: Row(
-          children: [
-            if (item.icon != null) ...[
-              Icon(resolveIconName(item.icon), size: 18, color: color),
-              const SizedBox(width: 8),
-            ],
-            if (item.isProgress) ...[
-              if (item.title != null) ...[
-                SizedBox(
-                  width: _progressTitleWidth,
-                  child: Text(
-                    item.title!,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: theme.textTheme.bodySmall?.copyWith(color: color),
+        // Same ideal-width, centered treatment as the collapsed row.
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: idealPaneWidth),
+            child: Row(
+              children: [
+                if (item.icon != null) ...[
+                  Icon(resolveIconName(item.icon), size: 18, color: color),
+                  const SizedBox(width: 8),
+                ],
+                if (item.isProgress) ...[
+                  Expanded(
+                    flex: _progressTitleFlex,
+                    child: Text(
+                      item.title ?? item.text ?? '',
+                      textAlign: TextAlign.left,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: theme.textTheme.bodySmall?.copyWith(color: color),
+                    ),
                   ),
-                ),
-                const SizedBox(width: 8),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    flex: _progressBarFlex,
+                    child: _StatusBarProgressIndicator(
+                      item: item,
+                      color: color,
+                    ),
+                  ),
+                ] else
+                  Expanded(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        if (item.title != null)
+                          Text(
+                            item.title!,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: color,
+                            ),
+                          ),
+                        if (item.text != null)
+                          Text(
+                            item.text!,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: color.withValues(alpha: 0.85),
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                const SizedBox(width: 4),
+                _DismissButton(color: color, onPressed: onDismiss),
               ],
-              Expanded(child: _StatusBarProgressIndicator(item: item, color: color)),
-            ] else
-              Expanded(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    if (item.title != null)
-                      Text(
-                        item.title!,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: theme.textTheme.bodySmall?.copyWith(color: color),
-                      ),
-                    if (item.text != null)
-                      Text(
-                        item.text!,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: theme.textTheme.bodySmall?.copyWith(color: color.withValues(alpha: 0.85)),
-                      ),
-                  ],
-                ),
-              ),
-            const SizedBox(width: 4),
-            _DismissButton(color: color, onPressed: onDismiss),
-          ],
+            ),
+          ),
         ),
       ),
     );
@@ -380,7 +451,11 @@ class NoticeStack extends StatefulWidget {
   final List<StatusBarNoticeData> notices;
   final void Function(String key) onDismiss;
 
-  const NoticeStack({super.key, required this.notices, required this.onDismiss});
+  const NoticeStack({
+    super.key,
+    required this.notices,
+    required this.onDismiss,
+  });
 
   @override
   State<NoticeStack> createState() => _NoticeStackState();
@@ -402,78 +477,110 @@ class _NoticeStackState extends State<NoticeStack> {
     });
   }
 
+  /// Caps a notice card at 40% of the screen height, scrolling its content
+  /// when it would grow past that. Applied to every card — including the ghost
+  /// that sizes the stack — so the whole stack stays within the limit.
+  Widget _capHeight(BuildContext context, Widget card) => ConstrainedBox(
+    constraints: BoxConstraints(
+      maxHeight: MediaQuery.sizeOf(context).height * 0.4,
+    ),
+    child: SingleChildScrollView(child: card),
+  );
+
   @override
   Widget build(BuildContext context) {
     if (widget.notices.isEmpty) return const SizedBox.shrink();
 
     final theme = Theme.of(context);
-    final footerColor = theme.appBarTheme.backgroundColor ?? theme.colorScheme.primary;
+    final footerColor =
+        theme.appBarTheme.backgroundColor ?? theme.colorScheme.primary;
     final top = widget.notices.last;
-    final second = widget.notices.length > 1 ? widget.notices[widget.notices.length - 2] : null;
+    final second = widget.notices.length > 1
+        ? widget.notices[widget.notices.length - 2]
+        : null;
     final isDismissingTop = top.key == _dismissingKey;
 
     return Container(
       width: double.infinity,
       color: footerColor,
       padding: const EdgeInsets.fromLTRB(12, 12, 12, 8),
-      child: Stack(
-        clipBehavior: Clip.none,
-        children: [
-          // Invisible sizing reference: once the real cards below are
-          // `Positioned` (needed for the peek/expand animation), the Stack
-          // has no unpositioned child left to size itself from, so this
-          // ghost copy of the top card's content establishes its box —
-          // which is also how the peeking card ends up the same height as
-          // the top one, rather than a fixed decorative sliver. `onDismiss`
-          // must be non-null here too so the ghost renders the same close
-          // button as the real top card — otherwise it's shorter and the
-          // real (Positioned-constrained) card overflows its box.
-          Opacity(
-            opacity: 0,
-            child: IgnorePointer(child: NoticeCard(notice: top, onDismiss: () {})),
-          ),
-          if (second != null)
-            AnimatedPositioned(
-              key: ValueKey(second.key),
-              duration: _noticeDismissDuration,
-              curve: Curves.easeInOut,
-              left: isDismissingTop ? 0 : 6,
-              top: isDismissingTop ? 0 : 6,
-              right: isDismissingTop ? 0 : -6,
-              bottom: isDismissingTop ? 0 : -6,
-              child: IgnorePointer(
-                child: AnimatedOpacity(
+      // Hold the notice card to the ideal pane width, centered, rather than
+      // letting it stretch across a wide window (the full-width band behind it
+      // stays, matching the footer).
+      child: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: idealPaneWidth),
+          child: Stack(
+            clipBehavior: Clip.none,
+            children: [
+              // Invisible sizing reference: once the real cards below are
+              // `Positioned` (needed for the peek/expand animation), the Stack
+              // has no unpositioned child left to size itself from, so this
+              // ghost copy of the top card's content establishes its box —
+              // which is also how the peeking card ends up the same height as
+              // the top one, rather than a fixed decorative sliver. `onDismiss`
+              // must be non-null here too so the ghost renders the same close
+              // button as the real top card — otherwise it's shorter and the
+              // real (Positioned-constrained) card overflows its box.
+              Opacity(
+                opacity: 0,
+                child: IgnorePointer(
+                  child: _capHeight(
+                    context,
+                    NoticeCard(notice: top, onDismiss: () {}),
+                  ),
+                ),
+              ),
+              if (second != null)
+                AnimatedPositioned(
+                  key: ValueKey(second.key),
                   duration: _noticeDismissDuration,
-                  opacity: isDismissingTop ? 1 : 0.7,
-                  // A no-op `onDismiss` (rather than none) keeps this card's
-                  // rendered height identical to the ghost/top cards — see
-                  // the ghost's comment above. It's inert either way since
-                  // this whole subtree is wrapped in `IgnorePointer`.
-                  child: NoticeCard(notice: second, onDismiss: () {}),
+                  curve: Curves.easeInOut,
+                  left: isDismissingTop ? 0 : 6,
+                  top: isDismissingTop ? 0 : 6,
+                  right: isDismissingTop ? 0 : -6,
+                  bottom: isDismissingTop ? 0 : -6,
+                  child: IgnorePointer(
+                    child: AnimatedOpacity(
+                      duration: _noticeDismissDuration,
+                      opacity: isDismissingTop ? 1 : 0.7,
+                      // A no-op `onDismiss` (rather than none) keeps this card's
+                      // rendered height identical to the ghost/top cards — see
+                      // the ghost's comment above. It's inert either way since
+                      // this whole subtree is wrapped in `IgnorePointer`.
+                      child: _capHeight(
+                        context,
+                        NoticeCard(notice: second, onDismiss: () {}),
+                      ),
+                    ),
+                  ),
                 ),
-              ),
-            ),
-          AnimatedPositioned(
-            key: ValueKey(top.key),
-            duration: _noticeDismissDuration,
-            curve: Curves.easeInOut,
-            left: 0,
-            top: 0,
-            right: 0,
-            bottom: 0,
-            child: IgnorePointer(
-              ignoring: isDismissingTop,
-              child: AnimatedOpacity(
+              AnimatedPositioned(
+                key: ValueKey(top.key),
                 duration: _noticeDismissDuration,
-                opacity: isDismissingTop ? 0 : 1,
-                child: NoticeCard(
-                  notice: top,
-                  onDismiss: () => _startDismiss(top.key),
+                curve: Curves.easeInOut,
+                left: 0,
+                top: 0,
+                right: 0,
+                bottom: 0,
+                child: IgnorePointer(
+                  ignoring: isDismissingTop,
+                  child: AnimatedOpacity(
+                    duration: _noticeDismissDuration,
+                    opacity: isDismissingTop ? 0 : 1,
+                    child: _capHeight(
+                      context,
+                      NoticeCard(
+                        notice: top,
+                        onDismiss: () => _startDismiss(top.key),
+                      ),
+                    ),
+                  ),
                 ),
               ),
-            ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }
@@ -525,7 +632,10 @@ class NoticeCard extends StatelessWidget {
                   Expanded(
                     child: Text(
                       notice.title!,
-                      style: theme.textTheme.titleSmall?.copyWith(color: onNotice, fontWeight: FontWeight.bold),
+                      style: theme.textTheme.titleSmall?.copyWith(
+                        color: onNotice,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   )
                 else
@@ -535,7 +645,10 @@ class NoticeCard extends StatelessWidget {
                     icon: Icon(Icons.close, size: 18, color: onNotice),
                     onPressed: onDismiss,
                     padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                    constraints: const BoxConstraints(
+                      minWidth: 32,
+                      minHeight: 32,
+                    ),
                     mouseCursor: SystemMouseCursors.click,
                   ),
               ],
@@ -558,7 +671,9 @@ class NoticeCard extends StatelessWidget {
                         padding: const EdgeInsets.only(right: 8),
                         child: TextButton(
                           onPressed: action.onTap,
-                          style: TextButton.styleFrom(foregroundColor: onNotice),
+                          style: TextButton.styleFrom(
+                            foregroundColor: onNotice,
+                          ),
                           child: Text(action.label),
                         ),
                       ),

@@ -7,12 +7,13 @@ import 'package:halo_widgets/halo_widgets.dart';
 
 void main() {
   Widget host(List<StatusBarItemData> items) => MaterialApp(
-        home: Scaffold(
-          body: StatusBarFooter(items: items, onDismiss: (_) {}),
-        ),
-      );
+    home: Scaffold(
+      body: StatusBarFooter(items: items, onDismiss: (_) {}),
+    ),
+  );
 
-  StatusBarItemData item(String key) => StatusBarItemData(key: key, title: key, text: key);
+  StatusBarItemData item(String key) =>
+      StatusBarItemData(key: key, title: key, text: key);
 
   testWidgets(
     'collapsed AnimatedSwitcher survives the item count oscillating within '
@@ -28,13 +29,19 @@ void main() {
       await tester.pumpWidget(host([item('dataFile:a')])); // key "dataFile:a|1"
       await tester.pump(const Duration(milliseconds: 30));
 
-      await tester.pumpWidget(host([item('dataFile:a'), item('dataFile:b')])); // key "dataFile:b|2"
+      await tester.pumpWidget(
+        host([item('dataFile:a'), item('dataFile:b')]),
+      ); // key "dataFile:b|2"
       await tester.pump(const Duration(milliseconds: 30));
 
-      await tester.pumpWidget(host([item('dataFile:a')])); // key "dataFile:a|1" again
+      await tester.pumpWidget(
+        host([item('dataFile:a')]),
+      ); // key "dataFile:a|1" again
       await tester.pump(const Duration(milliseconds: 30));
 
-      await tester.pumpWidget(host([item('dataFile:a'), item('dataFile:b')])); // key "dataFile:b|2" again
+      await tester.pumpWidget(
+        host([item('dataFile:a'), item('dataFile:b')]),
+      ); // key "dataFile:b|2" again
       await tester.pump(const Duration(milliseconds: 30));
 
       expect(tester.takeException(), isNull);
@@ -45,12 +52,155 @@ void main() {
   );
 
   testWidgets(
+    'a progress item gives its bar at most half the row and left-aligns the title',
+    (tester) async {
+      await tester.binding.setSurfaceSize(const Size(1200, 800));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+
+      await tester.pumpWidget(
+        host([
+          const StatusBarItemData(
+            key: 'sync',
+            title: 'Syncing data files',
+            progressValue: 0.5,
+          ),
+        ]),
+      );
+      await tester.pumpAndSettle();
+
+      // The bar never spans more than half the (ideal-width) message.
+      final bar = tester.getSize(find.byType(LinearProgressIndicator));
+      expect(bar.width, lessThanOrEqualTo(idealPaneWidth / 2));
+
+      final title = tester.widget<Text>(find.text('Syncing data files'));
+      expect(title.textAlign, TextAlign.left);
+    },
+  );
+
+  testWidgets(
+    'a status message is capped at the ideal pane width and centered',
+    (tester) async {
+      await tester.binding.setSurfaceSize(const Size(1200, 800));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+
+      await tester.pumpWidget(
+        host([
+          const StatusBarItemData(key: 'msg', title: 'A plain status message'),
+        ]),
+      );
+      await tester.pumpAndSettle();
+
+      // The message sits inside the centered ideal-width band, not spanning the
+      // full 1200px window.
+      final textRect = tester.getRect(find.text('A plain status message'));
+      expect(textRect.left, greaterThanOrEqualTo((1200 - idealPaneWidth) / 2));
+      expect(textRect.right, lessThanOrEqualTo((1200 + idealPaneWidth) / 2));
+    },
+  );
+
+  testWidgets('a notice card is capped at the ideal pane width and centered', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1200, 800));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: NoticeStack(
+            notices: [
+              StatusBarNoticeData(
+                key: 'n',
+                title: 'Heads up',
+                text: 'A notice body',
+                createdAt: DateTime(2026),
+              ),
+            ],
+            onDismiss: (_) {},
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final cardRect = tester.getRect(find.byType(NoticeCard).first);
+    expect(cardRect.width, lessThanOrEqualTo(idealPaneWidth + 0.5));
+    expect(
+      cardRect.center.dx,
+      closeTo(600, 1),
+    ); // centered in the 1200px window
+  });
+
+  testWidgets(
+    'the expanded status list is capped at 40% of the screen height',
+    (tester) async {
+      await tester.binding.setSurfaceSize(const Size(1200, 800));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+
+      // Far more rows than 40% of the screen can hold, so the cap bites.
+      await tester.pumpWidget(
+        host([for (var i = 0; i < 20; i++) item('msg:$i')]),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byType(StatusBarFooter)); // >1 item => expandable
+      await tester.pumpAndSettle();
+
+      final screenHeight = MediaQuery.of(
+        tester.element(find.byType(ListView)),
+      ).size.height;
+      expect(
+        tester.getSize(find.byType(ListView)).height,
+        closeTo(screenHeight * 0.4, 1),
+      );
+    },
+  );
+
+  testWidgets('a tall notice is capped at 40% of the screen height and scrolls', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1200, 800));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    final longText = List.filled(
+      200,
+      'A long line of notice text.',
+    ).join('\n\n');
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: NoticeStack(
+            notices: [
+              StatusBarNoticeData(
+                key: 'n',
+                title: 'Heads up',
+                text: longText,
+                createdAt: DateTime(2026),
+              ),
+            ],
+            onDismiss: (_) {},
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    // The card's scroll viewport is clamped to 40% of the screen, so the
+    // overflowing body is reachable by scrolling rather than blowing the layout.
+    final viewport = find.byType(SingleChildScrollView).first;
+    final screenHeight = MediaQuery.of(tester.element(viewport)).size.height;
+    expect(tester.getSize(viewport).height, closeTo(screenHeight * 0.4, 1));
+  });
+
+  testWidgets(
     'an empty footer collapses to nothing, so the screen content behind it '
     'fills the bottom safe area with its own colour instead of one footer '
     'colour being imposed over every screen',
     (tester) async {
       tester.view.devicePixelRatio = 3.0;
-      tester.view.viewPadding = const FakeViewPadding(bottom: 102); // 34 logical px
+      tester.view.viewPadding = const FakeViewPadding(
+        bottom: 102,
+      ); // 34 logical px
       addTearDown(tester.view.resetViewPadding);
       addTearDown(tester.view.resetDevicePixelRatio);
 
