@@ -16,7 +16,11 @@ import 'package:halo_build_tools/halo_build_tools.dart';
 // `--dart-define=HALO_EDITION=…`; defaults to Dev.
 export 'package:halo_build_tools/halo_build_tools.dart' show Edition, kEdition;
 
-const _publicVersionInfo = PublicVersion(
+/// The single source of truth for the public version (§2.1/§2.3). Exposed (not
+/// just its derived strings) so CI tooling can project it into the native
+/// per-platform version fields via [BuildId]/[PlatformVersions] — see
+/// tool/print_build_versions.dart.
+const kPublicVersionInfo = PublicVersion(
   main: MainVersion(year: 26, month: 8),
   patch: 0,
   preRelease: 0,
@@ -24,10 +28,10 @@ const _publicVersionInfo = PublicVersion(
 );
 
 /// e.g. `26.8.0`.
-final kPublicVersion = _publicVersionInfo.value;
+final kPublicVersion = kPublicVersionInfo.value;
 
 /// e.g. `August '26`, `August '26 patch 2`, `August '26 pre 1`.
-final kVersionName = _publicVersionInfo.displayName;
+final kVersionName = kPublicVersionInfo.displayName;
 
 /// [kVersionName] with the edition qualifier appended for the non-stable
 /// editions — `August '26 (Dev)`, `August '26 (Next)` — so a build's edition

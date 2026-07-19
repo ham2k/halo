@@ -22,3 +22,9 @@ HALO_PRODUCT_NAME_prod = Portable Logger
 // Selected by nested substitution and consumed by Info.plist's
 // CFBundleDisplayName / CFBundleName.
 HALO_DISPLAY_NAME = $(HALO_PRODUCT_NAME_$(HALO_EDITION))
+
+// Distribution signing team, committed under app_dist/ — absent from public
+// checkouts, which build with no team (unsigned compile checks). A fixed
+// filename because xcconfig does NOT substitute variables in #include paths;
+// the team is shared across editions (per-edition identity is HALO_EDITION).
+#include? "../../../../app_dist/ios/Signing.xcconfig"

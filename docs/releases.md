@@ -231,7 +231,11 @@ monthly main version is a binary release.
 ### 3.1 Store-distributed installs
 
 - **iOS / macOS**: App Store (stable), TestFlight (Next). No sideload path exists
-  on iOS, so "out-of-store auto-update" simply does not apply there.
+  on iOS, so "out-of-store auto-update" simply does not apply there. The iOS CI
+  (`ios-next` / `ios-prod`, delegating to `app_dist/ci/build-ios.sh`) currently
+  uploads **both** editions to TestFlight — each keyed on its own app record
+  (`com.ham2k.logger.next` / `.prod`); promoting Regular to the public App Store
+  is a later manual step. `ios-dev` is a public, unsigned compile check.
 - **Android**: Google Play (stable), Play testing track — internal/closed/open —
   (Next).
 
