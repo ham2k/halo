@@ -9,6 +9,7 @@ import 'package:flutter_markdown/flutter_markdown.dart';
 
 import '../main.dart';
 import '../services/settings_service.dart';
+import 'header_profile_label.dart';
 import 'operation_dialogs.dart';
 import 'operation_view.dart';
 import 'settings_view.dart';
@@ -239,6 +240,7 @@ class _HomeViewState extends State<HomeView> {
           ],
         ),
         actions: [
+          HeaderProfileLabel(settings: widget.services.settings),
           IconButton(
             tooltip: context.t.settings.title,
             icon: Icon(MdiIcons.cog),

@@ -27,6 +27,7 @@ import '../main.dart';
 import '../services/data_file_manager.dart';
 import '../services/extension_service.dart';
 import '../services/settings_service.dart';
+import 'header_profile_label.dart';
 import '../settings/settings_registry.dart';
 import 'extensions_panel.dart';
 import 'ham2k_logo.dart';
@@ -307,7 +308,10 @@ class _SettingsViewState extends State<SettingsView> {
               titleSpacing: 16 + safeLeft,
               title: Text(effectivePanel.effectiveScreenTitle),
               automaticallyImplyLeading: false,
-              actions: [windowsCaptionSpacer(context)],
+              actions: [
+                HeaderProfileLabel(settings: widget.services.settings),
+                windowsCaptionSpacer(context),
+              ],
             ),
             // No ambient left Padding here (that would inset the whole
             // body — row backgrounds/dividers included — same mistake
@@ -332,7 +336,10 @@ class _SettingsViewState extends State<SettingsView> {
           leadingWidth: macOSAwareLeadingWidth(context),
           leading: macOSAwareBackButton(context),
           title: const Text('Settings'),
-          actions: [windowsCaptionSpacer(context)],
+          actions: [
+            HeaderProfileLabel(settings: widget.services.settings),
+            windowsCaptionSpacer(context),
+          ],
         ),
         body: _buildSidebar(context, isWide: false, panels: panels, selectedKey: effectivePanel.key),
       );
@@ -427,7 +434,10 @@ class _SettingsPanelScreen extends StatelessWidget {
         leadingWidth: macOSAwareLeadingWidth(context),
         leading: macOSAwareBackButton(context),
         title: Text(panel.effectiveScreenTitle),
-        actions: [windowsCaptionSpacer(context)],
+        actions: [
+          HeaderProfileLabel(settings: services.settings),
+          windowsCaptionSpacer(context),
+        ],
       ),
       body: _buildPanelContent(panel, services),
     );
