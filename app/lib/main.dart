@@ -10,7 +10,7 @@ import 'dart:async';
 import 'dart:io' show Platform;
 
 import 'package:drift_flutter/drift_flutter.dart';
-import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter/foundation.dart' show kIsWeb, kReleaseMode, visibleForTesting;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
@@ -695,6 +695,41 @@ class _HaLoAppState extends State<HaLoApp> {
 /// previous Skip counts as answered). Same presentation split as the
 /// release overlay: full screen on XS/S, `wideModalChrome` on L/XL — but
 /// with no barrier dismissal; the flow's own Skip/Done are the exits.
+/// Debug-only shortcut for skipping the onboarding flow: set
+/// `ONBOARD_AS=CALL,activity,...` — e.g. `ONBOARD_AS=KI2D,pota,sota` — as a
+/// `--dart-define` or an environment variable, and a first run applies that
+/// operator callsign and enables the listed activity extensions instead of
+/// showing onboarding. The first comma-separated token is the callsign; the
+/// rest are extension keys to enable. Empty (and inert) in release builds.
+String get _onboardAsConfig {
+  if (kReleaseMode) return '';
+  const define = String.fromEnvironment('ONBOARD_AS');
+  if (define.isNotEmpty) return define;
+  if (!kIsWeb) {
+    final env = Platform.environment['ONBOARD_AS'];
+    if (env != null && env.isNotEmpty) return env;
+  }
+  return '';
+}
+
+/// Applies an `ONBOARD_AS=CALL,activity,...` spec (see [_onboardAsConfig]):
+/// sets the operator callsign and enables the listed activity extensions.
+/// Writing the callsign marks onboarding answered, so the flow never shows.
+/// The first comma-separated token is the callsign; the rest are extension
+/// keys to enable. A no-op for a blank/empty spec.
+@visibleForTesting
+Future<void> applyOnboardAsSpec(HaLoServices services, String spec) async {
+  final parts = spec.split(',').map((s) => s.trim()).where((s) => s.isNotEmpty).toList();
+  if (parts.isEmpty) return;
+  final call = parts.first.toUpperCase();
+  final activities = parts.skip(1).map((s) => s.toLowerCase()).toList();
+  debugPrint('[onboarding] ONBOARD_AS: callsign=$call activities=$activities');
+  await services.setOperatorCall(call);
+  if (activities.isNotEmpty) {
+    await services.extensions.setExtensionsEnabled({for (final a in activities) a: true});
+  }
+}
+
 class _OnboardingGate extends StatefulWidget {
   final HaLoServices services;
   final Widget child;
@@ -717,8 +752,14 @@ class _OnboardingGateState extends State<_OnboardingGate> {
   void initState() {
     super.initState();
     if (!widget.services.settings.defaultProfileCallsignDefined) {
-      _firstRun = true;
-      _show();
+      final onboardAs = _onboardAsConfig;
+      if (onboardAs.isNotEmpty) {
+        // Debug-only: apply ONBOARD_AS and skip the onboarding flow entirely.
+        unawaited(applyOnboardAsSpec(widget.services, onboardAs));
+      } else {
+        _firstRun = true;
+        _show();
+      }
     }
     widget.services.devOnboardTrigger.addListener(_show);
   }

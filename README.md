@@ -10,9 +10,11 @@ while keeping the extension ecosystem in TypeScript, updatable without app
 releases.
 
 **Start here: [DESIGN.md](DESIGN.md)** — architecture, extension model, hook
-taxonomy, data layer, sequencing plan. The full documentation index is at
-[docs/README.md](docs/README.md); for writing extensions, see
-[docs/extensions/](docs/extensions/README.md).
+taxonomy, data layer, sequencing plan. Setting up to build and hack on it?
+[DEVELOPMENT.md](DEVELOPMENT.md) covers environment setup, running/building,
+tests, and the dev-only flags (`ONBOARD_AS`, …) and call-field commands. The
+full documentation index is at [docs/README.md](docs/README.md); for writing
+extensions, see [docs/extensions/](docs/extensions/README.md).
 
 ## Status
 

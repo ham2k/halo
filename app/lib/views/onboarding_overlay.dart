@@ -132,6 +132,22 @@ class _OnboardingOverlayViewState extends State<OnboardingOverlayView> {
   @override
   void initState() {
     super.initState();
+    // Seed from any values already saved in settings, so a re-shown flow (a
+    // DEVONBOARD preview, or onboarding reached with a callsign/activities
+    // already set) reflects the current state instead of resetting to the
+    // first-run defaults above. Unset values keep those defaults.
+    final settings = widget.services.settings;
+    final call = settings.activeProfile.operatorCall;
+    _callsignController.value = TextEditingValue(
+      text: call,
+      selection: TextSelection.collapsed(offset: call.length),
+    );
+    final overrides = settings.extensionOverrides;
+    _pota = overrides['pota'] ?? _pota;
+    _sota = overrides['sota'] ?? _sota;
+    _consentAppData = (settings.settingValue(SettingsService.privacyGroup, 'consentAppData') as bool?) ?? _consentAppData;
+    _consentOpData = (settings.settingValue(SettingsService.privacyGroup, 'consentOpData') as bool?) ?? _consentOpData;
+
     // Drop whatever held focus beneath the overlay (a DEVONBOARD re-show
     // can arrive over a focused call field, whose own Enter shortcut would
     // fire alongside _handleKeyEvent) — matches first-run conditions, where
