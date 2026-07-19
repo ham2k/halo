@@ -10,7 +10,7 @@ import 'dart:async';
 import 'dart:io' show Platform;
 
 import 'package:drift_flutter/drift_flutter.dart';
-import 'package:flutter/foundation.dart' show kIsWeb, kReleaseMode, visibleForTesting;
+import 'package:flutter/foundation.dart' show kIsWeb, visibleForTesting;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
@@ -23,6 +23,7 @@ import 'views/notice_actions.dart';
 import 'views/onboarding_overlay.dart';
 import 'views/release_overlay.dart';
 import 'views/splash_view.dart';
+import 'config/dev_flags.dart';
 import 'config/release_notes.dart';
 import 'config/version.dart';
 import 'services/export_service.dart';
@@ -709,16 +710,7 @@ class _HaLoAppState extends State<HaLoApp> {
 /// operator callsign and enables the listed activity extensions instead of
 /// showing onboarding. The first comma-separated token is the callsign; the
 /// rest are extension keys to enable. Empty (and inert) in release builds.
-String get _onboardAsConfig {
-  if (kReleaseMode) return '';
-  const define = String.fromEnvironment('ONBOARD_AS');
-  if (define.isNotEmpty) return define;
-  if (!kIsWeb) {
-    final env = Platform.environment['ONBOARD_AS'];
-    if (env != null && env.isNotEmpty) return env;
-  }
-  return '';
-}
+String get _onboardAsConfig => debugEnvFlag(const String.fromEnvironment('ONBOARD_AS'), 'ONBOARD_AS');
 
 /// Applies an `ONBOARD_AS=CALL,activity,...` spec (see [_onboardAsConfig]):
 /// sets the operator callsign and enables the listed activity extensions.

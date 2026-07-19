@@ -7,6 +7,7 @@ import 'package:halo_core/halo_core.dart';
 import 'package:halo_widgets/halo_widgets.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 
+import '../config/dev_flags.dart';
 import '../main.dart';
 import '../services/settings_service.dart';
 import 'header_profile_label.dart';
@@ -16,6 +17,12 @@ import 'settings_view.dart';
 import 'ham2k_logo.dart';
 import 'version_label.dart';
 import '../i18n/strings.g.dart';
+
+/// A free-form developer label shown in the home header after the edition
+/// badge — set with `--dart-define=DEV_LABEL=…` or (off web) a `DEV_LABEL`
+/// environment variable, to mark which dev build/session is running. Empty
+/// and inert in release builds. Resolved once (a lazy top-level final).
+final String _devLabel = debugEnvFlag(const String.fromEnvironment('DEV_LABEL'), 'DEV_LABEL');
 
 /// HaLo home-screen style row: bold "CALL title" line with count pill,
 /// subtitle line with refs/description and right-aligned date.
@@ -235,6 +242,22 @@ class _HomeViewState extends State<HomeView> {
                 padding: const EdgeInsets.only(bottom: 3),
                 // Zero-offset shadows read as a glow: black for Next, white for Dev.
                 child: Ham2kEditionBadge(height: 15, shadows: ham2kHeaderEditionBadgeShadows),
+              ),
+            ],
+            // A free-form dev label (DEV_LABEL) after the edition badge — marks
+            // which dev build/session is running; absent in release builds.
+            if (_devLabel.isNotEmpty) ...[
+              const SizedBox(width: 10),
+              Flexible(
+                child: Text(
+                  _devLabel,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontStyle: FontStyle.italic,
+                    color: (theme.appBarTheme.foregroundColor ?? theme.colorScheme.onPrimary).withValues(alpha: 0.8),
+                  ),
+                ),
               ),
             ],
           ],
