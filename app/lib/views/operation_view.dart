@@ -744,7 +744,9 @@ class OperationSettingsPanel extends StatelessWidget {
         header(context.t.operation.sections.stationOperator),
         ListTile(
           leading: Icon(MdiIcons.radioTower),
-          title: Text(operation.stationCall.isEmpty ? context.t.operation.stationCallsignNone : operation.stationCall),
+          title: operation.stationCall.isEmpty
+              ? Text(context.t.operation.stationCallsignNone)
+              : Text(operation.stationCall, style: const TextStyle(fontFamily: 'RobotoMono')),
           subtitle: Text(operation.title.isEmpty ? context.t.operation.titleNone : operation.title),
           onTap: onEditDetails,
           mouseCursor: SystemMouseCursors.click,

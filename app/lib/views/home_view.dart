@@ -54,7 +54,10 @@ class _OperationRow extends StatelessWidget {
                         children: [
                           TextSpan(
                             text: operation.stationCall,
-                            style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800),
+                            style: theme.textTheme.titleMedium?.copyWith(
+                              fontWeight: FontWeight.w800,
+                              fontFamily: 'RobotoMono',
+                            ),
                           ),
                           if (operation.title.isNotEmpty)
                             TextSpan(

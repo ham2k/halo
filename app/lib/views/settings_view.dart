@@ -53,6 +53,11 @@ class _SettingsPanelEntry {
   /// (Profiles' "Callsign: KI2D") that would read oddly as a heading.
   final String? screenTitle;
 
+  /// When set, appended to [title] on the sidebar row as `: value` with the
+  /// value in the mono font — used for the operator callsign, which reads as
+  /// a callsign rather than prose.
+  final String? monoDetail;
+
   const _SettingsPanelEntry({
     required this.key,
     required this.title,
@@ -60,6 +65,7 @@ class _SettingsPanelEntry {
     required this.order,
     this.descriptor,
     this.screenTitle,
+    this.monoDetail,
   });
 
   String get effectiveScreenTitle => screenTitle ?? title;
@@ -156,7 +162,8 @@ class _SettingsViewState extends State<SettingsView> {
     final entries = [
       _SettingsPanelEntry(
         key: 'profiles',
-        title: operatorCall.isEmpty ? 'Callsign' : 'Callsign: $operatorCall',
+        title: 'Callsign',
+        monoDetail: operatorCall.isEmpty ? null : operatorCall,
         screenTitle: 'Station Profiles',
         icon: resolveIconName('account-outline'),
         order: _profilesPanelOrder,
@@ -306,7 +313,16 @@ class _SettingsViewState extends State<SettingsView> {
         return ListTile(
           selected: isSelected,
           leading: Icon(panel.icon),
-          title: Text(panel.title),
+          title: panel.monoDetail == null
+              ? Text(panel.title)
+              : Text.rich(
+                  TextSpan(
+                    children: [
+                      TextSpan(text: '${panel.title}: '),
+                      TextSpan(text: panel.monoDetail, style: const TextStyle(fontFamily: 'RobotoMono')),
+                    ],
+                  ),
+                ),
           onTap: () {
             setState(() {
               _selectedPanel = panel.key;

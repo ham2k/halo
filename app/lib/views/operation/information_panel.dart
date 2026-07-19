@@ -101,7 +101,7 @@ class InformationPanel extends StatelessWidget {
           const SizedBox(height: 16),
         ],
         Text(context.t.loggingPanel.station, style: theme.textTheme.titleSmall),
-        Text(operation.stationCall, style: theme.textTheme.headlineSmall),
+        Text(operation.stationCall, style: theme.textTheme.headlineSmall?.copyWith(fontFamily: 'RobotoMono')),
         const SizedBox(height: 16),
         Text(context.t.loggingPanel.byBand, style: theme.textTheme.titleSmall),
         for (final entry in byBand.entries)
