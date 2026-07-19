@@ -22,6 +22,26 @@ The app is formally called "Ham2K Logger". On desktop it identifies itself as
 - When mentioning the app in text, use the formal name "Ham2K Logger" or
   "Ham2K Portable Logger" — never "HaLo".
 
+### Splash screens
+
+Two distinct things are both loosely called "the splash" — keep them separate:
+
+- **The real startup splash** ([`splash_view.dart`](../../app/lib/views/splash_view.dart)'s
+  `SplashScreen`, and the web loading page in
+  [`web/index.html`](../../app/web/index.html)'s `#startup-splash`). This is the
+  first frame shown on launch, before `bootstrap()` runs. It is deliberately
+  minimal: just the per-edition Ham2K square logo on the surface background, with
+  the web loading spinner's footprint reserved as an empty placeholder so the
+  HTML→Flutter handoff is a visual no-op. It shows **no version info**; the build
+  edition is conveyed only by the logo art (Dev/Next/Regular), which is a
+  compile-time constant (`kEdition`) available immediately, before bootstrap. On
+  web the splash logo is swapped to match via `scripts/apply-web-edition.sh`.
+- **The "version splash" overlay** ([`release_overlay.dart`](../../app/lib/views/release_overlay.dart)'s
+  photo/wordmark overlay). A richer, edition-aware panel over the release photo:
+  the brand mark (arc wordmark + product name + edition badge), the credits, and
+  the release name. Shown for release notes and when tapping the About-screen
+  logo — never at startup.
+
 ## Main views
 
 The app has three main views:

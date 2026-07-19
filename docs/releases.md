@@ -3,9 +3,11 @@
 > Status: draft · Last updated: 2026-07-14
 
 This document describes how Ham2K Logger is versioned, built, distributed, and
-updated across every platform it targets, and how the "Next" pre-release variant
-runs alongside the stable product. It captures the lessons carried over from the
-React Native Ham2K PoLo release process and adapts them to Flutter + Shorebird.
+updated across every platform it targets, and how its three **editions** — a
+build-it-yourself **Dev** edition plus the two official **Next** (pre-release)
+and **Regular** (stable) editions — run side by side. It captures the lessons
+carried over from the React Native Ham2K PoLo release process and adapts them to
+Flutter + Shorebird.
 
 Targets: **Android, iOS, Windows, macOS, Linux, Web.**
 
@@ -61,9 +63,11 @@ Section 2.3 explains how the patchable public version is stored.
   mid-cycle; it simply takes the next number in the same sequence (e.g. `26.8.3`
   as a full build). The `PATCH` number is a continuous counter — its value does
   not by itself say whether an increment was a patch or a full build.
-- **Pre-release suffix** (Next only): binary pre-releases append `-preN`
-  (`26.8.0-pre1`, `26.8.0-pre2`, …). A Shorebird patch applied to a pre-release
-  appends a further counter: `26.8.0-pre1.1`.
+- **Pre-release suffix** (Next only): binary pre-releases append `-<label><N>`,
+  where the label is the stage — `pre` by default (`26.8.0-pre1`, `26.8.0-pre2`,
+  …), or an earlier stage such as `alpha`/`beta`/`rc` (`26.8.0-alpha0`). A
+  Shorebird patch applied to a pre-release appends a further counter:
+  `26.8.0-pre1.1`.
 
 Every patch/pre-release is bound to the exact release build it was compiled
 against (see §4.1).
@@ -152,33 +156,69 @@ Independent semver per extension, gated by a minimum app/API version (see §6).
    with its own build number. Then resume patching until the next monthly line
    (`26.9`) begins on Next.
 
-### 2.6 Products and identity
+### 2.6 Editions and identity
 
-Two products share the codebase via **Flutter build flavors**, each with its own
-application identity so both can be installed side by side with fully separate data
-and settings:
+Three **editions** share one codebase. Each is a fully separate installable app
+with its own identity, so all three can be installed side by side with isolated
+data and settings:
 
-| Product | Identity (all platforms) |
-|---------|--------------------------|
-| **Ham2K Logger** (stable) | `com.ham2k.halo.prod` |
-| **Ham2K Logger Next** (pre-release) | `com.ham2k.halo.next` |
+| Edition | Identity (all platforms) | Signed & distributed? | Update planes |
+|---------|--------------------------|-----------------------|---------------|
+| **Dev** | `com.ham2k.logger.dev` | No — built from source by anyone | None (rebuild by hand) |
+| **Ham2K Logger Next** (pre-release) | `com.ham2k.logger.next` | Yes — official | Binary + Shorebird + extension OTA (own feeds) |
+| **Ham2K Logger** (stable) | `com.ham2k.logger.prod` | Yes — official | Binary + Shorebird + extension OTA (own feeds) |
 
-The same identity is used for every platform's identifier — Android
-`applicationId`, iOS/macOS bundle ID, Windows package identity / AUMID, and Linux
-app ID (desktop file / package name). The `.prod` / `.next` leaf distinguishes the
-two flavors under a shared `com.ham2k.halo` base.
+- **Dev** is the plain, build-it-yourself edition — for quick tests by agents or
+  the maintainers, and for anyone who wants to run HaLo in their own environment.
+  It needs **no signing certificates, no store accounts, and none of the
+  distribution machinery**; a clean public checkout builds it with ad-hoc/no
+  signing. It is **never** shipped through a store, appcast, or Shorebird, and it
+  carries none of those update planes — a new Dev build means rebuilding from
+  source. Everything Dev needs is in the public repo (§8).
+- **Next** and **Regular** are the two **official** editions that Ham2K signs and
+  distributes publicly. Next runs ahead of Regular (§2.5) and is where binary
+  pre-releases land first. Each is a distinct distributed product with its own
+  store presence, appcast feed, Shorebird app, and extension-OTA feeds.
 
-**Why dot-segments, not a hyphen.** `com.ham2k.halo-next` is invalid: Android
-`applicationId` allows only `[a-zA-Z0-9_]` per segment (hyphens rejected), and
-Flatpak/D-Bus discourage hyphens. Dot-separated leaves are valid on every platform,
-so a single consistent identifier works everywhere and avoids per-platform
-divergence.
+The `.dev` / `.next` / `.prod` leaf under a shared `com.ham2k.logger` base is the
+identity on every platform — Android `applicationId`, iOS/macOS bundle ID, Windows
+package identity / AUMID, and Linux app ID (desktop file / package name). Different
+identities mean the OS treats the three as distinct apps and isolates their data
+automatically.
 
-Different identities mean the OS treats the two as distinct apps and isolates their
-data automatically. Any linkage between a user's regular and Next data is an
-**app-layer concern of the sync service** (e.g. same account, per-install profiles)
-and is deliberately kept out of the release/packaging machinery so a sync change
-can never entangle distribution.
+**Why suffixed dot-segments, not a hyphen.** A hyphen leaf like
+`com.ham2k.logger-next` is invalid: Android `applicationId` allows only
+`[a-zA-Z0-9_]` per segment (hyphens rejected), and Flatpak/D-Bus discourage
+hyphens. Dot-separated leaves are valid on every platform, so a single consistent
+identifier scheme works everywhere and avoids per-platform divergence.
+
+Any linkage between a user's Regular and Next data is an **app-layer concern of the
+sync service** (e.g. same account, per-install profiles), deliberately kept out of
+the release/packaging machinery so a sync change can never entangle distribution.
+
+**Selecting the edition at build time.** The edition is chosen by a build input,
+**not** by separate Xcode schemes or hand-edited native files — so the two official
+editions never need to appear in the public project (§8). It is mirrored into Dart
+as `HALO_EDITION` (`--dart-define`, default `dev`) so runtime branding and which
+update feeds to contact follow the same switch. A public checkout can only resolve
+`dev`; Next and Regular resolve only where `app_dist/` is present.
+
+Each platform reads the same `HALO_EDITION` through its own native idiom, and each
+carries a per-edition app icon plus a platform-specific display name (the name sits
+beside the icon, so it drops the "Ham2K" prefix — "Mac Logger", "Windows Logger",
+"Linux Logger", "Portable Logger" on mobile, "Browser Logger" on web — with the
+edition suffix `" (Dev)"` / `" Next"` / none):
+
+| Platform | Edition switch | Icon selection |
+|---|---|---|
+| **macOS / iOS** | `HALO_EDITION` in `Runner/Configs/AppInfo.xcconfig` → bundle id + `ASSETCATALOG_COMPILER_APPICON_NAME` | `AppIcon-<edition>` asset-catalog sets |
+| **Android** | Gradle `edition` product flavors (`--flavor <edition>`) → `applicationId` suffix + `${appLabel}` | per-flavor `src/<edition>/res/mipmap-*` |
+| **Windows** | `HALO_EDITION` env → `runner/CMakeLists.txt` `configure_file`s `halo_edition.h` | `resources/app_icon-<edition>.ico` via `Runner.rc` |
+| **Linux** | `HALO_EDITION` env → `CMakeLists.txt` app id + product-name compile defs | `app_icon-<edition>.png` + `.desktop`, named after the app id |
+| **Web** | `--dart-define=HALO_EDITION`; `scripts/apply-web-edition.sh` stamps the built bundle | `favicon-<edition>.png` + per-edition PWA manifest icons |
+
+Machine-facing strings (ADIF `PROGRAMID`, HTTP `User-Agent`, spot source) stay the
+fixed, edition- and platform-agnostic **"Ham2K Logger"** regardless of the above.
 
 ---
 
@@ -337,8 +377,9 @@ the same release-binding discipline Shorebird enforces for patches.
 
 ## 7. Product/variant/track/platform matrix
 
-Regular + Next × platforms × tracks is a large surface. It must be driven by CI,
-not by hand.
+Dev is built from source and never distributed, so it does not appear below — see
+§2.6 and §8. The distributed surface is **Next + Regular × platforms × tracks**, a
+large matrix that must be driven by CI, not by hand.
 
 ```
                   Binary plane          Dart patches (Shorebird)      JS extensions
@@ -372,7 +413,77 @@ release becomes a manual slog.
 
 ---
 
-## 8. Open items / decisions to confirm
+## 8. Repo segregation — public core vs `app_dist`
+
+The three editions live in **one codebase**, but everything needed *only* to
+**sign and distribute** the two official editions must stay out of the public
+repository. The rule: **a plain build is `dev`; it carries none of the
+signing/distribution machinery, and `app_dist/` + CI are what turn a build into a
+real `next` or `prod`.** The edition *identity* (name, bundle id) is derived from a
+single `HALO_EDITION` switch, so a public checkout can produce a `dev` build with
+no configuration — but it cannot sign, notarize, or reach the official feeds.
+
+Ham2K develops on `app-halo-dist` (branches off `main-dist-private`). Commits that
+touch `app_dist/` are split out there and **not** cherry-picked to `main-public`, so
+`app_dist/` never reaches the public repo (see `.agents/AGENTS.md`). A public
+checkout simply has no `app_dist/` directory.
+
+**The seam is an optional include per platform** — the shape already used today by
+`app/macos/Runner/Configs/AppInfo.xcconfig`'s
+`#include? "…/app_dist/macos/Signing.xcconfig"`, which silently no-ops in public
+checkouts. The identity itself is computed from `HALO_EDITION` (default `dev`),
+**not** by per-edition schemes or hand-edited native files; `app_dist/` supplies the
+signing/feeds and, where a platform can't derive identity from a build variable, the
+per-edition values.
+
+Only the **macOS** seam is implemented today; the Android/Windows/Linux/Web rows
+below describe the target shape for later PRs (iOS mirrors macOS).
+
+| Platform | Public default (`dev`) | Official `next`/`prod` |
+|----------|--------------------------|------------------------|
+| macOS *(done)* / iOS *(planned)* | `AppInfo.xcconfig` derives name + bundle id from `HALO_EDITION` (default `dev`, ad-hoc signing) | CI writes `HALO_EDITION = next\|prod` into `Local.xcconfig`; team/cert come from `app_dist/macos/Signing.xcconfig`, and CI Developer ID-signs |
+| Android *(planned)* | `build.gradle.kts` defines only the `dev` product flavor | `apply(from = …/app_dist/android/editions.gradle.kts)` if present — adds `next`/`prod` flavors + signing |
+| Windows *(planned)* | CMake / `Runner.rc` dev identity | `include(…/app_dist/windows/edition.cmake OPTIONAL)` — AUMID, MSIX identity, cert |
+| Linux *(planned)* | `CMakeLists.txt` dev `APPLICATION_ID` | `include(…/app_dist/linux/edition.cmake OPTIONAL)` — app id, desktop file, AppImage/Flatpak packaging |
+| Web *(planned)* | builds with `HALO_EDITION=dev` | deploy targets + Cloudflare Pages project names in `app_dist/` |
+
+On macOS, `HALO_EDITION` is a plain xcconfig variable: `PRODUCT_BUNDLE_IDENTIFIER =
+com.ham2k.logger.$(HALO_EDITION)` and `PRODUCT_NAME =
+$(HALO_PRODUCT_NAME_$(HALO_EDITION))`. xcconfig substitutes variables in setting
+*values* (including nested lookups) but **not** in `#include` paths — which is why
+the edition is a value switch and the dist include (`Signing.xcconfig`) keeps a
+fixed name.
+
+**What lives in `app_dist/` (dist-only):**
+
+- The per-platform edition/signing fragments above (`next`/`prod` bundle ids,
+  names, certs, provisioning).
+- The **official CI build logic**, `app_dist/ci/build-macos.sh`. Codemagic only
+  reads a `codemagic.yaml` at the repo **root** (no custom path, no includes),
+  and that root file is a non-`app_dist` path shared verbatim with the public
+  repo. So the root `codemagic.yaml` keeps the `macos-next`/`macos-prod`
+  workflows as thin declarations that just run `bash app_dist/ci/build-macos.sh`
+  — the actual signing/notarization steps live in that dist-only script. It is
+  fine for the public root to *reference* `app_dist/` (a public checkout has no
+  such file, so those two workflows fail fast there — by design); what stays out
+  of public is the script's *contents*. No split special-case is needed for
+  `codemagic.yaml`. The script carries no secrets either — certs live in
+  Codemagic's encrypted env groups, the team in `app_dist/macos/Signing.xcconfig`.
+- **Shorebird** config — the two Shorebird app ids (Next, Regular) and their track
+  setup (§4.3).
+- **Appcast** feed configuration/URLs for desktop auto-update (§3.2), per edition.
+- **Extension OTA** endpoint + signing keys (§6).
+- Store/notary credential references (already env-group based).
+
+**What stays public:** every `dev` flavor definition, the optional-include seam
+itself (harmless no-ops), `halo_build_tools`, `version.dart`, edition-aware
+branding, and a "build Dev yourself" guide. **Success criterion for any change
+here: a clean public checkout with no `app_dist/` still builds and runs `dev` on
+every platform.**
+
+---
+
+## 9. Open items / decisions to confirm
 
 - Choice of desktop updater package (`auto_updater` vs. `desktop_updater` /
   `flutter_desktop_updater`) — decide based on whether one package covering Linux

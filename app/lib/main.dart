@@ -630,9 +630,11 @@ class _HaLoAppState extends State<HaLoApp> {
           // WindowChromeService; deduped, so calling it every build is fine).
           final baseToolbarHeight = Theme.of(context).appBarTheme.toolbarHeight ?? 48.0;
           WindowChromeService.reportTitleBarHeight(baseToolbarHeight * scale);
-          // The window's resize floor is an XS phone's footprint in the
-          // UiScale-divided space (layouts.md), so it scales the same way.
-          WindowChromeService.reportMinimumSize(minWindowSize * scale);
+          // The window's resize floor is the S-size layout width plus room for
+          // the native window controls that float over the header (traffic
+          // lights / caption buttons), so neither the S content nor the
+          // controls is ever squeezed (desktopMinimumWindowSize; layouts.md).
+          WindowChromeService.reportMinimumSize(desktopMinimumWindowSize(scale));
 
           // Full-screen toggles change the traffic-light clearance the
           // headers reserve (macOSTrafficLightClearance → 0 while the

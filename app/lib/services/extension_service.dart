@@ -897,7 +897,10 @@ class ExtensionService {
         return {
           'developerMode': settings?.developerMode ?? false,
           'locale': settings?.locale ?? 'en',
-          'appName': ham2kAppName,
+          // Machine-facing: extensions put this in ADIF PROGRAMID, a spot's
+          // source, etc. — so the fixed, platform-agnostic "Ham2K Logger", not
+          // the UI's platform-tailored name.
+          'appName': ham2kMachineName,
           'themeMode': settings?.themeMode.name ?? 'system',
           'fontScale': settings?.fontScale.name ?? 'normal',
           'distanceUnits': settings?.distanceUnits.name ?? 'kilometers',

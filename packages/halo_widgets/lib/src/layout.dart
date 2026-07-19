@@ -24,12 +24,16 @@ const double idealPaneWidth = 500.0;
 /// The default minimum for either side of a resizable split.
 const double minPaneWidth = 280.0;
 
-/// The smallest a user may RESIZE a window to, in logical (UiScale-divided)
-/// pixels — an XS phone's footprint. Fixed device screens may be smaller
-/// than this (layouts must still tolerate them); resizable windows may not.
-/// Enforced natively via WindowChromeService, which multiplies by the UI
-/// scale so the floor holds in this file's divided coordinate space.
-const Size minWindowSize = Size(320.0, 480.0);
+/// The base resize floor for a desktop window, in logical (UiScale-divided)
+/// pixels: the width is the S-size layout minimum ([ShirtSize.xsMax]) — a
+/// resizable window may not shrink into the XS single-column layout — and the
+/// height is a comfortable minimum. Fixed device screens may be smaller
+/// (layouts must still tolerate them); resizable windows may not. The native
+/// window controls that float over the header (traffic lights / caption
+/// buttons) need width on top of this; that platform- and scale-dependent
+/// sum is `desktopMinimumWindowSize` (platform_chrome.dart), which is what
+/// WindowChromeService actually enforces.
+const Size minWindowSize = Size(ShirtSize.xsMax, 480.0);
 
 /// The standard duration/curve for layout changes (pane widths, panes
 /// appearing on a shirt-size flip) — matches the app's existing implicit

@@ -12,6 +12,7 @@ import '../services/settings_service.dart';
 import 'operation_dialogs.dart';
 import 'operation_view.dart';
 import 'settings_view.dart';
+import 'ham2k_logo.dart';
 import 'version_label.dart';
 import '../i18n/strings.g.dart';
 
@@ -211,13 +212,29 @@ class _HomeViewState extends State<HomeView> {
             8,
             8,
           ),
-          child: SvgPicture.asset('assets/images/ham2k-wordmark.svg', width: 22, height: 22),
+          child: SvgPicture.asset(ham2kSquareLogoAsset, width: 22, height: 22),
         ),
         // "Desktop Logger" / "Portable Logger" is the in-app main-screen
         // title — independent of the OS-level app name ("Ham2K Logger" on
         // desktop, "HaLo" on mobile; see macos/Runner/Configs/AppInfo.xcconfig,
         // ios/Runner/Info.plist, android's AndroidManifest.xml).
-        title: Text(isWindowedPlatform ? context.t.home.titleDesktop : context.t.home.title),
+        title: Row(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            Text(ham2kProductName),
+            // Edition badge to the right of the name, bottom-aligned to sit on
+            // the text baseline (Regular has no badge).
+            if (ham2kEditionBadgeAsset != null) ...[
+              const SizedBox(width: 10),
+              Padding(
+                padding: const EdgeInsets.only(bottom: 3),
+                // Zero-offset shadows read as a glow: black for Next, white for Dev.
+                child: Ham2kEditionBadge(height: 15, shadows: ham2kHeaderEditionBadgeShadows),
+              ),
+            ],
+          ],
+        ),
         actions: [
           IconButton(
             tooltip: context.t.settings.title,
@@ -377,18 +394,26 @@ class _BrandingPane extends StatelessWidget {
         child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          SvgPicture.asset('assets/images/ham2k-wordmark.svg', width: 180),
+          SvgPicture.asset(ham2kSquareLogoAsset, width: 180),
           const SizedBox(height: 4),
-          // The wordmark graphic already says "Ham2K", so per the branding
-          // rules (docs/design/user-interface.md) only "Logger" / "Portable
-          // Logger" goes below it.
+          // The square mark already says "Ham2K", so per the branding rules
+          // (docs/design/user-interface.md) only the product name — "Mac
+          // Logger", "Browser Logger", etc. — goes below it.
           Text(
-            isWindowedPlatform ? 'Logger' : 'Portable Logger',
+            ham2kProductName,
             style: theme.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w800),
           ),
+          // Edition badge below the name, centered, a bit smaller (Regular has none).
+          if (ham2kEditionBadgeAsset != null) ...[
+            const SizedBox(height: 8),
+            SvgPicture.asset(ham2kEditionBadgeAsset!, width: 130),
+          ],
           const SizedBox(height: 16),
+          // Just the release name, without the edition qualifier (the edition
+          // is already shown by the badge SVG above) and without the build
+          // detail line.
           VersionLabel(
-            prefix: 'Version ',
+            nameOnly: true,
             style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant),
           ),
         ],

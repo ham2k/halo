@@ -45,12 +45,17 @@ static void my_application_activate(GApplication* application) {
   if (use_header_bar) {
     GtkHeaderBar* header_bar = GTK_HEADER_BAR(gtk_header_bar_new());
     gtk_widget_show(GTK_WIDGET(header_bar));
-    gtk_header_bar_set_title(header_bar, "Ham2K Logger");
+    gtk_header_bar_set_title(header_bar, HALO_PRODUCT_NAME);
     gtk_header_bar_set_show_close_button(header_bar, TRUE);
     gtk_window_set_titlebar(window, GTK_WIDGET(header_bar));
   } else {
-    gtk_window_set_title(window, "Ham2K Logger");
+    gtk_window_set_title(window, HALO_PRODUCT_NAME);
   }
+
+  // Ties every window to the themed icon named after APPLICATION_ID — the
+  // per-edition icon the CMake install lays down as
+  // hicolor/512x512/apps/<APPLICATION_ID>.png (docs/releases.md §2.6).
+  gtk_window_set_default_icon_name(APPLICATION_ID);
 
   gtk_window_set_default_size(window, 1280, 720);
 

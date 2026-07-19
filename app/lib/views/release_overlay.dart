@@ -17,8 +17,11 @@ import 'package:halo_widgets/halo_widgets.dart';
 import '../config/release_notes.dart';
 import '../i18n/strings.g.dart';
 import 'ham2k_logo.dart';
+import 'version_label.dart';
 
-const _creditsAndVersionShadows = [Shadow(color: Colors.black54, offset: Offset(1, 2), blurRadius: 4)];
+// The shared photo-overlay drop shadow (single source of truth in ham2k_logo.dart,
+// so the credits/version labels and the edition badge always match).
+const _creditsAndVersionShadows = kOverlayDropShadows;
 // Fixed regardless of the app's theme mode — halo_widgets/theme.dart's light
 // ColorScheme.surface/primaryContainer values, hardcoded here rather than
 // read from Theme.of(context) so this panel never picks up dark mode.
@@ -422,10 +425,11 @@ class _PhotoWordmarkContent extends StatelessWidget {
                     const Center(child: Ham2kBrandMark(logoWidth: 180, showShadow: true)),
                     const SizedBox(height: 8),
                     overlayCreditsText(context.t.startScreen.credits, creditsStyle),
-                    if (release != null) ...[
-                      const SizedBox(height: 4),
-                      Text(release!.name, textAlign: TextAlign.center, style: versionLabelStyle),
-                    ],
+                    const SizedBox(height: 4),
+                    // The full release name (kVersionName), without the edition
+                    // qualifier (shown by the brand mark's badge) — matching the
+                    // splash and onboarding.
+                    VersionLabel(nameOnly: true, style: versionLabelStyle),
                   ],
                 ),
               ),

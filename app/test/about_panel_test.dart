@@ -174,7 +174,9 @@ void main() {
     expect(copiedText, contains(ham2kAppName));
     expect(copiedText, contains(kVersionName));
     expect(copiedText, contains(kPublicVersion));
-    expect(find.text('Copied version details to clipboard'), findsWidgets);
+    // Exactly once: this is a two-pane viewport (1000x800), and each pane owns
+    // its own ScaffoldMessenger, so the toast must not appear in both halves.
+    expect(find.text('Copied version details to clipboard'), findsOneWidget);
   });
 
   testWidgets('tapping the wordmark opens a photo+wordmark modal with the caption but no notes or Continue button',
@@ -213,15 +215,15 @@ void main() {
 
     // The modal adds its own brand mark on top of the header's, laid out
     // the same as the startup release overlay's top section — brand mark,
-    // "by KI2D and friends" credits, release name — plus the photo credit
-    // at the bottom. Unlike that overlay (release_overlay_test.dart),
+    // "by KI2D and friends" credits, the full version name — plus the photo
+    // credit at the bottom. Unlike that overlay (release_overlay_test.dart),
     // there's no notes band or Continue button to dismiss.
     expect(find.byType(Ham2kBrandMark), findsNWidgets(2));
     expect(find.textContaining('KI2D'), findsOneWidget);
-    // The release name also appears as a heading in the (still-mounted,
-    // behind this overlay) Release Notes preview, so this isn't unique to
-    // the modal — just confirms the modal's own copy rendered too.
-    expect(find.text(_testRelease.name), findsWidgets);
+    // The modal shows the full release name (kVersionName), matching the
+    // splash/onboarding — not the shorter release-notes name. The version row
+    // behind shows the edition-qualified name, a different exact string.
+    expect(find.text(kVersionName), findsOneWidget);
     expect(find.text(_testRelease.photoCaption), findsOneWidget);
     expect(find.byType(FilledButton), findsNothing);
 

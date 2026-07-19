@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=@HALO_PRODUCT_NAME@
+GenericName=Amateur Radio Logger
+Comment=Ham2K Logger — a modern amateur radio logging app.
+Exec=@BINARY_NAME@
+Icon=@APPLICATION_ID@
+Terminal=false
+Categories=Utility;
+StartupWMClass=@APPLICATION_ID@

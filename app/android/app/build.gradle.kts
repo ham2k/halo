@@ -35,6 +35,34 @@ android {
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
+        // Fallback for tooling that resolves the merged manifest without a
+        // flavor selected; every real build picks one of the flavors below.
+        manifestPlaceholders["appLabel"] = "Portable Logger"
+    }
+
+    // Build editions (docs/releases.md §2.6), the Android counterpart of the
+    // macOS/iOS HALO_EDITION seam: dev / next / prod install side by side via
+    // the applicationId suffix, each with its own launcher icon (per-flavor
+    // src/<edition>/res/mipmap-*) and home-screen label. Build with e.g.
+    // `flutter build apk --flavor next --dart-define=HALO_EDITION=next` — the
+    // --flavor keeps Gradle in step with the Dart-side kEdition.
+    flavorDimensions += "edition"
+    productFlavors {
+        create("dev") {
+            dimension = "edition"
+            applicationIdSuffix = ".dev"
+            manifestPlaceholders["appLabel"] = "Portable Logger (Dev)"
+        }
+        create("next") {
+            dimension = "edition"
+            applicationIdSuffix = ".next"
+            manifestPlaceholders["appLabel"] = "Portable Logger Next"
+        }
+        create("prod") {
+            dimension = "edition"
+            applicationIdSuffix = ".prod"
+            manifestPlaceholders["appLabel"] = "Portable Logger"
+        }
     }
 
     signingConfigs {

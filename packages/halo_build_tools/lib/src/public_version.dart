@@ -15,9 +15,13 @@ class PublicVersion {
   final MainVersion main;
   final int patch;
 
-  /// Pre-release counter for Logger Next binaries, e.g. `1` in `-pre1`. Null
-  /// for a stable (non-Next) release.
+  /// Pre-release counter, e.g. `1` in `-pre1` or `0` in `-alpha0`. Null for a
+  /// stable release.
   final int? preRelease;
+
+  /// The pre-release stage label, e.g. `pre` (the default, → `-pre1`), `alpha`
+  /// (→ `-alpha0`), `beta`, or `rc`. Only meaningful when [preRelease] is set.
+  final String preReleaseLabel;
 
   /// Shorebird-patch counter applied on top of a pre-release, e.g. the `1` in
   /// `-pre1.1`. Only meaningful when [preRelease] is set.
@@ -27,29 +31,35 @@ class PublicVersion {
     required this.main,
     required this.patch,
     this.preRelease,
+    this.preReleaseLabel = 'pre',
     this.preReleasePatch,
   }) : assert(patch >= 0, 'patch must not be negative, was $patch'),
+       assert(preReleaseLabel != '', 'preReleaseLabel must not be empty'),
        assert(
          preReleasePatch == null || preRelease != null,
          'preReleasePatch requires preRelease to be set',
        );
 
-  /// The full public version string, e.g. `26.8.0-pre1.1`.
+  /// The full public version string, e.g. `26.8.0-pre1.1` or `26.8.0-alpha0`.
   String get value {
     final base = '${main.year}.${main.month}.$patch';
     if (preRelease == null) return base;
-    final pre = '-pre$preRelease';
+    final pre = '-$preReleaseLabel$preRelease';
     if (preReleasePatch == null) return '$base$pre';
     return '$base$pre.$preReleasePatch';
   }
 
   /// The human-friendly line name, e.g. `August '26`, `August '26 patch 2`,
-  /// `August '26 pre 1`, or `August '26 patch 2 pre 1`.
+  /// `August '26 pre 1`, `August '26 alpha 0`, or `August '26 patch 2 pre 1`.
   String get displayName {
     final parts = <String>[main.displayName];
     if (patch != 0) parts.add('patch $patch');
     if (preRelease != null) {
-      parts.add(preReleasePatch == null ? 'pre $preRelease' : 'pre $preRelease.$preReleasePatch');
+      parts.add(
+        preReleasePatch == null
+            ? '$preReleaseLabel $preRelease'
+            : '$preReleaseLabel $preRelease.$preReleasePatch',
+      );
     }
     return parts.join(' ');
   }

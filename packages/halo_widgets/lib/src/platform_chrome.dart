@@ -13,6 +13,7 @@ import 'package:flutter/foundation.dart' show TargetPlatform, defaultTargetPlatf
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import 'layout.dart';
 import 'mdi_icons.dart';
 import 'ui_scale.dart';
 
@@ -94,22 +95,37 @@ bool get isWindowedPlatform =>
 bool get isMobilePlatform =>
     !kIsWeb && (defaultTargetPlatform == TargetPlatform.iOS || defaultTargetPlatform == TargetPlatform.android);
 
-/// The app's full self-identification name (.agents/AGENTS.md: "On desktop
-/// versions it identifies itself as 'Ham2K Logger' while on mobile versions
-/// it uses 'Ham2K Portable Logger'") — for places the app names itself to an
-/// external service or file (e.g. a spot's `source` field, an ADIF
-/// `PROGRAMID` header). Distinct from the OS-level window/task-switcher
-/// title (`main.dart`'s "HaLo") or the in-app home-screen heading
-/// (`home.title`/`home.titleDesktop`), which follow their own conventions.
-String get ham2kAppName =>
-    isWindowedPlatform ? 'Ham2K Logger' : 'Ham2K Portable Logger';
+/// The **product name**, tailored per platform so each build reads naturally.
+/// Shown wherever the app names itself in the UI (splash, home header + right
+/// pane, About, onboarding). It stands beneath a HAM2K graphic — which already
+/// carries the brand — so it omits "Ham2K":
+///   macOS → `Mac Logger`, Windows → `Windows Logger`, Linux → `Linux Logger`,
+///   iOS/Android → `Portable Logger`, Web → `Browser Logger`.
+/// See `Ham2kBrandMark` in the app's `views/ham2k_logo.dart`.
+String get ham2kProductName {
+  if (kIsWeb) return 'Browser Logger';
+  return switch (defaultTargetPlatform) {
+    TargetPlatform.macOS => 'Mac Logger',
+    TargetPlatform.windows => 'Windows Logger',
+    TargetPlatform.linux => 'Linux Logger',
+    TargetPlatform.iOS || TargetPlatform.android => 'Portable Logger',
+    _ => 'Logger',
+  };
+}
 
-/// [ham2kAppName] with the "Ham2K" brand name dropped — for places that show
-/// the HAM2K arc wordmark graphic (`assets/images/ham2k-arc.svg`) and need
-/// only the product-name suffix as text beneath it: `Logger` (desktop) or
-/// `Portable Logger` (mobile). See `Ham2kBrandMark` in the app's
-/// `views/ham2k_logo.dart`.
-String get ham2kProductName => isWindowedPlatform ? 'Logger' : 'Portable Logger';
+/// The **full self-identification name** — [ham2kProductName] with the "Ham2K"
+/// brand prefixed, e.g. `Ham2K Mac Logger`. For **human-facing** places the name
+/// stands on its own without a HAM2K graphic — e.g. the About screen's copyable
+/// version text. Distinct from the OS-level window/task-switcher title
+/// (`main.dart`'s "HaLo"). For machine-facing strings use [ham2kMachineName].
+String get ham2kAppName => 'Ham2K $ham2kProductName';
+
+/// The **machine-facing** name — a fixed, platform- and edition-agnostic
+/// `Ham2K Logger`, for strings other software reads: an ADIF `PROGRAMID`, HTTP
+/// headers (the `User-Agent`), a spot's `source`. Deliberately NOT
+/// [ham2kProductName]-tailored, so interop tools always see one stable program
+/// name.
+const String ham2kMachineName = 'Ham2K Logger';
 
 /// `AppBar.leadingWidth` for a plain back button that reserves clearance for
 /// the traffic-light buttons — pair with [macOSAwareBackButton]. Every
@@ -240,6 +256,28 @@ double windowsCaptionClearance(BuildContext context) =>
 /// counterpart of the macOS side's leading clearance
 /// ([macOSAwareLeadingWidth]), just on the opposite edge.
 Widget windowsCaptionSpacer(BuildContext context) => SizedBox(width: windowsCaptionClearance(context));
+
+/// The minimum size a resizable desktop window may be shrunk to, in PHYSICAL
+/// pixels (already multiplied by [uiScale]) — pass to `WindowChromeService.
+/// reportMinimumSize`. The width is the S-size layout floor ([minWindowSize],
+/// the smallest width that still lays out as S rather than XS) plus room for
+/// the native window controls that float over the header, so the S content and
+/// the controls never overlap:
+///  - chromeless macOS: the traffic lights, a fixed PHYSICAL size
+///    ([macOSTrafficLightInset] + [macOSTrafficLightGap]), so unscaled;
+///  - chromeless Windows: the Flutter-drawn caption buttons
+///    ([windowsCaptionClearance]'s width), logical, so scaled by [uiScale];
+///  - platforms with a native title bar (Linux): none — the controls live in
+///    their own bar, not over the content.
+/// Height is [minWindowSize] scaled.
+Size desktopMinimumWindowSize(double uiScale) {
+  final double controls = isMacOSChromelessWindow
+      ? macOSTrafficLightInset + macOSTrafficLightGap
+      : isWindowsChromelessWindow
+          ? (3 * windowsCaptionButtonWidth + 8) * uiScale
+          : 0;
+  return Size(minWindowSize.width * uiScale + controls, minWindowSize.height * uiScale);
+}
 
 /// The minimize / maximize-restore / close buttons for the chromeless
 /// Windows window, overlaid at the app root's top-right corner (main.dart)

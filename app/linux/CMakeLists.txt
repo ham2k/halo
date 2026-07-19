@@ -5,9 +5,28 @@ project(runner LANGUAGES CXX)
 # The name of the executable created for the application. Change this to change
 # the on-disk name of your application.
 set(BINARY_NAME "ham2k_logger")
+# Build edition (docs/releases.md §2.6): dev | next | prod, read from the
+# HALO_EDITION environment variable (CI sets it; defaults to dev) — the Linux
+# counterpart of the macOS/iOS HALO_EDITION seam. Drives the GTK application id
+# (so editions install / run side by side, and Wayland matches the right
+# .desktop) and the product name (window/header title, .desktop Name).
+if(DEFINED ENV{HALO_EDITION} AND NOT "$ENV{HALO_EDITION}" STREQUAL "")
+  set(HALO_EDITION "$ENV{HALO_EDITION}")
+else()
+  set(HALO_EDITION "dev")
+endif()
+if(HALO_EDITION STREQUAL "prod")
+  set(HALO_PRODUCT_NAME "Linux Logger")
+elseif(HALO_EDITION STREQUAL "next")
+  set(HALO_PRODUCT_NAME "Linux Logger Next")
+else()
+  set(HALO_EDITION "dev")
+  set(HALO_PRODUCT_NAME "Linux Logger (Dev)")
+endif()
+
 # The unique GTK application identifier for this application. See:
 # https://wiki.gnome.org/HowDoI/ChooseApplicationID
-set(APPLICATION_ID "com.ham2k.ham2k_logger")
+set(APPLICATION_ID "com.ham2k.logger.${HALO_EDITION}")
 
 # Explicitly opt in to modern CMake behaviors to avoid warnings with recent
 # versions of CMake.
@@ -140,3 +159,20 @@ if(NOT CMAKE_BUILD_TYPE MATCHES "Debug")
   install(FILES "${AOT_LIBRARY}" DESTINATION "${INSTALL_BUNDLE_LIB_DIR}"
     COMPONENT Runtime)
 endif()
+
+# Per-edition desktop integration (docs/releases.md §2.6): the app icon and a
+# .desktop entry, laid out the freedesktop way (icon named after APPLICATION_ID,
+# which my_application.cc feeds to gtk_window_set_default_icon_name). Bundled
+# under share/ so a packager/installer can drop them into an XDG data dir; a raw
+# portable run falls back to no icon, as Flutter Linux apps do by default.
+configure_file(
+  "${CMAKE_CURRENT_SOURCE_DIR}/ham2k-logger.desktop.in"
+  "${CMAKE_CURRENT_BINARY_DIR}/${APPLICATION_ID}.desktop"
+  @ONLY)
+install(FILES "${CMAKE_CURRENT_BINARY_DIR}/${APPLICATION_ID}.desktop"
+  DESTINATION "${CMAKE_INSTALL_PREFIX}/share/applications"
+  COMPONENT Runtime)
+install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/runner/resources/app_icon-${HALO_EDITION}.png"
+  DESTINATION "${CMAKE_INSTALL_PREFIX}/share/icons/hicolor/512x512/apps"
+  RENAME "${APPLICATION_ID}.png"
+  COMPONENT Runtime)

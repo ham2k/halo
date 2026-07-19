@@ -222,14 +222,20 @@ class _SettingsViewState extends State<SettingsView> {
         minPrimaryWidth: 240,
         maxPrimaryWidth: idealPaneWidth,
         onPreferredPrimaryWidthChanged: (width) => settings.setLayoutDimension(LayoutKeys.settingsLeftColumn, width),
-        primary: Scaffold(
-          appBar: AppBar(
-            flexibleSpace: windowHeaderGestureArea(),
-            leadingWidth: macOSAwareLeadingWidth(context),
-            leading: macOSAwareBackButton(context),
-            title: const Text('Settings'),
+        // Each pane owns its ScaffoldMessenger so a SnackBar (e.g. the
+        // copy-version toast) shows only in the pane that raised it. Sharing
+        // the root messenger — which both pane Scaffolds otherwise register
+        // with — makes one SnackBar appear in both halves of the split.
+        primary: ScaffoldMessenger(
+          child: Scaffold(
+            appBar: AppBar(
+              flexibleSpace: windowHeaderGestureArea(),
+              leadingWidth: macOSAwareLeadingWidth(context),
+              leading: macOSAwareBackButton(context),
+              title: const Text('Settings'),
+            ),
+            body: _buildSidebar(context, isWide: true, panels: panels, selectedKey: effectivePanel.key),
           ),
-          body: _buildSidebar(context, isWide: true, panels: panels, selectedKey: effectivePanel.key),
         ),
         // The Builder gets a context under the split's PaneSafeArea: the
         // whole right panel — title included — shifts right by the grab
@@ -237,7 +243,8 @@ class _SettingsViewState extends State<SettingsView> {
         // panel elements below it.
         secondary: Builder(builder: (context) {
           final safeLeft = PaneSafeArea.leftOf(context);
-          return Scaffold(
+          return ScaffoldMessenger(
+            child: Scaffold(
             appBar: AppBar(
               flexibleSpace: windowHeaderGestureArea(),
               // Default title inset (16) plus the clearance, so the title
@@ -259,6 +266,7 @@ class _SettingsViewState extends State<SettingsView> {
               contentPadding: EdgeInsets.only(left: 16 + safeLeft, right: 16),
               child: _buildPanelContent(effectivePanel, widget.services),
             ),
+          ),
           );
         }),
       );
@@ -1920,7 +1928,7 @@ class _AboutHeader extends StatelessWidget {
               child: GestureDetector(
                 key: const Key('aboutWordmark'),
                 onTap: () => showPhotoWordmarkModal(context, release: release),
-                child: const Ham2kBrandMark(logoWidth: 140, showShadow: true),
+                child: const Ham2kBrandMark(logoWidth: 140, showShadow: true, titleFontSizeDelta: 3),
               ),
             ),
           ),
