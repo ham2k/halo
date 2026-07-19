@@ -509,6 +509,11 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
 
   /// Band set via a "20m " command when no frequency is entered.
   String? _manualBand;
+
+  /// The band of the most recent non-empty frequency, remembered so that
+  /// clearing the frequency field keeps that band ([_onFreqChanged]) rather
+  /// than dropping to no band.
+  String? _lastBandFromFreq;
   bool _rstsTouched = false;
 
   /// Which secondary control (if any) currently has its input expanded.
@@ -1176,7 +1181,16 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   }
 
   void _onFreqChanged() {
-    if (_freq != null) _manualBand = null;
+    final freq = _freq;
+    if (freq != null) {
+      _manualBand = null;
+      // Remember the band so clearing the frequency can fall back to it.
+      _lastBandFromFreq = bandForFrequency(freq);
+    } else if (_freqController.text.trim().isEmpty) {
+      // Frequency cleared: stay on the band it was last, rather than dropping
+      // to no band. Deferential (`??=`) so a band the user set by hand wins.
+      _manualBand ??= _lastBandFromFreq;
+    }
     setState(() {});
     // Band (derived from frequency) drives the New Band notice — rescore.
     if (!_populating) _scheduleScore();

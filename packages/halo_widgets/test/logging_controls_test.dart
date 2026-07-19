@@ -1339,6 +1339,31 @@ void main() {
     expect(logged.single.mode, 'CW');
   });
 
+  testWidgets('clearing the frequency keeps the band it was last on', (tester) async {
+    await tester.pumpWidget(host());
+    await openControl(tester, MdiIcons.radio);
+
+    // A frequency derives its band.
+    await tester.enterText(find.widgetWithText(TextField, 'Frequency'), '14285');
+    await tester.pump();
+    expect(find.text('20m'), findsWidgets);
+
+    // Clearing the frequency must NOT drop the band — it stays 20m.
+    await tester.enterText(find.widgetWithText(TextField, 'Frequency'), '');
+    await tester.pump();
+    expect(find.text('20m'), findsWidgets);
+
+    // Logging now records that retained band, with no frequency.
+    await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'W1AW');
+    await tester.pump();
+    await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+
+    final logged = await waitForQsos(tester, 1);
+    expect(logged, hasLength(1));
+    expect(logged.single.band, '20m');
+    expect(logged.single.freq, isNull);
+  });
+
   testWidgets('call-field command awaiting params (expectsParams) allows space but stays uppercase, and Enter does not execute it', (tester) async {
     Future<Map<String, dynamic>?> fakeReloadPrefix(
       String input, [
