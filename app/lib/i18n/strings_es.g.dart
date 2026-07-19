@@ -52,6 +52,7 @@ class TranslationsEs extends Translations with BaseTranslations<AppLocale, Trans
 	@override late final _Translations$qsoEditForm$es qsoEditForm = _Translations$qsoEditForm$es._(_root);
 	@override late final _Translations$qsoList$es qsoList = _Translations$qsoList$es._(_root);
 	@override late final _Translations$loggingPanel$es loggingPanel = _Translations$loggingPanel$es._(_root);
+	@override late final _Translations$callInfo$es callInfo = _Translations$callInfo$es._(_root);
 	@override late final _Translations$settings$es settings = _Translations$settings$es._(_root);
 	@override late final _Translations$operationLocationScreen$es operationLocationScreen = _Translations$operationLocationScreen$es._(_root);
 }
@@ -226,7 +227,6 @@ class _Translations$loggingControls$es extends Translations$loggingControls$en {
 	@override String get now => 'Ahora';
 	@override String get frequency => 'Frecuencia';
 	@override String get mode => 'Modo';
-	@override String get dupe => 'DUPE';
 	@override String get theirCall => 'Su indicativo';
 	@override String get sent => 'Enviado';
 	@override String get rcvd => 'Recibido';
@@ -248,6 +248,7 @@ class _Translations$loggingControls$es extends Translations$loggingControls$en {
 	@override String spotTooLate({required Object call}) => 'Demasiado tarde para spotear a ${call}';
 	@override String get spotNoFreq => 'Primero define una frecuencia para spotear';
 	@override String get spotComment => 'Comentario';
+	@override late final _Translations$loggingControls$info$es info = _Translations$loggingControls$info$es._(_root);
 }
 
 // Path: qsoEditForm
@@ -295,6 +296,26 @@ class _Translations$loggingPanel$es extends Translations$loggingPanel$en {
 	@override String get scoring => 'Puntuación';
 	@override String get dxccEntities => 'Entidades DXCC';
 	@override String get duplicates => 'Duplicados';
+}
+
+// Path: callInfo
+class _Translations$callInfo$es extends Translations$callInfo$en {
+	_Translations$callInfo$es._(TranslationsEs root) : this._root = root, super.internal(root);
+
+	final TranslationsEs _root; // ignore: unused_field
+
+	// Translations
+	@override String get qrz => 'QRZ';
+	@override String get showImage => 'Mostrar imagen';
+	@override String get notes => 'Notas';
+	@override String distanceAway({required Object distance}) => 'a ${distance}';
+	@override String distanceBearingAway({required Object distance, required Object bearing}) => 'a ${distance} (${bearing}°)';
+	@override String get thisOpCountOne => '1 QSO en esta operación';
+	@override String thisOpCountOther({required Object count}) => '${count} QSOs en esta operación';
+	@override String get otherOpsCountOne => '1 QSO en otras operaciones';
+	@override String otherOpsCountOther({required Object count}) => '${count} QSOs en otras operaciones';
+	@override String andMore({required Object count}) => '… y ${count} más';
+	@override String withCall({required Object call}) => 'con ${call}';
 }
 
 // Path: settings
@@ -431,6 +452,30 @@ class _Translations$operation$spots$es extends Translations$operation$spots$en {
 	@override String get callsOfNote => 'Indicativos destacados';
 	@override late final _Translations$operation$spots$continents$es continents = _Translations$operation$spots$continents$es._(_root);
 	@override late final _Translations$operation$spots$filters$es filters = _Translations$operation$spots$filters$es._(_root);
+}
+
+// Path: loggingControls.info
+class _Translations$loggingControls$info$es extends Translations$loggingControls$info$en {
+	_Translations$loggingControls$info$es._(TranslationsEs root) : this._root = root, super.internal(root);
+
+	final TranslationsEs _root; // ignore: unused_field
+
+	// Translations
+	@override String get noQsos => 'Aún no hay QSOs... ¡a la carga!';
+	@override String get qsoCountOne => '1 QSO';
+	@override String qsoCountOther({required Object count}) => '${count} QSOs';
+	@override String qsosInTime({required Object count, required Object time}) => '${count} en ${time}';
+	@override String sinceLast({required Object time}) => '${time} desde el último';
+	@override String ratePer10({required Object rate}) => '${rate} Q/h en los últimos 10';
+	@override String ratePer100({required Object rate}) => '${rate} Q/h en los últimos 100';
+	@override String distanceTo({required Object distance}) => '${distance} a';
+	@override String distanceBearingTo({required Object distance, required Object bearing}) => '${distance} (${bearing}°) a';
+	@override String distanceAway({required Object distance}) => 'a ${distance}';
+	@override String distanceBearingAway({required Object distance, required Object bearing}) => 'a ${distance} (${bearing}°)';
+	@override String get noticeDupe => '¡Dupe!';
+	@override String get noticeNewBand => 'Nueva Banda';
+	@override String get noticeNewMode => 'Nuevo Modo';
+	@override String get noticeNewDXCC => 'Nuevo DXCC';
 }
 
 // Path: settings.theme
@@ -851,7 +896,6 @@ extension on TranslationsEs {
 			'loggingControls.now' => 'Ahora',
 			'loggingControls.frequency' => 'Frecuencia',
 			'loggingControls.mode' => 'Modo',
-			'loggingControls.dupe' => 'DUPE',
 			'loggingControls.theirCall' => 'Su indicativo',
 			'loggingControls.sent' => 'Enviado',
 			'loggingControls.rcvd' => 'Recibido',
@@ -873,6 +917,21 @@ extension on TranslationsEs {
 			'loggingControls.spotTooLate' => ({required Object call}) => 'Demasiado tarde para spotear a ${call}',
 			'loggingControls.spotNoFreq' => 'Primero define una frecuencia para spotear',
 			'loggingControls.spotComment' => 'Comentario',
+			'loggingControls.info.noQsos' => 'Aún no hay QSOs... ¡a la carga!',
+			'loggingControls.info.qsoCountOne' => '1 QSO',
+			'loggingControls.info.qsoCountOther' => ({required Object count}) => '${count} QSOs',
+			'loggingControls.info.qsosInTime' => ({required Object count, required Object time}) => '${count} en ${time}',
+			'loggingControls.info.sinceLast' => ({required Object time}) => '${time} desde el último',
+			'loggingControls.info.ratePer10' => ({required Object rate}) => '${rate} Q/h en los últimos 10',
+			'loggingControls.info.ratePer100' => ({required Object rate}) => '${rate} Q/h en los últimos 100',
+			'loggingControls.info.distanceTo' => ({required Object distance}) => '${distance} a',
+			'loggingControls.info.distanceBearingTo' => ({required Object distance, required Object bearing}) => '${distance} (${bearing}°) a',
+			'loggingControls.info.distanceAway' => ({required Object distance}) => 'a ${distance}',
+			'loggingControls.info.distanceBearingAway' => ({required Object distance, required Object bearing}) => 'a ${distance} (${bearing}°)',
+			'loggingControls.info.noticeDupe' => '¡Dupe!',
+			'loggingControls.info.noticeNewBand' => 'Nueva Banda',
+			'loggingControls.info.noticeNewMode' => 'Nuevo Modo',
+			'loggingControls.info.noticeNewDXCC' => 'Nuevo DXCC',
 			'qsoEditForm.title' => 'Editar QSO',
 			'qsoEditForm.theirName' => 'Nombre',
 			'qsoEditForm.theirGrid' => 'Locador',
@@ -893,6 +952,17 @@ extension on TranslationsEs {
 			'loggingPanel.scoring' => 'Puntuación',
 			'loggingPanel.dxccEntities' => 'Entidades DXCC',
 			'loggingPanel.duplicates' => 'Duplicados',
+			'callInfo.qrz' => 'QRZ',
+			'callInfo.showImage' => 'Mostrar imagen',
+			'callInfo.notes' => 'Notas',
+			'callInfo.distanceAway' => ({required Object distance}) => 'a ${distance}',
+			'callInfo.distanceBearingAway' => ({required Object distance, required Object bearing}) => 'a ${distance} (${bearing}°)',
+			'callInfo.thisOpCountOne' => '1 QSO en esta operación',
+			'callInfo.thisOpCountOther' => ({required Object count}) => '${count} QSOs en esta operación',
+			'callInfo.otherOpsCountOne' => '1 QSO en otras operaciones',
+			'callInfo.otherOpsCountOther' => ({required Object count}) => '${count} QSOs en otras operaciones',
+			'callInfo.andMore' => ({required Object count}) => '… y ${count} más',
+			'callInfo.withCall' => ({required Object call}) => 'con ${call}',
 			'settings.title' => 'Configuración',
 			'settings.general' => 'Configuración General',
 			'settings.language' => 'Idioma',

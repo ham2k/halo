@@ -18,6 +18,7 @@ import '../main.dart';
 import '../services/settings_service.dart';
 import 'operation_dialogs.dart';
 import 'operation/activities_view.dart';
+import 'operation/call_info_panel.dart';
 import 'operation/information_panel.dart';
 import 'operation/logging_panel.dart';
 import 'operation/map_panel.dart';
@@ -125,6 +126,11 @@ class _OperationViewState extends State<OperationView> with SingleTickerProvider
   /// (not in LoggingPanel, which produces it) because on two-pane layouts
   /// the producer and the display are sibling panes.
   String? _commandMarkdown;
+
+  /// The current call-info (issue #40), pushed up from LoggingControls — shown
+  /// as the Call Info detail on the Info tab (wide) or a modal (narrow). Same
+  /// producer/sibling-pane reasoning as `_commandMarkdown`.
+  CallInfoData? _callInfo;
 
   /// Keep the pane subtrees' State alive when the layout flips between the
   /// narrow tab arrangement and the wide split (docs/design/layouts.md rule
@@ -305,6 +311,33 @@ class _OperationViewState extends State<OperationView> with SingleTickerProvider
     await widget.services.setOperatorCall(result);
   }
 
+  /// Tap on the compact call-info area (issue #40): on wide layouts the detail
+  /// already lives on the Info tab, so just surface it; on narrow, open it as a
+  /// modal (which re-reads the latest `_callInfo` on rebuild via the modal's
+  /// own key, so live updates flow through while it's open).
+  Future<void> _handleCallInfoTap(Operation operation) async {
+    if (ShirtSize.of(context).isTwoPane) {
+      if (_tabController.index != 0) _tabController.animateTo(0);
+      return;
+    }
+    final info = _callInfo;
+    if (info == null) return;
+    await showModalPane<void>(
+      context,
+      title: info.call,
+      builder: (_) => CallInfoPanel(
+        operation: operation,
+        services: widget.services,
+        call: info.call,
+        guess: info.guess,
+        lookups: info.lookups,
+        alertKeys: info.alertKeys,
+        noticeKeys: info.noticeKeys,
+        ourEntityPrefix: _ourEntityPrefix,
+      ),
+    );
+  }
+
   Future<void> _editActivities(Operation operation) async {
     // No manual re-fetch on pop: watchOperation streams the change back.
     // Non-scrollable: the pane's accordion sections divide its height
@@ -425,6 +458,8 @@ class _OperationViewState extends State<OperationView> with SingleTickerProvider
                 _tabController.animateTo(0);
               }
             }),
+            onCallInfoChanged: (info) => setState(() => _callInfo = info),
+            onCallInfoTap: () => _handleCallInfoTap(operation),
           ),
         );
         final spotsPanel = KeyedSubtree(
@@ -478,7 +513,14 @@ class _OperationViewState extends State<OperationView> with SingleTickerProvider
           physics: const NeverScrollableScrollPhysics(),
           children: [
             isTwoPane
-                ? InformationPanel(operation: operation, qsos: qsos, commandMarkdown: _commandMarkdown)
+                ? InformationPanel(
+                    operation: operation,
+                    qsos: qsos,
+                    commandMarkdown: _commandMarkdown,
+                    services: widget.services,
+                    callInfo: _callInfo,
+                    ourEntityPrefix: _ourEntityPrefix,
+                  )
                 : _KeepAlive(child: loggingPanel),
             spotsPanel,
             mapPanel,

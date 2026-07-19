@@ -168,7 +168,6 @@
     "now": "Ahora",
     "frequency": "Frecuencia",
     "mode": "Modo",
-    "dupe": "DUPE",
     "theirCall": "Su indicativo",
     "sent": "Enviado",
     "rcvd": "Recibido",
@@ -189,7 +188,24 @@
     "spotOtherAt": "Spot a ${call} en ${freq}",
     "spotTooLate": "Demasiado tarde para spotear a ${call}",
     "spotNoFreq": "Primero define una frecuencia para spotear",
-    "spotComment": "Comentario"
+    "spotComment": "Comentario",
+    "info": {
+      "noQsos": "Aún no hay QSOs... ¡a la carga!",
+      "qsoCountOne": "1 QSO",
+      "qsoCountOther": "${count} QSOs",
+      "qsosInTime": "${count} en ${time}",
+      "sinceLast": "${time} desde el último",
+      "ratePer10": "${rate} Q/h en los últimos 10",
+      "ratePer100": "${rate} Q/h en los últimos 100",
+      "distanceTo": "${distance} a",
+      "distanceBearingTo": "${distance} (${bearing}°) a",
+      "distanceAway": "a ${distance}",
+      "distanceBearingAway": "a ${distance} (${bearing}°)",
+      "noticeDupe": "¡Dupe!",
+      "noticeNewBand": "Nueva Banda",
+      "noticeNewMode": "Nuevo Modo",
+      "noticeNewDXCC": "Nuevo DXCC"
+    }
   },
   "qsoEditForm": {
     "title": "Editar QSO",
@@ -216,6 +232,19 @@
     "scoring": "Puntuación",
     "dxccEntities": "Entidades DXCC",
     "duplicates": "Duplicados"
+  },
+  "callInfo": {
+    "qrz": "QRZ",
+    "showImage": "Mostrar imagen",
+    "notes": "Notas",
+    "distanceAway": "a ${distance}",
+    "distanceBearingAway": "a ${distance} (${bearing}°)",
+    "thisOpCountOne": "1 QSO en esta operación",
+    "thisOpCountOther": "${count} QSOs en esta operación",
+    "otherOpsCountOne": "1 QSO en otras operaciones",
+    "otherOpsCountOther": "${count} QSOs en otras operaciones",
+    "andMore": "… y ${count} más",
+    "withCall": "con ${call}"
   },
   "settings": {
     "title": "Configuración",

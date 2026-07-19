@@ -337,12 +337,34 @@ export interface ScoreQsosResult {
   operationSummary: Record<string, ScoreTally>
 }
 
+/// Scores a single in-progress (not-yet-logged) QSO for the logging panel's
+/// live call-info line — the callsign being typed, before Enter. Distinct from
+/// the batched `scoreQsos`: this returns only the display notices/alerts for
+/// one candidate, scored against the rest of the operation's log (read via
+/// `ctx.getQsos`). `excludeUuid` drops the record being edited so it can't
+/// flag itself as its own duplicate.
+export interface ScoreQsoRequest {
+  operation: Record<string, JSONValue>
+  qso: Record<string, JSONValue>
+  excludeUuid?: string
+}
+
+/// Merged, de-duped notice/alert keys for one candidate QSO — e.g.
+/// `{ alerts: ['duplicate'], notices: ['newBand', 'newDXCC'] }`. The app layer
+/// maps each key to localized pill text; unknown keys fall back to the key.
+export interface QsoScoreNotices {
+  notices: string[]
+  alerts: string[]
+}
+
 /// Registered under category `scoring`. One coarse batched call scores an
 /// entire operation's QSOs at once (DESIGN.md §4: "score 500 QSOs in one
 /// call, not 500 calls") — day-sectioning and accumulation both happen here,
-/// inside the runtime, not orchestrated call-by-call from Dart.
+/// inside the runtime, not orchestrated call-by-call from Dart. `scoreQso`
+/// is the live single-candidate path used while typing a callsign.
 export interface ScoringHook {
   scoreQsos(args: ScoreQsosRequest, ctx: HookContext): Promise<ScoreQsosResult>
+  scoreQso?(args: ScoreQsoRequest, ctx: HookContext): Promise<QsoScoreNotices>
 }
 
 export interface CommandAction {

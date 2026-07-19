@@ -53,6 +53,7 @@ class Translations with BaseTranslations<AppLocale, Translations> {
 	late final Translations$qsoEditForm$en qsoEditForm = Translations$qsoEditForm$en.internal(_root);
 	late final Translations$qsoList$en qsoList = Translations$qsoList$en.internal(_root);
 	late final Translations$loggingPanel$en loggingPanel = Translations$loggingPanel$en.internal(_root);
+	late final Translations$callInfo$en callInfo = Translations$callInfo$en.internal(_root);
 	late final Translations$settings$en settings = Translations$settings$en.internal(_root);
 	late final Translations$operationLocationScreen$en operationLocationScreen = Translations$operationLocationScreen$en.internal(_root);
 }
@@ -384,9 +385,6 @@ class Translations$loggingControls$en {
 	/// en: 'Mode'
 	String get mode => 'Mode';
 
-	/// en: 'DUPE'
-	String get dupe => 'DUPE';
-
 	/// en: 'Their call'
 	String get theirCall => 'Their call';
 
@@ -449,6 +447,8 @@ class Translations$loggingControls$en {
 
 	/// en: 'Comment'
 	String get spotComment => 'Comment';
+
+	late final Translations$loggingControls$info$en info = Translations$loggingControls$info$en.internal(_root);
 }
 
 // Path: qsoEditForm
@@ -536,6 +536,48 @@ class Translations$loggingPanel$en {
 
 	/// en: 'Duplicates'
 	String get duplicates => 'Duplicates';
+}
+
+// Path: callInfo
+class Translations$callInfo$en {
+	Translations$callInfo$en.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'QRZ'
+	String get qrz => 'QRZ';
+
+	/// en: 'Show Image'
+	String get showImage => 'Show Image';
+
+	/// en: 'Notes'
+	String get notes => 'Notes';
+
+	/// en: '${distance} away'
+	String distanceAway({required Object distance}) => '${distance} away';
+
+	/// en: '${distance} (${bearing}°) away'
+	String distanceBearingAway({required Object distance, required Object bearing}) => '${distance} (${bearing}°) away';
+
+	/// en: '1 QSO in this operation'
+	String get thisOpCountOne => '1 QSO in this operation';
+
+	/// en: '${count} QSOs in this operation'
+	String thisOpCountOther({required Object count}) => '${count} QSOs in this operation';
+
+	/// en: '1 QSO in other operations'
+	String get otherOpsCountOne => '1 QSO in other operations';
+
+	/// en: '${count} QSOs in other operations'
+	String otherOpsCountOther({required Object count}) => '${count} QSOs in other operations';
+
+	/// en: '… and ${count} more'
+	String andMore({required Object count}) => '… and ${count} more';
+
+	/// en: 'with ${call}'
+	String withCall({required Object call}) => 'with ${call}';
 }
 
 // Path: settings
@@ -804,6 +846,60 @@ class Translations$operation$spots$en {
 
 	late final Translations$operation$spots$continents$en continents = Translations$operation$spots$continents$en.internal(_root);
 	late final Translations$operation$spots$filters$en filters = Translations$operation$spots$filters$en.internal(_root);
+}
+
+// Path: loggingControls.info
+class Translations$loggingControls$info$en {
+	Translations$loggingControls$info$en.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'No QSOs yet... let's get on the air!'
+	String get noQsos => 'No QSOs yet... let\'s get on the air!';
+
+	/// en: '1 QSO'
+	String get qsoCountOne => '1 QSO';
+
+	/// en: '${count} QSOs'
+	String qsoCountOther({required Object count}) => '${count} QSOs';
+
+	/// en: '${count} in ${time}'
+	String qsosInTime({required Object count, required Object time}) => '${count} in ${time}';
+
+	/// en: '${time} since last'
+	String sinceLast({required Object time}) => '${time} since last';
+
+	/// en: '${rate} Q/h for last 10'
+	String ratePer10({required Object rate}) => '${rate} Q/h for last 10';
+
+	/// en: '${rate} Q/h for last 100'
+	String ratePer100({required Object rate}) => '${rate} Q/h for last 100';
+
+	/// en: '${distance} to'
+	String distanceTo({required Object distance}) => '${distance} to';
+
+	/// en: '${distance} (${bearing}°) to'
+	String distanceBearingTo({required Object distance, required Object bearing}) => '${distance} (${bearing}°) to';
+
+	/// en: '${distance} away'
+	String distanceAway({required Object distance}) => '${distance} away';
+
+	/// en: '${distance} (${bearing}°) away'
+	String distanceBearingAway({required Object distance, required Object bearing}) => '${distance} (${bearing}°) away';
+
+	/// en: 'Dupe!'
+	String get noticeDupe => 'Dupe!';
+
+	/// en: 'New Band'
+	String get noticeNewBand => 'New Band';
+
+	/// en: 'New Mode'
+	String get noticeNewMode => 'New Mode';
+
+	/// en: 'New DXCC'
+	String get noticeNewDXCC => 'New DXCC';
 }
 
 // Path: settings.theme
@@ -1374,7 +1470,6 @@ extension on Translations {
 			'loggingControls.now' => 'Now',
 			'loggingControls.frequency' => 'Frequency',
 			'loggingControls.mode' => 'Mode',
-			'loggingControls.dupe' => 'DUPE',
 			'loggingControls.theirCall' => 'Their call',
 			'loggingControls.sent' => 'Sent',
 			'loggingControls.rcvd' => 'Rcvd',
@@ -1396,6 +1491,21 @@ extension on Translations {
 			'loggingControls.spotTooLate' => ({required Object call}) => 'Too late to spot ${call}',
 			'loggingControls.spotNoFreq' => 'First set a frequency to spot',
 			'loggingControls.spotComment' => 'Comment',
+			'loggingControls.info.noQsos' => 'No QSOs yet... let\'s get on the air!',
+			'loggingControls.info.qsoCountOne' => '1 QSO',
+			'loggingControls.info.qsoCountOther' => ({required Object count}) => '${count} QSOs',
+			'loggingControls.info.qsosInTime' => ({required Object count, required Object time}) => '${count} in ${time}',
+			'loggingControls.info.sinceLast' => ({required Object time}) => '${time} since last',
+			'loggingControls.info.ratePer10' => ({required Object rate}) => '${rate} Q/h for last 10',
+			'loggingControls.info.ratePer100' => ({required Object rate}) => '${rate} Q/h for last 100',
+			'loggingControls.info.distanceTo' => ({required Object distance}) => '${distance} to',
+			'loggingControls.info.distanceBearingTo' => ({required Object distance, required Object bearing}) => '${distance} (${bearing}°) to',
+			'loggingControls.info.distanceAway' => ({required Object distance}) => '${distance} away',
+			'loggingControls.info.distanceBearingAway' => ({required Object distance, required Object bearing}) => '${distance} (${bearing}°) away',
+			'loggingControls.info.noticeDupe' => 'Dupe!',
+			'loggingControls.info.noticeNewBand' => 'New Band',
+			'loggingControls.info.noticeNewMode' => 'New Mode',
+			'loggingControls.info.noticeNewDXCC' => 'New DXCC',
 			'qsoEditForm.title' => 'Edit QSO',
 			'qsoEditForm.theirName' => 'Name',
 			'qsoEditForm.theirGrid' => 'Grid',
@@ -1416,6 +1526,17 @@ extension on Translations {
 			'loggingPanel.scoring' => 'Scoring',
 			'loggingPanel.dxccEntities' => 'DXCC entities',
 			'loggingPanel.duplicates' => 'Duplicates',
+			'callInfo.qrz' => 'QRZ',
+			'callInfo.showImage' => 'Show Image',
+			'callInfo.notes' => 'Notes',
+			'callInfo.distanceAway' => ({required Object distance}) => '${distance} away',
+			'callInfo.distanceBearingAway' => ({required Object distance, required Object bearing}) => '${distance} (${bearing}°) away',
+			'callInfo.thisOpCountOne' => '1 QSO in this operation',
+			'callInfo.thisOpCountOther' => ({required Object count}) => '${count} QSOs in this operation',
+			'callInfo.otherOpsCountOne' => '1 QSO in other operations',
+			'callInfo.otherOpsCountOther' => ({required Object count}) => '${count} QSOs in other operations',
+			'callInfo.andMore' => ({required Object count}) => '… and ${count} more',
+			'callInfo.withCall' => ({required Object call}) => 'with ${call}',
 			'settings.title' => 'Settings',
 			'settings.general' => 'General Settings',
 			'settings.language' => 'Language',

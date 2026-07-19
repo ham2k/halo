@@ -32,25 +32,61 @@ double distanceOnEarthKm(GridLocation a, GridLocation b) {
   return _earthRadiusKm * 2 * atan2(sqrt(h), sqrt(1 - h));
 }
 
+/// Initial great-circle bearing from [from] to [to], in degrees clockwise
+/// from true north (0–360). The port of @ham2k/lib-geo-tools' bearingForQSON,
+/// used by the logging panel's call-info line when the "show bearing" setting
+/// is on.
+double bearingOnEarthDeg(GridLocation from, GridLocation to) {
+  final lat1 = _deg2rad(from.latitude);
+  final lat2 = _deg2rad(to.latitude);
+  final dLon = _deg2rad(to.longitude - from.longitude);
+  final y = sin(dLon) * cos(lat2);
+  final x = cos(lat1) * sin(lat2) - sin(lat1) * cos(lat2) * cos(dLon);
+  final deg = atan2(y, x) * 180 / pi;
+  return (deg + 360) % 360;
+}
+
 // Placeholder grids some sources emit when they have no real location —
 // never worth a marker (same skip-list as locationForQSONInfo).
 const _placeholderGrids = {'AA00', 'AA00AA'};
 
+/// Which fallback [locationForQsoInfoWithSource] used — a `grid` fix is exact;
+/// `region` (state/province centroid) and `entity` (DXCC centroid) are coarse,
+/// so display code can mark them approximate or suppress the least precise.
+enum QsoLocationSource { grid, region, entity }
+
 /// Resolves the best-available coordinates for one end of a QSO, in the same
 /// priority order as app-polo's map: an actual grid square, else the
 /// state/province centroid for `entityPrefix`+`state` (US/Canada/Australia),
-/// else the DXCC entity centroid for `entityPrefix`, else null.
-GridLocation? locationForQsoInfo({String? grid, String? entityPrefix, String? state}) {
+/// else the DXCC entity centroid for `entityPrefix`, else null. Also reports
+/// which source produced the location.
+({GridLocation location, QsoLocationSource source})? locationForQsoInfoWithSource({
+  String? grid,
+  String? entityPrefix,
+  String? state,
+}) {
   if (grid != null && !_placeholderGrids.contains(grid.toUpperCase())) {
-    if (gridToLocation(grid) case final location?) return location;
+    if (gridToLocation(grid) case final location?) {
+      return (location: location, source: QsoLocationSource.grid);
+    }
   }
   if (entityPrefix == null || entityPrefix.isEmpty) return null;
   final region = state?.trim().toUpperCase();
   if (region != null && region.isNotEmpty) {
-    if (entityRegionLocations['$entityPrefix-$region'] case final location?) return location;
+    if (entityRegionLocations['$entityPrefix-$region'] case final location?) {
+      return (location: location, source: QsoLocationSource.region);
+    }
   }
-  return entityLocations[entityPrefix];
+  if (entityLocations[entityPrefix] case final location?) {
+    return (location: location, source: QsoLocationSource.entity);
+  }
+  return null;
 }
+
+/// The location alone (see [locationForQsoInfoWithSource]) — kept for callers
+/// (e.g. the map) that don't need the source.
+GridLocation? locationForQsoInfo({String? grid, String? entityPrefix, String? state}) =>
+    locationForQsoInfoWithSource(grid: grid, entityPrefix: entityPrefix, state: state)?.location;
 
 /// Points along the great circle from [start] to [end], split into multiple
 /// polylines where the arc crosses the antimeridian (so a 2D map doesn't

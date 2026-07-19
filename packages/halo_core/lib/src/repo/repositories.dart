@@ -439,6 +439,19 @@ class QsosRepository {
     return query.watch().map((rows) => rows.map(_qsoFromRow).toList());
   }
 
+  /// Every non-deleted, non-event QSO with [call] across every operation, most
+  /// recent first — for the call-info detail's QSO history. Matches the
+  /// denormalized `theirCall` column (stored uppercase), so no JSON parsing.
+  Future<List<Qso>> historyForCall(String call) async {
+    final normalized = call.trim().toUpperCase();
+    if (normalized.isEmpty) return const [];
+    final query = (db.select(db.qsos)
+      ..where((q) => q.theirCall.equals(normalized) & q.deleted.equals(false))
+      ..orderBy([(q) => OrderingTerm(expression: q.startAtMillis, mode: OrderingMode.desc)]));
+    final rows = await query.get();
+    return [for (final row in rows.map(_qsoFromRow)) if (!row.isEvent) row];
+  }
+
   /// Up to `limit` dirty QSOs, most recent first — mirrors `sync.js`'s
   /// `queryQSOs("WHERE synced IS false ... ORDER BY startAtMillis DESC")`.
   Future<List<Qso>> unsyncedBatch(int limit) async {

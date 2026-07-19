@@ -63,15 +63,17 @@ async function lookupCall(
   _ctx: HookContext,
 ): Promise<LookupResult> {
   const call = (callInfo.call || '').trim().toUpperCase()
-  const combined = combineNotes(entriesFor(call, callInfo.baseCall))
+  const entries = entriesFor(call, callInfo.baseCall)
+  const combined = combineNotes(entries)
   if (!combined) return []
 
   const result: CallInfoLookupWithNote = {
     call,
     source: 'call-notes',
     scope: 'general',
-    note: combined.note,
+    note: combined.note, // combined single-line note for the compact call-info line
     emoji: combined.emoji,
+    notes: (entries ?? []).map((entry) => entry.note), // every note, for the call-info detail
   }
   return [result]
 }

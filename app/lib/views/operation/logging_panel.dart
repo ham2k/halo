@@ -9,6 +9,9 @@ import 'package:intl/intl.dart';
 import '../../main.dart';
 import '../operation_dialogs.dart';
 import '../../i18n/strings.g.dart';
+import '../../services/settings_service.dart';
+import '../../tools/distance_format.dart';
+import '../../tools/scoring_labels.dart';
 
 /// Builds the QSO list's day-header/event-row vocabulary for the active
 /// locale. Month/weekday abbreviations come from `intl`'s `DateFormat`
@@ -50,6 +53,14 @@ class LoggingPanel extends StatefulWidget {
   /// see docs/design/layouts.md).
   final ValueChanged<String?>? onCommandMessageChanged;
 
+  /// Forwards the current call-info up to the operation view for the Call Info
+  /// detail panel (Info tab / modal). See LoggingControls' `onCallInfoChanged`.
+  final CallInfoChanged? onCallInfoChanged;
+
+  /// Fires when the compact call-info area is tapped — the operation view opens
+  /// the detail (modal on narrow, focuses the Info tab on wide).
+  final VoidCallback? onCallInfoTap;
+
   const LoggingPanel({
     super.key,
     required this.operation,
@@ -64,6 +75,8 @@ class LoggingPanel extends StatefulWidget {
     this.ourEntityPrefix,
     this.suggestedQso,
     this.onCommandMessageChanged,
+    this.onCallInfoChanged,
+    this.onCallInfoTap,
   });
 
   @override
@@ -157,6 +170,114 @@ class _LoggingPanelState extends State<LoggingPanel> {
     widget.services.settings.setHiddenSecondaryControls(hidden);
   }
 
+  /// The info area's default statistics (issue #40) — count + duration,
+  /// "since last" (only while the last QSO is recent), and last-10 / last-100
+  /// Q/h rates. Mirrors app-polo's OpInfo; the live clock ticker inside
+  /// LoggingControls keeps the "since last" figure fresh.
+  List<String> _operationStatsLines(BuildContext context, List<Qso> qsos) {
+    final t = context.t.loggingControls.info;
+    final contacts = [for (final q in qsos) if (q.isRealContact) q];
+    if (contacts.isEmpty) return [t.noQsos];
+
+    final count = contacts.length;
+    final firstMs = contacts.first.startAtMillis;
+    final lastMs = contacts.last.startAtMillis;
+    final nowMs = DateTime.now().toUtc().millisecondsSinceEpoch;
+
+    final countText = count == 1 ? t.qsoCountOne : t.qsoCountOther(count: count);
+    final line1 = <String>[
+      (firstMs != null && lastMs != null)
+          ? t.qsosInTime(count: countText, time: fmtTimeBetween(firstMs, lastMs))
+          : countText,
+      // "since last" only while the last QSO is recent (<6h) — otherwise a
+      // long-idle log would show a distractingly large figure.
+      if (lastMs != null && nowMs - lastMs < 6 * 60 * 60 * 1000) t.sinceLast(time: fmtTimeBetween(lastMs, nowMs)),
+    ];
+
+    final line2 = <String>[];
+    // Rates: QSOs-per-hour over the last 10 / 100, needing >10 / >100 contacts
+    // (same thresholds and window as app-polo).
+    int? rateOverLast(int n) {
+      final start = contacts[count - n].startAtMillis;
+      final end = contacts[count - 1].startAtMillis;
+      if (start == null || end == null || end <= start) return null;
+      return (n / ((end - start) / 1000 / 60) * 60).round();
+    }
+
+    if (count > 10) {
+      final rate = rateOverLast(10);
+      if (rate != null) line2.add(t.ratePer10(rate: rate));
+    }
+    if (count > 100) {
+      final rate = rateOverLast(100);
+      if (rate != null) line2.add(t.ratePer100(rate: rate));
+    }
+
+    return [line1.join(' • '), if (line2.isNotEmpty) line2.join(' • ')];
+  }
+
+  /// The call-info panel's line-1 location string (issue #40) — distance (and
+  /// bearing, if the setting is on) to the contact, then a location label.
+  /// Country is shown only for DX contacts, never our own entity. A distance
+  /// from a centroid (not a real grid) is shown approximate ("~") and rounded.
+  String? _callLocationLine(BuildContext context, Map<String, dynamic> guess) {
+    final t = context.t.loggingControls.info;
+    final entityPrefix = guess['entityPrefix'] as String?;
+
+    final ourGrid = widget.operation.grid;
+    final ourLoc = ourGrid == null ? null : gridToLocation(ourGrid);
+    final resolved = locationForQsoInfoWithSource(
+      grid: guess['grid'] as String?,
+      entityPrefix: entityPrefix,
+      state: guess['state'] as String?,
+    );
+
+    String? distStr;
+    int? bearingDeg;
+    // Skip an entity-centroid distance for the largest countries — the country
+    // center is a poor estimate; show a distance for them only once we know the
+    // state (a state-centroid fix).
+    final skipCentroid =
+        resolved?.source == QsoLocationSource.entity && kLargeEntities.contains(entityPrefix);
+    if (ourLoc != null && resolved != null && !skipCentroid) {
+      final miles = widget.services.settings.distanceUnits == DistanceUnits.miles;
+      final approximate = resolved.source != QsoLocationSource.grid;
+      final km = distanceOnEarthKm(resolved.location, ourLoc);
+      distStr = fmtDistance(approximate ? approxRoundedKm(km, miles: miles) : km, miles: miles);
+      if (approximate) distStr = '~$distStr'; // centroid-based, not a real fix
+      if (widget.services.settings.showBearing) {
+        bearingDeg = bearingOnEarthDeg(ourLoc, resolved.location).round();
+      }
+    }
+
+    final location = (guess['location'] as String?)?.trim();
+    final country = (guess['country'] as String?)?.trim();
+    // Location + country (country for DX only, never our own entity), joined
+    // with an en dash rather than a bullet.
+    final label = [
+      if (location != null && location.isNotEmpty) location,
+      if (country != null && country.isNotEmpty && entityPrefix != widget.ourEntityPrefix) country,
+    ].join(' – ');
+
+    if (distStr != null && label.isNotEmpty) {
+      // The distance's "to" flows straight into the place — "2,605 km to
+      // Santo Domingo, DN – Dominican Republic".
+      final phrase = bearingDeg != null
+          ? t.distanceBearingTo(distance: distStr, bearing: bearingDeg)
+          : t.distanceTo(distance: distStr);
+      return '$phrase $label';
+    }
+    if (label.isNotEmpty) return label;
+    // No place to point "to" — say the distance "away" instead ("15 km away").
+    if (distStr != null) {
+      return bearingDeg != null
+          ? t.distanceBearingAway(distance: distStr, bearing: bearingDeg)
+          : t.distanceAway(distance: distStr);
+    }
+    return null;
+  }
+
+
   @override
   Widget build(BuildContext context) {
     // Cached by `ScoringService.rescoreOperation` into `Operation.localData`
@@ -221,6 +342,12 @@ class _LoggingPanelState extends State<LoggingPanel> {
           controlOrder: _controlOrder,
           hiddenControlKeys: _hiddenControls,
           onControlsSettingsChanged: _handleControlsSettingsChanged,
+          operationStatsLines: (qsos) => _operationStatsLines(context, qsos),
+          callLocationLine: (guess) => _callLocationLine(context, guess),
+          scoreQso: widget.services.extensions.scoreQso,
+          scoreNoticeLabel: (key) => scoreNoticeLabel(context, key),
+          onCallInfoChanged: widget.onCallInfoChanged,
+          onCallInfoTap: widget.onCallInfoTap,
           showRSTFields: widget.showRSTFields,
           showStateField: widget.showStateField,
           showGridField: widget.showGridField,
@@ -237,7 +364,6 @@ class _LoggingPanelState extends State<LoggingPanel> {
           nowLabel: context.t.loggingControls.now,
           freqLabel: context.t.loggingControls.frequency,
           modeLabel: context.t.loggingControls.mode,
-          dupeLabel: context.t.loggingControls.dupe,
           theirCallLabel: context.t.loggingControls.theirCall,
           sentLabel: context.t.loggingControls.sent,
           rcvdLabel: context.t.loggingControls.rcvd,

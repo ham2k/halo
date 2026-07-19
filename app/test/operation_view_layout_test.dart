@@ -62,7 +62,7 @@ void main() {
     // with the in-progress callsign intact (GlobalKey reparenting).
     expect(find.text('INFO'), findsNothing);
     expect(find.text('0 QSOs'), findsOneWidget);
-    expect(find.text('W1AW'), findsOneWidget);
+    expect(find.widgetWithText(TextField, 'W1AW'), findsOneWidget);
 
     // And back to wide: split returns, input still intact.
     tester.view.physicalSize = const Size(1000, 800);
@@ -70,7 +70,7 @@ void main() {
     await tester.pump(const Duration(milliseconds: 500));
 
     expect(find.text('INFO'), findsOneWidget);
-    expect(find.text('W1AW'), findsOneWidget);
+    expect(find.widgetWithText(TextField, 'W1AW'), findsOneWidget);
 
     // Flip with a NON-ZERO tab selected — the regression case. Wide with
     // Spots selected, then narrow: the tab snaps to QSOs (the logging pane
@@ -84,7 +84,7 @@ void main() {
     await tester.pump(const Duration(milliseconds: 500));
     await tester.pump(const Duration(milliseconds: 500));
     expect(tester.takeException(), isNull);
-    expect(find.text('W1AW'), findsOneWidget, reason: 'logging input survives a flip made from the Spots tab');
+    expect(find.widgetWithText(TextField, 'W1AW'), findsOneWidget, reason: 'logging input survives a flip made from the Spots tab');
 
     // Narrow with Spots selected, then wide: the logging subtree is stolen
     // from the TabBarView's keep-alive bucket into the split's left pane.
@@ -95,7 +95,7 @@ void main() {
     await tester.pump(const Duration(milliseconds: 500));
     await tester.pump(const Duration(milliseconds: 500));
     expect(tester.takeException(), isNull);
-    expect(find.text('W1AW'), findsOneWidget, reason: 'logging input survives a flip made with Spots selected');
+    expect(find.widgetWithText(TextField, 'W1AW'), findsOneWidget, reason: 'logging input survives a flip made with Spots selected');
     expect(find.text('INFO'), findsOneWidget);
 
     // Tear the tree down and drain the services' debounce timers (rescore,

@@ -80,6 +80,10 @@ void main() {
       spotOtherLabel: (call, freq) => 'Spot $call at $freq',
       spotTooLateLabel: (call) => 'Too late to spot $call',
       spotNoFreqLabel: 'First set a frequency to spot',
+      // The dupe warning now renders as a line-3 pill in the info area
+      // (issue #40); map its key to the same 'DUPE' text the old chip used so
+      // the dupe-detection tests can keep asserting on it.
+      scoreNoticeLabel: (key) => key == 'duplicate' ? 'DUPE' : key,
     );
     return MaterialApp(
       home: Scaffold(
@@ -601,6 +605,146 @@ void main() {
     expect(find.textContaining('ARRL HQ'), findsOneWidget);
   });
 
+  group('info area (issue #40)', () {
+    Future<Map<String, dynamic>?> Function(String, {required Map<String, dynamic> qso, required Map<String, dynamic> operation, required bool online}) guessLookup(
+      Map<String, dynamic> guess,
+    ) {
+      return (call, {required qso, required operation, required online}) async => {'guess': guess};
+    }
+
+    testWidgets('idle (no call): renders the operation statistics lines', (tester) async {
+      await tester.pumpWidget(MaterialApp(
+        home: Scaffold(
+          body: LoggingControls(
+            operation: operation,
+            qsosRepository: qsos,
+            operationStatsLines: (_) => ['12 QSOs in 1h 5m', '48 Q/h for last 10'],
+          ),
+        ),
+      ));
+      await tester.pump();
+
+      expect(find.text('12 QSOs in 1h 5m'), findsOneWidget);
+      expect(find.text('48 Q/h for last 10'), findsOneWidget);
+    });
+
+    testWidgets('call entered: flag, location line and name replace the stats', (tester) async {
+      await tester.pumpWidget(MaterialApp(
+        home: Scaffold(
+          body: LoggingControls(
+            operation: operation,
+            qsosRepository: qsos,
+            lookup: guessLookup({'flag': '🇮🇹', 'name': 'Marco', 'entityPrefix': 'I', 'country': 'Italy'}),
+            callLocationLine: (guess) => '5,000 mi to • ${guess['country']}',
+            operationStatsLines: (_) => ['stats-line-should-be-hidden'],
+          ),
+        ),
+      ));
+
+      await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'IK1ABC');
+      await tester.pump(const Duration(milliseconds: 500));
+      await tester.pump(const Duration(milliseconds: 300)); // let the info-area cross-fade settle
+
+      expect(find.text('🇮🇹'), findsOneWidget);
+      expect(find.textContaining('5,000 mi to'), findsOneWidget);
+      expect(find.text('Marco'), findsOneWidget);
+      // Once a call of ≥3 chars is entered, the default stats give way to
+      // the call-info panel.
+      expect(find.text('stats-line-should-be-hidden'), findsNothing);
+    });
+
+    testWidgets('a lookup note takes line 2 over the name', (tester) async {
+      await tester.pumpWidget(MaterialApp(
+        home: Scaffold(
+          body: LoggingControls(
+            operation: operation,
+            qsosRepository: qsos,
+            lookup: guessLookup({'name': 'Marco', 'note': 'Old friend, always on 20m'}),
+          ),
+        ),
+      ));
+
+      await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'IK1ABC');
+      await tester.pump(const Duration(milliseconds: 500));
+
+      expect(find.textContaining('Old friend, always on 20m'), findsOneWidget);
+      expect(find.text('Marco'), findsNothing);
+    });
+
+    testWidgets('scoreQso notices render as line-3 pills', (tester) async {
+      await tester.pumpWidget(MaterialApp(
+        home: Scaffold(
+          body: LoggingControls(
+            operation: operation,
+            qsosRepository: qsos,
+            lookup: guessLookup({'name': 'Marco'}),
+            scoreQso: ({required operation, required qso, excludeUuid}) async =>
+                {'notices': ['newDXCC', 'newBand'], 'alerts': <String>[]},
+            scoreNoticeLabel: (key) => const {'newDXCC': 'New DXCC', 'newBand': 'New Band'}[key] ?? key,
+          ),
+        ),
+      ));
+
+      await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'IK1ABC');
+      await tester.pump(const Duration(milliseconds: 500));
+
+      expect(find.text('New DXCC'), findsOneWidget);
+      expect(find.text('New Band'), findsOneWidget);
+    });
+
+    testWidgets("the hook's dupe alert shows as a pill — and no DUPE chip in the control row", (tester) async {
+      // Dupe detection now lives in the scoreQso hook (which knows the
+      // operation's activities), not a client-side check — the widget just
+      // renders whatever the hook returns.
+      await tester.pumpWidget(MaterialApp(
+        home: Scaffold(
+          body: LoggingControls(
+            operation: operation,
+            qsosRepository: qsos,
+            scoreQso: ({required operation, required qso, excludeUuid}) async =>
+                {'notices': <String>[], 'alerts': ['duplicate']},
+            scoreNoticeLabel: (key) => key == 'duplicate' ? 'Dupe!' : key,
+          ),
+        ),
+      ));
+
+      await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'W1AW');
+      await tester.pump(const Duration(milliseconds: 500));
+
+      // The hook's dupe alert renders as a pill...
+      expect(find.text('Dupe!'), findsOneWidget);
+      // ...and never as a Chip in the secondary control row (issue #40).
+      expect(find.widgetWithText(Chip, 'DUPE'), findsNothing);
+    });
+
+    testWidgets('scoreQso fires only for a plausible callsign, not junk input', (tester) async {
+      final scored = <String>[];
+      await tester.pumpWidget(MaterialApp(
+        home: Scaffold(
+          body: LoggingControls(
+            operation: operation,
+            qsosRepository: qsos,
+            scoreQso: ({required operation, required qso, excludeUuid}) async {
+              scored.add(((qso['their'] as Map)['call']) as String);
+              return {'notices': <String>[], 'alerts': <String>[]};
+            },
+          ),
+        ),
+      ));
+
+      // "QQQ" is ≥3 chars but not a plausible callsign — no whole-log scoring
+      // pass should fire (the same gate the lookup uses).
+      await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'QQQ');
+      await tester.pump(const Duration(milliseconds: 500));
+      expect(scored, isEmpty);
+
+      // A real callsign triggers exactly one debounced scoring pass.
+      await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'W1AW');
+      await tester.pump(const Duration(milliseconds: 500));
+      expect(scored, ['W1AW']);
+    });
+  });
+
   testWidgets('logging a comma-separated call list saves immediately without inline lookups; each entry is enqueued for background lookup', (tester) async {
     // Saving a call list must never block on N network lookups (a stall
     // with no connectivity): the QSOs land bare and each is handed to the
@@ -901,28 +1045,6 @@ void main() {
     expect(callField.controller!.text, 'K1ABC');
   });
 
-  testWidgets('call stacking: DUPE chip reflects the call that would actually be logged, not the raw stacked text', (tester) async {
-    final dupe = (await tester.runAsync(() => qsos.add(operation.uuid, {
-          'their': {'call': 'W1AW'},
-          'band': '20m',
-          'mode': 'SSB',
-        })))!;
-    await tester.pumpWidget(host(existing: [dupe]));
-    await openControl(tester, MdiIcons.radio);
-    await tester.enterText(find.widgetWithText(TextField, 'Frequency'), '14285');
-
-    // Cursor ends up at the end (last segment, "W1AW") after enterText.
-    await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'K1ABC//W1AW');
-    await tester.pump();
-    expect(find.text('DUPE'), findsOneWidget);
-
-    // Move the cursor into "K1AB|C" — not a dupe.
-    final callField = tester.widget<TextField>(find.widgetWithText(TextField, 'Their call'));
-    callField.controller!.selection = const TextSelection.collapsed(offset: 4);
-    await tester.pump();
-    expect(find.text('DUPE'), findsNothing);
-  });
-
   testWidgets('call stacking: lookup enrichment applies to the picked call and reaches the logged QSO', (tester) async {
     Future<Map<String, dynamic>?> lookup(
       String call, {
@@ -1009,7 +1131,14 @@ void main() {
 
     await tester.pumpWidget(MaterialApp(
       home: Scaffold(
-        body: LoggingControls(operation: operation, qsosRepository: qsos, lookup: lookup),
+        body: LoggingControls(
+          operation: operation,
+          qsosRepository: qsos,
+          lookup: lookup,
+          // The location line is formatted by the app layer (issue #40);
+          // surface the guess's location so it can be asserted here.
+          callLocationLine: (guess) => guess['location'] as String?,
+        ),
       ),
     ));
 
@@ -1024,15 +1153,16 @@ void main() {
     await tester.pump();
     // Two passes per resolved call: an offline pass, then an online pass.
     expect(lookups, 2);
-    expect(find.textContaining('ARRL HQ'), findsOneWidget);
-    expect(find.textContaining('Newington, CT'), findsOneWidget);
+    expect(find.textContaining('ARRL HQ'), findsOneWidget); // name, line 2
+    expect(find.textContaining('Newington, CT'), findsOneWidget); // location, line 1
 
     await tester.sendKeyEvent(LogicalKeyboardKey.enter);
     final logged = await waitForQsos(tester, 1);
     expect(logged.single.theirName, 'ARRL HQ');
     expect(logged.single.theirGrid, 'FN31pr');
 
-    // Wipe cleared the enrichment line.
+    // Wipe cleared the enrichment line (after the info-area cross-fade settles).
+    await tester.pump(const Duration(milliseconds: 300));
     expect(find.textContaining('ARRL HQ'), findsNothing);
   });
 
@@ -1728,10 +1858,10 @@ void main() {
     expect(logged.map((q) => q.theirCall).toSet(), {'WD4DAN', 'WD4JMM'});
   });
 
-  testWidgets('a callsign note takes the name slot in the lookup entry line', (tester) async {
+  testWidgets('a callsign note takes the name slot on the call-info line', (tester) async {
     // Issue #17: guess.note (from the call-notes lookup hook) usually
-    // already names the operator, so it replaces guess.name in the one-line
-    // preview instead of joining it — same precedence app-polo gives notes.
+    // already names the operator, so it replaces guess.name on line 2
+    // instead of joining it — same precedence app-polo gives notes.
     Future<Map<String, dynamic>?> lookup(
       String call, {
       required Map<String, dynamic> qso,
@@ -1746,7 +1876,12 @@ void main() {
 
     await tester.pumpWidget(MaterialApp(
       home: Scaffold(
-        body: LoggingControls(operation: operation, qsosRepository: qsos, lookup: lookup),
+        body: LoggingControls(
+          operation: operation,
+          qsosRepository: qsos,
+          lookup: lookup,
+          callLocationLine: (guess) => guess['location'] as String?,
+        ),
       ),
     ));
 
@@ -1754,9 +1889,12 @@ void main() {
     await tester.pump(const Duration(milliseconds: 350));
     await tester.pump();
 
-    expect(find.textContaining('🤩 Sebastián - Ham2K PoLo Creator'), findsOneWidget);
-    expect(find.textContaining('New York, NY'), findsOneWidget);
-    expect(find.textContaining('Sebastian •'), findsNothing); // name is displaced, not joined
+    // The note's leading emoji is split into its own (glowed) widget; the
+    // prose renders as markdown beside it.
+    expect(find.text('🤩'), findsOneWidget); // leading emoji, glowed separately
+    expect(find.textContaining('Sebastián - Ham2K PoLo Creator'), findsOneWidget); // note prose, line 2
+    expect(find.textContaining('New York, NY'), findsOneWidget); // location, line 1
+    expect(find.text('Sebastian'), findsNothing); // name is displaced by the note, not shown
   });
 
   testWidgets('seeds the Radio control from radioService.vfoA for a new QSO', (tester) async {
@@ -2270,47 +2408,13 @@ void main() {
     expect(tester.widget<TextField>(find.widgetWithText(TextField, 'Frequency')).controller!.text, '14285');
   });
 
-  testWidgets('shows DUPE chip for same call, band and mode', (tester) async {
-    final dupe = (await tester.runAsync(() => qsos.add(operation.uuid, {
-          'their': {'call': 'W1AW'},
-          'band': '20m',
-          'mode': 'SSB',
-        })))!;
-    await tester.pumpWidget(host(existing: [dupe]));
-    await openControl(tester, MdiIcons.radio);
+  // Dupe detection (same call+band+mode, cursor segment within a call list,
+  // stacked calls) moved to the scoreQso hook — see the extension's
+  // scoreQso.test.ts. The widget's remaining responsibility is passing the
+  // right candidate; the call-at-cursor selection is covered by the lookup
+  // tests above, and excludeUuid by the test below.
 
-    await tester.enterText(find.widgetWithText(TextField, 'Frequency'), '14285');
-    await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'W1AW');
-    await tester.pump();
-
-    expect(find.text('DUPE'), findsOneWidget);
-  });
-
-  testWidgets('DUPE chip reflects only the call segment under the cursor within a comma-separated list', (tester) async {
-    final dupe = (await tester.runAsync(() => qsos.add(operation.uuid, {
-          'their': {'call': 'W1AW'},
-          'band': '20m',
-          'mode': 'SSB',
-        })))!;
-    await tester.pumpWidget(host(existing: [dupe]));
-    await openControl(tester, MdiIcons.radio);
-    await tester.enterText(find.widgetWithText(TextField, 'Frequency'), '14285');
-
-    await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'K1ABC, W1AW');
-    final callField = tester.widget<TextField>(find.widgetWithText(TextField, 'Their call'));
-
-    // Cursor in the first segment ("K1AB|C") — not a dupe.
-    callField.controller!.selection = const TextSelection.collapsed(offset: 4);
-    await tester.pump();
-    expect(find.text('DUPE'), findsNothing);
-
-    // Cursor at the end, in the "W1AW" segment — the actual dupe.
-    callField.controller!.selection = TextSelection.collapsed(offset: callField.controller!.text.length);
-    await tester.pump();
-    expect(find.text('DUPE'), findsOneWidget);
-  });
-
-  testWidgets('editing an existing QSO does not flag it as its own duplicate', (tester) async {
+  testWidgets('scoreQso excludes the QSO being edited (so it never self-dupes)', (tester) async {
     final existingQso = Qso(
       uuid: 'existing-uuid',
       operationUuid: operation.uuid,
@@ -2321,6 +2425,7 @@ void main() {
       },
     );
 
+    String? excluded;
     await tester.pumpWidget(MaterialApp(
       home: Scaffold(
         body: LoggingControls(
@@ -2328,11 +2433,18 @@ void main() {
           qsosRepository: qsos,
           qsos: [existingQso],
           editingQso: existingQso,
+          scoreQso: ({required operation, required qso, excludeUuid}) async {
+            excluded = excludeUuid;
+            return {'notices': <String>[], 'alerts': <String>[]};
+          },
         ),
       ),
     ));
+    await tester.pump(const Duration(milliseconds: 500));
 
-    expect(find.text('DUPE'), findsNothing);
+    // Editing populates the fields from the QSO, then scores it excluding
+    // itself, so it can never flag itself as its own duplicate.
+    expect(excluded, 'existing-uuid');
   });
 
   group('secondary control row', () {

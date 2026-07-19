@@ -134,7 +134,10 @@ async function lookupCall(
     const city = tag(xml, 'addr2')
     const state = tag(xml, 'state')
     const [lat, lon] = cleanLocationParams(tag(xml, 'lat'), tag(xml, 'lon'))
-    const result: CallInfoLookup = {
+    // `image` rides along as an extra field CallInfoLookup's fixed shape
+    // doesn't declare (same widening pattern as annotate.ts's `flag`) — QRZ's
+    // profile/QSL-card photo URL, shown in the call-info detail panel.
+    const result: CallInfoLookup & { image?: string } = {
       call: tag(xml, 'call') ?? call,
       source: 'qrz.com',
       scope: 'general',
@@ -147,6 +150,7 @@ async function lookupCall(
       grid: tag(xml, 'grid'),
       lat,
       lon,
+      image: tag(xml, 'image'),
     }
     return [result]
   } catch (e) {

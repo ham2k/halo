@@ -24,11 +24,11 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:halo_core/halo_core.dart';
 import 'package:halo_widgets/halo_widgets.dart';
-import 'package:intl/intl.dart';
 
 import '../../config/mapbox_token.dart';
 import '../../i18n/strings.g.dart';
 import '../../services/settings_service.dart';
+import '../../tools/distance_format.dart';
 import '../map/map_marker_data.dart';
 import '../map/mapbox_native_map_view.dart';
 import '../map/mapbox_web_map_view.dart';
@@ -218,17 +218,9 @@ class _MapPanelState extends State<MapPanel> {
     _lines = lines;
   }
 
-  /// "3.3 km" / "1,042 mi", with locale-aware separators (es: "1.042").
-  static String _fmtDistance(double km, {required bool miles}) {
-    final value = miles ? km / kmPerMile : km;
-    final formatted =
-        NumberFormat(value <= 5 ? '#,##0.0' : '#,##0', LocaleSettings.currentLocale.languageCode).format(value);
-    return miles ? t.map.distanceMiles(distance: formatted) : t.map.distanceKm(distance: formatted);
-  }
-
   MapMarkerData _markerForQso(Qso qso, GridLocation location, GridLocation? qth, HaLoColors poloColors,
       {required bool miles}) {
-    final distanceStr = qth == null ? null : _fmtDistance(distanceOnEarthKm(location, qth), miles: miles);
+    final distanceStr = qth == null ? null : fmtDistance(distanceOnEarthKm(location, qth), miles: miles);
 
     final startAt = qso.startAt;
     final timeStr = startAt == null

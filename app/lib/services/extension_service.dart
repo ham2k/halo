@@ -1216,6 +1216,41 @@ class ExtensionService {
     }
   }
 
+  /// Scores the single in-progress QSO — the callsign being typed, before
+  /// Enter — for the logging panel's live call-info line. Returns
+  /// `{notices, alerts}` of scoring keys (`duplicate`, `newBand`, `newMode`,
+  /// `newDXCC`), or null when the runtime isn't up. Debounced on the caller's
+  /// side, so the hook's whole-log read is off the keystroke path.
+  /// [excludeUuid] drops the record being edited so it can't flag itself as
+  /// its own duplicate. [operation] must carry `uuid` (the hook reads the log
+  /// via it) — pass the same uuid-folded shape command hooks get.
+  Future<Map<String, dynamic>?> scoreQso({
+    required Map<String, dynamic> operation,
+    required Map<String, dynamic> qso,
+    String? excludeUuid,
+  }) async {
+    final host = _host;
+    if (host == null) return null;
+    try {
+      final result = await host.invokeHook(
+        'scoring',
+        key: 'core',
+        method: 'scoreQso',
+        args: {
+          'operation': operation,
+          'qso': qso,
+          'excludeUuid': ?excludeUuid,
+        },
+        timeout: const Duration(seconds: 4),
+      );
+      if (result is! Map) return null;
+      return result.cast<String, dynamic>();
+    } on ExtensionHostException catch (e) {
+      debugPrint('[extensions] scoreQso failed: $e');
+      return null;
+    }
+  }
+
   /// Asks every registered `command` hook (priority order) to interpret the input command.
   /// Returns the first non-null interpretation result: `{describe, confirm, commands}`.
   /// Returns null when nothing matched, the input is empty, or the runtime isn't up.
