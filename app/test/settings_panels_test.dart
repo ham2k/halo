@@ -54,7 +54,10 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   testWidgets('Common Settings shows only the whitelisted fields', (tester) async {
-    tester.view.physicalSize = const Size(1000, 800);
+    // Tall enough that the full two-line settings sidebar renders without
+    // scrolling — ListView.builder won't build off-screen rows, and the
+    // bottom rows (e.g. Privacy) are asserted below.
+    tester.view.physicalSize = const Size(1000, 1400);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.reset);
 
@@ -84,7 +87,10 @@ void main() {
   });
 
   testWidgets('All Settings shows every group plus extension sections', (tester) async {
-    tester.view.physicalSize = const Size(1000, 800);
+    // Tall enough that the full two-line settings sidebar renders without
+    // scrolling — ListView.builder won't build off-screen rows, and the
+    // bottom rows (e.g. Privacy) are asserted below.
+    tester.view.physicalSize = const Size(1000, 1400);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.reset);
 

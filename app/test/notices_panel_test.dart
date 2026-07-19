@@ -54,7 +54,7 @@ void main() {
 
   testWidgets('sidebar shows "Notices & Messages" (not "Recent Notices"), and selecting it lists notice history',
       (tester) async {
-    tester.view.physicalSize = const Size(1000, 800);
+    tester.view.physicalSize = const Size(1000, 1400);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);

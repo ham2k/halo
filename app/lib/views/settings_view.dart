@@ -58,6 +58,11 @@ class _SettingsPanelEntry {
   /// a callsign rather than prose.
   final String? monoDetail;
 
+  /// Second-line description shown under the title in the sidebar list.
+  /// Null for extension-contributed panels (the extension SDK's panel
+  /// descriptor has no description field), which stay single-line.
+  final String? description;
+
   const _SettingsPanelEntry({
     required this.key,
     required this.title,
@@ -66,6 +71,7 @@ class _SettingsPanelEntry {
     this.descriptor,
     this.screenTitle,
     this.monoDetail,
+    this.description,
   });
 
   String get effectiveScreenTitle => screenTitle ?? title;
@@ -74,18 +80,53 @@ class _SettingsPanelEntry {
 const _fixedCorePanels = [
   // The whitelisted subset of the declarative settings registry (see
   // settings_registry.dart); the full set lives under All Settings.
-  _SettingsPanelEntry(key: 'settings', title: 'Common Settings', icon: Icons.settings_outlined, order: 0),
-  _SettingsPanelEntry(key: 'sync', title: 'Sync', screenTitle: 'Sync Settings', icon: Icons.sync, order: 10),
-  _SettingsPanelEntry(key: 'accounts', title: 'Accounts', icon: Icons.vpn_key_outlined, order: 20),
-  _SettingsPanelEntry(key: 'privacy', title: 'Privacy', icon: Icons.privacy_tip_outlined, order: 30),
-  _SettingsPanelEntry(key: 'extensions', title: 'Extensions', icon: Icons.extension_outlined, order: 40),
-  _SettingsPanelEntry(key: 'notices', title: 'Notices & Messages', icon: Icons.notifications_outlined, order: 80),
-  // After the extension-contributed panels (default order 50) and Notices,
-  // before Developer/About: every declared group — core, sync, and
-  // extension — in one place.
-  _SettingsPanelEntry(key: 'all_settings', title: 'All Settings', icon: Icons.tune, order: 85),
+  _SettingsPanelEntry(
+      key: 'settings',
+      title: 'Common Preferences',
+      icon: Icons.tune,
+      order: 0,
+      description: 'Appearance, language, and everyday settings'),
+  // Immediately after Common Preferences: every declared group — core, sync,
+  // and extension — in one place.
+  _SettingsPanelEntry(
+      key: 'all_settings',
+      title: 'All Settings',
+      icon: Icons.settings,
+      order: 5,
+      description: 'Every available setting in one place'),
+  _SettingsPanelEntry(
+      key: 'sync',
+      title: 'LoFi Cloud Sync',
+      icon: Icons.sync,
+      order: 10,
+      description: 'Back up and sync your logs across devices'),
+  _SettingsPanelEntry(
+      key: 'accounts',
+      title: 'Accounts & Services',
+      icon: Icons.vpn_key,
+      order: 20,
+      description: 'Sign in to online services and lookups'),
+  _SettingsPanelEntry(
+      key: 'extensions',
+      title: 'Features & Extensions',
+      icon: Icons.extension,
+      order: 40,
+      description: 'Turn optional features on or off'),
+  _SettingsPanelEntry(
+      key: 'notices',
+      title: 'Notices & Messages',
+      icon: Icons.notifications,
+      order: 80,
+      description: 'Announcements and status messages'),
+  // Near the bottom of the list, just before About (order 100).
+  _SettingsPanelEntry(
+      key: 'privacy',
+      title: 'Privacy',
+      icon: Icons.privacy_tip,
+      order: 95,
+      description: 'Choose what data you share'),
 ];
-// Before Common Settings (order 0) — the Profiles panel leads the list.
+// Before Common Preferences (order 0) — the Profiles panel leads the list.
 // Internally "profiles"; until multi-profile features are enabled it
 // presents itself as just "Callsign".
 const _profilesPanelOrder = -10;
@@ -103,7 +144,7 @@ class SettingsView extends StatefulWidget {
 }
 
 class _SettingsViewState extends State<SettingsView> {
-  // The wide layout defaults to Common Settings even though the Profiles
+  // The wide layout defaults to Common Preferences even though the Profiles
   // ("Callsign") panel sorts first in the sidebar.
   String _selectedPanel = 'settings';
   List<Map<String, dynamic>> _extensionPanels = [];
@@ -144,7 +185,7 @@ class _SettingsViewState extends State<SettingsView> {
     if (!widget.services.extensions.ready) {
       widget.services.statusBar.showNotice(
         key: 'settings_extensions_unavailable',
-        icon: 'alert-circle-outline',
+        icon: 'alert-circle',
         title: 'Some settings are unavailable',
         text: 'The extension runtime failed to start, so extension-contributed settings are missing.',
       );
@@ -164,8 +205,9 @@ class _SettingsViewState extends State<SettingsView> {
         key: 'profiles',
         title: 'Callsign',
         monoDetail: operatorCall.isEmpty ? null : operatorCall,
+        description: 'Operator callsign and station profile',
         screenTitle: 'Station Profiles',
-        icon: resolveIconName('account-outline'),
+        icon: resolveIconName('account'),
         order: _profilesPanelOrder,
       ),
       ..._fixedCorePanels,
@@ -191,10 +233,16 @@ class _SettingsViewState extends State<SettingsView> {
         const _SettingsPanelEntry(
           key: 'developer',
           title: 'Developer Settings',
-          icon: Icons.bug_report_outlined,
+          icon: Icons.bug_report,
           order: _developerPanelOrder,
+          description: 'Debugging and development tools',
         ),
-      const _SettingsPanelEntry(key: 'about', title: 'About', icon: Icons.info_outline, order: _aboutPanelOrder),
+      const _SettingsPanelEntry(
+          key: 'about',
+          title: 'About',
+          icon: Icons.info,
+          order: _aboutPanelOrder,
+          description: 'Version, credits, and legal information'),
     ];
     entries.sort((a, b) => a.order.compareTo(b.order));
     return entries;
@@ -310,19 +358,26 @@ class _SettingsViewState extends State<SettingsView> {
         final panel = panels[index];
         final isSelected = isWide && selectedKey == panel.key;
 
+        // A panel with a monoDetail (the operator callsign) shows it in a
+        // monospace face after the title, e.g. "Callsign: KI2D". Titles are
+        // bold, matching the app's other list rows.
+        final mono = panel.monoDetail;
+        const titleStyle = TextStyle(fontWeight: FontWeight.bold);
+        final Widget titleWidget = (mono != null && mono.isNotEmpty)
+            ? Text.rich(
+                TextSpan(
+                  text: '${panel.title}: ',
+                  children: [TextSpan(text: mono, style: const TextStyle(fontFamily: 'RobotoMono'))],
+                ),
+                style: titleStyle,
+              )
+            : Text(panel.title, style: titleStyle);
+
         return ListTile(
           selected: isSelected,
           leading: Icon(panel.icon),
-          title: panel.monoDetail == null
-              ? Text(panel.title)
-              : Text.rich(
-                  TextSpan(
-                    children: [
-                      TextSpan(text: '${panel.title}: '),
-                      TextSpan(text: panel.monoDetail, style: const TextStyle(fontFamily: 'RobotoMono')),
-                    ],
-                  ),
-                ),
+          title: titleWidget,
+          subtitle: panel.description == null ? null : Text(panel.description!),
           onTap: () {
             setState(() {
               _selectedPanel = panel.key;
@@ -383,15 +438,15 @@ Widget _buildPanelContent(_SettingsPanelEntry panel, HaLoServices services) {
   final Widget content;
   switch (panel.key) {
     case 'profiles':
-      return _ProfilesPanel(services: services);
+      content = _ProfilesPanel(services: services);
     case 'settings':
-      return _CommonSettingsPanel(services: services);
+      content = _CommonSettingsPanel(services: services);
     case 'privacy':
-      return _RegistryGroupPanel(services: services, groupKey: 'privacy');
+      content = _RegistryGroupPanel(services: services, groupKey: 'privacy');
     case 'extensions':
-      return ExtensionsPanel(services: services);
+      content = ExtensionsPanel(services: services);
     case 'all_settings':
-      return _AllSettingsPanel(services: services);
+      content = _AllSettingsPanel(services: services);
     case 'sync':
       content = _SyncPanel(services: services);
     case 'accounts':
@@ -410,10 +465,18 @@ Widget _buildPanelContent(_SettingsPanelEntry panel, HaLoServices services) {
           ? const SizedBox.shrink()
           : _ExtensionSettingsPanel(services: services, descriptor: descriptor);
   }
-  // Each panel's scroll view clears the bottom safe area itself now that the
-  // status footer no longer reserves the home indicator globally (it
-  // collapses when empty); the Scaffold canvas fills behind it.
-  return SafeArea(top: false, left: false, right: false, child: content);
+  // Cap settings content at the ideal reading width, pinned to the leading
+  // edge (aligned under the pane header) rather than stretching across a wide
+  // pane. The SafeArea sits inside the cap: each panel's scroll view clears
+  // the bottom safe area itself now that the status footer no longer reserves
+  // the home indicator globally.
+  return Align(
+    alignment: Alignment.topLeft,
+    child: ConstrainedBox(
+      constraints: const BoxConstraints(maxWidth: idealPaneWidth),
+      child: SafeArea(top: false, left: false, right: false, child: content),
+    ),
+  );
 }
 
 /// The "profiles" panel — callsign profiles. Until multi-profile features
@@ -448,7 +511,7 @@ class _ProfilesPanel extends StatelessWidget {
           padding: const EdgeInsets.symmetric(vertical: 8),
           children: [
             ListTile(
-              leading: Icon(resolveIconName('account-outline')),
+              leading: Icon(resolveIconName('account')),
               title: const Text('Callsign'),
               subtitle: Text(call.isEmpty ? 'Not set' : call),
               onTap: () => _editCallsign(context),
@@ -471,7 +534,7 @@ class _SettingsGroupForm extends StatefulWidget {
   final HaLoServices services;
   final SettingsGroup group;
 
-  /// Element keys to keep — the Common Settings whitelist. Null shows all.
+  /// Element keys to keep — the Common Preferences whitelist. Null shows all.
   final Set<String>? fieldFilter;
 
   /// Off when the group renders as a standalone panel whose pane header
@@ -862,7 +925,7 @@ class _SyncPanelState extends State<_SyncPanel> {
             // The operator-callsign row moved to the Station Profiles panel
             // (settings.activeProfile).
             SwitchListTile(
-              secondary: Icon(resolveIconName(settings.syncEnabled ? 'cloud-sync-outline' : 'cloud-off-outline')),
+              secondary: Icon(resolveIconName(settings.syncEnabled ? 'cloud-sync' : 'cloud-off')),
               title: const Text('Sync with Ham2K Log Filer'),
               subtitle: Text(
                 settings.syncEnabled
@@ -887,7 +950,7 @@ class _SyncPanelState extends State<_SyncPanel> {
                 final progress = widget.services.statusBar.itemForKey(HaLoServices.syncProgressStatusKey);
                 if (progress == null || !settings.syncEnabled) return const SizedBox.shrink();
                 return ListTile(
-                  leading: Icon(resolveIconName(progress.icon ?? 'cloud-sync-outline')),
+                  leading: Icon(resolveIconName(progress.icon ?? 'cloud-sync')),
                   title: Text(progress.title ?? 'Syncing'),
                   subtitle: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -902,7 +965,7 @@ class _SyncPanelState extends State<_SyncPanel> {
             ),
             if (settings.syncEnabled) ...[
               ListTile(
-                leading: Icon(resolveIconName('account-check-outline')),
+                leading: Icon(resolveIconName('account-check')),
                 title: const Text('Account'),
                 subtitle: Text(_syncAccountSubtitle),
                 trailing: IconButton(
@@ -913,7 +976,7 @@ class _SyncPanelState extends State<_SyncPanel> {
                 ),
               ),
               ListTile(
-                leading: Icon(resolveIconName('account-switch-outline')),
+                leading: Icon(resolveIconName('account-switch')),
                 title: const Text('Switch Accounts'),
                 subtitle: const Text('Link this device to another account with a QR code or email'),
                 onTap: _switchAccounts,
@@ -1799,7 +1862,7 @@ class _AboutPanel extends StatelessWidget {
             const SliverToBoxAdapter(child: Divider(height: 1)),
             SliverToBoxAdapter(
               child: ListTile(
-                leading: const Icon(Icons.info_outline),
+                leading: const Icon(Icons.info),
                 // VersionLabel renders SelectableText, whose own tap
                 // recognizer (for cursor placement) would otherwise win
                 // the gesture arena over this ListTile's onTap —
@@ -1978,7 +2041,7 @@ class _PendingAccountBanner extends StatelessWidget {
           children: [
             Row(
               children: [
-                Icon(resolveIconName('cloud-question-outline'), color: theme.colorScheme.onTertiaryContainer),
+                Icon(resolveIconName('cloud-question'), color: theme.colorScheme.onTertiaryContainer),
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(

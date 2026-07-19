@@ -426,7 +426,7 @@ class _SwitchAccountsPaneState extends State<SwitchAccountsPane> {
           Text('Current account', style: theme.textTheme.titleSmall),
           _accountTile(
             account: current ?? const {},
-            iconName: 'account-check-outline',
+            iconName: 'account-check',
             // The current account's counts come from the getAccountData
             // response's top-level totals, not per-account stats.
             qsoCount: ((_accountData?['qsos'] as Map?)?['total'] as num?)?.toInt(),
@@ -439,7 +439,7 @@ class _SwitchAccountsPaneState extends State<SwitchAccountsPane> {
               final stats = (account['stats'] as Map?)?.cast<String, dynamic>();
               return _accountTile(
                 account: account,
-                iconName: 'account-outline',
+                iconName: 'account',
                 qsoCount: (stats?['qso_count'] as num?)?.toInt(),
                 operationCount: (stats?['operation_count'] as num?)?.toInt(),
                 onTap: _busy ? null : () => _quickSwitch(account),
@@ -460,7 +460,7 @@ class _SwitchAccountsPaneState extends State<SwitchAccountsPane> {
         ),
         ListTile(
           contentPadding: EdgeInsets.zero,
-          leading: Icon(resolveIconName('email-outline')),
+          leading: Icon(resolveIconName('email')),
           title: const Text('Link with an email address'),
           subtitle: const Text('Confirm with a code or an email link'),
           enabled: !_busy,

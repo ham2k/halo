@@ -761,7 +761,7 @@ class OperationSettingsPanel extends StatelessWidget {
         ),
         header(context.t.operation.sections.location),
         ListTile(
-          leading: Icon(resolveIconName('map-marker-outline')),
+          leading: Icon(resolveIconName('map-marker')),
           title: Text(context.t.operation.sections.location),
           subtitle: Text(locationLine.isEmpty ? context.t.operation.locationNone : locationLine),
           onTap: onEditLocation,
@@ -769,7 +769,7 @@ class OperationSettingsPanel extends StatelessWidget {
         ),
         header(context.t.operation.sections.operationData),
         ListTile(
-          leading: Icon(MdiIcons.fileExportOutline),
+          leading: Icon(MdiIcons.fileExport),
           title: Text(context.t.operation.export.title),
           subtitle: Text(context.t.operation.tabs.qsos(count: qsoCount)),
           onTap: onExport,

@@ -58,8 +58,8 @@ function pickNext<T>(list: T[], lastIndex: { value: number }): T {
 
 const DEV_NOTICES = [
   { icon: 'party-popper', title: 'Random notice', text: 'This is a **random** dev notice, generated to test the status bar.' },
-  { icon: 'bug-outline', title: 'Heads up', text: "Here's another sample notice with *different* text, to check variety." },
-  { icon: 'flask-outline', title: 'Experiment running', text: 'A third possible dev notice — multi-line bodies work too.\n\nLike this second line.' },
+  { icon: 'bug', title: 'Heads up', text: "Here's another sample notice with *different* text, to check variety." },
+  { icon: 'flask', title: 'Experiment running', text: 'A third possible dev notice — multi-line bodies work too.\n\nLike this second line.' },
 ]
 const lastNoticeIndex = { value: -1 }
 
@@ -77,7 +77,7 @@ const DevNoticeCommand = {
 
 const DEV_STATUSES = [
   { icon: 'radio-tower', text: 'Scanning band…' },
-  { icon: 'satellite-uplink-outline', text: 'Waiting for spots…' },
+  { icon: 'satellite-uplink', text: 'Waiting for spots…' },
   { icon: 'weather-lightning', text: 'Checking propagation…' },
 ]
 const lastStatusIndex = { value: -1 }

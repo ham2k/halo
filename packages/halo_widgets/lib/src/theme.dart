@@ -333,7 +333,7 @@ ThemeData buildHaLoTheme(Brightness brightness) {
       centerTitle: !isWindowedPlatform,
       elevation: 0,
       toolbarHeight: 48.0,
-      titleSpacing: 8.0,
+      titleSpacing: 4.0,
       titleTextStyle: TextStyle(
         fontFamily: 'RobotoSlab',
         fontSize: 18,

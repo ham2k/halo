@@ -492,7 +492,7 @@ class DataFileManager {
       // A completed-progress item auto-dismisses after the usual delay.
       statusBar?.setProgress(
         key: 'dataFile:purge',
-        icon: 'delete-clock-outline',
+        icon: 'delete-clock',
         title: 'Cleaned up extension data',
         text: 'Removed data for $purged data file${purged == 1 ? '' : 's'} from disabled extensions.',
         value: 1.0,

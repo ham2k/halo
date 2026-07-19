@@ -698,28 +698,21 @@ class FormRendererState extends State<FormRenderer> {
     }
   }
 
-  /// Below this width, an icon-row field stacks its control under the
-  /// title/description instead of trailing beside them — a compact
-  /// dropdown or 140px text field next to a label leaves too little room
-  /// for either on a narrow panel/phone screen. A toggle is exempt (see
-  /// [_buildIconRowField]): a Switch is already as small as it gets, and
-  /// stacking it under a one-line label would waste more space than it
-  /// saves.
-  static const _iconRowStackBreakpoint = 400.0;
-
-  /// The Sync/Accounts panel row shape: leading icon, bold title, an
-  /// optional description underneath (or the validation error, in its
-  /// place), and a compact version of the field's control on the trailing
-  /// side — as opposed to the standalone Material input the default
-  /// [_buildField] switch renders. Below [_iconRowStackBreakpoint], the
-  /// control instead renders full-width on its own row underneath, unless
-  /// it's a toggle (checkbox), which always stays trailing.
-  ///
-  /// Side-by-side, resizable controls (text-likes and selects — not the
-  /// checkbox Switch, which keeps its intrinsic size) fill exactly a third
-  /// of the row width, so the controls form a consistent column across the
-  /// panel instead of each row's control sizing to its own content.
+  /// The settings-panel row shape: leading icon, bold title, an optional
+  /// description underneath (or the validation error, in its place). The
+  /// trailing/stacked control depends on the field type:
+  ///  - a toggle (checkbox) keeps its Switch trailing on the right;
+  ///  - a `select` becomes a tap-to-open picker dialog; the row shows the
+  ///    field's description (written to explain the current value — see the
+  ///    settings definitions), not the raw value on its own (see
+  ///    [_buildSelectRow]);
+  ///  - every other (text-like) field renders its input full-width, stacked
+  ///    beneath the title/description.
   Widget _buildIconRowField(Map<String, dynamic> el, String fieldType, ThemeData theme) {
+    if (fieldType == 'select') {
+      return _buildSelectRow(el, theme);
+    }
+
     final key = el['key'] as String;
     final label = el['label'] as String? ?? '';
     final description = el['description'] as String?;
@@ -747,37 +740,93 @@ class FormRendererState extends State<FormRenderer> {
       );
     }
 
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        if (constraints.maxWidth >= _iconRowStackBreakpoint) {
-          return ListTile(
+    // Text-like fields: the input renders full-width beneath the title/
+    // description rather than trailing beside them, at every panel width.
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          ListTile(
             contentPadding: EdgeInsets.zero,
             leading: leading,
             title: title,
             subtitle: subtitle,
-            trailing: SizedBox(
-              width: constraints.maxWidth / 3,
-              child: _buildCompactControl(el, fieldType, devModeColor, expanded: false, fill: true),
-            ),
-          );
-        }
-        return Padding(
-          padding: const EdgeInsets.symmetric(vertical: 4),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              ListTile(
-                contentPadding: EdgeInsets.zero,
-                leading: leading,
-                title: title,
-                subtitle: subtitle,
-              ),
-              _buildCompactControl(el, fieldType, devModeColor, expanded: true),
-            ],
           ),
-        );
-      },
+          _buildCompactControl(el, fieldType, devModeColor, expanded: true),
+        ],
+      ),
     );
+  }
+
+  /// A `fieldType: 'select'` icon-row field: a tappable row showing the
+  /// field's own description as the subtitle (that description is written to
+  /// explain the current value — see the settings definitions), with the
+  /// options picked in a dialog ([_openSelectDialog]) rather than an inline
+  /// dropdown. The raw value is not shown on its own line.
+  Widget _buildSelectRow(Map<String, dynamic> el, ThemeData theme) {
+    final key = el['key'] as String;
+    final label = el['label'] as String? ?? '';
+    final desc = el['description'] as String? ?? '';
+    final icon = el['icon'] as String?;
+    final errorText = _errors[key];
+    final devModeColor = _devModeColor(el);
+
+    // The row shows the setting's own description, which is written to
+    // explain the current value (see the settings definitions); the raw
+    // value is not repeated as a separate line.
+    Widget? subtitle;
+    if (errorText != null) {
+      subtitle = Text(errorText, style: TextStyle(color: theme.colorScheme.error, fontSize: 12));
+    } else if (desc.isNotEmpty) {
+      subtitle = Text(desc, style: TextStyle(color: devModeColor));
+    }
+
+    return ListTile(
+      contentPadding: EdgeInsets.zero,
+      leading: icon != null ? Icon(resolveIconName(icon), color: devModeColor) : null,
+      title: Text(label, style: theme.textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.bold, color: devModeColor)),
+      subtitle: subtitle,
+      trailing: Icon(resolveIconName('chevron-right'), color: devModeColor ?? theme.colorScheme.onSurfaceVariant),
+      onTap: _isSubmitting ? null : () => _openSelectDialog(el),
+      mouseCursor: SystemMouseCursors.click,
+    );
+  }
+
+  /// The picker dialog for a `select` icon-row field: one row per option,
+  /// checked against the current value; tapping one commits it (exactly as
+  /// the inline control did) and closes.
+  Future<void> _openSelectDialog(Map<String, dynamic> el) async {
+    final key = el['key'] as String;
+    final label = el['label'] as String? ?? '';
+    final options =
+        (el['options'] is List) ? (el['options'] as List).cast<Map<String, dynamic>>() : const <Map<String, dynamic>>[];
+    final current = _values[key];
+
+    // Wrap the chosen value in a one-element list so a dismissed dialog
+    // (null) is distinguishable from picking an option whose value is null.
+    final picked = await showDialog<List<dynamic>>(
+      context: context,
+      builder: (dialogContext) => SimpleDialog(
+        title: Text(label),
+        children: [
+          for (final opt in options)
+            ListTile(
+              title: Text(opt['label'] as String),
+              trailing: opt['value'] == current ? Icon(resolveIconName('check')) : null,
+              onTap: () => Navigator.pop(dialogContext, [opt['value']]),
+              mouseCursor: SystemMouseCursors.click,
+            ),
+        ],
+      ),
+    );
+    if (picked == null || !mounted) return;
+    final val = picked.first;
+    setState(() {
+      _values[key] = val;
+      _errors.remove(key);
+    });
+    _handleFieldBlurOrInteraction(key, val);
   }
 
   /// `{type: 'link', label, url, icon?, description?}` — an icon-row-styled
@@ -830,44 +879,15 @@ class FormRendererState extends State<FormRenderer> {
         _ => _isUppercase(fieldType, el) ? const [UpperCaseTextFormatter()] : null,
       };
 
-  /// `expanded` is the narrow-layout, stacked-under-the-title form: full
-  /// width instead of a fixed compact size, start-aligned text instead of
-  /// end-aligned (there's no label/description to its left to align
-  /// against anymore). Ignored for 'checkbox', which is never stacked.
-  ///
-  /// `fill` is the side-by-side form's width contract: the caller wraps
-  /// this in a fixed-width box (a third of the row) that the control must
-  /// fill, keeping trailing (end) alignment. Checkboxes ignore it — the
-  /// Switch keeps its intrinsic size.
+  /// The input a text-like icon-row field renders full-width, stacked
+  /// beneath its title/description (the caller passes `expanded: true`,
+  /// selecting start-aligned full-width text), or the trailing Switch for a
+  /// 'checkbox' (which ignores `expanded`).
   Widget _buildCompactControl(Map<String, dynamic> el, String fieldType, Color? devModeColor,
-      {required bool expanded, bool fill = false}) {
+      {required bool expanded}) {
     final key = el['key'] as String;
-    // `options` may be an app-resolved '$name' String that a caller failed
-    // to resolve — degrade to no options instead of crashing the form.
-    final options =
-        (el['options'] is List) ? (el['options'] as List).cast<Map<String, dynamic>>() : const <Map<String, dynamic>>[];
 
     switch (fieldType) {
-      case 'select':
-        final dropdown = DropdownButtonHideUnderline(
-          child: DropdownButton<dynamic>(
-            value: _values[key],
-            menuMaxHeight: dropdownMenuMaxHeight(context),
-            isExpanded: expanded || fill,
-            alignment: fill && !expanded ? AlignmentDirectional.centerEnd : AlignmentDirectional.centerStart,
-            items: [for (final opt in options) DropdownMenuItem(value: opt['value'], child: Text(opt['label'] as String))],
-            onChanged: _isSubmitting
-                ? null
-                : (val) {
-                    setState(() {
-                      _values[key] = val;
-                      _errors.remove(key);
-                    });
-                    _handleFieldBlurOrInteraction(key, val);
-                  },
-          ),
-        );
-        return expanded ? SizedBox(width: double.infinity, child: dropdown) : dropdown;
       case 'checkbox':
         return Switch(
           value: _values[key] == true,
@@ -897,9 +917,9 @@ class FormRendererState extends State<FormRenderer> {
           onSubmitted: (_) => submit(),
           decoration: const InputDecoration(border: InputBorder.none, isDense: true, contentPadding: EdgeInsets.zero),
         );
-        // `fill`: the caller's fixed-width box provides the size; bare 140
-        // is the legacy compact width for callers without one.
-        return expanded || fill ? field : SizedBox(width: 140, child: field);
+        // Stacked (expanded) fields fill the available width; an unexpanded
+        // field keeps the legacy 140px compact width.
+        return expanded ? field : SizedBox(width: 140, child: field);
     }
   }
 
@@ -1028,7 +1048,7 @@ class FormRendererState extends State<FormRenderer> {
                 children: [
                   if (orderable) const Icon(Icons.drag_handle, size: 20),
                   IconButton(
-                    icon: const Icon(Icons.delete_outline, size: 20),
+                    icon: const Icon(Icons.delete, size: 20),
                     onPressed: _isSubmitting ? null : () => deleteItem(index),
                   ),
                 ],

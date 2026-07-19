@@ -1356,7 +1356,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   List<_ControlDescriptor> _controlDescriptors() => [
         _ControlDescriptor(
           key: 'time',
-          icon: MdiIcons.clockOutline,
+          icon: MdiIcons.clock,
           label: widget.timeControlLabel ?? 'Time',
           mandatory: true,
         ),
@@ -1436,7 +1436,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
 
   SecondaryControlSpec _timeControlSpec() => SecondaryControlSpec(
         key: 'time',
-        icon: MdiIcons.clockOutline,
+        icon: MdiIcons.clock,
         summary: _timeSummary,
         expandedBuilder: (context) => Row(
           mainAxisSize: MainAxisSize.min,
@@ -2002,7 +2002,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
             onPressed: state.enabled && !_spotSending ? _sendSpot : null,
             icon: _spotSending
                 ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
-                : Icon(resolveIconName('hand-wave-outline')),
+                : Icon(resolveIconName('hand-wave')),
             label: Text(state.buttonLabel),
           ),
           // Up to 3 source-status icons per column, wrapping into another
@@ -3025,7 +3025,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
         tooltip = widget.undoLabel ?? 'Undo';
         onPressed = _restoreFromUndoSlot;
       } else {
-        icon = resolveIconName('backspace-outline');
+        icon = resolveIconName('backspace');
         tooltip = widget.wipeLabel ?? 'Wipe';
         onPressed = _hasComposedValues ? _handleWipeTap : null;
       }

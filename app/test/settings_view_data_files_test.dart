@@ -20,7 +20,7 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   testWidgets('the Data Files panel lists each registered data file with its last-download time', (tester) async {
-    tester.view.physicalSize = const Size(1000, 800);
+    tester.view.physicalSize = const Size(1000, 1400);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
@@ -68,7 +68,7 @@ void main() {
 
   testWidgets('tapping Refresh shows progress and updates the row from the returned time without re-listing',
       (tester) async {
-    tester.view.physicalSize = const Size(1000, 800);
+    tester.view.physicalSize = const Size(1000, 1400);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);

@@ -299,7 +299,7 @@ class HaLoServices {
   late final SystemLists systemLists = SystemLists();
 
   /// The declarative settings groups (docs in settings/settings_registry.dart)
-  /// rendered by the Common Settings and All Settings panels. Extension
+  /// rendered by the Common Preferences and All Settings panels. Extension
   /// panels aren't registered here — the All Settings panel composes them
   /// from [ExtensionService.getSettingsPanels] at build time (the runtime
   /// boots asynchronously).
@@ -349,7 +349,7 @@ class HaLoServices {
       if (statusBar.items.any((item) => item.key == syncProgressStatusKey)) {
         statusBar.setProgress(
           key: syncProgressStatusKey,
-          icon: 'cloud-sync-outline',
+          icon: 'cloud-sync',
           title: 'Sync',
           text: 'Account history downloaded',
           value: 1.0,
@@ -364,7 +364,7 @@ class HaLoServices {
     final qsoDone = (qsoTotal - (progress.qsosLeft ?? 0)).clamp(0, qsoTotal);
     statusBar.setProgress(
       key: syncProgressStatusKey,
-      icon: 'cloud-sync-outline',
+      icon: 'cloud-sync',
       title: 'Syncing account history',
       text: qsoTotal > 0 ? '$qsoDone of $qsoTotal QSOs' : '$done of $total records',
       value: done / total,

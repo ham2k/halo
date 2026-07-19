@@ -269,13 +269,11 @@
       "larger": "Larger",
       "largest": "Largest"
     },
-    "fontScaleDescription": "Scales the whole interface — text, controls, and spacing",
     "distanceUnits": "Distance Units",
     "distanceUnitsOpts": {
       "kilometers": "Kilometers",
       "miles": "Miles"
     },
-    "distanceUnitsDescription": "For distances shown on the map",
     "userInterface": "User Interface",
     "logging": {
       "title": "Logging",
@@ -342,7 +340,7 @@
     },
     "operatorCall": "Operator Callsign",
     "sync": {
-      "title": "Sync Settings",
+      "title": "LoFi Cloud Sync",
       "enable": "Enable Sync",
       "deviceKey": "Device Key"
     },

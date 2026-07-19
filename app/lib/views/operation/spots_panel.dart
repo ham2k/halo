@@ -842,7 +842,7 @@ class _SpotsFilterPill extends StatelessWidget {
                 _FilterInfoPill(icon: 'radio', label: '$bandLabel • $modeLabel', onTap: onTap),
                 if (ageMinutes != null) ...[
                   const SizedBox(width: 6),
-                  _FilterInfoPill(icon: 'clock-outline', label: '${ageMinutes}m', onTap: onTap),
+                  _FilterInfoPill(icon: 'clock', label: '${ageMinutes}m', onTap: onTap),
                 ],
                 const SizedBox(width: 6),
                 _FilterInfoPill(icon: 'tune', color: Colors.black, onTap: onTap),

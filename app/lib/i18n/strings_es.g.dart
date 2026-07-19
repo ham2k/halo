@@ -332,10 +332,8 @@ class _Translations$settings$es extends Translations$settings$en {
 	@override late final _Translations$settings$themeDescription$es themeDescription = _Translations$settings$themeDescription$es._(_root);
 	@override String get fontScale => 'Tamaño de Letra';
 	@override late final _Translations$settings$fontScaleOpts$es fontScaleOpts = _Translations$settings$fontScaleOpts$es._(_root);
-	@override String get fontScaleDescription => 'Escala toda la interfaz: texto, controles y espaciado';
 	@override String get distanceUnits => 'Unidades de distancia';
 	@override late final _Translations$settings$distanceUnitsOpts$es distanceUnitsOpts = _Translations$settings$distanceUnitsOpts$es._(_root);
-	@override String get distanceUnitsDescription => 'Para las distancias mostradas en el mapa';
 	@override String get userInterface => 'Interfaz de Usuario';
 	@override late final _Translations$settings$logging$es logging = _Translations$settings$logging$es._(_root);
 	@override late final _Translations$settings$privacy$es privacy = _Translations$settings$privacy$es._(_root);
@@ -570,7 +568,7 @@ class _Translations$settings$sync$es extends Translations$settings$sync$en {
 	final TranslationsEs _root; // ignore: unused_field
 
 	// Translations
-	@override String get title => 'Configuración de Sincronización';
+	@override String get title => 'LoFi Cloud Sync';
 	@override String get enable => 'Habilitar Sincronización';
 	@override String get deviceKey => 'Clave del Dispositivo';
 }
@@ -979,11 +977,9 @@ extension on TranslationsEs {
 			'settings.fontScaleOpts.normal' => 'Normal',
 			'settings.fontScaleOpts.larger' => 'Grande',
 			'settings.fontScaleOpts.largest' => 'Más grande',
-			'settings.fontScaleDescription' => 'Escala toda la interfaz: texto, controles y espaciado',
 			'settings.distanceUnits' => 'Unidades de distancia',
 			'settings.distanceUnitsOpts.kilometers' => 'Kilómetros',
 			'settings.distanceUnitsOpts.miles' => 'Millas',
-			'settings.distanceUnitsDescription' => 'Para las distancias mostradas en el mapa',
 			'settings.userInterface' => 'Interfaz de Usuario',
 			'settings.logging.title' => 'Registro',
 			'settings.logging.leftieMode.title' => 'Modo Zurdo',
@@ -1023,7 +1019,7 @@ extension on TranslationsEs {
 			'settings.privacy.privacyPolicy' => 'Política de Privacidad',
 			'settings.privacy.termsOfService' => 'Términos de Servicio',
 			'settings.operatorCall' => 'Indicativo del Operador',
-			'settings.sync.title' => 'Configuración de Sincronización',
+			'settings.sync.title' => 'LoFi Cloud Sync',
 			'settings.sync.enable' => 'Habilitar Sincronización',
 			'settings.sync.deviceKey' => 'Clave del Dispositivo',
 			'settings.qrz.title' => 'Credenciales de QRZ.com',

@@ -20,11 +20,11 @@ import 'package:flutter/widgets.dart';
 class MdiIcons {
   MdiIcons._();
 
-  static const IconData clockOutline = IconData(0xf0150, fontFamily: 'MaterialDesignIcons');
+  static const IconData clock = IconData(0xf0954, fontFamily: 'MaterialDesignIcons');
   static const IconData radio = IconData(0xf0439, fontFamily: 'MaterialDesignIcons');
   static const IconData pineTree = IconData(0xf0405, fontFamily: 'MaterialDesignIcons');
-  static const IconData puzzleOutline = IconData(0xf0a66, fontFamily: 'MaterialDesignIcons');
-  static const IconData fileExportOutline = IconData(0xf102e, fontFamily: 'MaterialDesignIcons');
+  static const IconData puzzle = IconData(0xf0431, fontFamily: 'MaterialDesignIcons');
+  static const IconData fileExport = IconData(0xf021d, fontFamily: 'MaterialDesignIcons');
   static const IconData plus = IconData(0xf0415, fontFamily: 'MaterialDesignIcons');
   static const IconData accountSearch = IconData(0xf0016, fontFamily: 'MaterialDesignIcons');
   static const IconData radioTower = IconData(0xf043b, fontFamily: 'MaterialDesignIcons');

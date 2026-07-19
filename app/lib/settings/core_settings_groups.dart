@@ -104,6 +104,8 @@ class GeneralSettingsGroup extends SettingsGroup {
         key: 'locale',
         label: t.settings.language,
         icon: 'translate',
+        // Just the current language's own name (its option label).
+        description: settings.locale == 'es' ? 'Español' : 'English',
         value: settings.locale,
         options: const [
           (label: 'English', value: 'en'),
@@ -114,7 +116,8 @@ class GeneralSettingsGroup extends SettingsGroup {
         key: 'fontScale',
         label: t.settings.fontScale,
         icon: 'format-size',
-        description: t.settings.fontScaleDescription,
+        // Just the current scale's name (its option label).
+        description: t['settings.fontScaleOpts.${settings.fontScale.name}'] as String,
         value: settings.fontScale.name,
         options: [
           for (final scale in FontScale.values) (label: t['settings.fontScaleOpts.${scale.name}'] as String, value: scale.name),
@@ -124,7 +127,8 @@ class GeneralSettingsGroup extends SettingsGroup {
         key: 'distanceUnits',
         label: t.settings.distanceUnits,
         icon: 'map-marker-distance',
-        description: t.settings.distanceUnitsDescription,
+        // Just the current unit's name (its option label).
+        description: t['settings.distanceUnitsOpts.${settings.distanceUnits.name}'] as String,
         value: settings.distanceUnits.name,
         options: [
           for (final unit in DistanceUnits.values)
@@ -186,7 +190,7 @@ class LoggingSettingsGroup extends SettingsGroup {
       _toggle(
         key: 'leftieMode',
         label: s.leftieMode.title,
-        icon: 'hand-front-left-outline',
+        icon: 'hand-front-left',
         description: settings.leftieMode ? s.leftieMode.descriptionOn : s.leftieMode.descriptionOff,
         value: settings.leftieMode,
       ),
@@ -211,7 +215,7 @@ class LoggingSettingsGroup extends SettingsGroup {
       _toggle(
         key: 'showBearing',
         label: s.showBearing.title,
-        icon: 'compass-outline',
+        icon: 'compass',
         description: settings.showBearing ? s.showBearing.descriptionOn : s.showBearing.descriptionOff,
         value: settings.showBearing,
       ),
@@ -285,7 +289,7 @@ class LoggingSettingsGroup extends SettingsGroup {
       _toggle(
         key: 'showStateField',
         label: t.operation.menu.showStateField,
-        icon: 'map-outline',
+        icon: 'map',
         value: settings.showStateField,
       ),
       _toggle(
@@ -297,7 +301,7 @@ class LoggingSettingsGroup extends SettingsGroup {
       _toggle(
         key: 'showDeletedQSOs',
         label: t.operation.menu.showDeletedQsos,
-        icon: 'delete-outline',
+        icon: 'delete',
         value: settings.showDeletedQSOs,
       ),
       _toggle(
@@ -365,8 +369,8 @@ class PrivacySettingsGroup extends SettingsGroup {
         description: settings.consentOpData ? s.shareOpData.descriptionOn : s.shareOpData.descriptionOff,
         value: settings.consentOpData,
       ),
-      {'type': 'link', 'key': 'privacyPolicy', 'label': s.privacyPolicy, 'icon': 'shield-account-outline', 'url': privacyPolicyUrl},
-      {'type': 'link', 'key': 'termsOfService', 'label': s.termsOfService, 'icon': 'file-document-outline', 'url': termsOfServiceUrl},
+      {'type': 'link', 'key': 'privacyPolicy', 'label': s.privacyPolicy, 'icon': 'shield-account', 'url': privacyPolicyUrl},
+      {'type': 'link', 'key': 'termsOfService', 'label': s.termsOfService, 'icon': 'file-document', 'url': termsOfServiceUrl},
     ];
   }
 
@@ -416,7 +420,7 @@ class SyncSettingsGroup extends SettingsGroup {
       _toggle(
         key: 'enabled',
         label: t.settings.sync.enable,
-        icon: 'cloud-sync-outline',
+        icon: 'cloud-sync',
         description: account.isEmpty ? null : account,
         value: settings.syncEnabled,
       ),

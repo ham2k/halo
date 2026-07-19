@@ -94,7 +94,7 @@ void main() {
 
     // Wide viewport: settings shows sidebar + panel side by side, so
     // selecting "About" updates the panel in place (no route push needed).
-    tester.view.physicalSize = const Size(1000, 800);
+    tester.view.physicalSize = const Size(1000, 1400);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
@@ -133,7 +133,7 @@ void main() {
   testWidgets('tapping the version row copies the app name and version details to the clipboard', (tester) async {
     setReleaseNotesForTesting([_testRelease]);
 
-    tester.view.physicalSize = const Size(1000, 800);
+    tester.view.physicalSize = const Size(1000, 1400);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
@@ -183,7 +183,7 @@ void main() {
       (tester) async {
     setReleaseNotesForTesting([_testRelease]);
 
-    tester.view.physicalSize = const Size(1000, 800);
+    tester.view.physicalSize = const Size(1000, 1400);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);

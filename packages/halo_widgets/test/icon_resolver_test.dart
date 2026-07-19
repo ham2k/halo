@@ -17,16 +17,16 @@ void main() {
     });
 
     test('falls back to a placeholder for an unknown MDI name', () {
-      expect(resolveIconName('not-a-real-icon'), MdiIcons.puzzleOutline);
+      expect(resolveIconName('not-a-real-icon'), MdiIcons.puzzle);
     });
 
     test('falls back to a placeholder for an unknown FontAwesome name', () {
-      expect(resolveIconName('fa-not-a-real-icon'), MdiIcons.puzzleOutline);
+      expect(resolveIconName('fa-not-a-real-icon'), MdiIcons.puzzle);
     });
 
     test('falls back to a placeholder for null or empty input', () {
-      expect(resolveIconName(null), MdiIcons.puzzleOutline);
-      expect(resolveIconName(''), MdiIcons.puzzleOutline);
+      expect(resolveIconName(null), MdiIcons.puzzle);
+      expect(resolveIconName(''), MdiIcons.puzzle);
     });
   });
 }

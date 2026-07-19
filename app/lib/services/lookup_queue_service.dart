@@ -278,7 +278,7 @@ class LookupQueueService {
     if (_suppressProgress || _batchTotal == 0) return;
     statusBar.setProgress(
       key: statusKey,
-      icon: 'account-search-outline',
+      icon: 'account-search',
       title: 'Callsign lookups',
       text: '$_batchDone of $_batchTotal',
       value: _batchDone / _batchTotal,

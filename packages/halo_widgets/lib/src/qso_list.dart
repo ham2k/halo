@@ -814,8 +814,8 @@ class EventRow extends StatelessWidget {
   });
 
   static const _icons = {
-    'start': Icons.flag_outlined,
-    'break': Icons.pause_circle_outline,
+    'start': Icons.flag,
+    'break': Icons.pause_circle,
     'end': Icons.flag,
   };
 
@@ -914,7 +914,7 @@ class AnnotationRow extends StatelessWidget {
       if (qso.deleted) return 'sticker-outline';
       return done ? 'sticker-check-outline' : 'sticker';
     }
-    return (event?['icon'] as String?) ?? 'information-outline';
+    return (event?['icon'] as String?) ?? 'information';
   }
 
   @override

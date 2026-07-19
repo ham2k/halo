@@ -201,6 +201,32 @@ class ModalBarrierRouteObserver extends NavigatorObserver {
   }
 }
 
+/// Depth of currently-visible blurred-background modals (the app's
+/// `wideModalChrome`, used by the release overlay and the About photo modal).
+/// While it is > 0, [MacOSTrafficLightMask] hides its AppBar-colored gradient
+/// rectangle — otherwise that opaque corner reads as a stray header strip
+/// floating over the modal's blur. Callers bracket a modal with
+/// [enterBlurredModal] / [exitBlurredModal].
+///
+/// The depth is a plain int mutated synchronously, so it never lingers past a
+/// caller's disposal (no cross-test leak); a separate revision notifier drives
+/// the mask rebuild and is bumped a frame later, since touching a notifier
+/// during another subtree's mount/unmount would markNeedsBuild the app-root
+/// mask mid-build.
+int _blurredModalDepth = 0;
+final ValueNotifier<int> _blurredModalRevision = ValueNotifier<int>(0);
+
+/// Marks a blurred-background modal as visible; pair with [exitBlurredModal].
+void enterBlurredModal() => _adjustBlurredModal(1);
+
+/// Marks a blurred-background modal as gone; pair with [enterBlurredModal].
+void exitBlurredModal() => _adjustBlurredModal(-1);
+
+void _adjustBlurredModal(int delta) {
+  _blurredModalDepth += delta;
+  WidgetsBinding.instance.addPostFrameCallback((_) => _blurredModalRevision.value++);
+}
+
 /// A rectangle in the AppBar's own background color, floating over the header's
 /// top-left corner beneath the native traffic lights. Overlaid at the app root
 /// (main.dart) — the macOS counterpart to [WindowsCaptionButtons] on the
@@ -245,15 +271,18 @@ class MacOSTrafficLightMask extends StatelessWidget {
       ),
     );
 
-    // Hide while a dimming dialog/pane covers the window: its barrier darkens
-    // the header behind it, so this bright same-as-header box would read as a
-    // stray rectangle over the dim. Matches how the release/onboarding overlays
-    // (which sit above the mask) already hide it. The mask only exists to catch
-    // header content ANIMATING through this corner, and nothing animates behind
-    // a static modal barrier, so dropping it here loses nothing.
-    return ValueListenableBuilder<bool>(
-      valueListenable: modalBarrierIsVisible,
-      builder: (context, barrierVisible, child) => barrierVisible ? const SizedBox.shrink() : child!,
+    // Hide the mask while a dimming dialog/pane covers the window
+    // (modalBarrierIsVisible, from ModalBarrierRouteObserver) OR a
+    // blurred-background modal is up (_blurredModalDepth — e.g. the About photo
+    // modal, whose transparent barrier that observer ignores). Either way the
+    // bright same-as-header box would read as a stray rectangle over the
+    // dim/blur. Matches how the release/onboarding overlays (which sit above
+    // the mask) already hide it; nothing animates through this corner behind a
+    // static modal, so dropping the mask there loses nothing.
+    return ListenableBuilder(
+      listenable: Listenable.merge([modalBarrierIsVisible, _blurredModalRevision]),
+      builder: (context, child) =>
+          (modalBarrierIsVisible.value || _blurredModalDepth > 0) ? const SizedBox.shrink() : child!,
       child: mask,
     );
   }

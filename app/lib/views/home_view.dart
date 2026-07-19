@@ -765,7 +765,7 @@ class _HomeQuickLookupState extends State<HomeQuickLookup> {
                     Row(
                       children: [
                         if (_isError) ...[
-                          Icon(resolveIconName('alert-circle-outline'), size: 16, color: theme.colorScheme.onPrimary),
+                          Icon(resolveIconName('alert-circle'), size: 16, color: theme.colorScheme.onPrimary),
                           const SizedBox(width: 8),
                         ],
                         Expanded(

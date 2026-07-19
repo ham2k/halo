@@ -87,7 +87,7 @@ void main() {
     expect(listed.single['version'], '0.0.1');
   });
 
-  testWidgets('panel hides core, groups per category, searches from the bottom field, and toggles persist',
+  testWidgets('panel hides core, groups per category, searches from the top field, and toggles persist',
       (tester) async {
     tester.view.physicalSize = const Size(1000, 800);
     tester.view.devicePixelRatio = 1.0;
@@ -117,7 +117,7 @@ void main() {
     expect(switchValue('QRZ.com Callsign Lookups'), isFalse);
     expect(switchValue('Parks on the Air'), isTrue);
 
-    // The bottom search filters across groups; empty groups lose headers.
+    // The top search filters across groups; empty groups lose headers.
     await tester.enterText(find.byKey(const ValueKey('extensions-search')), 'summits');
     await tester.pumpAndSettle();
     expect(find.text('Summits on the Air'), findsOneWidget);

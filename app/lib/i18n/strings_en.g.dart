@@ -605,16 +605,10 @@ class Translations$settings$en {
 
 	late final Translations$settings$fontScaleOpts$en fontScaleOpts = Translations$settings$fontScaleOpts$en.internal(_root);
 
-	/// en: 'Scales the whole interface — text, controls, and spacing'
-	String get fontScaleDescription => 'Scales the whole interface — text, controls, and spacing';
-
 	/// en: 'Distance Units'
 	String get distanceUnits => 'Distance Units';
 
 	late final Translations$settings$distanceUnitsOpts$en distanceUnitsOpts = Translations$settings$distanceUnitsOpts$en.internal(_root);
-
-	/// en: 'For distances shown on the map'
-	String get distanceUnitsDescription => 'For distances shown on the map';
 
 	/// en: 'User Interface'
 	String get userInterface => 'User Interface';
@@ -1037,8 +1031,8 @@ class Translations$settings$sync$en {
 
 	// Translations
 
-	/// en: 'Sync Settings'
-	String get title => 'Sync Settings';
+	/// en: 'LoFi Cloud Sync'
+	String get title => 'LoFi Cloud Sync';
 
 	/// en: 'Enable Sync'
 	String get enable => 'Enable Sync';
@@ -1553,11 +1547,9 @@ extension on Translations {
 			'settings.fontScaleOpts.normal' => 'Normal',
 			'settings.fontScaleOpts.larger' => 'Larger',
 			'settings.fontScaleOpts.largest' => 'Largest',
-			'settings.fontScaleDescription' => 'Scales the whole interface — text, controls, and spacing',
 			'settings.distanceUnits' => 'Distance Units',
 			'settings.distanceUnitsOpts.kilometers' => 'Kilometers',
 			'settings.distanceUnitsOpts.miles' => 'Miles',
-			'settings.distanceUnitsDescription' => 'For distances shown on the map',
 			'settings.userInterface' => 'User Interface',
 			'settings.logging.title' => 'Logging',
 			'settings.logging.leftieMode.title' => 'Leftie Mode',
@@ -1597,7 +1589,7 @@ extension on Translations {
 			'settings.privacy.privacyPolicy' => 'Privacy Policy',
 			'settings.privacy.termsOfService' => 'Terms of Service',
 			'settings.operatorCall' => 'Operator Callsign',
-			'settings.sync.title' => 'Sync Settings',
+			'settings.sync.title' => 'LoFi Cloud Sync',
 			'settings.sync.enable' => 'Enable Sync',
 			'settings.sync.deviceKey' => 'Device Key',
 			'settings.qrz.title' => 'QRZ.com Credentials',
