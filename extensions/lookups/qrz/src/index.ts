@@ -21,7 +21,8 @@ defineExtension({
     registerHook('lookup', { hook: { lookupCall }, priority: 99 })
     registerHook('account', {
       hook: {
-        label: 'QRZ.com Callsign Lookups',
+        label: 'QRZ.com',
+        description: 'Callsign lookups',
         kvKey: 'qrz',
         // A QRZ.com login is the same on every device, so sync it across the
         // user's Apple devices via iCloud Keychain. Contrast the LoFi sync

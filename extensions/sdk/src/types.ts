@@ -107,7 +107,31 @@ export interface SpotEligibility {
 
 export interface PostResult {
   ok: boolean
+  /// Plain-text fallback: logged, and what surfaces show when there's no
+  /// richer `userMessage`.
   message?: string
+  /// Optional richer presentation of the outcome (usually a failure) — the
+  /// host presents it in addition to the surface's own success/failure
+  /// indication (e.g. the Spotting control's source icons).
+  userMessage?: ResultMessage
+}
+
+/// A user-facing message a hook attaches to a result (see
+/// PostResult.userMessage) or presents imperatively via
+/// `host.showMessage` (for hooks whose results can't carry one, e.g.
+/// lookups). Declarative like NoticeAction — the host renders it:
+///   'status' — transient status-bar message (`title`/`text`/`icon`)
+///   'dialog' — modal dialog; `text` is markdown; `actions` adds buttons
+///              next to the always-present Close (e.g. an `account` action
+///              to open the account dialog after an auth failure)
+export interface ResultMessage {
+  presentation: 'status' | 'dialog'
+  title?: string
+  text: string
+  /// Status presentation only — same icon convention as status bar items.
+  icon?: string
+  /// Dialog presentation only.
+  actions?: NoticeAction[]
 }
 
 export interface PostSelfSpotRequest {
@@ -535,6 +559,9 @@ export interface OAuth2Config {
 /// account data itself.
 export interface AccountHook {
   label: string
+  /// Short one-liner shown under the label in the Accounts list (e.g.
+  /// "Callsign lookups").
+  description?: string
   /// Defaults to the extension's own key. If overridden (an extension with
   /// more than one account), must equal the extension key or be prefixed
   /// `<extensionKey>_` — e.g. extension `lofi` may use `lofi` or
@@ -909,6 +936,10 @@ export type SettingsPanelHook = SimpleSettingsPanel | DynamicSettingsPanel
 export type NoticeAction =
   | { label: string; type: 'link'; url: string }
   | { label: string; type: 'dialog'; title?: string; text: string }
+  /// Opens the given account's own standalone dialog (Settings → Accounts).
+  /// `key` matches the account's `kvKey` (see AccountHook); `subkey` is the
+  /// same extension-defined discriminator as FormField.account's.
+  | { label: string; type: 'account'; key: string; subkey?: string }
 
 export interface StatusBarMessageParams {
   key: string

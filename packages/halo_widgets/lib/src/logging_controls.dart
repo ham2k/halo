@@ -670,6 +670,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   /// `expandedBuilder`'s closure, since that's a plain render function
   /// re-invoked on every build, not a separately-stateful widget.
   final _spotCommentController = TextEditingController();
+  final _spotCommentFocus = FocusNode();
   List<Map<String, dynamic>> _spotSources = const [];
   final Map<String, bool?> _spotStatus = {}; // hookKey -> ok/failed/neutral(null)
   Timer? _spotStatusClearTimer;
@@ -1050,6 +1051,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     _undoExpireTimer?.cancel();
     _spotStatusClearTimer?.cancel();
     _spotCommentController.dispose();
+    _spotCommentFocus.dispose();
     _callController.dispose();
     _sentController.dispose();
     _rcvdController.dispose();
@@ -1935,7 +1937,12 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     // status-coloring below must key off what was actually sent, not
     // whatever `_spotSources` holds once the await resolves.
     final sentSources = _spotSources;
-    setState(() => _spotSending = true);
+    // Colors from a previous attempt would misread as THIS attempt's
+    // results while the send is in flight — back to neutral gray first.
+    setState(() {
+      _spotSending = true;
+      _spotStatus.clear();
+    });
     try {
       final comment = _spotCommentController.text.trim();
       final results = await sendSpot(
@@ -1982,6 +1989,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
               width: 160,
               child: TextField(
                 controller: _spotCommentController,
+                focusNode: _spotCommentFocus,
                 // Explicitly mixed-case, like Name/Notes: a spot comment is
                 // free prose for other operators, not logging data.
                 style: haloMonoStyle(context, fontSize: 15, fontWeight: FontWeight.w500),
@@ -2122,6 +2130,10 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
       _callFocus.requestFocus();
     } else if (_stateFocus.hasFocus || _gridFocus.hasFocus || _sentFocus.hasFocus || _rcvdFocus.hasFocus) {
       _advancePrimaryFocus();
+    } else if (_spotCommentFocus.hasFocus) {
+      // Free prose, like NOTE's parameter: Space types a literal space —
+      // the panel-wide shortcut would otherwise swallow it.
+      _insertAtCursor(_spotCommentController, ' ');
     }
     // Space is inert in any other field with no override of its own. Ref
     // inputs (RefTextInput, RefChipsInput) are the one exception — they bind

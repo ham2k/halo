@@ -708,6 +708,16 @@ class _HostCore {
   Uri _resolveFetchUri(String urlString) {
     final uri = Uri.parse(urlString);
     if (kIsWeb) {
+      // OAuth/SSO hosts are never proxied, even on web builds where that
+      // means the call is CORS-blocked instead: refresh grants and the
+      // tokens they return must only ever transit the identity provider
+      // itself, not services.ham2k.net.
+      const ssoDomains = {
+        'sso.sota.org.uk',
+      };
+      if (ssoDomains.contains(uri.host)) {
+        return uri;
+      }
       const allowedDomains = {
         'api.pota.app',
         'logbook.qrz.com',

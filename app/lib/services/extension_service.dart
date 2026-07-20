@@ -307,6 +307,13 @@ class ExtensionService {
         return MapEntry(hookKey ?? '', <String, dynamic>{'ok': false, 'message': e.toString()});
       }
     }));
+    for (final entry in entries) {
+      debugPrint('[spots] $method via ${entry.key}: ${entry.value}');
+      final userMessage = entry.value['userMessage'];
+      if (userMessage is Map) {
+        presentResultMessage(userMessage.cast<String, dynamic>(), ns: entry.key);
+      }
+    }
     return {for (final entry in entries) entry.key: entry.value};
   }
 
@@ -346,6 +353,10 @@ class ExtensionService {
       mOptions: o.mOptions,
       iOptions: o.iOptions,
     );
+    // Any stored session was derived from the OLD credentials — e.g. OAuth
+    // tokens refreshed from a previous login — and could keep acting as the
+    // previous account if left behind.
+    await _deleteAccountItem('account_session_$kvKey', o);
     // Fresh credentials must reach the very next hook call, not whatever
     // the kernel's context cache still holds.
     _host?.invalidateHookContext();
@@ -353,9 +364,21 @@ class ExtensionService {
 
   Future<void> clearAccount(String kvKey) async {
     final o = await _accountKeychainOptions(kvKey);
-    await _secureStorage.delete(key: 'account_creds_$kvKey', mOptions: o.mOptions, iOptions: o.iOptions);
-    await _secureStorage.delete(key: 'account_session_$kvKey', mOptions: o.mOptions, iOptions: o.iOptions);
+    await _deleteAccountItem('account_creds_$kvKey', o);
+    await _deleteAccountItem('account_session_$kvKey', o);
     _host?.invalidateHookContext();
+  }
+
+  /// Best-effort keychain delete. Deleting an item that doesn't exist is
+  /// fine everywhere except macOS 26, which reports it as
+  /// errSecMissingEntitlement (-34018) instead of "not found" — so delete
+  /// failures are logged, never thrown.
+  Future<void> _deleteAccountItem(String key, ({MacOsOptions mOptions, IOSOptions iOptions}) o) async {
+    try {
+      await _secureStorage.delete(key: key, mOptions: o.mOptions, iOptions: o.iOptions);
+    } catch (e) {
+      debugPrint('[extensions] keychain delete $key failed (ignored): $e');
+    }
   }
 
   /// Drops the kernel's cached HookContext so the next hook call sees fresh
@@ -460,9 +483,24 @@ class ExtensionService {
   /// Picks a human-readable identity out of a credentials map — the same
   /// priority (`username` then `email` then `login`) used everywhere in
   /// Settings that displays which account a set of stored credentials
-  /// belongs to.
+  /// belongs to. OAuth accounts store tokens instead of a username, so as a
+  /// last resort the OIDC id_token's identity claims are read from its JWT
+  /// payload (no signature check needed — it came straight from the
+  /// provider's token endpoint and is only used for display).
   static String? identityFromCredentials(Map<String, String> creds) {
-    return creds['username'] ?? creds['email'] ?? creds['login'];
+    final direct = creds['username'] ?? creds['email'] ?? creds['login'];
+    if (direct != null) return direct;
+    final idToken = creds['idToken'];
+    if (idToken == null) return null;
+    try {
+      final parts = idToken.split('.');
+      if (parts.length != 3) return null;
+      final payload = jsonDecode(utf8.decode(base64Url.decode(base64Url.normalize(parts[1]))));
+      if (payload is! Map) return null;
+      return (payload['preferred_username'] ?? payload['email'] ?? payload['name']) as String?;
+    } catch (_) {
+      return null;
+    }
   }
 
   /// Validates one field's value. Tier 1 checks `pattern`/`patternError`
@@ -1088,6 +1126,9 @@ class ExtensionService {
           developerMode: settings?.developerMode ?? false,
         );
         return result;
+      case 'showMessage':
+        presentResultMessage(params, ns: params['ns'] as String? ?? 'extensions');
+        return null;
       case 'statusBarSetMessage':
         statusBar?.setMessage(
           key: _namespacedKey(params),
@@ -1134,6 +1175,11 @@ class ExtensionService {
     return '$ns:$key';
   }
 
+  /// Set by the app shell: opens an account's standalone dialog (Settings →
+  /// Accounts) from anywhere — the handler behind declarative `account`
+  /// actions (an extension's "reconnect your account" button).
+  void Function(String accountKey, {String? subkey})? onOpenAccount;
+
   /// Notice actions from extensions are declarative JSON, not callbacks back
   /// into the extension (matches the `activity` hook's "describe UI as data"
   /// convention) — `link` opens a URL, `dialog` shows a markdown dialog.
@@ -1144,39 +1190,74 @@ class ExtensionService {
       if (entry is! Map) continue;
       final map = entry.cast<String, dynamic>();
       final label = map['label'] as String?;
-      final type = map['type'] as String?;
-      if (label == null || type == null) continue;
-      switch (type) {
-        case 'link':
-          final url = map['url'] as String?;
-          if (url == null) continue;
-          actions.add(StatusBarAction(
-            label: label,
-            onTap: () => launchUrl(Uri.parse(url)),
-          ));
-        case 'dialog':
-          final text = map['text'] as String? ?? '';
-          final title = map['title'] as String?;
-          actions.add(StatusBarAction(
-            label: label,
-            onTap: () {
-              final context = navigatorKey.currentContext;
-              if (context == null) return;
-              showDialog<void>(
-                context: context,
-                builder: (context) => AlertDialog(
-                  title: title != null ? Text(title) : null,
-                  content: SingleChildScrollView(child: MarkdownBody(data: text)),
-                  actions: [
-                    TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Close')),
-                  ],
-                ),
-              );
-            },
-          ));
-      }
+      final handler = _declarativeActionHandler(map);
+      if (label == null || handler == null) continue;
+      actions.add(StatusBarAction(label: label, onTap: handler));
     }
     return actions;
+  }
+
+  /// The tap handler for one declarative action (the SDK's NoticeAction):
+  /// `link` opens a URL, `dialog` shows a markdown dialog, `account` opens
+  /// that account's standalone dialog via [onOpenAccount]. Returns null for
+  /// malformed or unknown actions, which the caller drops.
+  VoidCallback? _declarativeActionHandler(Map<String, dynamic> map) {
+    switch (map['type'] as String?) {
+      case 'link':
+        final url = map['url'] as String?;
+        if (url == null) return null;
+        return () => launchUrl(Uri.parse(url));
+      case 'dialog':
+        final text = map['text'] as String? ?? '';
+        final title = map['title'] as String?;
+        return () => _showMarkdownDialog(title: title, text: text);
+      case 'account':
+        final key = map['key'] as String?;
+        if (key == null) return null;
+        return () => onOpenAccount?.call(key, subkey: map['subkey'] as String?);
+    }
+    return null;
+  }
+
+  void _showMarkdownDialog({String? title, required String text, List<Map<String, dynamic>> actions = const []}) {
+    final context = navigatorKey.currentContext;
+    if (context == null) return;
+    showDialog<void>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: title != null ? Text(title) : null,
+        content: SingleChildScrollView(child: MarkdownBody(data: text)),
+        actions: [
+          for (final action in actions)
+            if (action['label'] is String && _declarativeActionHandler(action) != null)
+              TextButton(
+                onPressed: () {
+                  Navigator.of(dialogContext).pop();
+                  _declarativeActionHandler(action)!();
+                },
+                child: Text(action['label'] as String),
+              ),
+          TextButton(onPressed: () => Navigator.of(dialogContext).pop(), child: const Text('Close')),
+        ],
+      ),
+    );
+  }
+
+  /// Presents a ResultMessage (the SDK type of the same name): `status` is
+  /// a transient status-bar message, `dialog` a modal markdown dialog whose
+  /// buttons are declarative NoticeActions. Reached from a hook result's
+  /// `userMessage` (see [sendSpot]) or the imperative `showMessage` host
+  /// call (hooks whose results can't carry one, e.g. lookups).
+  void presentResultMessage(Map<String, dynamic> message, {String ns = 'extensions'}) {
+    final title = message['title'] as String?;
+    final text = message['text'] as String? ?? '';
+    if (message['presentation'] == 'dialog') {
+      final actions =
+          ((message['actions'] as List?) ?? const []).whereType<Map>().map((a) => a.cast<String, dynamic>()).toList();
+      _showMarkdownDialog(title: title, text: text, actions: actions);
+    } else {
+      statusBar?.setMessage(key: '$ns:resultMessage', icon: message['icon'] as String?, title: title, text: text);
+    }
   }
 
   /// Runs the full lookup pipeline for one callsign — the hardcoded

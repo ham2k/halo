@@ -8,6 +8,27 @@
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleDisplayName</key>
 	<string>$(HALO_DISPLAY_NAME)</string>
+	<!-- FOLLOWUP: the edition schemes are hardwired here because iOS has no
+	     HALO_EDITION build setting yet (editions PR #140 covers core + macOS
+	     only). Once editions reach iOS, replace the .dev/.next entries with a
+	     single com.ham2k.logger.$(HALO_EDITION), as macOS already does. -->
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleURLName</key>
+			<string>com.ham2k.logger.deeplinks</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>com.ham2k</string>
+				<string>com.ham2k.logger</string>
+				<string>com.ham2k.logger.dev</string>
+				<string>com.ham2k.logger.next</string>
+				<string>com.ham2k.logger.auth</string>
+				<string>com.ham2k.polo</string>
+				<string>com.ham2k.polo.auth</string>
+			</array>
+		</dict>
+	</array>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>

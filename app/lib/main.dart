@@ -27,6 +27,7 @@ import 'views/splash_view.dart';
 import 'config/dev_flags.dart';
 import 'config/release_notes.dart';
 import 'config/version.dart';
+import 'services/deep_link_service.dart';
 import 'services/export_service.dart';
 import 'services/extension_service.dart';
 import 'services/location_service.dart';
@@ -271,6 +272,7 @@ class HaLoServices {
   late final ScoringService scoring = ScoringService(extensions: extensions, qsos: qsos, operations: operations);
   late final RadioService radio = RadioService(settings.prefs);
   final LocationService location = LocationService();
+  final DeepLinkService deepLinks = DeepLinkService();
   final DataFileManager? _dataFilesOverride;
   late final DataFileManager dataFiles = _dataFilesOverride ??
       DataFileManager(
@@ -398,6 +400,8 @@ class HaLoServices {
     this.extensions.statusBar = statusBar;
     this.extensions.operations = operations;
     this.extensions.qsos = qsos;
+    this.extensions.onOpenAccount =
+        (key, {subkey}) => unawaited(showAccountDialogByKey(this, key, subkey: subkey));
   }
 
 

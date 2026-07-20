@@ -25,6 +25,7 @@ import '../config/user_agent.dart';
 import '../config/version.dart';
 import '../main.dart';
 import '../services/data_file_manager.dart';
+import '../services/deep_link_service.dart';
 import '../services/extension_service.dart';
 import '../services/settings_service.dart';
 import 'header_profile_label.dart';
@@ -1011,7 +1012,7 @@ class _AccountsPanel extends StatefulWidget {
 
 class _AccountsPanelState extends State<_AccountsPanel> {
   List<Map<String, dynamic>>? _accounts;
-  final Map<String, String> _accountSubtitles = {};
+  final Map<String, String> _accountIdentities = {};
 
   @override
   void initState() {
@@ -1022,20 +1023,19 @@ class _AccountsPanelState extends State<_AccountsPanel> {
   Future<void> _loadAccounts() async {
     await widget.services.extensions.start();
     final accounts = await widget.services.extensions.getAccounts();
-    final subtitles = <String, String>{};
+    final identities = <String, String>{};
     for (final account in accounts) {
       final kvKey = account['kvKey'] as String;
       final creds = await widget.services.extensions.getAccountCredentials(kvKey);
-      final subtitle = creds.isEmpty
-          ? 'Not configured'
-          : (ExtensionService.identityFromCredentials(creds) ?? 'Configured');
-      subtitles[kvKey] = subtitle;
+      if (creds.isNotEmpty) {
+        identities[kvKey] = ExtensionService.identityFromCredentials(creds) ?? 'Connected';
+      }
     }
     if (mounted) {
       setState(() {
         _accounts = accounts;
-        _accountSubtitles.clear();
-        _accountSubtitles.addAll(subtitles);
+        _accountIdentities.clear();
+        _accountIdentities.addAll(identities);
       });
     }
   }
@@ -1066,11 +1066,15 @@ class _AccountsPanelState extends State<_AccountsPanel> {
           ..._accounts!.map((account) {
             final kvKey = account['kvKey'] as String;
             final label = account['label'] as String;
-            final subtitle = _accountSubtitles[kvKey] ?? 'Not configured';
+            final description = account['description'] as String?;
+            final identity = _accountIdentities[kvKey];
             return ListTile(
               leading: Icon(MdiIcons.keyChain),
-              title: Text(label),
-              subtitle: Text(subtitle),
+              title: Text.rich(TextSpan(children: [
+                TextSpan(text: label, style: const TextStyle(fontWeight: FontWeight.bold)),
+                if (identity != null) TextSpan(text: '  $identity'),
+              ])),
+              subtitle: Text(description ?? (identity == null ? 'Not configured' : '')),
               onTap: () => _openAccountDialog(account),
               mouseCursor: SystemMouseCursors.click,
             );
@@ -2088,6 +2092,32 @@ class _PendingAccountBanner extends StatelessWidget {
 /// phones, where the old AlertDialog was cramped. The route provides the
 /// title and chrome; the action row renders here because it depends on
 /// this State (_testing, _loggedIn).
+/// Opens [accountKey]'s standalone account dialog from anywhere in the app
+/// (declarative `account` actions — e.g. an extension's "reconnect your
+/// account" dialog button). `accountKey` matches the account's kvKey.
+Future<void> showAccountDialogByKey(HaLoServices services, String accountKey, {String? subkey}) async {
+  final accounts = await services.extensions.getAccounts();
+  Map<String, dynamic>? account;
+  for (final a in accounts) {
+    if (a['kvKey'] == accountKey || a['key'] == accountKey) {
+      account = a;
+      break;
+    }
+  }
+  if (account == null) {
+    debugPrint('[accounts] no account "$accountKey" to open');
+    return;
+  }
+  final context = navigatorKey.currentContext;
+  if (context == null || !context.mounted) return;
+  await showModalPane<void>(
+    context,
+    title: account['label'] as String? ?? accountKey,
+    barrierDismissible: false,
+    builder: (context) => _AccountPane(services: services, account: account!, onSaved: () {}),
+  );
+}
+
 class _AccountPane extends StatefulWidget {
   final HaLoServices services;
   final Map<String, dynamic> account;
@@ -2104,6 +2134,10 @@ class _AccountPaneState extends State<_AccountPane> {
   bool _testing = false;
   String? _testResult;
   bool _loggedIn = false;
+
+  /// OAuth tokens obtained from a Login that haven't been saved yet — only
+  /// persisted when the user presses Save, discarded on Cancel/close.
+  Map<String, String>? _pendingCredentials;
 
   String? _fieldError(String key, String value) {
     if (widget.account['key'] == 'qrz' && key == 'username' && value.contains('@')) {
@@ -2134,6 +2168,9 @@ class _AccountPaneState extends State<_AccountPane> {
       final key = field['key'] as String;
       _controllers[key] = TextEditingController(text: creds[key] ?? '');
     }
+    // Existing credentials get verified right away, so the "Connected as"
+    // area reflects reality without a manual Test.
+    if (creds.isNotEmpty) await _test();
   }
 
   @override
@@ -2145,27 +2182,47 @@ class _AccountPaneState extends State<_AccountPane> {
   }
 
   Future<void> _save() async {
-    if (_oauth2 == null) {
-      final creds = _controllers.map((key, controller) => MapEntry(key, controller.text.trim()));
-      await widget.services.extensions.setAccountCredentials(_kvKey, creds);
+    try {
+      if (_oauth2 == null) {
+        final creds = _controllers.map((key, controller) => MapEntry(key, controller.text.trim()));
+        await widget.services.extensions.setAccountCredentials(_kvKey, creds);
+      } else if (_pendingCredentials != null) {
+        await widget.services.extensions.setAccountCredentials(_kvKey, _pendingCredentials!);
+      }
+    } catch (e) {
+      debugPrint('[accounts] save failed for $_kvKey: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Save failed: $e')));
+      }
+      return;
     }
     widget.onSaved();
     if (mounted) Navigator.of(context).pop();
   }
 
+  /// Bumped by [_clear] so an in-flight test's result can't repopulate the
+  /// "Connected as" area after a disconnect.
+  int _testGeneration = 0;
+
   Future<void> _clear() async {
-    await widget.services.extensions.clearAccount(_kvKey);
+    // Update the UI first — the keychain call shouldn't delay the visible
+    // disconnect.
+    _testGeneration++;
+    setState(() {
+      _loggedIn = false;
+      _testing = false;
+      _testResult = null;
+      _pendingCredentials = null;
+    });
     for (final c in _controllers.values) {
       c.clear();
     }
-    setState(() {
-      _loggedIn = false;
-      _testResult = null;
-    });
+    await widget.services.extensions.clearAccount(_kvKey);
     widget.onSaved();
   }
 
   Future<void> _test() async {
+    final generation = _testGeneration;
     setState(() {
       _testing = true;
       _testResult = null;
@@ -2173,14 +2230,14 @@ class _AccountPaneState extends State<_AccountPane> {
 
     final Map<String, String> creds;
     if (_oauth2 != null) {
-      creds = await widget.services.extensions.getAccountCredentials(_kvKey);
+      creds = _pendingCredentials ?? await widget.services.extensions.getAccountCredentials(_kvKey);
     } else {
       creds = _controllers.map((key, controller) => MapEntry(key, controller.text.trim()));
     }
 
     final res = await widget.services.extensions.testCredentials(widget.account['key'] as String, creds);
 
-    if (mounted) {
+    if (mounted && generation == _testGeneration) {
       setState(() {
         _testing = false;
         _testResult = res;
@@ -2222,13 +2279,41 @@ class _AccountPaneState extends State<_AccountPane> {
 
       if (!mounted) return;
 
-      final code = await Navigator.of(context).push<String>(
+      // The provider redirects to a com.ham2k.*.auth:// URL. Normally the
+      // webview intercepts it below, but if the OS handles it instead (the
+      // schemes are registered as deep links), it comes back through
+      // DeepLinkService — either way the webview route pops with the code.
+      final navigator = Navigator.of(context);
+      String? authError;
+      final linkSub = widget.services.deepLinks.links.listen((uri) {
+        if (!DeepLinkService.isAuthCallback(uri)) return;
+        if (uri.queryParameters['state'] != state) return;
+        authError = uri.queryParameters['error_description'] ?? uri.queryParameters['error'];
+        navigator.pop(uri.queryParameters['code']);
+      });
+
+      InAppWebViewController? webViewController;
+
+      final code = await navigator.push<String>(
         MaterialPageRoute(
           builder: (context) => Scaffold(
             appBar: AppBar(
               flexibleSpace: windowHeaderGestureArea(),
               title: Text('Connect to ${widget.account['label']}'),
-              actions: [windowsCaptionSpacer(context)],
+              actions: [
+                // Continues the login in the system browser (from wherever
+                // the in-app page currently is); the redirect then comes
+                // back through the deep-link listener above. Keep this page
+                // open — closing it abandons the flow.
+                TextButton(
+                  child: const Text('Open in Browser'),
+                  onPressed: () async {
+                    final current = await webViewController?.getUrl();
+                    unawaited(launchUrl(Uri.parse((current ?? authUri).toString()), mode: LaunchMode.externalApplication));
+                  },
+                ),
+                windowsCaptionSpacer(context),
+              ],
               leadingWidth: macOSAwareLeadingWidth(context),
               leading: isMacOSChromelessWindow
                   ? Padding(
@@ -2238,6 +2323,7 @@ class _AccountPaneState extends State<_AccountPane> {
                   : CloseButton(onPressed: () => Navigator.of(context).pop()),
             ),
             body: InAppWebView(
+              onWebViewCreated: (controller) => webViewController = controller,
               initialUrlRequest: URLRequest(url: WebUri(authUri.toString())),
               initialSettings: InAppWebViewSettings(javaScriptEnabled: true, useShouldOverrideUrlLoading: true),
               shouldOverrideUrlLoading: (controller, navigationAction) async {
@@ -2260,7 +2346,12 @@ class _AccountPaneState extends State<_AccountPane> {
         ),
       );
 
-      if (code == null) return;
+      await linkSub.cancel();
+
+      if (code == null) {
+        if (authError != null) throw Exception(authError);
+        return;
+      }
 
       setState(() => _testing = true);
 
@@ -2286,13 +2377,13 @@ class _AccountPaneState extends State<_AccountPane> {
       if (tokens['refresh_token'] != null) credentials['refreshToken'] = tokens['refresh_token'] as String;
       if (tokens['id_token'] != null) credentials['idToken'] = tokens['id_token'] as String;
 
-      await widget.services.extensions.setAccountCredentials(_kvKey, credentials);
-
+      // Held until the user presses Save — nothing is persisted yet.
       setState(() {
-        _loggedIn = true;
+        _pendingCredentials = credentials;
         _testing = false;
       });
-      widget.onSaved();
+      // Verify the fresh tokens right away, same as opening with stored ones.
+      await _test();
     } catch (e) {
       if (mounted) {
         setState(() => _testing = false);
@@ -2322,16 +2413,26 @@ class _AccountPaneState extends State<_AccountPane> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         if (_oauth2 != null) ...[
-          if (_loggedIn) ...[
+          if (_pendingCredentials != null) ...[
+            Text(
+              'Logged in as ${ExtensionService.identityFromCredentials(_pendingCredentials!) ?? widget.account['label']}',
+              style: theme.textTheme.bodyMedium,
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Press Save to keep this account connected.',
+              style: theme.textTheme.bodyMedium,
+              textAlign: TextAlign.center,
+            ),
+          ] else if (_loggedIn) ...[
             Text(
               'Connected to ${widget.account['label']}',
               style: theme.textTheme.bodyMedium,
               textAlign: TextAlign.center,
             ),
-            const SizedBox(height: 16),
-            OutlinedButton(onPressed: _clear, child: const Text('Disconnect')),
           ] else ...[
-            OutlinedButton(onPressed: _testing ? null : _doOAuth, child: const Text('Login')),
+            OutlinedButton(onPressed: _testing ? null : _doOAuth, child: const Text('Connect')),
           ],
         ] else ...[
           ..._fields.map((field) {
@@ -2371,34 +2472,52 @@ class _AccountPaneState extends State<_AccountPane> {
             );
           }),
         ],
-        if (_testResult != null) ...[
-          const SizedBox(height: 16),
-          const Divider(),
+        if (_loggedIn && _pendingCredentials == null) ...[
           const SizedBox(height: 8),
-          Text(
-            'Test Connection Result:',
-            style: theme.textTheme.titleSmall?.copyWith(color: theme.colorScheme.primary),
-          ),
-          const SizedBox(height: 8),
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: theme.colorScheme.surfaceContainerHighest,
-              borderRadius: BorderRadius.circular(8),
+          Center(
+            child: OutlinedButton(
+              onPressed: _clear,
+              child: const Text('Disconnect'),
             ),
-            child: MarkdownBody(data: _testResult!),
           ),
         ],
-        if (_testing) ...[const SizedBox(height: 16), const Center(child: CircularProgressIndicator())],
+        const SizedBox(height: 16),
+        const Divider(),
+        const SizedBox(height: 8),
+        Text(
+          'Connected as',
+          style: theme.textTheme.titleSmall?.copyWith(color: theme.colorScheme.primary),
+        ),
+        const SizedBox(height: 8),
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Expanded(
+              child: Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.surfaceContainerHighest,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: _testing
+                    ? const SizedBox(
+                        height: 20,
+                        child: Center(child: SizedBox.square(dimension: 16, child: CircularProgressIndicator(strokeWidth: 2))),
+                      )
+                    : MarkdownBody(data: _testResult ?? '—'),
+              ),
+            ),
+            const SizedBox(width: 8),
+            TextButton(onPressed: _testing ? null : _test, child: const Text('Test')),
+          ],
+        ),
         const SizedBox(height: 24),
         OverflowBar(
           alignment: MainAxisAlignment.end,
           spacing: 8,
           children: [
             TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Cancel')),
-            if (_oauth2 == null && _loggedIn) TextButton(onPressed: _clear, child: const Text('Clear')),
-            if (!_testing) TextButton(onPressed: _test, child: const Text('Test')),
-            if (_oauth2 == null) FilledButton(onPressed: _save, child: const Text('Save')),
+            FilledButton(onPressed: _save, child: const Text('Save')),
           ],
         ),
       ],
