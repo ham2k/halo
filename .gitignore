@@ -17,6 +17,19 @@ app/assets/extensions/
 .DS_Store
 
 # Local environment
+.env
 mise.local.toml
 app/macos/Runner/Configs/Local.xcconfig
 app/ios/Flutter/Local.xcconfig
+scratch*
+SCRATCH*
+Scratch*
+
+# Stray keys?
+*_key
+*.pub
+*.pem
+*.ppk
+*.cer
+*.keystore
+*.p12
