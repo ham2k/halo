@@ -10,7 +10,7 @@ import 'dart:async';
 import 'dart:io' show Platform;
 
 import 'package:drift_flutter/drift_flutter.dart';
-import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter/foundation.dart' show kIsWeb, visibleForTesting;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
@@ -19,11 +19,16 @@ import 'package:halo_widgets/halo_widgets.dart';
 
 import 'views/operation_view.dart';
 import 'views/home_view.dart';
+import 'views/settings_view.dart';
+import 'views/notice_actions.dart';
 import 'views/onboarding_overlay.dart';
 import 'views/release_overlay.dart';
 import 'views/splash_view.dart';
+import 'config/dev_flags.dart';
+import 'config/experiments.dart';
 import 'config/release_notes.dart';
 import 'config/version.dart';
+import 'services/deep_link_service.dart';
 import 'services/export_service.dart';
 import 'services/extension_service.dart';
 import 'services/location_service.dart';
@@ -40,6 +45,7 @@ import 'settings/system_lists.dart';
 import 'services/window_chrome_service.dart';
 import 'services/update_service.dart';
 import 'services/data_file_manager.dart';
+import 'services/flags_service.dart';
 import 'i18n/strings.g.dart';
 
 final navigatorKey = GlobalKey<NavigatorState>();
@@ -173,8 +179,17 @@ class _BootGateState extends State<_BootGate> with SingleTickerProviderStateMixi
     // no `Directionality` ancestor yet — `Stack`'s default alignment
     // (`AlignmentDirectional.topStart`) needs one; `Alignment.topLeft`
     // doesn't, since it's not text-direction-relative.
+    //
+    // `StackFit.expand`, NOT the default `loose`: this Stack is the app's
+    // root, and loose constraints silently break the font scale ABOVE 1.0.
+    // UiScale's FittedBox needs tight constraints to scale up to — given
+    // loose ones it just shrink-wraps its (smaller-than-window) child and
+    // paints at natural size, so the UI reflows to the narrower logical
+    // width without ever being magnified. Scaling DOWN kept working, which
+    // is why this hid: an oversized child still gets clamped to the max.
     return Stack(
       alignment: Alignment.topLeft,
+      fit: StackFit.expand,
       children: [
         if (_previousChild != null) _previousChild!,
         FadeTransition(opacity: _fadeController, child: _currentChild),
@@ -217,16 +232,16 @@ Future<HaLoServices> bootstrap({
     purchases: purchases,
     updates: updates,
   );
-  if (settings.hasQrzCredentials) {
-    await services.extensions.setAccountCredentials('qrz', {
-      'username': settings.qrzUsername,
-      'password': settings.qrzPassword,
-    });
-    await settings.setQrzCredentials(username: '', password: '');
-  }
   final syncDeviceKey = await settings.ensureSyncDeviceKey();
   services.extensions.setSyncCredentials(deviceKey: syncDeviceKey, operatorCall: settings.activeProfile.operatorCall);
   services.syncEngine.start();
+
+  // macOS app-menu actions (see WindowChromeService and macos/Runner): "About"
+  // shows the release overlay, "Preferences…" (⌘,) opens the Settings view.
+  WindowChromeService.onShowReleaseOverlay = services.devSplashTrigger.trigger;
+  WindowChromeService.onOpenSettings = () => navigatorKey.currentState?.push(
+        MaterialPageRoute(builder: (_) => SettingsView(services: services)),
+      );
 
   // Await the extension system being fully booted, then initialize and sync data files
   unawaited(extensions.start().then((_) async {
@@ -237,6 +252,15 @@ Future<HaLoServices> bootstrap({
     await services.dataFiles.purgeStaleExtensionData(settings.extensionDisabledSince);
   }).catchError((e) {
     debugPrint('[boot] failed to initialize data files: $e');
+  }));
+
+  // Fetch feature flags + notices for the current callsign once the runtime
+  // is up (the callsign→DXCC-entity annotation needs it). Fire-and-forget;
+  // failures leave flags empty and are logged inside the service.
+  unawaited(extensions.start().then((_) {
+    return services.flags.refreshForCall(settings.activeProfile.operatorCall);
+  }).catchError((e) {
+    debugPrint('[boot] failed to fetch feature flags: $e');
   }));
 
   return services;
@@ -258,12 +282,15 @@ class HaLoServices {
   late final ScoringService scoring = ScoringService(extensions: extensions, qsos: qsos, operations: operations);
   late final RadioService radio = RadioService(settings.prefs);
   final LocationService location = LocationService();
-  late final DataFileManager dataFiles = DataFileManager(
-    lookups: lookups,
-    extensions: extensions,
-    prefs: settings.prefs,
-    statusBar: statusBar,
-  );
+  final DeepLinkService deepLinks = DeepLinkService();
+  final DataFileManager? _dataFilesOverride;
+  late final DataFileManager dataFiles = _dataFilesOverride ??
+      DataFileManager(
+        lookups: lookups,
+        extensions: extensions,
+        prefs: settings.prefs,
+        statusBar: statusBar,
+      );
   late final StatusBarService statusBar = StatusBarService(settings.prefs);
   late final LookupQueueService lookupQueue = LookupQueueService(
     lookup: extensions.lookupCall,
@@ -273,12 +300,27 @@ class HaLoServices {
     lookupReady: () => extensions.ready,
   );
 
+  /// Server-driven feature flags + notices for the active profile callsign
+  /// (see FlagsService). Refreshed at boot and whenever the callsign changes
+  /// via [setOperatorCall] — not per operation. The callsign is annotated
+  /// through the extension runtime's offline lookup to derive the DXCC entity
+  /// used to pick per-entity/per-call flag files.
+  late final FlagsService flags = FlagsService(
+    statusBar: statusBar,
+    annotate: (call) async {
+      final result = await extensions.lookupCall(call, qso: const {}, operation: const {}, online: false);
+      final guess = result?['guess'];
+      return guess is Map ? guess.cast<String, dynamic>() : null;
+    },
+    onNoticeAction: handleNoticeAction,
+  );
+
   /// Named option vocabularies for `options: "$name"` settings
   /// declarations (see settings/system_lists.dart).
   late final SystemLists systemLists = SystemLists();
 
   /// The declarative settings groups (docs in settings/settings_registry.dart)
-  /// rendered by the Common Settings and All Settings panels. Extension
+  /// rendered by the Common Preferences and All Settings panels. Extension
   /// panels aren't registered here — the All Settings panel composes them
   /// from [ExtensionService.getSettingsPanels] at build time (the runtime
   /// boots asynchronously).
@@ -328,7 +370,7 @@ class HaLoServices {
       if (statusBar.items.any((item) => item.key == syncProgressStatusKey)) {
         statusBar.setProgress(
           key: syncProgressStatusKey,
-          icon: 'cloud-sync-outline',
+          icon: 'cloud-sync',
           title: 'Sync',
           text: 'Account history downloaded',
           value: 1.0,
@@ -343,7 +385,7 @@ class HaLoServices {
     final qsoDone = (qsoTotal - (progress.qsosLeft ?? 0)).clamp(0, qsoTotal);
     statusBar.setProgress(
       key: syncProgressStatusKey,
-      icon: 'cloud-sync-outline',
+      icon: 'cloud-sync',
       title: 'Syncing account history',
       text: qsoTotal > 0 ? '$qsoDone of $qsoTotal QSOs' : '$done of $total records',
       value: done / total,
@@ -357,21 +399,25 @@ class HaLoServices {
     MetricsService? metrics,
     PurchaseService? purchases,
     UpdateService? updates,
+    DataFileManager? dataFiles,
   })  : extensions = extensions ?? ExtensionService(),
         metrics = metrics ?? const NoopMetricsService(),
         purchases = purchases ?? const NoopPurchaseService(),
-        updates = updates ?? const NoopUpdateService() {
+        updates = updates ?? const NoopUpdateService(),
+        _dataFilesOverride = dataFiles {
     this.extensions.settings = settings;
     this.extensions.lookups = lookups;
     this.extensions.statusBar = statusBar;
     this.extensions.operations = operations;
     this.extensions.qsos = qsos;
+    this.extensions.onOpenAccount =
+        (key, {subkey}) => unawaited(showAccountDialogByKey(this, key, subkey: subkey));
   }
 
 
 
-  /// Same one-call pattern as `setQrzCredentials`, for the sync device
-  /// identity + operator callsign. Writes to the default profile — the
+  /// Sets the sync device identity + operator callsign in one call. Writes
+  /// to the default profile — the
   /// Callsign settings panel edits that one; sync follows the ACTIVE
   /// profile's callsign (the same profile until multi-profile lands).
   Future<void> setOperatorCall(String call) async {
@@ -380,6 +426,10 @@ class HaLoServices {
       deviceKey: await settings.ensureSyncDeviceKey(),
       operatorCall: settings.activeProfile.operatorCall,
     );
+    // Flags are callsign-specific — refresh them (a no-op if the callsign
+    // didn't actually change). Not awaited: the callsign edit shouldn't block
+    // on a network round-trip.
+    unawaited(flags.refreshForCall(settings.activeProfile.operatorCall));
   }
 
   Future<void> setSyncEnabled(bool enabled) async {
@@ -462,6 +512,17 @@ class HaLoServices {
         return null;
       case 'sendSpots':
         return _sendSpot(params ?? const {});
+      case 'toggleExperiment':
+        // EXP <key-or-alias>: the command hook only parsed; resolving the
+        // token against the catalog and flipping the stored state happens
+        // here, and the returned message is the user's only feedback.
+        final token = (params?['token'] as String? ?? '').trim();
+        if (token.isEmpty) return null;
+        final experiment = findExperiment(await loadExperiments(), token);
+        if (experiment == null) return 'Unknown experiment "${token.toUpperCase()}"';
+        final enabled = !settings.experimentEnabled(experiment.key);
+        await settings.setExperimentEnabled(experiment.key, enabled);
+        return '${experiment.name} ${enabled ? 'enabled' : 'disabled'}';
       default:
         return null;
     }
@@ -523,6 +584,11 @@ class HaLoApp extends StatefulWidget {
 }
 
 class _HaLoAppState extends State<HaLoApp> {
+  // Held as a field (not rebuilt per frame) so its route count survives
+  // MaterialApp rebuilds; drives `modalBarrierIsVisible` for the window-chrome
+  // mask. See navigatorObservers below.
+  final _modalBarrierObserver = ModalBarrierRouteObserver();
+
   @override
   void initState() {
     super.initState();
@@ -546,6 +612,14 @@ class _HaLoAppState extends State<HaLoApp> {
 
     final key = event.logicalKey;
     final settings = widget.services.settings;
+
+    if (HardwareKeyboard.instance.isShiftPressed && key == LogicalKeyboardKey.keyD) {
+      // ⌘⇧D (⌃⇧D on non-Mac): flip between light and dark themes.
+      settings.setThemeMode(
+        toggledThemeMode(settings.themeMode, WidgetsBinding.instance.platformDispatcher.platformBrightness),
+      );
+      return true;
+    }
 
     if (key == LogicalKeyboardKey.equal ||
         key == LogicalKeyboardKey.add ||
@@ -579,6 +653,7 @@ class _HaLoAppState extends State<HaLoApp> {
         // android's AndroidManifest.xml label "HaLo").
         title: isWindowedPlatform ? 'Ham2K Logger' : 'HaLo',
         navigatorKey: navigatorKey,
+        navigatorObservers: [_modalBarrierObserver],
         locale: TranslationProvider.of(context).locale.flutterLocale,
         supportedLocales: AppLocaleUtils.supportedLocales,
         localizationsDelegates: GlobalMaterialLocalizations.delegates,
@@ -603,9 +678,11 @@ class _HaLoAppState extends State<HaLoApp> {
           // WindowChromeService; deduped, so calling it every build is fine).
           final baseToolbarHeight = Theme.of(context).appBarTheme.toolbarHeight ?? 48.0;
           WindowChromeService.reportTitleBarHeight(baseToolbarHeight * scale);
-          // The window's resize floor is an XS phone's footprint in the
-          // UiScale-divided space (layouts.md), so it scales the same way.
-          WindowChromeService.reportMinimumSize(minWindowSize * scale);
+          // The window's resize floor is the S-size layout width plus room for
+          // the native window controls that float over the header (traffic
+          // lights / caption buttons), so neither the S content nor the
+          // controls is ever squeezed (desktopMinimumWindowSize; layouts.md).
+          WindowChromeService.reportMinimumSize(desktopMinimumWindowSize(scale));
 
           // Full-screen toggles change the traffic-light clearance the
           // headers reserve (macOSTrafficLightClearance → 0 while the
@@ -638,11 +715,16 @@ class _HaLoAppState extends State<HaLoApp> {
               isFullScreen: isFullScreen,
               child: UiScale(
                 scale: scale,
-                child: _OnboardingGate(
-                  services: widget.services,
-                  child: _ReleaseOverlayGate(
+                // Outermost so it covers every field in the app — the gates'
+                // own overlays and anything pushed on the Navigator (which is
+                // `content`, i.e. dialogs and panes) included.
+                child: TapToDismissEmptyField(
+                  child: _OnboardingGate(
                     services: widget.services,
-                    child: _StatusBarOverlay(services: widget.services, child: content),
+                    child: _ReleaseOverlayGate(
+                      services: widget.services,
+                      child: _StatusBarOverlay(services: widget.services, child: content),
+                    ),
                   ),
                 ),
               ),
@@ -660,6 +742,32 @@ class _HaLoAppState extends State<HaLoApp> {
 /// previous Skip counts as answered). Same presentation split as the
 /// release overlay: full screen on XS/S, `wideModalChrome` on L/XL — but
 /// with no barrier dismissal; the flow's own Skip/Done are the exits.
+/// Debug-only shortcut for skipping the onboarding flow: set
+/// `ONBOARD_AS=CALL,activity,...` — e.g. `ONBOARD_AS=KI2D,pota,sota` — as a
+/// `--dart-define` or an environment variable, and a first run applies that
+/// operator callsign and enables the listed activity extensions instead of
+/// showing onboarding. The first comma-separated token is the callsign; the
+/// rest are extension keys to enable. Empty (and inert) in release builds.
+String get _onboardAsConfig => debugEnvFlag(const String.fromEnvironment('ONBOARD_AS'), 'ONBOARD_AS');
+
+/// Applies an `ONBOARD_AS=CALL,activity,...` spec (see [_onboardAsConfig]):
+/// sets the operator callsign and enables the listed activity extensions.
+/// Writing the callsign marks onboarding answered, so the flow never shows.
+/// The first comma-separated token is the callsign; the rest are extension
+/// keys to enable. A no-op for a blank/empty spec.
+@visibleForTesting
+Future<void> applyOnboardAsSpec(HaLoServices services, String spec) async {
+  final parts = spec.split(',').map((s) => s.trim()).where((s) => s.isNotEmpty).toList();
+  if (parts.isEmpty) return;
+  final call = parts.first.toUpperCase();
+  final activities = parts.skip(1).map((s) => s.toLowerCase()).toList();
+  debugPrint('[onboarding] ONBOARD_AS: callsign=$call activities=$activities');
+  await services.setOperatorCall(call);
+  if (activities.isNotEmpty) {
+    await services.extensions.setExtensionsEnabled({for (final a in activities) a: true});
+  }
+}
+
 class _OnboardingGate extends StatefulWidget {
   final HaLoServices services;
   final Widget child;
@@ -682,8 +790,14 @@ class _OnboardingGateState extends State<_OnboardingGate> {
   void initState() {
     super.initState();
     if (!widget.services.settings.defaultProfileCallsignDefined) {
-      _firstRun = true;
-      _show();
+      final onboardAs = _onboardAsConfig;
+      if (onboardAs.isNotEmpty) {
+        // Debug-only: apply ONBOARD_AS and skip the onboarding flow entirely.
+        unawaited(applyOnboardAsSpec(widget.services, onboardAs));
+      } else {
+        _firstRun = true;
+        _show();
+      }
     }
     widget.services.devOnboardTrigger.addListener(_show);
   }

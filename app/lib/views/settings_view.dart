@@ -20,13 +20,18 @@ import 'package:http/http.dart' as http;
 
 import 'package:url_launcher/url_launcher.dart';
 
+import '../config/experiments.dart';
 import '../config/release_notes.dart';
+import '../config/user_agent.dart';
 import '../config/version.dart';
 import '../main.dart';
+import '../services/data_file_manager.dart';
+import '../services/deep_link_service.dart';
 import '../services/extension_service.dart';
 import '../services/settings_service.dart';
-import '../services/status_bar_service.dart';
+import 'header_profile_label.dart';
 import '../settings/settings_registry.dart';
+import 'experiments_pane.dart';
 import 'extensions_panel.dart';
 import 'ham2k_logo.dart';
 import 'notice_history_view.dart';
@@ -52,6 +57,16 @@ class _SettingsPanelEntry {
   /// (Profiles' "Callsign: KI2D") that would read oddly as a heading.
   final String? screenTitle;
 
+  /// When set, appended to [title] on the sidebar row as `: value` with the
+  /// value in the mono font — used for the operator callsign, which reads as
+  /// a callsign rather than prose.
+  final String? monoDetail;
+
+  /// Second-line description shown under the title in the sidebar list.
+  /// Null for extension-contributed panels (the extension SDK's panel
+  /// descriptor has no description field), which stay single-line.
+  final String? description;
+
   const _SettingsPanelEntry({
     required this.key,
     required this.title,
@@ -59,6 +74,8 @@ class _SettingsPanelEntry {
     required this.order,
     this.descriptor,
     this.screenTitle,
+    this.monoDetail,
+    this.description,
   });
 
   String get effectiveScreenTitle => screenTitle ?? title;
@@ -67,18 +84,53 @@ class _SettingsPanelEntry {
 const _fixedCorePanels = [
   // The whitelisted subset of the declarative settings registry (see
   // settings_registry.dart); the full set lives under All Settings.
-  _SettingsPanelEntry(key: 'settings', title: 'Common Settings', icon: Icons.settings_outlined, order: 0),
-  _SettingsPanelEntry(key: 'sync', title: 'Sync', screenTitle: 'Sync Settings', icon: Icons.sync, order: 10),
-  _SettingsPanelEntry(key: 'accounts', title: 'Accounts', icon: Icons.vpn_key_outlined, order: 20),
-  _SettingsPanelEntry(key: 'privacy', title: 'Privacy', icon: Icons.privacy_tip_outlined, order: 30),
-  _SettingsPanelEntry(key: 'extensions', title: 'Extensions', icon: Icons.extension_outlined, order: 40),
-  _SettingsPanelEntry(key: 'notices', title: 'Notices & Messages', icon: Icons.notifications_outlined, order: 80),
-  // After the extension-contributed panels (default order 50) and Notices,
-  // before Developer/About: every declared group — core, sync, and
-  // extension — in one place.
-  _SettingsPanelEntry(key: 'all_settings', title: 'All Settings', icon: Icons.tune, order: 85),
+  _SettingsPanelEntry(
+      key: 'settings',
+      title: 'Common Preferences',
+      icon: Icons.tune,
+      order: 0,
+      description: 'Appearance, language, and everyday settings'),
+  // Immediately after Common Preferences: every declared group — core, sync,
+  // and extension — in one place.
+  _SettingsPanelEntry(
+      key: 'all_settings',
+      title: 'All Settings',
+      icon: Icons.settings,
+      order: 5,
+      description: 'Every available setting in one place'),
+  _SettingsPanelEntry(
+      key: 'sync',
+      title: 'LoFi Cloud Sync',
+      icon: Icons.sync,
+      order: 10,
+      description: 'Back up and sync your logs across devices'),
+  _SettingsPanelEntry(
+      key: 'accounts',
+      title: 'Accounts & Services',
+      icon: Icons.vpn_key,
+      order: 20,
+      description: 'Sign in to online services and lookups'),
+  _SettingsPanelEntry(
+      key: 'extensions',
+      title: 'Features & Extensions',
+      icon: Icons.extension,
+      order: 40,
+      description: 'Turn optional features on or off'),
+  _SettingsPanelEntry(
+      key: 'notices',
+      title: 'Notices & Messages',
+      icon: Icons.notifications,
+      order: 80,
+      description: 'Announcements and status messages'),
+  // Near the bottom of the list, just before About (order 100).
+  _SettingsPanelEntry(
+      key: 'privacy',
+      title: 'Privacy',
+      icon: Icons.privacy_tip,
+      order: 95,
+      description: 'Choose what data you share'),
 ];
-// Before Common Settings (order 0) — the Profiles panel leads the list.
+// Before Common Preferences (order 0) — the Profiles panel leads the list.
 // Internally "profiles"; until multi-profile features are enabled it
 // presents itself as just "Callsign".
 const _profilesPanelOrder = -10;
@@ -96,7 +148,7 @@ class SettingsView extends StatefulWidget {
 }
 
 class _SettingsViewState extends State<SettingsView> {
-  // The wide layout defaults to Common Settings even though the Profiles
+  // The wide layout defaults to Common Preferences even though the Profiles
   // ("Callsign") panel sorts first in the sidebar.
   String _selectedPanel = 'settings';
   List<Map<String, dynamic>> _extensionPanels = [];
@@ -137,7 +189,7 @@ class _SettingsViewState extends State<SettingsView> {
     if (!widget.services.extensions.ready) {
       widget.services.statusBar.showNotice(
         key: 'settings_extensions_unavailable',
-        icon: 'alert-circle-outline',
+        icon: 'alert-circle',
         title: 'Some settings are unavailable',
         text: 'The extension runtime failed to start, so extension-contributed settings are missing.',
       );
@@ -155,12 +207,24 @@ class _SettingsViewState extends State<SettingsView> {
     final entries = [
       _SettingsPanelEntry(
         key: 'profiles',
-        title: operatorCall.isEmpty ? 'Callsign' : 'Callsign: $operatorCall',
+        title: 'Callsign',
+        monoDetail: operatorCall.isEmpty ? null : operatorCall,
+        description: 'Operator callsign and station profile',
         screenTitle: 'Station Profiles',
-        icon: resolveIconName('account-outline'),
+        icon: resolveIconName('account'),
         order: _profilesPanelOrder,
       ),
       ..._fixedCorePanels,
+      // After the extension-contributed panels (default order 50): data
+      // files are contributed by extensions too, so they sit alongside
+      // them. Not in the const _fixedCorePanels because its icon resolves
+      // an MDI name at runtime.
+      _SettingsPanelEntry(
+        key: 'data_files',
+        title: 'Data Files',
+        icon: resolveIconName('file-cabinet'),
+        order: 60,
+      ),
       for (final p in _extensionPanels)
         _SettingsPanelEntry(
           key: p['panelKey'] as String,
@@ -173,10 +237,16 @@ class _SettingsViewState extends State<SettingsView> {
         const _SettingsPanelEntry(
           key: 'developer',
           title: 'Developer Settings',
-          icon: Icons.bug_report_outlined,
+          icon: Icons.bug_report,
           order: _developerPanelOrder,
+          description: 'Debugging and development tools',
         ),
-      const _SettingsPanelEntry(key: 'about', title: 'About', icon: Icons.info_outline, order: _aboutPanelOrder),
+      const _SettingsPanelEntry(
+          key: 'about',
+          title: 'About',
+          icon: Icons.info,
+          order: _aboutPanelOrder,
+          description: 'Version, credits, and legal information'),
     ];
     entries.sort((a, b) => a.order.compareTo(b.order));
     return entries;
@@ -211,14 +281,20 @@ class _SettingsViewState extends State<SettingsView> {
         minPrimaryWidth: 240,
         maxPrimaryWidth: idealPaneWidth,
         onPreferredPrimaryWidthChanged: (width) => settings.setLayoutDimension(LayoutKeys.settingsLeftColumn, width),
-        primary: Scaffold(
-          appBar: AppBar(
-            flexibleSpace: windowHeaderGestureArea(),
-            leadingWidth: macOSAwareLeadingWidth(context),
-            leading: macOSAwareBackButton(context),
-            title: const Text('Settings'),
+        // Each pane owns its ScaffoldMessenger so a SnackBar (e.g. the
+        // copy-version toast) shows only in the pane that raised it. Sharing
+        // the root messenger — which both pane Scaffolds otherwise register
+        // with — makes one SnackBar appear in both halves of the split.
+        primary: ScaffoldMessenger(
+          child: Scaffold(
+            appBar: AppBar(
+              flexibleSpace: windowHeaderGestureArea(),
+              leadingWidth: macOSAwareLeadingWidth(context),
+              leading: macOSAwareBackButton(context),
+              title: const Text('Settings'),
+            ),
+            body: _buildSidebar(context, isWide: true, panels: panels, selectedKey: effectivePanel.key),
           ),
-          body: _buildSidebar(context, isWide: true, panels: panels, selectedKey: effectivePanel.key),
         ),
         // The Builder gets a context under the split's PaneSafeArea: the
         // whole right panel — title included — shifts right by the grab
@@ -226,7 +302,8 @@ class _SettingsViewState extends State<SettingsView> {
         // panel elements below it.
         secondary: Builder(builder: (context) {
           final safeLeft = PaneSafeArea.leftOf(context);
-          return Scaffold(
+          return ScaffoldMessenger(
+            child: Scaffold(
             appBar: AppBar(
               flexibleSpace: windowHeaderGestureArea(),
               // Default title inset (16) plus the clearance, so the title
@@ -234,7 +311,10 @@ class _SettingsViewState extends State<SettingsView> {
               titleSpacing: 16 + safeLeft,
               title: Text(effectivePanel.effectiveScreenTitle),
               automaticallyImplyLeading: false,
-              actions: [windowsCaptionSpacer(context)],
+              actions: [
+                HeaderProfileLabel(settings: widget.services.settings),
+                windowsCaptionSpacer(context),
+              ],
             ),
             // No ambient left Padding here (that would inset the whole
             // body — row backgrounds/dividers included — same mistake
@@ -248,6 +328,7 @@ class _SettingsViewState extends State<SettingsView> {
               contentPadding: EdgeInsets.only(left: 16 + safeLeft, right: 16),
               child: _buildPanelContent(effectivePanel, widget.services),
             ),
+          ),
           );
         }),
       );
@@ -258,7 +339,10 @@ class _SettingsViewState extends State<SettingsView> {
           leadingWidth: macOSAwareLeadingWidth(context),
           leading: macOSAwareBackButton(context),
           title: const Text('Settings'),
-          actions: [windowsCaptionSpacer(context)],
+          actions: [
+            HeaderProfileLabel(settings: widget.services.settings),
+            windowsCaptionSpacer(context),
+          ],
         ),
         body: _buildSidebar(context, isWide: false, panels: panels, selectedKey: effectivePanel.key),
       );
@@ -271,16 +355,39 @@ class _SettingsViewState extends State<SettingsView> {
     required List<_SettingsPanelEntry> panels,
     required String selectedKey,
   }) {
-    return ListView.builder(
+    // The status footer no longer reserves the home indicator globally (it
+    // collapses when empty), so the list clears the bottom safe area itself;
+    // the Scaffold canvas fills behind it.
+    return SafeArea(
+      top: false,
+      left: false,
+      right: false,
+      child: ListView.builder(
       itemCount: panels.length,
       itemBuilder: (context, index) {
         final panel = panels[index];
         final isSelected = isWide && selectedKey == panel.key;
 
+        // A panel with a monoDetail (the operator callsign) shows it in a
+        // monospace face after the title, e.g. "Callsign: KI2D". Titles are
+        // bold, matching the app's other list rows.
+        final mono = panel.monoDetail;
+        const titleStyle = TextStyle(fontWeight: FontWeight.bold);
+        final Widget titleWidget = (mono != null && mono.isNotEmpty)
+            ? Text.rich(
+                TextSpan(
+                  text: '${panel.title}: ',
+                  children: [TextSpan(text: mono, style: const TextStyle(fontFamily: 'RobotoMono'))],
+                ),
+                style: titleStyle,
+              )
+            : Text(panel.title, style: titleStyle);
+
         return ListTile(
           selected: isSelected,
           leading: Icon(panel.icon),
-          title: Text(panel.title),
+          title: titleWidget,
+          subtitle: panel.description == null ? null : Text(panel.description!),
           onTap: () {
             setState(() {
               _selectedPanel = panel.key;
@@ -296,6 +403,7 @@ class _SettingsViewState extends State<SettingsView> {
           mouseCursor: SystemMouseCursors.click,
         );
       },
+      ),
     );
   }
 }
@@ -329,7 +437,10 @@ class _SettingsPanelScreen extends StatelessWidget {
         leadingWidth: macOSAwareLeadingWidth(context),
         leading: macOSAwareBackButton(context),
         title: Text(panel.effectiveScreenTitle),
-        actions: [windowsCaptionSpacer(context)],
+        actions: [
+          HeaderProfileLabel(settings: services.settings),
+          windowsCaptionSpacer(context),
+        ],
       ),
       body: _buildPanelContent(panel, services),
     );
@@ -337,32 +448,48 @@ class _SettingsPanelScreen extends StatelessWidget {
 }
 
 Widget _buildPanelContent(_SettingsPanelEntry panel, HaLoServices services) {
+  final Widget content;
   switch (panel.key) {
     case 'profiles':
-      return _ProfilesPanel(services: services);
+      content = _ProfilesPanel(services: services);
     case 'settings':
-      return _CommonSettingsPanel(services: services);
+      content = _CommonSettingsPanel(services: services);
     case 'privacy':
-      return _RegistryGroupPanel(services: services, groupKey: 'privacy');
+      content = _RegistryGroupPanel(services: services, groupKey: 'privacy');
     case 'extensions':
-      return ExtensionsPanel(services: services);
+      content = ExtensionsPanel(services: services);
     case 'all_settings':
-      return _AllSettingsPanel(services: services);
+      content = _AllSettingsPanel(services: services);
     case 'sync':
-      return _SyncPanel(services: services);
+      content = _SyncPanel(services: services);
     case 'accounts':
-      return _AccountsPanel(services: services);
+      content = _AccountsPanel(services: services);
+    case 'data_files':
+      content = _DataFilesPanel(services: services);
     case 'notices':
-      return NoticeHistoryView(services: services);
+      content = NoticeHistoryView(services: services);
     case 'developer':
-      return _DeveloperPanel(services: services);
+      content = _DeveloperPanel(services: services);
     case 'about':
-      return const _AboutPanel();
+      content = const _AboutPanel();
     default:
       final descriptor = panel.descriptor;
-      if (descriptor == null) return const SizedBox.shrink();
-      return _ExtensionSettingsPanel(services: services, descriptor: descriptor);
+      content = descriptor == null
+          ? const SizedBox.shrink()
+          : _ExtensionSettingsPanel(services: services, descriptor: descriptor);
   }
+  // Cap settings content at the ideal reading width, pinned to the leading
+  // edge (aligned under the pane header) rather than stretching across a wide
+  // pane. The SafeArea sits inside the cap: each panel's scroll view clears
+  // the bottom safe area itself now that the status footer no longer reserves
+  // the home indicator globally.
+  return Align(
+    alignment: Alignment.topLeft,
+    child: ConstrainedBox(
+      constraints: const BoxConstraints(maxWidth: idealPaneWidth),
+      child: SafeArea(top: false, left: false, right: false, child: content),
+    ),
+  );
 }
 
 /// The "profiles" panel — callsign profiles. Until multi-profile features
@@ -397,7 +524,7 @@ class _ProfilesPanel extends StatelessWidget {
           padding: const EdgeInsets.symmetric(vertical: 8),
           children: [
             ListTile(
-              leading: Icon(resolveIconName('account-outline')),
+              leading: Icon(resolveIconName('account')),
               title: const Text('Callsign'),
               subtitle: Text(call.isEmpty ? 'Not set' : call),
               onTap: () => _editCallsign(context),
@@ -420,7 +547,7 @@ class _SettingsGroupForm extends StatefulWidget {
   final HaLoServices services;
   final SettingsGroup group;
 
-  /// Element keys to keep — the Common Settings whitelist. Null shows all.
+  /// Element keys to keep — the Common Preferences whitelist. Null shows all.
   final Set<String>? fieldFilter;
 
   /// Off when the group renders as a standalone panel whose pane header
@@ -766,9 +893,9 @@ class _SyncPanelState extends State<_SyncPanel> {
     final qsoCount = (await widget.services.qsos.syncCounts()).total;
     if (!mounted) return;
 
-    final confirmed = await showDialog<bool>(
+    final confirmed = await showHaloDialog<bool>(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (context) => HaloDialog(
         title: const Text('Replace local data?'),
         content: Text(
           'This backs up and clears $opCount operation${opCount == 1 ? '' : 's'} and $qsoCount '
@@ -811,7 +938,7 @@ class _SyncPanelState extends State<_SyncPanel> {
             // The operator-callsign row moved to the Station Profiles panel
             // (settings.activeProfile).
             SwitchListTile(
-              secondary: Icon(resolveIconName(settings.syncEnabled ? 'cloud-sync-outline' : 'cloud-off-outline')),
+              secondary: Icon(resolveIconName(settings.syncEnabled ? 'cloud-sync' : 'cloud-off')),
               title: const Text('Sync with Ham2K Log Filer'),
               subtitle: Text(
                 settings.syncEnabled
@@ -833,13 +960,10 @@ class _SyncPanelState extends State<_SyncPanel> {
             ListenableBuilder(
               listenable: widget.services.statusBar,
               builder: (context, _) {
-                StatusBarItem? progress;
-                for (final item in widget.services.statusBar.items) {
-                  if (item.key == HaLoServices.syncProgressStatusKey) progress = item;
-                }
+                final progress = widget.services.statusBar.itemForKey(HaLoServices.syncProgressStatusKey);
                 if (progress == null || !settings.syncEnabled) return const SizedBox.shrink();
                 return ListTile(
-                  leading: Icon(resolveIconName(progress.icon ?? 'cloud-sync-outline')),
+                  leading: Icon(resolveIconName(progress.icon ?? 'cloud-sync')),
                   title: Text(progress.title ?? 'Syncing'),
                   subtitle: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -854,7 +978,7 @@ class _SyncPanelState extends State<_SyncPanel> {
             ),
             if (settings.syncEnabled) ...[
               ListTile(
-                leading: Icon(resolveIconName('account-check-outline')),
+                leading: Icon(resolveIconName('account-check')),
                 title: const Text('Account'),
                 subtitle: Text(_syncAccountSubtitle),
                 trailing: IconButton(
@@ -865,7 +989,7 @@ class _SyncPanelState extends State<_SyncPanel> {
                 ),
               ),
               ListTile(
-                leading: Icon(resolveIconName('account-switch-outline')),
+                leading: Icon(resolveIconName('account-switch')),
                 title: const Text('Switch Accounts'),
                 subtitle: const Text('Link this device to another account with a QR code or email'),
                 onTap: _switchAccounts,
@@ -890,7 +1014,7 @@ class _AccountsPanel extends StatefulWidget {
 
 class _AccountsPanelState extends State<_AccountsPanel> {
   List<Map<String, dynamic>>? _accounts;
-  final Map<String, String> _accountSubtitles = {};
+  final Map<String, String> _accountIdentities = {};
 
   @override
   void initState() {
@@ -901,20 +1025,19 @@ class _AccountsPanelState extends State<_AccountsPanel> {
   Future<void> _loadAccounts() async {
     await widget.services.extensions.start();
     final accounts = await widget.services.extensions.getAccounts();
-    final subtitles = <String, String>{};
+    final identities = <String, String>{};
     for (final account in accounts) {
       final kvKey = account['kvKey'] as String;
       final creds = await widget.services.extensions.getAccountCredentials(kvKey);
-      final subtitle = creds.isEmpty
-          ? 'Not configured'
-          : (ExtensionService.identityFromCredentials(creds) ?? 'Configured');
-      subtitles[kvKey] = subtitle;
+      if (creds.isNotEmpty) {
+        identities[kvKey] = ExtensionService.identityFromCredentials(creds) ?? 'Connected';
+      }
     }
     if (mounted) {
       setState(() {
         _accounts = accounts;
-        _accountSubtitles.clear();
-        _accountSubtitles.addAll(subtitles);
+        _accountIdentities.clear();
+        _accountIdentities.addAll(identities);
       });
     }
   }
@@ -945,11 +1068,15 @@ class _AccountsPanelState extends State<_AccountsPanel> {
           ..._accounts!.map((account) {
             final kvKey = account['kvKey'] as String;
             final label = account['label'] as String;
-            final subtitle = _accountSubtitles[kvKey] ?? 'Not configured';
+            final description = account['description'] as String?;
+            final identity = _accountIdentities[kvKey];
             return ListTile(
               leading: Icon(MdiIcons.keyChain),
-              title: Text(label),
-              subtitle: Text(subtitle),
+              title: Text.rich(TextSpan(children: [
+                TextSpan(text: label, style: const TextStyle(fontWeight: FontWeight.bold)),
+                if (identity != null) TextSpan(text: '  $identity'),
+              ])),
+              subtitle: Text(description ?? (identity == null ? 'Not configured' : '')),
               onTap: () => _openAccountDialog(account),
               mouseCursor: SystemMouseCursors.click,
             );
@@ -957,6 +1084,156 @@ class _AccountsPanelState extends State<_AccountsPanel> {
       ],
     );
   }
+}
+
+/// The Data Files panel: every data file the enabled extensions register
+/// (POTA parks, SOTA summits, callsign notes…), each showing when it was
+/// last downloaded and a Refresh button that forces a fresh fetch. The list
+/// re-loads when the extension runtime restarts (a toggle changes which
+/// files exist). Country data (Big CTY) is bundled, not a downloaded data
+/// file, so it doesn't appear here.
+class _DataFilesPanel extends StatefulWidget {
+  final HaLoServices services;
+
+  const _DataFilesPanel({required this.services});
+
+  @override
+  State<_DataFilesPanel> createState() => _DataFilesPanelState();
+}
+
+class _DataFilesPanelState extends State<_DataFilesPanel> {
+  List<DataFileStatus>? _files;
+  final Set<String> _refreshing = {};
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+    widget.services.extensions.runtimeGeneration.addListener(_load);
+  }
+
+  @override
+  void dispose() {
+    widget.services.extensions.runtimeGeneration.removeListener(_load);
+    super.dispose();
+  }
+
+  Future<void> _load() async {
+    await widget.services.extensions.start();
+    final files = await widget.services.dataFiles.listDataFiles();
+    if (mounted) setState(() => _files = files);
+  }
+
+  Future<void> _refresh(DataFileStatus file) async {
+    setState(() => _refreshing.add(file.key));
+    try {
+      // The stamped time comes back from the refresh, so the row updates
+      // from it directly — no second listDataFiles round-trip.
+      final updatedAt = await widget.services.dataFiles.refreshDataFile(file.key);
+      if (mounted && updatedAt != null) _applyUpdatedAt(file.key, updatedAt);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Could not refresh ${file.name}: $e')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _refreshing.remove(file.key));
+    }
+  }
+
+  void _applyUpdatedAt(String key, DateTime updatedAt) {
+    final files = _files;
+    if (files == null) return;
+    final index = files.indexWhere((f) => f.key == key);
+    if (index < 0) return;
+    setState(() => _files = [...files]..[index] = files[index].withUpdatedAt(updatedAt));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final files = _files;
+    if (files == null) return const Center(child: CircularProgressIndicator());
+    final safeLeft = PaneSafeArea.leftOf(context);
+
+    return ListView(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      children: [
+        Padding(padding: EdgeInsets.only(left: safeLeft), child: const SectionHeader('Offline Data')),
+        if (files.isEmpty)
+          const ListTile(
+            title: Text('No data files'),
+            subtitle: Text('Enable activity or lookup extensions to download their offline data here.'),
+          )
+        else
+          for (final file in files) _buildRow(context, file),
+      ],
+    );
+  }
+
+  Widget _buildRow(BuildContext context, DataFileStatus file) {
+    final icon = Icon(resolveIconName(file.icon ?? 'file-document-outline'));
+
+    // While refreshing, mirror this data file's live status-bar progress
+    // item (keyed `dataFile:$key`, set by DataFileManager) as the subtitle —
+    // the footer status bar isn't visible on this screen.
+    if (_refreshing.contains(file.key)) {
+      return ListenableBuilder(
+        listenable: widget.services.statusBar,
+        builder: (context, _) {
+          final progress = widget.services.statusBar.itemForKey('dataFile:${file.key}');
+          return ListTile(
+            leading: icon,
+            title: Text(file.name),
+            subtitle: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(progress?.text ?? 'Refreshing…'),
+                const SizedBox(height: 6),
+                LinearProgressIndicator(value: progress?.progressValue),
+              ],
+            ),
+            trailing: const SizedBox(
+              width: 24,
+              height: 24,
+              child: Padding(padding: EdgeInsets.all(2), child: CircularProgressIndicator(strokeWidth: 2)),
+            ),
+          );
+        },
+      );
+    }
+
+    return ListTile(
+      leading: icon,
+      title: Text(file.name),
+      subtitle: Text(_dataFileUpdatedLabel(file.updatedAt)),
+      trailing: IconButton(
+        icon: Icon(resolveIconName('refresh')),
+        tooltip: 'Refresh',
+        onPressed: () => _refresh(file),
+        mouseCursor: SystemMouseCursors.click,
+      ),
+    );
+  }
+}
+
+/// "Updated 2d 7h ago" / "Never downloaded" — the same day+hour granularity
+/// app-polo's data settings use.
+String _dataFileUpdatedLabel(DateTime? updatedAt) {
+  if (updatedAt == null) return 'Never downloaded';
+  final diff = DateTime.now().difference(updatedAt);
+  if (diff.isNegative || diff.inSeconds < 60) return 'Updated just now';
+  final days = diff.inDays;
+  if (days > 0) {
+    final hours = diff.inHours % 24;
+    return hours == 0 ? 'Updated ${days}d ago' : 'Updated ${days}d ${hours}h ago';
+  }
+  final hours = diff.inHours;
+  if (hours > 0) {
+    final minutes = diff.inMinutes % 60;
+    return minutes == 0 ? 'Updated ${hours}h ago' : 'Updated ${hours}h ${minutes}m ago';
+  }
+  return 'Updated ${diff.inMinutes}m ago';
 }
 
 /// Renders one extension-contributed `settingsPanel` panel — the
@@ -1266,6 +1543,42 @@ class _DeveloperPanel extends StatelessWidget {
               onChanged: (enabled) => settings.setDeveloperMode(enabled),
               contentPadding: EdgeInsets.zero,
             ),
+            // Gated by the 'experiments' meta-experiment (EXP EXPERIMENTS /
+            // EXP EXP): the tile only appears once someone opted in via the
+            // command. Reads live — the whole panel rebuilds under the
+            // ListenableBuilder(settings) above, so toggling it (either
+            // way, including from inside the pane itself) shows/hides the
+            // tile immediately.
+            if (settings.experimentEnabled('experiments'))
+              FutureBuilder<List<ExperimentDefinition>>(
+                future: loadExperiments(),
+                builder: (context, snapshot) {
+                  final definitions = snapshot.data ?? const <ExperimentDefinition>[];
+                  // Counted against the CURRENT catalog's LISTED entries: state
+                  // for removed experiments doesn't inflate it, and hidden ones
+                  // are excluded so the count can't disagree with the pane
+                  // (which doesn't list them).
+                  final enabledCount = settings.enabledExperimentCount([
+                    for (final d in definitions)
+                      if (!d.hidden) d.key,
+                  ]);
+                  return ListTile(
+                    leading: const Icon(Icons.science_outlined),
+                    title: const Text('Experiments'),
+                    subtitle: Text('$enabledCount enabled'),
+                    contentPadding: EdgeInsets.zero,
+                    mouseCursor: SystemMouseCursors.click,
+                    // The pane loads the catalog itself — capturing this
+                    // builder's `definitions` would freeze a still-loading
+                    // (empty) snapshot into the pane for its whole lifetime.
+                    onTap: () => showModalPane<void>(
+                      context,
+                      title: 'Experiments',
+                      builder: (_) => ExperimentsPane(settings: settings),
+                    ),
+                  );
+                },
+              ),
             const SizedBox(height: 16),
             ElevatedButton(
               onPressed: () async {
@@ -1601,7 +1914,7 @@ class _AboutPanel extends StatelessWidget {
             const SliverToBoxAdapter(child: Divider(height: 1)),
             SliverToBoxAdapter(
               child: ListTile(
-                leading: const Icon(Icons.info_outline),
+                leading: const Icon(Icons.info),
                 // VersionLabel renders SelectableText, whose own tap
                 // recognizer (for cursor placement) would otherwise win
                 // the gesture arena over this ListTile's onTap —
@@ -1746,7 +2059,7 @@ class _AboutHeader extends StatelessWidget {
               child: GestureDetector(
                 key: const Key('aboutWordmark'),
                 onTap: () => showPhotoWordmarkModal(context, release: release),
-                child: const Ham2kBrandMark(logoWidth: 140, showShadow: true),
+                child: const Ham2kBrandMark(logoWidth: 140, showShadow: true, titleFontSizeDelta: 3),
               ),
             ),
           ),
@@ -1780,7 +2093,7 @@ class _PendingAccountBanner extends StatelessWidget {
           children: [
             Row(
               children: [
-                Icon(resolveIconName('cloud-question-outline'), color: theme.colorScheme.onTertiaryContainer),
+                Icon(resolveIconName('cloud-question'), color: theme.colorScheme.onTertiaryContainer),
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
@@ -1817,6 +2130,32 @@ class _PendingAccountBanner extends StatelessWidget {
 /// phones, where the old AlertDialog was cramped. The route provides the
 /// title and chrome; the action row renders here because it depends on
 /// this State (_testing, _loggedIn).
+/// Opens [accountKey]'s standalone account dialog from anywhere in the app
+/// (declarative `account` actions — e.g. an extension's "reconnect your
+/// account" dialog button). `accountKey` matches the account's kvKey.
+Future<void> showAccountDialogByKey(HaLoServices services, String accountKey, {String? subkey}) async {
+  final accounts = await services.extensions.getAccounts();
+  Map<String, dynamic>? account;
+  for (final a in accounts) {
+    if (a['kvKey'] == accountKey || a['key'] == accountKey) {
+      account = a;
+      break;
+    }
+  }
+  if (account == null) {
+    debugPrint('[accounts] no account "$accountKey" to open');
+    return;
+  }
+  final context = navigatorKey.currentContext;
+  if (context == null || !context.mounted) return;
+  await showModalPane<void>(
+    context,
+    title: account['label'] as String? ?? accountKey,
+    barrierDismissible: false,
+    builder: (context) => _AccountPane(services: services, account: account!, onSaved: () {}),
+  );
+}
+
 class _AccountPane extends StatefulWidget {
   final HaLoServices services;
   final Map<String, dynamic> account;
@@ -1833,6 +2172,10 @@ class _AccountPaneState extends State<_AccountPane> {
   bool _testing = false;
   String? _testResult;
   bool _loggedIn = false;
+
+  /// OAuth tokens obtained from a Login that haven't been saved yet — only
+  /// persisted when the user presses Save, discarded on Cancel/close.
+  Map<String, String>? _pendingCredentials;
 
   String? _fieldError(String key, String value) {
     if (widget.account['key'] == 'qrz' && key == 'username' && value.contains('@')) {
@@ -1863,6 +2206,9 @@ class _AccountPaneState extends State<_AccountPane> {
       final key = field['key'] as String;
       _controllers[key] = TextEditingController(text: creds[key] ?? '');
     }
+    // Existing credentials get verified right away, so the "Connected as"
+    // area reflects reality without a manual Test.
+    if (creds.isNotEmpty) await _test();
   }
 
   @override
@@ -1874,27 +2220,47 @@ class _AccountPaneState extends State<_AccountPane> {
   }
 
   Future<void> _save() async {
-    if (_oauth2 == null) {
-      final creds = _controllers.map((key, controller) => MapEntry(key, controller.text.trim()));
-      await widget.services.extensions.setAccountCredentials(_kvKey, creds);
+    try {
+      if (_oauth2 == null) {
+        final creds = _controllers.map((key, controller) => MapEntry(key, controller.text.trim()));
+        await widget.services.extensions.setAccountCredentials(_kvKey, creds);
+      } else if (_pendingCredentials != null) {
+        await widget.services.extensions.setAccountCredentials(_kvKey, _pendingCredentials!);
+      }
+    } catch (e) {
+      debugPrint('[accounts] save failed for $_kvKey: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Save failed: $e')));
+      }
+      return;
     }
     widget.onSaved();
     if (mounted) Navigator.of(context).pop();
   }
 
+  /// Bumped by [_clear] so an in-flight test's result can't repopulate the
+  /// "Connected as" area after a disconnect.
+  int _testGeneration = 0;
+
   Future<void> _clear() async {
-    await widget.services.extensions.clearAccount(_kvKey);
+    // Update the UI first — the keychain call shouldn't delay the visible
+    // disconnect.
+    _testGeneration++;
+    setState(() {
+      _loggedIn = false;
+      _testing = false;
+      _testResult = null;
+      _pendingCredentials = null;
+    });
     for (final c in _controllers.values) {
       c.clear();
     }
-    setState(() {
-      _loggedIn = false;
-      _testResult = null;
-    });
+    await widget.services.extensions.clearAccount(_kvKey);
     widget.onSaved();
   }
 
   Future<void> _test() async {
+    final generation = _testGeneration;
     setState(() {
       _testing = true;
       _testResult = null;
@@ -1902,14 +2268,14 @@ class _AccountPaneState extends State<_AccountPane> {
 
     final Map<String, String> creds;
     if (_oauth2 != null) {
-      creds = await widget.services.extensions.getAccountCredentials(_kvKey);
+      creds = _pendingCredentials ?? await widget.services.extensions.getAccountCredentials(_kvKey);
     } else {
       creds = _controllers.map((key, controller) => MapEntry(key, controller.text.trim()));
     }
 
     final res = await widget.services.extensions.testCredentials(widget.account['key'] as String, creds);
 
-    if (mounted) {
+    if (mounted && generation == _testGeneration) {
       setState(() {
         _testing = false;
         _testResult = res;
@@ -1925,8 +2291,9 @@ class _AccountPaneState extends State<_AccountPane> {
     final scopes = (oauth2['scopes'] as List).cast<String>();
 
     try {
+      final userAgent = await ham2kUserAgent();
       final discoveryUrl = Uri.parse('$issuer/.well-known/openid-configuration');
-      final response = await http.get(discoveryUrl);
+      final response = await http.get(discoveryUrl, headers: {'User-Agent': userAgent});
       if (response.statusCode != 200) throw Exception('Failed to load OIDC discovery: ${response.statusCode}');
       final discovery = jsonDecode(response.body) as Map<String, dynamic>;
       final authEndpoint = discovery['authorization_endpoint'] as String;
@@ -1950,13 +2317,41 @@ class _AccountPaneState extends State<_AccountPane> {
 
       if (!mounted) return;
 
-      final code = await Navigator.of(context).push<String>(
+      // The provider redirects to a com.ham2k.*.auth:// URL. Normally the
+      // webview intercepts it below, but if the OS handles it instead (the
+      // schemes are registered as deep links), it comes back through
+      // DeepLinkService — either way the webview route pops with the code.
+      final navigator = Navigator.of(context);
+      String? authError;
+      final linkSub = widget.services.deepLinks.links.listen((uri) {
+        if (!DeepLinkService.isAuthCallback(uri)) return;
+        if (uri.queryParameters['state'] != state) return;
+        authError = uri.queryParameters['error_description'] ?? uri.queryParameters['error'];
+        navigator.pop(uri.queryParameters['code']);
+      });
+
+      InAppWebViewController? webViewController;
+
+      final code = await navigator.push<String>(
         MaterialPageRoute(
           builder: (context) => Scaffold(
             appBar: AppBar(
               flexibleSpace: windowHeaderGestureArea(),
               title: Text('Connect to ${widget.account['label']}'),
-              actions: [windowsCaptionSpacer(context)],
+              actions: [
+                // Continues the login in the system browser (from wherever
+                // the in-app page currently is); the redirect then comes
+                // back through the deep-link listener above. Keep this page
+                // open — closing it abandons the flow.
+                TextButton(
+                  child: const Text('Open in Browser'),
+                  onPressed: () async {
+                    final current = await webViewController?.getUrl();
+                    unawaited(launchUrl(Uri.parse((current ?? authUri).toString()), mode: LaunchMode.externalApplication));
+                  },
+                ),
+                windowsCaptionSpacer(context),
+              ],
               leadingWidth: macOSAwareLeadingWidth(context),
               leading: isMacOSChromelessWindow
                   ? Padding(
@@ -1966,6 +2361,7 @@ class _AccountPaneState extends State<_AccountPane> {
                   : CloseButton(onPressed: () => Navigator.of(context).pop()),
             ),
             body: InAppWebView(
+              onWebViewCreated: (controller) => webViewController = controller,
               initialUrlRequest: URLRequest(url: WebUri(authUri.toString())),
               initialSettings: InAppWebViewSettings(javaScriptEnabled: true, useShouldOverrideUrlLoading: true),
               shouldOverrideUrlLoading: (controller, navigationAction) async {
@@ -1988,13 +2384,18 @@ class _AccountPaneState extends State<_AccountPane> {
         ),
       );
 
-      if (code == null) return;
+      await linkSub.cancel();
+
+      if (code == null) {
+        if (authError != null) throw Exception(authError);
+        return;
+      }
 
       setState(() => _testing = true);
 
       final tokenResponse = await http.post(
         Uri.parse(tokenEndpoint),
-        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+        headers: {'Content-Type': 'application/x-www-form-urlencoded', 'User-Agent': userAgent},
         body: {
           'grant_type': 'authorization_code',
           'client_id': clientId,
@@ -2014,13 +2415,13 @@ class _AccountPaneState extends State<_AccountPane> {
       if (tokens['refresh_token'] != null) credentials['refreshToken'] = tokens['refresh_token'] as String;
       if (tokens['id_token'] != null) credentials['idToken'] = tokens['id_token'] as String;
 
-      await widget.services.extensions.setAccountCredentials(_kvKey, credentials);
-
+      // Held until the user presses Save — nothing is persisted yet.
       setState(() {
-        _loggedIn = true;
+        _pendingCredentials = credentials;
         _testing = false;
       });
-      widget.onSaved();
+      // Verify the fresh tokens right away, same as opening with stored ones.
+      await _test();
     } catch (e) {
       if (mounted) {
         setState(() => _testing = false);
@@ -2050,16 +2451,26 @@ class _AccountPaneState extends State<_AccountPane> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         if (_oauth2 != null) ...[
-          if (_loggedIn) ...[
+          if (_pendingCredentials != null) ...[
+            Text(
+              'Logged in as ${ExtensionService.identityFromCredentials(_pendingCredentials!) ?? widget.account['label']}',
+              style: theme.textTheme.bodyMedium,
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Press Save to keep this account connected.',
+              style: theme.textTheme.bodyMedium,
+              textAlign: TextAlign.center,
+            ),
+          ] else if (_loggedIn) ...[
             Text(
               'Connected to ${widget.account['label']}',
               style: theme.textTheme.bodyMedium,
               textAlign: TextAlign.center,
             ),
-            const SizedBox(height: 16),
-            OutlinedButton(onPressed: _clear, child: const Text('Disconnect')),
           ] else ...[
-            OutlinedButton(onPressed: _testing ? null : _doOAuth, child: const Text('Login')),
+            OutlinedButton(onPressed: _testing ? null : _doOAuth, child: const Text('Connect')),
           ],
         ] else ...[
           ..._fields.map((field) {
@@ -2099,34 +2510,52 @@ class _AccountPaneState extends State<_AccountPane> {
             );
           }),
         ],
-        if (_testResult != null) ...[
-          const SizedBox(height: 16),
-          const Divider(),
+        if (_loggedIn && _pendingCredentials == null) ...[
           const SizedBox(height: 8),
-          Text(
-            'Test Connection Result:',
-            style: theme.textTheme.titleSmall?.copyWith(color: theme.colorScheme.primary),
-          ),
-          const SizedBox(height: 8),
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: theme.colorScheme.surfaceContainerHighest,
-              borderRadius: BorderRadius.circular(8),
+          Center(
+            child: OutlinedButton(
+              onPressed: _clear,
+              child: const Text('Disconnect'),
             ),
-            child: MarkdownBody(data: _testResult!),
           ),
         ],
-        if (_testing) ...[const SizedBox(height: 16), const Center(child: CircularProgressIndicator())],
+        const SizedBox(height: 16),
+        const Divider(),
+        const SizedBox(height: 8),
+        Text(
+          'Connected as',
+          style: theme.textTheme.titleSmall?.copyWith(color: theme.colorScheme.primary),
+        ),
+        const SizedBox(height: 8),
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Expanded(
+              child: Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.surfaceContainerHighest,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: _testing
+                    ? const SizedBox(
+                        height: 20,
+                        child: Center(child: SizedBox.square(dimension: 16, child: CircularProgressIndicator(strokeWidth: 2))),
+                      )
+                    : MarkdownBody(data: _testResult ?? '—'),
+              ),
+            ),
+            const SizedBox(width: 8),
+            TextButton(onPressed: _testing ? null : _test, child: const Text('Test')),
+          ],
+        ),
         const SizedBox(height: 24),
         OverflowBar(
           alignment: MainAxisAlignment.end,
           spacing: 8,
           children: [
             TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Cancel')),
-            if (_oauth2 == null && _loggedIn) TextButton(onPressed: _clear, child: const Text('Clear')),
-            if (!_testing) TextButton(onPressed: _test, child: const Text('Test')),
-            if (_oauth2 == null) FilledButton(onPressed: _save, child: const Text('Save')),
+            FilledButton(onPressed: _save, child: const Text('Save')),
           ],
         ),
       ],

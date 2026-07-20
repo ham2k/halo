@@ -465,7 +465,7 @@ class _SpotsPanelState extends State<SpotsPanel> {
     // _mergedRawSpots (re-running the merge pipeline from scratch every
     // time), so opening the dialog re-merged the same spot list 4x.
     final merged = _mergedRawSpots;
-    return showDialog<void>(
+    return showHaloDialog<void>(
         context: context,
         builder: (context) => _SpotsFilterDialog(
           bandFilter: _bandFilter,
@@ -546,7 +546,16 @@ class _SpotsPanelState extends State<SpotsPanel> {
           totalCount: summary.total,
           onTap: _openFilterDialog,
         ),
-        Expanded(child: _buildSpotsList(context, summary.filtered)),
+        // Clears the bottom safe area (home indicator) itself, now that the
+        // status footer no longer reserves it globally; the panel fills behind.
+        Expanded(
+          child: SafeArea(
+            top: false,
+            left: false,
+            right: false,
+            child: _buildSpotsList(context, summary.filtered),
+          ),
+        ),
       ],
     );
   }
@@ -833,7 +842,7 @@ class _SpotsFilterPill extends StatelessWidget {
                 _FilterInfoPill(icon: 'radio', label: '$bandLabel • $modeLabel', onTap: onTap),
                 if (ageMinutes != null) ...[
                   const SizedBox(width: 6),
-                  _FilterInfoPill(icon: 'clock-outline', label: '${ageMinutes}m', onTap: onTap),
+                  _FilterInfoPill(icon: 'clock', label: '${ageMinutes}m', onTap: onTap),
                 ],
                 const SizedBox(width: 6),
                 _FilterInfoPill(icon: 'tune', color: Colors.black, onTap: onTap),
@@ -1007,7 +1016,8 @@ class _SpotsFilterDialogState extends State<_SpotsFilterDialog> {
   Widget build(BuildContext context) {
     final t = context.t;
 
-    return AlertDialog(
+    return HaloDialog(
+      wide: true,
       title: Text(t.operation.spots.filters.title),
       content: SizedBox(
         width: 400,

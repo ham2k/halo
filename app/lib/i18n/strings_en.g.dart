@@ -53,6 +53,7 @@ class Translations with BaseTranslations<AppLocale, Translations> {
 	late final Translations$qsoEditForm$en qsoEditForm = Translations$qsoEditForm$en.internal(_root);
 	late final Translations$qsoList$en qsoList = Translations$qsoList$en.internal(_root);
 	late final Translations$loggingPanel$en loggingPanel = Translations$loggingPanel$en.internal(_root);
+	late final Translations$callInfo$en callInfo = Translations$callInfo$en.internal(_root);
 	late final Translations$settings$en settings = Translations$settings$en.internal(_root);
 	late final Translations$operationLocationScreen$en operationLocationScreen = Translations$operationLocationScreen$en.internal(_root);
 }
@@ -384,9 +385,6 @@ class Translations$loggingControls$en {
 	/// en: 'Mode'
 	String get mode => 'Mode';
 
-	/// en: 'DUPE'
-	String get dupe => 'DUPE';
-
 	/// en: 'Their call'
 	String get theirCall => 'Their call';
 
@@ -449,6 +447,8 @@ class Translations$loggingControls$en {
 
 	/// en: 'Comment'
 	String get spotComment => 'Comment';
+
+	late final Translations$loggingControls$info$en info = Translations$loggingControls$info$en.internal(_root);
 }
 
 // Path: qsoEditForm
@@ -538,6 +538,48 @@ class Translations$loggingPanel$en {
 	String get duplicates => 'Duplicates';
 }
 
+// Path: callInfo
+class Translations$callInfo$en {
+	Translations$callInfo$en.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'QRZ'
+	String get qrz => 'QRZ';
+
+	/// en: 'Show Image'
+	String get showImage => 'Show Image';
+
+	/// en: 'Notes'
+	String get notes => 'Notes';
+
+	/// en: '${distance} away'
+	String distanceAway({required Object distance}) => '${distance} away';
+
+	/// en: '${distance} (${bearing}°) away'
+	String distanceBearingAway({required Object distance, required Object bearing}) => '${distance} (${bearing}°) away';
+
+	/// en: '1 QSO in this operation'
+	String get thisOpCountOne => '1 QSO in this operation';
+
+	/// en: '${count} QSOs in this operation'
+	String thisOpCountOther({required Object count}) => '${count} QSOs in this operation';
+
+	/// en: '1 QSO in other operations'
+	String get otherOpsCountOne => '1 QSO in other operations';
+
+	/// en: '${count} QSOs in other operations'
+	String otherOpsCountOther({required Object count}) => '${count} QSOs in other operations';
+
+	/// en: '… and ${count} more'
+	String andMore({required Object count}) => '… and ${count} more';
+
+	/// en: 'with ${call}'
+	String withCall({required Object call}) => 'with ${call}';
+}
+
 // Path: settings
 class Translations$settings$en {
 	Translations$settings$en.internal(this._root);
@@ -563,16 +605,10 @@ class Translations$settings$en {
 
 	late final Translations$settings$fontScaleOpts$en fontScaleOpts = Translations$settings$fontScaleOpts$en.internal(_root);
 
-	/// en: 'Scales the whole interface — text, controls, and spacing'
-	String get fontScaleDescription => 'Scales the whole interface — text, controls, and spacing';
-
 	/// en: 'Distance Units'
 	String get distanceUnits => 'Distance Units';
 
 	late final Translations$settings$distanceUnitsOpts$en distanceUnitsOpts = Translations$settings$distanceUnitsOpts$en.internal(_root);
-
-	/// en: 'For distances shown on the map'
-	String get distanceUnitsDescription => 'For distances shown on the map';
 
 	/// en: 'User Interface'
 	String get userInterface => 'User Interface';
@@ -806,6 +842,60 @@ class Translations$operation$spots$en {
 	late final Translations$operation$spots$filters$en filters = Translations$operation$spots$filters$en.internal(_root);
 }
 
+// Path: loggingControls.info
+class Translations$loggingControls$info$en {
+	Translations$loggingControls$info$en.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'No QSOs yet... let's get on the air!'
+	String get noQsos => 'No QSOs yet... let\'s get on the air!';
+
+	/// en: '1 QSO'
+	String get qsoCountOne => '1 QSO';
+
+	/// en: '${count} QSOs'
+	String qsoCountOther({required Object count}) => '${count} QSOs';
+
+	/// en: '${count} in ${time}'
+	String qsosInTime({required Object count, required Object time}) => '${count} in ${time}';
+
+	/// en: '${time} since last'
+	String sinceLast({required Object time}) => '${time} since last';
+
+	/// en: '${rate} Q/h for last 10'
+	String ratePer10({required Object rate}) => '${rate} Q/h for last 10';
+
+	/// en: '${rate} Q/h for last 100'
+	String ratePer100({required Object rate}) => '${rate} Q/h for last 100';
+
+	/// en: '${distance} to'
+	String distanceTo({required Object distance}) => '${distance} to';
+
+	/// en: '${distance} (${bearing}°) to'
+	String distanceBearingTo({required Object distance, required Object bearing}) => '${distance} (${bearing}°) to';
+
+	/// en: '${distance} away'
+	String distanceAway({required Object distance}) => '${distance} away';
+
+	/// en: '${distance} (${bearing}°) away'
+	String distanceBearingAway({required Object distance, required Object bearing}) => '${distance} (${bearing}°) away';
+
+	/// en: 'Dupe!'
+	String get noticeDupe => 'Dupe!';
+
+	/// en: 'New Band'
+	String get noticeNewBand => 'New Band';
+
+	/// en: 'New Mode'
+	String get noticeNewMode => 'New Mode';
+
+	/// en: 'New DXCC'
+	String get noticeNewDXCC => 'New DXCC';
+}
+
 // Path: settings.theme
 class Translations$settings$theme$en {
 	Translations$settings$theme$en.internal(this._root);
@@ -853,6 +943,12 @@ class Translations$settings$fontScaleOpts$en {
 
 	// Translations
 
+	/// en: 'Smallest--'
+	String get smallestMinusMinus => 'Smallest--';
+
+	/// en: 'Smallest-'
+	String get smallestMinus => 'Smallest-';
+
 	/// en: 'Smallest'
 	String get smallest => 'Smallest';
 
@@ -867,6 +963,12 @@ class Translations$settings$fontScaleOpts$en {
 
 	/// en: 'Largest'
 	String get largest => 'Largest';
+
+	/// en: 'Largest+'
+	String get largestPlus => 'Largest+';
+
+	/// en: 'Largest++'
+	String get largestPlusPlus => 'Largest++';
 }
 
 // Path: settings.distanceUnitsOpts
@@ -901,6 +1003,9 @@ class Translations$settings$logging$en {
 	late final Translations$settings$logging$showBearing$en showBearing = Translations$settings$logging$showBearing$en.internal(_root);
 	late final Translations$settings$logging$switchSentRcvd$en switchSentRcvd = Translations$settings$logging$switchSentRcvd$en.internal(_root);
 	late final Translations$settings$logging$jumpAfterRST$en jumpAfterRST = Translations$settings$logging$jumpAfterRST$en.internal(_root);
+	late final Translations$settings$logging$numbersRow$en numbersRow = Translations$settings$logging$numbersRow$en.internal(_root);
+	late final Translations$settings$logging$numbersRowExtra$en numbersRowExtra = Translations$settings$logging$numbersRowExtra$en.internal(_root);
+	late final Translations$settings$logging$numbersRowVibrate$en numbersRowVibrate = Translations$settings$logging$numbersRowVibrate$en.internal(_root);
 
 	/// en: 'Bands'
 	String get bands => 'Bands';
@@ -938,8 +1043,8 @@ class Translations$settings$sync$en {
 
 	// Translations
 
-	/// en: 'Sync Settings'
-	String get title => 'Sync Settings';
+	/// en: 'LoFi Cloud Sync'
+	String get title => 'LoFi Cloud Sync';
 
 	/// en: 'Enable Sync'
 	String get enable => 'Enable Sync';
@@ -1146,6 +1251,51 @@ class Translations$settings$logging$jumpAfterRST$en {
 	String get descriptionOff => 'Don\'t jump automatically';
 }
 
+// Path: settings.logging.numbersRow
+class Translations$settings$logging$numbersRow$en {
+	Translations$settings$logging$numbersRow$en.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Numbers Row'
+	String get title => 'Numbers Row';
+
+	/// en: 'Show a row of number keys above the keyboard while logging'
+	String get description => 'Show a row of number keys above the keyboard while logging';
+}
+
+// Path: settings.logging.numbersRowExtra
+class Translations$settings$logging$numbersRowExtra$en {
+	Translations$settings$logging$numbersRowExtra$en.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Slash and period key'
+	String get title => 'Slash and period key';
+
+	/// en: 'Adds a contextual key: “/” for callsigns, “.” for numbers'
+	String get description => 'Adds a contextual key: “/” for callsigns, “.” for numbers';
+}
+
+// Path: settings.logging.numbersRowVibrate
+class Translations$settings$logging$numbersRowVibrate$en {
+	Translations$settings$logging$numbersRowVibrate$en.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Vibrate on key press'
+	String get title => 'Vibrate on key press';
+
+	/// en: 'Haptic feedback when you tap a number key'
+	String get description => 'Haptic feedback when you tap a number key';
+}
+
 // Path: settings.privacy.shareAppData
 class Translations$settings$privacy$shareAppData$en {
 	Translations$settings$privacy$shareAppData$en.internal(this._root);
@@ -1326,7 +1476,6 @@ extension on Translations {
 			'loggingControls.now' => 'Now',
 			'loggingControls.frequency' => 'Frequency',
 			'loggingControls.mode' => 'Mode',
-			'loggingControls.dupe' => 'DUPE',
 			'loggingControls.theirCall' => 'Their call',
 			'loggingControls.sent' => 'Sent',
 			'loggingControls.rcvd' => 'Rcvd',
@@ -1348,6 +1497,21 @@ extension on Translations {
 			'loggingControls.spotTooLate' => ({required Object call}) => 'Too late to spot ${call}',
 			'loggingControls.spotNoFreq' => 'First set a frequency to spot',
 			'loggingControls.spotComment' => 'Comment',
+			'loggingControls.info.noQsos' => 'No QSOs yet... let\'s get on the air!',
+			'loggingControls.info.qsoCountOne' => '1 QSO',
+			'loggingControls.info.qsoCountOther' => ({required Object count}) => '${count} QSOs',
+			'loggingControls.info.qsosInTime' => ({required Object count, required Object time}) => '${count} in ${time}',
+			'loggingControls.info.sinceLast' => ({required Object time}) => '${time} since last',
+			'loggingControls.info.ratePer10' => ({required Object rate}) => '${rate} Q/h for last 10',
+			'loggingControls.info.ratePer100' => ({required Object rate}) => '${rate} Q/h for last 100',
+			'loggingControls.info.distanceTo' => ({required Object distance}) => '${distance} to',
+			'loggingControls.info.distanceBearingTo' => ({required Object distance, required Object bearing}) => '${distance} (${bearing}°) to',
+			'loggingControls.info.distanceAway' => ({required Object distance}) => '${distance} away',
+			'loggingControls.info.distanceBearingAway' => ({required Object distance, required Object bearing}) => '${distance} (${bearing}°) away',
+			'loggingControls.info.noticeDupe' => 'Dupe!',
+			'loggingControls.info.noticeNewBand' => 'New Band',
+			'loggingControls.info.noticeNewMode' => 'New Mode',
+			'loggingControls.info.noticeNewDXCC' => 'New DXCC',
 			'qsoEditForm.title' => 'Edit QSO',
 			'qsoEditForm.theirName' => 'Name',
 			'qsoEditForm.theirGrid' => 'Grid',
@@ -1368,6 +1532,17 @@ extension on Translations {
 			'loggingPanel.scoring' => 'Scoring',
 			'loggingPanel.dxccEntities' => 'DXCC entities',
 			'loggingPanel.duplicates' => 'Duplicates',
+			'callInfo.qrz' => 'QRZ',
+			'callInfo.showImage' => 'Show Image',
+			'callInfo.notes' => 'Notes',
+			'callInfo.distanceAway' => ({required Object distance}) => '${distance} away',
+			'callInfo.distanceBearingAway' => ({required Object distance, required Object bearing}) => '${distance} (${bearing}°) away',
+			'callInfo.thisOpCountOne' => '1 QSO in this operation',
+			'callInfo.thisOpCountOther' => ({required Object count}) => '${count} QSOs in this operation',
+			'callInfo.otherOpsCountOne' => '1 QSO in other operations',
+			'callInfo.otherOpsCountOther' => ({required Object count}) => '${count} QSOs in other operations',
+			'callInfo.andMore' => ({required Object count}) => '… and ${count} more',
+			'callInfo.withCall' => ({required Object call}) => 'with ${call}',
 			'settings.title' => 'Settings',
 			'settings.general' => 'General Settings',
 			'settings.language' => 'Language',
@@ -1379,16 +1554,18 @@ extension on Translations {
 			'settings.themeDescription.light' => 'Always in Light Mode',
 			'settings.themeDescription.dark' => 'Always in Dark Mode',
 			'settings.fontScale' => 'Font Scale',
+			'settings.fontScaleOpts.smallestMinusMinus' => 'Smallest--',
+			'settings.fontScaleOpts.smallestMinus' => 'Smallest-',
 			'settings.fontScaleOpts.smallest' => 'Smallest',
 			'settings.fontScaleOpts.smaller' => 'Smaller',
 			'settings.fontScaleOpts.normal' => 'Normal',
 			'settings.fontScaleOpts.larger' => 'Larger',
 			'settings.fontScaleOpts.largest' => 'Largest',
-			'settings.fontScaleDescription' => 'Scales the whole interface — text, controls, and spacing',
+			'settings.fontScaleOpts.largestPlus' => 'Largest+',
+			'settings.fontScaleOpts.largestPlusPlus' => 'Largest++',
 			'settings.distanceUnits' => 'Distance Units',
 			'settings.distanceUnitsOpts.kilometers' => 'Kilometers',
 			'settings.distanceUnitsOpts.miles' => 'Miles',
-			'settings.distanceUnitsDescription' => 'For distances shown on the map',
 			'settings.userInterface' => 'User Interface',
 			'settings.logging.title' => 'Logging',
 			'settings.logging.leftieMode.title' => 'Leftie Mode',
@@ -1410,6 +1587,12 @@ extension on Translations {
 			'settings.logging.jumpAfterRST.title' => 'Jump to next field on RST entry',
 			'settings.logging.jumpAfterRST.descriptionOn' => 'Jump after RST is entered',
 			'settings.logging.jumpAfterRST.descriptionOff' => 'Don\'t jump automatically',
+			'settings.logging.numbersRow.title' => 'Numbers Row',
+			'settings.logging.numbersRow.description' => 'Show a row of number keys above the keyboard while logging',
+			'settings.logging.numbersRowExtra.title' => 'Slash and period key',
+			'settings.logging.numbersRowExtra.description' => 'Adds a contextual key: “/” for callsigns, “.” for numbers',
+			'settings.logging.numbersRowVibrate.title' => 'Vibrate on key press',
+			'settings.logging.numbersRowVibrate.description' => 'Haptic feedback when you tap a number key',
 			'settings.logging.bands' => 'Bands',
 			'settings.logging.modes' => 'Modes',
 			'settings.privacy.title' => 'Privacy',
@@ -1422,7 +1605,7 @@ extension on Translations {
 			'settings.privacy.privacyPolicy' => 'Privacy Policy',
 			'settings.privacy.termsOfService' => 'Terms of Service',
 			'settings.operatorCall' => 'Operator Callsign',
-			'settings.sync.title' => 'Sync Settings',
+			'settings.sync.title' => 'LoFi Cloud Sync',
 			'settings.sync.enable' => 'Enable Sync',
 			'settings.sync.deviceKey' => 'Device Key',
 			'settings.qrz.title' => 'QRZ.com Credentials',

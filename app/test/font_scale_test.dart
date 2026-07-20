@@ -50,10 +50,25 @@ void main() {
       expect(settings.fontScale, FontScale.larger); // index 3
 
       await settings.increaseFontScale();
-      expect(settings.fontScale, FontScale.largest); // index 4
+      expect(settings.fontScale, FontScale.largest);
 
-      // Increase again does nothing
+      // Past Largest the shortcuts keep going into the two shortcut-only
+      // levels — that extra range is the whole point of them being reachable
+      // here but not from the Settings picker.
       await settings.increaseFontScale();
+      expect(settings.fontScale, FontScale.largestPlus);
+
+      await settings.increaseFontScale();
+      expect(settings.fontScale, FontScale.largestPlusPlus);
+
+      // ...and stop at the top.
+      await settings.increaseFontScale();
+      expect(settings.fontScale, FontScale.largestPlusPlus);
+
+      await settings.decreaseFontScale();
+      expect(settings.fontScale, FontScale.largestPlus);
+
+      await settings.decreaseFontScale();
       expect(settings.fontScale, FontScale.largest);
 
       await settings.decreaseFontScale();
@@ -68,9 +83,36 @@ void main() {
       await settings.decreaseFontScale();
       expect(settings.fontScale, FontScale.smallest);
 
-      // Decrease again does nothing
+      // Symmetrically, two shortcut-only levels below Smallest.
       await settings.decreaseFontScale();
-      expect(settings.fontScale, FontScale.smallest);
+      expect(settings.fontScale, FontScale.smallestMinus);
+
+      await settings.decreaseFontScale();
+      expect(settings.fontScale, FontScale.smallestMinusMinus);
+
+      // ...and stop at the bottom.
+      await settings.decreaseFontScale();
+      expect(settings.fontScale, FontScale.smallestMinusMinus);
+    });
+
+    test('only the middle five are selectable; the extremes are shortcut-only', () {
+      expect(
+        FontScale.selectableValues,
+        [FontScale.smallest, FontScale.smaller, FontScale.normal, FontScale.larger, FontScale.largest],
+      );
+      // Ascending order is load-bearing: increase/decrease step by index.
+      final factors = FontScale.values.map((s) => s.scaleFactor).toList();
+      expect(factors, orderedEquals([...factors]..sort()), reason: 'enum must stay in ascending scale order');
+    });
+
+    test('an extended scale annotates the nearest selectable level, not its own row', () {
+      expect(FontScale.largestPlusPlus.nearestSelectable, FontScale.largest);
+      expect(FontScale.largestPlus.nearestSelectable, FontScale.largest);
+      expect(FontScale.smallestMinusMinus.nearestSelectable, FontScale.smallest);
+      expect(FontScale.smallestMinus.nearestSelectable, FontScale.smallest);
+      // A selectable level anchors to itself, so the picker shows it plainly.
+      expect(FontScale.normal.nearestSelectable, FontScale.normal);
+      expect(FontScale.largest.nearestSelectable, FontScale.largest);
     });
 
     testWidgets('UiScale scales the whole subtree: children lay out in size/scale and paint scaled up', (tester) async {
@@ -108,6 +150,52 @@ void main() {
       final rect = tester.getRect(find.byKey(const Key('box')));
       expect(rect.width, 800); // scaled up by 2.0 on screen
       expect(rect.height, 800);
+    });
+
+    testWidgets('UiScale magnifies under LOOSE constraints, not just tight ones', (tester) async {
+      // The regression that broke every scale above Normal: the app root is a
+      // Stack, and a Stack hands non-positioned children LOOSE constraints.
+      // FittedBox only scales up to the constraints it is given, so it
+      // shrink-wrapped instead — the subtree still laid out in the divided
+      // space (the UI reflowed) but was never magnified.
+      //
+      // The asymmetry is why it hid, and why this test checks BOTH directions:
+      // below 1.0 the child is larger than the window and gets clamped, which
+      // looks perfectly correct.
+      tester.view.physicalSize = const Size(800, 800);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
+
+      Future<double> paintedHeightAt(double scale) async {
+        await tester.pumpWidget(
+          MediaQuery(
+            data: const MediaQueryData(size: Size(800, 800)),
+            child: Directionality(
+              textDirection: TextDirection.ltr,
+              // A deliberately loose parent, standing in for the root Stack.
+              child: Align(
+                alignment: Alignment.topLeft,
+                child: UiScale(
+                  scale: scale,
+                  // Aligned, so the box keeps its natural 100pt size instead
+                  // of being stretched to the (divided) viewport by UiScale's
+                  // own sizing SizedBox — otherwise this measures the viewport
+                  // rather than the magnification.
+                  child: const Align(
+                    alignment: Alignment.topLeft,
+                    child: SizedBox(key: Key('box'), width: 100, height: 100),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+        return tester.getRect(find.byKey(const Key('box'))).height;
+      }
+
+      // A 100pt box paints at 100 * scale regardless of how it was constrained.
+      expect(await paintedHeightAt(0.5), closeTo(50, 0.01), reason: 'scaling down already worked');
+      expect(await paintedHeightAt(2.0), closeTo(200, 0.01), reason: 'scaling UP is what was broken');
     });
 
     testWidgets('UiScale at 1.0 is a pass-through', (tester) async {

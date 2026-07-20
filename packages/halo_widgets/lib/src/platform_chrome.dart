@@ -13,6 +13,7 @@ import 'package:flutter/foundation.dart' show TargetPlatform, defaultTargetPlatf
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import 'layout.dart';
 import 'mdi_icons.dart';
 import 'ui_scale.dart';
 
@@ -94,22 +95,37 @@ bool get isWindowedPlatform =>
 bool get isMobilePlatform =>
     !kIsWeb && (defaultTargetPlatform == TargetPlatform.iOS || defaultTargetPlatform == TargetPlatform.android);
 
-/// The app's full self-identification name (.agents/AGENTS.md: "On desktop
-/// versions it identifies itself as 'Ham2K Logger' while on mobile versions
-/// it uses 'Ham2K Portable Logger'") — for places the app names itself to an
-/// external service or file (e.g. a spot's `source` field, an ADIF
-/// `PROGRAMID` header). Distinct from the OS-level window/task-switcher
-/// title (`main.dart`'s "HaLo") or the in-app home-screen heading
-/// (`home.title`/`home.titleDesktop`), which follow their own conventions.
-String get ham2kAppName =>
-    isWindowedPlatform ? 'Ham2K Logger' : 'Ham2K Portable Logger';
+/// The **product name**, tailored per platform so each build reads naturally.
+/// Shown wherever the app names itself in the UI (splash, home header + right
+/// pane, About, onboarding). It stands beneath a HAM2K graphic — which already
+/// carries the brand — so it omits "Ham2K":
+///   macOS → `Mac Logger`, Windows → `Windows Logger`, Linux → `Linux Logger`,
+///   iOS/Android → `Portable Logger`, Web → `Browser Logger`.
+/// See `Ham2kBrandMark` in the app's `views/ham2k_logo.dart`.
+String get ham2kProductName {
+  if (kIsWeb) return 'Browser Logger';
+  return switch (defaultTargetPlatform) {
+    TargetPlatform.macOS => 'Mac Logger',
+    TargetPlatform.windows => 'Windows Logger',
+    TargetPlatform.linux => 'Linux Logger',
+    TargetPlatform.iOS || TargetPlatform.android => 'Portable Logger',
+    _ => 'Logger',
+  };
+}
 
-/// [ham2kAppName] with the "Ham2K" brand name dropped — for places that show
-/// the HAM2K arc wordmark graphic (`assets/images/ham2k-arc.svg`) and need
-/// only the product-name suffix as text beneath it: `Logger` (desktop) or
-/// `Portable Logger` (mobile). See `Ham2kBrandMark` in the app's
-/// `views/ham2k_logo.dart`.
-String get ham2kProductName => isWindowedPlatform ? 'Logger' : 'Portable Logger';
+/// The **full self-identification name** — [ham2kProductName] with the "Ham2K"
+/// brand prefixed, e.g. `Ham2K Mac Logger`. For **human-facing** places the name
+/// stands on its own without a HAM2K graphic — e.g. the About screen's copyable
+/// version text. Distinct from the OS-level window/task-switcher title
+/// (`main.dart`'s "HaLo"). For machine-facing strings use [ham2kMachineName].
+String get ham2kAppName => 'Ham2K $ham2kProductName';
+
+/// The **machine-facing** name — a fixed, platform- and edition-agnostic
+/// `Ham2K Logger`, for strings other software reads: an ADIF `PROGRAMID`, HTTP
+/// headers (the `User-Agent`), a spot's `source`. Deliberately NOT
+/// [ham2kProductName]-tailored, so interop tools always see one stable program
+/// name.
+const String ham2kMachineName = 'Ham2K Logger';
 
 /// `AppBar.leadingWidth` for a plain back button that reserves clearance for
 /// the traffic-light buttons — pair with [macOSAwareBackButton]. Every
@@ -132,6 +148,84 @@ Widget macOSAwareBackButton(BuildContext context, {VoidCallback? onPressed}) => 
             )
           : BackButton(onPressed: onPressed),
     );
+
+/// True while a dimming modal — a `showDialog` dialog or a `showModalPane`
+/// pane — sits on top of the root navigator. The window-chrome mask
+/// ([MacOSTrafficLightMask]) hides itself while this is set: a modal barrier
+/// dims the whole window, and the mask's bright same-as-header rectangle
+/// floating in the top-left corner over that dimmed backdrop reads as a stray
+/// box. The release/onboarding overlays already sit ABOVE the mask, so they
+/// hide it by z-order; dialogs are pushed onto the navigator BELOW it, so they
+/// need this signal instead. Driven by [ModalBarrierRouteObserver], installed
+/// in `MaterialApp.navigatorObservers` at the app root.
+final ValueNotifier<bool> modalBarrierIsVisible = ValueNotifier<bool>(false);
+
+/// Keeps [modalBarrierIsVisible] in sync with the navigator's route stack.
+/// Counts live routes that actually dim the window (a non-transparent
+/// [ModalRoute.barrierColor]) so it stays correct across stacked dialogs;
+/// opaque page routes (no barrier) and transparent-barrier popups (dropdown /
+/// menu overlays) are deliberately ignored — the mask only hides for the
+/// dimming dialogs and panes the design cares about.
+class ModalBarrierRouteObserver extends NavigatorObserver {
+  int _count = 0;
+
+  bool _dims(Route<dynamic>? route) {
+    final color = route is ModalRoute ? route.barrierColor : null;
+    return color != null && color.a > 0;
+  }
+
+  void _bump(int delta) {
+    _count = (_count + delta).clamp(0, 1 << 30);
+    modalBarrierIsVisible.value = _count > 0;
+  }
+
+  @override
+  void didPush(Route<dynamic> route, Route<dynamic>? previousRoute) {
+    if (_dims(route)) _bump(1);
+  }
+
+  @override
+  void didPop(Route<dynamic> route, Route<dynamic>? previousRoute) {
+    if (_dims(route)) _bump(-1);
+  }
+
+  @override
+  void didRemove(Route<dynamic> route, Route<dynamic>? previousRoute) {
+    if (_dims(route)) _bump(-1);
+  }
+
+  @override
+  void didReplace({Route<dynamic>? newRoute, Route<dynamic>? oldRoute}) {
+    if (_dims(oldRoute)) _bump(-1);
+    if (_dims(newRoute)) _bump(1);
+  }
+}
+
+/// Depth of currently-visible blurred-background modals (the app's
+/// `wideModalChrome`, used by the release overlay and the About photo modal).
+/// While it is > 0, [MacOSTrafficLightMask] hides its AppBar-colored gradient
+/// rectangle — otherwise that opaque corner reads as a stray header strip
+/// floating over the modal's blur. Callers bracket a modal with
+/// [enterBlurredModal] / [exitBlurredModal].
+///
+/// The depth is a plain int mutated synchronously, so it never lingers past a
+/// caller's disposal (no cross-test leak); a separate revision notifier drives
+/// the mask rebuild and is bumped a frame later, since touching a notifier
+/// during another subtree's mount/unmount would markNeedsBuild the app-root
+/// mask mid-build.
+int _blurredModalDepth = 0;
+final ValueNotifier<int> _blurredModalRevision = ValueNotifier<int>(0);
+
+/// Marks a blurred-background modal as visible; pair with [exitBlurredModal].
+void enterBlurredModal() => _adjustBlurredModal(1);
+
+/// Marks a blurred-background modal as gone; pair with [enterBlurredModal].
+void exitBlurredModal() => _adjustBlurredModal(-1);
+
+void _adjustBlurredModal(int delta) {
+  _blurredModalDepth += delta;
+  WidgetsBinding.instance.addPostFrameCallback((_) => _blurredModalRevision.value++);
+}
 
 /// A rectangle in the AppBar's own background color, floating over the header's
 /// top-left corner beneath the native traffic lights. Overlaid at the app root
@@ -160,7 +254,7 @@ class MacOSTrafficLightMask extends StatelessWidget {
     // the trailing gap so nothing hard-clips at the mask's edge.
     final opaqueStop = macOSTrafficLightInset / (macOSTrafficLightInset + macOSTrafficLightGap);
 
-    return IgnorePointer(
+    final mask = IgnorePointer(
       child: SizedBox(
         width: clearance,
         height: theme.appBarTheme.toolbarHeight ?? kToolbarHeight,
@@ -175,6 +269,21 @@ class MacOSTrafficLightMask extends StatelessWidget {
           ),
         ),
       ),
+    );
+
+    // Hide the mask while a dimming dialog/pane covers the window
+    // (modalBarrierIsVisible, from ModalBarrierRouteObserver) OR a
+    // blurred-background modal is up (_blurredModalDepth — e.g. the About photo
+    // modal, whose transparent barrier that observer ignores). Either way the
+    // bright same-as-header box would read as a stray rectangle over the
+    // dim/blur. Matches how the release/onboarding overlays (which sit above
+    // the mask) already hide it; nothing animates through this corner behind a
+    // static modal, so dropping the mask there loses nothing.
+    return ListenableBuilder(
+      listenable: Listenable.merge([modalBarrierIsVisible, _blurredModalRevision]),
+      builder: (context, child) =>
+          (modalBarrierIsVisible.value || _blurredModalDepth > 0) ? const SizedBox.shrink() : child!,
+      child: mask,
     );
   }
 }
@@ -240,6 +349,28 @@ double windowsCaptionClearance(BuildContext context) =>
 /// counterpart of the macOS side's leading clearance
 /// ([macOSAwareLeadingWidth]), just on the opposite edge.
 Widget windowsCaptionSpacer(BuildContext context) => SizedBox(width: windowsCaptionClearance(context));
+
+/// The minimum size a resizable desktop window may be shrunk to, in PHYSICAL
+/// pixels (already multiplied by [uiScale]) — pass to `WindowChromeService.
+/// reportMinimumSize`. The width is the S-size layout floor ([minWindowSize],
+/// the smallest width that still lays out as S rather than XS) plus room for
+/// the native window controls that float over the header, so the S content and
+/// the controls never overlap:
+///  - chromeless macOS: the traffic lights, a fixed PHYSICAL size
+///    ([macOSTrafficLightInset] + [macOSTrafficLightGap]), so unscaled;
+///  - chromeless Windows: the Flutter-drawn caption buttons
+///    ([windowsCaptionClearance]'s width), logical, so scaled by [uiScale];
+///  - platforms with a native title bar (Linux): none — the controls live in
+///    their own bar, not over the content.
+/// Height is [minWindowSize] scaled.
+Size desktopMinimumWindowSize(double uiScale) {
+  final double controls = isMacOSChromelessWindow
+      ? macOSTrafficLightInset + macOSTrafficLightGap
+      : isWindowsChromelessWindow
+          ? (3 * windowsCaptionButtonWidth + 8) * uiScale
+          : 0;
+  return Size(minWindowSize.width * uiScale + controls, minWindowSize.height * uiScale);
+}
 
 /// The minimize / maximize-restore / close buttons for the chromeless
 /// Windows window, overlaid at the app root's top-right corner (main.dart)

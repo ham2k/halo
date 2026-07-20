@@ -105,6 +105,48 @@ void main() {
     await drainTimers(tester);
   });
 
+  testWidgets('a re-shown onboarding seeds the callsign and activity toggles from saved settings', (tester) async {
+    // A callsign is saved and SOTA has been enabled (POTA left at its default).
+    // DEVONBOARD re-shows the flow, which must reflect that saved state rather
+    // than resetting to the first-run defaults.
+    final services = await makeServices(prefs: {'profiles': '{"default": {"operatorCall": "KI2D"}}'});
+    await services.settings.setExtensionOverrides({'sota': true});
+    await pumpApp(tester, services);
+
+    services.devOnboardTrigger.trigger();
+    await tester.pumpAndSettle();
+
+    // Welcome → Callsign: the field is prefilled with the saved callsign.
+    await tester.tap(find.text('Continue'));
+    await tester.pumpAndSettle();
+    final callField = tester.widget<TextField>(find.widgetWithText(TextField, "Operator's Callsign"));
+    expect(callField.controller!.text, 'KI2D');
+
+    // Activities: the SOTA toggle reflects the saved override (on).
+    await tester.tap(find.text('Next'));
+    await tester.pumpAndSettle();
+    expect(find.text('Favorite Activities'), findsOneWidget);
+    final sota = tester.widget<SwitchListTile>(find.widgetWithText(SwitchListTile, 'Summits On The Air'));
+    expect(sota.value, isTrue);
+
+    await drainTimers(tester);
+  });
+
+  test('applyOnboardAsSpec (ONBOARD_AS) sets the callsign and enables the listed activities', () async {
+    final services = await makeServices();
+    await applyOnboardAsSpec(services, 'ki2d, pota , sota');
+    expect(services.settings.activeProfile.operatorCall, 'KI2D');
+    expect(services.settings.defaultProfileCallsignDefined, isTrue);
+    expect(services.settings.extensionOverrides, {'pota': true, 'sota': true});
+  });
+
+  test('applyOnboardAsSpec with only a callsign enables no activities', () async {
+    final services = await makeServices();
+    await applyOnboardAsSpec(services, 'KI2D');
+    expect(services.settings.activeProfile.operatorCall, 'KI2D');
+    expect(services.settings.extensionOverrides, isEmpty);
+  });
+
   testWidgets('Skip marks the callsign as explicitly empty and finishes', (tester) async {
     final services = await makeServices();
     await pumpApp(tester, services);

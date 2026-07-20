@@ -12,7 +12,8 @@
 // mapping logic and anyone troubleshooting stale/missing lookup data.
 // SEED fills the current log with generated QSOs for exercising list/
 // scoring/map UI against realistic data (ported from app-polo's
-// DebuggingCommands). All are just `command` hooks like radio-commands' —
+// DebuggingCommands). EXP toggles experimental features from
+// app/experiments.yaml. All are just `command` hooks like radio-commands' —
 // see docs/extensions/hooks.md.
 
 import { defineExtension, hooks } from "@ham2k/halo-extension-sdk"
@@ -58,8 +59,8 @@ function pickNext<T>(list: T[], lastIndex: { value: number }): T {
 
 const DEV_NOTICES = [
   { icon: 'party-popper', title: 'Random notice', text: 'This is a **random** dev notice, generated to test the status bar.' },
-  { icon: 'bug-outline', title: 'Heads up', text: "Here's another sample notice with *different* text, to check variety." },
-  { icon: 'flask-outline', title: 'Experiment running', text: 'A third possible dev notice — multi-line bodies work too.\n\nLike this second line.' },
+  { icon: 'bug', title: 'Heads up', text: "Here's another sample notice with *different* text, to check variety." },
+  { icon: 'flask', title: 'Experiment running', text: 'A third possible dev notice — multi-line bodies work too.\n\nLike this second line.' },
 ]
 const lastNoticeIndex = { value: -1 }
 
@@ -77,7 +78,7 @@ const DevNoticeCommand = {
 
 const DEV_STATUSES = [
   { icon: 'radio-tower', text: 'Scanning band…' },
-  { icon: 'satellite-uplink-outline', text: 'Waiting for spots…' },
+  { icon: 'satellite-uplink', text: 'Waiting for spots…' },
   { icon: 'weather-lightning', text: 'Checking propagation…' },
 ]
 const lastStatusIndex = { value: -1 }
@@ -305,6 +306,30 @@ async function lookupGuessFor(
   }
 }
 
+// EXP <key-or-alias> toggles an experimental feature. The catalog
+// (app/experiments.yaml) and the stored state both live app-side, so this
+// hook only parses; the app resolves the token and reports the outcome
+// (enabled/disabled/unknown) itself — hence no `confirm` here.
+const EXP_MATCH = /^EXP(?:\s+(.+))?$/i
+
+const ExpCommand = {
+  async interpret({ input }: { input: string }, _ctx: HookContext): Promise<CommandInterpretation | null> {
+    const match = EXP_MATCH.exec(input.trim())
+    if (!match) return null
+    const token = match[1]?.trim()
+    if (!token) return { expectsParams: true } // bare "EXP" — recognized, not complete yet
+    // Still a recognized command with extra words — error out rather than
+    // silently demoting "EXP LAYOUTS ON" back to callsign text (the field
+    // invited free text via expectsParams, so Enter must not log it).
+    if (/\s/.test(token)) return { error: 'EXP takes a single experiment name' }
+
+    return {
+      describe: `Toggle experiment ${token.toUpperCase()}?`,
+      commands: [{ toggleExperiment: { token } }],
+    }
+  },
+}
+
 function shuffled(list: string[]): string[] {
   const copy = [...list]
   for (let i = copy.length - 1; i > 0; i--) {
@@ -319,7 +344,7 @@ defineExtension({
   name: 'Developer Commands',
   version: '0.0.1',
   description:
-    'Call-field shortcuts for developer tools: DEVMODE, DEVNOTICE, DEVSTATUS, DEVPROGRESS, DEVSPLASH, RELOAD, SEED',
+    'Call-field shortcuts for developer tools: DEVMODE, DEVNOTICE, DEVSTATUS, DEVPROGRESS, DEVSPLASH, RELOAD, SEED, EXP',
   onActivation({ registerHook }) {
     registerHook('command', { key: 'dev-commands-devmode', hook: DevModeCommand, priority: 100 })
     registerHook('command', { key: 'dev-commands-devnotice', hook: DevNoticeCommand, priority: 100 })
@@ -329,5 +354,6 @@ defineExtension({
     registerHook('command', { key: 'dev-commands-devonboard', hook: DevOnboardCommand, priority: 100 })
     registerHook('command', { key: 'dev-commands-reload', hook: ReloadCommand, priority: 100 })
     registerHook('command', { key: 'dev-commands-seed', hook: SeedCommand, priority: 100 })
+    registerHook('command', { key: 'dev-commands-exp', hook: ExpCommand, priority: 100 })
   },
 })

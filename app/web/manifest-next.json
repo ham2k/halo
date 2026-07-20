@@ -1,0 +1,17 @@
+{
+    "name": "Ham2K Browser Logger Next",
+    "short_name": "Browser Logger Next",
+    "start_url": ".",
+    "display": "standalone",
+    "background_color": "#FBFCFE",
+    "theme_color": "#006783",
+    "description": "Ham2K Logger — a modern amateur radio logging app.",
+    "orientation": "portrait-primary",
+    "prefer_related_applications": false,
+    "icons": [
+        { "src": "icons/Icon-192-next.png", "sizes": "192x192", "type": "image/png" },
+        { "src": "icons/Icon-512-next.png", "sizes": "512x512", "type": "image/png" },
+        { "src": "icons/Icon-maskable-192-next.png", "sizes": "192x192", "type": "image/png", "purpose": "maskable" },
+        { "src": "icons/Icon-maskable-512-next.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+    ]
+}

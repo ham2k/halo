@@ -3,9 +3,7 @@
 //
 // Core settings live in per-group JSON maps (`settings.general`,
 // `settings.logging`, `settings.privacy`) that back the declarative
-// settings registry. The migration from the original scalar prefs must be
-// loss-free — a user's theme or logging toggles surviving an upgrade is
-// the whole point — and unset values must fall back to the documented
+// settings registry. Unset values must fall back to the documented
 // defaults (app-polo parity for the new logging/privacy keys).
 
 import 'package:flutter/material.dart';
@@ -115,72 +113,6 @@ void main() {
       // NOT part of what getSettings exposes to extensions.
       await settings.updateSettingsGroup('extension_qrz', {'foo': 1});
       expect(settings.extensionSettingsGroups().keys, ['extension_qrz']);
-    });
-
-    test('legacy onboarding enabled flags fold into overrides once', () async {
-      SharedPreferences.setMockInitialValues({
-        'profiles': '{"default": {"operatorCall": "KI2D"}}',
-        'settings.extension_pota': '{"enabled": true, "other": 1}',
-        'settings.extension_sota': '{"enabled": false}',
-      });
-      final settings = await SettingsService.load();
-
-      expect(settings.extensionOverrides, {'pota': true, 'sota': false});
-      // The stale flags are dropped; unrelated keys survive.
-      expect(settings.settingsGroup('extension_pota'), {'other': 1});
-      expect(settings.settingsGroup('extension_sota'), isEmpty);
-    });
-
-    test('an existing override wins over the legacy flag', () async {
-      SharedPreferences.setMockInitialValues({
-        'profiles': '{"default": {"operatorCall": "KI2D"}}',
-        'extensionOverrides': '{"pota": false}',
-        'settings.extension_pota': '{"enabled": true}',
-      });
-      final settings = await SettingsService.load();
-      expect(settings.extensionOverrides['pota'], isFalse);
-      expect(settings.settingsGroup('extension_pota').containsKey('enabled'), isFalse);
-    });
-  });
-
-  group('scalar-to-group migration', () {
-    test('load() moves legacy scalar prefs into their groups and removes them', () async {
-      SharedPreferences.setMockInitialValues({
-        'themeMode': 'dark',
-        'locale': 'es',
-        'fontScale': 'larger',
-        'distanceUnits': 'kilometers',
-        'showRSTFields': false,
-        'showQsoNumbers': false,
-      });
-      final settings = await SettingsService.load();
-
-      expect(settings.themeMode, ThemeMode.dark);
-      expect(settings.locale, 'es');
-      expect(settings.fontScale, FontScale.larger);
-      expect(settings.distanceUnits, DistanceUnits.kilometers);
-      expect(settings.showRSTFields, isFalse);
-      expect(settings.showQsoNumbers, isFalse);
-      for (final legacy in ['themeMode', 'locale', 'fontScale', 'distanceUnits', 'showRSTFields', 'showQsoNumbers']) {
-        expect(settings.prefs.containsKey(legacy), isFalse, reason: '$legacy should be removed');
-      }
-    });
-
-    test('existing group values win over legacy scalars', () async {
-      SharedPreferences.setMockInitialValues({
-        'themeMode': 'light',
-        'settings.general': '{"themeMode": "dark"}',
-      });
-      final settings = await SettingsService.load();
-      expect(settings.themeMode, ThemeMode.dark);
-      expect(settings.prefs.containsKey('themeMode'), isFalse);
-    });
-
-    test('migration is a no-op on a fresh install', () async {
-      SharedPreferences.setMockInitialValues({});
-      final settings = await SettingsService.load();
-      expect(settings.prefs.getString('settings.general'), isNull);
-      expect(settings.prefs.getString('settings.logging'), isNull);
     });
   });
 }

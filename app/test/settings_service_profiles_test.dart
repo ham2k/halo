@@ -3,10 +3,8 @@
 //
 // Callsign profiles back the app's operator identity: everything reads
 // `activeProfile.operatorCall`, and until multi-profile support lands the
-// active profile is always the `default` one. The legacy scalar
-// `operatorCall` pref must migrate into the default profile at load so an
-// upgrade never loses the user's callsign (sync registers the device's
-// account under it).
+// active profile is always the `default` one (sync registers the device's
+// account under that callsign).
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ham2k_logger/services/settings_service.dart';
@@ -57,38 +55,6 @@ void main() {
       // And the store self-heals on the next write.
       await settings.setProfileOperatorCall(SettingsService.defaultProfileId, 'KI2D');
       expect(settings.activeProfile.operatorCall, 'KI2D');
-    });
-  });
-
-  group('legacy operatorCall migration', () {
-    test('load() moves the scalar pref into the default profile', () async {
-      SharedPreferences.setMockInitialValues({'operatorCall': 'KI2D'});
-      final settings = await SettingsService.load();
-
-      expect(settings.activeProfile.operatorCall, 'KI2D');
-      expect(settings.prefs.getString('operatorCall'), isNull);
-    });
-
-    test('an already-populated profile wins over the legacy pref', () async {
-      SharedPreferences.setMockInitialValues({
-        'operatorCall': 'OLD1AA',
-        'profiles': '{"default": {"operatorCall": "KI2D"}}',
-      });
-      final settings = await SettingsService.load();
-
-      expect(settings.activeProfile.operatorCall, 'KI2D');
-      expect(settings.prefs.getString('operatorCall'), isNull);
-    });
-
-    test('an empty legacy pref migrates as a defined-empty callsign', () async {
-      SharedPreferences.setMockInitialValues({'operatorCall': ''});
-      final settings = await SettingsService.load();
-
-      expect(settings.activeProfile.operatorCall, '');
-      expect(settings.prefs.getString('operatorCall'), isNull);
-      // The upgrading user HAD answered (with empty) — first-run onboarding
-      // must not greet them.
-      expect(settings.defaultProfileCallsignDefined, isTrue);
     });
   });
 }

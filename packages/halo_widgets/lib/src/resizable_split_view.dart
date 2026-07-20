@@ -418,7 +418,14 @@ class _DividerHandleState extends State<_DividerHandle> {
           width: ResizableSplitView.dividerWidth,
           child: ColoredBox(
             color: Colors.black.withValues(alpha: ResizableSplitView._platformViewHitWashAlpha),
-            child: Center(
+            // Centre the grab dots in the VISIBLE strip, not the full divider
+            // height: the split now runs full height behind the on-screen
+            // keyboard (panes paint their own bottom), so reserve that inset
+            // to keep the dots above it. Zero where the Scaffold still resizes
+            // for the keyboard (Settings) — the body is already visible-height.
+            child: Padding(
+              padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(context).bottom),
+              child: Center(
               // Subdued until the pointer is over the strip (or dragging):
               // the dots are an invitation, not furniture. Light mode dims
               // them via opacity; dark mode instead rests them at pure
@@ -453,6 +460,7 @@ class _DividerHandleState extends State<_DividerHandle> {
                     ),
                   );
                 },
+              ),
               ),
             ),
           ),

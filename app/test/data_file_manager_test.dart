@@ -264,6 +264,72 @@ REF-002,Summit Two,45.56,-122.78
     expect(matched, 1);
   });
 
+  test('DataFileManager: listDataFiles reports definitions sorted by name with last-download time', () async {
+    final host = MockExtensionHost({
+      'dataFile:*:getDefinition': [
+        {
+          'key': 'zeta',
+          'ok': true,
+          'value': {'key': 'zeta', 'name': 'Zeta Data', 'description': 'z', 'maxAgeInDays': 30, 'category': 'zeta'},
+        },
+        {
+          'key': 'alpha',
+          'ok': true,
+          'value': {'key': 'alpha', 'name': 'Alpha Data', 'description': 'a', 'maxAgeInDays': 7, 'category': 'alpha'},
+        },
+        // Dropped: not ok.
+        {'key': 'broken', 'ok': false, 'value': null},
+      ],
+    });
+    final m = DataFileManager(lookups: lookups, extensions: MockExtensionService(host), prefs: prefs);
+
+    // Only 'alpha' has ever been downloaded.
+    await prefs.setInt('data_file_updated_alpha', 5000);
+
+    final files = await m.listDataFiles();
+    expect(files.map((f) => f.key), ['alpha', 'zeta'], reason: 'sorted by name, malformed dropped');
+    expect(files[0].name, 'Alpha Data');
+    expect(files[0].updatedAt, DateTime.fromMillisecondsSinceEpoch(5000));
+    expect(files[1].name, 'Zeta Data');
+    expect(files[1].updatedAt, isNull, reason: 'never downloaded');
+  });
+
+  test('DataFileManager: refreshDataFile force-fetches one file, stamps its time, and reports unknown keys', () async {
+    final host = MockExtensionHost({
+      'dataFile:*:getDefinition': [
+        {
+          'key': 'refresh-csv',
+          'ok': true,
+          'value': {
+            'key': 'refresh-csv',
+            'name': 'Refreshable',
+            'url': 'https://example.com/r.csv',
+            'maxAgeInDays': 10,
+            'fetchType': 'csv',
+            'category': 'refresh_category',
+            'csvOptions': {'hasHeaders': true, 'delimiter': ','},
+          },
+        },
+      ],
+      'dataFile:refresh-csv:mapCsvBatch': (args) => [
+            for (final r in (args['rows'] as List)) {'key': (r as Map)['ref'], 'name': r['name']},
+          ],
+    });
+    final m = TestDataFileManager(lookups: lookups, extensions: MockExtensionService(host), prefs: prefs)
+      ..mockDownloadBody = 'ref,name\nR-1,Refreshed\n';
+
+    final stampedAt = await m.refreshDataFile('refresh-csv');
+    expect(stampedAt, isNotNull, reason: 'returns the stamped last-download time');
+    expect((await lookups.getLookup('refresh_category', 'R-1'))?.name, 'Refreshed');
+    expect(
+      prefs.getInt('data_file_updated_refresh-csv'),
+      stampedAt!.millisecondsSinceEpoch,
+      reason: 'returned time matches what was persisted',
+    );
+
+    expect(await m.refreshDataFile('does-not-exist'), isNull, reason: 'unknown key');
+  });
+
   group('stale extension data purge', () {
     // Syncs a CSV data file owned by extension `pota` (category `pota`), so
     // ownership + lookup rows exist to purge. Returns the manager holding

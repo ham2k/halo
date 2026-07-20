@@ -16,8 +16,10 @@ add_executable(${BINARY_NAME}
 # that need different build settings.
 apply_standard_settings(${BINARY_NAME})
 
-# Add preprocessor definitions for the application ID.
+# Add preprocessor definitions for the application ID and per-edition product
+# name (docs/releases.md §2.6; both set in the top-level CMakeLists.txt).
 add_definitions(-DAPPLICATION_ID="${APPLICATION_ID}")
+add_definitions(-DHALO_PRODUCT_NAME="${HALO_PRODUCT_NAME}")
 
 # Add dependency libraries. Add any application-specific dependencies here.
 target_link_libraries(${BINARY_NAME} PRIVATE flutter)

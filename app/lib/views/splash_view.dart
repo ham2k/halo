@@ -1,22 +1,30 @@
 // Copyright ©️ 2026 Sebastian Delmont <sd@ham2k.com>
 // SPDX-License-Identifier: MPL-2.0
 //
-// Shown immediately on launch, before `bootstrap()`'s async services are
-// ready (see main.dart's `_BootGate`) — so it can't depend on SettingsService
-// (theme mode, font scale) or anything else bootstrap produces. Background
-// matches the empty-operations-list state it hands off to (surfaceContainer-
-// Highest) rather than a fixed color, so there's no visible color change if
-// bootstrap() resolves straight into an empty list. Follows the system's
-// light/dark setting (not the in-app override, which lives in
-// SettingsService and isn't available yet) via PlatformDispatcher directly.
-// Also matches web/index.html's `#startup-splash`, which follows
-// `prefers-color-scheme` for the same reason.
+// The REAL startup splash — the first Flutter frame, shown immediately on
+// launch before `bootstrap()`'s async services are ready (see main.dart's
+// `_BootGate`). NOT to be confused with the "version splash" modal
+// (release_overlay.dart's photo/wordmark overlay: brand mark + credits +
+// version, shown on release notes and from the About logo) — this one is
+// deliberately minimal and carries NO version info. See docs/design/
+// user-interface.md "Splash screens".
+//
+// It can't depend on SettingsService (theme mode, font scale) or anything else
+// bootstrap produces. Background matches the empty-operations-list state it
+// hands off to (surfaceContainerHighest) rather than a fixed color, so there's
+// no visible color change if bootstrap() resolves straight into an empty list.
+// Follows the system's light/dark setting (not the in-app override, which lives
+// in SettingsService and isn't available yet) via PlatformDispatcher directly.
+// Its logo, background, and centering mirror web/index.html's `#startup-splash`
+// pixel-for-pixel so the HTML→Flutter handoff is a visual no-op.
 
 import 'dart:ui' show PlatformDispatcher;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:halo_widgets/halo_widgets.dart';
+
+import 'ham2k_logo.dart';
 
 class SplashScreen extends StatelessWidget {
   const SplashScreen({super.key});
@@ -29,13 +37,26 @@ class SplashScreen extends StatelessWidget {
     // than a hardcoded literal) means there's one fewer copy of it to keep
     // in sync with halo_widgets/theme.dart.
     final isDark = PlatformDispatcher.instance.platformBrightness == Brightness.dark;
+    final theme = buildHaLoTheme(isDark ? Brightness.dark : Brightness.light);
     return ColoredBox(
-      color: buildHaLoTheme(isDark ? Brightness.dark : Brightness.light).colorScheme.surfaceContainerHighest,
+      color: theme.colorScheme.surfaceContainerHighest,
+      // Mirror web/index.html's `#startup-splash` exactly: the per-edition Ham2K
+      // square logo dead-centered, with the loading spinner's footprint reserved
+      // below as an empty placeholder (Flutter is already painting, so there's
+      // no spinner). The 64px above the logo balances that footprint — matching
+      // the HTML's `img { margin-top: 64px }` — so the logo lands at the same
+      // point in both. The logo art is the build edition's (Dev/Next/Regular);
+      // no version info appears here. The web splash swaps to the matching
+      // per-edition art via scripts/apply-web-edition.sh.
       child: Center(
-        child: SizedBox(
-          width: 180,
-          height: 180,
-          child: SvgPicture.asset('assets/images/ham2k-wordmark.svg'),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const SizedBox(height: 64),
+            SvgPicture.asset(ham2kSquareLogoAsset, width: 180, height: 180),
+            const SizedBox(height: 32), // the HTML spinner's margin-top
+            const SizedBox(height: 32), // placeholder: the HTML spinner's height
+          ],
         ),
       ),
     );
@@ -60,7 +81,7 @@ class BootErrorScreen extends StatelessWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(Icons.error_outline, color: Colors.white, size: 48),
+              const Icon(Icons.error, color: Colors.white, size: 48),
               const SizedBox(height: 16),
               const Text(
                 'Ham2K Logger failed to start',

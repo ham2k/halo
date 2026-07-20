@@ -1011,6 +1011,54 @@ var boundFetch = null
     expect(blocked, contains('declared domains'));
   });
 
+  group('resolveFetchUserAgent', () {
+    const canonical = 'Ham2K Logger/26.8.0 (macos next 1)';
+    const custom = {'User-Agent': 'CustomBot/9'};
+
+    test('stamps the canonical UA when the extension set none', () {
+      expect(
+        resolveFetchUserAgent(canonical: canonical, extensionKey: 'pota', overrides: const {}, callerHeaders: const {}),
+        canonical,
+      );
+    });
+
+    test('overrides a non-whitelisted extension that set its own UA', () {
+      expect(
+        resolveFetchUserAgent(canonical: canonical, extensionKey: 'pota', overrides: const {}, callerHeaders: custom),
+        canonical,
+      );
+    });
+
+    test('keeps a whitelisted extension\'s own UA', () {
+      expect(
+        resolveFetchUserAgent(canonical: canonical, extensionKey: 'sync-x', overrides: const {'sync-x'}, callerHeaders: custom),
+        'CustomBot/9',
+      );
+    });
+
+    test('matches the whitelisted UA header case-insensitively', () {
+      expect(
+        resolveFetchUserAgent(
+            canonical: canonical, extensionKey: 'sync-x', overrides: const {'sync-x'}, callerHeaders: const {'user-agent': 'CustomBot/9'}),
+        'CustomBot/9',
+      );
+    });
+
+    test('still stamps canonical for a whitelisted extension that set none', () {
+      expect(
+        resolveFetchUserAgent(canonical: canonical, extensionKey: 'sync-x', overrides: const {'sync-x'}, callerHeaders: const {}),
+        canonical,
+      );
+    });
+
+    test('falls back to the caller UA when no canonical is configured', () {
+      expect(
+        resolveFetchUserAgent(canonical: null, extensionKey: 'pota', overrides: const {}, callerHeaders: custom),
+        'CustomBot/9',
+      );
+    });
+  });
+
   test('hook context (settings) is cached across an invokeAll fan-out and drops on invalidation', () async {
     if (!kernelFile.existsSync()) {
       markTestSkipped('kernel.js not built — run `npm run build` in extensions/ first');

@@ -1,6 +1,10 @@
 #include? "Pods/Target Support Files/Pods-Runner/Pods-Runner.release.xcconfig"
 #include "Generated.xcconfig"
 
-// Local, gitignored signing overrides (DEVELOPMENT_TEAM) — see
-// Local.xcconfig.sample and README.md "Building locally on macOS".
+// Edition seam (HALO_EDITION → names + bundle id). See this file for details.
+#include "../Runner/Configs/AppInfo.xcconfig"
+
+// Local, gitignored signing overrides (DEVELOPMENT_TEAM) and the per-build
+// HALO_EDITION override for official builds — see Local.xcconfig.sample and
+// README.md "Building locally on macOS".
 #include? "Local.xcconfig"

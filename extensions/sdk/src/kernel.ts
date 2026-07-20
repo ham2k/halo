@@ -148,6 +148,7 @@ const IDENTITY_HOST_METHODS = new Set([
   'kvSet',
   'getAccount',
   'setAccountSession',
+  'showMessage',
   'statusBarSetMessage',
   'statusBarSetProgress',
   'statusBarClear',
@@ -417,9 +418,11 @@ const kernel = {
               key: record.key,
               extensionKey: record.extensionKey,
               label: record.hook.label ?? record.key,
+              description: record.hook.description ?? null,
               kvKey: record.hook.kvKey ?? record.key ?? record.extensionKey,
               fields: record.hook.fields ?? [],
               oauth2: record.hook.oauth2 ?? null,
+              synchronizable: record.hook.synchronizable ?? false,
             }
           }
         })

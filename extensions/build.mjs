@@ -81,6 +81,11 @@ function sharedLibsPlugin(extensionDependencies = {}) {
 // any host not listed. Entries are exact hostnames; '*.example.com' matches
 // subdomains; a lone '*' means any https host (only ham2k-lofi, whose sync
 // server is user-configurable). No entry (or []) means no network at all.
+// `allowUserAgentOverride: true` is a second network capability: the host
+// stamps HaLo's canonical User-Agent on every host.fetch and normally
+// overrides any the extension set, but a whitelisted extension keeps its own
+// (see docs/design/network.md). Omit it (the default) unless a third-party
+// service demands a specific UA — consistency is the goal.
 // Toggleable extensions additionally carry USER-FACING metadata (`name`,
 // `category`, `enabledByDefault`, optional `description`) that index.json
 // surfaces to the Dart host. `name`/`description` deliberately duplicate the
@@ -110,7 +115,8 @@ const bundles = [
   { key: 'pota', entry: 'activities/pota/src/index.ts', kind: 'extension', domains: ['api.pota.app', 'pota.app'],
     name: 'Parks on the Air', category: 'activity', enabledByDefault: true, icon: 'pine-tree',
     description: 'Park references, spots, and activation logging' },
-  { key: 'sota', entry: 'activities/sota/src/index.ts', kind: 'extension', domains: ['api2.sota.org.uk'],
+  { key: 'sota', entry: 'activities/sota/src/index.ts', kind: 'extension',
+    domains: ['api2.sota.org.uk', 'api-db2.sota.org.uk', 'sso.sota.org.uk'],
     name: 'Summits on the Air', category: 'activity', enabledByDefault: true, icon: 'image-filter-hdr',
     description: 'Summit references, spots, and activation logging' },
   { key: 'ham2k-lofi', entry: 'sync/ham2k-lofi/src/index.ts', kind: 'extension', domains: ['*'] },
@@ -164,6 +170,7 @@ await writeFile(
           key: b.key,
           file: `${b.key}.js`,
           domains: b.domains ?? [],
+          ...(b.allowUserAgentOverride ? { allowUserAgentOverride: true } : {}),
           core: !b.category,
           ...(b.category
             ? {

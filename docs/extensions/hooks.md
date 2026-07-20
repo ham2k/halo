@@ -252,7 +252,7 @@ interface CommandHook {
 // CommandInterpretation: {expectsParams?, mixedCase?, error?, describe?, confirm?, commands?: CommandAction[]}
 // CommandAction (closed set): {setVfo?, updateQso?, addQso?, sendSpots?,
 //   syncAll?, updateSettings?, setCallField?, reloadDataFiles?, devNotice?,
-//   devStatus?, devProgress?}
+//   devStatus?, devProgress?, toggleExperiment?}
 ```
 
 Each hook does its own matching internally and returns `null` for "not mine"
@@ -311,7 +311,11 @@ a suffix letter; RSTs lean heavily toward 55/57/59; each generated QSO gets
 the lookup service's offline `their.guess` decoration. The placement rule
 needs the existing log: SEED reads it through `ctx.getQsos`, using the
 `uuid` the logging panel folds into the `operation` map it passes to
-`interpret`), `annotation-commands` (ham2k/app-halo-dist#64, ported from
+`interpret`; EXP toggles an experimental feature via the `toggleExperiment`
+action field — the hook only parses "EXP <key-or-alias>", and the app
+resolves the token against `app/experiments.yaml` and reports the outcome,
+since the catalog and the stored per-experiment state both live app-side),
+`annotation-commands` (ham2k/app-halo-dist#64, ported from
 app-polo's AnnotationCommands: NOTE/TODO `<text>`, SOLAR, and WEATHER each
 add an annotation row to the log — an event pseudo-QSO, `band: 'event'`,
 via `addQso`, rendered as a yellow row by the QSO list. SOLAR fetches
@@ -415,6 +419,25 @@ Account connections (QRZ, LoFi): credential fields, `testCredentials`, and
 optional OAuth2, surfaced in `SettingsView`'s Accounts panel via
 `ExtensionService.getAccounts`/`testCredentials`. Credentials live in the
 platform keychain, keyed by the account's `kvKey`. Implemented by: `qrz`.
+
+**`synchronizable`** (optional, default `false`) — on Apple platforms (macOS
+and iOS), when `true` the account's stored credentials and session sync across
+the user's devices via iCloud Keychain (`kSecAttrSynchronizable`); when `false`
+they stay device-local. No effect on other platforms. Set it `true` only for
+account-level logins that are genuinely the same on every device — QRZ.com sets
+it, since one QRZ login is shared across a user's installs. **Never** set it for
+per-device identifiers or bearer tokens: the LoFi sync **device key** is a
+per-install identifier and deliberately stays device-local (it isn't even an
+`account` hook — it lives in `SettingsService`, non-synchronizable, and must
+stay that way, or two devices would present as the same sync client).
+
+The flag must be consistent for a `kvKey` across its whole lifetime: a
+synchronizable and a non-synchronizable keychain item are *distinct entries*,
+so the host resolves each account's flag once at runtime start
+(`ExtensionService._accountSynchronizable`) and applies it to every
+read/write/delete. Flipping the flag on an account that already has stored
+credentials makes the old entry invisible — the credentials must be re-entered
+once (there is no automatic migration between the two entries).
 
 ## ✅ `dataFile` — offline reference datasets
 

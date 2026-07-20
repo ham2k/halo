@@ -17,8 +17,11 @@ import 'package:halo_widgets/halo_widgets.dart';
 import '../config/release_notes.dart';
 import '../i18n/strings.g.dart';
 import 'ham2k_logo.dart';
+import 'version_label.dart';
 
-const _creditsAndVersionShadows = [Shadow(color: Colors.black54, offset: Offset(1, 2), blurRadius: 4)];
+// The shared photo-overlay drop shadow (single source of truth in ham2k_logo.dart,
+// so the credits/version labels and the edition badge always match).
+const _creditsAndVersionShadows = kOverlayDropShadows;
 // Fixed regardless of the app's theme mode — halo_widgets/theme.dart's light
 // ColorScheme.surface/primaryContainer values, hardcoded here rather than
 // read from Theme.of(context) so this panel never picks up dark mode.
@@ -309,7 +312,7 @@ Widget wideModalChrome({required BuildContext context, required Widget child, re
   final windowSize = MediaQuery.sizeOf(context);
   final paneWidth = windowSize.width * 0.7;
   final maxPaneHeight = math.max(0.0, windowSize.height - 48);
-  return BackdropFilter(
+  final Widget content = BackdropFilter(
     // Blurs whatever's painted just behind this in the same compositing
     // layer (the home screen, or — for the About modal — the settings pane).
     filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
@@ -328,22 +331,65 @@ Widget wideModalChrome({required BuildContext context, required Widget child, re
           child: SizedBox(
             width: paneWidth,
             height: maxPaneHeight,
-            // Same elevated-card convention as ModalPaneRoute's dialog
-            // presentation (modal_pane.dart) — Material's elevation gives a
-            // drop shadow that follows the rounded corners, which a plain
-            // ClipRRect (no shadow of its own) didn't have.
-            child: Material(
-              elevation: 12,
-              shadowColor: Colors.black,
-              borderRadius: BorderRadius.circular(28),
-              clipBehavior: Clip.antiAlias,
-              child: child,
+            // A sharper, darker glow than Material's soft ambient elevation
+            // shadow: a symmetric (offset-zero) dark halo hugging the card's
+            // rounded corners, so it reads crisply against the blurred
+            // backdrop. The Material below carries no elevation of its own —
+            // it's just the rounded, clipped surface for [child].
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(28),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.6),
+                    blurRadius: 22,
+                    spreadRadius: 2,
+                  ),
+                ],
+              ),
+              child: Material(
+                elevation: 0,
+                borderRadius: BorderRadius.circular(28),
+                clipBehavior: Clip.antiAlias,
+                child: child,
+              ),
             ),
           ),
         ),
       ),
     ),
   );
+  return _BlurredModalActiveScope(child: content);
+}
+
+/// A blurred-background modal (built by [wideModalChrome]) brackets itself
+/// with [enterBlurredModal]/[exitBlurredModal] for as long as it's mounted, so
+/// the macOS traffic-light mask hides for its duration. The depth is updated
+/// synchronously here; the mask's own rebuild is deferred a frame inside those
+/// helpers (touching the notifier mid-build would markNeedsBuild the mask).
+class _BlurredModalActiveScope extends StatefulWidget {
+  final Widget child;
+  const _BlurredModalActiveScope({required this.child});
+
+  @override
+  State<_BlurredModalActiveScope> createState() => _BlurredModalActiveScopeState();
+}
+
+class _BlurredModalActiveScopeState extends State<_BlurredModalActiveScope> {
+  @override
+  void initState() {
+    super.initState();
+    enterBlurredModal();
+  }
+
+  @override
+  void dispose() {
+    exitBlurredModal();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => widget.child;
 }
 
 /// The About screen's wordmark, tapped, opens this — same blurred-backdrop
@@ -422,10 +468,11 @@ class _PhotoWordmarkContent extends StatelessWidget {
                     const Center(child: Ham2kBrandMark(logoWidth: 180, showShadow: true)),
                     const SizedBox(height: 8),
                     overlayCreditsText(context.t.startScreen.credits, creditsStyle),
-                    if (release != null) ...[
-                      const SizedBox(height: 4),
-                      Text(release!.name, textAlign: TextAlign.center, style: versionLabelStyle),
-                    ],
+                    const SizedBox(height: 4),
+                    // The full release name (kVersionName), without the edition
+                    // qualifier (shown by the brand mark's badge) — matching the
+                    // splash and onboarding.
+                    VersionLabel(nameOnly: true, style: versionLabelStyle),
                   ],
                 ),
               ),

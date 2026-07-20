@@ -402,7 +402,7 @@ class _ActivitiesPaneState extends State<ActivitiesPane> {
                     subtitle: (ref['name'] as String?) != null ? Text(ref['name'] as String) : null,
                     onTap: () => _editRef(ref),
                     trailing: IconButton(
-                      icon: const Icon(Icons.delete_outline),
+                      icon: const Icon(Icons.delete),
                       tooltip: t.removeActivity,
                       onPressed: () => _deleteRef(ref),
                     ),

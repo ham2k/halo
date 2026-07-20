@@ -9,7 +9,7 @@
 //   dart run bin/compute_build_id.dart \
 //     --version-year=26 --version-month=8 --patch=0 \
 //     --build-month=7 --build-day=29 --sequence=1 \
-//     [--pre-release=N] [--pre-release-patch=N]
+//     [--pre-release=N] [--pre-release-label=pre] [--pre-release-patch=N]
 
 import 'dart:convert';
 import 'dart:io';
@@ -32,6 +32,7 @@ void main(List<String> arguments) {
     main: MainVersion(year: require('version-year'), month: require('version-month')),
     patch: require('patch'),
     preRelease: args['pre-release'] == null ? null : int.parse(args['pre-release']!),
+    preReleaseLabel: args['pre-release-label'] ?? 'pre',
     preReleasePatch: args['pre-release-patch'] == null
         ? null
         : int.parse(args['pre-release-patch']!),

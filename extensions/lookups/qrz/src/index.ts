@@ -21,8 +21,13 @@ defineExtension({
     registerHook('lookup', { hook: { lookupCall }, priority: 99 })
     registerHook('account', {
       hook: {
-        label: 'QRZ.com Callsign Lookups',
+        label: 'QRZ.com',
+        description: 'Callsign lookups',
         kvKey: 'qrz',
+        // A QRZ.com login is the same on every device, so sync it across the
+        // user's Apple devices via iCloud Keychain. Contrast the LoFi sync
+        // device key, which is per-install and must stay device-local.
+        synchronizable: true,
         fields: [
           {
             key: 'username',
@@ -130,7 +135,10 @@ async function lookupCall(
     const city = tag(xml, 'addr2')
     const state = tag(xml, 'state')
     const [lat, lon] = cleanLocationParams(tag(xml, 'lat'), tag(xml, 'lon'))
-    const result: CallInfoLookup = {
+    // `image` rides along as an extra field CallInfoLookup's fixed shape
+    // doesn't declare (same widening pattern as annotate.ts's `flag`) — QRZ's
+    // profile/QSL-card photo URL, shown in the call-info detail panel.
+    const result: CallInfoLookup & { image?: string } = {
       call: tag(xml, 'call') ?? call,
       source: 'qrz.com',
       scope: 'general',
@@ -143,6 +151,7 @@ async function lookupCall(
       grid: tag(xml, 'grid'),
       lat,
       lon,
+      image: tag(xml, 'image'),
     }
     return [result]
   } catch (e) {

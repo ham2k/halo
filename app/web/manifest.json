@@ -1,6 +1,6 @@
 {
-    "name": "Ham2K Logger",
-    "short_name": "Ham2K Logger",
+    "name": "Ham2K Browser Logger (Dev)",
+    "short_name": "Browser Logger (Dev)",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#FBFCFE",

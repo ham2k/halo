@@ -20,6 +20,36 @@ void main() {
     });
   });
 
+  group('bearingOnEarthDeg', () {
+    test('points due east along the equator', () {
+      // Same latitude, target to the east ⇒ ~90° (drifts slightly poleward
+      // over long spans, so allow a small tolerance).
+      final bearing = bearingOnEarthDeg(const GridLocation(0, 0), const GridLocation(0, 10));
+      expect(bearing, closeTo(90, 0.5));
+    });
+
+    test('points due north along a meridian', () {
+      final bearing = bearingOnEarthDeg(const GridLocation(0, 0), const GridLocation(10, 0));
+      expect(bearing, closeTo(0, 0.5));
+    });
+
+    test('points due south along a meridian', () {
+      final bearing = bearingOnEarthDeg(const GridLocation(10, 0), const GridLocation(0, 0));
+      expect(bearing, closeTo(180, 0.5));
+    });
+
+    test('is normalized to 0–360 (west reads as 270, not -90)', () {
+      final bearing = bearingOnEarthDeg(const GridLocation(0, 0), const GridLocation(0, -10));
+      expect(bearing, closeTo(270, 0.5));
+    });
+
+    test('NYC→London heads roughly northeast', () {
+      const nyc = GridLocation(40.7128, -74.0060);
+      const london = GridLocation(51.5074, -0.1278);
+      expect(bearingOnEarthDeg(nyc, london), closeTo(51, 5));
+    });
+  });
+
   group('locationForQsoInfo', () {
     test('prefers the grid over any coarser source', () {
       final location = locationForQsoInfo(grid: 'FN31pr', entityPrefix: 'K', state: 'CA')!;

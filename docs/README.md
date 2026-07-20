@@ -1,5 +1,11 @@
 # Documentation index
 
+## Getting started
+
+- [DEVELOPMENT.md](../DEVELOPMENT.md) (repo root) — environment setup, running
+  and building per platform, tests, the build-time/runtime flags (`HALO_EDITION`,
+  `ONBOARD_AS`, …), and the developer commands typed into the call field.
+
 ## Architecture and design
 
 - [DESIGN.md](../DESIGN.md) (repo root) — the architecture: core split, extension

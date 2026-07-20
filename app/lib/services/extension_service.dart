@@ -9,7 +9,7 @@
 import 'dart:async';
 import 'dart:convert';
 
-import 'package:flutter/foundation.dart' show setEquals;
+import 'package:flutter/foundation.dart' show kReleaseMode, setEquals;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show rootBundle;
 import 'package:flutter_markdown/flutter_markdown.dart';
@@ -20,6 +20,7 @@ import 'package:url_launcher/url_launcher.dart';
 import 'settings_service.dart';
 import 'status_bar_service.dart';
 import 'package:halo_widgets/halo_widgets.dart';
+import '../config/user_agent.dart';
 import '../i18n/strings.g.dart';
 import '../main.dart';
 
@@ -38,15 +39,92 @@ class ExtensionService {
   int _restartAttempts = 0;
   bool _restarting = false;
   ({String deviceKey, String operatorCall})? _lastSyncCredentials;
+
+  static const _keychainAccountName = 'Ham2K Logger';
+
   final _secureStorage = const FlutterSecureStorage(
     mOptions: MacOsOptions(
-      usesDataProtectionKeychain: false,
-      accountName: 'Ham2K Logger',
+      // Release: the data-protection keychain (entitlement-gated, no consent
+      // prompt). Debug: the file keychain, which needs no keychain-access-group
+      // and so works under ad-hoc signing (see README "Building locally on
+      // macOS"). kReleaseMode is a compile-time const, so this stays const.
+      usesDataProtectionKeychain: kReleaseMode,
+      accountName: _keychainAccountName,
     ),
     iOptions: IOSOptions(
-      accountName: 'Ham2K Logger',
+      accountName: _keychainAccountName,
     ),
   );
+
+  /// Per-account iCloud Keychain sync flag (`kSecAttrSynchronizable`), keyed
+  /// by account `kvKey`, as declared by each extension's `account` hook
+  /// (`synchronizable`, default false). Resolved ONCE from the account
+  /// definitions at runtime start (see [_refreshAccountSynchronizable], called
+  /// from [_start], which also covers every restart) so that every read/write/
+  /// delete for a given key uses the SAME flag: a synchronizable and a
+  /// non-synchronizable item are DISTINCT keychain entries, so a mismatch
+  /// would silently miss. An unknown key defaults to false — the fail-safe is
+  /// "never accidentally sync". Only `account_creds_`/`account_session_` items
+  /// consult this; secret settings fields stay device-local (the default).
+  final Map<String, bool> _accountSynchronizable = {};
+
+  /// Completes once [_refreshAccountSynchronizable] has resolved the flags for
+  /// the current runtime generation (or start failed) — reset per [_start],
+  /// completed in its `finally`. Account access awaits this so an early lookup
+  /// (the lookup queue gates on [ready], which flips true before the flags are
+  /// cached) can't read a synchronizable account under the wrong flag and miss
+  /// it. A fresh, never-started service leaves it pending, so
+  /// [_accountKeychainOptions] only awaits it when a start is actually in play.
+  Completer<void> _accountSyncReady = Completer<void>();
+
+  /// Rebuilds [_accountSynchronizable] from the current account definitions.
+  /// Best-effort: a failure leaves accounts device-local, never crashes boot.
+  Future<void> _refreshAccountSynchronizable() async {
+    try {
+      final accounts = await getAccounts();
+      _accountSynchronizable
+        ..clear()
+        ..addEntries(accounts
+            .where((a) => a['kvKey'] is String)
+            .map((a) => MapEntry(a['kvKey'] as String, a['synchronizable'] == true)));
+    } catch (e) {
+      debugPrint('[extensions] refreshAccountSynchronizable failed: $e');
+    }
+  }
+
+  /// The complete keychain options for one account's items, matching the
+  /// instance defaults but with the account's declared `synchronizable` flag.
+  /// Per-call options REPLACE (don't merge with) the instance defaults, so
+  /// the data-protection-keychain and account-name settings are repeated here.
+  ///
+  /// Awaits [_accountSyncReady] first (only while a start is in flight, so a
+  /// never-started service doesn't hang) so the flag is resolved before the
+  /// first read/write. Near-free once the flags are cached.
+  ///
+  /// macOS: a synchronizable item requires the data-protection keychain, which
+  /// the app only uses in release (debug stays on the file keychain so ad-hoc
+  /// local builds work); pairing `synchronizable` with the file keychain is
+  /// unsupported on macOS. So an account only actually syncs on macOS in
+  /// release. iOS always uses the data-protection keychain, so it syncs in any
+  /// build. Both keep `synchronizable` and `usesDataProtectionKeychain` from
+  /// ever contradicting.
+  Future<({MacOsOptions mOptions, IOSOptions iOptions})> _accountKeychainOptions(String kvKey) async {
+    if (!_accountSyncReady.isCompleted && (_starting != null || _host != null)) {
+      await _accountSyncReady.future;
+    }
+    final declared = _accountSynchronizable[kvKey] ?? false;
+    return (
+      mOptions: MacOsOptions(
+        usesDataProtectionKeychain: kReleaseMode,
+        accountName: _keychainAccountName,
+        synchronizable: declared && kReleaseMode,
+      ),
+      iOptions: IOSOptions(
+        accountName: _keychainAccountName,
+        synchronizable: declared,
+      ),
+    );
+  }
 
   SettingsService? settings;
   LookupRepository? lookups;
@@ -229,6 +307,13 @@ class ExtensionService {
         return MapEntry(hookKey ?? '', <String, dynamic>{'ok': false, 'message': e.toString()});
       }
     }));
+    for (final entry in entries) {
+      debugPrint('[spots] $method via ${entry.key}: ${entry.value}');
+      final userMessage = entry.value['userMessage'];
+      if (userMessage is Map) {
+        presentResultMessage(userMessage.cast<String, dynamic>(), ns: entry.key);
+      }
+    }
     return {for (final entry in entries) entry.key: entry.value};
   }
 
@@ -250,7 +335,8 @@ class ExtensionService {
   }
 
   Future<Map<String, String>> getAccountCredentials(String kvKey) async {
-    final raw = await _secureStorage.read(key: 'account_creds_$kvKey');
+    final o = await _accountKeychainOptions(kvKey);
+    final raw = await _secureStorage.read(key: 'account_creds_$kvKey', mOptions: o.mOptions, iOptions: o.iOptions);
     if (raw == null) return const {};
     try {
       return (jsonDecode(raw) as Map).cast<String, String>();
@@ -260,16 +346,39 @@ class ExtensionService {
   }
 
   Future<void> setAccountCredentials(String kvKey, Map<String, String> credentials) async {
-    await _secureStorage.write(key: 'account_creds_$kvKey', value: jsonEncode(credentials));
+    final o = await _accountKeychainOptions(kvKey);
+    await _secureStorage.write(
+      key: 'account_creds_$kvKey',
+      value: jsonEncode(credentials),
+      mOptions: o.mOptions,
+      iOptions: o.iOptions,
+    );
+    // Any stored session was derived from the OLD credentials — e.g. OAuth
+    // tokens refreshed from a previous login — and could keep acting as the
+    // previous account if left behind.
+    await _deleteAccountItem('account_session_$kvKey', o);
     // Fresh credentials must reach the very next hook call, not whatever
     // the kernel's context cache still holds.
     _host?.invalidateHookContext();
   }
 
   Future<void> clearAccount(String kvKey) async {
-    await _secureStorage.delete(key: 'account_creds_$kvKey');
-    await _secureStorage.delete(key: 'account_session_$kvKey');
+    final o = await _accountKeychainOptions(kvKey);
+    await _deleteAccountItem('account_creds_$kvKey', o);
+    await _deleteAccountItem('account_session_$kvKey', o);
     _host?.invalidateHookContext();
+  }
+
+  /// Best-effort keychain delete. Deleting an item that doesn't exist is
+  /// fine everywhere except macOS 26, which reports it as
+  /// errSecMissingEntitlement (-34018) instead of "not found" — so delete
+  /// failures are logged, never thrown.
+  Future<void> _deleteAccountItem(String key, ({MacOsOptions mOptions, IOSOptions iOptions}) o) async {
+    try {
+      await _secureStorage.delete(key: key, mOptions: o.mOptions, iOptions: o.iOptions);
+    } catch (e) {
+      debugPrint('[extensions] keychain delete $key failed (ignored): $e');
+    }
   }
 
   /// Drops the kernel's cached HookContext so the next hook call sees fresh
@@ -374,9 +483,24 @@ class ExtensionService {
   /// Picks a human-readable identity out of a credentials map — the same
   /// priority (`username` then `email` then `login`) used everywhere in
   /// Settings that displays which account a set of stored credentials
-  /// belongs to.
+  /// belongs to. OAuth accounts store tokens instead of a username, so as a
+  /// last resort the OIDC id_token's identity claims are read from its JWT
+  /// payload (no signature check needed — it came straight from the
+  /// provider's token endpoint and is only used for display).
   static String? identityFromCredentials(Map<String, String> creds) {
-    return creds['username'] ?? creds['email'] ?? creds['login'];
+    final direct = creds['username'] ?? creds['email'] ?? creds['login'];
+    if (direct != null) return direct;
+    final idToken = creds['idToken'];
+    if (idToken == null) return null;
+    try {
+      final parts = idToken.split('.');
+      if (parts.length != 3) return null;
+      final payload = jsonDecode(utf8.decode(base64Url.decode(base64Url.normalize(parts[1]))));
+      if (payload is! Map) return null;
+      return (payload['preferred_username'] ?? payload['email'] ?? payload['name']) as String?;
+    } catch (_) {
+      return null;
+    }
   }
 
   /// Validates one field's value. Tier 1 checks `pattern`/`patternError`
@@ -562,12 +686,17 @@ class ExtensionService {
   }
 
   Future<void> _start() async {
+    // Fresh gate per generation: account access blocks on it until the
+    // synchronizable flags are resolved (or start fails), so an early lookup
+    // can't read an account under the wrong sync flag. Completed in `finally`.
+    _accountSyncReady = Completer<void>();
     try {
       final index = jsonDecode(await rootBundle.loadString('assets/extensions/index.json')) as Map<String, dynamic>;
       final kernelSource = await rootBundle.loadString('assets/extensions/${index['kernel']}');
       final available = await loadAvailableExtensions(index: index);
       final bundles = <ExtensionBundle>[];
       final fetchAllowlists = <String, List<String>>{};
+      final userAgentOverrides = <String>{};
       final loaded = <String>{};
       for (final info in available) {
         // Disabled extensions are simply never loaded — their hooks,
@@ -579,14 +708,21 @@ class ExtensionService {
           key: info.key,
           source: await rootBundle.loadString('assets/extensions/${info.file}'),
         ));
-        // The manifest's declared network capability (build.mjs `domains`).
+        // The manifest's declared network capabilities (build.mjs `domains`
+        // and `allowUserAgentOverride`).
         fetchAllowlists[info.key] = info.domains;
+        if (info.allowUserAgentOverride) userAgentOverrides.add(info.key);
       }
       _host = await ExtensionHost.start(
         kernelSource: kernelSource,
         extensions: bundles,
         onHostCall: _handleHostCall,
         fetchAllowlists: fetchAllowlists,
+        // Resolve the UA resiliently: a missing native build number (headless
+        // test host, or an early-boot platform channel not yet ready) must
+        // not throw here and leave every extension dark.
+        userAgent: await ham2kUserAgentOrFallback(),
+        userAgentOverrides: userAgentOverrides,
       );
       _loadedExtensionKeys = loaded;
       _host!.logs.listen((line) => debugPrint('[extensions] $line'));
@@ -599,12 +735,21 @@ class ExtensionService {
       _host!.fatalErrors.listen((error) => _scheduleRestart('runtime died: $error'));
       _restartAttempts = 0;
       runtimeGeneration.value++;
+      // Resolve each account's synchronizable flag; account access blocks on
+      // _accountSyncReady (completed below) until this is done, so every
+      // keychain op for a key uses a consistent flag. Covers restarts too:
+      // _replaceRuntime routes back through start()/_start().
+      await _refreshAccountSynchronizable();
     } catch (e) {
       debugPrint('[extensions] failed to start extension runtime: $e');
       // A transient boot failure (asset hiccup, engine init) used to leave
       // extensions off for the rest of the session ("_starting" memoized
       // the failure). Retry with backoff instead.
       _scheduleRestart('start failed: $e');
+    } finally {
+      // Never leave account access blocked, even if start threw before the
+      // refresh ran — the empty cache then yields device-local defaults.
+      if (!_accountSyncReady.isCompleted) _accountSyncReady.complete();
     }
   }
 
@@ -763,16 +908,23 @@ class ExtensionService {
     switch (method) {
       case 'getAccount':
         final kvKey = params['kvKey'] as String;
-        final credsStr = await _secureStorage.read(key: 'account_creds_$kvKey');
-        final sessionStr = await _secureStorage.read(key: 'account_session_$kvKey');
+        final o = await _accountKeychainOptions(kvKey);
+        final credsStr = await _secureStorage.read(key: 'account_creds_$kvKey', mOptions: o.mOptions, iOptions: o.iOptions);
+        final sessionStr = await _secureStorage.read(key: 'account_session_$kvKey', mOptions: o.mOptions, iOptions: o.iOptions);
         return {
           'credentials': credsStr != null ? jsonDecode(credsStr) : const {},
           'session': sessionStr != null ? jsonDecode(sessionStr) : const {},
         };
       case 'setAccountSession':
         final kvKey = params['kvKey'] as String;
+        final o = await _accountKeychainOptions(kvKey);
         final session = params['session'] as Map<dynamic, dynamic>;
-        await _secureStorage.write(key: 'account_session_$kvKey', value: jsonEncode(session));
+        await _secureStorage.write(
+          key: 'account_session_$kvKey',
+          value: jsonEncode(session),
+          mOptions: o.mOptions,
+          iOptions: o.iOptions,
+        );
         return null;
       case 'getSettings':
         // The full read view of the app's settings — resolved typed values
@@ -783,7 +935,10 @@ class ExtensionService {
         return {
           'developerMode': settings?.developerMode ?? false,
           'locale': settings?.locale ?? 'en',
-          'appName': ham2kAppName,
+          // Machine-facing: extensions put this in ADIF PROGRAMID, a spot's
+          // source, etc. — so the fixed, platform-agnostic "Ham2K Logger", not
+          // the UI's platform-tailored name.
+          'appName': ham2kMachineName,
           'themeMode': settings?.themeMode.name ?? 'system',
           'fontScale': settings?.fontScale.name ?? 'normal',
           'distanceUnits': settings?.distanceUnits.name ?? 'kilometers',
@@ -971,6 +1126,9 @@ class ExtensionService {
           developerMode: settings?.developerMode ?? false,
         );
         return result;
+      case 'showMessage':
+        presentResultMessage(params, ns: params['ns'] as String? ?? 'extensions');
+        return null;
       case 'statusBarSetMessage':
         statusBar?.setMessage(
           key: _namespacedKey(params),
@@ -1017,6 +1175,11 @@ class ExtensionService {
     return '$ns:$key';
   }
 
+  /// Set by the app shell: opens an account's standalone dialog (Settings →
+  /// Accounts) from anywhere — the handler behind declarative `account`
+  /// actions (an extension's "reconnect your account" button).
+  void Function(String accountKey, {String? subkey})? onOpenAccount;
+
   /// Notice actions from extensions are declarative JSON, not callbacks back
   /// into the extension (matches the `activity` hook's "describe UI as data"
   /// convention) — `link` opens a URL, `dialog` shows a markdown dialog.
@@ -1027,39 +1190,75 @@ class ExtensionService {
       if (entry is! Map) continue;
       final map = entry.cast<String, dynamic>();
       final label = map['label'] as String?;
-      final type = map['type'] as String?;
-      if (label == null || type == null) continue;
-      switch (type) {
-        case 'link':
-          final url = map['url'] as String?;
-          if (url == null) continue;
-          actions.add(StatusBarAction(
-            label: label,
-            onTap: () => launchUrl(Uri.parse(url)),
-          ));
-        case 'dialog':
-          final text = map['text'] as String? ?? '';
-          final title = map['title'] as String?;
-          actions.add(StatusBarAction(
-            label: label,
-            onTap: () {
-              final context = navigatorKey.currentContext;
-              if (context == null) return;
-              showDialog<void>(
-                context: context,
-                builder: (context) => AlertDialog(
-                  title: title != null ? Text(title) : null,
-                  content: SingleChildScrollView(child: MarkdownBody(data: text)),
-                  actions: [
-                    TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Close')),
-                  ],
-                ),
-              );
-            },
-          ));
-      }
+      final handler = _declarativeActionHandler(map);
+      if (label == null || handler == null) continue;
+      actions.add(StatusBarAction(label: label, onTap: handler));
     }
     return actions;
+  }
+
+  /// The tap handler for one declarative action (the SDK's NoticeAction):
+  /// `link` opens a URL, `dialog` shows a markdown dialog, `account` opens
+  /// that account's standalone dialog via [onOpenAccount]. Returns null for
+  /// malformed or unknown actions, which the caller drops.
+  VoidCallback? _declarativeActionHandler(Map<String, dynamic> map) {
+    switch (map['type'] as String?) {
+      case 'link':
+        final url = map['url'] as String?;
+        if (url == null) return null;
+        return () => launchUrl(Uri.parse(url));
+      case 'dialog':
+        final text = map['text'] as String? ?? '';
+        final title = map['title'] as String?;
+        return () => _showMarkdownDialog(title: title, text: text);
+      case 'account':
+        final key = map['key'] as String?;
+        if (key == null) return null;
+        return () => onOpenAccount?.call(key, subkey: map['subkey'] as String?);
+    }
+    return null;
+  }
+
+  void _showMarkdownDialog({String? title, required String text, List<Map<String, dynamic>> actions = const []}) {
+    final context = navigatorKey.currentContext;
+    if (context == null) return;
+    showHaloDialog<void>(
+      context: context,
+      builder: (dialogContext) => HaloDialog(
+        wide: true,
+        title: title != null ? Text(title) : null,
+        content: MarkdownBody(data: text),
+        actions: [
+          for (final action in actions)
+            if (action['label'] is String && _declarativeActionHandler(action) != null)
+              TextButton(
+                onPressed: () {
+                  Navigator.of(dialogContext).pop();
+                  _declarativeActionHandler(action)!();
+                },
+                child: Text(action['label'] as String),
+              ),
+          TextButton(onPressed: () => Navigator.of(dialogContext).pop(), child: const Text('Close')),
+        ],
+      ),
+    );
+  }
+
+  /// Presents a ResultMessage (the SDK type of the same name): `status` is
+  /// a transient status-bar message, `dialog` a modal markdown dialog whose
+  /// buttons are declarative NoticeActions. Reached from a hook result's
+  /// `userMessage` (see [sendSpot]) or the imperative `showMessage` host
+  /// call (hooks whose results can't carry one, e.g. lookups).
+  void presentResultMessage(Map<String, dynamic> message, {String ns = 'extensions'}) {
+    final title = message['title'] as String?;
+    final text = message['text'] as String? ?? '';
+    if (message['presentation'] == 'dialog') {
+      final actions =
+          ((message['actions'] as List?) ?? const []).whereType<Map>().map((a) => a.cast<String, dynamic>()).toList();
+      _showMarkdownDialog(title: title, text: text, actions: actions);
+    } else {
+      statusBar?.setMessage(key: '$ns:resultMessage', icon: message['icon'] as String?, title: title, text: text);
+    }
   }
 
   /// Runs the full lookup pipeline for one callsign — the hardcoded
@@ -1098,6 +1297,41 @@ class ExtensionService {
       return result.cast<String, dynamic>();
     } on ExtensionHostException catch (e) {
       debugPrint('[extensions] lookup failed: $e');
+      return null;
+    }
+  }
+
+  /// Scores the single in-progress QSO — the callsign being typed, before
+  /// Enter — for the logging panel's live call-info line. Returns
+  /// `{notices, alerts}` of scoring keys (`duplicate`, `newBand`, `newMode`,
+  /// `newDXCC`), or null when the runtime isn't up. Debounced on the caller's
+  /// side, so the hook's whole-log read is off the keystroke path.
+  /// [excludeUuid] drops the record being edited so it can't flag itself as
+  /// its own duplicate. [operation] must carry `uuid` (the hook reads the log
+  /// via it) — pass the same uuid-folded shape command hooks get.
+  Future<Map<String, dynamic>?> scoreQso({
+    required Map<String, dynamic> operation,
+    required Map<String, dynamic> qso,
+    String? excludeUuid,
+  }) async {
+    final host = _host;
+    if (host == null) return null;
+    try {
+      final result = await host.invokeHook(
+        'scoring',
+        key: 'core',
+        method: 'scoreQso',
+        args: {
+          'operation': operation,
+          'qso': qso,
+          'excludeUuid': ?excludeUuid,
+        },
+        timeout: const Duration(seconds: 4),
+      );
+      if (result is! Map) return null;
+      return result.cast<String, dynamic>();
+    } on ExtensionHostException catch (e) {
+      debugPrint('[extensions] scoreQso failed: $e');
       return null;
     }
   }
@@ -1339,6 +1573,12 @@ class ExtensionInfo {
   final String key;
   final String file;
   final List<String> domains;
+
+  /// Whether this extension may set its own `User-Agent` on host.fetch
+  /// (build.mjs `allowUserAgentOverride`). Off by default: the host stamps
+  /// HaLo's canonical UA — see docs/design/network.md.
+  final bool allowUserAgentOverride;
+
   final bool core;
   final String name;
   final String? category;
@@ -1354,6 +1594,7 @@ class ExtensionInfo {
     required this.key,
     required this.file,
     this.domains = const [],
+    this.allowUserAgentOverride = false,
     required this.core,
     required this.name,
     this.category,
@@ -1366,6 +1607,7 @@ class ExtensionInfo {
         key: json['key'] as String,
         file: json['file'] as String? ?? '${json['key']}.js',
         domains: ((json['domains'] as List?) ?? const []).cast<String>(),
+        allowUserAgentOverride: json['allowUserAgentOverride'] as bool? ?? false,
         // A stale index without metadata degrades to "everything core" —
         // the fail-safe: nothing gets silently disabled.
         core: json['core'] as bool? ?? true,

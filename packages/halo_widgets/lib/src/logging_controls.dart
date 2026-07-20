@@ -29,6 +29,7 @@
 
 import 'dart:async';
 import 'dart:convert';
+import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
@@ -39,7 +40,9 @@ import 'package:flutter_markdown/flutter_markdown.dart';
 
 import 'form_renderer.dart';
 import 'icon_resolver.dart';
+import 'keyboard_dismiss.dart';
 import 'mdi_icons.dart';
+import 'number_keys.dart';
 import 'platform_chrome.dart';
 import 'ref_chips_input.dart';
 import 'secondary_control_row.dart';
@@ -100,6 +103,52 @@ typedef SendSpot = Future<Map<String, Map<String, dynamic>>> Function({
   String? comment,
   String? spotterCall,
 });
+
+/// Builds the info area's default (no-call) statistics — 0–2 preformatted
+/// lines ("{n} QSOs in {time}", "{rate} Q/h for last 10"). The app layer owns
+/// the i18n and number/duration formatting; it reads the current time itself,
+/// so the widget's 1 Hz clock ticker keeps a live "since last" figure fresh.
+/// An empty list renders nothing.
+typedef OperationStatsLines = List<String> Function(List<Qso> qsos);
+
+/// Formats the call-info panel's line-1 location string from a lookup `guess`
+/// — distance (and bearing, if the setting is on) plus a location label — or
+/// null when there's nothing to show. The app layer owns the distance units,
+/// the bearing setting, and the operation's own grid; the widget renders the
+/// entity flag (`guess['flag']`) alongside whatever this returns.
+typedef CallLocationLine = String? Function(Map<String, dynamic> guess);
+
+/// Scores the in-progress QSO for the call-info notices line — returns
+/// `{notices, alerts}` lists of scoring keys, or null. Mirrors
+/// `ExtensionService.scoreQso`.
+typedef ScoreQso = Future<Map<String, dynamic>?> Function({
+  required Map<String, dynamic> operation,
+  required Map<String, dynamic> qso,
+  String? excludeUuid,
+});
+
+/// A snapshot of the current call-info for the detail panel (the Info tab on
+/// wide layouts, a modal on narrow) — the same data the compact call-info line
+/// renders, handed up so a richer view can present it. Immutable value.
+class CallInfoData {
+  final String call;
+  final Map<String, dynamic>? guess;
+  final List<Map<String, dynamic>> lookups;
+  final List<String> alertKeys;
+  final List<String> noticeKeys;
+
+  const CallInfoData({
+    required this.call,
+    this.guess,
+    this.lookups = const [],
+    this.alertKeys = const [],
+    this.noticeKeys = const [],
+  });
+}
+
+/// Fires when the current call-info changes (call/lookup/score), or null when
+/// the call-info panel isn't showing. Deduped by the widget.
+typedef CallInfoChanged = void Function(CallInfoData? info);
 
 /// A secondary control's identity for ordering/visibility purposes — the
 /// settings dialog's list and `_effectiveControlOrder` deal in these; the
@@ -239,12 +288,30 @@ class LoggingControls extends StatefulWidget {
   /// `controlOrder`/`hiddenControlKeys` on the next build.
   final void Function(List<String> order, Set<String> hidden)? onControlsSettingsChanged;
 
+  /// The info area's three collaborators (issue #40). All optional — when
+  /// null the area degrades gracefully: no stats lines, no location line, no
+  /// scoring notices. See `_buildInfoArea`.
+  final OperationStatsLines? operationStatsLines;
+  final CallLocationLine? callLocationLine;
+  final ScoreQso? scoreQso;
+
+  /// Maps a scoring notice/alert key (`duplicate`, `newBand`, `newMode`,
+  /// `newDXCC`) to its localized pill text; falls back to the raw key.
+  final String Function(String noticeKey)? scoreNoticeLabel;
+
+  /// Notifies the host of the current call-info (for the detail panel — the
+  /// Info tab on wide layouts), null when the call-info panel isn't showing.
+  final CallInfoChanged? onCallInfoChanged;
+
+  /// Fires when the user taps the compact call-info area — the host opens the
+  /// detail panel (a modal on narrow layouts, or focuses the Info tab on wide).
+  final VoidCallback? onCallInfoTap;
+
   final String? timeLabel;
   final String? dateLabel;
   final String? nowLabel;
   final String? freqLabel;
   final String? modeLabel;
-  final String? dupeLabel;
   final String? theirCallLabel;
   final String? sentLabel;
   final String? rcvdLabel;
@@ -308,6 +375,15 @@ class LoggingControls extends StatefulWidget {
   final bool showStateField;
   final bool showGridField;
 
+  /// The mobile numbers row (issue #27) — a bar of digit keys floated above
+  /// the on-screen keyboard while a logging field has focus. Only ever shown
+  /// on mobile platforms with the keyboard up (see `_buildNumberKeys`).
+  /// [showExtraInNumbersRow] adds the contextual "/" (callsign) / "."
+  /// (numeric) key; [vibrateNumbersRow] toggles the key-press haptic.
+  final bool showNumbersRow;
+  final bool showExtraInNumbersRow;
+  final bool vibrateNumbersRow;
+
   const LoggingControls({
     super.key,
     required this.operation,
@@ -331,12 +407,17 @@ class LoggingControls extends StatefulWidget {
     this.controlOrder = const [],
     this.hiddenControlKeys = const {},
     this.onControlsSettingsChanged,
+    this.operationStatsLines,
+    this.callLocationLine,
+    this.scoreQso,
+    this.scoreNoticeLabel,
+    this.onCallInfoChanged,
+    this.onCallInfoTap,
     this.timeLabel,
     this.dateLabel,
     this.nowLabel,
     this.freqLabel,
     this.modeLabel,
-    this.dupeLabel,
     this.theirCallLabel,
     this.sentLabel,
     this.rcvdLabel,
@@ -375,13 +456,16 @@ class LoggingControls extends StatefulWidget {
     this.showRSTFields = true,
     this.showStateField = false,
     this.showGridField = false,
+    this.showNumbersRow = false,
+    this.showExtraInNumbersRow = true,
+    this.vibrateNumbersRow = true,
   });
 
   @override
   State<LoggingControls> createState() => _LoggingControlsState();
 }
 
-class _LoggingControlsState extends State<LoggingControls> {
+class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingObserver {
   final _callController = TextEditingController();
   final _sentController = TextEditingController();
   final _rcvdController = TextEditingController();
@@ -426,6 +510,11 @@ class _LoggingControlsState extends State<LoggingControls> {
 
   /// Band set via a "20m " command when no frequency is entered.
   String? _manualBand;
+
+  /// The band of the most recent non-empty frequency, remembered so that
+  /// clearing the frequency field keeps that band ([_onFreqChanged]) rather
+  /// than dropping to no band.
+  String? _lastBandFromFreq;
   bool _rstsTouched = false;
 
   /// Which secondary control (if any) currently has its input expanded.
@@ -453,6 +542,26 @@ class _LoggingControlsState extends State<LoggingControls> {
   Timer? _lookupDebounce;
   String? _lookupFor;
   Map<String, dynamic>? _lookupResult;
+
+  /// Lookups resolved during the current compose session, keyed by call, so
+  /// re-typing a call already looked up this session (KI2D → KI2DX → KI2D)
+  /// shows its result instantly with no refetch. Cleared on wipe/log/populate.
+  /// A cached `null` (a call that resolved to nothing) is distinct from absent.
+  final Map<String, Map<String, dynamic>?> _lookupCache = {};
+
+  /// Live scoring for the call-info notices line (issue #40) — debounced like
+  /// the lookup. `_scoreFor` is the call the current keys belong to, so a
+  /// stale result from a call the user has since edited past is ignored.
+  Timer? _scoreDebounce;
+  String? _scoreFor;
+  List<String> _scoreAlertKeys = const [];
+  List<String> _scoreNoticeKeys = const [];
+
+  /// Drives the info area's cross-fade (issue #40): `_infoGeneration` bumps
+  /// only when `_infoAreaSignature` changes, giving the AnimatedSwitcher a
+  /// never-repeating key (see build).
+  String? _lastInfoSignature;
+  int _infoGeneration = 0;
 
   /// `widget.activityControls`, re-fetched for the current QSO once its
   /// callsign lookup resolves — see `widget.refreshActivityControls`. Reset
@@ -482,11 +591,22 @@ class _LoggingControlsState extends State<LoggingControls> {
   /// flag and miss another.
   Map<String, dynamic>? _retainedInterpretation;
 
-  /// Whether the retained command is a recognized prefix still awaiting its
-  /// parameters ("RELOAD" before its target) — space is a literal character
-  /// and the callsign character filter is lifted, but input stays
-  /// uppercase-only unless [_commandMixedCase] also holds.
-  bool get _commandExpectsParams => _retainedInterpretation?['expectsParams'] == true;
+  /// Whether the call field is in command free-text mode — space is a
+  /// literal character and the callsign character filter is lifted, but
+  /// input stays uppercase-only unless [_commandMixedCase] also holds.
+  /// Two ways in, both requiring a retained command:
+  /// - the command is a recognized prefix still awaiting its parameters
+  ///   ("RELOAD" before its target — `expectsParams`), or
+  /// - the text already holds characters the callsign formatters would
+  ///   destroy (a space, mid-parameter). Without this, a typing pause after
+  ///   "EXP L" lets the debounced interpret retain a COMPLETE
+  ///   interpretation (token "L"), and the returning callsign filter would
+  ///   rewrite the whole field on the very next keystroke — "EXP LA"
+  ///   snapping to "EXPLA". Same guard [_retainInterpretation] applies to
+  ///   the null-result path, for the same reason.
+  bool get _commandExpectsParams =>
+      _retainedInterpretation != null &&
+      (_retainedInterpretation!['expectsParams'] == true || !_callsignModeSafeText.hasMatch(_callController.text));
 
   /// Whether the retained command declared `mixedCase: true` — only such
   /// commands (e.g. NOTE, whose parameter is free prose) release the call
@@ -562,6 +682,7 @@ class _LoggingControlsState extends State<LoggingControls> {
   /// `expandedBuilder`'s closure, since that's a plain render function
   /// re-invoked on every build, not a separately-stateful widget.
   final _spotCommentController = TextEditingController();
+  final _spotCommentFocus = FocusNode();
   List<Map<String, dynamic>> _spotSources = const [];
   final Map<String, bool?> _spotStatus = {}; // hookKey -> ok/failed/neutral(null)
   Timer? _spotStatusClearTimer;
@@ -603,6 +724,10 @@ class _LoggingControlsState extends State<LoggingControls> {
   @override
   void initState() {
     super.initState();
+    // Observe metrics so the numbers row appears/disappears with the on-screen
+    // keyboard — MediaQuery can't tell us (Scaffold strips the inset, see
+    // `virtualKeyboardIsUp`), so `didChangeMetrics` is the rebuild trigger.
+    WidgetsBinding.instance.addObserver(this);
     _bandDropdownFocus = _dropdownCommitFocusNode(
       commit: _commitBandDropdownText,
       clearFilter: () => _bandFilter = '',
@@ -678,9 +803,15 @@ class _LoggingControlsState extends State<LoggingControls> {
             _pushVfoToRadioService();
           }
         }
+        // Keep the mobile numbers row in sync with which field has focus.
+        _rebuildForNumbersRow();
       });
     }
     _refreshSpotSources();
+    // Constructed already editing a QSO (rather than transitioning into it via
+    // didUpdateWidget): score it so its pills show. Guarded on _callInfoActive
+    // so this only schedules a timer here — never setStates during initState.
+    if (widget.editingQso != null && _callInfoActive) _scheduleScore();
   }
 
   @override
@@ -761,6 +892,10 @@ class _LoggingControlsState extends State<LoggingControls> {
     _manualStartAtMillis = null; // _effectiveStartAtMillis falls back to editingQso.startAtMillis
     setState(() {});
     _populating = false;
+    // Score the edited QSO (excluding itself) so its dupe/New-* pills show, the
+    // same way they do while composing — populate suppressed _onCallChanged's
+    // own trigger.
+    _scheduleScore();
   }
 
   /// Populates controllers/state from a `suggestedQso` map (e.g. tapping a
@@ -842,6 +977,8 @@ class _LoggingControlsState extends State<LoggingControls> {
     _lookupResult = null;
     _refreshedActivityControls = null;
     _selectedControlKey = null;
+    _clearScoreNotices();
+    _lookupCache.clear();
     // Command state must never survive into a freshly populated QSO
     // context: this runs under `_populating`, so _onCallChanged's own
     // per-keystroke reset is suppressed. Without this, typing "NOTE hi",
@@ -894,6 +1031,8 @@ class _LoggingControlsState extends State<LoggingControls> {
     _lookupFor = null;
     _lookupResult = null;
     _refreshedActivityControls = null;
+    _clearScoreNotices();
+    _lookupCache.clear();
     _controlRefs.clear();
     _unmatchedRefs = [];
     _currentQsoExtra.clear();
@@ -914,14 +1053,17 @@ class _LoggingControlsState extends State<LoggingControls> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _clockTicker?.cancel();
     _lookupDebounce?.cancel();
+    _scoreDebounce?.cancel();
     _vfoDebounce?.cancel();
     _commandDescribeDebounce?.cancel();
     _executeMessageTimer?.cancel();
     _undoExpireTimer?.cancel();
     _spotStatusClearTimer?.cancel();
     _spotCommentController.dispose();
+    _spotCommentFocus.dispose();
     _callController.dispose();
     _sentController.dispose();
     _rcvdController.dispose();
@@ -1052,21 +1194,20 @@ class _LoggingControlsState extends State<LoggingControls> {
     return null;
   }
 
-  // Excludes the QSO currently being edited — otherwise, since its call/
-  // mode/band are exactly what populated the fields in the first place,
-  // editing any existing QSO would immediately flag itself as its own
-  // duplicate.
-  bool get _isDupe => widget.qsos.any(
-    (qso) =>
-        qso.uuid != widget.editingQso?.uuid &&
-        qso.theirCall == _callAtCursor &&
-        qso.mode == _mode &&
-        (qso.band ?? '') == (_band ?? ''),
-  );
-
   void _onFreqChanged() {
-    if (_freq != null) _manualBand = null;
+    final freq = _freq;
+    if (freq != null) {
+      _manualBand = null;
+      // Remember the band so clearing the frequency can fall back to it.
+      _lastBandFromFreq = bandForFrequency(freq);
+    } else if (_freqController.text.trim().isEmpty) {
+      // Frequency cleared: stay on the band it was last, rather than dropping
+      // to no band. Deferential (`??=`) so a band the user set by hand wins.
+      _manualBand ??= _lastBandFromFreq;
+    }
     setState(() {});
+    // Band (derived from frequency) drives the New Band notice — rescore.
+    if (!_populating) _scheduleScore();
     // Editing an existing QSO applies changes to the QSO, never the VFO —
     // only a new (composing) QSO's Radio control mirrors/edits the VFO.
     if (_populating || widget.editingQso != null) return;
@@ -1098,6 +1239,8 @@ class _LoggingControlsState extends State<LoggingControls> {
       if (!_rstsTouched) _applyDefaultRSTs();
     });
     if (widget.editingQso == null) widget.radioService?.setVfo('vfoA', mode: mode);
+    // New Mode / New Band notices depend on the mode — rescore the candidate.
+    _scheduleScore();
   }
 
   // ---- Secondary control row ----
@@ -1227,7 +1370,7 @@ class _LoggingControlsState extends State<LoggingControls> {
   List<_ControlDescriptor> _controlDescriptors() => [
         _ControlDescriptor(
           key: 'time',
-          icon: MdiIcons.clockOutline,
+          icon: MdiIcons.clock,
           label: widget.timeControlLabel ?? 'Time',
           mandatory: true,
         ),
@@ -1307,7 +1450,7 @@ class _LoggingControlsState extends State<LoggingControls> {
 
   SecondaryControlSpec _timeControlSpec() => SecondaryControlSpec(
         key: 'time',
-        icon: MdiIcons.clockOutline,
+        icon: MdiIcons.clock,
         summary: _timeSummary,
         expandedBuilder: (context) => Row(
           mainAxisSize: MainAxisSize.min,
@@ -1806,7 +1949,12 @@ class _LoggingControlsState extends State<LoggingControls> {
     // status-coloring below must key off what was actually sent, not
     // whatever `_spotSources` holds once the await resolves.
     final sentSources = _spotSources;
-    setState(() => _spotSending = true);
+    // Colors from a previous attempt would misread as THIS attempt's
+    // results while the send is in flight — back to neutral gray first.
+    setState(() {
+      _spotSending = true;
+      _spotStatus.clear();
+    });
     try {
       final comment = _spotCommentController.text.trim();
       final results = await sendSpot(
@@ -1853,6 +2001,7 @@ class _LoggingControlsState extends State<LoggingControls> {
               width: 160,
               child: TextField(
                 controller: _spotCommentController,
+                focusNode: _spotCommentFocus,
                 // Explicitly mixed-case, like Name/Notes: a spot comment is
                 // free prose for other operators, not logging data.
                 style: haloMonoStyle(context, fontSize: 15, fontWeight: FontWeight.w500),
@@ -1873,7 +2022,7 @@ class _LoggingControlsState extends State<LoggingControls> {
             onPressed: state.enabled && !_spotSending ? _sendSpot : null,
             icon: _spotSending
                 ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
-                : Icon(resolveIconName('hand-wave-outline')),
+                : Icon(resolveIconName('hand-wave')),
             label: Text(state.buttonLabel),
           ),
           // Up to 3 source-status icons per column, wrapping into another
@@ -1993,6 +2142,10 @@ class _LoggingControlsState extends State<LoggingControls> {
       _callFocus.requestFocus();
     } else if (_stateFocus.hasFocus || _gridFocus.hasFocus || _sentFocus.hasFocus || _rcvdFocus.hasFocus) {
       _advancePrimaryFocus();
+    } else if (_spotCommentFocus.hasFocus) {
+      // Free prose, like NOTE's parameter: Space types a literal space —
+      // the panel-wide shortcut would otherwise swallow it.
+      _insertAtCursor(_spotCommentController, ' ');
     }
     // Space is inert in any other field with no override of its own. Ref
     // inputs (RefTextInput, RefChipsInput) are the one exception — they bind
@@ -2040,6 +2193,85 @@ class _LoggingControlsState extends State<LoggingControls> {
     );
   }
 
+  // ── Mobile numbers row (issue #27) ──────────────────────────────────────
+
+  /// The logging fields the numbers row can type into, each paired with its
+  /// controller. The primary text fields only — Freq/Time (behind the
+  /// secondary control row) already raise their own numeric keyboards, where
+  /// a digits row would be redundant. Fields that aren't currently shown
+  /// never hold focus (their TextField isn't built), so listing them all
+  /// unconditionally is safe. Built once — the FocusNode/controller
+  /// references are stable; focus is read live via `.hasFocus`.
+  late final List<(FocusNode, TextEditingController)> _numberKeyFields = [
+    (_callFocus, _callController),
+    (_sentFocus, _sentController),
+    (_rcvdFocus, _rcvdController),
+    (_stateFocus, _stateController),
+    (_gridFocus, _gridController),
+  ];
+
+  /// Whichever numbers-row field currently holds focus, or null — the target
+  /// for an inserted key and the gate for showing the bar at all.
+  (FocusNode, TextEditingController)? get _focusedNumberField {
+    for (final field in _numberKeyFields) {
+      if (field.$1.hasFocus) return field;
+    }
+    return null;
+  }
+
+  /// The contextual extra key: "/" only while the call field holds a partial
+  /// callsign (a letter present, not a bare number — a serial being typed
+  /// ahead of letters still reads as numeric), "." for every numeric field.
+  /// Null when the extra key is turned off. Mirrors app-polo's callsign vs
+  /// numbers mode split (H2kCallsignInput / H2kRSTInput).
+  String? get _numbersRowExtraKey {
+    if (!widget.showExtraInNumbersRow) return null;
+    if (_callFocus.hasFocus) {
+      final text = _callController.text;
+      final hasLetter = RegExp(r'[A-Za-z]').hasMatch(text);
+      final onlyDigits = RegExp(r'^[0-9]+$').hasMatch(text);
+      if (hasLetter && !onlyDigits) return '/';
+    }
+    return '.';
+  }
+
+  /// Inserts a numbers-row key at the focused field's cursor. `_insertAtCursor`
+  /// writes the controller value directly, which fires the controller
+  /// listeners (lookup/dupe/rebuild) but NOT the TextField's `onChanged` — so
+  /// the "touched" flags those onChanged handlers set are replicated here,
+  /// else a tapped digit wouldn't mark RST/Grid/State as user-edited.
+  void _handleNumberKey(String key) {
+    final field = _focusedNumberField;
+    if (field == null || _fieldsLocked) return;
+    final (focus, controller) = field;
+    _insertAtCursor(controller, key);
+    if (identical(focus, _sentFocus) || identical(focus, _rcvdFocus)) {
+      _rstsTouched = true;
+    } else if (identical(focus, _gridFocus)) {
+      _gridTouched = true;
+    } else if (identical(focus, _stateFocus)) {
+      _stateTouched = true;
+    }
+  }
+
+  /// Rebuilds so the bar's visibility and contextual "/"→"." key track the
+  /// focused field. Focus notifications can arrive mid-build (autofocus on
+  /// the first frame), so a rebuild is only requested synchronously when
+  /// we're safely between frames; otherwise it's deferred to the frame in
+  /// progress. Only runs while the feature is on, so it costs nothing
+  /// otherwise.
+  void _rebuildForNumbersRow() {
+    if (!widget.showNumbersRow || !mounted) return;
+    final phase = WidgetsBinding.instance.schedulerPhase;
+    if (phase == SchedulerPhase.idle || phase == SchedulerPhase.postFrameCallbacks) {
+      setState(() {});
+    } else {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) setState(() {});
+      });
+    }
+  }
+
   Future<void> _dispatchActions(List<dynamic> actions) async {
     for (final action in actions) {
       if (action is! Map) continue;
@@ -2073,6 +2305,10 @@ class _LoggingControlsState extends State<LoggingControls> {
         if (params['freq'] is num || params['band'] is String || params['mode'] is String) {
           _pushVfoToRadioService();
         }
+        // The command changed band/mode/freq under `_populating`, which
+        // suppressed the field listeners' own rescore — refresh the call-info
+        // notices (New Band / New Mode / dupe) for the new radio state.
+        _scheduleScore();
       } else if (map.containsKey('updateQso')) {
         final params = (map['updateQso'] as Map).cast<String, dynamic>();
         setState(() {
@@ -2144,6 +2380,8 @@ class _LoggingControlsState extends State<LoggingControls> {
         await widget.onCommandAction?.call('devOnboard');
       } else if (map['reloadDataFiles'] is Map) {
         await widget.onCommandAction?.call('reloadDataFiles', (map['reloadDataFiles'] as Map).cast<String, dynamic>());
+      } else if (map['toggleExperiment'] is Map) {
+        await widget.onCommandAction?.call('toggleExperiment', (map['toggleExperiment'] as Map).cast<String, dynamic>());
       } else {
         // Nothing above recognized this action's key(s) — most likely a new
         // CommandAction field was added to the SDK (extensions/sdk/src/types.ts)
@@ -2450,17 +2688,70 @@ class _LoggingControlsState extends State<LoggingControls> {
     widget.onCommandMessageChanged?.call(message);
   }
 
+  /// Alphanumeric length of the call about to be logged — the call-info panel
+  /// and its live scoring switch on at ≥3 characters (issue #40).
+  int get _callInfoAlnumLength => _callAtCursor.replaceAll(RegExp('[^A-Z0-9]'), '').length;
+  bool get _callInfoActive => _callInfoAlnumLength >= 3;
+
+  /// Clears the live scoring notices — on wipe/reset/populate, or when the
+  /// call drops below the call-info threshold.
+  void _clearScoreNotices() {
+    _scoreDebounce?.cancel();
+    if (_scoreFor == null && _scoreAlertKeys.isEmpty && _scoreNoticeKeys.isEmpty) return;
+    _scoreFor = null;
+    _scoreAlertKeys = const [];
+    _scoreNoticeKeys = const [];
+  }
+
+  /// (Re)schedules a debounced live-scoring pass for the call-info notices
+  /// line — call/band/mode all feed New Band / New Mode / New DXCC / Dupe, so
+  /// this is fired whenever any of them changes (and when an existing QSO is
+  /// selected for editing). Debounced on the same 300ms as the offline lookup,
+  /// so the scoring pills land alongside the offline lookup's data rather than
+  /// lagging it. No-op (and clears) below the call-info threshold or with no
+  /// `scoreQso` wired.
+  void _scheduleScore() {
+    final scoreFn = widget.scoreQso;
+    if (scoreFn == null) return;
+    _scoreDebounce?.cancel();
+    final activeCall = _callAtCursor;
+    // Only score a plausible callsign — the same gate the lookup uses. Without
+    // it, command input ("RELOAD", "NOTE hi") and non-callsign junk would each
+    // fire a whole-log getQsos read in the runtime for nothing.
+    if (!_callInfoActive || !looksLikeCallsign(activeCall)) {
+      setState(_clearScoreNotices);
+      return;
+    }
+    _scoreDebounce = Timer(const Duration(milliseconds: 300), () async {
+      final result = await scoreFn(
+        operation: _operationDataForCommands,
+        qso: _getCurrentQsoData(callOverride: activeCall),
+        excludeUuid: widget.editingQso?.uuid,
+      );
+      if (!mounted || _callAtCursor != activeCall) return; // stale — the active call moved on
+      setState(() {
+        _scoreFor = activeCall;
+        _scoreAlertKeys = ((result?['alerts'] as List?) ?? const []).whereType<String>().toList();
+        _scoreNoticeKeys = ((result?['notices'] as List?) ?? const []).whereType<String>().toList();
+      });
+    });
+  }
+
   void _onCallChanged() {
     if (_populating) return;
     setState(() {});
     _lookupDebounce?.cancel();
     _commandDescribeDebounce?.cancel();
-    
+
     // Clear any active execution confirmation message when the user types
     _executeMessageTimer?.cancel();
     _currentInterpretation = null;
     _commandMessage = null;
     _notifyCommandMessage(null);
+
+    // Live scoring for the call-info notices line — independent of the lookup
+    // and command paths below, so schedule it before their early returns.
+    _scheduleScore();
 
     final call = _call;
     if (call.isEmpty) {
@@ -2517,6 +2808,16 @@ class _LoggingControlsState extends State<LoggingControls> {
       return;
     }
 
+    // Already looked up this call this session — show it instantly, no refetch.
+    if (_lookupCache.containsKey(activeCall)) {
+      setState(() {
+        _lookupFor = activeCall;
+        _lookupResult = _lookupCache[activeCall];
+      });
+      unawaited(_refreshActivityControlsFor(activeCall));
+      return;
+    }
+
     _lookupDebounce = Timer(const Duration(milliseconds: 300), () async {
       // Offline pass first: fast, local-data-only, so the user sees
       // whatever's cheaply available (e.g. the callsign-annotation
@@ -2530,6 +2831,7 @@ class _LoggingControlsState extends State<LoggingControls> {
         online: false,
       );
       if (!mounted || _callAtCursor != activeCall) return; // stale — the active call changed
+      _lookupCache[activeCall] = offlineResult;
       setState(() {
         _lookupFor = activeCall;
         _lookupResult = offlineResult;
@@ -2558,6 +2860,7 @@ class _LoggingControlsState extends State<LoggingControls> {
       // A failed/timed-out online pass (host down, network error) must not
       // erase an already-shown, still-valid offline preview — keep it.
       if (onlineResult == null) return;
+      _lookupCache[activeCall] = onlineResult;
       setState(() {
         _lookupFor = activeCall;
         _lookupResult = onlineResult;
@@ -2575,23 +2878,6 @@ class _LoggingControlsState extends State<LoggingControls> {
     final controls = await refresh(_getCurrentQsoData(callOverride: activeCall));
     if (!mounted || _callAtCursor != activeCall) return;
     setState(() => _refreshedActivityControls = controls);
-  }
-
-  String? get _lookupLine {
-    final result = _lookupResult;
-    if (result == null || _lookupFor != _callAtCursor) return null;
-    final guess = result['guess'] as Map<String, dynamic>? ?? const {};
-    // A callsign note (issue #17) takes the name's slot outright rather
-    // than joining it — the note usually already names the operator, and
-    // one line can't fit both (same precedence app-polo gives it).
-    final note = guess['note'] as String?;
-    final parts = [
-      (note != null && note.isNotEmpty) ? note : guess['name'],
-      guess['location'],
-      guess['country'],
-      guess['grid'],
-    ].whereType<String>().where((s) => s.isNotEmpty).toList();
-    return parts.isEmpty ? null : parts.join(' • ');
   }
 
   // ---- Logging ----
@@ -2627,6 +2913,8 @@ class _LoggingControlsState extends State<LoggingControls> {
     _lookupFor = null;
     _lookupResult = null;
     _refreshedActivityControls = null;
+    _clearScoreNotices();
+    _lookupCache.clear();
     _controlRefs.clear();
     _currentQsoExtra.clear();
     _manualStartAtMillis = null;
@@ -2763,7 +3051,7 @@ class _LoggingControlsState extends State<LoggingControls> {
         tooltip = widget.undoLabel ?? 'Undo';
         onPressed = _restoreFromUndoSlot;
       } else {
-        icon = resolveIconName('backspace-outline');
+        icon = resolveIconName('backspace');
         tooltip = widget.wipeLabel ?? 'Wipe';
         onPressed = _hasComposedValues ? _handleWipeTap : null;
       }
@@ -3044,9 +3332,9 @@ class _LoggingControlsState extends State<LoggingControls> {
         _wipe();
       }
 
-      // A single rescoring pass after the whole batch, not a dupe/score
-      // check per call — the on-screen dupe hint already only ever reflects
-      // the cursor's own call (_isDupe/_callAtCursor above).
+      // A single rescoring pass after the whole batch, not a score check per
+      // call — the on-screen scoring pills already only ever reflect the
+      // cursor's own call (see `_scheduleScore`/`_callAtCursor`).
       if (isList) widget.onCallListLogged?.call();
     } finally {
       _isLogging = false;
@@ -3056,6 +3344,13 @@ class _LoggingControlsState extends State<LoggingControls> {
   @override
   Widget build(BuildContext context) {
     _scheduleSubmitButtonMeasurement();
+    // Push the current call-info up to the host (Info tab / modal) after this
+    // build settles, so it never setStates a parent mid-build.
+    if (widget.onCallInfoChanged != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _notifyCallInfo();
+      });
+    }
     final theme = Theme.of(context);
     final poloColors = HaLoColors.of(context);
 
@@ -3086,6 +3381,18 @@ class _LoggingControlsState extends State<LoggingControls> {
             extensions: [accentPoloColors],
           )
         : theme;
+
+    // Bump a monotonic generation whenever the info area's displayed content
+    // changes, and key the AnimatedSwitcher by it below. A content-derived key
+    // that can repeat (stats→call→stats) would collide with a still-fading
+    // outgoing child of the same key and crash the switcher's Stack; a
+    // never-repeating generation can't. Identical content (e.g. the stats
+    // line's 1 Hz tick) leaves the signature unchanged, so it updates in place.
+    final infoSignature = _infoAreaSignature(fieldsLocked: fieldsLocked, deletedQso: deletedQso);
+    if (infoSignature != _lastInfoSignature) {
+      _lastInfoSignature = infoSignature;
+      _infoGeneration++;
+    }
 
     final panel = CallbackShortcuts(
       bindings: {
@@ -3166,67 +3473,67 @@ class _LoggingControlsState extends State<LoggingControls> {
                             onSelect: _onSelectControl,
                             onOpenSettings: _openControlSettingsDialog,
                             horizontalBleed: _secondaryPanelHorizontalInset,
-                            trailing: _isDupe
-                                ? Chip(
-                                    label: Text(widget.dupeLabel ?? 'DUPE'),
-                                    visualDensity: VisualDensity.compact,
-                                    backgroundColor:
-                                        theme.colorScheme.errorContainer,
-                                    labelStyle: TextStyle(
-                                      color: theme.colorScheme.onErrorContainer,
-                                    ),
-                                  )
-                                : null,
+                            // The dupe warning (and the other scoring notices)
+                            // now live on the info area's third line — see
+                            // `_buildInfoArea` (issue #40).
                           ),
                         ),
                       ),
                       const SizedBox(height: 8),
-                      // A fixed-height container to prevent layout shifting.
-                      // Sized to the second edit button's own diameter (see
-                      // _buildWipeOrEditButton) — that button is the same
-                      // size as the submit button, well over the 36px this
-                      // row used to be, and a shorter row would have it
-                      // overflowing upward into the secondary control row's
-                      // chips above.
+                      // A min-height container: at least the second edit
+                      // button's own diameter (see _buildWipeOrEditButton) so a
+                      // one-line info area can't leave the button overflowing
+                      // upward into the secondary control chips above, but free
+                      // to grow taller for the call-info panel's up-to-three
+                      // lines (issue #40).
                       Stack(
                         clipBehavior: Clip.none,
                         children: [
-                          SizedBox(
-                            height: _editButtonDiameter ?? 44,
-                            width: double.infinity,
-                            // Reserves room for the button positioned on
-                            // top of this box (below), so text truncates
-                            // before it rather than rendering underneath.
-                            child: Padding(
+                          ConstrainedBox(
+                            constraints: BoxConstraints(minHeight: _editButtonDiameter ?? 44),
+                            child: SizedBox(
+                              width: double.infinity,
+                              // Reserves room for the button positioned on
+                              // top of this box (below), so text truncates
+                              // before it rather than rendering underneath.
+                              child: Padding(
                               padding: EdgeInsets.only(right: (_editButtonDiameter ?? 44) + 8),
-                              child: fieldsLocked
-                                  ? Align(
-                                      alignment: Alignment.centerLeft,
-                                      child: Row(
-                                        children: [
-                                          Icon(
-                                            resolveIconName('alert'),
-                                            size: 16,
-                                            color: theme.colorScheme.error,
-                                          ),
-                                          const SizedBox(width: 4),
-                                          Expanded(
-                                            child: Text(
-                                              deletedQso
-                                                  ? (widget.deletedQsoWarning ?? 'Deleted QSO')
-                                                  : (widget.pendingDeleteWarning ?? 'QSO will be deleted when you save'),
-                                              maxLines: 2,
-                                              overflow: TextOverflow.ellipsis,
-                                              style: theme.textTheme.bodyMedium?.copyWith(
-                                                color: theme.colorScheme.error,
-                                                fontWeight: FontWeight.w500,
-                                              ),
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    )
-                                  : _buildInfoArea(theme),
+                              // Top-aligned, with the height animating as the
+                              // content grows/shrinks and content swaps
+                              // cross-fading (issue #40). AnimatedSize drives the
+                              // height; AnimatedSwitcher fades between distinct
+                              // states, keyed by a signature that's stable
+                              // across the stats line's 1 Hz tick.
+                              child: AnimatedSize(
+                                duration: const Duration(milliseconds: 120),
+                                curve: Curves.easeOut,
+                                alignment: Alignment.topLeft,
+                                child: AnimatedSwitcher(
+                                  duration: const Duration(milliseconds: 120),
+                                  layoutBuilder: (currentChild, previousChildren) => Stack(
+                                    alignment: Alignment.topLeft,
+                                    children: [
+                                      ...previousChildren,
+                                      if (currentChild != null) currentChild,
+                                    ],
+                                  ),
+                                  child: KeyedSubtree(
+                                    key: ValueKey(_infoGeneration),
+                                    child: fieldsLocked
+                                        ? _buildLockedWarning(theme, deletedQso)
+                                        : (_callInfoActive && widget.onCallInfoTap != null)
+                                            // Tap the call-info area to open the
+                                            // detail panel (modal on narrow).
+                                            ? GestureDetector(
+                                                behavior: HitTestBehavior.opaque,
+                                                onTap: widget.onCallInfoTap,
+                                                child: _buildInfoArea(accentTheme),
+                                              )
+                                            : _buildInfoArea(accentTheme),
+                                  ),
+                                ),
+                              ),
+                            ),
                             ),
                           ),
                           Positioned(
@@ -3418,6 +3725,30 @@ class _LoggingControlsState extends State<LoggingControls> {
                   ),
                 ),
               ),
+              // The numbers row, when a field has focus and the keyboard is
+              // up (mobile only). See `_shouldShowNumbersRow`.
+              if (_shouldShowNumbersRow(context))
+                _buildNumberKeys(accentTheme),
+              // Reserve space at the bottom so the fields (and numbers row)
+              // clear whatever is down there — the Scaffold no longer resizes
+              // for the keyboard, it extends full height so each pane fills
+              // behind it, and the status footer no longer reserves the home
+              // indicator globally. That's the larger of the keyboard inset and
+              // the bottom safe area (a MAX — the keyboard covers the indicator
+              // when up). The spacer takes the numbers row's colour when it's
+              // showing (so the row reads as continuing behind the keyboard);
+              // otherwise it's the panel's own background (Material above), so
+              // the home-indicator strip matches the panel.
+              if (_bottomReserve > 0)
+                SizedBox(
+                  width: double.infinity,
+                  height: _bottomReserve,
+                  child: _shouldShowNumbersRow(context)
+                      ? ColoredBox(
+                          color: accentTheme.appBarTheme.backgroundColor ?? accentTheme.colorScheme.primary,
+                        )
+                      : null,
+                ),
             ],
           ),
         ),
@@ -3432,54 +3763,469 @@ class _LoggingControlsState extends State<LoggingControls> {
     return FocusScope(child: panel);
   }
 
+  /// Rebuilds when the on-screen keyboard opens or closes. The operation
+  /// Scaffold no longer resizes for the keyboard (it extends full height so
+  /// each pane paints its own bottom) — this panel keeps its own fields above
+  /// it with a bottom spacer (see build), whose height tracks the keyboard.
+  /// `didChangeMetrics` is the trigger: the raw view inset ([_keyboardInset])
+  /// has no MediaQuery dependency to rebuild on.
+  @override
+  void didChangeMetrics() {
+    if (isMobilePlatform && mounted) setState(() {});
+  }
+
+  /// The on-screen keyboard's height in logical pixels, or 0 off mobile /
+  /// keyboard down. Read from the raw `FlutterView` (see [virtualKeyboardIsUp]).
+  /// The panel reserves this much at its bottom so the fields and numbers row
+  /// stay above the keyboard.
+  double get _keyboardInset {
+    if (!isMobilePlatform) return 0;
+    final view = View.of(context);
+    return view.viewInsets.bottom / view.devicePixelRatio;
+  }
+
+  /// The bottom safe area (home indicator) in logical pixels, or 0 off mobile
+  /// / on a device without one. Read from the raw `FlutterView` like
+  /// [_keyboardInset]; `viewPadding` (unlike `MediaQuery.padding`) keeps the
+  /// indicator's height even while the keyboard is up, which is why the two
+  /// combine as a MAX.
+  double get _bottomSafeInset {
+    if (!isMobilePlatform) return 0;
+    final view = View.of(context);
+    return view.viewPadding.bottom / view.devicePixelRatio;
+  }
+
+  /// How much to reserve below the fields: the keyboard when it's up, the home
+  /// indicator when it's down (see the spacer in build).
+  double get _bottomReserve => math.max(_keyboardInset, _bottomSafeInset);
+
+  /// Whether to show the mobile numbers row right now — the setting is on,
+  /// we're on a phone/tablet, the QSO isn't a read-only (staged/already
+  /// deleted) view, the on-screen keyboard is up, and one of our logging
+  /// fields actually holds the focus (issue #27).
+  bool _shouldShowNumbersRow(BuildContext context) {
+    return widget.showNumbersRow &&
+        isMobilePlatform &&
+        !_fieldsLocked &&
+        virtualKeyboardIsUp(context) &&
+        _focusedNumberField != null;
+  }
+
+  Widget _buildNumberKeys(ThemeData theme) {
+    return NumberKeys(
+      onKey: _handleNumberKey,
+      extraKey: _numbersRowExtraKey,
+      vibrate: widget.vibrateNumbersRow,
+      // The AppBar/footer colour — the app's chrome — deliberately NOT the
+      // editing-swappable tertiary/secondary accent, so the row reads as
+      // chrome in every mode. (appBarTheme isn't remapped by the editing
+      // accent, so `theme` here being the accent theme is fine.)
+      backgroundColor: theme.appBarTheme.backgroundColor ?? theme.colorScheme.primary,
+      foregroundColor: theme.appBarTheme.foregroundColor ?? theme.colorScheme.onPrimary,
+    );
+  }
+
+  /// The lookup `guess` for the call about to be logged. Prefers a live lookup
+  /// result; when editing an existing QSO, uses the guess saved on the QSO at
+  /// log time (`their.guess`) so its call-info shows without refetching — and
+  /// while a fresh lookup for that same call is in flight (e.g. re-focusing the
+  /// field), the saved fields fill any gaps the partial live result hasn't
+  /// filled yet, so the panel updates in place instead of flashing to blank and
+  /// back. The saved guess is only used while the call field still matches the
+  /// QSO's own call. Empty map means "call known, nothing resolved yet."
+  Map<String, dynamic>? get _currentGuess {
+    final result = _lookupResult;
+    final liveGuess = (result != null && _lookupFor == _callAtCursor)
+        ? (result['guess'] as Map<String, dynamic>? ?? const {})
+        : null;
+
+    Map<String, dynamic>? savedGuess;
+    final editing = widget.editingQso;
+    if (editing != null) {
+      final their = editing.data['their'] as Map<String, dynamic>?;
+      final savedCall = (their?['call'] as String?)?.toUpperCase();
+      if (savedCall != null && savedCall == _callAtCursor && their?['guess'] is Map) {
+        savedGuess = (their!['guess'] as Map).cast<String, dynamic>();
+      }
+    }
+
+    if (liveGuess != null && savedGuess != null) return {...savedGuess, ...liveGuess};
+    return liveGuess ?? savedGuess;
+  }
+
+  /// The call-info panel's line 2: a callsign note (issue #17), which takes the
+  /// slot outright and renders as markdown, else the plain name. Null when the
+  /// guess has neither.
+  ({String text, bool isNote})? _stationNameOrNote(Map<String, dynamic>? guess) {
+    if (guess == null) return null;
+    final note = guess['note'] as String?;
+    if (note != null && note.isNotEmpty) return (text: note, isNote: true);
+    final name = guess['name'] as String?;
+    if (name != null && name.isNotEmpty) return (text: name, isNote: false);
+    return null;
+  }
+
+  /// The info area has three states (issue #40): a command message (markdown)
+  /// takes priority; otherwise, once a callsign of ≥3 letters/digits is in the
+  /// field, the call-info panel; otherwise the operation-statistics default.
   Widget _buildInfoArea(ThemeData theme) {
     final message = _commandMessage;
-    final lookup = _lookupLine;
-
     if (message != null) {
-      return Align(
-        alignment: Alignment.centerLeft,
-        child: MarkdownBody(
-          data: message,
-          styleSheet: MarkdownStyleSheet.fromTheme(theme).copyWith(
-            p: theme.textTheme.bodyMedium?.copyWith(
-              // The info area sits on the panel's tertiaryContainer fill —
-              // hardcoded black rendered black-on-dark-brown in dark mode.
-              color: theme.colorScheme.onTertiaryContainer,
-              fontWeight: FontWeight.w500,
-            ),
+      return MarkdownBody(
+        data: message,
+        styleSheet: MarkdownStyleSheet.fromTheme(theme).copyWith(
+          p: theme.textTheme.bodyMedium?.copyWith(
+            // The info area sits on the panel's tertiaryContainer fill.
+            color: theme.colorScheme.onTertiaryContainer,
+            fontWeight: FontWeight.w500,
           ),
         ),
       );
     }
 
-    if (lookup != null) {
-      return Align(
-        alignment: Alignment.centerLeft,
-        child: Row(
-          children: [
-            Icon(
-              MdiIcons.accountSearch,
-              size: 16,
-              color: theme.colorScheme.primary,
+    if (_callInfoActive) return _buildCallInfo(theme);
+    return _buildOperationStats(theme);
+  }
+
+  /// AnimatedSwitcher key for the info area — changes when the DISPLAYED
+  /// content changes (mode, lookup result, notices), but is stable across the
+  /// stats line's 1 Hz clock tick, so only real content changes cross-fade.
+  String _infoAreaSignature({required bool fieldsLocked, required bool deletedQso}) {
+    if (fieldsLocked) return 'locked:$deletedQso';
+    if (_commandMessage != null) return 'message'; // message text updates in place
+    // Coarse on purpose: only the call itself keys the cross-fade. Lookup and
+    // score results stream in as in-place updates (no switch), so the panel
+    // fills smoothly instead of flashing empty between passes.
+    if (_callInfoActive) return 'call:$_callAtCursor';
+    return 'stats'; // stable across the ticker
+  }
+
+  /// The read-only warning shown in place of the info area for a staged-delete
+  /// or already-deleted QSO (ham2k/app-halo-dist#59).
+  Widget _buildLockedWarning(ThemeData theme, bool deletedQso) {
+    return Row(
+      children: [
+        Icon(resolveIconName('alert'), size: 16, color: theme.colorScheme.error),
+        const SizedBox(width: 4),
+        Expanded(
+          child: Text(
+            deletedQso
+                ? (widget.deletedQsoWarning ?? 'Deleted QSO')
+                : (widget.pendingDeleteWarning ?? 'QSO will be deleted when you save'),
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: theme.colorScheme.error,
+              fontWeight: FontWeight.w500,
             ),
-            const SizedBox(width: 4),
-            Expanded(
-              child: Text(
-                lookup,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  color: theme.colorScheme.onTertiaryContainer,
-                ),
-              ),
-            ),
-          ],
+          ),
         ),
-      );
+      ],
+    );
+  }
+
+  /// Default state: operation statistics (QSO count, rates) from the app
+  /// layer's `operationStatsLines`, behind a timer icon. Refreshes live via
+  /// the panel's 1 Hz clock ticker while composing (see `_updateClockTicker`).
+  Widget _buildOperationStats(ThemeData theme) {
+    final lines = widget.operationStatsLines?.call(widget.qsos) ?? const <String>[];
+    if (lines.isEmpty) return const SizedBox.shrink();
+    return _iconRows(
+      theme,
+      // Filled icon in the same accent as the main buttons (tertiary, or
+      // secondary while editing — see `accentTheme`).
+      icon: resolveIconName('timer'),
+      iconColor: theme.colorScheme.tertiary,
+      children: [
+        for (final line in lines)
+          Text(
+            line,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onTertiaryContainer),
+          ),
+      ],
+    );
+  }
+
+  /// Call-info state: line 1 flag + location, line 2 note/name, line 3 scoring
+  /// notices — all in a column aligned past the leading person icon.
+  Widget _buildCallInfo(ThemeData theme) {
+    // When editing an existing QSO, hold the panel's data until scoring has run
+    // (`_scoreFor == _callAtCursor`), so the saved lookup and the pills appear
+    // together in one update — otherwise the lookup text renders first and the
+    // pills pop in a moment later. Composing streams in as the user types.
+    final ready = widget.editingQso == null || widget.scoreQso == null || _scoreFor == _callAtCursor;
+    final guess = ready ? _currentGuess : null;
+    final flag = guess?['flag'] as String?;
+    final location = guess == null ? null : widget.callLocationLine?.call(guess);
+    final nameInfo = _stationNameOrNote(guess);
+    final notices = ready ? _scoringNotices() : const <({String label, bool alert})>[];
+
+    // Line 1: optional flag, then the location slot — which is always present
+    // (a blank space when there's no location) so the line keeps a consistent
+    // height whether or not a location resolved.
+    final firstLine = <Widget>[
+      if (flag != null && flag.isNotEmpty) ...[
+        Text(flag, style: theme.textTheme.bodyMedium?.copyWith(shadows: _emojiGlow(theme))),
+        const SizedBox(width: 6),
+      ],
+      Expanded(
+        child: Text(
+          (location != null && location.isNotEmpty) ? location : ' ',
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onTertiaryContainer),
+        ),
+      ),
+    ];
+
+    // Always render the panel (at least the person icon + the reserved first
+    // line) once a call is active, so the lookup and score data fill it in
+    // place rather than the panel flashing between empty and full — the switcher
+    // keys only on the call, so this whole subtree updates without a re-fade.
+    return _iconRows(
+      theme,
+      // Filled icon in the same accent as the main buttons (tertiary, or
+      // secondary while editing — see `accentTheme`).
+      icon: resolveIconName('account'),
+      iconColor: theme.colorScheme.tertiary,
+      children: [
+        // Line 1 — flag + distance/location (blank until the lookup resolves),
+        // keeping the pills and note on the second line even before it appears.
+        Row(children: firstLine),
+        // Line 2 (+ 3 when they don't fit): scoring pills and the note/name.
+        if (nameInfo != null || notices.isNotEmpty) _buildNoticesAndNote(theme, notices, nameInfo),
+      ],
+    );
+  }
+
+  /// Shared layout for the stats and call-info states: a top-aligned leading
+  /// icon with a column of lines to its right (which naturally indents lines 2+
+  /// past the icon, per issue #40's "align past the icon" requirement).
+  Widget _iconRows(
+    ThemeData theme, {
+    required IconData icon,
+    required Color iconColor,
+    required List<Widget> children,
+  }) {
+    // No Align: the info-area container top-left-aligns and animates this
+    // (see the AnimatedSize/AnimatedSwitcher in build).
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(top: 2),
+          child: Icon(icon, size: 16, color: iconColor),
+        ),
+        const SizedBox(width: 6),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: children,
+          ),
+        ),
+      ],
+    );
+  }
+
+  /// The lookup entries backing the current call-info — live results when
+  /// available, else the entries saved on the QSO being edited (`their.lookups`,
+  /// which carry the call-notes `notes` array the merge doesn't fold into
+  /// `guess`).
+  List<Map<String, dynamic>> get _currentLookups {
+    final live = (_lookupResult?['lookups'] as List?)?.whereType<Map<String, dynamic>>().toList();
+    if (live != null && _lookupFor == _callAtCursor) return live;
+    final their = widget.editingQso?.data['their'] as Map<String, dynamic>?;
+    return (their?['lookups'] as List?)?.whereType<Map<String, dynamic>>().toList() ?? const [];
+  }
+
+  /// The current call-info payload for the detail panel, or null when the
+  /// call-info panel isn't showing.
+  CallInfoData? get _currentCallInfoData {
+    // Mirror the compact area's priority: a command message wins over call-info.
+    if (!_callInfoActive || _commandMessage != null) return null;
+    final fresh = _scoreFor == _callAtCursor;
+    return CallInfoData(
+      call: _callAtCursor,
+      guess: _currentGuess,
+      lookups: _currentLookups,
+      alertKeys: fresh ? _scoreAlertKeys : const [],
+      noticeKeys: fresh ? _scoreNoticeKeys : const [],
+    );
+  }
+
+  /// Pushes the current call-info up to the host (deduped) — the Info tab's
+  /// detail panel mirrors it. Called post-build so it never setStates a parent
+  /// mid-build.
+  String? _lastCallInfoSig;
+  void _notifyCallInfo() {
+    if (widget.onCallInfoChanged == null) return;
+    final data = _currentCallInfoData;
+    final g = data?.guess;
+    final sig = data == null
+        ? null
+        : '${data.call}|$_lookupFor|${g?['name']}|${g?['grid']}|${g?['image']}|${g?['note']}'
+            '|${data.alertKeys.join(",")}|${data.noticeKeys.join(",")}';
+    if (sig == _lastCallInfoSig) return;
+    _lastCallInfoSig = sig;
+    widget.onCallInfoChanged!(data);
+  }
+
+  /// The scoring notices for the call-info line — from the scoring hook only
+  /// (dupe included: whether a QSO is a dupe depends on the operation's
+  /// activities, which the hook knows and a client-side check can't). Alerts
+  /// (red) first, then notices (green); each carries its localized label.
+  List<({String label, bool alert})> _scoringNotices() {
+    if (_scoreFor != _callAtCursor) return const [];
+    final labelOf = widget.scoreNoticeLabel ?? (key) => key;
+    return [
+      for (final key in _scoreAlertKeys) (label: labelOf(key), alert: true),
+      for (final key in _scoreNoticeKeys) (label: labelOf(key), alert: false),
+    ];
+  }
+
+  /// Line 2 (and, when it doesn't fit, line 3): the scoring pills and the
+  /// note/name. When pills + note fit the available width, the pills lead and
+  /// the note trails on one line; otherwise the note takes line 2 and the pills
+  /// stack below on line 3 (measured with a TextPainter — the app scales at the
+  /// root, so logical-pixel measurements match what's painted).
+  Widget _buildNoticesAndNote(
+    ThemeData theme,
+    List<({String label, bool alert})> notices,
+    ({String text, bool isNote})? nameInfo,
+  ) {
+    final pillsRow = <Widget>[
+      for (var i = 0; i < notices.length; i++) ...[
+        if (i > 0) const SizedBox(width: 4),
+        _noticePill(theme, notices[i].label, alert: notices[i].alert),
+      ],
+    ];
+    final note = nameInfo == null ? null : _buildNoteOrName(theme, nameInfo);
+
+    if (notices.isEmpty) return note ?? const SizedBox.shrink();
+    if (note == null) return Row(children: pillsRow);
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final pillStyle = theme.textTheme.labelSmall?.copyWith(fontWeight: FontWeight.w600);
+        final noteStyle = theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600);
+        var pillsWidth = 0.0;
+        for (var i = 0; i < notices.length; i++) {
+          pillsWidth += _measureTextWidth(notices[i].label, pillStyle) + 12; // 6px h-padding each side
+          if (i > 0) pillsWidth += 4; // inter-pill gap
+        }
+        final noteWidth = _measureTextWidth(_stripMarkdownForWidth(nameInfo!.text), noteStyle);
+        const gap = 8.0;
+
+        if (pillsWidth + gap + noteWidth <= constraints.maxWidth) {
+          // Fits: pills lead, note trails.
+          return Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [...pillsRow, const SizedBox(width: gap), Flexible(child: note)],
+          );
+        }
+        // Doesn't fit: note on its own line, pills stacked below.
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [note, const SizedBox(height: 3), Row(children: pillsRow)],
+        );
+      },
+    );
+  }
+
+  double _measureTextWidth(String text, TextStyle? style) {
+    final painter = TextPainter(
+      text: TextSpan(text: text, style: style),
+      textDirection: TextDirection.ltr,
+      maxLines: 1,
+    )..layout();
+    return painter.width;
+  }
+
+  /// Rough plain-text of markdown for width estimation — unwraps `[text](url)`
+  /// links and drops emphasis markers so the estimate matches the rendered text.
+  static String _stripMarkdownForWidth(String s) => s
+      .replaceAllMapped(RegExp(r'\[([^\]]*)\]\([^)]*\)'), (m) => m[1] ?? '')
+      .replaceAll(RegExp(r'[*_`~]'), '');
+
+  /// A soft halo behind the call-info emoji (the flag, and a note's leading
+  /// emoji) so busy glyphs stay legible against the panel's tinted fill —
+  /// white on light themes, dark on dark themes.
+  List<Shadow> _emojiGlow(ThemeData theme) {
+    final color = theme.brightness == Brightness.dark ? Colors.black : Colors.white;
+    return [Shadow(color: color.withValues(alpha: 0.6), blurRadius: 6)];
+  }
+
+  /// The leading emoji cluster of a call note — call notes always prefix their
+  /// emoji (see the call-notes extension's `combineNotes`), so isolating this
+  /// run lets the glow ride only the emoji, not the note's prose. Covers the
+  /// common pictographic ranges plus ZWJ / variation-selector / keycap /
+  /// regional-indicator (flag) code points; deliberately not exhaustive.
+  static final _leadingEmoji = RegExp(
+    r'^[\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}\u{2B00}-\u{2BFF}\u{1F1E6}-\u{1F1FF}\u{200D}\u{FE0F}\u{20E3}]+',
+    unicode: true,
+  );
+
+  /// Line 2 of the call-info panel: the plain name, or the note rendered as
+  /// markdown with its leading emoji cluster glowed (emoji only, not the prose).
+  Widget _buildNoteOrName(ThemeData theme, ({String text, bool isNote}) info) {
+    final textStyle = theme.textTheme.bodyMedium?.copyWith(
+      color: theme.colorScheme.onTertiaryContainer,
+      fontWeight: FontWeight.w600,
+    );
+    if (!info.isNote) {
+      return Text(info.text, maxLines: 1, overflow: TextOverflow.ellipsis, style: textStyle);
     }
 
-    return const SizedBox.shrink();
+    final leadMatch = _leadingEmoji.firstMatch(info.text);
+    final rest = leadMatch == null ? info.text : info.text.substring(leadMatch.end).trimLeft();
+    final markdown = rest.isEmpty
+        ? null
+        : MarkdownBody(
+            data: rest,
+            styleSheet: MarkdownStyleSheet.fromTheme(theme).copyWith(
+              p: textStyle,
+              // A link blue tuned per theme so the note's socials/URLs read
+              // clearly on the panel's fill — darker on light, lighter on dark.
+              a: TextStyle(
+                color: theme.brightness == Brightness.dark ? Colors.blue.shade200 : Colors.blue.shade800,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          );
+
+    if (leadMatch == null) return markdown ?? const SizedBox.shrink();
+
+    // Leading emoji (glowed) + the rest of the note (markdown, no glow).
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(leadMatch.group(0)!, style: textStyle?.copyWith(shadows: _emojiGlow(theme))),
+        if (markdown != null) ...[
+          const SizedBox(width: 4),
+          Flexible(child: markdown),
+        ],
+      ],
+    );
+  }
+
+  Widget _noticePill(ThemeData theme, String label, {required bool alert}) {
+    // Alerts are the error color; notices a positive green (matching app-polo's
+    // red/green pill convention) — the panel's own tertiaryContainer fill rules
+    // out relying on the neutral scheme containers for contrast.
+    final background = alert ? theme.colorScheme.error : const Color(0xFF2E7D32);
+    final foreground = alert ? theme.colorScheme.onError : Colors.white;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+      decoration: BoxDecoration(color: background, borderRadius: BorderRadius.circular(3)),
+      child: Text(
+        label,
+        style: theme.textTheme.labelSmall?.copyWith(color: foreground, fontWeight: FontWeight.w600),
+      ),
+    );
   }
 }
 

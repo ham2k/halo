@@ -45,7 +45,7 @@ const ExportHandler = {
         format: 'adif',
         label: 'ADIF Export',
         filename: filenameFor(operation, qsos),
-        icon: 'file-export-outline',
+        icon: 'file-export',
         selectedByDefault: true,
       },
     ]

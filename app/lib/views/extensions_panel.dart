@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: MPL-2.0
 //
 // Extension Management (Issue #25): enable/disable the optional extensions,
-// grouped per category, with a search/filter field pinned at the BOTTOM.
+// grouped per category, with a search/filter field pinned at the TOP.
 // Core (always-enabled) extensions are never listed. Metadata comes from
 // the build index (ExtensionService.loadAvailableExtensions — readable
 // even when the runtime is down); the enabled state is the overrides map
@@ -71,9 +71,9 @@ class ExtensionsPanelState extends State<ExtensionsPanel> {
       };
 
   IconData _categoryIcon(String? category) => switch (category) {
-        'activity' => Icons.explore_outlined,
-        'lookup' => Icons.person_search_outlined,
-        _ => Icons.extension_outlined,
+        'activity' => Icons.explore,
+        'lookup' => Icons.person_search,
+        _ => Icons.extension,
       };
 
   @override
@@ -136,29 +136,9 @@ class ExtensionsPanelState extends State<ExtensionsPanel> {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Expanded(
-              child: IgnorePointer(
-                ignoring: _applying,
-                child: rows.isEmpty
-                    ? Center(child: Text(t.extensionsPanel.noMatches))
-                    : ListView(padding: const EdgeInsets.symmetric(vertical: 8), children: rows),
-              ),
-            ),
-            if (_applying)
-              Padding(
-                padding: EdgeInsets.fromLTRB(16 + safeLeft, 8, 16, 0),
-                child: Row(
-                  children: [
-                    const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)),
-                    const SizedBox(width: 12),
-                    Expanded(child: Text(t.extensionsPanel.applying)),
-                  ],
-                ),
-              ),
-            // The issue asks for the search field at the BOTTOM — thumb
-            // reach on mobile, and the list stays put while filtering.
+            // Search/filter field pinned at the top of the panel.
             Padding(
-              padding: EdgeInsets.fromLTRB(16 + safeLeft, 8, 16, 16),
+              padding: EdgeInsets.fromLTRB(16 + safeLeft, 12, 16, 8),
               child: TextField(
                 key: const ValueKey('extensions-search'),
                 controller: _searchController,
@@ -178,6 +158,25 @@ class ExtensionsPanelState extends State<ExtensionsPanel> {
                 ),
               ),
             ),
+            Expanded(
+              child: IgnorePointer(
+                ignoring: _applying,
+                child: rows.isEmpty
+                    ? Center(child: Text(t.extensionsPanel.noMatches))
+                    : ListView(padding: const EdgeInsets.symmetric(vertical: 8), children: rows),
+              ),
+            ),
+            if (_applying)
+              Padding(
+                padding: EdgeInsets.fromLTRB(16 + safeLeft, 8, 16, 12),
+                child: Row(
+                  children: [
+                    const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)),
+                    const SizedBox(width: 12),
+                    Expanded(child: Text(t.extensionsPanel.applying)),
+                  ],
+                ),
+              ),
           ],
         );
       },

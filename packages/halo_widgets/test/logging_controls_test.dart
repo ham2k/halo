@@ -45,6 +45,9 @@ void main() {
     SendSpot? sendSpot,
     bool showStateField = false,
     bool showGridField = false,
+    bool showNumbersRow = false,
+    bool showExtraInNumbersRow = true,
+    bool vibrateNumbersRow = true,
     List<String>? enabledBands,
     List<String>? enabledModes,
     void Function(Qso qso)? enqueueLookup,
@@ -65,6 +68,9 @@ void main() {
       sendSpot: sendSpot,
       showStateField: showStateField,
       showGridField: showGridField,
+      showNumbersRow: showNumbersRow,
+      showExtraInNumbersRow: showExtraInNumbersRow,
+      vibrateNumbersRow: vibrateNumbersRow,
       enabledBands: enabledBands,
       enabledModes: enabledModes,
       spottingControlLabel: 'Spotting',
@@ -74,17 +80,42 @@ void main() {
       spotOtherLabel: (call, freq) => 'Spot $call at $freq',
       spotTooLateLabel: (call) => 'Too late to spot $call',
       spotNoFreqLabel: 'First set a frequency to spot',
+      // The dupe warning now renders as a line-3 pill in the info area
+      // (issue #40); map its key to the same 'DUPE' text the old chip used so
+      // the dupe-detection tests can keep asserting on it.
+      scoreNoticeLabel: (key) => key == 'duplicate' ? 'DUPE' : key,
     );
     return MaterialApp(
       home: Scaffold(
-        // `trailing` stands in for the QSO list above the panel — a
-        // focusable sibling OUTSIDE the controls, so a test can prove Tab
-        // never lands on it.
-        body: trailing == null
-            ? controls
-            : Column(mainAxisSize: MainAxisSize.min, children: [controls, trailing]),
+        // Matches the operation view: the Scaffold doesn't resize for the
+        // keyboard (LoggingControls reserves its own bottom spacer), and the
+        // panel is bottom-anchored with the rest of the height above it (the
+        // QsoList in the app). `trailing` stands in for that QSO list — a
+        // focusable sibling OUTSIDE the controls, so a Tab-trap test can prove
+        // focus never lands on it.
+        resizeToAvoidBottomInset: false,
+        body: Column(
+          children: [
+            const Expanded(child: SizedBox.shrink()),
+            controls,
+            if (trailing != null) trailing,
+          ],
+        ),
       ),
     );
+  }
+
+  // The on-screen keyboard, as the widget tree actually sees it: raise the
+  // real FlutterView's bottom inset (Scaffold hides it from MediaQuery, so
+  // that's the only faithful signal — the very thing `_keyboardIsUp` reads).
+  // Insets are physical px, so scale by the pixel ratio pinned here;
+  // `logicalHeight` stands in either a full keyboard (default) or the thin
+  // ~50px shortcuts bar iOS shows when a HARDWARE keyboard is attached.
+  void raiseKeyboard(WidgetTester tester, {double logicalHeight = 300}) {
+    tester.view.devicePixelRatio = 3.0;
+    tester.view.viewInsets = FakeViewPadding(bottom: logicalHeight * 3.0);
+    addTearDown(tester.view.resetViewInsets);
+    addTearDown(tester.view.resetDevicePixelRatio);
   }
 
   /// Stand-in for the real `radio-commands` extension (see
@@ -273,6 +304,142 @@ void main() {
     }
   });
 
+  group('mobile numbers row (issue #27)', () {
+    Finder keyInRow(String glyph) =>
+        find.descendant(of: find.byType(NumberKeys), matching: find.text(glyph));
+
+    testWidgets('shows above the keyboard on mobile when enabled and a field has focus', (tester) async {
+      debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
+      try {
+        raiseKeyboard(tester);
+        await tester.pumpWidget(host(showNumbersRow: true));
+        await tester.pump();
+        expect(find.byType(NumberKeys), findsOneWidget);
+        // The full digit set is there…
+        for (final d in ['0', '1', '5', '9']) {
+          expect(keyInRow(d), findsOneWidget);
+        }
+        // …and the empty call field reads as numeric, so the extra key is ".".
+        expect(keyInRow('.'), findsOneWidget);
+        expect(keyInRow('/'), findsNothing);
+      } finally {
+        debugDefaultTargetPlatformOverride = null;
+      }
+    });
+
+    testWidgets('is hidden when the setting is off', (tester) async {
+      debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
+      try {
+        raiseKeyboard(tester);
+        await tester.pumpWidget(host(showNumbersRow: false));
+        await tester.pump();
+        expect(find.byType(NumberKeys), findsNothing);
+      } finally {
+        debugDefaultTargetPlatformOverride = null;
+      }
+    });
+
+    testWidgets('is hidden while the keyboard is down', (tester) async {
+      debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
+      try {
+        // No raiseKeyboard — the keyboard is down.
+        await tester.pumpWidget(host(showNumbersRow: true));
+        await tester.pump();
+        expect(find.byType(NumberKeys), findsNothing);
+      } finally {
+        debugDefaultTargetPlatformOverride = null;
+      }
+    });
+
+    testWidgets('stays hidden for the hardware-keyboard accessory bar, not a full keyboard', (tester) async {
+      debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
+      try {
+        // iOS raises only a ~50px shortcuts bar when a hardware keyboard is
+        // attached — that bumps viewInsets, but it isn't a virtual keyboard,
+        // so the numbers row (redundant with physical number keys) stays away.
+        raiseKeyboard(tester, logicalHeight: 50);
+        await tester.pumpWidget(host(showNumbersRow: true));
+        await tester.pump();
+        expect(find.byType(NumberKeys), findsNothing);
+      } finally {
+        debugDefaultTargetPlatformOverride = null;
+      }
+    });
+
+    testWidgets('never shows off mobile, even with the keyboard up', (tester) async {
+      debugDefaultTargetPlatformOverride = TargetPlatform.macOS;
+      try {
+        raiseKeyboard(tester);
+        await tester.pumpWidget(host(showNumbersRow: true));
+        await tester.pump();
+        expect(find.byType(NumberKeys), findsNothing);
+      } finally {
+        debugDefaultTargetPlatformOverride = null;
+      }
+    });
+
+    testWidgets('tapping a digit inserts it at the focused field', (tester) async {
+      debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
+      try {
+        raiseKeyboard(tester);
+        await tester.pumpWidget(host(showNumbersRow: true));
+        await tester.pump(); // let the call field autofocus
+
+        await tester.tap(keyInRow('5'));
+        await tester.pump();
+        await tester.tap(keyInRow('9'));
+        await tester.pump();
+
+        final callField = tester.widget<TextField>(find.widgetWithText(TextField, 'Their call'));
+        expect(callField.controller!.text, '59');
+      } finally {
+        debugDefaultTargetPlatformOverride = null;
+      }
+    });
+
+    testWidgets('extra key is "/" while composing a callsign, "." in a numeric field', (tester) async {
+      debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
+      try {
+        raiseKeyboard(tester);
+        await tester.pumpWidget(host(showNumbersRow: true));
+
+        // A partial callsign in the (focused) call field → "/".
+        await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'W1AW');
+        await tester.pump();
+        expect(keyInRow('/'), findsOneWidget);
+        expect(keyInRow('.'), findsNothing);
+
+        // Tapping it appends the slash the mobile keyboard buries a layer down.
+        await tester.tap(keyInRow('/'));
+        await tester.pump();
+        final callField = tester.widget<TextField>(find.widgetWithText(TextField, 'Their call'));
+        expect(callField.controller!.text, 'W1AW/');
+
+        // Moving focus to the numeric Sent field flips the extra key to ".".
+        await tester.enterText(find.widgetWithText(TextField, 'Sent'), '59');
+        await tester.pump();
+        expect(keyInRow('.'), findsOneWidget);
+        expect(keyInRow('/'), findsNothing);
+      } finally {
+        debugDefaultTargetPlatformOverride = null;
+      }
+    });
+
+    testWidgets('the extra key can be turned off', (tester) async {
+      debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
+      try {
+        raiseKeyboard(tester);
+        await tester.pumpWidget(host(showNumbersRow: true, showExtraInNumbersRow: false));
+        await tester.pump();
+        expect(find.byType(NumberKeys), findsOneWidget);
+        expect(keyInRow('.'), findsNothing);
+        expect(keyInRow('/'), findsNothing);
+      } finally {
+        debugDefaultTargetPlatformOverride = null;
+      }
+    });
+  });
+
   testWidgets('a comma-separated call list logs one QSO per call, 5 seconds apart', (tester) async {
     await tester.pumpWidget(host());
 
@@ -436,6 +603,146 @@ void main() {
     expect(lookups, contains('W1AW'));
     expect(lookups, isNot(contains('K1ABC, W1AW')));
     expect(find.textContaining('ARRL HQ'), findsOneWidget);
+  });
+
+  group('info area (issue #40)', () {
+    Future<Map<String, dynamic>?> Function(String, {required Map<String, dynamic> qso, required Map<String, dynamic> operation, required bool online}) guessLookup(
+      Map<String, dynamic> guess,
+    ) {
+      return (call, {required qso, required operation, required online}) async => {'guess': guess};
+    }
+
+    testWidgets('idle (no call): renders the operation statistics lines', (tester) async {
+      await tester.pumpWidget(MaterialApp(
+        home: Scaffold(
+          body: LoggingControls(
+            operation: operation,
+            qsosRepository: qsos,
+            operationStatsLines: (_) => ['12 QSOs in 1h 5m', '48 Q/h for last 10'],
+          ),
+        ),
+      ));
+      await tester.pump();
+
+      expect(find.text('12 QSOs in 1h 5m'), findsOneWidget);
+      expect(find.text('48 Q/h for last 10'), findsOneWidget);
+    });
+
+    testWidgets('call entered: flag, location line and name replace the stats', (tester) async {
+      await tester.pumpWidget(MaterialApp(
+        home: Scaffold(
+          body: LoggingControls(
+            operation: operation,
+            qsosRepository: qsos,
+            lookup: guessLookup({'flag': '🇮🇹', 'name': 'Marco', 'entityPrefix': 'I', 'country': 'Italy'}),
+            callLocationLine: (guess) => '5,000 mi to • ${guess['country']}',
+            operationStatsLines: (_) => ['stats-line-should-be-hidden'],
+          ),
+        ),
+      ));
+
+      await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'IK1ABC');
+      await tester.pump(const Duration(milliseconds: 500));
+      await tester.pump(const Duration(milliseconds: 300)); // let the info-area cross-fade settle
+
+      expect(find.text('🇮🇹'), findsOneWidget);
+      expect(find.textContaining('5,000 mi to'), findsOneWidget);
+      expect(find.text('Marco'), findsOneWidget);
+      // Once a call of ≥3 chars is entered, the default stats give way to
+      // the call-info panel.
+      expect(find.text('stats-line-should-be-hidden'), findsNothing);
+    });
+
+    testWidgets('a lookup note takes line 2 over the name', (tester) async {
+      await tester.pumpWidget(MaterialApp(
+        home: Scaffold(
+          body: LoggingControls(
+            operation: operation,
+            qsosRepository: qsos,
+            lookup: guessLookup({'name': 'Marco', 'note': 'Old friend, always on 20m'}),
+          ),
+        ),
+      ));
+
+      await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'IK1ABC');
+      await tester.pump(const Duration(milliseconds: 500));
+
+      expect(find.textContaining('Old friend, always on 20m'), findsOneWidget);
+      expect(find.text('Marco'), findsNothing);
+    });
+
+    testWidgets('scoreQso notices render as line-3 pills', (tester) async {
+      await tester.pumpWidget(MaterialApp(
+        home: Scaffold(
+          body: LoggingControls(
+            operation: operation,
+            qsosRepository: qsos,
+            lookup: guessLookup({'name': 'Marco'}),
+            scoreQso: ({required operation, required qso, excludeUuid}) async =>
+                {'notices': ['newDXCC', 'newBand'], 'alerts': <String>[]},
+            scoreNoticeLabel: (key) => const {'newDXCC': 'New DXCC', 'newBand': 'New Band'}[key] ?? key,
+          ),
+        ),
+      ));
+
+      await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'IK1ABC');
+      await tester.pump(const Duration(milliseconds: 500));
+
+      expect(find.text('New DXCC'), findsOneWidget);
+      expect(find.text('New Band'), findsOneWidget);
+    });
+
+    testWidgets("the hook's dupe alert shows as a pill — and no DUPE chip in the control row", (tester) async {
+      // Dupe detection now lives in the scoreQso hook (which knows the
+      // operation's activities), not a client-side check — the widget just
+      // renders whatever the hook returns.
+      await tester.pumpWidget(MaterialApp(
+        home: Scaffold(
+          body: LoggingControls(
+            operation: operation,
+            qsosRepository: qsos,
+            scoreQso: ({required operation, required qso, excludeUuid}) async =>
+                {'notices': <String>[], 'alerts': ['duplicate']},
+            scoreNoticeLabel: (key) => key == 'duplicate' ? 'Dupe!' : key,
+          ),
+        ),
+      ));
+
+      await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'W1AW');
+      await tester.pump(const Duration(milliseconds: 500));
+
+      // The hook's dupe alert renders as a pill...
+      expect(find.text('Dupe!'), findsOneWidget);
+      // ...and never as a Chip in the secondary control row (issue #40).
+      expect(find.widgetWithText(Chip, 'DUPE'), findsNothing);
+    });
+
+    testWidgets('scoreQso fires only for a plausible callsign, not junk input', (tester) async {
+      final scored = <String>[];
+      await tester.pumpWidget(MaterialApp(
+        home: Scaffold(
+          body: LoggingControls(
+            operation: operation,
+            qsosRepository: qsos,
+            scoreQso: ({required operation, required qso, excludeUuid}) async {
+              scored.add(((qso['their'] as Map)['call']) as String);
+              return {'notices': <String>[], 'alerts': <String>[]};
+            },
+          ),
+        ),
+      ));
+
+      // "QQQ" is ≥3 chars but not a plausible callsign — no whole-log scoring
+      // pass should fire (the same gate the lookup uses).
+      await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'QQQ');
+      await tester.pump(const Duration(milliseconds: 500));
+      expect(scored, isEmpty);
+
+      // A real callsign triggers exactly one debounced scoring pass.
+      await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'W1AW');
+      await tester.pump(const Duration(milliseconds: 500));
+      expect(scored, ['W1AW']);
+    });
   });
 
   testWidgets('logging a comma-separated call list saves immediately without inline lookups; each entry is enqueued for background lookup', (tester) async {
@@ -738,28 +1045,6 @@ void main() {
     expect(callField.controller!.text, 'K1ABC');
   });
 
-  testWidgets('call stacking: DUPE chip reflects the call that would actually be logged, not the raw stacked text', (tester) async {
-    final dupe = (await tester.runAsync(() => qsos.add(operation.uuid, {
-          'their': {'call': 'W1AW'},
-          'band': '20m',
-          'mode': 'SSB',
-        })))!;
-    await tester.pumpWidget(host(existing: [dupe]));
-    await openControl(tester, MdiIcons.radio);
-    await tester.enterText(find.widgetWithText(TextField, 'Frequency'), '14285');
-
-    // Cursor ends up at the end (last segment, "W1AW") after enterText.
-    await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'K1ABC//W1AW');
-    await tester.pump();
-    expect(find.text('DUPE'), findsOneWidget);
-
-    // Move the cursor into "K1AB|C" — not a dupe.
-    final callField = tester.widget<TextField>(find.widgetWithText(TextField, 'Their call'));
-    callField.controller!.selection = const TextSelection.collapsed(offset: 4);
-    await tester.pump();
-    expect(find.text('DUPE'), findsNothing);
-  });
-
   testWidgets('call stacking: lookup enrichment applies to the picked call and reaches the logged QSO', (tester) async {
     Future<Map<String, dynamic>?> lookup(
       String call, {
@@ -846,7 +1131,14 @@ void main() {
 
     await tester.pumpWidget(MaterialApp(
       home: Scaffold(
-        body: LoggingControls(operation: operation, qsosRepository: qsos, lookup: lookup),
+        body: LoggingControls(
+          operation: operation,
+          qsosRepository: qsos,
+          lookup: lookup,
+          // The location line is formatted by the app layer (issue #40);
+          // surface the guess's location so it can be asserted here.
+          callLocationLine: (guess) => guess['location'] as String?,
+        ),
       ),
     ));
 
@@ -861,15 +1153,16 @@ void main() {
     await tester.pump();
     // Two passes per resolved call: an offline pass, then an online pass.
     expect(lookups, 2);
-    expect(find.textContaining('ARRL HQ'), findsOneWidget);
-    expect(find.textContaining('Newington, CT'), findsOneWidget);
+    expect(find.textContaining('ARRL HQ'), findsOneWidget); // name, line 2
+    expect(find.textContaining('Newington, CT'), findsOneWidget); // location, line 1
 
     await tester.sendKeyEvent(LogicalKeyboardKey.enter);
     final logged = await waitForQsos(tester, 1);
     expect(logged.single.theirName, 'ARRL HQ');
     expect(logged.single.theirGrid, 'FN31pr');
 
-    // Wipe cleared the enrichment line.
+    // Wipe cleared the enrichment line (after the info-area cross-fade settles).
+    await tester.pump(const Duration(milliseconds: 300));
     expect(find.textContaining('ARRL HQ'), findsNothing);
   });
 
@@ -1044,6 +1337,31 @@ void main() {
     expect(logged.single.band, '40m');
     expect(logged.single.freq, isNull);
     expect(logged.single.mode, 'CW');
+  });
+
+  testWidgets('clearing the frequency keeps the band it was last on', (tester) async {
+    await tester.pumpWidget(host());
+    await openControl(tester, MdiIcons.radio);
+
+    // A frequency derives its band.
+    await tester.enterText(find.widgetWithText(TextField, 'Frequency'), '14285');
+    await tester.pump();
+    expect(find.text('20m'), findsWidgets);
+
+    // Clearing the frequency must NOT drop the band — it stays 20m.
+    await tester.enterText(find.widgetWithText(TextField, 'Frequency'), '');
+    await tester.pump();
+    expect(find.text('20m'), findsWidgets);
+
+    // Logging now records that retained band, with no frequency.
+    await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'W1AW');
+    await tester.pump();
+    await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+
+    final logged = await waitForQsos(tester, 1);
+    expect(logged, hasLength(1));
+    expect(logged.single.band, '20m');
+    expect(logged.single.freq, isNull);
   });
 
   testWidgets('call-field command awaiting params (expectsParams) allows space but stays uppercase, and Enter does not execute it', (tester) async {
@@ -1369,6 +1687,86 @@ void main() {
     expect(dispatched.single.value, {'target': 'ALL'});
   });
 
+  testWidgets('a COMPLETE interpretation mid-parameter keeps spaces intact (EXP LA must not snap to EXPLA)', (tester) async {
+    // Regression test: pausing after "EXP L" lets the debounce retain a
+    // complete interpretation (token "L") — which used to drop the field
+    // out of free-text mode, so the callsign filter rewrote the whole
+    // field on the next keystroke and "EXP LA" became "EXPLA".
+    Future<Map<String, dynamic>?> fakeExpCommand(
+      String input, [
+      Map<String, dynamic>? operation,
+      Map<String, dynamic>? qso,
+      bool execute = false,
+    ]) async {
+      final match = RegExp(r'^EXP(?:\s+(\S+))?$', caseSensitive: false).firstMatch(input.trim());
+      if (match == null) return null;
+      final token = match.group(1);
+      if (token == null) return {'expectsParams': true};
+      return {
+        'describe': 'Toggle experiment $token?',
+        'commands': [
+          {
+            'toggleExperiment': {'token': token},
+          },
+        ],
+      };
+    }
+
+    await tester.pumpWidget(host(interpretCommand: fakeExpCommand));
+    TextField field(String label) => tester.widget<TextField>(find.widgetWithText(TextField, label));
+
+    await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'EXP');
+    await tester.pump(const Duration(milliseconds: 200));
+    await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'EXP L');
+    // The pause: debounce fires and retains the COMPLETE interpretation.
+    await tester.pump(const Duration(milliseconds: 200));
+    await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'EXP LA');
+    await tester.pump(const Duration(milliseconds: 200));
+
+    expect(field('Their call').controller!.text, 'EXP LA');
+  });
+
+  testWidgets('toggleExperiment forwards to onCommandAction (same whitelist trap as reloadDataFiles)', (tester) async {
+    final dispatched = <MapEntry<String, Map<String, dynamic>?>>[];
+    Future<Map<String, dynamic>?> fakeExpCommand(
+      String input, [
+      Map<String, dynamic>? operation,
+      Map<String, dynamic>? qso,
+      bool execute = false,
+    ]) async {
+      // Like the real EXP hook: bare prefix asks for the parameter (which
+      // also switches the field into space-allowed free-text mode).
+      if (input.trim().toUpperCase() == 'EXP') return {'expectsParams': true};
+      if (input.trim().toUpperCase() != 'EXP LAYOUTS') return null;
+      return {
+        'describe': 'Toggle experiment LAYOUTS?',
+        'commands': [
+          {
+            'toggleExperiment': {'token': 'LAYOUTS'},
+          },
+        ],
+      };
+    }
+
+    await tester.pumpWidget(host(
+      interpretCommand: fakeExpCommand,
+      onCommandAction: (action, [params]) async {
+        dispatched.add(MapEntry(action, params));
+      },
+    ));
+
+    await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'EXP');
+    await tester.pump(const Duration(milliseconds: 200));
+    await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'EXP LAYOUTS');
+    await tester.pump(const Duration(milliseconds: 200));
+    await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+    await tester.pump(const Duration(milliseconds: 200));
+
+    expect(dispatched, hasLength(1));
+    expect(dispatched.single.key, 'toggleExperiment');
+    expect(dispatched.single.value, {'token': 'LAYOUTS'});
+  });
+
   testWidgets('devOnboard forwards to onCommandAction (same whitelist trap as reloadDataFiles)', (tester) async {
     // DEVONBOARD shipped interpreting fine but silently no-oping on
     // execution because _dispatchActions' whitelist lacked its branch —
@@ -1565,10 +1963,10 @@ void main() {
     expect(logged.map((q) => q.theirCall).toSet(), {'WD4DAN', 'WD4JMM'});
   });
 
-  testWidgets('a callsign note takes the name slot in the lookup entry line', (tester) async {
+  testWidgets('a callsign note takes the name slot on the call-info line', (tester) async {
     // Issue #17: guess.note (from the call-notes lookup hook) usually
-    // already names the operator, so it replaces guess.name in the one-line
-    // preview instead of joining it — same precedence app-polo gives notes.
+    // already names the operator, so it replaces guess.name on line 2
+    // instead of joining it — same precedence app-polo gives notes.
     Future<Map<String, dynamic>?> lookup(
       String call, {
       required Map<String, dynamic> qso,
@@ -1583,7 +1981,12 @@ void main() {
 
     await tester.pumpWidget(MaterialApp(
       home: Scaffold(
-        body: LoggingControls(operation: operation, qsosRepository: qsos, lookup: lookup),
+        body: LoggingControls(
+          operation: operation,
+          qsosRepository: qsos,
+          lookup: lookup,
+          callLocationLine: (guess) => guess['location'] as String?,
+        ),
       ),
     ));
 
@@ -1591,9 +1994,12 @@ void main() {
     await tester.pump(const Duration(milliseconds: 350));
     await tester.pump();
 
-    expect(find.textContaining('🤩 Sebastián - Ham2K PoLo Creator'), findsOneWidget);
-    expect(find.textContaining('New York, NY'), findsOneWidget);
-    expect(find.textContaining('Sebastian •'), findsNothing); // name is displaced, not joined
+    // The note's leading emoji is split into its own (glowed) widget; the
+    // prose renders as markdown beside it.
+    expect(find.text('🤩'), findsOneWidget); // leading emoji, glowed separately
+    expect(find.textContaining('Sebastián - Ham2K PoLo Creator'), findsOneWidget); // note prose, line 2
+    expect(find.textContaining('New York, NY'), findsOneWidget); // location, line 1
+    expect(find.text('Sebastian'), findsNothing); // name is displaced by the note, not shown
   });
 
   testWidgets('seeds the Radio control from radioService.vfoA for a new QSO', (tester) async {
@@ -2107,47 +2513,13 @@ void main() {
     expect(tester.widget<TextField>(find.widgetWithText(TextField, 'Frequency')).controller!.text, '14285');
   });
 
-  testWidgets('shows DUPE chip for same call, band and mode', (tester) async {
-    final dupe = (await tester.runAsync(() => qsos.add(operation.uuid, {
-          'their': {'call': 'W1AW'},
-          'band': '20m',
-          'mode': 'SSB',
-        })))!;
-    await tester.pumpWidget(host(existing: [dupe]));
-    await openControl(tester, MdiIcons.radio);
+  // Dupe detection (same call+band+mode, cursor segment within a call list,
+  // stacked calls) moved to the scoreQso hook — see the extension's
+  // scoreQso.test.ts. The widget's remaining responsibility is passing the
+  // right candidate; the call-at-cursor selection is covered by the lookup
+  // tests above, and excludeUuid by the test below.
 
-    await tester.enterText(find.widgetWithText(TextField, 'Frequency'), '14285');
-    await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'W1AW');
-    await tester.pump();
-
-    expect(find.text('DUPE'), findsOneWidget);
-  });
-
-  testWidgets('DUPE chip reflects only the call segment under the cursor within a comma-separated list', (tester) async {
-    final dupe = (await tester.runAsync(() => qsos.add(operation.uuid, {
-          'their': {'call': 'W1AW'},
-          'band': '20m',
-          'mode': 'SSB',
-        })))!;
-    await tester.pumpWidget(host(existing: [dupe]));
-    await openControl(tester, MdiIcons.radio);
-    await tester.enterText(find.widgetWithText(TextField, 'Frequency'), '14285');
-
-    await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'K1ABC, W1AW');
-    final callField = tester.widget<TextField>(find.widgetWithText(TextField, 'Their call'));
-
-    // Cursor in the first segment ("K1AB|C") — not a dupe.
-    callField.controller!.selection = const TextSelection.collapsed(offset: 4);
-    await tester.pump();
-    expect(find.text('DUPE'), findsNothing);
-
-    // Cursor at the end, in the "W1AW" segment — the actual dupe.
-    callField.controller!.selection = TextSelection.collapsed(offset: callField.controller!.text.length);
-    await tester.pump();
-    expect(find.text('DUPE'), findsOneWidget);
-  });
-
-  testWidgets('editing an existing QSO does not flag it as its own duplicate', (tester) async {
+  testWidgets('scoreQso excludes the QSO being edited (so it never self-dupes)', (tester) async {
     final existingQso = Qso(
       uuid: 'existing-uuid',
       operationUuid: operation.uuid,
@@ -2158,6 +2530,7 @@ void main() {
       },
     );
 
+    String? excluded;
     await tester.pumpWidget(MaterialApp(
       home: Scaffold(
         body: LoggingControls(
@@ -2165,18 +2538,25 @@ void main() {
           qsosRepository: qsos,
           qsos: [existingQso],
           editingQso: existingQso,
+          scoreQso: ({required operation, required qso, excludeUuid}) async {
+            excluded = excludeUuid;
+            return {'notices': <String>[], 'alerts': <String>[]};
+          },
         ),
       ),
     ));
+    await tester.pump(const Duration(milliseconds: 500));
 
-    expect(find.text('DUPE'), findsNothing);
+    // Editing populates the fields from the QSO, then scores it excluding
+    // itself, so it can never flag itself as its own duplicate.
+    expect(excluded, 'existing-uuid');
   });
 
   group('secondary control row', () {
     testWidgets('Time and Radio chips show by default; tapping expands, tapping again collapses', (tester) async {
       await tester.pumpWidget(host());
 
-      expect(find.byIcon(MdiIcons.clockOutline), findsOneWidget);
+      expect(find.byIcon(MdiIcons.clock), findsOneWidget);
       expect(find.byIcon(MdiIcons.radio), findsOneWidget);
       expect(find.widgetWithText(TextField, 'Frequency'), findsNothing);
 
@@ -2193,7 +2573,7 @@ void main() {
       await openControl(tester, MdiIcons.radio);
       expect(find.widgetWithText(TextField, 'Frequency'), findsOneWidget);
 
-      await openControl(tester, MdiIcons.clockOutline);
+      await openControl(tester, MdiIcons.clock);
       expect(find.widgetWithText(TextField, 'Frequency'), findsNothing);
       expect(find.widgetWithText(TextField, 'Time (UTC)'), findsOneWidget);
     });
@@ -2223,7 +2603,7 @@ void main() {
 
     testWidgets('Time control sets a manual timestamp used at log time; Now resets it', (tester) async {
       await tester.pumpWidget(host());
-      await openControl(tester, MdiIcons.clockOutline);
+      await openControl(tester, MdiIcons.clock);
 
       await tester.enterText(find.widgetWithText(TextField, 'Time (UTC)'), '03:15');
       await tester.enterText(find.widgetWithText(TextField, 'Date'), '2026-01-02');
@@ -2240,7 +2620,7 @@ void main() {
       );
 
       // Wipe resets to automatic timestamping for the next QSO.
-      await openControl(tester, MdiIcons.clockOutline);
+      await openControl(tester, MdiIcons.clock);
       expect(find.widgetWithText(TextField, 'Time (UTC)'), findsOneWidget);
       final timeField = tester.widget<TextField>(find.widgetWithText(TextField, 'Time (UTC)'));
       expect(timeField.controller!.text, isNot('03:15'));
@@ -2248,11 +2628,11 @@ void main() {
 
     testWidgets('Now button clears a manual time override', (tester) async {
       await tester.pumpWidget(host());
-      await openControl(tester, MdiIcons.clockOutline);
+      await openControl(tester, MdiIcons.clock);
 
       await tester.enterText(find.widgetWithText(TextField, 'Time (UTC)'), '03:15');
       await tester.pump();
-      expect(find.byIcon(MdiIcons.clockOutline), findsOneWidget); // chip still rendered
+      expect(find.byIcon(MdiIcons.clock), findsOneWidget); // chip still rendered
 
       await tester.tap(find.widgetWithText(TextButton, 'Now'));
       await tester.pump();
@@ -2263,7 +2643,7 @@ void main() {
 
     testWidgets('Now actually restores automatic timestamping — the reseed must not re-freeze it', (tester) async {
       await tester.pumpWidget(host());
-      await openControl(tester, MdiIcons.clockOutline);
+      await openControl(tester, MdiIcons.clock);
 
       // A date that can never be "today", so Now's reseed always rewrites the
       // field text — which used to re-fire the manual-override listener and
@@ -2290,12 +2670,12 @@ void main() {
 
       // The dialog merely displayed the live clock; saving it untouched must
       // not convert that snapshot into a manual override.
-      await openControl(tester, MdiIcons.clockOutline);
+      await openControl(tester, MdiIcons.clock);
       expect(find.widgetWithText(TextButton, 'Now'), findsNothing);
     });
 
     ChoiceChip timeChip(WidgetTester tester) => tester.widget<ChoiceChip>(
-          find.ancestor(of: find.byIcon(MdiIcons.clockOutline), matching: find.byType(ChoiceChip)),
+          find.ancestor(of: find.byIcon(MdiIcons.clock), matching: find.byType(ChoiceChip)),
         );
 
     testWidgets('Time chip shows a live clock, not a static "now" label', (tester) async {
@@ -2316,7 +2696,7 @@ void main() {
 
     testWidgets('Now button stays hidden until a manual time override is actually set', (tester) async {
       await tester.pumpWidget(host());
-      await openControl(tester, MdiIcons.clockOutline);
+      await openControl(tester, MdiIcons.clock);
 
       expect(find.widgetWithText(TextButton, 'Now'), findsNothing);
 
@@ -2348,7 +2728,7 @@ void main() {
       await tester.pump(const Duration(seconds: 2));
       expect((timeChip(tester).label as Text).data, '12:30:00z');
 
-      await openControl(tester, MdiIcons.clockOutline);
+      await openControl(tester, MdiIcons.clock);
       final timeField = tester.widget<TextField>(find.widgetWithText(TextField, 'Time (UTC)'));
       expect(timeField.controller!.text, '12:30');
       expect(find.widgetWithText(TextButton, 'Now'), findsNothing);
@@ -2421,7 +2801,7 @@ void main() {
           find.ancestor(of: find.byIcon(icon), matching: find.byType(IconButton)),
         );
 
-    final wipeIcon = resolveIconName('backspace-outline');
+    final wipeIcon = resolveIconName('backspace');
     final undoIcon = resolveIconName('undo');
     final deleteIcon = resolveIconName('trash-can-outline');
 

@@ -38,21 +38,17 @@ void main() {
       await tester.pumpWidget(MaterialApp(home: SettingsView(services: services)));
       await tester.pumpAndSettle();
 
-      // The registry's select fields render as compact icon-row
-      // DropdownButtons; the fontScale one is the only dropdown whose value
-      // is a FontScale name.
-      bool hasDropdownValue(String value) => tester
-          .widgetList<DropdownButton<dynamic>>(find.byWidgetPredicate((w) => w is DropdownButton<dynamic>))
-          .any((d) => d.value == value);
-
-      expect(hasDropdownValue('normal'), isTrue);
+      // The registry's select fields render as icon-row list rows whose
+      // subtitle is the current value's own name; the fontScale row reads
+      // 'Normal' / 'Larger'.
+      expect(find.text('Normal'), findsOneWidget);
 
       // Simulate the keyboard shortcut: it never touches the panel widget.
       await settings.increaseFontScale();
       await tester.pumpAndSettle();
 
-      expect(hasDropdownValue('larger'), isTrue);
-      expect(hasDropdownValue('normal'), isFalse);
+      expect(find.text('Larger'), findsOneWidget);
+      expect(find.text('Normal'), findsNothing);
     },
   );
 }

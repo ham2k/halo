@@ -49,21 +49,32 @@ class UiScale extends StatelessWidget {
       systemGestureInsets: mq.systemGestureInsets * inverse,
     );
 
-    // FittedBox (not a bare Transform): the window hands down TIGHT
-    // constraints, which would otherwise force a plain SizedBox straight back
-    // to full size. FittedBox lays the child out at its natural (divided)
-    // size under loose constraints, then scales it to fill the window — the
-    // fill factor works out to exactly `scale` because the SizedBox is the
-    // window size divided by `scale`.
+    // FittedBox (not a bare Transform): a bare Transform would pass the
+    // window's tight constraints straight through, forcing the inner SizedBox
+    // back to full size so nothing actually scaled. FittedBox lays the child
+    // out at its natural (divided) size under loose constraints, then scales
+    // it to fill — the fill factor works out to exactly `scale` because the
+    // SizedBox is the window size divided by `scale`.
+    //
+    // SizedBox.expand around it because FittedBox only scales up to the
+    // constraints it is GIVEN. Handed loose ones it shrink-wraps instead, and
+    // the whole mechanism silently degrades: the subtree still lays out in the
+    // divided coordinate space (so the UI reflows) but never gets magnified.
+    // That asymmetry only shows above 1.0 — below it the child is larger than
+    // the window and gets clamped, which looks correct — so it hid until a
+    // loose-constraint ancestor appeared at the app root. Expanding here makes
+    // the primitive independent of the parent's constraint discipline.
     return _UiScaleScope(
       scale: scale,
-      child: FittedBox(
-        fit: BoxFit.fill,
-        alignment: Alignment.topLeft,
-        child: SizedBox(
-          width: scaledMq.size.width,
-          height: scaledMq.size.height,
-          child: MediaQuery(data: scaledMq, child: child),
+      child: SizedBox.expand(
+        child: FittedBox(
+          fit: BoxFit.fill,
+          alignment: Alignment.topLeft,
+          child: SizedBox(
+            width: scaledMq.size.width,
+            height: scaledMq.size.height,
+            child: MediaQuery(data: scaledMq, child: child),
+          ),
         ),
       ),
     );

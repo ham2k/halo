@@ -10,6 +10,22 @@
 	<string></string>
 	<key>CFBundleIdentifier</key>
 	<string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleURLName</key>
+			<string>com.ham2k.logger.deeplinks</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>com.ham2k</string>
+				<string>com.ham2k.logger</string>
+				<string>com.ham2k.logger.$(HALO_EDITION)</string>
+				<string>com.ham2k.logger.auth</string>
+				<string>com.ham2k.polo</string>
+				<string>com.ham2k.polo.auth</string>
+			</array>
+		</dict>
+	</array>
 	<key>CFBundleInfoDictionaryVersion</key>
 	<string>6.0</string>
 	<key>CFBundleName</key>

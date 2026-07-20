@@ -26,6 +26,13 @@ import 'package:halo_widgets/halo_widgets.dart' show macOSWindowIsFullScreen, wi
 class WindowChromeService {
   static const _channel = MethodChannel('ham2k/window_chrome');
 
+  /// Chosen from the macOS app menu: "About" shows the release overlay,
+  /// "Preferences…" (⌘,) opens the Settings view. The app wires these once its
+  /// services and navigator are ready (see main.dart); the native side invokes
+  /// them through this channel (macos/Runner MainMenu.xib + AppDelegate).
+  static void Function()? onShowReleaseOverlay;
+  static void Function()? onOpenSettings;
+
   static bool get _supported => !kIsWeb && defaultTargetPlatform == TargetPlatform.macOS;
 
   /// Platforms where the runner strips the native window chrome and this
@@ -51,6 +58,10 @@ class WindowChromeService {
         macOSWindowIsFullScreen.value = call.arguments as bool? ?? false;
       } else if (call.method == 'maximizedChanged') {
         windowsWindowIsMaximized.value = call.arguments as bool? ?? false;
+      } else if (call.method == 'menuAbout') {
+        onShowReleaseOverlay?.call();
+      } else if (call.method == 'menuPreferences') {
+        onOpenSettings?.call();
       }
       return null;
     });

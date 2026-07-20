@@ -16,6 +16,7 @@ import type {
   LookupRow,
   FormDefinition,
   FormField,
+  ResultMessage,
   StatusBarMessageParams,
   StatusBarProgressParams,
   StatusBarNoticeParams,
@@ -141,6 +142,13 @@ export const host = {
   async setAccountSession(session: Record<string, string>): Promise<void> {
     const kvKey = kernel().getAccountKvKey(currentExtensionKey)
     await hostCallFn()('setAccountSession', { ns: currentExtensionKey, kvKey, session })
+  },
+
+  /// Presents a ResultMessage imperatively — for hooks whose results can't
+  /// carry a `userMessage` (e.g. a lookup hitting an auth error). Hooks
+  /// that CAN return one (spots posting) should prefer that instead.
+  async showMessage(message: ResultMessage): Promise<void> {
+    await hostCallFn()('showMessage', { ...message, ns: currentExtensionKey })
   },
 
   /// Looks up a string from the app's own translations (app/lib/i18n/

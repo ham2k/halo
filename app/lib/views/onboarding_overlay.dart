@@ -22,6 +22,7 @@ import '../i18n/strings.g.dart';
 import '../main.dart';
 import '../services/settings_service.dart';
 import 'ham2k_logo.dart';
+import 'version_label.dart';
 import 'release_overlay.dart' show overlayCreditsText, overlayCreditsStyle, overlayVersionLabelStyle;
 
 // Matches release_overlay.dart's fixed light-panel palette — this overlay
@@ -131,6 +132,22 @@ class _OnboardingOverlayViewState extends State<OnboardingOverlayView> {
   @override
   void initState() {
     super.initState();
+    // Seed from any values already saved in settings, so a re-shown flow (a
+    // DEVONBOARD preview, or onboarding reached with a callsign/activities
+    // already set) reflects the current state instead of resetting to the
+    // first-run defaults above. Unset values keep those defaults.
+    final settings = widget.services.settings;
+    final call = settings.activeProfile.operatorCall;
+    _callsignController.value = TextEditingValue(
+      text: call,
+      selection: TextSelection.collapsed(offset: call.length),
+    );
+    final overrides = settings.extensionOverrides;
+    _pota = overrides['pota'] ?? _pota;
+    _sota = overrides['sota'] ?? _sota;
+    _consentAppData = (settings.settingValue(SettingsService.privacyGroup, 'consentAppData') as bool?) ?? _consentAppData;
+    _consentOpData = (settings.settingValue(SettingsService.privacyGroup, 'consentOpData') as bool?) ?? _consentOpData;
+
     // Drop whatever held focus beneath the overlay (a DEVONBOARD re-show
     // can arrive over a focused call field, whose own Enter shortcut would
     // fire alongside _handleKeyEvent) — matches first-run conditions, where
@@ -267,10 +284,10 @@ class _OnboardingOverlayViewState extends State<OnboardingOverlayView> {
                       Center(child: Ham2kBrandMark(logoWidth: compact ? 90 : 140, showShadow: true)),
                       const SizedBox(height: 8),
                       overlayCreditsText(context.t.startScreen.credits, creditsStyle),
-                      if (release != null) ...[
-                        const SizedBox(height: 4),
-                        Text(release.name, textAlign: TextAlign.center, style: versionLabelStyle),
-                      ],
+                      const SizedBox(height: 4),
+                      // The full release name, without the edition qualifier
+                      // (the edition is shown by the brand mark's badge).
+                      VersionLabel(nameOnly: true, style: versionLabelStyle),
                     ],
                   ),
                 ),

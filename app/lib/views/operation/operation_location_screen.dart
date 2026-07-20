@@ -158,7 +158,7 @@ class _OperationLocationScreenState extends State<OperationLocationScreen> {
             ListTile(
               leading: Icon(resolveIconName(iconForRefType(_controls, ref['type'] as String?))),
               title: Text((ref['shortLabel'] ?? ref['ref'] ?? '?') as String),
-              subtitle: Text(ref['grid'] as String),
+              subtitle: Text(ref['grid'] as String, style: const TextStyle(fontFamily: 'RobotoMono')),
               onTap: () => _adoptGrid(ref['grid'] as String),
             ),
           const SizedBox(height: 8),

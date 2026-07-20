@@ -10,7 +10,7 @@
 // extensions contribute theirs through the settingsPanel hook, surfaced as
 // `extension_{panelKey}` sections by the All Settings panel.
 //
-// The Common Settings panel shows only the fields whitelisted in
+// The Common Preferences panel shows only the fields whitelisted in
 // [commonSettingsFields]; the All Settings panel shows every group.
 
 import 'package:flutter/foundation.dart';
@@ -37,7 +37,7 @@ abstract class SettingsGroup {
   Future<void> commit(String fieldKey, dynamic value);
 }
 
-/// `group.field` ids shown on the Common Settings panel — everything else
+/// `group.field` ids shown on the Common Preferences panel — everything else
 /// appears under All Settings (and privacy has its own top-level panel).
 const commonSettingsFields = [
   'general.themeMode',

@@ -4,10 +4,15 @@ set -e
 # Default Cloudflare Pages project name
 PROJECT_NAME="halo-dev-ham2k-net"
 
+# Which edition to build (dev | next | prod). Drives the Dart-side kEdition and
+# the stamped web identity (favicon, PWA manifest, titles). Defaults to dev.
+EDITION="dev"
+
 # Parse arguments for custom project name
 while [[ "$#" -gt 0 ]]; do
   case $1 in
     --project) PROJECT_NAME="$2"; shift ;;
+    --edition) EDITION="$2"; shift ;;
     *) echo "Unknown parameter passed: $1"; exit 1 ;;
   esac
   shift
@@ -26,10 +31,20 @@ npm install
 npm run build
 
 # 2. Build Flutter Web App
-echo "🔨 Compiling Flutter Web app (release)..."
+echo "🔨 Compiling Flutter Web app (release, edition: $EDITION)..."
 cd "$ROOT_DIR/app"
 flutter pub get
-flutter build web --release --no-tree-shake-icons
+# Project the native version (docs/releases.md §2.2) so build/web/version.json —
+# what package_info_plus reads on web — carries the marketing version + the
+# monotonic build id instead of pubspec's 0.1.0+1. Extract the HALO_* tokens past
+# dart run's build-hook noise; HALO_BUILD_SEQUENCE (1-9) for a same-day re-run.
+eval "$(dart run tool/print_build_versions.dart --sequence="${HALO_BUILD_SEQUENCE:-1}" 2>/dev/null | grep -oE 'HALO_[A-Z_]+=[^[:space:]]+')"
+echo "Web version: $HALO_MARKETING (build $HALO_BUILD_ID)"
+flutter build web --release --no-tree-shake-icons --dart-define=HALO_EDITION="$EDITION" \
+  --build-name="$HALO_MARKETING" --build-number="$HALO_BUILD_ID"
+
+# 2b. Stamp the built bundle with this edition's identity (favicon, manifest, titles)
+"$ROOT_DIR/scripts/apply-web-edition.sh" "$EDITION" "$ROOT_DIR/app/build/web"
 
 # 3. Deploy to Cloudflare Pages
 echo "☁️ Deploying to Cloudflare Pages..."

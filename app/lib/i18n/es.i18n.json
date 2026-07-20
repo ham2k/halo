@@ -168,7 +168,6 @@
     "now": "Ahora",
     "frequency": "Frecuencia",
     "mode": "Modo",
-    "dupe": "DUPE",
     "theirCall": "Su indicativo",
     "sent": "Enviado",
     "rcvd": "Recibido",
@@ -189,7 +188,24 @@
     "spotOtherAt": "Spot a ${call} en ${freq}",
     "spotTooLate": "Demasiado tarde para spotear a ${call}",
     "spotNoFreq": "Primero define una frecuencia para spotear",
-    "spotComment": "Comentario"
+    "spotComment": "Comentario",
+    "info": {
+      "noQsos": "Aún no hay QSOs... ¡a la carga!",
+      "qsoCountOne": "1 QSO",
+      "qsoCountOther": "${count} QSOs",
+      "qsosInTime": "${count} en ${time}",
+      "sinceLast": "${time} desde el último",
+      "ratePer10": "${rate} Q/h en los últimos 10",
+      "ratePer100": "${rate} Q/h en los últimos 100",
+      "distanceTo": "${distance} a",
+      "distanceBearingTo": "${distance} (${bearing}°) a",
+      "distanceAway": "a ${distance}",
+      "distanceBearingAway": "a ${distance} (${bearing}°)",
+      "noticeDupe": "¡Dupe!",
+      "noticeNewBand": "Nueva Banda",
+      "noticeNewMode": "Nuevo Modo",
+      "noticeNewDXCC": "Nuevo DXCC"
+    }
   },
   "qsoEditForm": {
     "title": "Editar QSO",
@@ -217,6 +233,19 @@
     "dxccEntities": "Entidades DXCC",
     "duplicates": "Duplicados"
   },
+  "callInfo": {
+    "qrz": "QRZ",
+    "showImage": "Mostrar imagen",
+    "notes": "Notas",
+    "distanceAway": "a ${distance}",
+    "distanceBearingAway": "a ${distance} (${bearing}°)",
+    "thisOpCountOne": "1 QSO en esta operación",
+    "thisOpCountOther": "${count} QSOs en esta operación",
+    "otherOpsCountOne": "1 QSO en otras operaciones",
+    "otherOpsCountOther": "${count} QSOs en otras operaciones",
+    "andMore": "… y ${count} más",
+    "withCall": "con ${call}"
+  },
   "settings": {
     "title": "Configuración",
     "general": "Configuración General",
@@ -234,19 +263,21 @@
     },
     "fontScale": "Tamaño de Letra",
     "fontScaleOpts": {
+      "smallestMinusMinus": "Más pequeña--",
+      "smallestMinus": "Más pequeña-",
       "smallest": "Más pequeña",
       "smaller": "Pequeña",
       "normal": "Normal",
       "larger": "Grande",
-      "largest": "Más grande"
+      "largest": "Más grande",
+      "largestPlus": "Más grande+",
+      "largestPlusPlus": "Más grande++"
     },
-    "fontScaleDescription": "Escala toda la interfaz: texto, controles y espaciado",
     "distanceUnits": "Unidades de distancia",
     "distanceUnitsOpts": {
       "kilometers": "Kilómetros",
       "miles": "Millas"
     },
-    "distanceUnitsDescription": "Para las distancias mostradas en el mapa",
     "userInterface": "Interfaz de Usuario",
     "logging": {
       "title": "Registro",
@@ -281,6 +312,18 @@
         "descriptionOn": "Saltar después de ingresar el RST",
         "descriptionOff": "No saltar automáticamente"
       },
+      "numbersRow": {
+        "title": "Fila de Números",
+        "description": "Muestra una fila de teclas numéricas sobre el teclado al registrar"
+      },
+      "numbersRowExtra": {
+        "title": "Tecla de barra y punto",
+        "description": "Añade una tecla contextual: «/» para indicativos, «.» para números"
+      },
+      "numbersRowVibrate": {
+        "title": "Vibrar al pulsar",
+        "description": "Respuesta háptica al pulsar una tecla numérica"
+      },
       "bands": "Bandas",
       "modes": "Modos"
     },
@@ -301,7 +344,7 @@
     },
     "operatorCall": "Indicativo del Operador",
     "sync": {
-      "title": "Configuración de Sincronización",
+      "title": "LoFi Cloud Sync",
       "enable": "Habilitar Sincronización",
       "deviceKey": "Clave del Dispositivo"
     },

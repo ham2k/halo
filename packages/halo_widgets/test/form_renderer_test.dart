@@ -142,7 +142,7 @@ void main() {
                     'type': 'link',
                     'label': 'Privacy Policy',
                     'description': 'How we handle your data',
-                    'icon': 'shield-account-outline',
+                    'icon': 'shield-account',
                     'url': 'https://example.com/privacy',
                   },
                 ],
@@ -439,7 +439,7 @@ void main() {
       // outer form's — scope taps to the dialog to avoid ambiguity (the
       // list editor dialog itself only has Done, so Save stays unique).
       Finder dialogSaveButton() =>
-          find.descendant(of: find.byType(AlertDialog), matching: find.widgetWithText(FilledButton, 'Save'));
+          find.descendant(of: find.byType(HaloDialog), matching: find.widgetWithText(FilledButton, 'Save'));
 
       // Add an item through the nested item dialog.
       await tester.tap(find.widgetWithText(TextButton, 'Add Presets'));
@@ -456,7 +456,7 @@ void main() {
       // pre-filled (scoped to the dialog — the summary row behind the
       // barrier shows the same string).
       await tester.tap(
-        find.descendant(of: find.byType(AlertDialog), matching: find.text('Field Day — 1A NNJ')),
+        find.descendant(of: find.byType(HaloDialog), matching: find.text('Field Day — 1A NNJ')),
       );
       await tester.pumpAndSettle();
       expect(find.widgetWithText(TextField, 'Name'), findsOneWidget);
@@ -469,7 +469,7 @@ void main() {
       // Close the editor: the summary row shows the comma-separated values.
       await tester.tap(find.widgetWithText(TextButton, 'Done'));
       await tester.pumpAndSettle();
-      expect(find.byType(AlertDialog), findsNothing);
+      expect(find.byType(HaloDialog), findsNothing);
       expect(find.text('Field Day — 2A NNJ'), findsOneWidget);
 
       // Submitting the outer form includes the edited list.
@@ -482,7 +482,7 @@ void main() {
       // Delete (back in the editor) empties the list and the summary.
       await tester.tap(find.text('Presets'));
       await tester.pumpAndSettle();
-      await tester.tap(find.byIcon(Icons.delete_outline));
+      await tester.tap(find.byIcon(Icons.delete));
       await tester.pumpAndSettle();
       await tester.tap(find.widgetWithText(TextButton, 'Done'));
       await tester.pumpAndSettle();
@@ -530,7 +530,7 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.widgetWithText(SwitchListTile, '20m'), findsOneWidget);
       expect(find.widgetWithText(SwitchListTile, '630m'), findsNothing);
-      expect(find.descendant(of: find.byType(AlertDialog), matching: find.byType(TextField)), findsNothing);
+      expect(find.descendant(of: find.byType(HaloDialog), matching: find.byType(TextField)), findsNothing);
 
       // Selected rows read bold; unselected ones use the disabled color.
       Text rowLabel(String label) => tester.widget<Text>(
@@ -573,7 +573,7 @@ void main() {
       await tester.pumpAndSettle();
 
       // …and the summary keeps the vocabulary's canonical order.
-      expect(find.byType(AlertDialog), findsNothing);
+      expect(find.byType(HaloDialog), findsNothing);
       expect(find.text('80m, 40m, 20m, 630m'), findsOneWidget);
 
       // Submitting carries the plain string list.
@@ -620,7 +620,7 @@ void main() {
       // 24 options → the search field is pinned under the list.
       await tester.tap(find.text('Things'));
       await tester.pumpAndSettle();
-      final searchField = find.descendant(of: find.byType(AlertDialog), matching: find.byType(TextField));
+      final searchField = find.descendant(of: find.byType(HaloDialog), matching: find.byType(TextField));
       expect(searchField, findsOneWidget);
 
       // No status row or clear button until a query is typed.
@@ -893,7 +893,7 @@ void main() {
       ],
     };
 
-    testWidgets('a field with icon set renders as a list row: leading icon, bold label, description, compact trailing control', (tester) async {
+    testWidgets('a select field with icon set renders as a tappable list row showing the current value', (tester) async {
       await tester.pumpWidget(MaterialApp(
         home: Scaffold(
           body: FormRenderer(
@@ -905,13 +905,17 @@ void main() {
         ),
       ));
 
-      // The icon-row field renders inside a ListTile (leading icon, title,
+      // The icon-row select renders inside a ListTile (leading icon, title,
       // subtitle) instead of the standalone DropdownButtonFormField a
-      // 'select' field normally gets.
+      // 'select' field normally gets. The subtitle is the field's own
+      // description — which is written to explain the current value — not the
+      // raw option label repeated as a separate line.
       expect(find.byType(ListTile), findsOneWidget);
       expect(find.text('Theme Mode'), findsOneWidget);
       expect(find.text('Always in Light Mode'), findsOneWidget);
-      expect(find.text('Light'), findsOneWidget);
+      expect(find.text('Light'), findsNothing);
+      // A tap-to-open affordance, not an inline dropdown, for the icon-row.
+      expect(find.byIcon(resolveIconName('chevron-right')), findsOneWidget);
 
       final title = tester.widget<Text>(find.text('Theme Mode'));
       expect(title.style?.fontWeight, FontWeight.bold);
@@ -922,7 +926,7 @@ void main() {
       expect(find.text('Plain Select'), findsOneWidget);
     });
 
-    testWidgets('selecting a new value in the compact control commits it like the standalone control would', (tester) async {
+    testWidgets('tapping an icon-row select opens a picker dialog whose choice commits like the inline control', (tester) async {
       Map<String, dynamic>? submittedValues;
       await tester.pumpWidget(MaterialApp(
         home: Scaffold(
@@ -935,10 +939,17 @@ void main() {
         ),
       ));
 
-      await tester.tap(find.text('Light'));
+      // Tapping the row opens a dialog listing the options.
+      await tester.tap(find.text('Theme Mode'));
       await tester.pumpAndSettle();
-      await tester.tap(find.text('Dark').last);
+      expect(find.byType(HaloDialog), findsOneWidget);
+      final dialogDark = find.descendant(of: find.byType(HaloDialog), matching: find.text('Dark'));
+      expect(dialogDark, findsOneWidget);
+
+      // Picking commits immediately (autosave) and closes the dialog.
+      await tester.tap(dialogDark);
       await tester.pumpAndSettle();
+      expect(find.byType(HaloDialog), findsNothing);
 
       await tester.tap(find.widgetWithText(FilledButton, 'Save'));
       await tester.pumpAndSettle();
@@ -946,34 +957,36 @@ void main() {
       expect(submittedValues!['themeMode'], 'dark');
     });
 
-    testWidgets('on a narrow panel, the control stacks below the title/description instead of trailing beside them', (tester) async {
+    testWidgets('an icon-row text field renders its input stacked below the title/description', (tester) async {
+      final textFormDefinition = {
+        'elements': [
+          {
+            'type': 'field',
+            'fieldType': 'text',
+            'key': 'stationName',
+            'label': 'Station Name',
+            'icon': 'account',
+            'description': 'Shown on your exports',
+            'value': 'Field Day',
+          },
+        ],
+      };
       await tester.pumpWidget(MaterialApp(
         home: Scaffold(
-          body: SizedBox(
-            width: 300, // below FormRendererState._iconRowStackBreakpoint (400)
-            child: FormRenderer(
-              formDefinition: iconRowFormDefinition,
-              initialState: const {},
-              onSubmit: (_) {},
-              onCancel: () {},
-            ),
+          body: FormRenderer(
+            formDefinition: textFormDefinition,
+            initialState: const {},
+            onSubmit: (_) {},
+            onCancel: () {},
           ),
         ),
       ));
 
-      // No longer inside the ListTile's trailing slot — this asserts the
-      // dropdown ends up below the title, not just that it's present.
-      final titleBottom = tester.getBottomLeft(find.text('Theme Mode')).dy;
-      final dropdownTop = tester.getTopLeft(find.text('Light')).dy;
-      expect(dropdownTop, greaterThan(titleBottom));
-
-      // The dropdown itself grows to the full available width instead of
-      // staying a small fixed-size control.
-      // The form also has a plain (no-icon) select field, whose standard
-      // DropdownButtonFormField wraps its own internal DropdownButton — so
-      // there are two in the tree; pick the themeMode one by its value.
-      final dropdown = tester.widgetList<DropdownButton>(find.byType(DropdownButton<dynamic>)).firstWhere((d) => d.value == 'light');
-      expect(dropdown.isExpanded, isTrue);
+      // The input sits below the title, not trailing beside it — at every
+      // panel width now, not just narrow ones.
+      final titleBottom = tester.getBottomLeft(find.text('Station Name')).dy;
+      final fieldTop = tester.getTopLeft(find.byType(TextField)).dy;
+      expect(fieldTop, greaterThan(titleBottom));
     });
 
     testWidgets('a toggle (checkbox) field stays trailing even on a narrow panel', (tester) async {
@@ -984,7 +997,7 @@ void main() {
             'fieldType': 'checkbox',
             'key': 'syncEnabled',
             'label': 'Sync with Ham2K Log Filer',
-            'icon': 'cloud-sync-outline',
+            'icon': 'cloud-sync',
             'value': false,
           },
         ],

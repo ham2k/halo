@@ -18,9 +18,9 @@ Future<bool> confirmDeleteOperation(
   OperationsRepository operations,
   Operation operation,
 ) async {
-  final confirmed = await showDialog<bool>(
+  final confirmed = await showHaloDialog<bool>(
     context: context,
-    builder: (context) => AlertDialog(
+    builder: (context) => HaloDialog(
       title: Text(context.t.dialogs.deleteOperationConfirm(title: operation.title.isEmpty ? operation.stationCall : operation.title)),
       actions: [
         TextButton(onPressed: () => Navigator.of(context).pop(false), child: Text(context.t.common.cancel)),
@@ -74,7 +74,7 @@ Future<int?> editTimeDialog(
   required String title,
   required int initialMillis,
 }) {
-  return showDialog<int>(
+  return showHaloDialog<int>(
     context: context,
     builder: (context) => _TimeDialog(title: title, initialMillis: initialMillis),
   );
@@ -122,7 +122,8 @@ class _TimeDialogState extends State<_TimeDialog> {
 
   @override
   Widget build(BuildContext context) {
-    return AlertDialog(
+    return HaloDialog(
+      wide: true,
       title: Text(widget.title),
       content: Row(
         mainAxisSize: MainAxisSize.min,
@@ -169,7 +170,7 @@ Future<(String, String)?> editTwoFieldDialog(
   TextCapitalization field1Capitalization = TextCapitalization.none,
   bool field2Obscure = false,
 }) {
-  return showDialog<(String, String)>(
+  return showHaloDialog<(String, String)>(
     context: context,
     builder: (context) => _TwoFieldDialog(
       title: title,
@@ -194,7 +195,7 @@ Future<String?> editOneFieldDialog(
   TextCapitalization fieldCapitalization = TextCapitalization.none,
   String saveLabel = 'Save',
 }) {
-  return showDialog<String>(
+  return showHaloDialog<String>(
     context: context,
     builder: (context) => _OneFieldDialog(
       title: title,
@@ -238,7 +239,7 @@ class _OneFieldDialogState extends State<_OneFieldDialog> {
 
   @override
   Widget build(BuildContext context) {
-    return AlertDialog(
+    return HaloDialog(
       title: Text(widget.title),
       content: TextField(
         controller: _controller,
@@ -299,7 +300,7 @@ class _TwoFieldDialogState extends State<_TwoFieldDialog> {
 
   @override
   Widget build(BuildContext context) {
-    return AlertDialog(
+    return HaloDialog(
       title: Text(widget.title),
       content: Column(
         mainAxisSize: MainAxisSize.min,

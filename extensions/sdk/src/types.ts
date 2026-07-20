@@ -107,7 +107,31 @@ export interface SpotEligibility {
 
 export interface PostResult {
   ok: boolean
+  /// Plain-text fallback: logged, and what surfaces show when there's no
+  /// richer `userMessage`.
   message?: string
+  /// Optional richer presentation of the outcome (usually a failure) — the
+  /// host presents it in addition to the surface's own success/failure
+  /// indication (e.g. the Spotting control's source icons).
+  userMessage?: ResultMessage
+}
+
+/// A user-facing message a hook attaches to a result (see
+/// PostResult.userMessage) or presents imperatively via
+/// `host.showMessage` (for hooks whose results can't carry one, e.g.
+/// lookups). Declarative like NoticeAction — the host renders it:
+///   'status' — transient status-bar message (`title`/`text`/`icon`)
+///   'dialog' — modal dialog; `text` is markdown; `actions` adds buttons
+///              next to the always-present Close (e.g. an `account` action
+///              to open the account dialog after an auth failure)
+export interface ResultMessage {
+  presentation: 'status' | 'dialog'
+  title?: string
+  text: string
+  /// Status presentation only — same icon convention as status bar items.
+  icon?: string
+  /// Dialog presentation only.
+  actions?: NoticeAction[]
 }
 
 export interface PostSelfSpotRequest {
@@ -337,12 +361,34 @@ export interface ScoreQsosResult {
   operationSummary: Record<string, ScoreTally>
 }
 
+/// Scores a single in-progress (not-yet-logged) QSO for the logging panel's
+/// live call-info line — the callsign being typed, before Enter. Distinct from
+/// the batched `scoreQsos`: this returns only the display notices/alerts for
+/// one candidate, scored against the rest of the operation's log (read via
+/// `ctx.getQsos`). `excludeUuid` drops the record being edited so it can't
+/// flag itself as its own duplicate.
+export interface ScoreQsoRequest {
+  operation: Record<string, JSONValue>
+  qso: Record<string, JSONValue>
+  excludeUuid?: string
+}
+
+/// Merged, de-duped notice/alert keys for one candidate QSO — e.g.
+/// `{ alerts: ['duplicate'], notices: ['newBand', 'newDXCC'] }`. The app layer
+/// maps each key to localized pill text; unknown keys fall back to the key.
+export interface QsoScoreNotices {
+  notices: string[]
+  alerts: string[]
+}
+
 /// Registered under category `scoring`. One coarse batched call scores an
 /// entire operation's QSOs at once (DESIGN.md §4: "score 500 QSOs in one
 /// call, not 500 calls") — day-sectioning and accumulation both happen here,
-/// inside the runtime, not orchestrated call-by-call from Dart.
+/// inside the runtime, not orchestrated call-by-call from Dart. `scoreQso`
+/// is the live single-candidate path used while typing a callsign.
 export interface ScoringHook {
   scoreQsos(args: ScoreQsosRequest, ctx: HookContext): Promise<ScoreQsosResult>
+  scoreQso?(args: ScoreQsoRequest, ctx: HookContext): Promise<QsoScoreNotices>
 }
 
 export interface CommandAction {
@@ -394,6 +440,12 @@ export interface CommandAction {
   /// bypassing its callsign-undefined gate — see `app/lib/main.dart`'s
   /// `_OnboardingGate`.
   devOnboard?: Record<string, never>
+  /// Toggles an experimental feature (EXP command). The app resolves
+  /// `token` against `app/experiments.yaml`'s keys and aliases and flips
+  /// that experiment's persisted state; an unknown token reports an error
+  /// message instead. Resolution happens app-side because the catalog and
+  /// the stored state both live there.
+  toggleExperiment?: { token: string }
   [actionName: string]: unknown
 }
 
@@ -513,6 +565,9 @@ export interface OAuth2Config {
 /// account data itself.
 export interface AccountHook {
   label: string
+  /// Short one-liner shown under the label in the Accounts list (e.g.
+  /// "Callsign lookups").
+  description?: string
   /// Defaults to the extension's own key. If overridden (an extension with
   /// more than one account), must equal the extension key or be prefixed
   /// `<extensionKey>_` — e.g. extension `lofi` may use `lofi` or
@@ -523,6 +578,16 @@ export interface AccountHook {
   kvKey?: string
   fields?: AccountField[]
   oauth2?: OAuth2Config
+  /// Whether this account's stored credentials and session sync across the
+  /// user's Apple devices via iCloud Keychain (`kSecAttrSynchronizable`).
+  /// Defaults to `false` — device-local. Set `true` ONLY for account-level
+  /// logins that are legitimately the same on every device (e.g. a QRZ.com
+  /// username/password). NEVER set it for per-device identifiers or bearer
+  /// tokens (e.g. a sync client/device key), where each install must stay
+  /// distinct. No effect on non-Apple platforms. Note: flipping this on an
+  /// account that already has stored credentials makes the old (non-synced)
+  /// entry invisible — those credentials must be re-entered once.
+  synchronizable?: boolean
   testCredentials(credentials: Record<string, string>, ctx: HookContext): Promise<string>
 }
 
@@ -570,6 +635,12 @@ export interface ExtensionDefinition {
 
 export interface FetchOptions {
   method?: 'GET' | 'POST' | 'PUT' | 'DELETE'
+  /**
+   * Extra request headers. Note: the host stamps HaLo's canonical
+   * `User-Agent` on every request and it overrides any you set here, so
+   * don't provide your own — unless your extension declares
+   * `allowUserAgentOverride` in build.mjs (see docs/design/network.md).
+   */
   headers?: Record<string, string>
   body?: string
 }
@@ -871,6 +942,10 @@ export type SettingsPanelHook = SimpleSettingsPanel | DynamicSettingsPanel
 export type NoticeAction =
   | { label: string; type: 'link'; url: string }
   | { label: string; type: 'dialog'; title?: string; text: string }
+  /// Opens the given account's own standalone dialog (Settings → Accounts).
+  /// `key` matches the account's `kvKey` (see AccountHook); `subkey` is the
+  /// same extension-defined discriminator as FormField.account's.
+  | { label: string; type: 'account'; key: string; subkey?: string }
 
 export interface StatusBarMessageParams {
   key: string

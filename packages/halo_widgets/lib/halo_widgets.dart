@@ -4,11 +4,15 @@
 library;
 
 export 'src/activity_controls.dart';
+export 'src/dock_layout.dart';
 export 'src/icon_resolver.dart';
+export 'src/halo_dialog.dart';
+export 'src/keyboard_dismiss.dart';
 export 'src/layout.dart';
 export 'src/logging_controls.dart';
 export 'src/mdi_icons.dart';
 export 'src/modal_pane.dart';
+export 'src/number_keys.dart';
 export 'src/platform_chrome.dart';
 export 'src/qso_list.dart';
 export 'src/ref_chips_input.dart';

@@ -31,7 +31,7 @@ final Future<PackageInfo> _packageInfoFuture = PackageInfo.fromPlatform();
 Future<String> versionDetailsText() async {
   final buildNumber = (await PackageInfo.fromPlatform()).buildNumber;
   final version = buildNumber.isEmpty ? 'Version $kPublicVersion' : 'Version $kPublicVersion - Build $buildNumber';
-  return '$kVersionName\n$version';
+  return '$kEditionVersionName\n$version';
 }
 
 /// `August '26 · 26.8.0` until the native build number loads, then
@@ -45,6 +45,12 @@ class VersionLabel extends StatelessWidget {
   final CrossAxisAlignment crossAxisAlignment;
   final bool boldFirstLine;
 
+  /// Show ONLY the release name ([kVersionName]) — no edition qualifier and no
+  /// version/build detail line — for places where the edition is shown
+  /// separately (the edition badge SVG) and the build detail isn't wanted: the
+  /// home right pane, the splash, and onboarding.
+  final bool nameOnly;
+
   const VersionLabel({
     super.key,
     this.style,
@@ -52,23 +58,35 @@ class VersionLabel extends StatelessWidget {
     this.detailed = false,
     this.crossAxisAlignment = CrossAxisAlignment.center,
     this.boldFirstLine = false,
+    this.nameOnly = false,
   });
 
   @override
   Widget build(BuildContext context) {
+    final textAlign = crossAxisAlignment == CrossAxisAlignment.start ? TextAlign.start : TextAlign.center;
+    if (nameOnly) {
+      return Text(kVersionName, style: style, textAlign: textAlign);
+    }
     return FutureBuilder<PackageInfo>(
       future: _packageInfoFuture,
       builder: (context, snapshot) {
         final buildNumber = snapshot.data?.buildNumber;
         if (detailed) {
-          final textAlign = crossAxisAlignment == CrossAxisAlignment.start ? TextAlign.start : TextAlign.center;
-          final firstLineStyle = boldFirstLine ? style?.copyWith(fontWeight: FontWeight.bold) : style;
-          final detailStyle = style?.copyWith(fontSize: (style?.fontSize ?? 15) * 0.8);
+          // Resolve a concrete base style (the About row passes none, inheriting
+          // the ListTile's title style) so the bold name / smaller detail below
+          // apply rather than no-op on a null style.
+          final base = style ?? DefaultTextStyle.of(context).style;
+          final firstLineStyle = boldFirstLine ? base.copyWith(fontWeight: FontWeight.bold) : base;
+          // The detail line reads as secondary: normal weight, two points smaller.
+          final detailStyle = base.copyWith(
+            fontWeight: FontWeight.normal,
+            fontSize: (base.fontSize ?? 14) - 2,
+          );
           return Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: crossAxisAlignment,
             children: [
-              SelectableText(kVersionName, style: firstLineStyle, textAlign: textAlign),
+              SelectableText(kEditionVersionName, style: firstLineStyle, textAlign: textAlign),
               SelectableText(
                 buildNumber == null || buildNumber.isEmpty
                     ? 'Version $kPublicVersion'
@@ -82,7 +100,7 @@ class VersionLabel extends StatelessWidget {
         final version = (buildNumber == null || buildNumber.isEmpty)
             ? kPublicVersion
             : '$kPublicVersion (build $buildNumber)';
-        return SelectableText('$prefix$kVersionName · $version', style: style);
+        return SelectableText('$prefix$kEditionVersionName · $version', style: style);
       },
     );
   }

@@ -102,4 +102,41 @@ void main() {
       expect(theme.tabBarTheme.indicatorColor, theme.colorScheme.onPrimary);
     });
   });
+
+  group('haloDialogConstraints', () {
+    // Captures the constraints plus the screen/header heights the helper saw,
+    // so expectations derive from the same MediaQuery rather than hardcoded
+    // numbers. [size] overrides the window via MediaQuery directly.
+    Future<(BoxConstraints, double, double)> measure(WidgetTester tester, {Size? size}) async {
+      late BoxConstraints constraints;
+      late double screenHeight;
+      late double headerHeight;
+      Widget probe = Builder(builder: (context) {
+        constraints = haloDialogConstraints(context);
+        screenHeight = MediaQuery.sizeOf(context).height;
+        headerHeight = Theme.of(context).appBarTheme.toolbarHeight ?? kToolbarHeight;
+        return const SizedBox.shrink();
+      });
+      if (size != null) {
+        probe = MediaQuery(data: MediaQueryData(size: size), child: probe);
+      }
+      await tester.pumpWidget(MaterialApp(theme: buildHaLoTheme(Brightness.light), home: probe));
+      return (constraints, screenHeight, headerHeight);
+    }
+
+    testWidgets('caps width at 30% over a pane and leaves 1.5 header bars of height', (tester) async {
+      final (constraints, screenHeight, headerHeight) = await measure(tester);
+
+      expect(constraints.maxWidth, maxDialogWidth);
+      expect(maxDialogWidth, idealPaneWidth * 1.3);
+      expect(constraints.maxHeight, screenHeight - headerHeight * 1.5);
+    });
+
+    testWidgets('never goes negative on a window shorter than the header clearance', (tester) async {
+      // No native min-size floor on web/Linux, and a large font scale divides
+      // the logical height further — negative constraints would assert.
+      final (constraints, _, _) = await measure(tester, size: const Size(400, 40));
+      expect(constraints.maxHeight, 0.0);
+    });
+  });
 }

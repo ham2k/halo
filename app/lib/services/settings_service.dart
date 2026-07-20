@@ -6,12 +6,13 @@
 // unencrypted, fine for non-secret preferences). The one secret here, the
 // sync device key (the bearer credential for the account's synced log),
 // lives in the platform keychain via FlutterSecureStorage instead; QRZ
-// credentials likewise moved to secure storage (migrated at boot in
-// main.dart, then handled by ExtensionService's account storage).
+// credentials live in secure storage too, handled by ExtensionService's
+// account storage.
 
 import 'dart:async';
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart' show kReleaseMode;
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:halo_core/halo_core.dart';
@@ -20,11 +21,17 @@ import 'package:uuid/uuid.dart';
 
 const _uuidGenerator = Uuid();
 
+/// The theme mode the light/dark toggle (⌘⇧D) switches to: always the opposite
+/// of what's currently on screen, resolving [ThemeMode.system] against the
+/// current [platformBrightness] so the first press flips what the user sees.
+ThemeMode toggledThemeMode(ThemeMode current, Brightness platformBrightness) {
+  final showingDark =
+      current == ThemeMode.dark || (current == ThemeMode.system && platformBrightness == Brightness.dark);
+  return showingDark ? ThemeMode.light : ThemeMode.dark;
+}
+
 class SettingsService extends ChangeNotifier implements SyncSettings {
   static const _themeModeKey = 'themeMode';
-  static const _qrzUsernameKey = 'qrzUsername';
-  static const _qrzPasswordKey = 'qrzPassword';
-  static const _legacyOperatorCallKey = 'operatorCall';
   static const _profilesKey = 'profiles';
   static const _activeProfileKey = 'activeProfile';
   static const _syncEnabledKey = 'syncEnabled';
@@ -42,6 +49,7 @@ class SettingsService extends ChangeNotifier implements SyncSettings {
   static const _showQsoNumbersKey = 'showQsoNumbers';
   static const _distanceUnitsKey = 'distanceUnits';
   static const _spottingFiltersKey = 'spottingFilters';
+  static const _experimentsKey = 'experiments';
   static const _layoutKey = 'layout';
   static const _lastSeenReleaseVersionKey = 'lastSeenReleaseVersion';
 
@@ -49,6 +57,15 @@ class SettingsService extends ChangeNotifier implements SyncSettings {
 
   /// The sync device key is the de-facto bearer credential for the account's
   /// synced log, so it lives in the platform keychain, not SharedPreferences.
+  ///
+  /// It must stay PER-DEVICE: these options never set `synchronizable`, so the
+  /// key is device-local (`kSecAttrSynchronizable` defaults to false) and never
+  /// reaches iCloud Keychain. Do NOT make it synchronizable — it's a
+  /// per-install identifier (LoFi's `syncUniqueId`), and syncing it would make
+  /// two of the user's devices present as the same sync client. Account-level
+  /// logins that ARE the same everywhere (e.g. QRZ) opt into syncing through
+  /// the extension account hook's `synchronizable` flag instead — see
+  /// ExtensionService.
   final FlutterSecureStorage _secureStorage;
 
   String? _cachedDeviceKey;
@@ -57,18 +74,17 @@ class SettingsService extends ChangeNotifier implements SyncSettings {
     : _secureStorage =
           secureStorage ??
           const FlutterSecureStorage(
-            mOptions: MacOsOptions(usesDataProtectionKeychain: false, accountName: 'Ham2K Logger'),
+            // Release uses the data-protection keychain (no consent prompt);
+            // debug uses the file keychain so ad-hoc-signed local builds work.
+            // See ExtensionService._secureStorage for the full rationale.
+            mOptions: MacOsOptions(usesDataProtectionKeychain: kReleaseMode, accountName: 'Ham2K Logger'),
             iOptions: IOSOptions(accountName: 'Ham2K Logger'),
           );
 
   SharedPreferences get prefs => _prefs;
 
   static Future<SettingsService> load() async {
-    final settings = SettingsService(await SharedPreferences.getInstance());
-    await settings._migrateLegacyOperatorCall();
-    await settings._migrateScalarPrefsToGroups();
-    await settings._migrateExtensionEnabledFlags();
-    return settings;
+    return SettingsService(await SharedPreferences.getInstance());
   }
 
   /// Per-extension enable/disable overrides ({key: bool}), consulted against
@@ -100,24 +116,6 @@ class SettingsService extends ChangeNotifier implements SyncSettings {
   Future<void> setExtensionDisabledSince(Map<String, int> disabledSince) async {
     await _prefs.setString(_extensionDisabledSinceKey, jsonEncode(disabledSince));
     notifyListeners();
-  }
-
-  /// One-time migration: early onboarding builds wrote activity picks as
-  /// `settings.extension_pota/sota {'enabled': bool}` — an accidental
-  /// contract superseded by [extensionOverrides]. Fold those into overrides
-  /// (an existing override wins) and drop the group keys so the stale flags
-  /// can't disagree with the real store.
-  Future<void> _migrateExtensionEnabledFlags() async {
-    for (final key in const ['pota', 'sota']) {
-      final group = settingsGroup('extension_$key');
-      final legacy = group['enabled'];
-      if (legacy is! bool) continue;
-      final overrides = extensionOverrides;
-      if (!overrides.containsKey(key)) {
-        await setExtensionOverrides({...overrides, key: legacy});
-      }
-      await _prefs.setString(_groupPrefsKey('extension_$key'), jsonEncode({...group}..remove('enabled')));
-    }
   }
 
   // ---------------------------------------------------------------------
@@ -161,29 +159,6 @@ class SettingsService extends ChangeNotifier implements SyncSettings {
     };
   }
 
-  /// One-time migration: these all began life as individual scalar prefs;
-  /// they now live in the per-group JSON maps. Existing group values win
-  /// (the migration ran before, or a newer build wrote the group).
-  Future<void> _migrateScalarPrefsToGroups() async {
-    const groupedKeys = {
-      generalGroup: [_themeModeKey, _localeKey, _fontScaleKey, _distanceUnitsKey],
-      loggingGroup: [_showRSTFieldsKey, _showStateFieldKey, _showGridFieldKey, _showDeletedQSOsKey, _showQsoNumbersKey],
-    };
-    for (final entry in groupedKeys.entries) {
-      final migrated = <String, dynamic>{};
-      for (final key in entry.value) {
-        if (!_prefs.containsKey(key)) continue;
-        migrated[key] = _prefs.get(key);
-        await _prefs.remove(key);
-      }
-      if (migrated.isEmpty) continue;
-      await _prefs.setString(
-        _groupPrefsKey(entry.key),
-        jsonEncode({...migrated, ...settingsGroup(entry.key)}),
-      );
-    }
-  }
-
   ThemeMode get themeMode {
     switch (settingValue(generalGroup, _themeModeKey)) {
       case 'light':
@@ -204,16 +179,6 @@ class SettingsService extends ChangeNotifier implements SyncSettings {
 
   Future<void> setLastSeenReleaseVersion(String version) async {
     await _prefs.setString(_lastSeenReleaseVersionKey, version);
-    notifyListeners();
-  }
-
-  String get qrzUsername => _prefs.getString(_qrzUsernameKey) ?? '';
-  String get qrzPassword => _prefs.getString(_qrzPasswordKey) ?? '';
-  bool get hasQrzCredentials => qrzUsername.isNotEmpty && qrzPassword.isNotEmpty;
-
-  Future<void> setQrzCredentials({required String username, required String password}) async {
-    await _prefs.setString(_qrzUsernameKey, username);
-    await _prefs.setString(_qrzPasswordKey, password);
     notifyListeners();
   }
 
@@ -259,20 +224,6 @@ class SettingsService extends ChangeNotifier implements SyncSettings {
     notifyListeners();
   }
 
-  /// One-time migration: earlier builds kept the operator callsign as a
-  /// scalar pref; it now lives in the default profile. An EMPTY legacy
-  /// value still counts as answered — it migrates to a defined-empty
-  /// profile key, so an upgrading user isn't greeted with first-run
-  /// onboarding (see [defaultProfileCallsignDefined]).
-  Future<void> _migrateLegacyOperatorCall() async {
-    final legacy = _prefs.getString(_legacyOperatorCallKey);
-    if (legacy == null) return;
-    if (!defaultProfileCallsignDefined) {
-      await setProfileOperatorCall(defaultProfileId, legacy);
-    }
-    await _prefs.remove(_legacyOperatorCallKey);
-  }
-
   /// Sync is opt-in — off until the user turns it on in Settings.
   bool get syncEnabled => _prefs.getBool(_syncEnabledKey) ?? false;
 
@@ -285,8 +236,7 @@ class SettingsService extends ChangeNotifier implements SyncSettings {
   /// Flutter equivalent of app-polo's `DeviceInfo.syncUniqueId()`), generated
   /// once and persisted in the platform keychain forever after. Since it's
   /// the bearer credential for the account's synced log, it must be loaded
-  /// (and migrated off any old SharedPreferences copy) before first use —
-  /// call [ensureSyncDeviceKey] at boot.
+  /// before first use — call [ensureSyncDeviceKey] at boot.
   Future<String> ensureSyncDeviceKey() async {
     if (_cachedDeviceKey != null) return _cachedDeviceKey!;
 
@@ -295,11 +245,8 @@ class SettingsService extends ChangeNotifier implements SyncSettings {
       return _cachedDeviceKey = fromSecure;
     }
 
-    // One-time migration: earlier builds kept the key in SharedPreferences.
-    final legacy = _prefs.getString(_syncDeviceKeyKey);
-    final key = (legacy != null && legacy.isNotEmpty) ? legacy : _uuidGenerator.v4();
+    final key = _uuidGenerator.v4();
     await _secureStorage.write(key: _syncDeviceKeyKey, value: key);
-    if (legacy != null) await _prefs.remove(_syncDeviceKeyKey);
     return _cachedDeviceKey = key;
   }
 
@@ -340,6 +287,42 @@ class SettingsService extends ChangeNotifier implements SyncSettings {
     notifyListeners();
   }
 
+  /// Per-experiment state, keyed by the experiment key from experiments.yaml:
+  /// `{enabled: bool, firstEnabledAtMillis: int, lastDisabledAtMillis: int}`.
+  /// Entries whose definition has since left the catalog are deliberately
+  /// KEPT (never pruned) — a returning experiment picks its old state up.
+  Map<String, dynamic> get experimentStates => _jsonMapPref(_experimentsKey);
+
+  bool experimentEnabled(String key) {
+    final state = experimentStates[key];
+    return state is Map && state['enabled'] == true;
+  }
+
+  /// The number of [keys] currently enabled — the Developer menu's count,
+  /// computed against the CURRENT catalog so stale state for removed
+  /// experiments doesn't inflate it. One state read, not one per key.
+  int enabledExperimentCount(Iterable<String> keys) {
+    final states = experimentStates;
+    return keys.where((key) {
+      final state = states[key];
+      return state is Map && state['enabled'] == true;
+    }).length;
+  }
+
+  Future<void> setExperimentEnabled(String key, bool enabled) async {
+    final states = experimentStates;
+    final entry = {...?(states[key] as Map?)?.cast<String, dynamic>()};
+    entry['enabled'] = enabled;
+    final now = DateTime.now().millisecondsSinceEpoch;
+    if (enabled) {
+      entry['firstEnabledAtMillis'] ??= now;
+    } else {
+      entry['lastDisabledAtMillis'] = now;
+    }
+    await _prefs.setString(_experimentsKey, jsonEncode({...states, key: entry}));
+    notifyListeners();
+  }
+
   /// User-dragged pane widths (docs/design/layouts.md), keyed by
   /// [LayoutKeys] — one JSON map under a single prefs key, like
   /// [spottingFilters]. Callers own the defaults; a missing key returns
@@ -350,7 +333,20 @@ class SettingsService extends ChangeNotifier implements SyncSettings {
     return value is num ? value.toDouble() : null;
   }
 
-  Future<void> setLayoutDimension(String key, double value) async {
+  Future<void> setLayoutDimension(String key, double value) => _setLayoutValue(key, value);
+
+  /// A structured layout value (the dock-layout prototype's arrangement
+  /// tree) riding in the same per-key layout map as the scalar dimensions.
+  Map<String, dynamic>? layoutData(String key) {
+    final value = (_layoutCache ??= _jsonMapPref(_layoutKey))[key];
+    return value is Map<String, dynamic> ? value : null;
+  }
+
+  Future<void> setLayoutData(String key, Map<String, dynamic> value) => _setLayoutValue(key, value);
+
+  /// The one writer of the layout map: cache first (build methods read the
+  /// cache synchronously), then persist the whole map, then notify.
+  Future<void> _setLayoutValue(String key, Object value) async {
     final updated = {...(_layoutCache ??= _jsonMapPref(_layoutKey)), key: value};
     _layoutCache = updated;
     await _prefs.setString(_layoutKey, jsonEncode(updated));
@@ -459,6 +455,16 @@ class SettingsService extends ChangeNotifier implements SyncSettings {
   bool get switchSentRcvd => _loggingBool('switchSentRcvd', false);
   bool get jumpAfterRST => _loggingBool('jumpAfterRST', false);
 
+  /// The mobile "numbers row" — a bar of digit keys the logging panel floats
+  /// above the on-screen keyboard while a logging field has focus (issue
+  /// #27). Off by default (opt-in), matching app-polo's `showNumbersRow`.
+  /// The two settings below only take effect while this is on: the extra
+  /// contextual key ("/" while composing a callsign, "." in numeric fields,
+  /// on by default) and haptic feedback on each key press (on by default).
+  bool get showNumbersRow => _loggingBool('showNumbersRow', false);
+  bool get showExtraInNumbersRow => _loggingBool('showExtraInNumbersRow', true);
+  bool get vibrateNumbersRow => _loggingBool('vibrateNumbersRow', true);
+
   /// Which contacts get a country flag next to them.
   DxFlags get dxFlags {
     final value = settingValue(loggingGroup, 'dxFlags');
@@ -518,12 +524,26 @@ enum DistanceUnits { kilometers, miles }
 /// Country flags on contacts: DX only (app-polo's default), everyone, or off.
 enum DxFlags { dx, all, none }
 
+/// Declared in ascending scale order — [SettingsService.increaseFontScale] and
+/// [SettingsService.decreaseFontScale] step by `index`, so the order IS the
+/// ordering.
+///
+/// The four outermost levels are [selectable] `false`: reachable only with the
+/// keyboard shortcuts, and deliberately absent from the Settings picker. They
+/// exist for the rare setup that needs more range (a far-away shack display, a
+/// user who needs very large text) without cluttering the everyday list of
+/// five. When one is in effect the picker annotates the nearest selectable
+/// entry instead — see [nearestSelectable] and `core_settings_groups.dart`.
 enum FontScale {
+  smallestMinusMinus(0.50, 'Smallest--', selectable: false),
+  smallestMinus(0.60, 'Smallest-', selectable: false),
   smallest(0.70, 'Smallest'),
   smaller(0.85, 'Smaller'),
   normal(1.00, 'Normal'),
   larger(1.20, 'Larger'),
-  largest(1.40, 'Largest');
+  largest(1.40, 'Largest'),
+  largestPlus(1.65, 'Largest+', selectable: false),
+  largestPlusPlus(1.90, 'Largest++', selectable: false);
 
   /// The uniform UI zoom factor. Consumed in exactly ONE place — `main.dart`'s
   /// `MaterialApp.builder`, which feeds it to `UiScale` to scale the entire
@@ -533,7 +553,23 @@ enum FontScale {
   final double scaleFactor;
   final String label;
 
-  const FontScale(this.scaleFactor, this.label);
+  /// Whether the Settings picker offers this level. False for the four
+  /// shortcut-only extremes.
+  final bool selectable;
+
+  const FontScale(this.scaleFactor, this.label, {this.selectable = true});
+
+  /// The levels the Settings picker lists, in order.
+  static List<FontScale> get selectableValues => values.where((s) => s.selectable).toList();
+
+  /// The selectable level this one is annotated against: itself when
+  /// selectable, otherwise the nearest selectable level in the direction of
+  /// Normal (so 1.90 and 1.65 both answer `largest`, 0.50 and 0.60 both answer
+  /// `smallest`).
+  FontScale get nearestSelectable {
+    if (selectable) return this;
+    return scaleFactor > normal.scaleFactor ? selectableValues.last : selectableValues.first;
+  }
 }
 
 /// The dotted keys for [SettingsService.layoutDimension] /
@@ -543,5 +579,6 @@ enum FontScale {
 abstract final class LayoutKeys {
   static const homeLeftColumn = 'home.leftColumn';
   static const operationLeftColumn = 'operation.leftColumn';
+  static const operationDock = 'operation.dock';
   static const settingsLeftColumn = 'settings.leftColumn';
 }

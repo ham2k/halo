@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_svg/flutter_svg.dart';
@@ -6,13 +7,22 @@ import 'package:halo_core/halo_core.dart';
 import 'package:halo_widgets/halo_widgets.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 
+import '../config/dev_flags.dart';
 import '../main.dart';
 import '../services/settings_service.dart';
+import 'header_profile_label.dart';
 import 'operation_dialogs.dart';
 import 'operation_view.dart';
 import 'settings_view.dart';
+import 'ham2k_logo.dart';
 import 'version_label.dart';
 import '../i18n/strings.g.dart';
+
+/// A free-form developer label shown in the home header after the edition
+/// badge — set with `--dart-define=DEV_LABEL=…` or (off web) a `DEV_LABEL`
+/// environment variable, to mark which dev build/session is running. Empty
+/// and inert in release builds. Resolved once (a lazy top-level final).
+final String _devLabel = debugEnvFlag(const String.fromEnvironment('DEV_LABEL'), 'DEV_LABEL');
 
 /// HaLo home-screen style row: bold "CALL title" line with count pill,
 /// subtitle line with refs/description and right-aligned date.
@@ -52,7 +62,10 @@ class _OperationRow extends StatelessWidget {
                         children: [
                           TextSpan(
                             text: operation.stationCall,
-                            style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800),
+                            style: theme.textTheme.titleMedium?.copyWith(
+                              fontWeight: FontWeight.w800,
+                              fontFamily: 'RobotoMono',
+                            ),
                           ),
                           if (operation.title.isNotEmpty)
                             TextSpan(
@@ -195,6 +208,11 @@ class _HomeViewState extends State<HomeView> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return Scaffold(
+      // Full height behind the on-screen keyboard so each pane paints its own
+      // bottom — the Quick Lookup bar's teal on the left, the branding on the
+      // right — and a two-pane split reflects through. Each keeps its content
+      // above the keyboard itself (HomeQuickLookup / _BrandingPane).
+      resizeToAvoidBottomInset: false,
       appBar: AppBar(
         flexibleSpace: windowHeaderGestureArea(),
         leadingWidth: isMacOSChromelessWindow ? 48 + macOSTrafficLightClearance(context) : null,
@@ -205,14 +223,47 @@ class _HomeViewState extends State<HomeView> {
             8,
             8,
           ),
-          child: SvgPicture.asset('assets/images/ham2k-wordmark.svg', width: 22, height: 22),
+          child: SvgPicture.asset(ham2kSquareLogoAsset, width: 22, height: 22),
         ),
         // "Desktop Logger" / "Portable Logger" is the in-app main-screen
         // title — independent of the OS-level app name ("Ham2K Logger" on
         // desktop, "HaLo" on mobile; see macos/Runner/Configs/AppInfo.xcconfig,
         // ios/Runner/Info.plist, android's AndroidManifest.xml).
-        title: Text(isWindowedPlatform ? context.t.home.titleDesktop : context.t.home.title),
+        title: Row(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            Text(ham2kProductName),
+            // Edition badge to the right of the name, bottom-aligned to sit on
+            // the text baseline (Regular has no badge).
+            if (ham2kEditionBadgeAsset != null) ...[
+              const SizedBox(width: 10),
+              Padding(
+                padding: const EdgeInsets.only(bottom: 3),
+                // Zero-offset shadows read as a glow: black for Next, white for Dev.
+                child: Ham2kEditionBadge(height: 15, shadows: ham2kHeaderEditionBadgeShadows),
+              ),
+            ],
+            // A free-form dev label (DEV_LABEL) after the edition badge — marks
+            // which dev build/session is running; absent in release builds.
+            if (_devLabel.isNotEmpty) ...[
+              const SizedBox(width: 10),
+              Flexible(
+                child: Text(
+                  _devLabel,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontStyle: FontStyle.italic,
+                    color: (theme.appBarTheme.foregroundColor ?? theme.colorScheme.onPrimary).withValues(alpha: 0.8),
+                  ),
+                ),
+              ),
+            ],
+          ],
+        ),
         actions: [
+          HeaderProfileLabel(settings: widget.services.settings),
           IconButton(
             tooltip: context.t.settings.title,
             icon: Icon(MdiIcons.cog),
@@ -359,24 +410,42 @@ class _BrandingPane extends StatelessWidget {
     return Container(
       color: theme.colorScheme.surfaceContainerHighest,
       alignment: Alignment.center,
-      child: Column(
+      // Centre the branding in the space above the keyboard (the pane extends
+      // full height behind it, so the grey fills the gap); the padding is
+      // inside the coloured Container, so the fill still reaches the bottom.
+      padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(context).bottom),
+      // Scale the branding down rather than overflow when the pane is short —
+      // e.g. landscape two-pane with the keyboard up shrinks it well below
+      // the logo+text's natural height. No effect at full height.
+      child: FittedBox(
+        fit: BoxFit.scaleDown,
+        child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          SvgPicture.asset('assets/images/ham2k-wordmark.svg', width: 180),
+          SvgPicture.asset(ham2kSquareLogoAsset, width: 180),
           const SizedBox(height: 4),
-          // The wordmark graphic already says "Ham2K", so per the branding
-          // rules (docs/design/user-interface.md) only "Logger" / "Portable
-          // Logger" goes below it.
+          // The square mark already says "Ham2K", so per the branding rules
+          // (docs/design/user-interface.md) only the product name — "Mac
+          // Logger", "Browser Logger", etc. — goes below it.
           Text(
-            isWindowedPlatform ? 'Logger' : 'Portable Logger',
+            ham2kProductName,
             style: theme.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w800),
           ),
+          // Edition badge below the name, centered, a bit smaller (Regular has none).
+          if (ham2kEditionBadgeAsset != null) ...[
+            const SizedBox(height: 8),
+            SvgPicture.asset(ham2kEditionBadgeAsset!, width: 130),
+          ],
           const SizedBox(height: 16),
+          // Just the release name, without the edition qualifier (the edition
+          // is already shown by the badge SVG above) and without the build
+          // detail line.
           VersionLabel(
-            prefix: 'Version ',
+            nameOnly: true,
             style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant),
           ),
         ],
+        ),
       ),
     );
   }
@@ -415,16 +484,64 @@ class _HomeQuickLookupState extends State<HomeQuickLookup> {
   void initState() {
     super.initState();
     _controller.addListener(_onTextChanged);
+    // The mobile numbers row shows only while this field has focus, so rebuild
+    // as focus comes and goes (issue #27).
+    _focusNode.addListener(_onFocusChanged);
   }
 
   @override
   void dispose() {
+    _focusNode.removeListener(_onFocusChanged);
     _controller.dispose();
     _focusNode.dispose();
     _commandDescribeDebounce?.cancel();
     _executeMessageTimer?.cancel();
     _lookupDebounce?.cancel();
     super.dispose();
+  }
+
+  void _onFocusChanged() {
+    if (mounted) setState(() {});
+  }
+
+  /// Whether to float the mobile numbers row above the keyboard right now: the
+  /// setting is on, we're on a phone/tablet, this field has focus, and a real
+  /// on-screen keyboard is up. The >100px check ignores iOS's thin
+  /// hardware-keyboard accessory bar (~45–55px) — matches LoggingControls'
+  /// `_minKeyboardInset`. MediaQuery works here (the Home Scaffold doesn't
+  /// resize, so it doesn't strip the inset), so this rebuilds on its own as
+  /// the keyboard opens/closes.
+  bool _shouldShowNumbersRow(MediaQueryData mq) =>
+      isMobilePlatform &&
+      widget.services.settings.showNumbersRow &&
+      _focusNode.hasFocus &&
+      mq.viewInsets.bottom > 100;
+
+  /// The contextual extra key: "/" once a callsign (letters, not just digits)
+  /// is being composed — for portable calls like W1AW/P — otherwise ".". Same
+  /// rule as the logging panel; null when the extra key is turned off.
+  String? get _numbersRowExtraKey {
+    if (!widget.services.settings.showExtraInNumbersRow) return null;
+    final text = _controller.text;
+    final hasLetter = RegExp(r'[A-Za-z]').hasMatch(text);
+    final onlyDigits = RegExp(r'^[0-9]+$').hasMatch(text);
+    return (hasLetter && !onlyDigits) ? '/' : '.';
+  }
+
+  /// Inserts a tapped numbers-row character at the cursor. Sets the controller
+  /// value directly (bypassing the field's input formatters, which is fine —
+  /// digits and "/"/"." need no transform), which fires `_onTextChanged` so
+  /// the lookup/command interpretation runs just as if it were typed.
+  void _handleNumberKey(String key) {
+    final value = _controller.value;
+    final selection = value.selection;
+    final start = selection.start < 0 ? value.text.length : selection.start;
+    final end = selection.end < 0 ? value.text.length : selection.end;
+    _controller.value = value.copyWith(
+      text: value.text.replaceRange(start, end, key),
+      selection: TextSelection.collapsed(offset: start + key.length),
+      composing: TextRange.empty,
+    );
   }
 
   void _onTextChanged() {
@@ -581,6 +698,17 @@ class _HomeQuickLookupState extends State<HomeQuickLookup> {
     }
   }
 
+  /// Runs one command action through [HaLoServices.handleCommandAction] and
+  /// surfaces its returned message as a snackbar — mirroring
+  /// operation_view's `_handleCommandAction`, so feedback that's only known
+  /// app-side (a toggled experiment's outcome, syncAll's status) isn't
+  /// silently dropped on the home screen's quick-lookup dispatch.
+  Future<void> _runCommandAction(String action, [Map<String, dynamic>? params]) async {
+    final messenger = ScaffoldMessenger.of(context);
+    final message = await widget.services.handleCommandAction(action, params);
+    if (message != null && mounted) messenger.showSnackBar(SnackBar(content: Text(message)));
+  }
+
   Future<void> _dispatchActions(List<dynamic> actions) async {
     for (final action in actions) {
       if (action is! Map) continue;
@@ -591,22 +719,21 @@ class _HomeQuickLookupState extends State<HomeQuickLookup> {
           await widget.services.settings.setDeveloperMode(params['developerMode'] as bool);
         }
       } else if (map.containsKey('syncAll')) {
-        await widget.services.handleCommandAction('syncAll');
+        await _runCommandAction('syncAll');
       } else if (map['devNotice'] is Map) {
-        await widget.services.handleCommandAction('devNotice', (map['devNotice'] as Map).cast<String, dynamic>());
+        await _runCommandAction('devNotice', (map['devNotice'] as Map).cast<String, dynamic>());
       } else if (map['devStatus'] is Map) {
-        await widget.services.handleCommandAction('devStatus', (map['devStatus'] as Map).cast<String, dynamic>());
+        await _runCommandAction('devStatus', (map['devStatus'] as Map).cast<String, dynamic>());
       } else if (map['devProgress'] is Map) {
-        await widget.services.handleCommandAction('devProgress', (map['devProgress'] as Map).cast<String, dynamic>());
+        await _runCommandAction('devProgress', (map['devProgress'] as Map).cast<String, dynamic>());
       } else if (map['devSplash'] is Map) {
-        await widget.services.handleCommandAction('devSplash');
+        await _runCommandAction('devSplash');
       } else if (map['devOnboard'] is Map) {
-        await widget.services.handleCommandAction('devOnboard');
+        await _runCommandAction('devOnboard');
       } else if (map['reloadDataFiles'] is Map) {
-        await widget.services.handleCommandAction(
-          'reloadDataFiles',
-          (map['reloadDataFiles'] as Map).cast<String, dynamic>(),
-        );
+        await _runCommandAction('reloadDataFiles', (map['reloadDataFiles'] as Map).cast<String, dynamic>());
+      } else if (map['toggleExperiment'] is Map) {
+        await _runCommandAction('toggleExperiment', (map['toggleExperiment'] as Map).cast<String, dynamic>());
       } else {
         // Nothing above recognized this action's key(s) — most likely a
         // command that's scoped to the logging panel (addQso, updateQso,
@@ -645,6 +772,17 @@ class _HomeQuickLookupState extends State<HomeQuickLookup> {
 
     final hasContent = _commandMessage != null || lookupLine != null;
 
+    // The Home Scaffold no longer resizes for the keyboard, and the status
+    // footer below now collapses to nothing, so this bar reserves the space
+    // itself below the field (and the numbers row, when shown): the larger of
+    // the keyboard inset and the bottom safe area. A MAX (not a sum) because
+    // the keyboard, when up, already covers the home indicator. The bar's
+    // Material fills that strip, so its teal both shows behind the keyboard and
+    // forms the home-indicator strip when the keyboard is down.
+    final mq = MediaQuery.of(context);
+    final bottomReserve = math.max(mq.viewInsets.bottom, mq.viewPadding.bottom);
+    final showNumbersRow = _shouldShowNumbersRow(mq);
+
     return Material(
       elevation: 8,
       color: theme.appBarTheme.backgroundColor ?? theme.colorScheme.surface,
@@ -662,7 +800,7 @@ class _HomeQuickLookupState extends State<HomeQuickLookup> {
                     Row(
                       children: [
                         if (_isError) ...[
-                          Icon(resolveIconName('alert-circle-outline'), size: 16, color: theme.colorScheme.onPrimary),
+                          Icon(resolveIconName('alert-circle'), size: 16, color: theme.colorScheme.onPrimary),
                           const SizedBox(width: 8),
                         ],
                         Expanded(
@@ -700,12 +838,7 @@ class _HomeQuickLookupState extends State<HomeQuickLookup> {
               ),
             ),
           Padding(
-            padding: EdgeInsets.fromLTRB(
-              16,
-              8,
-              16,
-              MediaQuery.paddingOf(context).bottom > 8.0 ? MediaQuery.paddingOf(context).bottom : 8.0,
-            ),
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
             child: TextField(
               controller: _controller,
               focusNode: _focusNode,
@@ -736,6 +869,19 @@ class _HomeQuickLookupState extends State<HomeQuickLookup> {
               onSubmitted: (_) => _submit(),
             ),
           ),
+          // The mobile numbers row (issue #27), same setting as the logging
+          // panel — digits (plus one contextual "/"/".") a tap away while the
+          // lookup field has focus. Sits just above the keyboard, which the
+          // spacer below reserves.
+          if (showNumbersRow)
+            NumberKeys(
+              onKey: _handleNumberKey,
+              extraKey: _numbersRowExtraKey,
+              vibrate: widget.services.settings.vibrateNumbersRow,
+              backgroundColor: theme.appBarTheme.backgroundColor ?? theme.colorScheme.primary,
+              foregroundColor: theme.appBarTheme.foregroundColor ?? theme.colorScheme.onPrimary,
+            ),
+          if (bottomReserve > 0) SizedBox(width: double.infinity, height: bottomReserve),
         ],
       ),
     );

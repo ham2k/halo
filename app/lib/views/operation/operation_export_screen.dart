@@ -114,7 +114,7 @@ class _OperationExportScreenState extends State<OperationExportScreen> {
                   children: [
                     SectionHeader(t.operation.export.title),
                     ListTile(
-                      leading: Icon(resolveIconName(widget.operation.synced ? 'cloud-check-outline' : 'cloud-alert-outline')),
+                      leading: Icon(resolveIconName(widget.operation.synced ? 'cloud-check' : 'cloud-alert')),
                       title: Text(widget.operation.synced ? t.operation.export.syncedOperation : t.operation.export.unsyncedOperation),
                       subtitle: syncCounts == null
                           ? null
@@ -124,7 +124,7 @@ class _OperationExportScreenState extends State<OperationExportScreen> {
                     ),
                     if (syncCounts != null && syncCounts.eventTotal > 0)
                       ListTile(
-                        leading: Icon(resolveIconName('flag-outline')),
+                        leading: Icon(resolveIconName('flag')),
                         title: Text(syncCounts.eventPending == 0
                             ? t.operation.export.eventsSynced(total: syncCounts.eventTotal)
                             : t.operation.export.eventsPending(pending: syncCounts.eventPending, total: syncCounts.eventTotal)),
@@ -137,7 +137,7 @@ class _OperationExportScreenState extends State<OperationExportScreen> {
                     else
                       for (final option in _options)
                         CheckboxListTile(
-                          secondary: Icon(resolveIconName(option['icon'] as String? ?? 'file-export-outline')),
+                          secondary: Icon(resolveIconName(option['icon'] as String? ?? 'file-export')),
                           title: Text(option['label'] as String? ?? option['exportType'] as String),
                           subtitle: option['filename'] == null ? null : Text(option['filename'] as String),
                           value: _selected[_selectionKey(option)] ?? false,

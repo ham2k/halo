@@ -4,21 +4,47 @@
 // future. If not, the values below would default to using the project name when this becomes a
 // 'flutter create' template.
 
+// --- Edition selection (docs/releases.md §2.6, §8) -----------------------------
+// HALO_EDITION picks which app this build is; the app's identity (name +
+// bundle id) is computed from it below, so there are NO per-edition Xcode
+// schemes. It defaults to `dev` — the plain, build-it-yourself edition — so a
+// plain build (and every public checkout) produces Dev. CI selects an
+// official edition by writing `HALO_EDITION = next` (or `prod`) into
+// Local.xcconfig at build time; xcconfig resolves setting values lazily, so
+// that override — included last — still drives PRODUCT_NAME/bundle id below.
+HALO_EDITION = dev
+
+// Per-edition display name — the Dock/Finder/menu label. It sits under the app
+// icon (which already carries the "Ham2K" mark), so per the branding rule it
+// drops the "Ham2K" prefix and names the platform: "Mac Logger" (+ edition).
+// The bundle id is a plain `.<edition>` suffix, but the names aren't a uniform
+// pattern, so they are mapped here and selected by nested substitution:
+// $(HALO_PRODUCT_NAME_$(HALO_EDITION)). (The distributable artifact FILE, which
+// stands alone with no icon, re-adds "Ham2K" — see app_dist/ci/build-macos.sh.)
+HALO_PRODUCT_NAME_dev = Mac Logger (Dev)
+HALO_PRODUCT_NAME_next = Mac Logger Next
+HALO_PRODUCT_NAME_prod = Mac Logger
+
 // The application's name — drives the Dock/Finder icon label, the app
 // menu (top-left), and the About/Quit menu items (MainMenu.xib's "APP_NAME"
 // placeholders are substituted by AppKit at nib-load time using this name).
-PRODUCT_NAME = Ham2K Logger
+PRODUCT_NAME = $(HALO_PRODUCT_NAME_$(HALO_EDITION))
 
-// The application's bundle identifier
-PRODUCT_BUNDLE_IDENTIFIER = com.ham2k.logger
+// The application's bundle identifier. The `.dev` / `.next` / `.prod` leaf
+// (docs/releases.md §2.6) lets all three editions install side by side; a plain
+// build is `com.ham2k.logger.dev`.
+PRODUCT_BUNDLE_IDENTIFIER = com.ham2k.logger.$(HALO_EDITION)
 
 // The copyright displayed in application information
 PRODUCT_COPYRIGHT = Copyright © 2026 com.ham2k. All rights reserved.
 
-// Optional signing overrides (DEVELOPMENT_TEAM, CODE_SIGN_IDENTITY).
-// Distribution repos commit theirs under app_dist/, which does not exist
-// in public checkouts; Local.xcconfig is a gitignored per-developer
-// override that wins over both — see Local.xcconfig.sample and README.md
-// "Building locally on macOS".
+// Distribution signing identity (DEVELOPMENT_TEAM, CODE_SIGN_IDENTITY), committed
+// under app_dist/ — absent from public checkouts, which therefore build Dev
+// with ad-hoc signing. A fixed filename because xcconfig does NOT substitute
+// variables in #include paths; the team is shared across editions, and official
+// builds are Developer ID-signed by CI itself, so this need not vary per edition.
 #include? "../../../../app_dist/macos/Signing.xcconfig"
+// Local.xcconfig (gitignored) is the per-developer / CI override that wins over
+// both — signing, and HALO_EDITION for official builds. See Local.xcconfig.sample
+// and README.md "Building locally on macOS".
 #include? "Local.xcconfig"

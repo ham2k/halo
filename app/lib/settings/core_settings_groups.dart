@@ -104,27 +104,21 @@ class GeneralSettingsGroup extends SettingsGroup {
         key: 'locale',
         label: t.settings.language,
         icon: 'translate',
+        // Just the current language's own name (its option label).
+        description: settings.locale == 'es' ? 'Español' : 'English',
         value: settings.locale,
         options: const [
           (label: 'English', value: 'en'),
           (label: 'Español', value: 'es'),
         ],
       ),
-      _select(
-        key: 'fontScale',
-        label: t.settings.fontScale,
-        icon: 'format-size',
-        description: t.settings.fontScaleDescription,
-        value: settings.fontScale.name,
-        options: [
-          for (final scale in FontScale.values) (label: t['settings.fontScaleOpts.${scale.name}'] as String, value: scale.name),
-        ],
-      ),
+      _fontScaleSelect(),
       _select(
         key: 'distanceUnits',
         label: t.settings.distanceUnits,
         icon: 'map-marker-distance',
-        description: t.settings.distanceUnitsDescription,
+        // Just the current unit's name (its option label).
+        description: t['settings.distanceUnitsOpts.${settings.distanceUnits.name}'] as String,
         value: settings.distanceUnits.name,
         options: [
           for (final unit in DistanceUnits.values)
@@ -132,6 +126,36 @@ class GeneralSettingsGroup extends SettingsGroup {
         ],
       ),
     ];
+  }
+
+  /// The Font Scale picker.
+  ///
+  /// It lists only [FontScale.selectableValues] — the four extremes are
+  /// reachable with the keyboard shortcuts only. When one of those IS in
+  /// effect, the nearest listed entry carries its label instead ("Largest++"
+  /// on the Largest row), so the setting still reports the size actually in
+  /// use rather than silently showing "Largest" at 1.90.
+  ///
+  /// Selecting that annotated row commits the plain level it stands for
+  /// (Largest, 1.40) — which is also the only way back to a standard size
+  /// without the shortcuts.
+  Map<String, dynamic> _fontScaleSelect() {
+    final current = settings.fontScale;
+    final anchor = current.nearestSelectable;
+    String labelFor(FontScale scale) =>
+        t['settings.fontScaleOpts.${scale == anchor ? current.name : scale.name}'] as String;
+
+    return _select(
+      key: 'fontScale',
+      label: t.settings.fontScale,
+      icon: 'format-size',
+      // Just the current scale's name (its option label).
+      description: t['settings.fontScaleOpts.${current.name}'] as String,
+      value: anchor.name,
+      options: [
+        for (final scale in FontScale.selectableValues) (label: labelFor(scale), value: scale.name),
+      ],
+    );
   }
 
   @override
@@ -186,7 +210,7 @@ class LoggingSettingsGroup extends SettingsGroup {
       _toggle(
         key: 'leftieMode',
         label: s.leftieMode.title,
-        icon: 'hand-front-left-outline',
+        icon: 'hand-front-left',
         description: settings.leftieMode ? s.leftieMode.descriptionOn : s.leftieMode.descriptionOff,
         value: settings.leftieMode,
       ),
@@ -211,7 +235,7 @@ class LoggingSettingsGroup extends SettingsGroup {
       _toggle(
         key: 'showBearing',
         label: s.showBearing.title,
-        icon: 'compass-outline',
+        icon: 'compass',
         description: settings.showBearing ? s.showBearing.descriptionOn : s.showBearing.descriptionOff,
         value: settings.showBearing,
       ),
@@ -229,6 +253,33 @@ class LoggingSettingsGroup extends SettingsGroup {
         description: settings.jumpAfterRST ? s.jumpAfterRST.descriptionOn : s.jumpAfterRST.descriptionOff,
         value: settings.jumpAfterRST,
       ),
+      // The mobile numbers row (issue #27). Its two sub-options only make
+      // sense while the row is on, so they appear only then — buildElements
+      // re-runs on every settings change (listenable: settings), so they
+      // show/hide as the master toggle flips.
+      _toggle(
+        key: 'showNumbersRow',
+        label: s.numbersRow.title,
+        icon: 'dialpad',
+        description: s.numbersRow.description,
+        value: settings.showNumbersRow,
+      ),
+      if (settings.showNumbersRow) ...[
+        _toggle(
+          key: 'showExtraInNumbersRow',
+          label: s.numbersRowExtra.title,
+          icon: 'slash-forward',
+          description: s.numbersRowExtra.description,
+          value: settings.showExtraInNumbersRow,
+        ),
+        _toggle(
+          key: 'vibrateNumbersRow',
+          label: s.numbersRowVibrate.title,
+          icon: 'vibrate',
+          description: s.numbersRowVibrate.description,
+          value: settings.vibrateNumbersRow,
+        ),
+      ],
       {
         'type': 'field',
         'fieldType': 'multiselect',
@@ -258,7 +309,7 @@ class LoggingSettingsGroup extends SettingsGroup {
       _toggle(
         key: 'showStateField',
         label: t.operation.menu.showStateField,
-        icon: 'map-outline',
+        icon: 'map',
         value: settings.showStateField,
       ),
       _toggle(
@@ -270,7 +321,7 @@ class LoggingSettingsGroup extends SettingsGroup {
       _toggle(
         key: 'showDeletedQSOs',
         label: t.operation.menu.showDeletedQsos,
-        icon: 'delete-outline',
+        icon: 'delete',
         value: settings.showDeletedQSOs,
       ),
       _toggle(
@@ -338,8 +389,8 @@ class PrivacySettingsGroup extends SettingsGroup {
         description: settings.consentOpData ? s.shareOpData.descriptionOn : s.shareOpData.descriptionOff,
         value: settings.consentOpData,
       ),
-      {'type': 'link', 'key': 'privacyPolicy', 'label': s.privacyPolicy, 'icon': 'shield-account-outline', 'url': privacyPolicyUrl},
-      {'type': 'link', 'key': 'termsOfService', 'label': s.termsOfService, 'icon': 'file-document-outline', 'url': termsOfServiceUrl},
+      {'type': 'link', 'key': 'privacyPolicy', 'label': s.privacyPolicy, 'icon': 'shield-account', 'url': privacyPolicyUrl},
+      {'type': 'link', 'key': 'termsOfService', 'label': s.termsOfService, 'icon': 'file-document', 'url': termsOfServiceUrl},
     ];
   }
 
@@ -389,7 +440,7 @@ class SyncSettingsGroup extends SettingsGroup {
       _toggle(
         key: 'enabled',
         label: t.settings.sync.enable,
-        icon: 'cloud-sync-outline',
+        icon: 'cloud-sync',
         description: account.isEmpty ? null : account,
         value: settings.syncEnabled,
       ),
