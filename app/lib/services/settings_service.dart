@@ -333,7 +333,20 @@ class SettingsService extends ChangeNotifier implements SyncSettings {
     return value is num ? value.toDouble() : null;
   }
 
-  Future<void> setLayoutDimension(String key, double value) async {
+  Future<void> setLayoutDimension(String key, double value) => _setLayoutValue(key, value);
+
+  /// A structured layout value (the dock-layout prototype's arrangement
+  /// tree) riding in the same per-key layout map as the scalar dimensions.
+  Map<String, dynamic>? layoutData(String key) {
+    final value = (_layoutCache ??= _jsonMapPref(_layoutKey))[key];
+    return value is Map<String, dynamic> ? value : null;
+  }
+
+  Future<void> setLayoutData(String key, Map<String, dynamic> value) => _setLayoutValue(key, value);
+
+  /// The one writer of the layout map: cache first (build methods read the
+  /// cache synchronously), then persist the whole map, then notify.
+  Future<void> _setLayoutValue(String key, Object value) async {
     final updated = {...(_layoutCache ??= _jsonMapPref(_layoutKey)), key: value};
     _layoutCache = updated;
     await _prefs.setString(_layoutKey, jsonEncode(updated));
@@ -536,5 +549,6 @@ enum FontScale {
 abstract final class LayoutKeys {
   static const homeLeftColumn = 'home.leftColumn';
   static const operationLeftColumn = 'operation.leftColumn';
+  static const operationDock = 'operation.dock';
   static const settingsLeftColumn = 'settings.leftColumn';
 }

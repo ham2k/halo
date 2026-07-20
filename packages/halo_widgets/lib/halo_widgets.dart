@@ -4,6 +4,7 @@
 library;
 
 export 'src/activity_controls.dart';
+export 'src/dock_layout.dart';
 export 'src/icon_resolver.dart';
 export 'src/halo_dialog.dart';
 export 'src/keyboard_dismiss.dart';

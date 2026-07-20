@@ -591,11 +591,22 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   /// flag and miss another.
   Map<String, dynamic>? _retainedInterpretation;
 
-  /// Whether the retained command is a recognized prefix still awaiting its
-  /// parameters ("RELOAD" before its target) — space is a literal character
-  /// and the callsign character filter is lifted, but input stays
-  /// uppercase-only unless [_commandMixedCase] also holds.
-  bool get _commandExpectsParams => _retainedInterpretation?['expectsParams'] == true;
+  /// Whether the call field is in command free-text mode — space is a
+  /// literal character and the callsign character filter is lifted, but
+  /// input stays uppercase-only unless [_commandMixedCase] also holds.
+  /// Two ways in, both requiring a retained command:
+  /// - the command is a recognized prefix still awaiting its parameters
+  ///   ("RELOAD" before its target — `expectsParams`), or
+  /// - the text already holds characters the callsign formatters would
+  ///   destroy (a space, mid-parameter). Without this, a typing pause after
+  ///   "EXP L" lets the debounced interpret retain a COMPLETE
+  ///   interpretation (token "L"), and the returning callsign filter would
+  ///   rewrite the whole field on the very next keystroke — "EXP LA"
+  ///   snapping to "EXPLA". Same guard [_retainInterpretation] applies to
+  ///   the null-result path, for the same reason.
+  bool get _commandExpectsParams =>
+      _retainedInterpretation != null &&
+      (_retainedInterpretation!['expectsParams'] == true || !_callsignModeSafeText.hasMatch(_callController.text));
 
   /// Whether the retained command declared `mixedCase: true` — only such
   /// commands (e.g. NOTE, whose parameter is free prose) release the call

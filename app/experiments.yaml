@@ -24,3 +24,7 @@ experiments:
     name: Experiments
     description: Show the Experiments list in Developer Settings.
     aliases: [exp]
+  - key: layouts
+    name: Customizable Layouts
+    description: Rearrange the logging view's panes by dragging their tabs into splits and groups.
+    aliases: [layout, dock, docking]

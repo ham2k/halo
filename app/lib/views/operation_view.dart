@@ -54,6 +54,25 @@ class _OperationViewState extends State<OperationView> with SingleTickerProvider
   late bool _showDeletedQSOs = widget.services.settings.showDeletedQSOs;
   late bool _showQsoNumbers = widget.services.settings.showQsoNumbers;
 
+  /// Gate for the drag-and-drop dock layout (DESIGN.md §7), replacing the
+  /// wide arrangement's fixed split-plus-tabs with a user-arrangeable
+  /// [DockLayoutView]. Narrow layouts are unaffected. Driven by the
+  /// 'layouts' experiment (EXP LAYOUTS, or Settings → Developer →
+  /// Experiments) — [_onSettingsChanged] keeps it live so toggling the
+  /// experiment re-arranges an open operation without a restart.
+  late bool _customLayout = widget.services.settings.experimentEnabled('layouts');
+
+  /// Programmatic tab selection inside the dock layout (revealModule) — the
+  /// dock-mode counterpart of `_tabController.animateTo`.
+  final _dockKey = GlobalKey<DockLayoutViewState>();
+
+  /// The dock arrangement, resolved from settings (or the default) ONCE —
+  /// DockLayoutView copies its initialSpec into its own State on first
+  /// build and ignores it afterward, so re-parsing the persisted JSON every
+  /// build would be pure waste on this hot path. Kept in sync with the
+  /// widget's mutations via onSpecChanged.
+  DockNode? _dockSpec;
+
   /// The station's own DXCC entity, resolved once per operation load (not
   /// per QSO — the station call essentially never changes DXCC entity
   /// mid-operation) so the QSO row can tell a DX contact from a domestic
@@ -159,8 +178,14 @@ class _OperationViewState extends State<OperationView> with SingleTickerProvider
   void _suggestQso(Map<String, dynamic> qso) {
     setState(() => _suggestedQso = qso);
     // On two-pane layouts the logging pane is already visible on the left —
-    // and tab 0 is Info there, so switching would be wrong twice over.
-    if (!ShirtSize.of(context).isTwoPane) _tabController.animateTo(0);
+    // and tab 0 is Info there, so switching would be wrong twice over. In
+    // dock mode the user may have tabbed the logging pane behind others, so
+    // surface it (no-op when it's already visible).
+    if (!ShirtSize.of(context).isTwoPane) {
+      _tabController.animateTo(0);
+    } else if (_customLayout) {
+      _dockKey.currentState?.revealModule('logging');
+    }
   }
 
   @override
@@ -177,9 +202,15 @@ class _OperationViewState extends State<OperationView> with SingleTickerProvider
     _wasTwoPane = isTwoPane;
   }
 
+  void _onSettingsChanged() {
+    final enabled = widget.services.settings.experimentEnabled('layouts');
+    if (enabled != _customLayout && mounted) setState(() => _customLayout = enabled);
+  }
+
   @override
   void initState() {
     super.initState();
+    widget.services.settings.addListener(_onSettingsChanged);
     _operationSub = widget.services.operations.watchOperation(widget.operationUuid).listen(_onOperationChanged);
     // Non-deleted, non-event set — the same QSOs the scorer sees. A
     // soft-delete/undelete changes this set (and each QSO's updatedAtMillis),
@@ -189,6 +220,7 @@ class _OperationViewState extends State<OperationView> with SingleTickerProvider
 
   @override
   void dispose() {
+    widget.services.settings.removeListener(_onSettingsChanged);
     _operationSub?.cancel();
     _rescoreSub?.cancel();
     _rescoreDebounce?.cancel();
@@ -317,7 +349,11 @@ class _OperationViewState extends State<OperationView> with SingleTickerProvider
   /// own key, so live updates flow through while it's open).
   Future<void> _handleCallInfoTap(Operation operation) async {
     if (ShirtSize.of(context).isTwoPane) {
-      if (_tabController.index != 0) _tabController.animateTo(0);
+      if (_customLayout) {
+        _dockKey.currentState?.revealModule('info');
+      } else if (_tabController.index != 0) {
+        _tabController.animateTo(0);
+      }
       return;
     }
     final info = _callInfo;
@@ -412,6 +448,53 @@ class _OperationViewState extends State<OperationView> with SingleTickerProvider
     persist(value);
   }
 
+  /// The dock-layout prototype's wide arrangement: the same five panes as
+  /// the fixed layout, but arranged by a persisted, user-editable dock tree
+  /// (drag a tab to move a pane; see dock_layout.dart). The default mirrors
+  /// the fixed layout — logging on the left, the rest tabbed on the right.
+  Widget _dockLayout({
+    required Widget loggingPanel,
+    required Widget infoPanel,
+    required Widget spotsPanel,
+    required Widget mapPanel,
+    required Widget settingsPanel,
+    required int realQsoCount,
+  }) {
+    const ids = ['logging', 'info', 'spots', 'map', 'operation'];
+    if (_dockSpec == null) {
+      final persisted = DockNode.fromJson(widget.services.settings.layoutData(LayoutKeys.operationDock));
+      _dockSpec = DockLayoutView.specMatches(persisted, ids)
+          ? persisted!
+          : DockSplit(Axis.horizontal, [
+              DockGroup(['logging']),
+              // Selected: Info, matching the fixed wide layout's initial tab.
+              DockGroup(['info', 'spots', 'map', 'operation']),
+            ], [2, 1]);
+    }
+    return DockLayoutView(
+      key: _dockKey,
+      initialSpec: _dockSpec!,
+      titles: {
+        'logging': context.t.operation.tabs.qsos(count: realQsoCount),
+        'info': context.t.operation.tabs.info,
+        'spots': context.t.operation.tabs.spots,
+        'map': context.t.operation.tabs.map,
+        'operation': context.t.operation.tabs.operation,
+      },
+      children: {
+        'logging': loggingPanel,
+        'info': infoPanel,
+        'spots': spotsPanel,
+        'map': mapPanel,
+        'operation': settingsPanel,
+      },
+      onSpecChanged: (node) {
+        _dockSpec = node;
+        widget.services.settings.setLayoutData(LayoutKeys.operationDock, node.toJson());
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final operation = _operation;
@@ -454,8 +537,12 @@ class _OperationViewState extends State<OperationView> with SingleTickerProvider
               // old >=900 layout kept it always co-visible with the controls,
               // so surface it when a command starts producing output and
               // another tab is hiding it.
-              if (appeared && ShirtSize.of(context).isTwoPane && _tabController.index != 0) {
-                _tabController.animateTo(0);
+              if (appeared && ShirtSize.of(context).isTwoPane) {
+                if (_customLayout) {
+                  _dockKey.currentState?.revealModule('info');
+                } else if (_tabController.index != 0) {
+                  _tabController.animateTo(0);
+                }
               }
             }),
             onCallInfoChanged: (info) => setState(() => _callInfo = info),
@@ -476,6 +563,16 @@ class _OperationViewState extends State<OperationView> with SingleTickerProvider
             // keeps the native map view from stealing drags on the strip.
             child: MapPanel(operation: operation, qsos: qsos, settings: widget.services.settings),
           ),
+        );
+        // ONE construction serving both wide arrangements (fixed tab slot 0
+        // and the dock's 'info' module) so their props can't drift apart.
+        final infoPanel = InformationPanel(
+          operation: operation,
+          qsos: qsos,
+          commandMarkdown: _commandMarkdown,
+          services: widget.services,
+          callInfo: _callInfo,
+          ourEntityPrefix: _ourEntityPrefix,
         );
         final settingsPanel = OperationSettingsPanel(
           operation: operation,
@@ -512,16 +609,7 @@ class _OperationViewState extends State<OperationView> with SingleTickerProvider
           // panning), so page-swiping is disabled in both layouts.
           physics: const NeverScrollableScrollPhysics(),
           children: [
-            isTwoPane
-                ? InformationPanel(
-                    operation: operation,
-                    qsos: qsos,
-                    commandMarkdown: _commandMarkdown,
-                    services: widget.services,
-                    callInfo: _callInfo,
-                    ourEntityPrefix: _ourEntityPrefix,
-                  )
-                : _KeepAlive(child: loggingPanel),
+            isTwoPane ? infoPanel : _KeepAlive(child: loggingPanel),
             spotsPanel,
             mapPanel,
             settingsPanel,
@@ -633,7 +721,16 @@ class _OperationViewState extends State<OperationView> with SingleTickerProvider
           // it is never recreated, so the selected index carries across a
           // flip: index 0 maps QSOs ↔ Info, which is sensible since logging
           // is always visible in the wide split.
-          body: isTwoPane
+          body: isTwoPane && _customLayout
+              ? _dockLayout(
+                  loggingPanel: loggingPanel,
+                  infoPanel: infoPanel,
+                  spotsPanel: spotsPanel,
+                  mapPanel: mapPanel,
+                  settingsPanel: settingsPanel,
+                  realQsoCount: realQsoCount,
+                )
+              : isTwoPane
               ? ResizableSplitView(
                   // Null when never dragged → the split's own 2/3-capped-
                   // at-sMax default applies.

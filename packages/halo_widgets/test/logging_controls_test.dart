@@ -1687,6 +1687,45 @@ void main() {
     expect(dispatched.single.value, {'target': 'ALL'});
   });
 
+  testWidgets('a COMPLETE interpretation mid-parameter keeps spaces intact (EXP LA must not snap to EXPLA)', (tester) async {
+    // Regression test: pausing after "EXP L" lets the debounce retain a
+    // complete interpretation (token "L") — which used to drop the field
+    // out of free-text mode, so the callsign filter rewrote the whole
+    // field on the next keystroke and "EXP LA" became "EXPLA".
+    Future<Map<String, dynamic>?> fakeExpCommand(
+      String input, [
+      Map<String, dynamic>? operation,
+      Map<String, dynamic>? qso,
+      bool execute = false,
+    ]) async {
+      final match = RegExp(r'^EXP(?:\s+(\S+))?$', caseSensitive: false).firstMatch(input.trim());
+      if (match == null) return null;
+      final token = match.group(1);
+      if (token == null) return {'expectsParams': true};
+      return {
+        'describe': 'Toggle experiment $token?',
+        'commands': [
+          {
+            'toggleExperiment': {'token': token},
+          },
+        ],
+      };
+    }
+
+    await tester.pumpWidget(host(interpretCommand: fakeExpCommand));
+    TextField field(String label) => tester.widget<TextField>(find.widgetWithText(TextField, label));
+
+    await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'EXP');
+    await tester.pump(const Duration(milliseconds: 200));
+    await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'EXP L');
+    // The pause: debounce fires and retains the COMPLETE interpretation.
+    await tester.pump(const Duration(milliseconds: 200));
+    await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'EXP LA');
+    await tester.pump(const Duration(milliseconds: 200));
+
+    expect(field('Their call').controller!.text, 'EXP LA');
+  });
+
   testWidgets('toggleExperiment forwards to onCommandAction (same whitelist trap as reloadDataFiles)', (tester) async {
     final dispatched = <MapEntry<String, Map<String, dynamic>?>>[];
     Future<Map<String, dynamic>?> fakeExpCommand(
