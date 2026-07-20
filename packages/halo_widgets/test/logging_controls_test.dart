@@ -1687,6 +1687,47 @@ void main() {
     expect(dispatched.single.value, {'target': 'ALL'});
   });
 
+  testWidgets('toggleExperiment forwards to onCommandAction (same whitelist trap as reloadDataFiles)', (tester) async {
+    final dispatched = <MapEntry<String, Map<String, dynamic>?>>[];
+    Future<Map<String, dynamic>?> fakeExpCommand(
+      String input, [
+      Map<String, dynamic>? operation,
+      Map<String, dynamic>? qso,
+      bool execute = false,
+    ]) async {
+      // Like the real EXP hook: bare prefix asks for the parameter (which
+      // also switches the field into space-allowed free-text mode).
+      if (input.trim().toUpperCase() == 'EXP') return {'expectsParams': true};
+      if (input.trim().toUpperCase() != 'EXP LAYOUTS') return null;
+      return {
+        'describe': 'Toggle experiment LAYOUTS?',
+        'commands': [
+          {
+            'toggleExperiment': {'token': 'LAYOUTS'},
+          },
+        ],
+      };
+    }
+
+    await tester.pumpWidget(host(
+      interpretCommand: fakeExpCommand,
+      onCommandAction: (action, [params]) async {
+        dispatched.add(MapEntry(action, params));
+      },
+    ));
+
+    await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'EXP');
+    await tester.pump(const Duration(milliseconds: 200));
+    await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'EXP LAYOUTS');
+    await tester.pump(const Duration(milliseconds: 200));
+    await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+    await tester.pump(const Duration(milliseconds: 200));
+
+    expect(dispatched, hasLength(1));
+    expect(dispatched.single.key, 'toggleExperiment');
+    expect(dispatched.single.value, {'token': 'LAYOUTS'});
+  });
+
   testWidgets('devOnboard forwards to onCommandAction (same whitelist trap as reloadDataFiles)', (tester) async {
     // DEVONBOARD shipped interpreting fine but silently no-oping on
     // execution because _dispatchActions' whitelist lacked its branch —

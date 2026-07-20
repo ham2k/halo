@@ -25,6 +25,7 @@ import 'views/onboarding_overlay.dart';
 import 'views/release_overlay.dart';
 import 'views/splash_view.dart';
 import 'config/dev_flags.dart';
+import 'config/experiments.dart';
 import 'config/release_notes.dart';
 import 'config/version.dart';
 import 'services/deep_link_service.dart';
@@ -502,6 +503,17 @@ class HaLoServices {
         return null;
       case 'sendSpots':
         return _sendSpot(params ?? const {});
+      case 'toggleExperiment':
+        // EXP <key-or-alias>: the command hook only parsed; resolving the
+        // token against the catalog and flipping the stored state happens
+        // here, and the returned message is the user's only feedback.
+        final token = (params?['token'] as String? ?? '').trim();
+        if (token.isEmpty) return null;
+        final experiment = findExperiment(await loadExperiments(), token);
+        if (experiment == null) return 'Unknown experiment "${token.toUpperCase()}"';
+        final enabled = !settings.experimentEnabled(experiment.key);
+        await settings.setExperimentEnabled(experiment.key, enabled);
+        return '${experiment.name} ${enabled ? 'enabled' : 'disabled'}';
       default:
         return null;
     }

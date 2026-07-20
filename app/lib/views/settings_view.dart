@@ -20,6 +20,7 @@ import 'package:http/http.dart' as http;
 
 import 'package:url_launcher/url_launcher.dart';
 
+import '../config/experiments.dart';
 import '../config/release_notes.dart';
 import '../config/user_agent.dart';
 import '../config/version.dart';
@@ -30,6 +31,7 @@ import '../services/extension_service.dart';
 import '../services/settings_service.dart';
 import 'header_profile_label.dart';
 import '../settings/settings_registry.dart';
+import 'experiments_pane.dart';
 import 'extensions_panel.dart';
 import 'ham2k_logo.dart';
 import 'notice_history_view.dart';
@@ -1540,6 +1542,35 @@ class _DeveloperPanel extends StatelessWidget {
               value: settings.developerMode,
               onChanged: (enabled) => settings.setDeveloperMode(enabled),
               contentPadding: EdgeInsets.zero,
+            ),
+            FutureBuilder<List<ExperimentDefinition>>(
+              future: loadExperiments(),
+              builder: (context, snapshot) {
+                final definitions = snapshot.data ?? const <ExperimentDefinition>[];
+                // Counted against the CURRENT catalog's LISTED entries: state
+                // for removed experiments doesn't inflate it, and hidden ones
+                // are excluded so the count can't disagree with the pane
+                // (which doesn't list them).
+                final enabledCount = settings.enabledExperimentCount([
+                  for (final d in definitions)
+                    if (!d.hidden) d.key,
+                ]);
+                return ListTile(
+                  leading: const Icon(Icons.science_outlined),
+                  title: const Text('Experiments'),
+                  subtitle: Text('$enabledCount enabled'),
+                  contentPadding: EdgeInsets.zero,
+                  mouseCursor: SystemMouseCursors.click,
+                  // The pane loads the catalog itself — capturing this
+                  // builder's `definitions` would freeze a still-loading
+                  // (empty) snapshot into the pane for its whole lifetime.
+                  onTap: () => showModalPane<void>(
+                    context,
+                    title: 'Experiments',
+                    builder: (_) => ExperimentsPane(settings: settings),
+                  ),
+                );
+              },
             ),
             const SizedBox(height: 16),
             ElevatedButton(

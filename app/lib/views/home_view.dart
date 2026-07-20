@@ -698,6 +698,17 @@ class _HomeQuickLookupState extends State<HomeQuickLookup> {
     }
   }
 
+  /// Runs one command action through [HaLoServices.handleCommandAction] and
+  /// surfaces its returned message as a snackbar — mirroring
+  /// operation_view's `_handleCommandAction`, so feedback that's only known
+  /// app-side (a toggled experiment's outcome, syncAll's status) isn't
+  /// silently dropped on the home screen's quick-lookup dispatch.
+  Future<void> _runCommandAction(String action, [Map<String, dynamic>? params]) async {
+    final messenger = ScaffoldMessenger.of(context);
+    final message = await widget.services.handleCommandAction(action, params);
+    if (message != null && mounted) messenger.showSnackBar(SnackBar(content: Text(message)));
+  }
+
   Future<void> _dispatchActions(List<dynamic> actions) async {
     for (final action in actions) {
       if (action is! Map) continue;
@@ -708,22 +719,21 @@ class _HomeQuickLookupState extends State<HomeQuickLookup> {
           await widget.services.settings.setDeveloperMode(params['developerMode'] as bool);
         }
       } else if (map.containsKey('syncAll')) {
-        await widget.services.handleCommandAction('syncAll');
+        await _runCommandAction('syncAll');
       } else if (map['devNotice'] is Map) {
-        await widget.services.handleCommandAction('devNotice', (map['devNotice'] as Map).cast<String, dynamic>());
+        await _runCommandAction('devNotice', (map['devNotice'] as Map).cast<String, dynamic>());
       } else if (map['devStatus'] is Map) {
-        await widget.services.handleCommandAction('devStatus', (map['devStatus'] as Map).cast<String, dynamic>());
+        await _runCommandAction('devStatus', (map['devStatus'] as Map).cast<String, dynamic>());
       } else if (map['devProgress'] is Map) {
-        await widget.services.handleCommandAction('devProgress', (map['devProgress'] as Map).cast<String, dynamic>());
+        await _runCommandAction('devProgress', (map['devProgress'] as Map).cast<String, dynamic>());
       } else if (map['devSplash'] is Map) {
-        await widget.services.handleCommandAction('devSplash');
+        await _runCommandAction('devSplash');
       } else if (map['devOnboard'] is Map) {
-        await widget.services.handleCommandAction('devOnboard');
+        await _runCommandAction('devOnboard');
       } else if (map['reloadDataFiles'] is Map) {
-        await widget.services.handleCommandAction(
-          'reloadDataFiles',
-          (map['reloadDataFiles'] as Map).cast<String, dynamic>(),
-        );
+        await _runCommandAction('reloadDataFiles', (map['reloadDataFiles'] as Map).cast<String, dynamic>());
+      } else if (map['toggleExperiment'] is Map) {
+        await _runCommandAction('toggleExperiment', (map['toggleExperiment'] as Map).cast<String, dynamic>());
       } else {
         // Nothing above recognized this action's key(s) — most likely a
         // command that's scoped to the logging panel (addQso, updateQso,

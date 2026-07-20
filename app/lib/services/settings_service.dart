@@ -49,6 +49,7 @@ class SettingsService extends ChangeNotifier implements SyncSettings {
   static const _showQsoNumbersKey = 'showQsoNumbers';
   static const _distanceUnitsKey = 'distanceUnits';
   static const _spottingFiltersKey = 'spottingFilters';
+  static const _experimentsKey = 'experiments';
   static const _layoutKey = 'layout';
   static const _lastSeenReleaseVersionKey = 'lastSeenReleaseVersion';
 
@@ -283,6 +284,42 @@ class SettingsService extends ChangeNotifier implements SyncSettings {
 
   Future<void> setSpottingFilters(Map<String, dynamic> filters) async {
     await _prefs.setString(_spottingFiltersKey, jsonEncode(filters));
+    notifyListeners();
+  }
+
+  /// Per-experiment state, keyed by the experiment key from experiments.yaml:
+  /// `{enabled: bool, firstEnabledAtMillis: int, lastDisabledAtMillis: int}`.
+  /// Entries whose definition has since left the catalog are deliberately
+  /// KEPT (never pruned) — a returning experiment picks its old state up.
+  Map<String, dynamic> get experimentStates => _jsonMapPref(_experimentsKey);
+
+  bool experimentEnabled(String key) {
+    final state = experimentStates[key];
+    return state is Map && state['enabled'] == true;
+  }
+
+  /// The number of [keys] currently enabled — the Developer menu's count,
+  /// computed against the CURRENT catalog so stale state for removed
+  /// experiments doesn't inflate it. One state read, not one per key.
+  int enabledExperimentCount(Iterable<String> keys) {
+    final states = experimentStates;
+    return keys.where((key) {
+      final state = states[key];
+      return state is Map && state['enabled'] == true;
+    }).length;
+  }
+
+  Future<void> setExperimentEnabled(String key, bool enabled) async {
+    final states = experimentStates;
+    final entry = {...?(states[key] as Map?)?.cast<String, dynamic>()};
+    entry['enabled'] = enabled;
+    final now = DateTime.now().millisecondsSinceEpoch;
+    if (enabled) {
+      entry['firstEnabledAtMillis'] ??= now;
+    } else {
+      entry['lastDisabledAtMillis'] = now;
+    }
+    await _prefs.setString(_experimentsKey, jsonEncode({...states, key: entry}));
     notifyListeners();
   }
 

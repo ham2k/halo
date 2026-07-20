@@ -1,0 +1,18 @@
+# Experimental features (toggled with the EXP command, or from Settings →
+# Developer → Experiments). Each entry:
+#
+#   - key: layouts            # stable id — settings persist under this key
+#     name: Customizable Layouts
+#     description: Optional one-liner shown in the Experiments screen.
+#     aliases: [layout, dock] # extra words the EXP command accepts
+#     hidden: true            # optional — EXP still works, but the entry is
+#                             # not listed in the Experiments screen
+#
+# Removing an entry here does NOT delete its persisted state — a user who
+# had it enabled gets it back if the entry returns.
+#
+# Keys and aliases must be unique across entries: the EXP command resolves
+# a token to the FIRST entry that matches, so a shared alias silently
+# toggles the earlier entry.
+
+experiments: []

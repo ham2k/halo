@@ -252,7 +252,7 @@ interface CommandHook {
 // CommandInterpretation: {expectsParams?, mixedCase?, error?, describe?, confirm?, commands?: CommandAction[]}
 // CommandAction (closed set): {setVfo?, updateQso?, addQso?, sendSpots?,
 //   syncAll?, updateSettings?, setCallField?, reloadDataFiles?, devNotice?,
-//   devStatus?, devProgress?}
+//   devStatus?, devProgress?, toggleExperiment?}
 ```
 
 Each hook does its own matching internally and returns `null` for "not mine"
@@ -311,7 +311,11 @@ a suffix letter; RSTs lean heavily toward 55/57/59; each generated QSO gets
 the lookup service's offline `their.guess` decoration. The placement rule
 needs the existing log: SEED reads it through `ctx.getQsos`, using the
 `uuid` the logging panel folds into the `operation` map it passes to
-`interpret`), `annotation-commands` (ham2k/app-halo-dist#64, ported from
+`interpret`; EXP toggles an experimental feature via the `toggleExperiment`
+action field — the hook only parses "EXP <key-or-alias>", and the app
+resolves the token against `app/experiments.yaml` and reports the outcome,
+since the catalog and the stored per-experiment state both live app-side),
+`annotation-commands` (ham2k/app-halo-dist#64, ported from
 app-polo's AnnotationCommands: NOTE/TODO `<text>`, SOLAR, and WEATHER each
 add an annotation row to the log — an event pseudo-QSO, `band: 'event'`,
 via `addQso`, rendered as a yellow row by the QSO list. SOLAR fetches
