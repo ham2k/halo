@@ -30,6 +30,8 @@ This is a multi-platform app for Amateur Radio Logging, called "Ham2K Logger" (o
 
 - Whenever running the app (any `flutter run`, including the web dev server), always pass a `DEV_LABEL` set to your session name or a brief description of the work at hand, so the running build is identifiable in the home-screen header — e.g. `flutter run -d macos --dart-define=DEV_LABEL="[HaLo] header work"` or `DEV_LABEL="[HaLo] header work" flutter run -d web-server`. See [DEVELOPMENT.md](file:///Users/sd/Work/ham2k/app-halo/DEVELOPMENT.md).
 
+- When starting the app for developer checks, use `--dart-define=ONBOARD_AS="N0DEV,pota"` to provide a default setup and avoid the onboarding dialog (unless working on an onboarding feature).
+
 - We do most work on the `app-halo-dist` repository, with branches out of the `main-dist-private` branch. We use "squash-and-merge" to merge PRs. Any commits that include changes to `app_dist` are split into separate commits in `app-halo-dist`. The non `app_dist` changes are then cherry-picked to `main-public`.
 
 - New branches should be pushed to the `app-halo-dist` origin, never to regular `origin`.
