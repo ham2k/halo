@@ -36,9 +36,9 @@ cd "$ROOT_DIR/app"
 flutter pub get
 # Project the native version (docs/releases.md §2.2) so build/web/version.json —
 # what package_info_plus reads on web — carries the marketing version + the
-# monotonic build id instead of pubspec's 0.1.0+1. Extract the HALO_* tokens past
-# dart run's build-hook noise; HALO_BUILD_SEQUENCE (1-9) for a same-day re-run.
-eval "$(dart run tool/print_build_versions.dart --sequence="${HALO_BUILD_SEQUENCE:-1}" 2>/dev/null | grep -oE 'HALO_[A-Z_]+=[^[:space:]]+')"
+# shared monotonic build number instead of pubspec's 0.1.0+1. Extract the HALO_*
+# tokens past dart run's build-hook noise.
+eval "$(dart run tool/print_build_versions.dart 2>/dev/null | grep -oE 'HALO_[A-Z_]+=[^[:space:]]+')"
 echo "Web version: $HALO_MARKETING (build $HALO_BUILD_ID)"
 flutter build web --release --no-tree-shake-icons --dart-define=HALO_EDITION="$EDITION" \
   --build-name="$HALO_MARKETING" --build-number="$HALO_BUILD_ID"

@@ -52,6 +52,13 @@ class SettingsService extends ChangeNotifier implements SyncSettings {
   static const _experimentsKey = 'experiments';
   static const _layoutKey = 'layout';
   static const _lastSeenReleaseVersionKey = 'lastSeenReleaseVersion';
+  static const _shorebirdTrackKey = 'shorebirdTrack';
+
+  /// The Shorebird code-push tracks this build can follow, riskiest first
+  /// (docs/releases.md §4.3). `stable` is the default and what everyone gets;
+  /// the others are opt-in via Developer Settings and only reach devices that
+  /// select them here.
+  static const shorebirdTracks = ['bleeding-edge', 'unstable', 'stable'];
 
   final SharedPreferences _prefs;
 
@@ -320,6 +327,20 @@ class SettingsService extends ChangeNotifier implements SyncSettings {
       entry['lastDisabledAtMillis'] = now;
     }
     await _prefs.setString(_experimentsKey, jsonEncode({...states, key: entry}));
+    notifyListeners();
+  }
+
+  /// Which Shorebird patch track this device follows (docs/releases.md §4.3).
+  /// Defaults to `stable`; an unrecognized stored value also falls back to
+  /// `stable`, so a track that later disappears can't strand a device.
+  String get shorebirdTrack {
+    final stored = _prefs.getString(_shorebirdTrackKey);
+    return shorebirdTracks.contains(stored) ? stored! : 'stable';
+  }
+
+  Future<void> setShorebirdTrack(String track) async {
+    if (!shorebirdTracks.contains(track)) return;
+    await _prefs.setString(_shorebirdTrackKey, track);
     notifyListeners();
   }
 

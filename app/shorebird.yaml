@@ -14,5 +14,9 @@ flavors:
 # auto_update controls if Shorebird should automatically update in the background on launch.
 # If auto_update: false, you will need to use package:shorebird_code_push to trigger updates.
 # https://pub.dev/packages/shorebird_code_push
-# Uncomment the following line to disable automatic updates.
-# auto_update: false
+#
+# Ham2K drives updates itself, track-aware (lib/services/shorebird_update_service.dart,
+# docs/releases.md §4.3), so the built-in stable-only updater is disabled. The CI
+# build scripts regenerate this file per edition and also set auto_update: false
+# (app_dist/ci/shorebird-common.sh).
+auto_update: false

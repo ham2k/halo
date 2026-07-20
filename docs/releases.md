@@ -72,45 +72,47 @@ Section 2.3 explains how the patchable public version is stored.
 Every patch/pre-release is bound to the exact release build it was compiled
 against (see §4.1).
 
-### 2.2 Build/release identity — one build, per-platform encodings
+### 2.2 Build/release identity — one build number, per-platform encodings
 
-The canonical build id is the strictly-increasing integer **`YYMM·MMDD·S`**:
+The build number is a single **monotonic integer** — `kBuildNumber` in
+`lib/config/version.dart`, bumped once per release by `scripts/release.sh`. It is
+deliberately small (it started at `73`), which keeps it under every platform's
+field limit — including the 16-bit Windows/Linux `FILEVERSION` cap — so **all
+platforms share the one value** with no per-platform narrowing.
 
-| Segment | Meaning | Example |
-|---------|---------|---------|
-| `YYMM` | the **version's** year + target month | `2608` (for `26.8`) |
-| `MMDD` | the **build date** (may be an earlier month than the version) | `0729` (July 29) |
-| `S` | one sequential digit for multiple builds the same day | `1` |
+> Earlier lines used a date-encoded `YYMM·MMDD·S` id. That overflowed the 16-bit
+> Windows/Linux field (forcing a separate desktop part) and, being large, pinned
+> every platform of a release to whatever build number iOS had already floored at.
+> The plain counter avoids both. History is not rewritten — the counter simply
+> continues upward from where the old scheme left off.
 
-Example: **`260807291`** = version `26.8`, built **July 29**, sequence `1` — the
-official `26.8.0` release. Version month (`08`) and build month (`07`) legitimately
-differ because the line is branded for the coming month.
+CI projects the version + build number into each platform's native fields via
+`PlatformVersions.project` (`tool/print_build_versions.dart`). Each platform has
+hard format limits the projection respects:
 
-CI projects this single build id into each platform's required native fields. Each
-platform has hard format limits, and the projection must respect them:
-
-| Platform | Native field(s) | Constraint | This build |
+| Platform | Native field(s) | Constraint | Example (`26.8.1-alpha1`, build 73) |
 |----------|-----------------|------------|------------|
-| **Android** | `versionCode` / `versionName` | code ≤ **2,100,000,000**, strictly increasing, single-use | `260807291` / `26.8.0` |
-| **iOS / macOS** | `CFBundleVersion` / `CFBundleShortVersionString` | build ≤ **18 chars**; marketing = **≤ 3 integers, no suffixes** | `260807291` / `26.8.0` |
-| **Windows** | MSIX / `FILEVERSION` `a.b.c.d` | each part **0–65535**, major ≠ 0, **revision = 0** for Store | `26.8.7291.0` |
-| **Linux** | package version | numeric, monotonic ordering | `26.8.7291` |
+| **Android** | `versionCode` / `versionName` | code ≤ **2,100,000,000**, strictly increasing, single-use | `73` / `26.8.1-alpha1` |
+| **iOS / macOS** | `CFBundleVersion` / `CFBundleShortVersionString` | build ≤ **18 chars**; marketing = **≤ 3 integers, no suffixes** | `73` / `26.8.1` |
+| **Windows** | MSIX / `FILEVERSION` `a.b.c.d` | each part **0–65535**, major ≠ 0, **revision = 0** for Store | `26.8.73.0` |
+| **Linux** | package version | numeric, monotonic ordering | `26.8.73` |
 | **Web** | — | none (server-deployed) | n/a |
 
-Three projection rules follow from the table:
+Two projection rules follow from the table:
 
-- **Windows/Linux build part = `MMDD·10 + S`** → `7291` here, max `12319` (Dec 31,
-  seq 9), safely under 65,535 and increasing through the month. Windows appends the
-  mandatory `.0` revision (`26.8.7291.0`); **Linux uses `26.8.7291` directly**.
-  Linux needs no `~preN` suffix — the numeric build id already orders correctly and
-  is unique, so a Next pre-release simply carries a lower build number.
+- **Desktop carries the build number in the third slot.** Windows uses
+  `major.minor.build` with the mandatory `.0` revision (`26.8.73.0`); **Linux uses
+  `26.8.73` directly**. Because the counter is capped at 16 bits (0–65535) it fits
+  the desktop field with no encoding. Linux needs no `~preN` suffix — the number
+  already orders correctly and is unique, so a Next pre-release simply carries a
+  lower build number.
 - **iOS marketing string cannot carry `-preN`.** `CFBundleShortVersionString` must
-  be pure `X.Y.Z`, so the plist marketing version stays `26.8.0` for all of
-  `pre1`, `pre2`, and the final release; the pre-release label lives in the app UI,
-  TestFlight notes, and the build number. This is fine because App Store Connect
-  only requires the *build number* to increase per marketing-version string.
-- The **9-digit build id fits Android and iOS/macOS as-is** for every year up to
-  `99` (`991212319` ≈ 991 M, under the 2.1 B cap).
+  be pure `X.Y.Z`, so the plist marketing version stays `26.8.1` for all of
+  `alpha1`/`pre1`, `pre2`, and the final release; the pre-release label lives in the
+  app UI, TestFlight notes, and the build number. This is fine because App Store
+  Connect only requires the *build number* to increase per marketing-version
+  string — and a fresh marketing version (e.g. `26.8.0` → `26.8.1`) lets the build
+  number restart low.
 
 ### 2.3 Where the public version lives (patchable)
 
@@ -130,7 +132,7 @@ the patch and updates on-device when the patch lands.
 - **Optionally derive it** from the Shorebird runtime's current patch number
   (`"$base.${patchNumber ?? 0}"`) so you can't forget to bump it; keep an explicit
   override for `-preN` labels and full-rebuild jumps.
-- **About screen** should show all three layers: `26.8.1 (build 260807291, patch
+- **About screen** should show all three layers: `26.8.1 (build 73, patch
   3)` — public version for humans, build number pins the native binary, patch
   number pins the Dart layer.
 - **Sync/log metadata** should record both the public version *and* the
@@ -144,13 +146,13 @@ Independent semver per extension, gated by a minimum app/API version (see §6).
 
 1. **Pre-releases on Next.** Binary builds ship to **Logger Next** first, branded
    for the coming month: `26.8.0-pre1`, `26.8.0-pre2`, … each with its own build
-   number (`2608` + its build date + seq). Fixes between pre-releases can go out as
-   Next Shorebird patches, e.g. `26.8.0-pre1.1`.
-2. **Stabilize.** When a pre-release is judged stable enough (say **July 29**), it
-   is promoted to the official **`26.8.0`**, build `260807291`. **Both** Logger and
-   Logger Next receive this release.
+   number (the next value of the shared counter). Fixes between pre-releases can go
+   out as Next Shorebird patches, e.g. `26.8.0-pre1.1`.
+2. **Stabilize.** When a pre-release is judged stable enough, it is promoted to the
+   official **`26.8.0`**, build `73`. **Both** Logger and Logger Next receive this
+   release.
 3. **Patch through the month.** Subsequent fixes ship as Shorebird patches
-   `26.8.1`, `26.8.2`, … all based on the official build `260807291`.
+   `26.8.1`, `26.8.2`, … all based on the official build `73`.
 4. **Rare full rebuild.** If a change can't ride a patch (native/engine/plugin),
    cut a new full binary that takes the next number in sequence, e.g. `26.8.3`,
    with its own build number. Then resume patching until the next monthly line
@@ -341,13 +343,21 @@ still works but is **deprecated** ("Use `shorebird patches set-track
 --track=stable` instead"), and it only ever targets `stable`. `set-track` accepts
 any custom track name, so it covers the whole ladder.
 
-**Caveat until in-app track selection ships.** An installed app only checks
-`stable` unless it opts into another track, which needs
-`package:shorebird_code_push` plus a Developer-settings option to choose the ring
-— **planned, not built**. So today a patch on `bleeding-edge` is staged but
-invisible: nothing sees it until it's promoted. That's the intended staging
-behaviour, just with the early rings currently unreachable, so don't expect a test
-device to pick a patch up before promotion.
+**Which devices see a track.** An installed app only checks `stable` by default;
+following an earlier ring is **opt-in per device**, via **Settings → Developer →
+Patch Track** (Developer Mode only). That selector is wired to
+`package:shorebird_code_push`: `ShorebirdUpdateService` (lib/services/) checks the
+chosen track on launch and downloads any patch, applied on the next restart. So a
+`bleeding-edge` patch reaches only the handful of devices that have opted into that
+ring — exactly the staging behaviour we want — until it's promoted to `stable`,
+which everyone follows.
+
+Because we drive updates ourselves, **`shorebird.yaml` is generated with
+`auto_update: false`** (app_dist/ci/shorebird-common.sh): the built-in updater only
+ever checks `stable`, so leaving it on would fight a device that has opted into a
+different ring. The selector only appears in real `shorebird release` builds
+(`UpdateService.isAvailable`), so it's invisible in local/debug/web builds where
+the engine isn't present.
 
 ### 4.4 App Store policy note
 
@@ -428,9 +438,9 @@ It passes **`--release-version` explicitly**, resolved by
 `shorebird_release_version` (newest release, or `SHOREBIRD_RELEASE_VERSION`).
 This is not optional: a patch build carries pubspec's placeholder `0.1.0+1`, not
 the release's §2.2-projected version, so Shorebird's default lookup fails with
-`Release not found: "0.1.0+1"`. Re-running the projection wouldn't fix it either —
-the build id encodes the build *date*, so it only reproduces the release's version
-if the patch is cut the same day.
+`Release not found: "0.1.0+1"`. Re-running the projection wouldn't reliably fix it
+either — `kBuildNumber` advances per release, so once it has been bumped past the
+target release the projection no longer names that release.
 
 **Wired so far:** iOS, macOS, and Android for **Next** (release + patch). Regular
 follows the same pattern via `HALO_EDITION=prod`; Windows/Linux are not wired yet.
