@@ -263,11 +263,15 @@
     },
     "fontScale": "Tamaño de Letra",
     "fontScaleOpts": {
+      "smallestMinusMinus": "Más pequeña--",
+      "smallestMinus": "Más pequeña-",
       "smallest": "Más pequeña",
       "smaller": "Pequeña",
       "normal": "Normal",
       "larger": "Grande",
-      "largest": "Más grande"
+      "largest": "Más grande",
+      "largestPlus": "Más grande+",
+      "largestPlusPlus": "Más grande++"
     },
     "distanceUnits": "Unidades de distancia",
     "distanceUnitsOpts": {

@@ -943,6 +943,12 @@ class Translations$settings$fontScaleOpts$en {
 
 	// Translations
 
+	/// en: 'Smallest--'
+	String get smallestMinusMinus => 'Smallest--';
+
+	/// en: 'Smallest-'
+	String get smallestMinus => 'Smallest-';
+
 	/// en: 'Smallest'
 	String get smallest => 'Smallest';
 
@@ -957,6 +963,12 @@ class Translations$settings$fontScaleOpts$en {
 
 	/// en: 'Largest'
 	String get largest => 'Largest';
+
+	/// en: 'Largest+'
+	String get largestPlus => 'Largest+';
+
+	/// en: 'Largest++'
+	String get largestPlusPlus => 'Largest++';
 }
 
 // Path: settings.distanceUnitsOpts
@@ -1542,11 +1554,15 @@ extension on Translations {
 			'settings.themeDescription.light' => 'Always in Light Mode',
 			'settings.themeDescription.dark' => 'Always in Dark Mode',
 			'settings.fontScale' => 'Font Scale',
+			'settings.fontScaleOpts.smallestMinusMinus' => 'Smallest--',
+			'settings.fontScaleOpts.smallestMinus' => 'Smallest-',
 			'settings.fontScaleOpts.smallest' => 'Smallest',
 			'settings.fontScaleOpts.smaller' => 'Smaller',
 			'settings.fontScaleOpts.normal' => 'Normal',
 			'settings.fontScaleOpts.larger' => 'Larger',
 			'settings.fontScaleOpts.largest' => 'Largest',
+			'settings.fontScaleOpts.largestPlus' => 'Largest+',
+			'settings.fontScaleOpts.largestPlusPlus' => 'Largest++',
 			'settings.distanceUnits' => 'Distance Units',
 			'settings.distanceUnitsOpts.kilometers' => 'Kilometers',
 			'settings.distanceUnitsOpts.miles' => 'Miles',

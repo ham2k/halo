@@ -508,11 +508,15 @@ class _Translations$settings$fontScaleOpts$es extends Translations$settings$font
 	final TranslationsEs _root; // ignore: unused_field
 
 	// Translations
+	@override String get smallestMinusMinus => 'Más pequeña--';
+	@override String get smallestMinus => 'Más pequeña-';
 	@override String get smallest => 'Más pequeña';
 	@override String get smaller => 'Pequeña';
 	@override String get normal => 'Normal';
 	@override String get larger => 'Grande';
 	@override String get largest => 'Más grande';
+	@override String get largestPlus => 'Más grande+';
+	@override String get largestPlusPlus => 'Más grande++';
 }
 
 // Path: settings.distanceUnitsOpts
@@ -972,11 +976,15 @@ extension on TranslationsEs {
 			'settings.themeDescription.light' => 'Siempre en Modo Claro',
 			'settings.themeDescription.dark' => 'Siempre en Modo Oscuro',
 			'settings.fontScale' => 'Tamaño de Letra',
+			'settings.fontScaleOpts.smallestMinusMinus' => 'Más pequeña--',
+			'settings.fontScaleOpts.smallestMinus' => 'Más pequeña-',
 			'settings.fontScaleOpts.smallest' => 'Más pequeña',
 			'settings.fontScaleOpts.smaller' => 'Pequeña',
 			'settings.fontScaleOpts.normal' => 'Normal',
 			'settings.fontScaleOpts.larger' => 'Grande',
 			'settings.fontScaleOpts.largest' => 'Más grande',
+			'settings.fontScaleOpts.largestPlus' => 'Más grande+',
+			'settings.fontScaleOpts.largestPlusPlus' => 'Más grande++',
 			'settings.distanceUnits' => 'Unidades de distancia',
 			'settings.distanceUnitsOpts.kilometers' => 'Kilómetros',
 			'settings.distanceUnitsOpts.miles' => 'Millas',

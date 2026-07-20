@@ -524,12 +524,26 @@ enum DistanceUnits { kilometers, miles }
 /// Country flags on contacts: DX only (app-polo's default), everyone, or off.
 enum DxFlags { dx, all, none }
 
+/// Declared in ascending scale order — [SettingsService.increaseFontScale] and
+/// [SettingsService.decreaseFontScale] step by `index`, so the order IS the
+/// ordering.
+///
+/// The four outermost levels are [selectable] `false`: reachable only with the
+/// keyboard shortcuts, and deliberately absent from the Settings picker. They
+/// exist for the rare setup that needs more range (a far-away shack display, a
+/// user who needs very large text) without cluttering the everyday list of
+/// five. When one is in effect the picker annotates the nearest selectable
+/// entry instead — see [nearestSelectable] and `core_settings_groups.dart`.
 enum FontScale {
+  smallestMinusMinus(0.50, 'Smallest--', selectable: false),
+  smallestMinus(0.60, 'Smallest-', selectable: false),
   smallest(0.70, 'Smallest'),
   smaller(0.85, 'Smaller'),
   normal(1.00, 'Normal'),
   larger(1.20, 'Larger'),
-  largest(1.40, 'Largest');
+  largest(1.40, 'Largest'),
+  largestPlus(1.65, 'Largest+', selectable: false),
+  largestPlusPlus(1.90, 'Largest++', selectable: false);
 
   /// The uniform UI zoom factor. Consumed in exactly ONE place — `main.dart`'s
   /// `MaterialApp.builder`, which feeds it to `UiScale` to scale the entire
@@ -539,7 +553,23 @@ enum FontScale {
   final double scaleFactor;
   final String label;
 
-  const FontScale(this.scaleFactor, this.label);
+  /// Whether the Settings picker offers this level. False for the four
+  /// shortcut-only extremes.
+  final bool selectable;
+
+  const FontScale(this.scaleFactor, this.label, {this.selectable = true});
+
+  /// The levels the Settings picker lists, in order.
+  static List<FontScale> get selectableValues => values.where((s) => s.selectable).toList();
+
+  /// The selectable level this one is annotated against: itself when
+  /// selectable, otherwise the nearest selectable level in the direction of
+  /// Normal (so 1.90 and 1.65 both answer `largest`, 0.50 and 0.60 both answer
+  /// `smallest`).
+  FontScale get nearestSelectable {
+    if (selectable) return this;
+    return scaleFactor > normal.scaleFactor ? selectableValues.last : selectableValues.first;
+  }
 }
 
 /// The dotted keys for [SettingsService.layoutDimension] /

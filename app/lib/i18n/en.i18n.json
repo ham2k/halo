@@ -263,11 +263,15 @@
     },
     "fontScale": "Font Scale",
     "fontScaleOpts": {
+      "smallestMinusMinus": "Smallest--",
+      "smallestMinus": "Smallest-",
       "smallest": "Smallest",
       "smaller": "Smaller",
       "normal": "Normal",
       "larger": "Larger",
-      "largest": "Largest"
+      "largest": "Largest",
+      "largestPlus": "Largest+",
+      "largestPlusPlus": "Largest++"
     },
     "distanceUnits": "Distance Units",
     "distanceUnitsOpts": {

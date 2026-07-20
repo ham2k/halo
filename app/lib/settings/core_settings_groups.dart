@@ -112,17 +112,7 @@ class GeneralSettingsGroup extends SettingsGroup {
           (label: 'Español', value: 'es'),
         ],
       ),
-      _select(
-        key: 'fontScale',
-        label: t.settings.fontScale,
-        icon: 'format-size',
-        // Just the current scale's name (its option label).
-        description: t['settings.fontScaleOpts.${settings.fontScale.name}'] as String,
-        value: settings.fontScale.name,
-        options: [
-          for (final scale in FontScale.values) (label: t['settings.fontScaleOpts.${scale.name}'] as String, value: scale.name),
-        ],
-      ),
+      _fontScaleSelect(),
       _select(
         key: 'distanceUnits',
         label: t.settings.distanceUnits,
@@ -136,6 +126,36 @@ class GeneralSettingsGroup extends SettingsGroup {
         ],
       ),
     ];
+  }
+
+  /// The Font Scale picker.
+  ///
+  /// It lists only [FontScale.selectableValues] — the four extremes are
+  /// reachable with the keyboard shortcuts only. When one of those IS in
+  /// effect, the nearest listed entry carries its label instead ("Largest++"
+  /// on the Largest row), so the setting still reports the size actually in
+  /// use rather than silently showing "Largest" at 1.90.
+  ///
+  /// Selecting that annotated row commits the plain level it stands for
+  /// (Largest, 1.40) — which is also the only way back to a standard size
+  /// without the shortcuts.
+  Map<String, dynamic> _fontScaleSelect() {
+    final current = settings.fontScale;
+    final anchor = current.nearestSelectable;
+    String labelFor(FontScale scale) =>
+        t['settings.fontScaleOpts.${scale == anchor ? current.name : scale.name}'] as String;
+
+    return _select(
+      key: 'fontScale',
+      label: t.settings.fontScale,
+      icon: 'format-size',
+      // Just the current scale's name (its option label).
+      description: t['settings.fontScaleOpts.${current.name}'] as String,
+      value: anchor.name,
+      options: [
+        for (final scale in FontScale.selectableValues) (label: labelFor(scale), value: scale.name),
+      ],
+    );
   }
 
   @override

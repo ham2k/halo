@@ -50,10 +50,25 @@ void main() {
       expect(settings.fontScale, FontScale.larger); // index 3
 
       await settings.increaseFontScale();
-      expect(settings.fontScale, FontScale.largest); // index 4
+      expect(settings.fontScale, FontScale.largest);
 
-      // Increase again does nothing
+      // Past Largest the shortcuts keep going into the two shortcut-only
+      // levels — that extra range is the whole point of them being reachable
+      // here but not from the Settings picker.
       await settings.increaseFontScale();
+      expect(settings.fontScale, FontScale.largestPlus);
+
+      await settings.increaseFontScale();
+      expect(settings.fontScale, FontScale.largestPlusPlus);
+
+      // ...and stop at the top.
+      await settings.increaseFontScale();
+      expect(settings.fontScale, FontScale.largestPlusPlus);
+
+      await settings.decreaseFontScale();
+      expect(settings.fontScale, FontScale.largestPlus);
+
+      await settings.decreaseFontScale();
       expect(settings.fontScale, FontScale.largest);
 
       await settings.decreaseFontScale();
@@ -68,9 +83,36 @@ void main() {
       await settings.decreaseFontScale();
       expect(settings.fontScale, FontScale.smallest);
 
-      // Decrease again does nothing
+      // Symmetrically, two shortcut-only levels below Smallest.
       await settings.decreaseFontScale();
-      expect(settings.fontScale, FontScale.smallest);
+      expect(settings.fontScale, FontScale.smallestMinus);
+
+      await settings.decreaseFontScale();
+      expect(settings.fontScale, FontScale.smallestMinusMinus);
+
+      // ...and stop at the bottom.
+      await settings.decreaseFontScale();
+      expect(settings.fontScale, FontScale.smallestMinusMinus);
+    });
+
+    test('only the middle five are selectable; the extremes are shortcut-only', () {
+      expect(
+        FontScale.selectableValues,
+        [FontScale.smallest, FontScale.smaller, FontScale.normal, FontScale.larger, FontScale.largest],
+      );
+      // Ascending order is load-bearing: increase/decrease step by index.
+      final factors = FontScale.values.map((s) => s.scaleFactor).toList();
+      expect(factors, orderedEquals([...factors]..sort()), reason: 'enum must stay in ascending scale order');
+    });
+
+    test('an extended scale annotates the nearest selectable level, not its own row', () {
+      expect(FontScale.largestPlusPlus.nearestSelectable, FontScale.largest);
+      expect(FontScale.largestPlus.nearestSelectable, FontScale.largest);
+      expect(FontScale.smallestMinusMinus.nearestSelectable, FontScale.smallest);
+      expect(FontScale.smallestMinus.nearestSelectable, FontScale.smallest);
+      // A selectable level anchors to itself, so the picker shows it plainly.
+      expect(FontScale.normal.nearestSelectable, FontScale.normal);
+      expect(FontScale.largest.nearestSelectable, FontScale.largest);
     });
 
     testWidgets('UiScale scales the whole subtree: children lay out in size/scale and paint scaled up', (tester) async {
