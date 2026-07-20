@@ -75,10 +75,12 @@ against (see §4.1).
 ### 2.2 Build/release identity — one build number, per-platform encodings
 
 The build number is a single **monotonic integer** — `kBuildNumber` in
-`lib/config/version.dart`, bumped once per release by `scripts/release.sh`. It is
-deliberately small (it started at `73`), which keeps it under every platform's
-field limit — including the 16-bit Windows/Linux `FILEVERSION` cap — so **all
-platforms share the one value** with no per-platform narrowing.
+`lib/config/version.dart`. It is deliberately small (it started at `73`), which
+keeps it under every platform's field limit — including the 16-bit Windows/Linux
+`FILEVERSION` cap — so **all platforms share the one value** with no per-platform
+narrowing. `scripts/release.sh` advances it automatically: it takes the highest
+`+<build>` across the `v<version>+<build>` release tags, adds one, writes it into
+`version.dart`, and tags the release — so nobody bumps it by hand.
 
 > Earlier lines used a date-encoded `YYMM·MMDD·S` id. That overflowed the 16-bit
 > Windows/Linux field (forcing a separate desktop part) and, being large, pinned

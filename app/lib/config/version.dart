@@ -29,9 +29,11 @@ const kPublicVersionInfo = PublicVersion(
 
 /// The native build number (`CFBundleVersion` / Android `versionCode` /
 /// Windows·Linux `FILEVERSION` build), shared across every platform — a simple
-/// monotonic integer bumped once per release by `scripts/release.sh` (§2.2).
-/// Small enough to fit every platform's field (Windows/Linux cap it at 16
-/// bits), so unlike the old date-encoded id it needs no per-platform narrowing.
+/// monotonic integer. You don't edit it by hand: `scripts/release.sh` advances
+/// it per release from the `v<version>+<build>` tag ledger and writes it here
+/// (§2.2). Small enough to fit every platform's field (Windows/Linux cap it at
+/// 16 bits), so unlike the old date-encoded id it needs no per-platform
+/// narrowing.
 const kBuildNumber = 73;
 
 /// e.g. `26.8.1-alpha1`.
