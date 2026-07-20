@@ -20,7 +20,11 @@ This is a multi-platform app for Amateur Radio Logging, called "Ham2K Logger" (o
 
 - Except for small changes, agents should work on a worktree, with a branch off of the `dist` branch on the `app-halo-dist` origin (usually available as `main-dist-private` locally).
 
-- Always pull the latest changes from `dist` before starting work.
+- Always refresh/pull the latest changes from the `app-halo-dist` origin into the local `main-dist-private` before branching and starting work.
+
+- Take a full pass at the problem and then iterate with the developer. Don't pile up trivial commits. When iterating on a feature or approach, feel free to ammend the last commit if it makes sense, and skip running tests for a few iterations unless it's useful.
+
+- Don't push to the PR branch until it's ready for review.
 
 - When working on a feature, the agent might want to run the web version in the background for faster iteration, or launch the macos version and use hot reloading if the user asks for it. It should avoid using app control, other than on the web version, unless the user asks for it.
 
