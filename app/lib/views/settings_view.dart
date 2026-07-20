@@ -1543,35 +1543,42 @@ class _DeveloperPanel extends StatelessWidget {
               onChanged: (enabled) => settings.setDeveloperMode(enabled),
               contentPadding: EdgeInsets.zero,
             ),
-            FutureBuilder<List<ExperimentDefinition>>(
-              future: loadExperiments(),
-              builder: (context, snapshot) {
-                final definitions = snapshot.data ?? const <ExperimentDefinition>[];
-                // Counted against the CURRENT catalog's LISTED entries: state
-                // for removed experiments doesn't inflate it, and hidden ones
-                // are excluded so the count can't disagree with the pane
-                // (which doesn't list them).
-                final enabledCount = settings.enabledExperimentCount([
-                  for (final d in definitions)
-                    if (!d.hidden) d.key,
-                ]);
-                return ListTile(
-                  leading: const Icon(Icons.science_outlined),
-                  title: const Text('Experiments'),
-                  subtitle: Text('$enabledCount enabled'),
-                  contentPadding: EdgeInsets.zero,
-                  mouseCursor: SystemMouseCursors.click,
-                  // The pane loads the catalog itself — capturing this
-                  // builder's `definitions` would freeze a still-loading
-                  // (empty) snapshot into the pane for its whole lifetime.
-                  onTap: () => showModalPane<void>(
-                    context,
-                    title: 'Experiments',
-                    builder: (_) => ExperimentsPane(settings: settings),
-                  ),
-                );
-              },
-            ),
+            // Gated by the 'experiments' meta-experiment (EXP EXPERIMENTS /
+            // EXP EXP): the tile only appears once someone opted in via the
+            // command. Reads live — the whole panel rebuilds under the
+            // ListenableBuilder(settings) above, so toggling it (either
+            // way, including from inside the pane itself) shows/hides the
+            // tile immediately.
+            if (settings.experimentEnabled('experiments'))
+              FutureBuilder<List<ExperimentDefinition>>(
+                future: loadExperiments(),
+                builder: (context, snapshot) {
+                  final definitions = snapshot.data ?? const <ExperimentDefinition>[];
+                  // Counted against the CURRENT catalog's LISTED entries: state
+                  // for removed experiments doesn't inflate it, and hidden ones
+                  // are excluded so the count can't disagree with the pane
+                  // (which doesn't list them).
+                  final enabledCount = settings.enabledExperimentCount([
+                    for (final d in definitions)
+                      if (!d.hidden) d.key,
+                  ]);
+                  return ListTile(
+                    leading: const Icon(Icons.science_outlined),
+                    title: const Text('Experiments'),
+                    subtitle: Text('$enabledCount enabled'),
+                    contentPadding: EdgeInsets.zero,
+                    mouseCursor: SystemMouseCursors.click,
+                    // The pane loads the catalog itself — capturing this
+                    // builder's `definitions` would freeze a still-loading
+                    // (empty) snapshot into the pane for its whole lifetime.
+                    onTap: () => showModalPane<void>(
+                      context,
+                      title: 'Experiments',
+                      builder: (_) => ExperimentsPane(settings: settings),
+                    ),
+                  );
+                },
+              ),
             const SizedBox(height: 16),
             ElevatedButton(
               onPressed: () async {

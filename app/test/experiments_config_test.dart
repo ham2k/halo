@@ -8,10 +8,21 @@
 // arrives uppercased by the call field, while the yaml is naturally
 // lowercase, so a case-sensitive match would break every EXP invocation.
 
+import 'dart:io';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ham2k_logger/config/experiments.dart';
 
 void main() {
+  test('the SHIPPED catalog parses and defines the experiments gate', () {
+    // The real file, not a fixture: a hand-edit that breaks parsing (or
+    // renames the 'experiments' meta-experiment the Developer panel gates
+    // the Experiments tile on) should fail here, not silently hide the UI.
+    final definitions = parseExperimentsYaml(File('experiments.yaml').readAsStringSync());
+    expect(findExperiment(definitions, 'EXPERIMENTS')?.key, 'experiments');
+    expect(findExperiment(definitions, 'EXP')?.key, 'experiments');
+  });
+
   test('parses full and minimal entries with defaults', () {
     final definitions = parseExperimentsYaml('''
 experiments:

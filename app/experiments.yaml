@@ -15,4 +15,12 @@
 # a token to the FIRST entry that matches, so a shared alias silently
 # toggles the earlier entry.
 
-experiments: []
+experiments:
+  # Meta-experiment: gates the Experiments list itself in Developer
+  # Settings. Off by default, so the list only appears once someone has
+  # typed EXP EXPERIMENTS (or EXP EXP) — and since it's listed (not
+  # hidden), it can be switched back off from the very list it reveals.
+  - key: experiments
+    name: Experiments
+    description: Show the Experiments list in Developer Settings.
+    aliases: [exp]
