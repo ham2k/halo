@@ -706,11 +706,16 @@ class _HaLoAppState extends State<HaLoApp> {
               isFullScreen: isFullScreen,
               child: UiScale(
                 scale: scale,
-                child: _OnboardingGate(
-                  services: widget.services,
-                  child: _ReleaseOverlayGate(
+                // Outermost so it covers every field in the app — the gates'
+                // own overlays and anything pushed on the Navigator (which is
+                // `content`, i.e. dialogs and panes) included.
+                child: TapToDismissEmptyField(
+                  child: _OnboardingGate(
                     services: widget.services,
-                    child: _StatusBarOverlay(services: widget.services, child: content),
+                    child: _ReleaseOverlayGate(
+                      services: widget.services,
+                      child: _StatusBarOverlay(services: widget.services, child: content),
+                    ),
                   ),
                 ),
               ),

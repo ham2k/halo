@@ -40,6 +40,7 @@ import 'package:flutter_markdown/flutter_markdown.dart';
 
 import 'form_renderer.dart';
 import 'icon_resolver.dart';
+import 'keyboard_dismiss.dart';
 import 'mdi_icons.dart';
 import 'number_keys.dart';
 import 'platform_chrome.dart';
@@ -714,7 +715,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     super.initState();
     // Observe metrics so the numbers row appears/disappears with the on-screen
     // keyboard — MediaQuery can't tell us (Scaffold strips the inset, see
-    // `_keyboardIsUp`), so `didChangeMetrics` is the rebuild trigger.
+    // `virtualKeyboardIsUp`), so `didChangeMetrics` is the rebuild trigger.
     WidgetsBinding.instance.addObserver(this);
     _bandDropdownFocus = _dropdownCommitFocusNode(
       commit: _commitBandDropdownText,
@@ -3763,7 +3764,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   }
 
   /// The on-screen keyboard's height in logical pixels, or 0 off mobile /
-  /// keyboard down. Read from the raw `FlutterView` (see [_keyboardIsUp]).
+  /// keyboard down. Read from the raw `FlutterView` (see [virtualKeyboardIsUp]).
   /// The panel reserves this much at its bottom so the fields and numbers row
   /// stay above the keyboard.
   double get _keyboardInset {
@@ -3787,25 +3788,6 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   /// indicator when it's down (see the spacer in build).
   double get _bottomReserve => math.max(_keyboardInset, _bottomSafeInset);
 
-  /// A bottom inset (logical px) below this isn't a real virtual keyboard.
-  /// iOS raises a thin shortcuts/assistant bar (~45–55px) when a HARDWARE
-  /// keyboard is attached — that bumps `viewInsets` too, but the numbers row
-  /// isn't wanted then (the user already has physical number keys). Every
-  /// real on-screen keyboard is far taller (landscape iPhone, the shortest
-  /// case, is still ~150px+), so this threshold cleanly separates the two.
-  static const _minKeyboardInset = 100.0;
-
-  /// Whether a full on-screen ("virtual") keyboard is up. Read from the raw
-  /// `FlutterView` inset rather than MediaQuery: inside a `Scaffold` body
-  /// (the logging panel's home) `MediaQuery.viewInsetsOf(context).bottom` is
-  /// always 0 because the Scaffold already consumed the keyboard inset to
-  /// resize the body. `viewInsets` is in physical pixels, so divide by the
-  /// device pixel ratio before comparing against the logical threshold.
-  bool get _keyboardIsUp {
-    final view = View.of(context);
-    return view.viewInsets.bottom / view.devicePixelRatio > _minKeyboardInset;
-  }
-
   /// Whether to show the mobile numbers row right now — the setting is on,
   /// we're on a phone/tablet, the QSO isn't a read-only (staged/already
   /// deleted) view, the on-screen keyboard is up, and one of our logging
@@ -3814,7 +3796,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     return widget.showNumbersRow &&
         isMobilePlatform &&
         !_fieldsLocked &&
-        _keyboardIsUp &&
+        virtualKeyboardIsUp(context) &&
         _focusedNumberField != null;
   }
 
