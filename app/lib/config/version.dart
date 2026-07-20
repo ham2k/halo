@@ -17,17 +17,24 @@ import 'package:halo_build_tools/halo_build_tools.dart';
 export 'package:halo_build_tools/halo_build_tools.dart' show Edition, kEdition;
 
 /// The single source of truth for the public version (§2.1/§2.3). Exposed (not
-/// just its derived strings) so CI tooling can project it into the native
-/// per-platform version fields via [BuildId]/[PlatformVersions] — see
-/// tool/print_build_versions.dart.
+/// just its derived strings) so CI tooling can project it, together with
+/// [kBuildNumber], into the native per-platform version fields via
+/// [PlatformVersions] — see tool/print_build_versions.dart.
 const kPublicVersionInfo = PublicVersion(
   main: MainVersion(year: 26, month: 8),
-  patch: 0,
-  preRelease: 0,
+  patch: 1,
+  preRelease: 1,
   preReleaseLabel: 'alpha',
 );
 
-/// e.g. `26.8.0`.
+/// The native build number (`CFBundleVersion` / Android `versionCode` /
+/// Windows·Linux `FILEVERSION` build), shared across every platform — a simple
+/// monotonic integer bumped once per release by `scripts/release.sh` (§2.2).
+/// Small enough to fit every platform's field (Windows/Linux cap it at 16
+/// bits), so unlike the old date-encoded id it needs no per-platform narrowing.
+const kBuildNumber = 73;
+
+/// e.g. `26.8.1-alpha1`.
 final kPublicVersion = kPublicVersionInfo.value;
 
 /// e.g. `August '26`, `August '26 patch 2`, `August '26 pre 1`.

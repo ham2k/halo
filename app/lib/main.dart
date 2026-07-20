@@ -44,6 +44,7 @@ import 'settings/settings_registry.dart';
 import 'settings/system_lists.dart';
 import 'services/window_chrome_service.dart';
 import 'services/update_service.dart';
+import 'services/shorebird_update_service.dart';
 import 'services/data_file_manager.dart';
 import 'services/flags_service.dart';
 import 'i18n/strings.g.dart';
@@ -60,6 +61,13 @@ void main() {
   runApp(TranslationProvider(child: _BootGate(servicesFuture: servicesFuture)));
 
   servicesFuture.then((services) async {
+    // Check for an over-the-air Dart patch on the device's selected track
+    // (docs/releases.md §4). Fire-and-forget on purpose: this makes a network
+    // call the Shorebird package warns can be slow, so it must NOT gate startup
+    // — a downloaded patch applies on the *next* restart regardless. No-ops in
+    // any build without the Shorebird engine.
+    unawaited(services.updates.checkAndApply());
+
     // Dev nicety: launch with POLO_OPEN_FIRST_OP=1 in the environment (e.g.
     // SIMCTL_CHILD_POLO_OPEN_FIRST_OP=1 simctl launch ...) to jump straight
     // into the most recent operation.
@@ -230,7 +238,9 @@ Future<HaLoServices> bootstrap({
     extensions: extensions,
     metrics: metrics,
     purchases: purchases,
-    updates: updates,
+    // The running app checks Shorebird for a Dart patch on the selected track
+    // (§4.3); no-ops in any build without the engine. Overridable for tests.
+    updates: updates ?? ShorebirdUpdateService(settings),
   );
   final syncDeviceKey = await settings.ensureSyncDeviceKey();
   services.extensions.setSyncCredentials(deviceKey: syncDeviceKey, operatorCall: settings.activeProfile.operatorCall);
@@ -403,6 +413,9 @@ class HaLoServices {
   })  : extensions = extensions ?? ExtensionService(),
         metrics = metrics ?? const NoopMetricsService(),
         purchases = purchases ?? const NoopPurchaseService(),
+        // Defaults to no-op so tests (which construct HaLoServices directly)
+        // never touch the Shorebird FFI; bootstrap() injects the real
+        // ShorebirdUpdateService for the running app.
         updates = updates ?? const NoopUpdateService(),
         _dataFilesOverride = dataFiles {
     this.extensions.settings = settings;

@@ -1,15 +1,15 @@
 // Copyright ©️ 2026 Sebastian Delmont <sd@ham2k.com>
 // SPDX-License-Identifier: MPL-2.0
 
-import 'build_id.dart';
 import 'public_version.dart';
 
-const _androidMaxVersionCode = 2100000000;
-const _iosMaxBuildNumberLength = 18;
+// The build number lands in the 16-bit Windows/Linux FILEVERSION field, the
+// tightest of the platform caps (Android allows ~2.1 B, iOS 18 digits), so a
+// single 0–65535 check covers every platform.
 const _windowsMaxPart = 65535;
 
-/// The [BuildId] and [PublicVersion] projected into each platform's native
-/// version fields, per docs/releases.md §2.2.
+/// The [PublicVersion] and a shared build number projected into each platform's
+/// native version fields, per docs/releases.md §2.2.
 class PlatformVersions {
   final int androidVersionCode;
   final String androidVersionName;
@@ -39,32 +39,18 @@ class PlatformVersions {
 
   factory PlatformVersions.project({
     required PublicVersion publicVersion,
-    required BuildId buildId,
+    required int build,
   }) {
     final major = publicVersion.main.year;
     final minor = publicVersion.main.month;
-    final windowsLinuxPart = buildId.windowsLinuxPart;
 
-    final androidVersionCode = buildId.value;
-    if (androidVersionCode > _androidMaxVersionCode) {
-      throw ArgumentError(
-        'Android versionCode $androidVersionCode exceeds the '
-        '$_androidMaxVersionCode cap',
-      );
+    if (build < 1) {
+      throw ArgumentError('build must be a positive integer, was $build');
     }
-
-    final iosBuildNumber = buildId.value.toString();
-    if (iosBuildNumber.length > _iosMaxBuildNumberLength) {
+    if (build > _windowsMaxPart) {
       throw ArgumentError(
-        'iOS/macOS CFBundleVersion "$iosBuildNumber" exceeds '
-        '$_iosMaxBuildNumberLength characters',
-      );
-    }
-
-    if (windowsLinuxPart > _windowsMaxPart) {
-      throw ArgumentError(
-        'Windows/Linux build part $windowsLinuxPart exceeds the '
-        '$_windowsMaxPart per-field cap',
+        'build $build exceeds the $_windowsMaxPart Windows/Linux '
+        'FILEVERSION cap',
       );
     }
     if (major == 0) {
@@ -72,12 +58,12 @@ class PlatformVersions {
     }
 
     return PlatformVersions(
-      androidVersionCode: androidVersionCode,
+      androidVersionCode: build,
       androidVersionName: publicVersion.value,
-      iosBuildNumber: iosBuildNumber,
+      iosBuildNumber: build.toString(),
       iosMarketingVersion: '$major.$minor.${publicVersion.patch}',
-      windowsFileVersion: '$major.$minor.$windowsLinuxPart.0',
-      linuxPackageVersion: '$major.$minor.$windowsLinuxPart',
+      windowsFileVersion: '$major.$minor.$build.0',
+      linuxPackageVersion: '$major.$minor.$build',
     );
   }
 }

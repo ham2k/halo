@@ -7,14 +7,31 @@
 // `HaLoServices` accepts an override at construction time.
 
 abstract class UpdateService {
-  /// Checks for an update and applies it if one is available. Returns true
-  /// if an update was applied (the caller may want to prompt for a restart).
+  /// Whether an over-the-air updater is actually present in this build. False
+  /// for the no-op / OSS case and (for Shorebird) for any non-`shorebird
+  /// release` build — debug, plain `flutter build`, web. UI that offers update
+  /// controls should hide itself when this is false.
+  bool get isAvailable;
+
+  /// Checks for an update on the configured channel and downloads it if one is
+  /// available. Returns true if an update was downloaded (it takes effect on
+  /// the next restart, so the caller may want to prompt for one).
   Future<bool> checkAndApply();
+
+  /// The patch/build number currently running, or null if none is installed or
+  /// the updater is unavailable. Purely informational (e.g. Developer Settings).
+  Future<int?> currentPatchNumber();
 }
 
 class NoopUpdateService implements UpdateService {
   const NoopUpdateService();
 
   @override
+  bool get isAvailable => false;
+
+  @override
   Future<bool> checkAndApply() async => false;
+
+  @override
+  Future<int?> currentPatchNumber() async => null;
 }

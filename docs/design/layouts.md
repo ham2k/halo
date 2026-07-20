@@ -68,24 +68,56 @@ switches on `ShirtSize.of(context)` and returns one arrangement or the
 other. Width changes *within* a mode animate (300ms, ease-in-out, via
 `ResizableSplitView`).
 
+## View classification: fixed vs. layout-customizable
+
+Every root view is classified by `ViewLayoutPolicy`
+([`layout.dart`](../../packages/halo_widgets/lib/src/layout.dart)), declared
+as a `layoutPolicy` const on the view class:
+
+- **`customizable`** — the view's panes are user-arrangeable via the dock
+  layout (`DockLayoutView`, behind the `layouts` experiment). Currently
+  only the **Operation** view. All its dividers — the fixed split's and the
+  dock's — use the **solid** style below.
+- **`fixed`** — the arrangement never changes (Home, Settings). Fixed
+  views may opt their splits into the **surfaces** divider style.
+
 ## Resizable splits
 
 Side-by-side panes are composed with
 [`ResizableSplitView`](../../packages/halo_widgets/lib/src/resizable_split_view.dart):
-a primary pane with a preferred width and an expanding secondary pane. The
-divider consumes no layout space — it is a transparent drag overlay (with
-grab dots) on the secondary's leftmost pixels, so the secondary's own
-background and content stretch to the very boundary, and the separation is
-drawn by the shadow the divider casts rightward onto the secondary pane (a
-white glow in dark mode, where a black shadow would vanish into dark
-surfaces). The strip deliberately
-blocks clicks, hover, and scrolling (it exists only to resize); content
-that needs interactivity near that edge reads `PaneSafeArea.leftOf(context)`
-and insets itself — rows and backgrounds still render edge-to-edge, only
-their content shifts. Over native platform views (the map) the strip stays
+a primary pane with a preferred width and an expanding secondary pane,
+separated by one of two divider styles (`SplitDividerStyle`):
+
+**Solid (the default).** A header-colored bar
+([`SolidPaneDivider`](../../packages/halo_widgets/lib/src/pane_divider.dart),
+`paneDividerWidth` wide) that owns its own layout space — no overlay, no
+drop shadow. It reads as chrome between panes, matching the app bar's
+surface, and it is the shared divider language of layout-customizable
+views: the dock layout's split dividers are the same widget, so the fixed
+split and the dock can't drift apart visually. Being an opaque painted
+bar, it needs no special handling over native platform views.
+
+**Surfaces (opt-in — Home and Settings today).** The divider consumes no
+layout space — it is a transparent drag overlay (with grab dots) on the
+secondary's leftmost pixels, so the secondary's own background and content
+stretch to the very boundary, and the separation is drawn by the shadow
+the divider casts rightward onto the secondary pane (a white glow in dark
+mode, where a black shadow would vanish into dark surfaces). The strip
+deliberately blocks clicks, hover, and scrolling (it exists only to
+resize). Over native platform views (the map) the strip stays
 near-invisibly painted so its events route through Flutter — that wash is
-load-bearing, see `ResizableSplitView._platformViewHitWashAlpha`. When
-`secondary` is null
+load-bearing, see `ResizableSplitView._platformViewHitWashAlpha`.
+
+**PaneSafeArea holds in both styles.** Content that needs interactivity
+near the divider edge reads `PaneSafeArea.leftOf(context)` and insets
+itself — rows and backgrounds still render edge-to-edge, only their
+content shifts. Surfaces advises the grab-strip width; solid advises 0
+(nothing overlays the pane) — but the wrapper deliberately stays in the
+tree everywhere, including around every dock pane: it is the insertion
+point where device safe-area insets will reach pane content later. Do not
+remove a PaneSafeArea just because its value is currently zero.
+
+When `secondary` is null
 the primary fills the window — pass null on XS/S rather than swapping
 widget trees, so the primary subtree stays mounted (scroll positions and
 in-progress input survive the flip).

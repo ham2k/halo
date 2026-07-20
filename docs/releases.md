@@ -72,45 +72,47 @@ Section 2.3 explains how the patchable public version is stored.
 Every patch/pre-release is bound to the exact release build it was compiled
 against (see §4.1).
 
-### 2.2 Build/release identity — one build, per-platform encodings
+### 2.2 Build/release identity — one build number, per-platform encodings
 
-The canonical build id is the strictly-increasing integer **`YYMM·MMDD·S`**:
+The build number is a single **monotonic integer** — `kBuildNumber` in
+`lib/config/version.dart`, bumped once per release by `scripts/release.sh`. It is
+deliberately small (it started at `73`), which keeps it under every platform's
+field limit — including the 16-bit Windows/Linux `FILEVERSION` cap — so **all
+platforms share the one value** with no per-platform narrowing.
 
-| Segment | Meaning | Example |
-|---------|---------|---------|
-| `YYMM` | the **version's** year + target month | `2608` (for `26.8`) |
-| `MMDD` | the **build date** (may be an earlier month than the version) | `0729` (July 29) |
-| `S` | one sequential digit for multiple builds the same day | `1` |
+> Earlier lines used a date-encoded `YYMM·MMDD·S` id. That overflowed the 16-bit
+> Windows/Linux field (forcing a separate desktop part) and, being large, pinned
+> every platform of a release to whatever build number iOS had already floored at.
+> The plain counter avoids both. History is not rewritten — the counter simply
+> continues upward from where the old scheme left off.
 
-Example: **`260807291`** = version `26.8`, built **July 29**, sequence `1` — the
-official `26.8.0` release. Version month (`08`) and build month (`07`) legitimately
-differ because the line is branded for the coming month.
+CI projects the version + build number into each platform's native fields via
+`PlatformVersions.project` (`tool/print_build_versions.dart`). Each platform has
+hard format limits the projection respects:
 
-CI projects this single build id into each platform's required native fields. Each
-platform has hard format limits, and the projection must respect them:
-
-| Platform | Native field(s) | Constraint | This build |
+| Platform | Native field(s) | Constraint | Example (`26.8.1-alpha1`, build 73) |
 |----------|-----------------|------------|------------|
-| **Android** | `versionCode` / `versionName` | code ≤ **2,100,000,000**, strictly increasing, single-use | `260807291` / `26.8.0` |
-| **iOS / macOS** | `CFBundleVersion` / `CFBundleShortVersionString` | build ≤ **18 chars**; marketing = **≤ 3 integers, no suffixes** | `260807291` / `26.8.0` |
-| **Windows** | MSIX / `FILEVERSION` `a.b.c.d` | each part **0–65535**, major ≠ 0, **revision = 0** for Store | `26.8.7291.0` |
-| **Linux** | package version | numeric, monotonic ordering | `26.8.7291` |
+| **Android** | `versionCode` / `versionName` | code ≤ **2,100,000,000**, strictly increasing, single-use | `73` / `26.8.1-alpha1` |
+| **iOS / macOS** | `CFBundleVersion` / `CFBundleShortVersionString` | build ≤ **18 chars**; marketing = **≤ 3 integers, no suffixes** | `73` / `26.8.1` |
+| **Windows** | MSIX / `FILEVERSION` `a.b.c.d` | each part **0–65535**, major ≠ 0, **revision = 0** for Store | `26.8.73.0` |
+| **Linux** | package version | numeric, monotonic ordering | `26.8.73` |
 | **Web** | — | none (server-deployed) | n/a |
 
-Three projection rules follow from the table:
+Two projection rules follow from the table:
 
-- **Windows/Linux build part = `MMDD·10 + S`** → `7291` here, max `12319` (Dec 31,
-  seq 9), safely under 65,535 and increasing through the month. Windows appends the
-  mandatory `.0` revision (`26.8.7291.0`); **Linux uses `26.8.7291` directly**.
-  Linux needs no `~preN` suffix — the numeric build id already orders correctly and
-  is unique, so a Next pre-release simply carries a lower build number.
+- **Desktop carries the build number in the third slot.** Windows uses
+  `major.minor.build` with the mandatory `.0` revision (`26.8.73.0`); **Linux uses
+  `26.8.73` directly**. Because the counter is capped at 16 bits (0–65535) it fits
+  the desktop field with no encoding. Linux needs no `~preN` suffix — the number
+  already orders correctly and is unique, so a Next pre-release simply carries a
+  lower build number.
 - **iOS marketing string cannot carry `-preN`.** `CFBundleShortVersionString` must
-  be pure `X.Y.Z`, so the plist marketing version stays `26.8.0` for all of
-  `pre1`, `pre2`, and the final release; the pre-release label lives in the app UI,
-  TestFlight notes, and the build number. This is fine because App Store Connect
-  only requires the *build number* to increase per marketing-version string.
-- The **9-digit build id fits Android and iOS/macOS as-is** for every year up to
-  `99` (`991212319` ≈ 991 M, under the 2.1 B cap).
+  be pure `X.Y.Z`, so the plist marketing version stays `26.8.1` for all of
+  `alpha1`/`pre1`, `pre2`, and the final release; the pre-release label lives in the
+  app UI, TestFlight notes, and the build number. This is fine because App Store
+  Connect only requires the *build number* to increase per marketing-version
+  string — and a fresh marketing version (e.g. `26.8.0` → `26.8.1`) lets the build
+  number restart low.
 
 ### 2.3 Where the public version lives (patchable)
 
@@ -130,7 +132,7 @@ the patch and updates on-device when the patch lands.
 - **Optionally derive it** from the Shorebird runtime's current patch number
   (`"$base.${patchNumber ?? 0}"`) so you can't forget to bump it; keep an explicit
   override for `-preN` labels and full-rebuild jumps.
-- **About screen** should show all three layers: `26.8.1 (build 260807291, patch
+- **About screen** should show all three layers: `26.8.1 (build 73, patch
   3)` — public version for humans, build number pins the native binary, patch
   number pins the Dart layer.
 - **Sync/log metadata** should record both the public version *and* the
@@ -144,13 +146,13 @@ Independent semver per extension, gated by a minimum app/API version (see §6).
 
 1. **Pre-releases on Next.** Binary builds ship to **Logger Next** first, branded
    for the coming month: `26.8.0-pre1`, `26.8.0-pre2`, … each with its own build
-   number (`2608` + its build date + seq). Fixes between pre-releases can go out as
-   Next Shorebird patches, e.g. `26.8.0-pre1.1`.
-2. **Stabilize.** When a pre-release is judged stable enough (say **July 29**), it
-   is promoted to the official **`26.8.0`**, build `260807291`. **Both** Logger and
-   Logger Next receive this release.
+   number (the next value of the shared counter). Fixes between pre-releases can go
+   out as Next Shorebird patches, e.g. `26.8.0-pre1.1`.
+2. **Stabilize.** When a pre-release is judged stable enough, it is promoted to the
+   official **`26.8.0`**, build `73`. **Both** Logger and Logger Next receive this
+   release.
 3. **Patch through the month.** Subsequent fixes ship as Shorebird patches
-   `26.8.1`, `26.8.2`, … all based on the official build `260807291`.
+   `26.8.1`, `26.8.2`, … all based on the official build `73`.
 4. **Rare full rebuild.** If a change can't ride a patch (native/engine/plugin),
    cut a new full binary that takes the next number in sequence, e.g. `26.8.3`,
    with its own build number. Then resume patching until the next monthly line
@@ -164,17 +166,30 @@ data and settings:
 
 | Edition | Identity (all platforms) | Signed & distributed? | Update planes |
 |---------|--------------------------|-----------------------|---------------|
-| **Dev** | `com.ham2k.logger.dev` | No — built from source by anyone | None (rebuild by hand) |
+| **Dev** | `com.ham2k.logger.dev` | Locally: no (ad-hoc). In CD: **yes** — signed like the others | Shorebird (own app); no appcast / extension OTA |
 | **Ham2K Logger Next** (pre-release) | `com.ham2k.logger.next` | Yes — official | Binary + Shorebird + extension OTA (own feeds) |
 | **Ham2K Logger** (stable) | `com.ham2k.logger.prod` | Yes — official | Binary + Shorebird + extension OTA (own feeds) |
 
-- **Dev** is the plain, build-it-yourself edition — for quick tests by agents or
-  the maintainers, and for anyone who wants to run HaLo in their own environment.
-  It needs **no signing certificates, no store accounts, and none of the
-  distribution machinery**; a clean public checkout builds it with ad-hoc/no
-  signing. It is **never** shipped through a store, appcast, or Shorebird, and it
-  carries none of those update planes — a new Dev build means rebuilding from
-  source. Everything Dev needs is in the public repo (§8).
+- **Dev** is the build-it-yourself edition — for quick tests by agents or the
+  maintainers, and for anyone who wants to run HaLo in their own environment.
+  **Building it locally needs no signing certificates, no store accounts, and
+  none of the distribution machinery**: a clean public checkout builds it with
+  ad-hoc/no signing, and that path is unchanged.
+
+  **CD is different.** The `macos-dev-release` / `ios-dev-release` workflows
+  produce a *real signed* Dev build — Developer ID + notarized on macOS,
+  TestFlight on iOS — so a Dev build can be installed and run like any normal
+  download instead of fighting Gatekeeper or sideloading. That means CD Dev needs
+  the same signing secrets as the other editions, so those workflows are no
+  longer runnable from a public checkout (previously `macos-dev` was; nothing
+  here is now).
+
+  CD Dev is also a **Shorebird release**, against its own Shorebird app, so Dart
+  patches can target it like any other edition (`ios-dev-patch`,
+  `macos-dev-patch`). It still gets **no appcast and no extension OTA** — a new
+  Dev *binary* means a rebuild or a fresh download. Everything needed to *build*
+  Dev locally remains in the public repo (§8), and that path never touches
+  Shorebird.
 - **Next** and **Regular** are the two **official** editions that Ham2K signs and
   distributes publicly. Next runs ahead of Regular (§2.5) and is where binary
   pre-releases land first. Each is a distinct distributed product with its own
@@ -232,10 +247,10 @@ monthly main version is a binary release.
 
 - **iOS / macOS**: App Store (stable), TestFlight (Next). No sideload path exists
   on iOS, so "out-of-store auto-update" simply does not apply there. The iOS CI
-  (`ios-next` / `ios-prod`, delegating to `app_dist/ci/build-ios.sh`) currently
+  (`ios-next-release` / `ios-prod-release`, delegating to `app_dist/ci/build-ios.sh`) currently
   uploads **both** editions to TestFlight — each keyed on its own app record
   (`com.ham2k.logger.next` / `.prod`); promoting Regular to the public App Store
-  is a later manual step. `ios-dev` is a public, unsigned compile check.
+  is a later manual step. `ios-dev-release` is a public, unsigned compile check.
 - **Android**: Google Play (stable), Play testing track — internal/closed/open —
   (Next).
 
@@ -315,11 +330,124 @@ bleeding-edge  →  unstable  →  stable
 - **Next** has its **own Shorebird app** (Shorebird keys per app identity), so it
   carries its own `bleeding-edge`/`unstable`/`stable` tracks independently.
 
+**Mechanics.** CI publishes every patch to **`bleeding-edge`**; moving it upward
+is a deliberate, separate act:
+
+```
+shorebird patches set-track --release <ver> --patch <n> --track unstable [--flavor <edition>]
+shorebird patches set-track --release <ver> --patch <n> --track stable   [--flavor <edition>]
+```
+
+Use `set-track` for **every** hop, including the last: `shorebird patches promote`
+still works but is **deprecated** ("Use `shorebird patches set-track
+--track=stable` instead"), and it only ever targets `stable`. `set-track` accepts
+any custom track name, so it covers the whole ladder.
+
+**Which devices see a track.** An installed app only checks `stable` by default;
+following an earlier ring is **opt-in per device**, via **Settings → Developer →
+Patch Track** (Developer Mode only). That selector is wired to
+`package:shorebird_code_push`: `ShorebirdUpdateService` (lib/services/) checks the
+chosen track on launch and downloads any patch, applied on the next restart. So a
+`bleeding-edge` patch reaches only the handful of devices that have opted into that
+ring — exactly the staging behaviour we want — until it's promoted to `stable`,
+which everyone follows.
+
+Because we drive updates ourselves, **`shorebird.yaml` is generated with
+`auto_update: false`** (app_dist/ci/shorebird-common.sh): the built-in updater only
+ever checks `stable`, so leaving it on would fight a device that has opted into a
+different ring. The selector only appears in real `shorebird release` builds
+(`UpdateService.isAvailable`), so it's invisible in local/debug/web builds where
+the engine isn't present.
+
 ### 4.4 App Store policy note
 
 Apple 3.3.1 permits hot-patching only where it does not change the app's intended,
 advertised purpose. Keep patches to fixes and tweaks, not features that alter what
 review was told the app does.
+
+### 4.5 How editions map to Shorebird apps, and CI wiring
+
+Shorebird selects which app a build belongs to by an `app_id` in `shorebird.yaml`,
+and its per-flavor support keys off a **Gradle flavor** (Android) or an **Xcode
+scheme** (iOS/macOS). Our editions are Android Gradle flavors, but on iOS/macOS
+they are driven by the `HALO_EDITION` xcconfig switch with **no per-edition Xcode
+schemes** (§2.6, §8) — deliberately. So Shorebird's `--flavor` can't select the
+app on those platforms.
+
+`shorebird init` handles the Android side for us: it detects the Gradle flavors,
+creates one Shorebird app per flavor, and writes them into `shorebird.yaml` as a
+`flavors:` map (plus a top-level default app it also creates). **Those ids are not
+secrets** — the generated file says so itself — so `shorebird.yaml` is **committed
+as generated**, and Android simply passes `--flavor <edition>`.
+
+iOS and macOS can't use that: with no Xcode schemes, `--flavor` has nothing to
+select, and a flavor-less `shorebird release` would fall back to the top-level
+default app — the wrong one. So for those two platforms the official build/patch
+scripts call `shorebird_select_edition` (`app_dist/ci/shorebird-common.sh`), which
+reads the edition's id out of the committed `flavors:` map and rewrites
+`shorebird.yaml` **without** the map, leaving exactly the intended app as the
+top-level `app_id`. It sits beside where those scripts already write
+`HALO_EDITION` into `Local.xcconfig` — the same edition seam.
+
+The only Shorebird **secret** is `SHOREBIRD_TOKEN`, an API key created in the
+console (Account → API Keys; `shorebird login:ci` is gone). Prefer the
+"Release & Patch only" scope, and note that key expiry will silently start failing
+CI.
+
+**All three editions have a Shorebird app** — `shorebird init` created one per
+flavor, and CD registers a release for each, so Dev is patchable too. **Web gets
+none**: it reloads the latest bundle on load.
+
+**Native requirements** `shorebird init` adds, both needed for code push to work:
+
+- **Android** — `android.permission.INTERNET` in the *main* manifest (it was only
+  in the debug/profile manifests, so release builds had no network at all).
+- **macOS** — `com.apple.security.cs.allow-unsigned-executable-memory` in
+  `Release.entitlements`, since the updater executes patched code under the
+  hardened runtime.
+
+**Flutter version — floor is 3.44.5.** Shorebird's dashboard can only report
+**rollout adoption** (which patch each device is actually running) for releases
+built with **Flutter ≥ 3.44.5**; older releases still patch fine, they just can't
+report. We therefore pin **3.44.6** (the current stable) in `mise.toml`,
+`codemagic.yaml`, and the build scripts — keep those three in step, and don't drop
+below 3.44.5 or adoption tracking goes dark. Because **patches inherit the
+release's Flutter version**, a release built on an older Flutter can never gain
+adoption reporting: it needs a *new release* to do so.
+
+Shorebird supports our pinned Flutter on
+every target platform (its floors — iOS/Android 3.24, macOS 3.27.3, Windows 3.29,
+Linux 3.32.6 — are all below it). `--flutter-version` is a *release*-only flag;
+**patches inherit the release's Flutter version**, so a Flutter-pin bump is
+inherently a new binary release, never a patch (which reinforces §4.2).
+
+**Release step.** For Next/Regular the official builds swap `flutter build
+<ipa|apk|…>` for `shorebird release <platform> --flutter-version=<pin> -- <the
+existing flutter args>`. The `--build-name` / `--build-number` projection (§2.2)
+passes straight through as the **release version**, so each monthly binary is the
+distinct Shorebird release its patches bind to (§4.1). Dev and Web keep plain
+`flutter build`.
+
+**Patch step.** A separate, manually-triggered workflow runs `shorebird patch
+<platform>` (with the same edition selection) and publishes to `bleeding-edge`,
+to be promoted upward explicitly (§4.3); `SHOREBIRD_TRACK` overrides the track.
+Patches must be pure Dart (§4.2). A patch is never distributed, so the macOS
+patch build needs no Developer ID certificate and no notarization.
+
+It passes **`--release-version` explicitly**, resolved by
+`shorebird_release_version` (newest release, or `SHOREBIRD_RELEASE_VERSION`).
+This is not optional: a patch build carries pubspec's placeholder `0.1.0+1`, not
+the release's §2.2-projected version, so Shorebird's default lookup fails with
+`Release not found: "0.1.0+1"`. Re-running the projection wouldn't reliably fix it
+either — `kBuildNumber` advances per release, so once it has been bumped past the
+target release the projection no longer names that release.
+
+**Wired so far:** iOS, macOS, and Android for **Next** (release + patch). Regular
+follows the same pattern via `HALO_EDITION=prod`; Windows/Linux are not wired yet.
+
+**Prerequisites (one-time):** run `shorebird init` (creates the apps and the
+committed `shorebird.yaml`), then add `SHOREBIRD_TOKEN` to the `ios_signing`,
+`macos_signing`, and `android_signing` groups. Nothing else is secret.
 
 ---
 
@@ -465,7 +593,7 @@ fixed name.
 - The **official CI build logic**, `app_dist/ci/build-macos.sh`. Codemagic only
   reads a `codemagic.yaml` at the repo **root** (no custom path, no includes),
   and that root file is a non-`app_dist` path shared verbatim with the public
-  repo. So the root `codemagic.yaml` keeps the `macos-next`/`macos-prod`
+  repo. So the root `codemagic.yaml` keeps the `macos-next-release`/`macos-prod-release`
   workflows as thin declarations that just run `bash app_dist/ci/build-macos.sh`
   — the actual signing/notarization steps live in that dist-only script. It is
   fine for the public root to *reference* `app_dist/` (a public checkout has no

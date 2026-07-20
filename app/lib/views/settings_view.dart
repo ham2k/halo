@@ -139,6 +139,10 @@ const _aboutPanelOrder = 100;
 const _extensionPanelDefaultOrder = 50;
 
 class SettingsView extends StatefulWidget {
+  /// Settings' arrangement is fixed (docs/design/layouts.md): its split
+  /// opts into the "surfaces" divider style below.
+  static const layoutPolicy = ViewLayoutPolicy.fixed;
+
   final HaLoServices services;
 
   const SettingsView({super.key, required this.services});
@@ -277,6 +281,10 @@ class _SettingsViewState extends State<SettingsView> {
       // pane's AppBar reserves macOS traffic-light clearance — the right
       // one sits mid-window (layouts.md rule 5).
       return ResizableSplitView(
+        // Settings is ViewLayoutPolicy.fixed and opts into the "surfaces"
+        // divider: the selected panel reads as a surface under the sidebar's
+        // shadow. See docs/design/layouts.md.
+        dividerStyle: SplitDividerStyle.surfaces,
         preferredPrimaryWidth: settings.layoutDimension(LayoutKeys.settingsLeftColumn) ?? 320,
         minPrimaryWidth: 240,
         maxPrimaryWidth: idealPaneWidth,
@@ -1579,6 +1587,70 @@ class _DeveloperPanel extends StatelessWidget {
                   );
                 },
               ),
+            // Shorebird over-the-air patch track (docs/releases.md §4.3). Only
+            // shown when the Shorebird engine is actually present — i.e. a
+            // `shorebird release` build, not a local/debug/web one — so it's
+            // invisible and inert everywhere it can't do anything.
+            if (services.updates.isAvailable) ...[
+              const SizedBox(height: 16),
+              Text(
+                'Patch Track',
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                  color: Theme.of(context).colorScheme.primary,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.only(top: 4, bottom: 8),
+                child: Text(
+                  'Which over-the-air patch ring this device follows. More adventurous '
+                  'rings get fixes earlier, less tested. Patches apply on the next restart.',
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ),
+              SegmentedButton<String>(
+                showSelectedIcon: false,
+                segments: const [
+                  ButtonSegment(value: 'stable', label: Text('Stable')),
+                  ButtonSegment(value: 'unstable', label: Text('Unstable')),
+                  ButtonSegment(value: 'bleeding-edge', label: Text('Bleeding')),
+                ],
+                selected: {settings.shorebirdTrack},
+                onSelectionChanged: (selected) async {
+                  final track = selected.first;
+                  final messenger = ScaffoldMessenger.of(context);
+                  await settings.setShorebirdTrack(track);
+                  messenger.showSnackBar(SnackBar(content: Text('Checking "$track" for a patch…')));
+                  final applied = await services.updates.checkAndApply();
+                  if (!context.mounted) return;
+                  messenger.hideCurrentSnackBar();
+                  messenger.showSnackBar(SnackBar(
+                    content: Text(applied
+                        ? 'Patch downloaded — restart the app to apply it.'
+                        : 'No new patch on "$track".'),
+                  ));
+                },
+              ),
+              Padding(
+                padding: const EdgeInsets.only(top: 8),
+                child: FutureBuilder<int?>(
+                  future: services.updates.currentPatchNumber(),
+                  builder: (context, snapshot) {
+                    final patch = snapshot.data;
+                    return Text(
+                      patch == null
+                          ? 'No patch installed — running the release binary.'
+                          : 'Running patch #$patch.',
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ],
             const SizedBox(height: 16),
             ElevatedButton(
               onPressed: () async {

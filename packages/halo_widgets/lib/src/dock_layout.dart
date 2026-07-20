@@ -25,6 +25,8 @@ import 'package:flutter/material.dart';
 
 import 'icon_resolver.dart';
 import 'layout.dart';
+import 'pane_divider.dart';
+import 'resizable_split_view.dart' show PaneSafeArea;
 
 /// A node in the dock tree: either a [DockSplit] (row/column of children
 /// with weights) or a [DockGroup] (a tabbed stack of module ids).
@@ -145,7 +147,9 @@ class DockLayoutViewState extends State<DockLayoutView> {
   /// The module id being dragged, or null — gates the drop-region overlays.
   String? _dragging;
 
-  static const double _dividerExtent = 7.0;
+  // Dock splits use the shared solid divider (pane_divider.dart) — same
+  // header-colored bar as ResizableSplitView's default style.
+  static const double _dividerExtent = paneDividerWidth;
   static const double _headerHeight = 40.0;
   static const double _minPaneExtent = 120.0;
 
@@ -317,9 +321,9 @@ class DockLayoutViewState extends State<DockLayoutView> {
         for (var i = 0; i < split.children.length; i++) {
           if (i > 0) {
             children.add(
-              _DockDivider(
+              SolidPaneDivider(
                 axis: split.axis,
-                onDrag: (delta) => setState(() {
+                onDragUpdate: (delta) => setState(() {
                   if (available <= 0) return;
                   // Move the boundary between i-1 and i, keeping both panes
                   // usable; weights shift by the dragged fraction of the run.
@@ -336,6 +340,11 @@ class DockLayoutViewState extends State<DockLayoutView> {
                   split.weights[i] -= shift;
                 }),
                 onDragEnd: _emit,
+                // Weights were mutated live during the drag — a cancelled
+                // gesture (pointer lost to another recognizer) must persist
+                // what's on screen too, or the layout silently reverts on
+                // relaunch.
+                onDragCancel: _emit,
               ),
             );
           }
@@ -397,12 +406,19 @@ class DockLayoutViewState extends State<DockLayoutView> {
           child: Stack(
             fit: StackFit.expand,
             children: [
-              IndexedStack(
-                // Tight constraints, like a TabBarView page — panes are
-                // designed to fill their pane, not shrink-wrap.
-                sizing: StackFit.expand,
-                index: group.selected,
-                children: [for (final id in group.modules) widget.children[id] ?? const SizedBox.shrink()],
+              // Zero clearance today (solid dividers own their own space),
+              // but the PaneSafeArea mechanism is deliberately threaded
+              // through dock panes too: it's the insertion point where
+              // device safe-area insets will reach pane content later.
+              PaneSafeArea(
+                left: 0,
+                child: IndexedStack(
+                  // Tight constraints, like a TabBarView page — panes are
+                  // designed to fill their pane, not shrink-wrap.
+                  sizing: StackFit.expand,
+                  index: group.selected,
+                  children: [for (final id in group.modules) widget.children[id] ?? const SizedBox.shrink()],
+                ),
               ),
               if (_dragging != null)
                 _GroupDropRegions(washAlpha: _hitWashAlpha, onDrop: (id, region) => _handleDrop(id, group, region)),
@@ -568,43 +584,3 @@ class _EdgeDropTarget extends StatelessWidget {
   }
 }
 
-/// The draggable boundary between two split siblings — a visible hairline
-/// centered in a slim grab strip (unlike ResizableSplitView's overlay
-/// divider, these own layout space: an N-way split has no single "secondary"
-/// pane to overlay).
-class _DockDivider extends StatelessWidget {
-  final Axis axis;
-
-  /// Delta along the split's main axis, in logical pixels.
-  final ValueChanged<double> onDrag;
-  final VoidCallback onDragEnd;
-
-  const _DockDivider({required this.axis, required this.onDrag, required this.onDragEnd});
-
-  @override
-  Widget build(BuildContext context) {
-    final horizontal = axis == Axis.horizontal;
-    final line = Center(
-      child: Container(
-        width: horizontal ? 1 : null,
-        height: horizontal ? null : 1,
-        color: Theme.of(context).colorScheme.outlineVariant,
-      ),
-    );
-    return MouseRegion(
-      cursor: horizontal ? SystemMouseCursors.resizeLeftRight : SystemMouseCursors.resizeUpDown,
-      child: GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onHorizontalDragUpdate: horizontal ? (d) => onDrag(d.delta.dx) : null,
-        onHorizontalDragEnd: horizontal ? (_) => onDragEnd() : null,
-        onVerticalDragUpdate: horizontal ? null : (d) => onDrag(d.delta.dy),
-        onVerticalDragEnd: horizontal ? null : (_) => onDragEnd(),
-        child: SizedBox(
-          width: horizontal ? DockLayoutViewState._dividerExtent : null,
-          height: horizontal ? null : DockLayoutViewState._dividerExtent,
-          child: line,
-        ),
-      ),
-    );
-  }
-}

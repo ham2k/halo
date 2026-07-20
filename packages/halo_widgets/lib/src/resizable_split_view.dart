@@ -2,15 +2,23 @@
 // SPDX-License-Identifier: MPL-2.0
 //
 // The side-by-side pane split of docs/design/layouts.md: a primary pane at a
-// preferred width and a secondary pane taking the rest — ALL of the rest:
-// the divider consumes no layout space. It is a transparent drag overlay on
-// the secondary's leftmost `dividerWidth` pixels (so tab strips, headers,
-// and backgrounds stretch to the very boundary), the boundary itself is
-// drawn by the shadow the divider casts rightward onto the secondary (a
-// glow in dark mode), and secondary content that wants clearance from the
-// grab area pads itself. Pass
-// `secondary: null` on single-pane shirt sizes instead of swapping widget
-// trees — the primary subtree stays mounted across the flip (scroll
+// preferred width and a secondary pane taking the rest, separated by one of
+// two divider styles:
+//
+// - [SplitDividerStyle.solid] (the DEFAULT): a header-colored
+//   [SolidPaneDivider] bar that owns its own layout space — no overlay, no
+//   shadow. The shared divider language of layout-customizable views
+//   (docs/design/layouts.md).
+// - [SplitDividerStyle.surfaces] (opt-in — Home and Settings): the divider
+//   consumes no layout space. It is a transparent drag overlay on the
+//   secondary's leftmost `dividerWidth` pixels (so tab strips, headers,
+//   and backgrounds stretch to the very boundary), the boundary itself is
+//   drawn by the shadow the divider casts rightward onto the secondary (a
+//   glow in dark mode), and secondary content that wants clearance from
+//   the grab area pads itself via PaneSafeArea.
+//
+// Pass `secondary: null` on single-pane shirt sizes instead of swapping
+// widget trees — the primary subtree stays mounted across the flip (scroll
 // positions and in-progress input survive) and its width animates between
 // full-width and the preferred width.
 //
@@ -26,7 +34,13 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 
 import 'layout.dart';
+import 'pane_divider.dart';
 import 'ui_scale.dart';
+
+/// The two divider treatments a split can use — see the file header. The
+/// choice follows the view's [ViewLayoutPolicy]: solid everywhere, with
+/// fixed views free to opt into surfaces.
+enum SplitDividerStyle { solid, surfaces }
 
 class ResizableSplitView extends StatefulWidget {
   final Widget primary;
@@ -47,6 +61,9 @@ class ResizableSplitView extends StatefulWidget {
   /// Fired with the new preferred width when a divider drag ends.
   final ValueChanged<double>? onPreferredPrimaryWidthChanged;
 
+  /// Which divider treatment this split uses (see the file header).
+  final SplitDividerStyle dividerStyle;
+
   const ResizableSplitView({
     super.key,
     required this.primary,
@@ -56,6 +73,7 @@ class ResizableSplitView extends StatefulWidget {
     this.maxPrimaryWidth = double.infinity,
     this.minSecondaryWidth = minPaneWidth,
     this.onPreferredPrimaryWidthChanged,
+    this.dividerStyle = SplitDividerStyle.solid,
   });
 
   /// Width of the divider's transparent grab/hover strip, overlaid on the
@@ -156,10 +174,10 @@ class _ResizableSplitViewState extends State<ResizableSplitView> {
     });
   }
 
-  void _handleDragUpdate(DragUpdateDetails details) {
+  void _handleDragUpdate(double deltaDx) {
     setState(() {
       _dragMoved = true;
-      _dragPosition += details.delta.dx;
+      _dragPosition += deltaDx;
       _preferredWidth = _dragPosition.clamp(_dragLowerBound, _dragUpperBound);
     });
   }
@@ -197,14 +215,18 @@ class _ResizableSplitViewState extends State<ResizableSplitView> {
       builder: (context, constraints) {
         final total = constraints.maxWidth;
         final lower = widget.minPrimaryWidth;
-        // The grab strip overlays the secondary's leftmost pixels, so the
-        // bound reserves dividerWidth on top of minSecondaryWidth — at max
-        // drag the secondary still has its full minimum USABLE. The window
-        // may be too small to honor both minimums; the primary's minimum
-        // wins (upper >= lower keeps clamp() valid).
+        final solid = widget.dividerStyle == SplitDividerStyle.solid;
+        // The bound reserves the divider on top of minSecondaryWidth — for
+        // surfaces because the grab strip overlays the secondary's leftmost
+        // pixels (at max drag the secondary still has its full minimum
+        // USABLE), for solid because the divider owns that much layout
+        // space outright. The window may be too small to honor both
+        // minimums; the primary's minimum wins (upper >= lower keeps
+        // clamp() valid).
+        final reservedDivider = solid ? paneDividerWidth : ResizableSplitView.dividerWidth;
         final upper = math.max(
           lower,
-          math.min(widget.maxPrimaryWidth, total - widget.minSecondaryWidth - ResizableSplitView.dividerWidth),
+          math.min(widget.maxPrimaryWidth, total - widget.minSecondaryWidth - reservedDivider),
         );
         _dragLowerBound = lower;
         _dragUpperBound = upper;
@@ -247,12 +269,14 @@ class _ResizableSplitViewState extends State<ResizableSplitView> {
         final borderColor = dark ? Colors.grey.shade700 : null;
         final shadowAlpha = dark ? ResizableSplitView.dividerShadowAlphaDark : ResizableSplitView.dividerShadowAlpha;
 
-        // The divider owns NO layout space: the secondary pane stretches to
-        // the primary's very edge and the handle is a transparent overlay
-        // on its leftmost pixels (secondary content pads itself if it needs
-        // clearance — see the class doc). With no divider slot there is no
-        // primary + divider sum to overflow; the per-frame cap below only
-        // guards an abrupt window shrink outrunning the tween.
+        // Surfaces: the divider owns NO layout space — the secondary pane
+        // stretches to the primary's very edge and the handle is a
+        // transparent overlay on its leftmost pixels (secondary content
+        // pads itself if it needs clearance — see the class doc). Solid:
+        // the divider is a real Row child of paneDividerWidth, so the
+        // primary's width cap below reserves it to keep the Row from
+        // overflowing during an abrupt window shrink outrunning the tween.
+        final primaryCap = twoPane && solid ? math.max(0.0, total - paneDividerWidth) : total;
         return Row(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
@@ -263,17 +287,32 @@ class _ResizableSplitViewState extends State<ResizableSplitView> {
               builder: (context, width, child) {
                 // Every boundary snaps to the device grid (see the
                 // effectiveWidth comment above) — mid-animation included;
-                // FLOORED so snapping can't exceed `total` (in-flight tween
+                // FLOORED so snapping can't exceed the cap (in-flight tween
                 // values during an abrupt shrink, or a tiny window where
                 // minPrimaryWidth > total), and exactly `total` at
                 // single-pane rest so no right-edge gap.
-                return SizedBox(width: width >= total ? total : snapFloor(width), child: child);
+                return SizedBox(width: width >= primaryCap ? primaryCap : snapFloor(width), child: child);
               },
               child: widget.primary,
             ),
+            if (twoPane && solid)
+              SolidPaneDivider(
+                axis: Axis.horizontal,
+                onDragStart: _handleDragStart,
+                onDragUpdate: _handleDragUpdate,
+                onDragEnd: _handleDragEnd,
+                onDragCancel: _handleDragCancel,
+                dragging: _dragging,
+              ),
             Expanded(
               child: widget.secondary == null
                   ? const SizedBox.shrink()
+                  : solid
+                  // The mechanism stays even though the solid divider needs
+                  // no clearance today (it owns its own space): this wrapper
+                  // is the insertion point where device safe-area insets
+                  // will flow to pane content later.
+                  ? PaneSafeArea(left: 0, child: widget.secondary!)
                   : Stack(
                       children: [
                         Positioned.fill(
@@ -366,7 +405,7 @@ class PaneSafeArea extends InheritedWidget {
 
 class _DividerHandle extends StatefulWidget {
   final VoidCallback onDragStart;
-  final ValueChanged<DragUpdateDetails> onDragUpdate;
+  final ValueChanged<double> onDragUpdate;
   final VoidCallback onDragEnd;
   final VoidCallback onDragCancel;
 
@@ -406,7 +445,7 @@ class _DividerHandleState extends State<_DividerHandle> {
       child: GestureDetector(
         behavior: HitTestBehavior.opaque,
         onHorizontalDragStart: (_) => widget.onDragStart(),
-        onHorizontalDragUpdate: widget.onDragUpdate,
+        onHorizontalDragUpdate: (details) => widget.onDragUpdate(details.delta.dx),
         onHorizontalDragEnd: (_) => widget.onDragEnd(),
         onHorizontalDragCancel: widget.onDragCancel,
         // Visually transparent: the secondary pane's own background shows
