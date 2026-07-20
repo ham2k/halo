@@ -139,6 +139,10 @@ const _aboutPanelOrder = 100;
 const _extensionPanelDefaultOrder = 50;
 
 class SettingsView extends StatefulWidget {
+  /// Settings' arrangement is fixed (docs/design/layouts.md): its split
+  /// opts into the "surfaces" divider style below.
+  static const layoutPolicy = ViewLayoutPolicy.fixed;
+
   final HaLoServices services;
 
   const SettingsView({super.key, required this.services});
@@ -277,6 +281,10 @@ class _SettingsViewState extends State<SettingsView> {
       // pane's AppBar reserves macOS traffic-light clearance — the right
       // one sits mid-window (layouts.md rule 5).
       return ResizableSplitView(
+        // Settings is ViewLayoutPolicy.fixed and opts into the "surfaces"
+        // divider: the selected panel reads as a surface under the sidebar's
+        // shadow. See docs/design/layouts.md.
+        dividerStyle: SplitDividerStyle.surfaces,
         preferredPrimaryWidth: settings.layoutDimension(LayoutKeys.settingsLeftColumn) ?? 320,
         minPrimaryWidth: 240,
         maxPrimaryWidth: idealPaneWidth,

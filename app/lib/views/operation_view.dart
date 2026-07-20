@@ -28,6 +28,12 @@ import 'operation/spots_panel.dart';
 import '../i18n/strings.g.dart';
 
 class OperationView extends StatefulWidget {
+  /// The Operation view is the (currently only) layout-customizable view
+  /// (docs/design/layouts.md): its panes are dock-arrangeable behind the
+  /// 'layouts' experiment, and ALL its dividers — the fixed split's and the
+  /// dock's — use the solid header-colored style (the default).
+  static const layoutPolicy = ViewLayoutPolicy.customizable;
+
   final HaLoServices services;
   final String operationUuid;
 

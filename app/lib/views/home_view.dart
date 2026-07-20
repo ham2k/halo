@@ -147,6 +147,10 @@ class OperationListPanel extends StatelessWidget {
 }
 
 class HomeView extends StatefulWidget {
+  /// Home's arrangement is fixed (docs/design/layouts.md): its split opts
+  /// into the "surfaces" divider style below.
+  static const layoutPolicy = ViewLayoutPolicy.fixed;
+
   final HaLoServices services;
 
   const HomeView({super.key, required this.services});
@@ -280,6 +284,10 @@ class _HomeViewState extends State<HomeView> {
       // sizes pass a null secondary so the list subtree stays mounted (and
       // keeps its scroll position) across a live resize.
       body: ResizableSplitView(
+        // Home is ViewLayoutPolicy.fixed and (for now) opts into the
+        // "surfaces" divider: the branding pane reads as a surface under
+        // the list column's shadow. See docs/design/layouts.md.
+        dividerStyle: SplitDividerStyle.surfaces,
         secondary: ShirtSize.of(context).isTwoPane ? const _BrandingPane() : null,
         // Null when never dragged → the split's own 2/3-capped-at-sMax
         // default applies.

@@ -46,7 +46,53 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(primaryWidth(tester), 500);
+    // The default (solid) divider owns its own layout space between the
+    // panes — the secondary starts after it, no overlay.
+    expect(tester.getSize(find.byKey(const Key('secondary'))).width, 1000 - 500 - paneDividerWidth);
+  });
+
+  testWidgets('surfaces style: the secondary stretches to the primary edge (overlay divider)', (tester) async {
+    tester.view.physicalSize = const Size(1000, 600);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+
+    await tester.pumpWidget(
+      harness(
+        child: const ResizableSplitView(
+          primary: primary,
+          secondary: secondary,
+          preferredPrimaryWidth: 500,
+          dividerStyle: SplitDividerStyle.surfaces,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(primaryWidth(tester), 500);
     expect(tester.getSize(find.byKey(const Key('secondary'))).width, 1000 - 500);
+  });
+
+  testWidgets('solid style: the divider bar is header-colored', (tester) async {
+    tester.view.physicalSize = const Size(1000, 600);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+
+    await tester.pumpWidget(
+      harness(
+        child: const ResizableSplitView(primary: primary, secondary: secondary, preferredPrimaryWidth: 500),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final theme = Theme.of(tester.element(dividerHandle));
+    final headerColor = theme.appBarTheme.backgroundColor ?? theme.colorScheme.primary;
+    final bar = tester.widget<Container>(
+      find.descendant(
+        of: dividerHandle,
+        matching: find.byWidgetPredicate((w) => w is Container && w.color == headerColor),
+      ),
+    );
+    expect(bar.color, headerColor, reason: 'the solid divider reads as chrome: same surface as the header');
   });
 
   testWidgets('no preference defaults primary to 2/3 of the width, capped at sMax', (tester) async {
@@ -131,40 +177,52 @@ void main() {
     expect(primaryWidth(tester), 700, reason: 'still 2/3-adaptive: a click must not freeze the width');
   });
 
-  testWidgets('PaneSafeArea advises the secondary of the grab-strip clearance', (tester) async {
+  testWidgets('PaneSafeArea advises the secondary of the clearance in both styles', (tester) async {
     tester.view.physicalSize = const Size(1000, 600);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.reset);
 
     double? secondaryLeft;
     double? primaryLeft;
-    await tester.pumpWidget(
-      harness(
-        child: ResizableSplitView(
-          primary: Builder(
-            builder: (context) {
-              primaryLeft = PaneSafeArea.leftOf(context);
-              return primary;
-            },
-          ),
-          secondary: Builder(
-            builder: (context) {
-              secondaryLeft = PaneSafeArea.leftOf(context);
-              return secondary;
-            },
-          ),
-          preferredPrimaryWidth: 500,
+    Widget build(SplitDividerStyle style) => harness(
+      child: ResizableSplitView(
+        dividerStyle: style,
+        primary: Builder(
+          builder: (context) {
+            primaryLeft = PaneSafeArea.leftOf(context);
+            return primary;
+          },
         ),
+        secondary: Builder(
+          builder: (context) {
+            secondaryLeft = PaneSafeArea.leftOf(context);
+            return secondary;
+          },
+        ),
+        preferredPrimaryWidth: 500,
       ),
     );
-    await tester.pumpAndSettle();
 
+    await tester.pumpWidget(build(SplitDividerStyle.surfaces));
+    await tester.pumpAndSettle();
     expect(
       secondaryLeft,
       ResizableSplitView.dividerWidth,
-      reason: 'secondary content insets by the grab strip when it needs interactivity at the edge',
+      reason: 'surfaces: secondary content insets by the grab strip when it needs interactivity at the edge',
     );
     expect(primaryLeft, 0, reason: 'nothing overlays the primary');
+
+    await tester.pumpWidget(build(SplitDividerStyle.solid));
+    await tester.pumpAndSettle();
+    // Zero clearance (the solid divider owns its own space), but the
+    // MECHANISM must stay present — it's the insertion point for device
+    // safe-area insets later.
+    expect(secondaryLeft, 0, reason: 'solid: no overlay, no clearance needed');
+    expect(
+      PaneSafeArea.maybeOf(tester.element(find.byKey(const Key('secondary')))),
+      isNotNull,
+      reason: 'the PaneSafeArea wrapper itself must remain in the tree in solid style',
+    );
   });
 
   testWidgets('the grab dots rest at half opacity and brighten on hover', (tester) async {
@@ -207,7 +265,12 @@ void main() {
       child: MaterialApp(
         theme: theme,
         home: const Scaffold(
-          body: ResizableSplitView(primary: primary, secondary: secondary, preferredPrimaryWidth: 500),
+          body: ResizableSplitView(
+            primary: primary,
+            secondary: secondary,
+            preferredPrimaryWidth: 500,
+            dividerStyle: SplitDividerStyle.surfaces,
+          ),
         ),
       ),
     );
@@ -248,6 +311,7 @@ void main() {
     await tester.pumpWidget(
       harness(
         child: ResizableSplitView(
+          dividerStyle: SplitDividerStyle.surfaces,
           primary: primary,
           secondary: GestureDetector(
             key: const Key('pane-button'),
@@ -310,14 +374,14 @@ void main() {
         child: ResizableSplitView(
           primary: primary,
           secondary: secondary,
-          preferredPrimaryWidth: 600, // doesn't fit: 700 - minSecondary(280) - grab strip
+          preferredPrimaryWidth: 600, // doesn't fit: 700 - minSecondary(280) - divider
           onPreferredPrimaryWidthChanged: reported.add,
         ),
       ),
     );
     await tester.pumpAndSettle();
 
-    expect(primaryWidth(tester), 700 - 280 - ResizableSplitView.dividerWidth);
+    expect(primaryWidth(tester), 700 - 280 - paneDividerWidth);
     expect(reported, isEmpty, reason: 'clamping must never write back the preference');
   });
 
@@ -479,7 +543,7 @@ void main() {
     const overshootTo = 500.0 + 5000.0; // virtual position after the move
     await gesture.moveBy(const Offset(5000, 0));
     await tester.pump();
-    final pinned = 1000 - 280 - ResizableSplitView.dividerWidth;
+    final pinned = 1000 - 280 - paneDividerWidth;
     expect(primaryWidth(tester), pinned);
 
     // Reversing while the cursor is still far past the limit: no movement.

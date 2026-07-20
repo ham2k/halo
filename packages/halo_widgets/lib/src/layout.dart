@@ -41,6 +41,32 @@ const Size minWindowSize = Size(ShirtSize.xsMax, 480.0);
 const Duration layoutAnimationDuration = Duration(milliseconds: 300);
 const Curve layoutAnimationCurve = Curves.easeInOut;
 
+/// Width of the SOLID pane divider (pane_divider.dart) — the default
+/// separator between side-by-side panes: a header-colored bar that owns its
+/// own layout space (no overlay, no shadow). Shared by ResizableSplitView's
+/// solid style and the dock layout's split dividers so the two systems
+/// can't drift apart visually.
+const double paneDividerWidth = 7.0;
+
+/// How a root view participates in layout customization (DESIGN.md §7).
+///
+/// The classification drives the divider language: [customizable] views use
+/// the solid header-colored dividers everywhere (their panes are movable,
+/// and the solid bar reads as furniture between movable modules), while
+/// [fixed] views may opt their splits into the "surfaces" style
+/// (ResizableSplitView's overlay divider with the drop shadow), which
+/// reads as one surface floating over another.
+enum ViewLayoutPolicy {
+  /// The view's arrangement is fixed: panes never move, and its splits may
+  /// use either divider style (Home and Settings currently opt into
+  /// "surfaces").
+  fixed,
+
+  /// The view's panes are user-arrangeable via the dock layout (currently
+  /// only the Operation view). Solid dividers only.
+  customizable,
+}
+
 enum ShirtSize {
   xs,
   s,
