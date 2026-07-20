@@ -43,6 +43,23 @@ class _HarnessState extends State<_Harness> {
 void main() {
   const potaPattern = r'[A-Z0-9]+-(?:[0-9]{4,5}|TEST)';
 
+  testWidgets('both ref inputs disable autocorrect, suggestions, and smart punctuation', (tester) async {
+    // References like "US-1234" are codes, not prose — the "-" in particular
+    // is what iOS smart dashes would turn into an en-dash. Both the chips and
+    // the plain-text variant must keep the soft keyboard out of it.
+    for (final widget in [
+      RefChipsInput(refType: 'pota', label: 'POTA', pattern: potaPattern, refs: const [], onChanged: (_) {}),
+      RefTextInput(refType: 'pota', label: 'POTA', pattern: potaPattern, refs: const [], onChanged: (_) {}),
+    ]) {
+      await tester.pumpWidget(MaterialApp(home: Scaffold(body: widget)));
+      final field = tester.widget<TextField>(find.byType(TextField));
+      expect(field.autocorrect, isFalse, reason: '${widget.runtimeType}: no autocorrect/spell-check');
+      expect(field.enableSuggestions, isFalse, reason: '${widget.runtimeType}: no predictive suggestions');
+      expect(field.smartDashesType, SmartDashesType.disabled, reason: '${widget.runtimeType}: no smart dashes');
+      expect(field.smartQuotesType, SmartQuotesType.disabled, reason: '${widget.runtimeType}: no smart quotes');
+    }
+  });
+
   testWidgets('adds valid refs as chips, rejects invalid input', (tester) async {
     var refs = <Map<String, dynamic>>[];
 

@@ -349,6 +349,14 @@ class _RefChipsInputState extends State<RefChipsInput> {
                     labelColor: widget.labelColor,
                   ),
                   textCapitalization: TextCapitalization.characters,
+                  // References (e.g. "US-1234") are codes, not prose: keep the
+                  // soft keyboard from autocorrecting / spell-checking /
+                  // suggesting, and from smart-punctuating the "-" into an
+                  // en-dash. autocorrect:false also disables iOS spell check.
+                  autocorrect: false,
+                  enableSuggestions: false,
+                  smartDashesType: SmartDashesType.disabled,
+                  smartQuotesType: SmartQuotesType.disabled,
                   inputFormatters: [
                     // Comma and space both work as separators between
                     // multiple references in one field; the extension's
@@ -555,6 +563,12 @@ class _RefTextInputState extends State<RefTextInput> {
           labelColor: widget.labelColor,
         ),
         textCapitalization: TextCapitalization.characters,
+        // Same as the chips variant above: references are codes, so no
+        // autocorrect / suggestions / spell-check / smart punctuation.
+        autocorrect: false,
+        enableSuggestions: false,
+        smartDashesType: SmartDashesType.disabled,
+        smartQuotesType: SmartQuotesType.disabled,
         inputFormatters: [
           FilteringTextInputFormatter.allow(RegExp(r'[a-zA-Z0-9\-, ]')),
           _upperCaseFormatter,

@@ -1268,6 +1268,173 @@ void main() {
     expect(field('Their call').controller!.selection.baseOffset, field('Their call').controller!.text.length);
   });
 
+  testWidgets('a space from an on-screen keyboard advances focus too, not just the hardware Space key', (tester) async {
+    await tester.pumpWidget(host());
+    TextField field(String label) => tester.widget<TextField>(find.widgetWithText(TextField, label));
+
+    // A virtual keyboard delivers a space as a text edit, not a key event, so
+    // the panel's Space shortcut never fires and the field's own filter would
+    // otherwise strip the space silently. `enterText` goes through the input
+    // connection and the field's formatters — exactly that soft-keyboard path,
+    // where `sendKeyEvent` (the test above) is the hardware path.
+    await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'W1AW');
+    await tester.pump();
+    await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'W1AW ');
+    await tester.pump(); // let the interceptor's deferred handler run
+
+    expect(field('Their call').controller!.text, 'W1AW', reason: 'the soft-keyboard space is consumed, not inserted');
+    expect(field('Sent').focusNode!.hasFocus, isTrue, reason: 'a virtual-keyboard space must advance focus');
+
+    // Sent's own filter also strips spaces — the interceptor has to run there
+    // too, or Space would be a dead key in every field but Call.
+    await tester.enterText(find.widgetWithText(TextField, 'Sent'), '59 ');
+    await tester.pump();
+    expect(field('Rcvd').focusNode!.hasFocus, isTrue);
+  });
+
+  testWidgets('a pasted value containing a space is filtered normally, not treated as an advance', (tester) async {
+    await tester.pumpWidget(host());
+    TextField field(String label) => tester.widget<TextField>(find.widgetWithText(TextField, label));
+
+    // Only a lone single-space insertion is the advance gesture. A multi-char
+    // edit that merely contains a space (a paste) must fall through to the
+    // callsign filter, which drops the space — focus stays put.
+    await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'W1 AW');
+    await tester.pump();
+
+    expect(field('Their call').controller!.text, 'W1AW', reason: 'the callsign filter strips the space');
+    expect(field('Their call').focusNode!.hasFocus, isTrue, reason: 'a paste is not a Space-to-advance gesture');
+  });
+
+  testWidgets('a soft-keyboard space is a LITERAL character while a command awaits its parameter, not an advance', (tester) async {
+    // Locks the observable virtual-path behavior in command free-text mode: a
+    // soft-keyboard space must land in the field, not consume-and-advance. The
+    // hardware test above uses sendKeyEvent, which bypasses formatters, so this
+    // is the only coverage for the input-connection path here. (The interceptor
+    // is deliberately absent from the expectsParams/mixedCase formatter
+    // branches, and even if it weren't, _handleSpace re-inserts the literal
+    // space for those modes — a safety net this test also exercises end to end.)
+    Future<Map<String, dynamic>?> fakeReloadPrefix(
+      String input, [
+      Map<String, dynamic>? operation,
+      Map<String, dynamic>? qso,
+      bool execute = false,
+    ]) async {
+      if (input.trim().toUpperCase() == 'RELOAD') return {'expectsParams': true};
+      return null;
+    }
+
+    await tester.pumpWidget(host(interpretCommand: fakeReloadPrefix));
+    TextField field(String label) => tester.widget<TextField>(find.widgetWithText(TextField, label));
+
+    await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'RELOAD');
+    await tester.pump(const Duration(milliseconds: 200)); // let the debounced interpret() switch modes
+
+    // Typing a space via the input connection (soft keyboard) once RELOAD is
+    // recognized: it must land in the field, not consume and advance focus.
+    await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'RELOAD ');
+    await tester.pump();
+
+    expect(field('Their call').controller!.text, 'RELOAD ', reason: 'the space is a literal parameter character here');
+    expect(field('Their call').focusNode!.hasFocus, isTrue, reason: 'focus must not advance mid-command');
+  });
+
+  testWidgets('a soft-keyboard space advances through State and Grid too, not only Call and Sent', (tester) async {
+    // State and Grid carry the interceptor (their formatter list changed from
+    // `const [UpperCaseTextFormatter()]` to include it); the hardware test
+    // bypasses formatters, so dropping `_virtualSpace` from either would go
+    // unnoticed on the virtual path without this. `enterText`ing the field's
+    // current text plus one space is a genuine single-space insertion.
+    //
+    // Freq is intentionally NOT covered here: it uses a numeric keyboard
+    // (numberWithOptions), which has no space bar, so a soft-keyboard space
+    // can't occur in it on a device — the interceptor there is only defensive.
+    await tester.pumpWidget(host(showStateField: true, showGridField: true));
+    TextField field(String label) => tester.widget<TextField>(find.widgetWithText(TextField, label));
+
+    await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'W1AW');
+    await tester.pump();
+    await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'W1AW ');
+    await tester.pump();
+    expect(field('Sent').focusNode!.hasFocus, isTrue);
+
+    await tester.enterText(find.widgetWithText(TextField, 'Sent'), '59 ');
+    await tester.pump();
+    expect(field('Rcvd').focusNode!.hasFocus, isTrue);
+
+    await tester.enterText(find.widgetWithText(TextField, 'Rcvd'), '59 ');
+    await tester.pump();
+    expect(field('State').focusNode!.hasFocus, isTrue, reason: 'space advances Rcvd → State');
+
+    await tester.enterText(find.widgetWithText(TextField, 'State'), ' ');
+    await tester.pump();
+    expect(field('Grid').focusNode!.hasFocus, isTrue, reason: 'space advances State → Grid');
+
+    await tester.enterText(find.widgetWithText(TextField, 'Grid'), ' ');
+    await tester.pump();
+    expect(field('Their call').focusNode!.hasFocus, isTrue, reason: 'space wraps Grid → Call');
+  });
+
+  testWidgets('on iOS the numeric fields (RST and Freq) use the numbers-and-punctuation keyboard, not a pure number pad', (tester) async {
+    // numberWithOptions(signed: true) is the TextInputType that maps to iOS's
+    // NumbersAndPunctuation keyboard: numbers up front, but WITH the symbols
+    // these fields use and a space bar — so Space still rotates focus and RST
+    // digits aren't buried behind the default keyboard's "123" key.
+    debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
+    try {
+      await tester.pumpWidget(host());
+      await openControl(tester, MdiIcons.radio); // reveal the Frequency field
+      TextField field(String label) => tester.widget<TextField>(find.widgetWithText(TextField, label));
+
+      for (final label in ['Sent', 'Rcvd', 'Frequency']) {
+        expect(
+          field(label).keyboardType.signed,
+          isTrue,
+          reason: '$label should use the numbers-and-punctuation keyboard on iOS',
+        );
+      }
+    } finally {
+      // Reset before the body returns — the binding's platform-override
+      // invariant is checked before tearDown runs.
+      debugDefaultTargetPlatformOverride = null;
+    }
+  });
+
+  testWidgets('the logging code fields disable autocorrect, suggestions, and smart punctuation', (tester) async {
+    // Callsigns, RSTs, grids, states, frequencies are codes, not prose — the
+    // soft keyboard must not autocorrect / spell-check / predict / smart-
+    // punctuate them. (autocorrect:false also disables iOS spell check.)
+    await tester.pumpWidget(host(showStateField: true, showGridField: true));
+    await openControl(tester, MdiIcons.radio); // reveal the Frequency field
+    TextField field(String label) => tester.widget<TextField>(find.widgetWithText(TextField, label));
+
+    for (final label in ['Sent', 'Rcvd', 'State', 'Grid', 'Frequency']) {
+      final f = field(label);
+      expect(f.autocorrect, isFalse, reason: '$label must not autocorrect/spell-check');
+      expect(f.enableSuggestions, isFalse, reason: '$label must not show predictive suggestions');
+      expect(f.smartDashesType, SmartDashesType.disabled, reason: '$label must not smart-dash');
+      expect(f.smartQuotesType, SmartQuotesType.disabled, reason: '$label must not smart-quote');
+    }
+  });
+
+  testWidgets('off iOS the numeric fields keep their platform-default keyboard', (tester) async {
+    debugDefaultTargetPlatformOverride = TargetPlatform.android;
+    try {
+      await tester.pumpWidget(host());
+      await openControl(tester, MdiIcons.radio);
+      TextField field(String label) => tester.widget<TextField>(find.widgetWithText(TextField, label));
+
+      // RST falls back to the default keyboard (letters + space) — TextField
+      // resolves the null we pass to TextInputType.text for a single-line
+      // field. Freq keeps the decimal pad it has always used off iOS.
+      expect(field('Sent').keyboardType, TextInputType.text);
+      expect(field('Rcvd').keyboardType, TextInputType.text);
+      expect(field('Frequency').keyboardType.decimal, isTrue);
+    } finally {
+      debugDefaultTargetPlatformOverride = null;
+    }
+  });
+
   testWidgets('Tab cycles focus only through the logging controls, never escaping to a sibling', (tester) async {
     final outside = FocusNode(debugLabel: 'outside');
     addTearDown(outside.dispose);

@@ -711,6 +711,28 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   final GlobalKey _submitButtonKey = GlobalKey();
   double? _editButtonDiameter;
 
+  /// Prepended to each primary field's formatters so a space typed on an
+  /// on-screen keyboard rotates focus / runs a command like the hardware Space
+  /// shortcut does — see [_VirtualSpaceFormatter]. One shared instance since it
+  /// only closes over the stable [_handleSpace] tear-off.
+  late final _VirtualSpaceFormatter _virtualSpace = _VirtualSpaceFormatter(_handleSpace);
+
+  /// Keyboard for the numeric-leaning primary fields (RST, frequency) on iOS.
+  /// `numberWithOptions(signed: true)` selects iOS's NumbersAndPunctuation
+  /// keyboard: numbers up front, but WITH a space bar (so Space still rotates
+  /// focus — see [_VirtualSpaceFormatter]) and the symbols these fields use —
+  /// an RST like "5NN"/"59A" reaches letters via its ABC key, and +/- and the
+  /// frequency separators sit on the primary page. Without it these fields get
+  /// the letter-first default keyboard, which buries digits behind the "123"
+  /// key for input that's mostly numeric.
+  ///
+  /// Null off iOS: Android's default keyboard already has both letters and a
+  /// space bar, and a signed-number type there would instead drop to a numeric
+  /// pad that loses the letters RSTs occasionally need — so each field keeps
+  /// its existing keyboard on other platforms.
+  TextInputType? get _numbersAndPunctuationOnIOS =>
+      isIOSPlatform ? const TextInputType.numberWithOptions(signed: true) : null;
+
   void _scheduleSubmitButtonMeasurement() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
@@ -1850,10 +1872,17 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
                     widget.freqLabel ?? 'Frequency',
                     labelColor: Theme.of(context).colorScheme.onTertiaryContainer,
                   ),
-                  keyboardType: const TextInputType.numberWithOptions(
-                    decimal: true,
-                  ),
+                  // iOS: NumbersAndPunctuation (has the decimal separators, the
+                  // symbols, and a space bar for Space-to-advance); other
+                  // platforms keep the decimal pad.
+                  keyboardType: _numbersAndPunctuationOnIOS ?? const TextInputType.numberWithOptions(decimal: true),
+                  // No autocorrect/suggestions/smart punctuation — see Sent.
+                  autocorrect: false,
+                  enableSuggestions: false,
+                  smartDashesType: SmartDashesType.disabled,
+                  smartQuotesType: SmartQuotesType.disabled,
                   inputFormatters: [
+                    _virtualSpace,
                     FilteringTextInputFormatter.allow(RegExp(r'[0-9.,]')),
                   ],
                   onSubmitted: (_) => _log(),
@@ -3603,11 +3632,17 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
                               textCapitalization: _commandMixedCase
                                   ? TextCapitalization.sentences
                                   : TextCapitalization.characters,
+                              // In command free-text modes (mixedCase /
+                              // expectsParams) a space is a literal parameter
+                              // character, so the interceptor is deliberately
+                              // absent there — only normal callsign mode routes
+                              // Space to focus/command handling.
                               inputFormatters: _commandMixedCase
                                   ? null
                                   : _commandExpectsParams
                                       ? const [UpperCaseTextFormatter()]
                                       : [
+                                          _virtualSpace,
                                           FilteringTextInputFormatter.allow(
                                             RegExp(r'[a-zA-Z0-9/.,]'),
                                           ),
@@ -3636,7 +3671,19 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
                                 // letter on the next keystroke, since
                                 // filtering formatters re-run over the whole
                                 // text. Uppercased like all logging input.
+                                keyboardType: _numbersAndPunctuationOnIOS,
+                                // Amateur-radio codes, not prose: stop the soft
+                                // keyboard from autocorrecting, spell-checking,
+                                // suggesting, or smart-punctuating an RST (or
+                                // any other logging field) into garbage.
+                                // autocorrect:false also turns off iOS spell
+                                // check; the smart types stop "-" → "–".
+                                autocorrect: false,
+                                enableSuggestions: false,
+                                smartDashesType: SmartDashesType.disabled,
+                                smartQuotesType: SmartQuotesType.disabled,
                                 inputFormatters: [
+                                  _virtualSpace,
                                   FilteringTextInputFormatter.allow(
                                     RegExp(r'[0-9a-zA-Z+\-]'),
                                   ),
@@ -3657,7 +3704,15 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
                                 enabled: !fieldsLocked,
                                 style: _primaryFieldStyle(context, fontWeight: FontWeight.w500),
                                 // Same letter-friendly rule as Sent above.
+                                keyboardType: _numbersAndPunctuationOnIOS,
+                                // No autocorrect/suggestions/smart punctuation —
+                                // see Sent.
+                                autocorrect: false,
+                                enableSuggestions: false,
+                                smartDashesType: SmartDashesType.disabled,
+                                smartQuotesType: SmartQuotesType.disabled,
                                 inputFormatters: [
+                                  _virtualSpace,
                                   FilteringTextInputFormatter.allow(
                                     RegExp(r'[0-9a-zA-Z+\-]'),
                                   ),
@@ -3679,7 +3734,13 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
                                 selectAllOnFocus: false,
                                 enabled: !fieldsLocked,
                                 textCapitalization: TextCapitalization.characters,
-                                inputFormatters: const [UpperCaseTextFormatter()],
+                                // No autocorrect/suggestions/smart punctuation —
+                                // see Sent.
+                                autocorrect: false,
+                                enableSuggestions: false,
+                                smartDashesType: SmartDashesType.disabled,
+                                smartQuotesType: SmartQuotesType.disabled,
+                                inputFormatters: [_virtualSpace, const UpperCaseTextFormatter()],
                                 style: _primaryFieldStyle(context, fontWeight: FontWeight.w500),
                                 decoration: _primaryFieldDecoration(context, widget.theirStateLabel ?? 'State'),
                                 onChanged: (_) => _stateTouched = true,
@@ -3697,7 +3758,13 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
                                 selectAllOnFocus: false,
                                 enabled: !fieldsLocked,
                                 textCapitalization: TextCapitalization.characters,
-                                inputFormatters: const [UpperCaseTextFormatter()],
+                                // No autocorrect/suggestions/smart punctuation —
+                                // see Sent.
+                                autocorrect: false,
+                                enableSuggestions: false,
+                                smartDashesType: SmartDashesType.disabled,
+                                smartQuotesType: SmartQuotesType.disabled,
+                                inputFormatters: [_virtualSpace, const UpperCaseTextFormatter()],
                                 style: _primaryFieldStyle(context, fontWeight: FontWeight.w500),
                                 decoration: _primaryFieldDecoration(context, widget.theirGridLabel ?? 'Grid'),
                                 onChanged: (_) => _gridTouched = true,
@@ -4281,5 +4348,44 @@ class MobileDotToSlashFormatter extends TextInputFormatter {
       return newValue;
     }
     return newValue.copyWith(text: text.replaceAll('.', '/'));
+  }
+}
+
+/// Routes a space typed on an on-screen keyboard to [onSpace] — the same
+/// handler the panel's hardware Space shortcut ([_LoggingControlsState._handleSpace])
+/// uses to rotate focus / run call-field command shortcuts.
+///
+/// A virtual keyboard sends a space as a text edit, not a key event, so the
+/// panel's `SingleActivator(LogicalKeyboardKey.space)` never fires for it: the
+/// space is instead inserted (State/Grid, which allow it) or silently stripped
+/// by a field's character filter (Call/Sent/Rcvd/Freq). Either way Space
+/// couldn't rotate focus on mobile. This formatter, placed first, drops a lone
+/// inserted space and invokes the shared handler after the edit resolves.
+///
+/// On a hardware keyboard the shortcut consumes the key before it reaches text
+/// input, so this never triggers there — the two paths don't double-fire.
+class _VirtualSpaceFormatter extends TextInputFormatter {
+  final VoidCallback onSpace;
+
+  const _VirtualSpaceFormatter(this.onSpace);
+
+  @override
+  TextEditingValue formatEditUpdate(TextEditingValue oldValue, TextEditingValue newValue) {
+    // Only a genuine single-space insertion at the cursor — not a paste that
+    // merely contains a space, and not a selection replacement.
+    if (newValue.text.length == oldValue.text.length + 1) {
+      final caret = newValue.selection.end;
+      if (caret > 0 &&
+          caret <= newValue.text.length &&
+          newValue.text[caret - 1] == ' ' &&
+          newValue.text.substring(0, caret - 1) + newValue.text.substring(caret) == oldValue.text) {
+        // Deferred: mutating focus or a controller synchronously from inside a
+        // formatter (mid-text-input) is unsafe. The microtask runs right after
+        // this edit applies and before the next frame.
+        scheduleMicrotask(onSpace);
+        return oldValue;
+      }
+    }
+    return newValue;
   }
 }

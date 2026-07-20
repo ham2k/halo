@@ -95,6 +95,14 @@ bool get isWindowedPlatform =>
 bool get isMobilePlatform =>
     !kIsWeb && (defaultTargetPlatform == TargetPlatform.iOS || defaultTargetPlatform == TargetPlatform.android);
 
+/// True on iOS specifically — used where iOS's soft keyboards behave
+/// differently enough from Android's to warrant a per-platform choice, e.g.
+/// the NumbersAndPunctuation keyboard (numbers-first, but with symbols and a
+/// space bar) that suits the numeric logging fields, where Android's
+/// signed-number type would drop to a letterless numeric pad instead. See
+/// `LoggingControls`'s `_numbersAndPunctuationOnIOS`.
+bool get isIOSPlatform => !kIsWeb && defaultTargetPlatform == TargetPlatform.iOS;
+
 /// The **product name**, tailored per platform so each build reads naturally.
 /// Shown wherever the app names itself in the UI (splash, home header + right
 /// pane, About, onboarding). It stands beneath a HAM2K graphic — which already
