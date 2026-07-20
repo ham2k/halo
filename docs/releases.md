@@ -164,17 +164,30 @@ data and settings:
 
 | Edition | Identity (all platforms) | Signed & distributed? | Update planes |
 |---------|--------------------------|-----------------------|---------------|
-| **Dev** | `com.ham2k.logger.dev` | No — built from source by anyone | None (rebuild by hand) |
+| **Dev** | `com.ham2k.logger.dev` | Locally: no (ad-hoc). In CD: **yes** — signed like the others | Shorebird (own app); no appcast / extension OTA |
 | **Ham2K Logger Next** (pre-release) | `com.ham2k.logger.next` | Yes — official | Binary + Shorebird + extension OTA (own feeds) |
 | **Ham2K Logger** (stable) | `com.ham2k.logger.prod` | Yes — official | Binary + Shorebird + extension OTA (own feeds) |
 
-- **Dev** is the plain, build-it-yourself edition — for quick tests by agents or
-  the maintainers, and for anyone who wants to run HaLo in their own environment.
-  It needs **no signing certificates, no store accounts, and none of the
-  distribution machinery**; a clean public checkout builds it with ad-hoc/no
-  signing. It is **never** shipped through a store, appcast, or Shorebird, and it
-  carries none of those update planes — a new Dev build means rebuilding from
-  source. Everything Dev needs is in the public repo (§8).
+- **Dev** is the build-it-yourself edition — for quick tests by agents or the
+  maintainers, and for anyone who wants to run HaLo in their own environment.
+  **Building it locally needs no signing certificates, no store accounts, and
+  none of the distribution machinery**: a clean public checkout builds it with
+  ad-hoc/no signing, and that path is unchanged.
+
+  **CD is different.** The `macos-dev-release` / `ios-dev-release` workflows
+  produce a *real signed* Dev build — Developer ID + notarized on macOS,
+  TestFlight on iOS — so a Dev build can be installed and run like any normal
+  download instead of fighting Gatekeeper or sideloading. That means CD Dev needs
+  the same signing secrets as the other editions, so those workflows are no
+  longer runnable from a public checkout (previously `macos-dev` was; nothing
+  here is now).
+
+  CD Dev is also a **Shorebird release**, against its own Shorebird app, so Dart
+  patches can target it like any other edition (`ios-dev-patch`,
+  `macos-dev-patch`). It still gets **no appcast and no extension OTA** — a new
+  Dev *binary* means a rebuild or a fresh download. Everything needed to *build*
+  Dev locally remains in the public repo (§8), and that path never touches
+  Shorebird.
 - **Next** and **Regular** are the two **official** editions that Ham2K signs and
   distributes publicly. Next runs ahead of Regular (§2.5) and is where binary
   pre-releases land first. Each is a distinct distributed product with its own
@@ -232,10 +245,10 @@ monthly main version is a binary release.
 
 - **iOS / macOS**: App Store (stable), TestFlight (Next). No sideload path exists
   on iOS, so "out-of-store auto-update" simply does not apply there. The iOS CI
-  (`ios-next` / `ios-prod`, delegating to `app_dist/ci/build-ios.sh`) currently
+  (`ios-next-release` / `ios-prod-release`, delegating to `app_dist/ci/build-ios.sh`) currently
   uploads **both** editions to TestFlight — each keyed on its own app record
   (`com.ham2k.logger.next` / `.prod`); promoting Regular to the public App Store
-  is a later manual step. `ios-dev` is a public, unsigned compile check.
+  is a later manual step. `ios-dev-release` is a public, unsigned compile check.
 - **Android**: Google Play (stable), Play testing track — internal/closed/open —
   (Next).
 
@@ -315,11 +328,116 @@ bleeding-edge  →  unstable  →  stable
 - **Next** has its **own Shorebird app** (Shorebird keys per app identity), so it
   carries its own `bleeding-edge`/`unstable`/`stable` tracks independently.
 
+**Mechanics.** CI publishes every patch to **`bleeding-edge`**; moving it upward
+is a deliberate, separate act:
+
+```
+shorebird patches set-track --release <ver> --patch <n> --track unstable [--flavor <edition>]
+shorebird patches set-track --release <ver> --patch <n> --track stable   [--flavor <edition>]
+```
+
+Use `set-track` for **every** hop, including the last: `shorebird patches promote`
+still works but is **deprecated** ("Use `shorebird patches set-track
+--track=stable` instead"), and it only ever targets `stable`. `set-track` accepts
+any custom track name, so it covers the whole ladder.
+
+**Caveat until in-app track selection ships.** An installed app only checks
+`stable` unless it opts into another track, which needs
+`package:shorebird_code_push` plus a Developer-settings option to choose the ring
+— **planned, not built**. So today a patch on `bleeding-edge` is staged but
+invisible: nothing sees it until it's promoted. That's the intended staging
+behaviour, just with the early rings currently unreachable, so don't expect a test
+device to pick a patch up before promotion.
+
 ### 4.4 App Store policy note
 
 Apple 3.3.1 permits hot-patching only where it does not change the app's intended,
 advertised purpose. Keep patches to fixes and tweaks, not features that alter what
 review was told the app does.
+
+### 4.5 How editions map to Shorebird apps, and CI wiring
+
+Shorebird selects which app a build belongs to by an `app_id` in `shorebird.yaml`,
+and its per-flavor support keys off a **Gradle flavor** (Android) or an **Xcode
+scheme** (iOS/macOS). Our editions are Android Gradle flavors, but on iOS/macOS
+they are driven by the `HALO_EDITION` xcconfig switch with **no per-edition Xcode
+schemes** (§2.6, §8) — deliberately. So Shorebird's `--flavor` can't select the
+app on those platforms.
+
+`shorebird init` handles the Android side for us: it detects the Gradle flavors,
+creates one Shorebird app per flavor, and writes them into `shorebird.yaml` as a
+`flavors:` map (plus a top-level default app it also creates). **Those ids are not
+secrets** — the generated file says so itself — so `shorebird.yaml` is **committed
+as generated**, and Android simply passes `--flavor <edition>`.
+
+iOS and macOS can't use that: with no Xcode schemes, `--flavor` has nothing to
+select, and a flavor-less `shorebird release` would fall back to the top-level
+default app — the wrong one. So for those two platforms the official build/patch
+scripts call `shorebird_select_edition` (`app_dist/ci/shorebird-common.sh`), which
+reads the edition's id out of the committed `flavors:` map and rewrites
+`shorebird.yaml` **without** the map, leaving exactly the intended app as the
+top-level `app_id`. It sits beside where those scripts already write
+`HALO_EDITION` into `Local.xcconfig` — the same edition seam.
+
+The only Shorebird **secret** is `SHOREBIRD_TOKEN`, an API key created in the
+console (Account → API Keys; `shorebird login:ci` is gone). Prefer the
+"Release & Patch only" scope, and note that key expiry will silently start failing
+CI.
+
+**All three editions have a Shorebird app** — `shorebird init` created one per
+flavor, and CD registers a release for each, so Dev is patchable too. **Web gets
+none**: it reloads the latest bundle on load.
+
+**Native requirements** `shorebird init` adds, both needed for code push to work:
+
+- **Android** — `android.permission.INTERNET` in the *main* manifest (it was only
+  in the debug/profile manifests, so release builds had no network at all).
+- **macOS** — `com.apple.security.cs.allow-unsigned-executable-memory` in
+  `Release.entitlements`, since the updater executes patched code under the
+  hardened runtime.
+
+**Flutter version — floor is 3.44.5.** Shorebird's dashboard can only report
+**rollout adoption** (which patch each device is actually running) for releases
+built with **Flutter ≥ 3.44.5**; older releases still patch fine, they just can't
+report. We therefore pin **3.44.6** (the current stable) in `mise.toml`,
+`codemagic.yaml`, and the build scripts — keep those three in step, and don't drop
+below 3.44.5 or adoption tracking goes dark. Because **patches inherit the
+release's Flutter version**, a release built on an older Flutter can never gain
+adoption reporting: it needs a *new release* to do so.
+
+Shorebird supports our pinned Flutter on
+every target platform (its floors — iOS/Android 3.24, macOS 3.27.3, Windows 3.29,
+Linux 3.32.6 — are all below it). `--flutter-version` is a *release*-only flag;
+**patches inherit the release's Flutter version**, so a Flutter-pin bump is
+inherently a new binary release, never a patch (which reinforces §4.2).
+
+**Release step.** For Next/Regular the official builds swap `flutter build
+<ipa|apk|…>` for `shorebird release <platform> --flutter-version=<pin> -- <the
+existing flutter args>`. The `--build-name` / `--build-number` projection (§2.2)
+passes straight through as the **release version**, so each monthly binary is the
+distinct Shorebird release its patches bind to (§4.1). Dev and Web keep plain
+`flutter build`.
+
+**Patch step.** A separate, manually-triggered workflow runs `shorebird patch
+<platform>` (with the same edition selection) and publishes to `bleeding-edge`,
+to be promoted upward explicitly (§4.3); `SHOREBIRD_TRACK` overrides the track.
+Patches must be pure Dart (§4.2). A patch is never distributed, so the macOS
+patch build needs no Developer ID certificate and no notarization.
+
+It passes **`--release-version` explicitly**, resolved by
+`shorebird_release_version` (newest release, or `SHOREBIRD_RELEASE_VERSION`).
+This is not optional: a patch build carries pubspec's placeholder `0.1.0+1`, not
+the release's §2.2-projected version, so Shorebird's default lookup fails with
+`Release not found: "0.1.0+1"`. Re-running the projection wouldn't fix it either —
+the build id encodes the build *date*, so it only reproduces the release's version
+if the patch is cut the same day.
+
+**Wired so far:** iOS, macOS, and Android for **Next** (release + patch). Regular
+follows the same pattern via `HALO_EDITION=prod`; Windows/Linux are not wired yet.
+
+**Prerequisites (one-time):** run `shorebird init` (creates the apps and the
+committed `shorebird.yaml`), then add `SHOREBIRD_TOKEN` to the `ios_signing`,
+`macos_signing`, and `android_signing` groups. Nothing else is secret.
 
 ---
 
@@ -465,7 +583,7 @@ fixed name.
 - The **official CI build logic**, `app_dist/ci/build-macos.sh`. Codemagic only
   reads a `codemagic.yaml` at the repo **root** (no custom path, no includes),
   and that root file is a non-`app_dist` path shared verbatim with the public
-  repo. So the root `codemagic.yaml` keeps the `macos-next`/`macos-prod`
+  repo. So the root `codemagic.yaml` keeps the `macos-next-release`/`macos-prod-release`
   workflows as thin declarations that just run `bash app_dist/ci/build-macos.sh`
   — the actual signing/notarization steps live in that dist-only script. It is
   fine for the public root to *reference* `app_dist/` (a public checkout has no
