@@ -24,8 +24,11 @@
 // feature is a documented no-op there, kept for explicitness in case the
 // mono face ever changes.
 
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 
+import 'layout.dart';
 import 'platform_chrome.dart';
 
 const _tabularFigures = [FontFeature.tabularFigures()];
@@ -192,6 +195,40 @@ double dropdownMenuMaxHeight(BuildContext context) {
   final headerHeight = Theme.of(context).appBarTheme.toolbarHeight ?? kToolbarHeight;
   final available = MediaQuery.sizeOf(context).height - 2 * headerHeight;
   return available.clamp(kMinInteractiveDimension, kMinInteractiveDimension * 10.5);
+}
+
+/// The background for a modal's chrome — a dialog's header/footer bands and a
+/// Modal Pane's header — framing the [ColorScheme.surface] content area.
+///
+/// Deliberately `surfaceContainerHighest`, NOT `surfaceContainerHigh`: this
+/// scheme never sets the latter, so it falls back to `surface` itself
+/// (#FBFCFE light / #191C1E dark) and banding with it would be invisible.
+/// `surfaceContainerHighest` IS set (#DCE4E9 / #40484C) and is the same tone
+/// the operation list and count pills already use.
+Color haloDialogBandColor(BuildContext context) => Theme.of(context).colorScheme.surfaceContainerHighest;
+
+/// The width a plain prompt or confirmation gets — a line or two of text and
+/// a couple of buttons. They look stranded stretched to [maxDialogWidth], so
+/// that width is opt-in ([HaloDialog.wide]) for dialogs that actually carry
+/// content: forms, pickers, filter panels, prose.
+const double compactDialogWidth = 400.0;
+
+/// The widest a modal surface may get: a bit roomier than a pane
+/// ([idealPaneWidth]) so dialogs with side-by-side fields don't feel cramped,
+/// but still far short of a wide window's full width.
+const double maxDialogWidth = idealPaneWidth * 1.3;
+
+/// One box every modal surface is held to — plain dialogs ([showHaloDialog])
+/// and Modal Panes alike — so they read as one family instead of each sizing
+/// itself to its content. Capped at [maxDialogWidth] and at the window height
+/// less one and a half header bars, leaving the header and the bottom edge
+/// visibly clear. Never negative: a window shorter than that clearance (no
+/// native min-size floor on web/Linux; a large font scale divides the logical
+/// height further) would otherwise assert on invalid constraints.
+BoxConstraints haloDialogConstraints(BuildContext context) {
+  final headerHeight = Theme.of(context).appBarTheme.toolbarHeight ?? kToolbarHeight;
+  final maxHeight = math.max(0.0, MediaQuery.sizeOf(context).height - headerHeight * 1.5);
+  return BoxConstraints(maxWidth: maxDialogWidth, maxHeight: maxHeight);
 }
 
 /// Ham2K's compact text-field decoration, used for every text field in the

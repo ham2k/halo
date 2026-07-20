@@ -16,6 +16,7 @@ import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:halo_core/halo_core.dart';
+import 'package:halo_widgets/halo_widgets.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:ham2k_logger/i18n/strings.g.dart';
@@ -95,16 +96,16 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byType(ActivitiesPane), findsNothing);
-    expect(find.byType(AlertDialog), findsOneWidget);
-    expect(find.descendant(of: find.byType(AlertDialog), matching: find.text('Callsign')), findsWidgets);
+    expect(find.byType(HaloDialog), findsOneWidget);
+    expect(find.descendant(of: find.byType(HaloDialog), matching: find.text('Callsign')), findsWidgets);
 
-    await tester.enterText(find.descendant(of: find.byType(AlertDialog), matching: find.byType(TextField)), 'ki2d');
+    await tester.enterText(find.descendant(of: find.byType(HaloDialog), matching: find.byType(TextField)), 'ki2d');
     await tester.pump();
-    expect(find.descendant(of: find.byType(AlertDialog), matching: find.text('ki2d')), findsOneWidget,
+    expect(find.descendant(of: find.byType(HaloDialog), matching: find.text('ki2d')), findsOneWidget,
         reason: 'the typed callsign should be in the dialog field');
-    await tester.tap(find.descendant(of: find.byType(AlertDialog), matching: find.text('Save')));
+    await tester.tap(find.descendant(of: find.byType(HaloDialog), matching: find.text('Save')));
     await tester.pumpAndSettle();
-    expect(find.byType(AlertDialog), findsNothing);
+    expect(find.byType(HaloDialog), findsNothing);
 
     expect(settings.activeProfile.operatorCall, 'KI2D');
     expect((await services.operations.get(operation.uuid))!.stationCall, 'KI2D');

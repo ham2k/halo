@@ -439,7 +439,7 @@ void main() {
       // outer form's — scope taps to the dialog to avoid ambiguity (the
       // list editor dialog itself only has Done, so Save stays unique).
       Finder dialogSaveButton() =>
-          find.descendant(of: find.byType(AlertDialog), matching: find.widgetWithText(FilledButton, 'Save'));
+          find.descendant(of: find.byType(HaloDialog), matching: find.widgetWithText(FilledButton, 'Save'));
 
       // Add an item through the nested item dialog.
       await tester.tap(find.widgetWithText(TextButton, 'Add Presets'));
@@ -456,7 +456,7 @@ void main() {
       // pre-filled (scoped to the dialog — the summary row behind the
       // barrier shows the same string).
       await tester.tap(
-        find.descendant(of: find.byType(AlertDialog), matching: find.text('Field Day — 1A NNJ')),
+        find.descendant(of: find.byType(HaloDialog), matching: find.text('Field Day — 1A NNJ')),
       );
       await tester.pumpAndSettle();
       expect(find.widgetWithText(TextField, 'Name'), findsOneWidget);
@@ -469,7 +469,7 @@ void main() {
       // Close the editor: the summary row shows the comma-separated values.
       await tester.tap(find.widgetWithText(TextButton, 'Done'));
       await tester.pumpAndSettle();
-      expect(find.byType(AlertDialog), findsNothing);
+      expect(find.byType(HaloDialog), findsNothing);
       expect(find.text('Field Day — 2A NNJ'), findsOneWidget);
 
       // Submitting the outer form includes the edited list.
@@ -530,7 +530,7 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.widgetWithText(SwitchListTile, '20m'), findsOneWidget);
       expect(find.widgetWithText(SwitchListTile, '630m'), findsNothing);
-      expect(find.descendant(of: find.byType(AlertDialog), matching: find.byType(TextField)), findsNothing);
+      expect(find.descendant(of: find.byType(HaloDialog), matching: find.byType(TextField)), findsNothing);
 
       // Selected rows read bold; unselected ones use the disabled color.
       Text rowLabel(String label) => tester.widget<Text>(
@@ -573,7 +573,7 @@ void main() {
       await tester.pumpAndSettle();
 
       // …and the summary keeps the vocabulary's canonical order.
-      expect(find.byType(AlertDialog), findsNothing);
+      expect(find.byType(HaloDialog), findsNothing);
       expect(find.text('80m, 40m, 20m, 630m'), findsOneWidget);
 
       // Submitting carries the plain string list.
@@ -620,7 +620,7 @@ void main() {
       // 24 options → the search field is pinned under the list.
       await tester.tap(find.text('Things'));
       await tester.pumpAndSettle();
-      final searchField = find.descendant(of: find.byType(AlertDialog), matching: find.byType(TextField));
+      final searchField = find.descendant(of: find.byType(HaloDialog), matching: find.byType(TextField));
       expect(searchField, findsOneWidget);
 
       // No status row or clear button until a query is typed.
@@ -942,14 +942,14 @@ void main() {
       // Tapping the row opens a dialog listing the options.
       await tester.tap(find.text('Theme Mode'));
       await tester.pumpAndSettle();
-      expect(find.byType(SimpleDialog), findsOneWidget);
-      final dialogDark = find.descendant(of: find.byType(SimpleDialog), matching: find.text('Dark'));
+      expect(find.byType(HaloDialog), findsOneWidget);
+      final dialogDark = find.descendant(of: find.byType(HaloDialog), matching: find.text('Dark'));
       expect(dialogDark, findsOneWidget);
 
       // Picking commits immediately (autosave) and closes the dialog.
       await tester.tap(dialogDark);
       await tester.pumpAndSettle();
-      expect(find.byType(SimpleDialog), findsNothing);
+      expect(find.byType(HaloDialog), findsNothing);
 
       await tester.tap(find.widgetWithText(FilledButton, 'Save'));
       await tester.pumpAndSettle();

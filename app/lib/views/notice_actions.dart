@@ -20,6 +20,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
+import 'package:halo_widgets/halo_widgets.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../main.dart' show navigatorKey;
@@ -71,11 +72,12 @@ void _showNoticeDialog(Map<String, dynamic> args) {
   final dialogActions =
       ((args['dialogActions'] as List?) ?? const []).whereType<Map>().map((a) => a.cast<String, dynamic>()).toList();
 
-  showDialog<void>(
+  showHaloDialog<void>(
     context: context,
-    builder: (dialogContext) => AlertDialog(
+    builder: (dialogContext) => HaloDialog(
+      wide: true,
       title: title != null ? Text(title) : null,
-      content: SingleChildScrollView(child: MarkdownBody(data: text)),
+      content: MarkdownBody(data: text),
       actions: [
         for (final action in dialogActions)
           TextButton(

@@ -465,7 +465,7 @@ class _SpotsPanelState extends State<SpotsPanel> {
     // _mergedRawSpots (re-running the merge pipeline from scratch every
     // time), so opening the dialog re-merged the same spot list 4x.
     final merged = _mergedRawSpots;
-    return showDialog<void>(
+    return showHaloDialog<void>(
         context: context,
         builder: (context) => _SpotsFilterDialog(
           bandFilter: _bandFilter,
@@ -1016,7 +1016,8 @@ class _SpotsFilterDialogState extends State<_SpotsFilterDialog> {
   Widget build(BuildContext context) {
     final t = context.t;
 
-    return AlertDialog(
+    return HaloDialog(
+      wide: true,
       title: Text(t.operation.spots.filters.title),
       content: SizedBox(
         width: 400,

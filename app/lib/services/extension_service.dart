@@ -1222,11 +1222,12 @@ class ExtensionService {
   void _showMarkdownDialog({String? title, required String text, List<Map<String, dynamic>> actions = const []}) {
     final context = navigatorKey.currentContext;
     if (context == null) return;
-    showDialog<void>(
+    showHaloDialog<void>(
       context: context,
-      builder: (dialogContext) => AlertDialog(
+      builder: (dialogContext) => HaloDialog(
+        wide: true,
         title: title != null ? Text(title) : null,
-        content: SingleChildScrollView(child: MarkdownBody(data: text)),
+        content: MarkdownBody(data: text),
         actions: [
           for (final action in actions)
             if (action['label'] is String && _declarativeActionHandler(action) != null)

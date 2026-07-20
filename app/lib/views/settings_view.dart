@@ -891,9 +891,9 @@ class _SyncPanelState extends State<_SyncPanel> {
     final qsoCount = (await widget.services.qsos.syncCounts()).total;
     if (!mounted) return;
 
-    final confirmed = await showDialog<bool>(
+    final confirmed = await showHaloDialog<bool>(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (context) => HaloDialog(
         title: const Text('Replace local data?'),
         content: Text(
           'This backs up and clears $opCount operation${opCount == 1 ? '' : 's'} and $qsoCount '

@@ -6,6 +6,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
+import 'halo_dialog.dart';
 import 'icon_resolver.dart';
 import 'modal_pane.dart';
 import 'text_formatters.dart';
@@ -805,19 +806,25 @@ class FormRendererState extends State<FormRenderer> {
 
     // Wrap the chosen value in a one-element list so a dismissed dialog
     // (null) is distinguishable from picking an option whose value is null.
-    final picked = await showDialog<List<dynamic>>(
+    final picked = await showHaloDialog<List<dynamic>>(
       context: context,
-      builder: (dialogContext) => SimpleDialog(
+      builder: (dialogContext) => HaloDialog(
         title: Text(label),
-        children: [
-          for (final opt in options)
-            ListTile(
-              title: Text(opt['label'] as String),
-              trailing: opt['value'] == current ? Icon(resolveIconName('check')) : null,
-              onTap: () => Navigator.pop(dialogContext, [opt['value']]),
-              mouseCursor: SystemMouseCursors.click,
-            ),
-        ],
+        // Edge to edge, the way SimpleDialog laid its children out; the shell
+        // scrolls the list when the options outgrow the dialog.
+        contentPadding: EdgeInsets.zero,
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            for (final opt in options)
+              ListTile(
+                title: Text(opt['label'] as String),
+                trailing: opt['value'] == current ? Icon(resolveIconName('check')) : null,
+                onTap: () => Navigator.pop(dialogContext, [opt['value']]),
+                mouseCursor: SystemMouseCursors.click,
+              ),
+          ],
+        ),
       ),
     );
     if (picked == null || !mounted) return;
@@ -978,7 +985,7 @@ class FormRendererState extends State<FormRenderer> {
     final itemFields = (el['itemFields'] as List? ?? const []).cast<Map<String, dynamic>>();
     final orderable = el['orderable'] == true;
 
-    await showDialog<void>(
+    await showHaloDialog<void>(
       context: context,
       builder: (dialogContext) => StatefulBuilder(
         builder: (dialogContext, setDialogState) {
@@ -1056,11 +1063,15 @@ class FormRendererState extends State<FormRenderer> {
             );
           }
 
-          return AlertDialog(
+          return HaloDialog(
+            wide: true,
             title: Text(label),
-            content: SizedBox(
-              width: 420,
-              child: SingleChildScrollView(
+            // Rows run edge to edge; the shell's own scroll view is off because
+            // this content scrolls itself, and its width comes from the shared
+            // sizing rather than a fixed 420.
+            contentPadding: EdgeInsets.zero,
+            scrollable: false,
+            content: SingleChildScrollView(
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -1082,7 +1093,6 @@ class FormRendererState extends State<FormRenderer> {
                   ],
                 ),
               ),
-            ),
             actions: [
               TextButton(onPressed: () => Navigator.of(dialogContext).pop(), child: const Text('Done')),
             ],
@@ -1167,7 +1177,7 @@ class FormRendererState extends State<FormRenderer> {
     // dialog's lifetime, so a just-toggled row can't vanish mid-interaction.
     final pinned = ((_values[key] as List?) ?? const []).toSet();
 
-    await showDialog<void>(
+    await showHaloDialog<void>(
       context: context,
       builder: (dialogContext) => StatefulBuilder(
         builder: (dialogContext, setDialogState) {
@@ -1231,11 +1241,15 @@ class FormRendererState extends State<FormRenderer> {
                   ],
             ...filtering ? unknownRows.where((r) => (r['label'] as String).toLowerCase().contains(query)) : unknownRows,
           ];
-          return AlertDialog(
+          return HaloDialog(
+            wide: true,
             title: Text(label),
-            content: SizedBox(
-              width: 360,
-              child: Column(
+            // Rows run edge to edge; the shell's own scroll view is off because
+            // this content scrolls itself, and its width comes from the shared
+            // sizing rather than a fixed 360.
+            contentPadding: EdgeInsets.zero,
+            scrollable: false,
+            content: Column(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
@@ -1304,7 +1318,6 @@ class FormRendererState extends State<FormRenderer> {
                     ),
                 ],
               ),
-            ),
             actions: [
               // One full-width row: the disclosure toggle and Reset live
               // outside the scroll area, on the action row's left, with
@@ -1447,95 +1460,57 @@ Future<Map<String, dynamic>?> showFormDialog(
   final formKey = GlobalKey<FormRendererState>();
   final submittingNotifier = ValueNotifier<bool>(false);
 
-  return showDialog<Map<String, dynamic>>(
+  return showHaloDialog<Map<String, dynamic>>(
     context: context,
     barrierDismissible: false,
-    builder: (context) => AlertDialog(
-      clipBehavior: Clip.antiAlias,
-      titlePadding: EdgeInsets.zero,
-      actionsPadding: EdgeInsets.zero,
-      title: Container(
-        width: double.infinity,
-        decoration: BoxDecoration(
-          color: theme.colorScheme.primary.withOpacity(0.08),
-          border: Border(
-            bottom: BorderSide(
-              color: theme.colorScheme.outlineVariant.withOpacity(0.4),
-              width: 1,
-            ),
-          ),
-        ),
-        padding: const EdgeInsets.fromLTRB(24, 20, 24, 16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
-          children: [
+    builder: (context) => HaloDialog(
+      wide: true,
+      // The shell supplies the header band, its padding AND the title type
+      // (the view-header style), so only the subtitle styles itself.
+      title: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(formDefinition['title'] as String? ?? 'Form'),
+          if (formDefinition['subtitle'] != null) ...[
+            const SizedBox(height: 4),
             Text(
-              formDefinition['title'] as String? ?? 'Form',
-              style: theme.textTheme.titleLarge?.copyWith(
-                fontFamily: 'RobotoSlab',
-                fontWeight: FontWeight.bold,
-                color: theme.colorScheme.primary,
+              formDefinition['subtitle'] as String,
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
               ),
             ),
-            if (formDefinition['subtitle'] != null) ...[
-              const SizedBox(height: 4),
-              Text(
-                formDefinition['subtitle'] as String,
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant,
-                ),
-              ),
-            ],
           ],
-        ),
+        ],
       ),
       contentPadding: const EdgeInsets.fromLTRB(24, 16, 24, 16),
-      content: SizedBox(
-        width: 480,
-        child: SingleChildScrollView(
-          child: FormRenderer(
-            key: formKey,
-            formDefinition: formDefinition,
-            initialState: initialState,
-            validator: validator,
-            transformer: transformer,
-            onChange: onChange,
-            onAction: onAction,
-            onManageAccount: onManageAccount,
-            onOpenLink: onOpenLink,
-            developerMode: developerMode,
-            showActions: false,
-            showTitle: false,
-            submittingNotifier: submittingNotifier,
-            onSubmit: (values) => Navigator.of(context).pop(values),
-            onCancel: () => Navigator.of(context).pop(null),
-          ),
-        ),
+      // Width comes from the shared sizing now, and the shell scrolls the body.
+      content: FormRenderer(
+        key: formKey,
+        formDefinition: formDefinition,
+        initialState: initialState,
+        validator: validator,
+        transformer: transformer,
+        onChange: onChange,
+        onAction: onAction,
+        onManageAccount: onManageAccount,
+        onOpenLink: onOpenLink,
+        developerMode: developerMode,
+        showActions: false,
+        showTitle: false,
+        submittingNotifier: submittingNotifier,
+        onSubmit: (values) => Navigator.of(context).pop(values),
+        onCancel: () => Navigator.of(context).pop(null),
       ),
+      // The shell's footer band supplies the background and padding.
       actions: [
         ValueListenableBuilder<bool>(
           valueListenable: submittingNotifier,
-          builder: (context, isSubmitting, _) {
-            return Container(
-              width: double.infinity,
-              decoration: BoxDecoration(
-                color: theme.colorScheme.primary.withOpacity(0.08),
-                border: Border(
-                  top: BorderSide(
-                    color: theme.colorScheme.outlineVariant.withOpacity(0.4),
-                    width: 1,
-                  ),
-                ),
-              ),
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-              child: _formActionsRow(
-                isSubmitting: isSubmitting,
-                onCancel: () => Navigator.of(context).pop(null),
-                onSave: () => formKey.currentState?.submit(),
-              ),
-            );
-          },
+          builder: (context, isSubmitting, _) => _formActionsRow(
+            isSubmitting: isSubmitting,
+            onCancel: () => Navigator.of(context).pop(null),
+            onSave: () => formKey.currentState?.submit(),
+          ),
         ),
       ],
     ),

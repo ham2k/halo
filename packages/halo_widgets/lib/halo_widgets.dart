@@ -5,6 +5,7 @@ library;
 
 export 'src/activity_controls.dart';
 export 'src/icon_resolver.dart';
+export 'src/halo_dialog.dart';
 export 'src/layout.dart';
 export 'src/logging_controls.dart';
 export 'src/mdi_icons.dart';

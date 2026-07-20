@@ -12,12 +12,31 @@
 // For brief messages or one-or-two-field prompts keep using plain
 // `showDialog` — Modal Panes are for content that fills a pane.
 
-import 'dart:math' as math;
-
 import 'package:flutter/material.dart';
 
+import 'halo_dialog.dart';
 import 'layout.dart';
 import 'platform_chrome.dart';
+import 'theme.dart';
+
+/// `showDialog` with the app's shared modal sizing applied
+/// ([haloDialogConstraints]) — use this instead of `showDialog` directly so
+/// every dialog is held to the same box as a Modal Pane rather than each
+/// growing to fit its own content.
+Future<T?> showHaloDialog<T>({
+  required BuildContext context,
+  required WidgetBuilder builder,
+  bool barrierDismissible = true,
+}) => showDialog<T>(
+  context: context,
+  barrierDismissible: barrierDismissible,
+  // Center first: showDialog hands its builder TIGHT full-screen constraints,
+  // and a ConstrainedBox can't shrink below a tight incoming width — the cap
+  // would silently do nothing. Center loosens them so the cap actually bites.
+  builder: (context) => Center(
+    child: ConstrainedBox(constraints: haloDialogConstraints(context), child: builder(context)),
+  ),
+);
 
 /// Shows [builder]'s content as a Modal Pane and completes with the value
 /// passed to `Navigator.pop`. Call it like `showDialog`.
@@ -139,10 +158,11 @@ class _ModalPaneScaffold extends StatelessWidget {
 
   Widget _buildDialog(BuildContext context) {
     final theme = Theme.of(context);
-    // Never negative: reachable on windows shorter than the inset (no
-    // native min-size floor on web/Linux; large font scales divide the
-    // logical height further) — invalid BoxConstraints assert.
-    final maxPaneHeight = math.max(0.0, MediaQuery.sizeOf(context).height - 96);
+    // The same box every dialog gets, so panes and plain dialogs read as one
+    // family (haloDialogConstraints also guards the height against going
+    // negative on a window shorter than the header clearance).
+    final dialogConstraints = haloDialogConstraints(context);
+    final maxPaneHeight = dialogConstraints.maxHeight;
     // The transparent full-screen Scaffold exists so the route-scoped
     // ScaffoldMessenger has somewhere to show SnackBars ABOVE the barrier
     // (and it absorbs the keyboard inset like any Scaffold). It covers the
@@ -170,13 +190,9 @@ class _ModalPaneScaffold extends StatelessWidget {
                   // A non-scrollable body needs a DETERMINATE height for
                   // its own Expanded sections to divide, so the card
                   // commits to full height instead of shrink-wrapping.
-                  constraints: BoxConstraints(
-                    maxWidth: idealPaneWidth,
-                    minHeight: route.scrollable ? 0 : maxPaneHeight,
-                    maxHeight: maxPaneHeight,
-                  ),
+                  constraints: dialogConstraints.copyWith(minHeight: route.scrollable ? 0 : maxPaneHeight),
                   child: Material(
-                    color: theme.dialogTheme.backgroundColor ?? theme.colorScheme.surfaceContainerHigh,
+                    color: theme.dialogTheme.backgroundColor ?? haloDialogBandColor(context),
                     elevation: 6,
                     shadowColor: Colors.transparent,
                     surfaceTintColor: theme.colorScheme.surfaceTint,
@@ -186,33 +202,38 @@ class _ModalPaneScaffold extends StatelessWidget {
                       mainAxisSize: MainAxisSize.min,
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        Padding(
-                          padding: const EdgeInsets.fromLTRB(24, 12, 12, 0),
-                          child: Row(
-                            children: [
-                              if (route.title != null)
-                                Expanded(child: Text(route.title!, style: theme.textTheme.headlineSmall))
-                              else
-                                const Spacer(),
-                              IconButton(
-                                icon: const Icon(Icons.close),
-                                tooltip: 'Close',
-                                // maybePop — see the barrier handler above.
-                                onPressed: () => Navigator.of(context).maybePop(),
-                              ),
-                            ],
+                        // The same banded header a dialog gets — one shared
+                        // widget, so the two families can't drift apart.
+                        HaloDialogHeader(
+                          title: route.title == null ? null : Text(route.title!),
+                          trailing: IconButton(
+                            icon: const Icon(Icons.close),
+                            tooltip: 'Close',
+                            // maybePop — see the barrier handler above.
+                            onPressed: () => Navigator.of(context).maybePop(),
                           ),
                         ),
+                        // Surface-coloured body framed by the bands. Material,
+                        // not ColoredBox: InkWell content paints its splashes
+                        // on the nearest Material ancestor.
                         if (route.scrollable)
                           Flexible(
-                            child: SingleChildScrollView(
-                              padding: const EdgeInsets.fromLTRB(24, 12, 24, 20),
-                              child: _body(),
+                            child: Material(
+                              color: theme.colorScheme.surface,
+                              child: SizedBox(
+                                width: double.infinity,
+                                child: SingleChildScrollView(
+                                  padding: const EdgeInsets.fromLTRB(24, 20, 24, 20),
+                                  child: _body(),
+                                ),
+                              ),
                             ),
                           )
                         else
                           Expanded(
-                            child: Padding(padding: const EdgeInsets.only(top: 12), child: _body()),
+                            // Edge to edge, no padding — a non-scrollable body
+                            // manages its own layout (see showModalPane's doc).
+                            child: Material(color: theme.colorScheme.surface, child: _body()),
                           ),
                       ],
                     ),
