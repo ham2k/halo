@@ -79,11 +79,7 @@ class StatusBarFooter extends StatefulWidget {
   final List<StatusBarItemData> items;
   final void Function(String key) onDismiss;
 
-  const StatusBarFooter({
-    super.key,
-    required this.items,
-    required this.onDismiss,
-  });
+  const StatusBarFooter({super.key, required this.items, required this.onDismiss});
 
   @override
   State<StatusBarFooter> createState() => _StatusBarFooterState();
@@ -121,10 +117,8 @@ class _StatusBarFooterState extends State<StatusBarFooter> {
     final canExpand = widget.items.length > 1;
     final theme = Theme.of(context);
     final expanded = _expanded && canExpand;
-    final backgroundColor =
-        theme.appBarTheme.backgroundColor ?? theme.colorScheme.primary;
-    final foregroundColor =
-        theme.appBarTheme.foregroundColor ?? theme.colorScheme.onPrimary;
+    final backgroundColor = theme.appBarTheme.backgroundColor ?? theme.colorScheme.primary;
+    final foregroundColor = theme.appBarTheme.foregroundColor ?? theme.colorScheme.onPrimary;
 
     // With no items the footer collapses to nothing, so each screen's own
     // content fills the bottom safe area with its own colour — teal Quick
@@ -139,9 +133,7 @@ class _StatusBarFooterState extends State<StatusBarFooter> {
       child: SafeArea(
         top: false,
         child: InkWell(
-          onTap: canExpand
-              ? () => setState(() => _expanded = !_expanded)
-              : null,
+          onTap: canExpand ? () => setState(() => _expanded = !_expanded) : null,
           // Animates every size change this widget can go through: an item
           // being added/dismissed while collapsed (changes the collapsed
           // row's natural height not at all, but empty<->non-empty toggles
@@ -149,9 +141,7 @@ class _StatusBarFooterState extends State<StatusBarFooter> {
           child: AnimatedSize(
             duration: const Duration(milliseconds: 150),
             alignment: Alignment.bottomCenter,
-            child: expanded
-                ? _buildExpanded(context, foregroundColor)
-                : _buildCollapsed(context, foregroundColor),
+            child: expanded ? _buildExpanded(context, foregroundColor) : _buildCollapsed(context, foregroundColor),
           ),
         ),
       ),
@@ -186,18 +176,10 @@ class _StatusBarFooterState extends State<StatusBarFooter> {
                           for (final group in _groupByIcon(widget.items))
                             Padding(
                               padding: const EdgeInsets.only(right: 4),
-                              child: _IconCountPill(
-                                icon: group.key,
-                                count: group.value,
-                                color: foregroundColor,
-                              ),
+                              child: _IconCountPill(icon: group.key, count: group.value, color: foregroundColor),
                             ),
                         if (last.icon != null) ...[
-                          Icon(
-                            resolveIconName(last.icon),
-                            size: 16,
-                            color: foregroundColor,
-                          ),
+                          Icon(resolveIconName(last.icon), size: 16, color: foregroundColor),
                           const SizedBox(width: 6),
                         ],
                         if (last.isProgress) ...[
@@ -208,18 +190,13 @@ class _StatusBarFooterState extends State<StatusBarFooter> {
                               textAlign: TextAlign.left,
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
-                              style: theme.textTheme.bodySmall?.copyWith(
-                                color: foregroundColor,
-                              ),
+                              style: theme.textTheme.bodySmall?.copyWith(color: foregroundColor),
                             ),
                           ),
                           const SizedBox(width: 8),
                           Expanded(
                             flex: _progressBarFlex,
-                            child: _StatusBarProgressIndicator(
-                              item: last,
-                              color: foregroundColor,
-                            ),
+                            child: _StatusBarProgressIndicator(item: last, color: foregroundColor),
                           ),
                         ] else
                           Expanded(
@@ -227,16 +204,11 @@ class _StatusBarFooterState extends State<StatusBarFooter> {
                               last.title ?? last.text ?? '',
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
-                              style: theme.textTheme.bodySmall?.copyWith(
-                                color: foregroundColor,
-                              ),
+                              style: theme.textTheme.bodySmall?.copyWith(color: foregroundColor),
                             ),
                           ),
                         const SizedBox(width: 4),
-                        _DismissButton(
-                          color: foregroundColor,
-                          onPressed: () => widget.onDismiss(last.key),
-                        ),
+                        _DismissButton(color: foregroundColor, onPressed: () => widget.onDismiss(last.key)),
                       ],
                     ),
                   ),
@@ -259,8 +231,7 @@ class _StatusBarFooterState extends State<StatusBarFooter> {
       child: ListView.separated(
         padding: const EdgeInsets.symmetric(vertical: 4),
         itemCount: list.length,
-        separatorBuilder: (context, index) =>
-            Divider(height: 1, color: foregroundColor.withValues(alpha: 0.3)),
+        separatorBuilder: (context, index) => Divider(height: 1, color: foregroundColor.withValues(alpha: 0.3)),
         itemBuilder: (context, index) => _StatusBarItemRow(
           item: list[index],
           color: foregroundColor,
@@ -286,11 +257,7 @@ class _IconCountPill extends StatelessWidget {
   final int count;
   final Color color;
 
-  const _IconCountPill({
-    required this.icon,
-    required this.count,
-    required this.color,
-  });
+  const _IconCountPill({required this.icon, required this.count, required this.color});
 
   @override
   Widget build(BuildContext context) {
@@ -309,11 +276,7 @@ class _IconCountPill extends StatelessWidget {
           ],
           Text(
             '$count',
-            style: TextStyle(
-              fontSize: 11,
-              fontWeight: FontWeight.bold,
-              color: color,
-            ),
+            style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: color),
           ),
         ],
       ),
@@ -350,11 +313,7 @@ class _StatusBarProgressIndicator extends StatelessWidget {
     final trackColor = color.withValues(alpha: 0.3);
     return item.isIndeterminateProgress
         ? LinearProgressIndicator(color: color, backgroundColor: trackColor)
-        : LinearProgressIndicator(
-            value: item.progressValue,
-            color: color,
-            backgroundColor: trackColor,
-          );
+        : LinearProgressIndicator(value: item.progressValue, color: color, backgroundColor: trackColor);
   }
 }
 
@@ -363,11 +322,7 @@ class _StatusBarItemRow extends StatelessWidget {
   final Color color;
   final VoidCallback onDismiss;
 
-  const _StatusBarItemRow({
-    required this.item,
-    required this.color,
-    required this.onDismiss,
-  });
+  const _StatusBarItemRow({required this.item, required this.color, required this.onDismiss});
 
   @override
   Widget build(BuildContext context) {
@@ -400,10 +355,7 @@ class _StatusBarItemRow extends StatelessWidget {
                   const SizedBox(width: 8),
                   Expanded(
                     flex: _progressBarFlex,
-                    child: _StatusBarProgressIndicator(
-                      item: item,
-                      color: color,
-                    ),
+                    child: _StatusBarProgressIndicator(item: item, color: color),
                   ),
                 ] else
                   Expanded(
@@ -416,18 +368,14 @@ class _StatusBarItemRow extends StatelessWidget {
                             item.title!,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style: theme.textTheme.bodySmall?.copyWith(
-                              color: color,
-                            ),
+                            style: theme.textTheme.bodySmall?.copyWith(color: color),
                           ),
                         if (item.text != null)
                           Text(
                             item.text!,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style: theme.textTheme.bodySmall?.copyWith(
-                              color: color.withValues(alpha: 0.85),
-                            ),
+                            style: theme.textTheme.bodySmall?.copyWith(color: color.withValues(alpha: 0.85)),
                           ),
                       ],
                     ),
@@ -451,11 +399,7 @@ class NoticeStack extends StatefulWidget {
   final List<StatusBarNoticeData> notices;
   final void Function(String key) onDismiss;
 
-  const NoticeStack({
-    super.key,
-    required this.notices,
-    required this.onDismiss,
-  });
+  const NoticeStack({super.key, required this.notices, required this.onDismiss});
 
   @override
   State<NoticeStack> createState() => _NoticeStackState();
@@ -481,23 +425,18 @@ class _NoticeStackState extends State<NoticeStack> {
   /// when it would grow past that. Applied to every card — including the ghost
   /// that sizes the stack — so the whole stack stays within the limit.
   Widget _capHeight(BuildContext context, Widget card) => ConstrainedBox(
-    constraints: BoxConstraints(
-      maxHeight: MediaQuery.sizeOf(context).height * 0.4,
-    ),
-    child: SingleChildScrollView(child: card),
-  );
+        constraints: BoxConstraints(maxHeight: MediaQuery.sizeOf(context).height * 0.4),
+        child: SingleChildScrollView(child: card),
+      );
 
   @override
   Widget build(BuildContext context) {
     if (widget.notices.isEmpty) return const SizedBox.shrink();
 
     final theme = Theme.of(context);
-    final footerColor =
-        theme.appBarTheme.backgroundColor ?? theme.colorScheme.primary;
+    final footerColor = theme.appBarTheme.backgroundColor ?? theme.colorScheme.primary;
     final top = widget.notices.last;
-    final second = widget.notices.length > 1
-        ? widget.notices[widget.notices.length - 2]
-        : null;
+    final second = widget.notices.length > 1 ? widget.notices[widget.notices.length - 2] : null;
     final isDismissingTop = top.key == _dismissingKey;
 
     return Container(
@@ -514,22 +453,18 @@ class _NoticeStackState extends State<NoticeStack> {
             clipBehavior: Clip.none,
             children: [
               // Invisible sizing reference: once the real cards below are
-              // `Positioned` (needed for the peek/expand animation), the Stack
-              // has no unpositioned child left to size itself from, so this
-              // ghost copy of the top card's content establishes its box —
-              // which is also how the peeking card ends up the same height as
-              // the top one, rather than a fixed decorative sliver. `onDismiss`
-              // must be non-null here too so the ghost renders the same close
-              // button as the real top card — otherwise it's shorter and the
-              // real (Positioned-constrained) card overflows its box.
+              // `Positioned` (needed for the peek/expand animation), the
+              // Stack has no unpositioned child left to size itself from, so
+              // this ghost copy of the top card's content establishes its
+              // box — which is also how the peeking card ends up the same
+              // height as the top one, rather than a fixed decorative sliver.
+              // `onDismiss` must be non-null here too so the ghost renders
+              // the same close button as the real top card — otherwise it's
+              // shorter and the real (Positioned-constrained) card overflows
+              // its box.
               Opacity(
                 opacity: 0,
-                child: IgnorePointer(
-                  child: _capHeight(
-                    context,
-                    NoticeCard(notice: top, onDismiss: () {}),
-                  ),
-                ),
+                child: IgnorePointer(child: _capHeight(context, NoticeCard(notice: top, onDismiss: () {}))),
               ),
               if (second != null)
                 AnimatedPositioned(
@@ -544,14 +479,12 @@ class _NoticeStackState extends State<NoticeStack> {
                     child: AnimatedOpacity(
                       duration: _noticeDismissDuration,
                       opacity: isDismissingTop ? 1 : 0.7,
-                      // A no-op `onDismiss` (rather than none) keeps this card's
-                      // rendered height identical to the ghost/top cards — see
-                      // the ghost's comment above. It's inert either way since
-                      // this whole subtree is wrapped in `IgnorePointer`.
-                      child: _capHeight(
-                        context,
-                        NoticeCard(notice: second, onDismiss: () {}),
-                      ),
+                      // A no-op `onDismiss` (rather than none) keeps this
+                      // card's rendered height identical to the ghost/top
+                      // cards — see the ghost's comment above. It's inert
+                      // either way since this whole subtree is wrapped in
+                      // `IgnorePointer`.
+                      child: _capHeight(context, NoticeCard(notice: second, onDismiss: () {})),
                     ),
                   ),
                 ),
@@ -570,10 +503,7 @@ class _NoticeStackState extends State<NoticeStack> {
                     opacity: isDismissingTop ? 0 : 1,
                     child: _capHeight(
                       context,
-                      NoticeCard(
-                        notice: top,
-                        onDismiss: () => _startDismiss(top.key),
-                      ),
+                      NoticeCard(notice: top, onDismiss: () => _startDismiss(top.key)),
                     ),
                   ),
                 ),
@@ -632,10 +562,7 @@ class NoticeCard extends StatelessWidget {
                   Expanded(
                     child: Text(
                       notice.title!,
-                      style: theme.textTheme.titleSmall?.copyWith(
-                        color: onNotice,
-                        fontWeight: FontWeight.bold,
-                      ),
+                      style: theme.textTheme.titleSmall?.copyWith(color: onNotice, fontWeight: FontWeight.bold),
                     ),
                   )
                 else
@@ -645,10 +572,7 @@ class NoticeCard extends StatelessWidget {
                     icon: Icon(Icons.close, size: 18, color: onNotice),
                     onPressed: onDismiss,
                     padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints(
-                      minWidth: 32,
-                      minHeight: 32,
-                    ),
+                    constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
                     mouseCursor: SystemMouseCursors.click,
                   ),
               ],
@@ -671,9 +595,7 @@ class NoticeCard extends StatelessWidget {
                         padding: const EdgeInsets.only(right: 8),
                         child: TextButton(
                           onPressed: action.onTap,
-                          style: TextButton.styleFrom(
-                            foregroundColor: onNotice,
-                          ),
+                          style: TextButton.styleFrom(foregroundColor: onNotice),
                           child: Text(action.label),
                         ),
                       ),
