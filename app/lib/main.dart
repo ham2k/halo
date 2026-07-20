@@ -179,8 +179,17 @@ class _BootGateState extends State<_BootGate> with SingleTickerProviderStateMixi
     // no `Directionality` ancestor yet — `Stack`'s default alignment
     // (`AlignmentDirectional.topStart`) needs one; `Alignment.topLeft`
     // doesn't, since it's not text-direction-relative.
+    //
+    // `StackFit.expand`, NOT the default `loose`: this Stack is the app's
+    // root, and loose constraints silently break the font scale ABOVE 1.0.
+    // UiScale's FittedBox needs tight constraints to scale up to — given
+    // loose ones it just shrink-wraps its (smaller-than-window) child and
+    // paints at natural size, so the UI reflows to the narrower logical
+    // width without ever being magnified. Scaling DOWN kept working, which
+    // is why this hid: an oversized child still gets clamped to the max.
     return Stack(
       alignment: Alignment.topLeft,
+      fit: StackFit.expand,
       children: [
         if (_previousChild != null) _previousChild!,
         FadeTransition(opacity: _fadeController, child: _currentChild),

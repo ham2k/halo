@@ -110,6 +110,52 @@ void main() {
       expect(rect.height, 800);
     });
 
+    testWidgets('UiScale magnifies under LOOSE constraints, not just tight ones', (tester) async {
+      // The regression that broke every scale above Normal: the app root is a
+      // Stack, and a Stack hands non-positioned children LOOSE constraints.
+      // FittedBox only scales up to the constraints it is given, so it
+      // shrink-wrapped instead — the subtree still laid out in the divided
+      // space (the UI reflowed) but was never magnified.
+      //
+      // The asymmetry is why it hid, and why this test checks BOTH directions:
+      // below 1.0 the child is larger than the window and gets clamped, which
+      // looks perfectly correct.
+      tester.view.physicalSize = const Size(800, 800);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
+
+      Future<double> paintedHeightAt(double scale) async {
+        await tester.pumpWidget(
+          MediaQuery(
+            data: const MediaQueryData(size: Size(800, 800)),
+            child: Directionality(
+              textDirection: TextDirection.ltr,
+              // A deliberately loose parent, standing in for the root Stack.
+              child: Align(
+                alignment: Alignment.topLeft,
+                child: UiScale(
+                  scale: scale,
+                  // Aligned, so the box keeps its natural 100pt size instead
+                  // of being stretched to the (divided) viewport by UiScale's
+                  // own sizing SizedBox — otherwise this measures the viewport
+                  // rather than the magnification.
+                  child: const Align(
+                    alignment: Alignment.topLeft,
+                    child: SizedBox(key: Key('box'), width: 100, height: 100),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+        return tester.getRect(find.byKey(const Key('box'))).height;
+      }
+
+      // A 100pt box paints at 100 * scale regardless of how it was constrained.
+      expect(await paintedHeightAt(0.5), closeTo(50, 0.01), reason: 'scaling down already worked');
+      expect(await paintedHeightAt(2.0), closeTo(200, 0.01), reason: 'scaling UP is what was broken');
+    });
+
     testWidgets('UiScale at 1.0 is a pass-through', (tester) async {
       late double reportedScale;
       await tester.pumpWidget(

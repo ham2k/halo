@@ -51,13 +51,24 @@ Text and vector icons stay crisp at any scale: Flutter records the scene as
 vector drawing commands and rasterizes *after* the transform, so glyphs and
 shapes are re-rendered at the effective pixel size.
 
-> **Why `FittedBox`, not a bare `Transform.scale`?** The window hands down
-> *tight* constraints. A plain `Transform` passes those straight through, so a
+> **Why `FittedBox`, not a bare `Transform.scale`?** A plain `Transform` passes
+> the incoming tight constraints straight through, so a
 > `SizedBox(width: size/scale)` inside it would be forced back to full size and
 > nothing would actually scale. `FittedBox` lays its child out at its natural
 > (divided) size under loose constraints first, *then* scales. This was a real
 > bug in the first draft; there's a widget test guarding it
 > (`app/test/font_scale_test.dart`, "UiScale scales the whole subtree").
+>
+> **Why the `SizedBox.expand` around it?** `FittedBox` only scales up to the
+> constraints it is *given*. Handed loose ones it shrink-wraps instead, and the
+> mechanism degrades silently: the subtree still lays out in the divided space —
+> so the UI reflows to narrower breakpoints — but is never magnified. That looks
+> exactly like "the layout changes but the fonts don't". The failure is
+> **asymmetric**, which is why it survived review and a passing guard test:
+> below 1.0 the child is *larger* than the window and gets clamped, so scaling
+> down keeps working. Expanding first makes `UiScale` independent of whatever
+> constraints its parent happens to pass (the app root is a `Stack`, which is
+> loose by default). Guarded by "UiScale magnifies under LOOSE constraints".
 
 ---
 
