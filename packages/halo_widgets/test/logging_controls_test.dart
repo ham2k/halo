@@ -1687,6 +1687,96 @@ void main() {
     expect(dispatched.single.value, {'target': 'ALL'});
   });
 
+  // The round submit button is the primary submit affordance on mobile (no
+  // hardware keyboard). It calls the same _log() as Enter, but was gated on
+  // _canLog — false for a command, which isn't a callsign — so a command could
+  // previously only be run from Enter / the on-screen keyboard's return key,
+  // never this button. Its icon carries no text, so it's found by its icon.
+  Finder submitButton() => find.widgetWithIcon(FilledButton, Icons.upload);
+
+  testWidgets('tapping the submit button accepts a recognized command, the same as Enter', (tester) async {
+    final dispatched = <MapEntry<String, Map<String, dynamic>?>>[];
+    Future<Map<String, dynamic>?> fakeReloadCommand(
+      String input, [
+      Map<String, dynamic>? operation,
+      Map<String, dynamic>? qso,
+      bool execute = false,
+    ]) async {
+      if (input.trim().toUpperCase() != 'RELOADALL') return null;
+      return {
+        'describe': 'Reload all data files?',
+        'confirm': 'Reloading all data files…',
+        'commands': [
+          {
+            'reloadDataFiles': {'target': 'ALL'},
+          },
+        ],
+      };
+    }
+
+    await tester.pumpWidget(host(
+      interpretCommand: fakeReloadCommand,
+      onCommandAction: (action, [params]) async => dispatched.add(MapEntry(action, params)),
+    ));
+
+    // A plain empty field: nothing to submit, button disabled.
+    expect(tester.widget<FilledButton>(submitButton()).onPressed, isNull);
+
+    await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'RELOADALL');
+    // Let the 150ms describe debounce retain the interpretation and rebuild.
+    await tester.pump(const Duration(milliseconds: 200));
+
+    // The fix: a recognized command enables the button even though it isn't a
+    // callsign (so _canLog is false).
+    expect(
+      tester.widget<FilledButton>(submitButton()).onPressed,
+      isNotNull,
+      reason: 'a complete command must enable the submit button, not just Enter',
+    );
+
+    // Tapping the BUTTON (not Enter) runs the command.
+    await tester.tap(submitButton());
+    await tester.pump(const Duration(milliseconds: 200));
+
+    expect(dispatched, hasLength(1));
+    expect(dispatched.single.key, 'reloadDataFiles');
+    expect(dispatched.single.value, {'target': 'ALL'});
+  });
+
+  testWidgets('the submit button stays disabled while a command still awaits its parameters', (tester) async {
+    // A bare command prefix (EXP before its token) is incomplete — Enter falls
+    // through and logs nothing, and the button must not offer to submit it.
+    Future<Map<String, dynamic>?> fakeExpPrefix(
+      String input, [
+      Map<String, dynamic>? operation,
+      Map<String, dynamic>? qso,
+      bool execute = false,
+    ]) async {
+      final match = RegExp(r'^EXP(?:\s+(\S+))?$', caseSensitive: false).firstMatch(input.trim());
+      if (match == null) return null;
+      if (match.group(1) == null) return {'expectsParams': true};
+      return {
+        'describe': 'Toggle experiment ${match.group(1)}?',
+        'commands': const [],
+      };
+    }
+
+    await tester.pumpWidget(host(interpretCommand: fakeExpPrefix));
+
+    await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'EXP');
+    await tester.pump(const Duration(milliseconds: 200));
+    expect(
+      tester.widget<FilledButton>(submitButton()).onPressed,
+      isNull,
+      reason: 'a bare EXP still awaiting its token has nothing to submit',
+    );
+
+    // Completing it (a token) enables the button.
+    await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'EXP FOO');
+    await tester.pump(const Duration(milliseconds: 200));
+    expect(tester.widget<FilledButton>(submitButton()).onPressed, isNotNull);
+  });
+
   testWidgets('a COMPLETE interpretation mid-parameter keeps spaces intact (EXP LA must not snap to EXPLA)', (tester) async {
     // Regression test: pausing after "EXP L" lets the debounce retain a
     // complete interpretation (token "L") — which used to drop the field

@@ -1156,6 +1156,29 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     return _callList.isNotEmpty && _callList.every(looksLikeCallsign);
   }
 
+  /// Whether the call field holds a recognized command that [_log] would act
+  /// on — as opposed to a callsign, an incomplete command still awaiting its
+  /// parameters (`expectsParams`), or plain text. Drives the submit button so
+  /// it accepts a command the same way Enter already does (the field's
+  /// `onSubmitted` and the panel's Enter/numpadEnter shortcut both call
+  /// [_log]). The button is otherwise gated on [_canLog], which is false for a
+  /// command because a command isn't a valid callsign — so on mobile, where
+  /// this button is the primary submit affordance, a command could only be run
+  /// from the on-screen keyboard's return key.
+  ///
+  /// Reads the same interpretation state the describe-message UI does, so the
+  /// button enables in step with the command preview appearing. [_log]
+  /// re-interprets the live text when actually run, so a momentarily stale
+  /// retained value here at worst enables the button for an
+  /// interpret-and-fall-through no-op, never a wrong action.
+  bool get _hasExecutableCommand {
+    if (widget.editingQso != null || widget.interpretCommand == null || _call.isEmpty) {
+      return false;
+    }
+    final interpretation = _currentInterpretation ?? _retainedInterpretation;
+    return interpretation != null && interpretation['expectsParams'] != true;
+  }
+
   /// Call stacking (issue #7): the call field holds "//"-separated calls or
   /// fragments (e.g. "K1ABC//W1AW" — a second call typed in while the first
   /// is still queued up). Scanning left from the cursor, picks the first
@@ -3699,7 +3722,13 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
                               child: FilledButton(
                                 // Disabled while viewing a deleted QSO —
                                 // there's nothing to save; restore first.
-                                onPressed: (!deletedQso && (_pendingDelete || _canLog)) ? _log : null,
+                                // `_hasExecutableCommand` lets the button
+                                // accept a command too, matching Enter (a
+                                // command isn't a callsign, so `_canLog` alone
+                                // would leave it disabled — see that getter).
+                                onPressed: (!deletedQso && (_pendingDelete || _canLog || _hasExecutableCommand))
+                                    ? _log
+                                    : null,
                                 style: FilledButton.styleFrom(
                                   backgroundColor:
                                       accentTheme.colorScheme.tertiary,
