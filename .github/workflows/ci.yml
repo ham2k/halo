@@ -1,11 +1,18 @@
 # Copyright ©️ 2026 Sebastian Delmont <sd@ham2k.com>
 # SPDX-License-Identifier: MPL-2.0
 #
-# Runs the same checks as `mise run test` locally (scripts/test.sh): typecheck
-# and unit-test the TS extensions, rebuild the bundles, then analyze and test
-# every Dart package. Rebuilding the (gitignored) bundles before the Dart
-# tests is the point — the halo_extension_host integration tests load them.
-
+# Runs the same checks as `mise run test` locally (scripts/test.sh), but
+# split across parallel jobs instead of one sequential run:
+#   - extensions: typecheck + unit-test the TS extensions, then build the
+#     bundles and upload them as an artifact.
+#   - dart (matrix): analyze + test the small/independent Dart packages.
+#   - app-test (matrix): app is the slowest package by far (~45% of the old
+#     single-job runtime), so its `flutter test` run is sharded across
+#     several runners on top of the job split.
+# Every job that touches app/ downloads the extension bundles into
+# app/assets/extensions first because app/pubspec.yaml declares that as a
+# required asset directory (fresh checkouts don't have it, it's gitignored)
+# and app's own tests load real bundle content through it.
 name: CI
 
 on:
@@ -14,7 +21,7 @@ on:
   pull_request:
 
 jobs:
-  test:
+  extensions:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -26,10 +33,121 @@ jobs:
           cache: npm
           cache-dependency-path: extensions/package-lock.json
 
+      - name: Install, typecheck, unit test
+        run: |
+          cd extensions
+          npm ci
+          npm run typecheck
+          npm test
+
+      - name: Build bundles
+        run: |
+          cd extensions
+          npm run build
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: extension-bundles
+          path: app/assets/extensions
+          retention-days: 1
+
+  dart:
+    needs: extensions
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        package:
+          - packages/halo_core
+          - packages/halo_build_tools
+          - packages/halo_extension_host
+          - packages/halo_widgets
+    steps:
+      - uses: actions/checkout@v4
+
       # mise provides the Flutter version pinned in mise.toml, so CI and local
       # runs use exactly the same toolchain.
       - name: Set up mise (Flutter toolchain)
         uses: jdx/mise-action@v2
 
-      - name: Run all checks
-        run: ./scripts/test.sh
+      - uses: actions/download-artifact@v4
+        with:
+          name: extension-bundles
+          path: app/assets/extensions
+
+      # flutter_js's QuickJS backend dlopen()s libquickjs_c_bridge_plugin.so,
+      # a prebuilt library that ships inside the pub package (linux/shared/).
+      # It's only staged next to the binary when building a full Linux app;
+      # `flutter test` runs in the host VM, so we must point the loader at
+      # the pub cache ourselves. Only halo_extension_host depends on
+      # flutter_js.
+      - name: Point loader at flutter_js's QuickJS bridge library
+        if: matrix.package == 'packages/halo_extension_host'
+        run: |
+          cd "${{ matrix.package }}"
+          flutter pub get
+          echo "LD_LIBRARY_PATH=$(ls -d "${PUB_CACHE:-$HOME/.pub-cache}"/hosted/pub.dev/flutter_js-*/linux/shared | sort -V | tail -1)" >> "$GITHUB_ENV"
+
+      - name: pub get, analyze, test
+        run: |
+          cd "${{ matrix.package }}"
+          flutter pub get
+          # Fail on warnings and errors; infos (mostly framework-deprecation
+          # churn in form_renderer) are surfaced but non-blocking so CI stays
+          # actionable.
+          flutter analyze --no-fatal-infos
+          flutter test
+
+  # app is the slowest package by far (~45% of the old single-job runtime),
+  # so its `flutter test` run is sharded across runners on top of the job
+  # split. `flutter analyze` only runs once, on shard 0, since it isn't
+  # shardable and gains nothing from repeating it per shard.
+  app-test:
+    needs: extensions
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [0, 1, 2]
+    env:
+      TOTAL_SHARDS: 3
+    steps:
+      - uses: actions/checkout@v4
+
+      # mise provides the Flutter version pinned in mise.toml, so CI and local
+      # runs use exactly the same toolchain.
+      - name: Set up mise (Flutter toolchain)
+        uses: jdx/mise-action@v2
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: extension-bundles
+          path: app/assets/extensions
+
+      # The real Mapbox token file is gitignored; the blank template is a
+      # supported configuration (the Map tab falls back to OpenStreetMap).
+      - name: Use blank Mapbox token template
+        run: cp app/lib/config/mapbox_token.dart.example app/lib/config/mapbox_token.dart
+
+      # app's tests construct a real ExtensionService/ExtensionHost, which on
+      # Linux uses flutter_js's QuickJS backend — same native-library caveat
+      # as packages/halo_extension_host above.
+      - name: Point loader at flutter_js's QuickJS bridge library
+        run: |
+          cd app
+          flutter pub get
+          echo "LD_LIBRARY_PATH=$(ls -d "${PUB_CACHE:-$HOME/.pub-cache}"/hosted/pub.dev/flutter_js-*/linux/shared | sort -V | tail -1)" >> "$GITHUB_ENV"
+
+      - name: analyze
+        if: matrix.shard == 0
+        run: |
+          cd app
+          # Fail on warnings and errors; infos (mostly framework-deprecation
+          # churn in form_renderer) are surfaced but non-blocking so CI stays
+          # actionable.
+          flutter analyze --no-fatal-infos
+
+      - name: test (shard ${{ matrix.shard }} of ${{ env.TOTAL_SHARDS }})
+        run: |
+          cd app
+          flutter test --total-shards="$TOTAL_SHARDS" --shard-index=${{ matrix.shard }}
