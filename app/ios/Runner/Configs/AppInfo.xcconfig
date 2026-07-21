@@ -15,13 +15,18 @@ HALO_EDITION = dev
 // Per-edition home-screen label. It sits under the app icon (which already
 // carries the "Ham2K" mark), so per the branding rule it drops the "Ham2K"
 // prefix and names the platform: "Portable Logger" (+ edition) on iOS/Android.
-HALO_PRODUCT_NAME_dev = Portable Logger (Dev)
-HALO_PRODUCT_NAME_next = Portable Logger (Next)
-HALO_PRODUCT_NAME_prod = Portable Logger
+HALO_PRODUCT_NAME_dev = Logger (Dev)
+HALO_PRODUCT_NAME_next = Logger (Next)
+HALO_PRODUCT_NAME_prod = Logger
+
+HALO_FULL_NAME_dev = Ham2K Portable Logger (Dev)
+HALO_FULL_NAME_next = Ham2K Portable Logger (Next)
+HALO_FULL_NAME_prod = Ham2K Portable Logger
 
 // Selected by nested substitution and consumed by Info.plist's
-// CFBundleDisplayName / CFBundleName.
+// CFBundleDisplayName and CFBundleName.
 HALO_DISPLAY_NAME = $(HALO_PRODUCT_NAME_$(HALO_EDITION))
+HALO_BUNDLE_NAME = $(HALO_FULL_NAME_$(HALO_EDITION))
 
 // Distribution signing team, committed under app_dist/ — absent from public
 // checkouts, which build with no team (unsigned compile checks). A fixed

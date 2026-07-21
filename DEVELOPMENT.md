@@ -151,7 +151,7 @@ platforms (e.g. `NAME=value flutter run …`).
 |---|---|---|---|
 | `HALO_EDITION` | dart-define | `dev` | Build edition: `dev` / `next` / `prod`. See above. |
 | `ONBOARD_AS` | dart-define **or** env | *(unset)* | **Debug builds only** (inert in release). Skips first-run onboarding and applies it directly: `ONBOARD_AS=CALL,activity,…` — the first token is the operator callsign, the rest are extension keys to enable. e.g. `ONBOARD_AS=KI2D,pota,sota`. |
-| `DEV_LABEL` | dart-define **or** env | *(unset)* | **Debug builds only** (inert in release). Shows the given string in the home-screen header, right after the edition badge — to mark which dev build / session is running. e.g. `DEV_LABEL="[HaLo] header work"`. |
+| `DEV_LABEL` | dart-define **or** env | *(unset)* | **Debug builds only** (inert in release). Shows the given string in the home-screen header, right after the edition badge — to mark which dev build / session is running. e.g. `DEV_LABEL="header work"`. |
 | `POLO_OPEN_FIRST_OP` | dart-define **or** env (`=1`) | off | On launch, jump straight into the most recent operation. Handy for iterating on the operation view. |
 | `HAM2K_LOFI_SECRET` | dart-define | *(empty)* | LoFi sync app-attestation secret injected at build time. Empty on dev builds (the extension uses a `no-secret` default). Identifies the build, not the device. |
 
@@ -165,7 +165,7 @@ cd app && flutter run -d macos --dart-define=ONBOARD_AS=KI2D,pota,sota
 ONBOARD_AS=KI2D,pota flutter run -d macos
 
 # Label the running build in the home header (e.g. with your session name)
-cd app && flutter run -d macos --dart-define=DEV_LABEL="[HaLo] header work"
+cd app && flutter run -d macos --dart-define=DEV_LABEL="header work"
 ```
 
 The map token (`app/lib/config/mapbox_token.dart`) and, for release CI, secrets

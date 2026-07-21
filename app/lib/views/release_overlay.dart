@@ -341,7 +341,7 @@ Widget wideModalChrome({required BuildContext context, required Widget child, re
                 borderRadius: BorderRadius.circular(28),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.6),
+                    color: Colors.black.withValues(alpha: 0.85),
                     blurRadius: 22,
                     spreadRadius: 2,
                   ),

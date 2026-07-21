@@ -2843,7 +2843,7 @@ void main() {
     testWidgets('Time and Radio chips show by default; tapping expands, tapping again collapses', (tester) async {
       await tester.pumpWidget(host());
 
-      expect(find.byIcon(MdiIcons.clock), findsOneWidget);
+      expect(find.byIcon(MdiIcons.clockOutline), findsOneWidget);
       expect(find.byIcon(MdiIcons.radio), findsOneWidget);
       expect(find.widgetWithText(TextField, 'Frequency'), findsNothing);
 
@@ -2860,7 +2860,7 @@ void main() {
       await openControl(tester, MdiIcons.radio);
       expect(find.widgetWithText(TextField, 'Frequency'), findsOneWidget);
 
-      await openControl(tester, MdiIcons.clock);
+      await openControl(tester, MdiIcons.clockOutline);
       expect(find.widgetWithText(TextField, 'Frequency'), findsNothing);
       expect(find.widgetWithText(TextField, 'Time (UTC)'), findsOneWidget);
     });
@@ -2890,7 +2890,7 @@ void main() {
 
     testWidgets('Time control sets a manual timestamp used at log time; Now resets it', (tester) async {
       await tester.pumpWidget(host());
-      await openControl(tester, MdiIcons.clock);
+      await openControl(tester, MdiIcons.clockOutline);
 
       await tester.enterText(find.widgetWithText(TextField, 'Time (UTC)'), '03:15');
       await tester.enterText(find.widgetWithText(TextField, 'Date'), '2026-01-02');
@@ -2907,7 +2907,7 @@ void main() {
       );
 
       // Wipe resets to automatic timestamping for the next QSO.
-      await openControl(tester, MdiIcons.clock);
+      await openControl(tester, MdiIcons.clockOutline);
       expect(find.widgetWithText(TextField, 'Time (UTC)'), findsOneWidget);
       final timeField = tester.widget<TextField>(find.widgetWithText(TextField, 'Time (UTC)'));
       expect(timeField.controller!.text, isNot('03:15'));
@@ -2915,11 +2915,11 @@ void main() {
 
     testWidgets('Now button clears a manual time override', (tester) async {
       await tester.pumpWidget(host());
-      await openControl(tester, MdiIcons.clock);
+      await openControl(tester, MdiIcons.clockOutline);
 
       await tester.enterText(find.widgetWithText(TextField, 'Time (UTC)'), '03:15');
       await tester.pump();
-      expect(find.byIcon(MdiIcons.clock), findsOneWidget); // chip still rendered
+      expect(find.byIcon(MdiIcons.clockOutline), findsOneWidget); // chip still rendered
 
       await tester.tap(find.widgetWithText(TextButton, 'Now'));
       await tester.pump();
@@ -2930,7 +2930,7 @@ void main() {
 
     testWidgets('Now actually restores automatic timestamping — the reseed must not re-freeze it', (tester) async {
       await tester.pumpWidget(host());
-      await openControl(tester, MdiIcons.clock);
+      await openControl(tester, MdiIcons.clockOutline);
 
       // A date that can never be "today", so Now's reseed always rewrites the
       // field text — which used to re-fire the manual-override listener and
@@ -2957,12 +2957,12 @@ void main() {
 
       // The dialog merely displayed the live clock; saving it untouched must
       // not convert that snapshot into a manual override.
-      await openControl(tester, MdiIcons.clock);
+      await openControl(tester, MdiIcons.clockOutline);
       expect(find.widgetWithText(TextButton, 'Now'), findsNothing);
     });
 
     ChoiceChip timeChip(WidgetTester tester) => tester.widget<ChoiceChip>(
-          find.ancestor(of: find.byIcon(MdiIcons.clock), matching: find.byType(ChoiceChip)),
+          find.ancestor(of: find.byIcon(MdiIcons.clockOutline), matching: find.byType(ChoiceChip)),
         );
 
     testWidgets('Time chip shows a live clock, not a static "now" label', (tester) async {
@@ -2983,7 +2983,7 @@ void main() {
 
     testWidgets('Now button stays hidden until a manual time override is actually set', (tester) async {
       await tester.pumpWidget(host());
-      await openControl(tester, MdiIcons.clock);
+      await openControl(tester, MdiIcons.clockOutline);
 
       expect(find.widgetWithText(TextButton, 'Now'), findsNothing);
 
@@ -3015,7 +3015,7 @@ void main() {
       await tester.pump(const Duration(seconds: 2));
       expect((timeChip(tester).label as Text).data, '12:30:00z');
 
-      await openControl(tester, MdiIcons.clock);
+      await openControl(tester, MdiIcons.clockOutline);
       final timeField = tester.widget<TextField>(find.widgetWithText(TextField, 'Time (UTC)'));
       expect(timeField.controller!.text, '12:30');
       expect(find.widgetWithText(TextButton, 'Now'), findsNothing);
@@ -3088,7 +3088,7 @@ void main() {
           find.ancestor(of: find.byIcon(icon), matching: find.byType(IconButton)),
         );
 
-    final wipeIcon = resolveIconName('backspace');
+    final wipeIcon = resolveIconName('backspace-outline');
     final undoIcon = resolveIconName('undo');
     final deleteIcon = resolveIconName('trash-can-outline');
 

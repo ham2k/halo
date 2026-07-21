@@ -351,7 +351,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "/bin/sh \"$FLUTTER_ROOT/packages/flutter_tools/bin/xcode_backend.sh\" build";
+			shellScript = "cp -R \"${PROJECT_DIR}/Runner/Assets.xcassets/LaunchImage-${HALO_EDITION}.imageset/\" \"${PROJECT_DIR}/Runner/Assets.xcassets/LaunchImage.imageset/\"\n/bin/sh \"$FLUTTER_ROOT/packages/flutter_tools/bin/xcode_backend.sh\" build";
 		};
 		FAC77E80B7C9CE72117CCFAF /* [CP] Check Pods Manifest.lock */ = {
 			isa = PBXShellScriptBuildPhase;

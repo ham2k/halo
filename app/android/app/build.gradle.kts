@@ -37,7 +37,8 @@ android {
         versionName = flutter.versionName
         // Fallback for tooling that resolves the merged manifest without a
         // flavor selected; every real build picks one of the flavors below.
-        manifestPlaceholders["appLabel"] = "Portable Logger"
+        manifestPlaceholders["appLabel"] = "Ham2K Portable Logger"
+        manifestPlaceholders["appIconLabel"] = "Logger"
     }
 
     // Build editions (docs/releases.md §2.6), the Android counterpart of the
@@ -51,17 +52,20 @@ android {
         create("dev") {
             dimension = "edition"
             applicationIdSuffix = ".dev"
-            manifestPlaceholders["appLabel"] = "Portable Logger (Dev)"
+            manifestPlaceholders["appLabel"] = "Ham2K Portable Logger (Dev)"
+            manifestPlaceholders["appIconLabel"] = "Logger (Dev)"
         }
         create("next") {
             dimension = "edition"
             applicationIdSuffix = ".next"
-            manifestPlaceholders["appLabel"] = "Portable Logger (Next)"
+            manifestPlaceholders["appLabel"] = "Ham2K Portable Logger (Next)"
+            manifestPlaceholders["appIconLabel"] = "Logger (Next)"
         }
         create("prod") {
             dimension = "edition"
             applicationIdSuffix = ".prod"
-            manifestPlaceholders["appLabel"] = "Portable Logger"
+            manifestPlaceholders["appLabel"] = "Ham2K Portable Logger"
+            manifestPlaceholders["appIconLabel"] = "Logger"
         }
     }
 

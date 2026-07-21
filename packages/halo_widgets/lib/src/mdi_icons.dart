@@ -21,6 +21,7 @@ class MdiIcons {
   MdiIcons._();
 
   static const IconData clock = IconData(0xf0954, fontFamily: 'MaterialDesignIcons');
+  static const IconData clockOutline = IconData(0xf0150, fontFamily: 'MaterialDesignIcons');
   static const IconData radio = IconData(0xf0439, fontFamily: 'MaterialDesignIcons');
   static const IconData pineTree = IconData(0xf0405, fontFamily: 'MaterialDesignIcons');
   static const IconData puzzle = IconData(0xf0431, fontFamily: 'MaterialDesignIcons');

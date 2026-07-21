@@ -1426,7 +1426,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   List<_ControlDescriptor> _controlDescriptors() => [
         _ControlDescriptor(
           key: 'time',
-          icon: MdiIcons.clock,
+          icon: MdiIcons.clockOutline,
           label: widget.timeControlLabel ?? 'Time',
           mandatory: true,
         ),
@@ -1506,7 +1506,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
 
   SecondaryControlSpec _timeControlSpec() => SecondaryControlSpec(
         key: 'time',
-        icon: MdiIcons.clock,
+        icon: MdiIcons.clockOutline,
         summary: _timeSummary,
         expandedBuilder: (context) => Row(
           mainAxisSize: MainAxisSize.min,
@@ -3123,7 +3123,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
         tooltip = widget.undoLabel ?? 'Undo';
         onPressed = _restoreFromUndoSlot;
       } else {
-        icon = resolveIconName('backspace');
+        icon = resolveIconName('backspace-outline');
         tooltip = widget.wipeLabel ?? 'Wipe';
         onPressed = _hasComposedValues ? _handleWipeTap : null;
       }
@@ -4055,7 +4055,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
       theme,
       // Filled icon in the same accent as the main buttons (tertiary, or
       // secondary while editing — see `accentTheme`).
-      icon: resolveIconName('timer'),
+      icon: resolveIconName('timer-outline'),
       iconColor: theme.colorScheme.tertiary,
       children: [
         for (final line in lines)

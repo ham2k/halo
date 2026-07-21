@@ -242,28 +242,24 @@ class _HomeViewState extends State<HomeView> {
             // (issue #182) — a 3:1 flex split shrinks the trailing group
             // first and further, rather than shrinking both equally.
             Flexible(flex: 3, child: shrinkToFitText(Text(ham2kProductName))),
-            if (ham2kEditionBadgeAsset != null || _devLabel.isNotEmpty)
+            if (ham2kEditionBadgeAsset != null || _devLabel.isNotEmpty) ...[
+              const SizedBox(width: 10),
               Flexible(
                 child: shrinkToFit(
-                  Row(
+                  Column(
                     mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.end,
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // Edition badge to the right of the name, bottom-aligned
-                      // to sit on the text baseline (Regular has no badge).
-                      if (ham2kEditionBadgeAsset != null) ...[
-                        const SizedBox(width: 10),
+                      // Edition badge (Regular has no badge).
+                      if (ham2kEditionBadgeAsset != null)
                         Padding(
-                          padding: const EdgeInsets.only(bottom: 3),
+                          padding: const EdgeInsets.only(bottom: 2),
                           // Zero-offset shadows read as a glow: black for Next, white for Dev.
                           child: Ham2kEditionBadge(height: 15, shadows: ham2kHeaderEditionBadgeShadows),
                         ),
-                      ],
-                      // A free-form dev label (DEV_LABEL) after the edition
-                      // badge — marks which dev build/session is running;
+                      // A free-form dev label (DEV_LABEL) — marks which dev build/session is running;
                       // absent in release builds.
-                      if (_devLabel.isNotEmpty) ...[
-                        const SizedBox(width: 10),
+                      if (_devLabel.isNotEmpty)
                         Text(
                           _devLabel,
                           style: TextStyle(
@@ -273,11 +269,11 @@ class _HomeViewState extends State<HomeView> {
                                 .withValues(alpha: 0.8),
                           ),
                         ),
-                      ],
                     ],
                   ),
                 ),
               ),
+            ],
           ],
         ),
         actions: [

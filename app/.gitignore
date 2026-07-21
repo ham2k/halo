@@ -50,3 +50,8 @@ app.*.map.json
 
 # Cloudflare Wrangler local cache/config
 .wrangler/
+
+# Generated native launch images (copied at build time based on edition)
+/ios/Runner/Assets.xcassets/LaunchImage.imageset/LaunchImage.png
+/ios/Runner/Assets.xcassets/LaunchImage.imageset/LaunchImage@2x.png
+/ios/Runner/Assets.xcassets/LaunchImage.imageset/LaunchImage@3x.png
