@@ -108,10 +108,12 @@
       "allBands": "All Bands",
       "allModes": "All Modes",
       "notDigital": "Not digital",
-      "spotsCount": "${count} spots",
+      "spotsCount": {
+        "one": "${count} spot",
+        "other": "${count} spots"
+      },
       "spotsCountFiltered": "Showing ${count} of ${total} spots",
       "ageMinutes": "${minutes} minutes",
-      "mostRecentSpots": "Most Recent Spots",
       "callsOfNote": "Calls of Note",
       "continents": {
         "af": "Africa",

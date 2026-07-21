@@ -168,6 +168,21 @@ TextStyle haloMonoStyle(
   );
 }
 
+/// The rendered width of [text] in [style], measured the way a `Text` widget
+/// actually lays it out: [style] merged onto the ambient `DefaultTextStyle`
+/// and scaled by the current `textScaler`. Sizing a fixed column to this keeps
+/// it matching what paints — and not clipping under OS/accessibility text
+/// scaling. Shared by the QSO list and the spots panel so the two can't drift.
+double textWidth(BuildContext context, String text, TextStyle style) {
+  final merged = DefaultTextStyle.of(context).style.merge(style);
+  final painter = TextPainter(
+    text: TextSpan(text: text, style: merged),
+    textDirection: TextDirection.ltr,
+    textScaler: MediaQuery.textScalerOf(context),
+  )..layout();
+  return painter.width;
+}
+
 /// Google's Noto Color Emoji, bundled as an app asset (app/pubspec.yaml,
 /// app/assets/fonts/NotoColorEmoji.ttf) specifically because Flutter's web
 /// renderer (CanvasKit/Skia) does its own text shaping and doesn't fall back

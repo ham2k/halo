@@ -151,6 +151,25 @@ void main() {
     });
   });
 
+  group('superModeForMode', () {
+    test('classifies CW, phone, and digital modes', () {
+      expect(superModeForMode('CW'), 'CW');
+      expect(superModeForMode('cw'), 'CW');
+      expect(superModeForMode('SSB'), 'Phone');
+      expect(superModeForMode('FM'), 'Phone');
+      expect(superModeForMode('AM'), 'Phone');
+      expect(superModeForMode('DIGITALVOICE'), 'Phone');
+      expect(superModeForMode('FT8'), 'Digital');
+      expect(superModeForMode('FT4'), 'Digital');
+      expect(superModeForMode('RTTY'), 'Digital');
+      expect(superModeForMode('PSK31'), 'Digital');
+    });
+
+    test('a null mode has no super mode', () {
+      expect(superModeForMode(null), isNull);
+    });
+  });
+
   group('looksLikeCallsign', () {
     test('accepts plausible calls', () {
       expect(looksLikeCallsign('W1AW'), isTrue);

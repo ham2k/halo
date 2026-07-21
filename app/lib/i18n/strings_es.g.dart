@@ -443,10 +443,12 @@ class _Translations$operation$spots$es extends Translations$operation$spots$en {
 	@override String get allBands => 'Todas las bandas';
 	@override String get allModes => 'Todos los modos';
 	@override String get notDigital => 'No digital';
-	@override String spotsCount({required Object count}) => '${count} spots';
+	@override String spotsCount({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count,
+		one: '${count} spot',
+		other: '${count} spots',
+	);
 	@override String spotsCountFiltered({required Object count, required Object total}) => 'Mostrando ${count} de ${total} spots';
 	@override String ageMinutes({required Object minutes}) => '${minutes} minutos';
-	@override String get mostRecentSpots => 'Spots más recientes';
 	@override String get callsOfNote => 'Indicativos destacados';
 	@override late final _Translations$operation$spots$continents$es continents = _Translations$operation$spots$continents$es._(_root);
 	@override late final _Translations$operation$spots$filters$es filters = _Translations$operation$spots$filters$es._(_root);
@@ -849,10 +851,9 @@ extension on TranslationsEs {
 			'operation.spots.allBands' => 'Todas las bandas',
 			'operation.spots.allModes' => 'Todos los modos',
 			'operation.spots.notDigital' => 'No digital',
-			'operation.spots.spotsCount' => ({required Object count}) => '${count} spots',
+			'operation.spots.spotsCount' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count, one: '${count} spot', other: '${count} spots', ), 
 			'operation.spots.spotsCountFiltered' => ({required Object count, required Object total}) => 'Mostrando ${count} de ${total} spots',
 			'operation.spots.ageMinutes' => ({required Object minutes}) => '${minutes} minutos',
-			'operation.spots.mostRecentSpots' => 'Spots más recientes',
 			'operation.spots.callsOfNote' => 'Indicativos destacados',
 			'operation.spots.continents.af' => 'África',
 			'operation.spots.continents.as' => 'Asia',

@@ -18,9 +18,9 @@ import '../../main.dart';
 import '../../i18n/strings.g.dart';
 
 /// Modes excluded from the callsign-merge pass (SpotsPanel.jsx: too many
-/// simultaneous operators on one frequency to safely merge callsigns) and
-/// offered as the 'notDigital' mode filter option — the non-phone, non-CW
-/// subset of `packages/halo_core`'s own `modes` list.
+/// simultaneous operators on one frequency to safely merge callsigns). A
+/// narrower set than the "Digital" super mode ([superModeForMode]) — it's only
+/// about which modes are unsafe to merge, not the mode filter's grouping.
 const _digitalModes = {'FT8', 'FT4', 'RTTY', 'DATA'};
 
 const _ageOptionsInMinutes = [15, 30, 60, 180];
@@ -36,6 +36,21 @@ String? _iconOf(Map<String, dynamic> spot) =>
     spot['icon'] as String? ?? (spot['spot'] as Map?)?['icon'] as String?;
 String? _labelOf(Map<String, dynamic> spot) => (spot['spot'] as Map?)?['label'] as String?;
 bool _isDigital(String? mode) => mode != null && _digitalModes.contains(mode.toUpperCase());
+
+/// The three "super modes" ([superModeForMode]) the mode filter groups spots
+/// by, in the order the dropdown offers them.
+const _superModes = ['Phone', 'CW', 'Digital'];
+
+/// Migrates a persisted mode filter from the retired per-mode/`notDigital`
+/// scheme to the super-mode scheme: 'auto'/'any' and the super modes pass
+/// through, an old individual mode ('SSB', 'FT8', …) maps to its super mode,
+/// and anything else — notably the retired 'notDigital', which spanned two
+/// super modes — resets to 'auto'. Public for unit testing.
+String normalizeModeFilter(String value) {
+  if (value == 'auto' || value == 'any' || _superModes.contains(value)) return value;
+  if (value == 'notDigital') return 'auto';
+  return superModeForMode(value) ?? 'auto';
+}
 
 /// Pass 1: same callsign, close in frequency (0.5kHz) and time (30min) —
 /// merge the second spot's refs into the first instead of listing it again.
@@ -135,16 +150,15 @@ List<Map<String, dynamic>> sortSpots(List<Map<String, dynamic>> spots, String so
 /// Splits already-sorted `spots` into display sections, mirroring
 /// app-polo's SpotsPanel.jsx: `callsWithNotes` spots get a leading
 /// `'notes'`-keyed section (a pinned DUPLICATE — those spots still appear
-/// again in their normal section below, never removed from it); then
-/// either one flat `'time'`-keyed section (when `sortBy == 'time'`,
-/// preserving `spots`' own order) or one section per band the spots
-/// belong to, band-list-ordered with unmatched spots keyed `'?'`. Empty
-/// sections are omitted. Section `key` is a stable identifier, not a
-/// display label — the caller maps it to translated text. Public for
-/// `spots_panel_merge_test.dart`.
+/// again in their normal section below, never removed from it); then one
+/// section per band the spots belong to, band-list-ordered with unmatched
+/// spots keyed `'?'`. Each band keeps `spots`' incoming order, so whichever
+/// sort the caller applied (frequency or most-recent-first) is preserved
+/// WITHIN each band. Empty sections are omitted. Section `key` is a stable
+/// identifier, not a display label — the caller maps it to translated text.
+/// Public for `spots_panel_merge_test.dart`.
 List<({String key, List<Map<String, dynamic>> spots})> sectionSpots(
   List<Map<String, dynamic>> spots, {
-  required String sortBy,
   required Set<String> callsWithNotes,
 }) {
   final sections = <({String key, List<Map<String, dynamic>> spots})>[];
@@ -157,17 +171,13 @@ List<({String key, List<Map<String, dynamic>> spots})> sectionSpots(
     if (noted.isNotEmpty) sections.add((key: 'notes', spots: noted));
   }
 
-  if (sortBy == 'time') {
-    if (spots.isNotEmpty) sections.add((key: 'time', spots: spots));
-  } else {
-    final grouped = <String, List<Map<String, dynamic>>>{};
-    for (final spot in spots) {
-      grouped.putIfAbsent(_bandOf(spot) ?? '?', () => []).add(spot);
-    }
-    final orderedBands = [...bands.map((b) => b.name), '?'].where(grouped.containsKey);
-    for (final band in orderedBands) {
-      sections.add((key: band, spots: grouped[band]!));
-    }
+  final grouped = <String, List<Map<String, dynamic>>>{};
+  for (final spot in spots) {
+    grouped.putIfAbsent(_bandOf(spot) ?? '?', () => []).add(spot);
+  }
+  final orderedBands = [...bands.map((b) => b.name), '?'].where(grouped.containsKey);
+  for (final band in orderedBands) {
+    sections.add((key: band, spots: grouped[band]!));
   }
   return sections;
 }
@@ -215,6 +225,7 @@ class _SpotsPanelState extends State<SpotsPanel> {
   List<Map<String, dynamic>> _activityControls = [];
   Timer? _timer;
   Future<void>? _inFlightFetch;
+  bool _refreshing = false;
 
   String _bandFilter = 'auto';
   String _modeFilter = 'auto';
@@ -267,7 +278,7 @@ class _SpotsPanelState extends State<SpotsPanel> {
     final decoded = widget.services.settings.spottingFilters;
     if (decoded.isEmpty) return;
     _bandFilter = decoded['bandFilter'] as String? ?? _bandFilter;
-    _modeFilter = decoded['modeFilter'] as String? ?? _modeFilter;
+    _modeFilter = normalizeModeFilter(decoded['modeFilter'] as String? ?? _modeFilter);
     _ageMinutes = decoded['ageMinutes'] as int?;
     _disabledSources.addAll((decoded['disabledSources'] as List?)?.cast<String>() ?? const []);
     _disabledContinents.addAll((decoded['disabledContinents'] as List?)?.cast<String>() ?? const []);
@@ -303,6 +314,19 @@ class _SpotsPanelState extends State<SpotsPanel> {
   /// pull-to-refresh) into the one in-flight request instead of doubling
   /// the fan-out to every spots-hook extension.
   Future<void> _fetch() => _inFlightFetch ??= _doFetch().whenComplete(() => _inFlightFetch = null);
+
+  /// The filter-row refresh button's handler: drives a fetch while showing a
+  /// spinner in place of the button's icon. Pull-to-refresh keeps using
+  /// [_fetch] directly — the RefreshIndicator draws its own spinner.
+  Future<void> _refresh() async {
+    if (_refreshing) return;
+    setState(() => _refreshing = true);
+    try {
+      await _fetch();
+    } finally {
+      if (mounted) setState(() => _refreshing = false);
+    }
+  }
 
   Future<void> _doFetch() async {
     try {
@@ -382,7 +406,12 @@ class _SpotsPanelState extends State<SpotsPanel> {
   ({List<Map<String, dynamic>> filtered, int total}) get _filteredSpotsSummary {
     final vfo = widget.services.radio.vfoA;
     final band = _bandFilter == 'auto' ? vfo.band : _bandFilter;
-    final mode = _modeFilter == 'auto' ? vfo.mode : _modeFilter;
+    // The mode filter narrows by super mode (Phone/CW/Digital): 'auto' follows
+    // the VFO's current super mode, 'any' doesn't narrow, otherwise it's the
+    // chosen super mode itself.
+    final superMode = _modeFilter == 'auto'
+        ? superModeForMode(vfo.mode)
+        : (_modeFilter == 'any' ? null : _modeFilter);
 
     var spots = mergeSpotsByFreqAndRefs(mergeSpotsByCallAndFreq(_rawSpots));
     final total = spots.length;
@@ -390,10 +419,8 @@ class _SpotsPanelState extends State<SpotsPanel> {
     if (band != null && band != 'any') {
       spots = spots.where((s) => _bandOf(s) == band).toList();
     }
-    if (mode != null && mode != 'any') {
-      spots = mode == 'notDigital'
-          ? spots.where((s) => !_isDigital(_modeOf(s))).toList()
-          : spots.where((s) => _modeOf(s)?.toUpperCase() == mode.toUpperCase()).toList();
+    if (superMode != null) {
+      spots = spots.where((s) => superModeForMode(_modeOf(s)) == superMode).toList();
     }
     if (_ageMinutes != null) {
       final cutoff = DateTime.now().millisecondsSinceEpoch - _ageMinutes! * 60000;
@@ -444,10 +471,9 @@ class _SpotsPanelState extends State<SpotsPanel> {
   Map<String, int> _modeSpotCountsOf(List<Map<String, dynamic>> merged) {
     final counts = <String, int>{};
     for (final spot in merged) {
-      final mode = _modeOf(spot)?.toUpperCase();
-      if (mode == null) continue;
-      counts.update(mode, (c) => c + 1, ifAbsent: () => 1);
-      if (!_isDigital(mode)) counts.update('notDigital', (c) => c + 1, ifAbsent: () => 1);
+      final superMode = superModeForMode(_modeOf(spot));
+      if (superMode == null) continue;
+      counts.update(superMode, (c) => c + 1, ifAbsent: () => 1);
     }
     return counts;
   }
@@ -472,7 +498,7 @@ class _SpotsPanelState extends State<SpotsPanel> {
           modeFilter: _modeFilter,
           ageMinutes: _ageMinutes,
           autoBand: widget.services.radio.vfoA.band,
-          autoMode: widget.services.radio.vfoA.mode,
+          autoMode: superModeForMode(widget.services.radio.vfoA.mode),
           totalSpotCount: merged.length,
           bandSpotCounts: _bandSpotCountsOf(merged),
           modeSpotCounts: _modeSpotCountsOf(merged),
@@ -539,12 +565,14 @@ class _SpotsPanelState extends State<SpotsPanel> {
     return Column(
       children: [
         _SpotsFilterPill(
-          bandLabel: _bandOptionLabel(t, _bandFilter, vfo.band),
-          modeLabel: _modeOptionLabel(t, _modeFilter, vfo.mode),
+          bandLabel: spotsFilterBandPillLabel(t, _bandFilter, vfo.band),
+          modeLabel: spotsFilterModePillLabel(t, _modeFilter, superModeForMode(vfo.mode)),
           ageMinutes: _ageMinutes,
           filteredCount: summary.filtered.length,
           totalCount: summary.total,
           onTap: _openFilterDialog,
+          onRefresh: _refresh,
+          refreshing: _refreshing,
         ),
         // Clears the bottom safe area (home indicator) itself, now that the
         // status footer no longer reserves it globally; the panel fills behind.
@@ -580,7 +608,7 @@ class _SpotsPanelState extends State<SpotsPanel> {
               if (entry.value.hasNote) entry.key,
           }
         : const <String>{};
-    final rawSections = sectionSpots(filtered, sortBy: _sortBy, callsWithNotes: callsWithNotes);
+    final rawSections = sectionSpots(filtered, callsWithNotes: callsWithNotes);
     final sections = [
       for (final section in rawSections)
         (
@@ -593,6 +621,11 @@ class _SpotsPanelState extends State<SpotsPanel> {
     // computed across every currently-visible spot, not per-tile, so every
     // tile's Hz segment (if any) lines up at the same width.
     final hzDigits = hzDigitsNeeded(filtered.map(_freqOf));
+    // The left column is only as wide as the widest frequency (and mode)
+    // actually on screen — HF-only spots pack tighter than the fixed width
+    // the widest microwave frequency would need. Shared across tiles so their
+    // right-aligned frequencies still line up.
+    final leftWidth = _spotLeftColumnWidth(context, filtered, hzDigits);
 
     return RefreshIndicator(
       onRefresh: _fetch,
@@ -612,6 +645,8 @@ class _SpotsPanelState extends State<SpotsPanel> {
                       spot: spot,
                       noteEmoji: _callNotes[_callOf(spot)]?.emoji,
                       hzDigits: hzDigits,
+                      leftWidth: leftWidth,
+                      sortByAge: _sortBy == 'time',
                       activityControls: _activityControls,
                       onTap: widget.onSuggestQso == null
                           ? null
@@ -626,14 +661,13 @@ class _SpotsPanelState extends State<SpotsPanel> {
   /// Maps a `sectionSpots` section key to its display label.
   String _sectionLabel(Translations t, String key) => switch (key) {
         'notes' => t.operation.spots.callsOfNote,
-        'time' => t.operation.spots.mostRecentSpots,
         '?' => t.operation.spots.unknownBand,
         _ => key,
       };
 }
 
-/// A section group row (band, "Most Recent Spots", or "Calls of Note"),
-/// styled to match `qso_list.dart`'s `DayHeaderRow` (same height,
+/// A section group row (a band or "Calls of Note"), styled to match
+/// `qso_list.dart`'s `DayHeaderRow` (same height,
 /// background, and bottom border) so the two lists read as the same kind
 /// of grouping, not two different UI languages.
 class _SpotsSectionHeader extends StatelessWidget {
@@ -645,28 +679,81 @@ class _SpotsSectionHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return Container(
+      // As tall as a QSO row (qso_list's compact row/day-header height), with
+      // the label vertically centered.
+      constraints: const BoxConstraints(minHeight: _sectionHeaderHeight),
+      alignment: Alignment.centerLeft,
       color: theme.colorScheme.surfaceContainerHighest,
       foregroundDecoration: BoxDecoration(
         border: Border(
           bottom: BorderSide(color: theme.colorScheme.outline, width: 3),
         ),
       ),
-      child: Padding(
-        // Background stays edge-to-edge; the label insets by the split's
-        // grab-strip clearance like the spot rows below it.
-        padding: EdgeInsets.symmetric(horizontal: 12, vertical: 4)
-            .add(EdgeInsets.only(left: PaneSafeArea.leftOf(context))),
-        child: Text(
-          label,
-          style: theme.textTheme.bodyMedium?.copyWith(
-            color: theme.colorScheme.onSurface,
-            fontWeight: FontWeight.w700,
-            height: 1.0,
-          ),
+      // Background stays edge-to-edge; the label insets by the split's
+      // grab-strip clearance like the spot rows below it.
+      padding: EdgeInsets.symmetric(horizontal: 12, vertical: 4)
+          .add(EdgeInsets.only(left: PaneSafeArea.leftOf(context))),
+      child: Text(
+        label,
+        style: theme.textTheme.bodyMedium?.copyWith(
+          color: theme.colorScheme.onSurface,
+          fontWeight: FontWeight.w700,
+          height: 1.0,
         ),
       ),
     );
   }
+}
+
+/// The section header's minimum height, matching a QSO row (qso_list.dart's
+/// compact row/day-header height of 28) so the group separators read as a
+/// tidy band break, not a full spot-row-tall block.
+const double _sectionHeaderHeight = 28;
+
+/// The narrowest left-column width that fits every currently-visible spot's
+/// frequency and mode without clipping — measured with the same text styles
+/// [_SpotTile] renders (RobotoMono is tabular, so `'0'`s stand in for any
+/// digits). HF-only lists come out much tighter than the fixed width the
+/// widest microwave frequency would need, while every row's right-aligned
+/// frequency still lines up. Shared across tiles, recomputed per rebuild.
+double _spotLeftColumnWidth(BuildContext context, List<Map<String, dynamic>> spots, int hzDigits) {
+  final mono = haloMonoStyle(context, fontSize: 14);
+  final boldMono = haloMonoStyle(context, fontSize: 14, fontWeight: FontWeight.w700);
+  final hzMono = haloMonoStyle(context, fontSize: 14 * 0.8);
+  final modeStyle = Theme.of(context).textTheme.bodySmall ?? const TextStyle();
+
+  var maxMhzLen = 0;
+  final modes = <String>{};
+  for (final spot in spots) {
+    final freq = _freqOf(spot);
+    if (freq != null) {
+      final len = freqDisplayParts(freq, hzDigits: hzDigits).mhz.length;
+      if (len > maxMhzLen) maxMhzLen = len;
+    }
+    final mode = _modeOf(spot);
+    if (mode != null && mode.isNotEmpty) modes.add(mode);
+  }
+
+  var width = 0.0;
+  if (maxMhzLen > 0) {
+    // Mirror _SpotTile's freqField piece by piece — a Row of separate Texts:
+    // bold MHz, '.', a 3-digit kHz, and (when shown) '.' + a 0.8×-size Hz
+    // segment — each measured the way a Text lays it out (see [textWidth], which
+    // folds in the ambient DefaultTextStyle's letter-spacing and text scaler so
+    // the cell isn't a hair too tight).
+    width = textWidth(context, '0' * maxMhzLen, boldMono) +
+        textWidth(context, '.', mono) +
+        textWidth(context, '000', mono);
+    if (hzDigits > 0) {
+      width += textWidth(context, '.', mono) + textWidth(context, '0' * hzDigits, hzMono);
+    }
+  }
+  // The mode sits below the frequency in the same column, so it can't clip either.
+  for (final mode in modes) {
+    final w = textWidth(context, mode, modeStyle);
+    if (w > width) width = w;
+  }
+  return width.ceilToDouble();
 }
 
 /// Narrow freq/band/mode column on the left, wide call/notes/refs column on
@@ -679,6 +766,15 @@ class _SpotTile extends StatelessWidget {
   final Map<String, dynamic> spot;
   final String? noteEmoji;
   final int hzDigits;
+
+  /// Width of the fixed left column (freq over mode), sized by the panel to
+  /// the widest frequency/mode currently on screen and shared across tiles so
+  /// their right-aligned frequencies line up.
+  final double leftWidth;
+
+  /// When sorting by age, the age (top-right of the row) is drawn bold so the
+  /// value you're ordering by stands out.
+  final bool sortByAge;
   final List<Map<String, dynamic>> activityControls;
   final VoidCallback? onTap;
 
@@ -686,6 +782,8 @@ class _SpotTile extends StatelessWidget {
     required this.spot,
     this.noteEmoji,
     this.hzDigits = 0,
+    this.leftWidth = 120,
+    this.sortByAge = false,
     this.activityControls = const [],
     this.onTap,
   });
@@ -703,7 +801,8 @@ class _SpotTile extends StatelessWidget {
     final freqKHz = _freqOf(spot);
     final Widget freqField;
     if (freqKHz == null) {
-      freqField = Text(_modeOf(spot) ?? '', style: mono, textAlign: TextAlign.right);
+      // No frequency to show on the top line — the mode still shows below it.
+      freqField = const SizedBox.shrink();
     } else {
       final parts = freqDisplayParts(freqKHz, hzDigits: hzDigits);
       freqField = Row(
@@ -726,78 +825,109 @@ class _SpotTile extends StatelessWidget {
     final refType = refs.isEmpty ? null : refs.first['type'] as String?;
     final refIcon = iconForRefType(activityControls, refType) ?? _iconOf(spot) ?? 'radio-tower';
 
+    // Age sits at the top-right of the row, right-aligned, bold when it's the
+    // sort key.
+    final ageField = Text(
+      _timeAgo(_timeOf(spot)),
+      style: proportional?.copyWith(fontWeight: sortByAge ? FontWeight.w700 : null),
+    );
+
+    // One row line: the fixed-width left column (right-aligned, sized by the
+    // panel to the widest freq/mode on screen) beside the expanded right
+    // column, baseline-aligned so the freq/mode text sits on the same baseline
+    // as the call/label across the gap.
+    Widget line(Widget left, Widget right) => Row(
+          crossAxisAlignment: CrossAxisAlignment.baseline,
+          textBaseline: TextBaseline.alphabetic,
+          children: [
+            SizedBox(
+              width: leftWidth,
+              child: Row(mainAxisAlignment: MainAxisAlignment.end, children: [left]),
+            ),
+            const SizedBox(width: 16),
+            Expanded(child: right),
+          ],
+        );
+
+    final callLine = Row(
+      crossAxisAlignment: CrossAxisAlignment.baseline,
+      textBaseline: TextBaseline.alphabetic,
+      children: [
+        Expanded(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.baseline,
+            textBaseline: TextBaseline.alphabetic,
+            children: [
+              Flexible(
+                child: Text(
+                  _callOf(spot) ?? '?',
+                  style: mono.copyWith(fontWeight: FontWeight.w700),
+                  overflow: TextOverflow.ellipsis,
+                  maxLines: 1,
+                ),
+              ),
+              if (noteEmoji != null) ...[
+                const SizedBox(width: 4),
+                Text(noteEmoji!, style: emojiStyle()),
+              ],
+            ],
+          ),
+        ),
+        const SizedBox(width: 8),
+        ageField,
+      ],
+    );
+
+    final labelLine = _labelOf(spot) == null
+        ? const SizedBox.shrink()
+        : Row(
+            crossAxisAlignment: CrossAxisAlignment.baseline,
+            textBaseline: TextBaseline.alphabetic,
+            children: [
+              Icon(resolveIconName(refIcon), size: mono.fontSize, color: theme.colorScheme.outline),
+              const SizedBox(width: 4),
+              Expanded(
+                child: Text(
+                  _labelOf(spot)!,
+                  style: proportional?.copyWith(fontSize: mono.fontSize),
+                  overflow: TextOverflow.ellipsis,
+                  maxLines: 1,
+                ),
+              ),
+            ],
+          );
+
     final tile = Padding(
       // Rows render edge-to-edge (the ink below spans the full width); the
       // left content inset grows by the split's grab-strip clearance so
       // nothing interactive sits under the divider overlay.
       padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6)
           .add(EdgeInsets.only(left: PaneSafeArea.leftOf(context))),
-      child: Row(
+      child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Wide enough for the widest realistic frequency ("1296.174.000")
-          // — the freq line is right-aligned within it; band/mode spans it
-          // full-width regardless via the Spacer below.
-          SizedBox(
-            width: 120,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                freqField,
-                const SizedBox(height: 2),
-                Row(
-                  children: [
-                    Text(_timeAgo(_timeOf(spot)), style: proportional),
-                    const Spacer(),
-                    Text(_modeOf(spot) ?? '', style: proportional),
-                  ],
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    Text(_callOf(spot) ?? '?', style: mono.copyWith(fontWeight: FontWeight.w700)),
-                    if (noteEmoji != null) ...[
-                      const SizedBox(width: 4),
-                      Text(noteEmoji!, style: emojiStyle()),
-                    ],
-                  ],
-                ),
-                if (_labelOf(spot) != null) ...[
-                  const SizedBox(height: 2),
-                  Row(
-                    children: [
-                      Icon(resolveIconName(refIcon), size: mono.fontSize, color: theme.colorScheme.outline),
-                      const SizedBox(width: 4),
-                      Expanded(
-                        child: Text(
-                          _labelOf(spot)!,
-                          style: proportional?.copyWith(fontSize: mono.fontSize),
-                          overflow: TextOverflow.ellipsis,
-                          maxLines: 1,
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ],
-            ),
-          ),
+          line(freqField, callLine),
+          const SizedBox(height: 2),
+          line(Text(_modeOf(spot) ?? '', style: proportional), labelLine),
         ],
       ),
     );
 
-    if (onTap == null) return tile;
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(onTap: onTap, child: tile),
+    final row = onTap == null
+        ? tile
+        : Material(
+            color: Colors.transparent,
+            child: InkWell(onTap: onTap, child: tile),
+          );
+    // A hairline divider between rows, painted over the row's bottom edge
+    // (foreground) so it adds no height — lighter than the section header's
+    // 3px rule so rows read as subdivisions within a group.
+    return DecoratedBox(
+      position: DecorationPosition.foreground,
+      decoration: BoxDecoration(
+        border: Border(bottom: BorderSide(color: theme.colorScheme.outlineVariant)),
+      ),
+      child: row,
     );
   }
 }
@@ -809,6 +939,8 @@ class _SpotsFilterPill extends StatelessWidget {
   final int filteredCount;
   final int totalCount;
   final VoidCallback onTap;
+  final VoidCallback onRefresh;
+  final bool refreshing;
 
   const _SpotsFilterPill({
     required this.bandLabel,
@@ -817,6 +949,8 @@ class _SpotsFilterPill extends StatelessWidget {
     required this.filteredCount,
     required this.totalCount,
     required this.onTap,
+    required this.onRefresh,
+    required this.refreshing,
   });
 
   @override
@@ -836,21 +970,43 @@ class _SpotsFilterPill extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                _FilterInfoPill(icon: 'radio', label: '$bandLabel • $modeLabel', onTap: onTap),
-                if (ageMinutes != null) ...[
+            // Extra breathing room above and below the pill row.
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 6),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  // Desktop-only manual refresh — mobile refreshes by
+                  // pull-to-refresh instead (RefreshIndicator on the list below).
+                  if (!isMobilePlatform) ...[
+                    _FilterInfoPill(
+                      icon: 'refresh',
+                      color: Colors.black,
+                      loading: refreshing,
+                      onTap: refreshing ? null : onRefresh,
+                    ),
+                    const SizedBox(width: 6),
+                  ],
+                  // The only pill that can grow; flex it so it ellipsizes on a
+                  // narrow panel rather than overflowing the row.
+                  Flexible(child: _FilterInfoPill(icon: 'radio', label: '$bandLabel • $modeLabel', onTap: onTap)),
+                  if (ageMinutes != null) ...[
+                    const SizedBox(width: 6),
+                    _FilterInfoPill(icon: 'clock', label: '${ageMinutes}m', onTap: onTap),
+                  ],
                   const SizedBox(width: 6),
-                  _FilterInfoPill(icon: 'clock', label: '${ageMinutes}m', onTap: onTap),
+                  _FilterInfoPill(icon: 'tune', color: Colors.black, onTap: onTap),
                 ],
-                const SizedBox(width: 6),
-                _FilterInfoPill(icon: 'tune', color: Colors.black, onTap: onTap),
-              ],
+              ),
             ),
             Text(
               countLabel,
-              style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onTertiaryContainer),
+              // Two points larger than the default caption so the spot count
+              // reads clearly under the pills.
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onTertiaryContainer,
+                fontSize: (theme.textTheme.bodySmall?.fontSize ?? 12) + 2,
+              ),
             ),
           ],
         ),
@@ -868,7 +1024,11 @@ class _FilterInfoPill extends StatelessWidget {
   final Color? color;
   final VoidCallback? onTap;
 
-  const _FilterInfoPill({required this.icon, this.label, this.color, this.onTap});
+  /// Swaps the icon for a spinner (same footprint) — used by the refresh
+  /// button while a fetch is in flight.
+  final bool loading;
+
+  const _FilterInfoPill({required this.icon, this.label, this.color, this.onTap, this.loading = false});
 
   @override
   Widget build(BuildContext context) {
@@ -891,14 +1051,30 @@ class _FilterInfoPill extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            Icon(resolveIconName(icon), size: 14, color: effectiveColor),
+            if (loading)
+              SizedBox(
+                width: 14,
+                height: 14,
+                child: CircularProgressIndicator(strokeWidth: 2, color: effectiveColor),
+              )
+            else
+              Icon(resolveIconName(icon), size: 14, color: effectiveColor),
             if (label != null) ...[
               const SizedBox(width: 4),
               // Same size as the secondary logging controls' own pills
               // (SecondaryControlRow's Chip, which uses the ambient
               // ChipTheme's default labelLarge — no explicit style of its
-              // own to match against).
-              Text(label!, style: theme.textTheme.labelLarge?.copyWith(color: effectiveColor)),
+              // own to match against). Flexible + ellipsis so a long label
+              // (e.g. "All Bands • All Modes") shrinks instead of overflowing
+              // when the pill is width-constrained on a narrow panel.
+              Flexible(
+                child: Text(
+                  label!,
+                  style: theme.textTheme.labelLarge?.copyWith(color: effectiveColor),
+                  overflow: TextOverflow.ellipsis,
+                  maxLines: 1,
+                ),
+              ),
             ],
           ],
         ),
@@ -939,10 +1115,29 @@ String _bandOptionLabel(Translations t, String option, String? autoBand) => swit
       _ => option,
     };
 
+/// `autoMode` is the VFO's current *super* mode (Phone/CW/Digital), so "Auto"
+/// reads "Auto (Phone)" — the running band/super-mode the filter follows.
 String _modeOptionLabel(Translations t, String option, String? autoMode) => switch (option) {
       'auto' => autoMode != null ? t.operation.spots.autoValue(value: autoMode) : t.operation.spots.auto,
       'any' => t.operation.spots.allModes,
-      'notDigital' => t.operation.spots.notDigital,
+      _ => option,
+    };
+
+/// The band/mode summary for the collapsed filter pill: the RESOLVED value
+/// only (e.g. "20m", "SSB"), never "Auto (20m)" — on the compact status pill
+/// the "Auto" prefix is just noise. (The filter dialog's dropdowns keep the
+/// "Auto (…)" wording via [_bandOptionLabel]/[_modeOptionLabel], where it's
+/// meaningful.) 'auto' with no resolved band/mode falls back to the all-bands/
+/// all-modes label rather than reintroducing "Auto". Public for unit testing.
+String spotsFilterBandPillLabel(Translations t, String option, String? autoBand) => switch (option) {
+      'auto' => autoBand ?? t.operation.spots.allBands,
+      'any' => t.operation.spots.allBands,
+      _ => option,
+    };
+
+String spotsFilterModePillLabel(Translations t, String option, String? autoMode) => switch (option) {
+      'auto' => autoMode ?? t.operation.spots.allModes,
+      'any' => t.operation.spots.allModes,
       _ => option,
     };
 
@@ -1145,8 +1340,9 @@ class _SpotsFilterControls extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final t = context.t;
-    final bandOptions = ['any', 'auto', ...bands.map((b) => b.name)];
-    final modeOptions = ['any', 'auto', 'notDigital', ...modes];
+    // 'auto' first (it's the default and tracks the live VFO), then 'any'.
+    final bandOptions = ['auto', 'any', ...bands.map((b) => b.name)];
+    final modeOptions = ['auto', 'any', ..._superModes];
 
     return Column(
       mainAxisSize: MainAxisSize.min,

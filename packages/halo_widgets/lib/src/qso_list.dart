@@ -20,28 +20,6 @@ import 'theme.dart';
 /// Callsign/Name/References/RST).
 const double _columnGap = 12;
 
-/// Measures how wide [text] renders in [style] — used to size the Number and
-/// Callsign columns to the widest value in the list, per the issue's "wide
-/// enough to fit the largest number/longest callsign" requirement. Merges
-/// [style] onto the ambient `DefaultTextStyle` first, same as the real `Text`
-/// widgets in the row do internally — measuring [style] alone undercounts
-/// whenever the ambient style carries non-zero letter-spacing (Material 3's
-/// default text theme sets `letterSpacing: 0.25`), which was previously
-/// enough to wrap a long callsign onto a second line despite the SizedBox
-/// supposedly being sized to fit it. Also applies the ambient text scaler
-/// explicitly, matching how `Text` resolves its effective scaler by default —
-/// `TextPainter` doesn't pick up `MediaQuery` on its own, so without this the
-/// column would be sized for the unscaled text and wrap at any font-scale
-/// setting above 1.0.
-double _textWidth(BuildContext context, String text, TextStyle style) {
-  final merged = DefaultTextStyle.of(context).style.merge(style);
-  final painter = TextPainter(
-    text: TextSpan(text: text, style: merged),
-    textDirection: TextDirection.ltr,
-    textScaler: MediaQuery.textScalerOf(context),
-  )..layout();
-  return painter.width;
-}
 
 /// The list's UTC time-column label — `HH:MMz`, or a placeholder when the
 /// record has no start time. Shared by the QSO, event, and annotation rows
@@ -283,11 +261,11 @@ class _QsoListState extends State<QsoList> {
     // up, per the issue: "wide enough to fit the largest number"/"longest
     // callsign in all qsos".
     final numberWidth = showQsoNumbers
-        ? _textWidth(context, '$maxNumber', mono)
+        ? textWidth(context, '$maxNumber', mono)
         : 0.0;
     final callsignWidth = longestCall.isEmpty
         ? 0.0
-        : _textWidth(context, longestCall, callStyle);
+        : textWidth(context, longestCall, callStyle);
 
     // "decide how many digits to display based on all the qsos in the
     // operation" — one Hz precision for the whole list, not per row.

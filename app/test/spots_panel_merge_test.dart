@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: MPL-2.0
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:ham2k_logger/i18n/strings.g.dart';
 import 'package:ham2k_logger/views/operation/spots_panel.dart';
 
 Map<String, dynamic> _spot({
@@ -225,7 +226,7 @@ void main() {
   });
 
   group('sectionSpots', () {
-    test('"frequency" groups spots by band, band-list ordered, unknown band last', () {
+    test('groups spots by band, band-list ordered, unknown band last', () {
       final spots = [
         _spot(call: 'K1ABC', band: '20m', timeInMillis: 1000),
         _spot(call: 'W1XYZ', band: '40m', timeInMillis: 1000),
@@ -233,29 +234,34 @@ void main() {
         _spot(call: 'N2BBB', band: '20m', timeInMillis: 1000),
       ];
 
-      final sections = sectionSpots(spots, sortBy: 'frequency', callsWithNotes: {});
+      final sections = sectionSpots(spots, callsWithNotes: {});
 
       expect(sections.map((s) => s.key), ['40m', '20m', '?']);
       expect(sections.firstWhere((s) => s.key == '20m').spots, hasLength(2));
       expect(sections.firstWhere((s) => s.key == '?').spots, hasLength(1));
     });
 
-    test('"time" yields one flat section preserving the given order', () {
+    test('always groups by band — even age-sorted spots — keeping the incoming order within a band', () {
+      // What the panel feeds in when sorting by age: a single most-recent-first
+      // list. It must still come out grouped by band (not one flat section),
+      // with that age order preserved inside each band.
       final spots = [
-        _spot(call: 'K1ABC', band: '20m', timeInMillis: 2000),
-        _spot(call: 'W1XYZ', band: '40m', timeInMillis: 1000),
+        _spot(call: 'K1ABC', band: '20m', timeInMillis: 3000),
+        _spot(call: 'W1XYZ', band: '40m', timeInMillis: 2000),
+        _spot(call: 'N2BBB', band: '20m', timeInMillis: 1000),
       ];
 
-      final sections = sectionSpots(spots, sortBy: 'time', callsWithNotes: {});
+      final sections = sectionSpots(spots, callsWithNotes: {});
 
-      expect(sections, hasLength(1));
-      expect(sections.single.key, 'time');
-      expect(sections.single.spots, spots);
+      expect(sections.map((s) => s.key), ['40m', '20m']);
+      expect(
+        sections.firstWhere((s) => s.key == '20m').spots.map((s) => (s['their'] as Map)['call']),
+        ['K1ABC', 'N2BBB'],
+      );
     });
 
-    test('an empty spot list produces no sections, "time" or "frequency"', () {
-      expect(sectionSpots([], sortBy: 'time', callsWithNotes: {}), isEmpty);
-      expect(sectionSpots([], sortBy: 'frequency', callsWithNotes: {}), isEmpty);
+    test('an empty spot list produces no sections', () {
+      expect(sectionSpots([], callsWithNotes: {}), isEmpty);
     });
 
     test('callsWithNotes prepends a "notes" section without removing those spots from their band section', () {
@@ -264,7 +270,7 @@ void main() {
         _spot(call: 'W1XYZ', band: '40m', timeInMillis: 1000),
       ];
 
-      final sections = sectionSpots(spots, sortBy: 'frequency', callsWithNotes: {'K1ABC'});
+      final sections = sectionSpots(spots, callsWithNotes: {'K1ABC'});
 
       expect(sections.map((s) => s.key), ['notes', '40m', '20m']);
       expect((sections.first.spots.single['their'] as Map)['call'], 'K1ABC');
@@ -276,7 +282,7 @@ void main() {
     test('a callsWithNotes entry matching nothing adds no "notes" section', () {
       final spots = [_spot(call: 'K1ABC', band: '20m', timeInMillis: 1000)];
 
-      final sections = sectionSpots(spots, sortBy: 'frequency', callsWithNotes: {'W1XYZ'});
+      final sections = sectionSpots(spots, callsWithNotes: {'W1XYZ'});
 
       expect(sections.map((s) => s.key), ['20m']);
     });
@@ -321,6 +327,47 @@ void main() {
 
       expect(suggested.containsKey('icon'), isFalse);
       expect(suggested.containsKey('spot'), isFalse);
+    });
+  });
+
+  group('filter pill labels', () {
+    final t = AppLocale.en.buildSync();
+
+    test('auto shows only the resolved band/mode, never "Auto"', () {
+      expect(spotsFilterBandPillLabel(t, 'auto', '20m'), '20m');
+      expect(spotsFilterModePillLabel(t, 'auto', 'SSB'), 'SSB');
+    });
+
+    test('auto with no resolved band/mode falls back to all-bands/modes, not "Auto"', () {
+      expect(spotsFilterBandPillLabel(t, 'auto', null), t.operation.spots.allBands);
+      expect(spotsFilterModePillLabel(t, 'auto', null), t.operation.spots.allModes);
+    });
+
+    test('explicit band/mode selections pass through unchanged', () {
+      expect(spotsFilterBandPillLabel(t, '40m', '20m'), '40m');
+      expect(spotsFilterModePillLabel(t, 'CW', 'SSB'), 'CW');
+    });
+
+    test('"any" keeps the all-bands/all-modes label', () {
+      expect(spotsFilterBandPillLabel(t, 'any', '20m'), t.operation.spots.allBands);
+      expect(spotsFilterModePillLabel(t, 'any', 'Phone'), t.operation.spots.allModes);
+    });
+  });
+
+  group('normalizeModeFilter', () {
+    test('super-mode and auto/any values pass through', () {
+      for (final v in ['auto', 'any', 'Phone', 'CW', 'Digital']) {
+        expect(normalizeModeFilter(v), v);
+      }
+    });
+
+    test('a stale individual mode maps to its super mode', () {
+      expect(normalizeModeFilter('SSB'), 'Phone');
+      expect(normalizeModeFilter('FT8'), 'Digital');
+    });
+
+    test('the retired "notDigital" resets to auto (it spanned two super modes)', () {
+      expect(normalizeModeFilter('notDigital'), 'auto');
     });
   });
 }

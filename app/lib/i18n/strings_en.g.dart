@@ -823,17 +823,17 @@ class Translations$operation$spots$en {
 	/// en: 'Not digital'
 	String get notDigital => 'Not digital';
 
-	/// en: '${count} spots'
-	String spotsCount({required Object count}) => '${count} spots';
+	/// en: '(one) {${count} spot} (other) {${count} spots}'
+	String spotsCount({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count,
+		one: '${count} spot',
+		other: '${count} spots',
+	);
 
 	/// en: 'Showing ${count} of ${total} spots'
 	String spotsCountFiltered({required Object count, required Object total}) => 'Showing ${count} of ${total} spots';
 
 	/// en: '${minutes} minutes'
 	String ageMinutes({required Object minutes}) => '${minutes} minutes';
-
-	/// en: 'Most Recent Spots'
-	String get mostRecentSpots => 'Most Recent Spots';
 
 	/// en: 'Calls of Note'
 	String get callsOfNote => 'Calls of Note';
@@ -1427,10 +1427,9 @@ extension on Translations {
 			'operation.spots.allBands' => 'All Bands',
 			'operation.spots.allModes' => 'All Modes',
 			'operation.spots.notDigital' => 'Not digital',
-			'operation.spots.spotsCount' => ({required Object count}) => '${count} spots',
+			'operation.spots.spotsCount' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: '${count} spot', other: '${count} spots', ), 
 			'operation.spots.spotsCountFiltered' => ({required Object count, required Object total}) => 'Showing ${count} of ${total} spots',
 			'operation.spots.ageMinutes' => ({required Object minutes}) => '${minutes} minutes',
-			'operation.spots.mostRecentSpots' => 'Most Recent Spots',
 			'operation.spots.callsOfNote' => 'Calls of Note',
 			'operation.spots.continents.af' => 'Africa',
 			'operation.spots.continents.as' => 'Asia',

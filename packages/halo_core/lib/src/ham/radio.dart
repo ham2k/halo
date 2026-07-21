@@ -168,6 +168,26 @@ const Set<String> _phoneModes = {'SSB', 'FM', 'AM'};
 
 String defaultRSTFor(String mode) => _phoneModes.contains(mode) ? '59' : '599';
 
+/// Voice modes for [superModeForMode] — mirrors @ham2k/lib-operation-data's
+/// PHONE_MODES. Broader than [_phoneModes] (which is only the RST-default set),
+/// since super-mode grouping also treats the digital-voice modes as phone.
+const Set<String> _superPhoneModes = {
+  'SSB', 'USB', 'LSB', 'FM', 'AM', 'DIGITALVOICE', 'C4FM', 'DMR', 'DSTAR', 'FREEDV', 'M17',
+};
+
+/// The "super mode" of [mode] — `'Phone'`, `'CW'`, or `'Digital'` — mirroring
+/// @ham2k/lib-operation-data's `superModeForMode` (which groups modes into
+/// CW / PHONE / DATA), or null for a null mode. Classifies main modes without
+/// that lib's ADIF submode resolution: anything that isn't CW or a phone mode
+/// is Digital.
+String? superModeForMode(String? mode) {
+  if (mode == null) return null;
+  final m = mode.toUpperCase();
+  if (m == 'CW') return 'CW';
+  if (_superPhoneModes.contains(m)) return 'Phone';
+  return 'Digital';
+}
+
 /// Parses user frequency input into kHz.
 /// Accepts kHz ("14285", "14285.5") and MHz with a decimal point when the
 /// value is too small to be an HF kHz reading ("14.285" → 14285).
