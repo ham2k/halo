@@ -962,9 +962,11 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     _sentController.text = (our['sent'] as String?) ?? '';
     _rcvdController.text = (their['sent'] as String?) ?? '';
     _rstsTouched = true;
-    final theirGuess = their['guess'] as Map<String, dynamic>? ?? const {};
-    _gridController.text = (their['grid'] as String?) ?? (theirGuess['grid'] as String?) ?? '';
-    _stateController.text = (their['state'] as String?) ?? (theirGuess['state'] as String?) ?? '';
+    // Only the entered value fills the field; a guess (their.guess) stays a
+    // faint placeholder (see the Grid/State decorations) instead of being
+    // pre-filled as if it were a confirmed value.
+    _gridController.text = (their['grid'] as String?) ?? '';
+    _stateController.text = (their['state'] as String?) ?? '';
     // Restore the name override too, or wipe-then-undo would silently drop a
     // name set via the "More" pane (it round-trips as `their.name`).
     final theirName = (their['name'] as String?)?.trim();
@@ -1317,10 +1319,12 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   TextStyle _primaryFieldStyle(BuildContext context, {required FontWeight fontWeight}) =>
       haloMonoStyle(context, fontSize: 15, fontWeight: fontWeight);
 
-  InputDecoration _primaryFieldDecoration(BuildContext context, String label) => poloFieldDecoration(
+  InputDecoration _primaryFieldDecoration(BuildContext context, String label, {String? hintText}) =>
+      poloFieldDecoration(
         context,
         label,
         labelColor: Theme.of(context).colorScheme.onTertiaryContainer,
+        hintText: hintText,
       );
 
   String _fmtTime(DateTime dt) =>
@@ -2525,13 +2529,17 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   // table, which is compared by exact equality).
 
   Map<String, dynamic> _buildQsoEditFormDefinition() {
+    // Guessed values ride along as faint placeholders (the FormRenderer maps a
+    // field's `placeholder` to poloFieldDecoration's hintText) — same "guess as
+    // a hint, never a pre-filled value" behaviour as the primary Grid/State.
+    final guess = _currentGuess;
     return {
       'title': widget.qsoEditFormTitle ?? 'Edit QSO',
       'elements': [
         {'type': 'field', 'key': 'theirCall', 'fieldType': 'callsign', 'label': widget.theirCallLabel ?? 'Their call'},
-        {'type': 'field', 'key': 'theirName', 'fieldType': 'text', 'label': widget.theirNameLabel ?? 'Name'},
-        {'type': 'field', 'key': 'theirGrid', 'fieldType': 'text', 'label': widget.theirGridLabel ?? 'Grid', 'uppercase': true},
-        {'type': 'field', 'key': 'theirState', 'fieldType': 'text', 'label': widget.theirStateLabel ?? 'State', 'uppercase': true},
+        {'type': 'field', 'key': 'theirName', 'fieldType': 'text', 'label': widget.theirNameLabel ?? 'Name', 'placeholder': guess?['name'] as String?},
+        {'type': 'field', 'key': 'theirGrid', 'fieldType': 'text', 'label': widget.theirGridLabel ?? 'Grid', 'uppercase': true, 'placeholder': guess?['grid'] as String?},
+        {'type': 'field', 'key': 'theirState', 'fieldType': 'text', 'label': widget.theirStateLabel ?? 'State', 'uppercase': true, 'placeholder': guess?['state'] as String?},
         {'type': 'field', 'key': 'sent', 'fieldType': 'text', 'label': widget.sentLabel ?? 'Sent', 'uppercase': true},
         {'type': 'field', 'key': 'rcvd', 'fieldType': 'text', 'label': widget.rcvdLabel ?? 'Rcvd', 'uppercase': true},
         {'type': 'field', 'key': 'freq', 'fieldType': 'number', 'label': widget.freqLabel ?? 'Frequency'},
@@ -2572,7 +2580,11 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
       formDefinition: _buildQsoEditFormDefinition(),
       initialState: {
         'theirCall': _call,
-        'theirName': _theirNameOverride ?? widget.editingQso?.theirName ?? '',
+        // Entered name only (not the `theirName` getter, which coalesces in the
+        // guess) so a guessed-only name shows as the placeholder above instead
+        // of being pre-filled — and merely viewing the pane never promotes a
+        // passive guess to a sticky entered value.
+        'theirName': _theirNameOverride ?? (widget.editingQso?.data['their'] as Map<String, dynamic>?)?['name'] as String? ?? '',
         'theirGrid': gridBeforePane,
         'theirState': stateBeforePane,
         'sent': _sentController.text.trim(),
@@ -3750,7 +3762,11 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
                                 smartQuotesType: SmartQuotesType.disabled,
                                 inputFormatters: [_virtualSpace, const UpperCaseTextFormatter()],
                                 style: _primaryFieldStyle(context, fontWeight: FontWeight.w500),
-                                decoration: _primaryFieldDecoration(context, widget.theirStateLabel ?? 'State'),
+                                // The guessed state (e.g. from a callsign lookup)
+                                // shows as a faint placeholder while the field is
+                                // empty — never pre-filled as a real value.
+                                decoration: _primaryFieldDecoration(context, widget.theirStateLabel ?? 'State',
+                                    hintText: _currentGuess?['state'] as String?),
                                 onChanged: (_) => _stateTouched = true,
                                 onSubmitted: (_) => _log(),
                               ),
@@ -3774,7 +3790,8 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
                                 smartQuotesType: SmartQuotesType.disabled,
                                 inputFormatters: [_virtualSpace, const UpperCaseTextFormatter()],
                                 style: _primaryFieldStyle(context, fontWeight: FontWeight.w500),
-                                decoration: _primaryFieldDecoration(context, widget.theirGridLabel ?? 'Grid'),
+                                decoration: _primaryFieldDecoration(context, widget.theirGridLabel ?? 'Grid',
+                                    hintText: _currentGuess?['grid'] as String?),
                                 onChanged: (_) => _gridTouched = true,
                                 onSubmitted: (_) => _log(),
                               ),

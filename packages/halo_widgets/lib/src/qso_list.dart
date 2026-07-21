@@ -381,8 +381,14 @@ class _QsoListState extends State<QsoList> {
       final flag = qso.theirFlag;
       final state = qso.theirState;
       Widget? dxStateField;
+      // Values coming from the callsign guess rather than an entered field
+      // paint a touch fainter (80%) so guessed-but-unconfirmed reads as such —
+      // the flag is an emoji, whose color the text style can't fade, so the
+      // dimming is applied as an Opacity below rather than via the text color.
+      var dxStateGuessed = false;
       if (isDX && flag != null) {
         dxStateField = Text(flag, style: emojiStyle());
+        dxStateGuessed = qso.theirFieldIsGuessed('flag');
       } else if (state != null && state.isNotEmpty) {
         // Falls back to state whenever there's no flag to show — not just
         // when `!isDX` — so a DX contact whose entity resolved but whose
@@ -390,6 +396,10 @@ class _QsoListState extends State<QsoList> {
         // lib-country-files but missing from lib-dxcc-data's table)
         // still shows its state instead of going blank.
         dxStateField = Text(state, style: rowMonoDim);
+        dxStateGuessed = qso.theirFieldIsGuessed('state');
+      }
+      if (dxStateField != null && dxStateGuessed) {
+        dxStateField = Opacity(opacity: 0.8, child: dxStateField);
       }
 
       // Frequency bolded-MHz/regular-kHz/smaller-Hz, dot-separated; falls
@@ -493,11 +503,15 @@ class _QsoListState extends State<QsoList> {
                     const SizedBox(width: _columnGap),
                   ],
                   Expanded(
-                    child: Text(
-                      qso.theirName ?? '',
-                      style: rowMonoDim.copyWith(fontSize: 13),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
+                    // A guessed name paints at 80% too (see the DX/state note).
+                    child: Opacity(
+                      opacity: qso.theirFieldIsGuessed('name') ? 0.8 : 1.0,
+                      child: Text(
+                        qso.theirName ?? '',
+                        style: rowMonoDim.copyWith(fontSize: 13),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
                     ),
                   ),
                   if (refCountsByType.isNotEmpty) ...[

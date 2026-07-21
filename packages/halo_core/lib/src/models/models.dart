@@ -114,6 +114,13 @@ class Qso {
   String? get sentRST => _our['sent'] as String?;
   String? get receivedRST => _their['sent'] as String?;
 
+  /// Whether the value returned for `their[field]` (e.g. `'name'`, `'grid'`,
+  /// `'state'`, `'entityPrefix'`, `'flag'`) is coming from the nested `guess`
+  /// rather than an entered value — true exactly when the coalescing getters
+  /// above fell back to the guess (no top-level value). Callers like the QSO
+  /// row use it to render guessed-but-unconfirmed values more faintly.
+  bool theirFieldIsGuessed(String field) => _their[field] == null && _theirGuess[field] != null;
+
   double? get freq => (data['freq'] as num?)?.toDouble();
   String? get band => data['band'] as String?;
   String? get mode => data['mode'] as String?;
