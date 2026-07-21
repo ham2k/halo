@@ -534,7 +534,8 @@ async function postSpotToSOTA(
     activatorCallsign,
     frequency: (freq / 1000).toFixed(6), // kHz -> MHz, as a string
     mode: spotModeFor(mode),
-    comments: comment ?? '',
+    // Tags spots posted through HaLo.
+    comments: comment ? `${comment} [H2K]` : '[H2K]',
     // 'TEST' spots are accepted by the API but hidden from SOTAWatch users —
     // a comment mentioning "test" posts one, so a first try doesn't summon
     // real chasers.

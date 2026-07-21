@@ -2101,6 +2101,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
                         false => theme.colorScheme.error,
                         null => theme.colorScheme.onTertiaryContainer,
                       },
+                      shadows: _glyphGlow(theme),
                     ),
                   ),
               ],
@@ -4070,7 +4071,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     // height whether or not a location resolved.
     final firstLine = <Widget>[
       if (flag != null && flag.isNotEmpty) ...[
-        Text(flag, style: theme.textTheme.bodyMedium?.copyWith(shadows: _emojiGlow(theme))),
+        Text(flag, style: theme.textTheme.bodyMedium?.copyWith(shadows: _glyphGlow(theme))),
         const SizedBox(width: 6),
       ],
       Expanded(
@@ -4255,10 +4256,10 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
       .replaceAllMapped(RegExp(r'\[([^\]]*)\]\([^)]*\)'), (m) => m[1] ?? '')
       .replaceAll(RegExp(r'[*_`~]'), '');
 
-  /// A soft halo behind the call-info emoji (the flag, and a note's leading
-  /// emoji) so busy glyphs stay legible against the panel's tinted fill —
-  /// white on light themes, dark on dark themes.
-  List<Shadow> _emojiGlow(ThemeData theme) {
+  /// A soft halo behind small glyphs (the call-info flag/note emoji, the
+  /// spotting control's source-status icons) so they stay legible against a
+  /// tinted fill — white on light themes, dark on dark themes.
+  List<Shadow> _glyphGlow(ThemeData theme) {
     final color = theme.brightness == Brightness.dark ? Colors.black : Colors.white;
     return [Shadow(color: color.withValues(alpha: 0.6), blurRadius: 6)];
   }
@@ -4307,7 +4308,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(leadMatch.group(0)!, style: textStyle?.copyWith(shadows: _emojiGlow(theme))),
+        Text(leadMatch.group(0)!, style: textStyle?.copyWith(shadows: _glyphGlow(theme))),
         if (markdown != null) ...[
           const SizedBox(width: 4),
           Flexible(child: markdown),
