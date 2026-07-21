@@ -349,59 +349,60 @@ class _HomeViewState extends State<HomeView> {
                     Positioned(
                       bottom: 16,
                       right: 16,
-                      child: AnimatedContainer(
+                      child: AnimatedSize(
                         duration: const Duration(milliseconds: 300),
                         curve: Curves.easeInOut,
-                        height: 56,
-                        width: _isFabExtended ? 168 : 56,
-                        decoration: BoxDecoration(
-                          color: theme.colorScheme.primaryContainer,
-                          borderRadius: BorderRadius.circular(16),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.15),
-                              blurRadius: 6,
-                              offset: const Offset(0, 3),
-                            ),
-                          ],
-                        ),
-                        child: Material(
-                          color: Colors.transparent,
-                          child: InkWell(
+                        child: Container(
+                          height: 56,
+                          width: _isFabExtended ? null : 56,
+                          decoration: BoxDecoration(
+                            color: theme.colorScheme.primaryContainer,
                             borderRadius: BorderRadius.circular(16),
-                            onTap: () => _newOperation(context),
-                            child: Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: 16),
-                              child: Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Icon(MdiIcons.plus, color: theme.colorScheme.onPrimaryContainer),
-                                  AnimatedSize(
-                                    duration: const Duration(milliseconds: 300),
-                                    curve: Curves.easeInOut,
-                                    child: Container(
-                                      width: _isFabExtended ? 104 : 0,
-                                      alignment: Alignment.center,
-                                      child: AnimatedOpacity(
-                                        duration: const Duration(milliseconds: 300),
-                                        curve: Curves.easeInOut,
-                                        opacity: _isFabExtended ? 1.0 : 0.0,
-                                        child: Padding(
-                                          padding: const EdgeInsets.only(left: 8),
-                                          child: Text(
-                                            context.t.home.newOperation,
-                                            maxLines: 1,
-                                            softWrap: false,
-                                            style: theme.textTheme.labelLarge?.copyWith(
-                                              color: theme.colorScheme.onPrimaryContainer,
-                                              fontWeight: FontWeight.bold,
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: 0.15),
+                                blurRadius: 6,
+                                offset: const Offset(0, 3),
+                              ),
+                            ],
+                          ),
+                          child: Material(
+                            color: Colors.transparent,
+                            child: InkWell(
+                              borderRadius: BorderRadius.circular(16),
+                              onTap: () => _newOperation(context),
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(horizontal: 16),
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Icon(MdiIcons.plus, color: theme.colorScheme.onPrimaryContainer),
+                                    AnimatedSize(
+                                      duration: const Duration(milliseconds: 300),
+                                      curve: Curves.easeInOut,
+                                      child: SizedBox(
+                                        width: _isFabExtended ? null : 0,
+                                        child: AnimatedOpacity(
+                                          duration: const Duration(milliseconds: 300),
+                                          curve: Curves.easeInOut,
+                                          opacity: _isFabExtended ? 1.0 : 0.0,
+                                          child: Padding(
+                                            padding: const EdgeInsets.only(left: 8),
+                                            child: Text(
+                                              context.t.home.newOperation,
+                                              maxLines: 1,
+                                              softWrap: false,
+                                              style: theme.textTheme.labelLarge?.copyWith(
+                                                color: theme.colorScheme.onPrimaryContainer,
+                                                fontWeight: FontWeight.bold,
+                                              ),
                                             ),
                                           ),
                                         ),
                                       ),
                                     ),
-                                  ),
-                                ],
+                                  ],
+                                ),
                               ),
                             ),
                           ),
