@@ -28,8 +28,10 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
+import 'package:halo_build_tools/halo_build_tools.dart' show isNewerRelease;
 import 'package:http/http.dart' as http;
 import 'package:package_info_plus/package_info_plus.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../config/user_agent.dart';
 import '../config/version.dart';
@@ -91,6 +93,10 @@ class FlagsService extends ChangeNotifier {
   final Future<NoticeEnvironment> Function() _environmentProvider;
   final NoticeActionHandler? _onNoticeAction;
 
+  /// Persists the update-notice dismissal high-water mark ([_dismissedUpdateKey]).
+  /// Optional — tests that don't exercise dismissal persistence omit it.
+  final SharedPreferences? _prefs;
+
   FlagsService({
     required this.statusBar,
     this.annotate,
@@ -99,10 +105,12 @@ class FlagsService extends ChangeNotifier {
     http.Client? client,
     Future<NoticeEnvironment> Function()? environmentProvider,
     NoticeActionHandler? onNoticeAction,
+    SharedPreferences? prefs,
   })  : _fetcher = fetcher,
         _client = client ?? http.Client(),
         _environmentProvider = environmentProvider ?? _defaultEnvironment,
-        _onNoticeAction = onNoticeAction;
+        _onNoticeAction = onNoticeAction,
+        _prefs = prefs;
 
   Map<String, dynamic> _flags = const {};
 
@@ -254,6 +262,19 @@ class FlagsService extends ChangeNotifier {
     String? entityPrefix,
     String? continent,
   }) async {
+    final env = await _environmentProvider();
+    final dismissedKeys = {
+      for (final n in statusBar.history)
+        if (n.dismissedAt != null) n.key,
+    };
+    final active = {for (final n in statusBar.activeNotices) n.key};
+
+    // A binary release newer than the running one (the `latestRelease` flag)
+    // gets its own dismissible "update available" notice — independent of the
+    // server-authored notices below, and separate from the Shorebird patch
+    // prompt (update_notices.dart), which is about the SAME version.
+    _maybePushNewVersionNotice(env, active);
+
     // Notices come from a HaLo-specific `halo-notices` key plus the shared
     // `notices` key (cross-app, authored for app-polo too). `halo-notices`
     // come FIRST so they take precedence: evaluateNotices keeps the first
@@ -265,12 +286,6 @@ class FlagsService extends ChangeNotifier {
         if (_flags[key] is List) ...(_flags[key] as List),
     ];
     if (rawNotices.isEmpty) return;
-
-    final env = await _environmentProvider();
-    final dismissedKeys = {
-      for (final n in statusBar.history)
-        if (n.dismissedAt != null) n.key,
-    };
 
     final evaluated = evaluateNotices(
       rawNotices,
@@ -290,7 +305,6 @@ class FlagsService extends ChangeNotifier {
     // evaluateNotices already returns at most one notice per key, so no
     // per-key de-dup is needed here — just skip keyless notices (StatusBar is
     // keyed) and ones already on screen.
-    final active = {for (final n in statusBar.activeNotices) n.key};
     for (final notice in evaluated) {
       final key = notice.key;
       if (key.isEmpty) continue;
@@ -315,6 +329,74 @@ class FlagsService extends ChangeNotifier {
         ],
       );
     }
+  }
+
+  /// Stable status-bar key for the "update available" notice — NOT
+  /// version-specific, so a newer release replaces the notice rather than
+  /// stacking a second one.
+  static const _updateNoticeKey = 'update:version';
+
+  /// prefs keys: the version currently shown, and the newest one the user has
+  /// dismissed (the durable high-water mark).
+  static const _shownUpdateKey = 'update:shownVersion';
+  static const _dismissedUpdateKey = 'update:dismissedVersion';
+
+  /// Pushes an "update available" notice when the `latestRelease` flag names a
+  /// binary newer than the running version. Dismissal is remembered in prefs
+  /// (the status-bar history is capped at 50, so it can't be the durable
+  /// record): the version showing when the user dismisses becomes a high-water
+  /// mark, and only a release newer than that ever notifies again. "Get it"
+  /// opens `latestReleaseUrl` (or the Ham2K site) via the shared link action.
+  void _maybePushNewVersionNotice(NoticeEnvironment env, Set<String> active) {
+    final latest = _flags['latestRelease'];
+    if (latest is! String || latest.isEmpty) return;
+    if (!isNewerRelease(current: env.appVersion, available: latest)) return;
+
+    // Promote a just-dismissed notice into the durable high-water mark before
+    // it can age out of the capped history.
+    final shown = _prefs?.getString(_shownUpdateKey);
+    final dismissedInBar = statusBar.history
+        .any((n) => n.key == _updateNoticeKey && n.dismissedAt != null);
+    if (shown != null && dismissedInBar) {
+      final mark = _prefs?.getString(_dismissedUpdateKey);
+      if (mark == null || isNewerRelease(current: mark, available: shown)) {
+        _prefs?.setString(_dismissedUpdateKey, shown);
+      }
+      _prefs?.remove(_shownUpdateKey);
+    }
+
+    // Already dismissed this release (or a newer one)? Stay quiet.
+    final dismissed = _prefs?.getString(_dismissedUpdateKey);
+    if (dismissed != null && !isNewerRelease(current: dismissed, available: latest)) {
+      return;
+    }
+
+    // Already showing this exact release — don't reset it on every refresh. A
+    // newer release falls through and replaces the notice via the shared key.
+    if (active.contains(_updateNoticeKey) && shown == latest) return;
+
+    final rawUrl = _flags['latestReleaseUrl'];
+    final url = (rawUrl is String && rawUrl.isNotEmpty) ? rawUrl : 'https://ham2k.com';
+
+    _prefs?.setString(_shownUpdateKey, latest);
+    statusBar.showNotice(
+      key: _updateNoticeKey,
+      icon: 'download',
+      title: 'Update available',
+      text: 'A new version ($latest) is available.',
+      actions: [
+        StatusBarAction(
+          label: 'Get it',
+          onTap: () {
+            statusBar.dismissNotice(_updateNoticeKey);
+            _onNoticeAction?.call(_updateNoticeKey, {
+              'action': 'link',
+              'args': {'url': url},
+            });
+          },
+        ),
+      ],
+    );
   }
 
   @override

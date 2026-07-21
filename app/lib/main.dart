@@ -36,6 +36,7 @@ import 'services/lookup_queue_service.dart';
 import 'services/metrics_service.dart';
 import 'services/purchase_service.dart';
 import 'services/radio_service.dart';
+import 'services/restart_service.dart';
 import 'services/scoring_service.dart';
 import 'services/settings_service.dart';
 import 'services/status_bar_service.dart';
@@ -44,6 +45,7 @@ import 'settings/settings_registry.dart';
 import 'settings/system_lists.dart';
 import 'services/window_chrome_service.dart';
 import 'services/update_service.dart';
+import 'services/update_notices.dart';
 import 'services/shorebird_update_service.dart';
 import 'services/data_file_manager.dart';
 import 'services/flags_service.dart';
@@ -65,8 +67,11 @@ void main() {
     // (docs/releases.md §4). Fire-and-forget on purpose: this makes a network
     // call the Shorebird package warns can be slow, so it must NOT gate startup
     // — a downloaded patch applies on the *next* restart regardless. No-ops in
-    // any build without the Shorebird engine.
-    unawaited(services.updates.checkAndApply());
+    // any build without the Shorebird engine. When one IS downloaded, prompt the
+    // user to restart to apply it (desktop gets a "Restart now" button).
+    unawaited(services.updates.checkAndApply().then((updated) {
+      if (updated) showPatchReadyNotice(services.statusBar, const RestartService());
+    }));
 
     // Dev nicety: launch with POLO_OPEN_FIRST_OP=1 in the environment (e.g.
     // SIMCTL_CHILD_POLO_OPEN_FIRST_OP=1 simctl launch ...) to jump straight
@@ -323,6 +328,7 @@ class HaLoServices {
       return guess is Map ? guess.cast<String, dynamic>() : null;
     },
     onNoticeAction: handleNoticeAction,
+    prefs: settings.prefs,
   );
 
   /// Named option vocabularies for `options: "$name"` settings

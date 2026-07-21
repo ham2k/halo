@@ -357,4 +357,127 @@ void main() {
       expect(actedAction?['action'], 'link');
     });
   });
+
+  group('update-available notice (latestRelease)', () {
+    // env.appVersion is 26.8.0 (see the shared `env` above).
+    test('prompts when latestRelease names a newer binary', () async {
+      final b = build({
+        'defaults.json': {'latestRelease': '26.9'},
+        'entities/k.json': {},
+        'ki/ki2d.json': {},
+      });
+      await b.service.refreshForCall('KI2D');
+
+      final notice = statusBar.activeNotices.single;
+      expect(notice.key, 'update:version');
+      expect(notice.title, 'Update available');
+      expect(notice.text, contains('26.9'));
+      expect(notice.actions.single.label, 'Get it');
+    });
+
+    test('stays quiet when latestRelease is the same line or older', () async {
+      // 26.8 is the line 26.8.0 is already on — not a newer binary.
+      final b = build({
+        'defaults.json': {'latestRelease': '26.8'},
+        'entities/k.json': {},
+        'ki/ki2d.json': {},
+      });
+      await b.service.refreshForCall('KI2D');
+      expect(statusBar.activeNotices, isEmpty);
+    });
+
+    test('"Get it" opens latestReleaseUrl through the shared link action', () async {
+      String? actedKey;
+      Map<String, dynamic>? actedAction;
+      final service = FlagsService(
+        statusBar: statusBar,
+        baseUrl: 'https://example.test/flags',
+        annotate: (_) async => {'baseCall': 'KI2D', 'entityPrefix': 'K'},
+        environmentProvider: () async => env,
+        onNoticeAction: (key, action) {
+          actedKey = key;
+          actedAction = action;
+        },
+        fetcher: (location) async => location == 'defaults.json'
+            ? {'latestRelease': '26.9', 'latestReleaseUrl': 'https://ham2k.com/halo'}
+            : {},
+      );
+
+      await service.refreshForCall('KI2D');
+      statusBar.activeNotices.single.actions.single.onTap();
+
+      expect(statusBar.activeNotices, isEmpty); // tapping dismisses it
+      expect(actedKey, 'update:version');
+      expect(actedAction?['action'], 'link');
+      expect((actedAction?['args'] as Map)['url'], 'https://ham2k.com/halo');
+    });
+
+    test('falls back to the Ham2K site when no latestReleaseUrl is set', () async {
+      Map<String, dynamic>? actedAction;
+      final service = FlagsService(
+        statusBar: statusBar,
+        baseUrl: 'https://example.test/flags',
+        annotate: (_) async => {'baseCall': 'KI2D', 'entityPrefix': 'K'},
+        environmentProvider: () async => env,
+        onNoticeAction: (_, action) => actedAction = action,
+        fetcher: (location) async =>
+            location == 'defaults.json' ? {'latestRelease': '26.9'} : {},
+      );
+
+      await service.refreshForCall('KI2D');
+      statusBar.activeNotices.single.actions.single.onTap();
+      expect((actedAction?['args'] as Map)['url'], 'https://ham2k.com');
+    });
+
+    test('a newer release replaces the notice instead of stacking a second', () async {
+      var latest = '26.9';
+      final service = FlagsService(
+        statusBar: statusBar,
+        baseUrl: 'https://example.test/flags',
+        annotate: (_) async => {'baseCall': 'KI2D', 'entityPrefix': 'K'},
+        environmentProvider: () async => env,
+        fetcher: (location) async =>
+            location == 'defaults.json' ? {'latestRelease': latest} : {},
+      );
+
+      await service.refreshForCall('KI2D');
+      expect(statusBar.activeNotices.single.text, contains('26.9'));
+
+      latest = '26.10';
+      await service.refreshForCall('KI2D', force: true);
+
+      // One notice, updated in place — not two stacked.
+      expect(statusBar.activeNotices, hasLength(1));
+      expect(statusBar.activeNotices.single.text, contains('26.10'));
+    });
+
+    test('a dismissal persists in prefs, and only a newer release re-notifies', () async {
+      // statusBar (from setUp) and the service share this same mock prefs.
+      final prefs = await SharedPreferences.getInstance();
+      var latest = '26.9';
+      final service = FlagsService(
+        statusBar: statusBar,
+        baseUrl: 'https://example.test/flags',
+        annotate: (_) async => {'baseCall': 'KI2D', 'entityPrefix': 'K'},
+        environmentProvider: () async => env,
+        prefs: prefs,
+        fetcher: (location) async =>
+            location == 'defaults.json' ? {'latestRelease': latest} : {},
+      );
+
+      await service.refreshForCall('KI2D');
+      statusBar.dismissNotice('update:version'); // user dismisses
+
+      // Same release: stays dismissed, and the dismissal is now durable in prefs
+      // (so it survives the capped status-bar history, unlike before).
+      await service.refreshForCall('KI2D', force: true);
+      expect(statusBar.activeNotices, isEmpty);
+      expect(prefs.getString('update:dismissedVersion'), '26.9');
+
+      // A genuinely newer release breaks through the dismissal.
+      latest = '26.10';
+      await service.refreshForCall('KI2D', force: true);
+      expect(statusBar.activeNotices.single.text, contains('26.10'));
+    });
+  });
 }
