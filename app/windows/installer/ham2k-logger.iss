@@ -10,17 +10,20 @@
 ; it silently (/VERYSILENT), overwriting the install folder in place.
 ;
 ; CI invocation (PowerShell):
-;   ISCC /DHaloEdition=next /DHaloVersion=26.8.73 `
+;   ISCC /DHaloEdition=next /DHaloMarketing=26.8.1 /DHaloBuild=73 `
 ;        "/DSourceDir=<abs>\app\build\windows\x64\runner\Release" `
 ;        "/DIconDir=<abs>\app\windows\runner\resources" `
-;        /O"<abs>\installer-output" `
+;        /O"<abs>" `
 ;        app\windows\installer\ham2k-logger.iss
 
 #ifndef HaloEdition
   #define HaloEdition "dev"
 #endif
-#ifndef HaloVersion
-  #define HaloVersion "0.0.0"
+#ifndef HaloMarketing
+  #define HaloMarketing "0.0.0"
+#endif
+#ifndef HaloBuild
+  #define HaloBuild "0"
 #endif
 #ifndef SourceDir
   #define SourceDir "..\..\build\windows\x64\runner\Release"
@@ -38,7 +41,7 @@
   #define AppId "{{C41D7E08-3A52-49B6-8F7C-1D6B90E2A344}"
   #define InstallFolder "Ham2K Logger"
 #elif HaloEdition == "next"
-  #define AppName "Ham2K Logger Next"
+  #define AppName "Ham2K Logger (Next)"
   #define AppId "{{2E9B5D41-8C67-4F0A-B3D2-9A1E7C4055F8}"
   #define InstallFolder "Ham2K Logger Next"
 #else
@@ -52,10 +55,18 @@
 #define AppUrl "https://ham2k.com"
 #define IconFile IconDir + "\app_icon-" + HaloEdition + ".ico"
 
+; The full, human-facing artifact base (§2.2), e.g.
+; "Ham2K Logger (Next) 26.8.1-alpha1 (73)". CI passes it from the shared helper
+; (print_artifact_name.dart) so the Setup file name matches every other
+; platform; the fallback keeps a local ISCC run working without it.
+#ifndef HaloFullName
+  #define HaloFullName AppName + " " + HaloMarketing + " (" + HaloBuild + ")"
+#endif
+
 [Setup]
 AppId={#AppId}
 AppName={#AppName}
-AppVersion={#HaloVersion}
+AppVersion={#HaloMarketing}
 AppPublisher={#AppPublisher}
 AppPublisherURL={#AppUrl}
 AppSupportURL={#AppUrl}
@@ -73,7 +84,9 @@ SolidCompression=yes
 ; Flutter Windows builds x64; x64compatible also allows arm64 (x64 emulation).
 ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
-OutputBaseFilename={#AppName} {#HaloVersion} Setup
+; e.g. "Ham2K Logger (Next) 26.8.1-alpha1 (73) Installer.exe" — the ".exe"
+; already implies Windows, so no platform word (§2.2).
+OutputBaseFilename={#HaloFullName} Installer
 
 [Languages]
 Name: "english"; MessagesFile: "compiler:Default.isl"

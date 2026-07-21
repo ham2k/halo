@@ -56,7 +56,7 @@ android {
         create("next") {
             dimension = "edition"
             applicationIdSuffix = ".next"
-            manifestPlaceholders["appLabel"] = "Portable Logger Next"
+            manifestPlaceholders["appLabel"] = "Portable Logger (Next)"
         }
         create("prod") {
             dimension = "edition"

@@ -19,6 +19,14 @@ void main() {
       expect(Edition.next.label, 'Next');
       expect(Edition.prod.label, isNull);
     });
+
+    test('productName parenthesises the qualifier (installed + artifact name)', () {
+      // The non-stable editions carry a parenthesised qualifier consistently —
+      // the installed app name and the base of every artifact name (§2.2).
+      expect(Edition.prod.productName, 'Ham2K Logger');
+      expect(Edition.next.productName, 'Ham2K Logger (Next)');
+      expect(Edition.dev.productName, 'Ham2K Logger (Dev)');
+    });
   });
 
   group('kEdition', () {

@@ -16,7 +16,7 @@ HALO_EDITION = dev
 // carries the "Ham2K" mark), so per the branding rule it drops the "Ham2K"
 // prefix and names the platform: "Portable Logger" (+ edition) on iOS/Android.
 HALO_PRODUCT_NAME_dev = Portable Logger (Dev)
-HALO_PRODUCT_NAME_next = Portable Logger Next
+HALO_PRODUCT_NAME_next = Portable Logger (Next)
 HALO_PRODUCT_NAME_prod = Portable Logger
 
 // Selected by nested substitution and consumed by Info.plist's

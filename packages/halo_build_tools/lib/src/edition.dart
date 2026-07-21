@@ -35,6 +35,18 @@ enum Edition {
     Edition.next => 'Next',
     Edition.prod => null,
   };
+
+  /// The full product brand — the installed app name and the base of every
+  /// downloadable-artifact name (§2.2/§2.6): "Ham2K Logger", "Ham2K Logger
+  /// (Next)", or "Ham2K Logger (Dev)". The non-prod editions carry a
+  /// parenthesised qualifier; prod has none. The Inno installer
+  /// (app/windows/installer/ham2k-logger.iss) hardcodes the same mapping since
+  /// it can't import Dart — keep the two in sync.
+  String get productName => switch (this) {
+    Edition.prod => 'Ham2K Logger',
+    Edition.next => 'Ham2K Logger (Next)',
+    Edition.dev => 'Ham2K Logger (Dev)',
+  };
 }
 
 /// The raw `HALO_EDITION` compile-time define (`--dart-define=HALO_EDITION=…`),

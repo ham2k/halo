@@ -3,6 +3,7 @@
 
 library;
 
+export 'src/artifact_name.dart';
 export 'src/edition.dart';
 export 'src/main_version.dart';
 export 'src/platform_versions.dart';

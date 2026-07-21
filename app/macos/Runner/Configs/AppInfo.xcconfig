@@ -22,7 +22,7 @@ HALO_EDITION = dev
 // $(HALO_PRODUCT_NAME_$(HALO_EDITION)). (The distributable artifact FILE, which
 // stands alone with no icon, re-adds "Ham2K" — see app_dist/ci/build-macos.sh.)
 HALO_PRODUCT_NAME_dev = Mac Logger (Dev)
-HALO_PRODUCT_NAME_next = Mac Logger Next
+HALO_PRODUCT_NAME_next = Mac Logger (Next)
 HALO_PRODUCT_NAME_prod = Mac Logger
 
 // The application's name — drives the Dock/Finder icon label, the app
