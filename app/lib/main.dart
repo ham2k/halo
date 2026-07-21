@@ -671,6 +671,15 @@ class _HaLoAppState extends State<HaLoApp> {
       return true;
     }
 
+    if (HardwareKeyboard.instance.isShiftPressed && key == LogicalKeyboardKey.keyL) {
+      // ⌘⇧L (⌃⇧L on non-Mac): toggle language between English and Spanish.
+      final newLocale = settings.locale == 'es' ? 'en' : 'es';
+      settings.setLocale(newLocale);
+      LocaleSettings.setLocaleRaw(newLocale);
+      widget.services.extensions.invalidateHookContext();
+      return true;
+    }
+
     if (key == LogicalKeyboardKey.equal ||
         key == LogicalKeyboardKey.add ||
         key == LogicalKeyboardKey.numpadAdd) {
