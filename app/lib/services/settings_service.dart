@@ -244,17 +244,34 @@ class SettingsService extends ChangeNotifier implements SyncSettings {
   /// once and persisted in the platform keychain forever after. Since it's
   /// the bearer credential for the account's synced log, it must be loaded
   /// before first use — call [ensureSyncDeviceKey] at boot.
-  Future<String> ensureSyncDeviceKey() async {
-    if (_cachedDeviceKey != null) return _cachedDeviceKey!;
+  ///
+  /// Returns null (never throws) when secure storage is locked or absent — a
+  /// locked GNOME keyring / headless Linux box — so boot can still complete
+  /// and the caller runs without sync this session. The null result is NOT
+  /// cached, so a later call retries once the keyring is available.
+  Future<String?> ensureSyncDeviceKey() async {
+    if (_cachedDeviceKey != null) return _cachedDeviceKey;
 
-    final fromSecure = await _secureStorage.read(key: _syncDeviceKeyKey);
-    if (fromSecure != null && fromSecure.isNotEmpty) {
-      return _cachedDeviceKey = fromSecure;
+    // Secure storage (libsecret on Linux, the keychain elsewhere) can be locked
+    // or absent — a headless box or a locked GNOME keyring throws KeyringLocked.
+    // The device key is a bearer credential, so it must NOT fall back to plain
+    // prefs; instead we return null and let the caller run without sync this
+    // session, picking it back up on a later launch once the keyring is
+    // available. This must never throw, or it takes bootstrap() down with it
+    // (main.dart) and the whole app fails to start.
+    try {
+      final fromSecure = await _secureStorage.read(key: _syncDeviceKeyKey);
+      if (fromSecure != null && fromSecure.isNotEmpty) {
+        return _cachedDeviceKey = fromSecure;
+      }
+
+      final key = _uuidGenerator.v4();
+      await _secureStorage.write(key: _syncDeviceKeyKey, value: key);
+      return _cachedDeviceKey = key;
+    } catch (e) {
+      debugPrint('[settings] secure storage unavailable ($e) — sync disabled this session');
+      return null;
     }
-
-    final key = _uuidGenerator.v4();
-    await _secureStorage.write(key: _syncDeviceKeyKey, value: key);
-    return _cachedDeviceKey = key;
   }
 
   /// The already-loaded device key, or null before [ensureSyncDeviceKey] has

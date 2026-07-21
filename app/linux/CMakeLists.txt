@@ -137,6 +137,14 @@ if(EXISTS "${QUICKJS_BRIDGE_LIB}")
   install(FILES "${QUICKJS_BRIDGE_LIB}"
     DESTINATION "${INSTALL_BUNDLE_LIB_DIR}"
     COMPONENT Runtime)
+else()
+  # Loud, not silent: a missing .so here means the extension runtime can't
+  # dlopen quickjs at runtime (the reported "cannot open shared object file").
+  # CI has a pub-cache safety net (codemagic.yaml Package step), but surface it
+  # in the build log so a broken bundle can't ship unnoticed. See docs/quirks.md.
+  message(WARNING
+    "quickjs bridge library not found at ${QUICKJS_BRIDGE_LIB} — the extension "
+    "runtime will fail to load it unless the CI safety net bundles it.")
 endif()
 
 # Copy the native assets provided by the build.dart from all packages.

@@ -247,9 +247,16 @@ Future<HaLoServices> bootstrap({
     // (§4.3); no-ops in any build without the engine. Overridable for tests.
     updates: updates ?? ShorebirdUpdateService(settings),
   );
+  // A locked/absent keyring yields a null device key (ensureSyncDeviceKey no
+  // longer throws) — boot must still complete, so skip sync setup and pick it
+  // up on a later launch once the keyring is available.
   final syncDeviceKey = await settings.ensureSyncDeviceKey();
-  services.extensions.setSyncCredentials(deviceKey: syncDeviceKey, operatorCall: settings.activeProfile.operatorCall);
-  services.syncEngine.start();
+  if (syncDeviceKey != null) {
+    services.extensions.setSyncCredentials(deviceKey: syncDeviceKey, operatorCall: settings.activeProfile.operatorCall);
+    services.syncEngine.start();
+  } else {
+    debugPrint('[boot] no sync device key (secure storage unavailable) — continuing without sync');
+  }
 
   // macOS app-menu actions (see WindowChromeService and macos/Runner): "About"
   // shows the release overlay, "Preferences…" (⌘,) opens the Settings view.
@@ -441,10 +448,13 @@ class HaLoServices {
   /// profile's callsign (the same profile until multi-profile lands).
   Future<void> setOperatorCall(String call) async {
     await settings.setProfileOperatorCall(SettingsService.defaultProfileId, call);
-    await extensions.setSyncCredentials(
-      deviceKey: await settings.ensureSyncDeviceKey(),
-      operatorCall: settings.activeProfile.operatorCall,
-    );
+    final deviceKey = await settings.ensureSyncDeviceKey();
+    if (deviceKey != null) {
+      await extensions.setSyncCredentials(
+        deviceKey: deviceKey,
+        operatorCall: settings.activeProfile.operatorCall,
+      );
+    }
     // Flags are callsign-specific — refresh them (a no-op if the callsign
     // didn't actually change). Not awaited: the callsign edit shouldn't block
     // on a network round-trip.
@@ -453,7 +463,24 @@ class HaLoServices {
 
   Future<void> setSyncEnabled(bool enabled) async {
     await settings.setSyncEnabled(enabled);
-    if (enabled) syncEngine.start();
+    if (!enabled) return;
+    // Boot skips credential setup when the keyring is locked
+    // (ensureSyncDeviceKey returns null), so starting the engine now without a
+    // device key would run sync unauthenticated. If boot never established the
+    // key, re-attempt here (a null result isn't cached, so this retries secure
+    // storage) and only start once we actually have credentials.
+    if (settings.syncDeviceKey == null) {
+      final deviceKey = await settings.ensureSyncDeviceKey();
+      if (deviceKey == null) {
+        debugPrint('[sync] enabled but secure storage is unavailable — not starting sync');
+        return;
+      }
+      await extensions.setSyncCredentials(
+        deviceKey: deviceKey,
+        operatorCall: settings.activeProfile.operatorCall,
+      );
+    }
+    syncEngine.start();
   }
 
   /// Handles a named command action from the call field — `SYNCALL` (see
