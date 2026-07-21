@@ -709,16 +709,20 @@ class _OperationViewState extends State<OperationView> with SingleTickerProvider
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    operation.title.isEmpty ? operation.stationCall : '${operation.stationCall} ${operation.title}',
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
+                  // Title and description each shrink to fit their own
+                  // width independently (issue #182) rather than
+                  // truncating — down to half their natural font size,
+                  // past which the line ellipsizes instead.
+                  shrinkToFitText(
+                    Text(operation.title.isEmpty ? operation.stationCall : '${operation.stationCall} ${operation.title}'),
                   ),
                   if (refsLine.isNotEmpty)
-                    Text(
-                      refsLine,
-                      style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                        color: Theme.of(context).colorScheme.onPrimary.withValues(alpha: 0.85),
+                    shrinkToFitText(
+                      Text(
+                        refsLine,
+                        style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                          color: Theme.of(context).colorScheme.onPrimary.withValues(alpha: 0.85),
+                        ),
                       ),
                     ),
                 ],

@@ -237,33 +237,47 @@ class _HomeViewState extends State<HomeView> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.end,
           children: [
-            Text(ham2kProductName),
-            // Edition badge to the right of the name, bottom-aligned to sit on
-            // the text baseline (Regular has no badge).
-            if (ham2kEditionBadgeAsset != null) ...[
-              const SizedBox(width: 10),
-              Padding(
-                padding: const EdgeInsets.only(bottom: 3),
-                // Zero-offset shadows read as a glow: black for Next, white for Dev.
-                child: Ham2kEditionBadge(height: 15, shadows: ham2kHeaderEditionBadgeShadows),
-              ),
-            ],
-            // A free-form dev label (DEV_LABEL) after the edition badge — marks
-            // which dev build/session is running; absent in release builds.
-            if (_devLabel.isNotEmpty) ...[
-              const SizedBox(width: 10),
+            // The product name gets priority over the edition badge/dev
+            // label when the header is too narrow to fit both at full size
+            // (issue #182) — a 3:1 flex split shrinks the trailing group
+            // first and further, rather than shrinking both equally.
+            Flexible(flex: 3, child: shrinkToFitText(Text(ham2kProductName))),
+            if (ham2kEditionBadgeAsset != null || _devLabel.isNotEmpty)
               Flexible(
-                child: Text(
-                  _devLabel,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    fontSize: 13,
-                    fontStyle: FontStyle.italic,
-                    color: (theme.appBarTheme.foregroundColor ?? theme.colorScheme.onPrimary).withValues(alpha: 0.8),
+                child: shrinkToFit(
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      // Edition badge to the right of the name, bottom-aligned
+                      // to sit on the text baseline (Regular has no badge).
+                      if (ham2kEditionBadgeAsset != null) ...[
+                        const SizedBox(width: 10),
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 3),
+                          // Zero-offset shadows read as a glow: black for Next, white for Dev.
+                          child: Ham2kEditionBadge(height: 15, shadows: ham2kHeaderEditionBadgeShadows),
+                        ),
+                      ],
+                      // A free-form dev label (DEV_LABEL) after the edition
+                      // badge — marks which dev build/session is running;
+                      // absent in release builds.
+                      if (_devLabel.isNotEmpty) ...[
+                        const SizedBox(width: 10),
+                        Text(
+                          _devLabel,
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontStyle: FontStyle.italic,
+                            color: (theme.appBarTheme.foregroundColor ?? theme.colorScheme.onPrimary)
+                                .withValues(alpha: 0.8),
+                          ),
+                        ),
+                      ],
+                    ],
                   ),
                 ),
               ),
-            ],
           ],
         ),
         actions: [

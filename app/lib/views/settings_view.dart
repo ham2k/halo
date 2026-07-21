@@ -299,7 +299,7 @@ class _SettingsViewState extends State<SettingsView> {
               flexibleSpace: windowHeaderGestureArea(),
               leadingWidth: macOSAwareLeadingWidth(context),
               leading: macOSAwareBackButton(context),
-              title: const Text('Settings'),
+              title: shrinkToFitText(const Text('Settings')),
             ),
             body: _buildSidebar(context, isWide: true, panels: panels, selectedKey: effectivePanel.key),
           ),
@@ -317,7 +317,7 @@ class _SettingsViewState extends State<SettingsView> {
               // Default title inset (16) plus the clearance, so the title
               // lines up with each panel's own row content below.
               titleSpacing: 16 + safeLeft,
-              title: Text(effectivePanel.effectiveScreenTitle),
+              title: shrinkToFitText(Text(effectivePanel.effectiveScreenTitle)),
               automaticallyImplyLeading: false,
               actions: [
                 HeaderProfileLabel(settings: widget.services.settings),
@@ -346,7 +346,7 @@ class _SettingsViewState extends State<SettingsView> {
           flexibleSpace: windowHeaderGestureArea(),
           leadingWidth: macOSAwareLeadingWidth(context),
           leading: macOSAwareBackButton(context),
-          title: const Text('Settings'),
+          title: shrinkToFitText(const Text('Settings')),
           actions: [
             HeaderProfileLabel(settings: widget.services.settings),
             windowsCaptionSpacer(context),
@@ -444,7 +444,7 @@ class _SettingsPanelScreen extends StatelessWidget {
         flexibleSpace: windowHeaderGestureArea(),
         leadingWidth: macOSAwareLeadingWidth(context),
         leading: macOSAwareBackButton(context),
-        title: Text(panel.effectiveScreenTitle),
+        title: shrinkToFitText(Text(panel.effectiveScreenTitle)),
         actions: [
           HeaderProfileLabel(settings: services.settings),
           windowsCaptionSpacer(context),

@@ -103,6 +103,36 @@ void main() {
     await tester.pumpWidget(const SizedBox());
     await tester.pump(const Duration(seconds: 5));
   });
+
+  testWidgets('header title shrinks to fit at a narrow width without throwing (issue #182)', (tester) async {
+    tester.view.physicalSize = const Size(430, 800);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+
+    SharedPreferences.setMockInitialValues({});
+    final settings = SettingsService(await SharedPreferences.getInstance());
+    final db = HaLoDatabase(NativeDatabase.memory());
+    final extensions = ExtensionServiceWithMockHost(MockExtensionHost(const {}))..settings = settings;
+    final services = HaLoServices(db, settings, extensions: extensions);
+    const longTitle = 'A Very Long Operation Title That Would Have Been Ellipsized Before';
+    final operation = await services.operations.create(stationCall: 'KI2D', title: longTitle);
+
+    await tester.pumpWidget(TranslationProvider(
+      child: MaterialApp(
+        home: OperationView(services: services, operationUuid: operation.uuid),
+      ),
+    ));
+    await tester.pumpAndSettle();
+
+    expect(tester.takeException(), isNull);
+    // shrinkToFitText's floor+ellipsis mechanism is unit-tested directly
+    // (platform_chrome_test.dart) — this just proves it mounts cleanly with
+    // the real AppBar title style/theme, at the string it's given.
+    expect(find.text('KI2D $longTitle'), findsOneWidget);
+
+    await tester.pumpWidget(const SizedBox());
+    await tester.pump(const Duration(seconds: 5));
+  });
 }
 
 class MockExtensionHost implements ExtensionHost {

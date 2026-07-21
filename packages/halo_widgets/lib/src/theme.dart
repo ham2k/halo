@@ -29,7 +29,6 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 
 import 'layout.dart';
-import 'platform_chrome.dart';
 
 const _tabularFigures = [FontFeature.tabularFigures()];
 
@@ -379,10 +378,10 @@ ThemeData buildHaLoTheme(Brightness brightness) {
     appBarTheme: AppBarTheme(
       backgroundColor: colorScheme.primary,
       foregroundColor: colorScheme.onPrimary,
-      // Windowed/desktop platforms read like a title bar (left-aligned next
-      // to any leading content); mobile fullscreen centers per each
-      // platform's own convention.
-      centerTitle: !isWindowedPlatform,
+      // Every AppBar reads like a windowed title bar, left-aligned next to
+      // any leading content — including on mobile (issue #182), which
+      // otherwise centers per each platform's own convention.
+      centerTitle: false,
       elevation: 0,
       toolbarHeight: 48.0,
       titleSpacing: 4.0,

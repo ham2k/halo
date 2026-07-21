@@ -78,11 +78,10 @@ double macOSTrafficLightClearance(BuildContext context) => MacOSFullScreenScope.
     ? 0
     : (macOSTrafficLightInset + macOSTrafficLightGap) / UiScale.of(context);
 
-/// True on desktop/windowed platforms (macOS, Windows, Linux) and web, where
-/// an AppBar title reads like a windowed app's title bar and should sit
-/// left-aligned next to any leading content; false on mobile (iOS, Android),
-/// where a fullscreen app's title centers per each platform's own
-/// convention.
+/// True on desktop/windowed platforms (macOS, Windows, Linux) and web,
+/// false on mobile (iOS, Android). Drives the app's own OS-level naming and
+/// a few mobile-only layout adjustments — NOT AppBar title alignment, which
+/// is left-aligned everywhere (theme.dart's `centerTitle: false`).
 bool get isWindowedPlatform =>
     kIsWeb ||
     defaultTargetPlatform == TargetPlatform.macOS ||
@@ -357,6 +356,48 @@ double windowsCaptionClearance(BuildContext context) =>
 /// counterpart of the macOS side's leading clearance
 /// ([macOSAwareLeadingWidth]), just on the opposite edge.
 Widget windowsCaptionSpacer(BuildContext context) => SizedBox(width: windowsCaptionClearance(context));
+
+/// Shrinks an arbitrary (non-Text) header widget — e.g. a Row mixing an
+/// icon/badge with text — to fit whatever width it's given, with no floor.
+/// Every plain single-line title uses [shrinkToFitText] instead, which adds
+/// a minimum-legible-size floor; reach for this only when the content isn't
+/// a single [Text] (issue #182).
+///
+/// `FittedBox(fit: BoxFit.scaleDown)`: its child gets loose/unbounded
+/// constraints, so it lays out at its natural size, then the whole thing
+/// scales down uniformly — but never up — only if that natural size is
+/// wider than the space this is given.
+Widget shrinkToFit(Widget child, {AlignmentGeometry alignment = Alignment.centerLeft}) =>
+    FittedBox(fit: BoxFit.scaleDown, alignment: alignment, child: child);
+
+/// Wraps an AppBar title/subtitle line so it reads the full text at a
+/// smaller size instead of truncating outright — use in place of
+/// `overflow: TextOverflow.ellipsis`. Font size shrinks to fit, but never
+/// below [minScale] (default 50%) of its natural size — past that point the
+/// line falls back to an ellipsis instead of shrinking into illegibility
+/// (issue #182).
+Widget shrinkToFitText(Text text, {double minScale = 0.5}) => LayoutBuilder(
+  builder: (context, constraints) {
+    final style = DefaultTextStyle.of(context).style.merge(text.style);
+    final data = text.data ?? text.textSpan?.toPlainText() ?? '';
+    var scale = 1.0;
+    if (constraints.maxWidth.isFinite) {
+      final painter = TextPainter(
+        text: TextSpan(text: data, style: style),
+        textDirection: text.textDirection ?? Directionality.of(context),
+      )..layout();
+      if (painter.width > constraints.maxWidth) {
+        scale = (constraints.maxWidth / painter.width).clamp(minScale, 1.0);
+      }
+    }
+    return Text(
+      data,
+      style: style.copyWith(fontSize: (style.fontSize ?? 14) * scale),
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
+    );
+  },
+);
 
 /// The minimum size a resizable desktop window may be shrunk to, in PHYSICAL
 /// pixels (already multiplied by [uiScale]) — pass to `WindowChromeService.

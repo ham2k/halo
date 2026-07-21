@@ -335,4 +335,122 @@ void main() {
       modalBarrierIsVisible.value = false;
     }
   });
+
+  group('shrinkToFit', () {
+    // A header title that overflows must still read the full text (issue
+    // #182) — the old `overflow: TextOverflow.ellipsis` truncated it
+    // instead. Constraining width via a fixed-size SizedBox ancestor
+    // (rather than the whole window) keeps the natural-vs-fitted contrast
+    // deterministic regardless of surrounding chrome.
+    Widget host(String text, double width) => MaterialApp(
+          home: Scaffold(
+            body: Align(
+              alignment: Alignment.topLeft,
+              child: SizedBox(width: width, child: shrinkToFit(Text(text))),
+            ),
+          ),
+        );
+
+    testWidgets('renders at natural size, unscaled, when the text already fits', (tester) async {
+      await tester.pumpWidget(host('Short', 300));
+      expect(find.text('Short'), findsOneWidget);
+
+      final fittedBox = tester.widget<FittedBox>(find.byType(FittedBox));
+      expect(fittedBox.fit, BoxFit.scaleDown);
+      // scaleDown never enlarges past 1.0, and 'Short' comfortably fits 300px.
+      final rendered = tester.getSize(find.text('Short'));
+      final natural = _naturalTextWidth(tester, find.text('Short'));
+      expect(rendered.width, closeTo(natural, 0.5));
+    });
+
+    testWidgets('shrinks a too-wide title to fit, reading the full text rather than truncating', (tester) async {
+      const longTitle = 'KI2D A Very Long Operation Title That Would Have Been Ellipsized Before';
+      await tester.pumpWidget(host(longTitle, 120));
+
+      expect(tester.takeException(), isNull);
+      // The full string is present — not a shortened/ellipsized substring.
+      expect(find.text(longTitle), findsOneWidget);
+
+      // The Text's own RenderBox lays out at its natural, unconstrained
+      // size (FittedBox gives its child loose constraints) — the shrink is
+      // a paint-time transform, invisible to `getSize` on the Text itself.
+      // The FittedBox reports back the OUTER (constrained-to-120) size, so
+      // a FittedBox visibly narrower than the text it contains is the
+      // paint-time-scaling signature.
+      final textNaturalWidth = tester.getSize(find.text(longTitle)).width;
+      final fittedBoxWidth = tester.getSize(find.byType(FittedBox)).width;
+      expect(textNaturalWidth, greaterThan(120), reason: 'title must actually be too wide to fit for this test to be meaningful');
+      expect(fittedBoxWidth, lessThanOrEqualTo(120.5));
+      expect(fittedBoxWidth, lessThan(textNaturalWidth), reason: 'text should have scaled down, not overflowed or truncated');
+    });
+  });
+
+  group('shrinkToFitText', () {
+    const longTitle = 'KI2D A Very Long Operation Title That Would Have Been Ellipsized Before';
+    const style = TextStyle(fontSize: 18);
+
+    double naturalWidth(WidgetTester tester) {
+      final painter = TextPainter(text: const TextSpan(text: longTitle, style: style), textDirection: TextDirection.ltr)
+        ..layout();
+      return painter.width;
+    }
+
+    Widget host(double width) => MaterialApp(
+          home: Scaffold(
+            body: Align(
+              alignment: Alignment.topLeft,
+              child: SizedBox(width: width, child: shrinkToFitText(const Text(longTitle, style: style))),
+            ),
+          ),
+        );
+
+    testWidgets('reads the full text, scaled down but above the 50% floor, when moderately too wide', (tester) async {
+      final natural = naturalWidth(tester);
+      // Comfortably requires a scale between the floor and 1.0.
+      await tester.pumpWidget(host(natural * 0.7));
+      await tester.pump();
+
+      expect(tester.takeException(), isNull);
+      expect(find.text(longTitle), findsOneWidget);
+
+      final rendered = tester.widget<Text>(find.text(longTitle));
+      final scale = rendered.style!.fontSize! / style.fontSize!;
+      expect(scale, inInclusiveRange(0.5, 1.0));
+    });
+
+    testWidgets('locks at the 50% floor and relies on ellipsis for the rest', (tester) async {
+      final natural = naturalWidth(tester);
+      final width = natural * 0.2;
+      // Would need well under a 50% scale to avoid overflowing — the floor
+      // must win, with the residual overflow handled by ellipsis instead.
+      await tester.pumpWidget(host(width));
+      await tester.pump();
+
+      expect(tester.takeException(), isNull);
+
+      final rendered = tester.widget<Text>(find.text(longTitle));
+      expect(rendered.style!.fontSize, style.fontSize! * 0.5, reason: 'font size should lock at the 50% floor, not keep shrinking');
+      expect(rendered.overflow, TextOverflow.ellipsis);
+      expect(rendered.maxLines, 1);
+
+      // Unlike shrinkToFit's FittedBox (which reports the OUTER constrained
+      // size while the child stays at its natural, unclipped size), Text
+      // lays itself out AT the given constraint — so a width close to what
+      // was given (rather than to `natural * 0.5`) is the signature of the
+      // ellipsis actually clipping the overflow, not silently overflowing.
+      final renderedWidth = tester.getSize(find.text(longTitle)).width;
+      expect(renderedWidth, lessThanOrEqualTo(width + 0.5));
+    });
+  });
+}
+
+/// The width [finder]'s Text would occupy laid out with no width constraint
+/// — i.e. before any FittedBox scaling is applied.
+double _naturalTextWidth(WidgetTester tester, Finder finder) {
+  final textWidget = tester.widget<Text>(finder);
+  final painter = TextPainter(
+    text: TextSpan(text: textWidget.data, style: DefaultTextStyle.of(tester.element(finder)).style),
+    textDirection: TextDirection.ltr,
+  )..layout();
+  return painter.width;
 }

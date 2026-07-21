@@ -68,6 +68,13 @@ void main() {
       expect(theme.appBarTheme.titleTextStyle!.fontWeight, FontWeight.w900);
     });
 
+    test('app bar title is left-aligned, not centered per platform (issue #182)', () {
+      // Mobile used to center per each platform's own convention
+      // (`!isWindowedPlatform`) — every header now reads like a windowed
+      // title bar regardless of platform.
+      expect(buildHaLoTheme(Brightness.light).appBarTheme.centerTitle, isFalse);
+    });
+
     test('dark and light themes both carry the band color extension', () {
       for (final brightness in Brightness.values) {
         final theme = buildHaLoTheme(brightness);

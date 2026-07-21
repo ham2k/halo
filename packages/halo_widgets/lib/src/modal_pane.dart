@@ -146,7 +146,7 @@ class _ModalPaneScaffold extends StatelessWidget {
           // dialog presentation's close button.
           leadingWidth: macOSAwareLeadingWidth(context),
           leading: macOSAwareBackButton(context),
-          title: route.title == null ? null : Text(route.title!),
+          title: route.title == null ? null : shrinkToFitText(Text(route.title!)),
           actions: [windowsCaptionSpacer(context)],
         ),
         body: SafeArea(

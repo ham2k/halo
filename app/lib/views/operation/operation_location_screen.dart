@@ -131,7 +131,7 @@ class _OperationLocationScreenState extends State<OperationLocationScreen> {
         flexibleSpace: windowHeaderGestureArea(),
         leadingWidth: macOSAwareLeadingWidth(context),
         leading: macOSAwareBackButton(context),
-        title: Text(t.title),
+        title: shrinkToFitText(Text(t.title)),
         actions: [windowsCaptionSpacer(context)],
       ),
       body: ListView(

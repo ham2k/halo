@@ -103,7 +103,7 @@ class _OperationExportScreenState extends State<OperationExportScreen> {
         flexibleSpace: windowHeaderGestureArea(),
         leadingWidth: macOSAwareLeadingWidth(context),
         leading: macOSAwareBackButton(context),
-        title: Text(t.operation.export.title),
+        title: shrinkToFitText(Text(t.operation.export.title)),
         actions: [windowsCaptionSpacer(context)],
       ),
       body: _loading
