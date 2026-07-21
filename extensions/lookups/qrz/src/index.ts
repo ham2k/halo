@@ -108,12 +108,24 @@ async function fetchCall(call: string, ctx: HookContext): Promise<string> {
   return response.body
 }
 
+/** A non-empty string field (a resolved value, not a blank/absent one). */
+const has = (v: unknown): boolean => typeof v === 'string' && v.trim() !== ''
+
 async function lookupCall(
   { callInfo }: { callInfo: AnnotatedCallInfo; qso: Record<string, JSONValue>; operation: Record<string, JSONValue> },
   ctx: HookContext,
 ): Promise<LookupResult> {
   const call = (callInfo.call || '').trim().toUpperCase()
   if (call.length < 3 || !ctx.online) return []
+
+  // Skip the network round-trip when the running guess already carries the
+  // data QRZ could still contribute. On a portable QSO (a POTA/SOTA ref or /P
+  // call owns the location) the merge scope-locks QRZ's grid out, so a name is
+  // all it could add — skip once we have that. Otherwise it takes both a name
+  // and a grid to make the call redundant. Only this source knows which of its
+  // fields are worth a network hit.
+  const isPortable = callInfo.locationScope === 'portable'
+  if (has(callInfo.name) && (isPortable || has(callInfo.grid))) return []
 
   try {
     let xml = await fetchCall(call, ctx)

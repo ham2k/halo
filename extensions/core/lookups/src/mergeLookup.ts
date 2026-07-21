@@ -63,6 +63,18 @@ export function mergeLookupIntoGuess(guess: CallInfo, result: CallInfoLookup): C
     if (resultScope != null) next.locationScope = resultScope
   }
 
+  // A same-scope result that is strictly LESS precise than the location already
+  // established must not touch ANY location field — otherwise a vaguer home
+  // lookup (QRZ/HamDB, which inherit whatever locationScope a POTA/SOTA ref
+  // already set) would fill the city/state a park's grid-only result left
+  // empty, and the grid/city reconciliation below would then thrash the park
+  // grid and location away (ham2k/app-halo-dist#185). A more precise same-scope
+  // result took over above; an equal one still first-wins per-field below.
+  const locationLocked =
+    resultScope != null &&
+    scopeRank(resultScope) === scopeRank(next.locationScope) &&
+    (resultAccuracy ?? LOCATION_ACCURACY.NO_LOCATION) > currentAccuracy
+
   // 2. Priority order: fields already present in `next` are never
   //    overwritten (higher-priority/earlier results win). Location fields
   //    additionally require this result's own scope to be at least as
@@ -79,6 +91,7 @@ export function mergeLookupIntoGuess(guess: CallInfo, result: CallInfoLookup): C
     if (!hasValue(value)) continue
     if (isLocationField(field)) {
       if (scopeRank(resultScope) < scopeRank(next.locationScope)) continue
+      if (locationLocked) continue
       if (hasValue(next[field])) continue
       ;(next as Record<string, unknown>)[field] = value
       written.add(field)

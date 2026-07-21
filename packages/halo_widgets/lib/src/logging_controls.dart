@@ -2115,6 +2115,21 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     );
   }
 
+  /// Re-runs the callsign lookup after the QSO's refs change (e.g. adding a
+  /// hunted POTA park or SOTA summit). The POTA/SOTA `lookup` hooks read the
+  /// QSO's refs to resolve a park/summit grid, but the lookup is otherwise
+  /// keyed and cached by callsign alone — so a ref added after the call would
+  /// never reach the guess. Invalidate the cache entry for the active call and
+  /// re-schedule (ham2k/app-halo-dist#185).
+  void _relookupForRefsChanged() {
+    if (_populating || widget.lookup == null) return;
+    final activeCall = _callAtCursor;
+    if (!looksLikeCallsign(activeCall)) return;
+    _lookupCache.remove(activeCall);
+    _lookupFor = null;
+    _scheduleLookup();
+  }
+
   SecondaryControlSpec _activityControlSpec(Map<String, dynamic> control) {
     final refCount = _controlRefs[control['key']]?.length ?? 0;
     final label = (control['label'] as String?) ?? control['key'] as String;
@@ -2145,7 +2160,12 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
               RefTransform.fromMap((t as Map).cast<String, dynamic>()),
           ],
           refs: _controlRefs[control['key']] ?? const [],
-          onChanged: (refs) => setState(() => _controlRefs[control['key'] as String] = refs),
+          // Re-run the lookup so a park/summit ref added after the call reaches
+          // the guess (POTA/SOTA lookup hooks key off the QSO's refs).
+          onChanged: (refs) {
+            setState(() => _controlRefs[control['key'] as String] = refs);
+            _relookupForRefsChanged();
+          },
           decorate: widget.decorateRef,
           labelColor: Theme.of(context).colorScheme.onTertiaryContainer,
         ),
@@ -2878,6 +2898,15 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
       });
     }
 
+    _scheduleLookup();
+  }
+
+  /// Schedules the debounced callsign lookup for the active call. Split out of
+  /// `_onCallChanged` so it can also be re-run when the QSO's refs change — a
+  /// hunted POTA/SOTA ref feeds the POTA/SOTA `lookup` hooks, changing what the
+  /// lookup resolves. See `_relookupForRefsChanged`.
+  void _scheduleLookup() {
+    _lookupDebounce?.cancel();
     if (widget.lookup == null) return;
     // Preview lookup keys off whichever call is actually about to be logged
     // (issue #7's call stacking) or the segment the cursor is on within a

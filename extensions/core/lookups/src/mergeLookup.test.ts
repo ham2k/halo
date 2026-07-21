@@ -248,3 +248,22 @@ test("#185: a portable ref still overrides a home QTH grid by scope, whatever it
   assert.equal(guess.grid, "DN60ns")
   assert.equal(guess.city, undefined) // qth city cleared by the portable takeover
 })
+
+test("#185: a home lookup that INHERITED the portable scope can't thrash away a POTA park's grid/location", () => {
+  // The real-world failure: POTA sets a park grid+location at portable scope
+  // (clearing city/state it didn't supply); QRZ/HamDB then resolve the home
+  // call and inherit that portable scope, so they're same-scope and — without
+  // the accuracy lock — fill the empty city/state, which the grid/city
+  // reconciliation thrashes into deleting the park grid and location.
+  const results: Located[] = [
+    { call: "W1WC", source: "callsign-annotation", scope: "general", locationScope: "qth", entityPrefix: "K" },
+    { call: "W1WC", source: "call-notes", scope: "general", name: "Some Op" },
+    { call: "W1WC", source: "pota", scope: "qso", locationScope: "portable", grid: "FN41bb", location: "US-2005 US-NY Amsterdam Beach State Park", locAccuracy: LOCATION_ACCURACY.REASONABLE },
+    { call: "W1WC", source: "qrz.com", scope: "general", locationScope: "portable", grid: "EM64mn", city: "Hartselle", state: "AL", location: "Hartselle, AL" },
+    { call: "W1WC", source: "hamdb.org", scope: "general", locationScope: "portable", grid: "EM64mn", city: "Hartselle", state: "AL" },
+  ]
+  const { guess } = runLookupPipeline({ call: "W1WC" }, results)
+  assert.equal(guess.grid, "FN41bb")
+  assert.equal(guess.location, "US-2005 US-NY Amsterdam Beach State Park")
+  assert.equal(guess.name, "Some Op") // non-location fields still merge normally
+})

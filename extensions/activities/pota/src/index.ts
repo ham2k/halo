@@ -38,6 +38,12 @@ export { REFERENCE_REGEX, transformsForPrefix, hunterDefaultPrefix, activationDe
 const HUNTING_TYPE = 'pota'
 const ACTIVATION_TYPE = 'potaActivation'
 
+// POTA references are `{country}-{number}` and a park's `locationDesc` is a
+// comma-separated list of `{country}-{state}` areas. In these countries a
+// single-area park sits in one meaningful state/province worth surfacing on
+// the guess; elsewhere the area code isn't a useful "state", so we skip it.
+const COUNTRIES_WHERE_STATES_MATTER = new Set(['US', 'CA', 'AU'])
+
 // Nearby suggestions use a ~150km bounding box (dbLookupSelectByLocation is a
 // rectangular query, not a true radius); results are then given a real
 // Haversine distance and capped, same trade-off app-polo's own POTA
@@ -275,8 +281,31 @@ async function lookupCall(
   const park = await fetchPark(refs[0].ref!.toUpperCase())
   if (!park?.grid6) return []
 
-  const location = [park.reference, park.locationDesc, park.name].filter((x) => x).join(' ')
-  return [{ call: callInfo.call, source: 'pota', scope: 'qso', locationScope: 'portable', grid: park.grid6, location, locAccuracy: LOCATION_ACCURACY.REASONABLE }]
+  // In state-relevant countries, a park whose locationDesc names exactly one
+  // area sits in a single state — surface it (the area's second, post-`-`
+  // part) both on the guess and in the location text.
+  const country = park.reference.split('-')[0]
+  const areas = park.locationDesc.split(',').map((a) => a.trim()).filter((a) => a)
+  let state: string | undefined
+  if (COUNTRIES_WHERE_STATES_MATTER.has(country) && areas.length === 1) {
+    const s = areas[0].split('-')[1]
+    if (s) state = s
+  }
+
+  const namePart = park.name ? `: ${park.name}` : ''
+  const location = state ? `${park.reference}, ${state}${namePart}` : `${park.reference}${namePart}`
+
+  const result: LookupResult[number] = {
+    call: callInfo.call,
+    source: 'pota',
+    scope: 'qso',
+    locationScope: 'portable',
+    grid: park.grid6,
+    location,
+    locAccuracy: LOCATION_ACCURACY.REASONABLE,
+  }
+  if (state) result.state = state
+  return [result]
 }
 
 const AdifFieldsHook = {

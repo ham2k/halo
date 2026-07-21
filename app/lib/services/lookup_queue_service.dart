@@ -237,6 +237,20 @@ class LookupQueueService {
     final newGuess = item.result['guess'];
     final newLookups = item.result['lookups'];
 
+    // Fail-safe against a crossed lookup result. The merged guess is seeded
+    // from the callsign we asked for (annotate.ts always sets `guess.call` to
+    // the uppercased lookup call), so a guess whose call disagrees is a result
+    // that got mixed up in flight — persisting it is exactly the reported
+    // "wrong station's name on a QSO" bug. Drop it rather than write it, and
+    // log loudly: this path is unreproduced locally, so a hit in the wild is
+    // the trace we need. A guess with no `call` at all still passes through.
+    final guessCall = (newGuess is Map ? newGuess['call'] : null) as String?;
+    if (guessCall != null && guessCall.toUpperCase() != item.call.toUpperCase()) {
+      debugPrint('[lookup queue] DROPPED crossed result: asked for ${item.call}, '
+          'guess was for $guessCall (qso ${item.entry.qsoUuid})');
+      return;
+    }
+
     // A degraded result (offline, or a source erroring) must not wipe
     // richer stored data: the pipeline always returns at least the offline
     // annotation entry, so "sources that answered" is the real signal. Only

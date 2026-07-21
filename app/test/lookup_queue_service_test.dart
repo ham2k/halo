@@ -142,6 +142,33 @@ void main() {
     expect(stored.theirName, isNull);
   });
 
+  test('a crossed result — a guess for a different call than requested — is dropped, never written', () async {
+    // The field report this guards: an earlier QSO showing a later QSO's
+    // name. The merged guess is always seeded with the callsign it was
+    // looked up for (annotate.ts sets guess.call), so a guess.call that
+    // disagrees with the QSO is a result that got mixed up in flight and must
+    // never decorate this record — displays fall back to their.guess, so a
+    // crossed merge would silently show the wrong station.
+    final qso = await qsos.add(operation.uuid, {'their': {'call': 'W1AW'}});
+
+    final queue = service((call, {required qso, required operation, bool online = true}) async {
+      // A well-formed result, but for a different station than asked for.
+      return {
+        'guess': {'call': 'K1ABC', 'name': 'Wrong Station'},
+        'lookups': [
+          {'source': 'test', 'call': 'K1ABC', 'name': 'Wrong Station'}
+        ],
+      };
+    });
+
+    queue.enqueue(qso);
+    await queue.idle;
+
+    final stored = (await qsos.get(qso.uuid))!;
+    expect(stored.theirName, isNull, reason: 'the crossed name must not be written');
+    expect((stored.data['their'] as Map)['guess'], isNull, reason: 'no guess persisted at all');
+  });
+
   test('a degraded (offline) result never wipes richer stored lookup data, and an identical result does not dirty the record', () async {
     final enriched = {
       'guess': {'name': 'ARRL HQ', 'grid': 'FN31pr'},

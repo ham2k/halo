@@ -33,12 +33,25 @@ async function fetchCall(call: string): Promise<Record<string, any> | null> {
   }
 }
 
+/** A non-empty string field (a resolved value, not a blank/absent one). */
+const has = (v: unknown): boolean => typeof v === 'string' && v.trim() !== ''
+
 async function lookupCall(
   { callInfo }: { callInfo: AnnotatedCallInfo; qso: Record<string, JSONValue>; operation: Record<string, JSONValue> },
   ctx: HookContext,
 ): Promise<LookupResult> {
   const call = (callInfo.call || '').trim().toUpperCase()
   if (call.length < 3 || !ctx.online) return [] // no offline data source
+
+  // Skip the network round-trip when the running guess already carries what
+  // HamDB could still contribute. On a portable QSO (a POTA/SOTA ref or /P call
+  // owns the location) HamDB's coarse grid AND its city are both scope-locked
+  // out, so a name is all it could add — skip once we have that. Otherwise
+  // require a name AND a city: HamDB's own grids are unreliable, so a grid
+  // alone isn't the signal, but a city (from a higher-priority source, e.g.
+  // QRZ) is. Only this source knows which of its fields are worth a hit.
+  const isPortable = callInfo.locationScope === 'portable'
+  if (has(callInfo.name) && (isPortable || has(callInfo.city))) return []
 
   // HamDB's API doesn't understand indicators (e.g. "/P", "/M") — it only
   // recognizes the plain registered callsign. The full (possibly indicated
