@@ -8,6 +8,11 @@
 
 import { gridToLocation, locationToGrid6 } from "@ham2k/lib-geo-tools"
 import type { CallInfo, CallInfoLookup } from "@ham2k/halo-extension-sdk"
+// Relative (not the `@ham2k/halo-extension-sdk` alias) so this file's own
+// `mergeLookup.test.ts` — run via plain `node --test`, which can't resolve
+// that tsc-only bare specifier — stays runnable; same constraint as
+// annotate.ts's dxcc import.
+import { LOCATION_ACCURACY } from "../../../sdk/src/location.ts"
 
 const LOCATION_SCOPE_RANK: Record<string, number> = { qth: 0, prefixed: 1, portable: 2 }
 
@@ -30,15 +35,32 @@ function hasValue(value: unknown): boolean {
 /// object — never mutates its input, so callers/tests can compare before
 /// and after freely.
 export function mergeLookupIntoGuess(guess: CallInfo, result: CallInfoLookup): CallInfo {
-  const next: CallInfo = { ...guess }
+  const next = { ...guess } as CallInfo & { locAccuracy?: number }
+  const res = result as CallInfoLookup & { locAccuracy?: number }
   const resultScope = result.locationScope
+  // Per-source location accuracy (lower = more precise); rides along untyped
+  // like `flag`. Absent means "unknown" — treated as the least precise.
+  const resultAccuracy = typeof res.locAccuracy === 'number' ? res.locAccuracy : undefined
+  const currentAccuracy = typeof next.locAccuracy === 'number' ? next.locAccuracy : LOCATION_ACCURACY.NO_LOCATION
+  const resultHasLocation = LOCATION_FIELDS.some((f) => hasValue((res as Record<string, unknown>)[f]))
 
-  // 1. A strictly-more-specific locationScope clears all existing location
-  //    fields before anything from this result is merged in, and the guess
-  //    adopts the new, more specific scope.
-  if (resultScope && scopeRank(resultScope) > scopeRank(next.locationScope)) {
+  // 1. This result takes over the location — clearing every existing location
+  //    field so its own values fill them below, and adopting its scope — when
+  //    either its locationScope is strictly more specific, OR it has the same
+  //    scope but a strictly more precise location (so the most accurate of
+  //    several same-scope refs, e.g. a SOTA summit vs a POTA park on one QSO,
+  //    wins regardless of the order they're folded in).
+  const scopeUpgrade = resultScope != null && scopeRank(resultScope) > scopeRank(next.locationScope)
+  const refinesSameScope =
+    resultScope != null &&
+    scopeRank(resultScope) === scopeRank(next.locationScope) &&
+    resultHasLocation &&
+    resultAccuracy != null &&
+    resultAccuracy < currentAccuracy
+  if (scopeUpgrade || refinesSameScope) {
     for (const field of LOCATION_FIELDS) delete next[field]
-    next.locationScope = resultScope
+    delete next.locAccuracy
+    if (resultScope != null) next.locationScope = resultScope
   }
 
   // 2. Priority order: fields already present in `next` are never
@@ -53,7 +75,7 @@ export function mergeLookupIntoGuess(guess: CallInfo, result: CallInfoLookup): C
   //    agreeing on the same grid, which must not count as "written").
   const written = new Set<LocationField>()
   for (const [field, value] of Object.entries(result)) {
-    if (field === 'source' || field === 'scope' || field === 'call' || field === 'notes' || field === 'history' || field === 'locationScope') continue
+    if (field === 'source' || field === 'scope' || field === 'call' || field === 'notes' || field === 'history' || field === 'locationScope' || field === 'locAccuracy') continue
     if (!hasValue(value)) continue
     if (isLocationField(field)) {
       if (scopeRank(resultScope) < scopeRank(next.locationScope)) continue
@@ -104,6 +126,15 @@ export function mergeLookupIntoGuess(guess: CallInfo, result: CallInfoLookup): C
     delete next.grid
     delete next.lat
     delete next.lon
+  }
+
+  // Record the accuracy of the location this result actually contributed
+  // (i.e. wrote at least one location field), so a later same-scope result
+  // can tell whether it would be an improvement. A contributing result with
+  // no declared accuracy leaves the slot "unknown" (least precise).
+  if (written.size > 0) {
+    if (resultAccuracy != null) next.locAccuracy = resultAccuracy
+    else delete next.locAccuracy
   }
 
   return next

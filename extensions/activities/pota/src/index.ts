@@ -13,7 +13,7 @@
 import { DXCC_BY_CODE } from "@ham2k/lib-dxcc-data"
 import { bandForFrequency } from "@ham2k/lib-operation-data"
 import { locationToGrid6, distanceOnEarth } from "@ham2k/lib-geo-tools"
-import { defineExtension, host } from "@ham2k/halo-extension-sdk"
+import { defineExtension, host, LOCATION_ACCURACY } from "@ham2k/halo-extension-sdk"
 import type {
   AnnotatedCallInfo,
   HookContext,
@@ -258,14 +258,16 @@ function refsOfType(container: Record<string, unknown>, type: string): Ref[] {
 /// A QSO-scoped grid lookup: any POTA park hunted on THIS qso is a more
 /// specific ("portable") location than a callsign's registered home QTH —
 /// same concept as a `/P` callsign, per ham2k/app-halo-dist#8's worked
-/// example. Skips entirely if there's no POTA ref on the qso, if the
-/// callInfo already has a grid from a higher-priority source, or if this
-/// pass is offline (the network fallback in `fetchPark` needs online).
+/// example. Returns the park's grid tagged `REASONABLE` accuracy (a park can
+/// be large, so its single-point grid may be off by a few grids); the merge
+/// keeps whichever same-scope result is most accurate, so this no longer has
+/// to bail when a grid already exists — a more precise SOTA summit on the same
+/// qso still wins (ham2k/app-halo-dist#185). Skips when there's no POTA ref or
+/// this pass is offline (the network fallback in `fetchPark` needs online).
 async function lookupCall(
   { callInfo, qso }: { callInfo: AnnotatedCallInfo; qso: Record<string, JSONValue>; operation: Record<string, JSONValue> },
   ctx: HookContext,
 ): Promise<LookupResult> {
-  if (callInfo.grid) return []
   const refs = refsOfType(qso, HUNTING_TYPE)
   if (refs.length === 0) return []
   if (!ctx.online) return []
@@ -274,7 +276,7 @@ async function lookupCall(
   if (!park?.grid6) return []
 
   const location = [park.reference, park.locationDesc, park.name].filter((x) => x).join(' ')
-  return [{ call: callInfo.call, source: 'pota', scope: 'qso', locationScope: 'portable', grid: park.grid6, location }]
+  return [{ call: callInfo.call, source: 'pota', scope: 'qso', locationScope: 'portable', grid: park.grid6, location, locAccuracy: LOCATION_ACCURACY.REASONABLE }]
 }
 
 const AdifFieldsHook = {

@@ -6,6 +6,13 @@ import assert from "node:assert/strict"
 
 import { mergeLookupIntoGuess, runLookupPipeline } from "./mergeLookup.ts"
 import type { CallInfo, CallInfoLookup } from "@ham2k/halo-extension-sdk"
+// Relative import (the SDK bare specifier is tsc-only, unresolvable under
+// `node --test` — see annotate.ts).
+import { LOCATION_ACCURACY } from "../../../sdk/src/location.ts"
+
+// A lookup result carrying a per-source location accuracy (rides along untyped,
+// like POTA/SOTA now emit — see LookupResult).
+type Located = CallInfoLookup & { locAccuracy?: number }
 
 test("priority order: earlier result's field is not overwritten by a later one, but an absent field is populated", () => {
   const guess: CallInfo = { call: "KI2D" }
@@ -200,4 +207,44 @@ test("regression: a result whose grid/city are REJECTED by priority order (alrea
   const merged = mergeLookupIntoGuess(guess, { call: "X", source: "b", scope: "general", grid: "FN21rq", city: "Shelbyville" })
   assert.equal(merged.grid, "FN21rq")
   assert.equal(merged.city, "Springfield") // must survive — this result wrote nothing
+})
+
+// ── issue #185: keep the most precise same-scope location ──────────────────
+
+const pota: Located = { call: "X", source: "pota", scope: "qso", locationScope: "portable", grid: "DN60ns", location: "US-1 Park", locAccuracy: LOCATION_ACCURACY.REASONABLE }
+const sota: Located = { call: "X", source: "sota", scope: "qso", locationScope: "portable", grid: "FN31aa", location: "W2/GC-001 Summit", locAccuracy: LOCATION_ACCURACY.ACCURATE }
+
+test("#185: the more precise same-scope ref wins regardless of fold order (SOTA summit over POTA park)", () => {
+  // POTA folded first, then the more precise SOTA refines it.
+  const forward = runLookupPipeline({ call: "X", locationScope: "qth" }, [pota, sota]).guess
+  assert.equal(forward.grid, "FN31aa")
+  assert.equal(forward.location, "W2/GC-001 Summit")
+
+  // Reverse order: SOTA first, POTA must NOT clobber the more precise summit.
+  const reverse = runLookupPipeline({ call: "X", locationScope: "qth" }, [sota, pota]).guess
+  assert.equal(reverse.grid, "FN31aa")
+  assert.equal(reverse.location, "W2/GC-001 Summit")
+})
+
+test("#185: a less precise same-scope result does not replace an already more precise location", () => {
+  let guess: CallInfo = { call: "X", locationScope: "qth" }
+  guess = mergeLookupIntoGuess(guess, sota)
+  guess = mergeLookupIntoGuess(guess, pota)
+  assert.equal(guess.grid, "FN31aa") // summit kept, park rejected
+})
+
+test("#185: equal-accuracy same-scope results keep the first (no thrash)", () => {
+  const parkA: Located = { call: "X", source: "pota", scope: "qso", locationScope: "portable", grid: "DN60ns", locAccuracy: LOCATION_ACCURACY.REASONABLE }
+  const parkB: Located = { call: "X", source: "pota", scope: "qso", locationScope: "portable", grid: "FN31aa", locAccuracy: LOCATION_ACCURACY.REASONABLE }
+  let guess: CallInfo = { call: "X", locationScope: "portable" }
+  guess = mergeLookupIntoGuess(guess, parkA)
+  guess = mergeLookupIntoGuess(guess, parkB)
+  assert.equal(guess.grid, "DN60ns")
+})
+
+test("#185: a portable ref still overrides a home QTH grid by scope, whatever its accuracy tag", () => {
+  let guess: CallInfo = { call: "X", locationScope: "qth", grid: "FN21rq", city: "Home" }
+  guess = mergeLookupIntoGuess(guess, pota)
+  assert.equal(guess.grid, "DN60ns")
+  assert.equal(guess.city, undefined) // qth city cleared by the portable takeover
 })

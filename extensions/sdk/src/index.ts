@@ -25,6 +25,7 @@ import type {
 export * from "./types"
 export * from "./i18n"
 export * from "./dxcc"
+export * from "./location"
 
 interface KernelApi {
   defineExtension(def: ExtensionDefinition): void

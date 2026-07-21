@@ -13,7 +13,7 @@ import { parseCallsign } from "@ham2k/lib-callsigns"
 import { annotateFromCountryFile, useBuiltinCountryFile } from "@ham2k/lib-country-files"
 import { bandForFrequency } from "@ham2k/lib-operation-data"
 import { locationToGrid6, distanceOnEarth } from "@ham2k/lib-geo-tools"
-import { defineExtension, host } from "@ham2k/halo-extension-sdk"
+import { defineExtension, host, LOCATION_ACCURACY } from "@ham2k/halo-extension-sdk"
 import type {
   AnnotatedCallInfo,
   FetchOptions,
@@ -317,13 +317,15 @@ function refsOfType(container: Record<string, unknown>, type: string): Ref[] {
   return (((container.refs as Ref[] | undefined) ?? [])).filter((r) => r.type === type && r.ref)
 }
 
-/// See POTA's identical `lookupCall` for the rationale: a summit hunted on
-/// this qso is a more specific ("portable") location than a home QTH.
+/// See POTA's `lookupCall` for the rationale: a summit hunted on this qso is a
+/// more specific ("portable") location than a home QTH. A summit is small, so
+/// its grid is tagged `ACCURATE` — more precise than a POTA park — and the
+/// merge keeps the most accurate same-scope result, so a summit wins over a
+/// park on the same qso regardless of order (ham2k/app-halo-dist#185).
 async function lookupCall(
   { callInfo, qso }: { callInfo: AnnotatedCallInfo; qso: Record<string, JSONValue>; operation: Record<string, JSONValue> },
   ctx: HookContext,
 ): Promise<LookupResult> {
-  if (callInfo.grid) return []
   const refs = refsOfType(qso, HUNTING_TYPE)
   if (refs.length === 0) return []
   if (!ctx.online) return []
@@ -332,7 +334,7 @@ async function lookupCall(
   if (!summit?.locator) return []
 
   const location = [summit.summitCode, summit.regionName, summit.name].filter((x) => x).join(' ')
-  return [{ call: callInfo.call, source: 'sota', scope: 'qso', locationScope: 'portable', grid: summit.locator, location }]
+  return [{ call: callInfo.call, source: 'sota', scope: 'qso', locationScope: 'portable', grid: summit.locator, location, locAccuracy: LOCATION_ACCURACY.ACCURATE }]
 }
 
 const AdifFieldsHook = {

@@ -39,8 +39,11 @@ export type { CallInfo, CallInfoLookup, AnnotatedCallInfo } from "@ham2k/lib-qso
 import type { CallInfo, CallInfoLookup, AnnotatedCallInfo } from "@ham2k/lib-qson-tools"
 
 /// A lookup hook may return zero or more records for one decoration pass —
-/// `[]` to skip (e.g. the field it would provide is already known).
-export type LookupResult = CallInfoLookup[]
+/// `[]` to skip (e.g. the field it would provide is already known). A result
+/// that supplies a location may tag it with a [LOCATION_ACCURACY] rank via
+/// `locAccuracy` (lower = more precise); `mergeLookupIntoGuess` keeps the most
+/// accurate location when several same-scope sources offer one.
+export type LookupResult = (CallInfoLookup & { locAccuracy?: number })[]
 
 /// Registered under category `lookup`. Called once per decoration pass, in
 /// priority order, by the core `lookupService/core` hook's internal
