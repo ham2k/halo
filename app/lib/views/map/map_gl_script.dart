@@ -74,6 +74,9 @@ window.poloMapGl = window.poloMapGl || {
         el.style.height = size + 'px';
         el.style.background = m.color;
         el.title = m.label;
+        // The current QSO's marker sits above every other DOM marker (Mapbox
+        // otherwise z-orders them by latitude).
+        if (m.highlight) el.style.zIndex = '10';
         el.addEventListener('click', (e) => { e.stopPropagation(); showPopup(m); });
         markers.push(new mapboxgl.Marker({ element: el }).setLngLat([m.longitude, m.latitude]).addTo(map));
         bounds.extend([m.longitude, m.latitude]);
@@ -93,15 +96,32 @@ window.poloMapGl = window.poloMapGl || {
         source.setData(collection);
       } else {
         map.addSource('polo-lines', { type: 'geojson', data: collection });
+        // Base lines, then the current QSO's highlight line in a second layer
+        // added after it (so it paints over the other lines), full-opacity and
+        // heavier. Note markers are DOM overlays above the GL canvas, so the
+        // highlight line still sits under the marker dots on this backend.
         map.addLayer({
           id: 'polo-lines',
           type: 'line',
           source: 'polo-lines',
           slot: 'top',
+          filter: ['!=', ['get', 'highlight'], true],
           paint: {
             'line-color': ['coalesce', ['get', 'color'], '#000000'],
             'line-width': 1.5,
             'line-opacity': data.opacity,
+          },
+        });
+        map.addLayer({
+          id: 'polo-lines-highlight',
+          type: 'line',
+          source: 'polo-lines',
+          slot: 'top',
+          filter: ['==', ['get', 'highlight'], true],
+          paint: {
+            'line-color': ['coalesce', ['get', 'color'], '#000000'],
+            'line-width': 3,
+            'line-opacity': 1,
           },
         });
       }

@@ -38,6 +38,7 @@ void main() {
     CommandInterpreter? interpretCommand,
     void Function(String? message)? onCommandMessageChanged,
     CommandActionHandler? onCommandAction,
+    CallInfoChanged? onCallInfoChanged,
     VfoStore? radioService,
     Qso? editingQso,
     Map<String, dynamic>? suggestedQso,
@@ -61,6 +62,7 @@ void main() {
       interpretCommand: interpretCommand,
       onCommandMessageChanged: onCommandMessageChanged,
       onCommandAction: onCommandAction,
+      onCallInfoChanged: onCallInfoChanged,
       radioService: radioService,
       editingQso: editingQso,
       suggestedQso: suggestedQso,
@@ -994,6 +996,34 @@ void main() {
     await tester.pump(const Duration(milliseconds: 200));
 
     expect(messages, isEmpty);
+  });
+
+  testWidgets('call-info reports isEditing so the map can colour the current QSO (orange composing, blue editing)', (tester) async {
+    // The map reads CallInfoData.isEditing to pick the highlight colour.
+    final infos = <CallInfoData>[];
+    void capture(CallInfoData? info) {
+      if (info != null) infos.add(info);
+    }
+
+    // Composing a new QSO → isEditing false.
+    await tester.pumpWidget(host(onCallInfoChanged: capture));
+    await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'W1AW');
+    await tester.pump(const Duration(milliseconds: 200));
+    expect(infos, isNotEmpty, reason: 'a real callsign produces call-info');
+    expect(infos.last.isEditing, isFalse, reason: 'composing a new QSO');
+
+    // Editing an existing QSO → isEditing true (its call auto-populates the field).
+    final existingQso = (await tester.runAsync(() => qsos.add(operation.uuid, {
+          'their': {'call': 'K1ABC'},
+          'startAtMillis': 1000000,
+          'freq': 7100,
+          'mode': 'SSB',
+        })))!;
+    infos.clear();
+    await tester.pumpWidget(host(editingQso: existingQso, onCallInfoChanged: capture));
+    await tester.pump(const Duration(milliseconds: 200));
+    expect(infos, isNotEmpty);
+    expect(infos.last.isEditing, isTrue, reason: 'editing an existing QSO');
   });
 
   testWidgets('onCallListLogged fires once after a comma-separated list logs, never for a single call', (tester) async {

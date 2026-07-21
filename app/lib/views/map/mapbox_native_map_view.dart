@@ -41,6 +41,12 @@ class _MapboxNativeMapViewState extends State<MapboxNativeMapView> {
   CircleAnnotationManager? _circles;
   PolylineAnnotationManager? _polylines;
 
+  /// Separate managers for the current QSO's highlight, created AFTER the base
+  /// ones (annotation managers render in creation order) so its line paints
+  /// over every base circle and its marker over everything.
+  PolylineAnnotationManager? _highlightPolylines;
+  CircleAnnotationManager? _highlightCircles;
+
   /// Created annotation id → its marker, so the tap handler can find what
   /// was hit.
   final _markersByAnnotationId = <String, MapMarkerData>{};
@@ -99,38 +105,56 @@ class _MapboxNativeMapViewState extends State<MapboxNativeMapView> {
   Future<void> _applyAnnotationsNow() async {
     final circles = _circles;
     final polylines = _polylines;
+    final highlightPolylines = _highlightPolylines;
+    final highlightCircles = _highlightCircles;
     final map = _map;
-    if (circles == null || polylines == null || map == null) return;
+    if (circles == null ||
+        polylines == null ||
+        highlightPolylines == null ||
+        highlightCircles == null ||
+        map == null) {
+      return;
+    }
 
     if (_selectedMarkerId != null && _selectedMarker == null) _dismissPopup();
 
-    await polylines.deleteAll();
-    await polylines.createMulti([
-      for (final line in widget.lines)
-        PolylineAnnotationOptions(
+    PolylineAnnotationOptions lineOptions(MapLineData line) => PolylineAnnotationOptions(
           geometry: LineString(coordinates: [
             for (final p in line.points) Position(p.longitude, p.latitude),
           ]),
           lineColor: line.color.toARGB32(),
-          lineWidth: 1.5,
-        ),
-    ]);
-
-    await circles.deleteAll();
-    _markersByAnnotationId.clear();
-    final created = await circles.createMulti([
-      for (final marker in widget.markers)
-        CircleAnnotationOptions(
+          // The highlight line reads a touch heavier so it stands out.
+          lineWidth: line.highlight ? 3 : 1.5,
+        );
+    CircleAnnotationOptions circleOptions(MapMarkerData marker) => CircleAnnotationOptions(
           geometry: Point(coordinates: Position(marker.longitude, marker.latitude)),
           circleRadius: marker.kind == MapMarkerKind.qth ? 6 : 7 * marker.sizeFactor,
           circleColor: marker.color.toARGB32(),
           circleStrokeColor: (marker.kind == MapMarkerKind.qth ? Colors.white : Colors.black87).toARGB32(),
           circleStrokeWidth: marker.kind == MapMarkerKind.qth ? 2 : 1.5,
-        ),
-    ]);
-    for (var i = 0; i < created.length && i < widget.markers.length; i++) {
-      final annotation = created[i];
-      if (annotation != null) _markersByAnnotationId[annotation.id] = widget.markers[i];
+        );
+
+    // Base annotations go in the base managers; the highlight (current QSO) in
+    // the managers created after them, so it layers on top.
+    final baseLines = [for (final l in widget.lines) if (!l.highlight) l];
+    final highlightLines = [for (final l in widget.lines) if (l.highlight) l];
+    final baseMarkers = [for (final m in widget.markers) if (!m.highlight) m];
+    final highlightMarkers = [for (final m in widget.markers) if (m.highlight) m];
+
+    await polylines.deleteAll();
+    await polylines.createMulti([for (final line in baseLines) lineOptions(line)]);
+    await highlightPolylines.deleteAll();
+    await highlightPolylines.createMulti([for (final line in highlightLines) lineOptions(line)]);
+
+    _markersByAnnotationId.clear();
+    await circles.deleteAll();
+    await highlightCircles.deleteAll();
+    for (final (manager, list) in [(circles, baseMarkers), (highlightCircles, highlightMarkers)]) {
+      final created = await manager.createMulti([for (final m in list) circleOptions(m)]);
+      for (var i = 0; i < created.length && i < list.length; i++) {
+        final annotation = created[i];
+        if (annotation != null) _markersByAnnotationId[annotation.id] = list[i];
+      }
     }
 
     if (widget.markers.isNotEmpty) {
@@ -187,6 +211,10 @@ class _MapboxNativeMapViewState extends State<MapboxNativeMapView> {
     _polylines = await map.annotations.createPolylineAnnotationManager();
     _circles = await map.annotations.createCircleAnnotationManager();
     _circles!.tapEvents(onTap: _onCircleTapped);
+    // Created last, so they layer above the base line/circle managers.
+    _highlightPolylines = await map.annotations.createPolylineAnnotationManager();
+    _highlightCircles = await map.annotations.createCircleAnnotationManager();
+    _highlightCircles!.tapEvents(onTap: _onCircleTapped);
     await _applyProjection();
     _applyAnnotations();
   }

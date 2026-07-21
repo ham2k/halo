@@ -92,7 +92,7 @@ GridLocation? locationForQsoInfo({String? grid, String? entityPrefix, String? st
 /// polylines where the arc crosses the antimeridian (so a 2D map doesn't
 /// draw a line smeared across the whole world). Each inner list is one
 /// contiguous polyline. Returns an empty list for (near-)zero-length arcs.
-List<List<GridLocation>> greatCirclePoints(GridLocation start, GridLocation end, {int numPoints = 100}) {
+List<List<GridLocation>> greatCirclePoints(GridLocation start, GridLocation end, {int numPoints = 50}) {
   final lam1 = _deg2rad(start.longitude);
   final phi1 = _deg2rad(start.latitude);
   final lam2 = _deg2rad(end.longitude);

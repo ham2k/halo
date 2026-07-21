@@ -40,7 +40,14 @@ class MapPanel extends StatefulWidget {
   final List<Qso> qsos;
   final SettingsService settings;
 
-  const MapPanel({super.key, required this.operation, required this.qsos, required this.settings});
+  /// The call currently in the logging panel (new or being edited), if any —
+  /// used to highlight that QSO on top of the map in the panel's accent
+  /// colour (orange composing, blue editing). Null when nothing's being
+  /// entered. Its `guess` carries the resolved location, `isEditing` the
+  /// colour choice.
+  final CallInfoData? callInfo;
+
+  const MapPanel({super.key, required this.operation, required this.qsos, required this.settings, this.callInfo});
 
   @override
   State<MapPanel> createState() => _MapPanelState();
@@ -64,7 +71,7 @@ class _MapPanelState extends State<MapPanel> {
   /// stream only emits a new list instance when data actually changes, so
   /// identical() on it (plus the scalar inputs) lets every other rebuild
   /// (unrelated settings notifications, tab switches, theme pokes) skip
-  /// re-deriving hundreds of markers and 100-point great-circle lines.
+  /// re-deriving hundreds of markers and densified great-circle lines.
   List<Qso>? _builtQsos;
   String? _builtGrid;
   bool? _builtMiles;
@@ -87,7 +94,15 @@ class _MapPanelState extends State<MapPanel> {
   Widget _buildMap(BuildContext context, ThemeData theme) {
     _ensureData(context);
 
-    if (_markers.isEmpty) {
+    // The current QSO's highlight is derived every build (it changes on every
+    // keystroke, so it can't share `_ensureData`'s heavy memo) and appended
+    // last, so backends draw it on top. Cheap: one location resolve plus one
+    // great-circle.
+    final highlight = _buildHighlight(theme);
+    final markers = highlight.markers.isEmpty ? _markers : [..._markers, ...highlight.markers];
+    final lines = highlight.lines.isEmpty ? _lines : [..._lines, ...highlight.lines];
+
+    if (markers.isEmpty) {
       return Center(
         child: Padding(
           padding: const EdgeInsets.all(32),
@@ -105,18 +120,18 @@ class _MapPanelState extends State<MapPanel> {
     if (usesMapbox && kIsWeb) {
       // The app already runs in a browser — Mapbox GL JS mounts directly on
       // a platform-view div, no webview needed.
-      map = MapboxWebMapView(markers: _markers, lines: _lines, projection: _projection);
+      map = MapboxWebMapView(markers: markers, lines: lines, projection: _projection);
     } else if (usesMapbox && (Platform.isIOS || Platform.isAndroid)) {
-      map = MapboxNativeMapView(markers: _markers, lines: _lines, projection: _projection);
+      map = MapboxNativeMapView(markers: markers, lines: lines, projection: _projection);
     } else if (usesMapbox && (Platform.isMacOS || Platform.isWindows)) {
-      map = MapboxWebviewMapView(markers: _markers, lines: _lines, projection: _projection);
+      map = MapboxWebviewMapView(markers: markers, lines: lines, projection: _projection);
     } else {
       // No token — or Linux, where no Mapbox path exists (flutter_inappwebview
       // ships no Linux implementation and mapbox_maps_flutter is
       // mobile-only), so the OSM backend is the real Linux map, not a
       // stopgap. It has markers/lines/callouts, just no globe projection.
       usesMapbox = false;
-      map = OsmMapView(markers: _markers, lines: _lines);
+      map = OsmMapView(markers: markers, lines: lines);
     }
 
     return Stack(
@@ -218,6 +233,15 @@ class _MapPanelState extends State<MapPanel> {
     _lines = lines;
   }
 
+  /// The current QSO's highlight, using the logging panel's accent colours —
+  /// `colorScheme.tertiary` (orange) composing, `.secondary` (blue) editing.
+  ({List<MapMarkerData> markers, List<MapLineData> lines}) _buildHighlight(ThemeData theme) => buildHighlightData(
+        callInfo: widget.callInfo,
+        operationGrid: widget.operation.grid,
+        composingColor: mapHighlightColor(theme.colorScheme.tertiary),
+        editingColor: mapHighlightColor(theme.colorScheme.secondary),
+      );
+
   MapMarkerData _markerForQso(Qso qso, GridLocation location, GridLocation? qth, HaLoColors poloColors,
       {required bool miles}) {
     final distanceStr = qth == null ? null : fmtDistance(distanceOnEarthKm(location, qth), miles: miles);
@@ -267,4 +291,64 @@ class _MapPanelState extends State<MapPanel> {
     }
     return 1 + (strength - 5) / 4 * 0.30;
   }
+}
+
+/// A brighter, more vivid take on [base] for the map highlight: same hue,
+/// pushed to full saturation and a punchy mid lightness so it pops over the
+/// map tiles, rather than the theme's muted tertiary/secondary (light-mode
+/// tertiary is a dark brownish orange). Keeps the alpha.
+Color mapHighlightColor(Color base) {
+  final hsl = HSLColor.fromColor(base);
+  return hsl.withSaturation(1.0).withLightness(0.5).toColor();
+}
+
+/// Builds the current QSO's highlight marker and great-circle line from the
+/// logging panel's [callInfo], or empty when nothing is being entered or its
+/// location can't be resolved. [composingColor] is used for a new QSO and
+/// [editingColor] when editing one (`CallInfoData.isEditing`) — the caller
+/// passes `colorScheme.tertiary` / `.secondary` to match LoggingControls' own
+/// accent. Both items are flagged `highlight: true` so each backend draws them
+/// last, on top. Extracted (and public) so the colour/location logic is unit
+/// testable without a live map backend.
+({List<MapMarkerData> markers, List<MapLineData> lines}) buildHighlightData({
+  required CallInfoData? callInfo,
+  required String? operationGrid,
+  required Color composingColor,
+  required Color editingColor,
+}) {
+  const empty = (markers: <MapMarkerData>[], lines: <MapLineData>[]);
+  final guess = callInfo?.guess;
+  if (callInfo == null || guess == null) return empty;
+
+  final location = locationForQsoInfo(
+    grid: guess['grid'] as String?,
+    entityPrefix: guess['entityPrefix'] as String?,
+    state: guess['state'] as String?,
+  );
+  if (location == null) return empty;
+
+  final accent = callInfo.isEditing ? editingColor : composingColor;
+
+  final marker = MapMarkerData(
+    id: 'current',
+    latitude: location.latitude,
+    longitude: location.longitude,
+    label: callInfo.call,
+    kind: MapMarkerKind.qso,
+    color: accent,
+    // Largest size, so it reads as the one you're working on.
+    sizeFactor: 1.3,
+    highlight: true,
+    popupTitle: callInfo.call,
+  );
+
+  final lines = <MapLineData>[];
+  final qth = operationGrid == null ? null : gridToLocation(operationGrid);
+  if (qth != null) {
+    final segments = greatCirclePoints(location, qth);
+    for (var i = 0; i < segments.length; i++) {
+      lines.add(MapLineData(id: 'current/$i', points: segments[i], color: accent, highlight: true));
+    }
+  }
+  return (markers: [marker], lines: lines);
 }

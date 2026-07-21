@@ -80,28 +80,13 @@ class _OsmMapViewState extends State<OsmMapView> {
           urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
           userAgentPackageName: 'com.ham2k.poloNext',
         ),
-        PolylineLayer(polylines: [
-          for (final line in widget.lines)
-            Polyline(
-              points: [for (final p in line.points) LatLng(p.latitude, p.longitude)],
-              color: line.color,
-              strokeWidth: 1.5,
-            ),
-        ]),
-        MarkerLayer(markers: [
-          for (final marker in widget.markers)
-            Marker(
-              point: LatLng(marker.latitude, marker.longitude),
-              // A generous transparent hit area around the small circle.
-              width: 28 * marker.sizeFactor,
-              height: 28 * marker.sizeFactor,
-              child: GestureDetector(
-                behavior: HitTestBehavior.opaque,
-                onTap: () => setState(() => _selectedMarkerId = marker.id),
-                child: Center(child: MapCircleMarker(marker: marker)),
-              ),
-            ),
-        ]),
+        // Base lines, then base markers, then the current QSO's highlight line
+        // and marker in layers ABOVE them — flutter_map stacks children in
+        // order, so the highlight paints over every base line AND marker.
+        _lineLayer([for (final l in widget.lines) if (!l.highlight) l]),
+        _markerLayer([for (final m in widget.markers) if (!m.highlight) m]),
+        _lineLayer([for (final l in widget.lines) if (l.highlight) l]),
+        _markerLayer([for (final m in widget.markers) if (m.highlight) m]),
         if (selected != null)
           MarkerLayer(markers: [
             Marker(
@@ -124,4 +109,36 @@ class _OsmMapViewState extends State<OsmMapView> {
       ],
     );
   }
+
+  PolylineLayer _lineLayer(List<MapLineData> lines) => PolylineLayer(
+        // Off (default is ~0.4): the great-circle arcs are already densified
+        // to a smooth curve by greatCirclePoints, and flutter_map's
+        // Douglas–Peucker simplification otherwise collapses each into a few
+        // straight segments — the whole point of the densified points is lost.
+        simplificationTolerance: 0,
+        polylines: [
+          for (final line in lines)
+            Polyline(
+              points: [for (final p in line.points) LatLng(p.latitude, p.longitude)],
+              color: line.color,
+              // The current QSO's line reads a touch heavier so it stands out.
+              strokeWidth: line.highlight ? 3 : 1.5,
+            ),
+        ],
+      );
+
+  MarkerLayer _markerLayer(List<MapMarkerData> markers) => MarkerLayer(markers: [
+        for (final marker in markers)
+          Marker(
+            point: LatLng(marker.latitude, marker.longitude),
+            // A generous transparent hit area around the small circle.
+            width: 28 * marker.sizeFactor,
+            height: 28 * marker.sizeFactor,
+            child: GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTap: () => setState(() => _selectedMarkerId = marker.id),
+              child: Center(child: MapCircleMarker(marker: marker)),
+            ),
+          ),
+      ]);
 }

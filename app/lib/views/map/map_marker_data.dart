@@ -50,6 +50,11 @@ class MapMarkerData {
   final String popupBand;
   final String popupDetailSuffix;
 
+  /// The current (being-composed or -edited) QSO's marker: drawn last, in a
+  /// dedicated top layer, so it sits above every other marker AND line. See
+  /// map_panel.dart's highlight build.
+  final bool highlight;
+
   const MapMarkerData({
     required this.id,
     required this.latitude,
@@ -62,6 +67,7 @@ class MapMarkerData {
     this.popupDetailPrefix = '',
     this.popupBand = '',
     this.popupDetailSuffix = '',
+    this.highlight = false,
   });
 
   /// Value equality so `didUpdateWidget`/`listEquals` checks can tell a
@@ -81,11 +87,12 @@ class MapMarkerData {
           popupTitle == other.popupTitle &&
           popupDetailPrefix == other.popupDetailPrefix &&
           popupBand == other.popupBand &&
-          popupDetailSuffix == other.popupDetailSuffix);
+          popupDetailSuffix == other.popupDetailSuffix &&
+          highlight == other.highlight);
 
   @override
   int get hashCode => Object.hash(id, latitude, longitude, label, kind, color, sizeFactor, popupTitle,
-      popupDetailPrefix, popupBand, popupDetailSuffix);
+      popupDetailPrefix, popupBand, popupDetailSuffix, highlight);
 }
 
 /// One contiguous polyline of a QSO's great-circle arc back to its QTH —
@@ -99,7 +106,12 @@ class MapLineData {
   final List<GridLocation> points;
   final Color color;
 
-  const MapLineData({required this.id, required this.points, required this.color});
+  /// The current QSO's great-circle line — drawn last in a top layer so it
+  /// paints over the other lines (and, on the native/OSM backends, over the
+  /// markers too). See map_panel.dart's highlight build.
+  final bool highlight;
+
+  const MapLineData({required this.id, required this.points, required this.color, this.highlight = false});
 
   /// The interior points are a pure function of the endpoints (see
   /// greatCirclePoints), so comparing id + color + length + endpoints is
@@ -112,12 +124,13 @@ class MapLineData {
       (other is MapLineData &&
           id == other.id &&
           color == other.color &&
+          highlight == other.highlight &&
           points.length == other.points.length &&
           (points.isEmpty || (points.first == other.points.first && points.last == other.points.last)));
 
   @override
-  int get hashCode =>
-      Object.hash(id, color, points.length, points.isEmpty ? null : points.first, points.isEmpty ? null : points.last);
+  int get hashCode => Object.hash(
+      id, color, highlight, points.length, points.isEmpty ? null : points.first, points.isEmpty ? null : points.last);
 }
 
 /// '#RRGGBB' for CSS/GL consumption (alpha stripped — see [mapLinesPayload]).
@@ -140,6 +153,7 @@ List<Map<String, dynamic>> mapMarkersPayload(List<MapMarkerData> markers) => [
           'popupDetailPrefix': m.popupDetailPrefix,
           'popupBand': m.popupBand,
           'popupDetailSuffix': m.popupDetailSuffix,
+          'highlight': m.highlight,
         },
     ];
 
@@ -151,7 +165,7 @@ Map<String, dynamic> mapLinesPayload(List<MapLineData> lines) => {
         for (final line in lines)
           {
             'type': 'Feature',
-            'properties': {'color': mapColorToHex(line.color)},
+            'properties': {'color': mapColorToHex(line.color), 'highlight': line.highlight},
             'geometry': {
               'type': 'LineString',
               'coordinates': [

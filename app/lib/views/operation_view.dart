@@ -567,7 +567,12 @@ class _OperationViewState extends State<OperationView> with SingleTickerProvider
             // Stretches to the split's very edge: the divider overlay's
             // near-invisible wash (see resizable_split_view.dart) is what
             // keeps the native map view from stealing drags on the strip.
-            child: MapPanel(operation: operation, qsos: qsos, settings: widget.services.settings),
+            child: MapPanel(
+              operation: operation,
+              qsos: qsos,
+              settings: widget.services.settings,
+              callInfo: _callInfo,
+            ),
           ),
         );
         // ONE construction serving both wide arrangements (fixed tab slot 0

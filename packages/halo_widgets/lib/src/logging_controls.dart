@@ -137,12 +137,19 @@ class CallInfoData {
   final List<String> alertKeys;
   final List<String> noticeKeys;
 
+  /// Whether this call-info is for an existing QSO being edited (vs a new one
+  /// being composed) — the map uses it to pick the highlight colour (blue
+  /// editing, orange composing), the same new-vs-editing accent the logging
+  /// panel itself uses.
+  final bool isEditing;
+
   const CallInfoData({
     required this.call,
     this.guess,
     this.lookups = const [],
     this.alertKeys = const [],
     this.noticeKeys = const [],
+    this.isEditing = false,
   });
 }
 
@@ -4149,6 +4156,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
       lookups: _currentLookups,
       alertKeys: fresh ? _scoreAlertKeys : const [],
       noticeKeys: fresh ? _scoreNoticeKeys : const [],
+      isEditing: widget.editingQso != null,
     );
   }
 
@@ -4162,7 +4170,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     final g = data?.guess;
     final sig = data == null
         ? null
-        : '${data.call}|$_lookupFor|${g?['name']}|${g?['grid']}|${g?['image']}|${g?['note']}'
+        : '${data.call}|$_lookupFor|${data.isEditing}|${g?['name']}|${g?['grid']}|${g?['image']}|${g?['note']}'
             '|${data.alertKeys.join(",")}|${data.noticeKeys.join(",")}';
     if (sig == _lastCallInfoSig) return;
     _lastCallInfoSig = sig;
