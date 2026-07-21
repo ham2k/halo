@@ -527,23 +527,26 @@ class _SecondaryControlRowState extends State<SecondaryControlRow> with SingleTi
                               maxWidth: strip.maxWidth + widget.horizontalBleed,
                               alignment: Alignment.centerRight,
                               fit: OverflowBoxFit.deferToChild,
-                              child: ScrollConfiguration(
-                                behavior: _DragScrollBehavior(),
-                                child: SingleChildScrollView(
-                                  scrollDirection: Axis.horizontal,
-                                  child: Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      SizedBox(width: widget.horizontalBleed),
-                                      for (final chip in chips) ...[
-                                        chip,
-                                        if (chip != chips.last) const SizedBox(width: spacing),
+                              child: SizedBox(
+                                width: strip.maxWidth + widget.horizontalBleed,
+                                child: ScrollConfiguration(
+                                  behavior: _DragScrollBehavior(),
+                                  child: SingleChildScrollView(
+                                    scrollDirection: Axis.horizontal,
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        SizedBox(width: widget.horizontalBleed),
+                                        for (final chip in chips) ...[
+                                          chip,
+                                          if (chip != chips.last) const SizedBox(width: spacing),
+                                        ],
+                                        // Lets the last pill scroll clear of
+                                        // the trailing gradient mask (see
+                                        // _maskWidth).
+                                        const SizedBox(width: _maskWidth),
                                       ],
-                                      // Lets the last pill scroll clear of
-                                      // the trailing gradient mask (see
-                                      // _maskWidth).
-                                      const SizedBox(width: _maskWidth),
-                                    ],
+                                    ),
                                   ),
                                 ),
                               ),

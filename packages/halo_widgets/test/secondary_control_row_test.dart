@@ -206,4 +206,25 @@ void main() {
     expect(tester.takeException(), isNull);
     expect(find.text('expanded-a'), findsOneWidget);
   });
+
+  testWidgets('chips are left-aligned on wider layouts and do not shift to the right when they fit completely', (tester) async {
+    final controls = [spec('a'), spec('b')];
+    await tester.pumpWidget(MaterialApp(
+      home: Scaffold(
+        body: SizedBox(
+          width: 800,
+          child: SecondaryControlRow(
+            controls: controls,
+            selectedKey: '',
+            onSelect: (_) {},
+            horizontalBleed: 12.0,
+          ),
+        ),
+      ),
+    ));
+    await tester.pumpAndSettle();
+
+    final chipAPosition = tester.getTopLeft(find.widgetWithText(ChoiceChip, 'a')).dx;
+    expect(chipAPosition, closeTo(0.0, 1.0));
+  });
 }
