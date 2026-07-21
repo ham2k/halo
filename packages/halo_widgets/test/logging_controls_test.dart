@@ -1235,6 +1235,95 @@ void main() {
     expect(potaField.controller?.text, '');
   });
 
+  testWidgets("activity control's chip icon accents to the extension's color once a reference is entered (issue #187)",
+      (tester) async {
+    const controls = [
+      {
+        'key': 'pota/hunter',
+        'label': 'POTA',
+        'icon': 'pine-tree',
+        'color': '#068541',
+        'input': {'kind': 'refList', 'refType': 'pota', 'placeholder': 'US-1234', 'pattern': r'[A-Z0-9]+-[0-9]{4,5}'},
+      },
+    ];
+
+    await tester.pumpWidget(MaterialApp(
+      home: Scaffold(
+        body: LoggingControls(
+          operation: operation,
+          qsosRepository: qsos,
+          activityControls: controls,
+        ),
+      ),
+    ));
+
+    // No reference yet: the icon stays the default theme color, not the
+    // extension's accent — the accent marks a filled-in field.
+    Color? iconColor() => tester.widget<Icon>(find.byIcon(MdiIcons.pineTree)).color;
+    expect(iconColor(), isNot(const Color(0xFF068541)));
+
+    await openControl(tester, MdiIcons.pineTree);
+
+    // Still open, no reference yet: no accent.
+    expect(iconColor(), isNot(const Color(0xFF068541)));
+
+    await tester.enterText(find.widgetWithText(TextField, 'POTA'), 'US-1234');
+    await tester.pump();
+
+    // Still open, but the entered text now matches the control's own
+    // pattern and has been accepted as a reference: the accent shows even
+    // while the panel is expanded (issue #187 follow-up).
+    expect(iconColor(), const Color(0xFF068541));
+    // A single reference gets a single check ahead of the label.
+    expect(find.text('✔️ POTA'), findsOneWidget);
+
+    await openControl(tester, MdiIcons.pineTree); // close the panel
+
+    // Closed: the accent stays.
+    expect(iconColor(), const Color(0xFF068541));
+    expect(find.text('✔️ POTA'), findsOneWidget);
+  });
+
+  testWidgets('activity control chip label gets a check per reference, or a check plus count past two (issue #187 follow-up)',
+      (tester) async {
+    const controls = [
+      {
+        'key': 'pota/hunter',
+        'label': 'POTA',
+        'icon': 'pine-tree',
+        'color': '#068541',
+        'input': {'kind': 'refList', 'refType': 'pota', 'placeholder': 'US-1234', 'pattern': r'[A-Z0-9]+-[0-9]{4,5}'},
+      },
+    ];
+
+    await tester.pumpWidget(MaterialApp(
+      home: Scaffold(
+        body: LoggingControls(
+          operation: operation,
+          qsosRepository: qsos,
+          activityControls: controls,
+        ),
+      ),
+    ));
+
+    // No reference yet: plain label.
+    expect(find.text('POTA'), findsOneWidget);
+
+    await openControl(tester, MdiIcons.pineTree);
+
+    // A twofer (two parks activated together) gets two checks, not "×2" —
+    // it's the common case worth spelling out rather than abbreviating.
+    await tester.enterText(find.widgetWithText(TextField, 'POTA'), 'US-1234, US-5678');
+    await tester.pump();
+    expect(find.text('✔️✔️ POTA'), findsOneWidget);
+
+    // A third reference collapses to a single check plus the total count,
+    // so the label doesn't grow one glyph per park on a bigger rove.
+    await tester.enterText(find.widgetWithText(TextField, 'POTA'), 'US-1234, US-5678, US-9012');
+    await tester.pump();
+    expect(find.text('✔️×3 POTA'), findsOneWidget);
+  });
+
   testWidgets('activity refList control accepts a comma-separated list of references', (tester) async {
     const controls = [
       {

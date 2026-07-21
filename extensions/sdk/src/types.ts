@@ -193,6 +193,11 @@ export interface LoggingControlDescriptor {
   /// convention as app-polo's own icon rendering. Falls back to a
   /// placeholder glyph if the name isn't found in either set.
   icon?: string
+  /// A '#RRGGBB' hex color the core may use sparingly to accent this
+  /// control's icon (e.g. a circle background behind it in the activity
+  /// picker, or the icon itself once a reference is entered) — an
+  /// unrecognized/missing value just means no accent, never an error.
+  color?: string
   order?: number
   optionType?: 'optional' | 'mandatory'
   input: RefListInputDescriptor

@@ -231,6 +231,7 @@ const ActivityHook = {
         key: 'sota/hunter',
         label: 'SOTA',
         icon: 'image-filter-hdr',
+        color: '#6295BF',
         order: 10,
         optionType: 'optional',
         input: {
@@ -253,6 +254,7 @@ const ActivityHook = {
         key: 'sota/activation',
         label: 'SOTA activation',
         icon: 'image-filter-hdr',
+        color: '#6295BF',
         order: 10,
         optionType: 'optional',
         input: {

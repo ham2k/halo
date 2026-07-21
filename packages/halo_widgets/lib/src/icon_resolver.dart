@@ -41,3 +41,16 @@ IconData resolveIconName(String? name) {
   // ignore: non_const_argument_for_const_parameter
   return IconData(codepoint, fontFamily: 'MaterialDesignIcons');
 }
+
+/// Resolves an extension-provided accent color string (a `'#RRGGBB'` hex
+/// value, e.g. `'#068541'`) to a [Color]. Returns null for a missing or
+/// malformed value, so an extension typo just means no accent rather than
+/// a crash.
+final _hexColorPattern = RegExp(r'^#([0-9A-Fa-f]{6})$');
+
+Color? resolveExtensionColor(String? hex) {
+  if (hex == null) return null;
+  final match = _hexColorPattern.firstMatch(hex);
+  if (match == null) return null;
+  return Color(0xFF000000 | int.parse(match.group(1)!, radix: 16));
+}

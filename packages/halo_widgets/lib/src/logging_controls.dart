@@ -2115,29 +2115,43 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     );
   }
 
-  SecondaryControlSpec _activityControlSpec(Map<String, dynamic> control) => SecondaryControlSpec(
-        key: control['key'] as String,
-        icon: resolveIconName(control['icon'] as String?),
-        summary: (control['label'] as String?) ?? control['key'] as String,
-        expandedBuilder: (context) => SizedBox(
-          width: 160,
-          child: RefTextInput(
-            refType: (control['input'] as Map)['refType'] as String,
-            label: (control['label'] as String?) ?? '',
-            placeholder: (control['input'] as Map)['placeholder'] as String?,
-            pattern: (control['input'] as Map)['pattern'] as String?,
-            transforms: [
-              for (final t in ((control['input'] as Map)['transforms'] as List?) ?? const [])
-                RefTransform.fromMap((t as Map).cast<String, dynamic>()),
-            ],
-            refs: _controlRefs[control['key']] ?? const [],
-            onChanged: (refs) =>
-                setState(() => _controlRefs[control['key'] as String] = refs),
-            decorate: widget.decorateRef,
-            labelColor: Theme.of(context).colorScheme.onTertiaryContainer,
-          ),
+  SecondaryControlSpec _activityControlSpec(Map<String, dynamic> control) {
+    final refCount = _controlRefs[control['key']]?.length ?? 0;
+    final label = (control['label'] as String?) ?? control['key'] as String;
+    return SecondaryControlSpec(
+      key: control['key'] as String,
+      icon: resolveIconName(control['icon'] as String?),
+      // A check per reference marks a park-and-summit-style "twofer"; beyond
+      // two, a single check plus the count keeps the label from running long
+      // (e.g. a 5-park POTA rove would otherwise be "✔️✔️✔️✔️✔️ POTA").
+      summary: switch (refCount) {
+        0 => label,
+        1 => '✔️ $label',
+        2 => '✔️✔️ $label',
+        _ => '✔️×$refCount $label',
+      },
+      // Accent the icon (issue #187) only once the field actually holds a
+      // reference — an active-but-empty control stays the default color.
+      iconColor: refCount > 0 ? resolveExtensionColor(control['color'] as String?) : null,
+      expandedBuilder: (context) => SizedBox(
+        width: 160,
+        child: RefTextInput(
+          refType: (control['input'] as Map)['refType'] as String,
+          label: (control['label'] as String?) ?? '',
+          placeholder: (control['input'] as Map)['placeholder'] as String?,
+          pattern: (control['input'] as Map)['pattern'] as String?,
+          transforms: [
+            for (final t in ((control['input'] as Map)['transforms'] as List?) ?? const [])
+              RefTransform.fromMap((t as Map).cast<String, dynamic>()),
+          ],
+          refs: _controlRefs[control['key']] ?? const [],
+          onChanged: (refs) => setState(() => _controlRefs[control['key'] as String] = refs),
+          decorate: widget.decorateRef,
+          labelColor: Theme.of(context).colorScheme.onTertiaryContainer,
         ),
-      );
+      ),
+    );
+  }
 
   SecondaryControlSpec _moreControlSpec() => SecondaryControlSpec(
         key: 'more',

@@ -38,6 +38,20 @@ Color _greenerDesaturated(Color base) {
   return hsl.withHue((hsl.hue - 15) % 360).withSaturation(0.4).withLightness(0.8).toColor();
 }
 
+/// A ref/suggestion/option row's leading icon, using [refType] to look up
+/// the active control's icon and accent color (issue #187).
+Widget _activityIcon(List<Map<String, dynamic>> controls, String? refType) =>
+    _accentIcon(iconForRefType(controls, refType), colorForRefType(controls, refType));
+
+/// An icon, circled in [color] at 60% opacity when the control declares an
+/// accent (issue #187) — sparingly used, so a control with no color just
+/// renders the bare icon as before.
+Widget _accentIcon(String? iconName, Color? color) {
+  final icon = Icon(resolveIconName(iconName));
+  if (color == null) return icon;
+  return CircleAvatar(backgroundColor: color.withValues(alpha: 0.6), child: icon);
+}
+
 // Close enough that the operation's grid and the caller's live GPS grid
 // would round to the same (or an adjacent) square anyway, so adopting it
 // isn't a meaningful accuracy loss.
@@ -397,7 +411,7 @@ class _ActivitiesPaneState extends State<ActivitiesPane> {
                     // up under the search row's options button — same
                     // IconButton defaults (no custom size/padding) too.
                     contentPadding: const EdgeInsets.only(left: 16, right: 4),
-                    leading: Icon(resolveIconName(iconForRefType(_controls, ref['type'] as String?))),
+                    leading: _activityIcon(_controls, ref['type'] as String?),
                     title: Text((ref['shortLabel'] ?? ref['ref'] ?? '?') as String),
                     subtitle: (ref['name'] as String?) != null ? Text(ref['name'] as String) : null,
                     onTap: () => _editRef(ref),
@@ -456,7 +470,7 @@ class _ActivitiesPaneState extends State<ActivitiesPane> {
                       for (final suggestion in _suggestions)
                         ListTile(
                           tileColor: rowColor,
-                          leading: Icon(resolveIconName(iconForRefType(_controls, suggestion['type'] as String?))),
+                          leading: _activityIcon(_controls, suggestion['type'] as String?),
                           title: Text((suggestion['shortLabel'] ?? suggestion['ref'] ?? '?') as String),
                           subtitle: Text(
                             [
@@ -492,7 +506,7 @@ class _ActivitiesPaneState extends State<ActivitiesPane> {
                   if ((control['input'] as Map?)?['kind'] == 'refList')
                     ListTile(
                       tileColor: rowColor,
-                      leading: Icon(resolveIconName(control['icon'] as String?)),
+                      leading: _accentIcon(control['icon'] as String?, resolveExtensionColor(control['color'] as String?)),
                       title: Text((control['label'] as String?) ?? ''),
                       onTap: () => _addManually(control),
                     ),

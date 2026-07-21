@@ -140,6 +140,7 @@ const ActivityHook = {
         key: 'pota/hunter',
         label: 'POTA',
         icon: 'pine-tree',
+        color: '#068541',
         order: 10,
         optionType: 'optional',
         input: {
@@ -163,6 +164,7 @@ const ActivityHook = {
         key: 'pota/activation',
         label: 'POTA activation',
         icon: 'pine-tree',
+        color: '#068541',
         order: 10,
         optionType: 'optional',
         input: {

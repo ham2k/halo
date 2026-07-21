@@ -40,11 +40,18 @@ class SecondaryControlSpec {
   final String summary;
   final WidgetBuilder expandedBuilder;
 
+  /// The control's accent color for its icon (issue #187), or null for the
+  /// default theme color. Callers only set this once the field actually
+  /// holds a reference — the accent marks a filled-in field, not just an
+  /// active extension.
+  final Color? iconColor;
+
   const SecondaryControlSpec({
     required this.key,
     required this.icon,
     required this.summary,
     required this.expandedBuilder,
+    this.iconColor,
   });
 }
 
@@ -713,7 +720,14 @@ class _ControlChip extends StatelessWidget {
       avatar: Icon(
         control.icon,
         size: 16 * MediaQuery.textScalerOf(context).scale(1.0),
-        color: foreground,
+        // The accent shows whenever the field holds a reference — open
+        // (selected, solid tertiary fill) or closed (tertiaryLight fill)
+        // — since iconColor is only ever set once a reference has already
+        // passed the control's own pattern validation (see
+        // _activityControlSpec). Contrast against the selected fill isn't
+        // guaranteed for an arbitrary extension color, but that's on the
+        // extension to pick a color that works — same as the unselected case.
+        color: control.iconColor ?? foreground,
       ),
       label: Text(control.summary, style: TextStyle(color: foreground)),
       selected: selected,

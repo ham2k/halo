@@ -6,6 +6,10 @@
 // OperationLocationScreen and QsoList, which all render refs/suggestions
 // using the same active-extension controls list.
 
+import 'package:flutter/widgets.dart' show Color;
+
+import 'icon_resolver.dart';
+
 /// The controls entry for [refType], or null for a type with no active
 /// control.
 Map<String, dynamic>? controlForRefType(List<Map<String, dynamic>> controls, String? refType) {
@@ -20,3 +24,8 @@ Map<String, dynamic>? controlForRefType(List<Map<String, dynamic>> controls, Str
 /// `resolveIconName`) for a type with no active control.
 String? iconForRefType(List<Map<String, dynamic>> controls, String? refType) =>
     controlForRefType(controls, refType)?['icon'] as String?;
+
+/// The control's declared accent color for [refType], or null when it has
+/// none (see `resolveExtensionColor`).
+Color? colorForRefType(List<Map<String, dynamic>> controls, String? refType) =>
+    resolveExtensionColor(controlForRefType(controls, refType)?['color'] as String?);

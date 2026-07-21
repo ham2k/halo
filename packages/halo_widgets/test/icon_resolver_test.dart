@@ -1,6 +1,7 @@
 // Copyright ©️ 2026 Sebastian Delmont <sd@ham2k.com>
 // SPDX-License-Identifier: MPL-2.0
 
+import 'package:flutter/widgets.dart' show Color;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:halo_widgets/halo_widgets.dart';
 
@@ -27,6 +28,26 @@ void main() {
     test('falls back to a placeholder for null or empty input', () {
       expect(resolveIconName(null), MdiIcons.puzzle);
       expect(resolveIconName(''), MdiIcons.puzzle);
+    });
+  });
+
+  group('resolveExtensionColor', () {
+    test('parses a #RRGGBB hex string, opaque', () {
+      expect(resolveExtensionColor('#068541'), const Color(0xFF068541));
+    });
+
+    test('is case-insensitive', () {
+      expect(resolveExtensionColor('#B0C4DE'), resolveExtensionColor('#b0c4de'));
+    });
+
+    test('returns null for a malformed value (wrong length, missing #, non-hex)', () {
+      expect(resolveExtensionColor('068541'), isNull);
+      expect(resolveExtensionColor('#06854'), isNull);
+      expect(resolveExtensionColor('#GGGGGG'), isNull);
+    });
+
+    test('returns null for null input', () {
+      expect(resolveExtensionColor(null), isNull);
     });
   });
 }

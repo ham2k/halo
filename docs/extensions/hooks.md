@@ -194,7 +194,7 @@ interface ActivityHook {
   operationControls?(args: { operation }, ctx): Promise<LoggingControlDescriptor[]>
   suggest?(args: SuggestArgs, ctx): Promise<ActivitySuggestion[]>
 }
-// LoggingControlDescriptor: {key, label, icon?, order?, optionType?, input}
+// LoggingControlDescriptor: {key, label, icon?, color?, order?, optionType?, input}
 // input (catalog v0): {kind: 'refList', refType, placeholder?, pattern?}
 // SuggestArgs: {operation, location?: {lat, lon}, callsign?, searchTerm?}
 // ActivitySuggestion: Ref & {distance?, relevance?}
@@ -204,6 +204,12 @@ interface ActivityHook {
 solid-style name prefixed with `'fa-'` (e.g. `'fa-tree'`) — same convention
 app-polo itself uses. Any name in either set works with no core-repo change;
 an unrecognized name falls back to a placeholder glyph rather than erroring.
+
+`color` is an optional `'#RRGGBB'` accent (e.g. POTA's `'#068541'`) the core
+may use sparingly to highlight this control's icon — a tinted circle behind
+it in the Activities picker, or the icon itself once a reference is entered
+in the logging panel's secondary pills. Missing or unrecognized values just
+mean no accent.
 
 `loggingControls` appear on the logging panel (per-QSO refs);
 `operationControls` appear in the operation's Activities dialog (e.g. "which
