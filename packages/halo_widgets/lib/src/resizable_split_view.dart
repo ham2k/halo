@@ -64,6 +64,20 @@ class ResizableSplitView extends StatefulWidget {
   /// Which divider treatment this split uses (see the file header).
   final SplitDividerStyle dividerStyle;
 
+  /// False removes the divider's drag handle — [primaryFraction] (or
+  /// [preferredPrimaryWidth]) then sets a fixed width the user can't
+  /// change. Only implemented for [SplitDividerStyle.surfaces]: the
+  /// divider's shadow/hairline still mark the boundary, just without the
+  /// interactive overlay on top of it. `solid` dividers stay resizable
+  /// regardless — no caller has needed a fixed solid split yet.
+  final bool resizable;
+
+  /// A fraction of the split's total width (e.g. 0.4) the primary pane
+  /// takes, recomputed on every layout — for a fixed split ([resizable]
+  /// false) where the width should track the window rather than persist a
+  /// user preference. Takes priority over [preferredPrimaryWidth] when set.
+  final double? primaryFraction;
+
   const ResizableSplitView({
     super.key,
     required this.primary,
@@ -74,6 +88,8 @@ class ResizableSplitView extends StatefulWidget {
     this.minSecondaryWidth = minPaneWidth,
     this.onPreferredPrimaryWidthChanged,
     this.dividerStyle = SplitDividerStyle.solid,
+    this.resizable = true,
+    this.primaryFraction,
   });
 
   /// Width of the divider's transparent grab/hover strip, overlaid on the
@@ -242,8 +258,11 @@ class _ResizableSplitViewState extends State<ResizableSplitView> {
         // No preference yet → the primary takes about two thirds of the
         // width, never more than sMax (the widest a single-pane phone
         // layout gets — content designed for a pane reads fine up to
-        // there).
-        final preferred = _preferredWidth ?? math.min(total * 2 / 3, ShirtSize.sMax);
+        // there). primaryFraction (fixed, non-resizable splits) overrides
+        // both the preference and that default.
+        final preferred = widget.primaryFraction != null
+            ? total * widget.primaryFraction!
+            : (_preferredWidth ?? math.min(total * 2 / 3, ShirtSize.sMax));
         final effectiveWidth = snapRound(preferred.clamp(lower, upper).toDouble());
         _effectiveWidthForDrag = effectiveWidth;
 
@@ -358,19 +377,24 @@ class _ResizableSplitViewState extends State<ResizableSplitView> {
                             width: 1,
                             child: IgnorePointer(child: ColoredBox(color: borderColor)),
                           ),
-                        Positioned(
-                          left: 0,
-                          top: 0,
-                          bottom: 0,
-                          width: ResizableSplitView.dividerWidth,
-                          child: _DividerHandle(
-                            onDragStart: _handleDragStart,
-                            onDragUpdate: _handleDragUpdate,
-                            onDragEnd: _handleDragEnd,
-                            onDragCancel: _handleDragCancel,
-                            dragging: _dragging,
+                        // Fixed splits render the shadow/hairline above as
+                        // the only boundary marker — no grab overlay, so
+                        // nothing hit-tests as draggable or shows a resize
+                        // cursor.
+                        if (widget.resizable)
+                          Positioned(
+                            left: 0,
+                            top: 0,
+                            bottom: 0,
+                            width: ResizableSplitView.dividerWidth,
+                            child: _DividerHandle(
+                              onDragStart: _handleDragStart,
+                              onDragUpdate: _handleDragUpdate,
+                              onDragEnd: _handleDragEnd,
+                              onDragCancel: _handleDragCancel,
+                              dragging: _dragging,
+                            ),
                           ),
-                        ),
                       ],
                     ),
             ),

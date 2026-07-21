@@ -55,8 +55,7 @@ void main() {
 
   testWidgets('Common Settings shows only the whitelisted fields', (tester) async {
     // Tall enough that the full two-line settings sidebar renders without
-    // scrolling — ListView.builder won't build off-screen rows, and the
-    // bottom rows (e.g. Privacy) are asserted below.
+    // scrolling — ListView.builder won't build off-screen rows.
     tester.view.physicalSize = const Size(1000, 1400);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.reset);
@@ -65,31 +64,26 @@ void main() {
     await tester.pumpWidget(MaterialApp(home: SettingsView(services: services)));
     await tester.pumpAndSettle();
 
-    // Whitelisted: only the User Interface section.
+    // Whitelisted: the User Interface section, and Privacy (issue #183 —
+    // folded in as its own section, no longer a separate top-level panel).
     expect(find.text('User Interface'), findsOneWidget);
     expect(find.text('Theme Mode'), findsOneWidget);
-
-    // Not whitelisted: privacy has its own panel; logging fields and the
-    // sync toggle only appear under All Settings.
-    expect(find.text('Share app usage data'), findsNothing);
-    expect(find.text('Privacy Policy'), findsNothing);
-    expect(find.text('Leftie Mode'), findsNothing);
-    expect(find.text('Logging'), findsNothing);
-    expect(find.text('Enable Sync'), findsNothing);
-
-    // Privacy is a top-level sidebar panel with the consents and links.
-    await tester.tap(find.text('Privacy'));
-    await tester.pumpAndSettle();
+    expect(find.text('Privacy'), findsOneWidget);
     expect(find.text('Share app usage data'), findsOneWidget);
     expect(find.text('Share operation data'), findsOneWidget);
     expect(find.text('Privacy Policy'), findsOneWidget);
     expect(find.text('Terms of Service'), findsOneWidget);
+
+    // Not whitelisted: logging fields and the sync toggle only appear under
+    // All Settings.
+    expect(find.text('Leftie Mode'), findsNothing);
+    expect(find.text('Logging'), findsNothing);
+    expect(find.text('Enable Sync'), findsNothing);
   });
 
   testWidgets('All Settings shows every group plus extension sections', (tester) async {
     // Tall enough that the full two-line settings sidebar renders without
-    // scrolling — ListView.builder won't build off-screen rows, and the
-    // bottom rows (e.g. Privacy) are asserted below.
+    // scrolling — ListView.builder won't build off-screen rows.
     tester.view.physicalSize = const Size(1000, 1400);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.reset);
@@ -106,8 +100,9 @@ void main() {
     expect(find.text('Logging'), findsOneWidget);
     expect(find.text('Leftie Mode'), findsOneWidget);
     expect(find.text('Country Flags'), findsOneWidget);
-    // 'Privacy' shows twice: the sidebar item and the group's section header.
-    expect(find.text('Privacy'), findsNWidgets(2));
+    // 'Privacy' is no longer a sidebar item (issue #183) — just the group's
+    // section header, here in All Settings.
+    expect(find.text('Privacy'), findsOneWidget);
     expect(find.text('Enable Sync'), findsOneWidget);
 
     // Bands resolves its $core.bands system list and summarizes the

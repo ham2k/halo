@@ -601,5 +601,4 @@ abstract final class LayoutKeys {
   static const homeLeftColumn = 'home.leftColumn';
   static const operationLeftColumn = 'operation.leftColumn';
   static const operationDock = 'operation.dock';
-  static const settingsLeftColumn = 'settings.leftColumn';
 }

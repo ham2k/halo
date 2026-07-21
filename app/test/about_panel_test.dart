@@ -3,11 +3,13 @@
 //
 // The About panel (Issue #42 restyle): a two-line version row (info icon +
 // VersionLabel(detailed: true)) replaces the old "About the App" paragraph,
-// followed by a "Release Notes" preview of the last few releases. "Recent
-// Notices" moved out to its own top-level "Notices & Messages" settings
-// panel, so it's no longer part of About. Tapping the preview opens the
-// same content in a Modal Pane; tapping the version row copies it; tapping
-// the wordmark opens a photo+caption modal.
+// followed by a "Notices & Messages" entry point and a "Release Notes"
+// preview of the last few releases, in that order. Notices & Messages used
+// to be its own top-level settings panel (#42) but moved back into About,
+// between the version and the release notes (issue #183). Tapping the
+// release-notes preview opens the same content in a Modal Pane, same as
+// tapping Notices & Messages opens the notice history in one; tapping the
+// version row copies it; tapping the wordmark opens a photo+caption modal.
 
 import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
@@ -116,10 +118,12 @@ void main() {
     // The header above no longer repeats it — just the brand mark there now.
     expect(find.byType(VersionLabel), findsOneWidget);
 
-    // "Release Notes" heading present, and "Recent Notices" is gone from
-    // this panel entirely — it moved to its own settings panel.
+    // "Release Notes" heading present; "Notices & Messages" sits above it
+    // (issue #183) as its own entry point, not the old "Recent Notices"
+    // inline list.
     expect(find.text('Release Notes'), findsOneWidget);
     expect(find.text('Recent Notices'), findsNothing);
+    expect(find.widgetWithText(ListTile, 'Notices & Messages'), findsOneWidget);
 
     // Tapping the preview opens the same title as a Modal Pane — the
     // clipped/faded preview never scrolls itself (see settings_view.dart),
@@ -128,6 +132,41 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Release Notes'), findsNWidgets(2));
+  });
+
+  testWidgets('Notices & Messages is not a sidebar panel; tapping it in About opens the notice history (issue #183)',
+      (tester) async {
+    setReleaseNotesForTesting([_testRelease]);
+
+    tester.view.physicalSize = const Size(1000, 1400);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    SharedPreferences.setMockInitialValues({});
+    final settings = SettingsService(await SharedPreferences.getInstance());
+    final db = HaLoDatabase(NativeDatabase.memory());
+    addTearDown(db.close);
+    final extensions = _ExtensionServiceWithMockHost()..settings = settings;
+    final services = HaLoServices(db, settings, extensions: extensions);
+
+    await tester.pumpWidget(MaterialApp(home: SettingsView(services: services)));
+    await tester.pumpAndSettle();
+
+    // No longer its own sidebar entry.
+    expect(find.widgetWithText(ListTile, 'Notices & Messages'), findsNothing);
+
+    await tester.tap(find.widgetWithText(ListTile, 'About'));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.widgetWithText(ListTile, 'Notices & Messages'));
+    await tester.pumpAndSettle();
+
+    // This mock extension host never starts (see `start()` above), which
+    // itself raises a "settings unavailable" notice — that's already in
+    // history by the time the modal pane opens, so its title proves the
+    // real notice-history list rendered (not just the pane's own title).
+    expect(find.text('Some settings are unavailable'), findsOneWidget);
   });
 
   testWidgets('tapping the version row copies the app name and version details to the clipboard', (tester) async {

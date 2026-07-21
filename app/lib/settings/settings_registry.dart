@@ -38,12 +38,16 @@ abstract class SettingsGroup {
 }
 
 /// `group.field` ids shown on the Common Preferences panel — everything else
-/// appears under All Settings (and privacy has its own top-level panel).
+/// appears under All Settings.
 const commonSettingsFields = [
   'general.themeMode',
   'general.locale',
   'general.fontScale',
   'general.distanceUnits',
+  'privacy.consentAppData',
+  'privacy.consentOpData',
+  'privacy.privacyPolicy',
+  'privacy.termsOfService',
 ];
 
 class SettingsRegistry {

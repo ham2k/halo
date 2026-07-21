@@ -122,6 +122,48 @@ void main() {
     expect(primaryWidth(tester), ShirtSize.sMax);
   });
 
+  testWidgets('resizable: false with primaryFraction sizes the primary as a fixed fraction and hides the drag handle',
+      (tester) async {
+    tester.view.physicalSize = const Size(1000, 600);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+
+    await tester.pumpWidget(
+      harness(
+        child: const ResizableSplitView(
+          primary: primary,
+          secondary: secondary,
+          dividerStyle: SplitDividerStyle.surfaces,
+          resizable: false,
+          primaryFraction: 0.4,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    // 1000 * 0.4 = 400 — tracks the window width, not a persisted preference.
+    expect(primaryWidth(tester), 400);
+    expect(dividerHandle, findsNothing, reason: 'a fixed split has nothing to drag');
+
+    // Widening the window keeps the primary at 40%, unlike a resizable
+    // split which would hold its preferred width steady.
+    tester.view.physicalSize = const Size(1200, 600);
+    await tester.pumpWidget(
+      harness(
+        width: 1200,
+        child: const ResizableSplitView(
+          primary: primary,
+          secondary: secondary,
+          dividerStyle: SplitDividerStyle.surfaces,
+          resizable: false,
+          primaryFraction: 0.4,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(primaryWidth(tester), 480);
+  });
+
   testWidgets('a drag from the default seeds the preference at the shown width', (tester) async {
     tester.view.physicalSize = const Size(900, 600);
     tester.view.devicePixelRatio = 1.0;

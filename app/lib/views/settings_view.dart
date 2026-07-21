@@ -116,19 +116,6 @@ const _fixedCorePanels = [
       icon: Icons.extension,
       order: 40,
       description: 'Turn optional features on or off'),
-  _SettingsPanelEntry(
-      key: 'notices',
-      title: 'Notices & Messages',
-      icon: Icons.notifications,
-      order: 80,
-      description: 'Announcements and status messages'),
-  // Near the bottom of the list, just before About (order 100).
-  _SettingsPanelEntry(
-      key: 'privacy',
-      title: 'Privacy',
-      icon: Icons.privacy_tip,
-      order: 95,
-      description: 'Choose what data you share'),
 ];
 // Before Common Preferences (order 0) — the Profiles panel leads the list.
 // Internally "profiles"; until multi-profile features are enabled it
@@ -228,6 +215,7 @@ class _SettingsViewState extends State<SettingsView> {
         title: 'Data Files',
         icon: resolveIconName('file-cabinet'),
         order: 60,
+        description: 'Manage cached data sources',
       ),
       for (final p in _extensionPanels)
         _SettingsPanelEntry(
@@ -285,10 +273,12 @@ class _SettingsViewState extends State<SettingsView> {
         // divider: the selected panel reads as a surface under the sidebar's
         // shadow. See docs/design/layouts.md.
         dividerStyle: SplitDividerStyle.surfaces,
-        preferredPrimaryWidth: settings.layoutDimension(LayoutKeys.settingsLeftColumn) ?? 320,
+        // Fixed at 40% of the split's width — the sidebar isn't
+        // user-resizable (issue #183 follow-up).
+        resizable: false,
+        primaryFraction: 0.4,
         minPrimaryWidth: 240,
         maxPrimaryWidth: idealPaneWidth,
-        onPreferredPrimaryWidthChanged: (width) => settings.setLayoutDimension(LayoutKeys.settingsLeftColumn, width),
         // Each pane owns its ScaffoldMessenger so a SnackBar (e.g. the
         // copy-version toast) shows only in the pane that raised it. Sharing
         // the root messenger — which both pane Scaffolds otherwise register
@@ -314,9 +304,10 @@ class _SettingsViewState extends State<SettingsView> {
             child: Scaffold(
             appBar: AppBar(
               flexibleSpace: windowHeaderGestureArea(),
-              // Default title inset (16) plus the clearance, so the title
-              // lines up with each panel's own row content below.
-              titleSpacing: 16 + safeLeft,
+              // Centered to match each panel's own content below, which
+              // centers (rather than pins left) at the same idealPaneWidth
+              // cap — see _buildPanelContent.
+              centerTitle: true,
               title: shrinkToFitText(Text(effectivePanel.effectiveScreenTitle)),
               automaticallyImplyLeading: false,
               actions: [
@@ -444,6 +435,9 @@ class _SettingsPanelScreen extends StatelessWidget {
         flexibleSpace: windowHeaderGestureArea(),
         leadingWidth: macOSAwareLeadingWidth(context),
         leading: macOSAwareBackButton(context),
+        // Centered to match the panel's own content below — see
+        // _buildPanelContent.
+        centerTitle: true,
         title: shrinkToFitText(Text(panel.effectiveScreenTitle)),
         actions: [
           HeaderProfileLabel(settings: services.settings),
@@ -462,8 +456,6 @@ Widget _buildPanelContent(_SettingsPanelEntry panel, HaLoServices services) {
       content = _ProfilesPanel(services: services);
     case 'settings':
       content = _CommonSettingsPanel(services: services);
-    case 'privacy':
-      content = _RegistryGroupPanel(services: services, groupKey: 'privacy');
     case 'extensions':
       content = ExtensionsPanel(services: services);
     case 'all_settings':
@@ -474,25 +466,29 @@ Widget _buildPanelContent(_SettingsPanelEntry panel, HaLoServices services) {
       content = _AccountsPanel(services: services);
     case 'data_files':
       content = _DataFilesPanel(services: services);
-    case 'notices':
-      content = NoticeHistoryView(services: services);
     case 'developer':
       content = _DeveloperPanel(services: services);
     case 'about':
-      content = const _AboutPanel();
+      content = _AboutPanel(services: services);
     default:
       final descriptor = panel.descriptor;
       content = descriptor == null
           ? const SizedBox.shrink()
           : _ExtensionSettingsPanel(services: services, descriptor: descriptor);
   }
-  // Cap settings content at the ideal reading width, pinned to the leading
-  // edge (aligned under the pane header) rather than stretching across a wide
-  // pane. The SafeArea sits inside the cap: each panel's scroll view clears
-  // the bottom safe area itself now that the status footer no longer reserves
+  // About manages its own width (see _AboutPanel): the header photo spans
+  // the pane's full true width edge-to-edge, while its rows below cap at
+  // idealPaneWidth and center, same as every other panel below — so it
+  // must not also get the blanket cap-and-center wrapper below.
+  if (panel.key == 'about') {
+    return SafeArea(top: false, left: false, right: false, child: content);
+  }
+  // Cap settings content at the ideal reading width, centered in the pane
+  // rather than stretching across (or pinning to one edge of) a wide one.
+  // The SafeArea sits inside the cap: each panel's scroll view clears the
+  // bottom safe area itself now that the status footer no longer reserves
   // the home indicator globally.
-  return Align(
-    alignment: Alignment.topLeft,
+  return Center(
     child: ConstrainedBox(
       constraints: const BoxConstraints(maxWidth: idealPaneWidth),
       child: SafeArea(top: false, left: false, right: false, child: content),
@@ -558,10 +554,6 @@ class _SettingsGroupForm extends StatefulWidget {
   /// Element keys to keep — the Common Preferences whitelist. Null shows all.
   final Set<String>? fieldFilter;
 
-  /// Off when the group renders as a standalone panel whose pane header
-  /// already names it.
-  final bool showHeader;
-
   /// All Settings' search query (lowercased); when it matches nothing in
   /// this group, the whole section — header included — renders empty.
   final String searchQuery;
@@ -570,7 +562,6 @@ class _SettingsGroupForm extends StatefulWidget {
     required this.services,
     required this.group,
     this.fieldFilter,
-    this.showHeader = true,
     this.searchQuery = '',
   });
 
@@ -644,7 +635,7 @@ class _SettingsGroupFormState extends State<_SettingsGroupForm> {
     return FormRenderer(
       formDefinition: {
         'elements': [
-          if (widget.showHeader) {'type': 'header', 'title': widget.group.title, 'style': 'section'},
+          {'type': 'header', 'title': widget.group.title, 'style': 'section'},
           ...elements,
         ],
       },
@@ -674,28 +665,6 @@ bool _elementMatchesQuery(Map<String, dynamic> el, String query) {
   if (type != 'field' && type != 'link' && type != 'action') return false;
   bool has(dynamic v) => v is String && v.toLowerCase().contains(query);
   return has(el['key']) || has(el['label']) || has(el['description']);
-}
-
-/// A single registry group as its own standalone panel (Privacy). The pane
-/// header already names it, so the group's section header is omitted.
-class _RegistryGroupPanel extends StatelessWidget {
-  final HaLoServices services;
-  final String groupKey;
-
-  const _RegistryGroupPanel({required this.services, required this.groupKey});
-
-  @override
-  Widget build(BuildContext context) {
-    final group = services.settingsRegistry[groupKey];
-    if (group == null) return const SizedBox.shrink();
-    // FormRenderer rows zero their own contentPadding, so the wide layout's
-    // grab-strip clearance must come from this panel's padding (layouts.md).
-    final safeLeft = PaneSafeArea.leftOf(context);
-    return SingleChildScrollView(
-      padding: EdgeInsets.fromLTRB(16 + safeLeft, 16, 16, 16),
-      child: _SettingsGroupForm(services: services, group: group, showHeader: false),
-    );
-  }
 }
 
 /// The whitelisted subset of the settings registry ([commonSettingsFields])
@@ -1949,7 +1918,9 @@ Future<void> _copyVersionDetailsToClipboard(BuildContext context) async {
 }
 
 class _AboutPanel extends StatelessWidget {
-  const _AboutPanel();
+  final HaLoServices services;
+
+  const _AboutPanel({required this.services});
 
   @override
   Widget build(BuildContext context) {
@@ -1969,7 +1940,14 @@ class _AboutPanel extends StatelessWidget {
         final currentRelease = releaseNotes.isEmpty
             ? null
             : releaseNotes.firstWhere((entry) => entry.version == kPublicVersion, orElse: () => releaseNotes.first);
-        final safeLeft = PaneSafeArea.leftOf(context);
+
+        // Unlike every other settings panel (capped AND pinned left — see
+        // _buildPanelContent), About's own content caps at the same
+        // idealPaneWidth but CENTERS within the pane; the header photo and
+        // the dividers between rows opt out of the cap entirely and span
+        // the pane's full true width edge-to-edge.
+        Widget centered(Widget child) =>
+            Center(child: ConstrainedBox(constraints: const BoxConstraints(maxWidth: idealPaneWidth), child: child));
 
         // CustomScrollView + SliverFillRemaining(hasScrollBody: false)
         // rather than a plain Column: on a short viewport (a phone in
@@ -1985,41 +1963,68 @@ class _AboutPanel extends StatelessWidget {
             SliverToBoxAdapter(child: _AboutHeader(release: currentRelease)),
             const SliverToBoxAdapter(child: Divider(height: 1)),
             SliverToBoxAdapter(
-              child: ListTile(
-                leading: const Icon(Icons.info),
-                // VersionLabel renders SelectableText, whose own tap
-                // recognizer (for cursor placement) would otherwise win
-                // the gesture arena over this ListTile's onTap —
-                // IgnorePointer keeps the whole row a single tap target
-                // instead of a text-selection field.
-                title: const IgnorePointer(
-                  child: VersionLabel(
-                    detailed: true,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    boldFirstLine: true,
+              child: centered(
+                ListTile(
+                  leading: const Icon(Icons.info),
+                  // VersionLabel renders SelectableText, whose own tap
+                  // recognizer (for cursor placement) would otherwise win
+                  // the gesture arena over this ListTile's onTap —
+                  // IgnorePointer keeps the whole row a single tap target
+                  // instead of a text-selection field.
+                  title: const IgnorePointer(
+                    child: VersionLabel(
+                      detailed: true,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      boldFirstLine: true,
+                    ),
                   ),
+                  onTap: () => _copyVersionDetailsToClipboard(context),
+                  mouseCursor: SystemMouseCursors.click,
                 ),
-                onTap: () => _copyVersionDetailsToClipboard(context),
-                mouseCursor: SystemMouseCursors.click,
+              ),
+            ),
+            const SliverToBoxAdapter(child: Divider(height: 1)),
+            // Notices & Messages used to be its own top-level settings
+            // panel — moved here (issue #183), between the version and the
+            // release notes, as an entry point into the same history view.
+            SliverToBoxAdapter(
+              child: centered(
+                ListTile(
+                  leading: const Icon(Icons.notifications),
+                  title: const Text('Notices & Messages'),
+                  subtitle: const Text('Announcements and status messages'),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () => showModalPane<void>(
+                    context,
+                    title: 'Notices & Messages',
+                    // NoticeHistoryView is its own scrolling ListView — the
+                    // pane must not also wrap it in a SingleChildScrollView.
+                    scrollable: false,
+                    builder: (context) => NoticeHistoryView(services: services),
+                  ),
+                  mouseCursor: SystemMouseCursors.click,
+                ),
               ),
             ),
             const SliverToBoxAdapter(child: Divider(height: 1)),
             if (recentReleases.isNotEmpty) ...[
               SliverToBoxAdapter(
-                child: Padding(
-                  padding: EdgeInsets.fromLTRB(16 + safeLeft, 12, 16, 8),
-                  child: Align(
-                    alignment: Alignment.centerLeft,
-                    child: Text(
-                      'Release Notes',
-                      style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+                child: centered(
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+                    child: Align(
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        'Release Notes',
+                        style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+                      ),
                     ),
                   ),
                 ),
               ),
               SliverFillRemaining(
                 hasScrollBody: false,
-                child: _ReleaseNotesPreview(releases: recentReleases),
+                child: centered(_ReleaseNotesPreview(releases: recentReleases)),
               ),
             ],
           ],
@@ -2058,7 +2063,6 @@ class _ReleaseNotesPreview extends StatelessWidget {
   Widget build(BuildContext context) {
     final markdown = _combinedReleaseNotesMarkdown(releases);
     final styleSheet = MarkdownStyleSheet.fromTheme(Theme.of(context));
-    final safeLeft = PaneSafeArea.leftOf(context);
     return GestureDetector(
       key: const Key('aboutReleaseNotesPreview'),
       behavior: HitTestBehavior.opaque,
@@ -2078,7 +2082,7 @@ class _ReleaseNotesPreview extends StatelessWidget {
           blendMode: BlendMode.dstIn,
           child: SingleChildScrollView(
             physics: const NeverScrollableScrollPhysics(),
-            padding: EdgeInsets.only(left: 16 + safeLeft, right: 16),
+            padding: const EdgeInsets.symmetric(horizontal: 16),
             child: MarkdownBody(data: markdown, styleSheet: styleSheet),
           ),
         ),
