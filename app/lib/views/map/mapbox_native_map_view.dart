@@ -47,9 +47,19 @@ class _MapboxNativeMapViewState extends State<MapboxNativeMapView> {
   PolylineAnnotationManager? _highlightPolylines;
   CircleAnnotationManager? _highlightCircles;
 
-  /// Created annotation id → its marker, so the tap handler can find what
-  /// was hit.
-  final _markersByAnnotationId = <String, MapMarkerData>{};
+  /// Created annotation id → its marker, so the tap handler can find what was
+  /// hit. Kept per group (base vs highlight) so re-applying only the highlight
+  /// — which happens on every keystroke while a call is being entered — leaves
+  /// the base map's entries intact.
+  final _baseMarkersById = <String, MapMarkerData>{};
+  final _highlightMarkersById = <String, MapMarkerData>{};
+
+  MapMarkerData? _markerForAnnotation(String id) => _baseMarkersById[id] ?? _highlightMarkersById[id];
+
+  static List<MapMarkerData> _markersFor(List<MapMarkerData> all, {required bool highlight}) =>
+      [for (final m in all) if (m.highlight == highlight) m];
+  static List<MapLineData> _linesFor(List<MapLineData> all, {required bool highlight}) =>
+      [for (final l in all) if (l.highlight == highlight) l];
 
   /// Selection is tracked by marker id, not by MapMarkerData value, so a
   /// data refresh of the selected QSO (a lookup filling in details) updates
@@ -83,9 +93,16 @@ class _MapboxNativeMapViewState extends State<MapboxNativeMapView> {
   void didUpdateWidget(MapboxNativeMapView oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.projection != widget.projection) _applyProjection();
-    if (!listEquals(oldWidget.markers, widget.markers) || !listEquals(oldWidget.lines, widget.lines)) {
-      _applyAnnotations();
-    }
+    // Re-apply only the group that actually changed. The highlight (current
+    // QSO) changes on every keystroke; the base map usually doesn't, so this
+    // avoids deleting and recreating every base annotation — and refitting the
+    // camera — on each character typed.
+    final baseChanged = !listEquals(_markersFor(oldWidget.markers, highlight: false), _markersFor(widget.markers, highlight: false)) ||
+        !listEquals(_linesFor(oldWidget.lines, highlight: false), _linesFor(widget.lines, highlight: false));
+    final highlightChanged =
+        !listEquals(_markersFor(oldWidget.markers, highlight: true), _markersFor(widget.markers, highlight: true)) ||
+            !listEquals(_linesFor(oldWidget.lines, highlight: true), _linesFor(widget.lines, highlight: true));
+    if (baseChanged || highlightChanged) _applyAnnotations(base: baseChanged, highlight: highlightChanged);
   }
 
   Future<void> _applyProjection() async {
@@ -96,13 +113,13 @@ class _MapboxNativeMapViewState extends State<MapboxNativeMapView> {
     _repositionPopup();
   }
 
-  void _applyAnnotations() {
+  void _applyAnnotations({required bool base, required bool highlight}) {
     _annotationApplications = _annotationApplications
-        .then((_) => _applyAnnotationsNow())
+        .then((_) => _applyAnnotationsNow(base: base, highlight: highlight))
         .catchError((Object e) => debugPrint('[map] annotation update failed: $e'));
   }
 
-  Future<void> _applyAnnotationsNow() async {
+  Future<void> _applyAnnotationsNow({required bool base, required bool highlight}) async {
     final circles = _circles;
     final polylines = _polylines;
     final highlightPolylines = _highlightPolylines;
@@ -123,8 +140,8 @@ class _MapboxNativeMapViewState extends State<MapboxNativeMapView> {
             for (final p in line.points) Position(p.longitude, p.latitude),
           ]),
           lineColor: line.color.toARGB32(),
-          // The highlight line reads a touch heavier so it stands out.
-          lineWidth: line.highlight ? 3 : 1.5,
+          // The current QSO's line is drawn thick so it stands out.
+          lineWidth: line.highlight ? 6 : 1.5,
         );
     CircleAnnotationOptions circleOptions(MapMarkerData marker) => CircleAnnotationOptions(
           geometry: Point(coordinates: Position(marker.longitude, marker.latitude)),
@@ -134,30 +151,49 @@ class _MapboxNativeMapViewState extends State<MapboxNativeMapView> {
           circleStrokeWidth: marker.kind == MapMarkerKind.qth ? 2 : 1.5,
         );
 
-    // Base annotations go in the base managers; the highlight (current QSO) in
-    // the managers created after them, so it layers on top.
-    final baseLines = [for (final l in widget.lines) if (!l.highlight) l];
-    final highlightLines = [for (final l in widget.lines) if (l.highlight) l];
-    final baseMarkers = [for (final m in widget.markers) if (!m.highlight) m];
-    final highlightMarkers = [for (final m in widget.markers) if (m.highlight) m];
-
-    await polylines.deleteAll();
-    await polylines.createMulti([for (final line in baseLines) lineOptions(line)]);
-    await highlightPolylines.deleteAll();
-    await highlightPolylines.createMulti([for (final line in highlightLines) lineOptions(line)]);
-
-    _markersByAnnotationId.clear();
-    await circles.deleteAll();
-    await highlightCircles.deleteAll();
-    for (final (manager, list) in [(circles, baseMarkers), (highlightCircles, highlightMarkers)]) {
-      final created = await manager.createMulti([for (final m in list) circleOptions(m)]);
-      for (var i = 0; i < created.length && i < list.length; i++) {
+    // Re-applies one group: clears its line + circle managers and its slice of
+    // the id map, then recreates from the current widget data. The base group
+    // and the highlight group are independent, so touching one leaves the
+    // other on the map untouched.
+    Future<void> applyGroup({
+      required bool isHighlight,
+      required PolylineAnnotationManager lineManager,
+      required CircleAnnotationManager circleManager,
+      required Map<String, MapMarkerData> idMap,
+    }) async {
+      await lineManager.deleteAll();
+      await lineManager.createMulti([for (final line in _linesFor(widget.lines, highlight: isHighlight)) lineOptions(line)]);
+      await circleManager.deleteAll();
+      idMap.clear();
+      final markers = _markersFor(widget.markers, highlight: isHighlight);
+      final created = await circleManager.createMulti([for (final m in markers) circleOptions(m)]);
+      for (var i = 0; i < created.length && i < markers.length; i++) {
         final annotation = created[i];
-        if (annotation != null) _markersByAnnotationId[annotation.id] = list[i];
+        if (annotation != null) idMap[annotation.id] = markers[i];
       }
     }
 
-    if (widget.markers.isNotEmpty) {
+    if (base) {
+      await applyGroup(
+        isHighlight: false,
+        lineManager: polylines,
+        circleManager: circles,
+        idMap: _baseMarkersById,
+      );
+    }
+    if (highlight) {
+      await applyGroup(
+        isHighlight: true,
+        lineManager: highlightPolylines,
+        circleManager: highlightCircles,
+        idMap: _highlightMarkersById,
+      );
+    }
+
+    // Only refit the camera when the base map changed (initial load, a new QSO
+    // logged) — not on every keystroke's highlight update, which would pan/zoom
+    // the map out from under the operator as they type.
+    if (base && widget.markers.isNotEmpty) {
       final camera = await map.cameraForCoordinatesPadding(
         [for (final m in widget.markers) Point(coordinates: Position(m.longitude, m.latitude))],
         CameraOptions(),
@@ -171,7 +207,7 @@ class _MapboxNativeMapViewState extends State<MapboxNativeMapView> {
   }
 
   void _onCircleTapped(CircleAnnotation annotation) {
-    final marker = _markersByAnnotationId[annotation.id];
+    final marker = _markerForAnnotation(annotation.id);
     if (marker == null) return;
     _ignoreNextMapTap = true;
     setState(() => _selectedMarkerId = marker.id);
@@ -216,7 +252,7 @@ class _MapboxNativeMapViewState extends State<MapboxNativeMapView> {
     _highlightCircles = await map.annotations.createCircleAnnotationManager();
     _highlightCircles!.tapEvents(onTap: _onCircleTapped);
     await _applyProjection();
-    _applyAnnotations();
+    _applyAnnotations(base: true, highlight: true);
   }
 
   @override

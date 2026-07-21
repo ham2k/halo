@@ -39,7 +39,14 @@ class _OsmMapViewState extends State<OsmMapView> {
     super.didUpdateWidget(oldWidget);
     if (!listEquals(oldWidget.markers, widget.markers)) {
       if (!widget.markers.any((m) => m.id == _selectedMarkerId)) _selectedMarkerId = null;
-      _fitCamera();
+      // Refit only when the BASE markers change (a QSO logged), not on each
+      // keystroke's highlight update — otherwise the map pans/zooms out from
+      // under the operator as they type a call.
+      final baseChanged = !listEquals(
+        [for (final m in oldWidget.markers) if (!m.highlight) m],
+        [for (final m in widget.markers) if (!m.highlight) m],
+      );
+      if (baseChanged) _fitCamera();
     }
   }
 
@@ -121,8 +128,8 @@ class _OsmMapViewState extends State<OsmMapView> {
             Polyline(
               points: [for (final p in line.points) LatLng(p.latitude, p.longitude)],
               color: line.color,
-              // The current QSO's line reads a touch heavier so it stands out.
-              strokeWidth: line.highlight ? 3 : 1.5,
+              // The current QSO's line is drawn thick so it stands out.
+              strokeWidth: line.highlight ? 6 : 1.5,
             ),
         ],
       );

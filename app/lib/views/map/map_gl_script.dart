@@ -29,6 +29,9 @@ window.poloMapGl = window.poloMapGl || {
 
     let markers = [];
     let popup = null;
+    // Signature of the base markers at the last camera fit — so a keystroke
+    // that only moves the current-QSO highlight doesn't refit the camera.
+    let lastBaseSig = null;
 
     function showPopup(m) {
       if (popup) popup.remove();
@@ -62,7 +65,8 @@ window.poloMapGl = window.poloMapGl || {
       markers = [];
       if (popup) { popup.remove(); popup = null; }
       if (!data.length) return;
-      const bounds = new mapboxgl.LngLatBounds();
+      const baseBounds = new mapboxgl.LngLatBounds();
+      const baseSig = [];
       data.forEach((m) => {
         const el = document.createElement('div');
         const size = m.kind === 'qth' ? 12 : 14 * (m.sizeFactor || 1);
@@ -79,9 +83,18 @@ window.poloMapGl = window.poloMapGl || {
         if (m.highlight) el.style.zIndex = '10';
         el.addEventListener('click', (e) => { e.stopPropagation(); showPopup(m); });
         markers.push(new mapboxgl.Marker({ element: el }).setLngLat([m.longitude, m.latitude]).addTo(map));
-        bounds.extend([m.longitude, m.latitude]);
+        // The camera fits the base markers only, and only when they change, so
+        // typing a call (which moves the highlight marker) doesn't refit.
+        if (!m.highlight) {
+          baseBounds.extend([m.longitude, m.latitude]);
+          baseSig.push(m.longitude, m.latitude);
+        }
       });
-      map.fitBounds(bounds, { padding: 48, maxZoom: 11, duration: 0 });
+      const sig = baseSig.join(',');
+      if (sig !== lastBaseSig && !baseBounds.isEmpty()) {
+        lastBaseSig = sig;
+        map.fitBounds(baseBounds, { padding: 48, maxZoom: 11, duration: 0 });
+      }
     }
 
     function setLines(data) {
@@ -120,7 +133,7 @@ window.poloMapGl = window.poloMapGl || {
           filter: ['==', ['get', 'highlight'], true],
           paint: {
             'line-color': ['coalesce', ['get', 'color'], '#000000'],
-            'line-width': 3,
+            'line-width': 6,
             'line-opacity': 1,
           },
         });
