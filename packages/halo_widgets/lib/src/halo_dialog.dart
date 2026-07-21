@@ -60,6 +60,34 @@ class HaloDialogHeader extends StatelessWidget {
   }
 }
 
+/// A footer row with [cancel] pinned to the leading edge and [actions]
+/// packed to the trailing edge, wrapping onto extra lines when narrow —
+/// shared by [HaloDialog] and any other footer that needs the same
+/// pinned-cancel convention (issue #191) instead of duplicating the layout.
+Widget haloDialogFooterRow({Widget? cancel, List<Widget> actions = const []}) {
+  return Row(
+    // start, not the Row default of center: if actions wraps onto more than
+    // one line, cancel lines up with the first line instead of centering
+    // against the whole stacked block.
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      if (cancel != null) cancel,
+      // A minimum gap even when actions is empty/narrow — Expanded alone
+      // only guarantees cancel and actions don't overlap, not that they
+      // don't end up flush against each other.
+      if (cancel != null) const SizedBox(width: 12),
+      Expanded(
+        child: OverflowBar(
+          alignment: MainAxisAlignment.end,
+          spacing: 8,
+          overflowSpacing: 4,
+          children: actions,
+        ),
+      ),
+    ],
+  );
+}
+
 class HaloDialog extends StatelessWidget {
   /// The header band's content — usually a plain `Text`; it picks up the
   /// dialog title style, so call sites don't restate it.
@@ -69,6 +97,13 @@ class HaloDialog extends StatelessWidget {
 
   /// The footer band's buttons, laid out end-aligned and wrapping when narrow.
   final List<Widget> actions;
+
+  /// The footer's leading, left-aligned button — usually a Cancel/Close
+  /// `TextButton`. Kept separate from [actions] (rather than just being
+  /// listed first in it) so it always sits at the opposite edge from the
+  /// primary action(s), not merely leftmost within the same right-packed
+  /// group (issue #191).
+  final Widget? cancel;
 
   /// Whether [content] is wrapped in a scroll view. Turn OFF for content that
   /// scrolls itself (a ListView, or its own SingleChildScrollView) — nesting
@@ -87,6 +122,7 @@ class HaloDialog extends StatelessWidget {
     this.title,
     this.content,
     this.actions = const [],
+    this.cancel,
     this.scrollable = true,
     this.contentPadding,
     this.wide = false,
@@ -134,15 +170,10 @@ class HaloDialog extends StatelessWidget {
             if (title != null) HaloDialogHeader(title: title),
             // Flexible, not Expanded: a short dialog still shrink-wraps.
             if (body != null) Flexible(child: body),
-            if (actions.isNotEmpty)
+            if (actions.isNotEmpty || cancel != null)
               Padding(
                 padding: const EdgeInsets.fromLTRB(24, 12, 24, 12),
-                child: OverflowBar(
-                  alignment: MainAxisAlignment.end,
-                  spacing: 8,
-                  overflowSpacing: 4,
-                  children: actions,
-                ),
+                child: haloDialogFooterRow(cancel: cancel, actions: actions),
               ),
           ],
         ),

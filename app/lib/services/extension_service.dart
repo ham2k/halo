@@ -1228,6 +1228,7 @@ class ExtensionService {
         wide: true,
         title: title != null ? Text(title) : null,
         content: MarkdownBody(data: text),
+        cancel: TextButton(onPressed: () => Navigator.of(dialogContext).pop(), child: const Text('Close')),
         actions: [
           for (final action in actions)
             if (action['label'] is String && _declarativeActionHandler(action) != null)
@@ -1238,7 +1239,6 @@ class ExtensionService {
                 },
                 child: Text(action['label'] as String),
               ),
-          TextButton(onPressed: () => Navigator.of(dialogContext).pop(), child: const Text('Close')),
         ],
       ),
     );

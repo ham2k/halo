@@ -158,6 +158,39 @@ void main() {
     expect(tester.getSize(find.byType(HaloDialogHeader)).height, theme.appBarTheme.toolbarHeight);
   });
 
+  testWidgets('cancel sits at the leading edge, separate from the right-packed actions (issue #191)', (tester) async {
+    await tester.pumpWidget(MaterialApp(
+      theme: buildHaLoTheme(Brightness.light),
+      home: const Scaffold(
+        body: HaloDialog(
+          title: Text('Title'),
+          content: Text('Body'),
+          cancel: TextButton(onPressed: null, child: Text('Cancel')),
+          actions: [FilledButton(onPressed: null, child: Text('Save'))],
+        ),
+      ),
+    ));
+
+    final cancelLeft = tester.getTopLeft(find.text('Cancel')).dx;
+    final saveLeft = tester.getTopLeft(find.text('Save')).dx;
+
+    // Not merely first among right-packed buttons: a real gap separates it
+    // from Save, pinned to the opposite edge of the footer.
+    expect(saveLeft - cancelLeft, greaterThan(150));
+  });
+
+  testWidgets('with no cancel, actions still pack to the trailing edge as before', (tester) async {
+    await pump(tester, Brightness.light);
+    final actionsRight = tester.getTopRight(find.text('OK')).dx;
+    final cardRight = tester
+        .getTopRight(find.descendant(of: find.byType(Dialog), matching: find.byType(Material)).first)
+        .dx;
+
+    // OK hugs the card's own trailing edge (minus the footer's padding) —
+    // unchanged from before `cancel` existed.
+    expect(cardRight - actionsRight, lessThan(40));
+  });
+
   testWidgets('header and footer are optional', (tester) async {
     await tester.pumpWidget(MaterialApp(
       theme: buildHaLoTheme(Brightness.light),

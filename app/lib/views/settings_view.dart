@@ -879,8 +879,8 @@ class _SyncPanelState extends State<_SyncPanel> {
           'QSO${qsoCount == 1 ? '' : 's'} from this device, then downloads the account\'s data '
           'instead. The backup stays in this device\'s database.',
         ),
+        cancel: TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('Cancel')),
         actions: [
-          TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('Cancel')),
           FilledButton(onPressed: () => Navigator.of(context).pop(true), child: const Text('Replace')),
         ],
       ),
@@ -2626,11 +2626,9 @@ class _AccountPaneState extends State<_AccountPane> {
           ],
         ),
         const SizedBox(height: 24),
-        OverflowBar(
-          alignment: MainAxisAlignment.end,
-          spacing: 8,
-          children: [
-            TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Cancel')),
+        haloDialogFooterRow(
+          cancel: TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Cancel')),
+          actions: [
             FilledButton(onPressed: _save, child: const Text('Save')),
           ],
         ),

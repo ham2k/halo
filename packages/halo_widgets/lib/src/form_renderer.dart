@@ -36,24 +36,32 @@ Widget _formActionsRow({
   required VoidCallback? onSave,
 }) {
   return Row(
-    mainAxisAlignment: MainAxisAlignment.end,
     children: [
       TextButton(
         onPressed: isSubmitting ? null : onCancel,
         child: const Text('Cancel'),
       ),
+      // A minimum gap even on a narrow row — Expanded alone only keeps Save
+      // from overlapping Cancel, not from sitting flush against it.
       const SizedBox(width: 12),
-      if (isSubmitting)
-        const SizedBox(
-          width: 24,
-          height: 24,
-          child: CircularProgressIndicator(strokeWidth: 2),
-        )
-      else
-        FilledButton(
-          onPressed: onSave,
-          child: const Text('Save'),
+      // Pins Save (and the submitting spinner) to the trailing edge, leaving
+      // Cancel alone at the leading edge instead of merely first in a
+      // right-packed group (issue #191, same convention as HaloDialog).
+      Expanded(
+        child: Align(
+          alignment: Alignment.centerRight,
+          child: isSubmitting
+              ? const SizedBox(
+                  width: 24,
+                  height: 24,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : FilledButton(
+                  onPressed: onSave,
+                  child: const Text('Save'),
+                ),
         ),
+      ),
     ],
   );
 }

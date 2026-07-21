@@ -145,6 +145,10 @@ Dialogs can have a title and subtitle pinned at the top, content in the
 middle, and a set of action buttons pinned at the bottom. Clicking outside
 the dialog or pressing Escape dismisses it.
 
+A Cancel/Close button is always the leading, left-aligned button, separate
+from the primary/confirm action(s) grouped at the trailing edge — not merely
+listed first among right-packed buttons (`HaloDialog`'s `cancel` parameter).
+
 Pane-sized dialogs — "Modal Panes" — additionally present as full screens on
 phone-sized windows; see [layouts.md](layouts.md).
 

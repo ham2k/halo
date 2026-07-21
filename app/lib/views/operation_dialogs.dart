@@ -22,8 +22,8 @@ Future<bool> confirmDeleteOperation(
     context: context,
     builder: (context) => HaloDialog(
       title: Text(context.t.dialogs.deleteOperationConfirm(title: operation.title.isEmpty ? operation.stationCall : operation.title)),
+      cancel: TextButton(onPressed: () => Navigator.of(context).pop(false), child: Text(context.t.common.cancel)),
       actions: [
-        TextButton(onPressed: () => Navigator.of(context).pop(false), child: Text(context.t.common.cancel)),
         FilledButton(onPressed: () => Navigator.of(context).pop(true), child: Text(context.t.common.delete)),
       ],
     ),
@@ -148,8 +148,8 @@ class _TimeDialogState extends State<_TimeDialog> {
           ),
         ],
       ),
+      cancel: TextButton(onPressed: () => Navigator.of(context).pop(), child: Text(context.t.common.cancel)),
       actions: [
-        TextButton(onPressed: () => Navigator.of(context).pop(), child: Text(context.t.common.cancel)),
         FilledButton(onPressed: _save, child: Text(context.t.common.save)),
       ],
     );
@@ -248,8 +248,8 @@ class _OneFieldDialogState extends State<_OneFieldDialog> {
         decoration: poloFieldDecoration(context, widget.fieldLabel),
         onSubmitted: (_) => _save(),
       ),
+      cancel: TextButton(onPressed: () => Navigator.of(context).pop(), child: Text(context.t.common.cancel)),
       actions: [
-        TextButton(onPressed: () => Navigator.of(context).pop(), child: Text(context.t.common.cancel)),
         FilledButton(onPressed: _save, child: Text(widget.saveLabel)),
       ],
     );
@@ -320,8 +320,8 @@ class _TwoFieldDialogState extends State<_TwoFieldDialog> {
           ),
         ],
       ),
+      cancel: TextButton(onPressed: () => Navigator.of(context).pop(), child: Text(context.t.common.cancel)),
       actions: [
-        TextButton(onPressed: () => Navigator.of(context).pop(), child: Text(context.t.common.cancel)),
         FilledButton(onPressed: _save, child: Text(context.t.common.save)),
       ],
     );

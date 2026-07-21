@@ -78,6 +78,10 @@ void _showNoticeDialog(Map<String, dynamic> args) {
       wide: true,
       title: title != null ? Text(title) : null,
       content: MarkdownBody(data: text),
+      cancel: TextButton(
+        onPressed: () => Navigator.of(dialogContext).pop(),
+        child: const Text('Close'),
+      ),
       actions: [
         for (final action in dialogActions)
           TextButton(
@@ -87,10 +91,6 @@ void _showNoticeDialog(Map<String, dynamic> args) {
             },
             child: Text((action['label'] as String?) ?? 'OK'),
           ),
-        TextButton(
-          onPressed: () => Navigator.of(dialogContext).pop(),
-          child: const Text('Close'),
-        ),
       ],
     ),
   );
