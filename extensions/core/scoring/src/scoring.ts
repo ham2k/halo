@@ -21,6 +21,7 @@
 // alias for `defineExtension` and is the one module the tests don't import.
 
 import { entityPrefixForCall } from "../../../sdk/src/dxcc.ts"
+import { fmtInteger } from "@ham2k/lib-format-tools"
 import type {
   DayScoreSummary,
   HookContext,
@@ -86,8 +87,8 @@ function summarizeQsoCountTally(tally: ScoreTally): ScoreTally {
   return {
     ...tally,
     icon: 'radio',
-    label: tally.total === 1 ? '1 QSO' : `${tally.total} QSOs`,
-    summary: `${tally.total}`,
+    label: tally.total === 1 ? '1 QSO' : `${fmtInteger(tally.total)} QSOs`,
+    summary: fmtInteger(tally.total),
   }
 }
 
@@ -119,8 +120,8 @@ function summarizeDxccTally(tally: ScoreTally): ScoreTally {
   return {
     ...tally,
     icon: 'earth',
-    label: count === 1 ? '1 DXCC Entity' : `${count} DXCC Entities`,
-    summary: count >= 5 ? `${count}` : '',
+    label: count === 1 ? '1 DXCC Entity' : `${fmtInteger(count)} DXCC Entities`,
+    summary: count >= 5 ? fmtInteger(count) : '',
   }
 }
 

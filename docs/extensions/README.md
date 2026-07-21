@@ -113,8 +113,20 @@ npm run build            # esbuild bundles → app/assets/extensions/ + index.js
 
 Bundles are single-file IIFEs targeting ES2020 (QuickJS / JavaScriptCore).
 npm dependencies — including the published `@ham2k/lib-*` packages — bundle
-in as-is; `@ham2k/lib-operation-data` and `lib-format-tools` are already used
+in as-is; `@ham2k/lib-operation-data` and `@ham2k/lib-format-tools` are already used
 this way.
+
+### Number Formatting in Extensions
+
+Any user-facing counts, scores, or statistics returned by extensions (such as hook values, labels, summaries, or descriptions) **must use thousands separators** for readability. Extensions must import and use the formatting tools from `@ham2k/lib-format-tools`:
+
+```typescript
+import { fmtInteger } from "@ham2k/lib-format-tools"
+
+// Example: formatting a tally count
+const label = `${fmtInteger(tally.total)} QSOs`
+const summary = fmtInteger(tally.total)
+```
 
 Adding an extension: create `extensions/<category>/<name>/src/index.ts`, add
 an entry to `bundles` in `extensions/build.mjs`, rebuild, and restart the app

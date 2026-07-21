@@ -154,6 +154,12 @@ Forms use a clear, consistent layout, with labels and fields aligned
 properly. When a form renders in a view instead of a dialog, its actions are
 pinned at the bottom, same as in a dialog.
 
+## Number Formatting
+
+All numbers displayed in the user interface (including QSO counts, QSO row index numbers, scoring summaries, statistics tallies, and general quantities) must be formatted with thousands separators to enhance readability.
+- In the Dart/Flutter core, use the `formatNumber` utility function exported by `halo_widgets`.
+- In JS/TS extensions, use the `fmtInteger` (or `fmtNumber`) utility function from `@ham2k/lib-format-tools` when generating user-facing counts.
+
 ## Future directions
 
 - A layout mechanism to drag-reorder secondary controls, and to drag one out

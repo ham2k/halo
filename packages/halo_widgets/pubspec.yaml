@@ -14,6 +14,8 @@ dependencies:
   halo_core:
     path: ../halo_core
   flutter_markdown: ^0.7.0
+  intl: ^0.20.2
+
 
 dev_dependencies:
   flutter_test:

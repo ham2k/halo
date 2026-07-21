@@ -85,7 +85,7 @@ class _OperationRow extends StatelessWidget {
                       color: theme.colorScheme.surfaceContainerHighest,
                       borderRadius: BorderRadius.circular(12),
                     ),
-                    child: Text('${operation.qsoCount}', style: theme.textTheme.labelLarge),
+                    child: Text(formatNumber(operation.qsoCount), style: theme.textTheme.labelLarge),
                   ),
                 ],
               ),

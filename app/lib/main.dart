@@ -9,6 +9,9 @@
 import 'dart:async';
 import 'dart:io' show Platform;
 
+import 'package:intl/intl.dart';
+
+
 import 'package:drift_flutter/drift_flutter.dart';
 import 'package:flutter/foundation.dart' show kIsWeb, visibleForTesting;
 import 'package:flutter/material.dart';
@@ -237,6 +240,7 @@ Future<HaLoServices> bootstrap({
   extensions.start();
   final settings = await SettingsService.load();
   LocaleSettings.setLocaleRaw(settings.locale);
+  Intl.defaultLocale = settings.locale;
   final services = HaLoServices(
     db,
     settings,

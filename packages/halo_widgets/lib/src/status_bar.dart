@@ -11,6 +11,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 
+import 'format_utils.dart';
 import 'icon_resolver.dart';
 import 'layout.dart';
 import 'theme.dart';
@@ -275,7 +276,7 @@ class _IconCountPill extends StatelessWidget {
             const SizedBox(width: 3),
           ],
           Text(
-            '$count',
+            formatNumber(count),
             style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: color),
           ),
         ],

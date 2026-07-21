@@ -13,6 +13,7 @@ import 'package:flutter/material.dart';
 import 'package:halo_core/halo_core.dart';
 
 import 'activity_controls.dart';
+import 'format_utils.dart';
 import 'icon_resolver.dart';
 import 'theme.dart';
 
@@ -474,7 +475,7 @@ class _QsoListState extends State<QsoList> {
                     SizedBox(
                       width: numberWidth,
                       child: Text(
-                        qso.deleted ? '' : '$number',
+                        qso.deleted ? '' : formatNumber(number),
                         style: rowMonoDim,
                         textAlign: TextAlign.right,
                       ),

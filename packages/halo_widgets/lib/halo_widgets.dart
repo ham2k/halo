@@ -25,3 +25,5 @@ export 'src/text_formatters.dart';
 export 'src/theme.dart';
 export 'src/ui_scale.dart';
 export 'src/form_renderer.dart';
+export 'src/format_utils.dart';
+

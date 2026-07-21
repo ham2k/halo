@@ -105,19 +105,19 @@ class InformationPanel extends StatelessWidget {
         const SizedBox(height: 16),
         Text(context.t.loggingPanel.byBand, style: theme.textTheme.titleSmall),
         for (final entry in byBand.entries)
-          Text('${entry.key}: ${entry.value}'),
+          Text('${entry.key}: ${formatNumber(entry.value)}'),
         const SizedBox(height: 16),
         Text(context.t.loggingPanel.byMode, style: theme.textTheme.titleSmall),
         for (final entry in byMode.entries)
-          Text('${entry.key}: ${entry.value}'),
+          Text('${entry.key}: ${formatNumber(entry.value)}'),
         if (operationSummary != null) ...[
           const SizedBox(height: 16),
           Text(
             context.t.loggingPanel.scoring,
             style: theme.textTheme.titleSmall,
           ),
-          Text('${context.t.loggingPanel.dxccEntities}: $dxccCount'),
-          Text('${context.t.loggingPanel.duplicates}: $duplicateCount'),
+          Text('${context.t.loggingPanel.dxccEntities}: ${formatNumber(dxccCount)}'),
+          Text('${context.t.loggingPanel.duplicates}: ${formatNumber(duplicateCount)}'),
         ],
       ],
     );

@@ -13,6 +13,7 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/foundation.dart' show kReleaseMode;
+import 'package:intl/intl.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:halo_core/halo_core.dart';
@@ -413,7 +414,10 @@ class SettingsService extends ChangeNotifier implements SyncSettings {
 
   String get locale => (settingValue(generalGroup, _localeKey) as String?) ?? 'en';
 
-  Future<void> setLocale(String localeCode) => setSettingValue(generalGroup, _localeKey, localeCode);
+  Future<void> setLocale(String localeCode) async {
+    await setSettingValue(generalGroup, _localeKey, localeCode);
+    Intl.defaultLocale = localeCode;
+  }
 
   FontScale get fontScale {
     final value = settingValue(generalGroup, _fontScaleKey);

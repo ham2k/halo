@@ -607,7 +607,7 @@ class _OperationViewState extends State<OperationView> with SingleTickerProvider
           indicatorSize: TabBarIndicatorSize.tab,
           indicatorWeight: 4,
           tabs: [
-            Tab(text: isTwoPane ? context.t.operation.tabs.info : context.t.operation.tabs.qsos(count: realQsoCount)),
+            Tab(text: isTwoPane ? context.t.operation.tabs.info : context.t.operation.tabs.qsos(count: formatNumber(realQsoCount))),
             Tab(text: context.t.operation.tabs.spots),
             Tab(text: context.t.operation.tabs.map),
             Tab(text: context.t.operation.tabs.operation),
@@ -727,6 +727,7 @@ class _OperationViewState extends State<OperationView> with SingleTickerProvider
                     ),
                 ],
               ),
+
             ),
             // On two-pane layouts the tabs move into the right-side pane
             // below.
@@ -883,7 +884,7 @@ class OperationSettingsPanel extends StatelessWidget {
         ListTile(
           leading: Icon(MdiIcons.fileExport),
           title: Text(context.t.operation.export.title),
-          subtitle: Text(context.t.operation.tabs.qsos(count: qsoCount)),
+          subtitle: Text(context.t.operation.tabs.qsos(count: formatNumber(qsoCount))),
           onTap: onExport,
           mouseCursor: SystemMouseCursors.click,
         ),

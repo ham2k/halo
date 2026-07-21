@@ -875,7 +875,7 @@ class _SyncPanelState extends State<_SyncPanel> {
       builder: (context) => HaloDialog(
         title: const Text('Replace local data?'),
         content: Text(
-          'This backs up and clears $opCount operation${opCount == 1 ? '' : 's'} and $qsoCount '
+          'This backs up and clears ${formatNumber(opCount)} operation${opCount == 1 ? '' : 's'} and ${formatNumber(qsoCount)} '
           'QSO${qsoCount == 1 ? '' : 's'} from this device, then downloads the account\'s data '
           'instead. The backup stays in this device\'s database.',
         ),
