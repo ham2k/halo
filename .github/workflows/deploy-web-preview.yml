@@ -55,7 +55,7 @@ jobs:
           RAW="${{ github.event.inputs.name || github.ref_name }}"
           NAME="${RAW#web-preview-}"
           NAME=$(echo "$NAME" | tr '[:upper:]' '[:lower:]' | sed -e 's/[^a-z0-9-]/-/g' -e 's/^-*//' -e 's/-*$//' | cut -c1-28)
-          if [[ -z "$NAME" || "$NAME" == "main" ]]; then
+          if [[ -z "$NAME" || "$NAME" == "dist" || "$NAME" == "main" ]]; then
             echo "Invalid preview name '$RAW'" >&2
             exit 1
           fi

@@ -67,10 +67,12 @@ jobs:
           flutter pub get
           flutter build web --release --no-tree-shake-icons
 
-      # --branch=main marks the deployment as production: direct-upload Pages
-      # projects use "main" as their production branch by default.
+      # --branch=dist marks the deployment as production: the Pages project's
+      # production branch is set to "dist" (changed from the direct-upload
+      # default of "main" on 2026-07-22; deploys with any other branch name
+      # land in the Preview environment and never reach halo-dev.ham2k.net).
       - name: Deploy to Cloudflare Pages
-        run: npx wrangler@4 pages deploy app/build/web --project-name=halo-dev-ham2k-net --branch=main
+        run: npx wrangler@4 pages deploy app/build/web --project-name=halo-dev-ham2k-net --branch=dist
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
