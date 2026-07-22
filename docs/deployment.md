@@ -39,6 +39,21 @@ The workflow requires two repository secrets on `app-halo-dist`:
 - `CLOUDFLARE_API_TOKEN` — an API token with the **Cloudflare Pages: Edit** permission (create at Cloudflare Dashboard → My Profile → API Tokens).
 - `CLOUDFLARE_ACCOUNT_ID` — the account id (visible in the dashboard URL or on any zone's overview page).
 
+## 1c. Tagged Preview Deployments
+
+To deploy any commit as a **preview** (without touching the production URL), tag it `web-preview-<name>` and push the tag to `app-halo-dist`:
+
+```bash
+git tag web-preview-my-feature
+git push app-halo-dist web-preview-my-feature
+```
+
+The **Deploy Web Preview** workflow (`.github/workflows/deploy-web-preview.yml`) builds that commit and deploys it as a Cloudflare Pages preview at `https://<name>.halo-dev-ham2k-net.pages.dev`. Re-pushing a tag with the same name replaces the preview. There is no CI gate on previews.
+
+Caveats:
+- Tag pushes run the workflow file **from the tagged commit**, so tags only work on commits that contain the workflow (branches based on `dist` after it landed). For older commits, run the workflow manually from the Actions tab, giving it a ref and a preview name.
+- Names are sanitized to Cloudflare's branch-alias rules (lowercase alphanumerics and hyphens, 28 chars max); the run summary shows the final URL.
+
 ---
 
 ## 2. Cloudflare Project Setup

@@ -1,0 +1,99 @@
+# Copyright ©️ 2026 Sebastian Delmont <sd@ham2k.com>
+# SPDX-License-Identifier: MPL-2.0
+#
+# Deploys a preview build of the web app to Cloudflare Pages when a commit
+# is tagged `web-preview-<name>`. The preview lands on the same
+# `halo-dev-ham2k-net` Pages project as a non-production deployment, at
+#   https://<name>.halo-dev-ham2k-net.pages.dev
+# Re-pushing a tag with the same name replaces that preview.
+#
+#   git tag web-preview-my-feature && git push app-halo-dist web-preview-my-feature
+#
+# Tag pushes run the workflow file from the tagged commit, so tags only
+# trigger on commits that already contain this file (branches based on dist
+# after it landed). For older commits, use the manual run (workflow_dispatch)
+# from the Actions tab, which takes any ref plus a preview name.
+#
+# Requires the same repository secrets as deploy-web.yml:
+#   CLOUDFLARE_API_TOKEN, CLOUDFLARE_ACCOUNT_ID
+
+name: Deploy Web Preview
+
+on:
+  push:
+    tags: ['web-preview-*']
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: Branch, tag, or SHA to build
+        required: true
+      name:
+        description: Preview name (becomes <name>.halo-dev-ham2k-net.pages.dev)
+        required: true
+
+concurrency:
+  group: deploy-web-preview-${{ github.event.inputs.name || github.ref_name }}
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.ref || github.ref }}
+
+      # Cloudflare branch aliases are lowercase alphanumerics and hyphens,
+      # truncated to 28 characters — sanitize the name to match so the URL
+      # we print is the one Cloudflare actually serves.
+      - name: Resolve preview name
+        run: |
+          RAW="${{ github.event.inputs.name || github.ref_name }}"
+          NAME="${RAW#web-preview-}"
+          NAME=$(echo "$NAME" | tr '[:upper:]' '[:lower:]' | sed -e 's/[^a-z0-9-]/-/g' -e 's/^-*//' -e 's/-*$//' | cut -c1-28)
+          if [[ -z "$NAME" || "$NAME" == "main" ]]; then
+            echo "Invalid preview name '$RAW'" >&2
+            exit 1
+          fi
+          echo "PREVIEW_NAME=$NAME" >> "$GITHUB_ENV"
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: extensions/package-lock.json
+
+      # mise provides the Flutter version pinned in mise.toml, so CI and local
+      # runs use exactly the same toolchain.
+      - name: Set up mise (Flutter toolchain)
+        uses: jdx/mise-action@v2
+
+      - name: Build TypeScript extensions
+        run: |
+          cd extensions
+          npm ci
+          npm run build
+
+      # lib/config/mapbox_token.dart is gitignored; the blank template is a
+      # supported configuration (the Map tab falls back to OpenStreetMap, and
+      # the web build never uses Mapbox). Same fallback as scripts/test.sh.
+      - name: Use blank Mapbox token template
+        run: cp app/lib/config/mapbox_token.dart.example app/lib/config/mapbox_token.dart
+
+      - name: Build Flutter web app
+        run: |
+          cd app
+          flutter pub get
+          flutter build web --release --no-tree-shake-icons
+
+      # Any --branch other than "main" (the project's production branch)
+      # creates a preview deployment aliased to that name.
+      - name: Deploy preview to Cloudflare Pages
+        run: npx wrangler@4 pages deploy app/build/web --project-name=halo-dev-ham2k-net --branch="$PREVIEW_NAME"
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
+      - name: Report preview URL
+        run: echo "### Preview deployed to https://${PREVIEW_NAME}.halo-dev-ham2k-net.pages.dev" >> "$GITHUB_STEP_SUMMARY"
