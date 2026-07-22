@@ -7,6 +7,7 @@ import 'package:halo_core/halo_core.dart';
 import 'package:halo_widgets/halo_widgets.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 
+import '../config/dev_bridge.dart';
 import '../config/dev_flags.dart';
 import '../config/web_preview_label.dart';
 import '../main.dart';
@@ -338,6 +339,20 @@ class _HomeViewState extends State<HomeView> {
                       child: StreamBuilder<List<Operation>>(
                         stream: _operationsStream,
                         builder: (context, snapshot) {
+                          // First real snapshot = bootstrap done + first data
+                          // load complete: resolve the dev bridge's `ready`
+                          // promise so agents can await it instead of sleeping
+                          // (#239). Idempotent; only while the bridge is live.
+                          //
+                          // Anchored to the build because that's what the test
+                          // harness can drive; the cost is that on a HIDDEN web
+                          // pane (Flutter throttles frames to ~0) `ready` waits
+                          // until the pane is visible again. That's fine for the
+                          // agent workflow — agents drive a visible pane — and
+                          // it self-heals on the next frame.
+                          if (snapshot.hasData && DevBridge.instance.installed) {
+                            DevBridge.instance.signalReady();
+                          }
                           return OperationListPanel(
                             services: widget.services,
                             // `snapshot.hasData` distinguishes "the stream

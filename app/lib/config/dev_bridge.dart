@@ -10,6 +10,10 @@
 // Pure Dart with no web import, so it's inert off web and in production: nothing
 // installs the JS entry point there, so [stateProvider] is simply never invoked.
 
+import 'dart:async';
+
+import 'package:flutter/foundation.dart' show visibleForTesting;
+
 /// The single bridge instance. The active screen registers a [stateProvider];
 /// the web installer reads it.
 class DevBridge {
@@ -48,4 +52,32 @@ class DevBridge {
 
   void setField(String field, String value) => setFieldHandler?.call(field, value);
   void action(String id) => actionHandler?.call(id);
+
+  // ── Readiness (#239) ──────────────────────────────────────────────────────
+
+  Completer<void> _ready = Completer<void>();
+
+  /// Resolves once the app has bootstrapped and the home screen's first data
+  /// load (the operations list) has arrived — so agents can `await
+  /// window.__halo.ready` instead of sleeping a guessed interval. On native /
+  /// production nothing signals or awaits it, so it simply never completes.
+  Future<void> get ready => _ready.future;
+
+  /// Marks the app ready. Called once by [HomeView] when its operations stream
+  /// first emits, but only while the bridge is [installed]. Idempotent — later
+  /// calls (e.g. stream re-emissions, another home mount) are no-ops.
+  void signalReady() {
+    if (!_ready.isCompleted) _ready.complete();
+  }
+
+  /// Resets readiness so each test starts from an un-resolved [ready] — the
+  /// bridge is a lifetime singleton, so its completer would otherwise stay
+  /// completed across tests.
+  ///
+  /// Tests only, and only before the web installer runs: it captures the
+  /// promise from [ready] once (`installDevBridge`), so resetting after that
+  /// would leave `window.__halo.ready` bound to the old completer while [ready]
+  /// returns a new one.
+  @visibleForTesting
+  void resetReadyForTest() => _ready = Completer<void>();
 }

@@ -47,4 +47,25 @@ void main() {
     DevBridge.instance.setFieldHandler = null;
     DevBridge.instance.actionHandler = null;
   });
+
+  test('ready resolves on signalReady() and is idempotent', () async {
+    DevBridge.instance.resetReadyForTest();
+
+    var resolved = false;
+    // ignore: unawaited_futures — we assert on the flag, not by awaiting.
+    DevBridge.instance.ready.then((_) => resolved = true);
+
+    // Not resolved until the app signals it (this is what lets agents await
+    // instead of guessing a delay).
+    await Future<void>.delayed(Duration.zero);
+    expect(resolved, isFalse);
+
+    DevBridge.instance.signalReady();
+    await Future<void>.delayed(Duration.zero);
+    expect(resolved, isTrue);
+
+    // Idempotent: a second signal (stream re-emit, another home mount) is a
+    // no-op, not a "already completed" throw.
+    expect(() => DevBridge.instance.signalReady(), returnsNormally);
+  });
 }
