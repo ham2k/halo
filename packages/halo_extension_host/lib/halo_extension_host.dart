@@ -77,6 +77,7 @@ class ExtensionHost {
 
   final _logs = StreamController<String>.broadcast();
   final _fatalErrors = StreamController<String>.broadcast();
+  final _interpretationUpdates = StreamController<Map<String, dynamic>>.broadcast();
 
   /// Every log line received so far (the stream only carries new ones).
   final List<String> logLines = [];
@@ -101,6 +102,13 @@ class ExtensionHost {
   });
 
   Stream<String> get logs => _logs.stream;
+
+  /// A `command` hook pushed a later CommandInterpretation for an `input` it
+  /// was already asked to interpret (see `host.updateInterpretation`'s SDK
+  /// doc) — `{'input': String, 'interpretation': Map<String, dynamic>}` per
+  /// event. Unlike hook calls, there's no request/response pairing here:
+  /// the caller decides for itself whether `input` is still current.
+  Stream<Map<String, dynamic>> get interpretationUpdates => _interpretationUpdates.stream;
 
   /// Fires when the runtime dies outside any single call (isolate/worker
   /// crash or unexpected exit). By then every pending hook call has been
@@ -392,6 +400,13 @@ class ExtensionHost {
         }
       case 'log':
         _log(msg['message'] as String? ?? '');
+      case 'updateInterpretation':
+        final input = msg['input'] as String?;
+        if (input == null) return;
+        _interpretationUpdates.add({
+          'input': input,
+          'interpretation': ((msg['interpretation'] as Map?) ?? const {}).cast<String, dynamic>(),
+        });
       case 'hostCall':
         final callId = msg['callId'] as int;
         final method = msg['method'] as String;
@@ -470,6 +485,7 @@ class ExtensionHost {
     _inProcessCore?.dispose();
     await _logs.close();
     await _fatalErrors.close();
+    await _interpretationUpdates.close();
   }
 }
 
@@ -632,6 +648,8 @@ class _HostCore {
         emit(msg);
       case 'log':
         emit(msg);
+      case 'updateInterpretation':
+        emit(msg);
       case 'hostCall':
         _handleHostCall(
           (msg['callId'] as num).toInt(),
@@ -727,6 +745,7 @@ class _HostCore {
         'pota.app',
         'www.sotadata.org.uk',
         'sotadata.org.uk',
+        'www.hamqsl.com',
       };
       if (allowedDomains.contains(uri.host)) {
         return Uri.parse('https://services.ham2k.net/${uri.host}${uri.path}${uri.hasQuery ? "?${uri.query}" : ""}');

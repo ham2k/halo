@@ -319,6 +319,7 @@ class _LoggingPanelState extends State<LoggingPanel> {
               .loggingControls(widget.operation.data, qso: qso),
           decorateRef: widget.services.extensions.decorateRef,
           interpretCommand: widget.services.extensions.interpretCommand,
+          interpretationUpdates: widget.services.extensions.commandInterpretationUpdates,
           onCommandMessageChanged: (message) => widget.onCommandMessageChanged?.call(message),
           onCommandAction: widget.onCommandAction,
           suggestSpotSources: widget.services.extensions.suggestSpotSources,

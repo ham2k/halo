@@ -6,6 +6,8 @@
 // in testWidgets' FakeAsync zone. Interleaved pumps let widget-initiated
 // writes (which start inside the fake zone) run to completion.
 
+import 'dart:async';
+
 import 'package:drift/native.dart';
 import 'package:flutter/foundation.dart' show debugDefaultTargetPlatformOverride;
 import 'package:flutter/material.dart';
@@ -36,6 +38,7 @@ void main() {
   Widget host({
     List<Qso> existing = const [],
     CommandInterpreter? interpretCommand,
+    Stream<Map<String, dynamic>>? interpretationUpdates,
     void Function(String? message)? onCommandMessageChanged,
     CommandActionHandler? onCommandAction,
     CallInfoChanged? onCallInfoChanged,
@@ -60,6 +63,7 @@ void main() {
       qsos: existing,
       enqueueLookup: enqueueLookup,
       interpretCommand: interpretCommand,
+      interpretationUpdates: interpretationUpdates,
       onCommandMessageChanged: onCommandMessageChanged,
       onCommandAction: onCommandAction,
       onCallInfoChanged: onCallInfoChanged,
@@ -1623,6 +1627,73 @@ void main() {
     expect(logged.single.band, '40m');
     expect(logged.single.freq, isNull);
     expect(logged.single.mode, 'CW');
+  });
+
+  testWidgets('an async interpretation push updates the message but never dispatches commands (issue #189)', (tester) async {
+    final updates = StreamController<Map<String, dynamic>>();
+    addTearDown(updates.close);
+    Future<Map<String, dynamic>?> interpret(String input, [operation, qso, execute = false]) async {
+      return {'describe': 'Fetching…'};
+    }
+
+    String? lastMessage;
+    await tester.pumpWidget(host(
+      interpretCommand: interpret,
+      interpretationUpdates: updates.stream,
+      onCommandMessageChanged: (message) => lastMessage = message,
+    ));
+
+    await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'SOLAR');
+    await tester.pump(const Duration(milliseconds: 200)); // past the 150ms describe debounce
+    expect(lastMessage, 'Fetching…');
+
+    // The command hook's background fetch resolves and pushes the real
+    // reading — same shape `host.updateInterpretation` sends across the
+    // bridge (see extension_host_test.dart for that half of the contract).
+    updates.add({
+      'input': 'SOLAR',
+      'interpretation': {'describe': 'Solar flux: 120'},
+    });
+    await tester.pump();
+    expect(lastMessage, 'Solar flux: 120');
+
+    // Crucially: the push only ever updates what's displayed. Only Enter
+    // (interpretCommand's execute:true call) may log anything — proven here
+    // by the call field still holding its typed text, since _log() is what
+    // clears it.
+    expect(find.widgetWithText(TextField, 'Their call'), findsOneWidget);
+    expect(tester.widget<TextField>(find.widgetWithText(TextField, 'Their call')).controller!.text, 'SOLAR');
+  });
+
+  testWidgets('a push for an input the user has since typed past is dropped, not applied stale (issue #189)', (tester) async {
+    final updates = StreamController<Map<String, dynamic>>();
+    addTearDown(updates.close);
+    Future<Map<String, dynamic>?> interpret(String input, [operation, qso, execute = false]) async {
+      return {'describe': 'Fetching…'};
+    }
+
+    String? lastMessage;
+    await tester.pumpWidget(host(
+      interpretCommand: interpret,
+      interpretationUpdates: updates.stream,
+      onCommandMessageChanged: (message) => lastMessage = message,
+    ));
+
+    await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'SOLAR');
+    await tester.pump(const Duration(milliseconds: 200));
+    expect(lastMessage, 'Fetching…');
+
+    // The user typed past SOLAR before its fetch resolved.
+    await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'SOLARX');
+    await tester.pump(const Duration(milliseconds: 200));
+
+    // A late push for the abandoned "SOLAR" input must not resurrect it.
+    updates.add({
+      'input': 'SOLAR',
+      'interpretation': {'describe': 'Solar flux: 120'},
+    });
+    await tester.pump();
+    expect(lastMessage, isNot('Solar flux: 120'));
   });
 
   testWidgets('clearing the frequency keeps the band it was last on', (tester) async {

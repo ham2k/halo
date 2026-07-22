@@ -289,6 +289,24 @@ entirely. `SEED` (below) is the one hook that needs it: skips its `ctx.getQsos`
 read and per-generated-QSO lookups — real bridge/network-ish work — unless
 `execute` is set, returning a cheap describe-only result otherwise.
 
+A hook whose complete result needs a network fetch doesn't have to block
+`interpret`'s own returned Promise on it — even on a describe-preview call.
+Return quickly with a placeholder `describe` ("Fetching…"), kick the fetch
+off in the background, and once it resolves call:
+
+```ts
+host.updateInterpretation(input: string, interpretation: CommandInterpretation): void
+```
+
+One-way, like `host.log` — no response ever comes back, nothing to await.
+`input` must be the same `input` the triggering `interpret` call received;
+the host discards a push whose `input` no longer matches the live call field
+(the user typed past it), the same way it already discards a stale
+describe-preview result. This is how `annotation-commands`' SOLAR/WEATHER
+(below) show their fetched reading in the UI before the user ever presses
+Enter, without either blocking every keystroke-debounce call on a live
+fetch or requiring a second command invocation.
+
 Implemented by `radio-commands` (band/frequency/mode shortcuts — "20m ",
 "14285 ", "14.285 ", "cw "), ported from app-polo's `RadioCommands`
 extension. Notably, this replaced an earlier hand-rolled Dart regex for
@@ -326,11 +344,18 @@ app-polo's AnnotationCommands: NOTE/TODO `<text>`, SOLAR, and WEATHER each
 add an annotation row to the log — an event pseudo-QSO, `band: 'event'`,
 via `addQso`, rendered as a yellow row by the QSO list. SOLAR fetches
 hamqsl.com's solar indices and WEATHER fetches Open-Meteo conditions for
-the operation's grid square, both only when `execute` is set — never on
-the describe preview — storing the raw readings in the event's `data` and
-the emoji summary line in its `description`. This superseded the original
-`note-command` extension, whose NOTE wrote to the in-progress QSO's notes
-field instead of the timeline), and `call-notes` (`//KEY`
+the operation's grid square — as soon as the command is recognized
+(ham2k/app-halo-dist#189), not only at `execute`: `interpret` kicks the
+fetch off in the background and returns a placeholder `describe`
+immediately, then pushes the resolved reading via `host.updateInterpretation`
+once it lands, so it shows in the UI before the user presses Enter. One
+in-flight fetch is shared by every `interpret` call for the same command
+until an `execute` call consumes it (reusing the same reading rather than
+fetching twice) and clears it, so the next SOLAR/WEATHER starts fresh. The
+raw readings land in the logged event's `data` and the emoji summary line
+in its `description`. This superseded the original `note-command`
+extension, whose NOTE wrote to the in-progress QSO's notes field instead of
+the timeline), and `call-notes` (`//KEY`
 expands a Callsign Notes entry whose note is a plain comma list of calls
 into the call field via `setCallField` — issue #17; leading "//" never
 parses as call stacking, whose first segment would be empty, so the two

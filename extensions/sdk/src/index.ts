@@ -44,6 +44,7 @@ interface KernelApi {
     online?: boolean,
   ): Promise<{ key: string; ok: boolean; value?: unknown; error?: string }[]>
   log(message: string): void
+  updateInterpretation(input: string, interpretation: Record<string, unknown>): void
   getAccountKvKey(extensionKey: string): string
   registerDynamicForm(formId: string, extensionKey: string, hookObj: Record<string, unknown>): void
   unregisterDynamicForm(formId: string): void
@@ -220,5 +221,12 @@ export const host = {
 
   log(message: string): void {
     kernel().log(`[${currentExtensionKey}] ${message}`)
+  },
+
+  /// Pushes a later CommandInterpretation for the same `input` a `command`
+  /// hook's `interpret()` was called with — see CommandHook's doc. One-way,
+  /// like `log`: call it, don't await anything back.
+  updateInterpretation(input: string, interpretation: Record<string, unknown>): void {
+    kernel().updateInterpretation(input, interpretation)
   },
 }

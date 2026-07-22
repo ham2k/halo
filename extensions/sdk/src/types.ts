@@ -490,6 +490,14 @@ export interface CommandInterpretation {
 /// command via invokeHookAll and apply the first non-null result in
 /// priority order, without the host needing to compile extension-supplied
 /// regex source itself.
+///
+/// A hook whose complete interpretation needs a network fetch (SOLAR,
+/// WEATHER) doesn't have to block the returned Promise on it: return
+/// quickly with a `describe` like "Fetching…", kick the fetch off in the
+/// background, and call `host.updateInterpretation(input, ...)` once it
+/// resolves. This runs even on a describe-preview call (no `execute`), so
+/// the fetched result can show in the UI before the user ever presses
+/// Enter — see `host.updateInterpretation`'s doc.
 export interface CommandHook {
   interpret(
     args: {

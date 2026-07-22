@@ -726,6 +726,7 @@ class ExtensionService {
       );
       _loadedExtensionKeys = loaded;
       _host!.logs.listen((line) => debugPrint('[extensions] $line'));
+      _host!.interpretationUpdates.listen(_interpretationUpdates.add);
       for (final line in _host!.logLines) {
         debugPrint('[extensions] $line');
       }
@@ -781,6 +782,17 @@ class ExtensionService {
   /// Bumped after every successful runtime (re)start — panels listen to
   /// re-fetch extension-contributed content (settings panels, listings).
   final ValueNotifier<int> runtimeGeneration = ValueNotifier(0);
+
+  /// A `command` hook pushed a later CommandInterpretation for an `input` it
+  /// was already asked to interpret (issue #189 — SOLAR/WEATHER's fetch
+  /// resolving after their own describe-preview call already returned).
+  /// Owned by the service, not the current [_host]: a restart replaces
+  /// [_host] but callers (LoggingControls) hold one subscription for the
+  /// service's whole lifetime, so [_start] re-subscribes the fresh host into
+  /// this same controller each time instead of handing out a new stream.
+  final _interpretationUpdates = StreamController<Map<String, dynamic>>.broadcast();
+
+  Stream<Map<String, dynamic>> get commandInterpretationUpdates => _interpretationUpdates.stream;
 
   /// Core extensions are always on; the rest follow the user's override,
   /// falling back to the build index's default. A null [settings] (tests,

@@ -235,6 +235,16 @@ class LoggingControls extends StatefulWidget {
   /// When null, space in the call field just advances focus.
   final CommandInterpreter? interpretCommand;
 
+  /// A command hook pushing a later CommandInterpretation for an `input` it
+  /// was already asked to interpret (issue #189) — e.g. SOLAR/WEATHER's
+  /// background fetch resolving after their own describe-preview call
+  /// already returned. `{'input': String, 'interpretation': Map}` per
+  /// event; applied only while `input` still matches the live call field —
+  /// see `host.updateInterpretation`'s SDK doc. Never dispatches `commands`
+  /// itself; only Enter (via [interpretCommand]'s `execute:true` call) logs
+  /// anything.
+  final Stream<Map<String, dynamic>>? interpretationUpdates;
+
   final void Function(String? message)? onCommandMessageChanged;
 
   /// Handles a command's named `action` (e.g. `SYNCALL`), when the command
@@ -404,6 +414,7 @@ class LoggingControls extends StatefulWidget {
     this.refreshActivityControls,
     this.decorateRef,
     this.interpretCommand,
+    this.interpretationUpdates,
     this.onCommandMessageChanged,
     this.onCommandAction,
     this.editingQso,
@@ -585,6 +596,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
 
   Map<String, dynamic>? _currentInterpretation;
   Timer? _commandDescribeDebounce;
+  StreamSubscription<Map<String, dynamic>>? _interpretationUpdatesSub;
 
   /// The last interpret() result retained for the call field's INPUT MODE —
   /// deliberately a separate field from [_currentInterpretation], which
@@ -788,6 +800,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     _seedTimeFields();
     _updateClockTicker();
     _callController.addListener(_onCallChanged);
+    _interpretationUpdatesSub = widget.interpretationUpdates?.listen(_onInterpretationUpdate);
     _freqController.addListener(_onFreqChanged);
     _timeController.addListener(_onTimeOrDateFieldChanged);
     _dateController.addListener(_onTimeOrDateFieldChanged);
@@ -1090,6 +1103,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     _scoreDebounce?.cancel();
     _vfoDebounce?.cancel();
     _commandDescribeDebounce?.cancel();
+    _interpretationUpdatesSub?.cancel();
     _executeMessageTimer?.cancel();
     _undoExpireTimer?.cancel();
     _spotStatusClearTimer?.cancel();
@@ -2794,6 +2808,38 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     widget.onCommandMessageChanged?.call(message);
   }
 
+  /// Applies an interpret() result (or an [_onInterpretationUpdate] push) to
+  /// the retained/displayed state — describe preview or error only, never
+  /// `commands`: dispatching those is [_log]'s job alone, gated on the user
+  /// actually pressing Enter, not on a command merely being interpreted.
+  void _applyInterpretationResult(Map<String, dynamic>? result) {
+    setState(() {
+      _currentInterpretation = result;
+      _retainInterpretation(result);
+      if (result != null && result['describe'] is String) {
+        _commandMessage = result['describe'] as String;
+      } else if (result != null && result['error'] is String) {
+        _commandMessage = result['error'] as String;
+      } else {
+        _commandMessage = null;
+      }
+    });
+    _notifyCommandMessage(_commandMessage);
+  }
+
+  /// A command hook pushed a later interpretation for an input it was
+  /// already asked to interpret (issue #189) — see [LoggingControls.
+  /// interpretationUpdates]'s doc. Applied only while `input` still matches
+  /// the live call field; a push for input the user has since typed past is
+  /// silently dropped, same staleness idiom [_onCallChanged]'s own debounce
+  /// callback uses for its awaited result.
+  void _onInterpretationUpdate(Map<String, dynamic> event) {
+    if (!mounted || widget.editingQso != null) return;
+    if (event['input'] != _commandInput) return;
+    final interpretation = (event['interpretation'] as Map?)?.cast<String, dynamic>();
+    _applyInterpretationResult(interpretation);
+  }
+
   /// Alphanumeric length of the call about to be logged — the call-info panel
   /// and its live scoring switch on at ≥3 characters (issue #40).
   int get _callInfoAlnumLength => _callAtCursor.replaceAll(RegExp('[^A-Z0-9]'), '').length;
@@ -2883,18 +2929,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
           qsoData,
         );
         if (!mounted || _call != call) return;
-        setState(() {
-          _currentInterpretation = result;
-          _retainInterpretation(result);
-          if (result != null && result['describe'] is String) {
-            _commandMessage = result['describe'] as String;
-          } else if (result != null && result['error'] is String) {
-            _commandMessage = result['error'] as String;
-          } else {
-            _commandMessage = null;
-          }
-        });
-        _notifyCommandMessage(_commandMessage);
+        _applyInterpretationResult(result);
       });
     }
 

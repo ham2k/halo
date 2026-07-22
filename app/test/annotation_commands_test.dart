@@ -4,10 +4,17 @@
 // End-to-end verification of the annotation commands (annotation-commands
 // extension, ham2k/app-halo-dist#64): NOTE/TODO add note/todo event
 // pseudo-QSOs to the log via `addQso`, SOLAR/WEATHER do the same with
-// fetched conditions — fetched only at execute time, so everything below
-// exercises the describe/error paths, which never touch the network.
-// (The SOLAR/WEATHER data shaping itself is unit-tested in
-// extensions/core/annotation-commands/src/annotations.test.ts.)
+// fetched conditions. Since issue #189, SOLAR/WEATHER kick off their fetch
+// in the background on ANY recognized interpret() call, not just execute —
+// so a "SOLAR"/"WEATHER" match here does trigger a real (unawaited,
+// unasserted) network request as a side effect; only the "not a command" /
+// missing-operation / missing-grid cases return before that happens and
+// stay fully network-free. The fetched-data shaping itself, and the
+// updateInterpretation push mechanism, are unit-tested elsewhere: solar/
+// weather formatting in extensions/core/annotation-commands/src/
+// annotations.test.ts, and the push contract in
+// packages/halo_extension_host/test/extension_host_test.dart (against a
+// fake command hook, no live network).
 
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -148,12 +155,13 @@ void main() {
   });
 
   group('SOLAR command', () {
-    test('describe preview never fetches — a cheap describe-only result', () async {
-      // `execute` is unset above, so a fetch here would be a bug even if it
-      // worked; the deterministic describe-only result is the proof it
-      // didn't happen.
+    test('a recognized describe preview returns a placeholder immediately, without awaiting its fetch (issue #189)', () async {
+      // interpret() itself never blocks on the network — it kicks the fetch
+      // off in the background (see the file header) and returns this
+      // placeholder synchronously. What that fetch eventually pushes via
+      // host.updateInterpretation isn't asserted here.
       final result = await interpret('SOLAR');
-      expect(result, {'describe': 'Add current solar conditions to the log?'});
+      expect(result, {'describe': 'Fetching solar conditions…'});
     });
 
     test('without an operation, SOLAR is an error', () async {
@@ -167,12 +175,12 @@ void main() {
   });
 
   group('WEATHER command', () {
-    test('with a gridded operation, the describe preview never fetches', () async {
+    test('with a gridded operation, a recognized describe preview returns a placeholder immediately (issue #189)', () async {
       final result = await interpret(
         'WEATHER',
         operation: {'stationCall': 'KI2D', 'grid': 'FN21vs'},
       );
-      expect(result, {'describe': 'Add current weather to the log?'});
+      expect(result, {'describe': 'Fetching current weather…'});
     });
 
     test('without a grid on the operation, WEATHER is an error (no geolocation fallback)', () async {

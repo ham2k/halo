@@ -15,6 +15,7 @@
 //   JS → Dart:  {type:'result', id, ok, value|error, jsMillis}
 //               {type:'hostCall', callId, method, params}
 //               {type:'log', message}
+//               {type:'updateInterpretation', input, interpretation}
 //   Dart → JS:  __polo.invokeHook(id, category, key|null, method, argsJson)
 //               __polo.invokeHookAll(id, category, method, argsJson)
 //               __polo.activateAll()
@@ -124,6 +125,17 @@ function post(message: Record<string, unknown>) {
 
 function log(message: string) {
   post({ type: 'log', message })
+}
+
+// A `command` hook's interpret() can call this any time after it starts —
+// including after its own returned Promise already resolved — to push a
+// later CommandInterpretation for the same `input` (e.g. once a background
+// fetch SOLAR/WEATHER kicked off resolves). One-way, like `log`: no
+// response ever comes back over the wire. `input` lets the app discard a
+// stale push if the user has since typed something else, the same way it
+// already discards a stale describe-preview result.
+function updateInterpretation(input: string, interpretation: Record<string, unknown>) {
+  post({ type: 'updateInterpretation', input, interpretation })
 }
 
 function describeError(e: unknown): string {
@@ -585,6 +597,7 @@ const kernel = {
 
   hostCall,
   log,
+  updateInterpretation,
 
   registeredHooks(): string[] {
     return hooks.map((h) => `${h.category}/${h.key} (${h.extensionKey})`)

@@ -1110,4 +1110,59 @@ __polo.defineExtension({
     await host.invokeHookAll('ctxTest', method: 'probe');
     expect(getSettingsCalls, 2);
   });
+
+  test('a command hook can push a later interpretation via host.updateInterpretation (issue #189)', () async {
+    if (!kernelFile.existsSync()) {
+      markTestSkipped('kernel.js not built — run `npm run build` in extensions/ first');
+      return;
+    }
+
+    final host = await ExtensionHost.start(
+      kernelSource: kernelFile.readAsStringSync(),
+      extensions: const [ExtensionBundle(key: 'test-extension', source: _asyncInterpretationSource)],
+      useIsolate: false,
+    );
+    addTearDown(host.dispose);
+
+    final updates = <Map<String, dynamic>>[];
+    final sub = host.interpretationUpdates.listen(updates.add);
+    addTearDown(sub.cancel);
+
+    // interpret() itself returns quickly, with a placeholder — the caller
+    // isn't blocked on the "fetch" the hook kicked off in the background.
+    final entries = await host.invokeHookAll('command', method: 'interpret', args: {'input': 'SOLAR'});
+    expect(entries.single['ok'], true);
+    expect((entries.single['value'] as Map)['describe'], 'Fetching…');
+
+    // The background "fetch" pushes the real result via
+    // updateInterpretation — same input, a different (later) interpretation
+    // than what interpret() itself returned above.
+    await Future<void>.delayed(const Duration(milliseconds: 50));
+    expect(updates, hasLength(1));
+    expect(updates.single['input'], 'SOLAR');
+    expect((updates.single['interpretation'] as Map)['confirm'], 'Solar flux: 120');
+  });
 }
+
+// Registers a `command` hook whose interpret() returns immediately with a
+// placeholder, then pushes the real result asynchronously after its own
+// Promise has already settled — the SOLAR/WEATHER shape issue #189 needs.
+const _asyncInterpretationSource = '''
+__polo.defineExtension({
+  key: 'test-extension',
+  name: 'Test Extension',
+  version: '0.0.1',
+  onActivation: function (api) {
+    api.registerHook('command', { key: 'solar', priority: 10, hook: solarHook })
+  },
+})
+
+var solarHook = {
+  interpret: async function (args) {
+    Promise.resolve().then(function () {
+      __polo.updateInterpretation(args.input, { confirm: 'Solar flux: 120' })
+    })
+    return { describe: 'Fetching…' }
+  },
+}
+''';

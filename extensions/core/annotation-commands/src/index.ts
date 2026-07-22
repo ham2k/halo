@@ -10,9 +10,13 @@
 // QSO's notes field instead of the log timeline (the Notes logging control
 // still covers that).
 //
-// SOLAR/WEATHER fetch on `execute` only (the describe preview must stay
-// cheap — see CommandHook.interpret), so the fetched readings land in both
-// the stored event and the `confirm` message.
+// SOLAR/WEATHER fetch in the background even on a describe-preview call
+// (issue #189) — the fetch itself doesn't block interpret()'s own Promise,
+// which still returns immediately with a placeholder describe; once the
+// fetch resolves, host.updateInterpretation pushes the real reading so it
+// shows in the UI before the user ever presses Enter. The one in-flight
+// fetch is cached and reused by the execute call that actually logs the
+// event, so pressing Enter doesn't trigger a second fetch.
 
 import { defineExtension, host } from "@ham2k/halo-extension-sdk"
 import type { CommandInterpretation, HookContext, JSONValue } from "@ham2k/halo-extension-sdk"
@@ -97,6 +101,30 @@ const TodoCommand = noteLikeCommand({
   extra: { data: { done: false } },
 })
 
+type SolarResult = { solarData: Record<string, string>; message: string } | null
+
+async function fetchSolarData(): Promise<SolarResult> {
+  try {
+    const response = await host.fetch('https://www.hamqsl.com/solarxml.php')
+    if (response.status !== 200) throw new Error(`status ${response.status}`)
+    const solarData = parseSolarXml(response.body)
+    // All four readings the message renders must be present — a partial or
+    // reshaped response would otherwise store "undefined" text (and
+    // NaN-driven alarm emoji) permanently in the log.
+    if (!solarData.solarflux || !solarData.aindex || !solarData.kindex || !solarData.sunspots) {
+      throw new Error('incomplete solar data in response')
+    }
+    return { solarData, message: solarMessage(solarData) }
+  } catch {
+    return null
+  }
+}
+
+// The one in-flight/last-started fetch, shared by every interpret() call
+// for "SOLAR" until an execute call consumes and clears it — see the file
+// header comment.
+let solarFetch: Promise<SolarResult> | null = null
+
 const SolarCommand = {
   async interpret(
     { input, operation, execute }: { input: string; operation?: Operation; execute?: boolean },
@@ -106,40 +134,69 @@ const SolarCommand = {
 
     if (!operation) return { error: 'SOLAR needs an open operation' }
 
-    // The describe preview reruns on every keystroke pause — never fetch
-    // there (see CommandHook.interpret's `execute` doc).
-    if (!execute) return { describe: 'Add current solar conditions to the log?' }
-
-    let solarData: Record<string, string>
-    try {
-      const response = await host.fetch('https://www.hamqsl.com/solarxml.php')
-      if (response.status !== 200) throw new Error(`status ${response.status}`)
-      solarData = parseSolarXml(response.body)
-      // All four readings the message renders must be present — a partial
-      // or reshaped response would otherwise store "undefined" text (and
-      // NaN-driven alarm emoji) permanently in the log.
-      if (!solarData.solarflux || !solarData.aindex || !solarData.kindex || !solarData.sunspots) {
-        throw new Error('incomplete solar data in response')
-      }
-    } catch {
-      return { error: 'Error fetching solar conditions' }
+    if (!solarFetch) {
+      solarFetch = fetchSolarData()
+      solarFetch.then((result) => {
+        host.updateInterpretation(
+          input,
+          result ? { describe: result.message } : { describe: 'Error fetching solar conditions' },
+        )
+      })
     }
 
-    const message = solarMessage(solarData)
+    if (!execute) return { describe: 'Fetching solar conditions…' }
+
+    const promise = solarFetch
+    solarFetch = null // next SOLAR (a later QSO) starts its own fresh fetch
+    const result = await promise
+    if (!result) return { error: 'Error fetching solar conditions' }
+
     return {
-      describe: 'Add current solar conditions to the log?',
-      confirm: message,
+      describe: result.message,
+      confirm: result.message,
       commands: [{
         addQso: eventQso('solar', {
           command: 'SOLAR',
           icon: 'sun-wireless',
-          description: message,
-          data: solarData,
+          description: result.message,
+          data: result.solarData,
         }),
       }],
     }
   },
 }
+
+type WeatherResult = { weatherData: Record<string, JSONValue>; message: string } | null
+
+async function fetchWeatherData(grid: string, distanceUnits: string | undefined): Promise<WeatherResult> {
+  // Parsed loosely — the raw response is stored whole in the event's `data`;
+  // WeatherData just gives weatherMessage a typed view of the fields it reads.
+  try {
+    const [latitude, longitude] = gridToLocation(grid)
+    // Fahrenheit for miles users, Celsius otherwise — the same units
+    // preference the map's distances follow, via HookContext.
+    const params: Record<string, string> = {
+      latitude: String(latitude),
+      longitude: String(longitude),
+      temperature_unit: distanceUnits === 'miles' ? 'fahrenheit' : 'celsius',
+      current: 'temperature_2m,relative_humidity_2m,wind_speed_10m,precipitation,weather_code,wind_direction_10m,wind_gusts_10m,is_day',
+      daily: 'sunrise,sunset',
+    }
+    const query = Object.entries(params)
+      .map(([key, value]) => `${key}=${encodeURIComponent(value)}`)
+      .join('&')
+    const response = await host.fetch(`https://api.open-meteo.com/v1/forecast?${query}`)
+    if (response.status !== 200) throw new Error(`status ${response.status}`)
+    const weatherData = JSON.parse(response.body) as Record<string, JSONValue>
+    if (!weatherData?.current) throw new Error('no weather data in response')
+    return { weatherData, message: weatherMessage(weatherData as unknown as WeatherData) }
+  } catch {
+    return null
+  }
+}
+
+// Same one-fetch-shared-until-executed cache as SOLAR's.
+let weatherFetch: Promise<WeatherResult> | null = null
 
 const WeatherCommand = {
   async interpret(
@@ -157,44 +214,29 @@ const WeatherCommand = {
       return { error: 'WEATHER needs a location — set the operation’s grid square' }
     }
 
-    if (!execute) return { describe: 'Add current weather to the log?' }
-
-    // Parsed loosely — the raw response is stored whole in the event's
-    // `data`; WeatherData just gives weatherMessage a typed view of the
-    // fields it reads.
-    let weatherData: Record<string, JSONValue>
-    try {
-      const [latitude, longitude] = gridToLocation(grid)
-      // Fahrenheit for miles users, Celsius otherwise — the same units
-      // preference the map's distances follow, via HookContext.
-      const params: Record<string, string> = {
-        latitude: String(latitude),
-        longitude: String(longitude),
-        temperature_unit: ctx.distanceUnits === 'miles' ? 'fahrenheit' : 'celsius',
-        current: 'temperature_2m,relative_humidity_2m,wind_speed_10m,precipitation,weather_code,wind_direction_10m,wind_gusts_10m,is_day',
-        daily: 'sunrise,sunset',
-      }
-      const query = Object.entries(params)
-        .map(([key, value]) => `${key}=${encodeURIComponent(value)}`)
-        .join('&')
-      const response = await host.fetch(`https://api.open-meteo.com/v1/forecast?${query}`)
-      if (response.status !== 200) throw new Error(`status ${response.status}`)
-      weatherData = JSON.parse(response.body) as Record<string, JSONValue>
-      if (!weatherData?.current) throw new Error('no weather data in response')
-    } catch {
-      return { error: 'Error fetching weather' }
+    if (!weatherFetch) {
+      weatherFetch = fetchWeatherData(grid, ctx.distanceUnits)
+      weatherFetch.then((result) => {
+        host.updateInterpretation(input, result ? { describe: result.message } : { describe: 'Error fetching weather' })
+      })
     }
 
-    const message = weatherMessage(weatherData as unknown as WeatherData)
+    if (!execute) return { describe: 'Fetching current weather…' }
+
+    const promise = weatherFetch
+    weatherFetch = null // next WEATHER (a later QSO) starts its own fresh fetch
+    const result = await promise
+    if (!result) return { error: 'Error fetching weather' }
+
     return {
-      describe: 'Add current weather to the log?',
-      confirm: message,
+      describe: result.message,
+      confirm: result.message,
       commands: [{
         addQso: eventQso('weather', {
           command: 'WEATHER',
           icon: 'weather-sunny',
-          description: message,
-          data: weatherData,
+          description: result.message,
+          data: result.weatherData,
         }),
       }],
     }
