@@ -18,21 +18,21 @@ This is a multi-platform app for Amateur Radio Logging, called "Ham2K Logger" (o
 
 ## Development Process
 
-- Except for small changes, agents should work on a worktree, with a branch off of the `dist` branch on the `app-halo-dist` origin (usually available as `main-dist-private` locally).
+- Except for small changes, agents should work on a worktree, with a branch off of the `dist` branch on the `app-halo-dist` origin (usually available as `main-dist-private` locally). As new tasks come in, use new branches and rename the worktree to keep the name relevant.
 
-- Always refresh/pull the latest changes from the `app-halo-dist` origin into the local `main-dist-private` before branching and starting work.
+- Keep `dist` updated. Rebase your branches on top of the latest `dist` before submitting or updating a PR.
 
-- Take a full pass at the problem and then iterate with the developer. Don't pile up trivial commits. When iterating on a feature or approach, feel free to ammend the last commit if it makes sense, and skip running tests for a few iterations unless it's useful.
+- Take a full pass at the problem and then present the results to the developer. Don't pile up trivial commits. When iterating on a feature or approach, feel free to ammend the commits in the branch if it makes sense to keep work organized and easier to review, and skip running tests for short iterations unless it's useful.
 
 - Don't push to the PR branch until it's ready for review.
 
 - When working on a feature, the agent might want to run the web version in the background for faster iteration, or launch the macos version and use hot reloading if the user asks for it. It should avoid using app control, other than on the web version, unless the user asks for it.
 
-- Whenever running the app (any `flutter run`, including the web dev server), always pass a `DEV_LABEL` set to your session name or a brief description of the work at hand, so the running build is identifiable in the home-screen header — e.g. `flutter run -d macos --dart-define=DEV_LABEL="[HaLo] header work"` or `DEV_LABEL="[HaLo] header work" flutter run -d web-server`. See [DEVELOPMENT.md](file:///Users/sd/Work/ham2k/app-halo/DEVELOPMENT.md).
+- Whenever running the app (any `flutter run`, including the web dev server), always pass a `DEV_LABEL` set to your session name or a brief description of the work at hand, so the running build is identifiable in the home-screen header — e.g. `flutter run -d macos --dart-define=DEV_LABEL="header work"` or `DEV_LABEL="header work" flutter run -d web-server`. See [DEVELOPMENT.md](file:///Users/sd/Work/ham2k/app-halo/DEVELOPMENT.md).
 
 - When starting the app for developer checks, use `--dart-define=ONBOARD_AS="N0DEV,pota"` to provide a default setup and avoid the onboarding dialog (unless working on an onboarding feature).
 
-- We do most work on the `app-halo-dist` repository, with branches out of the `main-dist-private` branch. We use "squash-and-merge" to merge PRs. Any commits that include changes to `app_dist` are split into separate commits in `app-halo-dist`. The non `app_dist` changes are then cherry-picked to `main-public`.
+- We do most work on the `app-halo-dist` repository, where the `dist` branch is. We use "squash-and-merge" to merge PRs. Any commits that include changes to the `app_dist` folder, or other private and distribution-related parts of the app, must be split into separate commits in `app-halo-dist`. The non `app_dist` changes are then cherry-picked to `main` in the public repo `app-halo` (the `origin` remote).
 
 - New branches should be pushed to the `app-halo-dist` origin, never to regular `origin`.
 
