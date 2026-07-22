@@ -3017,6 +3017,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
         _lookupFor = activeCall;
         _lookupResult = offlineResult;
       });
+      _logLookup('offline', activeCall, offlineResult);
       // QSO-scoped activity controls (e.g. POTA's DXCC-derived placeholder)
       // are refreshed off the offline pass ONLY, deliberately not fired
       // again after the online pass below. Two reasons: (1) the offline
@@ -3046,6 +3047,20 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
         _lookupFor = activeCall;
         _lookupResult = onlineResult;
       });
+      _logLookup('online', activeCall, onlineResult);
+    });
+  }
+
+  /// Structured dev event (#237) for a resolved call lookup — a compact summary
+  /// of the guess so agents can watch `[lookup]` in the console / recentLog().
+  void _logLookup(String phase, String call, Map<String, dynamic>? result) {
+    DevLog.instance.log('lookup', {
+      'call': call,
+      'phase': phase,
+      'name': result?['name'],
+      'grid': result?['grid'],
+      'entity': result?['entityName'],
+      'source': result?['matchSource'] ?? result?['source'],
     });
   }
 

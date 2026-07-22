@@ -13,6 +13,7 @@ import 'package:drift/drift.dart';
 import 'package:uuid/uuid.dart';
 
 import '../db/database.dart';
+import '../dev_log.dart';
 import '../models/models.dart';
 
 const _uuidGenerator = Uuid();
@@ -357,6 +358,16 @@ class QsosRepository {
       await _refreshOperationCounters(operationUuid);
     });
     onChange?.call();
+    // Structured dev event (#237) — real contacts only, not timeline markers.
+    if (!qso.isEvent) {
+      DevLog.instance.log('qso', {
+        'uuid': qso.uuid,
+        'op': operationUuid,
+        'call': (data['their'] as Map?)?['call'],
+        'band': data['band'],
+        'mode': data['mode'],
+      });
+    }
     return qso;
   }
 

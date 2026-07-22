@@ -8,9 +8,10 @@ import 'package:flutter/foundation.dart' show kReleaseMode;
 
 import 'dev_bridge.dart';
 
-/// Installs `window.__halo` with the inspection API (`getState()`, `getGuess()`),
-/// the control actions (`setField()`, `tap()`), and the `ready` promise — the
-/// getters return plain JS objects agents parse via javascript_tool.
+/// Installs `window.__halo` with the inspection API (`getState()`, `getGuess()`,
+/// `recentLog()`), the control actions (`setField()`, `tap()`), and the `ready`
+/// promise — the getters return plain JS objects agents parse via
+/// javascript_tool.
 ///
 /// Gated to non-release (debug/profile) builds — where agents run the web app
 /// locally (`flutter run -d web-server`). A control surface must never ship to
@@ -29,6 +30,9 @@ void installDevBridge() {
   // A single stable promise (resolves when signalReady() fires) — `await
   // window.__halo.ready` replaces sleeping after a page load. #239.
   bridge['ready'] = DevBridge.instance.ready.toJS;
+  // Buffered structured events ([qso], [lookup], …) — query recent history
+  // instead of only streaming the console. #237.
+  bridge['recentLog'] = (() => DevBridge.instance.recentLog().jsify()).toJS;
   globalContext['__halo'] = bridge;
   DevBridge.instance.installed = true;
 }

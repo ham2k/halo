@@ -13,6 +13,7 @@
 import 'dart:async';
 
 import 'package:flutter/foundation.dart' show visibleForTesting;
+import 'package:halo_core/halo_core.dart' show DevLog;
 
 /// The single bridge instance. The active screen registers a [stateProvider];
 /// the web installer reads it.
@@ -52,6 +53,13 @@ class DevBridge {
 
   void setField(String field, String value) => setFieldHandler?.call(field, value);
   void action(String id) => actionHandler?.call(id);
+
+  // ── Structured log (#237) ─────────────────────────────────────────────────
+
+  /// Recent structured dev-log events (`[qso]`, `[lookup]`, …), oldest-first —
+  /// backs `window.__halo.recentLog()`. Empty unless [DevLog] is enabled (dev
+  /// builds). See [DevLog].
+  List<Map<String, Object?>> recentLog() => DevLog.instance.recent();
 
   // ── Readiness (#239) ──────────────────────────────────────────────────────
 

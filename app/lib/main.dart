@@ -13,7 +13,7 @@ import 'package:intl/intl.dart';
 
 
 import 'package:drift_flutter/drift_flutter.dart';
-import 'package:flutter/foundation.dart' show kIsWeb, visibleForTesting;
+import 'package:flutter/foundation.dart' show kIsWeb, kReleaseMode, visibleForTesting;
 import 'package:flutter/material.dart';
 import 'package:flutter/semantics.dart' show SemanticsBinding;
 import 'package:flutter/services.dart';
@@ -62,6 +62,10 @@ final navigatorKey = GlobalKey<NavigatorState>();
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
+  // Turn on structured dev logging ([qso], [lookup], …) for all non-release
+  // builds — console output + a buffer window.__halo.recentLog() can query.
+  // Off in release, so nothing is emitted or buffered there (#237).
+  DevLog.instance.enabled = !kReleaseMode;
   WindowChromeService.init();
   // Web-only, non-release-only: exposes window.__halo for agent inspection
   // (no-op on native and in production release). See config/dev_bridge.dart.
