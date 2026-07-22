@@ -312,12 +312,18 @@ class _TwoFieldDialogState extends State<_TwoFieldDialog> {
             decoration: poloFieldDecoration(context, widget.field1Label),
           ),
           const SizedBox(height: 8),
-          TextField(
-            controller: _controller2,
-            obscureText: widget.field2Obscure,
-            decoration: poloFieldDecoration(context, widget.field2Label),
-            onSubmitted: (_) => _save(),
-          ),
+          if (widget.field2Obscure)
+            SecretTextField(
+              controller: _controller2,
+              decoration: poloFieldDecoration(context, widget.field2Label),
+              onSubmitted: (_) => _save(),
+            )
+          else
+            TextField(
+              controller: _controller2,
+              decoration: poloFieldDecoration(context, widget.field2Label),
+              onSubmitted: (_) => _save(),
+            ),
         ],
       ),
       cancel: TextButton(onPressed: () => Navigator.of(context).pop(), child: Text(context.t.common.cancel)),

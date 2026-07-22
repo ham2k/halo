@@ -19,6 +19,7 @@ export 'src/qso_list.dart';
 export 'src/ref_chips_input.dart';
 export 'src/resizable_split_view.dart';
 export 'src/secondary_control_row.dart';
+export 'src/secret_text_field.dart';
 export 'src/section_header.dart';
 export 'src/status_bar.dart';
 export 'src/text_formatters.dart';

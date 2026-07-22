@@ -9,6 +9,7 @@ import 'package:flutter_markdown/flutter_markdown.dart';
 import 'halo_dialog.dart';
 import 'icon_resolver.dart';
 import 'modal_pane.dart';
+import 'secret_text_field.dart';
 import 'text_formatters.dart';
 import 'theme.dart';
 
@@ -595,11 +596,9 @@ class FormRendererState extends State<FormRenderer> {
           decoration: poloFieldDecoration(context, label, hintText: placeholder, errorText: errorText, labelColor: devModeColor),
         );
       case 'secret':
-        return TextField(
+        return SecretTextField(
           controller: _controllers[key],
           focusNode: _focusNodes[key],
-          obscureText: true,
-          autofillHints: const [AutofillHints.password],
           textInputAction: TextInputAction.done,
           onSubmitted: (_) => submit(),
           decoration: poloFieldDecoration(context, label, hintText: placeholder, errorText: errorText, labelColor: devModeColor),
@@ -917,21 +916,34 @@ class FormRendererState extends State<FormRenderer> {
                 },
         );
       default: // text, multiline, email, callsign, number, secret
-        final field = TextField(
-          controller: _controllers[key],
-          focusNode: _focusNodes[key],
-          textAlign: expanded ? TextAlign.start : TextAlign.end,
-          obscureText: fieldType == 'secret',
-          maxLines: fieldType == 'multiline' ? null : 1,
-          minLines: fieldType == 'multiline' ? 3 : null,
-          textCapitalization: _capitalizationFor(fieldType, el),
-          keyboardType: _keyboardTypeFor(fieldType),
-          inputFormatters: _inputFormattersFor(fieldType, el),
-          autofillHints: fieldType == 'secret' ? const [AutofillHints.password] : _getAutofillHints(key, fieldType),
-          textInputAction: TextInputAction.done,
-          onSubmitted: (_) => submit(),
-          decoration: const InputDecoration(border: InputBorder.none, isDense: true, contentPadding: EdgeInsets.zero),
-        );
+        const decoration = InputDecoration(border: InputBorder.none, isDense: true, contentPadding: EdgeInsets.zero);
+        // Secret fields get the show/hide toggle (SecretTextField owns the
+        // obscuring + the password autofill hint); every other type keeps the
+        // plain field with its per-type capitalization/formatters.
+        final Widget field = fieldType == 'secret'
+            ? SecretTextField(
+                controller: _controllers[key],
+                focusNode: _focusNodes[key],
+                textAlign: expanded ? TextAlign.start : TextAlign.end,
+                keyboardType: _keyboardTypeFor(fieldType),
+                textInputAction: TextInputAction.done,
+                onSubmitted: (_) => submit(),
+                decoration: decoration,
+              )
+            : TextField(
+                controller: _controllers[key],
+                focusNode: _focusNodes[key],
+                textAlign: expanded ? TextAlign.start : TextAlign.end,
+                maxLines: fieldType == 'multiline' ? null : 1,
+                minLines: fieldType == 'multiline' ? 3 : null,
+                textCapitalization: _capitalizationFor(fieldType, el),
+                keyboardType: _keyboardTypeFor(fieldType),
+                inputFormatters: _inputFormattersFor(fieldType, el),
+                autofillHints: _getAutofillHints(key, fieldType),
+                textInputAction: TextInputAction.done,
+                onSubmitted: (_) => submit(),
+                decoration: decoration,
+              );
         // Stacked (expanded) fields fill the available width; an unexpanded
         // field keeps the legacy 140px compact width.
         return expanded ? field : SizedBox(width: 140, child: field);

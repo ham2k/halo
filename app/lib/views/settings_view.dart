@@ -2566,17 +2566,27 @@ class _AccountPaneState extends State<_AccountPane> {
                     MarkdownBody(data: preface),
                     const SizedBox(height: 8),
                   ],
-                  TextField(
-                    controller: controller,
-                    style: theme.textTheme.bodyLarge?.copyWith(fontSize: 15),
-                    obscureText: field['type'] == 'secret',
-                    keyboardType: field['type'] == 'email' ? TextInputType.emailAddress : TextInputType.text,
-                    decoration: poloFieldDecoration(
-                      context,
-                      field['label'] as String,
-                    ).copyWith(errorText: _fieldError(key, controller.text)),
-                    onChanged: (_) => setState(() {}),
-                  ),
+                  if (field['type'] == 'secret')
+                    SecretTextField(
+                      controller: controller,
+                      style: theme.textTheme.bodyLarge?.copyWith(fontSize: 15),
+                      decoration: poloFieldDecoration(
+                        context,
+                        field['label'] as String,
+                      ).copyWith(errorText: _fieldError(key, controller.text)),
+                      onChanged: (_) => setState(() {}),
+                    )
+                  else
+                    TextField(
+                      controller: controller,
+                      style: theme.textTheme.bodyLarge?.copyWith(fontSize: 15),
+                      keyboardType: field['type'] == 'email' ? TextInputType.emailAddress : TextInputType.text,
+                      decoration: poloFieldDecoration(
+                        context,
+                        field['label'] as String,
+                      ).copyWith(errorText: _fieldError(key, controller.text)),
+                      onChanged: (_) => setState(() {}),
+                    ),
                   if (postface != null && postface.isNotEmpty) ...[
                     const SizedBox(height: 8),
                     MarkdownBody(data: postface),
