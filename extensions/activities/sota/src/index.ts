@@ -725,6 +725,7 @@ const sotaDataFile: DataFileDefinition = {
 defineExtension({
   key: 'sota',
   name: 'Summits on the Air',
+  shortName: 'SOTA',
   version: '0.0.1',
   onActivation({ registerHook }) {
     registerHook(`ref:${HUNTING_TYPE}`, { hook: RefHandler, key: 'sota' })

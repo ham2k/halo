@@ -313,14 +313,17 @@ class Translations$activitiesView$en {
 	/// en: 'Activities'
 	String get title => 'Activities';
 
-	/// en: 'No Current Activities'
-	String get activitiesCountZero => 'No Current Activities';
+	/// en: 'This Operation'
+	String get thisOperation => 'This Operation';
 
-	/// en: 'One Current Activity'
-	String get activitiesCountOne => 'One Current Activity';
+	/// en: 'No Activities Selected'
+	String get activitiesCountZero => 'No Activities Selected';
 
-	/// en: '${count} Current Activities'
-	String activitiesCountOther({required Object count}) => '${count} Current Activities';
+	/// en: '1 Activity'
+	String get activitiesCountOne => '1 Activity';
+
+	/// en: '${count} Activities'
+	String activitiesCountOther({required Object count}) => '${count} Activities';
 
 	/// en: 'No activities yet — use Suggestions & Search below to add one'
 	String get empty => 'No activities yet — use Suggestions & Search below to add one';
@@ -334,6 +337,21 @@ class Translations$activitiesView$en {
 	/// en: 'Edit activity'
 	String get editActivity => 'Edit activity';
 
+	/// en: 'Manage Extensions'
+	String get manageExtensions => 'Manage Extensions';
+
+	/// en: 'Manage'
+	String get manage => 'Manage';
+
+	/// en: 'Activity Types: ${first}'
+	String activitiesTitle1({required Object first}) => 'Activity Types: ${first}';
+
+	/// en: 'Activity Types: ${first} and ${second}'
+	String activitiesTitle2({required Object first, required Object second}) => 'Activity Types: ${first} and ${second}';
+
+	/// en: 'Activity Types: ${first}, ${second} and ${more} more'
+	String activitiesTitleMore({required Object first, required Object second, required Object more}) => 'Activity Types: ${first}, ${second} and ${more} more';
+
 	/// en: 'Reference'
 	String get reference => 'Reference';
 
@@ -343,8 +361,8 @@ class Translations$activitiesView$en {
 	/// en: 'Already added'
 	String get duplicateReference => 'Already added';
 
-	/// en: 'Search for a park, summit…'
-	String get searchHint => 'Search for a park, summit…';
+	/// en: 'Search by name, reference or anything else…'
+	String get searchHint => 'Search by name, reference or anything else…';
 
 	/// en: 'Options'
 	String get searchOptions => 'Options';
@@ -352,14 +370,14 @@ class Translations$activitiesView$en {
 	/// en: 'No suggestions'
 	String get noSuggestions => 'No suggestions';
 
-	/// en: 'All Options'
-	String get allOptions => 'All Options';
+	/// en: 'Activity Types'
+	String get allOptions => 'Activity Types';
 
-	/// en: 'Determining current location…'
-	String get determiningLocation => 'Determining current location…';
+	/// en: 'Determining current location… Waiting for GPS fix to find nearby references'
+	String get determiningLocation => 'Determining current location…\nWaiting for GPS fix to find nearby references';
 
-	/// en: 'No nearby suggestions, current location not known'
-	String get noNearbySuggestions => 'No nearby suggestions, current location not known';
+	/// en: 'Location data not available So we cannot determine nearby references'
+	String get noNearbySuggestions => 'Location data not available\nSo we cannot determine nearby references';
 
 	/// en: '${distance} km'
 	String distanceKm({required Object distance}) => '${distance} km';
@@ -1457,22 +1475,28 @@ extension on Translations {
 			'map.distanceKm' => ({required Object distance}) => '${distance} km',
 			'map.distanceMiles' => ({required Object distance}) => '${distance} mi',
 			'activitiesView.title' => 'Activities',
-			'activitiesView.activitiesCountZero' => 'No Current Activities',
-			'activitiesView.activitiesCountOne' => 'One Current Activity',
-			'activitiesView.activitiesCountOther' => ({required Object count}) => '${count} Current Activities',
+			'activitiesView.thisOperation' => 'This Operation',
+			'activitiesView.activitiesCountZero' => 'No Activities Selected',
+			'activitiesView.activitiesCountOne' => '1 Activity',
+			'activitiesView.activitiesCountOther' => ({required Object count}) => '${count} Activities',
 			'activitiesView.empty' => 'No activities yet — use Suggestions & Search below to add one',
 			'activitiesView.addActivity' => 'Add activity',
 			'activitiesView.removeActivity' => 'Remove',
 			'activitiesView.editActivity' => 'Edit activity',
+			'activitiesView.manageExtensions' => 'Manage Extensions',
+			'activitiesView.manage' => 'Manage',
+			'activitiesView.activitiesTitle1' => ({required Object first}) => 'Activity Types: ${first}',
+			'activitiesView.activitiesTitle2' => ({required Object first, required Object second}) => 'Activity Types: ${first} and ${second}',
+			'activitiesView.activitiesTitleMore' => ({required Object first, required Object second, required Object more}) => 'Activity Types: ${first}, ${second} and ${more} more',
 			'activitiesView.reference' => 'Reference',
 			'activitiesView.invalidReference' => 'Not a valid reference',
 			'activitiesView.duplicateReference' => 'Already added',
-			'activitiesView.searchHint' => 'Search for a park, summit…',
+			'activitiesView.searchHint' => 'Search by name, reference or anything else…',
 			'activitiesView.searchOptions' => 'Options',
 			'activitiesView.noSuggestions' => 'No suggestions',
-			'activitiesView.allOptions' => 'All Options',
-			'activitiesView.determiningLocation' => 'Determining current location…',
-			'activitiesView.noNearbySuggestions' => 'No nearby suggestions, current location not known',
+			'activitiesView.allOptions' => 'Activity Types',
+			'activitiesView.determiningLocation' => 'Determining current location…\nWaiting for GPS fix to find nearby references',
+			'activitiesView.noNearbySuggestions' => 'Location data not available\nSo we cannot determine nearby references',
 			'activitiesView.distanceKm' => ({required Object distance}) => '${distance} km',
 			'loggingControls.timeUtc' => 'Time (UTC)',
 			'loggingControls.date' => 'Date',

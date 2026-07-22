@@ -197,22 +197,28 @@ class _Translations$activitiesView$es extends Translations$activitiesView$en {
 
 	// Translations
 	@override String get title => 'Actividades';
-	@override String get activitiesCountZero => 'Sin actividades actuales';
-	@override String get activitiesCountOne => 'Una actividad actual';
-	@override String activitiesCountOther({required Object count}) => '${count} actividades actuales';
+	@override String get thisOperation => 'Esta Operación';
+	@override String get activitiesCountZero => 'Sin actividades seleccionadas';
+	@override String get activitiesCountOne => '1 actividad';
+	@override String activitiesCountOther({required Object count}) => '${count} actividades';
 	@override String get empty => 'Aún no hay actividades — usa Sugerencias y Búsqueda abajo para añadir una';
 	@override String get addActivity => 'Añadir actividad';
 	@override String get removeActivity => 'Quitar';
 	@override String get editActivity => 'Editar actividad';
+	@override String get manageExtensions => 'Administrar extensiones';
+	@override String get manage => 'Administrar';
+	@override String activitiesTitle1({required Object first}) => 'Tipos de actividad: ${first}';
+	@override String activitiesTitle2({required Object first, required Object second}) => 'Tipos de actividad: ${first} y ${second}';
+	@override String activitiesTitleMore({required Object first, required Object second, required Object more}) => 'Tipos de actividad: ${first}, ${second} y ${more} más';
 	@override String get reference => 'Referencia';
 	@override String get invalidReference => 'Referencia no válida';
 	@override String get duplicateReference => 'Ya añadida';
-	@override String get searchHint => 'Busca un parque, cumbre…';
+	@override String get searchHint => 'Busca por nombre, referencia o cualquier otra cosa…';
 	@override String get searchOptions => 'Opciones';
 	@override String get noSuggestions => 'Sin sugerencias';
-	@override String get allOptions => 'Todas las opciones';
-	@override String get determiningLocation => 'Determinando ubicación actual…';
-	@override String get noNearbySuggestions => 'Sin sugerencias cercanas, ubicación actual desconocida';
+	@override String get allOptions => 'Tipos de actividad';
+	@override String get determiningLocation => 'Determinando ubicación actual…\nEsperando señal de GPS para encontrar referencias cercanas';
+	@override String get noNearbySuggestions => 'Datos de ubicación no disponibles\nPor lo tanto, no podemos determinar referencias cercanas';
 	@override String distanceKm({required Object distance}) => '${distance} km';
 }
 
@@ -879,22 +885,28 @@ extension on TranslationsEs {
 			'map.distanceKm' => ({required Object distance}) => '${distance} km',
 			'map.distanceMiles' => ({required Object distance}) => '${distance} mi',
 			'activitiesView.title' => 'Actividades',
-			'activitiesView.activitiesCountZero' => 'Sin actividades actuales',
-			'activitiesView.activitiesCountOne' => 'Una actividad actual',
-			'activitiesView.activitiesCountOther' => ({required Object count}) => '${count} actividades actuales',
+			'activitiesView.thisOperation' => 'Esta Operación',
+			'activitiesView.activitiesCountZero' => 'Sin actividades seleccionadas',
+			'activitiesView.activitiesCountOne' => '1 actividad',
+			'activitiesView.activitiesCountOther' => ({required Object count}) => '${count} actividades',
 			'activitiesView.empty' => 'Aún no hay actividades — usa Sugerencias y Búsqueda abajo para añadir una',
 			'activitiesView.addActivity' => 'Añadir actividad',
 			'activitiesView.removeActivity' => 'Quitar',
 			'activitiesView.editActivity' => 'Editar actividad',
+			'activitiesView.manageExtensions' => 'Administrar extensiones',
+			'activitiesView.manage' => 'Administrar',
+			'activitiesView.activitiesTitle1' => ({required Object first}) => 'Tipos de actividad: ${first}',
+			'activitiesView.activitiesTitle2' => ({required Object first, required Object second}) => 'Tipos de actividad: ${first} y ${second}',
+			'activitiesView.activitiesTitleMore' => ({required Object first, required Object second, required Object more}) => 'Tipos de actividad: ${first}, ${second} y ${more} más',
 			'activitiesView.reference' => 'Referencia',
 			'activitiesView.invalidReference' => 'Referencia no válida',
 			'activitiesView.duplicateReference' => 'Ya añadida',
-			'activitiesView.searchHint' => 'Busca un parque, cumbre…',
+			'activitiesView.searchHint' => 'Busca por nombre, referencia o cualquier otra cosa…',
 			'activitiesView.searchOptions' => 'Opciones',
 			'activitiesView.noSuggestions' => 'Sin sugerencias',
-			'activitiesView.allOptions' => 'Todas las opciones',
-			'activitiesView.determiningLocation' => 'Determinando ubicación actual…',
-			'activitiesView.noNearbySuggestions' => 'Sin sugerencias cercanas, ubicación actual desconocida',
+			'activitiesView.allOptions' => 'Tipos de actividad',
+			'activitiesView.determiningLocation' => 'Determinando ubicación actual…\nEsperando señal de GPS para encontrar referencias cercanas',
+			'activitiesView.noNearbySuggestions' => 'Datos de ubicación no disponibles\nPor lo tanto, no podemos determinar referencias cercanas',
 			'activitiesView.distanceKm' => ({required Object distance}) => '${distance} km',
 			'loggingControls.timeUtc' => 'Hora (UTC)',
 			'loggingControls.date' => 'Fecha',

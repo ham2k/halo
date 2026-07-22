@@ -509,6 +509,7 @@ const potaDataFile: DataFileDefinition = {
 defineExtension({
   key: 'pota',
   name: 'Parks on the Air',
+  shortName: 'POTA',
   version: '0.0.1',
   onActivation({ registerHook }) {
     registerHook(`ref:${HUNTING_TYPE}`, { hook: RefHandler, key: 'pota' })

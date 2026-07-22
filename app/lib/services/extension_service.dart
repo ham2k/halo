@@ -1593,6 +1593,7 @@ class ExtensionInfo {
 
   final bool core;
   final String name;
+  final String? shortName;
   final String? category;
   final bool enabledByDefault;
 
@@ -1609,11 +1610,14 @@ class ExtensionInfo {
     this.allowUserAgentOverride = false,
     required this.core,
     required this.name,
+    this.shortName,
     this.category,
     this.enabledByDefault = true,
     this.icon,
     this.description,
   });
+
+  String get effectiveShortName => shortName ?? name;
 
   factory ExtensionInfo.fromJson(Map<String, dynamic> json) => ExtensionInfo(
         key: json['key'] as String,
@@ -1624,6 +1628,7 @@ class ExtensionInfo {
         // the fail-safe: nothing gets silently disabled.
         core: json['core'] as bool? ?? true,
         name: json['name'] as String? ?? json['key'] as String,
+        shortName: json['shortName'] as String?,
         category: json['category'] as String?,
         enabledByDefault: json['enabledByDefault'] as bool? ?? true,
         icon: json['icon'] as String?,

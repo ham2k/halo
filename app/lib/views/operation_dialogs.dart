@@ -7,6 +7,7 @@
 // carrying two copies of the same confirm-delete/edit-details prompt.
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:halo_core/halo_core.dart';
 import 'package:halo_widgets/halo_widgets.dart';
 import '../i18n/strings.g.dart';
@@ -37,16 +38,17 @@ Future<bool> confirmDeleteOperation(
 Future<Operation?> editOperationDetails(
   BuildContext context,
   OperationsRepository operations,
-  Operation operation,
-) async {
-  final result = await editTwoFieldDialog(
-    context,
-    title: context.t.dialogs.operationDetails,
-    field1Label: context.t.home.stationCallsign,
-    field1Initial: operation.stationCall,
-    field1Capitalization: TextCapitalization.characters,
-    field2Label: context.t.home.titleOptional,
-    field2Initial: operation.title,
+  Operation operation, {
+  bool save = true,
+}) async {
+  final result = await showHaloDialog<(String, String, String, String)>(
+    context: context,
+    builder: (context) => _OperationDetailsDialog(
+      stationCall: operation.stationCall,
+      operatorCall: (operation.data['operatorCall'] as String?) ?? '',
+      title: operation.title,
+      notes: (operation.data['notes'] as String?) ?? '',
+    ),
   );
   if (result == null || result.$1.trim().isEmpty) return null;
 
@@ -55,14 +57,18 @@ Future<Operation?> editOperationDetails(
     data: {
       ...operation.data,
       'stationCall': result.$1.trim().toUpperCase(),
-      'title': result.$2.trim(),
+      'operatorCall': result.$2.trim().toUpperCase(),
+      'title': result.$3.trim(),
+      'notes': result.$4.trim(),
     },
     qsoCount: operation.qsoCount,
     startAtMillisMin: operation.startAtMillisMin,
     startAtMillisMax: operation.startAtMillisMax,
     localData: operation.localData,
   );
-  await operations.saveData(updated);
+  if (save) {
+    await operations.saveData(updated);
+  }
   return updated;
 }
 
@@ -329,6 +335,114 @@ class _TwoFieldDialogState extends State<_TwoFieldDialog> {
       cancel: TextButton(onPressed: () => Navigator.of(context).pop(), child: Text(context.t.common.cancel)),
       actions: [
         FilledButton(onPressed: _save, child: Text(context.t.common.save)),
+      ],
+    );
+  }
+}
+
+class _OperationDetailsDialog extends StatefulWidget {
+  final String stationCall;
+  final String operatorCall;
+  final String title;
+  final String notes;
+
+  const _OperationDetailsDialog({
+    required this.stationCall,
+    required this.operatorCall,
+    required this.title,
+    required this.notes,
+  });
+
+  @override
+  State<_OperationDetailsDialog> createState() => _OperationDetailsDialogState();
+}
+
+class _OperationDetailsDialogState extends State<_OperationDetailsDialog> {
+  late final _stationCallController = TextEditingController(text: widget.stationCall);
+  late final _operatorCallController = TextEditingController(text: widget.operatorCall);
+  late final _titleController = TextEditingController(text: widget.title);
+  late final _notesController = TextEditingController(text: widget.notes);
+
+  @override
+  void dispose() {
+    _stationCallController.dispose();
+    _operatorCallController.dispose();
+    _titleController.dispose();
+    _notesController.dispose();
+    super.dispose();
+  }
+
+  void _save() {
+    Navigator.of(context).pop((
+      _stationCallController.text.trim().toUpperCase(),
+      _operatorCallController.text.trim().toUpperCase(),
+      _titleController.text.trim(),
+      _notesController.text.trim(),
+    ));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return HaloDialog(
+      title: Text(context.t.dialogs.operationDetails),
+      content: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            TextField(
+              controller: _stationCallController,
+              autofocus: true,
+              textCapitalization: TextCapitalization.characters,
+              style: const TextStyle(fontFamily: 'RobotoMono'),
+              inputFormatters: [
+                TextInputFormatter.withFunction(
+                  (oldValue, newValue) => newValue.copyWith(text: newValue.text.toUpperCase()),
+                ),
+              ],
+              decoration: poloFieldDecoration(context, 'Station Callsign'),
+              onSubmitted: (_) => _save(),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: _operatorCallController,
+              textCapitalization: TextCapitalization.characters,
+              style: const TextStyle(fontFamily: 'RobotoMono'),
+              inputFormatters: [
+                TextInputFormatter.withFunction(
+                  (oldValue, newValue) => newValue.copyWith(text: newValue.text.toUpperCase()),
+                ),
+              ],
+              decoration: poloFieldDecoration(context, context.t.settings.operatorCall),
+              onSubmitted: (_) => _save(),
+            ),
+            const SizedBox(height: 72),
+            TextField(
+              controller: _titleController,
+              textCapitalization: TextCapitalization.sentences,
+              decoration: poloFieldDecoration(context, context.t.home.titleOptional),
+              onSubmitted: (_) => _save(),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: _notesController,
+              textCapitalization: TextCapitalization.sentences,
+              maxLines: null,
+              keyboardType: TextInputType.multiline,
+              decoration: poloFieldDecoration(context, 'Notes'),
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: Text(context.t.common.cancel),
+        ),
+        FilledButton(
+          onPressed: _save,
+          child: Text(context.t.common.save),
+        ),
       ],
     );
   }

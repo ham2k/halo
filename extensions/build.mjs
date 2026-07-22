@@ -113,11 +113,11 @@ const bundles = [
     name: 'Callsign Notes', category: 'lookup', enabledByDefault: true,
     description: 'Annotates calls from shared notes files' },
   { key: 'pota', entry: 'activities/pota/src/index.ts', kind: 'extension', domains: ['api.pota.app', 'pota.app'],
-    name: 'Parks on the Air', category: 'activity', enabledByDefault: true, icon: 'pine-tree',
+    name: 'Parks on the Air', shortName: 'POTA', category: 'activity', enabledByDefault: true, icon: 'pine-tree',
     description: 'Park references, spots, and activation logging' },
   { key: 'sota', entry: 'activities/sota/src/index.ts', kind: 'extension',
     domains: ['api2.sota.org.uk', 'api-db2.sota.org.uk', 'sso.sota.org.uk'],
-    name: 'Summits on the Air', category: 'activity', enabledByDefault: true, icon: 'image-filter-hdr',
+    name: 'Summits on the Air', shortName: 'SOTA', category: 'activity', enabledByDefault: true, icon: 'image-filter-hdr',
     description: 'Summit references, spots, and activation logging' },
   { key: 'ham2k-lofi', entry: 'sync/ham2k-lofi/src/index.ts', kind: 'extension', domains: ['*'] },
 ]
@@ -175,6 +175,7 @@ await writeFile(
           ...(b.category
             ? {
                 name: b.name ?? b.key,
+                ...(b.shortName ? { shortName: b.shortName } : {}),
                 category: b.category,
                 enabledByDefault: b.enabledByDefault ?? true,
                 ...(b.icon ? { icon: b.icon } : {}),

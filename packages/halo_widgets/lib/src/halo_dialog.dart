@@ -22,10 +22,11 @@ import 'theme.dart';
 ///
 /// [trailing] is for a pane's close button; dialogs pass none.
 class HaloDialogHeader extends StatelessWidget {
+  final Widget? leading;
   final Widget? title;
   final Widget? trailing;
 
-  const HaloDialogHeader({super.key, this.title, this.trailing});
+  const HaloDialogHeader({super.key, this.leading, this.title, this.trailing});
 
   @override
   Widget build(BuildContext context) {
@@ -37,11 +38,18 @@ class HaloDialogHeader extends StatelessWidget {
       child: Padding(
         // Horizontal only: the minHeight above sets the height, and a close
         // button's 48pt tap target already fills it — adding vertical padding
-        // on top pushed the header to 72. Tighter on the trailing edge when a
-        // button lives there, since its tap target supplies that inset.
-        padding: EdgeInsets.only(left: 24, right: trailing == null ? 24 : 12),
+        // on top pushed the header to 72. Tighter on the leading/trailing edge
+        // when a button lives there, since its tap target supplies that inset.
+        padding: EdgeInsets.only(
+          left: leading == null ? 24 : 12,
+          right: trailing == null ? 24 : 12,
+        ),
         child: Row(
           children: [
+            if (leading != null) ...[
+              leading!,
+              const SizedBox(width: 8),
+            ],
             Expanded(
               child: DefaultTextStyle(
                 style:

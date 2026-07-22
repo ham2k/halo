@@ -94,6 +94,8 @@ class _OperationViewState extends State<OperationView> with SingleTickerProvider
   /// only input that changes during the view's life (the uuid is fixed).
   Stream<List<Qso>>? _qsoStream;
   bool? _qsoStreamIncludesDeleted;
+  bool _activitiesSheetOpen = false;
+  Operation? _draftOperation;
 
   Stream<List<Qso>> _qsosStream() {
     if (_qsoStream == null || _qsoStreamIncludesDeleted != _showDeletedQSOs) {
@@ -137,7 +139,21 @@ class _OperationViewState extends State<OperationView> with SingleTickerProvider
   /// calls `DefaultTabController.of(context)` here, it will throw (no
   /// ancestor found) — reach for `_tabController` directly instead, or
   /// thread it down explicitly.
-  late final TabController _tabController = TabController(length: 4, vsync: this);
+  /// ancestor found) — reach for `_tabController` directly instead, or
+  /// thread it down explicitly.
+  TabController? _tabController;
+
+  void _updateTabControllerIfNeeded(int requiredLength) {
+    if (_tabController == null || _tabController!.length != requiredLength) {
+      final oldIndex = _tabController?.index ?? 0;
+      _tabController?.dispose();
+      _tabController = TabController(
+        length: requiredLength,
+        vsync: this,
+        initialIndex: oldIndex.clamp(0, requiredLength - 1),
+      );
+    }
+  }
 
   /// A QSON-shaped `{their: {call}, freq?, band?, mode?, refs?}` map handed
   /// from the Spots tab (tapping a spot — see `SpotsPanel.onSuggestQso`) to
@@ -188,7 +204,7 @@ class _OperationViewState extends State<OperationView> with SingleTickerProvider
     // dock mode the user may have tabbed the logging pane behind others, so
     // surface it (no-op when it's already visible).
     if (!ShirtSize.of(context).isTwoPane) {
-      _tabController.animateTo(0);
+      _tabController?.animateTo(0);
     } else if (_customLayout) {
       _dockKey.currentState?.revealModule('logging');
     }
@@ -204,7 +220,7 @@ class _OperationViewState extends State<OperationView> with SingleTickerProvider
     // its State adopted) in the narrow TabBarView's first frame; on any
     // other index, page 0 wouldn't be inflated and the in-progress QSO
     // entry would be disposed.
-    if (_wasTwoPane == true && !isTwoPane) _tabController.index = 0;
+    if (_wasTwoPane == true && !isTwoPane) _tabController?.index = 0;
     _wasTwoPane = isTwoPane;
   }
 
@@ -230,7 +246,7 @@ class _OperationViewState extends State<OperationView> with SingleTickerProvider
     _operationSub?.cancel();
     _rescoreSub?.cancel();
     _rescoreDebounce?.cancel();
-    _tabController.dispose();
+    _tabController?.dispose();
     super.dispose();
   }
 
@@ -246,7 +262,7 @@ class _OperationViewState extends State<OperationView> with SingleTickerProvider
     // pane's place: setting an identity comes first.
     if (widget.openActivities && !_openedActivities) {
       _openedActivities = true;
-      WidgetsBinding.instance.addPostFrameCallback((_) {
+      Future.delayed(const Duration(milliseconds: 500), () {
         if (!mounted) return;
         if (widget.services.settings.activeProfile.operatorCall.isEmpty) {
           _promptForCallsign(operation);
@@ -357,8 +373,8 @@ class _OperationViewState extends State<OperationView> with SingleTickerProvider
     if (ShirtSize.of(context).isTwoPane) {
       if (_customLayout) {
         _dockKey.currentState?.revealModule('info');
-      } else if (_tabController.index != 0) {
-        _tabController.animateTo(0);
+      } else if (_tabController?.index != 0) {
+        _tabController?.animateTo(0);
       }
       return;
     }
@@ -381,18 +397,208 @@ class _OperationViewState extends State<OperationView> with SingleTickerProvider
   }
 
   Future<void> _editActivities(Operation operation) async {
+    final opSheetEnabled = widget.services.settings.experimentEnabled('opsheet');
+    if (opSheetEnabled) {
+      return _openOperationSheet(operation);
+    }
+
+    final activitiesKey = GlobalKey<ActivitiesPaneState>();
+    final hasUpdatesNotifier = ValueNotifier<bool>(false);
+    if (!mounted) return;
+    try {
+      await showModalPane<void>(
+        context,
+        title: context.t.operation.sections.activities,
+        scrollable: false,
+        builder: (_) => ActivitiesPane(
+          key: activitiesKey,
+          services: widget.services,
+          operation: operation,
+          hasUpdatesNotifier: hasUpdatesNotifier,
+          onExport: () => _export(operation),
+        ),
+      );
+    } finally {
+      // no cleanup needed
+    }
+  }
+
+  Future<void> _openOperationSheet(Operation operation) async {
     // No manual re-fetch on pop: watchOperation streams the change back.
     // Non-scrollable: the pane's accordion sections divide its height
     // themselves (see activities_view.dart). Not barrier/Escape-dismissible:
     // as a pushed screen this had explicit-back dismissal only, and Escape
     // while typing in the suggestions search would close the whole pane.
-    await showModalPane<void>(
-      context,
-      title: context.t.activitiesView.title,
-      scrollable: false,
-      barrierDismissible: false,
-      builder: (_) => ActivitiesPane(services: widget.services, operation: operation),
-    );
+    final sheetKey = GlobalKey<OperationSheetState>();
+    final hasUpdatesNotifier = ValueNotifier<bool>(false);
+    if (!mounted) return;
+    setState(() {
+      _activitiesSheetOpen = true;
+      _draftOperation = operation;
+    });
+    try {
+      await showTopModalPane<void>(
+        context,
+        title: Builder(
+          builder: (context) {
+            final stationCall = _draftOperation?.stationCall ?? operation.stationCall;
+            final operatorCall = (_draftOperation?.data['operatorCall'] as String?) ?? (operation.data['operatorCall'] as String?);
+
+            return Align(
+              alignment: Alignment.centerLeft,
+              child: MouseRegion(
+                cursor: SystemMouseCursors.click,
+                child: GestureDetector(
+                  onTap: () async {
+                    final updated = await editOperationDetails(
+                      context,
+                      widget.services.operations,
+                      _draftOperation ?? operation,
+                      save: false,
+                    );
+                    if (updated != null && mounted) {
+                      setState(() {
+                        _draftOperation = Operation(
+                          uuid: _draftOperation!.uuid,
+                          data: {
+                            ..._draftOperation!.data,
+                            ...updated.data,
+                          },
+                          qsoCount: _draftOperation!.qsoCount,
+                          startAtMillisMin: _draftOperation!.startAtMillisMin,
+                          startAtMillisMax: _draftOperation!.startAtMillisMax,
+                          localData: _draftOperation!.localData,
+                        );
+                      });
+                      sheetKey.currentState?.updateOperation(_draftOperation!);
+                    }
+                  },
+                  child: Wrap(
+                    spacing: 8,
+                    runSpacing: 4,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: Theme.of(context).appBarTheme.backgroundColor ?? Theme.of(context).colorScheme.primary,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Text.rich(
+                          TextSpan(
+                            children: [
+                              const TextSpan(text: 'Station: '),
+                              TextSpan(
+                                text: stationCall,
+                                style: const TextStyle(fontFamily: 'RobotoMono'),
+                              ),
+                            ],
+                          ),
+                          style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                            color: Theme.of(context).colorScheme.onPrimary,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                      if (operatorCall != null && operatorCall.isNotEmpty)
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: Theme.of(context).appBarTheme.backgroundColor ?? Theme.of(context).colorScheme.primary,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Text.rich(
+                            TextSpan(
+                              children: [
+                                const TextSpan(text: 'Op: '),
+                                TextSpan(
+                                  text: operatorCall,
+                                  style: const TextStyle(fontFamily: 'RobotoMono'),
+                                ),
+                              ],
+                            ),
+                            style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                              color: Theme.of(context).colorScheme.onPrimary,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          },
+        ),
+        scrollable: false,
+        barrierDismissible: true,
+        leading: ValueListenableBuilder<bool>(
+          valueListenable: hasUpdatesNotifier,
+          builder: (context, updates, child) {
+            final theme = Theme.of(context);
+            final isDark = theme.brightness == Brightness.dark;
+            if (updates) {
+              return IconButton(
+                icon: const Icon(Icons.check),
+                tooltip: context.t.common.save,
+                style: IconButton.styleFrom(
+                  backgroundColor: Colors.green,
+                  foregroundColor: Colors.white,
+                ),
+                onPressed: () => sheetKey.currentState?.saveAndClose(),
+              );
+            } else {
+              return IconButton(
+                icon: Icon(Icons.check, color: isDark ? Colors.white : Colors.black),
+                tooltip: context.t.common.save,
+                onPressed: () => sheetKey.currentState?.saveAndClose(),
+              );
+            }
+          },
+        ),
+        trailing: ValueListenableBuilder<bool>(
+          valueListenable: hasUpdatesNotifier,
+          builder: (context, updates, child) {
+            final theme = Theme.of(context);
+            if (updates) {
+              return IconButton(
+                icon: const Icon(Icons.undo),
+                tooltip: context.t.common.cancel,
+                style: IconButton.styleFrom(
+                  backgroundColor: theme.colorScheme.errorContainer,
+                  foregroundColor: theme.colorScheme.onErrorContainer,
+                ),
+                onPressed: () => sheetKey.currentState?.revertAndClose(),
+              );
+            } else {
+              return IconButton(
+                icon: Icon(Icons.undo, color: theme.disabledColor),
+                tooltip: context.t.common.cancel,
+                onPressed: null,
+              );
+            }
+          },
+        ),
+        builder: (_) => OperationSheet(
+          key: sheetKey,
+          services: widget.services,
+          operation: operation,
+          hasUpdatesNotifier: hasUpdatesNotifier,
+          onOperationChanged: (updated) {
+            if (mounted) {
+              setState(() => _draftOperation = updated);
+            }
+          },
+          onExport: () => _export(_draftOperation ?? operation),
+        ),
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _activitiesSheetOpen = false;
+          _draftOperation = null;
+        });
+      }
+    }
   }
 
   Future<void> _editDetails(Operation operation) async {
@@ -415,10 +621,9 @@ class _OperationViewState extends State<OperationView> with SingleTickerProvider
 
   Future<void> _editLocation(Operation operation) async {
     // No manual re-fetch on pop: watchOperation streams the change back.
-    await Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => OperationLocationScreen(services: widget.services, operation: operation),
-      ),
+    await showHaloDialog<void>(
+      context: context,
+      builder: (_) => OperationLocationScreen(services: widget.services, operation: operation),
     );
   }
 
@@ -466,15 +671,18 @@ class _OperationViewState extends State<OperationView> with SingleTickerProvider
     required Widget settingsPanel,
     required int realQsoCount,
   }) {
-    const ids = ['logging', 'info', 'spots', 'map', 'operation'];
-    if (_dockSpec == null) {
+    final bool opSheetEnabled = widget.services.settings.experimentEnabled('opsheet');
+    final ids = opSheetEnabled
+        ? ['logging', 'info', 'spots', 'map']
+        : ['logging', 'info', 'spots', 'map', 'operation'];
+    if (_dockSpec == null || !DockLayoutView.specMatches(_dockSpec, ids)) {
       final persisted = DockNode.fromJson(widget.services.settings.layoutData(LayoutKeys.operationDock));
       _dockSpec = DockLayoutView.specMatches(persisted, ids)
           ? persisted!
           : DockSplit(Axis.horizontal, [
               DockGroup(['logging']),
               // Selected: Info, matching the fixed wide layout's initial tab.
-              DockGroup(['info', 'spots', 'map', 'operation']),
+              DockGroup(opSheetEnabled ? ['info', 'spots', 'map'] : ['info', 'spots', 'map', 'operation']),
             ], [2, 1]);
     }
     return DockLayoutView(
@@ -485,14 +693,14 @@ class _OperationViewState extends State<OperationView> with SingleTickerProvider
         'info': context.t.operation.tabs.info,
         'spots': context.t.operation.tabs.spots,
         'map': context.t.operation.tabs.map,
-        'operation': context.t.operation.tabs.operation,
+        if (!opSheetEnabled) 'operation': context.t.operation.tabs.operation,
       },
       children: {
         'logging': loggingPanel,
         'info': infoPanel,
         'spots': spotsPanel,
         'map': mapPanel,
-        'operation': settingsPanel,
+        if (!opSheetEnabled) 'operation': settingsPanel,
       },
       onSpecChanged: (node) {
         _dockSpec = node;
@@ -503,7 +711,7 @@ class _OperationViewState extends State<OperationView> with SingleTickerProvider
 
   @override
   Widget build(BuildContext context) {
-    final operation = _operation;
+    final operation = _draftOperation ?? _operation;
     if (operation == null) {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
@@ -546,8 +754,8 @@ class _OperationViewState extends State<OperationView> with SingleTickerProvider
               if (appeared && ShirtSize.of(context).isTwoPane) {
                 if (_customLayout) {
                   _dockKey.currentState?.revealModule('info');
-                } else if (_tabController.index != 0) {
-                  _tabController.animateTo(0);
+                } else if (_tabController?.index != 0) {
+                  _tabController?.animateTo(0);
                 }
               }
             }),
@@ -595,36 +803,86 @@ class _OperationViewState extends State<OperationView> with SingleTickerProvider
           onDelete: () => _delete(operation),
         );
 
-        // ONE tab bar and one page list serve both arrangements — only slot
-        // 0 differs (the logging pane is a tab when narrow, the always-
-        // visible left pane when wide, with Info taking its tab). Keeping a
-        // single declaration means labels, styling, and page pairing can't
-        // drift between the two layouts; the shared _tabController's
-        // length: 4 and _suggestQso's slot-0 assumption complete the
-        // contract.
+        final bool opSheetEnabled = widget.services.settings.experimentEnabled('opsheet');
+
+        final List<Widget> tabs = [];
+        final List<Widget> tabChildren = [];
+
+        if (opSheetEnabled) {
+          if (isTwoPane) {
+            // Wide view + OPSHEET enabled: 3 tabs (Info, Spots, Map)
+            tabs.addAll([
+              Tab(text: context.t.operation.tabs.info),
+              Tab(text: context.t.operation.tabs.spots),
+              Tab(text: context.t.operation.tabs.map),
+            ]);
+            tabChildren.addAll([
+              infoPanel,
+              spotsPanel,
+              mapPanel,
+            ]);
+          } else {
+            // Narrow view + OPSHEET enabled: 4 tabs (QSOs, Info, Spots, Map)
+            tabs.addAll([
+              Tab(text: context.t.operation.tabs.qsos(count: formatNumber(realQsoCount))),
+              Tab(text: context.t.operation.tabs.info),
+              Tab(text: context.t.operation.tabs.spots),
+              Tab(text: context.t.operation.tabs.map),
+            ]);
+            tabChildren.addAll([
+              _KeepAlive(child: loggingPanel),
+              infoPanel,
+              spotsPanel,
+              mapPanel,
+            ]);
+          }
+        } else {
+          if (isTwoPane) {
+            // Wide view + OPSHEET disabled: 4 tabs (Info, Spots, Map, Operation)
+            tabs.addAll([
+              Tab(text: context.t.operation.tabs.info),
+              Tab(text: context.t.operation.tabs.spots),
+              Tab(text: context.t.operation.tabs.map),
+              Tab(text: context.t.operation.tabs.operation),
+            ]);
+            tabChildren.addAll([
+              infoPanel,
+              spotsPanel,
+              mapPanel,
+              settingsPanel,
+            ]);
+          } else {
+            // Narrow view + OPSHEET disabled: 4 tabs (QSOs, Spots, Map, Operation)
+            tabs.addAll([
+              Tab(text: context.t.operation.tabs.qsos(count: formatNumber(realQsoCount))),
+              Tab(text: context.t.operation.tabs.spots),
+              Tab(text: context.t.operation.tabs.map),
+              Tab(text: context.t.operation.tabs.operation),
+            ]);
+            tabChildren.addAll([
+              _KeepAlive(child: loggingPanel),
+              spotsPanel,
+              mapPanel,
+              settingsPanel,
+            ]);
+          }
+        }
+
+        _updateTabControllerIfNeeded(tabs.length);
+
         final tabBar = TabBar(
-          controller: _tabController,
+          controller: _tabController!,
           indicatorSize: TabBarIndicatorSize.tab,
           indicatorWeight: 4,
-          tabs: [
-            Tab(text: isTwoPane ? context.t.operation.tabs.info : context.t.operation.tabs.qsos(count: formatNumber(realQsoCount))),
-            Tab(text: context.t.operation.tabs.spots),
-            Tab(text: context.t.operation.tabs.map),
-            Tab(text: context.t.operation.tabs.operation),
-          ],
+          tabs: tabs,
         );
         final tabView = TabBarView(
-          controller: _tabController,
+          controller: _tabController!,
           // Tabs change only via the tab bar — horizontal swipes would
           // fight the logging strip's own horizontal scrolling (and map
           // panning), so page-swiping is disabled in both layouts.
           physics: const NeverScrollableScrollPhysics(),
-          children: [
-            isTwoPane ? infoPanel : _KeepAlive(child: loggingPanel),
-            spotsPanel,
-            mapPanel,
-            settingsPanel,
-          ],
+          children: tabChildren,
         );
 
         return Scaffold(
@@ -635,7 +893,40 @@ class _OperationViewState extends State<OperationView> with SingleTickerProvider
           // Quick Lookup / branding panes do the same on Home.
           resizeToAvoidBottomInset: false,
           appBar: AppBar(
-            flexibleSpace: windowHeaderGestureArea(),
+            flexibleSpace: GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTap: () => _editActivities(operation),
+              child: Stack(
+                children: [
+                  if (windowHeaderGestureArea() != null)
+                    windowHeaderGestureArea()!,
+                  if (!_activitiesSheetOpen)
+                    Positioned(
+                      bottom: 5,
+                      left: 0,
+                      right: 0,
+                      child: Align(
+                        alignment: Alignment.center,
+                        child: MouseRegion(
+                          cursor: SystemMouseCursors.click,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(vertical: 4),
+                            color: Colors.transparent,
+                            child: Container(
+                              width: 24,
+                              height: 3,
+                              decoration: BoxDecoration(
+                                color: Theme.of(context).colorScheme.onPrimary.withValues(alpha: 0.5),
+                                borderRadius: BorderRadius.circular(1.5),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            ),
             leadingWidth: macOSAwareLeadingWidth(context),
             leading: macOSAwareBackButton(context),
             actions: [
@@ -727,7 +1018,6 @@ class _OperationViewState extends State<OperationView> with SingleTickerProvider
                     ),
                 ],
               ),
-
             ),
             // On two-pane layouts the tabs move into the right-side pane
             // below.

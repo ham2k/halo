@@ -644,6 +644,7 @@ export interface ActivationApi {
 export interface ExtensionDefinition {
   key: string
   name: string
+  shortName?: string
   version: string
   description?: string
   onActivation(api: ActivationApi): void

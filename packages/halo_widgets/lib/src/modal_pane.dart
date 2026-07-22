@@ -56,8 +56,17 @@ Future<T?> showModalPane<T>(
   String? title,
   bool barrierDismissible = true,
   bool scrollable = true,
+  Widget? leading,
+  Widget? trailing,
 }) => Navigator.of(context).push(
-  ModalPaneRoute<T>(builder: builder, title: title, barrierDismissible: barrierDismissible, scrollable: scrollable),
+  ModalPaneRoute<T>(
+    builder: builder,
+    title: title,
+    barrierDismissible: barrierDismissible,
+    scrollable: scrollable,
+    leading: leading,
+    trailing: trailing,
+  ),
 );
 
 class ModalPaneRoute<T> extends PopupRoute<T> {
@@ -65,6 +74,8 @@ class ModalPaneRoute<T> extends PopupRoute<T> {
   final String? title;
   final bool scrollable;
   final bool _barrierDismissible;
+  final Widget? leading;
+  final Widget? trailing;
 
   /// Carries the body's Element (and State) across the presentation flip:
   /// the two presentations have different widget trees, so without this
@@ -72,7 +83,14 @@ class ModalPaneRoute<T> extends PopupRoute<T> {
   /// and destroy in-progress input.
   final _bodyKey = GlobalKey();
 
-  ModalPaneRoute({required this.builder, this.title, this._barrierDismissible = true, this.scrollable = true});
+  ModalPaneRoute({
+    required this.builder,
+    this.title,
+    this._barrierDismissible = true,
+    this.scrollable = true,
+    this.leading,
+    this.trailing,
+  });
 
   @override
   Color? get barrierColor => Colors.black54;
@@ -144,10 +162,13 @@ class _ModalPaneScaffold extends StatelessWidget {
           flexibleSpace: windowHeaderGestureArea(),
           // The back button is the dismissal — same Navigator.pop as the
           // dialog presentation's close button.
-          leadingWidth: macOSAwareLeadingWidth(context),
-          leading: macOSAwareBackButton(context),
+          leadingWidth: route.leading != null ? null : macOSAwareLeadingWidth(context),
+          leading: route.leading ?? macOSAwareBackButton(context),
           title: route.title == null ? null : shrinkToFitText(Text(route.title!)),
-          actions: [windowsCaptionSpacer(context)],
+          actions: [
+            if (route.trailing != null) route.trailing!,
+            windowsCaptionSpacer(context),
+          ],
         ),
         body: SafeArea(
           child: route.scrollable ? SingleChildScrollView(padding: const EdgeInsets.all(24), child: _body()) : _body(),
@@ -205,8 +226,9 @@ class _ModalPaneScaffold extends StatelessWidget {
                         // The same banded header a dialog gets — one shared
                         // widget, so the two families can't drift apart.
                         HaloDialogHeader(
+                          leading: route.leading,
                           title: route.title == null ? null : Text(route.title!),
-                          trailing: IconButton(
+                          trailing: route.trailing ?? IconButton(
                             icon: const Icon(Icons.close),
                             tooltip: 'Close',
                             // maybePop — see the barrier handler above.
@@ -242,6 +264,243 @@ class _ModalPaneScaffold extends StatelessWidget {
               ),
             ),
           ),
+        ),
+      ),
+    );
+  }
+}
+
+Future<T?> showTopModalPane<T>(
+  BuildContext context, {
+  required WidgetBuilder builder,
+  Widget? title,
+  bool barrierDismissible = true,
+  bool scrollable = true,
+  Widget? leading,
+  Widget? trailing,
+}) => Navigator.of(context).push(
+  TopModalPaneRoute<T>(
+    builder: builder,
+    title: title,
+    barrierDismissible: barrierDismissible,
+    scrollable: scrollable,
+    leading: leading,
+    trailing: trailing,
+  ),
+);
+
+class TopModalPaneRoute<T> extends PopupRoute<T> {
+  final WidgetBuilder builder;
+  final Widget? title;
+  final bool scrollable;
+  final bool _barrierDismissible;
+  final Widget? leading;
+  final Widget? trailing;
+
+  final _bodyKey = GlobalKey();
+
+  TopModalPaneRoute({
+    required this.builder,
+    this.title,
+    this._barrierDismissible = true,
+    this.scrollable = true,
+    this.leading,
+    this.trailing,
+  });
+
+  @override
+  Color? get barrierColor => Colors.transparent;
+
+  @override
+  bool get barrierDismissible => _barrierDismissible;
+
+  @override
+  String? get barrierLabel => 'Dismiss';
+
+  @override
+  Duration get transitionDuration => const Duration(milliseconds: 600);
+
+  @override
+  Widget buildPage(BuildContext context, Animation<double> animation, Animation<double> secondaryAnimation) =>
+      _TopModalPaneScaffold(route: this);
+
+  @override
+  Widget buildTransitions(
+    BuildContext context,
+    Animation<double> animation,
+    Animation<double> secondaryAnimation,
+    Widget child,
+  ) {
+    return child;
+  }
+}
+
+class _TopModalPaneScaffold extends StatelessWidget {
+  final TopModalPaneRoute<dynamic> route;
+
+  const _TopModalPaneScaffold({required this.route});
+
+  Widget _body() => KeyedSubtree(
+    key: route._bodyKey,
+    child: Builder(builder: route.builder),
+  );
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final dialogConstraints = haloDialogConstraints(context);
+    final topOffset = MediaQuery.of(context).padding.top + (theme.appBarTheme.toolbarHeight ?? kToolbarHeight);
+    final screenWidth = MediaQuery.sizeOf(context).width;
+    final sheetWidth = screenWidth < maxDialogWidth ? screenWidth : maxDialogWidth;
+    final sheetMaxHeight = dialogConstraints.maxHeight - topOffset;
+
+    final curvedAnimation = CurvedAnimation(parent: route.animation!, curve: Curves.easeOutCubic);
+
+    return ScaffoldMessenger(
+      child: Scaffold(
+        backgroundColor: Colors.transparent,
+        body: Stack(
+          children: [
+            // Dimmed barrier *only* below the header
+            Positioned(
+              top: topOffset,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              child: IgnorePointer(
+                child: AnimatedBuilder(
+                  animation: curvedAnimation,
+                  builder: (context, child) {
+                    return Container(
+                      color: Colors.black.withValues(alpha: 0.54 * curvedAnimation.value),
+                    );
+                  },
+                ),
+              ),
+            ),
+            // Gestures to dismiss when tapping the dimmed barrier below the header
+            Positioned(
+              top: topOffset,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              child: GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onTap: route.barrierDismissible ? () => Navigator.of(context).maybePop() : null,
+                child: const SizedBox.expand(),
+              ),
+            ),
+            // Gestures to dismiss when tapping the view header area (above topOffset)
+            Positioned(
+              top: 0,
+              left: 0,
+              right: 0,
+              height: topOffset,
+              child: GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onTap: route.barrierDismissible ? () => Navigator.of(context).maybePop() : null,
+                child: const SizedBox.expand(),
+              ),
+            ),
+            // The sheet container, clipped so its entry animation stays below the header
+            Positioned(
+              top: topOffset,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              child: ClipRect(
+                child: SlideTransition(
+                  position: Tween<Offset>(begin: const Offset(0, -1), end: Offset.zero).animate(curvedAnimation),
+                  child: Align(
+                    alignment: Alignment.topCenter,
+                    child: GestureDetector(
+                      onTap: () {},
+                      child: ConstrainedBox(
+                        constraints: BoxConstraints(
+                          maxWidth: sheetWidth,
+                          maxHeight: sheetMaxHeight,
+                          minHeight: route.scrollable ? 0 : sheetMaxHeight,
+                        ),
+                        child: Material(
+                          color: theme.dialogTheme.backgroundColor ?? haloDialogBandColor(context),
+                          elevation: 6,
+                          shadowColor: Colors.transparent,
+                          surfaceTintColor: theme.colorScheme.surfaceTint,
+                          borderRadius: const BorderRadius.vertical(bottom: Radius.circular(28)),
+                          clipBehavior: Clip.antiAlias,
+                          child: Stack(
+                            children: [
+                              Column(
+                                mainAxisSize: MainAxisSize.min,
+                                crossAxisAlignment: CrossAxisAlignment.stretch,
+                                children: [
+                                  HaloDialogHeader(
+                                    leading: route.leading,
+                                    title: route.title,
+                                    trailing: route.trailing ?? IconButton(
+                                      icon: const Icon(Icons.close),
+                                      tooltip: 'Close',
+                                      onPressed: () => Navigator.of(context).maybePop(),
+                                    ),
+                                  ),
+                                  if (route.scrollable)
+                                    Flexible(
+                                      child: Material(
+                                        color: theme.colorScheme.surface,
+                                        child: SizedBox(
+                                          width: double.infinity,
+                                          child: SingleChildScrollView(
+                                            padding: const EdgeInsets.fromLTRB(24, 20, 24, 20),
+                                            child: _body(),
+                                          ),
+                                        ),
+                                      ),
+                                    )
+                                  else
+                                    Expanded(
+                                      child: Material(
+                                        color: theme.colorScheme.surface,
+                                        child: _body(),
+                                      ),
+                                    ),
+                                ],
+                              ),
+                              Positioned(
+                                left: 0,
+                                right: 0,
+                                bottom: 4,
+                                child: Align(
+                                  alignment: Alignment.bottomCenter,
+                                  child: MouseRegion(
+                                    cursor: SystemMouseCursors.click,
+                                    child: GestureDetector(
+                                      onTap: () => Navigator.of(context).maybePop(),
+                                      behavior: HitTestBehavior.opaque,
+                                      child: Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                                        child: Container(
+                                          width: 24,
+                                          height: 3,
+                                          decoration: BoxDecoration(
+                                            color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.4),
+                                            borderRadius: BorderRadius.circular(1.5),
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );
