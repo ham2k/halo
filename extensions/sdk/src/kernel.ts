@@ -267,7 +267,7 @@ async function callHookMethod(record: HookRecord, method: string, args: unknown,
   let developerMode = false
   let locale = 'en'
   const settings = (await getSettingsContext()) as
-    | { developerMode?: boolean; locale?: string; appName?: string; distanceUnits?: string }
+    | { developerMode?: boolean; locale?: string; appName?: string; distanceUnits?: string; edition?: string }
     | undefined
   if (settings?.developerMode) {
     developerMode = true
@@ -282,6 +282,7 @@ async function callHookMethod(record: HookRecord, method: string, args: unknown,
     locale,
     appName: settings?.appName,
     distanceUnits: settings?.distanceUnits ?? 'kilometers',
+    edition: settings?.edition,
     // Log-data reads (HookContext.getOperation/getQsos in types.ts). Built
     // per call like the rest of ctx but deliberately NOT cached like
     // settings/account above — log data changes with every QSO, and a
@@ -422,22 +423,36 @@ const kernel = {
       const args = JSON.parse(argsJson)
       if (category === 'account' && method === 'getDefinition') {
         const records = hooksFor('account', null)
-        const entries = records.map((record) => {
-          return {
-            key: record.key,
-            ok: true,
-            value: {
+        const entries = await Promise.all(records.map(async (record) => {
+          try {
+            // A per-edition client (e.g. SOTA's OAuth, ham2k/app-halo-dist#253)
+            // is a function; callHookMethod builds it a ctx the same way any
+            // other hook method call would. A plain object needs neither.
+            // Own try/catch, not just the outer one: one account's oauth2
+            // throwing must not blank out every other account's entry too
+            // (same per-source isolation invokeHookAll gives every caller).
+            const oauth2 =
+              typeof record.hook.oauth2 === 'function'
+                ? await callHookMethod(record, 'oauth2', {})
+                : (record.hook.oauth2 ?? null)
+            return {
               key: record.key,
-              extensionKey: record.extensionKey,
-              label: record.hook.label ?? record.key,
-              description: record.hook.description ?? null,
-              kvKey: record.hook.kvKey ?? record.key ?? record.extensionKey,
-              fields: record.hook.fields ?? [],
-              oauth2: record.hook.oauth2 ?? null,
-              synchronizable: record.hook.synchronizable ?? false,
+              ok: true,
+              value: {
+                key: record.key,
+                extensionKey: record.extensionKey,
+                label: record.hook.label ?? record.key,
+                description: record.hook.description ?? null,
+                kvKey: record.hook.kvKey ?? record.key ?? record.extensionKey,
+                fields: record.hook.fields ?? [],
+                oauth2,
+                synchronizable: record.hook.synchronizable ?? false,
+              }
             }
+          } catch (e) {
+            return { key: record.key, ok: false, error: describeError(e) }
           }
-        })
+        }))
         post({ type: 'result', id, ok: true, value: entries, jsMillis: Date.now() - startedAt })
         return
       }

@@ -14,6 +14,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show rootBundle;
 import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:halo_build_tools/halo_build_tools.dart' show kEdition;
 import 'package:halo_extension_host/halo_extension_host.dart';
 import 'package:halo_core/halo_core.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -951,6 +952,9 @@ class ExtensionService {
           // source, etc. — so the fixed, platform-agnostic "Ham2K Logger", not
           // the UI's platform-tailored name.
           'appName': ham2kMachineName,
+          // 'dev' | 'next' | 'prod' — for a hook whose static config must
+          // vary per build edition (e.g. SOTA's OAuth client, issue #253).
+          'edition': kEdition.name,
           'themeMode': settings?.themeMode.name ?? 'system',
           'fontScale': settings?.fontScale.name ?? 'normal',
           'distanceUnits': settings?.distanceUnits.name ?? 'kilometers',

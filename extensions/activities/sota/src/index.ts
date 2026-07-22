@@ -366,14 +366,23 @@ const AdifFieldsHook = {
 
 const SOTA_SSO_REALM = 'https://sso.sota.org.uk/auth/realms/SOTA'
 
-// HaLo's OAuth webview intercepts the redirect itself, so the redirect URL
-// only has to match what's registered with SOTA's Keycloak client — PoLo's
-// client works as-is. Swap for a HaLo-specific client if SOTA grants one.
-const SOTA_OAUTH2 = {
-  issuer: SOTA_SSO_REALM,
-  clientId: 'polo',
-  redirectUrl: 'com.ham2k.polo.auth://sota',
-  scopes: ['openid'],
+// SOTA granted HaLo a separate Keycloak client per build edition
+// (ham2k/app-halo-dist#253) — each edition is its own app identity
+// (com.ham2k.logger.dev/.next/.prod), so each needs its own registered
+// redirect URL. HaLo's OAuth webview intercepts the redirect itself (see
+// `_doOAuth` above), so the URL only has to match what's registered with
+// the corresponding client; an unset/unrecognized edition falls back to
+// `dev`, the same default `packages/halo_build_tools`' Edition uses for an
+// unset HALO_EDITION define.
+const SOTA_OAUTH2_BY_EDITION: Record<string, { clientId: string; redirectUrl: string }> = {
+  prod: { clientId: 'com.ham2k.logger.prod', redirectUrl: 'com.ham2k.logger.prod.auth://sota' },
+  next: { clientId: 'com.ham2k.logger.next', redirectUrl: 'com.ham2k.logger.next.auth://sota' },
+  dev: { clientId: 'com.ham2k.logger.dev', redirectUrl: 'com.ham2k.logger.dev.auth://sota' },
+}
+
+function sotaOAuth2Config(edition: string | undefined): { issuer: string; clientId: string; redirectUrl: string; scopes: string[] } {
+  const { clientId, redirectUrl } = SOTA_OAUTH2_BY_EDITION[edition ?? 'dev'] ?? SOTA_OAUTH2_BY_EDITION.dev
+  return { issuer: SOTA_SSO_REALM, clientId, redirectUrl, scopes: ['openid'] }
 }
 
 const SOTA_SPOTS_API = 'https://api-db2.sota.org.uk/api/spots'
@@ -409,7 +418,7 @@ async function refreshTokens(ctx: HookContext, { persistSession = true } = {}): 
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
         body: [
           'grant_type=refresh_token',
-          `client_id=${encodeURIComponent(SOTA_OAUTH2.clientId)}`,
+          `client_id=${encodeURIComponent(sotaOAuth2Config(ctx.edition).clientId)}`,
           `refresh_token=${encodeURIComponent(refreshToken)}`,
         ].join('&'),
       })
@@ -488,7 +497,7 @@ const AccountHook = {
   label: 'SOTAWatch',
   description: 'SOTA spots',
   kvKey: 'sota',
-  oauth2: SOTA_OAUTH2,
+  oauth2: (_args: Record<string, never>, ctx: HookContext) => sotaOAuth2Config(ctx.edition),
 
   async testCredentials(credentials: Record<string, string>, ctx: HookContext): Promise<string> {
     try {

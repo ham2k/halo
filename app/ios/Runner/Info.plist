@@ -24,6 +24,13 @@
 				<string>com.ham2k.logger.dev</string>
 				<string>com.ham2k.logger.next</string>
 				<string>com.ham2k.logger.auth</string>
+				<!-- SOTA's per-edition OAuth clients (ham2k/app-halo-dist#253) —
+				     all three listed for the same FOLLOWUP reason as .dev/.next
+				     above: no per-edition Info.plist here yet, so every build
+				     carries every edition's scheme. -->
+				<string>com.ham2k.logger.prod.auth</string>
+				<string>com.ham2k.logger.next.auth</string>
+				<string>com.ham2k.logger.dev.auth</string>
 				<string>com.ham2k.polo</string>
 				<string>com.ham2k.polo.auth</string>
 			</array>

@@ -19,6 +19,12 @@ export interface HookContext {
   /// The user's distance-units preference ('kilometers' | 'miles') — for
   /// extensions that localize units (e.g. WEATHER's °F vs °C).
   distanceUnits?: string
+  /// The running build's edition ('dev' | 'next' | 'prod' — see
+  /// packages/halo_build_tools/lib/src/edition.dart), for a hook whose
+  /// static configuration must vary per-edition (e.g. SOTA's OAuth client:
+  /// each edition's app identity is registered as its own client with
+  /// SOTA's Keycloak, ham2k/app-halo-dist#253).
+  edition?: string
   /// Fetches one operation's QSON by uuid, with `uuid` folded in — the same
   /// shape hooks receive as an `operation` argument (see `qsonPayloadFor`
   /// on the Dart side). Resolves null when the uuid is unknown. For hooks
@@ -593,7 +599,12 @@ export interface AccountHook {
   /// control will be scoped.
   kvKey?: string
   fields?: AccountField[]
-  oauth2?: OAuth2Config
+  /// A plain config, or a function for a client that varies per build
+  /// edition (`ctx.edition`) — e.g. SOTA registers a separate Keycloak
+  /// client per edition (ham2k/app-halo-dist#253). Called the same way any
+  /// other hook method is (`fn(args, ctx)`, `args` always `{}`) — see
+  /// docs/extensions/hooks.md's `account` section.
+  oauth2?: OAuth2Config | ((args: Record<string, never>, ctx: HookContext) => OAuth2Config | Promise<OAuth2Config>)
   /// Whether this account's stored credentials and session sync across the
   /// user's Apple devices via iCloud Keychain (`kSecAttrSynchronizable`).
   /// Defaults to `false` — device-local. Set `true` ONLY for account-level

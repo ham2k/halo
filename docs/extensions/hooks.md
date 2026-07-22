@@ -18,6 +18,10 @@ hook method receives `(args, ctx)` where `ctx: HookContext` is:
   desktop, "Ham2K Portable Logger" on mobile) — use this instead of a
   hardcoded name when identifying the app to an external service or file
   (e.g. a spot's `source` field, an ADIF `PROGRAMID` header).
+* `edition?: string` — The running build's edition: `'dev' | 'next' | 'prod'`
+  (see `packages/halo_build_tools/lib/src/edition.dart`). For a hook whose
+  static config must vary per-edition — e.g. SOTA's OAuth client, since each
+  edition is a distinct app identity registered as its own client.
 * `getOperation?(uuid)` / `getQsos?(operationUuid)` — log-data reads, for
   hooks that only receive part of the picture as arguments (e.g. a `command`
   hook handed the operation it's typed into, needing the existing QSOs —
@@ -446,10 +450,22 @@ Implemented by: `settings` (the core General panel).
 
 ## ✅ `account` — account connections
 
-Account connections (QRZ, LoFi): credential fields, `testCredentials`, and
-optional OAuth2, surfaced in `SettingsView`'s Accounts panel via
+Account connections (QRZ, LoFi, SOTA): credential fields, `testCredentials`,
+and optional OAuth2, surfaced in `SettingsView`'s Accounts panel via
 `ExtensionService.getAccounts`/`testCredentials`. Credentials live in the
-platform keychain, keyed by the account's `kvKey`. Implemented by: `qrz`.
+platform keychain, keyed by the account's `kvKey`. Implemented by: `qrz`
+(username/password) and `sota` (OAuth2 via Keycloak — `sso.sota.org.uk`; the
+host runs the whole PKCE flow itself, see `_doOAuth` in
+`app/lib/views/settings_view.dart`).
+
+**`oauth2`** (optional) — either a plain `OAuth2Config`
+(`{issuer, clientId, redirectUrl, scopes}`), or, for a client that varies by
+build edition, a function `(args, ctx) => OAuth2Config` called the same way
+any other hook method is (`ctx.edition` is `'dev' | 'next' | 'prod'` — see
+`HookContext.edition` below). SOTA registers a separate Keycloak client per
+edition (ham2k/app-halo-dist#253 — each edition is its own app identity,
+`com.ham2k.logger.dev`/`.next`/`.prod`, each needing its own redirect URL
+registered with SOTA) rather than sharing one client across builds.
 
 **`synchronizable`** (optional, default `false`) — on Apple platforms (macOS
 and iOS), when `true` the account's stored credentials and session sync across
