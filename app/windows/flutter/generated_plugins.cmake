@@ -4,6 +4,7 @@
 
 list(APPEND FLUTTER_PLUGIN_LIST
   app_links
+  auto_updater_windows
   file_selector_windows
   flutter_inappwebview_windows
   flutter_js

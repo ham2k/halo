@@ -32,6 +32,7 @@ import 'config/dev_flags.dart';
 import 'config/experiments.dart';
 import 'config/release_notes.dart';
 import 'config/version.dart';
+import 'services/auto_update_service.dart';
 import 'services/deep_link_service.dart';
 import 'services/export_service.dart';
 import 'services/extension_service.dart';
@@ -79,6 +80,11 @@ void main() {
     unawaited(services.updates.checkAndApply().then((updated) {
       if (updated) showPatchReadyNotice(services.statusBar, const RestartService());
     }));
+
+    // Desktop binary self-update: point Sparkle/WinSparkle at this build's
+    // per-edition appcast and run a background check (docs/releases.md §3.2).
+    // Fire-and-forget; no-op off desktop / in debug / for the Dev edition.
+    unawaited(const AutoUpdateService().start());
 
     // Dev nicety: launch with POLO_OPEN_FIRST_OP=1 in the environment (e.g.
     // SIMCTL_CHILD_POLO_OPEN_FIRST_OP=1 simctl launch ...) to jump straight
