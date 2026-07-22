@@ -10,6 +10,7 @@ export 'src/halo_dialog.dart';
 export 'src/keyboard_dismiss.dart';
 export 'src/layout.dart';
 export 'src/logging_controls.dart';
+export 'src/logging_controls_controller.dart';
 export 'src/mdi_icons.dart';
 export 'src/modal_pane.dart';
 export 'src/pane_divider.dart';

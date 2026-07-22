@@ -21,4 +21,30 @@ void main() {
 
     DevBridge.instance.stateProvider = null; // don't leak into other tests
   });
+
+  test('setField/action delegate to the logging handlers, no-op when unset', () {
+    DevBridge.instance.setFieldHandler = null;
+    DevBridge.instance.actionHandler = null;
+    // No logging screen active — never throw.
+    expect(() => DevBridge.instance.setField('call', 'W1AW'), returnsNormally);
+    expect(() => DevBridge.instance.action('log'), returnsNormally);
+
+    String? field;
+    String? value;
+    String? action;
+    DevBridge.instance.setFieldHandler = (f, v) {
+      field = f;
+      value = v;
+    };
+    DevBridge.instance.actionHandler = (a) => action = a;
+
+    DevBridge.instance.setField('call', 'W1AW');
+    expect(field, 'call');
+    expect(value, 'W1AW');
+    DevBridge.instance.action('log');
+    expect(action, 'log');
+
+    DevBridge.instance.setFieldHandler = null;
+    DevBridge.instance.actionHandler = null;
+  });
 }

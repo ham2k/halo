@@ -41,6 +41,7 @@ import 'package:flutter_markdown/flutter_markdown.dart';
 import 'form_renderer.dart';
 import 'icon_resolver.dart';
 import 'keyboard_dismiss.dart';
+import 'logging_controls_controller.dart';
 import 'mdi_icons.dart';
 import 'number_keys.dart';
 import 'platform_chrome.dart';
@@ -401,10 +402,15 @@ class LoggingControls extends StatefulWidget {
   final bool showExtraInNumbersRow;
   final bool vibrateNumbersRow;
 
+  /// Optional imperative handle for driving the controls from outside (set the
+  /// call, log, wipe) — used by the app's dev bridge. Attached on mount.
+  final LoggingControlsController? controller;
+
   const LoggingControls({
     super.key,
     required this.operation,
     required this.qsosRepository,
+    this.controller,
     this.qsos = const [],
     this.onLogged,
     this.onCallListLogged,
@@ -854,11 +860,34 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     // didUpdateWidget): score it so its pills show. Guarded on _callInfoActive
     // so this only schedules a timer here — never setStates during initState.
     if (widget.editingQso != null && _callInfoActive) _scheduleScore();
+    // Wire the imperative handle (used by the app's dev bridge) so the call
+    // field / Log / Wipe can be driven from outside the widget.
+    widget.controller?.attach(setField: _devSetField, submit: _log, wipe: _wipe);
+  }
+
+  /// Sets a primary field as if typed — the controller listeners fire, so the
+  /// debounced lookup/scoring run just like user input. `call` only for now.
+  void _devSetField(String field, String value) {
+    switch (field) {
+      case 'call':
+        // Same single-assignment idiom as the `setCallField` command path
+        // (text + end cursor in one write, then focus) so `_onCallChanged`
+        // reacts exactly as if typed.
+        _callController.value = TextEditingValue(
+          text: value,
+          selection: TextSelection.collapsed(offset: value.length),
+        );
+        _callFocus.requestFocus();
+    }
   }
 
   @override
   void didUpdateWidget(LoggingControls oldWidget) {
     super.didUpdateWidget(oldWidget);
+    if (oldWidget.controller != widget.controller) {
+      oldWidget.controller?.detach();
+      widget.controller?.attach(setField: _devSetField, submit: _log, wipe: _wipe);
+    }
     if (oldWidget.editingQso?.uuid != widget.editingQso?.uuid) {
       _resetEditingSessionState();
       if (widget.editingQso != null) {
@@ -1097,6 +1126,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
 
   @override
   void dispose() {
+    widget.controller?.detach();
     WidgetsBinding.instance.removeObserver(this);
     _clockTicker?.cancel();
     _lookupDebounce?.cancel();

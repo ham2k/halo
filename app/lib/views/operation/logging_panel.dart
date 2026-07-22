@@ -6,6 +6,7 @@ import 'package:halo_core/halo_core.dart';
 import 'package:halo_widgets/halo_widgets.dart';
 import 'package:intl/intl.dart';
 
+import '../../config/dev_bridge.dart';
 import '../../main.dart';
 import '../operation_dialogs.dart';
 import '../../i18n/strings.g.dart';
@@ -85,6 +86,9 @@ class LoggingPanel extends StatefulWidget {
 
 class _LoggingPanelState extends State<LoggingPanel> {
   Qso? _selectedQso;
+  // Imperative handle into LoggingControls, used to drive the dev bridge
+  // (window.__halo setField/tap) when it's installed (dev/preview web).
+  final _loggingController = LoggingControlsController();
   late List<String> _controlOrder =
       widget.services.settings.secondaryControlsOrder;
   late Set<String> _hiddenControls =
@@ -109,11 +113,32 @@ class _LoggingPanelState extends State<LoggingPanel> {
   void initState() {
     super.initState();
     widget.services.settings.addListener(_onSettingsChanged);
+    // Route the dev bridge's actions to this panel's LoggingControls — only
+    // when the bridge is installed (dev/preview web), so nothing runs in
+    // production or on native.
+    if (DevBridge.instance.installed) {
+      DevBridge.instance.setFieldHandler = _loggingController.setField;
+      DevBridge.instance.actionHandler = _devAction;
+    }
+  }
+
+  void _devAction(String id) {
+    switch (id) {
+      case 'log':
+        _loggingController.submit();
+      case 'wipe':
+        _loggingController.wipe();
+    }
   }
 
   @override
   void dispose() {
     widget.services.settings.removeListener(_onSettingsChanged);
+    // Only clear if still ours — a newer logging panel may have taken over.
+    if (DevBridge.instance.actionHandler == _devAction) {
+      DevBridge.instance.setFieldHandler = null;
+      DevBridge.instance.actionHandler = null;
+    }
     super.dispose();
   }
 
@@ -305,6 +330,7 @@ class _LoggingPanelState extends State<LoggingPanel> {
       children: [
         Expanded(child: list),
         LoggingControls(
+          controller: _loggingController,
           operation: widget.operation,
           qsosRepository: widget.services.qsos,
           qsos: widget.qsos,

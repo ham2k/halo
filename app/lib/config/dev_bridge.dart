@@ -35,4 +35,17 @@ class DevBridge {
   /// Just the current callsign guess (grid/state/name/entityPrefix/…) from the
   /// snapshot, or null.
   Object? guess() => state()['guess'];
+
+  // ── Actions (control side) ────────────────────────────────────────────────
+  // Wired by the logging screen (LoggingPanel) to drive LoggingControls; null
+  // when no logging screen is active. No-op when unset.
+
+  /// Sets a compose field (`call` today) as if typed.
+  void Function(String field, String value)? setFieldHandler;
+
+  /// Performs a compose action (`log`, `wipe`).
+  void Function(String action)? actionHandler;
+
+  void setField(String field, String value) => setFieldHandler?.call(field, value);
+  void action(String id) => actionHandler?.call(id);
 }
