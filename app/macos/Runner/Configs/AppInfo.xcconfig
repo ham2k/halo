@@ -14,16 +14,16 @@
 // that override — included last — still drives PRODUCT_NAME/bundle id below.
 HALO_EDITION = dev
 
-// Per-edition display name — the Dock/Finder/menu label. It sits under the app
-// icon (which already carries the "Ham2K" mark), so per the branding rule it
-// drops the "Ham2K" prefix and names the platform: "Mac Logger" (+ edition).
-// The bundle id is a plain `.<edition>` suffix, but the names aren't a uniform
-// pattern, so they are mapped here and selected by nested substitution:
-// $(HALO_PRODUCT_NAME_$(HALO_EDITION)). (The distributable artifact FILE, which
-// stands alone with no icon, re-adds "Ham2K" — see app_dist/ci/build-macos.sh.)
-HALO_PRODUCT_NAME_dev = Mac Logger (Dev)
-HALO_PRODUCT_NAME_next = Mac Logger (Next)
-HALO_PRODUCT_NAME_prod = Mac Logger
+// Per-edition display name — the Dock/Finder/menu label + the .app file name.
+// Carries the "Ham2K" brand: the .app stands on its own in /Applications, where
+// the short platform-only "Mac Logger" read as generic. The bundle id is a plain
+// `.<edition>` suffix, but the names aren't a uniform pattern, so they are mapped
+// here and selected by nested substitution: $(HALO_PRODUCT_NAME_$(HALO_EDITION)).
+// The edition qualifier stays so the editions install side by side. (The
+// distributable artifact FILE keeps "Ham2K Logger …" — see build-macos.sh.)
+HALO_PRODUCT_NAME_dev = Ham2K Mac Logger (Dev)
+HALO_PRODUCT_NAME_next = Ham2K Mac Logger (Next)
+HALO_PRODUCT_NAME_prod = Ham2K Mac Logger
 
 // The application's name — drives the Dock/Finder icon label, the app
 // menu (top-left), and the About/Quit menu items (MainMenu.xib's "APP_NAME"
