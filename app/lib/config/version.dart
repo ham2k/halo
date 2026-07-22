@@ -36,6 +36,11 @@ const kPublicVersionInfo = PublicVersion(
 /// narrowing.
 const kBuildNumber = 82;
 
+/// The short git SHA of the commit this build was cut from, baked in at build
+/// time via `--dart-define=HALO_GIT_SHA=…` (CI). Empty for local/dev builds.
+/// Shown in the About panel to identify exactly which build is running.
+const kGitSha = String.fromEnvironment('HALO_GIT_SHA');
+
 /// e.g. `26.8.1-alpha1`.
 final kPublicVersion = kPublicVersionInfo.value;
 

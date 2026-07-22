@@ -31,8 +31,13 @@ final Future<PackageInfo> _packageInfoFuture = PackageInfo.fromPlatform();
 Future<String> versionDetailsText() async {
   final buildNumber = (await PackageInfo.fromPlatform()).buildNumber;
   final version = buildNumber.isEmpty ? 'Version $kPublicVersion' : 'Version $kPublicVersion - Build $buildNumber';
-  return '$kEditionVersionName\n$version';
+  return '$kEditionVersionName\n$version${_gitShaSuffix()}';
 }
+
+/// ` (a1b2c3d)` when the build baked in a git SHA via --dart-define (CI), else
+/// empty. Appended to the About screen's version/build detail line so the exact
+/// build is identifiable — handy for confirming an auto-update actually landed.
+String _gitShaSuffix() => kGitSha.isEmpty ? '' : ' ($kGitSha)';
 
 /// `August '26 · 26.8.0` until the native build number loads, then
 /// `August '26 · 26.8.0 (build 1)`. With [detailed], instead renders two
@@ -88,9 +93,10 @@ class VersionLabel extends StatelessWidget {
             children: [
               SelectableText(kEditionVersionName, style: firstLineStyle, textAlign: textAlign),
               SelectableText(
-                buildNumber == null || buildNumber.isEmpty
-                    ? 'Version $kPublicVersion'
-                    : 'Version $kPublicVersion - Build $buildNumber',
+                (buildNumber == null || buildNumber.isEmpty
+                        ? 'Version $kPublicVersion'
+                        : 'Version $kPublicVersion - Build $buildNumber') +
+                    _gitShaSuffix(),
                 style: detailStyle,
                 textAlign: textAlign,
               ),
