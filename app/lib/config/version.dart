@@ -34,7 +34,7 @@ const kPublicVersionInfo = PublicVersion(
 /// (§2.2). Small enough to fit every platform's field (Windows/Linux cap it at
 /// 16 bits), so unlike the old date-encoded id it needs no per-platform
 /// narrowing.
-const kBuildNumber = 82;
+const kBuildNumber = 83;
 
 /// The short git SHA of the commit this build was cut from, baked in at build
 /// time via `--dart-define=HALO_GIT_SHA=…` (CI). Empty for local/dev builds.
