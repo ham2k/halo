@@ -524,6 +524,44 @@ class _HomeQuickLookupState extends State<HomeQuickLookup> {
   String? _lookupFor;
   Map<String, dynamic>? _lookupResult;
 
+  /// The last interpret() result retained for the field's space-restriction
+  /// — deliberately separate from [_currentInterpretation], which resets
+  /// synchronously on every keystroke (for the describe-message UI): the
+  /// field's formatter must not snap back to denying spaces mid-command
+  /// (ham2k/app-halo-dist#190). Same "retained interpretation" pattern as
+  /// `logging_controls.dart`'s call field, scoped down to just spaces since
+  /// this field otherwise accepts any character.
+  Map<String, dynamic>? _retainedInterpretation;
+
+  /// Matches text the space-denying formatter would leave untouched — see
+  /// [_retainInterpretation].
+  static final _noSpaceSafeText = RegExp(r'^\S*$');
+
+  /// Folds a fresh interpret() result into [_retainedInterpretation]. A
+  /// non-null result always replaces the previous one. A null result only
+  /// clears it when the current text has no space the formatter would
+  /// otherwise strip on the next keystroke — mirrors
+  /// `logging_controls.dart`'s `_retainInterpretation`.
+  void _retainInterpretation(Map<String, dynamic>? result) {
+    if (result != null) {
+      _retainedInterpretation = result;
+    } else if (_noSpaceSafeText.hasMatch(_controller.text)) {
+      _retainedInterpretation = null;
+    }
+  }
+
+  /// Whether the field is mid-command free-text entry — spaces stay
+  /// allowed. Two ways in, both requiring a retained command: it's still
+  /// awaiting its parameters (`expectsParams`), or the text already holds a
+  /// space the formatter would otherwise delete on the next keystroke.
+  bool get _commandExpectsParams =>
+      _retainedInterpretation != null &&
+      (_retainedInterpretation!['expectsParams'] == true || !_noSpaceSafeText.hasMatch(_controller.text));
+
+  /// Whether the retained command declared `mixedCase: true` (e.g. NOTE,
+  /// whose parameter is free prose) — also keeps spaces allowed.
+  bool get _commandMixedCase => _retainedInterpretation?['mixedCase'] == true;
+
   @override
   void initState() {
     super.initState();
@@ -603,6 +641,7 @@ class _HomeQuickLookupState extends State<HomeQuickLookup> {
         _lookupResult = null;
         _commandMessage = null;
         _isError = false;
+        _retainedInterpretation = null;
       });
       return;
     }
@@ -618,6 +657,7 @@ class _HomeQuickLookupState extends State<HomeQuickLookup> {
         if (!mounted || _controller.text.trim() != text) return;
         setState(() {
           _currentInterpretation = result;
+          _retainInterpretation(result);
           _isConfirmation = false;
           if (result != null && result['error'] is String) {
             _commandMessage = result['error'] as String;
@@ -708,6 +748,7 @@ class _HomeQuickLookupState extends State<HomeQuickLookup> {
       final confirm = executable['confirm'];
       setState(() {
         _currentInterpretation = null;
+        _retainedInterpretation = null;
         _isConfirmation = true;
         _isError = false;
         if (confirm is String) {
@@ -738,6 +779,7 @@ class _HomeQuickLookupState extends State<HomeQuickLookup> {
         _lookupResult = null;
         _commandMessage = null;
         _isError = false;
+        _retainedInterpretation = null;
       });
     }
   }
@@ -891,6 +933,11 @@ class _HomeQuickLookupState extends State<HomeQuickLookup> {
               textCapitalization: TextCapitalization.characters,
               inputFormatters: [
                 if (isMobilePlatform) MobileDotToSlashFormatter(),
+                // Spaces are only meaningful mid-command (a command's free-
+                // text parameters, e.g. "NOTE hello") — otherwise they'd
+                // just corrupt a callsign/command being typed
+                // (ham2k/app-halo-dist#190).
+                if (!_commandExpectsParams && !_commandMixedCase) FilteringTextInputFormatter.deny(RegExp(r'\s')),
                 TextInputFormatter.withFunction(
                   (oldValue, newValue) => newValue.copyWith(text: newValue.text.toUpperCase()),
                 ),

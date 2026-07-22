@@ -53,6 +53,12 @@ class _CannedCommandExtensions extends ExtensionService {
         ],
       };
     }
+    // A recognized prefix still awaiting its (free-text) parameter — same
+    // shape as the real RELOAD hook.
+    if (trimmed == 'RELOAD') return {'describe': 'reload what?', 'expectsParams': true};
+    // A command whose parameter is free prose, case and all — same shape
+    // as the real NOTE hook.
+    if (trimmed.startsWith('NOTE')) return {'describe': 'add a note', 'mixedCase': true};
     return null;
   }
 }
@@ -106,6 +112,56 @@ void main() {
     // Drain the confirm message's 5s auto-clear timer for the binding's
     // pending-timer invariant.
     await tester.pump(const Duration(seconds: 5));
+  });
+
+  group('hardening the field against stray spaces (issue #190)', () {
+    Future<HaLoServices> makeServices() async {
+      SharedPreferences.setMockInitialValues({});
+      final settings = SettingsService(await SharedPreferences.getInstance());
+      final db = HaLoDatabase(NativeDatabase.memory());
+      addTearDown(db.close);
+      return HaLoServices(db, settings, extensions: _CannedCommandExtensions());
+    }
+
+    Future<void> pumpLookup(WidgetTester tester, HaLoServices services) => tester.pumpWidget(
+          TranslationProvider(
+            child: MaterialApp(home: Scaffold(body: HomeQuickLookup(services: services))),
+          ),
+        );
+
+    testWidgets('a plain space (no command in progress) is stripped, not inserted', (tester) async {
+      await pumpLookup(tester, await makeServices());
+
+      await tester.enterText(find.byType(TextField), 'W1 AW');
+      await tester.pump();
+      expect(tester.widget<TextField>(find.byType(TextField)).controller!.text, 'W1AW');
+    });
+
+    testWidgets('a command still awaiting its parameter keeps the separating space', (tester) async {
+      await pumpLookup(tester, await makeServices());
+
+      await tester.enterText(find.byType(TextField), 'RELOAD');
+      await tester.pump(const Duration(milliseconds: 200)); // retains expectsParams
+
+      await tester.enterText(find.byType(TextField), 'RELOAD PARAM');
+      await tester.pump();
+      expect(tester.widget<TextField>(find.byType(TextField)).controller!.text, 'RELOAD PARAM');
+
+      await tester.pump(const Duration(milliseconds: 200)); // drain the next describe debounce
+    });
+
+    testWidgets('a mixedCase command keeps every space in its free-text parameter', (tester) async {
+      await pumpLookup(tester, await makeServices());
+
+      await tester.enterText(find.byType(TextField), 'NOTE');
+      await tester.pump(const Duration(milliseconds: 200)); // retains mixedCase
+
+      await tester.enterText(find.byType(TextField), 'NOTE hello there');
+      await tester.pump();
+      expect(tester.widget<TextField>(find.byType(TextField)).controller!.text, 'NOTE HELLO THERE');
+
+      await tester.pump(const Duration(milliseconds: 200)); // drain the next describe debounce
+    });
   });
 
   group('mobile numbers row on the quick lookup (issue #27)', () {
