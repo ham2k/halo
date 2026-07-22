@@ -8,6 +8,7 @@ import 'package:halo_widgets/halo_widgets.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 
 import '../config/dev_flags.dart';
+import '../config/web_preview_label.dart';
 import '../main.dart';
 import '../services/settings_service.dart';
 import 'header_profile_label.dart';
@@ -19,10 +20,19 @@ import 'version_label.dart';
 import '../i18n/strings.g.dart';
 
 /// A free-form developer label shown in the home header after the edition
-/// badge — set with `--dart-define=DEV_LABEL=…` or (off web) a `DEV_LABEL`
-/// environment variable, to mark which dev build/session is running. Empty
-/// and inert in release builds. Resolved once (a lazy top-level final).
-final String _devLabel = debugEnvFlag(const String.fromEnvironment('DEV_LABEL'), 'DEV_LABEL');
+/// badge — marks which dev build/session is running. Set with
+/// `--dart-define=DEV_LABEL=…` or (off web) a `DEV_LABEL` environment variable;
+/// that explicit label is dev-only (stripped in release). Web preview
+/// deployments are themselves release builds, so they instead fall back to the
+/// preview name derived from the URL (ham2k/app-halo-dist#234). Empty
+/// otherwise. Resolved once (a lazy top-level final).
+final String _devLabel = _resolveDevLabel();
+
+String _resolveDevLabel() {
+  final explicit = debugEnvFlag(const String.fromEnvironment('DEV_LABEL'), 'DEV_LABEL');
+  if (explicit.isNotEmpty) return explicit;
+  return webPreviewLabel();
+}
 
 /// HaLo home-screen style row: bold "CALL title" line with count pill,
 /// subtitle line with refs/description and right-aligned date.
