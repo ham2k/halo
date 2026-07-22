@@ -21,6 +21,8 @@ import 'package:url_launcher/url_launcher.dart';
 import 'settings_service.dart';
 import 'status_bar_service.dart';
 import 'package:halo_widgets/halo_widgets.dart';
+import '../config/dev_flags.dart';
+import '../config/dev_fixture.dart';
 import '../config/user_agent.dart';
 import '../i18n/strings.g.dart';
 import '../main.dart';
@@ -1277,6 +1279,13 @@ class ExtensionService {
     }
   }
 
+  /// Deterministic offline lookups (#238): with `--dart-define=HALO_STUB_LOOKUPS=1`
+  /// in a dev build, [lookupCall] returns a fixed canned result instead of
+  /// invoking the (network/credentialed) lookup extensions. `debugEnvFlag`
+  /// returns '' in release, so this can never engage there.
+  static final bool stubLookups =
+      debugEnvFlag(const String.fromEnvironment('HALO_STUB_LOOKUPS'), 'HALO_STUB_LOOKUPS').isNotEmpty;
+
   /// Runs the full lookup pipeline for one callsign — the hardcoded
   /// callsign-annotation pre-step plus every registered `lookup` hook
   /// (QRZ, HamDB, POTA, SOTA…), merged with locationScope-aware rules —
@@ -1293,6 +1302,7 @@ class ExtensionService {
     required Map<String, dynamic> operation,
     bool online = true,
   }) async {
+    if (stubLookups) return call.length < 3 ? null : stubbedLookupResult(call);
     final host = _host;
     if (host == null || call.length < 3) return null;
 

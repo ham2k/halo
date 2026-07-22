@@ -30,6 +30,7 @@ import 'views/release_overlay.dart';
 import 'views/splash_view.dart';
 import 'config/dev_bridge.dart';
 import 'config/dev_bridge_installer.dart';
+import 'config/dev_fixture.dart';
 import 'config/dev_flags.dart';
 import 'config/experiments.dart';
 import 'config/release_notes.dart';
@@ -102,6 +103,12 @@ void main() {
     // Fire-and-forget; no-op off desktop / in debug / for the Dev edition.
     unawaited(const AutoUpdateService().start());
 
+    // Wire window.__halo.resetFixture() to a real reset now that services
+    // exist — only in dev/web where the bridge is installed (#238).
+    if (DevBridge.instance.installed) {
+      DevBridge.instance.resetFixtureHandler = () => resetDevFixture(services);
+    }
+
     // Dev nicety: launch with POLO_OPEN_FIRST_OP=1 in the environment (e.g.
     // SIMCTL_CHILD_POLO_OPEN_FIRST_OP=1 simctl launch ...) to jump straight
     // into the most recent operation.
@@ -125,6 +132,49 @@ void main() {
     // unrelated unhandled-rejection for the openFirstOp dev nicety above.
     debugPrint('[boot] bootstrap() failed: $error');
   });
+}
+
+/// Resets the app to a known fixture for agent/dev verification (#238): back up
+/// then clear all operations + QSOs, restore font scale and distance units to
+/// their defaults, seed a fresh operation with canned QSOs, and navigate into
+/// it. Returns a summary including the `backupId` of the pre-reset snapshot.
+/// Backs `window.__halo.resetFixture()`; only reachable in dev/web (see
+/// `main()`), so it never runs in release.
+Future<Map<String, dynamic>> resetDevFixture(HaLoServices services) async {
+  // Clean slate — but back the live data up first rather than hard-deleting, so
+  // a stray reset over real data is recoverable. Copies operations + QSOs into
+  // the OperationsBackup/QsosBackup tables under a shared backupId, then clears
+  // the live tables: the same copy-then-delete the sync engine uses when
+  // replacing local data. One transaction so a crash mid-clear can't leave
+  // orphaned QSOs. The drift streams (watchAll) re-emit, so the UI follows.
+  final backupId = DateTime.now().toUtc().toIso8601String();
+  await services.db.transaction(() async {
+    await services.operations.backupAndClearAll(backupId);
+    await services.qsos.backupAndClearAll(backupId);
+  });
+
+  // Known UI state — the settings that most often skew visual verification.
+  await services.settings.setFontScale(FontScale.normal);
+  await services.settings.setDistanceUnits(DistanceUnits.kilometers);
+
+  final operatorCall = services.settings.activeProfile.operatorCall;
+  final stationCall = operatorCall.isNotEmpty ? operatorCall : 'N0DEV';
+  final operation = await services.operations.create(stationCall: stationCall, title: 'HALO Fixture');
+
+  final seeds = fixtureQsos(DateTime.now().toUtc().millisecondsSinceEpoch);
+  for (final qso in seeds) {
+    await services.qsos.add(operation.uuid, qso);
+  }
+
+  // Land in the seeded operation, clearing whatever was on the stack (keep the
+  // home route beneath so Back still works).
+  navigatorKey.currentState?.pushAndRemoveUntil(
+    MaterialPageRoute(builder: (_) => OperationView(services: services, operationUuid: operation.uuid)),
+    (route) => route.isFirst,
+  );
+
+  // `backupId` lets a caller find the pre-reset data in the backup tables.
+  return {'uuid': operation.uuid, 'stationCall': stationCall, 'qsoCount': seeds.length, 'backupId': backupId};
 }
 
 /// Shows `SplashScreen` on the very first frame — before `bootstrap()`'s

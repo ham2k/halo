@@ -54,6 +54,23 @@ class DevBridge {
   void setField(String field, String value) => setFieldHandler?.call(field, value);
   void action(String id) => actionHandler?.call(id);
 
+  // ── Fixture reset (#238) ──────────────────────────────────────────────────
+
+  /// Wired in `main()` (when [installed]) to reset the app to a known fixture —
+  /// back up then clear operations + QSOs, set font scale/units to defaults,
+  /// seed a fresh operation with canned QSOs, and navigate to it. Returns a
+  /// summary (`{uuid, qsoCount, backupId, …}`). Null when unregistered.
+  ///
+  /// Registered asynchronously (after services boot), so a caller should `await`
+  /// [ready] before invoking `resetFixture()` — otherwise it hits the no-handler
+  /// path below.
+  Future<Map<String, dynamic>> Function()? resetFixtureHandler;
+
+  /// Backs `window.__halo.resetFixture()`. A no-op summary when no handler is
+  /// registered (native / production, or before boot completes — see above).
+  Future<Map<String, dynamic>> resetFixture() =>
+      resetFixtureHandler?.call() ?? Future.value(<String, dynamic>{'error': 'no fixture handler'});
+
   // ── Structured log (#237) ─────────────────────────────────────────────────
 
   /// Recent structured dev-log events (`[qso]`, `[lookup]`, …), oldest-first —

@@ -33,6 +33,9 @@ void installDevBridge() {
   // Buffered structured events ([qso], [lookup], …) — query recent history
   // instead of only streaming the console. #237.
   bridge['recentLog'] = (() => DevBridge.instance.recentLog().jsify()).toJS;
+  // Reset to a known fixture (wipe + seed + known settings), returning a
+  // Promise of the summary. #238.
+  bridge['resetFixture'] = (() => DevBridge.instance.resetFixture().then((r) => r.jsify()).toJS).toJS;
   globalContext['__halo'] = bridge;
   DevBridge.instance.installed = true;
 }
