@@ -96,6 +96,13 @@ class Win32Window {
   // Update the window frame's theme to match the system theme.
   static void UpdateTheme(HWND const window);
 
+  // Persist the window's placement (position, size, and maximized state) to
+  // the registry on close, and restore it during Create()/Show() so the
+  // window comes back where it was with no launch flash. (Remember window
+  // geometry across launches.)
+  void SaveWindowPlacement();
+  void RestoreWindowPlacement();
+
   // Subclass proc installed on the Flutter child view (SetChildContent): the
   // child covers the whole client area of the chromeless window, so it must
   // return HTTRANSPARENT in the top resize band for the parent to receive
@@ -113,6 +120,10 @@ class Win32Window {
   // Resize floor in logical pixels; 0 means "not set" (no floor).
   double min_content_width_ = 0;
   double min_content_height_ = 0;
+
+  // Set from a restored placement so Show() re-maximizes the window instead of
+  // revealing it at the smaller restore-rect size.
+  bool restore_maximized_ = false;
 
   // window handle for top level window.
   HWND window_handle_ = nullptr;

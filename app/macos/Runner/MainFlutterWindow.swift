@@ -18,11 +18,36 @@ class MainFlutterWindow: NSWindow {
 
   private var windowChromeChannel: FlutterMethodChannel?
 
+  // The frame restored from the saved geometry, held only through the initial
+  // layout. Flutter resizes the window once shortly after its first frame
+  // (~1s), which would clobber the restore; while this is set, that resize is
+  // snapped back to the restored frame. Cleared after a short delay so the
+  // user's own resizes are then respected (and autosaved).
+  private var restoredFrame: NSRect?
+
   override func awakeFromNib() {
     let flutterViewController = FlutterViewController()
     let windowFrame = self.frame
     self.contentViewController = flutterViewController
     self.setFrame(windowFrame, display: true)
+
+    // Remember the window's position and size across launches. AppKit saves
+    // the frame to UserDefaults under this name on every move/resize, and
+    // setFrameUsingName restores it here over the default nib frame set just
+    // above (first launch, with nothing saved, keeps that default). A zoomed
+    // ("maximized") window's frame is saved as-is, so its size and position
+    // come back too. Restored AFTER installing the Flutter content view, whose
+    // own sizing would otherwise clobber the saved frame. (A saved frame below
+    // the current resize floor — only reachable if the font scale was raised
+    // since last run, given the floor is small — is left as-is on restore; the
+    // user's next resize is still floored by contentMinSize.)
+    if self.setFrameUsingName("Ham2KMainWindow") {
+      restoredFrame = self.frame
+      DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { [weak self] in
+        self?.restoredFrame = nil
+      }
+    }
+    self.setFrameAutosaveName("Ham2KMainWindow")
 
     // No separate gray title bar: the traffic lights float over Flutter's
     // own content instead, so the app's AppBar color reaches the very top
@@ -103,6 +128,15 @@ class MainFlutterWindow: NSWindow {
 
     positionTrafficLights()
     DispatchQueue.main.async { [weak self] in self?.positionTrafficLights() }
+
+    NotificationCenter.default.addObserver(
+      forName: NSWindow.didResizeNotification, object: self, queue: nil
+    ) { [weak self] _ in
+      guard let self = self, let target = self.restoredFrame else { return }
+      if !NSEqualRects(self.frame, target) {
+        self.setFrame(target, display: true)
+      }
+    }
 
     for name: Notification.Name in [
       NSWindow.didUpdateNotification,

@@ -10,6 +10,15 @@
 struct _MyApplication {
   GtkApplication parent_instance;
   char** dart_entrypoint_arguments;
+  // Remembered window geometry (persisted across launches, see the
+  // save/restore helpers below): the last NON-maximized size/position plus
+  // whether the window was maximized, so un-maximizing returns to a sane size.
+  // width/height <= 0 and x/y < 0 mean "nothing tracked yet".
+  gint window_width;
+  gint window_height;
+  gint window_x;
+  gint window_y;
+  gboolean window_maximized;
 };
 
 G_DEFINE_TYPE(MyApplication, my_application, GTK_TYPE_APPLICATION)
@@ -17,6 +26,97 @@ G_DEFINE_TYPE(MyApplication, my_application, GTK_TYPE_APPLICATION)
 // Called when first Flutter frame received.
 static void first_frame_cb(MyApplication* self, FlView* view) {
   gtk_widget_show(gtk_widget_get_toplevel(GTK_WIDGET(view)));
+}
+
+// ── Remember the window's geometry across launches ──────────────────────────
+// Linux keeps native chrome and has no window-chrome channel, so window state
+// is persisted here in the runner: a small key file under the user's config
+// dir, written on shutdown and restored (size + position + maximized) in
+// activate before the window is shown, so there's no launch flash.
+
+static gchar* my_application_window_state_path() {
+  return g_build_filename(g_get_user_config_dir(), APPLICATION_ID, "window.ini",
+                          nullptr);
+}
+
+// Track the window's NORMAL (non-maximized) size/position, so it can be both
+// restored and returned to after un-maximizing. Skipped while maximized, where
+// the reported geometry is the full-screen size, not the restore size.
+static gboolean my_application_on_configure(GtkWidget* widget,
+                                            GdkEventConfigure* event,
+                                            gpointer user_data) {
+  (void)event;
+  MyApplication* self = MY_APPLICATION(user_data);
+  GtkWindow* window = GTK_WINDOW(widget);
+  if (!gtk_window_is_maximized(window)) {
+    gtk_window_get_size(window, &self->window_width, &self->window_height);
+    gtk_window_get_position(window, &self->window_x, &self->window_y);
+  }
+  return FALSE;  // propagate — this is a passive observer
+}
+
+static gboolean my_application_on_window_state(GtkWidget* widget,
+                                               GdkEventWindowState* event,
+                                               gpointer user_data) {
+  (void)widget;
+  MyApplication* self = MY_APPLICATION(user_data);
+  if (event->changed_mask & GDK_WINDOW_STATE_MAXIMIZED) {
+    self->window_maximized =
+        (event->new_window_state & GDK_WINDOW_STATE_MAXIMIZED) != 0;
+  }
+  return FALSE;
+}
+
+// Apply the remembered geometry to a freshly-created, not-yet-shown window.
+static void my_application_restore_window_state(MyApplication* self,
+                                                GtkWindow* window) {
+  g_autofree gchar* path = my_application_window_state_path();
+  g_autoptr(GKeyFile) key_file = g_key_file_new();
+  if (!g_key_file_load_from_file(key_file, path, G_KEY_FILE_NONE, nullptr)) {
+    return;  // first launch, or unreadable — keep the default size
+  }
+  gint width = g_key_file_get_integer(key_file, "window", "width", nullptr);
+  gint height = g_key_file_get_integer(key_file, "window", "height", nullptr);
+  if (width <= 0 || height <= 0) {
+    return;
+  }
+  gtk_window_set_default_size(window, width, height);
+  self->window_width = width;
+  self->window_height = height;
+
+  gint x = g_key_file_get_integer(key_file, "window", "x", nullptr);
+  gint y = g_key_file_get_integer(key_file, "window", "y", nullptr);
+  if (x >= 0 && y >= 0) {
+    // Best effort: X11 honors this; Wayland ignores app-side positioning (the
+    // compositor owns window placement), so there size + maximized restore but
+    // position may not.
+    gtk_window_move(window, x, y);
+    self->window_x = x;
+    self->window_y = y;
+  }
+
+  if (g_key_file_get_boolean(key_file, "window", "maximized", nullptr)) {
+    self->window_maximized = TRUE;
+    gtk_window_maximize(window);
+  }
+}
+
+static void my_application_save_window_state(MyApplication* self) {
+  if (self->window_width <= 0 || self->window_height <= 0) {
+    return;  // never tracked a real geometry — leave any prior file alone
+  }
+  g_autoptr(GKeyFile) key_file = g_key_file_new();
+  g_key_file_set_integer(key_file, "window", "width", self->window_width);
+  g_key_file_set_integer(key_file, "window", "height", self->window_height);
+  g_key_file_set_integer(key_file, "window", "x", self->window_x);
+  g_key_file_set_integer(key_file, "window", "y", self->window_y);
+  g_key_file_set_boolean(key_file, "window", "maximized",
+                         self->window_maximized);
+
+  g_autofree gchar* path = my_application_window_state_path();
+  g_autofree gchar* dir = g_path_get_dirname(path);
+  g_mkdir_with_parents(dir, 0755);
+  g_key_file_save_to_file(key_file, path, nullptr);
 }
 
 // Implements GApplication::activate.
@@ -58,6 +158,13 @@ static void my_application_activate(GApplication* application) {
   gtk_window_set_default_icon_name(APPLICATION_ID);
 
   gtk_window_set_default_size(window, 1280, 720);
+  // Restore remembered geometry over that default (no-op on first launch), and
+  // start tracking changes so the next shutdown persists them.
+  my_application_restore_window_state(self, window);
+  g_signal_connect(window, "configure-event",
+                   G_CALLBACK(my_application_on_configure), self);
+  g_signal_connect(window, "window-state-event",
+                   G_CALLBACK(my_application_on_window_state), self);
 
   g_autoptr(FlDartProject) project = fl_dart_project_new();
   fl_dart_project_set_dart_entrypoint_arguments(
@@ -115,9 +222,10 @@ static void my_application_startup(GApplication* application) {
 
 // Implements GApplication::shutdown.
 static void my_application_shutdown(GApplication* application) {
-  // MyApplication* self = MY_APPLICATION(object);
+  MyApplication* self = MY_APPLICATION(application);
 
-  // Perform any actions required at application shutdown.
+  // Persist the last-known window geometry so the next launch restores it.
+  my_application_save_window_state(self);
 
   G_APPLICATION_CLASS(my_application_parent_class)->shutdown(application);
 }
@@ -138,7 +246,15 @@ static void my_application_class_init(MyApplicationClass* klass) {
   G_OBJECT_CLASS(klass)->dispose = my_application_dispose;
 }
 
-static void my_application_init(MyApplication* self) {}
+static void my_application_init(MyApplication* self) {
+  // Sentinels for "nothing tracked yet" (0,0 is a valid position, so x/y use
+  // -1); the save helper skips writing until a real size is observed.
+  self->window_width = -1;
+  self->window_height = -1;
+  self->window_x = -1;
+  self->window_y = -1;
+  self->window_maximized = FALSE;
+}
 
 MyApplication* my_application_new() {
   // Set the program name to the application ID, which helps various systems

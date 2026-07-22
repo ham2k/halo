@@ -6,6 +6,7 @@
 #include <shellapi.h>
 #include <windowsx.h>
 
+#include "halo_edition.h"
 #include "resource.h"
 
 namespace {
@@ -28,6 +29,15 @@ constexpr const wchar_t kWindowClassName[] = L"FLUTTER_RUNNER_WIN32_WINDOW";
 constexpr const wchar_t kGetPreferredBrightnessRegKey[] =
   L"Software\\Microsoft\\Windows\\CurrentVersion\\Themes\\Personalize";
 constexpr const wchar_t kGetPreferredBrightnessRegValue[] = L"AppsUseLightTheme";
+
+/// Registry location where the window's placement (position, size, and
+/// maximized state) is remembered between launches, stored as the raw
+/// WINDOWPLACEMENT struct. Keyed per edition (HALO_PRODUCT_NAME_W) so separate
+/// editions don't share — and clobber — each other's window geometry, matching
+/// the per-bundle-id (macOS) and per-APPLICATION_ID (Linux) stores.
+constexpr const wchar_t kWindowPlacementRegKey[] =
+  L"Software\\Ham2K\\Halo\\" HALO_PRODUCT_NAME_W;
+constexpr const wchar_t kWindowPlacementRegValue[] = L"WindowPlacement";
 
 // The number of Win32Window objects that currently exist.
 static int g_active_window_count = 0;
@@ -198,11 +208,17 @@ bool Win32Window::Create(const std::wstring& title,
                SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE |
                    SWP_FRAMECHANGED);
 
+  // Restore the remembered position/size/maximized state over the default
+  // origin/size, while the window is still hidden (it isn't shown until the
+  // first Flutter frame calls Show()) — so there's no launch flash.
+  RestoreWindowPlacement();
+
   return OnCreate();
 }
 
 bool Win32Window::Show() {
-  return ShowWindow(window_handle_, SW_SHOWNORMAL);
+  return ShowWindow(window_handle_,
+                    restore_maximized_ ? SW_SHOWMAXIMIZED : SW_SHOWNORMAL);
 }
 
 // static
@@ -319,6 +335,9 @@ Win32Window::MessageHandler(HWND hwnd,
     }
 
     case WM_DESTROY:
+      // Remember where the window was before it goes away (the handle is still
+      // valid here). Covers the normal close path.
+      SaveWindowPlacement();
       window_handle_ = nullptr;
       Destroy();
       if (quit_on_close_) {
@@ -481,4 +500,50 @@ void Win32Window::UpdateTheme(HWND const window) {
     DwmSetWindowAttribute(window, DWMWA_USE_IMMERSIVE_DARK_MODE,
                           &enable_dark_mode, sizeof(enable_dark_mode));
   }
+}
+
+void Win32Window::SaveWindowPlacement() {
+  if (!window_handle_) {
+    return;
+  }
+  WINDOWPLACEMENT placement{};
+  placement.length = sizeof(placement);
+  if (!GetWindowPlacement(window_handle_, &placement)) {
+    return;
+  }
+  HKEY key = nullptr;
+  if (RegCreateKeyEx(HKEY_CURRENT_USER, kWindowPlacementRegKey, 0, nullptr,
+                     REG_OPTION_NON_VOLATILE, KEY_SET_VALUE, nullptr, &key,
+                     nullptr) == ERROR_SUCCESS) {
+    RegSetValueEx(key, kWindowPlacementRegValue, 0, REG_BINARY,
+                  reinterpret_cast<const BYTE*>(&placement),
+                  sizeof(placement));
+    RegCloseKey(key);
+  }
+}
+
+void Win32Window::RestoreWindowPlacement() {
+  WINDOWPLACEMENT placement{};
+  DWORD size = sizeof(placement);
+  if (RegGetValue(HKEY_CURRENT_USER, kWindowPlacementRegKey,
+                  kWindowPlacementRegValue, RRF_RT_REG_BINARY, nullptr,
+                  &placement, &size) != ERROR_SUCCESS ||
+      size != sizeof(placement) || placement.length != sizeof(placement)) {
+    return;
+  }
+  // Drop a saved rect that no longer intersects any connected monitor (e.g. an
+  // external display that's been unplugged) rather than stranding the window
+  // offscreen — fall back to the default origin/size Create() started with.
+  if (MonitorFromRect(&placement.rcNormalPosition, MONITOR_DEFAULTTONULL) ==
+      nullptr) {
+    return;
+  }
+  restore_maximized_ =
+      placement.showCmd == SW_SHOWMAXIMIZED ||
+      (placement.showCmd == SW_SHOWMINIMIZED &&
+       (placement.flags & WPF_RESTORETOMAXIMIZED) != 0);
+  // Apply the restore rect while still hidden; Show() reveals it (maximized or
+  // normal) once the first Flutter frame has rendered. Never launch minimized.
+  placement.showCmd = SW_HIDE;
+  SetWindowPlacement(window_handle_, &placement);
 }
