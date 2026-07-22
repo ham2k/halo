@@ -151,8 +151,9 @@ platforms (e.g. `NAME=value flutter run …`).
 |---|---|---|---|
 | `HALO_EDITION` | dart-define | `dev` | Build edition: `dev` / `next` / `prod`. See above. |
 | `ONBOARD_AS` | dart-define **or** env | *(unset)* | **Debug builds only** (inert in release). Skips first-run onboarding and applies it directly: `ONBOARD_AS=CALL,activity,…` — the first token is the operator callsign, the rest are extension keys to enable. e.g. `ONBOARD_AS=KI2D,pota,sota`. |
-| `DEV_LABEL` | dart-define **or** env | *(unset)* | **Debug builds only** (inert in release). Shows the given string in the home-screen header, right after the edition badge — to mark which dev build / session is running. e.g. `DEV_LABEL="header work"`. |
+| `DEV_LABEL` | dart-define **or** env | *(unset)* | **Debug builds only** (inert in release). Shows the given string in the home-screen header, right after the edition badge — to mark which dev build / session is running. e.g. `DEV_LABEL="header work"`. On deployed **web preview** builds (which are release builds, so the compile-time value is stripped) the label is auto-derived from the preview URL instead. |
 | `POLO_OPEN_FIRST_OP` | dart-define **or** env (`=1`) | off | On launch, jump straight into the most recent operation. Handy for iterating on the operation view. |
+| `HALO_STUB_LOOKUPS` | dart-define (`=1`) | off | **Debug builds only** (read via `debugEnvFlag`, empty in release). Makes callsign lookups return a deterministic canned result instead of calling the network/credentialed lookup extensions (QRZ/HamDB/…) — for fast, offline, reproducible verification. See *Driving the app from a browser / agent* below. |
 | `HAM2K_LOFI_SECRET` | dart-define | *(empty)* | LoFi sync app-attestation secret injected at build time. Empty on dev builds (the extension uses a `no-secret` default). Identifies the build, not the device. |
 
 Examples:
@@ -218,6 +219,75 @@ Developer Settings**. It unlocks:
 - dev-only export behavior, and
 - `ctx.developerMode` inside the extension runtime (so extensions like
   `dev-commands` can gate on it).
+
+---
+
+## Driving the app from a browser / agent
+
+Dev **web** builds (`flutter run -d web-server` — i.e. any non-release build)
+expose a small control + inspection surface so agents and scripts can drive and
+read the app deterministically instead of pixel-hunting the Flutter canvas.
+**None of it ships to production**: the bridge only installs on non-release web,
+the accessibility DOM + structured logging are gated the same way, and the
+stub/fixture hooks are read through `debugEnvFlag` (empty in release).
+
+### `window.__halo`
+
+Installed on `window` at startup (non-release web only). Getters return plain JS
+objects/arrays you can read via `javascript_tool`.
+Source: [`app/lib/config/dev_bridge.dart`](app/lib/config/dev_bridge.dart).
+
+| Call | Returns / effect |
+|---|---|
+| `getState()` | Snapshot of the current screen: `{view, operation:{uuid, stationCall, title, qsoCount}, call, editing, guess, vfo}`. `view` is `operation` on the logging screen, else `none`. |
+| `getGuess()` | Just the current callsign guess (`{name, grid, state, entityName, …}`), or null. |
+| `setField('call', 'W1AW')` | Sets the call field as if typed — fires the debounced lookup/scoring. |
+| `tap('log')` / `tap('wipe')` | Logs the current QSO / wipes the compose fields. |
+| `ready` | A Promise that resolves once bootstrap **and** the home screen's first data load are done. `await window.__halo.ready` instead of sleeping after a page load. |
+| `recentLog()` | The buffered structured events (see below), oldest-first. |
+| `resetFixture()` | Backs up then clears all operations + QSOs, restores font scale / distance units to defaults, seeds a fresh "HALO Fixture" operation, and navigates into it. Returns `{uuid, stationCall, qsoCount, backupId}`; the pre-reset data is recoverable from the `OperationsBackup`/`QsosBackup` tables under `backupId`. `await ready` first. |
+
+Example — an agent driving the core logging loop from a clean, deterministic state:
+
+```js
+// Launch: flutter run -d web-server --dart-define=HALO_STUB_LOOKUPS=1
+await window.__halo.ready
+await window.__halo.resetFixture()
+window.__halo.setField('call', 'W1AW')
+while (!window.__halo.getState().guess) await new Promise(r => setTimeout(r, 50))
+window.__halo.tap('log')
+```
+
+### Accessibility DOM + stable identifiers
+
+On dev web the app forces Flutter's semantics DOM on (normally opt-in behind the
+"Enable accessibility" affordance), so the generic browser tools (`read_page` /
+`find` / `computer`) see labeled nodes instead of a blank canvas. Key logging
+widgets carry stable, translation-independent identifiers, surfaced as
+`flt-semantics-identifier="…"`:
+
+| Identifier | Widget |
+|---|---|
+| `field.call` | The "their call" input |
+| `action.log` | The Log button |
+| `action.wipe` | The Wipe / secondary-action button |
+| `qso.row.<CALL>` | Each logged QSO's row (e.g. `qso.row.W1AW`) |
+
+Convention: `field.<name>` inputs, `action.<name>` buttons, `qso.row.<call>` rows.
+Add more with the `semanticId(id, child)` helper in
+[`packages/halo_widgets/lib/src/semantic_id.dart`](packages/halo_widgets/lib/src/semantic_id.dart).
+
+### Structured console logging
+
+Dev builds emit stable tagged events to the console (picked up by
+`read_console_messages`) and buffer them for `window.__halo.recentLog()`:
+
+- `[qso] {uuid, op, call, band, mode}` — each logged contact.
+- `[lookup] {call, phase, name, grid, entity, source}` — each callsign lookup.
+
+Add your own with `DevLog.instance.log('tag', {…})`
+([`packages/halo_core/lib/src/dev_log.dart`](packages/halo_core/lib/src/dev_log.dart));
+it's a no-op in release.
 
 ---
 
