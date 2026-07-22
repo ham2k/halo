@@ -34,7 +34,7 @@ const kPublicVersionInfo = PublicVersion(
 /// (§2.2). Small enough to fit every platform's field (Windows/Linux cap it at
 /// 16 bits), so unlike the old date-encoded id it needs no per-platform
 /// narrowing.
-const kBuildNumber = 77;
+const kBuildNumber = 78;
 
 /// e.g. `26.8.1-alpha1`.
 final kPublicVersion = kPublicVersionInfo.value;
