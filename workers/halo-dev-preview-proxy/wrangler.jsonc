@@ -1,0 +1,10 @@
+{
+  // Proxies <name>-halo-dev.ham2k.net to the matching Pages preview alias.
+  // See src/index.js and docs/deployment.md ("Tagged Preview Deployments").
+  "name": "halo-dev-preview-proxy",
+  "main": "src/index.js",
+  "compatibility_date": "2026-07-01",
+  "routes": [
+    { "pattern": "*-halo-dev.ham2k.net/*", "zone_name": "ham2k.net" }
+  ]
+}

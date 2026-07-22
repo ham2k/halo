@@ -3,9 +3,11 @@
 #
 # Deploys a preview build of the web app to Cloudflare Pages when a commit
 # is tagged `web-preview-<name>`. The preview lands on the same
-# `halo-dev-ham2k-net` Pages project as a non-production deployment, at
-#   https://<name>.halo-dev-ham2k-net.pages.dev
-# Re-pushing a tag with the same name replaces that preview.
+# `halo-dev-ham2k-net` Pages project as a non-production deployment, served at
+#   https://<name>-halo-dev.ham2k.net
+# (via the workers/halo-dev-preview-proxy Worker; the underlying Pages alias
+# https://<name>.halo-dev-ham2k-net.pages.dev also works). Re-pushing a tag
+# with the same name replaces that preview.
 #
 #   git tag web-preview-my-feature && git push app-halo-dist web-preview-my-feature
 #
@@ -14,8 +16,10 @@
 # after it landed). For older commits, use the manual run (workflow_dispatch)
 # from the Actions tab, which takes any ref plus a preview name.
 #
-# Requires the same repository secrets as deploy-web.yml:
+# Requires the same repository secrets as deploy-web.yml —
 #   CLOUDFLARE_API_TOKEN, CLOUDFLARE_ACCOUNT_ID
+# — with the token also granting Zone Read + DNS Edit on ham2k.net for the
+# preview DNS records.
 
 name: Deploy Web Preview
 
@@ -95,5 +99,27 @@ jobs:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
 
+      # <name>-halo-dev.ham2k.net is served by the halo-dev-preview-proxy
+      # Worker (workers/halo-dev-preview-proxy), routed on
+      # *-halo-dev.ham2k.net/*. Worker routes only receive traffic for
+      # hostnames with a proxied DNS record, so upsert a placeholder AAAA
+      # (100:: is the standard discard address for Worker-routed hostnames).
+      # Needs Zone Read + DNS Edit on ham2k.net in CLOUDFLARE_API_TOKEN.
+      - name: Create preview DNS record
+        run: |
+          api() { curl -sf -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" -H "Content-Type: application/json" "$@"; }
+          ZONE_ID=$(api "https://api.cloudflare.com/client/v4/zones?name=ham2k.net" | jq -r '.result[0].id')
+          HOST="${PREVIEW_NAME}-halo-dev.ham2k.net"
+          EXISTING=$(api "https://api.cloudflare.com/client/v4/zones/$ZONE_ID/dns_records?type=AAAA&name=$HOST" | jq -r '.result[0].id // empty')
+          if [[ -z "$EXISTING" ]]; then
+            api -X POST "https://api.cloudflare.com/client/v4/zones/$ZONE_ID/dns_records" \
+              --data "{\"type\":\"AAAA\",\"name\":\"$HOST\",\"content\":\"100::\",\"proxied\":true,\"ttl\":1,\"comment\":\"HaLo web preview (deploy-web-preview.yml)\"}" > /dev/null
+            echo "Created DNS record for $HOST"
+          else
+            echo "DNS record for $HOST already exists"
+          fi
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+
       - name: Report preview URL
-        run: echo "### Preview deployed to https://${PREVIEW_NAME}.halo-dev-ham2k-net.pages.dev" >> "$GITHUB_STEP_SUMMARY"
+        run: echo "### Preview deployed to https://${PREVIEW_NAME}-halo-dev.ham2k.net" >> "$GITHUB_STEP_SUMMARY"

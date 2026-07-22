@@ -48,11 +48,15 @@ git tag web-preview-my-feature
 git push app-halo-dist web-preview-my-feature
 ```
 
-The **Deploy Web Preview** workflow (`.github/workflows/deploy-web-preview.yml`) builds that commit and deploys it as a Cloudflare Pages preview at `https://<name>.halo-dev-ham2k-net.pages.dev`. Re-pushing a tag with the same name replaces the preview. There is no CI gate on previews.
+The **Deploy Web Preview** workflow (`.github/workflows/deploy-web-preview.yml`) builds that commit and deploys it as a Cloudflare Pages preview, served at `https://<name>-halo-dev.ham2k.net`. Re-pushing a tag with the same name replaces the preview. There is no CI gate on previews.
+
+How the URL works: Pages gives every preview a branch alias at `https://<name>.halo-dev-ham2k-net.pages.dev` (which also works directly). The `halo-dev-preview-proxy` Worker (`workers/halo-dev-preview-proxy/`, routed on `*-halo-dev.ham2k.net/*`) proxies the flat subdomain to that alias, and the workflow upserts a proxied placeholder DNS record (`AAAA 100::`) for each preview name so the route receives traffic. Being one-level subdomains of `ham2k.net`, they are covered by Universal SSL.
 
 Caveats:
 - Tag pushes run the workflow file **from the tagged commit**, so tags only work on commits that contain the workflow (branches based on `dist` after it landed). For older commits, run the workflow manually from the Actions tab, giving it a ref and a preview name.
 - Names are sanitized to Cloudflare's branch-alias rules (lowercase alphanumerics and hyphens, 28 chars max); the run summary shows the final URL.
+- The `CLOUDFLARE_API_TOKEN` secret needs **Zone → Zone → Read** and **Zone → DNS → Edit** on `ham2k.net` (in addition to Pages Edit) for the DNS step.
+- DNS records and preview deployments are never cleaned up automatically; prune old ones in the Cloudflare dashboard when they pile up.
 
 ---
 
