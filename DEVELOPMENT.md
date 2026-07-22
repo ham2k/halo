@@ -303,6 +303,7 @@ Defined in [`mise.toml`](mise.toml):
 | `mise run test` | Full verification (extensions + every Dart package + app). |
 | `mise run deploy-web` | Build extensions + web app and deploy to Cloudflare Pages. |
 | `mise run mac-files` | Open the macOS app's sandboxed Documents folder (sqlite db, exports). |
+| `mise run ops -- <cmd>` | `halo-ops` CLI: `… -- status` (released version per edition, from tags) / `… -- release [--edition next] [--dry-run] [--yes]` (compute the next build from the tag ledger, bump `version.dart`, commit, tag, and push to trigger CI). `--json` for automation. |
 
 ---
 

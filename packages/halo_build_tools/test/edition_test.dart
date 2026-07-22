@@ -37,4 +37,34 @@ void main() {
       expect(kEdition, Edition.dev);
     });
   });
+
+  group('editionFromName (--edition flag)', () {
+    test('parses the three names, case-insensitively', () {
+      expect(editionFromName('dev'), Edition.dev);
+      expect(editionFromName('NEXT'), Edition.next);
+      expect(editionFromName(' Prod '), Edition.prod);
+    });
+
+    test('is null for anything else, so the caller can reject it', () {
+      expect(editionFromName('staging'), isNull);
+      expect(editionFromName(''), isNull);
+    });
+  });
+
+  group('editionForBranch (#241)', () {
+    test('dist (and its local alias) map to next — where Next is cut today', () {
+      // A pushed v* tag from dist builds the Next matrix, so a release cut from
+      // dist is a Next release.
+      expect(editionForBranch('dist'), Edition.next);
+      expect(editionForBranch('main-dist-private'), Edition.next);
+      expect(editionForBranch('next'), Edition.next);
+      expect(editionForBranch('prod'), Edition.prod);
+    });
+
+    test('a feature branch is dev, which halo-ops refuses to tag (needs --edition)', () {
+      // The safety default: you can't accidentally cut a release from a random
+      // work branch — halo-ops shows the plan but won't tag a dev edition.
+      expect(editionForBranch('241-halo-ops'), Edition.dev);
+    });
+  });
 }

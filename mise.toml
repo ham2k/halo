@@ -15,6 +15,10 @@ deploy-web = {
   run = "./scripts/deploy-web.sh",
   description = "Build extensions and web app, then deploy to Cloudflare Pages"
 }
+ops = {
+  run = "cd packages/halo_build_tools && dart run bin/halo_ops.dart",
+  description = "halo-ops CLI: `mise run ops -- status` / `mise run ops -- release [--dry-run]`"
+}
 run-ios = { run = "open -a Simulator && cd app && flutter run -d iphone", description = "Boot iOS Simulator and run the app" }
 bundle = {
   run = "cd extensions && npm run build",

@@ -49,6 +49,32 @@ enum Edition {
   };
 }
 
+/// Parses an explicit edition name (`dev` / `next` / `prod`), or null if it's
+/// none of those — for the `halo-ops --edition <name>` flag.
+Edition? editionFromName(String name) => switch (name.trim().toLowerCase()) {
+  'dev' => Edition.dev,
+  'next' => Edition.next,
+  'prod' => Edition.prod,
+  _ => null,
+};
+
+/// The [Edition] a release cut from git branch [branch] targets
+/// (ham2k/app-halo-dist#241).
+///
+/// No branch→edition mapping existed before; this defines one. Today Next is
+/// cut from the `dist` branch (a pushed `v*` tag builds the Next matrix), so
+/// `dist` (and its local alias `main-dist-private`) → `next`, and a dedicated
+/// `prod` branch → `prod`. Everything else — feature branches — is `dev`, which
+/// halo-ops won't tag. This is expected to change as the branch layout evolves
+/// (codemagic.yaml notes a future "separate next/prod branches, dist → dev");
+/// `--edition` overrides it meanwhile.
+Edition editionForBranch(String branch) => switch (branch.trim()) {
+  'prod' => Edition.prod,
+  'next' => Edition.next,
+  'dist' || 'main-dist-private' => Edition.next,
+  _ => Edition.dev,
+};
+
 /// The raw `HALO_EDITION` compile-time define (`--dart-define=HALO_EDITION=…`),
 /// defaulting to `dev` when unset — which is every public checkout and every
 /// plain `flutter run` (§2.6).

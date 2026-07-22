@@ -64,6 +64,22 @@ class PublicVersion {
     return parts.join(' ');
   }
 
+  /// The git ref name for a release of this version at [build] —
+  /// `v<value>+<build>` (e.g. `v26.8.1-alpha1+82`). Semver build-metadata
+  /// style, and a valid ref (no spaces). See docs/releases.md §2.2.
+  String releaseTagName(int build) => 'v$value+$build';
+
+  /// The human release message used for the release commit and annotated tag —
+  /// e.g. `Release 26.8.1 alpha 1 (82)`. Note this spells the numeric core
+  /// (`26.8.1`), not [displayName] (`August '26 alpha 1`).
+  String releaseMessage(int build) {
+    final core = '${main.year}.${main.month}.$patch';
+    final pre = preRelease == null
+        ? ''
+        : ' $preReleaseLabel $preRelease${preReleasePatch == null ? '' : '.$preReleasePatch'}';
+    return 'Release $core$pre ($build)';
+  }
+
   @override
   String toString() => value;
 }

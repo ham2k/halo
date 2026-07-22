@@ -78,7 +78,7 @@ The build number is a single **monotonic integer** — `kBuildNumber` in
 `lib/config/version.dart`. It is deliberately small (it started at `73`), which
 keeps it under every platform's field limit — including the 16-bit Windows/Linux
 `FILEVERSION` cap — so **all platforms share the one value** with no per-platform
-narrowing. `scripts/release.sh` advances it automatically: it takes the highest
+narrowing. `halo-ops release` advances it automatically: it takes the highest
 `+<build>` across the `v<version>+<build>` release tags, adds one, writes it into
 `version.dart`, and tags the release — so nobody bumps it by hand.
 

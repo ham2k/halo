@@ -8,4 +8,6 @@ export 'src/edition.dart';
 export 'src/main_version.dart';
 export 'src/platform_versions.dart';
 export 'src/public_version.dart';
+export 'src/release_tags.dart';
+export 'src/version_file.dart';
 export 'src/version_ordering.dart';
