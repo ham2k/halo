@@ -1110,8 +1110,9 @@ class _DataFilesPanelState extends State<_DataFilesPanel> {
       if (mounted && updatedAt != null) _applyUpdatedAt(file.key, updatedAt);
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Could not refresh ${file.name}: $e')),
+        widget.services.statusBar.setMessage(
+          key: 'dataFile:refresh',
+          text: 'Could not refresh ${file.name}: $e',
         );
       }
     } finally {
@@ -1589,17 +1590,16 @@ class _DeveloperPanel extends StatelessWidget {
                 selected: {settings.shorebirdTrack},
                 onSelectionChanged: (selected) async {
                   final track = selected.first;
-                  final messenger = ScaffoldMessenger.of(context);
                   await settings.setShorebirdTrack(track);
-                  messenger.showSnackBar(SnackBar(content: Text('Checking "$track" for a patch…')));
+                  services.statusBar.setMessage(key: 'shorebird:check', text: 'Checking "$track" for a patch…');
                   final applied = await services.updates.checkAndApply();
                   if (!context.mounted) return;
-                  messenger.hideCurrentSnackBar();
-                  messenger.showSnackBar(SnackBar(
-                    content: Text(applied
+                  services.statusBar.setMessage(
+                    key: 'shorebird:check',
+                    text: applied
                         ? 'Patch downloaded — restart the app to apply it.'
-                        : 'No new patch on "$track".'),
-                  ));
+                        : 'No new patch on "$track".',
+                  );
                 },
               ),
               Padding(
@@ -2306,7 +2306,7 @@ class _AccountPaneState extends State<_AccountPane> {
     } catch (e) {
       debugPrint('[accounts] save failed for $_kvKey: $e');
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Save failed: $e')));
+        widget.services.statusBar.setMessage(key: 'accounts:save', text: 'Save failed: $e');
       }
       return;
     }
@@ -2501,7 +2501,7 @@ class _AccountPaneState extends State<_AccountPane> {
     } catch (e) {
       if (mounted) {
         setState(() => _testing = false);
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Login failed: $e')));
+        widget.services.statusBar.setMessage(key: 'accounts:login', text: 'Login failed: $e');
       }
     }
   }

@@ -132,12 +132,14 @@ subtitle, a logo or back arrow on the left, and one or more buttons on the
 right. When the window is wide enough for split views, the title and
 subtitle are left-aligned; on narrow windows they are centered.
 
-### Footer
+### Footer & User Feedback
 
-A footer at the bottom of the window can show a progress bar for sync
-activity and other status information. On mobile devices it hides while the
-keyboard is open. It includes padding so rounded screen corners don't cover
-it.
+A footer at the bottom of the window can show progress bars and status messages (`StatusBarService`). On mobile devices it hides while the keyboard is open. It includes padding so rounded screen corners don't cover it.
+
+The app follows a selective user feedback policy:
+- **Immediate interactive actions** (e.g. copying text to the clipboard) display a floating Flutter `SnackBar` toast.
+- **Multi-second operations** (e.g. data file sync/refresh, patch checks, export generation) report progress and status via `StatusBarService` items in the footer.
+- **Logging screen / UI feedback** (e.g. activity reference validation errors or call field command outputs) use `StatusBarService` messages so toasts never obscure or interfere with the logging UI.
 
 ## Dialogs
 

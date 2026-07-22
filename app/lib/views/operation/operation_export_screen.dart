@@ -72,7 +72,6 @@ class _OperationExportScreenState extends State<OperationExportScreen> {
 
   Future<void> _export() async {
     final t = context.t;
-    final messenger = ScaffoldMessenger.of(context);
     setState(() => _busy = true);
     try {
       final files = await widget.services.exports.generateExports(widget.operation, _selectedOptions);
@@ -81,11 +80,17 @@ class _OperationExportScreenState extends State<OperationExportScreen> {
       } else {
         final path = await widget.services.exports.saveToDisk(files);
         if (path != null) {
-          messenger.showSnackBar(SnackBar(content: Text(t.operation.export.saveSuccess(path: path))));
+          widget.services.statusBar.setMessage(
+            key: 'export:status',
+            text: t.operation.export.saveSuccess(path: path),
+          );
         }
       }
     } catch (e) {
-      messenger.showSnackBar(SnackBar(content: Text(t.operation.export.exportFailed(error: e.toString()))));
+      widget.services.statusBar.setMessage(
+        key: 'export:status',
+        text: t.operation.export.exportFailed(error: e.toString()),
+      );
     } finally {
       if (mounted) setState(() => _busy = false);
     }

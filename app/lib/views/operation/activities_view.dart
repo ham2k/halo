@@ -364,7 +364,7 @@ class _ActivitiesBaseState extends State<_ActivitiesBase> {
     final type = ref['type'] as String?;
     final pattern = (controlForRefType(_controls, type)?['input'] as Map?)?['pattern'] as String?;
     if (!_matchesPattern(pattern, trimmed)) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(t.invalidReference)));
+      widget.services.statusBar.setMessage(key: 'activities:invalid', text: t.invalidReference);
       return;
     }
 
@@ -373,7 +373,7 @@ class _ActivitiesBaseState extends State<_ActivitiesBase> {
     if (index < 0) return;
 
     if (_isDuplicateRef(type ?? '', trimmed, excludingIndex: index)) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(t.duplicateReference)));
+      widget.services.statusBar.setMessage(key: 'activities:duplicate', text: t.duplicateReference);
       return;
     }
 
@@ -425,7 +425,7 @@ class _ActivitiesBaseState extends State<_ActivitiesBase> {
     final type = suggestion['type'] as String?;
     final code = suggestion['ref'] as String?;
     if (type != null && code != null && _isDuplicateRef(type, code)) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(context.t.activitiesView.duplicateReference)));
+      widget.services.statusBar.setMessage(key: 'activities:duplicate', text: context.t.activitiesView.duplicateReference);
       return;
     }
     _saveRefs([..._operation.refs, suggestion]);
@@ -449,11 +449,11 @@ class _ActivitiesBaseState extends State<_ActivitiesBase> {
 
     final trimmed = code.trim().toUpperCase();
     if (!_matchesPattern(input['pattern'] as String?, trimmed)) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(t.invalidReference)));
+      widget.services.statusBar.setMessage(key: 'activities:invalid', text: t.invalidReference);
       return;
     }
     if (_isDuplicateRef(refType, trimmed)) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(t.duplicateReference)));
+      widget.services.statusBar.setMessage(key: 'activities:duplicate', text: t.duplicateReference);
       return;
     }
 

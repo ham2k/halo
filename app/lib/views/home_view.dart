@@ -728,14 +728,15 @@ class _HomeQuickLookupState extends State<HomeQuickLookup> {
   }
 
   /// Runs one command action through [HaLoServices.handleCommandAction] and
-  /// surfaces its returned message as a snackbar — mirroring
+  /// surfaces its returned message in the status bar — mirroring
   /// operation_view's `_handleCommandAction`, so feedback that's only known
   /// app-side (a toggled experiment's outcome, syncAll's status) isn't
   /// silently dropped on the home screen's quick-lookup dispatch.
   Future<void> _runCommandAction(String action, [Map<String, dynamic>? params]) async {
-    final messenger = ScaffoldMessenger.of(context);
     final message = await widget.services.handleCommandAction(action, params);
-    if (message != null && mounted) messenger.showSnackBar(SnackBar(content: Text(message)));
+    if (message != null && mounted) {
+      widget.services.statusBar.setMessage(key: 'commandAction', text: message);
+    }
   }
 
   Future<void> _dispatchActions(List<dynamic> actions) async {
