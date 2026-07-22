@@ -22,6 +22,38 @@ void main() {
     await db.close();
   });
 
+  testWidgets('each QSO row carries a stable qso.row.<call> semantics identifier (#236)', (
+    tester,
+  ) async {
+    // These translation-independent hooks are what let agent/browser tooling
+    // target a specific logged QSO's row without a bridge call — so a
+    // regression that drops or renames them must fail here.
+    final handle = tester.ensureSemantics();
+    final operation = await operations.create(stationCall: 'KI2D');
+    final w1aw = await qsos.add(operation.uuid, {
+      'their': {'call': 'W1AW'},
+      'mode': 'SSB',
+      'startAtMillis': 1000,
+    });
+    final k2ham = await qsos.add(operation.uuid, {
+      'their': {'call': 'K2HAM'},
+      'mode': 'SSB',
+      'startAtMillis': 2000,
+    });
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: QsoList(qsos: [w1aw, k2ham], onSelect: (_) {}),
+        ),
+      ),
+    );
+
+    expect(find.bySemanticsIdentifier('qso.row.W1AW'), findsOneWidget);
+    expect(find.bySemanticsIdentifier('qso.row.K2HAM'), findsOneWidget);
+    handle.dispose();
+  });
+
   testWidgets('newest QSO renders at the bottom, next to the logging panel', (
     tester,
   ) async {

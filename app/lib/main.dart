@@ -15,6 +15,7 @@ import 'package:intl/intl.dart';
 import 'package:drift_flutter/drift_flutter.dart';
 import 'package:flutter/foundation.dart' show kIsWeb, visibleForTesting;
 import 'package:flutter/material.dart';
+import 'package:flutter/semantics.dart' show SemanticsBinding;
 import 'package:flutter/services.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:halo_core/halo_core.dart';
@@ -27,6 +28,7 @@ import 'views/notice_actions.dart';
 import 'views/onboarding_overlay.dart';
 import 'views/release_overlay.dart';
 import 'views/splash_view.dart';
+import 'config/dev_bridge.dart';
 import 'config/dev_bridge_installer.dart';
 import 'config/dev_flags.dart';
 import 'config/experiments.dart';
@@ -64,6 +66,16 @@ void main() {
   // Web-only, non-release-only: exposes window.__halo for agent inspection
   // (no-op on native and in production release). See config/dev_bridge.dart.
   installDevBridge();
+  // Same dev/web condition (the bridge sets `installed`): force Flutter web's
+  // accessibility DOM on. It's normally opt-in behind the "Enable
+  // accessibility" button, which leaves generic browser tools (read_page /
+  // find / computer) staring at a blank canvas — with it on they see labeled,
+  // Semantics(identifier:)-targetable nodes. The handle is intentionally left
+  // undisposed so semantics stay on for the app's lifetime. Native already has
+  // real accessibility; production is untouched (#236).
+  if (DevBridge.instance.installed) {
+    SemanticsBinding.instance.ensureSemantics();
+  }
   // Kicked off before runApp (not awaited here) so the splash screen paints
   // on the very first frame instead of waiting on the DB/extension/settings
   // boot sequence — see `_BootGate`.

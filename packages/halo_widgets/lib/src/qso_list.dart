@@ -15,6 +15,7 @@ import 'package:halo_core/halo_core.dart';
 import 'activity_controls.dart';
 import 'format_utils.dart';
 import 'icon_resolver.dart';
+import 'semantic_id.dart';
 import 'theme.dart';
 
 /// Horizontal gap between the row's fields (Number/Time/Frequency/Mode/
@@ -472,7 +473,9 @@ class _QsoListState extends State<QsoList> {
         refCountsByType.update(type, (count) => count + 1, ifAbsent: () => 1);
       }
 
-      return Container(
+      // #236: stable id for agent/browser tooling — per-callsign so a specific
+      // logged QSO's row is targetable.
+      return semanticId('qso.row.${qso.theirCall}', Container(
         // foregroundDecoration paints over the already-laid-out child
         // instead of insetting it (unlike Container's `decoration`,
         // which turns a BoxDecoration's border into padding) — the
@@ -580,7 +583,7 @@ class _QsoListState extends State<QsoList> {
             ),
           ),
         ),
-      );
+      ));
     }
 
     return Container(

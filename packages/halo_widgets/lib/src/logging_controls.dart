@@ -45,6 +45,7 @@ import 'logging_controls_controller.dart';
 import 'mdi_icons.dart';
 import 'number_keys.dart';
 import 'platform_chrome.dart';
+import 'semantic_id.dart';
 import 'ref_chips_input.dart';
 import 'secondary_control_row.dart';
 import 'text_formatters.dart';
@@ -3261,7 +3262,10 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     // background of its own, and its icon tinted with the color the submit
     // button uses as its *background*, tying the two together visually.
     final diameter = _editButtonDiameter ?? 44;
-    return SizedBox(
+    // #236: stable id for agent/browser tooling. Named for its default role
+    // (Wipe) even though it also serves Undo/Delete/Restore/Revert — it's the
+    // one secondary action slot, and the dev bridge drives it as `wipe`.
+    return semanticId('action.wipe', SizedBox(
       width: diameter,
       height: diameter,
       child: IconButton(
@@ -3272,7 +3276,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
         padding: EdgeInsets.zero,
         iconSize: diameter * 0.5 * 1.2,
       ),
-    );
+    ));
   }
 
   Future<void> _log() async {
@@ -3735,7 +3739,8 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
                           Expanded(
-                            child: TextField(
+                            // #236: stable id for agent/browser tooling.
+                            child: semanticId('field.call', TextField(
                               controller: _callController,
                               focusNode: _callFocus,
                               // Desktop platforms (see selectAllOnFocus's
@@ -3780,7 +3785,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
                               style: _primaryFieldStyle(context, fontWeight: FontWeight.w500),
                               decoration: _primaryFieldDecoration(context, widget.theirCallLabel ?? 'Their call'),
                               onSubmitted: (_) => _log(),
-                            ),
+                            )),
                           ),
                           if (widget.showRSTFields) ...[
                             const SizedBox(width: 10),
@@ -3914,7 +3919,8 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
                           // query this subtree's intrinsic dimensions, which
                           // LayoutBuilder explicitly doesn't support — so
                           // the icon just uses a fixed, comfortable size.)
-                          AspectRatio(
+                          // #236: stable id for agent/browser tooling.
+                          semanticId('action.log', AspectRatio(
                             key: _submitButtonKey,
                             aspectRatio: 1,
                             child: MouseRegion(
@@ -3946,7 +3952,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
                                 ),
                               ),
                             ),
-                          ),
+                          )),
                         ],
                         ),
                       ),

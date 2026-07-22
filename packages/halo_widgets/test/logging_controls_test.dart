@@ -204,6 +204,19 @@ void main() {
     await tester.pump();
   }
 
+  testWidgets('the call field and Log/Wipe buttons carry stable semantics identifiers (#236)', (tester) async {
+    // Translation-independent hooks for agent/browser tooling — a rename or a
+    // dropped wrapper must fail here, not silently strip the targets.
+    final handle = tester.ensureSemantics();
+    await tester.pumpWidget(host());
+    await tester.pump();
+
+    expect(find.bySemanticsIdentifier('field.call'), findsOneWidget);
+    expect(find.bySemanticsIdentifier('action.log'), findsOneWidget);
+    expect(find.bySemanticsIdentifier('action.wipe'), findsOneWidget);
+    handle.dispose();
+  });
+
   testWidgets('Enter logs a QSO with mode, band and default RSTs', (tester) async {
     await tester.pumpWidget(host());
     await openControl(tester, MdiIcons.radio);
