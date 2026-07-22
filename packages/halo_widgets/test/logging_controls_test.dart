@@ -44,6 +44,9 @@ void main() {
     CallInfoChanged? onCallInfoChanged,
     VfoStore? radioService,
     Qso? editingQso,
+    VoidCallback? onEditCanceled,
+    VoidCallback? onEscapeDeselect,
+    bool Function()? onUndoDeselect,
     Map<String, dynamic>? suggestedQso,
     SuggestSpotSources? suggestSpotSources,
     SendSpot? sendSpot,
@@ -69,6 +72,9 @@ void main() {
       onCallInfoChanged: onCallInfoChanged,
       radioService: radioService,
       editingQso: editingQso,
+      onEditCanceled: onEditCanceled,
+      onEscapeDeselect: onEscapeDeselect,
+      onUndoDeselect: onUndoDeselect,
       suggestedQso: suggestedQso,
       suggestSpotSources: suggestSpotSources,
       sendSpot: sendSpot,
@@ -1161,6 +1167,47 @@ void main() {
     expect(find.byIcon(undoIcon), findsNothing);
   });
 
+  testWidgets('a second Escape restores an Escape-wiped entry, same as tapping Undo (issue #199 follow-up)',
+      (tester) async {
+    await tester.pumpWidget(host());
+
+    await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'W1AW');
+    await tester.pump();
+    await tester.sendKeyEvent(LogicalKeyboardKey.escape); // wipes, offers undo
+    await tester.pump();
+
+    final callField = tester.widget<TextField>(find.widgetWithText(TextField, 'Their call'));
+    expect(callField.controller!.text, isEmpty);
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.escape); // restores instead of re-wiping an empty form
+    await tester.pump();
+
+    expect(callField.controller!.text, 'W1AW');
+    expect(find.byIcon(resolveIconName('undo')), findsNothing);
+  });
+
+  testWidgets('with nothing composed and no wipe to undo, Escape asks the caller if it has something to undo instead',
+      (tester) async {
+    var undoAttempts = 0;
+    var undone = false;
+    await tester.pumpWidget(host(onUndoDeselect: () {
+      undoAttempts++;
+      return undone;
+    }));
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+    await tester.pump();
+    expect(undoAttempts, 1);
+
+    // When the caller says there was nothing to undo, Escape still falls
+    // through to its normal (here, no-op) empty-form wipe — no exception,
+    // no dead end.
+    undone = true;
+    await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+    await tester.pump();
+    expect(undoAttempts, 2);
+  });
+
   testWidgets('debounced lookup enriches the entry line and the logged QSO', (tester) async {
     var lookups = 0;
     Future<Map<String, dynamic>?> lookup(
@@ -1211,6 +1258,89 @@ void main() {
     // Wipe cleared the enrichment line (after the info-area cross-fade settles).
     await tester.pump(const Duration(milliseconds: 300));
     expect(find.textContaining('ARRL HQ'), findsNothing);
+  });
+
+  testWidgets('restoring a wiped entry re-runs the lookup, not just its stale cached result', (tester) async {
+    var lookups = 0;
+    Future<Map<String, dynamic>?> lookup(
+      String call, {
+      required Map<String, dynamic> qso,
+      required Map<String, dynamic> operation,
+      required bool online,
+    }) async {
+      lookups++;
+      if (call != 'W1AW') return null;
+      return {
+        'guess': {'name': 'ARRL HQ', 'location': 'Newington, CT', 'city': 'Newington', 'state': 'CT', 'grid': 'FN31pr'},
+      };
+    }
+
+    await tester.pumpWidget(MaterialApp(
+      home: Scaffold(
+        body: LoggingControls(
+          operation: operation,
+          qsosRepository: qsos,
+          lookup: lookup,
+          callLocationLine: (guess) => guess['location'] as String?,
+        ),
+      ),
+    ));
+
+    await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'W1AW');
+    await tester.pump(const Duration(milliseconds: 350));
+    expect(lookups, 2); // offline + online pass
+    expect(find.textContaining('ARRL HQ'), findsOneWidget);
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.escape); // wipes, offers undo
+    await tester.pump();
+    final callField = tester.widget<TextField>(find.widgetWithText(TextField, 'Their call'));
+    expect(callField.controller!.text, isEmpty);
+
+    await tester.tap(find.byIcon(resolveIconName('undo')));
+    await tester.pump();
+    expect(callField.controller!.text, 'W1AW');
+
+    // The wipe cleared the lookup cache along with the fields — restoring
+    // must schedule a fresh lookup, not leave the entry unlooked-up until
+    // the user edits the field themselves.
+    expect(lookups, 2); // unchanged immediately — the lookup is debounced
+    await tester.pump(const Duration(milliseconds: 350));
+    expect(lookups, 4);
+    expect(find.textContaining('ARRL HQ'), findsOneWidget);
+  });
+
+  testWidgets('restoring a wiped entry also re-runs scoring, not just the lookup', (tester) async {
+    // Same wipe-then-undo flow as the lookup regression above, but for the
+    // dupe/New-* score pill: _wipe() clears score notices along with the
+    // lookup cache, so restoring must re-trigger scoring too, or the pill
+    // stays gone until the user edits the field themselves.
+    await tester.pumpWidget(MaterialApp(
+      home: Scaffold(
+        body: LoggingControls(
+          operation: operation,
+          qsosRepository: qsos,
+          scoreQso: ({required operation, required qso, excludeUuid}) async =>
+              {'notices': <String>[], 'alerts': ['duplicate']},
+          scoreNoticeLabel: (key) => key == 'duplicate' ? 'Dupe!' : key,
+        ),
+      ),
+    ));
+
+    await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'W1AW');
+    await tester.pump(const Duration(milliseconds: 350));
+    expect(find.text('Dupe!'), findsOneWidget);
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.escape); // wipes, offers undo
+    await tester.pump();
+    expect(find.text('Dupe!'), findsNothing);
+
+    await tester.tap(find.byIcon(resolveIconName('undo')));
+    await tester.pump();
+    final callField = tester.widget<TextField>(find.widgetWithText(TextField, 'Their call'));
+    expect(callField.controller!.text, 'W1AW');
+
+    await tester.pump(const Duration(milliseconds: 350));
+    expect(find.text('Dupe!'), findsOneWidget);
   });
 
   testWidgets('activity refList control folds refs into the logged QSO', (tester) async {
@@ -3389,6 +3519,41 @@ void main() {
       expect(sentField.controller!.text, '59');
       expect(find.byIcon(deleteIcon), findsOneWidget);
       expect(find.byIcon(undoIcon), findsNothing);
+    });
+
+    testWidgets('Escape while editing discards changes and ends the editing session, unlike Revert (issue #199)', (tester) async {
+      final existingQso = (await tester.runAsync(() => qsos.add(operation.uuid, {
+            'their': {'call': 'W1AW', 'sent': '59'},
+            'our': {'sent': '59', 'call': 'KI2D'},
+            'mode': 'SSB',
+          })))!;
+
+      var editCanceled = false;
+      await tester.pumpWidget(MaterialApp(
+        home: Scaffold(
+          body: LoggingControls(
+            operation: operation,
+            qsosRepository: qsos,
+            editingQso: existingQso,
+            onEditCanceled: () => editCanceled = true,
+          ),
+        ),
+      ));
+
+      await tester.enterText(find.widgetWithText(TextField, 'Sent'), '57');
+      await tester.pump();
+      expect(find.byIcon(undoIcon), findsOneWidget); // a change is pending, same as the Revert test above
+
+      await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+      await tester.pump();
+
+      // Revert (the button above) only discards the typed change and stays
+      // in edit mode — Escape closes the editing session entirely.
+      expect(editCanceled, isTrue);
+
+      // Nothing was saved: the typed '57' never reached the stored record.
+      final stored = (await tester.runAsync(() => qsos.watchForOperation(operation.uuid).first))!;
+      expect(stored.single.data['their']['sent'], '59');
     });
 
     testWidgets('viewing a deleted QSO locks the fields and offers restore; tapping it undeletes (issue #59)', (tester) async {

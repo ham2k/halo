@@ -26,6 +26,7 @@ export 'src/semantic_id.dart';
 export 'src/status_bar.dart';
 export 'src/text_formatters.dart';
 export 'src/theme.dart';
+export 'src/timed_undo_slot.dart';
 export 'src/ui_scale.dart';
 export 'src/form_renderer.dart';
 export 'src/format_utils.dart';

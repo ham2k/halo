@@ -1,7 +1,10 @@
 // Copyright ©️ 2026 Sebastian Delmont <sd@ham2k.com>
 // SPDX-License-Identifier: MPL-2.0
 
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart' show LogicalKeyboardKey;
 import 'package:halo_core/halo_core.dart';
 import 'package:halo_widgets/halo_widgets.dart';
 import 'package:intl/intl.dart';
@@ -86,6 +89,14 @@ class LoggingPanel extends StatefulWidget {
 
 class _LoggingPanelState extends State<LoggingPanel> {
   Qso? _selectedQso;
+
+  /// A QSO Escape just deselected (ham2k/app-halo-dist#199 follow-up) — kept
+  /// for a few seconds so a second Escape can re-select it, the same way a
+  /// wiped-but-not-yet-lost new QSO can be restored (LoggingControls' own
+  /// `_wipeUndoSlot`). Never set by Save/Delete/Restore/Revert ending an
+  /// edit, only by Escape itself — those are deliberate, final actions, not
+  /// something to offer undoing.
+  final _lastDeselected = TimedUndoSlot<Qso>();
   // Imperative handle into LoggingControls, used to drive the dev bridge
   // (window.__halo setField/tap) when it's installed (dev/preview web).
   final _loggingController = LoggingControlsController();
@@ -139,7 +150,49 @@ class _LoggingPanelState extends State<LoggingPanel> {
       DevBridge.instance.setFieldHandler = null;
       DevBridge.instance.actionHandler = null;
     }
+    _lastDeselected.dispose();
     super.dispose();
+  }
+
+  /// Escape's own way of ending an editing session — see
+  /// `LoggingControls.onEscapeDeselect`'s doc. Stashes the QSO for a few
+  /// seconds so `_handleUndoDeselect` can restore it.
+  void _handleEscapeDeselect() {
+    final qso = _selectedQso;
+    if (qso == null) return;
+    _lastDeselected.set(qso, onExpire: () {
+      if (mounted) setState(() {});
+    });
+    setState(() => _selectedQso = null);
+  }
+
+  /// Re-selects the QSO `_handleEscapeDeselect` most recently deselected, if
+  /// any and still within its undo window. Returns whether it did —
+  /// `LoggingControls` falls through to its own empty-form wipe when it
+  /// didn't (see `onUndoDeselect`'s doc).
+  bool _handleUndoDeselect() {
+    final qso = _lastDeselected.take();
+    if (qso == null) return false;
+    setState(() => _selectedQso = qso);
+    return true;
+  }
+
+  /// Escape reaching here (not `LoggingControls`' own `CallbackShortcuts`)
+  /// means focus is elsewhere in this panel — the QSO list, or nowhere at
+  /// all — issue #199's follow-up ask that Escape deselect regardless of
+  /// what has focus. Deselecting takes priority; with nothing selected,
+  /// falls through to undoing the last deselect instead. A locked (staged-
+  /// delete or deleted) QSO's fields are always disabled, so its view can
+  /// never hold focus and `LoggingControls`' own Escape guard never gets a
+  /// chance to run — this mirrors that guard here so Escape doesn't close
+  /// the read-only view it's meant to protect.
+  void _handlePanelEscape() {
+    if (_selectedQso != null) {
+      if (_loggingController.isFieldsLocked) return;
+      _handleEscapeDeselect();
+    } else {
+      _handleUndoDeselect();
+    }
   }
 
   /// Only rebuild when a numbers-row setting actually changes —
@@ -159,6 +212,7 @@ class _LoggingPanelState extends State<LoggingPanel> {
   }
 
   void _handleSelectQso(Qso qso) {
+    _lastDeselected.clear();
     setState(() {
       _selectedQso = _selectedQso?.uuid == qso.uuid ? null : qso;
     });
@@ -326,91 +380,108 @@ class _LoggingPanelState extends State<LoggingPanel> {
       labels: _qsoListLabelsFor(context),
     );
 
-    return Column(
-      children: [
-        Expanded(child: list),
-        LoggingControls(
-          controller: _loggingController,
-          operation: widget.operation,
-          qsosRepository: widget.services.qsos,
-          qsos: widget.qsos,
-          settings: widget.services.settings,
-          enabledBands: _enabledBands,
-          enabledModes: _enabledModes,
-          radioService: widget.services.radio,
-          lookup: widget.services.extensions.lookupCall,
-          enqueueLookup: widget.services.lookupQueue.enqueue,
-          activityControls: widget.loggingControls,
-          refreshActivityControls: (qso) => widget.services.extensions
-              .loggingControls(widget.operation.data, qso: qso),
-          decorateRef: widget.services.extensions.decorateRef,
-          interpretCommand: widget.services.extensions.interpretCommand,
-          interpretationUpdates: widget.services.extensions.commandInterpretationUpdates,
-          onCommandMessageChanged: (message) => widget.onCommandMessageChanged?.call(message),
-          onCommandAction: widget.onCommandAction,
-          suggestSpotSources: widget.services.extensions.suggestSpotSources,
-          sendSpot: widget.services.extensions.sendSpot,
-          spottingControlLabel: context.t.loggingControls.spottingControl,
-          spottingLabel: context.t.loggingControls.spottingControl,
-          spottingSelfLabel: context.t.loggingControls.spottingSelfControl,
-          spotSelfLabel: (freq) => context.t.loggingControls.spotSelfAt(freq: freq),
-          spotOtherLabel: (call, freq) => context.t.loggingControls.spotOtherAt(call: call, freq: freq),
-          spotTooLateLabel: (call) => context.t.loggingControls.spotTooLate(call: call),
-          spotNoFreqLabel: context.t.loggingControls.spotNoFreq,
-          spotCommentHint: context.t.loggingControls.spotComment,
-          editingQso: _selectedQso,
-          suggestedQso: widget.suggestedQso,
-          onEditCanceled: () => setState(() => _selectedQso = null),
-          onLogged: (_) => setState(() => _selectedQso = null),
-          // A comma-separated call list (issue #7) logs several QSOs at
-          // once — one rescore for the whole batch, not one per call.
-          onCallListLogged: () =>
-              widget.services.scoring.rescoreOperation(widget.operation),
-          controlOrder: _controlOrder,
-          hiddenControlKeys: _hiddenControls,
-          onControlsSettingsChanged: _handleControlsSettingsChanged,
-          operationStatsLines: (qsos) => _operationStatsLines(context, qsos),
-          callLocationLine: (guess) => _callLocationLine(context, guess),
-          scoreQso: widget.services.extensions.scoreQso,
-          scoreNoticeLabel: (key) => scoreNoticeLabel(context, key),
-          onCallInfoChanged: widget.onCallInfoChanged,
-          onCallInfoTap: widget.onCallInfoTap,
-          showRSTFields: widget.showRSTFields,
-          showStateField: widget.showStateField,
-          showGridField: widget.showGridField,
-          showNumbersRow: _showNumbersRow,
-          showExtraInNumbersRow: _showExtraInNumbersRow,
-          vibrateNumbersRow: _vibrateNumbersRow,
-          timeControlLabel: context.t.loggingControls.timeControl,
-          radioControlLabel: context.t.loggingControls.radioControl,
-          controlSettingsTitle: context.t.loggingControls.controlSettings,
-          saveLabel: context.t.common.save,
-          cancelLabel: context.t.common.cancel,
-          timeLabel: context.t.loggingControls.timeUtc,
-          dateLabel: context.t.loggingControls.date,
-          nowLabel: context.t.loggingControls.now,
-          freqLabel: context.t.loggingControls.frequency,
-          modeLabel: context.t.loggingControls.mode,
-          theirCallLabel: context.t.loggingControls.theirCall,
-          sentLabel: context.t.loggingControls.sent,
-          rcvdLabel: context.t.loggingControls.rcvd,
-          moreLabel: context.t.loggingControls.more,
-          revertLabel: context.t.loggingControls.revert,
-          deleteLabel: context.t.common.delete,
-          undoDeleteLabel: context.t.loggingControls.undoDelete,
-          restoreLabel: context.t.loggingControls.restore,
-          wipeLabel: context.t.loggingControls.wipe,
-          undoLabel: context.t.loggingControls.undo,
-          pendingDeleteWarning: context.t.loggingControls.pendingDeleteWarning,
-          deletedQsoWarning: context.t.loggingControls.deletedQsoWarning,
-          qsoEditFormTitle: context.t.qsoEditForm.title,
-          theirNameLabel: context.t.qsoEditForm.theirName,
-          theirGridLabel: context.t.qsoEditForm.theirGrid,
-          theirStateLabel: context.t.qsoEditForm.theirState,
-          notesLabel: context.t.qsoEditForm.notes,
-          bandLabel: context.t.qsoEditForm.band,
-        ),
-      ],
+    // Escape deselecting a QSO regardless of what has focus (issue #199
+    // follow-up — e.g. the QSO was selected via a list tap, which never
+    // focuses anything inside LoggingControls). LoggingControls' own
+    // CallbackShortcuts, closer to the compose form's fields, still handles
+    // Escape whenever focus IS there (discard-typed-changes, wipe/undo) —
+    // this one only fires when that inner one doesn't.
+    return CallbackShortcuts(
+      bindings: {const SingleActivator(LogicalKeyboardKey.escape): _handlePanelEscape},
+      child: Column(
+        children: [
+          Expanded(child: list),
+          LoggingControls(
+            controller: _loggingController,
+            operation: widget.operation,
+            qsosRepository: widget.services.qsos,
+            qsos: widget.qsos,
+            settings: widget.services.settings,
+            enabledBands: _enabledBands,
+            enabledModes: _enabledModes,
+            radioService: widget.services.radio,
+            lookup: widget.services.extensions.lookupCall,
+            enqueueLookup: widget.services.lookupQueue.enqueue,
+            activityControls: widget.loggingControls,
+            refreshActivityControls: (qso) => widget.services.extensions
+                .loggingControls(widget.operation.data, qso: qso),
+            decorateRef: widget.services.extensions.decorateRef,
+            interpretCommand: widget.services.extensions.interpretCommand,
+            interpretationUpdates: widget.services.extensions.commandInterpretationUpdates,
+            onCommandMessageChanged: (message) => widget.onCommandMessageChanged?.call(message),
+            onCommandAction: widget.onCommandAction,
+            suggestSpotSources: widget.services.extensions.suggestSpotSources,
+            sendSpot: widget.services.extensions.sendSpot,
+            spottingControlLabel: context.t.loggingControls.spottingControl,
+            spottingLabel: context.t.loggingControls.spottingControl,
+            spottingSelfLabel: context.t.loggingControls.spottingSelfControl,
+            spotSelfLabel: (freq) => context.t.loggingControls.spotSelfAt(freq: freq),
+            spotOtherLabel: (call, freq) => context.t.loggingControls.spotOtherAt(call: call, freq: freq),
+            spotTooLateLabel: (call) => context.t.loggingControls.spotTooLate(call: call),
+            spotNoFreqLabel: context.t.loggingControls.spotNoFreq,
+            spotCommentHint: context.t.loggingControls.spotComment,
+            editingQso: _selectedQso,
+            suggestedQso: widget.suggestedQso,
+            onEditCanceled: () {
+              _lastDeselected.clear();
+              setState(() => _selectedQso = null);
+            },
+            onEscapeDeselect: _handleEscapeDeselect,
+            onUndoDeselect: _handleUndoDeselect,
+            onLogged: (_) {
+              _lastDeselected.clear();
+              setState(() => _selectedQso = null);
+            },
+            // A comma-separated call list (issue #7) logs several QSOs at
+            // once — one rescore for the whole batch, not one per call.
+            onCallListLogged: () =>
+                widget.services.scoring.rescoreOperation(widget.operation),
+            controlOrder: _controlOrder,
+            hiddenControlKeys: _hiddenControls,
+            onControlsSettingsChanged: _handleControlsSettingsChanged,
+            operationStatsLines: (qsos) => _operationStatsLines(context, qsos),
+            callLocationLine: (guess) => _callLocationLine(context, guess),
+            scoreQso: widget.services.extensions.scoreQso,
+            scoreNoticeLabel: (key) => scoreNoticeLabel(context, key),
+            onCallInfoChanged: widget.onCallInfoChanged,
+            onCallInfoTap: widget.onCallInfoTap,
+            showRSTFields: widget.showRSTFields,
+            showStateField: widget.showStateField,
+            showGridField: widget.showGridField,
+            showNumbersRow: _showNumbersRow,
+            showExtraInNumbersRow: _showExtraInNumbersRow,
+            vibrateNumbersRow: _vibrateNumbersRow,
+            timeControlLabel: context.t.loggingControls.timeControl,
+            radioControlLabel: context.t.loggingControls.radioControl,
+            controlSettingsTitle: context.t.loggingControls.controlSettings,
+            saveLabel: context.t.common.save,
+            cancelLabel: context.t.common.cancel,
+            timeLabel: context.t.loggingControls.timeUtc,
+            dateLabel: context.t.loggingControls.date,
+            nowLabel: context.t.loggingControls.now,
+            freqLabel: context.t.loggingControls.frequency,
+            modeLabel: context.t.loggingControls.mode,
+            theirCallLabel: context.t.loggingControls.theirCall,
+            sentLabel: context.t.loggingControls.sent,
+            rcvdLabel: context.t.loggingControls.rcvd,
+            moreLabel: context.t.loggingControls.more,
+            revertLabel: context.t.loggingControls.revert,
+            deleteLabel: context.t.common.delete,
+            undoDeleteLabel: context.t.loggingControls.undoDelete,
+            restoreLabel: context.t.loggingControls.restore,
+            wipeLabel: context.t.loggingControls.wipe,
+            undoLabel: context.t.loggingControls.undo,
+            pendingDeleteWarning: context.t.loggingControls.pendingDeleteWarning,
+            deletedQsoWarning: context.t.loggingControls.deletedQsoWarning,
+            qsoEditFormTitle: context.t.qsoEditForm.title,
+            theirNameLabel: context.t.qsoEditForm.theirName,
+            theirGridLabel: context.t.qsoEditForm.theirGrid,
+            theirStateLabel: context.t.qsoEditForm.theirState,
+            notesLabel: context.t.qsoEditForm.notes,
+            bandLabel: context.t.qsoEditForm.band,
+          ),
+        ],
+      ),
     );
   }
 }

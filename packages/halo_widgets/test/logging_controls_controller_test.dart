@@ -14,11 +14,13 @@ void main() {
     expect(() => controller.setField('call', 'W1AW'), returnsNormally);
     await controller.submit();
     expect(() => controller.wipe(), returnsNormally);
+    expect(controller.isFieldsLocked, isFalse);
 
     String? field;
     String? value;
     var submitted = false;
     var wiped = false;
+    var locked = false;
     controller.attach(
       setField: (f, v) {
         field = f;
@@ -26,6 +28,7 @@ void main() {
       },
       submit: () async => submitted = true,
       wipe: () => wiped = true,
+      isFieldsLocked: () => locked,
     );
 
     expect(controller.isAttached, isTrue);
@@ -36,11 +39,14 @@ void main() {
     expect(submitted, isTrue);
     controller.wipe();
     expect(wiped, isTrue);
+    locked = true;
+    expect(controller.isFieldsLocked, isTrue);
 
     controller.detach();
     expect(controller.isAttached, isFalse);
     field = null;
     controller.setField('call', 'K1ABC'); // detached → no-op, doesn't reach the widget
     expect(field, isNull);
+    expect(controller.isFieldsLocked, isFalse);
   });
 }

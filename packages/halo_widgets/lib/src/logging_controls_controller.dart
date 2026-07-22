@@ -12,16 +12,19 @@ class LoggingControlsController {
   void Function(String field, String value)? _setField;
   Future<void> Function()? _submit;
   void Function()? _wipe;
+  bool Function()? _isFieldsLocked;
 
   /// Wired by [LoggingControls] on mount/unmount — not meant for callers.
   void attach({
     required void Function(String field, String value) setField,
     required Future<void> Function() submit,
     required void Function() wipe,
+    required bool Function() isFieldsLocked,
   }) {
     _setField = setField;
     _submit = submit;
     _wipe = wipe;
+    _isFieldsLocked = isFieldsLocked;
   }
 
   /// Wired by [LoggingControls] on unmount — not meant for callers.
@@ -29,6 +32,7 @@ class LoggingControlsController {
     _setField = null;
     _submit = null;
     _wipe = null;
+    _isFieldsLocked = null;
   }
 
   /// Whether a LoggingControls is currently attached.
@@ -44,4 +48,10 @@ class LoggingControlsController {
 
   /// Clears the compose fields — the same as Wipe.
   void wipe() => _wipe?.call();
+
+  /// Whether the attached [LoggingControls] is showing a read-only,
+  /// staged-delete or deleted QSO — Escape must not close that view (see
+  /// `LoggingControls._handleEscape`'s doc). False (never locked) while
+  /// nothing is attached.
+  bool get isFieldsLocked => _isFieldsLocked?.call() ?? false;
 }

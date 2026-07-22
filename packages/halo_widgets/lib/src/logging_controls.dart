@@ -50,6 +50,7 @@ import 'ref_chips_input.dart';
 import 'secondary_control_row.dart';
 import 'text_formatters.dart';
 import 'theme.dart';
+import 'timed_undo_slot.dart';
 
 /// Async callsign enrichment (name, location, grid…) from lookup sources —
 /// the hardcoded callsign-annotation pre-step plus every registered
@@ -280,6 +281,19 @@ class LoggingControls extends StatefulWidget {
   /// `didUpdateWidget` once `editingQso` becomes null on the next build.
   final VoidCallback? onEditCanceled;
 
+  /// Escape's own way of ending an editing session (ham2k/app-halo-dist#199
+  /// follow-up) — called instead of [onEditCanceled] so the caller can offer
+  /// to undo it (re-select the QSO on a second Escape), unlike Save/Delete/
+  /// Restore/Revert, which end the session for good. Falls back to
+  /// [onEditCanceled] when unset.
+  final VoidCallback? onEscapeDeselect;
+
+  /// Escape, with nothing composed and no wipe to undo, asks the caller
+  /// whether *it* has something to undo instead — a QSO [onEscapeDeselect]
+  /// just deselected. Returns whether it actually undid something; when
+  /// false (or unset), Escape falls through to its normal empty-form wipe.
+  final bool Function()? onUndoDeselect;
+
   /// Settings engine interface.
   final SyncSettings? settings;
 
@@ -427,6 +441,8 @@ class LoggingControls extends StatefulWidget {
     this.editingQso,
     this.suggestedQso,
     this.onEditCanceled,
+    this.onEscapeDeselect,
+    this.onUndoDeselect,
     this.settings,
     this.radioService,
     this.controlOrder = const [],
@@ -723,8 +739,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   /// A wiped-but-not-yet-lost new QSO, stashed by the wipe button so the
   /// same button can flip to "undo" for a few seconds afterward. Only
   /// meaningful while composing a new QSO (`editingQso == null`).
-  Map<String, dynamic>? _undoQsoData;
-  Timer? _undoExpireTimer;
+  final _wipeUndoSlot = TimedUndoSlot<Map<String, dynamic>>();
 
   /// Guards against double-logging: Enter is bound both as a keyboard
   /// shortcut and as every field's onSubmitted, and can also auto-repeat.
@@ -863,7 +878,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     if (widget.editingQso != null && _callInfoActive) _scheduleScore();
     // Wire the imperative handle (used by the app's dev bridge) so the call
     // field / Log / Wipe can be driven from outside the widget.
-    widget.controller?.attach(setField: _devSetField, submit: _log, wipe: _wipe);
+    widget.controller?.attach(setField: _devSetField, submit: _log, wipe: _wipe, isFieldsLocked: () => _fieldsLocked);
   }
 
   /// Sets a primary field as if typed — the controller listeners fire, so the
@@ -887,7 +902,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     super.didUpdateWidget(oldWidget);
     if (oldWidget.controller != widget.controller) {
       oldWidget.controller?.detach();
-      widget.controller?.attach(setField: _devSetField, submit: _log, wipe: _wipe);
+      widget.controller?.attach(setField: _devSetField, submit: _log, wipe: _wipe, isFieldsLocked: () => _fieldsLocked);
     }
     if (oldWidget.editingQso?.uuid != widget.editingQso?.uuid) {
       _resetEditingSessionState();
@@ -940,9 +955,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     _theirNameOverride = null;
     _gridTouched = false;
     _stateTouched = false;
-    _undoExpireTimer?.cancel();
-    _undoExpireTimer = null;
-    _undoQsoData = null;
+    _wipeUndoSlot.clear();
   }
 
   /// Which `spots` hooks currently offer self- or other-spotting, for the
@@ -1136,7 +1149,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     _commandDescribeDebounce?.cancel();
     _interpretationUpdatesSub?.cancel();
     _executeMessageTimer?.cancel();
-    _undoExpireTimer?.cancel();
+    _wipeUndoSlot.dispose();
     _spotStatusClearTimer?.cancel();
     _spotCommentController.dispose();
     _spotCommentFocus.dispose();
@@ -3080,15 +3093,27 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
 
   /// Escape wipes the compose form, but must not blank the read-only view
   /// of a staged-delete or deleted QSO — the fields are the record's only
-  /// display and can't be repopulated without reselecting it. When
-  /// composing a new QSO it goes through the wipe button's path, so the
-  /// 5-second undo offer applies to Esc too; while editing, or with
-  /// nothing composed, there is nothing the undo button could restore
-  /// (it only shows for new QSOs), so it wipes directly.
+  /// display and can't be repopulated without reselecting it. When editing
+  /// an existing QSO, it discards any unsaved changes and ends the editing
+  /// session entirely (ham2k/app-halo-dist#199) — via [onEscapeDeselect]
+  /// rather than [onEditCanceled] directly, so the caller can offer to undo
+  /// it (Revert only discards changes and stays in edit mode; this is the
+  /// "never mind, close it" gesture). When composing a new QSO it goes
+  /// through the wipe button's path, so the 5-second undo offer applies to
+  /// Esc too. With nothing composed and no wipe left to undo, a second
+  /// Escape asks the caller if *it* has something to undo instead — a QSO
+  /// this same gesture just deselected (issue #199 follow-up) — before
+  /// finally wiping (a no-op on an already-empty form).
   void _handleEscape() {
     if (_fieldsLocked) return;
-    if (widget.editingQso == null && _hasComposedValues) {
+    if (widget.editingQso != null) {
+      (widget.onEscapeDeselect ?? widget.onEditCanceled)?.call();
+    } else if (_hasComposedValues) {
       _handleWipeTap();
+    } else if (_wipeUndoSlot.value != null) {
+      _restoreFromUndoSlot();
+    } else if (widget.onUndoDeselect?.call() ?? false) {
+      // handled — a deselected QSO was restored by the caller
     } else {
       _wipe();
     }
@@ -3147,25 +3172,28 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   /// even if the user keeps typing — see `_buildWipeOrEditButton`), then
   /// wipes the form.
   void _handleWipeTap() {
-    _undoQsoData = _getCurrentQsoData();
-    _undoExpireTimer?.cancel();
-    _undoExpireTimer = Timer(const Duration(seconds: 5), () {
-      if (mounted) setState(() => _undoQsoData = null);
+    _wipeUndoSlot.set(_getCurrentQsoData(), onExpire: () {
+      if (mounted) setState(() {});
     });
     _wipe();
   }
 
   void _restoreFromUndoSlot() {
-    final data = _undoQsoData;
+    final data = _wipeUndoSlot.take();
     if (data == null) return;
-    _undoExpireTimer?.cancel();
-    _undoExpireTimer = null;
     _populating = true;
     _applyFieldsFromData(data);
     _manualStartAtMillis = data['startAtMillis'] as int?;
-    _undoQsoData = null;
     setState(() => _updateClockTicker());
     _populating = false;
+    // _populating suppressed _onCallChanged's own _scheduleLookup()/
+    // _scheduleScore() calls above (population isn't the user typing) —
+    // the wipe this undoes already cleared the lookup cache and score
+    // notices, so a restored call would otherwise sit there unlooked-up
+    // and without its dupe/New-* pills until the user edited the field
+    // themselves.
+    _scheduleLookup();
+    _scheduleScore();
   }
 
   /// Restores (undeletes) the deleted QSO being viewed, then ends the
@@ -3242,7 +3270,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     final VoidCallback? onPressed;
 
     if (editingQso == null) {
-      if (_undoQsoData != null) {
+      if (_wipeUndoSlot.value != null) {
         icon = resolveIconName('undo');
         tooltip = widget.undoLabel ?? 'Undo';
         onPressed = _restoreFromUndoSlot;
