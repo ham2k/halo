@@ -937,4 +937,125 @@ void main() {
       expect(find.text('1'), findsNothing);
     });
   });
+
+  group('viewport height changes / secondary logging controls (#192)', () {
+    testWidgets(
+      'shrinking viewport height when near bottom pushes list up, keeping bottom QSO in view',
+      (tester) async {
+        final operation = await operations.create(stationCall: 'KI2D');
+        final list = <Qso>[];
+        for (var i = 1; i <= 30; i++) {
+          list.add(
+            await qsos.add(operation.uuid, {
+              'their': {'call': 'K${i}HAM'},
+              'band': '20m',
+              'mode': 'SSB',
+              'startAtMillis': 1000 + i * 60000,
+            }),
+          );
+        }
+
+        var height = 400.0;
+        await tester.pumpWidget(
+          MaterialApp(
+            home: Scaffold(
+              body: StatefulBuilder(
+                builder: (context, setState) {
+                  return Column(
+                    children: [
+                      SizedBox(
+                        height: height,
+                        child: QsoList(qsos: list, onSelect: (_) {}),
+                      ),
+                      ElevatedButton(
+                        onPressed: () => setState(() => height = 250.0),
+                        child: const Text('Shrink'),
+                      ),
+                    ],
+                  );
+                },
+              ),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        // The last QSO (K30HAM) should be in view.
+        expect(find.text('K30HAM'), findsOneWidget);
+
+        // Shrink viewport (simulating secondary control opening)
+        await tester.tap(find.text('Shrink'));
+        await tester.pumpAndSettle();
+
+        // The last QSO (K30HAM) must STILL be in view.
+        expect(find.text('K30HAM'), findsOneWidget);
+      },
+    );
+
+    testWidgets(
+      'shrinking viewport height when scrolled up preserves user position',
+      (tester) async {
+        final operation = await operations.create(stationCall: 'KI2D');
+        final list = <Qso>[];
+        for (var i = 1; i <= 30; i++) {
+          list.add(
+            await qsos.add(operation.uuid, {
+              'their': {'call': 'K${i}HAM'},
+              'band': '20m',
+              'mode': 'SSB',
+              'startAtMillis': 1000 + i * 60000,
+            }),
+          );
+        }
+
+        var height = 400.0;
+        await tester.pumpWidget(
+          MaterialApp(
+            home: Scaffold(
+              body: StatefulBuilder(
+                builder: (context, setState) {
+                  return Column(
+                    children: [
+                      SizedBox(
+                        height: height,
+                        child: QsoList(qsos: list, onSelect: (_) {}),
+                      ),
+                      ElevatedButton(
+                        onPressed: () => setState(() => height = 250.0),
+                        child: const Text('Shrink'),
+                      ),
+                    ],
+                  );
+                },
+              ),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        // Scroll up by dragging down.
+        await tester.drag(find.byType(CustomScrollView), const Offset(0, 400));
+        await tester.pumpAndSettle();
+
+        // Bottom QSO should no longer be visible.
+        expect(find.text('K30HAM'), findsNothing);
+
+        // Record the scroll offset after dragging up.
+        final customScrollView =
+            tester.widget<CustomScrollView>(find.byType(CustomScrollView));
+        final offsetBeforeShrink = customScrollView.controller!.offset;
+
+        // Shrink viewport (simulating secondary control opening)
+        await tester.tap(find.text('Shrink'));
+        await tester.pumpAndSettle();
+
+        // Bottom QSO should STILL not be forced into view.
+        expect(find.text('K30HAM'), findsNothing);
+
+        // Scroll offset should remain unchanged (not jumped to maxScrollExtent).
+        final offsetAfterShrink = customScrollView.controller!.offset;
+        expect(offsetAfterShrink, equals(offsetBeforeShrink));
+      },
+    );
+  });
 }

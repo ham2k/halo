@@ -153,11 +153,14 @@ class QsoList extends StatefulWidget {
 class _QsoListState extends State<QsoList> {
   final _scrollController = ScrollController();
   int _lastQsoCount = 0;
+  bool _wasNearBottom = true;
+  double? _lastMaxScrollExtent;
 
   @override
   void initState() {
     super.initState();
     _lastQsoCount = widget.qsos.length;
+    _wasNearBottom = true;
     WidgetsBinding.instance.addPostFrameCallback((_) => _jumpToBottom());
   }
 
@@ -170,6 +173,7 @@ class _QsoListState extends State<QsoList> {
     // live edge — someone scrolled up to review earlier contacts shouldn't
     // get yanked back to the bottom by the next logged QSO.
     if (grew && _isNearBottom()) {
+      _wasNearBottom = true;
       WidgetsBinding.instance.addPostFrameCallback((_) => _jumpToBottom());
     }
   }
@@ -183,6 +187,30 @@ class _QsoListState extends State<QsoList> {
   void _jumpToBottom() {
     if (!_scrollController.hasClients) return;
     _scrollController.jumpTo(_scrollController.position.maxScrollExtent);
+    _wasNearBottom = true;
+  }
+
+  bool _onScrollNotification(ScrollNotification notification) {
+    if (notification.depth == 0) {
+      _wasNearBottom = _isNearBottom();
+    }
+    return false;
+  }
+
+  bool _onScrollMetricsNotification(ScrollMetricsNotification notification) {
+    if (notification.depth == 0) {
+      final metrics = notification.metrics;
+      if (_lastMaxScrollExtent != null &&
+          metrics.maxScrollExtent > _lastMaxScrollExtent!) {
+        // If maxScrollExtent increased (e.g. secondary controls expanded,
+        // layout resized) and user was near bottom, keep bottom QSO in view.
+        if (_wasNearBottom) {
+          WidgetsBinding.instance.addPostFrameCallback((_) => _jumpToBottom());
+        }
+      }
+      _lastMaxScrollExtent = metrics.maxScrollExtent;
+    }
+    return false;
   }
 
   @override
@@ -560,50 +588,56 @@ class _QsoListState extends State<QsoList> {
       // newest row when there are few QSOs) — rows themselves stay opaque
       // on the normal surface color below.
       color: theme.colorScheme.surfaceContainerHighest,
-      child: CustomScrollView(
-        controller: _scrollController,
-        slivers: [
-          for (var g = 0; g < dayGroups.length; g++)
-            // Groups each day's header with its own rows so Flutter's sliver
-            // protocol coordinates pinning *between* groups — without this,
-            // sibling `SliverPersistentHeader`s pin independently of each
-            // other and a short day's header never gets pushed off by the
-            // next day's, so both stay stuck on screen at once instead of
-            // only the current day's header showing.
-            SliverMainAxisGroup(
-              slivers: [
-                SliverPersistentHeader(
-                  pinned: true,
-                  delegate: _DayHeaderDelegate(
-                    child: DayHeaderRow(
-                      dayMillis: dayKeys[g],
-                      count: dayGroups[g]
-                          .where((i) => qsos[i].isRealContact)
-                          .length,
-                      scores: scoresByDay[dayKeys[g]],
-                      labels: widget.labels,
+      child: NotificationListener<ScrollNotification>(
+        onNotification: _onScrollNotification,
+        child: NotificationListener<ScrollMetricsNotification>(
+          onNotification: _onScrollMetricsNotification,
+          child: CustomScrollView(
+            controller: _scrollController,
+            slivers: [
+              for (var g = 0; g < dayGroups.length; g++)
+                // Groups each day's header with its own rows so Flutter's sliver
+                // protocol coordinates pinning *between* groups — without this,
+                // sibling `SliverPersistentHeader`s pin independently of each
+                // other and a short day's header never gets pushed off by the
+                // next day's, so both stay stuck on screen at once instead of
+                // only the current day's header showing.
+                SliverMainAxisGroup(
+                  slivers: [
+                    SliverPersistentHeader(
+                      pinned: true,
+                      delegate: _DayHeaderDelegate(
+                        child: DayHeaderRow(
+                          dayMillis: dayKeys[g],
+                          count: dayGroups[g]
+                              .where((i) => qsos[i].isRealContact)
+                              .length,
+                          scores: scoresByDay[dayKeys[g]],
+                          labels: widget.labels,
+                        ),
+                      ),
                     ),
-                  ),
+                    SliverList(
+                      delegate: SliverChildBuilderDelegate((context, i) {
+                        // Divider's own `height` (the space it reserves, not the
+                        // visible line) defaults to 16 regardless of the
+                        // app-wide dividerTheme's `space` unless given
+                        // explicitly — measured at 16px in practice, way more
+                        // than the issue's "one pixel divider ... no further
+                        // margins" calls for. Same odd-index-is-a-separator
+                        // trick `ListView.separated` uses internally, since
+                        // `SliverList` has no `.separated` ctor.
+                        if (i.isOdd) {
+                          return const Divider(height: 1, thickness: 1);
+                        }
+                        return buildRow(context, dayGroups[g][i ~/ 2]);
+                      }, childCount: dayGroups[g].length * 2 - 1),
+                    ),
+                  ],
                 ),
-                SliverList(
-                  delegate: SliverChildBuilderDelegate((context, i) {
-                    // Divider's own `height` (the space it reserves, not the
-                    // visible line) defaults to 16 regardless of the
-                    // app-wide dividerTheme's `space` unless given
-                    // explicitly — measured at 16px in practice, way more
-                    // than the issue's "one pixel divider ... no further
-                    // margins" calls for. Same odd-index-is-a-separator
-                    // trick `ListView.separated` uses internally, since
-                    // `SliverList` has no `.separated` ctor.
-                    if (i.isOdd) {
-                      return const Divider(height: 1, thickness: 1);
-                    }
-                    return buildRow(context, dayGroups[g][i ~/ 2]);
-                  }, childCount: dayGroups[g].length * 2 - 1),
-                ),
-              ],
-            ),
-        ],
+            ],
+          ),
+        ),
       ),
     );
   }
