@@ -19,6 +19,7 @@
     "callsignTitle": "What's your callsign?",
     "callsignBody": "You need an Amateur Radio Operator License in order to find this app useful",
     "callsignLabel": "Operator's Callsign",
+    "alreadyHaveAccount": "Already have an account?",
     "activitiesTitle": "Favorite Activities",
     "activitiesBody": "Are you interested in any of these popular activation programs?",
     "activitiesFooter": "(You can find more options in the Settings)",

@@ -131,17 +131,16 @@ class SettingsView extends StatefulWidget {
   static const layoutPolicy = ViewLayoutPolicy.fixed;
 
   final HaLoServices services;
+  final String? initialPanel;
 
-  const SettingsView({super.key, required this.services});
+  const SettingsView({super.key, required this.services, this.initialPanel});
 
   @override
   State<SettingsView> createState() => _SettingsViewState();
 }
 
 class _SettingsViewState extends State<SettingsView> {
-  // The wide layout defaults to Common Preferences even though the Profiles
-  // ("Callsign") panel sorts first in the sidebar.
-  String _selectedPanel = 'settings';
+  late String _selectedPanel;
   List<Map<String, dynamic>> _extensionPanels = [];
   // Extension-contributed panels only appear in _buildPanelEntries once
   // _loadExtensionPanels's bridge call resolves. Until then, the wide-layout
@@ -153,6 +152,7 @@ class _SettingsViewState extends State<SettingsView> {
   @override
   void initState() {
     super.initState();
+    _selectedPanel = widget.initialPanel ?? 'settings';
     _loadExtensionPanels();
     // A runtime restart (extension enabled/disabled) changes which panels
     // exist — re-fetch so a disabled extension's panel disappears (the

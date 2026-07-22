@@ -21,7 +21,10 @@ import '../config/release_notes.dart';
 import '../i18n/strings.g.dart';
 import '../main.dart';
 import '../services/settings_service.dart';
+import 'package:halo_core/halo_core.dart';
 import 'ham2k_logo.dart';
+import 'settings_view.dart';
+import 'switch_accounts_dialog.dart';
 import 'version_label.dart';
 import 'release_overlay.dart' show overlayCreditsText, overlayCreditsStyle, overlayVersionLabelStyle;
 
@@ -32,9 +35,8 @@ const _bandColor = Colors.white;
 // The Welcome step keeps the band small and translucent (the photo is the
 // star); Continue animates to the taller, more opaque working state, same
 // collapsed/expanded band language as the release overlay.
-const _bandOpacityCollapsed = 0.35;
+const _bandOpacityCollapsed = 0.55;
 const _bandOpacityExpanded = 0.85;
-const _bandHeightFactorCollapsed = 0.28;
 const _bandHeightFactorExpanded = 0.55;
 const _bandAnimationDuration = Duration(milliseconds: 250);
 
@@ -47,11 +49,13 @@ const _bandMinExpandedHeight = 360.0;
 /// Below this available height the brand mark shrinks.
 const _compactHeightThreshold = 540.0;
 
-/// The collapsed (Welcome) band still needs room for its title, body, and
-/// button row.
-const _bandMinCollapsedHeight = 190.0;
-
-enum _OnboardingStep { welcome, callsign, activities, consent }
+enum _OnboardingStep {
+  welcome,
+  callsign,
+  linkAccount,
+  activities,
+  consent,
+}
 
 class OnboardingOverlayView extends StatefulWidget {
   final HaLoServices services;
@@ -75,6 +79,7 @@ class _OnboardingOverlayViewState extends State<OnboardingOverlayView> {
   /// transition's direction (forward: new step enters from the right).
   var _movedForward = true;
   final _callsignController = TextEditingController();
+  final _callsignKey = GlobalKey();
 
   /// Navigation is ignored while a slide is in flight: reversing
   /// mid-transition would give AnimatedSwitcher an outgoing entry with the
@@ -115,6 +120,8 @@ class _OnboardingOverlayViewState extends State<OnboardingOverlayView> {
         _goTo(_OnboardingStep.callsign);
       case _OnboardingStep.callsign:
         _nextFromCallsign();
+      case _OnboardingStep.linkAccount:
+        break;
       case _OnboardingStep.activities:
         _goTo(_OnboardingStep.consent);
       case _OnboardingStep.consent:
@@ -169,6 +176,7 @@ class _OnboardingOverlayViewState extends State<OnboardingOverlayView> {
   /// the callsign step already wrote a value) can't wipe a real callsign —
   /// and finish.
   Future<void> _skip() async {
+    FocusManager.instance.primaryFocus?.unfocus();
     if (!widget.services.settings.defaultProfileCallsignDefined) {
       await widget.services.settings.setProfileOperatorCall(SettingsService.defaultProfileId, '');
     }
@@ -184,6 +192,12 @@ class _OnboardingOverlayViewState extends State<OnboardingOverlayView> {
       _callsignController.clear();
       return;
     }
+
+    final keyboardIsOpen = MediaQuery.viewInsetsOf(context).bottom > 0;
+    if (keyboardIsOpen) {
+      FocusManager.instance.primaryFocus?.unfocus();
+    }
+
     try {
       // Written even when empty — that's what marks onboarding as answered
       // (see defaultProfileCallsignDefined). Goes through HaLoServices so
@@ -200,6 +214,14 @@ class _OnboardingOverlayViewState extends State<OnboardingOverlayView> {
       // strand the user on this step (credentials re-seed at next boot).
       debugPrint('[onboarding] persisting callsign step failed: $e');
     }
+
+    if (keyboardIsOpen) {
+      // Wait for the keyboard slide-down and container resize to finish first
+      // so the horizontal step slide is clean and stable.
+      await Future.delayed(const Duration(milliseconds: 250));
+    }
+
+    if (!mounted) return;
     _goTo(_OnboardingStep.activities);
   }
 
@@ -218,7 +240,42 @@ class _OnboardingOverlayViewState extends State<OnboardingOverlayView> {
   }
 
   Future<void> _finish() async {
+    FocusManager.instance.primaryFocus?.unfocus();
     await _persistChoices();
+    widget.onDone();
+  }
+
+  Future<void> _startLinkingFlow() async {
+    _goTo(_OnboardingStep.linkAccount);
+  }
+
+  Future<void> _handleLinkingSuccess() async {
+    // 1. Fetch linked account callsign and update profile operator call.
+    final data = await widget.services.extensions.syncAccountData();
+    final call = (data?['current_account'] as Map?)?['call'] as String?;
+    if (call != null && call.trim().isNotEmpty) {
+      await widget.services.setOperatorCall(call.trim());
+    }
+
+    // 2. Trigger a sync round immediately.
+    unawaited(widget.services.syncEngine.runOneRound());
+
+    // 3. Check local QSO count.
+    final qsoCount = (await widget.services.qsos.syncCounts()).total;
+
+    if (qsoCount > 0) {
+      // Navigate directly to the sync settings screen.
+      navigatorKey.currentState?.push(
+        MaterialPageRoute(
+          builder: (_) => SettingsView(services: widget.services, initialPanel: 'sync'),
+        ),
+      );
+    } else {
+      // Assume the user wants to replace all with server data.
+      await widget.services.syncEngine.resolveAccountChange(SyncAccountChoice.replace);
+    }
+
+    // 4. Dismiss onboarding overlay.
     widget.onDone();
   }
 
@@ -244,20 +301,19 @@ class _OnboardingOverlayViewState extends State<OnboardingOverlayView> {
           final cardBottomGap = math.max(0.0, (windowHeight - constraints.maxHeight) / 2);
           final keyboardInset = math.max(0.0, MediaQuery.viewInsetsOf(context).bottom - cardBottomGap);
           final available = math.max(0.0, constraints.maxHeight - keyboardInset);
-          final compact = available < _compactHeightThreshold;
 
-          // Expanded, the band takes its share of the available height but
-          // never less than its minimum — on short windows that means
-          // covering the photo and even the logo entirely: the step's
-          // controls always win.
-          final expandedHeight = math.min(available, math.max(available * _bandHeightFactorExpanded, _bandMinExpandedHeight));
-          final collapsedHeight = math.min(available, math.max(available * _bandHeightFactorCollapsed, _bandMinCollapsedHeight));
-          final bandHeight = expanded ? expandedHeight : collapsedHeight;
+          // Compact is based on constraints.maxHeight (screen size) instead of available
+          // screen height - keyboardInset so that opening the virtual keyboard does NOT
+          // trigger resizing the logo in the background (Issue 188).
+          final compact = constraints.maxHeight < _compactHeightThreshold;
+
+          // Consistent band height when no virtual keyboard is displayed (Issue 188)
+          final bandHeight = math.min(available, math.max(available * _bandHeightFactorExpanded, _bandMinExpandedHeight));
           final bandOpacity = expanded ? _bandOpacityExpanded : _bandOpacityCollapsed;
 
-          // On Welcome, a tap anywhere moves to the first question — the
-          // step's own buttons keep their handlers, which win over this
-          // outer one (same barrier/card split as the release overlay).
+          final isKeyboardOpen = keyboardInset > 0;
+          final isHeightConstrained = !(isKeyboardOpen || _step == _OnboardingStep.welcome);
+
           return GestureDetector(
             behavior: HitTestBehavior.opaque,
             onTap: _step == _OnboardingStep.welcome ? () => _goTo(_OnboardingStep.callsign) : null,
@@ -273,7 +329,6 @@ class _OnboardingOverlayViewState extends State<OnboardingOverlayView> {
                   ),
                 ),
               SafeArea(
-                bottom: false,
                 child: Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
                   child: Column(
@@ -298,7 +353,7 @@ class _OnboardingOverlayViewState extends State<OnboardingOverlayView> {
               Positioned(
                 left: 0,
                 right: 0,
-                bottom: keyboardInset,
+                bottom: 0,
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -317,43 +372,45 @@ class _OnboardingOverlayViewState extends State<OnboardingOverlayView> {
                           ),
                         ),
                       ),
-                    AnimatedContainer(
+                    AnimatedSize(
                       duration: _bandAnimationDuration,
                       curve: Curves.easeInOut,
-                      height: bandHeight,
-                      color: _bandColor.withValues(alpha: bandOpacity),
-                      // Material (not just the animated color) so the step's
-                      // tiles and switches paint their ink on the band.
-                      child: Material(
-                        type: MaterialType.transparency,
-                        child: SafeArea(
-                          top: false,
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-                            // Steps slide horizontally: forward navigation
-                            // enters from the right (and exits left), Back
-                            // the mirror image. StackFit.expand keeps both
-                            // children band-sized during the transition;
-                            // ClipRect keeps the slide inside the band.
-                            child: AnimatedSwitcher(
-                              duration: _bandAnimationDuration,
-                              switchInCurve: Curves.easeInOut,
-                              switchOutCurve: Curves.easeInOut,
-                              layoutBuilder: (currentChild, previousChildren) => ClipRect(
-                                child: Stack(
-                                  fit: StackFit.expand,
-                                  children: [...previousChildren, if (currentChild != null) currentChild],
+                      child: Container(
+                        height: (isKeyboardOpen || _step == _OnboardingStep.welcome) ? null : bandHeight + keyboardInset,
+                        color: _bandColor.withValues(alpha: bandOpacity),
+                        // Material (not just the animated color) so the step's
+                        // tiles and switches paint their ink on the band.
+                        child: Material(
+                          type: MaterialType.transparency,
+                          child: SafeArea(
+                            top: false,
+                            child: Padding(
+                              padding: EdgeInsets.fromLTRB(24, 16, 24, 16 + keyboardInset),
+                              // Steps slide horizontally: forward navigation
+                              // enters from the right (and exits left), Back
+                              // the mirror image. StackFit.expand keeps both
+                              // children band-sized during the transition;
+                              // ClipRect keeps the slide inside the band.
+                              child: AnimatedSwitcher(
+                                duration: _bandAnimationDuration,
+                                switchInCurve: Curves.easeInOut,
+                                switchOutCurve: Curves.easeInOut,
+                                layoutBuilder: (currentChild, previousChildren) => ClipRect(
+                                  child: Stack(
+                                    fit: isHeightConstrained ? StackFit.expand : StackFit.loose,
+                                    children: [...previousChildren, if (currentChild != null) currentChild],
+                                  ),
                                 ),
+                                transitionBuilder: (child, animation) {
+                                  final incoming = child.key == ValueKey(_step);
+                                  final fromRight = incoming == _movedForward;
+                                  return SlideTransition(
+                                    position: Tween(begin: Offset(fromRight ? 1 : -1, 0), end: Offset.zero).animate(animation),
+                                    child: child,
+                                  );
+                                },
+                                child: KeyedSubtree(key: ValueKey(_step), child: _buildStep(theme, isHeightConstrained)),
                               ),
-                              transitionBuilder: (child, animation) {
-                                final incoming = child.key == ValueKey(_step);
-                                final fromRight = incoming == _movedForward;
-                                return SlideTransition(
-                                  position: Tween(begin: Offset(fromRight ? 1 : -1, 0), end: Offset.zero).animate(animation),
-                                  child: child,
-                                );
-                              },
-                              child: KeyedSubtree(key: ValueKey(_step), child: _buildStep(theme)),
                             ),
                           ),
                         ),
@@ -370,7 +427,7 @@ class _OnboardingOverlayViewState extends State<OnboardingOverlayView> {
     );
   }
 
-  Widget _buildStep(ThemeData theme) {
+  Widget _buildStep(ThemeData theme, bool isHeightConstrained) {
     final s = context.t.onboarding;
     final titleStyle = theme.textTheme.titleLarge?.copyWith(
       fontFamily: 'RobotoSlab',
@@ -389,13 +446,18 @@ class _OnboardingOverlayViewState extends State<OnboardingOverlayView> {
           body: Text(s.welcomeBody, style: bodyStyle),
           secondaryLabel: s.skip,
           onSecondary: _skip,
+          secondaryButtonStyle: TextButton.styleFrom(
+            backgroundColor: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.65),
+          ),
           primaryLabel: s.kContinue,
           onPrimary: () => _goTo(_OnboardingStep.callsign),
+          isHeightConstrained: isHeightConstrained,
         );
       case _OnboardingStep.callsign:
         return _stepScaffold(
           title: Text(s.callsignTitle, style: titleStyle),
           body: Column(
+            key: _callsignKey,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               Text(s.callsignBody, style: bodyStyle),
@@ -413,12 +475,39 @@ class _OnboardingOverlayViewState extends State<OnboardingOverlayView> {
                 ),
                 onSubmitted: (_) => _nextFromCallsign(),
               ),
+              const SizedBox(height: 16),
+              Align(
+                alignment: Alignment.centerLeft,
+                child: TextButton(
+                  onPressed: _startLinkingFlow,
+                  child: Text(s.alreadyHaveAccount),
+                ),
+              ),
             ],
           ),
           secondaryLabel: s.back,
           onSecondary: () => _goTo(_OnboardingStep.welcome),
-          primaryLabel: s.next,
+          primaryLabel: s.kContinue,
           onPrimary: _nextFromCallsign,
+          isHeightConstrained: isHeightConstrained,
+        );
+      case _OnboardingStep.linkAccount:
+        return _stepScaffold(
+          title: Text(s.alreadyHaveAccount, style: titleStyle),
+          body: SwitchAccountsPane(
+            fetchAccountData: widget.services.extensions.syncAccountData,
+            linkClient: widget.services.extensions.syncLinkClient,
+            linkClientWithEmail: widget.services.extensions.syncLinkClientWithEmail,
+            hideAccountsList: true,
+            cancelLabel: s.back,
+            onLinked: _handleLinkingSuccess,
+            onCancel: () => _goTo(_OnboardingStep.callsign),
+          ),
+          secondaryLabel: '',
+          onSecondary: () {},
+          primaryLabel: '',
+          onPrimary: () {},
+          isHeightConstrained: isHeightConstrained,
         );
       case _OnboardingStep.activities:
         return _stepScaffold(
@@ -450,6 +539,7 @@ class _OnboardingOverlayViewState extends State<OnboardingOverlayView> {
           onSecondary: () => _goTo(_OnboardingStep.callsign),
           primaryLabel: s.kContinue,
           onPrimary: () => _goTo(_OnboardingStep.consent),
+          isHeightConstrained: isHeightConstrained,
         );
       case _OnboardingStep.consent:
         return _stepScaffold(
@@ -480,30 +570,43 @@ class _OnboardingOverlayViewState extends State<OnboardingOverlayView> {
           onSecondary: () => _goTo(_OnboardingStep.activities),
           primaryLabel: s.done,
           onPrimary: _finish,
+          isHeightConstrained: isHeightConstrained,
         );
     }
   }
 
   Widget _stepScaffold({
+    Key? key,
     required Widget title,
     required Widget body,
     required String secondaryLabel,
     required VoidCallback onSecondary,
     required String primaryLabel,
     required VoidCallback onPrimary,
+    ButtonStyle? secondaryButtonStyle,
+    required bool isHeightConstrained,
   }) {
+    final bodyWidget = SingleChildScrollView(child: body);
     return Column(
+      key: key,
       crossAxisAlignment: CrossAxisAlignment.stretch,
+      mainAxisSize: isHeightConstrained ? MainAxisSize.max : MainAxisSize.min,
       children: [
         title,
         const SizedBox(height: 12),
-        Expanded(child: SingleChildScrollView(child: body)),
+        isHeightConstrained ? Expanded(child: bodyWidget) : bodyWidget,
         const SizedBox(height: 8),
         Row(
           children: [
-            TextButton(onPressed: onSecondary, child: Text(secondaryLabel)),
-            const Spacer(),
-            FilledButton(onPressed: onPrimary, child: Text(primaryLabel)),
+            TextButton(
+              onPressed: onSecondary,
+              style: secondaryButtonStyle,
+              child: Text(secondaryLabel),
+            ),
+            if (primaryLabel.isNotEmpty) ...[
+              const Spacer(),
+              FilledButton(onPressed: onPrimary, child: Text(primaryLabel)),
+            ],
           ],
         ),
       ],

@@ -64,6 +64,11 @@ class SwitchAccountsPane extends StatefulWidget {
   final Future<Map<String, dynamic>?> Function(String? email) linkClient;
   final Future<Map<String, dynamic>?> Function(String email) linkClientWithEmail;
 
+  final VoidCallback? onLinked;
+  final VoidCallback? onCancel;
+  final bool hideAccountsList;
+  final String? cancelLabel;
+
   /// Overridable so tests can drive the poll loop without real 5s waits.
   final Duration pollInterval;
 
@@ -75,6 +80,10 @@ class SwitchAccountsPane extends StatefulWidget {
     required this.fetchAccountData,
     required this.linkClient,
     required this.linkClientWithEmail,
+    this.onLinked,
+    this.onCancel,
+    this.hideAccountsList = false,
+    this.cancelLabel,
     this.pollInterval = const Duration(seconds: 5),
     this.now = DateTime.now,
   });
@@ -97,6 +106,23 @@ class _SwitchAccountsPaneState extends State<SwitchAccountsPane> {
   final _emailController = TextEditingController();
   bool _busy = false;
   String? _error;
+  void _onSuccess() {
+    _pollTimer?.cancel();
+    if (widget.onLinked != null) {
+      widget.onLinked!();
+    } else if (mounted) {
+      Navigator.of(context).pop(true);
+    }
+  }
+
+  void _doCancel() {
+    _pollTimer?.cancel();
+    if (widget.onCancel != null) {
+      widget.onCancel!();
+    } else if (mounted) {
+      Navigator.of(context).pop(false);
+    }
+  }
 
   // Email-flow state: the code to type on an already-linked device.
   String? _challengeCode;
@@ -183,8 +209,7 @@ class _SwitchAccountsPaneState extends State<SwitchAccountsPane> {
     if (!mounted || data == null) return;
     final newUuid = (data['current_account'] as Map?)?['uuid'] as String?;
     if (newUuid != null && _baselineAccountUuid != null && newUuid != _baselineAccountUuid) {
-      _pollTimer?.cancel();
-      Navigator.of(context).pop(true);
+      _onSuccess();
       return;
     }
     // The menu's initial fetch failed (e.g. transient network): first
@@ -216,9 +241,7 @@ class _SwitchAccountsPaneState extends State<SwitchAccountsPane> {
       return;
     }
     if (permission['status'] == 'active') {
-      // Approved in the window between polls.
-      _pollTimer?.cancel();
-      Navigator.of(context).pop(true);
+      _onSuccess();
       return;
     }
     setState(_applyChallenge(permission));
@@ -259,7 +282,8 @@ class _SwitchAccountsPaneState extends State<SwitchAccountsPane> {
     if (!mounted) return;
     final permission = (result?['permission'] as Map?)?.cast<String, dynamic>();
     if (permission?['status'] == 'active') {
-      Navigator.of(context).pop(true);
+      setState(() => _busy = false);
+      _onSuccess();
       return;
     }
     if (permission?['challenge_token'] != null) {
@@ -295,7 +319,8 @@ class _SwitchAccountsPaneState extends State<SwitchAccountsPane> {
     final permission = (result['permission'] as Map?)?.cast<String, dynamic>();
     if (permission?['status'] == 'active') {
       // Already had a permission on that account — switched immediately.
-      Navigator.of(context).pop(true);
+      setState(() => _busy = false);
+      _onSuccess();
       return;
     }
     setState(() {
@@ -386,7 +411,7 @@ class _SwitchAccountsPaneState extends State<SwitchAccountsPane> {
             if (_mode != _Mode.menu) TextButton(onPressed: _busy ? null : _backToMenu, child: const Text('Back')),
             if (_mode == _Mode.email)
               FilledButton(onPressed: _busy ? null : _submitEmail, child: const Text('Link account')),
-            TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('Cancel')),
+            TextButton(onPressed: _doCancel, child: Text(widget.cancelLabel ?? 'Cancel')),
           ],
         ),
       ],
@@ -417,38 +442,40 @@ class _SwitchAccountsPaneState extends State<SwitchAccountsPane> {
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        if (_loadingAccountData)
-          const Padding(
-            padding: EdgeInsets.symmetric(vertical: 16),
-            child: Center(child: CircularProgressIndicator()),
-          )
-        else ...[
-          Text('Current account', style: theme.textTheme.titleSmall),
-          _accountTile(
-            account: current ?? const {},
-            iconName: 'account-check',
-            // The current account's counts come from the getAccountData
-            // response's top-level totals, not per-account stats.
-            qsoCount: ((_accountData?['qsos'] as Map?)?['total'] as num?)?.toInt(),
-            operationCount: ((_accountData?['operations'] as Map?)?['total'] as num?)?.toInt(),
-          ),
-          if (others.isNotEmpty) ...[
-            const SizedBox(height: 12),
-            Text('Other accounts', style: theme.textTheme.titleSmall),
-            ...others.map((account) {
-              final stats = (account['stats'] as Map?)?.cast<String, dynamic>();
-              return _accountTile(
-                account: account,
-                iconName: 'account',
-                qsoCount: (stats?['qso_count'] as num?)?.toInt(),
-                operationCount: (stats?['operation_count'] as num?)?.toInt(),
-                onTap: _busy ? null : () => _quickSwitch(account),
-              );
-            }),
+        if (!widget.hideAccountsList) ...[
+          if (_loadingAccountData)
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 16),
+              child: Center(child: CircularProgressIndicator()),
+            )
+          else ...[
+            Text('Current account', style: theme.textTheme.titleSmall),
+            _accountTile(
+              account: current ?? const {},
+              iconName: 'account-check',
+              // The current account's counts come from the getAccountData
+              // response's top-level totals, not per-account stats.
+              qsoCount: ((_accountData?['qsos'] as Map?)?['total'] as num?)?.toInt(),
+              operationCount: ((_accountData?['operations'] as Map?)?['total'] as num?)?.toInt(),
+            ),
+            if (others.isNotEmpty) ...[
+              const SizedBox(height: 12),
+              Text('Other accounts', style: theme.textTheme.titleSmall),
+              ...others.map((account) {
+                final stats = (account['stats'] as Map?)?.cast<String, dynamic>();
+                return _accountTile(
+                  account: account,
+                  iconName: 'account',
+                  qsoCount: (stats?['qso_count'] as num?)?.toInt(),
+                  operationCount: (stats?['operation_count'] as num?)?.toInt(),
+                  onTap: _busy ? null : () => _quickSwitch(account),
+                );
+              }),
+            ],
           ],
+          const SizedBox(height: 12),
+          Text('Link to another account', style: theme.textTheme.titleSmall),
         ],
-        const SizedBox(height: 12),
-        Text('Link to another account', style: theme.textTheme.titleSmall),
         ListTile(
           contentPadding: EdgeInsets.zero,
           leading: Icon(resolveIconName('qrcode')),

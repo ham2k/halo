@@ -90,6 +90,7 @@ class _Translations$onboarding$es extends Translations$onboarding$en {
 	@override String get callsignTitle => '¿Cuál es tu indicativo?';
 	@override String get callsignBody => 'Necesitas una licencia de radioaficionado para que esta app te resulte útil';
 	@override String get callsignLabel => 'Indicativo del operador';
+	@override String get alreadyHaveAccount => '¿Ya tienes una cuenta?';
 	@override String get activitiesTitle => 'Actividades favoritas';
 	@override String get activitiesBody => '¿Te interesa alguno de estos populares programas de activación?';
 	@override String get activitiesFooter => '(Encontrarás más opciones en la Configuración)';
@@ -781,6 +782,7 @@ extension on TranslationsEs {
 			'onboarding.callsignTitle' => '¿Cuál es tu indicativo?',
 			'onboarding.callsignBody' => 'Necesitas una licencia de radioaficionado para que esta app te resulte útil',
 			'onboarding.callsignLabel' => 'Indicativo del operador',
+			'onboarding.alreadyHaveAccount' => '¿Ya tienes una cuenta?',
 			'onboarding.activitiesTitle' => 'Actividades favoritas',
 			'onboarding.activitiesBody' => '¿Te interesa alguno de estos populares programas de activación?',
 			'onboarding.activitiesFooter' => '(Encontrarás más opciones en la Configuración)',

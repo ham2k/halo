@@ -20,18 +20,27 @@ import 'package:ham2k_logger/config/release_notes.dart';
 import 'package:ham2k_logger/i18n/strings.g.dart';
 import 'package:ham2k_logger/main.dart';
 import 'package:ham2k_logger/services/settings_service.dart';
+import 'package:ham2k_logger/services/extension_service.dart';
 import 'package:ham2k_logger/views/ham2k_logo.dart';
 import 'package:ham2k_logger/views/onboarding_overlay.dart';
+import 'package:ham2k_logger/views/settings_view.dart';
+import 'package:qr_flutter/qr_flutter.dart';
 
 import 'fake_secure_storage.dart';
 import 'operation_view_layout_test.dart' show MockExtensionHost, ExtensionServiceWithMockHost;
 
-Future<HaLoServices> makeServices({Map<String, Object> prefs = const {}}) async {
+Future<HaLoServices> makeServices({
+  Map<String, Object> prefs = const {},
+  ExtensionService? extensions,
+}) async {
   SharedPreferences.setMockInitialValues(prefs);
   final settings = SettingsService(await SharedPreferences.getInstance(), secureStorage: FakeSecureStorage());
   final db = HaLoDatabase(NativeDatabase.memory());
-  final extensions = ExtensionServiceWithMockHost(const MockExtensionHost({}))..settings = settings;
-  return HaLoServices(db, settings, extensions: extensions);
+  final effectiveExtensions = extensions ?? (ExtensionServiceWithMockHost(const MockExtensionHost({}))..settings = settings);
+  if (extensions != null) {
+    extensions.settings = settings;
+  }
+  return HaLoServices(db, settings, extensions: effectiveExtensions);
 }
 
 Future<void> pumpApp(WidgetTester tester, HaLoServices services) async {
@@ -123,7 +132,7 @@ void main() {
     expect(callField.controller!.text, 'KI2D');
 
     // Activities: the SOTA toggle reflects the saved override (on).
-    await tester.tap(find.text('Next'));
+    await tester.tap(find.text('Continue'));
     await tester.pumpAndSettle();
     expect(find.text('Favorite Activities'), findsOneWidget);
     final sota = tester.widget<SwitchListTile>(find.widgetWithText(SwitchListTile, 'Summits On The Air'));
@@ -170,7 +179,7 @@ void main() {
     expect(find.text("What's your callsign?"), findsOneWidget);
 
     await tester.enterText(find.widgetWithText(TextField, "Operator's Callsign"), 'ki2d');
-    await tester.tap(find.text('Next'));
+    await tester.tap(find.text('Continue'));
     await tester.pumpAndSettle();
 
     // Activities: POTA pre-checked; also turn SOTA on.
@@ -226,4 +235,199 @@ void main() {
     expect(services.settings.activeProfile.operatorCall, 'KI2D');
     await drainTimers(tester);
   });
+
+  testWidgets('Already have an account link flows to Link Account Menu and completes on email linking', (tester) async {
+    final mockExtensions = MockExtensionService();
+    mockExtensions.mockAccountData = {
+      'current_account': {'uuid': 'acct-1'},
+      'accounts': [],
+      'qsos': {'total': 0},
+      'operations': {'total': 0},
+    };
+
+    final services = await makeServices(extensions: mockExtensions);
+    await pumpApp(tester, services);
+
+    // Welcome → Callsign
+    await tester.tap(find.text('Continue'));
+    await tester.pumpAndSettle();
+
+    // Callsign → Link Account Menu
+    expect(find.text('Already have an account?'), findsOneWidget);
+    await tester.tap(find.text('Already have an account?'));
+    await tester.pumpAndSettle();
+    expect(find.text('Link with a QR code'), findsOneWidget);
+    expect(find.text('Link with an email address'), findsOneWidget);
+
+    // Link Account Menu → Link with Email
+    await tester.tap(find.text('Link with an email address'));
+    await tester.pumpAndSettle();
+    expect(find.text('Enter the email address of the account you want this device to use.'), findsOneWidget);
+
+    // Enter email and submit
+    var linkCalled = false;
+    mockExtensions.onLinkClient = (email) {
+      expect(email, 'test@example.com');
+      linkCalled = true;
+      return {
+        'permission': {'status': 'pending', 'challenge_token': '123456', 'challenge_expires_at': '2026-12-31T23:59:59Z'}
+      };
+    };
+
+    await tester.enterText(find.widgetWithText(TextField, 'Email address'), 'test@example.com');
+    await tester.tap(find.text('Link account'));
+    await tester.pumpAndSettle();
+
+    expect(linkCalled, isTrue);
+    expect(find.text('123456'), findsOneWidget); // Challenge code on screen
+    expect(find.text('Waiting for confirmation…'), findsOneWidget);
+
+    // Simulate other device approving (polling detects new UUID)
+    mockExtensions.mockAccountData = {
+      'current_account': {'uuid': 'acct-2', 'call': 'W1AW'},
+      'accounts': [],
+    };
+
+    // Fast-forward or trigger polling tick. Since onboarding overlay uses Timer.periodic with 5s,
+    // we can pump with duration to trigger the timer.
+    await tester.pump(const Duration(seconds: 5));
+    await tester.pumpAndSettle();
+
+    // Onboarding should be finished/dismissed and active operator callsign updated
+    expect(find.byType(OnboardingOverlayView), findsNothing);
+    expect(services.settings.activeProfile.operatorCall, 'W1AW');
+    await drainTimers(tester);
+  });
+
+  testWidgets('Already have an account link redirects to settings if app has existing QSOs', (tester) async {
+    final mockExtensions = MockExtensionService();
+    mockExtensions.mockAccountData = {
+      'current_account': {'uuid': 'acct-1'},
+      'accounts': [],
+      'qsos': {'total': 0},
+      'operations': {'total': 0},
+    };
+
+    final services = await makeServices(extensions: mockExtensions);
+    final op = await services.operations.create(stationCall: 'KI2D');
+    await services.qsos.add(op.uuid, {'their': {'call': 'W1AW'}});
+
+    await pumpApp(tester, services);
+
+    // Welcome → Callsign
+    await tester.tap(find.text('Continue'));
+    await tester.pumpAndSettle();
+
+    // Callsign → Link Account Menu
+    await tester.tap(find.text('Already have an account?'));
+    await tester.pumpAndSettle();
+
+    // Link Account Menu → Link with Email
+    await tester.tap(find.text('Link with an email address'));
+    await tester.pumpAndSettle();
+
+    // Enter email and submit
+    mockExtensions.onLinkClient = (email) {
+      return {
+        'permission': {'status': 'pending', 'challenge_token': '123456', 'challenge_expires_at': '2026-12-31T23:59:59Z'}
+      };
+    };
+
+    await tester.enterText(find.widgetWithText(TextField, 'Email address'), 'test@example.com');
+    await tester.tap(find.text('Link account'));
+    await tester.pumpAndSettle();
+
+    // Simulate other device approving
+    mockExtensions.mockAccountData = {
+      'current_account': {'uuid': 'acct-2', 'call': 'K2DEF'},
+      'accounts': [],
+    };
+
+    // Trigger polling tick
+    await tester.pump(const Duration(seconds: 5));
+    await tester.pumpAndSettle();
+
+    // Onboarding should be finished/dismissed and operator call updated
+    expect(find.byType(OnboardingOverlayView), findsNothing);
+    expect(services.settings.activeProfile.operatorCall, 'K2DEF');
+
+    // It should have pushed SettingsView
+    expect(find.byType(SettingsView), findsOneWidget);
+    expect(find.text('LoFi Cloud Sync'), findsWidgets);
+
+    await drainTimers(tester);
+  });
+
+  testWidgets('Already have an account link: QR flow renders deep link and Back returns to Callsign step', (tester) async {
+    final mockExtensions = MockExtensionService();
+    mockExtensions.mockAccountData = {
+      'current_account': {'uuid': 'acct-1'},
+      'accounts': [],
+    };
+    mockExtensions.onLinkClient = (email) {
+      expect(email, isNull);
+      return {
+        'permission': {
+          'status': 'pending',
+          'client': 'client-123',
+          'challenge_token': 'token-456',
+          'challenge_expires_at': '2026-12-31T23:59:59Z',
+        }
+      };
+    };
+
+    final services = await makeServices(extensions: mockExtensions);
+    await pumpApp(tester, services);
+
+    // Welcome → Callsign → Link Account
+    await tester.tap(find.text('Continue'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Already have an account?'));
+    await tester.pumpAndSettle();
+
+    // Tap QR flow
+    await tester.tap(find.text('Link with a QR code'));
+    await tester.pumpAndSettle();
+
+    // Verify QR code is displayed
+    expect(find.byType(QrImageView), findsOneWidget);
+    expect(find.textContaining('Scan this QR code'), findsOneWidget);
+
+    // Tap Back to menu
+    await tester.ensureVisible(find.text('Back').first);
+    await tester.tap(find.text('Back').first);
+    await tester.pumpAndSettle();
+    expect(find.text('Link with a QR code'), findsOneWidget);
+
+    // Tap Back to Callsign step
+    await tester.ensureVisible(find.text('Back').last);
+    await tester.tap(find.text('Back').last);
+    await tester.pumpAndSettle();
+    expect(find.text("What's your callsign?"), findsOneWidget);
+
+    await drainTimers(tester);
+  });
+}
+
+class MockExtensionService extends ExtensionServiceWithMockHost {
+  Map<String, dynamic>? mockAccountData;
+  Map<String, dynamic>? Function(String?)? onLinkClient;
+  Map<String, dynamic>? Function(String)? onLinkClientWithEmail;
+
+  MockExtensionService() : super(const MockExtensionHost({}));
+
+  @override
+  Future<Map<String, dynamic>?> syncAccountData() async => mockAccountData;
+
+  @override
+  Future<Map<String, dynamic>?> syncLinkClient(String? email) async {
+    if (onLinkClient != null) return onLinkClient!(email);
+    return null;
+  }
+
+  @override
+  Future<Map<String, dynamic>?> syncLinkClientWithEmail(String email) async {
+    if (onLinkClientWithEmail != null) return onLinkClientWithEmail!(email);
+    return null;
+  }
 }

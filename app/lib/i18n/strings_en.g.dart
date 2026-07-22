@@ -126,6 +126,9 @@ class Translations$onboarding$en {
 	/// en: 'Operator's Callsign'
 	String get callsignLabel => 'Operator\'s Callsign';
 
+	/// en: 'Already have an account?'
+	String get alreadyHaveAccount => 'Already have an account?';
+
 	/// en: 'Favorite Activities'
 	String get activitiesTitle => 'Favorite Activities';
 
@@ -1357,6 +1360,7 @@ extension on Translations {
 			'onboarding.callsignTitle' => 'What\'s your callsign?',
 			'onboarding.callsignBody' => 'You need an Amateur Radio Operator License in order to find this app useful',
 			'onboarding.callsignLabel' => 'Operator\'s Callsign',
+			'onboarding.alreadyHaveAccount' => 'Already have an account?',
 			'onboarding.activitiesTitle' => 'Favorite Activities',
 			'onboarding.activitiesBody' => 'Are you interested in any of these popular activation programs?',
 			'onboarding.activitiesFooter' => '(You can find more options in the Settings)',
