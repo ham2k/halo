@@ -27,6 +27,7 @@ import 'views/notice_actions.dart';
 import 'views/onboarding_overlay.dart';
 import 'views/release_overlay.dart';
 import 'views/splash_view.dart';
+import 'config/dev_bridge_installer.dart';
 import 'config/dev_flags.dart';
 import 'config/experiments.dart';
 import 'config/release_notes.dart';
@@ -59,6 +60,9 @@ final navigatorKey = GlobalKey<NavigatorState>();
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
   WindowChromeService.init();
+  // Web-only, non-release-only: exposes window.__halo for agent inspection
+  // (no-op on native and in production release). See config/dev_bridge.dart.
+  installDevBridge();
   // Kicked off before runApp (not awaited here) so the splash screen paints
   // on the very first frame instead of waiting on the DB/extension/settings
   // boot sequence — see `_BootGate`.

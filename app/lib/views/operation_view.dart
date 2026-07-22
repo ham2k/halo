@@ -14,6 +14,7 @@ import 'package:flutter/material.dart';
 import 'package:halo_core/halo_core.dart';
 import 'package:halo_widgets/halo_widgets.dart';
 
+import '../config/dev_bridge.dart';
 import '../main.dart';
 import '../services/settings_service.dart';
 import 'operation_dialogs.dart';
@@ -238,11 +239,38 @@ class _OperationViewState extends State<OperationView> with SingleTickerProvider
     // soft-delete/undelete changes this set (and each QSO's updatedAtMillis),
     // so the fingerprint below still moves.
     _rescoreSub = widget.services.qsos.watchForOperation(widget.operationUuid).listen(_onQsosChanged);
+    // Feed the dev bridge (window.__halo.getState) the current operation +
+    // compose state while this screen is active — only when the bridge was
+    // actually installed (dev/preview build on web), so nothing runs in
+    // production or on native.
+    if (DevBridge.instance.installed) DevBridge.instance.stateProvider = _devBridgeState;
+  }
+
+  /// The snapshot `window.__halo.getState()` returns while an operation is open:
+  /// the operation, the callsign being composed/edited and its lookup guess,
+  /// and the current VFO. Kept JSON-able (maps/strings/nums) so it js-ifies.
+  Map<String, dynamic> _devBridgeState() {
+    final op = _operation;
+    final info = _callInfo;
+    return {
+      'view': 'operation',
+      'operation': op == null
+          ? null
+          : {'uuid': op.uuid, 'stationCall': op.stationCall, 'title': op.title, 'qsoCount': op.qsoCount},
+      'call': info?.call,
+      'editing': info?.isEditing ?? false,
+      'guess': info?.guess,
+      'vfo': widget.services.radio.vfoA.toJson(),
+    };
   }
 
   @override
   void dispose() {
     widget.services.settings.removeListener(_onSettingsChanged);
+    // Only clear if it's still ours — a newer OperationView may have taken over.
+    if (DevBridge.instance.stateProvider == _devBridgeState) {
+      DevBridge.instance.stateProvider = null;
+    }
     _operationSub?.cancel();
     _rescoreSub?.cancel();
     _rescoreDebounce?.cancel();
