@@ -552,13 +552,25 @@ class _QsoListState extends State<QsoList> {
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         for (final entry in refCountsByType.entries) ...[
-                          Icon(
-                            resolveIconName(
-                              iconForRefType(activityControls, entry.key),
+                          // An unrecognized type (its extension isn't
+                          // installed/loaded right now) gets a small
+                          // pale-red question-mark marker instead of the
+                          // usual themed icon (ham2k/app-halo-dist#261) —
+                          // via the shared activityRefIcon, sized down for
+                          // this compact inline usage; the known-type icon
+                          // stays bespoke, since it tints with the row's
+                          // own tertiary color rather than a per-control
+                          // accent.
+                          if (isUnknownRefType(activityControls, entry.key))
+                            activityRefIcon(activityControls, entry.key, iconSize: 10, avatarRadius: 8)
+                          else
+                            Icon(
+                              resolveIconName(
+                                iconForRefType(activityControls, entry.key),
+                              ),
+                              size: 14,
+                              color: theme.colorScheme.tertiary,
                             ),
-                            size: 14,
-                            color: theme.colorScheme.tertiary,
-                          ),
                           if (entry.value > 1)
                             Text(
                               '×${entry.value}',

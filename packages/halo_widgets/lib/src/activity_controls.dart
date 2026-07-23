@@ -6,7 +6,7 @@
 // OperationLocationScreen and QsoList, which all render refs/suggestions
 // using the same active-extension controls list.
 
-import 'package:flutter/widgets.dart' show Color;
+import 'package:flutter/material.dart';
 
 import 'icon_resolver.dart';
 
@@ -29,3 +29,42 @@ String? iconForRefType(List<Map<String, dynamic>> controls, String? refType) =>
 /// none (see `resolveExtensionColor`).
 Color? colorForRefType(List<Map<String, dynamic>> controls, String? refType) =>
     resolveExtensionColor(controlForRefType(controls, refType)?['color'] as String?);
+
+/// Whether [refType] doesn't match any currently active control — its
+/// extension isn't installed/loaded/enabled right now. A null [refType]
+/// (no control ever declares one) counts as unknown too, same as before
+/// this got its own named helper.
+bool isUnknownRefType(List<Map<String, dynamic>> controls, String? refType) =>
+    controlForRefType(controls, refType) == null;
+
+/// The icon for a ref/suggestion of [refType]: the matching control's own
+/// icon, tinted with its declared accent color if any — or, when it matches
+/// no active control, a pale-red circle with a question-mark, so a ref from
+/// an extension that's no longer installed/loaded degrades visibly instead
+/// of silently showing a generic marker (ham2k/app-halo-dist#261). Shared by
+/// every place that lists refs against the current controls (ActivitiesView,
+/// OperationLocationScreen, QsoList). [iconSize]/[avatarRadius] default to
+/// the ambient Icon/CircleAvatar sizes (a ListTile's `leading` slot) for the
+/// known-type icon — the question-mark itself defaults to 16 regardless (its
+/// prior hardcoded size), overridable for a more compact inline usage (e.g.
+/// QsoList's per-row count).
+Widget activityRefIcon(
+  List<Map<String, dynamic>> controls,
+  String? refType, {
+  double? iconSize,
+  double? avatarRadius,
+}) {
+  final control = controlForRefType(controls, refType);
+  if (control == null) {
+    return CircleAvatar(
+      radius: avatarRadius,
+      backgroundColor: Colors.red,
+      child: Icon(Icons.question_mark, color: Colors.white, size: iconSize ?? 16),
+    );
+  }
+  final icon = Icon(resolveIconName(control['icon'] as String?), size: iconSize);
+  final color = resolveExtensionColor(control['color'] as String?);
+  return color == null
+      ? icon
+      : CircleAvatar(radius: avatarRadius, backgroundColor: color.withValues(alpha: 0.6), child: icon);
+}

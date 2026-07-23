@@ -35,11 +35,6 @@ import '../extensions_panel.dart';
 import '../../i18n/strings.g.dart';
 
 
-/// A ref/suggestion/option row's leading icon, using [refType] to look up
-/// the active control's icon and accent color (issue #187).
-Widget _activityIcon(List<Map<String, dynamic>> controls, String? refType) =>
-    _accentIcon(iconForRefType(controls, refType), colorForRefType(controls, refType));
-
 /// An icon, circled in [color] at 60% opacity when the control declares an
 /// accent (issue #187) — sparingly used, so a control with no color just
 /// renders the bare icon as before.
@@ -655,9 +650,9 @@ class _ActivitiesBaseState extends State<_ActivitiesBase> {
                   ListTile(
                     tileColor: _loadingControls
                         ? rowColor
-                        : (controlForRefType(_controls, ref['type'] as String?) != null
-                            ? rowColor
-                            : theme.colorScheme.errorContainer.withValues(alpha: 0.4)),
+                        : (isUnknownRefType(_controls, ref['type'] as String?)
+                            ? theme.colorScheme.errorContainer.withValues(alpha: 0.4)
+                            : rowColor),
                     // Right padding matches the accordion header's own
                     // horizontal inset, so this trailing icon button lines
                     // up under the search row's options button — same
@@ -665,12 +660,7 @@ class _ActivitiesBaseState extends State<_ActivitiesBase> {
                     contentPadding: const EdgeInsets.only(left: 16, right: 4),
                     leading: _loadingControls
                         ? Icon(resolveIconName('puzzle'))
-                        : (controlForRefType(_controls, ref['type'] as String?) != null
-                            ? _activityIcon(_controls, ref['type'] as String?)
-                            : const CircleAvatar(
-                                backgroundColor: Colors.red,
-                                child: Icon(Icons.question_mark, color: Colors.white, size: 16),
-                              )),
+                        : activityRefIcon(_controls, ref['type'] as String?),
                     title: Text(
                       (ref['shortLabel'] ?? ref['ref'] ?? '?') as String,
                       style: const TextStyle(fontWeight: FontWeight.bold),
@@ -806,10 +796,14 @@ class _ActivitiesBaseState extends State<_ActivitiesBase> {
                       for (final suggestion in _suggestions)
                         if (!refs.any((r) => r['type'] == suggestion['type'] && r['ref'] == suggestion['ref']))
                           ListTile(
-                            tileColor: rowColor,
+                            tileColor: _loadingControls
+                                ? rowColor
+                                : (isUnknownRefType(_controls, suggestion['type'] as String?)
+                                    ? theme.colorScheme.errorContainer.withValues(alpha: 0.4)
+                                    : rowColor),
                             leading: _loadingControls
                                 ? Icon(resolveIconName('puzzle'))
-                                : _activityIcon(_controls, suggestion['type'] as String?),
+                                : activityRefIcon(_controls, suggestion['type'] as String?),
                             title: Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [

@@ -720,6 +720,35 @@ void main() {
     },
   );
 
+  testWidgets(
+    'a ref of a type with no active control shows a red question-mark marker (issue #261)',
+    (tester) async {
+      final operation = await operations.create(stationCall: 'KI2D');
+      final qso = await qsos.add(operation.uuid, {
+        'their': {'call': 'W1AW'},
+        'mode': 'SSB',
+        'startAtMillis': 1000,
+        'refs': [
+          {'type': 'pota', 'ref': 'US-1234'},
+        ],
+      });
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            // No matching control for 'pota' — its extension isn't active.
+            body: QsoList(qsos: [qso], onSelect: (_) {}, activityControls: const []),
+          ),
+        ),
+      );
+
+      expect(find.byIcon(resolveIconName('pine-tree')), findsNothing);
+      final markerFinder = find.byType(CircleAvatar);
+      expect(markerFinder, findsOneWidget);
+      expect(find.descendant(of: markerFinder, matching: find.byIcon(Icons.question_mark)), findsOneWidget);
+    },
+  );
+
   group('day headers', () {
     testWidgets('groups QSOs into one pinned header per UTC day', (
       tester,

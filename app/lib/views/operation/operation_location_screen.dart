@@ -42,6 +42,11 @@ class _OperationLocationScreenState extends State<OperationLocationScreen> {
   String? _gridSource;
 
   List<Map<String, dynamic>> _controls = const [];
+  // While this is true, _controls is still empty — a ref whose extension IS
+  // active would otherwise flash the unknown-type red/question-mark
+  // treatment for a moment on every open (ham2k/app-halo-dist#261; mirrors
+  // ActivitiesView's own _loadingControls).
+  bool _loadingControls = true;
 
   @override
   void initState() {
@@ -49,7 +54,12 @@ class _OperationLocationScreenState extends State<OperationLocationScreen> {
     _gridSource = widget.operation.data['gridSource'] as String?;
     _gridController.addListener(_onGridTextChanged);
     widget.services.extensions.operationControls(widget.operation.data).then((controls) {
-      if (mounted) setState(() => _controls = controls);
+      if (mounted) {
+        setState(() {
+          _controls = controls;
+          _loadingControls = false;
+        });
+      }
     });
     widget.services.location.start();
     widget.services.location.addListener(_onLocationChanged);
@@ -106,6 +116,7 @@ class _OperationLocationScreenState extends State<OperationLocationScreen> {
   @override
   Widget build(BuildContext context) {
     final t = context.t.operationLocationScreen;
+    final theme = Theme.of(context);
     final location = widget.services.location;
     final refsWithGrid = widget.operation.refs.where((r) => (r['grid'] as String?)?.isNotEmpty == true).toList();
 
@@ -144,7 +155,12 @@ class _OperationLocationScreenState extends State<OperationLocationScreen> {
           ),
           for (final ref in refsWithGrid)
             ListTile(
-              leading: Icon(resolveIconName(iconForRefType(_controls, ref['type'] as String?))),
+              tileColor: !_loadingControls && isUnknownRefType(_controls, ref['type'] as String?)
+                  ? theme.colorScheme.errorContainer.withValues(alpha: 0.4)
+                  : null,
+              leading: _loadingControls
+                  ? Icon(resolveIconName('puzzle'))
+                  : activityRefIcon(_controls, ref['type'] as String?),
               title: Text((ref['shortLabel'] ?? ref['ref'] ?? '?') as String),
               subtitle: Text(ref['grid'] as String, style: const TextStyle(fontFamily: 'RobotoMono')),
               onTap: () => _adoptGrid(ref['grid'] as String, 'manual'),
