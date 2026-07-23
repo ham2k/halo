@@ -60,6 +60,13 @@ class HaLoColors extends ThemeExtension<HaLoColors> {
   /// convention exactly rather than a badge or border.
   final Color devMode;
 
+  /// The active-tab indicator on any TabBar (they all sit on the teal
+  /// AppBar/pane color, both brightnesses — see theme.dart's tabBarTheme).
+  /// Same value in both variants, like [bands]: unlike every ColorScheme
+  /// role, this needs to read the same regardless of brightness, not invert
+  /// (ham2k/app-halo-dist#272).
+  final Color tabIndicator;
+
   final Map<String, Color> bands;
 
   const HaLoColors({
@@ -69,6 +76,7 @@ class HaLoColors extends ThemeExtension<HaLoColors> {
     required this.tertiaryLight,
     required this.secondaryLight,
     required this.devMode,
+    required this.tabIndicator,
     required this.bands,
   });
 
@@ -81,6 +89,7 @@ class HaLoColors extends ThemeExtension<HaLoColors> {
     tertiaryLight: Color(0xFFE6AB73),
     secondaryLight: Color(0xFF69A9DF),
     devMode: Color(0xFFDB7204),
+    tabIndicator: _tabIndicatorBlue,
     bands: _bandColors,
   );
 
@@ -91,8 +100,11 @@ class HaLoColors extends ThemeExtension<HaLoColors> {
     tertiaryLight: Color(0xFF5D3918),
     secondaryLight: Color(0xFF244462),
     devMode: Color(0xFFF7A145),
+    tabIndicator: _tabIndicatorBlue,
     bands: _bandColors,
   );
+
+  static const _tabIndicatorBlue = Color(0xFFBCE9FF);
 
   static const Map<String, Color> _bandColors = {
     '160m': Color(0xFFB402CC),
@@ -119,6 +131,7 @@ class HaLoColors extends ThemeExtension<HaLoColors> {
     Color? tertiaryLight,
     Color? secondaryLight,
     Color? devMode,
+    Color? tabIndicator,
     Map<String, Color>? bands,
   }) {
     return HaLoColors(
@@ -128,6 +141,7 @@ class HaLoColors extends ThemeExtension<HaLoColors> {
       tertiaryLight: tertiaryLight ?? this.tertiaryLight,
       secondaryLight: secondaryLight ?? this.secondaryLight,
       devMode: devMode ?? this.devMode,
+      tabIndicator: tabIndicator ?? this.tabIndicator,
       bands: bands ?? this.bands,
     );
   }
@@ -404,7 +418,32 @@ ThemeData buildHaLoTheme(Brightness brightness) {
     tabBarTheme: TabBarThemeData(
       labelColor: colorScheme.onPrimary,
       unselectedLabelColor: colorScheme.onPrimary.withValues(alpha: 0.7),
-      indicatorColor: colorScheme.onPrimary,
+      // A light blue marker reads as a deliberate active-tab indicator
+      // against the teal AppBar; the old onPrimary indicator was the same
+      // near-white as the label text itself, so it barely registered as its
+      // own element (issue #272). HaLoColors.tabIndicator, not a ColorScheme
+      // role — onPrimaryContainer looked right in dark mode by coincidence
+      // (it's #BCE9FF there) but is a near-black #001F29 in light mode,
+      // since that role flips meaning across brightness; this exact blue
+      // reads well in both, so it isn't tied to either.
+      indicatorColor: (isDark ? HaLoColors.dark : HaLoColors.light).tabIndicator,
+      // Default M3 hover/focus/pressed overlays are tuned for a
+      // surface-colored bar and read as barely-there on this teal
+      // background — a bit more opacity so hovering a tab is actually
+      // visible (issue #272).
+      overlayColor: WidgetStateProperty.resolveWith((states) {
+        if (states.contains(WidgetState.pressed) || states.contains(WidgetState.focused)) {
+          return colorScheme.onPrimary.withValues(alpha: 0.20);
+        }
+        if (states.contains(WidgetState.hovered)) {
+          return colorScheme.onPrimary.withValues(alpha: 0.16);
+        }
+        return null;
+      }),
+      // M3's TabBar paints its own 1px divider below itself by default
+      // (colorScheme.outlineVariant) — a stray hairline under a bar that
+      // otherwise sits flush against the AppBar/pane color (issue #272).
+      dividerHeight: 0,
     ),
     dividerTheme: DividerThemeData(
       color: colorScheme.outlineVariant,

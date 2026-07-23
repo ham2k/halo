@@ -106,7 +106,43 @@ void main() {
       // — every TabBar in the app sits inside one.
       final theme = buildHaLoTheme(Brightness.light);
       expect(theme.tabBarTheme.labelColor, theme.colorScheme.onPrimary);
-      expect(theme.tabBarTheme.indicatorColor, theme.colorScheme.onPrimary);
+    });
+
+    test('the active-tab indicator is HaLoColors.tabIndicator, the same in both themes (issue #272)', () {
+      // Same near-white as the label text made the old onPrimary indicator
+      // barely register as its own marker. HaLoColors.tabIndicator, not a
+      // ColorScheme role, deliberately — colorScheme.onPrimaryContainer
+      // would look right in dark mode (it's #BCE9FF there) but is a
+      // near-black #001F29 in light mode, since that role's meaning flips
+      // across brightness.
+      expect(HaLoColors.light.tabIndicator, HaLoColors.dark.tabIndicator);
+      for (final brightness in Brightness.values) {
+        final theme = buildHaLoTheme(brightness);
+        final haloColors = theme.extension<HaLoColors>()!;
+        expect(theme.tabBarTheme.indicatorColor, haloColors.tabIndicator);
+        expect(theme.tabBarTheme.indicatorColor, isNot(theme.tabBarTheme.labelColor));
+      }
+    });
+
+    test('tab bar has no built-in bottom divider (issue #272)', () {
+      // M3's TabBar paints its own 1px divider below itself by default —
+      // a stray hairline under a bar that otherwise sits flush against the
+      // AppBar/pane color.
+      final theme = buildHaLoTheme(Brightness.light);
+      expect(theme.tabBarTheme.dividerHeight, 0);
+    });
+
+    test('tab hover/focus/pressed states get a visible overlay on the teal bar (issue #272)', () {
+      final theme = buildHaLoTheme(Brightness.light);
+      final overlay = theme.tabBarTheme.overlayColor;
+      expect(overlay, isNotNull);
+      expect(overlay!.resolve({WidgetState.hovered}), isNotNull);
+      expect(overlay.resolve({WidgetState.pressed}), isNotNull);
+      // Pressed/focused reads more contrasting (higher alpha) than a mere hover.
+      expect(
+        overlay.resolve({WidgetState.pressed})!.a,
+        greaterThan(overlay.resolve({WidgetState.hovered})!.a),
+      );
     });
   });
 
