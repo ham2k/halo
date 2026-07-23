@@ -929,23 +929,40 @@ class _OperationViewState extends State<OperationView> with SingleTickerProvider
                   if (windowHeaderGestureArea() != null)
                     windowHeaderGestureArea()!,
                   if (!_activitiesSheetOpen)
+                    // flexibleSpace fills the AppBar's whole extent —
+                    // toolbarHeight PLUS the tab bar's height whenever
+                    // `bottom: tabBar` is set below (narrow windows). A
+                    // plain `Positioned(bottom: 5, ...)` measured from that
+                    // combined extent, so the grab pill painted flush with
+                    // the tabs instead of the header row on narrow windows
+                    // (issue #266). Anchoring a toolbarHeight-tall box to
+                    // the stack's own top, then aligning the pill to ITS
+                    // bottom, keeps the pill under the title regardless of
+                    // whether a tab bar is attached below.
                     Positioned(
-                      bottom: 5,
+                      top: 0,
                       left: 0,
                       right: 0,
+                      height: Theme.of(context).appBarTheme.toolbarHeight ?? kToolbarHeight,
                       child: Align(
-                        alignment: Alignment.center,
-                        child: MouseRegion(
-                          cursor: SystemMouseCursors.click,
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(vertical: 4),
-                            color: Colors.transparent,
+                        alignment: Alignment.bottomCenter,
+                        // Same 5px clearance from the toolbar's own bottom
+                        // edge the old bottom:5 offset gave it.
+                        child: Padding(
+                          padding: const EdgeInsets.only(bottom: 5),
+                          child: MouseRegion(
+                            cursor: SystemMouseCursors.click,
                             child: Container(
-                              width: 24,
-                              height: 3,
-                              decoration: BoxDecoration(
-                                color: Theme.of(context).colorScheme.onPrimary.withValues(alpha: 0.5),
-                                borderRadius: BorderRadius.circular(1.5),
+                              padding: const EdgeInsets.symmetric(vertical: 4),
+                              color: Colors.transparent,
+                              child: Container(
+                                key: const Key('operationHeaderGrab'),
+                                width: 24,
+                                height: 3,
+                                decoration: BoxDecoration(
+                                  color: Theme.of(context).colorScheme.onPrimary.withValues(alpha: 0.5),
+                                  borderRadius: BorderRadius.circular(1.5),
+                                ),
                               ),
                             ),
                           ),

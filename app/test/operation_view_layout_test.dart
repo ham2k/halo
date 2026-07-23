@@ -133,6 +133,51 @@ void main() {
     await tester.pumpWidget(const SizedBox());
     await tester.pump(const Duration(seconds: 5));
   });
+
+  testWidgets('the header grab pill sits under the title row, not the tab bar below it (issue #266)',
+      (tester) async {
+    // Narrow — the only width where the AppBar gets `bottom: tabBar`, which
+    // is what stretched flexibleSpace (and thus the old bottom:5-positioned
+    // pill) down past the header and onto the tab row.
+    tester.view.physicalSize = const Size(430, 800);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+
+    SharedPreferences.setMockInitialValues({});
+    final settings = SettingsService(await SharedPreferences.getInstance());
+    final db = HaLoDatabase(NativeDatabase.memory());
+    final extensions = ExtensionServiceWithMockHost(MockExtensionHost(const {}))..settings = settings;
+    final services = HaLoServices(db, settings, extensions: extensions);
+    final operation = await services.operations.create(stationCall: 'N0CALL', title: 'Test Op');
+
+    await tester.pumpWidget(TranslationProvider(
+      child: MaterialApp(
+        home: OperationView(services: services, operationUuid: operation.uuid),
+      ),
+    ));
+    await tester.pumpAndSettle();
+
+    final toolbarHeight = Theme.of(tester.element(find.byType(AppBar))).appBarTheme.toolbarHeight ?? kToolbarHeight;
+    final grabBottom = tester.getBottomLeft(find.byKey(const Key('operationHeaderGrab'))).dy;
+    final tabBarTop = tester.getTopLeft(find.byType(TabBar)).dy;
+
+    // The pill's own clearance from the toolbar row's bottom edge (measured
+    // from the AppBar's own top, i.e. y=0 here since the AppBar is the
+    // first thing on screen): the outer Padding's 5px, plus the pill's own
+    // Container's 4px bottom padding (the Key is on the innermost 24x3 bar,
+    // inside that Container) — tight enough that a regression shifting it a
+    // few px toward the tab row would actually fail this, unlike a loose
+    // "somewhere above the tabs" bound.
+    expect(grabBottom, closeTo(toolbarHeight - 5 - 4, 0.5));
+    // And a genuine, non-zero gap above the tab row (which starts exactly
+    // at the toolbar's bottom edge) — independent cross-check of the same
+    // fix using a different measurement than the toolbarHeight-derived one
+    // above, so it doesn't just restate the same arithmetic.
+    expect(tabBarTop - grabBottom, greaterThan(5));
+
+    await tester.pumpWidget(const SizedBox());
+    await tester.pump(const Duration(seconds: 5));
+  });
 }
 
 class MockExtensionHost implements ExtensionHost {
