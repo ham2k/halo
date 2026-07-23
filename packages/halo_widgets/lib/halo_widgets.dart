@@ -17,7 +17,7 @@ export 'src/pane_divider.dart';
 export 'src/number_keys.dart';
 export 'src/platform_chrome.dart';
 export 'src/qso_list.dart';
-export 'src/ref_chips_input.dart';
+export 'src/ref_text_input.dart';
 export 'src/resizable_split_view.dart';
 export 'src/secondary_control_row.dart';
 export 'src/secret_text_field.dart';

@@ -132,8 +132,9 @@ void main() {
     test('never leaves an antimeridian-sized jump inside one polyline', () {
       // A crossing that fails to split draws a line across the whole map —
       // the exact artifact this function exists to prevent.
+      // (The Tokyo–SF crossing is covered by the split test above, which
+      // additionally checks the split structure itself.)
       const cases = [
-        (GridLocation(35.68, 139.65), GridLocation(37.77, -122.42)), // Tokyo–SF
         (GridLocation(85, 170), GridLocation(85, -170)), // near-pole crossing
         (GridLocation(-40, 175), GridLocation(-35, -110)), // southern ocean
       ];

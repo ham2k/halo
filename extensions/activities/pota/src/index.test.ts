@@ -7,7 +7,7 @@ import assert from "node:assert/strict"
 import { REFERENCE_REGEX, normalizeReference, transformsForPrefix, hunterDefaultPrefix, activationDefaultPrefix, potaCountryPrefixForCall } from "./refFormatting.ts"
 
 // Mirrors the group-expansion logic in
-// `packages/halo_widgets/lib/src/ref_chips_input.dart`'s
+// `packages/halo_widgets/lib/src/ref_text_input.dart`'s
 // `_RefTransformFormatter._applyOnce`/`expand` — braced `${1}`/`${2}`…
 // placeholders, not bare `$1`/`$2`, applied twice for convergence on a
 // multi-character paste.

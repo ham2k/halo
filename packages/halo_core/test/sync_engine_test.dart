@@ -7,7 +7,9 @@ import 'package:drift/native.dart';
 import 'package:halo_core/halo_core.dart';
 import 'package:test/test.dart';
 
-class _FakeSyncSettings implements SyncSettings {
+// `extends`, not `implements`, so the fake inherits the interface's default
+// developerMode stubs instead of restating them.
+class _FakeSyncSettings extends SyncSettings {
   @override
   bool enabled = true;
   @override
@@ -17,12 +19,6 @@ class _FakeSyncSettings implements SyncSettings {
 
   @override
   Future<void> setState(Map<String, dynamic> newState) async => state = newState;
-
-  bool devModeVal = false;
-  @override
-  bool get developerMode => devModeVal;
-  @override
-  Future<void> setDeveloperMode(bool enabled) async => devModeVal = enabled;
 }
 
 typedef _TransportResponder = Map<String, dynamic> Function(String method, Map<String, dynamic> args);

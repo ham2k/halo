@@ -46,7 +46,7 @@ import 'mdi_icons.dart';
 import 'number_keys.dart';
 import 'platform_chrome.dart';
 import 'semantic_id.dart';
-import 'ref_chips_input.dart';
+import 'ref_text_input.dart';
 import 'secondary_control_row.dart';
 import 'text_formatters.dart';
 import 'theme.dart';
@@ -2344,10 +2344,10 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
       // the panel-wide shortcut would otherwise swallow it.
       _insertAtCursor(_spotCommentController, ' ');
     }
-    // Space is inert in any other field with no override of its own. Ref
-    // inputs (RefTextInput, RefChipsInput) are the one exception — they bind
-    // Space locally to type a literal separator instead, taking priority
-    // over this panel-wide shortcut.
+    // Space is inert in any other field with no override of its own.
+    // RefTextInput is the one exception — it binds Space locally to type a
+    // literal separator instead, taking priority over this panel-wide
+    // shortcut.
   }
 
   /// Space cycles through whichever primary exchange fields are currently

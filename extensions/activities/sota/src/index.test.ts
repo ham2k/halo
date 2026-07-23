@@ -8,7 +8,7 @@ import { REFERENCE_REGEX, TRANSFORMS } from "./refFormatting.ts"
 import { summitGlyphFromDetails } from "./summitGlyph.ts"
 
 // Mirrors the group-expansion logic in
-// `packages/halo_widgets/lib/src/ref_chips_input.dart`'s
+// `packages/halo_widgets/lib/src/ref_text_input.dart`'s
 // `_RefTransformFormatter._applyOnce`/`expand` — braced `${1}`/`${2}`/`${3}`…
 // placeholders, applied twice for convergence on a multi-character paste.
 function applyTransforms(text: string, transforms: { pattern: string; replacement: string; flags?: string }[]): string {

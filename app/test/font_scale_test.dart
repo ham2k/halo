@@ -1,12 +1,20 @@
 // Copyright ©️ 2026 Sebastian Delmont <sd@ham2k.com>
 // SPDX-License-Identifier: MPL-2.0
 
+import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:halo_core/halo_core.dart';
 import 'package:halo_widgets/halo_widgets.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:ham2k_logger/config/release_notes.dart';
+import 'package:ham2k_logger/i18n/strings.g.dart';
+import 'package:ham2k_logger/main.dart';
 import 'package:ham2k_logger/services/settings_service.dart';
+
+import 'fake_secure_storage.dart';
+import 'operation_view_layout_test.dart' show MockExtensionHost, ExtensionServiceWithMockHost;
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -217,12 +225,20 @@ void main() {
     });
   });
 
-  group('Keyboard Shortcuts Verification', () {
-    testWidgets('Key events trigger font scale changes', (tester) async {
+  group('Keyboard Shortcuts', () {
+    // Drives the REAL key handler in main.dart through HaLoApp, so a change
+    // to the production key mapping (dropping a key, changing the modifier
+    // gate) fails here — a handler copied into the test could not.
+    testWidgets('Cmd+=/-/_/0 drive the app-wide font scale handler', (tester) async {
       SharedPreferences.setMockInitialValues({});
-      final settings = await SettingsService.load();
+      setReleaseNotesForTesting(const []);
+      final settings = SettingsService(await SharedPreferences.getInstance(), secureStorage: FakeSecureStorage());
+      final db = HaLoDatabase(NativeDatabase.memory());
+      final extensions = ExtensionServiceWithMockHost(const MockExtensionHost({}))..settings = settings;
+      final services = HaLoServices(db, settings, extensions: extensions);
 
-      await tester.pumpWidget(KeyboardShortcutTestWidget(settings: settings));
+      await tester.pumpWidget(TranslationProvider(child: HaLoApp(services: services)));
+      await tester.pumpAndSettle();
 
       expect(settings.fontScale, FontScale.normal);
 
@@ -250,7 +266,7 @@ void main() {
 
       expect(settings.fontScale, FontScale.smaller);
 
-      // Decrease with Cmd + _ (LogicalKeyboardKey.underscore)
+      // Decrease with Cmd + _ (Shift+minus reports LogicalKeyboardKey.underscore)
       await tester.sendKeyDownEvent(LogicalKeyboardKey.metaLeft);
       HardwareKeyboard.instance.handleKeyEvent(
         const KeyDownEvent(
@@ -263,64 +279,15 @@ void main() {
       await tester.pump();
 
       expect(settings.fontScale, FontScale.smallest);
+
+      // Without the modifier nothing changes.
+      await tester.sendKeyEvent(LogicalKeyboardKey.equal);
+      await tester.pump();
+      expect(settings.fontScale, FontScale.smallest);
+
+      // Drain pending timers to avoid test errors.
+      await tester.pumpWidget(const SizedBox());
+      await tester.pump(const Duration(seconds: 5));
     });
   });
-}
-
-class KeyboardShortcutTestWidget extends StatefulWidget {
-  final SettingsService settings;
-  const KeyboardShortcutTestWidget({super.key, required this.settings});
-
-  @override
-  State<KeyboardShortcutTestWidget> createState() => _KeyboardShortcutTestWidgetState();
-}
-
-class _KeyboardShortcutTestWidgetState extends State<KeyboardShortcutTestWidget> {
-  @override
-  void initState() {
-    super.initState();
-    HardwareKeyboard.instance.addHandler(_handleKeyEvent);
-  }
-
-  @override
-  void dispose() {
-    HardwareKeyboard.instance.removeHandler(_handleKeyEvent);
-    super.dispose();
-  }
-
-  bool _handleKeyEvent(KeyEvent event) {
-    if (event is! KeyDownEvent) return false;
-
-    final isMetaPressed = HardwareKeyboard.instance.isMetaPressed;
-    final isControlPressed = HardwareKeyboard.instance.isControlPressed;
-    final hasModifier = isMetaPressed || isControlPressed;
-
-    if (!hasModifier) return false;
-
-    final key = event.logicalKey;
-    final settings = widget.settings;
-
-    if (key == LogicalKeyboardKey.equal ||
-        key == LogicalKeyboardKey.add ||
-        key == LogicalKeyboardKey.numpadAdd) {
-      settings.increaseFontScale();
-      return true;
-    } else if (key == LogicalKeyboardKey.minus ||
-        key == LogicalKeyboardKey.numpadSubtract ||
-        key == LogicalKeyboardKey.underscore) {
-      settings.decreaseFontScale();
-      return true;
-    } else if (key == LogicalKeyboardKey.digit0 ||
-        key == LogicalKeyboardKey.numpad0) {
-      settings.setFontScale(FontScale.normal);
-      return true;
-    }
-
-    return false;
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return const SizedBox.shrink();
-  }
 }

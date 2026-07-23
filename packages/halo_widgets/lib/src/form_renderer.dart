@@ -27,10 +27,10 @@ String _templateString(String template, Map<String, dynamic> item) {
 
 /// The Cancel/Save (+ submitting spinner) row shared by every presenter of
 /// a [FormRenderer] — the renderer's own `showActions` footer,
-/// [showFormDialog]'s action bar, [showFormPane]'s pinned footer, and
-/// [FormView]'s bottom bar. Only the row lives here; each presenter keeps
-/// its own chrome (tinted container, SafeArea, padding) around it, so a
-/// change to the submission UX lands in all four at once.
+/// [showFormDialog]'s action bar, and [showFormPane]'s pinned footer. Only
+/// the row lives here; each presenter keeps its own chrome (tinted
+/// container, SafeArea, padding) around it, so a change to the submission
+/// UX lands in all three at once.
 Widget _formActionsRow({
   required bool isSubmitting,
   required VoidCallback? onCancel,
@@ -1593,108 +1593,3 @@ Future<Map<String, dynamic>?> showFormPane(
   );
 }
 
-/// A fullscreen view wrapping the FormRenderer.
-class FormView extends StatefulWidget {
-  final Map<String, dynamic> formDefinition;
-  final Map<String, dynamic> initialState;
-  final FormValidator? validator;
-  final FormTransformer? transformer;
-  final FormOnChange? onChange;
-  final FormAction? onAction;
-  final FormManageAccount? onManageAccount;
-  final FormOpenLink? onOpenLink;
-  final void Function(Map<String, dynamic> values) onSubmit;
-  final VoidCallback onCancel;
-  final bool developerMode;
-
-  const FormView({
-    super.key,
-    required this.formDefinition,
-    required this.initialState,
-    this.validator,
-    this.transformer,
-    this.onChange,
-    this.onAction,
-    this.onManageAccount,
-    this.onOpenLink,
-    required this.onSubmit,
-    required this.onCancel,
-    this.developerMode = false,
-  });
-
-  @override
-  State<FormView> createState() => _FormViewState();
-}
-
-class _FormViewState extends State<FormView> {
-  final _formKey = GlobalKey<FormRendererState>();
-  final _submittingNotifier = ValueNotifier<bool>(false);
-
-  @override
-  void dispose() {
-    _submittingNotifier.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(widget.formDefinition['title'] as String? ?? 'Form'),
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(24),
-        child: Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 600),
-            child: FormRenderer(
-              key: _formKey,
-              formDefinition: widget.formDefinition,
-              initialState: widget.initialState,
-              validator: widget.validator,
-              transformer: widget.transformer,
-              onChange: widget.onChange,
-              onAction: widget.onAction,
-              onManageAccount: widget.onManageAccount,
-              onOpenLink: widget.onOpenLink,
-              developerMode: widget.developerMode,
-              showActions: false,
-              showTitle: false,
-              submittingNotifier: _submittingNotifier,
-              onSubmit: widget.onSubmit,
-              onCancel: widget.onCancel,
-            ),
-          ),
-        ),
-      ),
-      bottomNavigationBar: ValueListenableBuilder<bool>(
-        valueListenable: _submittingNotifier,
-        builder: (context, isSubmitting, _) {
-          return Container(
-            decoration: BoxDecoration(
-              color: theme.colorScheme.primary.withOpacity(0.08),
-              border: Border(
-                top: BorderSide(
-                  color: theme.colorScheme.outlineVariant.withOpacity(0.5),
-                  width: 1,
-                ),
-              ),
-            ),
-            child: SafeArea(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                child: _formActionsRow(
-                  isSubmitting: isSubmitting,
-                  onCancel: widget.onCancel,
-                  onSave: () => _formKey.currentState?.submit(),
-                ),
-              ),
-            ),
-          );
-        },
-      ),
-    );
-  }
-}
