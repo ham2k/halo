@@ -668,12 +668,8 @@ class _OperationViewState extends State<OperationView> with SingleTickerProvider
     );
   }
 
-  Future<void> _handleCommandAction(String action, [Map<String, dynamic>? params]) async {
-    final message = await widget.services.handleCommandAction(action, params);
-    if (message != null && mounted) {
-      widget.services.statusBar.setMessage(key: 'commandAction', text: message);
-    }
-  }
+  Future<void> _handleCommandAction(String action, [Map<String, dynamic>? params]) =>
+      runCommandAction(widget.services, this, action, params);
 
   /// Flips one of the logging-view menu's toggles: updates the local mirror
   /// (`apply`) so the AppBar menu's checkmark and the widgets below react

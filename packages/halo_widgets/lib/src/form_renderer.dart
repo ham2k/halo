@@ -538,61 +538,28 @@ class FormRendererState extends State<FormRenderer> {
 
     switch (fieldType) {
       case 'text':
-        return TextField(
-          controller: _controllers[key],
-          focusNode: _focusNodes[key],
-          textCapitalization: _capitalizationFor('text', el),
-          inputFormatters: _inputFormattersFor('text', el),
-          autofillHints: _getAutofillHints(key, 'text'),
-          textInputAction: TextInputAction.done,
-          onSubmitted: (_) => submit(),
-          decoration: poloFieldDecoration(context, label, hintText: placeholder, errorText: errorText, labelColor: devModeColor),
-        );
       case 'multiline':
-        return TextField(
-          controller: _controllers[key],
-          focusNode: _focusNodes[key],
-          maxLines: null,
-          minLines: 3,
-          textCapitalization: _capitalizationFor('multiline', el),
-          inputFormatters: _inputFormattersFor('multiline', el),
-          autofillHints: _getAutofillHints(key, 'multiline'),
-          decoration: poloFieldDecoration(context, label, hintText: placeholder, errorText: errorText, labelColor: devModeColor),
-        );
       case 'email':
-        return TextField(
-          controller: _controllers[key],
-          focusNode: _focusNodes[key],
-          keyboardType: TextInputType.emailAddress,
-          textCapitalization: _capitalizationFor('email', el),
-          inputFormatters: _inputFormattersFor('email', el),
-          autofillHints: _getAutofillHints(key, 'email'),
-          textInputAction: TextInputAction.done,
-          onSubmitted: (_) => submit(),
-          decoration: poloFieldDecoration(context, label, hintText: placeholder, errorText: errorText, labelColor: devModeColor),
-        );
       case 'callsign':
-        return TextField(
-          controller: _controllers[key],
-          focusNode: _focusNodes[key],
-          textCapitalization: _capitalizationFor('callsign', el),
-          inputFormatters: _inputFormattersFor('callsign', el),
-          autofillHints: _getAutofillHints(key, 'callsign'),
-          textInputAction: TextInputAction.done,
-          onSubmitted: (_) => submit(),
-          decoration: poloFieldDecoration(context, label, hintText: placeholder, errorText: errorText, labelColor: devModeColor),
-        );
       case 'number':
+        // One parametrized TextField, same axes _buildCompactControl already
+        // uses. Two type-specific behaviors: 'multiline' gets no
+        // textInputAction/onSubmitted (Enter must insert a newline, not
+        // submit), and 'number' keeps default capitalization — its digit
+        // filter makes `uppercase: true` meaningless, and the full-width
+        // layout has never honored it there.
+        final multiline = fieldType == 'multiline';
         return TextField(
           controller: _controllers[key],
           focusNode: _focusNodes[key],
-          keyboardType: const TextInputType.numberWithOptions(decimal: true, signed: true),
-          inputFormatters: [
-            FilteringTextInputFormatter.allow(RegExp(r'[0-9.-]')),
-          ],
-          autofillHints: _getAutofillHints(key, 'number'),
-          textInputAction: TextInputAction.done,
-          onSubmitted: (_) => submit(),
+          maxLines: multiline ? null : 1,
+          minLines: multiline ? 3 : null,
+          keyboardType: _keyboardTypeFor(fieldType!),
+          textCapitalization: fieldType == 'number' ? TextCapitalization.none : _capitalizationFor(fieldType, el),
+          inputFormatters: _inputFormattersFor(fieldType, el),
+          autofillHints: _getAutofillHints(key, fieldType),
+          textInputAction: multiline ? null : TextInputAction.done,
+          onSubmitted: multiline ? null : (_) => submit(),
           decoration: poloFieldDecoration(context, label, hintText: placeholder, errorText: errorText, labelColor: devModeColor),
         );
       case 'secret':

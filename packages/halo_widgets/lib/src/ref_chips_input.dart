@@ -48,6 +48,28 @@ class RefTransform {
 /// [UpperCaseTextFormatter] (text_formatters.dart).
 const _upperCaseFormatter = UpperCaseTextFormatter();
 
+/// Builds the [TextEditingValue] that typing [text] at the cursor of
+/// [oldValue] would produce — the selection replaced, the cursor collapsed
+/// after the inserted text — then runs the same uppercase + [transforms]
+/// formatters an ordinary keystroke would, since directly assigning
+/// `controller.value` bypasses `inputFormatters`. Shared by both this file's
+/// State classes' `_insertAtCursor`.
+TextEditingValue _typedAtCursor(TextEditingValue oldValue, String text, List<RefTransform> transforms) {
+  final selection = oldValue.selection;
+  final start = selection.start < 0 ? oldValue.text.length : selection.start;
+  final end = selection.end < 0 ? oldValue.text.length : selection.end;
+  var newValue = oldValue.copyWith(
+    text: oldValue.text.replaceRange(start, end, text),
+    selection: TextSelection.collapsed(offset: start + text.length),
+    composing: TextRange.empty,
+  );
+  newValue = _upperCaseFormatter.formatEditUpdate(oldValue, newValue);
+  if (transforms.isNotEmpty) {
+    newValue = _RefTransformFormatter(transforms).formatEditUpdate(oldValue, newValue);
+  }
+  return newValue;
+}
+
 /// Applies an ordered list of [RefTransform]s to text on every edit — the
 /// native side of the extension's declarative reformatting contract.
 /// Malformed transform sources (an extension bug) are skipped rather than
@@ -275,23 +297,10 @@ class _RefChipsInputState extends State<RefChipsInput> {
   /// override LoggingControls' panel-wide space-advances-focus shortcut (see
   /// the `CallbackShortcuts` around the field below) so a space can be a
   /// literal separator between multiple references in this field instead.
-  /// Runs the same `transforms` an ordinary keystroke would, since directly
-  /// assigning `controller.value` bypasses `inputFormatters`.
+  /// Runs the same `transforms` an ordinary keystroke would (see
+  /// [_typedAtCursor]).
   void _insertAtCursor(String text) {
-    final oldValue = _controller.value;
-    final selection = oldValue.selection;
-    final start = selection.start < 0 ? oldValue.text.length : selection.start;
-    final end = selection.end < 0 ? oldValue.text.length : selection.end;
-    var newValue = oldValue.copyWith(
-      text: oldValue.text.replaceRange(start, end, text),
-      selection: TextSelection.collapsed(offset: start + text.length),
-      composing: TextRange.empty,
-    );
-    newValue = _upperCaseFormatter.formatEditUpdate(oldValue, newValue);
-    if (widget.transforms.isNotEmpty) {
-      newValue = _RefTransformFormatter(widget.transforms).formatEditUpdate(oldValue, newValue);
-    }
-    _controller.value = newValue;
+    _controller.value = _typedAtCursor(_controller.value, text, widget.transforms);
     if (_error != null) setState(() => _error = null);
   }
 
@@ -526,19 +535,7 @@ class _RefTextInputState extends State<RefTextInput> {
   /// space can be a literal separator between multiple references in this
   /// field instead.
   void _insertAtCursor(String text) {
-    final oldValue = _controller.value;
-    final selection = oldValue.selection;
-    final start = selection.start < 0 ? oldValue.text.length : selection.start;
-    final end = selection.end < 0 ? oldValue.text.length : selection.end;
-    var newValue = oldValue.copyWith(
-      text: oldValue.text.replaceRange(start, end, text),
-      selection: TextSelection.collapsed(offset: start + text.length),
-      composing: TextRange.empty,
-    );
-    newValue = _upperCaseFormatter.formatEditUpdate(oldValue, newValue);
-    if (widget.transforms.isNotEmpty) {
-      newValue = _RefTransformFormatter(widget.transforms).formatEditUpdate(oldValue, newValue);
-    }
+    final newValue = _typedAtCursor(_controller.value, text, widget.transforms);
     _controller.value = newValue;
     _emit(newValue.text);
   }

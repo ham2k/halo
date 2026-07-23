@@ -413,7 +413,7 @@ class _SpotsPanelState extends State<SpotsPanel> {
         ? superModeForMode(vfo.mode)
         : (_modeFilter == 'any' ? null : _modeFilter);
 
-    var spots = mergeSpotsByFreqAndRefs(mergeSpotsByCallAndFreq(_rawSpots));
+    var spots = _mergedRawSpots;
     final total = spots.length;
 
     if (band != null && band != 'any') {
@@ -1093,20 +1093,12 @@ class _FilterInfoPill extends StatelessWidget {
   }
 }
 
-/// Shows `_SpotsFilterControls` in a dialog. Keeps its own local copy of the
-/// filter values so widgets that don't self-manage their displayed state
-/// (`SwitchListTile`) still update live while the dialog is open — a dialog
-/// route's content lives in the Navigator's overlay, not as a descendant of
-/// `SpotsPanel`, so `_SpotsPanelState.setState` alone wouldn't rebuild it.
-/// Every local change is also immediately forwarded to the corresponding
-/// `on*Changed` callback so `SpotsPanel`'s own filtering stays in sync
-/// without waiting for the dialog to close.
 /// Continent codes in the order they're offered — @ham2k/lib-dxcc-data's
 /// `CONTINENTS` insertion order, ported by hand since that table lives in
 /// the JS extension runtime, not halo_core.
 const _continentCodes = ['AF', 'AS', 'EU', 'NA', 'OC', 'SA', 'AN'];
 
-/// Top-level (not a `_SpotsFilterControls` method) so `_SpotsFilterPill` can
+/// Top-level (not a `_SpotsFilterDialogState` method) so `_SpotsFilterPill` can
 /// use the exact same wording for its collapsed summary — "Auto (20m)"/"All
 /// Bands", never a bare "auto"/"any".
 String _bandOptionLabel(Translations t, String option, String? autoBand) => switch (option) {
@@ -1141,6 +1133,19 @@ String spotsFilterModePillLabel(Translations t, String option, String? autoMode)
       _ => option,
     };
 
+/// Shared width for the band/mode/age dropdowns so all three line up — 2/3
+/// of the dialog's own content width (400), unlike the sorting
+/// SegmentedButton which spans it fully.
+const double _dropdownWidth = 400 * 2 / 3;
+
+/// The spots filter dialog. Keeps its own local copy of the filter values so
+/// widgets that don't self-manage their displayed state (`Switch`) still
+/// update live while the dialog is open — a dialog route's content lives in
+/// the Navigator's overlay, not as a descendant of `SpotsPanel`, so
+/// `_SpotsPanelState.setState` alone wouldn't rebuild it. Every local change
+/// is also immediately forwarded to the corresponding `on*Changed` callback
+/// so `SpotsPanel`'s own filtering stays in sync without waiting for the
+/// dialog to close.
 class _SpotsFilterDialog extends StatefulWidget {
   final String bandFilter;
   final String modeFilter;
@@ -1210,6 +1215,9 @@ class _SpotsFilterDialogState extends State<_SpotsFilterDialog> {
   @override
   Widget build(BuildContext context) {
     final t = context.t;
+    // 'auto' first (it's the default and tracks the live VFO), then 'any'.
+    final bandOptions = ['auto', 'any', ...bands.map((b) => b.name)];
+    final modeOptions = ['auto', 'any', ..._superModes];
 
     return HaloDialog(
       wide: true,
@@ -1217,58 +1225,164 @@ class _SpotsFilterDialogState extends State<_SpotsFilterDialog> {
       content: SizedBox(
         width: 400,
         child: SingleChildScrollView(
-          child: _SpotsFilterControls(
-            bandFilter: _bandFilter,
-            modeFilter: _modeFilter,
-            ageMinutes: _ageMinutes,
-            autoBand: widget.autoBand,
-            autoMode: widget.autoMode,
-            totalSpotCount: widget.totalSpotCount,
-            bandSpotCounts: widget.bandSpotCounts,
-            modeSpotCounts: widget.modeSpotCounts,
-            ageSpotCounts: widget.ageSpotCounts,
-            sortBy: _sortBy,
-            groupCallsWithNotes: _groupCallsWithNotes,
-            sources: widget.sources,
-            sourceNames: widget.sourceNames,
-            sourceSpotCounts: widget.sourceSpotCounts,
-            disabledSources: _disabledSources,
-            continentSpotCounts: widget.continentSpotCounts,
-            disabledContinents: _disabledContinents,
-            onBandChanged: (v) {
-              setState(() => _bandFilter = v);
-              widget.onBandChanged(v);
-            },
-            onModeChanged: (v) {
-              setState(() => _modeFilter = v);
-              widget.onModeChanged(v);
-            },
-            onAgeChanged: (v) {
-              setState(() => _ageMinutes = v);
-              widget.onAgeChanged(v);
-            },
-            onSortByChanged: (v) {
-              setState(() => _sortBy = v);
-              widget.onSortByChanged(v);
-            },
-            onGroupCallsWithNotesChanged: (v) {
-              setState(() => _groupCallsWithNotes = v);
-              widget.onGroupCallsWithNotesChanged(v);
-            },
-            onToggleSource: (key) {
-              setState(
-                () => _disabledSources.contains(key) ? _disabledSources.remove(key) : _disabledSources.add(key),
-              );
-              widget.onToggleSource(key);
-            },
-            onToggleContinent: (code) {
-              setState(
-                () => _disabledContinents.contains(code)
-                    ? _disabledContinents.remove(code)
-                    : _disabledContinents.add(code),
-              );
-              widget.onToggleContinent(code);
-            },
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 6),
+                child: DropdownMenu<String>(
+                  initialSelection: _bandFilter,
+                  width: _dropdownWidth,
+                  menuHeight: dropdownMenuMaxHeight(context),
+                  // Pick-only; search's rebuild-time scrollToHighlight would snap
+                  // the open menu back to the selection whenever spots stream in.
+                  enableSearch: false,
+                  label: Text(t.operation.spots.filters.band),
+                  dropdownMenuEntries: [
+                    for (final option in bandOptions)
+                      DropdownMenuEntry(value: option, label: _bandEntryLabel(t, option)),
+                  ],
+                  onSelected: (value) {
+                    if (value != null) {
+                      setState(() => _bandFilter = value);
+                      widget.onBandChanged(value);
+                    }
+                  },
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 6),
+                child: DropdownMenu<String>(
+                  initialSelection: _modeFilter,
+                  width: _dropdownWidth,
+                  menuHeight: dropdownMenuMaxHeight(context),
+                  enableSearch: false,
+                  label: Text(t.operation.spots.filters.mode),
+                  dropdownMenuEntries: [
+                    for (final option in modeOptions)
+                      DropdownMenuEntry(value: option, label: _modeEntryLabel(t, option)),
+                  ],
+                  onSelected: (value) {
+                    if (value != null) {
+                      setState(() => _modeFilter = value);
+                      widget.onModeChanged(value);
+                    }
+                  },
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 6),
+                child: DropdownMenu<int?>(
+                  initialSelection: _ageMinutes,
+                  width: _dropdownWidth,
+                  menuHeight: dropdownMenuMaxHeight(context),
+                  enableSearch: false,
+                  label: Text(t.operation.spots.filters.age),
+                  dropdownMenuEntries: [
+                    DropdownMenuEntry(value: null, label: '${t.operation.spots.any} (${widget.totalSpotCount})'),
+                    for (final minutes in _ageOptionsInMinutes)
+                      DropdownMenuEntry(
+                        value: minutes,
+                        label:
+                            '${t.operation.spots.ageMinutes(minutes: minutes)} (${widget.ageSpotCounts[minutes] ?? 0})',
+                      ),
+                  ],
+                  onSelected: (value) {
+                    setState(() => _ageMinutes = value);
+                    widget.onAgeChanged(value);
+                  },
+                ),
+              ),
+              SectionHeader(t.operation.spots.filters.sorting),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                child: SegmentedButton<String>(
+                  segments: [
+                    ButtonSegment(value: 'frequency', label: Text(t.operation.spots.filters.sortByFrequency)),
+                    ButtonSegment(value: 'time', label: Text(t.operation.spots.filters.sortByTime)),
+                  ],
+                  selected: {_sortBy},
+                  onSelectionChanged: (selection) {
+                    setState(() => _sortBy = selection.first);
+                    widget.onSortByChanged(selection.first);
+                  },
+                ),
+              ),
+              ListTile(
+                dense: true,
+                visualDensity: const VisualDensity(vertical: -4),
+                contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+                title: Text(t.operation.spots.filters.groupCallsWithNotes),
+                trailing: Switch(
+                  value: _groupCallsWithNotes,
+                  onChanged: (value) {
+                    setState(() => _groupCallsWithNotes = value);
+                    widget.onGroupCallsWithNotesChanged(value);
+                  },
+                ),
+              ),
+              if (widget.sources.isNotEmpty) ...[
+                SectionHeader(t.operation.spots.filters.sources),
+                for (final source in widget.sources)
+                  ListTile(
+                    dense: true,
+                    visualDensity: const VisualDensity(vertical: -4),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+                    title: Text(
+                      widget.sourceNames[source] ?? source,
+                      style: const TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                    trailing: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(t.operation.spots.spotsCount(count: widget.sourceSpotCounts[source] ?? 0)),
+                        const SizedBox(width: 8),
+                        Switch(
+                          value: !_disabledSources.contains(source),
+                          onChanged: (_) {
+                            setState(
+                              () => _disabledSources.contains(source)
+                                  ? _disabledSources.remove(source)
+                                  : _disabledSources.add(source),
+                            );
+                            widget.onToggleSource(source);
+                          },
+                        ),
+                      ],
+                    ),
+                  ),
+              ],
+              SectionHeader(t.operation.spots.filters.continent),
+              for (final code in _continentCodes)
+                ListTile(
+                  dense: true,
+                  visualDensity: const VisualDensity(vertical: -4),
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+                  title: Text(
+                    _continentLabel(t, code),
+                    style: const TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  trailing: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(t.operation.spots.spotsCount(count: widget.continentSpotCounts[code] ?? 0)),
+                      const SizedBox(width: 8),
+                      Switch(
+                        value: !_disabledContinents.contains(code),
+                        onChanged: (_) {
+                          setState(
+                            () => _disabledContinents.contains(code)
+                                ? _disabledContinents.remove(code)
+                                : _disabledContinents.add(code),
+                          );
+                          widget.onToggleContinent(code);
+                        },
+                      ),
+                    ],
+                  ),
+                ),
+            ],
           ),
         ),
       ),
@@ -1277,217 +1391,20 @@ class _SpotsFilterDialogState extends State<_SpotsFilterDialog> {
       ],
     );
   }
-}
-
-/// Shared width for the band/mode/age dropdowns so all three line up — 2/3
-/// of the dialog's own content width (400), unlike the sorting
-/// SegmentedButton which spans it fully.
-const double _dropdownWidth = 400 * 2 / 3;
-
-class _SpotsFilterControls extends StatelessWidget {
-  final String bandFilter;
-  final String modeFilter;
-  final int? ageMinutes;
-  final String? autoBand;
-  final String? autoMode;
-  final int totalSpotCount;
-  final Map<String, int> bandSpotCounts;
-  final Map<String, int> modeSpotCounts;
-  final Map<int, int> ageSpotCounts;
-  final String sortBy;
-  final bool groupCallsWithNotes;
-  final List<String> sources;
-  final Map<String, String> sourceNames;
-  final Map<String, int> sourceSpotCounts;
-  final Set<String> disabledSources;
-  final Map<String, int> continentSpotCounts;
-  final Set<String> disabledContinents;
-  final ValueChanged<String> onBandChanged;
-  final ValueChanged<String> onModeChanged;
-  final ValueChanged<int?> onAgeChanged;
-  final ValueChanged<String> onSortByChanged;
-  final ValueChanged<bool> onGroupCallsWithNotesChanged;
-  final ValueChanged<String> onToggleSource;
-  final ValueChanged<String> onToggleContinent;
-
-  const _SpotsFilterControls({
-    required this.bandFilter,
-    required this.modeFilter,
-    required this.ageMinutes,
-    required this.autoBand,
-    required this.autoMode,
-    required this.totalSpotCount,
-    required this.bandSpotCounts,
-    required this.modeSpotCounts,
-    required this.ageSpotCounts,
-    required this.sortBy,
-    required this.groupCallsWithNotes,
-    required this.sources,
-    required this.sourceNames,
-    required this.sourceSpotCounts,
-    required this.disabledSources,
-    required this.continentSpotCounts,
-    required this.disabledContinents,
-    required this.onBandChanged,
-    required this.onModeChanged,
-    required this.onAgeChanged,
-    required this.onSortByChanged,
-    required this.onGroupCallsWithNotesChanged,
-    required this.onToggleSource,
-    required this.onToggleContinent,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final t = context.t;
-    // 'auto' first (it's the default and tracks the live VFO), then 'any'.
-    final bandOptions = ['auto', 'any', ...bands.map((b) => b.name)];
-    final modeOptions = ['auto', 'any', ..._superModes];
-
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.center,
-      children: [
-        Padding(
-          padding: const EdgeInsets.symmetric(vertical: 6),
-          child: DropdownMenu<String>(
-            initialSelection: bandFilter,
-            width: _dropdownWidth,
-            menuHeight: dropdownMenuMaxHeight(context),
-            // Pick-only; search's rebuild-time scrollToHighlight would snap
-            // the open menu back to the selection whenever spots stream in.
-            enableSearch: false,
-            label: Text(t.operation.spots.filters.band),
-            dropdownMenuEntries: [
-              for (final option in bandOptions)
-                DropdownMenuEntry(value: option, label: _bandEntryLabel(t, option)),
-            ],
-            onSelected: (value) {
-              if (value != null) onBandChanged(value);
-            },
-          ),
-        ),
-        Padding(
-          padding: const EdgeInsets.symmetric(vertical: 6),
-          child: DropdownMenu<String>(
-            initialSelection: modeFilter,
-            width: _dropdownWidth,
-            menuHeight: dropdownMenuMaxHeight(context),
-            enableSearch: false,
-            label: Text(t.operation.spots.filters.mode),
-            dropdownMenuEntries: [
-              for (final option in modeOptions)
-                DropdownMenuEntry(value: option, label: _modeEntryLabel(t, option)),
-            ],
-            onSelected: (value) {
-              if (value != null) onModeChanged(value);
-            },
-          ),
-        ),
-        Padding(
-          padding: const EdgeInsets.symmetric(vertical: 6),
-          child: DropdownMenu<int?>(
-            initialSelection: ageMinutes,
-            width: _dropdownWidth,
-            menuHeight: dropdownMenuMaxHeight(context),
-            enableSearch: false,
-            label: Text(t.operation.spots.filters.age),
-            dropdownMenuEntries: [
-              DropdownMenuEntry(value: null, label: '${t.operation.spots.any} ($totalSpotCount)'),
-              for (final minutes in _ageOptionsInMinutes)
-                DropdownMenuEntry(
-                  value: minutes,
-                  label: '${t.operation.spots.ageMinutes(minutes: minutes)} (${ageSpotCounts[minutes] ?? 0})',
-                ),
-            ],
-            onSelected: onAgeChanged,
-          ),
-        ),
-        SectionHeader(t.operation.spots.filters.sorting),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-          child: SegmentedButton<String>(
-            segments: [
-              ButtonSegment(value: 'frequency', label: Text(t.operation.spots.filters.sortByFrequency)),
-              ButtonSegment(value: 'time', label: Text(t.operation.spots.filters.sortByTime)),
-            ],
-            selected: {sortBy},
-            onSelectionChanged: (selection) => onSortByChanged(selection.first),
-          ),
-        ),
-        ListTile(
-          dense: true,
-          visualDensity: const VisualDensity(vertical: -4),
-          contentPadding: const EdgeInsets.symmetric(horizontal: 16),
-          title: Text(t.operation.spots.filters.groupCallsWithNotes),
-          trailing: Switch(
-            value: groupCallsWithNotes,
-            onChanged: onGroupCallsWithNotesChanged,
-          ),
-        ),
-        if (sources.isNotEmpty) ...[
-          SectionHeader(t.operation.spots.filters.sources),
-          for (final source in sources)
-            ListTile(
-              dense: true,
-              visualDensity: const VisualDensity(vertical: -4),
-              contentPadding: const EdgeInsets.symmetric(horizontal: 16),
-              title: Text(
-                sourceNames[source] ?? source,
-                style: const TextStyle(fontWeight: FontWeight.bold),
-              ),
-              trailing: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(t.operation.spots.spotsCount(count: sourceSpotCounts[source] ?? 0)),
-                  const SizedBox(width: 8),
-                  Switch(
-                    value: !disabledSources.contains(source),
-                    onChanged: (_) => onToggleSource(source),
-                  ),
-                ],
-              ),
-            ),
-        ],
-        SectionHeader(t.operation.spots.filters.continent),
-        for (final code in _continentCodes)
-          ListTile(
-            dense: true,
-            visualDensity: const VisualDensity(vertical: -4),
-            contentPadding: const EdgeInsets.symmetric(horizontal: 16),
-            title: Text(
-              _continentLabel(t, code),
-              style: const TextStyle(fontWeight: FontWeight.bold),
-            ),
-            trailing: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(t.operation.spots.spotsCount(count: continentSpotCounts[code] ?? 0)),
-                const SizedBox(width: 8),
-                Switch(
-                  value: !disabledContinents.contains(code),
-                  onChanged: (_) => onToggleContinent(code),
-                ),
-              ],
-            ),
-          ),
-      ],
-    );
-  }
 
   /// `_bandOptionLabel` plus a "(N)" spot count — every option except
   /// "auto", which has no fixed count to show (it tracks the live VFO).
   String _bandEntryLabel(Translations t, String option) {
-    final label = _bandOptionLabel(t, option, autoBand);
+    final label = _bandOptionLabel(t, option, widget.autoBand);
     if (option == 'auto') return label;
-    final count = option == 'any' ? totalSpotCount : (bandSpotCounts[option] ?? 0);
+    final count = option == 'any' ? widget.totalSpotCount : (widget.bandSpotCounts[option] ?? 0);
     return '$label ($count)';
   }
 
   String _modeEntryLabel(Translations t, String option) {
-    final label = _modeOptionLabel(t, option, autoMode);
+    final label = _modeOptionLabel(t, option, widget.autoMode);
     if (option == 'auto') return label;
-    final count = option == 'any' ? totalSpotCount : (modeSpotCounts[option] ?? 0);
+    final count = option == 'any' ? widget.totalSpotCount : (widget.modeSpotCounts[option] ?? 0);
     return '$label ($count)';
   }
 

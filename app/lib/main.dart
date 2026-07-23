@@ -699,6 +699,19 @@ class HaLoServices {
   }
 }
 
+/// Runs one command action through [HaLoServices.handleCommandAction] and
+/// surfaces its returned message in the status bar (skipped if [state] was
+/// unmounted while the action ran) — so feedback that's only known app-side
+/// (a toggled experiment's outcome, syncAll's status) isn't silently
+/// dropped. Shared by home_view's and operation_view's command dispatch.
+Future<void> runCommandAction(HaLoServices services, State state, String action,
+    [Map<String, dynamic>? params]) async {
+  final message = await services.handleCommandAction(action, params);
+  if (message != null && state.mounted) {
+    services.statusBar.setMessage(key: 'commandAction', text: message);
+  }
+}
+
 
 
 class HaLoApp extends StatefulWidget {

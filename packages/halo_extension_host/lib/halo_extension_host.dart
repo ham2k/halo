@@ -326,12 +326,7 @@ class ExtensionHost {
     _pending[id] = completer;
     _inFlight[id] = (label, Stopwatch()..start());
 
-    final message = {'type': type, 'id': id, ...fields};
-    if (_inProcessCore != null) {
-      _inProcessCore!.handle(message);
-    } else {
-      _toIsolate!.send(message);
-    }
+    _dispatch({'type': type, 'id': id, ...fields});
 
     try {
       return await completer.future.timeout(timeout);
@@ -341,36 +336,31 @@ class ExtensionHost {
       // Tell the core to stop counting this call as outstanding: a hook
       // that never settles would otherwise keep the 5ms pump timer spinning
       // forever — constant CPU wake-ups on an all-day field session.
-      final abandon = {'type': 'abandon', 'id': id};
-      if (_inProcessCore != null) {
-        _inProcessCore!.handle(abandon);
-      } else {
-        _toIsolate?.send(abandon);
-      }
+      _dispatch({'type': 'abandon', 'id': id});
       throw ExtensionHostException('hook $label timed out after ${timeout.inMilliseconds}ms');
+    }
+  }
+
+  /// Sends one message to the core, whichever side it runs on. (`_toIsolate`
+  /// is never nulled once set, so the two branches cover every live host.)
+  void _dispatch(Map<String, Object?> message) {
+    if (_inProcessCore != null) {
+      _inProcessCore!.handle(message);
+    } else {
+      _toIsolate?.send(message);
     }
   }
 
   /// Seeds a value into an extension's key-value namespace (e.g. credentials).
   void setKV(String extensionKey, String key, Object? value) {
-    final message = {'type': 'kvSet', 'ns': extensionKey, 'key': key, 'value': value};
-    if (_inProcessCore != null) {
-      _inProcessCore!.handle(message);
-    } else {
-      _toIsolate!.send(message);
-    }
+    _dispatch({'type': 'kvSet', 'ns': extensionKey, 'key': key, 'value': value});
   }
 
   /// Drops the kernel's cached hook context (settings, account credentials).
   /// Call after the app writes either, so the next hook call sees the fresh
   /// values instead of waiting out the kernel-side cache TTL.
   void invalidateHookContext() {
-    const message = {'type': 'invalidateContext'};
-    if (_inProcessCore != null) {
-      _inProcessCore!.handle(message);
-    } else {
-      _toIsolate?.send(message);
-    }
+    _dispatch(const {'type': 'invalidateContext'});
   }
 
   void _onCoreMessage(Map<String, dynamic> msg) {
@@ -462,11 +452,6 @@ class ExtensionHost {
     logLines.add(message);
     _logs.add(message);
   }
-
-  /// Kills the extension isolate the same way an uncaught error would,
-  /// so tests can exercise the death-detection path deterministically.
-  @visibleForTesting
-  void debugKillIsolate() => _isolate?.kill(priority: Isolate.immediate);
 
   Future<void> dispose() async {
     _disposed = true;
@@ -688,11 +673,6 @@ class _HostCore {
       result = '$e';
     }
 
-    // Encode before deciding the response: if the app's handler returned
-    // something JSON can't encode (a DateTime, a plain object), that must
-    // become an ok:false response — never an undelivered one, which leaks
-    // the kernel's pending call and wedges the awaiting hook until the
-    // Dart-side timeout.
     // Encode before deciding the response: if the app's handler returned
     // something JSON can't encode (a DateTime, a plain object), that must
     // become an ok:false response — never an undelivered one, which leaks

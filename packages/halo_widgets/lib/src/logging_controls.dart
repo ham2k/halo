@@ -1385,6 +1385,47 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
         hintText: hintText,
       );
 
+  /// One of the fixed-width (64px) secondary logging fields — Sent, Rcvd,
+  /// State, Grid — which share everything but their controller/label and a
+  /// couple of input-shaping knobs. Amateur-radio codes, not prose: stop the
+  /// soft keyboard from autocorrecting, spell-checking, suggesting, or
+  /// smart-punctuating the value into garbage (autocorrect:false also turns
+  /// off iOS spell check; the smart types stop "-" → "–"). Uppercased like
+  /// all logging input, and Enter logs.
+  Widget _fixedField(
+    BuildContext context, {
+    required TextEditingController controller,
+    required FocusNode focusNode,
+    required bool enabled,
+    required String label,
+    TextInputType? keyboardType,
+    TextCapitalization textCapitalization = TextCapitalization.none,
+    TextInputFormatter? filter,
+    String? hintText,
+    required ValueChanged<String> onChanged,
+  }) {
+    return SizedBox(
+      width: 64,
+      child: TextField(
+        controller: controller,
+        focusNode: focusNode,
+        selectAllOnFocus: false,
+        enabled: enabled,
+        style: _primaryFieldStyle(context, fontWeight: FontWeight.w500),
+        keyboardType: keyboardType,
+        textCapitalization: textCapitalization,
+        autocorrect: false,
+        enableSuggestions: false,
+        smartDashesType: SmartDashesType.disabled,
+        smartQuotesType: SmartQuotesType.disabled,
+        inputFormatters: [_virtualSpace, ?filter, const UpperCaseTextFormatter()],
+        decoration: _primaryFieldDecoration(context, label, hintText: hintText),
+        onChanged: onChanged,
+        onSubmitted: (_) => _log(),
+      ),
+    );
+  }
+
   String _fmtTime(DateTime dt) =>
       '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
   String _fmtTimeWithSeconds(DateTime dt) =>
@@ -1691,7 +1732,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   List<DropdownMenuEntry<String>> _modeMenuEntries = const [];
 
   /// Returns [cache] unchanged when [values] matches [cacheKey], else
-  /// rebuilds the entries and updates [cacheKey] via [setKey]. ` `
+  /// rebuilds the entries and updates [cacheKey] via [setKey]. `\x00`
   /// joins the values — a separator that can't appear in a band/mode name,
   /// so distinct value lists never collide on the same key.
   List<DropdownMenuEntry<String>> _memoEntries(
@@ -1700,7 +1741,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     List<String> values,
     void Function(String key) setKey,
   ) {
-    final key = values.join(' ');
+    final key = values.join('\x00');
     if (key == cacheKey) return cache;
     setKey(key);
     return [for (final v in values) DropdownMenuEntry(value: v, label: v)];
@@ -3832,125 +3873,63 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
                           ),
                           if (widget.showRSTFields) ...[
                             const SizedBox(width: 10),
-                            SizedBox(
-                              width: 64,
-                              child: TextField(
-                                controller: _sentController,
-                                focusNode: _sentFocus,
-                                selectAllOnFocus: false,
-                                enabled: !fieldsLocked,
-                                style: _primaryFieldStyle(context, fontWeight: FontWeight.w500),
-                                // Letters are legitimate in RSTs (CW's "5NN"
-                                // shorthand, aurora "59A") and the Edit QSO
-                                // pane accepts them — a digits-only filter
-                                // here would silently strip a pane-saved
-                                // letter on the next keystroke, since
-                                // filtering formatters re-run over the whole
-                                // text. Uppercased like all logging input.
-                                keyboardType: _numbersAndPunctuationOnIOS,
-                                // Amateur-radio codes, not prose: stop the soft
-                                // keyboard from autocorrecting, spell-checking,
-                                // suggesting, or smart-punctuating an RST (or
-                                // any other logging field) into garbage.
-                                // autocorrect:false also turns off iOS spell
-                                // check; the smart types stop "-" → "–".
-                                autocorrect: false,
-                                enableSuggestions: false,
-                                smartDashesType: SmartDashesType.disabled,
-                                smartQuotesType: SmartQuotesType.disabled,
-                                inputFormatters: [
-                                  _virtualSpace,
-                                  FilteringTextInputFormatter.allow(
-                                    RegExp(r'[0-9a-zA-Z+\-]'),
-                                  ),
-                                  const UpperCaseTextFormatter(),
-                                ],
-                                decoration: _primaryFieldDecoration(context, widget.sentLabel ?? 'Sent'),
-                                onChanged: (_) => _rstsTouched = true,
-                                onSubmitted: (_) => _log(),
-                              ),
+                            _fixedField(
+                              context,
+                              controller: _sentController,
+                              focusNode: _sentFocus,
+                              enabled: !fieldsLocked,
+                              label: widget.sentLabel ?? 'Sent',
+                              // Letters are legitimate in RSTs (CW's "5NN"
+                              // shorthand, aurora "59A") and the Edit QSO
+                              // pane accepts them — a digits-only filter
+                              // here would silently strip a pane-saved
+                              // letter on the next keystroke, since
+                              // filtering formatters re-run over the whole
+                              // text.
+                              keyboardType: _numbersAndPunctuationOnIOS,
+                              filter: FilteringTextInputFormatter.allow(RegExp(r'[0-9a-zA-Z+\-]')),
+                              onChanged: (_) => _rstsTouched = true,
                             ),
                             const SizedBox(width: 8),
-                            SizedBox(
-                              width: 64,
-                              child: TextField(
-                                controller: _rcvdController,
-                                focusNode: _rcvdFocus,
-                                selectAllOnFocus: false,
-                                enabled: !fieldsLocked,
-                                style: _primaryFieldStyle(context, fontWeight: FontWeight.w500),
-                                // Same letter-friendly rule as Sent above.
-                                keyboardType: _numbersAndPunctuationOnIOS,
-                                // No autocorrect/suggestions/smart punctuation —
-                                // see Sent.
-                                autocorrect: false,
-                                enableSuggestions: false,
-                                smartDashesType: SmartDashesType.disabled,
-                                smartQuotesType: SmartQuotesType.disabled,
-                                inputFormatters: [
-                                  _virtualSpace,
-                                  FilteringTextInputFormatter.allow(
-                                    RegExp(r'[0-9a-zA-Z+\-]'),
-                                  ),
-                                  const UpperCaseTextFormatter(),
-                                ],
-                                decoration: _primaryFieldDecoration(context, widget.rcvdLabel ?? 'Rcvd'),
-                                onChanged: (_) => _rstsTouched = true,
-                                onSubmitted: (_) => _log(),
-                              ),
+                            _fixedField(
+                              context,
+                              controller: _rcvdController,
+                              focusNode: _rcvdFocus,
+                              enabled: !fieldsLocked,
+                              label: widget.rcvdLabel ?? 'Rcvd',
+                              // Same letter-friendly rule as Sent above.
+                              keyboardType: _numbersAndPunctuationOnIOS,
+                              filter: FilteringTextInputFormatter.allow(RegExp(r'[0-9a-zA-Z+\-]')),
+                              onChanged: (_) => _rstsTouched = true,
                             ),
                           ],
                           if (widget.showStateField) ...[
                             const SizedBox(width: 10),
-                            SizedBox(
-                              width: 64,
-                              child: TextField(
-                                controller: _stateController,
-                                focusNode: _stateFocus,
-                                selectAllOnFocus: false,
-                                enabled: !fieldsLocked,
-                                textCapitalization: TextCapitalization.characters,
-                                // No autocorrect/suggestions/smart punctuation —
-                                // see Sent.
-                                autocorrect: false,
-                                enableSuggestions: false,
-                                smartDashesType: SmartDashesType.disabled,
-                                smartQuotesType: SmartQuotesType.disabled,
-                                inputFormatters: [_virtualSpace, const UpperCaseTextFormatter()],
-                                style: _primaryFieldStyle(context, fontWeight: FontWeight.w500),
-                                // The guessed state (e.g. from a callsign lookup)
-                                // shows as a faint placeholder while the field is
-                                // empty — never pre-filled as a real value.
-                                decoration: _primaryFieldDecoration(context, widget.theirStateLabel ?? 'State',
-                                    hintText: _currentGuess?['state'] as String?),
-                                onChanged: (_) => _stateTouched = true,
-                                onSubmitted: (_) => _log(),
-                              ),
+                            _fixedField(
+                              context,
+                              controller: _stateController,
+                              focusNode: _stateFocus,
+                              enabled: !fieldsLocked,
+                              label: widget.theirStateLabel ?? 'State',
+                              textCapitalization: TextCapitalization.characters,
+                              // The guessed state (e.g. from a callsign lookup)
+                              // shows as a faint placeholder while the field is
+                              // empty — never pre-filled as a real value.
+                              hintText: _currentGuess?['state'] as String?,
+                              onChanged: (_) => _stateTouched = true,
                             ),
                           ],
                           if (widget.showGridField) ...[
                             const SizedBox(width: 10),
-                            SizedBox(
-                              width: 64,
-                              child: TextField(
-                                controller: _gridController,
-                                focusNode: _gridFocus,
-                                selectAllOnFocus: false,
-                                enabled: !fieldsLocked,
-                                textCapitalization: TextCapitalization.characters,
-                                // No autocorrect/suggestions/smart punctuation —
-                                // see Sent.
-                                autocorrect: false,
-                                enableSuggestions: false,
-                                smartDashesType: SmartDashesType.disabled,
-                                smartQuotesType: SmartQuotesType.disabled,
-                                inputFormatters: [_virtualSpace, const UpperCaseTextFormatter()],
-                                style: _primaryFieldStyle(context, fontWeight: FontWeight.w500),
-                                decoration: _primaryFieldDecoration(context, widget.theirGridLabel ?? 'Grid',
-                                    hintText: _currentGuess?['grid'] as String?),
-                                onChanged: (_) => _gridTouched = true,
-                                onSubmitted: (_) => _log(),
-                              ),
+                            _fixedField(
+                              context,
+                              controller: _gridController,
+                              focusNode: _gridFocus,
+                              enabled: !fieldsLocked,
+                              label: widget.theirGridLabel ?? 'Grid',
+                              textCapitalization: TextCapitalization.characters,
+                              hintText: _currentGuess?['grid'] as String?,
+                              onChanged: (_) => _gridTouched = true,
                             ),
                           ],
                           const SizedBox(width: 12),
