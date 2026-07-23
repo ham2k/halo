@@ -176,7 +176,6 @@ Future<void> _release(List<String> args, {required _Out out, required bool json}
   await _cut(
     out: out,
     root: root,
-    branch: branch,
     versionFile: versionFile,
     source: source,
     currentBuild: currentBuild,
@@ -188,13 +187,11 @@ Future<void> _release(List<String> args, {required _Out out, required bool json}
 
 /// The actual release cut, in Dart (git shelled out): refuse to clobber an
 /// existing tag, write the new build into version.dart, commit ONLY that file
-/// (else tag HEAD as-is), annotated-tag it, and push to app-halo-dist only when
-/// the branch tracks it — the exact sequence + push gate the retired
-/// scripts/release.sh used.
+/// (else tag HEAD as-is), annotated-tag it, and — only when the branch tracks
+/// app-halo-dist — push HEAD to its upstream branch plus the tag.
 Future<void> _cut({
   required _Out out,
   required String root,
-  required String branch,
   required File versionFile,
   required String source,
   required int currentBuild,
@@ -224,8 +221,14 @@ Future<void> _cut({
 
   final upstream = await _upstream(root);
   if (upstream != null && upstream.startsWith('$_remote/')) {
-    out.dim('  Pushing $branch + tag $tagName to $_remote …');
-    await _git(['push', _remote, branch], cwd: root);
+    // Push HEAD to the *upstream* branch (e.g. `dist`), NOT the local branch
+    // name: the local branch is often `main-dist-private`, and a same-named
+    // `git push <remote> main-dist-private` targets a different (stale) remote
+    // ref that rejects the push. Pushing to the upstream keeps the target
+    // identical to what _checkInSync already verified.
+    final upstreamBranch = upstream.substring(_remote.length + 1);
+    out.dim('  Pushing HEAD → $upstream + tag $tagName …');
+    await _git(['push', _remote, 'HEAD:refs/heads/$upstreamBranch'], cwd: root);
     await _git(['push', _remote, 'refs/tags/$tagName'], cwd: root);
     out.ok('Pushed.');
   } else {
