@@ -575,6 +575,39 @@ void main() {
       },
     );
 
+    testWidgets(
+      'an empty (not missing) flag also falls back to state instead of rendering blank',
+      (tester) async {
+        // Distinct from the null-flag case above: some lookup sources stamp
+        // an empty string rather than omitting the key entirely, and that
+        // must not be mistaken for "has a flag to show".
+        final qso = Qso(
+          uuid: 'q',
+          operationUuid: 'op-1',
+          data: {
+            'their': {
+              'call': 'XX1ABC',
+              'entityPrefix': 'XX',
+              'flag': '',
+              'state': 'fallback-state',
+            },
+            'mode': 'SSB',
+            'startAtMillis': 1000,
+          },
+        );
+
+        await tester.pumpWidget(
+          MaterialApp(
+            home: Scaffold(
+              body: QsoList(qsos: [qso], onSelect: (_) {}, ourEntityPrefix: 'K'),
+            ),
+          ),
+        );
+
+        expect(find.text('fallback-state'), findsOneWidget);
+      },
+    );
+
     testWidgets('shows nothing when neither a flag nor a state is available', (
       tester,
     ) async {
@@ -600,6 +633,83 @@ void main() {
       // and the row still renders the callsign.
       expect(find.text('N0CALL'), findsOneWidget);
     });
+
+    testWidgets(
+      'a row with no flag/state still reserves that column\'s width, so Name lines up with sibling rows (issue #186)',
+      (tester) async {
+        final withState = Qso(
+          uuid: 'q1',
+          operationUuid: 'op-1',
+          data: {
+            'their': {'call': 'K2HAM', 'name': 'Has State', 'entityPrefix': 'K', 'state': 'NY'},
+            'mode': 'SSB',
+            'startAtMillis': 1000,
+          },
+        );
+        final withoutState = Qso(
+          uuid: 'q2',
+          operationUuid: 'op-1',
+          data: {
+            'their': {'call': 'K3HAM', 'name': 'No State'},
+            'mode': 'SSB',
+            'startAtMillis': 2000,
+          },
+        );
+
+        await tester.pumpWidget(
+          MaterialApp(
+            home: Scaffold(
+              body: QsoList(qsos: [withState, withoutState], onSelect: (_) {}, ourEntityPrefix: 'K'),
+            ),
+          ),
+        );
+
+        // Same callsign length on both rows, so if Name's left edge differs
+        // it can only be the DX/State column collapsing to zero width on
+        // the row with nothing to show there.
+        expect(
+          tester.getTopLeft(find.text('Has State')).dx,
+          tester.getTopLeft(find.text('No State')).dx,
+        );
+      },
+    );
+
+    testWidgets(
+      'same alignment guarantee for a flag, not just a state (issue #186)',
+      (tester) async {
+        final withFlag = Qso(
+          uuid: 'q1',
+          operationUuid: 'op-1',
+          data: {
+            'their': {'call': 'G0ABC', 'name': 'Has Flag', 'entityPrefix': 'G', 'flag': '🇬🇧'},
+            'mode': 'SSB',
+            'startAtMillis': 1000,
+          },
+        );
+        final withoutFlag = Qso(
+          uuid: 'q2',
+          operationUuid: 'op-1',
+          data: {
+            'their': {'call': 'G1ABC', 'name': 'No Flag'},
+            'mode': 'SSB',
+            'startAtMillis': 2000,
+          },
+        );
+
+        await tester.pumpWidget(
+          MaterialApp(
+            home: Scaffold(
+              body: QsoList(qsos: [withFlag, withoutFlag], onSelect: (_) {}, ourEntityPrefix: 'K'),
+            ),
+          ),
+        );
+
+        expect(
+          tester.getTopLeft(find.text('Has Flag')).dx,
+          tester.getTopLeft(find.text('No Flag')).dx,
+        );
+      },
+    );
   });
 
   testWidgets(

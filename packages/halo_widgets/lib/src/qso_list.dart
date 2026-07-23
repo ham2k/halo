@@ -30,6 +30,29 @@ String _utcTimeLabel(DateTime? time) => time == null
     ? '--:--z'
     : '${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}z';
 
+/// The DX/State column's content for [qso], if any: a flag when we have
+/// positive evidence of a DX contact (both sides resolved and different),
+/// falling back to the contact's state whenever there's no flag to show —
+/// not just when `!isDX` — so a DX contact whose entity resolved but whose
+/// flag lookup came up empty (e.g. a DXCC entity present in
+/// lib-country-files but missing from lib-dxcc-data's table) still shows
+/// its state instead of going blank. Null when neither is available. Shared
+/// by the list-wide column-width precompute and the per-row builder in
+/// `_QsoListState.build`, so they can never disagree about what a QSO shows
+/// there (ham2k/app-halo-dist#186).
+({String text, bool isFlag, bool guessed})? _dxStateContentFor(Qso qso, String? ourEntityPrefix) {
+  final theirEntityPrefix = qso.theirEntityPrefix;
+  final isDX = theirEntityPrefix != null && ourEntityPrefix != null && theirEntityPrefix != ourEntityPrefix;
+  final flag = qso.theirFlag;
+  final state = qso.theirState;
+  if (isDX && flag != null && flag.isNotEmpty) {
+    return (text: flag, isFlag: true, guessed: qso.theirFieldIsGuessed('flag'));
+  } else if (state != null && state.isNotEmpty) {
+    return (text: state, isFlag: false, guessed: qso.theirFieldIsGuessed('state'));
+  }
+  return null;
+}
+
 /// One UTC calendar day in milliseconds — QSOs are grouped by truncating
 /// `startAtMillis` to this boundary, matching the scoring extension's own
 /// day-sectioning (`extensions/core/scoring/src/index.ts`'s `DAY_IN_MILLIS`),
@@ -279,23 +302,43 @@ class _QsoListState extends State<QsoList> {
     var longestCall = '';
     final freqsInKHz = <double?>[];
     final modesUsed = <String>{};
+    // Only the single longest flag and longest state ever matter for
+    // dxStateWidth below — tracking them here costs the same cheap
+    // length comparison as longestCall, deferring the two (not N) actual
+    // text-layout measurements to after this loop.
+    var longestFlag = '';
+    var longestState = '';
     for (final q in qsos) {
       if (q.isEvent) continue;
       if (q.theirCall.length > longestCall.length) longestCall = q.theirCall;
       freqsInKHz.add(q.freq);
       final mode = q.mode;
       if (mode != null) modesUsed.add(mode);
+      final dxState = _dxStateContentFor(q, ourEntityPrefix);
+      if (dxState == null) {
+        // no-op — nothing to measure for this row
+      } else if (dxState.isFlag) {
+        if (dxState.text.length > longestFlag.length) longestFlag = dxState.text;
+      } else if (dxState.text.length > longestState.length) {
+        longestState = dxState.text;
+      }
     }
 
     // Column widths are computed once for the whole list so every row lines
     // up, per the issue: "wide enough to fit the largest number"/"longest
-    // callsign in all qsos".
+    // callsign in all qsos" — DX/State and the Name column right after it
+    // are no exception (ham2k/app-halo-dist#186): a QSO with neither a flag
+    // nor a state must still reserve that column's width, or Name starts at
+    // a different x position on every row depending on its neighbors.
     final numberWidth = showQsoNumbers
         ? textWidth(context, '$maxNumber', mono)
         : 0.0;
     final callsignWidth = longestCall.isEmpty
         ? 0.0
         : textWidth(context, longestCall, callStyle);
+    final flagWidth = longestFlag.isEmpty ? 0.0 : textWidth(context, longestFlag, emojiStyle());
+    final stateWidth = longestState.isEmpty ? 0.0 : textWidth(context, longestState, monoDim);
+    final dxStateWidth = flagWidth > stateWidth ? flagWidth : stateWidth;
 
     // "decide how many digits to display based on all the qsos in the
     // operation" — one Hz precision for the whole list, not per row.
@@ -395,41 +438,22 @@ class _QsoListState extends State<QsoList> {
         );
       }
 
-      // DX/State column: a flag only when we have positive evidence the
-      // contact is outside our own DXCC entity (both sides resolved and
-      // different) — otherwise falls back to the contact's state, same
-      // as a same-entity contact. Emoji use a proportional font per the
-      // issue ("emoji and name...use a proportional font"), so this
-      // deliberately doesn't use rowMono/rowMonoDim for the flag case —
-      // see theme.dart's emojiStyle for why it also needs an explicit
-      // fontFamily.
-      final theirEntityPrefix = qso.theirEntityPrefix;
-      final isDX =
-          theirEntityPrefix != null &&
-          ourEntityPrefix != null &&
-          theirEntityPrefix != ourEntityPrefix;
-      final flag = qso.theirFlag;
-      final state = qso.theirState;
+      // DX/State column — see _dxStateContentFor's doc for the flag-vs-state
+      // rule, shared with the list-wide width precompute above. Emoji use a
+      // proportional font per the issue ("emoji and name...use a
+      // proportional font"), so this deliberately doesn't use
+      // rowMono/rowMonoDim for the flag case — see theme.dart's emojiStyle
+      // for why it also needs an explicit fontFamily.
+      final dxState = _dxStateContentFor(qso, ourEntityPrefix);
       Widget? dxStateField;
-      // Values coming from the callsign guess rather than an entered field
-      // paint a touch fainter (80%) so guessed-but-unconfirmed reads as such —
-      // the flag is an emoji, whose color the text style can't fade, so the
-      // dimming is applied as an Opacity below rather than via the text color.
-      var dxStateGuessed = false;
-      if (isDX && flag != null) {
-        dxStateField = Text(flag, style: emojiStyle());
-        dxStateGuessed = qso.theirFieldIsGuessed('flag');
-      } else if (state != null && state.isNotEmpty) {
-        // Falls back to state whenever there's no flag to show — not just
-        // when `!isDX` — so a DX contact whose entity resolved but whose
-        // flag lookup came up empty (e.g. a DXCC entity present in
-        // lib-country-files but missing from lib-dxcc-data's table)
-        // still shows its state instead of going blank.
-        dxStateField = Text(state, style: rowMonoDim);
-        dxStateGuessed = qso.theirFieldIsGuessed('state');
-      }
-      if (dxStateField != null && dxStateGuessed) {
-        dxStateField = Opacity(opacity: 0.8, child: dxStateField);
+      if (dxState != null) {
+        dxStateField = Text(dxState.text, style: dxState.isFlag ? emojiStyle() : rowMonoDim);
+        // Values coming from the callsign guess rather than an entered field
+        // paint a touch fainter (80%) so guessed-but-unconfirmed reads as
+        // such — the flag is an emoji, whose color the text style can't
+        // fade, so the dimming is applied as an Opacity here instead of via
+        // the text color.
+        if (dxState.guessed) dxStateField = Opacity(opacity: 0.8, child: dxStateField);
       }
 
       // Frequency bolded-MHz/regular-kHz/smaller-Hz, dot-separated; falls
@@ -530,8 +554,12 @@ class _QsoListState extends State<QsoList> {
                     child: Text(qso.theirCall, style: rowCall),
                   ),
                   const SizedBox(width: _columnGap),
-                  if (dxStateField != null) ...[
-                    dxStateField,
+                  // Fixed-width, like callsign/number above — reserved
+                  // whenever ANY row in the list has a flag/state to show,
+                  // even on rows with neither, so Name always starts at the
+                  // same x position (ham2k/app-halo-dist#186).
+                  if (dxStateWidth > 0) ...[
+                    SizedBox(width: dxStateWidth, child: dxStateField),
                     const SizedBox(width: _columnGap),
                   ],
                   Expanded(
