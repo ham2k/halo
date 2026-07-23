@@ -221,15 +221,21 @@ Future<void> _cut({
 
   final upstream = await _upstream(root);
   if (upstream != null && upstream.startsWith('$_remote/')) {
-    // Push HEAD to the *upstream* branch (e.g. `dist`), NOT the local branch
-    // name: the local branch is often `main-dist-private`, and a same-named
-    // `git push <remote> main-dist-private` targets a different (stale) remote
-    // ref that rejects the push. Pushing to the upstream keeps the target
+    // Push the TAG first, then the branch. Codemagic auto-builds on the tag
+    // push, but only if the tag is the commit's FIRST appearance on the remote —
+    // pushing the branch (a tracked ref like `dist`) first makes Codemagic
+    // register the commit and then dedupe the tag build. The tag push carries
+    // the commit objects, so tag-first is safe (GitHub also emits one webhook
+    // per ref, so a combined push wouldn't help — the order is what matters).
+    //
+    // The branch target is the *upstream* branch (e.g. `dist`), NOT the local
+    // branch name: a `main-dist-private` local branch's same-named remote ref is
+    // a different (stale) branch — pushing to the upstream keeps the target
     // identical to what _checkInSync already verified.
     final upstreamBranch = upstream.substring(_remote.length + 1);
-    out.dim('  Pushing HEAD → $upstream + tag $tagName …');
-    await _git(['push', _remote, 'HEAD:refs/heads/$upstreamBranch'], cwd: root);
+    out.dim('  Pushing tag $tagName, then HEAD → $upstream …');
     await _git(['push', _remote, 'refs/tags/$tagName'], cwd: root);
+    await _git(['push', _remote, 'HEAD:refs/heads/$upstreamBranch'], cwd: root);
     out.ok('Pushed.');
   } else {
     out.dim("  Branch upstream is '${upstream ?? '<none>'}' (not on $_remote) — commit + tag are local; skipping push.");
