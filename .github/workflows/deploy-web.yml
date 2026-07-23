@@ -84,10 +84,18 @@ jobs:
       # perl, not sed: the replacement interpolates the env var literally, so
       # a secret containing sed metacharacters (&, |, \) can't silently
       # corrupt the deployed page.
+      # Guarded in shell, NOT with a step-level `if`: the secrets context is
+      # not allowed in `if` expressions, and referencing it there invalidates
+      # the entire workflow file (every run fails in 0s with "workflow file
+      # issue"). Reading it into `env:` is fine.
       - name: Inject Sentry DSN into the boot-failure reporter
-        if: ${{ secrets.HALO_SENTRY_DSN != '' }}
         run: |
-          perl -pi -e 's/%%HALO_SENTRY_DSN%%/$ENV{HALO_SENTRY_DSN}/g; s/%%HALO_WEB_ENVIRONMENT%%/halo-dev/g' app/build/web/index.html
+          if [ -n "${HALO_SENTRY_DSN}" ]; then
+            perl -pi -e 's/%%HALO_SENTRY_DSN%%/$ENV{HALO_SENTRY_DSN}/g; s/%%HALO_WEB_ENVIRONMENT%%/halo-dev/g' app/build/web/index.html
+            echo "DSN injected into the boot-failure reporter"
+          else
+            echo "HALO_SENTRY_DSN not set — placeholder left, reporter disabled"
+          fi
         env:
           HALO_SENTRY_DSN: ${{ secrets.HALO_SENTRY_DSN }}
 
