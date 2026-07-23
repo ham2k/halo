@@ -56,5 +56,15 @@
 	<string>https://updates.ham2k.net/$(HALO_EDITION)/macos/appcast.xml</string>
 	<key>SUEnableAutomaticChecks</key>
 	<true/>
+	<!-- This build is sandboxed, so Sparkle can't swap the .app from inside the
+	     sandbox directly — it must hand the install to its Installer Launcher
+	     XPC service, which runs outside the sandbox. Without this the update
+	     downloads and verifies but fails at install with "An error occurred
+	     while launching the installer". Pairs with the
+	     temporary-exception.mach-lookup.global-name entitlement (Release.entitlements)
+	     that lets the sandbox reach the `<bundle-id>-spks`/`-spki` services.
+	     We keep network.client, so the separate Downloader XPC isn't needed. -->
+	<key>SUEnableInstallerLauncherService</key>
+	<true/>
 </dict>
 </plist>

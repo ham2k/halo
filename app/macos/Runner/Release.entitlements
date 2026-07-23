@@ -17,6 +17,24 @@
 	<true/>
 	<key>com.apple.security.personal-information.location</key>
 	<true/>
+	<!-- Sparkle installs updates from OUTSIDE the sandbox via its Installer
+	     Launcher XPC service (enabled by SUEnableInstallerLauncherService in
+	     Info.plist). App Sandbox blocks global Mach-service lookup by default, so
+	     the sandboxed app must be granted lookup of Sparkle's two installer
+	     services or the update fails at install ("An error occurred while
+	     launching the installer"). Sparkle names them `<host-bundle-id>-spks`
+	     and `-spki`. Unlike keychain-access-groups below, these
+	     `temporary-exception.*` keys are SANDBOX relaxations evaluated by the
+	     sandbox — NOT AMFI-restricted — so they need no provisioning profile and
+	     don't affect spawning. NOTE: the $(PRODUCT_BUNDLE_IDENTIFIER) token is
+	     substituted by Xcode for the initial build sign; the CI re-sign
+	     (app_dist/ci/build-macos.sh) does NOT expand it, so it swaps in the
+	     concrete per-edition bundle id before signing the app. -->
+	<key>com.apple.security.temporary-exception.mach-lookup.global-name</key>
+	<array>
+		<string>$(PRODUCT_BUNDLE_IDENTIFIER)-spks</string>
+		<string>$(PRODUCT_BUNDLE_IDENTIFIER)-spki</string>
+	</array>
 	<!-- DO NOT add `keychain-access-groups` or `cs.disable-library-validation`
 	     here: both are RESTRICTED entitlements that AMFI only validates against a
 	     provisioning profile. A Developer ID direct-distribution build has none,
