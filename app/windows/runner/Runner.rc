@@ -58,6 +58,21 @@ IDI_APP_ICON            ICON                    HALO_APP_ICON
 
 /////////////////////////////////////////////////////////////////////////////
 //
+// WinSparkle auto-update signing key
+//
+
+// WinSparkle (via the auto_updater plugin) verifies each downloaded update with
+// a DSA signature and reads the public key from a resource named "DSAPub" of
+// type "DSAPEM" (see WinSparkle README). This is the PUBLIC half of the Windows
+// update-signing keypair — safe to commit, like macOS's SUPublicEDKey in
+// Info.plist. The private half is the WINSPARKLE_DSA_PRIVATE_KEY CI secret that
+// signs the appcast in app_dist/ci/build-windows.ps1. (Windows is DSA-only here;
+// macOS Sparkle uses a separate EdDSA key.)
+DSAPub                  DSAPEM                  "dsa_pub.pem"
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
 // Version
 //
 

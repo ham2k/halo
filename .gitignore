@@ -32,4 +32,7 @@ Scratch*
 *.ppk
 *.cer
 *.keystore
+# …but the WinSparkle update-signing PUBLIC key is meant to ship in the app
+# (embedded as the DSAPub resource, like macOS's SUPublicEDKey in Info.plist).
+!app/windows/runner/dsa_pub.pem
 *.p12
