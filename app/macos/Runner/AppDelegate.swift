@@ -34,7 +34,16 @@ class AppDelegate: FlutterAppDelegate {
         return
       }
     }
-    super.applicationDidFinishLaunching(notification)
+    // Deliberately DON'T call super.applicationDidFinishLaunching(_:):
+    // `applicationDidFinishLaunching(_:)` is an OPTIONAL NSApplicationDelegate
+    // method that FlutterAppDelegate (and NSObject) don't implement, so calling
+    // super raises -[AppDelegate applicationDidFinishLaunching:] "unrecognized
+    // selector". macOS silently swallows that NSException during notification
+    // dispatch by default (so it went unnoticed), but once Sentry installs its
+    // exception handler the same throw becomes a FATAL crash at launch — a
+    // black, unresponsive window. Flutter's own macOS AppDelegate template
+    // doesn't override this method at all; the engine is set up in
+    // MainFlutterWindow, so there is nothing in super to call.
   }
 
   override func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
