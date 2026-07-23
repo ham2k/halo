@@ -30,6 +30,12 @@ jobs:
   deploy:
     if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
+    # Edition-scoped secrets live in GitHub Environments named after the
+    # editions (the GitHub analog of Codemagic's shared_halo_* groups):
+    # HALO_SENTRY_DSN here resolves to the `dev` environment's value, since
+    # halo-dev.ham2k.net builds are the Dev edition (#76). A future Next/
+    # Regular web deploy job would declare its own edition's environment.
+    environment: dev
     steps:
       # Deploy the exact commit CI validated (falls back to the branch head
       # for manual workflow_dispatch runs).
