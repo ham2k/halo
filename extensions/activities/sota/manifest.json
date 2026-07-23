@@ -1,0 +1,40 @@
+{
+  "key": "sota",
+  "name": "Summits on the Air",
+  "shortName": "SOTA",
+  "version": "0.0.1",
+  "description": "Summit references, spots, and activation logging",
+  "category": "activity",
+  "enabledByDefault": true,
+  "icon": "image-filter-hdr",
+  "accentColor": "#6295BF",
+  "keywords": [
+    "summits",
+    "activation",
+    "chasing"
+  ],
+  "hooks": [
+    "account",
+    "activity",
+    "adifFields",
+    "dataFile",
+    "lookup",
+    "ref:sota",
+    "ref:sotaActivation",
+    "spots"
+  ],
+  "domains": [
+    "api2.sota.org.uk",
+    "api-db2.sota.org.uk",
+    "sso.sota.org.uk"
+  ],
+  "translations": {
+    "es": {
+      "description": "Referencias de cumbres, spots y registro de activaciones",
+      "keywords": [
+        "cumbres",
+        "activación"
+      ]
+    }
+  }
+}

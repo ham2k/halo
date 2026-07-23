@@ -32,6 +32,8 @@ import { combineNotes, expansionValueFor, parseCallNotes } from "./callNotes"
 import type { CallNotesIndex } from "./callNotes"
 import { tFor } from "./i18n.ts"
 
+import manifest from "../manifest.json" with { type: "json" }
+
 // `note`/`emoji` ride along as extra fields CallInfoLookup's fixed shape
 // doesn't declare — same rationale as annotate.ts's CallInfoLookupWithFlag.
 type CallInfoLookupWithNote = CallInfoLookup & { note?: string; emoji?: string }
@@ -109,10 +111,7 @@ const ExpandCommand = {
 }
 
 defineExtension({
-  key: 'call-notes',
-  name: 'Callsign Notes',
-  version: '0.0.1',
-  description: 'Notes about specific callsigns, from Ham2K\'s "Hams of Note"',
+  ...manifest,
   onActivation({ registerHook }) {
     registerHook('dataFile', { hook: notesDataFile, key: 'call-notes' })
     registerHook('lookup', { hook: { lookupCall }, key: 'call-notes', priority: 100 })

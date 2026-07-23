@@ -1,0 +1,19 @@
+{
+  "key": "annotation-commands",
+  "name": "Annotation Commands",
+  "version": "0.0.1",
+  "description": "NOTE, TODO, SOLAR and WEATHER call-field commands that add annotation rows to the log",
+  "keywords": [
+    "note",
+    "todo",
+    "solar",
+    "weather"
+  ],
+  "hooks": [
+    "command"
+  ],
+  "domains": [
+    "www.hamqsl.com",
+    "api.open-meteo.com"
+  ]
+}

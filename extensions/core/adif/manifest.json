@@ -1,0 +1,9 @@
+{
+  "key": "adif",
+  "name": "ADIF Export",
+  "version": "0.0.1",
+  "description": "Exports operations as ADIF log files",
+  "hooks": [
+    "export"
+  ]
+}

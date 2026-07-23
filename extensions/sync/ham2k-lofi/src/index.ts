@@ -21,16 +21,15 @@ import type { CommandInterpretation, HookContext, JSONValue, SyncPayload, SyncRe
 
 import { tFor } from "./i18n.ts"
 
+import manifest from "../manifest.json" with { type: "json" }
+
 export const DEFAULT_LOFI_SERVER = 'https://lofi.ham2k.net'
 const DEFAULT_SECRET = 'no-secret'
 // The host stamps HaLo's canonical User-Agent on every host.fetch call (see
 // docs/design/network.md), so this extension no longer sets its own.
 
 defineExtension({
-  key: 'ham2k-lofi',
-  name: 'Ham2K Log Filer Sync',
-  version: '0.1.0',
-  description: 'Cloud backup and sync for Ham2K apps',
+  ...manifest,
   onActivation({ registerHook }) {
     registerHook('syncTransport', { hook: { sync, getAccountData, linkClient, linkClientWithEmail } })
     registerHook('command', { key: 'ham2k-lofi-syncall', hook: { interpret: syncAllCommand } })

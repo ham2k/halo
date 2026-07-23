@@ -1,0 +1,38 @@
+{
+  "key": "pota",
+  "name": "Parks on the Air",
+  "shortName": "POTA",
+  "version": "0.0.1",
+  "description": "Park references, spots, and activation logging",
+  "category": "activity",
+  "enabledByDefault": true,
+  "icon": "pine-tree",
+  "accentColor": "#068541",
+  "keywords": [
+    "parks",
+    "activation",
+    "hunting"
+  ],
+  "hooks": [
+    "activity",
+    "adifFields",
+    "dataFile",
+    "lookup",
+    "ref:pota",
+    "ref:potaActivation",
+    "spots"
+  ],
+  "domains": [
+    "api.pota.app",
+    "pota.app"
+  ],
+  "translations": {
+    "es": {
+      "description": "Referencias de parques, spots y registro de activaciones",
+      "keywords": [
+        "parques",
+        "activación"
+      ]
+    }
+  }
+}

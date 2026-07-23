@@ -658,12 +658,44 @@ export interface ActivationApi {
   hostCall(method: string, params: Record<string, unknown>): Promise<unknown>
 }
 
-export interface ExtensionDefinition {
+/// The static, public identity of an extension — everything about it that
+/// can be known without running its code. Lives in the package's
+/// manifest.json (single source: extensions import it and spread it into
+/// defineExtension, and build.mjs reads it to produce index.json for the
+/// Dart host, which must list even DISABLED extensions whose bundles never
+/// evaluate).
+export interface ExtensionManifest {
   key: string
   name: string
   shortName?: string
   version: string
   description?: string
+  /// MDI icon name shown in the Extensions panel (and mirrored by the
+  /// extension's own controls).
+  icon?: string
+  /// The extension's brand accent as a #RRGGBB hex string (e.g. POTA's
+  /// green) — informational for hosts that want to tint extension UI.
+  accentColor?: string
+  /// Extra search terms for the Extensions panel beyond name/description.
+  keywords?: string[]
+  /// Panel grouping ('activity', 'lookup', …). Absent means core: always
+  /// enabled, never listed in the panel.
+  category?: string
+  enabledByDefault?: boolean
+  /// The hook categories this extension registers (`ref:<type>` for ref
+  /// handlers). Declarative/informational — the kernel still learns the
+  /// actual hooks from registerHook at activation.
+  hooks?: string[]
+  /// host.fetch allowlist for this extension's bundle.
+  domains?: string[]
+  allowUserAgentOverride?: boolean
+  /// Per-locale overrides for name/description plus extra localized search
+  /// keywords, keyed by language code. Localized keywords ADD to the base
+  /// `keywords` (both are searchable), they don't replace them.
+  translations?: Record<string, { name?: string; description?: string; keywords?: string[] }>
+}
+
+export interface ExtensionDefinition extends ExtensionManifest {
   onActivation(api: ActivationApi): void
 }
 

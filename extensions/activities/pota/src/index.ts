@@ -34,6 +34,8 @@ import type {
 import { REFERENCE_REGEX, normalizeReference, entityPrefixForCall, transformsForPrefix, hunterDefaultPrefix, activationDefaultPrefix } from "./refFormatting.ts"
 import { tFor } from "./i18n.ts"
 
+import manifest from "../manifest.json" with { type: "json" }
+
 export { REFERENCE_REGEX, transformsForPrefix, hunterDefaultPrefix, activationDefaultPrefix } from "./refFormatting.ts"
 
 const HUNTING_TYPE = 'pota'
@@ -148,7 +150,7 @@ const ActivityHook = {
         key: 'pota/hunter',
         label: 'POTA',
         icon: 'pine-tree',
-        color: '#068541',
+        color: manifest.accentColor,
         order: 10,
         optionType: 'optional',
         input: {
@@ -172,7 +174,7 @@ const ActivityHook = {
         key: 'pota/activation',
         label: tFor(ctx)('activationControl'),
         icon: 'pine-tree',
-        color: '#068541',
+        color: manifest.accentColor,
         order: 10,
         optionType: 'optional',
         input: {
@@ -510,10 +512,7 @@ const potaDataFile: DataFileDefinition = {
 }
 
 defineExtension({
-  key: 'pota',
-  name: 'Parks on the Air',
-  shortName: 'POTA',
-  version: '0.0.1',
+  ...manifest,
   onActivation({ registerHook }) {
     registerHook(`ref:${HUNTING_TYPE}`, { hook: RefHandler, key: 'pota' })
     registerHook(`ref:${ACTIVATION_TYPE}`, { hook: RefHandler, key: 'pota' })

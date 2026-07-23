@@ -86,14 +86,16 @@ function sharedLibsPlugin(extensionDependencies = {}) {
 // overrides any the extension set, but a whitelisted extension keeps its own
 // (see docs/design/network.md). Omit it (the default) unless a third-party
 // service demands a specific UA — consistency is the goal.
-// Toggleable extensions additionally carry USER-FACING metadata (`name`,
-// `category`, `enabledByDefault`, optional `description`) that index.json
-// surfaces to the Dart host. `name`/`description` deliberately duplicate the
-// bundle's own defineExtension() manifest: the Extensions settings panel
-// must list DISABLED extensions, whose bundles are never evaluated — so the
-// metadata has to be readable without running any JS. Versions are NOT
-// duplicated here (they stay runtime-only, via the kernel's listExtensions).
-// Entries without a `category` are core: always enabled, never listed.
+// Each extension's USER-FACING metadata (name, category, icon, keywords,
+// translations, fetch-domain allowlist, …) lives in the package's own
+// manifest.json — the single source both this build and the bundle itself
+// (defineExtension spreads the imported manifest) read, so the two can't
+// drift. index.json carries the manifest fields because the Extensions
+// settings panel must list DISABLED extensions, whose bundles are never
+// evaluated — the metadata has to be readable without running any JS.
+// Versions are NOT copied into index.json (they stay runtime-only, via the
+// kernel's listExtensions). Manifests without a `category` are core:
+// always enabled, never listed in the panel.
 const bundles = [
   { key: 'kernel', entry: 'sdk/src/kernel.ts', kind: 'kernel' },
   { key: 'adif', entry: 'core/adif/src/index.ts', kind: 'extension' },
@@ -101,36 +103,33 @@ const bundles = [
   { key: 'lookups', entry: 'core/lookups/src/index.ts', kind: 'extension' },
   { key: 'radio-commands', entry: 'core/radio-commands/src/index.ts', kind: 'extension' },
   { key: 'dev-commands', entry: 'core/dev-commands/src/index.ts', kind: 'extension' },
-  { key: 'annotation-commands', entry: 'core/annotation-commands/src/index.ts', kind: 'extension', domains: ['www.hamqsl.com', 'api.open-meteo.com'] },
+  { key: 'annotation-commands', entry: 'core/annotation-commands/src/index.ts', kind: 'extension' },
   { key: 'spot-commands', entry: 'core/spot-commands/src/index.ts', kind: 'extension' },
-  { key: 'hamdb', entry: 'lookups/hamdb/src/index.ts', kind: 'extension', domains: ['api.hamdb.org'],
-    name: 'HamDB Callsign Lookups', category: 'lookup', enabledByDefault: true,
-    description: 'Looks up callsign details on HamDB.org',
-    translations: { es: { name: 'Búsquedas de indicativos HamDB',
-      description: 'Busca los datos de un indicativo en HamDB.org' } } },
-  { key: 'qrz', entry: 'lookups/qrz/src/index.ts', kind: 'extension', domains: ['xmldata.qrz.com', 'logbook.qrz.com'],
-    name: 'QRZ.com Callsign Lookups', category: 'lookup', enabledByDefault: true,
-    description: 'Looks up callsign details with a QRZ.com account',
-    translations: { es: { name: 'Búsquedas de indicativos QRZ.com',
-      description: 'Busca los datos de un indicativo con una cuenta de QRZ.com' } } },
-  { key: 'call-notes', entry: 'lookups/call-notes/src/index.ts', kind: 'extension', domains: ['ham2k.com'],
-    name: 'Callsign Notes', category: 'lookup', enabledByDefault: true,
-    description: 'Annotates calls from shared notes files',
-    translations: { es: { name: 'Notas de indicativos',
-      description: 'Anota indicativos a partir de archivos de notas compartidos' } } },
-  // POTA/SOTA names are the activity programs' own proper names — only the
-  // descriptions are translated.
-  { key: 'pota', entry: 'activities/pota/src/index.ts', kind: 'extension', domains: ['api.pota.app', 'pota.app'],
-    name: 'Parks on the Air', shortName: 'POTA', category: 'activity', enabledByDefault: true, icon: 'pine-tree',
-    description: 'Park references, spots, and activation logging',
-    translations: { es: { description: 'Referencias de parques, spots y registro de activaciones' } } },
-  { key: 'sota', entry: 'activities/sota/src/index.ts', kind: 'extension',
-    domains: ['api2.sota.org.uk', 'api-db2.sota.org.uk', 'sso.sota.org.uk'],
-    name: 'Summits on the Air', shortName: 'SOTA', category: 'activity', enabledByDefault: true, icon: 'image-filter-hdr',
-    description: 'Summit references, spots, and activation logging',
-    translations: { es: { description: 'Referencias de cumbres, spots y registro de activaciones' } } },
-  { key: 'ham2k-lofi', entry: 'sync/ham2k-lofi/src/index.ts', kind: 'extension', domains: ['*'] },
+  { key: 'hamdb', entry: 'lookups/hamdb/src/index.ts', kind: 'extension' },
+  { key: 'qrz', entry: 'lookups/qrz/src/index.ts', kind: 'extension' },
+  { key: 'call-notes', entry: 'lookups/call-notes/src/index.ts', kind: 'extension' },
+  { key: 'pota', entry: 'activities/pota/src/index.ts', kind: 'extension' },
+  { key: 'sota', entry: 'activities/sota/src/index.ts', kind: 'extension' },
+  { key: 'ham2k-lofi', entry: 'sync/ham2k-lofi/src/index.ts', kind: 'extension' },
 ]
+
+// Load and sanity-check every extension's manifest up front, so a typo'd
+// key, a missing file, or a missing required field fails the build before
+// any bundling work.
+for (const bundle of bundles) {
+  if (bundle.kind !== 'extension') continue
+  const manifestPath = join(root, dirname(bundle.entry), '../manifest.json')
+  const manifest = JSON.parse(await readFile(manifestPath, 'utf8'))
+  if (manifest.key !== bundle.key) {
+    throw new Error(`manifest key '${manifest.key}' does not match bundle key '${bundle.key}' (${manifestPath})`)
+  }
+  for (const field of ['name', 'version', 'description']) {
+    if (typeof manifest[field] !== 'string' || manifest[field].trim() === '') {
+      throw new Error(`manifest for '${bundle.key}' is missing required field '${field}' (${manifestPath})`)
+    }
+  }
+  bundle.manifest = manifest
+}
 
 await mkdir(outDir, { recursive: true })
 
@@ -176,21 +175,24 @@ await writeFile(
       kernel: 'kernel.js',
       extensions: bundles
         .filter((b) => b.kind === 'extension')
-        .map((b) => ({
-          key: b.key,
-          file: `${b.key}.js`,
-          domains: b.domains ?? [],
-          ...(b.allowUserAgentOverride ? { allowUserAgentOverride: true } : {}),
-          core: !b.category,
-          ...(b.category
+        .map(({ key, manifest: m }) => ({
+          key,
+          file: `${key}.js`,
+          domains: m.domains ?? [],
+          ...(m.allowUserAgentOverride ? { allowUserAgentOverride: true } : {}),
+          core: !m.category,
+          ...(m.category
             ? {
-                name: b.name ?? b.key,
-                ...(b.shortName ? { shortName: b.shortName } : {}),
-                category: b.category,
-                enabledByDefault: b.enabledByDefault ?? true,
-                ...(b.icon ? { icon: b.icon } : {}),
-                ...(b.description ? { description: b.description } : {}),
-                ...(b.translations ? { translations: b.translations } : {}),
+                name: m.name ?? key,
+                ...(m.shortName ? { shortName: m.shortName } : {}),
+                category: m.category,
+                enabledByDefault: m.enabledByDefault ?? true,
+                ...(m.icon ? { icon: m.icon } : {}),
+                ...(m.description ? { description: m.description } : {}),
+                ...(m.accentColor ? { accentColor: m.accentColor } : {}),
+                ...(m.keywords ? { keywords: m.keywords } : {}),
+                ...(m.hooks ? { hooks: m.hooks } : {}),
+                ...(m.translations ? { translations: m.translations } : {}),
               }
             : {}),
         })),

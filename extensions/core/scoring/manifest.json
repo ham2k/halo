@@ -1,0 +1,9 @@
+{
+  "key": "scoring",
+  "name": "Scoring",
+  "version": "0.0.1",
+  "description": "Scores QSOs and tallies bands, modes, and DXCC entities",
+  "hooks": [
+    "scoring"
+  ]
+}

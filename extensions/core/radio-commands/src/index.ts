@@ -21,6 +21,8 @@ import { defineExtension } from "@ham2k/halo-extension-sdk"
 import type { CommandInterpretation, HookContext } from "@ham2k/halo-extension-sdk"
 import { tFor } from "./i18n.ts"
 
+import manifest from "../manifest.json" with { type: "json" }
+
 const BAND_MATCH = /^(2200|630|160|80|60|40|30|20|17|15|12|10|6|4|2)M?$/i
 const MODE_MATCH = /^(CW|SSB|USB|LSB|FM|AM|FT8|FT4|FT2|RTTY)$/i
 const FREQUENCY_MATCH = /^[\d.,]+$/
@@ -93,10 +95,7 @@ const ModeCommand = {
 }
 
 defineExtension({
-  key: 'radio-commands',
-  name: 'Radio Commands',
-  version: '0.0.1',
-  description: 'Frequency, band, and mode shortcuts typed into the call field',
+  ...manifest,
   onActivation({ registerHook }) {
     registerHook('command', { key: 'radio-commands-band', hook: BandCommand, priority: 100 })
     registerHook('command', { key: 'radio-commands-mode', hook: ModeCommand, priority: 100 })

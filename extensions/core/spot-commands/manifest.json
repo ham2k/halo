@@ -1,0 +1,13 @@
+{
+  "key": "spot-commands",
+  "name": "Spotting Commands",
+  "version": "0.0.1",
+  "description": "Call-field shortcuts for spotting: SPOT, SPOTME, SELFSPOT, QRV, QRT, QSY, QRX, SPOTLAST",
+  "keywords": [
+    "spot",
+    "selfspot"
+  ],
+  "hooks": [
+    "command"
+  ]
+}

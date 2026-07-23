@@ -1619,11 +1619,24 @@ class ExtensionInfo {
   final String? icon;
   final String? description;
 
-  /// Per-locale overrides for [name]/[description] (build.mjs
-  /// `translations`, baked into index.json so they're readable without
-  /// running any JS, same as the base metadata). Keyed by language code;
-  /// a missing locale or field falls back to the English base value.
-  final Map<String, Map<String, String>> translations;
+  /// The extension's brand accent as a #RRGGBB hex string (manifest.json
+  /// `accentColor`, e.g. POTA's green) — informational, for hosts that
+  /// want to tint extension UI.
+  final String? accentColor;
+
+  /// Extra Extensions-panel search terms beyond name/description.
+  final List<String> keywords;
+
+  /// The hook categories the extension's manifest declares (informational;
+  /// the runtime learns actual hooks from registerHook).
+  final List<String> hooks;
+
+  /// Per-locale overrides for [name]/[description] plus extra localized
+  /// search [keywords] (manifest.json `translations`, baked into index.json
+  /// so they're readable without running any JS, same as the base
+  /// metadata). Keyed by language code; a missing locale or field falls
+  /// back to the English base value.
+  final Map<String, Map<String, Object?>> translations;
 
   const ExtensionInfo({
     required this.key,
@@ -1637,13 +1650,23 @@ class ExtensionInfo {
     this.enabledByDefault = true,
     this.icon,
     this.description,
+    this.accentColor,
+    this.keywords = const [],
+    this.hooks = const [],
     this.translations = const {},
   });
 
   String get effectiveShortName => shortName ?? name;
 
-  String nameFor(String locale) => translations[locale]?['name'] ?? name;
-  String? descriptionFor(String locale) => translations[locale]?['description'] ?? description;
+  String nameFor(String locale) => (translations[locale]?['name'] as String?) ?? name;
+  String? descriptionFor(String locale) => (translations[locale]?['description'] as String?) ?? description;
+
+  /// The base [keywords] plus the locale's extra ones — localized keywords
+  /// add to the English set (both stay searchable), they don't replace it.
+  List<String> keywordsFor(String locale) => [
+        ...keywords,
+        ...((translations[locale]?['keywords'] as List?) ?? const []).cast<String>(),
+      ];
 
   factory ExtensionInfo.fromJson(Map<String, dynamic> json) => ExtensionInfo(
         key: json['key'] as String,
@@ -1659,9 +1682,12 @@ class ExtensionInfo {
         enabledByDefault: json['enabledByDefault'] as bool? ?? true,
         icon: json['icon'] as String?,
         description: json['description'] as String?,
+        accentColor: json['accentColor'] as String?,
+        keywords: ((json['keywords'] as List?) ?? const []).cast<String>(),
+        hooks: ((json['hooks'] as List?) ?? const []).cast<String>(),
         translations: {
           for (final entry in ((json['translations'] as Map?) ?? const {}).entries)
-            entry.key as String: (entry.value as Map).cast<String, String>(),
+            entry.key as String: (entry.value as Map).cast<String, Object?>(),
         },
       );
 }

@@ -1,0 +1,32 @@
+{
+  "key": "call-notes",
+  "name": "Callsign Notes",
+  "version": "0.0.1",
+  "description": "Annotates calls from shared notes files",
+  "category": "lookup",
+  "enabledByDefault": true,
+  "keywords": [
+    "callsign",
+    "notes",
+    "hams of note"
+  ],
+  "hooks": [
+    "callNotes",
+    "command",
+    "dataFile",
+    "lookup"
+  ],
+  "domains": [
+    "ham2k.com"
+  ],
+  "translations": {
+    "es": {
+      "name": "Notas de indicativos",
+      "description": "Anota indicativos a partir de archivos de notas compartidos",
+      "keywords": [
+        "indicativo",
+        "notas"
+      ]
+    }
+  }
+}

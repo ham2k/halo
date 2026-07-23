@@ -30,6 +30,8 @@ import {
 } from "./seed.ts"
 import type { ExistingQsoStats } from "./seed.ts"
 
+import manifest from "../manifest.json" with { type: "json" }
+
 const DevModeCommand = {
   async interpret({ input }: { input: string }, ctx: HookContext): Promise<CommandInterpretation | null> {
     const trimmed = input.trim().toUpperCase()
@@ -340,11 +342,7 @@ function shuffled(list: string[]): string[] {
 }
 
 defineExtension({
-  key: 'dev-commands',
-  name: 'Developer Commands',
-  version: '0.0.1',
-  description:
-    'Call-field shortcuts for developer tools: DEVMODE, DEVNOTICE, DEVSTATUS, DEVPROGRESS, DEVSPLASH, RELOAD, SEED, EXP',
+  ...manifest,
   onActivation({ registerHook }) {
     registerHook('command', { key: 'dev-commands-devmode', hook: DevModeCommand, priority: 100 })
     registerHook('command', { key: 'dev-commands-devnotice', hook: DevNoticeCommand, priority: 100 })

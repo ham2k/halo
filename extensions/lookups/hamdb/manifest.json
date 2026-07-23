@@ -1,0 +1,29 @@
+{
+  "key": "hamdb",
+  "name": "HamDB Callsign Lookups",
+  "version": "0.0.1",
+  "description": "Looks up callsign details on HamDB.org",
+  "category": "lookup",
+  "enabledByDefault": true,
+  "keywords": [
+    "callsign",
+    "lookup",
+    "hamdb"
+  ],
+  "hooks": [
+    "lookup"
+  ],
+  "domains": [
+    "api.hamdb.org"
+  ],
+  "translations": {
+    "es": {
+      "name": "Búsquedas de indicativos HamDB",
+      "description": "Busca los datos de un indicativo en HamDB.org",
+      "keywords": [
+        "indicativo",
+        "búsqueda"
+      ]
+    }
+  }
+}

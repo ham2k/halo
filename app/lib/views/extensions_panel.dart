@@ -97,7 +97,8 @@ class ExtensionsPanelState extends State<ExtensionsPanel> {
                       info.nameFor(locale).toLowerCase().contains(query) ||
                       info.key.toLowerCase().contains(query) ||
                       (info.description ?? '').toLowerCase().contains(query) ||
-                      (info.descriptionFor(locale) ?? '').toLowerCase().contains(query))
+                      (info.descriptionFor(locale) ?? '').toLowerCase().contains(query) ||
+                      info.keywordsFor(locale).any((k) => k.toLowerCase().contains(query)))
                     info,
               ];
 

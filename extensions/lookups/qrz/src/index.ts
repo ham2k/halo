@@ -14,14 +14,13 @@ import type { AnnotatedCallInfo, CallInfoLookup, HookContext, JSONValue, LookupR
 // kernel's account getDefinition path.
 import { tFor } from "./i18n.ts"
 
+import manifest from "../manifest.json" with { type: "json" }
+
 const AGENT = 'polo-next-spike'
 const API = 'https://xmldata.qrz.com/xml/current/'
 
 defineExtension({
-  key: 'qrz',
-  name: 'QRZ.com Callsign Lookups',
-  version: '0.0.1',
-  description: 'Requires a QRZ.com account (paid for full data)',
+  ...manifest,
   onActivation({ registerHook }) {
     registerHook('lookup', { hook: { lookupCall }, priority: 99 })
     registerHook('account', {

@@ -10,22 +10,49 @@ core knows nothing about any of them — it invokes **hooks** and renders
 
 ## Anatomy of an extension
 
-An extension is one directory under `extensions/` with a `src/index.ts` that
-calls `defineExtension`:
+An extension is one directory under `extensions/` with two required pieces:
+a static `manifest.json` declaring its public identity, and a `src/index.ts`
+that imports it and calls `defineExtension`:
+
+```json
+// manifest.json — everything knowable without running the code
+{
+  "key": "pota",               // unique, stable; namespaces KV storage
+  "name": "Parks on the Air",
+  "shortName": "POTA",
+  "version": "0.0.1",
+  "description": "Park references, spots, and activation logging",
+  "category": "activity",      // panel grouping; omit for core (always-on)
+  "enabledByDefault": true,
+  "icon": "pine-tree",         // MDI icon name
+  "accentColor": "#068541",    // brand accent, #RRGGBB
+  "keywords": ["parks", "activation", "hunting"],
+  "hooks": ["activity", "dataFile", "lookup", "ref:pota", "spots"],
+  "domains": ["api.pota.app", "pota.app"],  // host.fetch allowlist
+  "translations": { "es": { "description": "Referencias de parques…" } }
+}
+```
 
 ```ts
 import { defineExtension, host } from "@ham2k/halo-extension-sdk"
+import manifest from "../manifest.json" with { type: "json" }
 
 defineExtension({
-  key: 'pota',                 // unique, stable; namespaces KV storage
-  name: 'Parks on the Air',
-  version: '0.0.1',
+  ...manifest,
   onActivation({ registerHook }) {
     registerHook('lookup', { hook: LookupHandler, priority: 50 })
     registerHook('ref:pota', { hook: RefHandler, key: 'pota' })
   },
 })
 ```
+
+The manifest is the **single source** for this metadata: the bundle spreads
+it into `defineExtension`, and `build.mjs` reads it to produce
+`index.json` for the Dart host — which must list even *disabled*
+extensions, whose bundles are never evaluated, so the metadata has to be
+readable without running any JS. The build fails if a manifest's `key`
+doesn't match its bundle entry. `hooks` is declarative (documentation and
+tooling); the kernel still learns the actual hooks from `registerHook`.
 
 Rules of the road:
 

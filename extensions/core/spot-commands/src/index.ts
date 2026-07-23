@@ -22,6 +22,8 @@ import type { CommandInterpretation, HookContext, JSONValue } from "@ham2k/halo-
 import { parseSelfSpotCommand, isLastSpotCommand } from "./spotCommandParsing.ts"
 import { tFor } from "./i18n.ts"
 
+import manifest from "../manifest.json" with { type: "json" }
+
 // Both hooks are operation-scoped: a self-spot advertises the operation and
 // SPOTLAST spots its most recent QSO, so outside an operation's logging
 // panel (e.g. the home screen's quick search) they answer with an `error`
@@ -66,10 +68,7 @@ const LastSpotCommand = {
 }
 
 defineExtension({
-  key: 'spot-commands',
-  name: 'Spotting Commands',
-  version: '0.0.1',
-  description: 'Call-field shortcuts for spotting: SPOT, SPOTME, SELFSPOT, QRV, QRT, QSY, QRX, SPOTLAST',
+  ...manifest,
   onActivation({ registerHook }) {
     registerHook('command', { key: 'spot-commands-self', hook: SelfSpotCommand, priority: 100 })
     registerHook('command', { key: 'spot-commands-last', hook: LastSpotCommand, priority: 100 })

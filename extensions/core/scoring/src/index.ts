@@ -13,10 +13,10 @@ import { defineExtension } from "@ham2k/halo-extension-sdk"
 
 import { scoreQso, scoreQsos } from "./scoring.ts"
 
+import manifest from "../manifest.json" with { type: "json" }
+
 defineExtension({
-  key: 'scoring',
-  name: 'Scoring',
-  version: '0.0.1',
+  ...manifest,
   onActivation({ registerHook }) {
     registerHook('scoring', { hook: { scoreQsos, scoreQso }, key: 'core' })
   },

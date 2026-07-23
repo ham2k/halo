@@ -13,6 +13,8 @@ import type { CallInfo, CallInfoLookup, HookContext, LookupServiceRequest, Looku
 import { annotateCallsign } from "./annotate"
 import { runLookupPipeline } from "./mergeLookup"
 
+import manifest from "../manifest.json" with { type: "json" }
+
 async function lookupCallInfo(args: LookupServiceRequest, ctx: HookContext): Promise<LookupServiceResult> {
   const call = (args.callInfo.call || '').trim().toUpperCase()
 
@@ -46,9 +48,7 @@ async function lookupCallInfo(args: LookupServiceRequest, ctx: HookContext): Pro
 }
 
 defineExtension({
-  key: 'lookups',
-  name: 'Lookup Service',
-  version: '0.0.1',
+  ...manifest,
   onActivation({ registerHook }) {
     registerHook('lookupService', { hook: { lookupCallInfo }, key: 'core' })
   },

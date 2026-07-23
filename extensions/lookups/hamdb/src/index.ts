@@ -5,13 +5,12 @@ import { cleanLocationParams } from "@ham2k/lib-geo-tools"
 import { defineExtension, host } from "@ham2k/halo-extension-sdk"
 import type { AnnotatedCallInfo, CallInfoLookup, HookContext, JSONValue, LookupResult } from "@ham2k/halo-extension-sdk"
 
+import manifest from "../manifest.json" with { type: "json" }
+
 const AGENT = 'polo-next-spike'
 
 defineExtension({
-  key: 'hamdb',
-  name: 'HamDB Callsign Lookups',
-  version: '0.0.1',
-  description: 'Free callsign lookups for US, Canada and Germany',
+  ...manifest,
   onActivation({ registerHook }) {
     registerHook('lookup', { hook: { lookupCall }, priority: 50 })
   },

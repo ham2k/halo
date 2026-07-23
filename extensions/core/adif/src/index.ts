@@ -13,6 +13,8 @@ import { adifModeAndSubmodeForMode } from "@ham2k/lib-operation-data"
 import { defineExtension, hooks } from "@ham2k/halo-extension-sdk"
 import type { ExportOption, ExportOptionsRequest, ExportRequest, ExportResult, HookContext } from "@ham2k/halo-extension-sdk"
 
+import manifest from "../manifest.json" with { type: "json" }
+
 const ADIF_VERSION = '3.1.5'
 const DEFAULT_PROGRAM_ID = 'Ham2K Logger'
 
@@ -114,9 +116,7 @@ const ExportHandler = {
 }
 
 defineExtension({
-  key: 'adif',
-  name: 'ADIF Export',
-  version: '0.0.1',
+  ...manifest,
   onActivation({ registerHook }) {
     registerHook('export', { hook: ExportHandler, key: 'adif' })
   },

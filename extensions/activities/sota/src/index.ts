@@ -39,6 +39,8 @@ import { tFor } from "./i18n.ts"
 import { spotModeFor } from "./spotMode.ts"
 import { summitGlyphFromDetails } from "./summitGlyph.ts"
 
+import manifest from "../manifest.json" with { type: "json" }
+
 export { REFERENCE_REGEX, TRANSFORMS } from "./refFormatting.ts"
 
 const HUNTING_TYPE = 'sota'
@@ -233,7 +235,7 @@ const ActivityHook = {
         key: 'sota/hunter',
         label: 'SOTA',
         icon: 'image-filter-hdr',
-        color: '#6295BF',
+        color: manifest.accentColor,
         order: 10,
         optionType: 'optional',
         input: {
@@ -256,7 +258,7 @@ const ActivityHook = {
         key: 'sota/activation',
         label: tFor(ctx)('activationControl'),
         icon: 'image-filter-hdr',
-        color: '#6295BF',
+        color: manifest.accentColor,
         order: 10,
         optionType: 'optional',
         input: {
@@ -738,10 +740,7 @@ const sotaDataFile: DataFileDefinition = {
 }
 
 defineExtension({
-  key: 'sota',
-  name: 'Summits on the Air',
-  shortName: 'SOTA',
-  version: '0.0.1',
+  ...manifest,
   onActivation({ registerHook }) {
     registerHook(`ref:${HUNTING_TYPE}`, { hook: RefHandler, key: 'sota' })
     registerHook(`ref:${ACTIVATION_TYPE}`, { hook: RefHandler, key: 'sota' })

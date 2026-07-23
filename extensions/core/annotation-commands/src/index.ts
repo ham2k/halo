@@ -26,6 +26,8 @@ import { parseSolarXml, solarMessage, weatherMessage } from "./annotations.ts"
 import type { WeatherData } from "./annotations.ts"
 import { tFor } from "./i18n.ts"
 
+import manifest from "../manifest.json" with { type: "json" }
+
 type Translator = ReturnType<typeof tFor>
 
 type Operation = Record<string, JSONValue>
@@ -250,10 +252,7 @@ const WeatherCommand = {
 }
 
 defineExtension({
-  key: 'annotation-commands',
-  name: 'Annotation Commands',
-  version: '0.0.1',
-  description: 'NOTE, TODO, SOLAR and WEATHER call-field commands that add annotation rows to the log',
+  ...manifest,
   onActivation({ registerHook }) {
     registerHook('command', { key: 'annotation-commands-note', hook: NoteCommand, priority: 100 })
     registerHook('command', { key: 'annotation-commands-todo', hook: TodoCommand, priority: 100 })
