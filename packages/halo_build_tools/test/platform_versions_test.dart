@@ -32,6 +32,11 @@ void main() {
       final p = PlatformVersions.project(publicVersion: v, build: 73);
       expect(p.iosMarketingVersion, '26.8.1');
       expect(p.androidVersionName, '26.8.1-alpha1');
+      // macOS is direct-distributed (Developer ID + Sparkle), so its marketing
+      // version DOES keep the suffix: Sparkle's update dialog shows it, and
+      // "26.8.1-alpha1 is available — you have 26.8.1" must not lose the
+      // pre-release distinction.
+      expect(p.macMarketingVersion, '26.8.1-alpha1');
     });
 
     test('rejects a build number that overflows the 16-bit desktop field', () {

@@ -95,7 +95,8 @@ hard format limits the projection respects:
 | Platform | Native field(s) | Constraint | Example (`26.8.1-alpha1`, build 73) |
 |----------|-----------------|------------|------------|
 | **Android** | `versionCode` / `versionName` | code ≤ **2,100,000,000**, strictly increasing, single-use | `73` / `26.8.1-alpha1` |
-| **iOS / macOS** | `CFBundleVersion` / `CFBundleShortVersionString` | build ≤ **18 chars**; marketing = **≤ 3 integers, no suffixes** | `73` / `26.8.1` |
+| **iOS** | `CFBundleVersion` / `CFBundleShortVersionString` | build ≤ **18 chars**; marketing = **≤ 3 integers, no suffixes** | `73` / `26.8.1` |
+| **macOS** | `CFBundleVersion` / `CFBundleShortVersionString` | direct distribution (no App Store review) → marketing **keeps the suffix** | `73` / `26.8.1-alpha1` |
 | **Windows** | MSIX / `FILEVERSION` `a.b.c.d` | each part **0–65535**, major ≠ 0, **revision = 0** for Store | `26.8.73.0` |
 | **Linux** | package version | numeric, monotonic ordering | `26.8.73` |
 | **Web** | — | none (server-deployed) | n/a |
@@ -115,6 +116,13 @@ Two projection rules follow from the table:
   Connect only requires the *build number* to increase per marketing-version
   string — and a fresh marketing version (e.g. `26.8.0` → `26.8.1`) lets the build
   number restart low.
+- **macOS keeps the suffix** (`macMarketingVersion` = `26.8.1-alpha1`): the DMG
+  is distributed directly with Developer ID + Sparkle, outside App Store review,
+  and Sparkle's update dialog displays `CFBundleShortVersionString`. With the
+  suffix present, "26.8.1-alpha1 is available — you have 26.8.1" can't drop the
+  pre-release distinction, and when two builds share the same public version
+  Sparkle automatically appends their build numbers in parentheses
+  ("26.8.1-alpha1 (84) — you have 26.8.1-alpha1 (83)").
 
 ### 2.3 Where the public version lives (patchable)
 

@@ -22,6 +22,16 @@ class PlatformVersions {
   /// notes, and the build number instead).
   final String iosMarketingVersion;
 
+  /// macOS `CFBundleShortVersionString` — the full public version *with* the
+  /// pre-release suffix (`26.8.1-alpha1`). The macOS build is distributed
+  /// directly (Developer ID + Sparkle), not through App Store review, so
+  /// Apple's pure-`X.Y.Z` rule doesn't bind, and Sparkle's update dialog uses
+  /// this string: with the suffix, "26.8.1-alpha1 is available — you have
+  /// 26.8.1" can't misread as a same-version offer, and when the two display
+  /// versions ARE equal Sparkle appends the build numbers in parentheses on
+  /// its own ("26.8.1-alpha1 (84) — you have 26.8.1-alpha1 (83)").
+  final String macMarketingVersion;
+
   /// `FILEVERSION`/MSIX `a.b.c.d`; revision is always `0`, as required for
   /// Store submission.
   final String windowsFileVersion;
@@ -33,6 +43,7 @@ class PlatformVersions {
     required this.androidVersionName,
     required this.iosBuildNumber,
     required this.iosMarketingVersion,
+    required this.macMarketingVersion,
     required this.windowsFileVersion,
     required this.linuxPackageVersion,
   });
@@ -62,6 +73,7 @@ class PlatformVersions {
       androidVersionName: publicVersion.value,
       iosBuildNumber: build.toString(),
       iosMarketingVersion: '$major.$minor.${publicVersion.patch}',
+      macMarketingVersion: publicVersion.value,
       windowsFileVersion: '$major.$minor.$build.0',
       linuxPackageVersion: '$major.$minor.$build',
     );

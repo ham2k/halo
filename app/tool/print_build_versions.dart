@@ -25,8 +25,12 @@ void main() {
   final p = PlatformVersions.project(publicVersion: v, build: kBuildNumber);
 
   final out = {
-    // iOS / macOS: CFBundleShortVersionString (no pre-release suffix) + CFBundleVersion
+    // iOS: CFBundleShortVersionString (no pre-release suffix) + CFBundleVersion
     'HALO_MARKETING': p.iosMarketingVersion,
+    // macOS: CFBundleShortVersionString WITH the suffix (direct distribution;
+    // Sparkle shows it, and appends build numbers itself when two builds
+    // share the same public version)
+    'HALO_MAC_MARKETING': p.macMarketingVersion,
     'HALO_BUILD_ID': '$kBuildNumber',
     // Android: versionName (keeps the suffix) + versionCode (= build number)
     'HALO_ANDROID_NAME': p.androidVersionName,
