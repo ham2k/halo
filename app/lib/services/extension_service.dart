@@ -26,6 +26,7 @@ import '../config/dev_fixture.dart';
 import '../config/user_agent.dart';
 import '../i18n/strings.g.dart';
 import '../main.dart';
+import '../tools/form_chrome_labels.dart';
 
 /// The QSON payload shape shared by every hook that takes a whole operation's
 /// worth of QSOs in one coarse call (export, scoring, …) — `operation.data`
@@ -1084,6 +1085,7 @@ class ExtensionService {
           context,
           formDefinition: formDef,
           initialState: state,
+          labels: formRendererLabelsFor(t),
           validator: (fieldKey, value, currentState) async {
             try {
               final res = await _host?.invokeHook(

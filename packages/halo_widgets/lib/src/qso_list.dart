@@ -81,6 +81,12 @@ class QsoListLabels {
   /// Keyed by `Qso.eventKind` (`start`/`break`/`end`).
   final Map<String, String> eventLabels;
 
+  /// The day header's QSO count ("1 QSO" / "12 QSOs"). Nullable function
+  /// (same convention as LoggingControls' parameterized labels) so the
+  /// class stays const-constructible — null falls back to the English
+  /// composition.
+  final String Function(int count)? qsoCount;
+
   const QsoListLabels({
     required this.weekdayAbbrs,
     required this.monthAbbrs,
@@ -88,7 +94,10 @@ class QsoListLabels {
     required this.yesterday,
     required this.tomorrow,
     required this.eventLabels,
+    this.qsoCount,
   });
+
+  String qsoCountLabel(int count) => qsoCount?.call(count) ?? (count == 1 ? '1 QSO' : '$count QSOs');
 
   static const english = QsoListLabels(
     weekdayAbbrs: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
@@ -856,7 +865,7 @@ class DayHeaderRow extends StatelessWidget {
               ),
             ),
             const SizedBox(width: 10),
-            Text(count == 1 ? '1 QSO' : '$count QSOs', style: rowStyle),
+            Text(labels.qsoCountLabel(count), style: rowStyle),
             const Spacer(),
             ...badges,
           ],

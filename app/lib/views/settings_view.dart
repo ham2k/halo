@@ -30,6 +30,7 @@ import '../services/data_file_manager.dart';
 import '../services/deep_link_service.dart';
 import '../services/extension_service.dart';
 import '../services/settings_service.dart';
+import '../tools/form_chrome_labels.dart';
 import 'header_profile_label.dart';
 import '../settings/settings_registry.dart';
 import 'experiments_pane.dart';
@@ -646,6 +647,7 @@ class _SettingsGroupFormState extends State<_SettingsGroupForm> {
       showActions: false,
       showTitle: false,
       developerMode: widget.services.settings.developerMode,
+      labels: formRendererLabelsFor(context.t),
       onChange: _autosave,
       onOpenLink: _openLink,
       onSubmit: (_) {},
@@ -1036,6 +1038,7 @@ class _AccountsPanelState extends State<_AccountsPanel> {
       context,
       title: account['label'] as String,
       barrierDismissible: false,
+      closeTooltip: context.t.common.close,
       builder: (context) => _AccountPane(services: widget.services, account: account, onSaved: _loadAccounts),
     );
   }
@@ -1432,6 +1435,7 @@ class _ExtensionSettingsPanelState extends State<_ExtensionSettingsPanel> {
       context,
       title: account['label'] as String,
       barrierDismissible: false,
+      closeTooltip: context.t.common.close,
       builder: (context) => _AccountPane(
         services: widget.services,
         account: account!,
@@ -1471,6 +1475,7 @@ class _ExtensionSettingsPanelState extends State<_ExtensionSettingsPanel> {
       // definition title would double it.
       showTitle: !(widget.embedded && widget.sectionTitle != null),
       developerMode: widget.services.settings.developerMode,
+      labels: formRendererLabelsFor(context.t),
       validator: _validate,
       onChange: _autosave,
       onAction: (actionKey, method, state) => widget.services.extensions.runSettingsAction(
@@ -1570,6 +1575,7 @@ class _DeveloperPanel extends StatelessWidget {
                     onTap: () => showModalPane<void>(
                       context,
                       title: context.t.settings.developer.experiments,
+                      closeTooltip: context.t.common.close,
                       builder: (_) => ExperimentsPane(settings: settings),
                     ),
                   );
@@ -1720,6 +1726,7 @@ class _DeveloperPanel extends StatelessWidget {
                   context,
                   formDefinition: formDefinition,
                   initialState: initialState,
+                  labels: formRendererLabelsFor(context.t),
                   validator: (fieldKey, value, state) async {
                     await Future<void>.delayed(const Duration(milliseconds: 200));
 
@@ -2020,6 +2027,7 @@ class _AboutPanel extends StatelessWidget {
                   onTap: () => showModalPane<void>(
                     context,
                     title: context.t.settings.about.notices,
+                    closeTooltip: context.t.common.close,
                     // NoticeHistoryView is its own scrolling ListView — the
                     // pane must not also wrap it in a SingleChildScrollView.
                     scrollable: false,
@@ -2092,6 +2100,7 @@ class _ReleaseNotesPreview extends StatelessWidget {
       onTap: () => showModalPane<void>(
         context,
         title: context.t.settings.about.releaseNotes,
+        closeTooltip: context.t.common.close,
         builder: (context) => MarkdownBody(data: markdown, styleSheet: styleSheet),
       ),
       child: ClipRect(
@@ -2250,6 +2259,7 @@ Future<void> showAccountDialogByKey(HaLoServices services, String accountKey, {S
     context,
     title: account['label'] as String? ?? accountKey,
     barrierDismissible: false,
+    closeTooltip: context.t.common.close,
     builder: (context) => _AccountPane(services: services, account: account!, onSaved: () {}),
   );
 }

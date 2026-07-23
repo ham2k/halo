@@ -411,6 +411,7 @@ class _OperationViewState extends State<OperationView> with SingleTickerProvider
     await showModalPane<void>(
       context,
       title: info.call,
+      closeTooltip: context.t.common.close,
       builder: (_) => CallInfoPanel(
         operation: operation,
         services: widget.services,
@@ -437,6 +438,7 @@ class _OperationViewState extends State<OperationView> with SingleTickerProvider
       await showModalPane<void>(
         context,
         title: context.t.operation.sections.activities,
+        closeTooltip: context.t.common.close,
         scrollable: false,
         builder: (_) => ActivitiesPane(
           key: activitiesKey,
@@ -467,6 +469,7 @@ class _OperationViewState extends State<OperationView> with SingleTickerProvider
     try {
       await showTopModalPane<void>(
         context,
+        closeTooltip: context.t.common.close,
         title: Builder(
           builder: (context) {
             final stationCall = _draftOperation?.stationCall ?? operation.stationCall;

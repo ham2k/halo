@@ -84,6 +84,11 @@ class SecondaryControlRow extends StatefulWidget {
   /// edges instead of stopping at the parent's padding.
   final double horizontalBleed;
 
+  /// The caret's expand/collapse tooltips — nullable with English fallbacks
+  /// so the package stays i18n-free; the app passes translated values.
+  final String? expandTooltip;
+  final String? collapseTooltip;
+
   const SecondaryControlRow({
     super.key,
     required this.controls,
@@ -92,6 +97,8 @@ class SecondaryControlRow extends StatefulWidget {
     this.trailing,
     this.onOpenSettings,
     this.horizontalBleed = 0,
+    this.expandTooltip,
+    this.collapseTooltip,
   });
 
   @override
@@ -602,7 +609,7 @@ class _SecondaryControlRowState extends State<SecondaryControlRow> with SingleTi
               ),
             ),
             IconButton(
-              tooltip: _gridExpanded ? 'Collapse' : 'Expand',
+              tooltip: _gridExpanded ? (widget.collapseTooltip ?? 'Collapse') : (widget.expandTooltip ?? 'Expand'),
               visualDensity: VisualDensity.compact,
               style: IconButton.styleFrom(
                 backgroundColor: HaLoColors.of(context).tertiaryLight.withValues(alpha: 0.5),

@@ -50,6 +50,7 @@ class Translations with BaseTranslations<AppLocale, Translations> {
 	late final Translations$map$en map = Translations$map$en.internal(_root);
 	late final Translations$activitiesView$en activitiesView = Translations$activitiesView$en.internal(_root);
 	late final Translations$loggingControls$en loggingControls = Translations$loggingControls$en.internal(_root);
+	late final Translations$formChrome$en formChrome = Translations$formChrome$en.internal(_root);
 	late final Translations$qsoEditForm$en qsoEditForm = Translations$qsoEditForm$en.internal(_root);
 	late final Translations$qsoList$en qsoList = Translations$qsoList$en.internal(_root);
 	late final Translations$loggingPanel$en loggingPanel = Translations$loggingPanel$en.internal(_root);
@@ -63,6 +64,7 @@ class Translations with BaseTranslations<AppLocale, Translations> {
 	late final Translations$operationLocationScreen$en operationLocationScreen = Translations$operationLocationScreen$en.internal(_root);
 	late final Translations$versionLabel$en versionLabel = Translations$versionLabel$en.internal(_root);
 	late final Translations$notices$en notices = Translations$notices$en.internal(_root);
+	late final Translations$switchAccounts$en switchAccounts = Translations$switchAccounts$en.internal(_root);
 }
 
 // Path: common
@@ -472,6 +474,12 @@ class Translations$loggingControls$en {
 	/// en: 'Logging Controls'
 	String get controlSettings => 'Logging Controls';
 
+	/// en: 'Expand'
+	String get expandControls => 'Expand';
+
+	/// en: 'Collapse'
+	String get collapseControls => 'Collapse';
+
 	/// en: 'Spotting'
 	String get spottingControl => 'Spotting';
 
@@ -494,6 +502,72 @@ class Translations$loggingControls$en {
 	String get spotComment => 'Comment';
 
 	late final Translations$loggingControls$info$en info = Translations$loggingControls$info$en.internal(_root);
+}
+
+// Path: formChrome
+class Translations$formChrome$en {
+	Translations$formChrome$en.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: '(untitled)'
+	String get untitled => '(untitled)';
+
+	/// en: 'Show more'
+	String get showMore => 'Show more';
+
+	/// en: 'Show all'
+	String get showAll => 'Show all';
+
+	/// en: 'Show fewer'
+	String get showFewer => 'Show fewer';
+
+	/// en: 'Defaults'
+	String get defaults => 'Defaults';
+
+	/// en: 'Search'
+	String get search => 'Search';
+
+	/// en: 'Clear'
+	String get clear => 'Clear';
+
+	/// en: 'Open page'
+	String get openPage => 'Open page';
+
+	/// en: 'Connected'
+	String get connected => 'Connected';
+
+	/// en: 'Not Connected'
+	String get notConnected => 'Not Connected';
+
+	/// en: 'Manage'
+	String get manage => 'Manage';
+
+	/// en: 'Connect'
+	String get connect => 'Connect';
+
+	/// en: 'Form'
+	String get formTitle => 'Form';
+
+	/// en: 'Add ${label}'
+	String addItem({required Object label}) => 'Add ${label}';
+
+	/// en: 'Edit ${label}'
+	String editItem({required Object label}) => 'Edit ${label}';
+
+	/// en: 'Showing ${shown} of ${total} (${selected} selected)'
+	String multiselectStatus({required Object shown, required Object total, required Object selected}) => 'Showing ${shown} of ${total} (${selected} selected)';
+
+	/// en: 'Validation error: ${error}'
+	String validationError({required Object error}) => 'Validation error: ${error}';
+
+	/// en: 'Transformation error: ${error}'
+	String transformationError({required Object error}) => 'Transformation error: ${error}';
+
+	/// en: 'Error: ${error}'
+	String actionError({required Object error}) => 'Error: ${error}';
 }
 
 // Path: qsoEditForm
@@ -908,6 +982,87 @@ class Translations$notices$en {
 
 	/// en: 'No notices yet'
 	String get emptyHistory => 'No notices yet';
+}
+
+// Path: switchAccounts
+class Translations$switchAccounts$en {
+	Translations$switchAccounts$en.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'No callsign or email yet'
+	String get noCallsignOrEmail => 'No callsign or email yet';
+
+	/// en: 'Current account'
+	String get currentAccount => 'Current account';
+
+	/// en: 'Other accounts'
+	String get otherAccounts => 'Other accounts';
+
+	/// en: 'Link to another account'
+	String get linkToAnother => 'Link to another account';
+
+	/// en: 'Link with a QR code'
+	String get linkWithQr => 'Link with a QR code';
+
+	/// en: 'Scan it from a device already using the account'
+	String get linkWithQrDescription => 'Scan it from a device already using the account';
+
+	/// en: 'Link with an email address'
+	String get linkWithEmail => 'Link with an email address';
+
+	/// en: 'Confirm with a code or an email link'
+	String get linkWithEmailDescription => 'Confirm with a code or an email link';
+
+	/// en: 'Enter the email address of the account you want this device to use.'
+	String get enterEmailPrompt => 'Enter the email address of the account you want this device to use.';
+
+	/// en: 'Email address'
+	String get emailAddress => 'Email address';
+
+	/// en: 'Link account'
+	String get linkAccount => 'Link account';
+
+	/// en: 'Copied code to clipboard'
+	String get copiedCode => 'Copied code to clipboard';
+
+	/// en: 'Copy code'
+	String get copyCode => 'Copy code';
+
+	/// en: 'Open the Ham2K app on a device already linked with ${email} and enter this code to approve the request:'
+	String codePrompt({required Object email}) => 'Open the Ham2K app on a device already linked with ${email} and enter this code to approve the request:';
+
+	/// en: 'Waiting for confirmation…'
+	String get waitingForConfirmation => 'Waiting for confirmation…';
+
+	/// en: 'Send a confirmation email instead'
+	String get sendEmailInstead => 'Send a confirmation email instead';
+
+	/// en: 'An email was sent to ${email}. Open it and confirm the request to link this device.'
+	String emailSent({required Object email}) => 'An email was sent to ${email}. Open it and confirm the request to link this device.';
+
+	/// en: 'Resend email'
+	String get resendEmail => 'Resend email';
+
+	/// en: 'Scan this QR code from a device already linked to the account you want — for example with Ham2K Portable Logger on your phone.'
+	String get qrPrompt => 'Scan this QR code from a device already linked to the account you want — for example with Ham2K Portable Logger on your phone.';
+
+	/// en: 'Could not reach the sync server. Try again later.'
+	String get serverUnreachable => 'Could not reach the sync server. Try again later.';
+
+	/// en: '(one) {${count} QSO} (other) {${count} QSOs}'
+	String qsoCount({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count,
+		one: '${count} QSO',
+		other: '${count} QSOs',
+	);
+
+	/// en: '(one) {${count} operation} (other) {${count} operations}'
+	String operationCount({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count,
+		one: '${count} operation',
+		other: '${count} operations',
+	);
 }
 
 // Path: operation.tabs
@@ -2088,6 +2243,8 @@ extension on Translations {
 			'loggingControls.timeControl' => 'Time',
 			'loggingControls.radioControl' => 'Radio',
 			'loggingControls.controlSettings' => 'Logging Controls',
+			'loggingControls.expandControls' => 'Expand',
+			'loggingControls.collapseControls' => 'Collapse',
 			'loggingControls.spottingControl' => 'Spotting',
 			'loggingControls.spottingSelfControl' => 'Self-spotting',
 			'loggingControls.spotSelfAt' => ({required Object freq}) => 'Self-spot at ${freq}',
@@ -2110,6 +2267,25 @@ extension on Translations {
 			'loggingControls.info.noticeNewBand' => 'New Band',
 			'loggingControls.info.noticeNewMode' => 'New Mode',
 			'loggingControls.info.noticeNewDXCC' => 'New DXCC',
+			'formChrome.untitled' => '(untitled)',
+			'formChrome.showMore' => 'Show more',
+			'formChrome.showAll' => 'Show all',
+			'formChrome.showFewer' => 'Show fewer',
+			'formChrome.defaults' => 'Defaults',
+			'formChrome.search' => 'Search',
+			'formChrome.clear' => 'Clear',
+			'formChrome.openPage' => 'Open page',
+			'formChrome.connected' => 'Connected',
+			'formChrome.notConnected' => 'Not Connected',
+			'formChrome.manage' => 'Manage',
+			'formChrome.connect' => 'Connect',
+			'formChrome.formTitle' => 'Form',
+			'formChrome.addItem' => ({required Object label}) => 'Add ${label}',
+			'formChrome.editItem' => ({required Object label}) => 'Edit ${label}',
+			'formChrome.multiselectStatus' => ({required Object shown, required Object total, required Object selected}) => 'Showing ${shown} of ${total} (${selected} selected)',
+			'formChrome.validationError' => ({required Object error}) => 'Validation error: ${error}',
+			'formChrome.transformationError' => ({required Object error}) => 'Transformation error: ${error}',
+			'formChrome.actionError' => ({required Object error}) => 'Error: ${error}',
 			'qsoEditForm.title' => 'Edit QSO',
 			'qsoEditForm.theirName' => 'Name',
 			'qsoEditForm.theirGrid' => 'Grid',
@@ -2353,6 +2529,28 @@ extension on Translations {
 			'versionLabel.version' => ({required Object version}) => 'Version ${version}',
 			'versionLabel.versionBuild' => ({required Object version, required Object build}) => 'Version ${version} - Build ${build}',
 			'notices.emptyHistory' => 'No notices yet',
+			'switchAccounts.noCallsignOrEmail' => 'No callsign or email yet',
+			'switchAccounts.currentAccount' => 'Current account',
+			'switchAccounts.otherAccounts' => 'Other accounts',
+			'switchAccounts.linkToAnother' => 'Link to another account',
+			'switchAccounts.linkWithQr' => 'Link with a QR code',
+			'switchAccounts.linkWithQrDescription' => 'Scan it from a device already using the account',
+			'switchAccounts.linkWithEmail' => 'Link with an email address',
+			'switchAccounts.linkWithEmailDescription' => 'Confirm with a code or an email link',
+			'switchAccounts.enterEmailPrompt' => 'Enter the email address of the account you want this device to use.',
+			'switchAccounts.emailAddress' => 'Email address',
+			'switchAccounts.linkAccount' => 'Link account',
+			'switchAccounts.copiedCode' => 'Copied code to clipboard',
+			'switchAccounts.copyCode' => 'Copy code',
+			'switchAccounts.codePrompt' => ({required Object email}) => 'Open the Ham2K app on a device already linked with ${email} and enter this code to approve the request:',
+			'switchAccounts.waitingForConfirmation' => 'Waiting for confirmation…',
+			'switchAccounts.sendEmailInstead' => 'Send a confirmation email instead',
+			'switchAccounts.emailSent' => ({required Object email}) => 'An email was sent to ${email}. Open it and confirm the request to link this device.',
+			'switchAccounts.resendEmail' => 'Resend email',
+			'switchAccounts.qrPrompt' => 'Scan this QR code from a device already linked to the account you want — for example with Ham2K Portable Logger on your phone.',
+			'switchAccounts.serverUnreachable' => 'Could not reach the sync server. Try again later.',
+			'switchAccounts.qsoCount' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: '${count} QSO', other: '${count} QSOs', ), 
+			'switchAccounts.operationCount' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: '${count} operation', other: '${count} operations', ), 
 			_ => null,
 		};
 	}

@@ -196,6 +196,8 @@
     "timeControl": "Hora",
     "radioControl": "Radio",
     "controlSettings": "Controles de registro",
+    "expandControls": "Expandir",
+    "collapseControls": "Contraer",
     "spottingControl": "Spotting",
     "spottingSelfControl": "Auto-spot",
     "spotSelfAt": "Auto-spot en ${freq}",
@@ -220,6 +222,27 @@
       "noticeNewMode": "Nuevo Modo",
       "noticeNewDXCC": "Nuevo DXCC"
     }
+  },
+  "formChrome": {
+    "untitled": "(sin título)",
+    "showMore": "Mostrar más",
+    "showAll": "Mostrar todo",
+    "showFewer": "Mostrar menos",
+    "defaults": "Predeterminados",
+    "search": "Buscar",
+    "clear": "Limpiar",
+    "openPage": "Abrir página",
+    "connected": "Conectado",
+    "notConnected": "No conectado",
+    "manage": "Administrar",
+    "connect": "Conectar",
+    "formTitle": "Formulario",
+    "addItem": "Añadir ${label}",
+    "editItem": "Editar ${label}",
+    "multiselectStatus": "Mostrando ${shown} de ${total} (${selected} seleccionados)",
+    "validationError": "Error de validación: ${error}",
+    "transformationError": "Error de transformación: ${error}",
+    "actionError": "Error: ${error}"
   },
   "qsoEditForm": {
     "title": "Editar QSO",
@@ -556,5 +579,35 @@
   },
   "notices": {
     "emptyHistory": "Aún no hay avisos"
+  },
+  "switchAccounts": {
+    "noCallsignOrEmail": "Aún sin indicativo ni email",
+    "currentAccount": "Cuenta actual",
+    "otherAccounts": "Otras cuentas",
+    "linkToAnother": "Vincular a otra cuenta",
+    "linkWithQr": "Vincular con un código QR",
+    "linkWithQrDescription": "Escanéalo desde un dispositivo que ya use la cuenta",
+    "linkWithEmail": "Vincular con una dirección de email",
+    "linkWithEmailDescription": "Confirma con un código o un enlace por email",
+    "enterEmailPrompt": "Escribe la dirección de email de la cuenta que quieres usar en este dispositivo.",
+    "emailAddress": "Dirección de email",
+    "linkAccount": "Vincular cuenta",
+    "copiedCode": "Código copiado al portapapeles",
+    "copyCode": "Copiar código",
+    "codePrompt": "Abre la app Ham2K en un dispositivo ya vinculado con ${email} e introduce este código para aprobar la solicitud:",
+    "waitingForConfirmation": "Esperando confirmación…",
+    "sendEmailInstead": "Enviar un email de confirmación en su lugar",
+    "emailSent": "Se envió un email a ${email}. Ábrelo y confirma la solicitud para vincular este dispositivo.",
+    "resendEmail": "Reenviar email",
+    "qrPrompt": "Escanea este código QR desde un dispositivo ya vinculado a la cuenta que quieres — por ejemplo, con Ham2K Portable Logger en tu teléfono.",
+    "serverUnreachable": "No se pudo contactar el servidor de sincronización. Inténtalo más tarde.",
+    "qsoCount": {
+      "one": "${count} QSO",
+      "other": "${count} QSOs"
+    },
+    "operationCount": {
+      "one": "${count} operación",
+      "other": "${count} operaciones"
+    }
   }
 }

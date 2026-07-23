@@ -15,6 +15,7 @@ import '../operation_dialogs.dart';
 import '../../i18n/strings.g.dart';
 import '../../services/settings_service.dart';
 import '../../tools/distance_format.dart';
+import '../../tools/form_chrome_labels.dart';
 import '../../tools/scoring_labels.dart';
 
 /// Builds the QSO list's day-header/event-row vocabulary for the active
@@ -28,6 +29,7 @@ QsoListLabels _qsoListLabelsFor(BuildContext context) {
   final weekday = DateFormat.E(locale);
   final month = DateFormat.MMM(locale);
   final t = context.t.qsoList;
+  final info = context.t.loggingControls.info;
   return QsoListLabels(
     weekdayAbbrs: [for (var i = 0; i < 7; i++) weekday.format(DateTime.utc(2024, 1, 1 + i))],
     monthAbbrs: [for (var m = 1; m <= 12; m++) month.format(DateTime.utc(2024, m))],
@@ -35,6 +37,8 @@ QsoListLabels _qsoListLabelsFor(BuildContext context) {
     yesterday: t.yesterday,
     tomorrow: t.tomorrow,
     eventLabels: {'start': t.eventStarted, 'break': t.eventBreak, 'end': t.eventEnded},
+    // Same "1 QSO"/"N QSOs" vocabulary the info area's stats line uses.
+    qsoCount: (count) => count == 1 ? info.qsoCountOne : info.qsoCountOther(count: count),
   );
 }
 
@@ -454,6 +458,9 @@ class _LoggingPanelState extends State<LoggingPanel> {
             timeControlLabel: context.t.loggingControls.timeControl,
             radioControlLabel: context.t.loggingControls.radioControl,
             controlSettingsTitle: context.t.loggingControls.controlSettings,
+            expandControlsTooltip: context.t.loggingControls.expandControls,
+            collapseControlsTooltip: context.t.loggingControls.collapseControls,
+            formLabels: formRendererLabelsFor(context.t),
             saveLabel: context.t.common.save,
             cancelLabel: context.t.common.cancel,
             timeLabel: context.t.loggingControls.timeUtc,

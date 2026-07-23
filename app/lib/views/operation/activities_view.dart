@@ -869,6 +869,7 @@ class _ActivitiesBaseState extends State<_ActivitiesBase> {
                 await showModalPane<void>(
                   context,
                   title: t.manageExtensions,
+                  closeTooltip: context.t.common.close,
                   scrollable: false,
                   trailing: isTwoPane
                       ? TextButton(

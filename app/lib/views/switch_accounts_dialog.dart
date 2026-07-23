@@ -30,6 +30,8 @@ import 'package:flutter/services.dart';
 import 'package:halo_widgets/halo_widgets.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 
+import '../i18n/strings.g.dart';
+
 /// How the other device's deep link is assembled — same scheme and params
 /// as app-polo's SyncAccountDialog (`com.ham2k:///link_client?id=…&token=…`).
 String linkClientQrUrl({required String clientUuid, required String challengeToken}) =>
@@ -47,8 +49,9 @@ Future<bool?> showSwitchAccountsDialog(
 }) {
   return showModalPane<bool>(
     context,
-    title: 'Switch Accounts',
+    title: context.t.settings.syncPanel.switchAccounts,
     barrierDismissible: false,
+    closeTooltip: context.t.common.close,
     builder: (context) => SwitchAccountsPane(
       fetchAccountData: fetchAccountData,
       linkClient: linkClient,
@@ -170,8 +173,7 @@ class _SwitchAccountsPaneState extends State<SwitchAccountsPane> {
   /// (e.g. an account payload without stats).
   static String? _countsLine(int? qsoCount, int? operationCount) {
     if (qsoCount == null && operationCount == null) return null;
-    String plural(int n, String noun) => '$n $noun${n == 1 ? '' : 's'}';
-    return '${plural(qsoCount ?? 0, 'QSO')} · ${plural(operationCount ?? 0, 'operation')}';
+    return '${t.switchAccounts.qsoCount(count: qsoCount ?? 0)} · ${t.switchAccounts.operationCount(count: operationCount ?? 0)}';
   }
 
   /// One account row: callsign and email on the first line, QSO/operation
@@ -192,7 +194,7 @@ class _SwitchAccountsPaneState extends State<SwitchAccountsPane> {
       contentPadding: EdgeInsets.zero,
       leading: Icon(resolveIconName(iconName)),
       // A brand-new client's account can have neither call nor email yet.
-      title: Text(firstLine.isNotEmpty ? firstLine : 'No callsign or email yet'),
+      title: Text(firstLine.isNotEmpty ? firstLine : t.switchAccounts.noCallsignOrEmail),
       subtitle: counts == null ? null : Text(counts),
       onTap: onTap,
       mouseCursor: onTap == null ? MouseCursor.defer : SystemMouseCursors.click,
@@ -259,7 +261,7 @@ class _SwitchAccountsPaneState extends State<SwitchAccountsPane> {
   /// `error` → the server said no. Returns the map only when usable.
   Map<String, dynamic>? _usableResult(Map<String, dynamic>? result, {String? emailForNotFound}) {
     if (result == null) {
-      _error = 'Could not reach the sync server. Try again later.';
+      _error = t.switchAccounts.serverUnreachable;
       return null;
     }
     if (result['error'] != null) {
@@ -344,7 +346,7 @@ class _SwitchAccountsPaneState extends State<SwitchAccountsPane> {
     setState(() {
       _busy = false;
       if (result == null) {
-        _error = 'Could not reach the sync server. Try again later.';
+        _error = t.switchAccounts.serverUnreachable;
       } else {
         _mode = _Mode.emailSent;
       }
@@ -408,10 +410,10 @@ class _SwitchAccountsPaneState extends State<SwitchAccountsPane> {
           alignment: MainAxisAlignment.end,
           spacing: 8,
           children: [
-            if (_mode != _Mode.menu) TextButton(onPressed: _busy ? null : _backToMenu, child: const Text('Back')),
+            if (_mode != _Mode.menu) TextButton(onPressed: _busy ? null : _backToMenu, child: Text(context.t.onboarding.back)),
             if (_mode == _Mode.email)
-              FilledButton(onPressed: _busy ? null : _submitEmail, child: const Text('Link account')),
-            TextButton(onPressed: _doCancel, child: Text(widget.cancelLabel ?? 'Cancel')),
+              FilledButton(onPressed: _busy ? null : _submitEmail, child: Text(context.t.switchAccounts.linkAccount)),
+            TextButton(onPressed: _doCancel, child: Text(widget.cancelLabel ?? context.t.common.cancel)),
           ],
         ),
       ],
@@ -449,7 +451,7 @@ class _SwitchAccountsPaneState extends State<SwitchAccountsPane> {
               child: Center(child: CircularProgressIndicator()),
             )
           else ...[
-            Text('Current account', style: theme.textTheme.titleSmall),
+            Text(context.t.switchAccounts.currentAccount, style: theme.textTheme.titleSmall),
             _accountTile(
               account: current ?? const {},
               iconName: 'account-check',
@@ -460,7 +462,7 @@ class _SwitchAccountsPaneState extends State<SwitchAccountsPane> {
             ),
             if (others.isNotEmpty) ...[
               const SizedBox(height: 12),
-              Text('Other accounts', style: theme.textTheme.titleSmall),
+              Text(context.t.switchAccounts.otherAccounts, style: theme.textTheme.titleSmall),
               ...others.map((account) {
                 final stats = (account['stats'] as Map?)?.cast<String, dynamic>();
                 return _accountTile(
@@ -474,13 +476,13 @@ class _SwitchAccountsPaneState extends State<SwitchAccountsPane> {
             ],
           ],
           const SizedBox(height: 12),
-          Text('Link to another account', style: theme.textTheme.titleSmall),
+          Text(context.t.switchAccounts.linkToAnother, style: theme.textTheme.titleSmall),
         ],
         ListTile(
           contentPadding: EdgeInsets.zero,
           leading: Icon(resolveIconName('qrcode')),
-          title: const Text('Link with a QR code'),
-          subtitle: const Text('Scan it from a device already using the account'),
+          title: Text(context.t.switchAccounts.linkWithQr),
+          subtitle: Text(context.t.switchAccounts.linkWithQrDescription),
           enabled: !_busy,
           onTap: _showQr,
           mouseCursor: SystemMouseCursors.click,
@@ -488,8 +490,8 @@ class _SwitchAccountsPaneState extends State<SwitchAccountsPane> {
         ListTile(
           contentPadding: EdgeInsets.zero,
           leading: Icon(resolveIconName('email')),
-          title: const Text('Link with an email address'),
-          subtitle: const Text('Confirm with a code or an email link'),
+          title: Text(context.t.switchAccounts.linkWithEmail),
+          subtitle: Text(context.t.switchAccounts.linkWithEmailDescription),
           enabled: !_busy,
           onTap: () => setState(() {
             _error = null;
@@ -507,14 +509,14 @@ class _SwitchAccountsPaneState extends State<SwitchAccountsPane> {
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        const Text('Enter the email address of the account you want this device to use.'),
+        Text(context.t.switchAccounts.enterEmailPrompt),
         const SizedBox(height: 12),
         TextField(
           controller: _emailController,
           autofocus: true,
           enabled: !_busy,
           keyboardType: TextInputType.emailAddress,
-          decoration: const InputDecoration(labelText: 'Email address', border: OutlineInputBorder()),
+          decoration: InputDecoration(labelText: context.t.switchAccounts.emailAddress, border: const OutlineInputBorder()),
           onSubmitted: (_) => _submitEmail(),
         ),
         ..._errorAndBusy(context),
@@ -527,7 +529,7 @@ class _SwitchAccountsPaneState extends State<SwitchAccountsPane> {
     if (code == null) return;
     await Clipboard.setData(ClipboardData(text: code));
     if (!context.mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Copied code to clipboard')));
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(context.t.switchAccounts.copiedCode)));
   }
 
   Widget _buildCode(BuildContext context) {
@@ -537,7 +539,7 @@ class _SwitchAccountsPaneState extends State<SwitchAccountsPane> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Text(
-          'Open the Ham2K app on a device already linked with $_pendingEmail and enter this code to approve the request:',
+          context.t.switchAccounts.codePrompt(email: '$_pendingEmail'),
         ),
         const SizedBox(height: 16),
         Center(
@@ -552,7 +554,7 @@ class _SwitchAccountsPaneState extends State<SwitchAccountsPane> {
                 const SizedBox(width: 8),
                 IconButton(
                   icon: Icon(resolveIconName('content-copy')),
-                  tooltip: 'Copy code',
+                  tooltip: context.t.switchAccounts.copyCode,
                   onPressed: () => _copyChallengeCode(context),
                   mouseCursor: SystemMouseCursors.click,
                 ),
@@ -561,12 +563,12 @@ class _SwitchAccountsPaneState extends State<SwitchAccountsPane> {
           ),
         ),
         const SizedBox(height: 16),
-        const Center(child: Text('Waiting for confirmation…')),
+        Center(child: Text(context.t.switchAccounts.waitingForConfirmation)),
         const SizedBox(height: 12),
         Center(
           child: OutlinedButton(
             onPressed: _busy ? null : _sendConfirmationEmail,
-            child: const Text('Send a confirmation email instead'),
+            child: Text(context.t.switchAccounts.sendEmailInstead),
           ),
         ),
         ..._errorAndBusy(context),
@@ -579,12 +581,12 @@ class _SwitchAccountsPaneState extends State<SwitchAccountsPane> {
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Text('An email was sent to $_pendingEmail. Open it and confirm the request to link this device.'),
+        Text(context.t.switchAccounts.emailSent(email: '$_pendingEmail')),
         const SizedBox(height: 16),
-        const Center(child: Text('Waiting for confirmation…')),
+        Center(child: Text(context.t.switchAccounts.waitingForConfirmation)),
         const SizedBox(height: 12),
         Center(
-          child: OutlinedButton(onPressed: _busy ? null : _sendConfirmationEmail, child: const Text('Resend email')),
+          child: OutlinedButton(onPressed: _busy ? null : _sendConfirmationEmail, child: Text(context.t.switchAccounts.resendEmail)),
         ),
         ..._errorAndBusy(context),
       ],
@@ -597,8 +599,8 @@ class _SwitchAccountsPaneState extends State<SwitchAccountsPane> {
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        const Text(
-          'Scan this QR code from a device already linked to the account you want — for example with Ham2K Portable Logger on your phone.',
+        Text(
+          context.t.switchAccounts.qrPrompt,
         ),
         const SizedBox(height: 16),
         Center(
@@ -613,7 +615,7 @@ class _SwitchAccountsPaneState extends State<SwitchAccountsPane> {
                   child: QrImageView(key: ValueKey(url), data: url, size: 200),
                 ),
         ),
-        if (url != null) ...[const SizedBox(height: 16), const Center(child: Text('Waiting for confirmation…'))],
+        if (url != null) ...[const SizedBox(height: 16), Center(child: Text(context.t.switchAccounts.waitingForConfirmation))],
         ..._errorAndBusy(context),
       ],
     );

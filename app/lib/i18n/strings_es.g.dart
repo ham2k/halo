@@ -49,6 +49,7 @@ class TranslationsEs extends Translations with BaseTranslations<AppLocale, Trans
 	@override late final _Translations$map$es map = _Translations$map$es._(_root);
 	@override late final _Translations$activitiesView$es activitiesView = _Translations$activitiesView$es._(_root);
 	@override late final _Translations$loggingControls$es loggingControls = _Translations$loggingControls$es._(_root);
+	@override late final _Translations$formChrome$es formChrome = _Translations$formChrome$es._(_root);
 	@override late final _Translations$qsoEditForm$es qsoEditForm = _Translations$qsoEditForm$es._(_root);
 	@override late final _Translations$qsoList$es qsoList = _Translations$qsoList$es._(_root);
 	@override late final _Translations$loggingPanel$es loggingPanel = _Translations$loggingPanel$es._(_root);
@@ -62,6 +63,7 @@ class TranslationsEs extends Translations with BaseTranslations<AppLocale, Trans
 	@override late final _Translations$operationLocationScreen$es operationLocationScreen = _Translations$operationLocationScreen$es._(_root);
 	@override late final _Translations$versionLabel$es versionLabel = _Translations$versionLabel$es._(_root);
 	@override late final _Translations$notices$es notices = _Translations$notices$es._(_root);
+	@override late final _Translations$switchAccounts$es switchAccounts = _Translations$switchAccounts$es._(_root);
 }
 
 // Path: common
@@ -261,6 +263,8 @@ class _Translations$loggingControls$es extends Translations$loggingControls$en {
 	@override String get timeControl => 'Hora';
 	@override String get radioControl => 'Radio';
 	@override String get controlSettings => 'Controles de registro';
+	@override String get expandControls => 'Expandir';
+	@override String get collapseControls => 'Contraer';
 	@override String get spottingControl => 'Spotting';
 	@override String get spottingSelfControl => 'Auto-spot';
 	@override String spotSelfAt({required Object freq}) => 'Auto-spot en ${freq}';
@@ -269,6 +273,34 @@ class _Translations$loggingControls$es extends Translations$loggingControls$en {
 	@override String get spotNoFreq => 'Primero define una frecuencia para spotear';
 	@override String get spotComment => 'Comentario';
 	@override late final _Translations$loggingControls$info$es info = _Translations$loggingControls$info$es._(_root);
+}
+
+// Path: formChrome
+class _Translations$formChrome$es extends Translations$formChrome$en {
+	_Translations$formChrome$es._(TranslationsEs root) : this._root = root, super.internal(root);
+
+	final TranslationsEs _root; // ignore: unused_field
+
+	// Translations
+	@override String get untitled => '(sin título)';
+	@override String get showMore => 'Mostrar más';
+	@override String get showAll => 'Mostrar todo';
+	@override String get showFewer => 'Mostrar menos';
+	@override String get defaults => 'Predeterminados';
+	@override String get search => 'Buscar';
+	@override String get clear => 'Limpiar';
+	@override String get openPage => 'Abrir página';
+	@override String get connected => 'Conectado';
+	@override String get notConnected => 'No conectado';
+	@override String get manage => 'Administrar';
+	@override String get connect => 'Conectar';
+	@override String get formTitle => 'Formulario';
+	@override String addItem({required Object label}) => 'Añadir ${label}';
+	@override String editItem({required Object label}) => 'Editar ${label}';
+	@override String multiselectStatus({required Object shown, required Object total, required Object selected}) => 'Mostrando ${shown} de ${total} (${selected} seleccionados)';
+	@override String validationError({required Object error}) => 'Error de validación: ${error}';
+	@override String transformationError({required Object error}) => 'Error de transformación: ${error}';
+	@override String actionError({required Object error}) => 'Error: ${error}';
 }
 
 // Path: qsoEditForm
@@ -497,6 +529,43 @@ class _Translations$notices$es extends Translations$notices$en {
 
 	// Translations
 	@override String get emptyHistory => 'Aún no hay avisos';
+}
+
+// Path: switchAccounts
+class _Translations$switchAccounts$es extends Translations$switchAccounts$en {
+	_Translations$switchAccounts$es._(TranslationsEs root) : this._root = root, super.internal(root);
+
+	final TranslationsEs _root; // ignore: unused_field
+
+	// Translations
+	@override String get noCallsignOrEmail => 'Aún sin indicativo ni email';
+	@override String get currentAccount => 'Cuenta actual';
+	@override String get otherAccounts => 'Otras cuentas';
+	@override String get linkToAnother => 'Vincular a otra cuenta';
+	@override String get linkWithQr => 'Vincular con un código QR';
+	@override String get linkWithQrDescription => 'Escanéalo desde un dispositivo que ya use la cuenta';
+	@override String get linkWithEmail => 'Vincular con una dirección de email';
+	@override String get linkWithEmailDescription => 'Confirma con un código o un enlace por email';
+	@override String get enterEmailPrompt => 'Escribe la dirección de email de la cuenta que quieres usar en este dispositivo.';
+	@override String get emailAddress => 'Dirección de email';
+	@override String get linkAccount => 'Vincular cuenta';
+	@override String get copiedCode => 'Código copiado al portapapeles';
+	@override String get copyCode => 'Copiar código';
+	@override String codePrompt({required Object email}) => 'Abre la app Ham2K en un dispositivo ya vinculado con ${email} e introduce este código para aprobar la solicitud:';
+	@override String get waitingForConfirmation => 'Esperando confirmación…';
+	@override String get sendEmailInstead => 'Enviar un email de confirmación en su lugar';
+	@override String emailSent({required Object email}) => 'Se envió un email a ${email}. Ábrelo y confirma la solicitud para vincular este dispositivo.';
+	@override String get resendEmail => 'Reenviar email';
+	@override String get qrPrompt => 'Escanea este código QR desde un dispositivo ya vinculado a la cuenta que quieres — por ejemplo, con Ham2K Portable Logger en tu teléfono.';
+	@override String get serverUnreachable => 'No se pudo contactar el servidor de sincronización. Inténtalo más tarde.';
+	@override String qsoCount({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count,
+		one: '${count} QSO',
+		other: '${count} QSOs',
+	);
+	@override String operationCount({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count,
+		one: '${count} operación',
+		other: '${count} operaciones',
+	);
 }
 
 // Path: operation.tabs
@@ -1224,6 +1293,8 @@ extension on TranslationsEs {
 			'loggingControls.timeControl' => 'Hora',
 			'loggingControls.radioControl' => 'Radio',
 			'loggingControls.controlSettings' => 'Controles de registro',
+			'loggingControls.expandControls' => 'Expandir',
+			'loggingControls.collapseControls' => 'Contraer',
 			'loggingControls.spottingControl' => 'Spotting',
 			'loggingControls.spottingSelfControl' => 'Auto-spot',
 			'loggingControls.spotSelfAt' => ({required Object freq}) => 'Auto-spot en ${freq}',
@@ -1246,6 +1317,25 @@ extension on TranslationsEs {
 			'loggingControls.info.noticeNewBand' => 'Nueva Banda',
 			'loggingControls.info.noticeNewMode' => 'Nuevo Modo',
 			'loggingControls.info.noticeNewDXCC' => 'Nuevo DXCC',
+			'formChrome.untitled' => '(sin título)',
+			'formChrome.showMore' => 'Mostrar más',
+			'formChrome.showAll' => 'Mostrar todo',
+			'formChrome.showFewer' => 'Mostrar menos',
+			'formChrome.defaults' => 'Predeterminados',
+			'formChrome.search' => 'Buscar',
+			'formChrome.clear' => 'Limpiar',
+			'formChrome.openPage' => 'Abrir página',
+			'formChrome.connected' => 'Conectado',
+			'formChrome.notConnected' => 'No conectado',
+			'formChrome.manage' => 'Administrar',
+			'formChrome.connect' => 'Conectar',
+			'formChrome.formTitle' => 'Formulario',
+			'formChrome.addItem' => ({required Object label}) => 'Añadir ${label}',
+			'formChrome.editItem' => ({required Object label}) => 'Editar ${label}',
+			'formChrome.multiselectStatus' => ({required Object shown, required Object total, required Object selected}) => 'Mostrando ${shown} de ${total} (${selected} seleccionados)',
+			'formChrome.validationError' => ({required Object error}) => 'Error de validación: ${error}',
+			'formChrome.transformationError' => ({required Object error}) => 'Error de transformación: ${error}',
+			'formChrome.actionError' => ({required Object error}) => 'Error: ${error}',
 			'qsoEditForm.title' => 'Editar QSO',
 			'qsoEditForm.theirName' => 'Nombre',
 			'qsoEditForm.theirGrid' => 'Locador',
@@ -1489,6 +1579,28 @@ extension on TranslationsEs {
 			'versionLabel.version' => ({required Object version}) => 'Versión ${version}',
 			'versionLabel.versionBuild' => ({required Object version, required Object build}) => 'Versión ${version} - Build ${build}',
 			'notices.emptyHistory' => 'Aún no hay avisos',
+			'switchAccounts.noCallsignOrEmail' => 'Aún sin indicativo ni email',
+			'switchAccounts.currentAccount' => 'Cuenta actual',
+			'switchAccounts.otherAccounts' => 'Otras cuentas',
+			'switchAccounts.linkToAnother' => 'Vincular a otra cuenta',
+			'switchAccounts.linkWithQr' => 'Vincular con un código QR',
+			'switchAccounts.linkWithQrDescription' => 'Escanéalo desde un dispositivo que ya use la cuenta',
+			'switchAccounts.linkWithEmail' => 'Vincular con una dirección de email',
+			'switchAccounts.linkWithEmailDescription' => 'Confirma con un código o un enlace por email',
+			'switchAccounts.enterEmailPrompt' => 'Escribe la dirección de email de la cuenta que quieres usar en este dispositivo.',
+			'switchAccounts.emailAddress' => 'Dirección de email',
+			'switchAccounts.linkAccount' => 'Vincular cuenta',
+			'switchAccounts.copiedCode' => 'Código copiado al portapapeles',
+			'switchAccounts.copyCode' => 'Copiar código',
+			'switchAccounts.codePrompt' => ({required Object email}) => 'Abre la app Ham2K en un dispositivo ya vinculado con ${email} e introduce este código para aprobar la solicitud:',
+			'switchAccounts.waitingForConfirmation' => 'Esperando confirmación…',
+			'switchAccounts.sendEmailInstead' => 'Enviar un email de confirmación en su lugar',
+			'switchAccounts.emailSent' => ({required Object email}) => 'Se envió un email a ${email}. Ábrelo y confirma la solicitud para vincular este dispositivo.',
+			'switchAccounts.resendEmail' => 'Reenviar email',
+			'switchAccounts.qrPrompt' => 'Escanea este código QR desde un dispositivo ya vinculado a la cuenta que quieres — por ejemplo, con Ham2K Portable Logger en tu teléfono.',
+			'switchAccounts.serverUnreachable' => 'No se pudo contactar el servidor de sincronización. Inténtalo más tarde.',
+			'switchAccounts.qsoCount' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count, one: '${count} QSO', other: '${count} QSOs', ), 
+			'switchAccounts.operationCount' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count, one: '${count} operación', other: '${count} operaciones', ), 
 			_ => null,
 		};
 	}

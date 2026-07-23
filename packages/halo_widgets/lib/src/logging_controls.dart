@@ -369,6 +369,15 @@ class LoggingControls extends StatefulWidget {
   final String? saveLabel;
   final String? cancelLabel;
 
+  /// The secondary control row's grid expand/collapse caret tooltips.
+  final String? expandControlsTooltip;
+  final String? collapseControlsTooltip;
+
+  /// Localized chrome for the "More" full-edit pane's form renderer
+  /// (Cancel/Save buttons, close tooltip, error prefixes — see
+  /// FormRendererLabels). Null keeps the English defaults.
+  final FormRendererLabels? formLabels;
+
   /// The band/mode options offered by the Radio control's dropdowns — the
   /// user's enabled lists from Settings (Logging → Bands/Modes). Null falls
   /// back to the full catalogs from halo_core; empty falls back to the
@@ -482,6 +491,9 @@ class LoggingControls extends StatefulWidget {
     this.controlSettingsTitle,
     this.saveLabel,
     this.cancelLabel,
+    this.expandControlsTooltip,
+    this.collapseControlsTooltip,
+    this.formLabels,
     this.enabledBands,
     this.enabledModes,
     this.suggestSpotSources,
@@ -2723,6 +2735,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
 
     final result = await showFormPane(
       context,
+      labels: widget.formLabels ?? FormRendererLabels.english,
       formDefinition: _buildQsoEditFormDefinition(),
       initialState: {
         'theirCall': _call,
@@ -3754,6 +3767,8 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
                             onSelect: _onSelectControl,
                             onOpenSettings: _openControlSettingsDialog,
                             horizontalBleed: _secondaryPanelHorizontalInset,
+                            expandTooltip: widget.expandControlsTooltip,
+                            collapseTooltip: widget.collapseControlsTooltip,
                             // The dupe warning (and the other scoring notices)
                             // now live on the info area's third line — see
                             // `_buildInfoArea` (issue #40).

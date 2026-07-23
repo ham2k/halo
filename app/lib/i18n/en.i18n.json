@@ -196,6 +196,8 @@
     "timeControl": "Time",
     "radioControl": "Radio",
     "controlSettings": "Logging Controls",
+    "expandControls": "Expand",
+    "collapseControls": "Collapse",
     "spottingControl": "Spotting",
     "spottingSelfControl": "Self-spotting",
     "spotSelfAt": "Self-spot at ${freq}",
@@ -220,6 +222,27 @@
       "noticeNewMode": "New Mode",
       "noticeNewDXCC": "New DXCC"
     }
+  },
+  "formChrome": {
+    "untitled": "(untitled)",
+    "showMore": "Show more",
+    "showAll": "Show all",
+    "showFewer": "Show fewer",
+    "defaults": "Defaults",
+    "search": "Search",
+    "clear": "Clear",
+    "openPage": "Open page",
+    "connected": "Connected",
+    "notConnected": "Not Connected",
+    "manage": "Manage",
+    "connect": "Connect",
+    "formTitle": "Form",
+    "addItem": "Add ${label}",
+    "editItem": "Edit ${label}",
+    "multiselectStatus": "Showing ${shown} of ${total} (${selected} selected)",
+    "validationError": "Validation error: ${error}",
+    "transformationError": "Transformation error: ${error}",
+    "actionError": "Error: ${error}"
   },
   "qsoEditForm": {
     "title": "Edit QSO",
@@ -556,5 +579,35 @@
   },
   "notices": {
     "emptyHistory": "No notices yet"
+  },
+  "switchAccounts": {
+    "noCallsignOrEmail": "No callsign or email yet",
+    "currentAccount": "Current account",
+    "otherAccounts": "Other accounts",
+    "linkToAnother": "Link to another account",
+    "linkWithQr": "Link with a QR code",
+    "linkWithQrDescription": "Scan it from a device already using the account",
+    "linkWithEmail": "Link with an email address",
+    "linkWithEmailDescription": "Confirm with a code or an email link",
+    "enterEmailPrompt": "Enter the email address of the account you want this device to use.",
+    "emailAddress": "Email address",
+    "linkAccount": "Link account",
+    "copiedCode": "Copied code to clipboard",
+    "copyCode": "Copy code",
+    "codePrompt": "Open the Ham2K app on a device already linked with ${email} and enter this code to approve the request:",
+    "waitingForConfirmation": "Waiting for confirmation…",
+    "sendEmailInstead": "Send a confirmation email instead",
+    "emailSent": "An email was sent to ${email}. Open it and confirm the request to link this device.",
+    "resendEmail": "Resend email",
+    "qrPrompt": "Scan this QR code from a device already linked to the account you want — for example with Ham2K Portable Logger on your phone.",
+    "serverUnreachable": "Could not reach the sync server. Try again later.",
+    "qsoCount": {
+      "one": "${count} QSO",
+      "other": "${count} QSOs"
+    },
+    "operationCount": {
+      "one": "${count} operation",
+      "other": "${count} operations"
+    }
   }
 }

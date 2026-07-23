@@ -13,6 +13,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:halo_widgets/halo_widgets.dart';
+import 'package:ham2k_logger/i18n/strings.g.dart';
 import 'package:ham2k_logger/views/switch_accounts_dialog.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 
@@ -33,7 +34,8 @@ Future<void> pumpDialog(
   List<bool?>? results,
 }) async {
   await tester.pumpWidget(
-    MaterialApp(
+    TranslationProvider(
+        child: MaterialApp(
       home: Builder(
         builder: (context) => TextButton(
           onPressed: () async {
@@ -57,7 +59,7 @@ Future<void> pumpDialog(
           child: const Text('open'),
         ),
       ),
-    ),
+    )),
   );
   await tester.tap(find.text('open'));
   await tester.pumpAndSettle();
