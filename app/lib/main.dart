@@ -395,13 +395,15 @@ class HaLoServices {
         statusBar: statusBar,
       );
   late final StatusBarService statusBar = StatusBarService(settings.prefs);
-  late final LookupQueueService lookupQueue = LookupQueueService(
-    lookup: extensions.lookupCall,
-    qsos: qsos,
-    operations: operations,
-    statusBar: statusBar,
-    lookupReady: () => extensions.ready,
-  );
+  final LookupQueueService? _lookupQueueOverride;
+  late final LookupQueueService lookupQueue = _lookupQueueOverride ??
+      LookupQueueService(
+        lookup: extensions.lookupCall,
+        qsos: qsos,
+        operations: operations,
+        statusBar: statusBar,
+        lookupReady: () => extensions.ready,
+      );
 
   /// Server-driven feature flags + notices for the active profile callsign
   /// (see FlagsService). Refreshed at boot and whenever the callsign changes
@@ -504,6 +506,7 @@ class HaLoServices {
     PurchaseService? purchases,
     UpdateService? updates,
     DataFileManager? dataFiles,
+    LookupQueueService? lookupQueue,
   })  : extensions = extensions ?? ExtensionService(),
         metrics = metrics ?? const NoopMetricsService(),
         purchases = purchases ?? const NoopPurchaseService(),
@@ -511,7 +514,8 @@ class HaLoServices {
         // never touch the Shorebird FFI; bootstrap() injects the real
         // ShorebirdUpdateService for the running app.
         updates = updates ?? const NoopUpdateService(),
-        _dataFilesOverride = dataFiles {
+        _dataFilesOverride = dataFiles,
+        _lookupQueueOverride = lookupQueue {
     this.extensions.settings = settings;
     this.extensions.lookups = lookups;
     this.extensions.statusBar = statusBar;

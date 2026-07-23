@@ -814,7 +814,9 @@ void main() {
     expect(enqueued.map((q) => q.uuid).toSet(), logged.map((q) => q.uuid).toSet());
   });
 
-  testWidgets('editing a QSO into a comma-separated list: the original record survives untouched; only the newly added call is enqueued for background lookup', (tester) async {
+  testWidgets(
+      'editing a QSO into a comma-separated list: the original record survives untouched; saving only enqueues the newly added call, not the original again',
+      (tester) async {
     final existingQso = (await tester.runAsync(() => qsos.add(operation.uuid, {
           'their': {'call': 'W1AW', 'name': 'Stale Cached Name', 'grid': 'FN31pr'},
           'startAtMillis': 1000000,
@@ -831,6 +833,10 @@ void main() {
         ),
       ),
     ));
+    // Opening it for editing enqueues it once, on its own (it never had an
+    // online lookup) — asserted here so the rest of this test can focus on
+    // what SAVING does, without that opening-time enqueue muddying it.
+    expect(enqueued.map((q) => q.uuid).toList(), [existingQso.uuid]);
 
     await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'W1AW, K1ABC');
     await tester.pump();
@@ -847,9 +853,44 @@ void main() {
     expect(w1aw.theirGrid, 'FN31pr');
     // The newly added call is saved bare and queued for its own
     // independent background lookup, rather than inheriting anything
-    // cached for the original call.
+    // cached for the original call — and saving doesn't enqueue the
+    // original record a second time.
     expect(k1abc.theirName, isNull);
-    expect(enqueued.map((q) => q.uuid).toList(), [k1abc.uuid]);
+    expect(enqueued.map((q) => q.uuid).toList(), [existingQso.uuid, k1abc.uuid]);
+  });
+
+  testWidgets('constructed already editing a QSO enqueues it for a background lookup (ham2k/app-halo-dist#279 follow-up)',
+      (tester) async {
+    final existingQso = (await tester.runAsync(() => qsos.add(operation.uuid, {
+          'their': {'call': 'W1AW'},
+        })))!;
+
+    final enqueued = <Qso>[];
+    await tester.pumpWidget(host(editingQso: existingQso, enqueueLookup: enqueued.add));
+
+    // enqueueLookup itself decides (via LookupQueueService, tested
+    // separately) whether the record actually needs a fresh lookup —
+    // LoggingControls' job is just to always offer it up on open.
+    expect(enqueued.map((q) => q.uuid).toList(), [existingQso.uuid]);
+  });
+
+  testWidgets('selecting a different QSO to edit (not constructing already editing one) also enqueues it',
+      (tester) async {
+    final first = (await tester.runAsync(() => qsos.add(operation.uuid, {
+          'their': {'call': 'W1AW'},
+        })))!;
+    final second = (await tester.runAsync(() => qsos.add(operation.uuid, {
+          'their': {'call': 'K1ABC'},
+        })))!;
+
+    final enqueued = <Qso>[];
+    await tester.pumpWidget(host(editingQso: first, enqueueLookup: enqueued.add));
+    expect(enqueued.map((q) => q.uuid).toList(), [first.uuid]);
+
+    // Same widget, editingQso transitions via didUpdateWidget — not a fresh
+    // construction, the other code path that also has to enqueue.
+    await tester.pumpWidget(host(editingQso: second, enqueueLookup: enqueued.add));
+    expect(enqueued.map((q) => q.uuid).toList(), [first.uuid, second.uuid]);
   });
 
   testWidgets('a single-call log keeps its debounced preview result and is still handed to the background queue', (tester) async {

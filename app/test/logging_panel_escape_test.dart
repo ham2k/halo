@@ -19,7 +19,9 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:ham2k_logger/i18n/strings.g.dart';
 import 'package:ham2k_logger/main.dart';
+import 'package:ham2k_logger/services/lookup_queue_service.dart';
 import 'package:ham2k_logger/services/settings_service.dart';
+import 'package:ham2k_logger/services/status_bar_service.dart';
 import 'package:ham2k_logger/views/operation/logging_panel.dart';
 
 void main() {
@@ -33,7 +35,24 @@ void main() {
     SharedPreferences.setMockInitialValues({});
     final settings = SettingsService(await SharedPreferences.getInstance());
     final db = HaLoDatabase(NativeDatabase.memory());
-    services = HaLoServices(db, settings);
+    // Selecting a QSO for editing now enqueues it for a background lookup
+    // (ham2k/app-halo-dist#279's follow-up) — the default LookupQueueService
+    // waits (real time) for the extension runtime to report ready, which
+    // never happens in these widget tests and leaves a timer pending past
+    // teardown. A no-op lookup with no wait budget keeps the queue instant
+    // and inert here; its own repos/status bar just read/write the same
+    // underlying db as `services`' own (unused otherwise in these tests).
+    services = HaLoServices(
+      db,
+      settings,
+      lookupQueue: LookupQueueService(
+        lookup: (call, {required qso, required operation, required online}) async => null,
+        qsos: QsosRepository(db),
+        operations: OperationsRepository(db),
+        statusBar: StatusBarService(settings.prefs),
+        runtimeWaitBudget: Duration.zero,
+      ),
+    );
     operation = await services.operations.create(stationCall: 'N0CALL', title: 'Test Op');
     qso = await services.qsos.add(operation.uuid, {
       'their': {'call': 'W1AW', 'sent': '59'},
@@ -86,6 +105,7 @@ void main() {
     // Back to composing a new QSO — nothing is being edited anymore, even
     // though the tap that selected it never focused a compose field.
     expect(isEditing(tester), isFalse);
+    await drainLookupQueueTimer(tester);
   });
 
   testWidgets('a second Escape re-selects the QSO the first one deselected', (tester) async {
@@ -114,6 +134,7 @@ void main() {
     expect(isEditing(tester), isTrue);
     final rcvdField = tester.widget<TextField>(find.widgetWithText(TextField, 'Rcvd'));
     expect(rcvdField.controller!.text, '59');
+    await drainLookupQueueTimer(tester);
   });
 
   testWidgets('Escape does not close an already-deleted QSO\'s locked, read-only view', (tester) async {
@@ -143,6 +164,7 @@ void main() {
 
     // Still locked on the same QSO — Escape must not have deselected it.
     expect(infoRowButton('Restore'), findsOneWidget);
+    await drainLookupQueueTimer(tester);
   });
 
   testWidgets('selecting a different QSO drops a pending deselect-undo, so a later Escape does not resurrect it',
@@ -187,5 +209,13 @@ void main() {
     // Nothing to undo anymore — W1AW's stale undo slot was cleared by the
     // K1ABC selection, so this Escape is a no-op, not a resurrection of W1AW.
     expect(isEditing(tester), isFalse);
+    await drainLookupQueueTimer(tester);
   });
 }
+
+/// Selecting a QSO for editing now enqueues it for a background lookup
+/// (ham2k/app-halo-dist#279's follow-up). Once that (stubbed, instant)
+/// lookup completes, `StatusBarService.setProgress` schedules a 5s
+/// auto-clear timer for the finished progress item — drain it before the
+/// test ends, or the framework flags it as a leaked pending timer.
+Future<void> drainLookupQueueTimer(WidgetTester tester) => tester.pump(const Duration(seconds: 5));

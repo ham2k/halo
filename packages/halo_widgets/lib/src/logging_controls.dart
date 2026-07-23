@@ -873,9 +873,16 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     }
     _refreshSpotSources();
     // Constructed already editing a QSO (rather than transitioning into it via
-    // didUpdateWidget): score it so its pills show. Guarded on _callInfoActive
-    // so this only schedules a timer here — never setStates during initState.
-    if (widget.editingQso != null && _callInfoActive) _scheduleScore();
+    // didUpdateWidget): score it so its pills show, and enqueue it for a
+    // background lookup if it never got one — same as _populateFromEditingQso
+    // does for the transition case. Scoring is guarded on _callInfoActive so
+    // it only schedules a timer here — never setStates during initState;
+    // enqueueLookup needs no such guard, it's fire-and-forget into the
+    // caller's own queue.
+    if (widget.editingQso != null) {
+      if (_callInfoActive) _scheduleScore();
+      widget.enqueueLookup?.call(widget.editingQso!);
+    }
     // Wire the imperative handle (used by the app's dev bridge) so the call
     // field / Log / Wipe can be driven from outside the widget.
     widget.controller?.attach(setField: _devSetField, submit: _log, wipe: _wipe, isFieldsLocked: () => _fieldsLocked);
@@ -981,6 +988,12 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     // same way they do while composing — populate suppressed _onCallChanged's
     // own trigger.
     _scheduleScore();
+    // A QSO logged before its online lookup ever ran (e.g. offline, or a
+    // quick log with the runtime still booting) should get one now rather
+    // than sit unenriched until the next background pass — `enqueueLookup`
+    // already skips QSOs that already have real (non-annotation-only)
+    // lookup data, so this is a no-op for anything already enriched.
+    widget.enqueueLookup?.call(qso);
   }
 
   /// Populates controllers/state from a `suggestedQso` map (e.g. tapping a
