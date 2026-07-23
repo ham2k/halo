@@ -344,6 +344,7 @@ Future<HaLoServices> bootstrap({
   WindowChromeService.onOpenSettings = () => navigatorKey.currentState?.push(
         MaterialPageRoute(builder: (_) => SettingsView(services: services)),
       );
+  WindowChromeService.onCheckForUpdates = () => unawaited(const AutoUpdateService().checkForUpdatesInteractively());
 
   // Await the extension system being fully booted, then initialize and sync data files
   unawaited(extensions.start().then((_) async {

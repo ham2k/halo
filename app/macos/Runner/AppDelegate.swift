@@ -17,6 +17,10 @@ class AppDelegate: FlutterAppDelegate {
     windowChromeChannel?.invokeMethod("menuPreferences", arguments: nil)
   }
 
+  @objc func menuCheckForUpdates(_ sender: Any?) {
+    windowChromeChannel?.invokeMethod("menuCheckForUpdates", arguments: nil)
+  }
+
   override func applicationDidFinishLaunching(_ notification: Notification) {
     // Only one instance of the app runs at a time: if another instance (by
     // bundle identifier) is already up, bring it to the front and quit this

@@ -33,6 +33,10 @@ class WindowChromeService {
   static void Function()? onShowReleaseOverlay;
   static void Function()? onOpenSettings;
 
+  /// Chosen from the macOS app menu's "Check for Updates…" item (below About) —
+  /// a user-initiated, full-UI update check (see AutoUpdateService).
+  static void Function()? onCheckForUpdates;
+
   static bool get _supported => !kIsWeb && defaultTargetPlatform == TargetPlatform.macOS;
 
   /// Platforms where the runner strips the native window chrome and this
@@ -62,6 +66,8 @@ class WindowChromeService {
         onShowReleaseOverlay?.call();
       } else if (call.method == 'menuPreferences') {
         onOpenSettings?.call();
+      } else if (call.method == 'menuCheckForUpdates') {
+        onCheckForUpdates?.call();
       }
       return null;
     });

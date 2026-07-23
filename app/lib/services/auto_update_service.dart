@@ -50,17 +50,34 @@ class AutoUpdateService {
   /// `https://updates.ham2k.net/next/macos/appcast.xml`.
   String get feedUrl => '$_baseUrl/${kEdition.name}/$_platform/appcast.xml';
 
-  /// Point the native updater at this build's feed and run a background check.
-  /// Fire-and-forget: Sparkle/WinSparkle drive their own UI from here.
+  /// Point the native updater at this build's feed and enable silent scheduled
+  /// checks. Deliberately does NOT run an interactive check here: the startup
+  /// check must stay silent — Sparkle/WinSparkle's scheduled checks only surface
+  /// UI when an update is actually available, never a "you're up to date"
+  /// dialog. For an explicit, user-asked check (the "Check for Updates…" menu
+  /// item) use [checkForUpdatesInteractively].
   Future<void> start() async {
     if (!_isSupported) return;
     try {
       await autoUpdater.setFeedURL(feedUrl);
       await autoUpdater.setScheduledCheckInterval(_checkIntervalSeconds);
+    } catch (e) {
+      // A failed setup must never break startup — just log it.
+      debugPrint('[auto-update] setup failed for $feedUrl: $e');
+    }
+  }
+
+  /// A user-initiated check (the macOS "Check for Updates…" menu item). Unlike
+  /// the silent [start] check, this shows the native updater's full UI —
+  /// including a "you're up to date" dialog when there's nothing new — because
+  /// the user explicitly asked and should get an answer either way.
+  Future<void> checkForUpdatesInteractively() async {
+    if (!_isSupported) return;
+    try {
+      await autoUpdater.setFeedURL(feedUrl);
       await autoUpdater.checkForUpdates();
     } catch (e) {
-      // A failed check must never break startup — just log it.
-      debugPrint('[auto-update] check failed for $feedUrl: $e');
+      debugPrint('[auto-update] manual check failed for $feedUrl: $e');
     }
   }
 }
