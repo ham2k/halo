@@ -24,6 +24,7 @@ import '../config/experiments.dart';
 import '../config/release_notes.dart';
 import '../config/user_agent.dart';
 import '../config/version.dart';
+import '../i18n/strings.g.dart';
 import '../main.dart';
 import '../services/data_file_manager.dart';
 import '../services/deep_link_service.dart';
@@ -81,42 +82,44 @@ class _SettingsPanelEntry {
   String get effectiveScreenTitle => screenTitle ?? title;
 }
 
-const _fixedCorePanels = [
-  // The whitelisted subset of the declarative settings registry (see
-  // settings_registry.dart); the full set lives under All Settings.
-  _SettingsPanelEntry(
-      key: 'settings',
-      title: 'Common Preferences',
-      icon: Icons.tune,
-      order: 0,
-      description: 'Appearance, language, and everyday settings'),
-  // Immediately after Common Preferences: every declared group — core, sync,
-  // and extension — in one place.
-  _SettingsPanelEntry(
-      key: 'all_settings',
-      title: 'All Settings',
-      icon: Icons.settings,
-      order: 5,
-      description: 'Every available setting in one place'),
-  _SettingsPanelEntry(
-      key: 'sync',
-      title: 'LoFi Cloud Sync',
-      icon: Icons.sync,
-      order: 10,
-      description: 'Back up and sync your logs across devices'),
-  _SettingsPanelEntry(
-      key: 'accounts',
-      title: 'Accounts & Services',
-      icon: Icons.vpn_key,
-      order: 20,
-      description: 'Sign in to online services and lookups'),
-  _SettingsPanelEntry(
-      key: 'extensions',
-      title: 'Features & Extensions',
-      icon: Icons.extension,
-      order: 40,
-      description: 'Turn optional features on or off'),
-];
+// A function of the current translations (not a const list) so the sidebar
+// follows the app locale like the panel bodies do.
+List<_SettingsPanelEntry> _fixedCorePanels(Translations t) => [
+      // The whitelisted subset of the declarative settings registry (see
+      // settings_registry.dart); the full set lives under All Settings.
+      _SettingsPanelEntry(
+          key: 'settings',
+          title: t.settings.panels.commonPreferences,
+          icon: Icons.tune,
+          order: 0,
+          description: t.settings.panels.commonPreferencesDescription),
+      // Immediately after Common Preferences: every declared group — core,
+      // sync, and extension — in one place.
+      _SettingsPanelEntry(
+          key: 'all_settings',
+          title: t.settings.panels.allSettings,
+          icon: Icons.settings,
+          order: 5,
+          description: t.settings.panels.allSettingsDescription),
+      _SettingsPanelEntry(
+          key: 'sync',
+          title: t.settings.sync.title,
+          icon: Icons.sync,
+          order: 10,
+          description: t.settings.panels.syncDescription),
+      _SettingsPanelEntry(
+          key: 'accounts',
+          title: t.settings.accounts.title,
+          icon: Icons.vpn_key,
+          order: 20,
+          description: t.settings.panels.accountsDescription),
+      _SettingsPanelEntry(
+          key: 'extensions',
+          title: t.settings.panels.extensions,
+          icon: Icons.extension,
+          order: 40,
+          description: t.settings.panels.extensionsDescription),
+    ];
 // Before Common Preferences (order 0) — the Profiles panel leads the list.
 // Internally "profiles"; until multi-profile features are enabled it
 // presents itself as just "Callsign".
@@ -181,8 +184,8 @@ class _SettingsViewState extends State<SettingsView> {
       widget.services.statusBar.showNotice(
         key: 'settings_extensions_unavailable',
         icon: 'alert-circle',
-        title: 'Some settings are unavailable',
-        text: 'The extension runtime failed to start, so extension-contributed settings are missing.',
+        title: t.settings.panels.unavailableTitle,
+        text: t.settings.panels.unavailableText,
       );
     }
     if (mounted) {
@@ -193,29 +196,29 @@ class _SettingsViewState extends State<SettingsView> {
     }
   }
 
-  List<_SettingsPanelEntry> _buildPanelEntries(SettingsService settings) {
+  List<_SettingsPanelEntry> _buildPanelEntries(SettingsService settings, Translations t) {
     final operatorCall = settings.activeProfile.operatorCall;
     final entries = [
       _SettingsPanelEntry(
         key: 'profiles',
-        title: 'Callsign',
+        title: t.common.callsign,
         monoDetail: operatorCall.isEmpty ? null : operatorCall,
-        description: 'Operator callsign and station profile',
-        screenTitle: 'Station Profiles',
+        description: t.settings.panels.profilesDescription,
+        screenTitle: t.settings.panels.stationProfiles,
         icon: resolveIconName('account'),
         order: _profilesPanelOrder,
       ),
-      ..._fixedCorePanels,
+      ..._fixedCorePanels(t),
       // After the extension-contributed panels (default order 50): data
       // files are contributed by extensions too, so they sit alongside
-      // them. Not in the const _fixedCorePanels because its icon resolves
-      // an MDI name at runtime.
+      // them. Not in _fixedCorePanels because its icon resolves an MDI
+      // name at runtime.
       _SettingsPanelEntry(
         key: 'data_files',
-        title: 'Data Files',
+        title: t.settings.panels.dataFiles,
         icon: resolveIconName('file-cabinet'),
         order: 60,
-        description: 'Manage cached data sources',
+        description: t.settings.panels.dataFilesDescription,
       ),
       for (final p in _extensionPanels)
         _SettingsPanelEntry(
@@ -226,19 +229,19 @@ class _SettingsViewState extends State<SettingsView> {
           descriptor: p,
         ),
       if (settings.developerMode)
-        const _SettingsPanelEntry(
+        _SettingsPanelEntry(
           key: 'developer',
-          title: 'Developer Settings',
+          title: t.settings.panels.developerSettings,
           icon: Icons.bug_report,
           order: _developerPanelOrder,
-          description: 'Debugging and development tools',
+          description: t.settings.panels.developerSettingsDescription,
         ),
-      const _SettingsPanelEntry(
+      _SettingsPanelEntry(
           key: 'about',
-          title: 'About',
+          title: t.settings.panels.about,
           icon: Icons.info,
           order: _aboutPanelOrder,
-          description: 'Version, credits, and legal information'),
+          description: t.settings.panels.aboutDescription),
     ];
     entries.sort((a, b) => a.order.compareTo(b.order));
     return entries;
@@ -254,7 +257,7 @@ class _SettingsViewState extends State<SettingsView> {
   Widget _buildContent(BuildContext context, SettingsService settings) {
     final bool isWide = ShirtSize.of(context).isTwoPane;
 
-    final panels = _buildPanelEntries(settings);
+    final panels = _buildPanelEntries(settings, context.t);
     final selectionExists = panels.any((p) => p.key == _selectedPanel);
     final effectivePanel = selectionExists ? panels.firstWhere((p) => p.key == _selectedPanel) : panels.first;
     if (!selectionExists && _extensionPanelsLoaded) {
@@ -289,7 +292,7 @@ class _SettingsViewState extends State<SettingsView> {
               flexibleSpace: windowHeaderGestureArea(),
               leadingWidth: macOSAwareLeadingWidth(context),
               leading: macOSAwareBackButton(context),
-              title: shrinkToFitText(const Text('Settings')),
+              title: shrinkToFitText(Text(context.t.settings.title)),
             ),
             body: _buildSidebar(context, isWide: true, panels: panels, selectedKey: effectivePanel.key),
           ),
@@ -337,7 +340,7 @@ class _SettingsViewState extends State<SettingsView> {
           flexibleSpace: windowHeaderGestureArea(),
           leadingWidth: macOSAwareLeadingWidth(context),
           leading: macOSAwareBackButton(context),
-          title: shrinkToFitText(const Text('Settings')),
+          title: shrinkToFitText(Text(context.t.settings.title)),
           actions: [
             HeaderProfileLabel(settings: widget.services.settings),
             windowsCaptionSpacer(context),
@@ -507,8 +510,8 @@ class _ProfilesPanel extends StatelessWidget {
   Future<void> _editCallsign(BuildContext context) async {
     final result = await editOneFieldDialog(
       context,
-      title: 'Callsign',
-      fieldLabel: 'Callsign',
+      title: context.t.common.callsign,
+      fieldLabel: context.t.common.callsign,
       fieldInitial: services.settings.activeProfile.operatorCall,
       fieldCapitalization: TextCapitalization.characters,
     );
@@ -529,8 +532,8 @@ class _ProfilesPanel extends StatelessWidget {
           children: [
             ListTile(
               leading: Icon(resolveIconName('account')),
-              title: const Text('Callsign'),
-              subtitle: Text(call.isEmpty ? 'Not set' : call),
+              title: Text(context.t.common.callsign),
+              subtitle: Text(call.isEmpty ? context.t.settings.profiles.notSet : call),
               onTap: () => _editCallsign(context),
               mouseCursor: SystemMouseCursors.click,
             ),
@@ -763,10 +766,10 @@ class _AllSettingsPanelState extends State<_AllSettingsPanel> {
                   ? null
                   : IconButton(
                       icon: const Icon(Icons.close, size: 18),
-                      tooltip: 'Clear',
+                      tooltip: context.t.settings.search.clear,
                       onPressed: () => setState(() => _searchController.clear()),
                     ),
-              hintText: 'Search settings',
+              hintText: context.t.settings.search.hint,
               border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
             ),
           ),
@@ -873,15 +876,20 @@ class _SyncPanelState extends State<_SyncPanel> {
     final confirmed = await showHaloDialog<bool>(
       context: context,
       builder: (context) => HaloDialog(
-        title: const Text('Replace local data?'),
+        title: Text(context.t.settings.syncPanel.replaceDialogTitle),
         content: Text(
-          'This backs up and clears ${formatNumber(opCount)} operation${opCount == 1 ? '' : 's'} and ${formatNumber(qsoCount)} '
-          'QSO${qsoCount == 1 ? '' : 's'} from this device, then downloads the account\'s data '
-          'instead. The backup stays in this device\'s database.',
+          context.t.settings.syncPanel.replaceDialogBody(
+            operations: context.t.settings.syncPanel
+                .replaceDialogOperations(count: opCount, n: formatNumber(opCount)),
+            qsos: context.t.settings.syncPanel.replaceDialogQsos(count: qsoCount, n: formatNumber(qsoCount)),
+          ),
         ),
-        cancel: TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('Cancel')),
+        cancel: TextButton(
+            onPressed: () => Navigator.of(context).pop(false), child: Text(context.t.common.cancel)),
         actions: [
-          FilledButton(onPressed: () => Navigator.of(context).pop(true), child: const Text('Replace')),
+          FilledButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              child: Text(context.t.settings.syncPanel.replace)),
         ],
       ),
     );
@@ -892,12 +900,14 @@ class _SyncPanelState extends State<_SyncPanel> {
   }
 
   String get _syncAccountSubtitle {
-    if (_loadingSyncAccount) return 'Checking…';
+    if (_loadingSyncAccount) return t.settings.syncPanel.checking;
     final account = _syncAccount?['current_account'] as Map?;
     final call = account?['call'] as String?;
-    if (call == null || call.isEmpty) return 'Not linked yet';
+    if (call == null || call.isEmpty) return t.settings.syncPanel.notLinked;
     final email = account?['email'] as String?;
-    return (email == null || email.isEmpty) ? 'Linked as $call' : 'Linked as $call ($email)';
+    return (email == null || email.isEmpty)
+        ? t.settings.syncPanel.linkedAs(call: call)
+        : t.settings.syncPanel.linkedAsWithEmail(call: call, email: email);
   }
 
   @override
@@ -911,16 +921,18 @@ class _SyncPanelState extends State<_SyncPanel> {
         return ListView(
           padding: const EdgeInsets.symmetric(vertical: 8),
           children: [
-            Padding(padding: EdgeInsets.only(left: safeLeft), child: const SectionHeader('Sync Configuration')),
+            Padding(
+                padding: EdgeInsets.only(left: safeLeft),
+                child: SectionHeader(context.t.settings.syncPanel.configuration)),
             // The operator-callsign row moved to the Station Profiles panel
             // (settings.activeProfile).
             SwitchListTile(
               secondary: Icon(resolveIconName(settings.syncEnabled ? 'cloud-sync' : 'cloud-off')),
-              title: const Text('Sync with Ham2K Log Filer'),
+              title: Text(context.t.settings.syncPanel.enableTitle),
               subtitle: Text(
                 settings.syncEnabled
-                    ? 'Backs up and syncs your log across devices'
-                    : 'Off — your log stays on this device only',
+                    ? context.t.settings.syncPanel.enabledDescription
+                    : context.t.settings.syncPanel.disabledDescription,
               ),
               value: settings.syncEnabled,
               onChanged: _toggleSync,
@@ -941,7 +953,7 @@ class _SyncPanelState extends State<_SyncPanel> {
                 if (progress == null || !settings.syncEnabled) return const SizedBox.shrink();
                 return ListTile(
                   leading: Icon(resolveIconName(progress.icon ?? 'cloud-sync')),
-                  title: Text(progress.title ?? 'Syncing'),
+                  title: Text(progress.title ?? context.t.settings.syncPanel.syncing),
                   subtitle: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -956,19 +968,19 @@ class _SyncPanelState extends State<_SyncPanel> {
             if (settings.syncEnabled) ...[
               ListTile(
                 leading: Icon(resolveIconName('account-check')),
-                title: const Text('Account'),
+                title: Text(context.t.settings.syncPanel.account),
                 subtitle: Text(_syncAccountSubtitle),
                 trailing: IconButton(
                   icon: Icon(resolveIconName('refresh')),
-                  tooltip: 'Refresh',
+                  tooltip: context.t.settings.syncPanel.refresh,
                   onPressed: _refreshSyncAccount,
                   mouseCursor: SystemMouseCursors.click,
                 ),
               ),
               ListTile(
                 leading: Icon(resolveIconName('account-switch')),
-                title: const Text('Switch Accounts'),
-                subtitle: const Text('Link this device to another account with a QR code or email'),
+                title: Text(context.t.settings.syncPanel.switchAccounts),
+                subtitle: Text(context.t.settings.syncPanel.switchAccountsDescription),
                 onTap: _switchAccounts,
                 mouseCursor: SystemMouseCursors.click,
               ),
@@ -1007,7 +1019,7 @@ class _AccountsPanelState extends State<_AccountsPanel> {
       final kvKey = account['kvKey'] as String;
       final creds = await widget.services.extensions.getAccountCredentials(kvKey);
       if (creds.isNotEmpty) {
-        identities[kvKey] = ExtensionService.identityFromCredentials(creds) ?? 'Connected';
+        identities[kvKey] = ExtensionService.identityFromCredentials(creds) ?? t.settings.accounts.connected;
       }
     }
     if (mounted) {
@@ -1038,9 +1050,10 @@ class _AccountsPanelState extends State<_AccountsPanel> {
     return ListView(
       padding: const EdgeInsets.symmetric(vertical: 8),
       children: [
-        Padding(padding: EdgeInsets.only(left: safeLeft), child: const SectionHeader('Accounts & Services')),
+        Padding(
+            padding: EdgeInsets.only(left: safeLeft), child: SectionHeader(context.t.settings.accounts.title)),
         if (_accounts!.isEmpty)
-          const ListTile(title: Text('No active extensions with accounts'))
+          ListTile(title: Text(context.t.settings.accounts.none))
         else
           ..._accounts!.map((account) {
             final kvKey = account['kvKey'] as String;
@@ -1053,7 +1066,7 @@ class _AccountsPanelState extends State<_AccountsPanel> {
                 TextSpan(text: label, style: const TextStyle(fontWeight: FontWeight.bold)),
                 if (identity != null) TextSpan(text: '  $identity'),
               ])),
-              subtitle: Text(description ?? (identity == null ? 'Not configured' : '')),
+              subtitle: Text(description ?? (identity == null ? context.t.settings.accounts.notConfigured : '')),
               onTap: () => _openAccountDialog(account),
               mouseCursor: SystemMouseCursors.click,
             );
@@ -1112,7 +1125,7 @@ class _DataFilesPanelState extends State<_DataFilesPanel> {
       if (mounted) {
         widget.services.statusBar.setMessage(
           key: 'dataFile:refresh',
-          text: 'Could not refresh ${file.name}: $e',
+          text: t.settings.offlineData.refreshFailed(name: file.name, error: e),
         );
       }
     } finally {
@@ -1137,11 +1150,12 @@ class _DataFilesPanelState extends State<_DataFilesPanel> {
     return ListView(
       padding: const EdgeInsets.symmetric(vertical: 8),
       children: [
-        Padding(padding: EdgeInsets.only(left: safeLeft), child: const SectionHeader('Offline Data')),
+        Padding(
+            padding: EdgeInsets.only(left: safeLeft), child: SectionHeader(context.t.settings.offlineData.title)),
         if (files.isEmpty)
-          const ListTile(
-            title: Text('No data files'),
-            subtitle: Text('Enable activity or lookup extensions to download their offline data here.'),
+          ListTile(
+            title: Text(context.t.settings.offlineData.noFiles),
+            subtitle: Text(context.t.settings.offlineData.noFilesDescription),
           )
         else
           for (final file in files) _buildRow(context, file),
@@ -1166,7 +1180,7 @@ class _DataFilesPanelState extends State<_DataFilesPanel> {
             subtitle: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(progress?.text ?? 'Refreshing…'),
+                Text(progress?.text ?? context.t.settings.offlineData.refreshing),
                 const SizedBox(height: 6),
                 LinearProgressIndicator(value: progress?.progressValue),
               ],
@@ -1187,7 +1201,7 @@ class _DataFilesPanelState extends State<_DataFilesPanel> {
       subtitle: Text(_dataFileUpdatedLabel(file.updatedAt)),
       trailing: IconButton(
         icon: Icon(resolveIconName('refresh')),
-        tooltip: 'Refresh',
+        tooltip: context.t.settings.offlineData.refresh,
         onPressed: () => _refresh(file),
         mouseCursor: SystemMouseCursors.click,
       ),
@@ -1198,20 +1212,24 @@ class _DataFilesPanelState extends State<_DataFilesPanel> {
 /// "Updated 2d 7h ago" / "Never downloaded" — the same day+hour granularity
 /// app-polo's data settings use.
 String _dataFileUpdatedLabel(DateTime? updatedAt) {
-  if (updatedAt == null) return 'Never downloaded';
+  if (updatedAt == null) return t.settings.offlineData.neverDownloaded;
   final diff = DateTime.now().difference(updatedAt);
-  if (diff.isNegative || diff.inSeconds < 60) return 'Updated just now';
+  if (diff.isNegative || diff.inSeconds < 60) return t.settings.offlineData.updatedJustNow;
   final days = diff.inDays;
   if (days > 0) {
     final hours = diff.inHours % 24;
-    return hours == 0 ? 'Updated ${days}d ago' : 'Updated ${days}d ${hours}h ago';
+    return hours == 0
+        ? t.settings.offlineData.updatedDaysAgo(days: days)
+        : t.settings.offlineData.updatedDaysHoursAgo(days: days, hours: hours);
   }
   final hours = diff.inHours;
   if (hours > 0) {
     final minutes = diff.inMinutes % 60;
-    return minutes == 0 ? 'Updated ${hours}h ago' : 'Updated ${hours}h ${minutes}m ago';
+    return minutes == 0
+        ? t.settings.offlineData.updatedHoursAgo(hours: hours)
+        : t.settings.offlineData.updatedHoursMinutesAgo(hours: hours, minutes: minutes);
   }
-  return 'Updated ${diff.inMinutes}m ago';
+  return t.settings.offlineData.updatedMinutesAgo(minutes: diff.inMinutes);
 }
 
 /// Renders one extension-contributed `settingsPanel` panel — the
@@ -1434,7 +1452,7 @@ class _ExtensionSettingsPanelState extends State<_ExtensionSettingsPanel> {
     }
     var definition = _definition;
     if (definition == null) {
-      return const Center(child: Text('Could not load this settings panel.'));
+      return Center(child: Text(context.t.settings.developer.panelLoadFailed));
     }
     if (widget.searchQuery.isNotEmpty) {
       final filtered = [
@@ -1507,7 +1525,7 @@ class _DeveloperPanel extends StatelessWidget {
           padding: EdgeInsets.fromLTRB(16 + safeLeft, 16, 16, 16),
           children: [
             Text(
-              'Developer Options',
+              context.t.settings.developer.options,
               style: Theme.of(context).textTheme.titleMedium?.copyWith(
                 color: Theme.of(context).colorScheme.primary,
                 fontWeight: FontWeight.bold,
@@ -1515,8 +1533,8 @@ class _DeveloperPanel extends StatelessWidget {
             ),
             const SizedBox(height: 16),
             SwitchListTile(
-              title: const Text('Developer Mode'),
-              subtitle: const Text('Enable developer warnings, debug logs, and tools.'),
+              title: Text(context.t.settings.developerMode),
+              subtitle: Text(context.t.settings.developer.developerModeDescription),
               value: settings.developerMode,
               onChanged: (enabled) => settings.setDeveloperMode(enabled),
               contentPadding: EdgeInsets.zero,
@@ -1542,8 +1560,8 @@ class _DeveloperPanel extends StatelessWidget {
                   ]);
                   return ListTile(
                     leading: const Icon(Icons.science_outlined),
-                    title: const Text('Experiments'),
-                    subtitle: Text('$enabledCount enabled'),
+                    title: Text(context.t.settings.developer.experiments),
+                    subtitle: Text(context.t.settings.developer.experimentsEnabled(count: enabledCount)),
                     contentPadding: EdgeInsets.zero,
                     mouseCursor: SystemMouseCursors.click,
                     // The pane loads the catalog itself — capturing this
@@ -1551,7 +1569,7 @@ class _DeveloperPanel extends StatelessWidget {
                     // (empty) snapshot into the pane for its whole lifetime.
                     onTap: () => showModalPane<void>(
                       context,
-                      title: 'Experiments',
+                      title: context.t.settings.developer.experiments,
                       builder: (_) => ExperimentsPane(settings: settings),
                     ),
                   );
@@ -1564,7 +1582,7 @@ class _DeveloperPanel extends StatelessWidget {
             if (services.updates.isAvailable) ...[
               const SizedBox(height: 16),
               Text(
-                'Patch Track',
+                context.t.settings.developer.patchTrack,
                 style: Theme.of(context).textTheme.titleMedium?.copyWith(
                   color: Theme.of(context).colorScheme.primary,
                   fontWeight: FontWeight.bold,
@@ -1573,8 +1591,7 @@ class _DeveloperPanel extends StatelessWidget {
               Padding(
                 padding: const EdgeInsets.only(top: 4, bottom: 8),
                 child: Text(
-                  'Which over-the-air patch ring this device follows. More adventurous '
-                  'rings get fixes earlier, less tested. Patches apply on the next restart.',
+                  context.t.settings.developer.patchTrackDescription,
                   style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                     color: Theme.of(context).colorScheme.onSurfaceVariant,
                   ),
@@ -1582,23 +1599,24 @@ class _DeveloperPanel extends StatelessWidget {
               ),
               SegmentedButton<String>(
                 showSelectedIcon: false,
-                segments: const [
-                  ButtonSegment(value: 'stable', label: Text('Stable')),
-                  ButtonSegment(value: 'unstable', label: Text('Unstable')),
-                  ButtonSegment(value: 'bleeding-edge', label: Text('Bleeding')),
+                segments: [
+                  ButtonSegment(value: 'stable', label: Text(context.t.settings.developer.trackStable)),
+                  ButtonSegment(value: 'unstable', label: Text(context.t.settings.developer.trackUnstable)),
+                  ButtonSegment(value: 'bleeding-edge', label: Text(context.t.settings.developer.trackBleeding)),
                 ],
                 selected: {settings.shorebirdTrack},
                 onSelectionChanged: (selected) async {
                   final track = selected.first;
                   await settings.setShorebirdTrack(track);
-                  services.statusBar.setMessage(key: 'shorebird:check', text: 'Checking "$track" for a patch…');
+                  services.statusBar
+                      .setMessage(key: 'shorebird:check', text: t.settings.developer.checkingTrack(track: track));
                   final applied = await services.updates.checkAndApply();
                   if (!context.mounted) return;
                   services.statusBar.setMessage(
                     key: 'shorebird:check',
                     text: applied
-                        ? 'Patch downloaded — restart the app to apply it.'
-                        : 'No new patch on "$track".',
+                        ? t.settings.developer.patchDownloaded
+                        : t.settings.developer.noNewPatch(track: track),
                   );
                 },
               ),
@@ -1610,8 +1628,8 @@ class _DeveloperPanel extends StatelessWidget {
                     final patch = snapshot.data;
                     return Text(
                       patch == null
-                          ? 'No patch installed — running the release binary.'
-                          : 'Running patch #$patch.',
+                          ? context.t.settings.developer.noPatchInstalled
+                          : context.t.settings.developer.runningPatch(patch: patch),
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
                         color: Theme.of(context).colorScheme.onSurfaceVariant,
                       ),
@@ -1743,21 +1761,21 @@ class _DeveloperPanel extends StatelessWidget {
             const Divider(),
             const SizedBox(height: 16),
             Text(
-              'System Information',
+              context.t.settings.developer.systemInformation,
               style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 8),
-            _infoRow(context, 'Sync Device Key', settings.syncDeviceKey ?? '(loading…)'),
+            _infoRow(context, context.t.settings.sync.deviceKey, settings.syncDeviceKey ?? context.t.settings.developer.loading),
             _infoRowWidget(
               context,
-              'App Version',
+              context.t.settings.developer.appVersion,
               const VersionLabel(style: TextStyle(fontFamily: 'monospace', fontSize: 13)),
             ),
             const SizedBox(height: 16),
             const Divider(),
             const SizedBox(height: 16),
             Text(
-              'Active Extensions',
+              context.t.settings.developer.activeExtensions,
               style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 8),
@@ -1842,8 +1860,8 @@ class _ActiveExtensionsListState extends State<_ActiveExtensionsList> {
   @override
   Widget build(BuildContext context) {
     final extensions = _extensions;
-    if (extensions == null) return const Text('(loading…)');
-    if (extensions.isEmpty) return const Text('Extension runtime not available.');
+    if (extensions == null) return Text(context.t.settings.developer.loading);
+    if (extensions.isEmpty) return Text(context.t.settings.developer.runtimeNotAvailable);
 
     // Category comes from the build index (the runtime listing carries only
     // key/name/version); anything the index doesn't categorize — core
@@ -1852,7 +1870,11 @@ class _ActiveExtensionsListState extends State<_ActiveExtensionsList> {
       for (final info in widget.services.extensions.availableExtensions)
         if (info.category != null) info.key: info.category!,
     };
-    const categoryTitles = {'activity': 'Activities', 'lookup': 'Callsign Lookups', 'core': 'Core & Runtime'};
+    final categoryTitles = {
+      'activity': context.t.extensionsPanel.categoryActivity,
+      'lookup': context.t.extensionsPanel.categoryLookup,
+      'core': context.t.settings.developer.categoryCore,
+    };
     final grouped = <String, List<Map<String, dynamic>>>{};
     for (final ext in extensions) {
       grouped.putIfAbsent(categoryByKey[ext['key']] ?? 'core', () => []).add(ext);
@@ -1914,7 +1936,8 @@ Future<void> _copyVersionDetailsToClipboard(BuildContext context) async {
   final details = await versionDetailsText();
   await Clipboard.setData(ClipboardData(text: '$ham2kAppName\n$details'));
   if (!context.mounted) return;
-  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Copied version details to clipboard')));
+  ScaffoldMessenger.of(context)
+      .showSnackBar(SnackBar(content: Text(context.t.settings.about.copiedVersion)));
 }
 
 class _AboutPanel extends StatelessWidget {
@@ -1991,12 +2014,12 @@ class _AboutPanel extends StatelessWidget {
               child: centered(
                 ListTile(
                   leading: const Icon(Icons.notifications),
-                  title: const Text('Notices & Messages'),
-                  subtitle: const Text('Announcements and status messages'),
+                  title: Text(context.t.settings.about.notices),
+                  subtitle: Text(context.t.settings.about.noticesDescription),
                   trailing: const Icon(Icons.chevron_right),
                   onTap: () => showModalPane<void>(
                     context,
-                    title: 'Notices & Messages',
+                    title: context.t.settings.about.notices,
                     // NoticeHistoryView is its own scrolling ListView — the
                     // pane must not also wrap it in a SingleChildScrollView.
                     scrollable: false,
@@ -2015,7 +2038,7 @@ class _AboutPanel extends StatelessWidget {
                     child: Align(
                       alignment: Alignment.centerLeft,
                       child: Text(
-                        'Release Notes',
+                        context.t.settings.about.releaseNotes,
                         style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
                       ),
                     ),
@@ -2068,7 +2091,7 @@ class _ReleaseNotesPreview extends StatelessWidget {
       behavior: HitTestBehavior.opaque,
       onTap: () => showModalPane<void>(
         context,
-        title: 'Release Notes',
+        title: context.t.settings.about.releaseNotes,
         builder: (context) => MarkdownBody(data: markdown, styleSheet: styleSheet),
       ),
       child: ClipRect(
@@ -2173,7 +2196,7 @@ class _PendingAccountBanner extends StatelessWidget {
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
-                    'New Ham2K Log Filer account detected',
+                    context.t.settings.syncPanel.pendingBannerTitle,
                     style: theme.textTheme.titleSmall?.copyWith(color: theme.colorScheme.onTertiaryContainer),
                   ),
                 ),
@@ -2181,17 +2204,16 @@ class _PendingAccountBanner extends StatelessWidget {
             ),
             const SizedBox(height: 8),
             Text(
-              "Keep this device's existing operations and QSOs and merge them into the account, "
-              'or replace them with the account\'s data (a backup stays on this device either way).',
+              context.t.settings.syncPanel.pendingBannerBody,
               style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onTertiaryContainer),
             ),
             const SizedBox(height: 12),
             Row(
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
-                TextButton(onPressed: onCombine, child: const Text('Combine')),
+                TextButton(onPressed: onCombine, child: Text(context.t.settings.syncPanel.combine)),
                 const SizedBox(width: 8),
-                FilledButton(onPressed: onReplace, child: const Text('Replace')),
+                FilledButton(onPressed: onReplace, child: Text(context.t.settings.syncPanel.replace)),
               ],
             ),
           ],
@@ -2306,7 +2328,7 @@ class _AccountPaneState extends State<_AccountPane> {
     } catch (e) {
       debugPrint('[accounts] save failed for $_kvKey: $e');
       if (mounted) {
-        widget.services.statusBar.setMessage(key: 'accounts:save', text: 'Save failed: $e');
+        widget.services.statusBar.setMessage(key: 'accounts:save', text: t.settings.accounts.saveFailed(error: e));
       }
       return;
     }
@@ -2413,14 +2435,14 @@ class _AccountPaneState extends State<_AccountPane> {
           builder: (context) => Scaffold(
             appBar: AppBar(
               flexibleSpace: windowHeaderGestureArea(),
-              title: Text('Connect to ${widget.account['label']}'),
+              title: Text(context.t.settings.accounts.connectTo(label: '${widget.account['label']}')),
               actions: [
                 // Continues the login in the system browser (from wherever
                 // the in-app page currently is); the redirect then comes
                 // back through the deep-link listener above. Keep this page
                 // open — closing it abandons the flow.
                 TextButton(
-                  child: const Text('Open in Browser'),
+                  child: Text(context.t.settings.accounts.openInBrowser),
                   onPressed: () async {
                     final current = await webViewController?.getUrl();
                     unawaited(launchUrl(Uri.parse((current ?? authUri).toString()), mode: LaunchMode.externalApplication));
@@ -2501,7 +2523,7 @@ class _AccountPaneState extends State<_AccountPane> {
     } catch (e) {
       if (mounted) {
         setState(() => _testing = false);
-        widget.services.statusBar.setMessage(key: 'accounts:login', text: 'Login failed: $e');
+        widget.services.statusBar.setMessage(key: 'accounts:login', text: t.settings.accounts.loginFailed(error: e));
       }
     }
   }
@@ -2529,24 +2551,27 @@ class _AccountPaneState extends State<_AccountPane> {
         if (_oauth2 != null) ...[
           if (_pendingCredentials != null) ...[
             Text(
-              'Logged in as ${ExtensionService.identityFromCredentials(_pendingCredentials!) ?? widget.account['label']}',
+              context.t.settings.accounts.loggedInAs(
+                  identity: ExtensionService.identityFromCredentials(_pendingCredentials!) ??
+                      '${widget.account['label']}'),
               style: theme.textTheme.bodyMedium,
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 8),
             Text(
-              'Press Save to keep this account connected.',
+              context.t.settings.accounts.pressSaveToKeep,
               style: theme.textTheme.bodyMedium,
               textAlign: TextAlign.center,
             ),
           ] else if (_loggedIn) ...[
             Text(
-              'Connected to ${widget.account['label']}',
+              context.t.settings.accounts.connectedTo(label: '${widget.account['label']}'),
               style: theme.textTheme.bodyMedium,
               textAlign: TextAlign.center,
             ),
           ] else ...[
-            OutlinedButton(onPressed: _testing ? null : _doOAuth, child: const Text('Connect')),
+            OutlinedButton(
+                onPressed: _testing ? null : _doOAuth, child: Text(context.t.settings.accounts.connect)),
           ],
         ] else ...[
           ..._fields.map((field) {
@@ -2601,7 +2626,7 @@ class _AccountPaneState extends State<_AccountPane> {
           Center(
             child: OutlinedButton(
               onPressed: _clear,
-              child: const Text('Disconnect'),
+              child: Text(context.t.settings.accounts.disconnect),
             ),
           ),
         ],
@@ -2609,7 +2634,7 @@ class _AccountPaneState extends State<_AccountPane> {
         const Divider(),
         const SizedBox(height: 8),
         Text(
-          'Connected as',
+          context.t.settings.accounts.connectedAs,
           style: theme.textTheme.titleSmall?.copyWith(color: theme.colorScheme.primary),
         ),
         const SizedBox(height: 8),
@@ -2632,14 +2657,14 @@ class _AccountPaneState extends State<_AccountPane> {
               ),
             ),
             const SizedBox(width: 8),
-            TextButton(onPressed: _testing ? null : _test, child: const Text('Test')),
+            TextButton(onPressed: _testing ? null : _test, child: Text(context.t.settings.accounts.test)),
           ],
         ),
         const SizedBox(height: 24),
         haloDialogFooterRow(
-          cancel: TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Cancel')),
+          cancel: TextButton(onPressed: () => Navigator.of(context).pop(), child: Text(context.t.common.cancel)),
           actions: [
-            FilledButton(onPressed: _save, child: const Text('Save')),
+            FilledButton(onPressed: _save, child: Text(context.t.common.save)),
           ],
         ),
       ],

@@ -361,7 +361,181 @@
       "enable": "Habilitar Sincronización",
       "deviceKey": "Clave del Dispositivo"
     },
-    "developerMode": "Modo Desarrollador"
+    "developerMode": "Modo Desarrollador",
+    "syncPanel": {
+      "configuration": "Configuración de sincronización",
+      "enableTitle": "Sincronizar con Ham2K Log Filer",
+      "enabledDescription": "Respalda y sincroniza tu registro entre dispositivos",
+      "disabledDescription": "Desactivado — tu registro se queda solo en este dispositivo",
+      "syncing": "Sincronizando",
+      "account": "Cuenta",
+      "refresh": "Actualizar",
+      "switchAccounts": "Cambiar de cuenta",
+      "switchAccountsDescription": "Vincula este dispositivo a otra cuenta con un código QR o por email",
+      "checking": "Comprobando…",
+      "notLinked": "Aún no vinculado",
+      "linkedAs": "Vinculado como ${call}",
+      "linkedAsWithEmail": "Vinculado como ${call} (${email})",
+      "replaceDialogTitle": "¿Reemplazar los datos locales?",
+      "replaceDialogOperations": {
+        "one": "${n} operación",
+        "other": "${n} operaciones"
+      },
+      "replaceDialogQsos": {
+        "one": "${n} QSO",
+        "other": "${n} QSOs"
+      },
+      "replaceDialogBody": "Esto respalda y borra ${operations} y ${qsos} de este dispositivo, y luego descarga los datos de la cuenta en su lugar. El respaldo se conserva en la base de datos de este dispositivo.",
+      "replace": "Reemplazar",
+      "pendingBannerTitle": "Nueva cuenta de Ham2K Log Filer detectada",
+      "pendingBannerBody": "Conserva las operaciones y QSOs existentes en este dispositivo y combínalos con la cuenta, o reemplázalos con los datos de la cuenta (en ambos casos queda un respaldo en este dispositivo).",
+      "combine": "Combinar"
+    },
+    "accounts": {
+      "title": "Cuentas y servicios",
+      "none": "No hay extensiones activas con cuentas",
+      "notConfigured": "Sin configurar",
+      "connected": "Conectado",
+      "connectTo": "Conectar con ${label}",
+      "openInBrowser": "Abrir en el navegador",
+      "loggedInAs": "Sesión iniciada como ${identity}",
+      "pressSaveToKeep": "Pulsa Guardar para mantener esta cuenta conectada.",
+      "connectedTo": "Conectado a ${label}",
+      "connect": "Conectar",
+      "disconnect": "Desconectar",
+      "connectedAs": "Conectado como",
+      "test": "Probar",
+      "saveFailed": "Error al guardar: ${error}",
+      "loginFailed": "Error al iniciar sesión: ${error}"
+    },
+    "offlineData": {
+      "title": "Datos sin conexión",
+      "noFiles": "No hay archivos de datos",
+      "noFilesDescription": "Habilita extensiones de actividades o búsquedas para descargar aquí sus datos sin conexión.",
+      "refresh": "Actualizar",
+      "refreshing": "Actualizando…",
+      "refreshFailed": "No se pudo actualizar ${name}: ${error}",
+      "neverDownloaded": "Nunca descargado",
+      "updatedJustNow": "Actualizado hace un momento",
+      "updatedDaysAgo": "Actualizado hace ${days}d",
+      "updatedDaysHoursAgo": "Actualizado hace ${days}d ${hours}h",
+      "updatedHoursAgo": "Actualizado hace ${hours}h",
+      "updatedHoursMinutesAgo": "Actualizado hace ${hours}h ${minutes}m",
+      "updatedMinutesAgo": "Actualizado hace ${minutes}m"
+    },
+    "profiles": {
+      "notSet": "Sin definir"
+    },
+    "search": {
+      "clear": "Borrar",
+      "hint": "Buscar en la configuración"
+    },
+    "developer": {
+      "options": "Opciones de desarrollador",
+      "developerModeDescription": "Habilita avisos de desarrollador, registros de depuración y herramientas.",
+      "experiments": "Experimentos",
+      "experimentsEnabled": {
+        "one": "${count} habilitado",
+        "other": "${count} habilitados"
+      },
+      "patchTrack": "Canal de parches",
+      "patchTrackDescription": "Qué canal de parches over-the-air sigue este dispositivo. Los canales más aventureros reciben correcciones antes, menos probadas. Los parches se aplican en el próximo reinicio.",
+      "trackStable": "Estable",
+      "trackUnstable": "Inestable",
+      "trackBleeding": "Vanguardia",
+      "checkingTrack": "Buscando un parche en «${track}»…",
+      "patchDownloaded": "Parche descargado — reinicia la app para aplicarlo.",
+      "noNewPatch": "No hay parches nuevos en «${track}».",
+      "noPatchInstalled": "No hay parche instalado — ejecutando el binario de la versión.",
+      "runningPatch": "Ejecutando el parche #${patch}.",
+      "systemInformation": "Información del sistema",
+      "activeExtensions": "Extensiones activas",
+      "appVersion": "Versión de la app",
+      "loading": "(cargando…)",
+      "runtimeNotAvailable": "El motor de extensiones no está disponible.",
+      "panelLoadFailed": "No se pudo cargar este panel de configuración.",
+      "categoryCore": "Núcleo y motor"
+    },
+    "about": {
+      "notices": "Avisos y mensajes",
+      "noticesDescription": "Anuncios y mensajes de estado",
+      "releaseNotes": "Notas de la versión",
+      "copiedVersion": "Detalles de versión copiados al portapapeles"
+    },
+    "panels": {
+      "commonPreferences": "Preferencias comunes",
+      "commonPreferencesDescription": "Apariencia, idioma y ajustes cotidianos",
+      "allSettings": "Todos los ajustes",
+      "allSettingsDescription": "Todos los ajustes disponibles en un solo lugar",
+      "syncDescription": "Respalda y sincroniza tus registros entre dispositivos",
+      "accountsDescription": "Inicia sesión en servicios y búsquedas en línea",
+      "extensions": "Funciones y extensiones",
+      "extensionsDescription": "Activa o desactiva funciones opcionales",
+      "profilesDescription": "Indicativo del operador y perfil de la estación",
+      "stationProfiles": "Perfiles de estación",
+      "dataFiles": "Archivos de datos",
+      "dataFilesDescription": "Administra las fuentes de datos en caché",
+      "developerSettings": "Ajustes de desarrollador",
+      "developerSettingsDescription": "Herramientas de depuración y desarrollo",
+      "about": "Acerca de",
+      "aboutDescription": "Versión, créditos e información legal",
+      "unavailableTitle": "Algunos ajustes no están disponibles",
+      "unavailableText": "El motor de extensiones no pudo iniciarse, así que faltan los ajustes aportados por extensiones."
+    }
+  },
+  "commands": {
+    "enableSyncFirst": "Primero habilita la sincronización en la Configuración.",
+    "fullResyncStarted": "Resincronización completa iniciada — los datos locales se respaldaron primero.",
+    "noDataFilesMatched": "Ningún archivo de datos coincide con «${target}».",
+    "reloadFailed": "Error al recargar: ${error}",
+    "reloadingAll": "Recargando todos los archivos de datos…",
+    "reloadingTarget": "Recargando archivos de datos de ${target}…",
+    "unknownExperiment": "Experimento desconocido «${token}»",
+    "experimentEnabled": "${name} habilitado",
+    "experimentDisabled": "${name} deshabilitado"
+  },
+  "spotting": {
+    "noQsoYet": "Aún no hay QSO registrado para spotear.",
+    "setFrequencyFirst": "Primero define una frecuencia.",
+    "nothingToSpot": "Nada que spotear — ninguna extensión ofrece spotting aquí.",
+    "spottedOn": "Spot enviado a ${source}",
+    "spotFailed": "${source} falló: ${message}",
+    "unknownError": "error desconocido",
+    "notSent": "Spot no enviado."
+  },
+  "dataFiles": {
+    "downloading": "Descargando…",
+    "importedRecords": {
+      "one": "Se importó ${count} registro de ${label}.",
+      "other": "Se importaron ${count} registros de ${label}."
+    },
+    "importedData": "Se importaron datos de ${label}.",
+    "cleanedUpTitle": "Datos de extensiones limpiados",
+    "removedData": {
+      "one": "Se eliminaron los datos de ${count} archivo de datos de extensiones deshabilitadas.",
+      "other": "Se eliminaron los datos de ${count} archivos de datos de extensiones deshabilitadas."
+    },
+    "recordsProgress": "${end} / ${total} registros"
+  },
+  "updates": {
+    "updateAvailable": "Actualización disponible",
+    "newVersionAvailable": "Hay una nueva versión (${version}) disponible.",
+    "getIt": "Obtener",
+    "ok": "OK",
+    "updateReady": "Actualización lista",
+    "restartToApply": "Se descargó una actualización. Reinicia para aplicarla.",
+    "appliesNextLaunch": "Se descargó una actualización. Se aplicará la próxima vez que abras la app.",
+    "restartNow": "Reiniciar ahora"
+  },
+  "extensionService": {
+    "runtimeNotReady": "El motor de extensiones aún no está listo.",
+    "testFailed": "Prueba fallida: ${error}",
+    "connectedAs": "Conectado como ${identity}",
+    "invalidFieldConfiguration": "Configuración de campo no válida",
+    "invalidValue": "Valor no válido",
+    "validationError": "Error de validación: ${error}",
+    "actionFailed": "Acción fallida: ${error}",
+    "commandFailed": "El comando no se pudo ejecutar"
   },
   "operationLocationScreen": {
     "title": "Ubicación de la operación",

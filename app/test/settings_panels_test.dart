@@ -13,6 +13,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:halo_core/halo_core.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'package:ham2k_logger/i18n/strings.g.dart';
 import 'package:ham2k_logger/main.dart';
 import 'package:ham2k_logger/services/settings_service.dart';
 import 'package:ham2k_logger/views/settings_view.dart';
@@ -61,7 +62,7 @@ void main() {
     addTearDown(tester.view.reset);
 
     final services = await makeServices();
-    await tester.pumpWidget(MaterialApp(home: SettingsView(services: services)));
+    await tester.pumpWidget(TranslationProvider(child: MaterialApp(home: SettingsView(services: services))));
     await tester.pumpAndSettle();
 
     // Whitelisted: the User Interface section, and Privacy (issue #183 —
@@ -89,7 +90,7 @@ void main() {
     addTearDown(tester.view.reset);
 
     final services = await makeServices();
-    await tester.pumpWidget(MaterialApp(home: SettingsView(services: services)));
+    await tester.pumpWidget(TranslationProvider(child: MaterialApp(home: SettingsView(services: services))));
     await tester.pumpAndSettle();
 
     await tester.tap(find.text('All Settings'));

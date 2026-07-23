@@ -108,7 +108,7 @@ void main() {
     final extensions = _ExtensionServiceWithMockHost()..settings = settings;
     final services = HaLoServices(db, settings, extensions: extensions);
 
-    await tester.pumpWidget(MaterialApp(home: SettingsView(services: services)));
+    await tester.pumpWidget(TranslationProvider(child: MaterialApp(home: SettingsView(services: services))));
     await tester.pumpAndSettle();
 
     await tester.tap(find.widgetWithText(ListTile, 'About'));
@@ -150,7 +150,7 @@ void main() {
     final extensions = _ExtensionServiceWithMockHost()..settings = settings;
     final services = HaLoServices(db, settings, extensions: extensions);
 
-    await tester.pumpWidget(MaterialApp(home: SettingsView(services: services)));
+    await tester.pumpWidget(TranslationProvider(child: MaterialApp(home: SettingsView(services: services))));
     await tester.pumpAndSettle();
 
     // No longer its own sidebar entry.
@@ -193,7 +193,7 @@ void main() {
     });
     addTearDown(() => tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(SystemChannels.platform, null));
 
-    await tester.pumpWidget(MaterialApp(home: SettingsView(services: services)));
+    await tester.pumpWidget(TranslationProvider(child: MaterialApp(home: SettingsView(services: services))));
     await tester.pumpAndSettle();
 
     await tester.tap(find.widgetWithText(ListTile, 'About'));

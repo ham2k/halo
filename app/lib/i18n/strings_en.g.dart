@@ -55,6 +55,11 @@ class Translations with BaseTranslations<AppLocale, Translations> {
 	late final Translations$loggingPanel$en loggingPanel = Translations$loggingPanel$en.internal(_root);
 	late final Translations$callInfo$en callInfo = Translations$callInfo$en.internal(_root);
 	late final Translations$settings$en settings = Translations$settings$en.internal(_root);
+	late final Translations$commands$en commands = Translations$commands$en.internal(_root);
+	late final Translations$spotting$en spotting = Translations$spotting$en.internal(_root);
+	late final Translations$dataFiles$en dataFiles = Translations$dataFiles$en.internal(_root);
+	late final Translations$updates$en updates = Translations$updates$en.internal(_root);
+	late final Translations$extensionService$en extensionService = Translations$extensionService$en.internal(_root);
 	late final Translations$operationLocationScreen$en operationLocationScreen = Translations$operationLocationScreen$en.internal(_root);
 	late final Translations$versionLabel$en versionLabel = Translations$versionLabel$en.internal(_root);
 	late final Translations$notices$en notices = Translations$notices$en.internal(_root);
@@ -660,6 +665,180 @@ class Translations$settings$en {
 
 	/// en: 'Developer Mode'
 	String get developerMode => 'Developer Mode';
+
+	late final Translations$settings$syncPanel$en syncPanel = Translations$settings$syncPanel$en.internal(_root);
+	late final Translations$settings$accounts$en accounts = Translations$settings$accounts$en.internal(_root);
+	late final Translations$settings$offlineData$en offlineData = Translations$settings$offlineData$en.internal(_root);
+	late final Translations$settings$profiles$en profiles = Translations$settings$profiles$en.internal(_root);
+	late final Translations$settings$search$en search = Translations$settings$search$en.internal(_root);
+	late final Translations$settings$developer$en developer = Translations$settings$developer$en.internal(_root);
+	late final Translations$settings$about$en about = Translations$settings$about$en.internal(_root);
+	late final Translations$settings$panels$en panels = Translations$settings$panels$en.internal(_root);
+}
+
+// Path: commands
+class Translations$commands$en {
+	Translations$commands$en.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Enable sync in Settings first.'
+	String get enableSyncFirst => 'Enable sync in Settings first.';
+
+	/// en: 'Full resync started — local data was backed up first.'
+	String get fullResyncStarted => 'Full resync started — local data was backed up first.';
+
+	/// en: 'No data files matched "${target}".'
+	String noDataFilesMatched({required Object target}) => 'No data files matched "${target}".';
+
+	/// en: 'Reload failed: ${error}'
+	String reloadFailed({required Object error}) => 'Reload failed: ${error}';
+
+	/// en: 'Reloading all data files…'
+	String get reloadingAll => 'Reloading all data files…';
+
+	/// en: 'Reloading ${target} data files…'
+	String reloadingTarget({required Object target}) => 'Reloading ${target} data files…';
+
+	/// en: 'Unknown experiment "${token}"'
+	String unknownExperiment({required Object token}) => 'Unknown experiment "${token}"';
+
+	/// en: '${name} enabled'
+	String experimentEnabled({required Object name}) => '${name} enabled';
+
+	/// en: '${name} disabled'
+	String experimentDisabled({required Object name}) => '${name} disabled';
+}
+
+// Path: spotting
+class Translations$spotting$en {
+	Translations$spotting$en.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'No QSO logged yet to spot.'
+	String get noQsoYet => 'No QSO logged yet to spot.';
+
+	/// en: 'Set a frequency first.'
+	String get setFrequencyFirst => 'Set a frequency first.';
+
+	/// en: 'Nothing to spot — no extension offers spotting here.'
+	String get nothingToSpot => 'Nothing to spot — no extension offers spotting here.';
+
+	/// en: 'Spotted on ${source}'
+	String spottedOn({required Object source}) => 'Spotted on ${source}';
+
+	/// en: '${source} failed: ${message}'
+	String spotFailed({required Object source, required Object message}) => '${source} failed: ${message}';
+
+	/// en: 'unknown error'
+	String get unknownError => 'unknown error';
+
+	/// en: 'Spot not sent.'
+	String get notSent => 'Spot not sent.';
+}
+
+// Path: dataFiles
+class Translations$dataFiles$en {
+	Translations$dataFiles$en.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Downloading…'
+	String get downloading => 'Downloading…';
+
+	/// en: '(one) {Imported ${count} record for ${label}.} (other) {Imported ${count} records for ${label}.}'
+	String importedRecords({required num count, required Object label}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count,
+		one: 'Imported ${count} record for ${label}.',
+		other: 'Imported ${count} records for ${label}.',
+	);
+
+	/// en: 'Imported data for ${label}.'
+	String importedData({required Object label}) => 'Imported data for ${label}.';
+
+	/// en: 'Cleaned up extension data'
+	String get cleanedUpTitle => 'Cleaned up extension data';
+
+	/// en: '(one) {Removed data for ${count} data file from disabled extensions.} (other) {Removed data for ${count} data files from disabled extensions.}'
+	String removedData({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count,
+		one: 'Removed data for ${count} data file from disabled extensions.',
+		other: 'Removed data for ${count} data files from disabled extensions.',
+	);
+
+	/// en: '${end} / ${total} records'
+	String recordsProgress({required Object end, required Object total}) => '${end} / ${total} records';
+}
+
+// Path: updates
+class Translations$updates$en {
+	Translations$updates$en.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Update available'
+	String get updateAvailable => 'Update available';
+
+	/// en: 'A new version (${version}) is available.'
+	String newVersionAvailable({required Object version}) => 'A new version (${version}) is available.';
+
+	/// en: 'Get it'
+	String get getIt => 'Get it';
+
+	/// en: 'OK'
+	String get ok => 'OK';
+
+	/// en: 'Update ready'
+	String get updateReady => 'Update ready';
+
+	/// en: 'An update has been downloaded. Restart to apply it.'
+	String get restartToApply => 'An update has been downloaded. Restart to apply it.';
+
+	/// en: 'An update has been downloaded. It will apply the next time you open the app.'
+	String get appliesNextLaunch => 'An update has been downloaded. It will apply the next time you open the app.';
+
+	/// en: 'Restart now'
+	String get restartNow => 'Restart now';
+}
+
+// Path: extensionService
+class Translations$extensionService$en {
+	Translations$extensionService$en.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Extension runtime not ready.'
+	String get runtimeNotReady => 'Extension runtime not ready.';
+
+	/// en: 'Test failed: ${error}'
+	String testFailed({required Object error}) => 'Test failed: ${error}';
+
+	/// en: 'Connected as ${identity}'
+	String connectedAs({required Object identity}) => 'Connected as ${identity}';
+
+	/// en: 'Invalid field configuration'
+	String get invalidFieldConfiguration => 'Invalid field configuration';
+
+	/// en: 'Invalid value'
+	String get invalidValue => 'Invalid value';
+
+	/// en: 'Validation error: ${error}'
+	String validationError({required Object error}) => 'Validation error: ${error}';
+
+	/// en: 'Action failed: ${error}'
+	String actionFailed({required Object error}) => 'Action failed: ${error}';
+
+	/// en: 'The command failed to run'
+	String get commandFailed => 'The command failed to run';
 }
 
 // Path: operationLocationScreen
@@ -1111,6 +1290,372 @@ class Translations$settings$sync$en {
 
 	/// en: 'Device Key'
 	String get deviceKey => 'Device Key';
+}
+
+// Path: settings.syncPanel
+class Translations$settings$syncPanel$en {
+	Translations$settings$syncPanel$en.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Sync Configuration'
+	String get configuration => 'Sync Configuration';
+
+	/// en: 'Sync with Ham2K Log Filer'
+	String get enableTitle => 'Sync with Ham2K Log Filer';
+
+	/// en: 'Backs up and syncs your log across devices'
+	String get enabledDescription => 'Backs up and syncs your log across devices';
+
+	/// en: 'Off — your log stays on this device only'
+	String get disabledDescription => 'Off — your log stays on this device only';
+
+	/// en: 'Syncing'
+	String get syncing => 'Syncing';
+
+	/// en: 'Account'
+	String get account => 'Account';
+
+	/// en: 'Refresh'
+	String get refresh => 'Refresh';
+
+	/// en: 'Switch Accounts'
+	String get switchAccounts => 'Switch Accounts';
+
+	/// en: 'Link this device to another account with a QR code or email'
+	String get switchAccountsDescription => 'Link this device to another account with a QR code or email';
+
+	/// en: 'Checking…'
+	String get checking => 'Checking…';
+
+	/// en: 'Not linked yet'
+	String get notLinked => 'Not linked yet';
+
+	/// en: 'Linked as ${call}'
+	String linkedAs({required Object call}) => 'Linked as ${call}';
+
+	/// en: 'Linked as ${call} (${email})'
+	String linkedAsWithEmail({required Object call, required Object email}) => 'Linked as ${call} (${email})';
+
+	/// en: 'Replace local data?'
+	String get replaceDialogTitle => 'Replace local data?';
+
+	/// en: '(one) {${n} operation} (other) {${n} operations}'
+	String replaceDialogOperations({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count,
+		one: '${n} operation',
+		other: '${n} operations',
+	);
+
+	/// en: '(one) {${n} QSO} (other) {${n} QSOs}'
+	String replaceDialogQsos({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count,
+		one: '${n} QSO',
+		other: '${n} QSOs',
+	);
+
+	/// en: 'This backs up and clears ${operations} and ${qsos} from this device, then downloads the account's data instead. The backup stays in this device's database.'
+	String replaceDialogBody({required Object operations, required Object qsos}) => 'This backs up and clears ${operations} and ${qsos} from this device, then downloads the account\'s data instead. The backup stays in this device\'s database.';
+
+	/// en: 'Replace'
+	String get replace => 'Replace';
+
+	/// en: 'New Ham2K Log Filer account detected'
+	String get pendingBannerTitle => 'New Ham2K Log Filer account detected';
+
+	/// en: 'Keep this device's existing operations and QSOs and merge them into the account, or replace them with the account's data (a backup stays on this device either way).'
+	String get pendingBannerBody => 'Keep this device\'s existing operations and QSOs and merge them into the account, or replace them with the account\'s data (a backup stays on this device either way).';
+
+	/// en: 'Combine'
+	String get combine => 'Combine';
+}
+
+// Path: settings.accounts
+class Translations$settings$accounts$en {
+	Translations$settings$accounts$en.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Accounts & Services'
+	String get title => 'Accounts & Services';
+
+	/// en: 'No active extensions with accounts'
+	String get none => 'No active extensions with accounts';
+
+	/// en: 'Not configured'
+	String get notConfigured => 'Not configured';
+
+	/// en: 'Connected'
+	String get connected => 'Connected';
+
+	/// en: 'Connect to ${label}'
+	String connectTo({required Object label}) => 'Connect to ${label}';
+
+	/// en: 'Open in Browser'
+	String get openInBrowser => 'Open in Browser';
+
+	/// en: 'Logged in as ${identity}'
+	String loggedInAs({required Object identity}) => 'Logged in as ${identity}';
+
+	/// en: 'Press Save to keep this account connected.'
+	String get pressSaveToKeep => 'Press Save to keep this account connected.';
+
+	/// en: 'Connected to ${label}'
+	String connectedTo({required Object label}) => 'Connected to ${label}';
+
+	/// en: 'Connect'
+	String get connect => 'Connect';
+
+	/// en: 'Disconnect'
+	String get disconnect => 'Disconnect';
+
+	/// en: 'Connected as'
+	String get connectedAs => 'Connected as';
+
+	/// en: 'Test'
+	String get test => 'Test';
+
+	/// en: 'Save failed: ${error}'
+	String saveFailed({required Object error}) => 'Save failed: ${error}';
+
+	/// en: 'Login failed: ${error}'
+	String loginFailed({required Object error}) => 'Login failed: ${error}';
+}
+
+// Path: settings.offlineData
+class Translations$settings$offlineData$en {
+	Translations$settings$offlineData$en.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Offline Data'
+	String get title => 'Offline Data';
+
+	/// en: 'No data files'
+	String get noFiles => 'No data files';
+
+	/// en: 'Enable activity or lookup extensions to download their offline data here.'
+	String get noFilesDescription => 'Enable activity or lookup extensions to download their offline data here.';
+
+	/// en: 'Refresh'
+	String get refresh => 'Refresh';
+
+	/// en: 'Refreshing…'
+	String get refreshing => 'Refreshing…';
+
+	/// en: 'Could not refresh ${name}: ${error}'
+	String refreshFailed({required Object name, required Object error}) => 'Could not refresh ${name}: ${error}';
+
+	/// en: 'Never downloaded'
+	String get neverDownloaded => 'Never downloaded';
+
+	/// en: 'Updated just now'
+	String get updatedJustNow => 'Updated just now';
+
+	/// en: 'Updated ${days}d ago'
+	String updatedDaysAgo({required Object days}) => 'Updated ${days}d ago';
+
+	/// en: 'Updated ${days}d ${hours}h ago'
+	String updatedDaysHoursAgo({required Object days, required Object hours}) => 'Updated ${days}d ${hours}h ago';
+
+	/// en: 'Updated ${hours}h ago'
+	String updatedHoursAgo({required Object hours}) => 'Updated ${hours}h ago';
+
+	/// en: 'Updated ${hours}h ${minutes}m ago'
+	String updatedHoursMinutesAgo({required Object hours, required Object minutes}) => 'Updated ${hours}h ${minutes}m ago';
+
+	/// en: 'Updated ${minutes}m ago'
+	String updatedMinutesAgo({required Object minutes}) => 'Updated ${minutes}m ago';
+}
+
+// Path: settings.profiles
+class Translations$settings$profiles$en {
+	Translations$settings$profiles$en.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Not set'
+	String get notSet => 'Not set';
+}
+
+// Path: settings.search
+class Translations$settings$search$en {
+	Translations$settings$search$en.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Clear'
+	String get clear => 'Clear';
+
+	/// en: 'Search settings'
+	String get hint => 'Search settings';
+}
+
+// Path: settings.developer
+class Translations$settings$developer$en {
+	Translations$settings$developer$en.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Developer Options'
+	String get options => 'Developer Options';
+
+	/// en: 'Enable developer warnings, debug logs, and tools.'
+	String get developerModeDescription => 'Enable developer warnings, debug logs, and tools.';
+
+	/// en: 'Experiments'
+	String get experiments => 'Experiments';
+
+	/// en: '(one) {${count} enabled} (other) {${count} enabled}'
+	String experimentsEnabled({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count,
+		one: '${count} enabled',
+		other: '${count} enabled',
+	);
+
+	/// en: 'Patch Track'
+	String get patchTrack => 'Patch Track';
+
+	/// en: 'Which over-the-air patch ring this device follows. More adventurous rings get fixes earlier, less tested. Patches apply on the next restart.'
+	String get patchTrackDescription => 'Which over-the-air patch ring this device follows. More adventurous rings get fixes earlier, less tested. Patches apply on the next restart.';
+
+	/// en: 'Stable'
+	String get trackStable => 'Stable';
+
+	/// en: 'Unstable'
+	String get trackUnstable => 'Unstable';
+
+	/// en: 'Bleeding'
+	String get trackBleeding => 'Bleeding';
+
+	/// en: 'Checking "${track}" for a patch…'
+	String checkingTrack({required Object track}) => 'Checking "${track}" for a patch…';
+
+	/// en: 'Patch downloaded — restart the app to apply it.'
+	String get patchDownloaded => 'Patch downloaded — restart the app to apply it.';
+
+	/// en: 'No new patch on "${track}".'
+	String noNewPatch({required Object track}) => 'No new patch on "${track}".';
+
+	/// en: 'No patch installed — running the release binary.'
+	String get noPatchInstalled => 'No patch installed — running the release binary.';
+
+	/// en: 'Running patch #${patch}.'
+	String runningPatch({required Object patch}) => 'Running patch #${patch}.';
+
+	/// en: 'System Information'
+	String get systemInformation => 'System Information';
+
+	/// en: 'Active Extensions'
+	String get activeExtensions => 'Active Extensions';
+
+	/// en: 'App Version'
+	String get appVersion => 'App Version';
+
+	/// en: '(loading…)'
+	String get loading => '(loading…)';
+
+	/// en: 'Extension runtime not available.'
+	String get runtimeNotAvailable => 'Extension runtime not available.';
+
+	/// en: 'Could not load this settings panel.'
+	String get panelLoadFailed => 'Could not load this settings panel.';
+
+	/// en: 'Core & Runtime'
+	String get categoryCore => 'Core & Runtime';
+}
+
+// Path: settings.about
+class Translations$settings$about$en {
+	Translations$settings$about$en.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Notices & Messages'
+	String get notices => 'Notices & Messages';
+
+	/// en: 'Announcements and status messages'
+	String get noticesDescription => 'Announcements and status messages';
+
+	/// en: 'Release Notes'
+	String get releaseNotes => 'Release Notes';
+
+	/// en: 'Copied version details to clipboard'
+	String get copiedVersion => 'Copied version details to clipboard';
+}
+
+// Path: settings.panels
+class Translations$settings$panels$en {
+	Translations$settings$panels$en.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Common Preferences'
+	String get commonPreferences => 'Common Preferences';
+
+	/// en: 'Appearance, language, and everyday settings'
+	String get commonPreferencesDescription => 'Appearance, language, and everyday settings';
+
+	/// en: 'All Settings'
+	String get allSettings => 'All Settings';
+
+	/// en: 'Every available setting in one place'
+	String get allSettingsDescription => 'Every available setting in one place';
+
+	/// en: 'Back up and sync your logs across devices'
+	String get syncDescription => 'Back up and sync your logs across devices';
+
+	/// en: 'Sign in to online services and lookups'
+	String get accountsDescription => 'Sign in to online services and lookups';
+
+	/// en: 'Features & Extensions'
+	String get extensions => 'Features & Extensions';
+
+	/// en: 'Turn optional features on or off'
+	String get extensionsDescription => 'Turn optional features on or off';
+
+	/// en: 'Operator callsign and station profile'
+	String get profilesDescription => 'Operator callsign and station profile';
+
+	/// en: 'Station Profiles'
+	String get stationProfiles => 'Station Profiles';
+
+	/// en: 'Data Files'
+	String get dataFiles => 'Data Files';
+
+	/// en: 'Manage cached data sources'
+	String get dataFilesDescription => 'Manage cached data sources';
+
+	/// en: 'Developer Settings'
+	String get developerSettings => 'Developer Settings';
+
+	/// en: 'Debugging and development tools'
+	String get developerSettingsDescription => 'Debugging and development tools';
+
+	/// en: 'About'
+	String get about => 'About';
+
+	/// en: 'Version, credits, and legal information'
+	String get aboutDescription => 'Version, credits, and legal information';
+
+	/// en: 'Some settings are unavailable'
+	String get unavailableTitle => 'Some settings are unavailable';
+
+	/// en: 'The extension runtime failed to start, so extension-contributed settings are missing.'
+	String get unavailableText => 'The extension runtime failed to start, so extension-contributed settings are missing.';
 }
 
 // Path: operation.spots.continents
@@ -1661,6 +2206,139 @@ extension on Translations {
 			'settings.sync.enable' => 'Enable Sync',
 			'settings.sync.deviceKey' => 'Device Key',
 			'settings.developerMode' => 'Developer Mode',
+			'settings.syncPanel.configuration' => 'Sync Configuration',
+			'settings.syncPanel.enableTitle' => 'Sync with Ham2K Log Filer',
+			'settings.syncPanel.enabledDescription' => 'Backs up and syncs your log across devices',
+			'settings.syncPanel.disabledDescription' => 'Off — your log stays on this device only',
+			'settings.syncPanel.syncing' => 'Syncing',
+			'settings.syncPanel.account' => 'Account',
+			'settings.syncPanel.refresh' => 'Refresh',
+			'settings.syncPanel.switchAccounts' => 'Switch Accounts',
+			'settings.syncPanel.switchAccountsDescription' => 'Link this device to another account with a QR code or email',
+			'settings.syncPanel.checking' => 'Checking…',
+			'settings.syncPanel.notLinked' => 'Not linked yet',
+			'settings.syncPanel.linkedAs' => ({required Object call}) => 'Linked as ${call}',
+			'settings.syncPanel.linkedAsWithEmail' => ({required Object call, required Object email}) => 'Linked as ${call} (${email})',
+			'settings.syncPanel.replaceDialogTitle' => 'Replace local data?',
+			'settings.syncPanel.replaceDialogOperations' => ({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: '${n} operation', other: '${n} operations', ), 
+			'settings.syncPanel.replaceDialogQsos' => ({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: '${n} QSO', other: '${n} QSOs', ), 
+			'settings.syncPanel.replaceDialogBody' => ({required Object operations, required Object qsos}) => 'This backs up and clears ${operations} and ${qsos} from this device, then downloads the account\'s data instead. The backup stays in this device\'s database.',
+			'settings.syncPanel.replace' => 'Replace',
+			'settings.syncPanel.pendingBannerTitle' => 'New Ham2K Log Filer account detected',
+			'settings.syncPanel.pendingBannerBody' => 'Keep this device\'s existing operations and QSOs and merge them into the account, or replace them with the account\'s data (a backup stays on this device either way).',
+			'settings.syncPanel.combine' => 'Combine',
+			'settings.accounts.title' => 'Accounts & Services',
+			'settings.accounts.none' => 'No active extensions with accounts',
+			'settings.accounts.notConfigured' => 'Not configured',
+			'settings.accounts.connected' => 'Connected',
+			'settings.accounts.connectTo' => ({required Object label}) => 'Connect to ${label}',
+			'settings.accounts.openInBrowser' => 'Open in Browser',
+			'settings.accounts.loggedInAs' => ({required Object identity}) => 'Logged in as ${identity}',
+			'settings.accounts.pressSaveToKeep' => 'Press Save to keep this account connected.',
+			'settings.accounts.connectedTo' => ({required Object label}) => 'Connected to ${label}',
+			'settings.accounts.connect' => 'Connect',
+			'settings.accounts.disconnect' => 'Disconnect',
+			'settings.accounts.connectedAs' => 'Connected as',
+			'settings.accounts.test' => 'Test',
+			'settings.accounts.saveFailed' => ({required Object error}) => 'Save failed: ${error}',
+			'settings.accounts.loginFailed' => ({required Object error}) => 'Login failed: ${error}',
+			'settings.offlineData.title' => 'Offline Data',
+			'settings.offlineData.noFiles' => 'No data files',
+			'settings.offlineData.noFilesDescription' => 'Enable activity or lookup extensions to download their offline data here.',
+			'settings.offlineData.refresh' => 'Refresh',
+			'settings.offlineData.refreshing' => 'Refreshing…',
+			'settings.offlineData.refreshFailed' => ({required Object name, required Object error}) => 'Could not refresh ${name}: ${error}',
+			'settings.offlineData.neverDownloaded' => 'Never downloaded',
+			'settings.offlineData.updatedJustNow' => 'Updated just now',
+			'settings.offlineData.updatedDaysAgo' => ({required Object days}) => 'Updated ${days}d ago',
+			'settings.offlineData.updatedDaysHoursAgo' => ({required Object days, required Object hours}) => 'Updated ${days}d ${hours}h ago',
+			'settings.offlineData.updatedHoursAgo' => ({required Object hours}) => 'Updated ${hours}h ago',
+			'settings.offlineData.updatedHoursMinutesAgo' => ({required Object hours, required Object minutes}) => 'Updated ${hours}h ${minutes}m ago',
+			'settings.offlineData.updatedMinutesAgo' => ({required Object minutes}) => 'Updated ${minutes}m ago',
+			'settings.profiles.notSet' => 'Not set',
+			'settings.search.clear' => 'Clear',
+			'settings.search.hint' => 'Search settings',
+			'settings.developer.options' => 'Developer Options',
+			'settings.developer.developerModeDescription' => 'Enable developer warnings, debug logs, and tools.',
+			'settings.developer.experiments' => 'Experiments',
+			'settings.developer.experimentsEnabled' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: '${count} enabled', other: '${count} enabled', ), 
+			'settings.developer.patchTrack' => 'Patch Track',
+			'settings.developer.patchTrackDescription' => 'Which over-the-air patch ring this device follows. More adventurous rings get fixes earlier, less tested. Patches apply on the next restart.',
+			'settings.developer.trackStable' => 'Stable',
+			'settings.developer.trackUnstable' => 'Unstable',
+			'settings.developer.trackBleeding' => 'Bleeding',
+			'settings.developer.checkingTrack' => ({required Object track}) => 'Checking "${track}" for a patch…',
+			'settings.developer.patchDownloaded' => 'Patch downloaded — restart the app to apply it.',
+			'settings.developer.noNewPatch' => ({required Object track}) => 'No new patch on "${track}".',
+			'settings.developer.noPatchInstalled' => 'No patch installed — running the release binary.',
+			'settings.developer.runningPatch' => ({required Object patch}) => 'Running patch #${patch}.',
+			'settings.developer.systemInformation' => 'System Information',
+			'settings.developer.activeExtensions' => 'Active Extensions',
+			'settings.developer.appVersion' => 'App Version',
+			'settings.developer.loading' => '(loading…)',
+			'settings.developer.runtimeNotAvailable' => 'Extension runtime not available.',
+			'settings.developer.panelLoadFailed' => 'Could not load this settings panel.',
+			'settings.developer.categoryCore' => 'Core & Runtime',
+			'settings.about.notices' => 'Notices & Messages',
+			'settings.about.noticesDescription' => 'Announcements and status messages',
+			'settings.about.releaseNotes' => 'Release Notes',
+			'settings.about.copiedVersion' => 'Copied version details to clipboard',
+			'settings.panels.commonPreferences' => 'Common Preferences',
+			'settings.panels.commonPreferencesDescription' => 'Appearance, language, and everyday settings',
+			'settings.panels.allSettings' => 'All Settings',
+			'settings.panels.allSettingsDescription' => 'Every available setting in one place',
+			'settings.panels.syncDescription' => 'Back up and sync your logs across devices',
+			'settings.panels.accountsDescription' => 'Sign in to online services and lookups',
+			'settings.panels.extensions' => 'Features & Extensions',
+			'settings.panels.extensionsDescription' => 'Turn optional features on or off',
+			'settings.panels.profilesDescription' => 'Operator callsign and station profile',
+			'settings.panels.stationProfiles' => 'Station Profiles',
+			'settings.panels.dataFiles' => 'Data Files',
+			'settings.panels.dataFilesDescription' => 'Manage cached data sources',
+			'settings.panels.developerSettings' => 'Developer Settings',
+			'settings.panels.developerSettingsDescription' => 'Debugging and development tools',
+			'settings.panels.about' => 'About',
+			'settings.panels.aboutDescription' => 'Version, credits, and legal information',
+			'settings.panels.unavailableTitle' => 'Some settings are unavailable',
+			'settings.panels.unavailableText' => 'The extension runtime failed to start, so extension-contributed settings are missing.',
+			'commands.enableSyncFirst' => 'Enable sync in Settings first.',
+			'commands.fullResyncStarted' => 'Full resync started — local data was backed up first.',
+			'commands.noDataFilesMatched' => ({required Object target}) => 'No data files matched "${target}".',
+			'commands.reloadFailed' => ({required Object error}) => 'Reload failed: ${error}',
+			'commands.reloadingAll' => 'Reloading all data files…',
+			'commands.reloadingTarget' => ({required Object target}) => 'Reloading ${target} data files…',
+			'commands.unknownExperiment' => ({required Object token}) => 'Unknown experiment "${token}"',
+			'commands.experimentEnabled' => ({required Object name}) => '${name} enabled',
+			'commands.experimentDisabled' => ({required Object name}) => '${name} disabled',
+			'spotting.noQsoYet' => 'No QSO logged yet to spot.',
+			'spotting.setFrequencyFirst' => 'Set a frequency first.',
+			'spotting.nothingToSpot' => 'Nothing to spot — no extension offers spotting here.',
+			'spotting.spottedOn' => ({required Object source}) => 'Spotted on ${source}',
+			'spotting.spotFailed' => ({required Object source, required Object message}) => '${source} failed: ${message}',
+			'spotting.unknownError' => 'unknown error',
+			'spotting.notSent' => 'Spot not sent.',
+			'dataFiles.downloading' => 'Downloading…',
+			'dataFiles.importedRecords' => ({required num count, required Object label}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: 'Imported ${count} record for ${label}.', other: 'Imported ${count} records for ${label}.', ), 
+			'dataFiles.importedData' => ({required Object label}) => 'Imported data for ${label}.',
+			'dataFiles.cleanedUpTitle' => 'Cleaned up extension data',
+			'dataFiles.removedData' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: 'Removed data for ${count} data file from disabled extensions.', other: 'Removed data for ${count} data files from disabled extensions.', ), 
+			'dataFiles.recordsProgress' => ({required Object end, required Object total}) => '${end} / ${total} records',
+			'updates.updateAvailable' => 'Update available',
+			'updates.newVersionAvailable' => ({required Object version}) => 'A new version (${version}) is available.',
+			'updates.getIt' => 'Get it',
+			'updates.ok' => 'OK',
+			'updates.updateReady' => 'Update ready',
+			'updates.restartToApply' => 'An update has been downloaded. Restart to apply it.',
+			'updates.appliesNextLaunch' => 'An update has been downloaded. It will apply the next time you open the app.',
+			'updates.restartNow' => 'Restart now',
+			'extensionService.runtimeNotReady' => 'Extension runtime not ready.',
+			'extensionService.testFailed' => ({required Object error}) => 'Test failed: ${error}',
+			'extensionService.connectedAs' => ({required Object identity}) => 'Connected as ${identity}',
+			'extensionService.invalidFieldConfiguration' => 'Invalid field configuration',
+			'extensionService.invalidValue' => 'Invalid value',
+			'extensionService.validationError' => ({required Object error}) => 'Validation error: ${error}',
+			'extensionService.actionFailed' => ({required Object error}) => 'Action failed: ${error}',
+			'extensionService.commandFailed' => 'The command failed to run',
 			'operationLocationScreen.title' => 'Operation Location',
 			'operationLocationScreen.selectedLocation' => 'Selected Location',
 			'operationLocationScreen.gridSquare' => 'Maidenhead Grid Square Locator',

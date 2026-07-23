@@ -10,6 +10,7 @@ import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../config/user_agent.dart';
+import '../i18n/strings.g.dart';
 import 'extension_service.dart';
 import 'status_bar_service.dart';
 
@@ -260,7 +261,7 @@ class DataFileManager {
     final label = _labelFor(key, def);
     final statusKey = 'dataFile:$key';
 
-    statusBar?.setProgress(key: statusKey, title: label, text: 'Downloading…');
+    statusBar?.setProgress(key: statusKey, title: label, text: t.dataFiles.downloading);
     try {
       final body = await downloadFile(key, url, force: force);
       if (body == null) {
@@ -381,7 +382,9 @@ class DataFileManager {
     statusBar?.setProgress(
       key: statusKey,
       title: label,
-      text: count != null ? 'Imported $count record(s) for $label.' : 'Imported data for $label.',
+      text: count != null
+          ? t.dataFiles.importedRecords(count: count, label: label)
+          : t.dataFiles.importedData(label: label),
       value: 1.0,
     );
   }
@@ -493,8 +496,8 @@ class DataFileManager {
       statusBar?.setProgress(
         key: 'dataFile:purge',
         icon: 'delete-clock',
-        title: 'Cleaned up extension data',
-        text: 'Removed data for $purged data file${purged == 1 ? '' : 's'} from disabled extensions.',
+        title: t.dataFiles.cleanedUpTitle,
+        text: t.dataFiles.removedData(count: purged),
         value: 1.0,
       );
     }
@@ -576,7 +579,7 @@ class DataFileManager {
       statusBar?.setProgress(
         key: statusKey,
         title: label,
-        text: '$end / ${items.length} records',
+        text: t.dataFiles.recordsProgress(end: end, total: items.length),
         value: items.isEmpty ? 1.0 : end / items.length,
       );
 
@@ -618,7 +621,8 @@ class DataFileManager {
     // Clean up any stale records not updated in this run
     await lookups.deleteCategoryStale(category, updatedFlag);
 
-    statusBar?.setProgress(key: statusKey, title: label, text: 'Imported $imported record(s) for $label.', value: 1.0);
+    statusBar?.setProgress(
+        key: statusKey, title: label, text: t.dataFiles.importedRecords(count: imported, label: label), value: 1.0);
   }
 
   List<String> parseCsvRow(String line, String delimiter) {

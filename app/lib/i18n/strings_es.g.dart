@@ -54,6 +54,11 @@ class TranslationsEs extends Translations with BaseTranslations<AppLocale, Trans
 	@override late final _Translations$loggingPanel$es loggingPanel = _Translations$loggingPanel$es._(_root);
 	@override late final _Translations$callInfo$es callInfo = _Translations$callInfo$es._(_root);
 	@override late final _Translations$settings$es settings = _Translations$settings$es._(_root);
+	@override late final _Translations$commands$es commands = _Translations$commands$es._(_root);
+	@override late final _Translations$spotting$es spotting = _Translations$spotting$es._(_root);
+	@override late final _Translations$dataFiles$es dataFiles = _Translations$dataFiles$es._(_root);
+	@override late final _Translations$updates$es updates = _Translations$updates$es._(_root);
+	@override late final _Translations$extensionService$es extensionService = _Translations$extensionService$es._(_root);
 	@override late final _Translations$operationLocationScreen$es operationLocationScreen = _Translations$operationLocationScreen$es._(_root);
 	@override late final _Translations$versionLabel$es versionLabel = _Translations$versionLabel$es._(_root);
 	@override late final _Translations$notices$es notices = _Translations$notices$es._(_root);
@@ -354,6 +359,103 @@ class _Translations$settings$es extends Translations$settings$en {
 	@override String get operatorCall => 'Indicativo del Operador';
 	@override late final _Translations$settings$sync$es sync = _Translations$settings$sync$es._(_root);
 	@override String get developerMode => 'Modo Desarrollador';
+	@override late final _Translations$settings$syncPanel$es syncPanel = _Translations$settings$syncPanel$es._(_root);
+	@override late final _Translations$settings$accounts$es accounts = _Translations$settings$accounts$es._(_root);
+	@override late final _Translations$settings$offlineData$es offlineData = _Translations$settings$offlineData$es._(_root);
+	@override late final _Translations$settings$profiles$es profiles = _Translations$settings$profiles$es._(_root);
+	@override late final _Translations$settings$search$es search = _Translations$settings$search$es._(_root);
+	@override late final _Translations$settings$developer$es developer = _Translations$settings$developer$es._(_root);
+	@override late final _Translations$settings$about$es about = _Translations$settings$about$es._(_root);
+	@override late final _Translations$settings$panels$es panels = _Translations$settings$panels$es._(_root);
+}
+
+// Path: commands
+class _Translations$commands$es extends Translations$commands$en {
+	_Translations$commands$es._(TranslationsEs root) : this._root = root, super.internal(root);
+
+	final TranslationsEs _root; // ignore: unused_field
+
+	// Translations
+	@override String get enableSyncFirst => 'Primero habilita la sincronización en la Configuración.';
+	@override String get fullResyncStarted => 'Resincronización completa iniciada — los datos locales se respaldaron primero.';
+	@override String noDataFilesMatched({required Object target}) => 'Ningún archivo de datos coincide con «${target}».';
+	@override String reloadFailed({required Object error}) => 'Error al recargar: ${error}';
+	@override String get reloadingAll => 'Recargando todos los archivos de datos…';
+	@override String reloadingTarget({required Object target}) => 'Recargando archivos de datos de ${target}…';
+	@override String unknownExperiment({required Object token}) => 'Experimento desconocido «${token}»';
+	@override String experimentEnabled({required Object name}) => '${name} habilitado';
+	@override String experimentDisabled({required Object name}) => '${name} deshabilitado';
+}
+
+// Path: spotting
+class _Translations$spotting$es extends Translations$spotting$en {
+	_Translations$spotting$es._(TranslationsEs root) : this._root = root, super.internal(root);
+
+	final TranslationsEs _root; // ignore: unused_field
+
+	// Translations
+	@override String get noQsoYet => 'Aún no hay QSO registrado para spotear.';
+	@override String get setFrequencyFirst => 'Primero define una frecuencia.';
+	@override String get nothingToSpot => 'Nada que spotear — ninguna extensión ofrece spotting aquí.';
+	@override String spottedOn({required Object source}) => 'Spot enviado a ${source}';
+	@override String spotFailed({required Object source, required Object message}) => '${source} falló: ${message}';
+	@override String get unknownError => 'error desconocido';
+	@override String get notSent => 'Spot no enviado.';
+}
+
+// Path: dataFiles
+class _Translations$dataFiles$es extends Translations$dataFiles$en {
+	_Translations$dataFiles$es._(TranslationsEs root) : this._root = root, super.internal(root);
+
+	final TranslationsEs _root; // ignore: unused_field
+
+	// Translations
+	@override String get downloading => 'Descargando…';
+	@override String importedRecords({required num count, required Object label}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count,
+		one: 'Se importó ${count} registro de ${label}.',
+		other: 'Se importaron ${count} registros de ${label}.',
+	);
+	@override String importedData({required Object label}) => 'Se importaron datos de ${label}.';
+	@override String get cleanedUpTitle => 'Datos de extensiones limpiados';
+	@override String removedData({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count,
+		one: 'Se eliminaron los datos de ${count} archivo de datos de extensiones deshabilitadas.',
+		other: 'Se eliminaron los datos de ${count} archivos de datos de extensiones deshabilitadas.',
+	);
+	@override String recordsProgress({required Object end, required Object total}) => '${end} / ${total} registros';
+}
+
+// Path: updates
+class _Translations$updates$es extends Translations$updates$en {
+	_Translations$updates$es._(TranslationsEs root) : this._root = root, super.internal(root);
+
+	final TranslationsEs _root; // ignore: unused_field
+
+	// Translations
+	@override String get updateAvailable => 'Actualización disponible';
+	@override String newVersionAvailable({required Object version}) => 'Hay una nueva versión (${version}) disponible.';
+	@override String get getIt => 'Obtener';
+	@override String get ok => 'OK';
+	@override String get updateReady => 'Actualización lista';
+	@override String get restartToApply => 'Se descargó una actualización. Reinicia para aplicarla.';
+	@override String get appliesNextLaunch => 'Se descargó una actualización. Se aplicará la próxima vez que abras la app.';
+	@override String get restartNow => 'Reiniciar ahora';
+}
+
+// Path: extensionService
+class _Translations$extensionService$es extends Translations$extensionService$en {
+	_Translations$extensionService$es._(TranslationsEs root) : this._root = root, super.internal(root);
+
+	final TranslationsEs _root; // ignore: unused_field
+
+	// Translations
+	@override String get runtimeNotReady => 'El motor de extensiones aún no está listo.';
+	@override String testFailed({required Object error}) => 'Prueba fallida: ${error}';
+	@override String connectedAs({required Object identity}) => 'Conectado como ${identity}';
+	@override String get invalidFieldConfiguration => 'Configuración de campo no válida';
+	@override String get invalidValue => 'Valor no válido';
+	@override String validationError({required Object error}) => 'Error de validación: ${error}';
+	@override String actionFailed({required Object error}) => 'Acción fallida: ${error}';
+	@override String get commandFailed => 'El comando no se pudo ejecutar';
 }
 
 // Path: operationLocationScreen
@@ -610,6 +712,182 @@ class _Translations$settings$sync$es extends Translations$settings$sync$en {
 	@override String get title => 'LoFi Cloud Sync';
 	@override String get enable => 'Habilitar Sincronización';
 	@override String get deviceKey => 'Clave del Dispositivo';
+}
+
+// Path: settings.syncPanel
+class _Translations$settings$syncPanel$es extends Translations$settings$syncPanel$en {
+	_Translations$settings$syncPanel$es._(TranslationsEs root) : this._root = root, super.internal(root);
+
+	final TranslationsEs _root; // ignore: unused_field
+
+	// Translations
+	@override String get configuration => 'Configuración de sincronización';
+	@override String get enableTitle => 'Sincronizar con Ham2K Log Filer';
+	@override String get enabledDescription => 'Respalda y sincroniza tu registro entre dispositivos';
+	@override String get disabledDescription => 'Desactivado — tu registro se queda solo en este dispositivo';
+	@override String get syncing => 'Sincronizando';
+	@override String get account => 'Cuenta';
+	@override String get refresh => 'Actualizar';
+	@override String get switchAccounts => 'Cambiar de cuenta';
+	@override String get switchAccountsDescription => 'Vincula este dispositivo a otra cuenta con un código QR o por email';
+	@override String get checking => 'Comprobando…';
+	@override String get notLinked => 'Aún no vinculado';
+	@override String linkedAs({required Object call}) => 'Vinculado como ${call}';
+	@override String linkedAsWithEmail({required Object call, required Object email}) => 'Vinculado como ${call} (${email})';
+	@override String get replaceDialogTitle => '¿Reemplazar los datos locales?';
+	@override String replaceDialogOperations({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count,
+		one: '${n} operación',
+		other: '${n} operaciones',
+	);
+	@override String replaceDialogQsos({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count,
+		one: '${n} QSO',
+		other: '${n} QSOs',
+	);
+	@override String replaceDialogBody({required Object operations, required Object qsos}) => 'Esto respalda y borra ${operations} y ${qsos} de este dispositivo, y luego descarga los datos de la cuenta en su lugar. El respaldo se conserva en la base de datos de este dispositivo.';
+	@override String get replace => 'Reemplazar';
+	@override String get pendingBannerTitle => 'Nueva cuenta de Ham2K Log Filer detectada';
+	@override String get pendingBannerBody => 'Conserva las operaciones y QSOs existentes en este dispositivo y combínalos con la cuenta, o reemplázalos con los datos de la cuenta (en ambos casos queda un respaldo en este dispositivo).';
+	@override String get combine => 'Combinar';
+}
+
+// Path: settings.accounts
+class _Translations$settings$accounts$es extends Translations$settings$accounts$en {
+	_Translations$settings$accounts$es._(TranslationsEs root) : this._root = root, super.internal(root);
+
+	final TranslationsEs _root; // ignore: unused_field
+
+	// Translations
+	@override String get title => 'Cuentas y servicios';
+	@override String get none => 'No hay extensiones activas con cuentas';
+	@override String get notConfigured => 'Sin configurar';
+	@override String get connected => 'Conectado';
+	@override String connectTo({required Object label}) => 'Conectar con ${label}';
+	@override String get openInBrowser => 'Abrir en el navegador';
+	@override String loggedInAs({required Object identity}) => 'Sesión iniciada como ${identity}';
+	@override String get pressSaveToKeep => 'Pulsa Guardar para mantener esta cuenta conectada.';
+	@override String connectedTo({required Object label}) => 'Conectado a ${label}';
+	@override String get connect => 'Conectar';
+	@override String get disconnect => 'Desconectar';
+	@override String get connectedAs => 'Conectado como';
+	@override String get test => 'Probar';
+	@override String saveFailed({required Object error}) => 'Error al guardar: ${error}';
+	@override String loginFailed({required Object error}) => 'Error al iniciar sesión: ${error}';
+}
+
+// Path: settings.offlineData
+class _Translations$settings$offlineData$es extends Translations$settings$offlineData$en {
+	_Translations$settings$offlineData$es._(TranslationsEs root) : this._root = root, super.internal(root);
+
+	final TranslationsEs _root; // ignore: unused_field
+
+	// Translations
+	@override String get title => 'Datos sin conexión';
+	@override String get noFiles => 'No hay archivos de datos';
+	@override String get noFilesDescription => 'Habilita extensiones de actividades o búsquedas para descargar aquí sus datos sin conexión.';
+	@override String get refresh => 'Actualizar';
+	@override String get refreshing => 'Actualizando…';
+	@override String refreshFailed({required Object name, required Object error}) => 'No se pudo actualizar ${name}: ${error}';
+	@override String get neverDownloaded => 'Nunca descargado';
+	@override String get updatedJustNow => 'Actualizado hace un momento';
+	@override String updatedDaysAgo({required Object days}) => 'Actualizado hace ${days}d';
+	@override String updatedDaysHoursAgo({required Object days, required Object hours}) => 'Actualizado hace ${days}d ${hours}h';
+	@override String updatedHoursAgo({required Object hours}) => 'Actualizado hace ${hours}h';
+	@override String updatedHoursMinutesAgo({required Object hours, required Object minutes}) => 'Actualizado hace ${hours}h ${minutes}m';
+	@override String updatedMinutesAgo({required Object minutes}) => 'Actualizado hace ${minutes}m';
+}
+
+// Path: settings.profiles
+class _Translations$settings$profiles$es extends Translations$settings$profiles$en {
+	_Translations$settings$profiles$es._(TranslationsEs root) : this._root = root, super.internal(root);
+
+	final TranslationsEs _root; // ignore: unused_field
+
+	// Translations
+	@override String get notSet => 'Sin definir';
+}
+
+// Path: settings.search
+class _Translations$settings$search$es extends Translations$settings$search$en {
+	_Translations$settings$search$es._(TranslationsEs root) : this._root = root, super.internal(root);
+
+	final TranslationsEs _root; // ignore: unused_field
+
+	// Translations
+	@override String get clear => 'Borrar';
+	@override String get hint => 'Buscar en la configuración';
+}
+
+// Path: settings.developer
+class _Translations$settings$developer$es extends Translations$settings$developer$en {
+	_Translations$settings$developer$es._(TranslationsEs root) : this._root = root, super.internal(root);
+
+	final TranslationsEs _root; // ignore: unused_field
+
+	// Translations
+	@override String get options => 'Opciones de desarrollador';
+	@override String get developerModeDescription => 'Habilita avisos de desarrollador, registros de depuración y herramientas.';
+	@override String get experiments => 'Experimentos';
+	@override String experimentsEnabled({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count,
+		one: '${count} habilitado',
+		other: '${count} habilitados',
+	);
+	@override String get patchTrack => 'Canal de parches';
+	@override String get patchTrackDescription => 'Qué canal de parches over-the-air sigue este dispositivo. Los canales más aventureros reciben correcciones antes, menos probadas. Los parches se aplican en el próximo reinicio.';
+	@override String get trackStable => 'Estable';
+	@override String get trackUnstable => 'Inestable';
+	@override String get trackBleeding => 'Vanguardia';
+	@override String checkingTrack({required Object track}) => 'Buscando un parche en «${track}»…';
+	@override String get patchDownloaded => 'Parche descargado — reinicia la app para aplicarlo.';
+	@override String noNewPatch({required Object track}) => 'No hay parches nuevos en «${track}».';
+	@override String get noPatchInstalled => 'No hay parche instalado — ejecutando el binario de la versión.';
+	@override String runningPatch({required Object patch}) => 'Ejecutando el parche #${patch}.';
+	@override String get systemInformation => 'Información del sistema';
+	@override String get activeExtensions => 'Extensiones activas';
+	@override String get appVersion => 'Versión de la app';
+	@override String get loading => '(cargando…)';
+	@override String get runtimeNotAvailable => 'El motor de extensiones no está disponible.';
+	@override String get panelLoadFailed => 'No se pudo cargar este panel de configuración.';
+	@override String get categoryCore => 'Núcleo y motor';
+}
+
+// Path: settings.about
+class _Translations$settings$about$es extends Translations$settings$about$en {
+	_Translations$settings$about$es._(TranslationsEs root) : this._root = root, super.internal(root);
+
+	final TranslationsEs _root; // ignore: unused_field
+
+	// Translations
+	@override String get notices => 'Avisos y mensajes';
+	@override String get noticesDescription => 'Anuncios y mensajes de estado';
+	@override String get releaseNotes => 'Notas de la versión';
+	@override String get copiedVersion => 'Detalles de versión copiados al portapapeles';
+}
+
+// Path: settings.panels
+class _Translations$settings$panels$es extends Translations$settings$panels$en {
+	_Translations$settings$panels$es._(TranslationsEs root) : this._root = root, super.internal(root);
+
+	final TranslationsEs _root; // ignore: unused_field
+
+	// Translations
+	@override String get commonPreferences => 'Preferencias comunes';
+	@override String get commonPreferencesDescription => 'Apariencia, idioma y ajustes cotidianos';
+	@override String get allSettings => 'Todos los ajustes';
+	@override String get allSettingsDescription => 'Todos los ajustes disponibles en un solo lugar';
+	@override String get syncDescription => 'Respalda y sincroniza tus registros entre dispositivos';
+	@override String get accountsDescription => 'Inicia sesión en servicios y búsquedas en línea';
+	@override String get extensions => 'Funciones y extensiones';
+	@override String get extensionsDescription => 'Activa o desactiva funciones opcionales';
+	@override String get profilesDescription => 'Indicativo del operador y perfil de la estación';
+	@override String get stationProfiles => 'Perfiles de estación';
+	@override String get dataFiles => 'Archivos de datos';
+	@override String get dataFilesDescription => 'Administra las fuentes de datos en caché';
+	@override String get developerSettings => 'Ajustes de desarrollador';
+	@override String get developerSettingsDescription => 'Herramientas de depuración y desarrollo';
+	@override String get about => 'Acerca de';
+	@override String get aboutDescription => 'Versión, créditos e información legal';
+	@override String get unavailableTitle => 'Algunos ajustes no están disponibles';
+	@override String get unavailableText => 'El motor de extensiones no pudo iniciarse, así que faltan los ajustes aportados por extensiones.';
 }
 
 // Path: operation.spots.continents
@@ -1064,6 +1342,139 @@ extension on TranslationsEs {
 			'settings.sync.enable' => 'Habilitar Sincronización',
 			'settings.sync.deviceKey' => 'Clave del Dispositivo',
 			'settings.developerMode' => 'Modo Desarrollador',
+			'settings.syncPanel.configuration' => 'Configuración de sincronización',
+			'settings.syncPanel.enableTitle' => 'Sincronizar con Ham2K Log Filer',
+			'settings.syncPanel.enabledDescription' => 'Respalda y sincroniza tu registro entre dispositivos',
+			'settings.syncPanel.disabledDescription' => 'Desactivado — tu registro se queda solo en este dispositivo',
+			'settings.syncPanel.syncing' => 'Sincronizando',
+			'settings.syncPanel.account' => 'Cuenta',
+			'settings.syncPanel.refresh' => 'Actualizar',
+			'settings.syncPanel.switchAccounts' => 'Cambiar de cuenta',
+			'settings.syncPanel.switchAccountsDescription' => 'Vincula este dispositivo a otra cuenta con un código QR o por email',
+			'settings.syncPanel.checking' => 'Comprobando…',
+			'settings.syncPanel.notLinked' => 'Aún no vinculado',
+			'settings.syncPanel.linkedAs' => ({required Object call}) => 'Vinculado como ${call}',
+			'settings.syncPanel.linkedAsWithEmail' => ({required Object call, required Object email}) => 'Vinculado como ${call} (${email})',
+			'settings.syncPanel.replaceDialogTitle' => '¿Reemplazar los datos locales?',
+			'settings.syncPanel.replaceDialogOperations' => ({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count, one: '${n} operación', other: '${n} operaciones', ), 
+			'settings.syncPanel.replaceDialogQsos' => ({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count, one: '${n} QSO', other: '${n} QSOs', ), 
+			'settings.syncPanel.replaceDialogBody' => ({required Object operations, required Object qsos}) => 'Esto respalda y borra ${operations} y ${qsos} de este dispositivo, y luego descarga los datos de la cuenta en su lugar. El respaldo se conserva en la base de datos de este dispositivo.',
+			'settings.syncPanel.replace' => 'Reemplazar',
+			'settings.syncPanel.pendingBannerTitle' => 'Nueva cuenta de Ham2K Log Filer detectada',
+			'settings.syncPanel.pendingBannerBody' => 'Conserva las operaciones y QSOs existentes en este dispositivo y combínalos con la cuenta, o reemplázalos con los datos de la cuenta (en ambos casos queda un respaldo en este dispositivo).',
+			'settings.syncPanel.combine' => 'Combinar',
+			'settings.accounts.title' => 'Cuentas y servicios',
+			'settings.accounts.none' => 'No hay extensiones activas con cuentas',
+			'settings.accounts.notConfigured' => 'Sin configurar',
+			'settings.accounts.connected' => 'Conectado',
+			'settings.accounts.connectTo' => ({required Object label}) => 'Conectar con ${label}',
+			'settings.accounts.openInBrowser' => 'Abrir en el navegador',
+			'settings.accounts.loggedInAs' => ({required Object identity}) => 'Sesión iniciada como ${identity}',
+			'settings.accounts.pressSaveToKeep' => 'Pulsa Guardar para mantener esta cuenta conectada.',
+			'settings.accounts.connectedTo' => ({required Object label}) => 'Conectado a ${label}',
+			'settings.accounts.connect' => 'Conectar',
+			'settings.accounts.disconnect' => 'Desconectar',
+			'settings.accounts.connectedAs' => 'Conectado como',
+			'settings.accounts.test' => 'Probar',
+			'settings.accounts.saveFailed' => ({required Object error}) => 'Error al guardar: ${error}',
+			'settings.accounts.loginFailed' => ({required Object error}) => 'Error al iniciar sesión: ${error}',
+			'settings.offlineData.title' => 'Datos sin conexión',
+			'settings.offlineData.noFiles' => 'No hay archivos de datos',
+			'settings.offlineData.noFilesDescription' => 'Habilita extensiones de actividades o búsquedas para descargar aquí sus datos sin conexión.',
+			'settings.offlineData.refresh' => 'Actualizar',
+			'settings.offlineData.refreshing' => 'Actualizando…',
+			'settings.offlineData.refreshFailed' => ({required Object name, required Object error}) => 'No se pudo actualizar ${name}: ${error}',
+			'settings.offlineData.neverDownloaded' => 'Nunca descargado',
+			'settings.offlineData.updatedJustNow' => 'Actualizado hace un momento',
+			'settings.offlineData.updatedDaysAgo' => ({required Object days}) => 'Actualizado hace ${days}d',
+			'settings.offlineData.updatedDaysHoursAgo' => ({required Object days, required Object hours}) => 'Actualizado hace ${days}d ${hours}h',
+			'settings.offlineData.updatedHoursAgo' => ({required Object hours}) => 'Actualizado hace ${hours}h',
+			'settings.offlineData.updatedHoursMinutesAgo' => ({required Object hours, required Object minutes}) => 'Actualizado hace ${hours}h ${minutes}m',
+			'settings.offlineData.updatedMinutesAgo' => ({required Object minutes}) => 'Actualizado hace ${minutes}m',
+			'settings.profiles.notSet' => 'Sin definir',
+			'settings.search.clear' => 'Borrar',
+			'settings.search.hint' => 'Buscar en la configuración',
+			'settings.developer.options' => 'Opciones de desarrollador',
+			'settings.developer.developerModeDescription' => 'Habilita avisos de desarrollador, registros de depuración y herramientas.',
+			'settings.developer.experiments' => 'Experimentos',
+			'settings.developer.experimentsEnabled' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count, one: '${count} habilitado', other: '${count} habilitados', ), 
+			'settings.developer.patchTrack' => 'Canal de parches',
+			'settings.developer.patchTrackDescription' => 'Qué canal de parches over-the-air sigue este dispositivo. Los canales más aventureros reciben correcciones antes, menos probadas. Los parches se aplican en el próximo reinicio.',
+			'settings.developer.trackStable' => 'Estable',
+			'settings.developer.trackUnstable' => 'Inestable',
+			'settings.developer.trackBleeding' => 'Vanguardia',
+			'settings.developer.checkingTrack' => ({required Object track}) => 'Buscando un parche en «${track}»…',
+			'settings.developer.patchDownloaded' => 'Parche descargado — reinicia la app para aplicarlo.',
+			'settings.developer.noNewPatch' => ({required Object track}) => 'No hay parches nuevos en «${track}».',
+			'settings.developer.noPatchInstalled' => 'No hay parche instalado — ejecutando el binario de la versión.',
+			'settings.developer.runningPatch' => ({required Object patch}) => 'Ejecutando el parche #${patch}.',
+			'settings.developer.systemInformation' => 'Información del sistema',
+			'settings.developer.activeExtensions' => 'Extensiones activas',
+			'settings.developer.appVersion' => 'Versión de la app',
+			'settings.developer.loading' => '(cargando…)',
+			'settings.developer.runtimeNotAvailable' => 'El motor de extensiones no está disponible.',
+			'settings.developer.panelLoadFailed' => 'No se pudo cargar este panel de configuración.',
+			'settings.developer.categoryCore' => 'Núcleo y motor',
+			'settings.about.notices' => 'Avisos y mensajes',
+			'settings.about.noticesDescription' => 'Anuncios y mensajes de estado',
+			'settings.about.releaseNotes' => 'Notas de la versión',
+			'settings.about.copiedVersion' => 'Detalles de versión copiados al portapapeles',
+			'settings.panels.commonPreferences' => 'Preferencias comunes',
+			'settings.panels.commonPreferencesDescription' => 'Apariencia, idioma y ajustes cotidianos',
+			'settings.panels.allSettings' => 'Todos los ajustes',
+			'settings.panels.allSettingsDescription' => 'Todos los ajustes disponibles en un solo lugar',
+			'settings.panels.syncDescription' => 'Respalda y sincroniza tus registros entre dispositivos',
+			'settings.panels.accountsDescription' => 'Inicia sesión en servicios y búsquedas en línea',
+			'settings.panels.extensions' => 'Funciones y extensiones',
+			'settings.panels.extensionsDescription' => 'Activa o desactiva funciones opcionales',
+			'settings.panels.profilesDescription' => 'Indicativo del operador y perfil de la estación',
+			'settings.panels.stationProfiles' => 'Perfiles de estación',
+			'settings.panels.dataFiles' => 'Archivos de datos',
+			'settings.panels.dataFilesDescription' => 'Administra las fuentes de datos en caché',
+			'settings.panels.developerSettings' => 'Ajustes de desarrollador',
+			'settings.panels.developerSettingsDescription' => 'Herramientas de depuración y desarrollo',
+			'settings.panels.about' => 'Acerca de',
+			'settings.panels.aboutDescription' => 'Versión, créditos e información legal',
+			'settings.panels.unavailableTitle' => 'Algunos ajustes no están disponibles',
+			'settings.panels.unavailableText' => 'El motor de extensiones no pudo iniciarse, así que faltan los ajustes aportados por extensiones.',
+			'commands.enableSyncFirst' => 'Primero habilita la sincronización en la Configuración.',
+			'commands.fullResyncStarted' => 'Resincronización completa iniciada — los datos locales se respaldaron primero.',
+			'commands.noDataFilesMatched' => ({required Object target}) => 'Ningún archivo de datos coincide con «${target}».',
+			'commands.reloadFailed' => ({required Object error}) => 'Error al recargar: ${error}',
+			'commands.reloadingAll' => 'Recargando todos los archivos de datos…',
+			'commands.reloadingTarget' => ({required Object target}) => 'Recargando archivos de datos de ${target}…',
+			'commands.unknownExperiment' => ({required Object token}) => 'Experimento desconocido «${token}»',
+			'commands.experimentEnabled' => ({required Object name}) => '${name} habilitado',
+			'commands.experimentDisabled' => ({required Object name}) => '${name} deshabilitado',
+			'spotting.noQsoYet' => 'Aún no hay QSO registrado para spotear.',
+			'spotting.setFrequencyFirst' => 'Primero define una frecuencia.',
+			'spotting.nothingToSpot' => 'Nada que spotear — ninguna extensión ofrece spotting aquí.',
+			'spotting.spottedOn' => ({required Object source}) => 'Spot enviado a ${source}',
+			'spotting.spotFailed' => ({required Object source, required Object message}) => '${source} falló: ${message}',
+			'spotting.unknownError' => 'error desconocido',
+			'spotting.notSent' => 'Spot no enviado.',
+			'dataFiles.downloading' => 'Descargando…',
+			'dataFiles.importedRecords' => ({required num count, required Object label}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count, one: 'Se importó ${count} registro de ${label}.', other: 'Se importaron ${count} registros de ${label}.', ), 
+			'dataFiles.importedData' => ({required Object label}) => 'Se importaron datos de ${label}.',
+			'dataFiles.cleanedUpTitle' => 'Datos de extensiones limpiados',
+			'dataFiles.removedData' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count, one: 'Se eliminaron los datos de ${count} archivo de datos de extensiones deshabilitadas.', other: 'Se eliminaron los datos de ${count} archivos de datos de extensiones deshabilitadas.', ), 
+			'dataFiles.recordsProgress' => ({required Object end, required Object total}) => '${end} / ${total} registros',
+			'updates.updateAvailable' => 'Actualización disponible',
+			'updates.newVersionAvailable' => ({required Object version}) => 'Hay una nueva versión (${version}) disponible.',
+			'updates.getIt' => 'Obtener',
+			'updates.ok' => 'OK',
+			'updates.updateReady' => 'Actualización lista',
+			'updates.restartToApply' => 'Se descargó una actualización. Reinicia para aplicarla.',
+			'updates.appliesNextLaunch' => 'Se descargó una actualización. Se aplicará la próxima vez que abras la app.',
+			'updates.restartNow' => 'Reiniciar ahora',
+			'extensionService.runtimeNotReady' => 'El motor de extensiones aún no está listo.',
+			'extensionService.testFailed' => ({required Object error}) => 'Prueba fallida: ${error}',
+			'extensionService.connectedAs' => ({required Object identity}) => 'Conectado como ${identity}',
+			'extensionService.invalidFieldConfiguration' => 'Configuración de campo no válida',
+			'extensionService.invalidValue' => 'Valor no válido',
+			'extensionService.validationError' => ({required Object error}) => 'Error de validación: ${error}',
+			'extensionService.actionFailed' => ({required Object error}) => 'Acción fallida: ${error}',
+			'extensionService.commandFailed' => 'El comando no se pudo ejecutar',
 			'operationLocationScreen.title' => 'Ubicación de la operación',
 			'operationLocationScreen.selectedLocation' => 'Ubicación seleccionada',
 			'operationLocationScreen.gridSquare' => 'Locator de cuadrícula Maidenhead',

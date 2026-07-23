@@ -434,7 +434,7 @@ class SyncSettingsGroup extends SettingsGroup {
       final data = settings.syncState['accountData'];
       final current = data is Map ? data['current_account'] : null;
       final call = current is Map ? current['call'] as String? : null;
-      account = (call == null || call.isEmpty) ? 'Not linked yet' : 'Linked as $call';
+      account = (call == null || call.isEmpty) ? t.settings.syncPanel.notLinked : t.settings.syncPanel.linkedAs(call: call);
     }
     return [
       _toggle(

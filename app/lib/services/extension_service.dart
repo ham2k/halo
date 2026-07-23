@@ -322,7 +322,7 @@ class ExtensionService {
 
   Future<String> testCredentials(String accountKey, Map<String, String> credentials) async {
     final host = _host;
-    if (host == null) return 'Extension runtime not ready.';
+    if (host == null) return t.extensionService.runtimeNotReady;
     try {
       final dynamic res = await host.invokeHook(
         'account',
@@ -333,7 +333,7 @@ class ExtensionService {
       );
       return res is String ? res : res?.toString() ?? '';
     } catch (e) {
-      return 'Test failed: $e';
+      return t.extensionService.testFailed(error: e);
     }
   }
 
@@ -476,7 +476,7 @@ class ExtensionService {
       final creds = await getAccountCredentials(accountKey);
       if (creds.isEmpty) return {'connected': false};
       final identity = identityFromCredentials(creds);
-      return {'connected': true, if (identity != null) 'label': 'Connected as $identity'};
+      return {'connected': true, if (identity != null) 'label': t.extensionService.connectedAs(identity: identity)};
     } catch (e) {
       debugPrint('[extensions] _resolveAccountStatus failed for $accountKey: $e');
       return {'connected': false};
@@ -528,9 +528,9 @@ class ExtensionService {
         // still can't let it crash the caller, which (unlike submit()'s own
         // validator call) doesn't wrap this in a try/catch on the on-blur path.
         debugPrint('[extensions] settingsPanel field "${field['key']}" has an invalid pattern "$pattern": $e');
-        return 'Invalid field configuration';
+        return t.extensionService.invalidFieldConfiguration;
       }
-      return field['patternError'] as String? ?? 'Invalid value';
+      return field['patternError'] as String? ?? t.extensionService.invalidValue;
     }
     final host = this.host;
     if (host == null) return null;
@@ -543,7 +543,7 @@ class ExtensionService {
       );
       return res as String?;
     } catch (e) {
-      return 'Validation error: $e';
+      return t.extensionService.validationError(error: e);
     }
   }
 
@@ -624,7 +624,7 @@ class ExtensionService {
     required Map<String, dynamic> state,
   }) async {
     final host = this.host;
-    if (host == null) return 'Extension runtime not ready.';
+    if (host == null) return t.extensionService.runtimeNotReady;
     try {
       final res = await host.invokeHook(
         'settingsPanel',
@@ -635,7 +635,7 @@ class ExtensionService {
       );
       return res is String ? res : res?.toString();
     } catch (e) {
-      return 'Action failed: $e';
+      return t.extensionService.actionFailed(error: e);
     }
   }
 
@@ -1099,7 +1099,7 @@ class ExtensionService {
               );
               return res as String?;
             } catch (e) {
-              return 'Validation error: $e';
+              return t.extensionService.validationError(error: e);
             }
           },
           transformer: (fieldKey, value, currentState) async {
@@ -1246,7 +1246,7 @@ class ExtensionService {
         wide: true,
         title: title != null ? Text(title) : null,
         content: MarkdownBody(data: text),
-        cancel: TextButton(onPressed: () => Navigator.of(dialogContext).pop(), child: const Text('Close')),
+        cancel: TextButton(onPressed: () => Navigator.of(dialogContext).pop(), child: Text(t.common.close)),
         actions: [
           for (final action in actions)
             if (action['label'] is String && _declarativeActionHandler(action) != null)
@@ -1405,7 +1405,7 @@ class ExtensionService {
       // would silently do nothing after a long wait (a hook exceeding its
       // timeout, e.g. a stalled SOLAR/WEATHER fetch, lands here). Surface
       // it through the same `error` channel a hook itself would use.
-      if (execute) return {'error': 'The command failed to run'};
+      if (execute) return {'error': t.extensionService.commandFailed};
     }
     return null;
   }

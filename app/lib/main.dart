@@ -593,9 +593,9 @@ class HaLoServices {
   Future<String?> handleCommandAction(String action, [Map<String, dynamic>? params]) async {
     switch (action) {
       case 'syncAll':
-        if (!settings.syncEnabled) return 'Enable sync in Settings first.';
+        if (!settings.syncEnabled) return t.commands.enableSyncFirst;
         await syncEngine.forceFullResync();
-        return 'Full resync started — local data was backed up first.';
+        return t.commands.fullResyncStarted;
       case 'reloadDataFiles':
         final p = params ?? const {};
         final target = (p['target'] as String?)?.toUpperCase();
@@ -609,7 +609,7 @@ class HaLoServices {
           if (matched == 0) {
             statusBar.setProgress(
               key: 'command:reloadDataFiles',
-              text: 'No data files matched "$target".',
+              text: t.commands.noDataFilesMatched(target: target),
               value: 1.0,
             );
           }
@@ -619,9 +619,9 @@ class HaLoServices {
           // silently drop the failure) for anything unexpected that slips
           // past that per-entry try/catch.
           debugPrint('[data-file] reloadDataFiles failed: $e');
-          statusBar.setProgress(key: 'command:reloadDataFiles', text: 'Reload failed: $e', value: 1.0);
+          statusBar.setProgress(key: 'command:reloadDataFiles', text: t.commands.reloadFailed(error: e), value: 1.0);
         }));
-        return target == 'ALL' ? 'Reloading all data files…' : 'Reloading $target data files…';
+        return target == 'ALL' ? t.commands.reloadingAll : t.commands.reloadingTarget(target: target);
       case 'devNotice':
         final p = params ?? const {};
         statusBar.showNotice(
@@ -666,10 +666,12 @@ class HaLoServices {
         final token = (params?['token'] as String? ?? '').trim();
         if (token.isEmpty) return null;
         final experiment = findExperiment(await loadExperiments(), token);
-        if (experiment == null) return 'Unknown experiment "${token.toUpperCase()}"';
+        if (experiment == null) return t.commands.unknownExperiment(token: token.toUpperCase());
         final enabled = !settings.experimentEnabled(experiment.key);
         await settings.setExperimentEnabled(experiment.key, enabled);
-        return '${experiment.name} ${enabled ? 'enabled' : 'disabled'}';
+        return enabled
+            ? t.commands.experimentEnabled(name: experiment.name)
+            : t.commands.experimentDisabled(name: experiment.name);
       default:
         return null;
     }
@@ -683,12 +685,12 @@ class HaLoServices {
     final operation = (params['operation'] as Map?)?.cast<String, dynamic>() ?? const {};
     final qso = (params['qso'] as Map?)?.cast<String, dynamic>();
     final target = params['target'] as String? ?? 'self';
-    if (target == 'last' && qso == null) return 'No QSO logged yet to spot.';
+    if (target == 'last' && qso == null) return t.spotting.noQsoYet;
     final freq = (params['freq'] as num?)?.toDouble();
-    if (qso == null && freq == null) return 'Set a frequency first.';
+    if (qso == null && freq == null) return t.spotting.setFrequencyFirst;
 
     final sources = await extensions.suggestSpotSources(operation: operation, qso: qso);
-    if (sources.isEmpty) return 'Nothing to spot — no extension offers spotting here.';
+    if (sources.isEmpty) return t.spotting.nothingToSpot;
 
     final results = await extensions.sendSpot(
       sources: sources,
@@ -705,9 +707,11 @@ class HaLoServices {
       final hookKey = source['hookKey'] as String? ?? '?';
       final result = results[hookKey];
       if (result == null) continue;
-      summaries.add(result['ok'] == true ? 'Spotted on $hookKey' : '$hookKey failed: ${result['message'] ?? 'unknown error'}');
+      summaries.add(result['ok'] == true
+          ? t.spotting.spottedOn(source: hookKey)
+          : t.spotting.spotFailed(source: hookKey, message: result['message'] ?? t.spotting.unknownError));
     }
-    return summaries.isEmpty ? 'Spot not sent.' : summaries.join('; ');
+    return summaries.isEmpty ? t.spotting.notSent : summaries.join('; ');
   }
 
   Future<Map<String, dynamic>> _syncTransportCall(String method, Map<String, dynamic> args) async {

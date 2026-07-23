@@ -13,6 +13,7 @@
 
 import 'dart:async';
 
+import '../i18n/strings.g.dart';
 import 'restart_service.dart';
 import 'status_bar_service.dart';
 
@@ -25,15 +26,12 @@ void showPatchReadyNotice(StatusBarService statusBar, RestartService restart) {
   statusBar.showNotice(
     key: patchReadyNoticeKey,
     icon: 'restart',
-    title: 'Update ready',
-    text: restart.isSupported
-        ? 'An update has been downloaded. Restart to apply it.'
-        : 'An update has been downloaded. It will apply the next time you '
-              'open the app.',
+    title: t.updates.updateReady,
+    text: restart.isSupported ? t.updates.restartToApply : t.updates.appliesNextLaunch,
     actions: [
       if (restart.isSupported)
         StatusBarAction(
-          label: 'Restart now',
+          label: t.updates.restartNow,
           onTap: () => unawaited(restart.restart()),
         ),
     ],

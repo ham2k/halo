@@ -361,7 +361,181 @@
       "enable": "Enable Sync",
       "deviceKey": "Device Key"
     },
-    "developerMode": "Developer Mode"
+    "developerMode": "Developer Mode",
+    "syncPanel": {
+      "configuration": "Sync Configuration",
+      "enableTitle": "Sync with Ham2K Log Filer",
+      "enabledDescription": "Backs up and syncs your log across devices",
+      "disabledDescription": "Off — your log stays on this device only",
+      "syncing": "Syncing",
+      "account": "Account",
+      "refresh": "Refresh",
+      "switchAccounts": "Switch Accounts",
+      "switchAccountsDescription": "Link this device to another account with a QR code or email",
+      "checking": "Checking…",
+      "notLinked": "Not linked yet",
+      "linkedAs": "Linked as ${call}",
+      "linkedAsWithEmail": "Linked as ${call} (${email})",
+      "replaceDialogTitle": "Replace local data?",
+      "replaceDialogOperations": {
+        "one": "${n} operation",
+        "other": "${n} operations"
+      },
+      "replaceDialogQsos": {
+        "one": "${n} QSO",
+        "other": "${n} QSOs"
+      },
+      "replaceDialogBody": "This backs up and clears ${operations} and ${qsos} from this device, then downloads the account's data instead. The backup stays in this device's database.",
+      "replace": "Replace",
+      "pendingBannerTitle": "New Ham2K Log Filer account detected",
+      "pendingBannerBody": "Keep this device's existing operations and QSOs and merge them into the account, or replace them with the account's data (a backup stays on this device either way).",
+      "combine": "Combine"
+    },
+    "accounts": {
+      "title": "Accounts & Services",
+      "none": "No active extensions with accounts",
+      "notConfigured": "Not configured",
+      "connected": "Connected",
+      "connectTo": "Connect to ${label}",
+      "openInBrowser": "Open in Browser",
+      "loggedInAs": "Logged in as ${identity}",
+      "pressSaveToKeep": "Press Save to keep this account connected.",
+      "connectedTo": "Connected to ${label}",
+      "connect": "Connect",
+      "disconnect": "Disconnect",
+      "connectedAs": "Connected as",
+      "test": "Test",
+      "saveFailed": "Save failed: ${error}",
+      "loginFailed": "Login failed: ${error}"
+    },
+    "offlineData": {
+      "title": "Offline Data",
+      "noFiles": "No data files",
+      "noFilesDescription": "Enable activity or lookup extensions to download their offline data here.",
+      "refresh": "Refresh",
+      "refreshing": "Refreshing…",
+      "refreshFailed": "Could not refresh ${name}: ${error}",
+      "neverDownloaded": "Never downloaded",
+      "updatedJustNow": "Updated just now",
+      "updatedDaysAgo": "Updated ${days}d ago",
+      "updatedDaysHoursAgo": "Updated ${days}d ${hours}h ago",
+      "updatedHoursAgo": "Updated ${hours}h ago",
+      "updatedHoursMinutesAgo": "Updated ${hours}h ${minutes}m ago",
+      "updatedMinutesAgo": "Updated ${minutes}m ago"
+    },
+    "profiles": {
+      "notSet": "Not set"
+    },
+    "search": {
+      "clear": "Clear",
+      "hint": "Search settings"
+    },
+    "developer": {
+      "options": "Developer Options",
+      "developerModeDescription": "Enable developer warnings, debug logs, and tools.",
+      "experiments": "Experiments",
+      "experimentsEnabled": {
+        "one": "${count} enabled",
+        "other": "${count} enabled"
+      },
+      "patchTrack": "Patch Track",
+      "patchTrackDescription": "Which over-the-air patch ring this device follows. More adventurous rings get fixes earlier, less tested. Patches apply on the next restart.",
+      "trackStable": "Stable",
+      "trackUnstable": "Unstable",
+      "trackBleeding": "Bleeding",
+      "checkingTrack": "Checking \"${track}\" for a patch…",
+      "patchDownloaded": "Patch downloaded — restart the app to apply it.",
+      "noNewPatch": "No new patch on \"${track}\".",
+      "noPatchInstalled": "No patch installed — running the release binary.",
+      "runningPatch": "Running patch #${patch}.",
+      "systemInformation": "System Information",
+      "activeExtensions": "Active Extensions",
+      "appVersion": "App Version",
+      "loading": "(loading…)",
+      "runtimeNotAvailable": "Extension runtime not available.",
+      "panelLoadFailed": "Could not load this settings panel.",
+      "categoryCore": "Core & Runtime"
+    },
+    "about": {
+      "notices": "Notices & Messages",
+      "noticesDescription": "Announcements and status messages",
+      "releaseNotes": "Release Notes",
+      "copiedVersion": "Copied version details to clipboard"
+    },
+    "panels": {
+      "commonPreferences": "Common Preferences",
+      "commonPreferencesDescription": "Appearance, language, and everyday settings",
+      "allSettings": "All Settings",
+      "allSettingsDescription": "Every available setting in one place",
+      "syncDescription": "Back up and sync your logs across devices",
+      "accountsDescription": "Sign in to online services and lookups",
+      "extensions": "Features & Extensions",
+      "extensionsDescription": "Turn optional features on or off",
+      "profilesDescription": "Operator callsign and station profile",
+      "stationProfiles": "Station Profiles",
+      "dataFiles": "Data Files",
+      "dataFilesDescription": "Manage cached data sources",
+      "developerSettings": "Developer Settings",
+      "developerSettingsDescription": "Debugging and development tools",
+      "about": "About",
+      "aboutDescription": "Version, credits, and legal information",
+      "unavailableTitle": "Some settings are unavailable",
+      "unavailableText": "The extension runtime failed to start, so extension-contributed settings are missing."
+    }
+  },
+  "commands": {
+    "enableSyncFirst": "Enable sync in Settings first.",
+    "fullResyncStarted": "Full resync started — local data was backed up first.",
+    "noDataFilesMatched": "No data files matched \"${target}\".",
+    "reloadFailed": "Reload failed: ${error}",
+    "reloadingAll": "Reloading all data files…",
+    "reloadingTarget": "Reloading ${target} data files…",
+    "unknownExperiment": "Unknown experiment \"${token}\"",
+    "experimentEnabled": "${name} enabled",
+    "experimentDisabled": "${name} disabled"
+  },
+  "spotting": {
+    "noQsoYet": "No QSO logged yet to spot.",
+    "setFrequencyFirst": "Set a frequency first.",
+    "nothingToSpot": "Nothing to spot — no extension offers spotting here.",
+    "spottedOn": "Spotted on ${source}",
+    "spotFailed": "${source} failed: ${message}",
+    "unknownError": "unknown error",
+    "notSent": "Spot not sent."
+  },
+  "dataFiles": {
+    "downloading": "Downloading…",
+    "importedRecords": {
+      "one": "Imported ${count} record for ${label}.",
+      "other": "Imported ${count} records for ${label}."
+    },
+    "importedData": "Imported data for ${label}.",
+    "cleanedUpTitle": "Cleaned up extension data",
+    "removedData": {
+      "one": "Removed data for ${count} data file from disabled extensions.",
+      "other": "Removed data for ${count} data files from disabled extensions."
+    },
+    "recordsProgress": "${end} / ${total} records"
+  },
+  "updates": {
+    "updateAvailable": "Update available",
+    "newVersionAvailable": "A new version (${version}) is available.",
+    "getIt": "Get it",
+    "ok": "OK",
+    "updateReady": "Update ready",
+    "restartToApply": "An update has been downloaded. Restart to apply it.",
+    "appliesNextLaunch": "An update has been downloaded. It will apply the next time you open the app.",
+    "restartNow": "Restart now"
+  },
+  "extensionService": {
+    "runtimeNotReady": "Extension runtime not ready.",
+    "testFailed": "Test failed: ${error}",
+    "connectedAs": "Connected as ${identity}",
+    "invalidFieldConfiguration": "Invalid field configuration",
+    "invalidValue": "Invalid value",
+    "validationError": "Validation error: ${error}",
+    "actionFailed": "Action failed: ${error}",
+    "commandFailed": "The command failed to run"
   },
   "operationLocationScreen": {
     "title": "Operation Location",

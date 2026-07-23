@@ -35,6 +35,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../config/user_agent.dart';
 import '../config/version.dart';
+import '../i18n/strings.g.dart';
 import 'notices.dart';
 import 'status_bar_service.dart';
 
@@ -320,7 +321,7 @@ class FlagsService extends ChangeNotifier {
         actions: [
           for (final action in notice.actions)
             StatusBarAction(
-              label: (action['label'] as String?) ?? 'OK',
+              label: (action['label'] as String?) ?? t.updates.ok,
               onTap: () {
                 statusBar.dismissNotice(key);
                 _onNoticeAction?.call(key, action);
@@ -382,11 +383,11 @@ class FlagsService extends ChangeNotifier {
     statusBar.showNotice(
       key: _updateNoticeKey,
       icon: 'download',
-      title: 'Update available',
-      text: 'A new version ($latest) is available.',
+      title: t.updates.updateAvailable,
+      text: t.updates.newVersionAvailable(version: latest),
       actions: [
         StatusBarAction(
-          label: 'Get it',
+          label: t.updates.getIt,
           onTap: () {
             statusBar.dismissNotice(_updateNoticeKey);
             _onNoticeAction?.call(_updateNoticeKey, {

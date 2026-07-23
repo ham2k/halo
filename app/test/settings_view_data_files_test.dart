@@ -9,6 +9,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:halo_core/halo_core.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'package:ham2k_logger/i18n/strings.g.dart';
 import 'package:ham2k_logger/main.dart';
 import 'package:ham2k_logger/services/data_file_manager.dart';
 import 'package:ham2k_logger/services/settings_service.dart';
@@ -49,7 +50,7 @@ void main() {
     final services = HaLoServices(db, settings, extensions: extensions);
     addTearDown(db.close);
 
-    await tester.pumpWidget(MaterialApp(home: SettingsView(services: services)));
+    await tester.pumpWidget(TranslationProvider(child: MaterialApp(home: SettingsView(services: services))));
     await tester.pumpAndSettle();
 
     // Select the Data Files panel from the sidebar (wide/two-pane layout).
@@ -87,7 +88,7 @@ void main() {
 
     final services = HaLoServices(db, settings, extensions: extensions, dataFiles: fake);
 
-    await tester.pumpWidget(MaterialApp(home: SettingsView(services: services)));
+    await tester.pumpWidget(TranslationProvider(child: MaterialApp(home: SettingsView(services: services))));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Data Files'));
     await tester.pumpAndSettle();
