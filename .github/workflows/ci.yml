@@ -13,6 +13,14 @@
 # app/assets/extensions first because app/pubspec.yaml declares that as a
 # required asset directory (fresh checkouts don't have it, it's gitignored)
 # and app's own tests load real bundle content through it.
+#
+# Two tiers: pushes to the long-lived branches run the full parallel suite
+# below; pull requests run ONLY the single `quick` job (typecheck + analyze
+# via scripts/test.sh --quick — tests are run locally before opening a PR,
+# and the full suite runs on the target branch right after the merge, where
+# a failure on `dist` blocks the web deploy via deploy-web.yml). One
+# sequential job instead of a matrix keeps the billed runner minutes down:
+# every extra job pays its own setup and rounds up to a whole minute.
 name: CI
 
 on:
@@ -21,7 +29,29 @@ on:
   pull_request:
 
 jobs:
+  quick:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: extensions/package-lock.json
+
+      # mise provides the Flutter version pinned in mise.toml, so CI and local
+      # runs use exactly the same toolchain.
+      - name: Set up mise (Flutter toolchain)
+        uses: jdx/mise-action@v2
+
+      - name: Basic checks (typecheck + analyze, no tests)
+        run: ./scripts/test.sh --quick
+
   extensions:
+    if: github.event_name == 'push'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

@@ -9,29 +9,52 @@
 # (halo_extension_host) load those built bundles — so anything that runs the
 # Dart tests must rebuild the bundles FIRST, or it silently tests whatever
 # bundles happened to be lying around. This script enforces that order.
+#
+# --quick runs basic checks only — extension typecheck + Dart analyze, no
+# tests (and therefore no bundle build, which only the tests consume). CI
+# uses it for pull requests; the full run happens on push to the protected
+# branches (see .github/workflows/ci.yml).
 set -euo pipefail
+
+QUICK=0
+case "${1:-}" in
+  --quick | -q) QUICK=1 ;;
+  "") ;;
+  *) echo "usage: scripts/test.sh [--quick]" >&2; exit 2 ;;
+esac
 
 ROOT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )/.." && pwd )"
 
-echo "▶ extensions: install, typecheck, unit tests"
+if [[ "$QUICK" -eq 1 ]]; then
+  echo "▶ extensions: install, typecheck (quick mode: no tests)"
+else
+  echo "▶ extensions: install, typecheck, unit tests"
+fi
 cd "$ROOT_DIR/extensions"
 npm ci
 npm run typecheck
-npm test
+if [[ "$QUICK" -eq 0 ]]; then
+  npm test
+fi
 
+# The bundles are needed even in quick mode: app/pubspec.yaml declares
+# app/assets/extensions/ as an asset directory, and `flutter analyze` fails
+# on a fresh checkout (like CI) if it doesn't exist.
 echo "▶ extensions: build bundles (must precede the Dart integration tests)"
 npm run build
 
-# On Linux, flutter_js's QuickJS backend dlopen()s libquickjs_c_bridge_plugin.so,
-# a prebuilt library that ships inside the pub package (linux/shared/). It is
-# only staged next to the binary when building a full Linux app; `flutter test`
-# runs in the host VM, so we must point the loader at the pub cache ourselves.
-# macOS needs nothing — there flutter_js uses the system JavaScriptCore.
-if [[ "$(uname -s)" == "Linux" ]]; then
-  echo "▶ halo_extension_host: pub get so the QuickJS bridge library is in the pub cache"
-  (cd "$ROOT_DIR/packages/halo_extension_host" && flutter pub get)
-  QUICKJS_SHARED="$(ls -d "${PUB_CACHE:-$HOME/.pub-cache}"/hosted/pub.dev/flutter_js-*/linux/shared | sort -V | tail -1)"
-  export LD_LIBRARY_PATH="$QUICKJS_SHARED${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+if [[ "$QUICK" -eq 0 ]]; then
+  # On Linux, flutter_js's QuickJS backend dlopen()s libquickjs_c_bridge_plugin.so,
+  # a prebuilt library that ships inside the pub package (linux/shared/). It is
+  # only staged next to the binary when building a full Linux app; `flutter test`
+  # runs in the host VM, so we must point the loader at the pub cache ourselves.
+  # macOS needs nothing — there flutter_js uses the system JavaScriptCore.
+  if [[ "$(uname -s)" == "Linux" ]]; then
+    echo "▶ halo_extension_host: pub get so the QuickJS bridge library is in the pub cache"
+    (cd "$ROOT_DIR/packages/halo_extension_host" && flutter pub get)
+    QUICKJS_SHARED="$(ls -d "${PUB_CACHE:-$HOME/.pub-cache}"/hosted/pub.dev/flutter_js-*/linux/shared | sort -V | tail -1)"
+    export LD_LIBRARY_PATH="$QUICKJS_SHARED${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+  fi
 fi
 
 # The real Mapbox token file is gitignored, so fresh checkouts (like CI)
@@ -43,13 +66,23 @@ if [[ ! -f "$ROOT_DIR/app/lib/config/mapbox_token.dart" ]]; then
 fi
 
 for pkg in packages/halo_core packages/halo_build_tools packages/halo_extension_host packages/halo_widgets app; do
-  echo "▶ $pkg: pub get, analyze, test"
+  if [[ "$QUICK" -eq 1 ]]; then
+    echo "▶ $pkg: pub get, analyze (quick mode: no tests)"
+  else
+    echo "▶ $pkg: pub get, analyze, test"
+  fi
   cd "$ROOT_DIR/$pkg"
   flutter pub get
   # Fail on warnings and errors; infos (mostly framework-deprecation churn
   # in form_renderer) are surfaced but non-blocking so CI stays actionable.
   flutter analyze --no-fatal-infos
-  flutter test
+  if [[ "$QUICK" -eq 0 ]]; then
+    flutter test
+  fi
 done
 
-echo "✅ all checks passed"
+if [[ "$QUICK" -eq 1 ]]; then
+  echo "✅ quick checks passed (typecheck + analyze; tests NOT run)"
+else
+  echo "✅ all checks passed"
+fi
