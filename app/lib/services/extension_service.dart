@@ -1619,6 +1619,12 @@ class ExtensionInfo {
   final String? icon;
   final String? description;
 
+  /// Per-locale overrides for [name]/[description] (build.mjs
+  /// `translations`, baked into index.json so they're readable without
+  /// running any JS, same as the base metadata). Keyed by language code;
+  /// a missing locale or field falls back to the English base value.
+  final Map<String, Map<String, String>> translations;
+
   const ExtensionInfo({
     required this.key,
     required this.file,
@@ -1631,9 +1637,13 @@ class ExtensionInfo {
     this.enabledByDefault = true,
     this.icon,
     this.description,
+    this.translations = const {},
   });
 
   String get effectiveShortName => shortName ?? name;
+
+  String nameFor(String locale) => translations[locale]?['name'] ?? name;
+  String? descriptionFor(String locale) => translations[locale]?['description'] ?? description;
 
   factory ExtensionInfo.fromJson(Map<String, dynamic> json) => ExtensionInfo(
         key: json['key'] as String,
@@ -1649,5 +1659,9 @@ class ExtensionInfo {
         enabledByDefault: json['enabledByDefault'] as bool? ?? true,
         icon: json['icon'] as String?,
         description: json['description'] as String?,
+        translations: {
+          for (final entry in ((json['translations'] as Map?) ?? const {}).entries)
+            entry.key as String: (entry.value as Map).cast<String, String>(),
+        },
       );
 }

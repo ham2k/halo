@@ -1,0 +1,8 @@
+{
+  "oneQso": "1 QSO",
+  "manyQsos": "{{formatted}} QSOs",
+  "oneDxccEntity": "1 DXCC Entity",
+  "manyDxccEntities": "{{formatted}} DXCC Entities",
+  "bands": "{{n}} Bands",
+  "modes": "{{n}} Modes"
+}

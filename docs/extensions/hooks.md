@@ -458,6 +458,13 @@ platform keychain, keyed by the account's `kvKey`. Implemented by: `qrz`
 host runs the whole PKCE flow itself, see `_doOAuth` in
 `app/lib/views/settings_view.dart`).
 
+**`label` / `description` / `fields`** — each either a plain value, or a
+function `(args, ctx) => value` called the same way any other hook method is,
+so extensions can localize them from `ctx.locale` (via the SDK's
+`createTranslator`). The same `Localizable<T>` convention applies to a
+`dataFile` registration's `name`/`description`. QRZ localizes its account
+description and field labels this way.
+
 **`oauth2`** (optional) — either a plain `OAuth2Config`
 (`{issuer, clientId, redirectUrl, scopes}`), or, for a client that varies by
 build edition, a function `(args, ctx) => OAuth2Config` called the same way

@@ -1,0 +1,8 @@
+{
+  "bandDescribe": "Change band to **{{band}}**?",
+  "bandConfirm": "Band set to **{{band}}**",
+  "freqDescribe": "Change frequency to **{{freq}} MHz**?",
+  "freqConfirm": "Frequency set to **{{freq}} MHz**",
+  "modeDescribe": "Change mode to **{{mode}}**?",
+  "modeConfirm": "Mode set to **{{mode}}**"
+}

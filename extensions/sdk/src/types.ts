@@ -585,11 +585,17 @@ export interface OAuth2Config {
 /// `settingsPanel` field can reference an account for display/navigation
 /// via `fieldType: 'account'` (see FormField), but does not define or store
 /// account data itself.
+/// A definition member that may be localized: a plain value, or a function
+/// of ctx (called like any other hook method — `fn(args, ctx)`, `args`
+/// always `{}`) that resolves it, e.g. from `ctx.locale` via the SDK's
+/// `createTranslator`. Same convention as [AccountHook.oauth2].
+export type Localizable<T> = T | ((args: Record<string, never>, ctx: HookContext) => T | Promise<T>)
+
 export interface AccountHook {
-  label: string
+  label: Localizable<string>
   /// Short one-liner shown under the label in the Accounts list (e.g.
   /// "Callsign lookups").
-  description?: string
+  description?: Localizable<string>
   /// Defaults to the extension's own key. If overridden (an extension with
   /// more than one account), must equal the extension key or be prefixed
   /// `<extensionKey>_` — e.g. extension `lofi` may use `lofi` or
@@ -598,7 +604,7 @@ export interface AccountHook {
   /// how storage collisions are prevented and (later) how KV access
   /// control will be scoped.
   kvKey?: string
-  fields?: AccountField[]
+  fields?: Localizable<AccountField[]>
   /// A plain config, or a function for a client that varies per build
   /// edition (`ctx.edition`) — e.g. SOTA registers a separate Keycloak
   /// client per edition (ham2k/app-halo-dist#253). Called the same way any
@@ -713,8 +719,8 @@ export type FetchType = 'csv' | 'json' | 'raw'
 
 export interface DataFileDefinition {
   key: string
-  name: string
-  description: string
+  name: Localizable<string>
+  description: Localizable<string>
   url: string
   maxAgeInDays: number
   fetchType: FetchType

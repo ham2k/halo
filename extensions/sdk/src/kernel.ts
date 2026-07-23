@@ -441,10 +441,14 @@ const kernel = {
               value: {
                 key: record.key,
                 extensionKey: record.extensionKey,
-                label: record.hook.label ?? record.key,
-                description: record.hook.description ?? null,
+                // label/description/fields may each be a function of ctx
+                // (same convention as oauth2 above) so extensions can
+                // localize them via ctx.locale — callHookMethod returns a
+                // plain member as-is, so static values cost nothing extra.
+                label: (await callHookMethod(record, 'label', {})) ?? record.key,
+                description: (await callHookMethod(record, 'description', {})) ?? null,
                 kvKey: record.hook.kvKey ?? record.key ?? record.extensionKey,
-                fields: record.hook.fields ?? [],
+                fields: (await callHookMethod(record, 'fields', {})) ?? [],
                 oauth2,
                 synchronizable: record.hook.synchronizable ?? false,
               }
@@ -504,25 +508,32 @@ const kernel = {
       }
       if (category === 'dataFile' && method === 'getDefinition') {
         const records = hooksFor('dataFile', null)
-        const entries = records.map((record) => {
-          return {
-            key: record.key,
-            ok: true,
-            value: {
+        const entries = await Promise.all(records.map(async (record) => {
+          // Own try/catch per record — name/description may be functions of
+          // ctx (localized, same convention as the account members above),
+          // and one throwing must not blank out every other data file.
+          try {
+            return {
               key: record.key,
-              extensionKey: record.extensionKey,
-              extensionName: extensions[record.extensionKey]?.name,
-              name: record.hook.name,
-              description: record.hook.description,
-              url: record.hook.url,
-              maxAgeInDays: record.hook.maxAgeInDays,
-              fetchType: record.hook.fetchType,
-              category: record.hook.category,
-              csvOptions: record.hook.csvOptions ?? null,
-              jsonOptions: record.hook.jsonOptions ?? null,
+              ok: true,
+              value: {
+                key: record.key,
+                extensionKey: record.extensionKey,
+                extensionName: extensions[record.extensionKey]?.name,
+                name: await callHookMethod(record, 'name', {}),
+                description: await callHookMethod(record, 'description', {}),
+                url: record.hook.url,
+                maxAgeInDays: record.hook.maxAgeInDays,
+                fetchType: record.hook.fetchType,
+                category: record.hook.category,
+                csvOptions: record.hook.csvOptions ?? null,
+                jsonOptions: record.hook.jsonOptions ?? null,
+              }
             }
+          } catch (e) {
+            return { key: record.key, ok: false, error: describeError(e) }
           }
-        })
+        }))
         post({ type: 'result', id, ok: true, value: entries, jsMillis: Date.now() - startedAt })
         return
       }

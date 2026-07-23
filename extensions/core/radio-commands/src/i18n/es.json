@@ -1,0 +1,8 @@
+{
+  "bandDescribe": "¿Cambiar la banda a **{{band}}**?",
+  "bandConfirm": "Banda cambiada a **{{band}}**",
+  "freqDescribe": "¿Cambiar la frecuencia a **{{freq}} MHz**?",
+  "freqConfirm": "Frecuencia cambiada a **{{freq}} MHz**",
+  "modeDescribe": "¿Cambiar el modo a **{{mode}}**?",
+  "modeConfirm": "Modo cambiado a **{{mode}}**"
+}

@@ -1,0 +1,9 @@
+{
+  "accountDescription": "Búsquedas de indicativos",
+  "usernameLabel": "Usuario (tu indicativo)",
+  "passwordLabel": "Contraseña",
+  "missingCredentials": "Escribe tu usuario y tu contraseña.",
+  "noEmailLogin": "No uses tu email para iniciar sesión.",
+  "lookupFailed": "✅ Las credenciales son correctas, pero la búsqueda del indicativo falló: **{{error}}**",
+  "authFailed": "La autenticación falló: **{{message}}**"
+}

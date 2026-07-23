@@ -9,6 +9,11 @@ import { cleanLocationParams } from "@ham2k/lib-geo-tools"
 import { defineExtension, host } from "@ham2k/halo-extension-sdk"
 import type { AnnotatedCallInfo, CallInfoLookup, HookContext, JSONValue, LookupResult } from "@ham2k/halo-extension-sdk"
 
+// User-visible strings live in i18n.ts / i18n/<locale>.json. The account
+// definition members follow the locale by being functions of ctx — see the
+// kernel's account getDefinition path.
+import { tFor } from "./i18n.ts"
+
 const AGENT = 'polo-next-spike'
 const API = 'https://xmldata.qrz.com/xml/current/'
 
@@ -22,33 +27,37 @@ defineExtension({
     registerHook('account', {
       hook: {
         label: 'QRZ.com',
-        description: 'Callsign lookups',
+        description: (_args: Record<string, never>, ctx: HookContext) => tFor(ctx)('accountDescription'),
         kvKey: 'qrz',
         // A QRZ.com login is the same on every device, so sync it across the
         // user's Apple devices via iCloud Keychain. Contrast the LoFi sync
         // device key, which is per-install and must stay device-local.
         synchronizable: true,
-        fields: [
-          {
-            key: 'username',
-            label: 'Login (your callsign)',
-            type: 'text',
-            postface: "Don't use your email for login."
-          },
-          {
-            key: 'password',
-            label: 'Password',
-            type: 'secret'
-          }
-        ],
-        async testCredentials(credentials: Record<string, string>): Promise<string> {
+        fields: (_args: Record<string, never>, ctx: HookContext) => {
+          const t = tFor(ctx)
+          return [
+            {
+              key: 'username',
+              label: t('usernameLabel'),
+              type: 'text',
+              postface: t('noEmailLogin')
+            },
+            {
+              key: 'password',
+              label: t('passwordLabel'),
+              type: 'secret'
+            }
+          ]
+        },
+        async testCredentials(credentials: Record<string, string>, ctx: HookContext): Promise<string> {
+          const t = tFor(ctx)
           const username = (credentials.username || '').trim().toUpperCase()
           const password = credentials.password
           if (!username || !password) {
-            return 'Please provide both username and password.'
+            return t('missingCredentials')
           }
           if (username.indexOf('@') >= 0) {
-            return "Don't use your email for login."
+            return t('noEmailLogin')
           }
           try {
             const key = await testLogin(username, password)
@@ -56,13 +65,13 @@ defineExtension({
             const lookupResponse = await host.fetch(lookupUrl)
             const error = tag(lookupResponse.body, 'Error')
             if (error) {
-              return `✅ Credentials are correct, but callsign lookup failed: **${error}**`
+              return t('lookupFailed', { error })
             }
             const name = [tag(lookupResponse.body, 'fname'), tag(lookupResponse.body, 'name')].filter((x) => x).join(' ')
             const call = tag(lookupResponse.body, 'call') || username
             return `✅ ${call}: ${name}`
           } catch (e) {
-            return `Authentication failed: **${(e as Error).message}**`
+            return t('authFailed', { message: (e as Error).message })
           }
         }
       }

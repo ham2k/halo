@@ -9,6 +9,7 @@
     "skipLibCheck": true,
     "isolatedModules": true,
     "allowImportingTsExtensions": true,
+    "resolveJsonModule": true,
     "types": ["node"],
     "paths": {
       "@ham2k/halo-extension-sdk": ["./sdk/src/index.ts"]

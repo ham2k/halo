@@ -1,0 +1,12 @@
+{
+  "needsOperation": "{{name}} necesita una operación abierta",
+  "addNote": "¿Agregar la nota “{{text}}”?",
+  "noteAdded": "Nota agregada",
+  "addTodo": "¿Agregar la tarea “{{text}}”?",
+  "todoAdded": "Tarea agregada",
+  "fetchingSolar": "Obteniendo condiciones solares…",
+  "solarError": "Error al obtener las condiciones solares",
+  "fetchingWeather": "Obteniendo el clima actual…",
+  "weatherError": "Error al obtener el clima",
+  "weatherNeedsLocation": "WEATHER necesita una ubicación — define el locador de la operación"
+}

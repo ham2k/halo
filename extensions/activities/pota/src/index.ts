@@ -32,6 +32,7 @@ import type {
   LookupRow,
 } from "@ham2k/halo-extension-sdk"
 import { REFERENCE_REGEX, normalizeReference, entityPrefixForCall, transformsForPrefix, hunterDefaultPrefix, activationDefaultPrefix } from "./refFormatting.ts"
+import { tFor } from "./i18n.ts"
 
 export { REFERENCE_REGEX, transformsForPrefix, hunterDefaultPrefix, activationDefaultPrefix } from "./refFormatting.ts"
 
@@ -115,12 +116,13 @@ const RefHandler = {
     return { valid: REFERENCE_REGEX.test(normalized), normalized }
   },
 
-  async decorateRef({ ref }: { ref: Ref }, _ctx: HookContext): Promise<Ref> {
+  async decorateRef({ ref }: { ref: Ref }, ctx: HookContext): Promise<Ref> {
+    const t = tFor(ctx)
     const reference = (ref.ref ?? '').toUpperCase().trim()
-    if (!REFERENCE_REGEX.test(reference)) return { ...ref, ref: reference, name: 'Invalid reference' }
+    if (!REFERENCE_REGEX.test(reference)) return { ...ref, ref: reference, name: t('invalidReference') }
 
     const park = await fetchPark(reference)
-    if (!park?.name) return { ...ref, ref: reference, name: 'Unknown park' }
+    if (!park?.name) return { ...ref, ref: reference, name: t('unknownPark') }
 
     return {
       ...ref,
@@ -162,13 +164,13 @@ const ActivityHook = {
 
   async operationControls(
     { operation }: { operation: Record<string, JSONValue>; qso?: Record<string, JSONValue> },
-    _ctx: HookContext,
+    ctx: HookContext,
   ): Promise<LoggingControlDescriptor[]> {
     const prefix = activationDefaultPrefix(operation)
     return [
       {
         key: 'pota/activation',
-        label: 'POTA activation',
+        label: tFor(ctx)('activationControl'),
         icon: 'pine-tree',
         color: '#068541',
         order: 10,
@@ -184,7 +186,7 @@ const ActivityHook = {
     ]
   },
 
-  async suggest({ location, searchTerm, callsign }: SuggestArgs, _ctx: HookContext): Promise<ActivitySuggestion[]> {
+  async suggest({ location, searchTerm, callsign }: SuggestArgs, ctx: HookContext): Promise<ActivitySuggestion[]> {
     const rows: LookupRow[] = searchTerm
       ? await host.dbLookupSelectAll('pota', searchTerm)
       : location
@@ -240,7 +242,8 @@ const ActivityHook = {
     const normalizedSearch = searchTerm ? normalizeReference(searchTerm) : null
     if (normalizedSearch && !suggestions.some((s) => s.ref === normalizedSearch)) {
       const isTestRef = normalizedSearch.endsWith('-TEST')
-      const name = isTestRef ? 'Test Park' : 'Unknown Park'
+      const t = tFor(ctx)
+      const name = isTestRef ? t('testParkName') : t('unknownParkName')
       if (suggestions.length >= MAX_SUGGESTIONS) suggestions.pop()
       suggestions.unshift({
         type: ACTIVATION_TYPE,
@@ -458,8 +461,8 @@ function simplifyStates(locationDesc: string): string {
 
 const potaDataFile: DataFileDefinition = {
   key: 'pota-all-parks',
-  name: 'POTA: All Parks',
-  description: 'Database of all POTA references',
+  name: (_args: Record<string, never>, ctx: HookContext) => tFor(ctx)('dataFileName'),
+  description: (_args: Record<string, never>, ctx: HookContext) => tFor(ctx)('dataFileDescription'),
   url: 'https://pota.app/all_parks_ext.csv',
   maxAgeInDays: 30,
   fetchType: 'csv',

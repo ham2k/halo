@@ -86,13 +86,18 @@ class ExtensionsPanelState extends State<ExtensionsPanel> {
       listenable: settings,
       builder: (context, _) {
         final listed = widget.services.extensions.availableExtensions.where((info) => !info.core).toList();
+        final locale = LocaleSettings.currentLocale.languageCode;
+        // Search matches both the localized and the English name/description,
+        // so a user can find an extension by either.
         final visible = query.isEmpty
             ? listed
             : [
                 for (final info in listed)
                   if (info.name.toLowerCase().contains(query) ||
+                      info.nameFor(locale).toLowerCase().contains(query) ||
                       info.key.toLowerCase().contains(query) ||
-                      (info.description ?? '').toLowerCase().contains(query))
+                      (info.description ?? '').toLowerCase().contains(query) ||
+                      (info.descriptionFor(locale) ?? '').toLowerCase().contains(query))
                     info,
               ];
 
@@ -120,8 +125,8 @@ class ExtensionsPanelState extends State<ExtensionsPanel> {
               // The extension's own icon (build-index `icon`, mirroring its
               // hooks) when it has one; the category icon otherwise.
               secondary: Icon(info.icon != null ? resolveIconName(info.icon) : _categoryIcon(info.category)),
-              title: Text(info.name),
-              subtitle: info.description == null ? null : Text(info.description!),
+              title: Text(info.nameFor(locale)),
+              subtitle: info.descriptionFor(locale) == null ? null : Text(info.descriptionFor(locale)!),
               value: overrides[info.key] ?? info.enabledByDefault,
               // NOT disabled while applying (onChanged: null would repaint
               // every tile in disabled grey — the "icons fade to white"

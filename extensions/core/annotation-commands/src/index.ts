@@ -24,6 +24,9 @@ import { gridToLocation } from "@ham2k/lib-geo-tools"
 
 import { parseSolarXml, solarMessage, weatherMessage } from "./annotations.ts"
 import type { WeatherData } from "./annotations.ts"
+import { tFor } from "./i18n.ts"
+
+type Translator = ReturnType<typeof tFor>
 
 type Operation = Record<string, JSONValue>
 
@@ -50,19 +53,20 @@ function noteLikeCommand({ pattern, kind, name, icon, describe, confirm, extra }
   kind: string
   name: string
   icon: string
-  describe: (text: string) => string
-  confirm: string
+  describe: (t: Translator, text: string) => string
+  confirm: (t: Translator) => string
   extra?: Record<string, JSONValue>
 }) {
   return {
     async interpret(
       { input, operation }: { input: string; operation?: Operation },
-      _ctx: HookContext,
+      ctx: HookContext,
     ): Promise<CommandInterpretation | null> {
       const match = pattern.exec(input.trim())
       if (!match) return null
 
-      if (!operation) return { error: `${name} needs an open operation` }
+      const t = tFor(ctx)
+      if (!operation) return { error: t('needsOperation', { name }) }
 
       // `mixedCase` on both results: the text is free prose, so the call
       // field must not force it to uppercase — and it stays typed-as-is
@@ -72,8 +76,8 @@ function noteLikeCommand({ pattern, kind, name, icon, describe, confirm, extra }
 
       return {
         mixedCase: true,
-        describe: describe(text),
-        confirm,
+        describe: describe(t, text),
+        confirm: confirm(t),
         commands: [{
           addQso: eventQso(kind, { command: `${name} ${text}`, icon, note: text, ...extra }),
         }],
@@ -87,8 +91,8 @@ const NoteCommand = noteLikeCommand({
   kind: 'note',
   name: 'NOTE',
   icon: 'sticker-text-outline',
-  describe: (text) => `Add note “${text}”?`,
-  confirm: 'Note added',
+  describe: (t, text) => t('addNote', { text }),
+  confirm: (t) => t('noteAdded'),
 })
 
 const TodoCommand = noteLikeCommand({
@@ -96,8 +100,8 @@ const TodoCommand = noteLikeCommand({
   kind: 'todo',
   name: 'TODO',
   icon: 'sticker-outline',
-  describe: (text) => `Add to-do “${text}”?`,
-  confirm: 'To-do added',
+  describe: (t, text) => t('addTodo', { text }),
+  confirm: (t) => t('todoAdded'),
   extra: { data: { done: false } },
 })
 
@@ -128,28 +132,29 @@ let solarFetch: Promise<SolarResult> | null = null
 const SolarCommand = {
   async interpret(
     { input, operation, execute }: { input: string; operation?: Operation; execute?: boolean },
-    _ctx: HookContext,
+    ctx: HookContext,
   ): Promise<CommandInterpretation | null> {
     if (input.trim().toUpperCase() !== 'SOLAR') return null
 
-    if (!operation) return { error: 'SOLAR needs an open operation' }
+    const t = tFor(ctx)
+    if (!operation) return { error: t('needsOperation', { name: 'SOLAR' }) }
 
     if (!solarFetch) {
       solarFetch = fetchSolarData()
       solarFetch.then((result) => {
         host.updateInterpretation(
           input,
-          result ? { describe: result.message } : { describe: 'Error fetching solar conditions' },
+          result ? { describe: result.message } : { describe: t('solarError') },
         )
       })
     }
 
-    if (!execute) return { describe: 'Fetching solar conditions…' }
+    if (!execute) return { describe: t('fetchingSolar') }
 
     const promise = solarFetch
     solarFetch = null // next SOLAR (a later QSO) starts its own fresh fetch
     const result = await promise
-    if (!result) return { error: 'Error fetching solar conditions' }
+    if (!result) return { error: t('solarError') }
 
     return {
       describe: result.message,
@@ -205,28 +210,29 @@ const WeatherCommand = {
   ): Promise<CommandInterpretation | null> {
     if (input.trim().toUpperCase() !== 'WEATHER') return null
 
-    if (!operation) return { error: 'WEATHER needs an open operation' }
+    const t = tFor(ctx)
+    if (!operation) return { error: t('needsOperation', { name: 'WEATHER' }) }
     // app-polo falls back to device geolocation here; the extension runtime
     // has no location host call (yet), so the operation's own grid is the
     // one source of position.
     const grid = operation.grid
     if (typeof grid !== 'string' || !grid) {
-      return { error: 'WEATHER needs a location — set the operation’s grid square' }
+      return { error: t('weatherNeedsLocation') }
     }
 
     if (!weatherFetch) {
       weatherFetch = fetchWeatherData(grid, ctx.distanceUnits)
       weatherFetch.then((result) => {
-        host.updateInterpretation(input, result ? { describe: result.message } : { describe: 'Error fetching weather' })
+        host.updateInterpretation(input, result ? { describe: result.message } : { describe: t('weatherError') })
       })
     }
 
-    if (!execute) return { describe: 'Fetching current weather…' }
+    if (!execute) return { describe: t('fetchingWeather') }
 
     const promise = weatherFetch
     weatherFetch = null // next WEATHER (a later QSO) starts its own fresh fetch
     const result = await promise
-    if (!result) return { error: 'Error fetching weather' }
+    if (!result) return { error: t('weatherError') }
 
     return {
       describe: result.message,

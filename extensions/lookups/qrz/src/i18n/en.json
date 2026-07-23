@@ -1,0 +1,9 @@
+{
+  "accountDescription": "Callsign lookups",
+  "usernameLabel": "Login (your callsign)",
+  "passwordLabel": "Password",
+  "missingCredentials": "Please provide both username and password.",
+  "noEmailLogin": "Don't use your email for login.",
+  "lookupFailed": "✅ Credentials are correct, but callsign lookup failed: **{{error}}**",
+  "authFailed": "Authentication failed: **{{message}}**"
+}

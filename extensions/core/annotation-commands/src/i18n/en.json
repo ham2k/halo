@@ -1,0 +1,12 @@
+{
+  "needsOperation": "{{name}} needs an open operation",
+  "addNote": "Add note “{{text}}”?",
+  "noteAdded": "Note added",
+  "addTodo": "Add to-do “{{text}}”?",
+  "todoAdded": "To-do added",
+  "fetchingSolar": "Fetching solar conditions…",
+  "solarError": "Error fetching solar conditions",
+  "fetchingWeather": "Fetching current weather…",
+  "weatherError": "Error fetching weather",
+  "weatherNeedsLocation": "WEATHER needs a location — set the operation’s grid square"
+}

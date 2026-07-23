@@ -1,0 +1,9 @@
+{
+  "needsOperation": "Spotting needs an open operation",
+  "selfSpotWithComment": "Self-spot with comment \"{{comment}}\"?",
+  "selfSpot": "Self-spot?",
+  "selfSpottingComment": "Self-spotting: {{comment}}",
+  "selfSpotting": "Self-spotting…",
+  "spotLast": "Spot the last logged QSO?",
+  "spottingLast": "Spotting last QSO…"
+}

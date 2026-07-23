@@ -19,6 +19,8 @@
 import { defineExtension, host } from "@ham2k/halo-extension-sdk"
 import type { CommandInterpretation, HookContext, JSONValue, SyncPayload, SyncResponse } from "@ham2k/halo-extension-sdk"
 
+import { tFor } from "./i18n.ts"
+
 export const DEFAULT_LOFI_SERVER = 'https://lofi.ham2k.net'
 const DEFAULT_SECRET = 'no-secret'
 // The host stamps HaLo's canonical User-Agent on every host.fetch call (see
@@ -39,11 +41,12 @@ defineExtension({
 // the Dart side — see SyncEngine.forceFullResync) and re-runs a full
 // backfill from the server. Typed into the call field, same as
 // radio-commands' band/frequency/mode shortcuts.
-async function syncAllCommand({ input }: { input: string }, _ctx: HookContext): Promise<CommandInterpretation | null> {
+async function syncAllCommand({ input }: { input: string }, ctx: HookContext): Promise<CommandInterpretation | null> {
   if (input.trim().toUpperCase() !== 'SYNCALL') return null
+  const t = tFor(ctx)
   return {
-    describe: 'Force full resync from server?',
-    confirm: 'Starting full resync...',
+    describe: t('syncAllDescribe'),
+    confirm: t('syncAllConfirm'),
     commands: [{ syncAll: {} }],
   }
 }

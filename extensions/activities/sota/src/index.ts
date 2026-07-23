@@ -35,6 +35,7 @@ import type {
   LookupRow,
 } from "@ham2k/halo-extension-sdk"
 import { REFERENCE_REGEX, TRANSFORMS } from "./refFormatting.ts"
+import { tFor } from "./i18n.ts"
 import { spotModeFor } from "./spotMode.ts"
 import { summitGlyphFromDetails } from "./summitGlyph.ts"
 
@@ -199,12 +200,13 @@ const RefHandler = {
     return { valid: REFERENCE_REGEX.test(normalized), normalized }
   },
 
-  async decorateRef({ ref }: { ref: Ref }, _ctx: HookContext): Promise<Ref> {
+  async decorateRef({ ref }: { ref: Ref }, ctx: HookContext): Promise<Ref> {
+    const t = tFor(ctx)
     const reference = (ref.ref ?? '').toUpperCase().trim()
-    if (!REFERENCE_REGEX.test(reference)) return { ...ref, ref: reference, name: 'Invalid reference' }
+    if (!REFERENCE_REGEX.test(reference)) return { ...ref, ref: reference, name: t('invalidReference') }
 
     const summit = await fetchSummit(reference)
-    if (!summit?.name) return { ...ref, ref: reference, name: 'Unknown summit' }
+    if (!summit?.name) return { ...ref, ref: reference, name: t('unknownSummit') }
 
     const location = [summit.regionName, summit.associationName].filter((x) => x).join(', ')
 
@@ -247,12 +249,12 @@ const ActivityHook = {
 
   async operationControls(
     _args: { operation: Record<string, unknown>; qso?: Record<string, unknown> },
-    _ctx: HookContext,
+    ctx: HookContext,
   ): Promise<LoggingControlDescriptor[]> {
     return [
       {
         key: 'sota/activation',
-        label: 'SOTA activation',
+        label: tFor(ctx)('activationControl'),
         icon: 'image-filter-hdr',
         color: '#6295BF',
         order: 10,
@@ -495,7 +497,7 @@ async function authorizedFetch(
 
 const AccountHook = {
   label: 'SOTAWatch',
-  description: 'SOTA spots',
+  description: (_args: Record<string, never>, ctx: HookContext) => tFor(ctx)('accountDescription'),
   kvKey: 'sota',
   oauth2: (_args: Record<string, never>, ctx: HookContext) => sotaOAuth2Config(ctx.edition),
 
@@ -514,24 +516,28 @@ const AccountHook = {
         testCtx,
         { persistSession: !testingUnsaved },
       )
-      if (!response) return 'Not logged in.'
-      if (response.status !== 200) return `SOTA SSO returned HTTP ${response.status}`
+      if (!response) return tFor(ctx)('notLoggedIn')
+      if (response.status !== 200) return tFor(ctx)('ssoHttpError', { status: response.status })
       const account = JSON.parse(response.body) as Record<string, any>
       const callsign = account?.attributes?.Callsign?.[0] ?? account?.username
       return `✅ **${callsign ?? 'unknown'}**`
     } catch (e) {
-      return `Error checking SOTA account: ${e instanceof Error ? e.message : String(e)}`
+      return tFor(ctx)('accountCheckError', { error: e instanceof Error ? e.message : String(e) })
     }
   },
 }
 
 /// Shown when a spot post fails for lack of a working login — the account
-/// action button opens the SOTAWatch account dialog directly.
-const RECONNECT_MESSAGE: ResultMessage = {
-  presentation: 'dialog',
-  title: 'SOTAWatch login needed',
-  text: 'Your SOTA account is not connected, or its login has expired.\n\nReconnect it to post spots to SOTAWatch.',
-  actions: [{ label: 'Reconnect', type: 'account', key: 'sota' }],
+/// action button opens the SOTAWatch account dialog directly. Built per
+/// call so the dialog follows the active locale.
+function reconnectMessage(ctx: HookContext): ResultMessage {
+  const t = tFor(ctx)
+  return {
+    presentation: 'dialog',
+    title: t('reconnectTitle'),
+    text: t('reconnectText'),
+    actions: [{ label: t('reconnectAction'), type: 'account', key: 'sota' }],
+  }
 }
 
 async function postSpotToSOTA(
@@ -562,10 +568,10 @@ async function postSpotToSOTA(
       body: JSON.stringify(body),
     }, ctx)
     if (!response) {
-      return { ok: false, message: 'Log in to your SOTA account in Settings to post SOTAwatch spots', userMessage: RECONNECT_MESSAGE }
+      return { ok: false, message: 'Log in to your SOTA account in Settings to post SOTAwatch spots', userMessage: reconnectMessage(ctx) }
     }
     if (response.status === 401 || response.status === 403) {
-      return { ok: false, message: 'SOTA account logged out. Please log in again in Settings', userMessage: RECONNECT_MESSAGE }
+      return { ok: false, message: 'SOTA account logged out. Please log in again in Settings', userMessage: reconnectMessage(ctx) }
     }
     if (response.status !== 200 && response.status !== 201) {
       return { ok: false, message: `SOTA API returned HTTP ${response.status}` }
@@ -678,8 +684,8 @@ const SpotsHook = {
 
 const sotaDataFile: DataFileDefinition = {
   key: 'sota-all-summits',
-  name: 'SOTA: All Summits',
-  description: 'Database of all SOTA references',
+  name: (_args: Record<string, never>, ctx: HookContext) => tFor(ctx)('dataFileName'),
+  description: (_args: Record<string, never>, ctx: HookContext) => tFor(ctx)('dataFileDescription'),
   url: 'https://www.sotadata.org.uk/summitslist.csv',
   maxAgeInDays: 30,
   fetchType: 'csv',

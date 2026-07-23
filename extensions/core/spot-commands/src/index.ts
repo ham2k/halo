@@ -20,6 +20,7 @@
 import { defineExtension } from "@ham2k/halo-extension-sdk"
 import type { CommandInterpretation, HookContext, JSONValue } from "@ham2k/halo-extension-sdk"
 import { parseSelfSpotCommand, isLastSpotCommand } from "./spotCommandParsing.ts"
+import { tFor } from "./i18n.ts"
 
 // Both hooks are operation-scoped: a self-spot advertises the operation and
 // SPOTLAST spots its most recent QSO, so outside an operation's logging
@@ -28,11 +29,12 @@ import { parseSelfSpotCommand, isLastSpotCommand } from "./spotCommandParsing.ts
 const SelfSpotCommand = {
   async interpret(
     { input, operation }: { input: string; operation?: Record<string, JSONValue> },
-    _ctx: HookContext,
+    ctx: HookContext,
   ): Promise<CommandInterpretation | null> {
     const parsed = parseSelfSpotCommand(input)
     if (!parsed) return null
-    if (!operation) return { error: 'Spotting needs an open operation' }
+    const t = tFor(ctx)
+    if (!operation) return { error: t('needsOperation') }
     const { comment } = parsed
     return {
       // The comment is free prose for other operators (same as the Spotting
@@ -40,8 +42,8 @@ const SelfSpotCommand = {
       // to uppercase or treat space as advance-focus. mixedCase, not
       // expectsParams: a bare "SPOT" is already executable on Enter.
       mixedCase: true,
-      describe: comment ? `Self-spot with comment "${comment}"?` : 'Self-spot?',
-      confirm: comment ? `Self-spotting: ${comment}` : 'Self-spotting…',
+      describe: comment ? t('selfSpotWithComment', { comment }) : t('selfSpot'),
+      confirm: comment ? t('selfSpottingComment', { comment }) : t('selfSpotting'),
       commands: [{ sendSpots: { comment: comment || undefined, target: 'self' } }],
     }
   },
@@ -50,13 +52,14 @@ const SelfSpotCommand = {
 const LastSpotCommand = {
   async interpret(
     { input, operation }: { input: string; operation?: Record<string, JSONValue> },
-    _ctx: HookContext,
+    ctx: HookContext,
   ): Promise<CommandInterpretation | null> {
     if (!isLastSpotCommand(input)) return null
-    if (!operation) return { error: 'Spotting needs an open operation' }
+    const t = tFor(ctx)
+    if (!operation) return { error: t('needsOperation') }
     return {
-      describe: 'Spot the last logged QSO?',
-      confirm: 'Spotting last QSO…',
+      describe: t('spotLast'),
+      confirm: t('spottingLast'),
       commands: [{ sendSpots: { target: 'last' } }],
     }
   },

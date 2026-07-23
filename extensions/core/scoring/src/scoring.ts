@@ -21,6 +21,8 @@
 // alias for `defineExtension` and is the one module the tests don't import.
 
 import { entityPrefixForCall } from "../../../sdk/src/dxcc.ts"
+// Relative for the same node-resolvability reason as dxcc.ts above.
+import { createCachedTranslator, createTranslator } from "../../../sdk/src/i18n.ts"
 import { fmtInteger } from "@ham2k/lib-format-tools"
 import type {
   DayScoreSummary,
@@ -36,6 +38,19 @@ import type {
 } from "@ham2k/halo-extension-sdk"
 
 const DAY_IN_MILLIS = 1000 * 60 * 60 * 24
+
+// User-visible tally labels; the per-locale catalogs live in
+// i18n/<locale>.json (flat key → string maps). Singular/plural is
+// picked with explicit ternaries in the summarize functions (not i18next's
+// `count` pluralization, which needs Intl.PluralRules — absent in QuickJS).
+import en from "./i18n/en.json" with { type: "json" }
+import es from "./i18n/es.json" with { type: "json" }
+
+type Translator = ReturnType<typeof createTranslator>
+
+/// Translator for this extension's strings, cached per locale — `ctx.locale`
+/// only changes when the app's locale setting does.
+const tFor = createCachedTranslator({ en: { translation: en }, es: { translation: es } })
 
 type QsoJSON = Record<string, JSONValue>
 
@@ -83,11 +98,11 @@ function accumulateQsoCountTally(tally: ScoreTally | undefined, verdict: QsoScor
   return { key: 'qsoCount', for: 'day', total, count, duplicates }
 }
 
-function summarizeQsoCountTally(tally: ScoreTally): ScoreTally {
+function summarizeQsoCountTally(tally: ScoreTally, t: Translator): ScoreTally {
   return {
     ...tally,
     icon: 'radio',
-    label: tally.total === 1 ? '1 QSO' : `${fmtInteger(tally.total)} QSOs`,
+    label: tally.total === 1 ? t('oneQso') : t('manyQsos', { formatted: fmtInteger(tally.total) }),
     summary: fmtInteger(tally.total),
   }
 }
@@ -114,13 +129,13 @@ function accumulateDxccTally(tally: ScoreTally | undefined, verdict: QsoScoreVer
   return { key: 'dxcc', for: 'operation', total, entities }
 }
 
-function summarizeDxccTally(tally: ScoreTally): ScoreTally {
+function summarizeDxccTally(tally: ScoreTally, t: Translator): ScoreTally {
   const entities = (tally.entities as Record<string, number> | undefined) ?? {}
   const count = Object.keys(entities).length
   return {
     ...tally,
     icon: 'earth',
-    label: count === 1 ? '1 DXCC Entity' : `${fmtInteger(count)} DXCC Entities`,
+    label: count === 1 ? t('oneDxccEntity') : t('manyDxccEntities', { formatted: fmtInteger(count) }),
     summary: count >= 5 ? fmtInteger(count) : '',
   }
 }
@@ -150,12 +165,12 @@ function accumulateBandsAndModesTally(tally: ScoreTally | undefined, verdict: Qs
   return { key: 'bandsAndModes', for: 'operation', total, bands, modes }
 }
 
-function summarizeBandsAndModesTally(tally: ScoreTally): ScoreTally {
+function summarizeBandsAndModesTally(tally: ScoreTally, t: Translator): ScoreTally {
   const bandCount = Object.keys((tally.bands as Record<string, number> | undefined) ?? {}).length
   const modeCount = Object.keys((tally.modes as Record<string, number> | undefined) ?? {}).length
   const labelParts: string[] = []
-  if (bandCount >= 2) labelParts.push(`${bandCount} Bands`)
-  if (modeCount >= 2) labelParts.push(`${modeCount} Modes`)
+  if (bandCount >= 2) labelParts.push(t('bands', { n: bandCount }))
+  if (modeCount >= 2) labelParts.push(t('modes', { n: modeCount }))
   return {
     ...tally,
     icon: 'antenna',
@@ -165,7 +180,8 @@ function summarizeBandsAndModesTally(tally: ScoreTally): ScoreTally {
 
 // --- Day-sectioning and accumulation ---------------------------------------
 
-export async function scoreQsos(args: ScoreQsosRequest, _ctx: HookContext): Promise<ScoreQsosResult> {
+export async function scoreQsos(args: ScoreQsosRequest, ctx: HookContext): Promise<ScoreQsosResult> {
+  const t = tFor(ctx)
   const sorted = [...args.qsos].sort((a, b) => Number(a.startAtMillis ?? 0) - Number(b.startAtMillis ?? 0))
 
   const workedByCall = new Map<string, Set<string>>()
@@ -184,9 +200,9 @@ export async function scoreQsos(args: ScoreQsosRequest, _ctx: HookContext): Prom
 
   const snapshotCurrentDay = () => {
     if (!currentDay) return
-    if (qsoCountTally) currentDay.scores.qsoCount = summarizeQsoCountTally(qsoCountTally)
-    if (dxccTally) currentDay.scores.dxcc = summarizeDxccTally(dxccTally)
-    if (bandsAndModesTally) currentDay.scores.bandsAndModes = summarizeBandsAndModesTally(bandsAndModesTally)
+    if (qsoCountTally) currentDay.scores.qsoCount = summarizeQsoCountTally(qsoCountTally, t)
+    if (dxccTally) currentDay.scores.dxcc = summarizeDxccTally(dxccTally, t)
+    if (bandsAndModesTally) currentDay.scores.bandsAndModes = summarizeBandsAndModesTally(bandsAndModesTally, t)
   }
 
   for (const qso of sorted) {
@@ -218,9 +234,9 @@ export async function scoreQsos(args: ScoreQsosRequest, _ctx: HookContext): Prom
   snapshotCurrentDay()
 
   const operationSummary: Record<string, ScoreTally> = {}
-  if (operationQsoCountTally) operationSummary.qsoCount = summarizeQsoCountTally(operationQsoCountTally)
-  if (dxccTally) operationSummary.dxcc = summarizeDxccTally(dxccTally)
-  if (bandsAndModesTally) operationSummary.bandsAndModes = summarizeBandsAndModesTally(bandsAndModesTally)
+  if (operationQsoCountTally) operationSummary.qsoCount = summarizeQsoCountTally(operationQsoCountTally, t)
+  if (dxccTally) operationSummary.dxcc = summarizeDxccTally(dxccTally, t)
+  if (bandsAndModesTally) operationSummary.bandsAndModes = summarizeBandsAndModesTally(bandsAndModesTally, t)
 
   return { qsoScores, daySections, operationSummary }
 }

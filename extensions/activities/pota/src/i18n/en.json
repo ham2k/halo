@@ -1,0 +1,9 @@
+{
+  "invalidReference": "Invalid reference",
+  "unknownPark": "Unknown park",
+  "unknownParkName": "Unknown Park",
+  "dataFileName": "POTA: All Parks",
+  "dataFileDescription": "Database of all POTA references",
+  "testParkName": "Test Park",
+  "activationControl": "POTA activation"
+}

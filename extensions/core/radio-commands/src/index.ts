@@ -19,19 +19,21 @@ import { bandForFrequency } from "@ham2k/lib-operation-data"
 
 import { defineExtension } from "@ham2k/halo-extension-sdk"
 import type { CommandInterpretation, HookContext } from "@ham2k/halo-extension-sdk"
+import { tFor } from "./i18n.ts"
 
 const BAND_MATCH = /^(2200|630|160|80|60|40|30|20|17|15|12|10|6|4|2)M?$/i
 const MODE_MATCH = /^(CW|SSB|USB|LSB|FM|AM|FT8|FT4|FT2|RTTY)$/i
 const FREQUENCY_MATCH = /^[\d.,]+$/
 
 const BandCommand = {
-  async interpret({ input }: { input: string }, _ctx: HookContext): Promise<CommandInterpretation | null> {
+  async interpret({ input }: { input: string }, ctx: HookContext): Promise<CommandInterpretation | null> {
     const match = BAND_MATCH.exec(input.trim())
     if (!match) return null
     const band = `${match[1].toLowerCase()}m`
+    const t = tFor(ctx)
     return {
-      describe: `Change band to **${band}**?`,
-      confirm: `Band set to **${band}**`,
+      describe: t('bandDescribe', { band }),
+      confirm: t('bandConfirm', { band }),
       commands: [{ setVfo: { band } }],
     }
   },
@@ -40,7 +42,7 @@ const BandCommand = {
 const FrequencyCommand = {
   async interpret(
     { input, qso }: { input: string; qso?: Record<string, any> },
-    _ctx: HookContext,
+    ctx: HookContext,
   ): Promise<CommandInterpretation | null> {
     const trimmed = input.trim()
     // Require at least 3 characters so short band-only numbers ("20") don't
@@ -67,22 +69,24 @@ const FrequencyCommand = {
     if (!band || band === 'other') return null
 
     const formattedFreq = fmtFreq(freq)
+    const t = tFor(ctx)
     return {
-      describe: `Change frequency to **${formattedFreq} MHz**?`,
-      confirm: `Frequency set to **${formattedFreq} MHz**`,
+      describe: t('freqDescribe', { freq: formattedFreq }),
+      confirm: t('freqConfirm', { freq: formattedFreq }),
       commands: [{ setVfo: { freq } }],
     }
   },
 }
 
 const ModeCommand = {
-  async interpret({ input }: { input: string }, _ctx: HookContext): Promise<CommandInterpretation | null> {
+  async interpret({ input }: { input: string }, ctx: HookContext): Promise<CommandInterpretation | null> {
     const match = MODE_MATCH.exec(input.trim())
     if (!match) return null
     const mode = match[1].toUpperCase()
+    const t = tFor(ctx)
     return {
-      describe: `Change mode to **${mode}**?`,
-      confirm: `Mode set to **${mode}**`,
+      describe: t('modeDescribe', { mode }),
+      confirm: t('modeConfirm', { mode }),
       commands: [{ setVfo: { mode } }],
     }
   },

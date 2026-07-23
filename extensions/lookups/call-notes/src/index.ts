@@ -30,6 +30,7 @@ import type {
 
 import { combineNotes, expansionValueFor, parseCallNotes } from "./callNotes"
 import type { CallNotesIndex } from "./callNotes"
+import { tFor } from "./i18n.ts"
 
 // `note`/`emoji` ride along as extra fields CallInfoLookup's fixed shape
 // doesn't declare — same rationale as annotate.ts's CallInfoLookupWithFlag.
@@ -39,8 +40,9 @@ let notesByCall: CallNotesIndex = {}
 
 const notesDataFile: DataFileDefinition = {
   key: 'call-notes',
+  // The name is a Ham2K product title — kept verbatim in every locale.
   name: "Ham2K's Hams of Note",
-  description: "A veritable sample of who's who and who isn't in the world of radio",
+  description: (_args: Record<string, never>, ctx: HookContext) => tFor(ctx)('dataFileDescription'),
   url: 'https://ham2k.com/data/hams-of-note.txt',
   maxAgeInDays: 1,
   fetchType: 'raw',
@@ -92,7 +94,7 @@ const DirectoryHook = {
 const EXPAND_MATCH = /^\/\/(\S+)$/
 
 const ExpandCommand = {
-  async interpret({ input }: { input: string }, _ctx: HookContext): Promise<CommandInterpretation | null> {
+  async interpret({ input }: { input: string }, ctx: HookContext): Promise<CommandInterpretation | null> {
     const match = EXPAND_MATCH.exec(input.trim())
     if (!match) return null
 
@@ -100,7 +102,7 @@ const ExpandCommand = {
     if (!value) return null
 
     return {
-      describe: `Expand to ${value}?`,
+      describe: tFor(ctx)('expandTo', { value }),
       commands: [{ setCallField: { text: value } }],
     }
   },

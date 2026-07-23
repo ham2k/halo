@@ -1,0 +1,9 @@
+{
+  "needsOperation": "Para spotear necesitas una operación abierta",
+  "selfSpotWithComment": "¿Auto-spot con el comentario \"{{comment}}\"?",
+  "selfSpot": "¿Auto-spot?",
+  "selfSpottingComment": "Enviando auto-spot: {{comment}}",
+  "selfSpotting": "Enviando auto-spot…",
+  "spotLast": "¿Spotear el último QSO registrado?",
+  "spottingLast": "Spoteando el último QSO…"
+}
