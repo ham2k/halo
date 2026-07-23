@@ -55,6 +55,7 @@ dependencies:
   # Desktop binary self-update (Sparkle/WinSparkle), see auto_update_service.dart
   # (§3.2). Confirm/pin the exact version on the first `flutter pub get`.
   auto_updater: ^1.0.0
+  sentry_flutter: ^8.14.2
 
 dev_dependencies:
   flutter_test:

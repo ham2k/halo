@@ -87,9 +87,36 @@
     @keyframes startup-splash-spin {
       to { transform: rotate(360deg); }
     }
+    /* Boot-failure state (#76): shown in place of the spinner when the
+       Flutter engine hasn't painted a first frame within the timeout below.
+       Hidden until the script flips it on. */
+    #startup-error {
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      margin-top: 32px;
+      padding: 0 24px;
+      max-width: 28em;
+      text-align: center;
+      color: #1A1C1E;
+      font: 14px/1.5 -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    }
+    #startup-error button {
+      margin-top: 16px;
+      padding: 8px 20px;
+      border: none;
+      border-radius: 20px;
+      background: #006783;
+      color: #FFFFFF;
+      font-size: 14px;
+      cursor: pointer;
+    }
     @media (prefers-color-scheme: dark) {
       #startup-splash {
         background: #40484C;
+      }
+      #startup-error {
+        color: #E1E3E5;
       }
     }
   </style>
@@ -98,9 +125,23 @@
   <div id="startup-splash">
     <img src="ham2k-square.svg" alt="">
     <div class="spinner"></div>
+    <div id="startup-error">
+      <div><strong>Ham2K Logger failed to start.</strong></div>
+      <div>Check your connection and reload the page. If this keeps
+        happening, please let us know at help@ham2k.com.</div>
+      <button type="button" onclick="location.reload()">Reload</button>
+    </div>
   </div>
   <script>
+    // Substituted at deploy time by CI (see .github/workflows/deploy-web.yml
+    // and docs/deployment.md); left as the placeholder — and therefore
+    // disabled — in local/dev builds, same convention as the Mapbox token.
+    const HALO_SENTRY_DSN = '%%HALO_SENTRY_DSN%%';
+
+    let firstFramePainted = false;
+
     function removeSplash() {
+      firstFramePainted = true;
       const splash = document.getElementById('startup-splash');
       if (!splash) return;
       splash.classList.add('startup-splash-hidden');
@@ -117,11 +158,52 @@
     // fades from SplashScreen into the real app once bootstrap() resolves.
     window.addEventListener('flutter-first-frame', removeSplash);
 
-    // Last-resort timeout so a genuinely stuck load (a network failure
-    // downloading the engine, a bug that hangs before bootstrap() settles,
-    // etc.) doesn't leave the user staring at a spinner forever with no way
-    // to tell something's wrong.
-    setTimeout(removeSplash, 20000);
+    // Boot-failure state (#76): if the engine hasn't painted anything by
+    // this deadline (network failure downloading the multi-MB engine, a
+    // crash before the first frame, an unsupported browser), tell the user
+    // instead of spinning forever, and report one event to Sentry when a
+    // DSN was baked in. The Flutter app can't report this itself — it never
+    // started — so this tiny hand-rolled envelope POST is the only
+    // reporter; no JS SDK, nothing to download.
+    const BOOT_TIMEOUT_MS = 30000;
+
+    function reportBootFailure() {
+      if (!HALO_SENTRY_DSN || HALO_SENTRY_DSN.startsWith('%%')) return;
+      try {
+        // DSN: https://<key>[:<legacy secret>]@<host>/[<path prefix>/]<projectId>
+        // (the legacy secret is dropped — sentry_key alone authenticates; the
+        // optional path prefix covers self-hosted Sentry installs).
+        const m = HALO_SENTRY_DSN.match(/^https:\/\/([^:@]+)(?::[^@]*)?@([^/]+)\/(.*?)(\d+)$/);
+        if (!m) return;
+        const [, key, host, pathPrefix, projectId] = m;
+        const event = {
+          message: 'Web app failed to start within ' + (BOOT_TIMEOUT_MS / 1000) + 's',
+          level: 'error',
+          platform: 'javascript',
+          environment: '%%HALO_WEB_ENVIRONMENT%%'.startsWith('%%') ? 'unknown' : '%%HALO_WEB_ENVIRONMENT%%',
+          tags: { boot_stage: 'pre-first-frame' },
+          request: { url: location.href, headers: { 'User-Agent': navigator.userAgent } },
+        };
+        const envelope =
+          JSON.stringify({ sent_at: new Date().toISOString() }) + '\n' +
+          JSON.stringify({ type: 'event' }) + '\n' +
+          JSON.stringify(event) + '\n';
+        fetch('https://' + host + '/' + pathPrefix + 'api/' + projectId + '/envelope/?sentry_key=' + key + '&sentry_version=7', {
+          method: 'POST',
+          body: envelope,
+          keepalive: true,
+        }).catch(() => {});
+      } catch (e) { /* reporting must never break the error screen itself */ }
+    }
+
+    setTimeout(() => {
+      if (firstFramePainted) return;
+      const spinner = document.querySelector('#startup-splash .spinner');
+      if (spinner) spinner.remove();
+      const errorBox = document.getElementById('startup-error');
+      if (errorBox) errorBox.style.display = 'flex';
+      reportBootFailure();
+    }, BOOT_TIMEOUT_MS);
   </script>
 
   <!--

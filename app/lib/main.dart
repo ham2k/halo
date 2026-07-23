@@ -38,6 +38,7 @@ import 'config/version.dart';
 import 'services/auto_update_service.dart';
 import 'services/deep_link_service.dart';
 import 'services/export_service.dart';
+import 'services/error_reporting_service.dart';
 import 'services/extension_service.dart';
 import 'services/location_service.dart';
 import 'services/lookup_queue_service.dart';
@@ -62,6 +63,18 @@ import 'i18n/strings.g.dart';
 final navigatorKey = GlobalKey<NavigatorState>();
 
 void main() {
+  // Global error capture (#76): Sentry upload in any build given a DSN at
+  // build time, local logging + the error tile + a StatusBar notice
+  // everywhere — see services/error_reporting_service.dart. The ENTIRE
+  // startup sequence (binding init included) runs inside so everything
+  // shares one zone: a binding initialized outside the zone that runApp
+  // runs in trips Flutter's zone-mismatch warning, and on web uncaught
+  // async errors are only catchable by the zone, not
+  // PlatformDispatcher.onError.
+  unawaited(ErrorReportingService.run(_mainBody));
+}
+
+void _mainBody() {
   WidgetsFlutterBinding.ensureInitialized();
   // Turn on structured dev logging ([qso], [lookup], …) for all non-release
   // builds — console output + a buffer window.__halo.recentLog() can query.
@@ -88,6 +101,7 @@ void main() {
   runApp(TranslationProvider(child: _BootGate(servicesFuture: servicesFuture)));
 
   servicesFuture.then((services) async {
+    ErrorReportingService.attachStatusBar(services.statusBar);
     // Check for an over-the-air Dart patch on the device's selected track
     // (docs/releases.md §4). Fire-and-forget on purpose: this makes a network
     // call the Shorebird package warns can be slow, so it must NOT gate startup
@@ -226,6 +240,7 @@ class _BootGateState extends State<_BootGate> with SingleTickerProviderStateMixi
         _switchTo(HaLoApp(key: const ValueKey('app'), services: services));
       } catch (error, stackTrace) {
         debugPrint('[boot] unexpected error building HaLoApp (not a bootstrap() failure): $error\n$stackTrace');
+        ErrorReportingService.report(error, stackTrace, context: 'boot:build-app');
         _switchTo(MaterialApp(
           key: const ValueKey('boot-error'),
           debugShowCheckedModeBanner: false,
@@ -238,6 +253,7 @@ class _BootGateState extends State<_BootGate> with SingleTickerProviderStateMixi
       // first, an unhandled rejection here would otherwise strand the user
       // on the splash screen forever with no visible error.
       debugPrint('[boot] bootstrap() failed: $error\n$stackTrace');
+      ErrorReportingService.report(error, stackTrace, context: 'boot:bootstrap');
       if (mounted) {
         _switchTo(MaterialApp(
           key: const ValueKey('boot-error'),
