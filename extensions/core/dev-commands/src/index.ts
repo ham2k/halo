@@ -6,8 +6,9 @@
 // DEVNOTICE/DEVSTATUS/DEVPROGRESS post sample items to the status bar so
 // the footer/notice UI can be exercised without a real extension driving
 // it. DEVSPLASH re-shows the startup release-notes overlay (Issue #42) on
-// demand, bypassing its normal "once per version" gate. RELOAD forces a
-// data-file re-sync (bypassing the normal 30-day
+// demand, bypassing its normal "once per version" gate. DEVSENTRY pushes a
+// synthetic error through the error-reporting pipeline (#76) to verify the
+// Sentry wiring. RELOAD forces a data-file re-sync (bypassing the normal 30-day
 // staleness check), for both developers iterating on `csvToLookupEntry`
 // mapping logic and anyone troubleshooting stale/missing lookup data.
 // SEED fills the current log with generated QSOs for exercising list/
@@ -139,6 +140,27 @@ const DevOnboardCommand = {
       describe: 'Show the onboarding overlay?',
       confirm: 'Showing the onboarding overlay — completing it applies its choices',
       commands: [{ devOnboard: {} }],
+    }
+  },
+}
+
+// "DEVSENTRY" / "DEVSENTRY custom message" -> push a synthetic error through
+// the app's error-reporting pipeline (#76) to verify the Sentry wiring end
+// to end; the app reports back whether it uploaded or only logged locally
+// (no DSN in this build). `mixedCase` keeps Space literal so bare DEVSENTRY
+// stays executable while still extendable with a free-text message (the
+// SEED pattern). No `confirm` — the app's outcome message is the feedback.
+const DEVSENTRY_MATCH = /^DEVSENTRY(?:\s+(.+))?$/i
+
+const DevSentryCommand = {
+  async interpret({ input }: { input: string }, _ctx: HookContext): Promise<CommandInterpretation | null> {
+    const match = DEVSENTRY_MATCH.exec(input.trim())
+    if (!match) return null
+    const message = match[1]?.trim()
+    return {
+      mixedCase: true,
+      describe: message ? `Send a test error report ("${message}")?` : 'Send a test error report?',
+      commands: [{ devSentry: message ? { message } : {} }],
     }
   },
 }
@@ -350,6 +372,7 @@ defineExtension({
     registerHook('command', { key: 'dev-commands-devprogress', hook: DevProgressCommand, priority: 100 })
     registerHook('command', { key: 'dev-commands-devsplash', hook: DevSplashCommand, priority: 100 })
     registerHook('command', { key: 'dev-commands-devonboard', hook: DevOnboardCommand, priority: 100 })
+    registerHook('command', { key: 'dev-commands-devsentry', hook: DevSentryCommand, priority: 100 })
     registerHook('command', { key: 'dev-commands-reload', hook: ReloadCommand, priority: 100 })
     registerHook('command', { key: 'dev-commands-seed', hook: SeedCommand, priority: 100 })
     registerHook('command', { key: 'dev-commands-exp', hook: ExpCommand, priority: 100 })

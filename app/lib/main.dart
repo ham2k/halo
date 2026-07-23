@@ -657,6 +657,18 @@ class HaLoServices {
       case 'devOnboard':
         devOnboardTrigger.trigger();
         return null;
+      case 'devSentry':
+        // DEVSENTRY [message]: push a synthetic error through the real
+        // reporting pipeline (#76) to verify the Sentry wiring end to end.
+        // Deliberately report(), not throw — the point is testing upload
+        // + feedback, not exercising the error UI (DEVNOTICE covers that).
+        final message = (params?['message'] as String? ?? 'test message').trim();
+        ErrorReportingService.report(
+          StateError('DEVSENTRY: $message'),
+          StackTrace.current,
+          context: 'devsentry',
+        );
+        return ErrorReportingService.sentryEnabled ? t.commands.sentryTestSent : t.commands.sentryTestLocalOnly;
       case 'sendSpots':
         return _sendSpot(params ?? const {});
       case 'toggleExperiment':

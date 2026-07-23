@@ -417,6 +417,8 @@ class _Translations$commands$es extends Translations$commands$en {
 	@override String unknownExperiment({required Object token}) => 'Experimento desconocido «${token}»';
 	@override String experimentEnabled({required Object name}) => '${name} habilitado';
 	@override String experimentDisabled({required Object name}) => '${name} deshabilitado';
+	@override String get sentryTestSent => 'Reporte de error de prueba enviado a Sentry';
+	@override String get sentryTestLocalOnly => 'Sentry está deshabilitado en esta compilación — el error de prueba solo se registró localmente';
 }
 
 // Path: spotting
@@ -1536,6 +1538,8 @@ extension on TranslationsEs {
 			'commands.unknownExperiment' => ({required Object token}) => 'Experimento desconocido «${token}»',
 			'commands.experimentEnabled' => ({required Object name}) => '${name} habilitado',
 			'commands.experimentDisabled' => ({required Object name}) => '${name} deshabilitado',
+			'commands.sentryTestSent' => 'Reporte de error de prueba enviado a Sentry',
+			'commands.sentryTestLocalOnly' => 'Sentry está deshabilitado en esta compilación — el error de prueba solo se registró localmente',
 			'spotting.noQsoYet' => 'Aún no hay QSO registrado para spotear.',
 			'spotting.setFrequencyFirst' => 'Primero define una frecuencia.',
 			'spotting.nothingToSpot' => 'Nada que spotear — ninguna extensión ofrece spotting aquí.',

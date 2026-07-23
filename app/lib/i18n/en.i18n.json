@@ -515,7 +515,9 @@
     "reloadingTarget": "Reloading ${target} data files…",
     "unknownExperiment": "Unknown experiment \"${token}\"",
     "experimentEnabled": "${name} enabled",
-    "experimentDisabled": "${name} disabled"
+    "experimentDisabled": "${name} disabled",
+    "sentryTestSent": "Test error report sent to Sentry",
+    "sentryTestLocalOnly": "Sentry is disabled in this build — test error logged locally only"
   },
   "spotting": {
     "noQsoYet": "No QSO logged yet to spot.",

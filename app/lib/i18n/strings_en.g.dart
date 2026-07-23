@@ -784,6 +784,12 @@ class Translations$commands$en {
 
 	/// en: '${name} disabled'
 	String experimentDisabled({required Object name}) => '${name} disabled';
+
+	/// en: 'Test error report sent to Sentry'
+	String get sentryTestSent => 'Test error report sent to Sentry';
+
+	/// en: 'Sentry is disabled in this build — test error logged locally only'
+	String get sentryTestLocalOnly => 'Sentry is disabled in this build — test error logged locally only';
 }
 
 // Path: spotting
@@ -2486,6 +2492,8 @@ extension on Translations {
 			'commands.unknownExperiment' => ({required Object token}) => 'Unknown experiment "${token}"',
 			'commands.experimentEnabled' => ({required Object name}) => '${name} enabled',
 			'commands.experimentDisabled' => ({required Object name}) => '${name} disabled',
+			'commands.sentryTestSent' => 'Test error report sent to Sentry',
+			'commands.sentryTestLocalOnly' => 'Sentry is disabled in this build — test error logged locally only',
 			'spotting.noQsoYet' => 'No QSO logged yet to spot.',
 			'spotting.setFrequencyFirst' => 'Set a frequency first.',
 			'spotting.nothingToSpot' => 'Nothing to spot — no extension offers spotting here.',

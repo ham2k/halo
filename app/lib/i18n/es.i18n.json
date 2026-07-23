@@ -515,7 +515,9 @@
     "reloadingTarget": "Recargando archivos de datos de ${target}…",
     "unknownExperiment": "Experimento desconocido «${token}»",
     "experimentEnabled": "${name} habilitado",
-    "experimentDisabled": "${name} deshabilitado"
+    "experimentDisabled": "${name} deshabilitado",
+    "sentryTestSent": "Reporte de error de prueba enviado a Sentry",
+    "sentryTestLocalOnly": "Sentry está deshabilitado en esta compilación — el error de prueba solo se registró localmente"
   },
   "spotting": {
     "noQsoYet": "Aún no hay QSO registrado para spotear.",
