@@ -34,6 +34,8 @@ Future<void> main(List<String> args) async {
         await _status(rest, out: out, json: json);
       case 'release':
         await _release(rest, out: out, json: json);
+      case 'patch':
+        await _patch(rest, out: out, json: json);
       case 'preview':
         await _preview(rest, out: out, json: json);
       case 'prune-previews':
@@ -255,6 +257,131 @@ Future<void> _cut({
   } else {
     out.dim("  Branch upstream is '${upstream ?? '<none>'}' (not on $_remote) — commit + tag are local; skipping push.");
   }
+}
+
+// ── patch (Shorebird Dart code push, docs/releases.md §4) ─────────────────────
+
+Future<void> _patch(List<String> args, {required _Out out, required bool json}) async {
+  final rest = [...args];
+  final dryRun = rest.remove('--dry-run') || rest.remove('-n');
+  final yes = rest.remove('--yes') || rest.remove('-y');
+  final force = rest.remove('--force');
+  final editionName = _takeValue(rest, '--edition');
+  if (rest.isNotEmpty) throw _CliError("unexpected argument '${rest.first}'");
+
+  final root = await _repoRoot();
+  final branch = (await _git(['rev-parse', '--abbrev-ref', 'HEAD'], cwd: root)).trim();
+  await _fetchTagsBestEffort(out, root, quiet: json);
+  // A patch builds HEAD (the fix), not the upstream branch, so being behind isn't
+  // fatal — but warn, since you'd be patching without others' merged fixes.
+  if (!json && !await _checkInSync(out: out, root: root, branch: branch, yes: yes, mustSync: false)) return;
+
+  final Edition edition;
+  if (editionName != null) {
+    final parsed = editionFromName(editionName);
+    if (parsed == null) throw _CliError("--edition must be dev, next or prod (got '$editionName')");
+    edition = parsed;
+  } else {
+    edition = editionForBranch(branch);
+  }
+  final platforms = patchPlatformsForEdition(edition);
+  if (platforms.isEmpty) {
+    throw _CliError('no Shorebird patch workflow is wired for the ${edition.name} edition '
+        '(only next and dev have patch builds today)');
+  }
+
+  // The release the patch binds to. The tag ledger is the Next line (§ status),
+  // so the anchor is exact for next; for dev it's the closest proxy we have.
+  final tags = parseReleaseTags((await _git(['tag', '--list'], cwd: root)).split('\n'));
+  final release = latestRelease(tags);
+  if (release == null) throw _CliError('no release tag found to patch — cut a release first');
+
+  final changed = (await _git(['diff', '--name-only', '${release.tag}..HEAD'], cwd: root))
+      .split('\n')
+      .where((s) => s.trim().isNotEmpty)
+      .toList();
+  final compat = classifyPatchChanges(changed);
+  final tag = patchTagName(edition);
+  final sha = (await _git(['rev-parse', '--short', 'HEAD'], cwd: root)).trim();
+
+  if (json) {
+    stdout.writeln(const JsonEncoder.withIndent('  ').convert({
+      'edition': edition.name,
+      'release': {'tag': release.tag, 'version': release.version, 'build': release.build},
+      'commit': sha,
+      'tag': tag,
+      'platforms': platforms,
+      'changedFiles': changed.length,
+      'patchable': compat.isPatchable,
+      'breaking': compat.breaking,
+    }));
+    return;
+  }
+
+  out.title('Ham2K Logger — publish Dart patch');
+  out.blank();
+  out.field('Branch', branch);
+  out.field('Edition', edition.name + (editionName == null ? '  (from branch)' : '  (--edition)'));
+  out.field('Release', '${release.version}  (build ${release.build}, ${release.tag})');
+  out.field('Commit', sha);
+  out.field('Tag', tag);
+  out.field('Targets', platforms.join(', '));
+  if (edition != Edition.next) {
+    out.dim('  (dev/prod aren\'t tag-cut; the release anchor is the Next ledger — treat the check as approximate.)');
+  }
+  out.blank();
+
+  if (changed.isEmpty) {
+    out.warn('No changes since ${release.tag} — nothing to patch.');
+    return;
+  }
+
+  // Compatibility gate (docs/releases.md §4.2): a patch is pure Dart + assets.
+  out.dim('  ${changed.length} file(s) changed since ${release.tag}: '
+      '${compat.safe.length} patch-safe, ${compat.breaking.length} native/dependency.');
+  if (!compat.isPatchable) {
+    out.blank();
+    out.warn('These changes are outside the pure-Dart/asset surface a patch can carry:');
+    for (final p in compat.breaking) {
+      out.dim('    $p');
+    }
+    out.dim('  A full release (halo-ops release) is likely needed; Shorebird rejects a native diff.');
+    out.dim('  --force overrides this local check.');
+  }
+  out.blank();
+
+  final blocked = !compat.isPatchable && !force;
+  if (dryRun) {
+    out.dim(blocked
+        ? '  (dry run — this would be REFUSED without --force.)'
+        : '  (dry run — nothing tagged or pushed.)');
+    return;
+  }
+  if (blocked) {
+    throw _CliError('refusing to patch native/dependency changes — re-run with --force to override');
+  }
+  if (!compat.isPatchable) {
+    out.warn('--force set; triggering the patch anyway (Shorebird still has the final say).');
+  }
+  out.dim('  Pushing $tag triggers ${platforms.length} Codemagic patch workflow(s) for ${edition.name},');
+  out.dim('  each building a pure-Dart patch of HEAD against the live Shorebird release.');
+  out.blank();
+
+  if (!yes && !_confirm(out, 'Publish this patch?')) {
+    out.dim('  Aborted.');
+    return;
+  }
+
+  out.blank();
+  // Reusable pointer tag, force-moved to HEAD (like preview) — the patch plane is
+  // "current HEAD vs current release", not an immutable ledger. Codemagic builds
+  // on the tag push; these patch workflows are distinct from the release matrix,
+  // so there's no commit-dedup to fight (unlike `release`, hence no tag-first
+  // dance here).
+  await _git(['tag', '-f', tag], cwd: root);
+  await _git(['push', _remote, '--force', 'refs/tags/$tag'], cwd: root);
+  out.ok('Pushed $tag → ${edition.name} patch builds (${platforms.join(', ')}).');
+  out.dim('  (follow them in Codemagic; each patch lands on its Shorebird track.)');
 }
 
 // ── preview ─────────────────────────────────────────────────────────────────
@@ -654,6 +781,7 @@ Usage: halo-ops <command> [options]
 Commands:
   status                 Show the released version for each edition, from tags.
   release                Preview and cut a release (bump version.dart, commit, tag, push).
+  patch                  Publish a Shorebird Dart patch of HEAD (tags patch-<edition>, pushes it).
   preview <name>         Deploy a web preview of HEAD (tags web-preview-<name>, pushes it).
   prune-previews         List web previews; delete selected ones (Pages + DNS + tag).
 
@@ -661,6 +789,11 @@ Release options:
   --edition <dev|next|prod>   Override the branch→edition mapping.
   --dry-run, -n               Show the plan; don't write/commit/tag/push.
   --yes, -y                   Skip the confirmation prompt.
+
+patch options:
+  --edition <dev|next|prod>   Override the branch→edition mapping.
+  --force                     Patch even when native/dependency files changed.
+  --dry-run, -n / --yes, -y   As in release.
 
 preview options:
   --dry-run, -n / --yes, -y   As above.

@@ -438,11 +438,19 @@ passes straight through as the **release version**, so each monthly binary is th
 distinct Shorebird release its patches bind to (§4.1). Dev and Web keep plain
 `flutter build`.
 
-**Patch step.** A separate, manually-triggered workflow runs `shorebird patch
-<platform>` (with the same edition selection) and publishes to `bleeding-edge`,
-to be promoted upward explicitly (§4.3); `SHOREBIRD_TRACK` overrides the track.
-Patches must be pure Dart (§4.2). A patch is never distributed, so the macOS
-patch build needs no Developer ID certificate and no notarization.
+**Patch step.** A separate workflow runs `shorebird patch <platform>` (with the
+same edition selection) and publishes to `bleeding-edge`, to be promoted upward
+explicitly (§4.3); `SHOREBIRD_TRACK` overrides the track. Patches must be pure
+Dart (§4.2). A patch is never distributed, so the macOS patch build needs no
+Developer ID certificate and no notarization.
+
+Trigger it with **`halo-ops patch`** (or manually from the Codemagic UI): it
+force-moves a `patch-<edition>` tag to HEAD, which fans out to that edition's
+iOS/macOS/Android patch workflows (each `triggering:` on the tag). Before
+pushing, it diffs the current release tag → HEAD and **hard-blocks** when any
+change falls outside the pure-Dart/asset surface (native dirs, `pubspec.*`) —
+`--force` overrides that local pre-flight. It's only a heuristic; Shorebird's
+build-time diff of the compiled artifact is the authoritative gate.
 
 It passes **`--release-version` explicitly**, resolved by
 `shorebird_release_version` (newest release, or `SHOREBIRD_RELEASE_VERSION`).
