@@ -18,15 +18,18 @@ This is a multi-platform app for Amateur Radio Logging, called "Ham2K Logger" (o
 
 ## Development Process
 
-- Except for small changes, agents should work on a worktree, with a branch off of the `dist` branch on the `app-halo-dist` origin (usually available as `main-dist-private` locally). As new tasks come in, use new branches and rename the worktree to keep the name relevant.
+- Except for small changes, agents should work on a worktree, with a branch off of the `dist` branch on the `app-halo-dist` origin (that branch is usually available as `main-dist-private` locally). As new tasks come in, use new branches and rename the worktree to keep the name relevant.
 
 - Keep `dist` updated. Rebase your branches on top of the latest `dist` before submitting or updating a PR.
 
-- Take a full pass at the problem and then present the results to the developer. Don't pile up trivial commits. When iterating on a feature or approach, feel free to ammend the commits in the branch if it makes sense to keep work organized and easier to review, and skip running tests for short iterations unless it's useful.
+- Steps when tackling a new task:
+  - Open a new branch, off the latest `dist`.
+  - Take a full pass at the problem and then present the results to the developer. If possible and relevant, start a web build of the app for the developer to verify on.
+  - Iterate with the developer. Don't pile up trivial commits. When iterating on a feature or approach, feel free to ammend the commits in the branch if it makes sense to keep work organized and easier to review, and skip running tests for short iterations unless it's useful.
+  - Once the work has settled, run a code review, present the results to the developer and ask for followups.
+  - When the followups have been addressed, and only then, rebase on top of an updated `dist`, solve any merge conflicts, run tests and open a PR if everything is clean.
 
-- Don't push to the PR branch until it's ready for review.
-
-- When working on a feature, the agent might want to run the web version in the background for faster iteration, or launch the macos version and use hot reloading if the user asks for it. It should avoid using app control, other than on the web version, unless the user asks for it.
+- Don't push to the PR branch until it's ready for review. Avoid pushing to the remote repository until necessary. Test locally first.
 
 - Whenever running the app (any `flutter run`, including the web dev server), always pass a `DEV_LABEL` set to your session name or a brief description of the work at hand, so the running build is identifiable in the home-screen header — e.g. `flutter run -d macos --dart-define=DEV_LABEL="header work"` or `DEV_LABEL="header work" flutter run -d web-server`. See [DEVELOPMENT.md](file:///Users/sd/Work/ham2k/app-halo/DEVELOPMENT.md).
 
