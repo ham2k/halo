@@ -61,7 +61,7 @@ class _OperationRow extends StatelessWidget {
         onLongPress: () => confirmDeleteOperation(context, services.operations, operation),
         mouseCursor: SystemMouseCursors.click,
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+          padding: PaneSafeArea.symmetricOf(context, horizontal: 16, vertical: 10),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -304,138 +304,158 @@ class _HomeViewState extends State<HomeView> {
       // ideal pane width and the branding pane takes the rest. Single-pane
       // sizes pass a null secondary so the list subtree stays mounted (and
       // keeps its scroll position) across a live resize.
-      body: ResizableSplitView(
-        // Home is ViewLayoutPolicy.fixed and (for now) opts into the
-        // "surfaces" divider: the branding pane reads as a surface under
-        // the list column's shadow. See docs/design/layouts.md.
-        dividerStyle: SplitDividerStyle.surfaces,
-        secondary: ShirtSize.of(context).isTwoPane ? const _BrandingPane() : null,
-        // Null when never dragged → the split's own 2/3-capped-at-sMax
-        // default applies.
-        preferredPrimaryWidth: widget.services.settings.layoutDimension(LayoutKeys.homeLeftColumn),
-        maxPrimaryWidth: ShirtSize.sMax,
-        onPreferredPrimaryWidthChanged: (width) =>
-            widget.services.settings.setLayoutDimension(LayoutKeys.homeLeftColumn, width),
-        primary: Column(
-          children: [
-            Expanded(
-              child: NotificationListener<ScrollNotification>(
-                onNotification: (ScrollNotification notification) {
-                  final pixels = notification.metrics.pixels;
-                  if (pixels > 10 && _isFabExtended) {
-                    setState(() {
-                      _isFabExtended = false;
-                    });
-                  } else if (pixels <= 10 && !_isFabExtended) {
-                    setState(() {
-                      _isFabExtended = true;
-                    });
-                  }
-                  return false;
-                },
-                child: Stack(
-                  children: [
-                    Positioned.fill(
-                      child: StreamBuilder<List<Operation>>(
-                        stream: _operationsStream,
-                        builder: (context, snapshot) {
-                          // First real snapshot = bootstrap done + first data
-                          // load complete: resolve the dev bridge's `ready`
-                          // promise so agents can await it instead of sleeping
-                          // (#239). Idempotent; only while the bridge is live.
-                          //
-                          // Anchored to the build because that's what the test
-                          // harness can drive; the cost is that on a HIDDEN web
-                          // pane (Flutter throttles frames to ~0) `ready` waits
-                          // until the pane is visible again. That's fine for the
-                          // agent workflow — agents drive a visible pane — and
-                          // it self-heals on the next frame.
-                          if (snapshot.hasData && DevBridge.instance.installed) {
-                            DevBridge.instance.signalReady();
-                          }
-                          return OperationListPanel(
-                            services: widget.services,
-                            // `snapshot.hasData` distinguishes "the stream
-                            // hasn't emitted its first snapshot yet" from "it
-                            // emitted an empty list" — collapsing both into
-                            // `snapshot.data ?? []` was what previously made
-                            // OperationListPanel need to guess (via a fixed
-                            // delay) how long "still loading" might last.
-                            loading: !snapshot.hasData,
-                            operations: snapshot.data ?? const <Operation>[],
-                          );
-                        },
+      body: PaneSafeArea.root(
+        context,
+        // Real device safe-area insets (notch, home indicator) bubble in
+        // from here (ham2k/app-halo-dist#205); PaneSafeArea's own
+        // divider-clearance role composes with it further down.
+        child: ResizableSplitView(
+          // Home is ViewLayoutPolicy.fixed and (for now) opts into the
+          // "surfaces" divider: the branding pane reads as a surface under
+          // the list column's shadow. See docs/design/layouts.md.
+          dividerStyle: SplitDividerStyle.surfaces,
+          secondary: ShirtSize.of(context).isTwoPane ? const _BrandingPane() : null,
+          // Null when never dragged → the split's own 2/3-capped-at-sMax
+          // default applies.
+          preferredPrimaryWidth: widget.services.settings.layoutDimension(LayoutKeys.homeLeftColumn),
+          maxPrimaryWidth: ShirtSize.sMax,
+          onPreferredPrimaryWidthChanged: (width) =>
+              widget.services.settings.setLayoutDimension(LayoutKeys.homeLeftColumn, width),
+          primary: Column(
+            children: [
+              Expanded(
+                child: NotificationListener<ScrollNotification>(
+                  onNotification: (ScrollNotification notification) {
+                    final pixels = notification.metrics.pixels;
+                    if (pixels > 10 && _isFabExtended) {
+                      setState(() {
+                        _isFabExtended = false;
+                      });
+                    } else if (pixels <= 10 && !_isFabExtended) {
+                      setState(() {
+                        _isFabExtended = true;
+                      });
+                    }
+                    return false;
+                  },
+                  child: Stack(
+                    children: [
+                      Positioned.fill(
+                        child: StreamBuilder<List<Operation>>(
+                          stream: _operationsStream,
+                          builder: (context, snapshot) {
+                            // First real snapshot = bootstrap done + first data
+                            // load complete: resolve the dev bridge's `ready`
+                            // promise so agents can await it instead of sleeping
+                            // (#239). Idempotent; only while the bridge is live.
+                            //
+                            // Anchored to the build because that's what the test
+                            // harness can drive; the cost is that on a HIDDEN web
+                            // pane (Flutter throttles frames to ~0) `ready` waits
+                            // until the pane is visible again. That's fine for the
+                            // agent workflow — agents drive a visible pane — and
+                            // it self-heals on the next frame.
+                            if (snapshot.hasData && DevBridge.instance.installed) {
+                              DevBridge.instance.signalReady();
+                            }
+                            return OperationListPanel(
+                              services: widget.services,
+                              // `snapshot.hasData` distinguishes "the stream
+                              // hasn't emitted its first snapshot yet" from "it
+                              // emitted an empty list" — collapsing both into
+                              // `snapshot.data ?? []` was what previously made
+                              // OperationListPanel need to guess (via a fixed
+                              // delay) how long "still loading" might last.
+                              loading: !snapshot.hasData,
+                              operations: snapshot.data ?? const <Operation>[],
+                            );
+                          },
+                        ),
                       ),
-                    ),
-                    Positioned(
-                      bottom: 16,
-                      right: 16,
-                      child: AnimatedSize(
-                        duration: const Duration(milliseconds: 300),
-                        curve: Curves.easeInOut,
-                        child: Container(
-                          height: 56,
-                          width: _isFabExtended ? null : 56,
-                          decoration: BoxDecoration(
-                            color: theme.colorScheme.primaryContainer,
-                            borderRadius: BorderRadius.circular(16),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withValues(alpha: 0.15),
-                                blurRadius: 6,
-                                offset: const Offset(0, 3),
+                      // A Builder, not the outer `context`: this Stack is built
+                      // directly inside _HomeViewState.build, above the
+                      // PaneSafeArea established by PaneSafeArea.root — that
+                      // `context` is an ANCESTOR of it, so PaneSafeArea.maybeOf
+                      // would always find nothing and silently read 0. Builder
+                      // gets a genuine descendant context while staying a
+                      // transparent, non-RenderObject wrapper — Positioned's
+                      // ParentDataWidget mechanism sees straight through it to
+                      // this Stack (ham2k/app-halo-dist#205).
+                      Builder(
+                        builder: (context) => Positioned(
+                          // Clears the device's real bottom/right insets (home
+                          // indicator, landscape cutout) so the FAB isn't drawn
+                          // under them.
+                          bottom: 16 + PaneSafeArea.bottomOf(context),
+                          right: 16 + PaneSafeArea.rightOf(context),
+                          child: AnimatedSize(
+                            duration: const Duration(milliseconds: 300),
+                            curve: Curves.easeInOut,
+                            child: Container(
+                              height: 56,
+                              width: _isFabExtended ? null : 56,
+                              decoration: BoxDecoration(
+                                color: theme.colorScheme.primaryContainer,
+                                borderRadius: BorderRadius.circular(16),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withValues(alpha: 0.15),
+                                    blurRadius: 6,
+                                    offset: const Offset(0, 3),
+                                  ),
+                                ],
                               ),
-                            ],
-                          ),
-                          child: Material(
-                            color: Colors.transparent,
-                            child: InkWell(
-                              borderRadius: BorderRadius.circular(16),
-                              onTap: () => _newOperation(context),
-                              child: Padding(
-                                padding: const EdgeInsets.symmetric(horizontal: 16),
-                                child: Row(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Icon(MdiIcons.plus, color: theme.colorScheme.onPrimaryContainer),
-                                    AnimatedSize(
-                                      duration: const Duration(milliseconds: 300),
-                                      curve: Curves.easeInOut,
-                                      child: SizedBox(
-                                        width: _isFabExtended ? null : 0,
-                                        child: AnimatedOpacity(
+                              child: Material(
+                                color: Colors.transparent,
+                                child: InkWell(
+                                  borderRadius: BorderRadius.circular(16),
+                                  onTap: () => _newOperation(context),
+                                  child: Padding(
+                                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                                    child: Row(
+                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      children: [
+                                        Icon(MdiIcons.plus, color: theme.colorScheme.onPrimaryContainer),
+                                        AnimatedSize(
                                           duration: const Duration(milliseconds: 300),
                                           curve: Curves.easeInOut,
-                                          opacity: _isFabExtended ? 1.0 : 0.0,
-                                          child: Padding(
-                                            padding: const EdgeInsets.only(left: 8),
-                                            child: Text(
-                                              context.t.home.newOperation,
-                                              maxLines: 1,
-                                              softWrap: false,
-                                              style: theme.textTheme.labelLarge?.copyWith(
-                                                color: theme.colorScheme.onPrimaryContainer,
-                                                fontWeight: FontWeight.bold,
+                                          child: SizedBox(
+                                            width: _isFabExtended ? null : 0,
+                                            child: AnimatedOpacity(
+                                              duration: const Duration(milliseconds: 300),
+                                              curve: Curves.easeInOut,
+                                              opacity: _isFabExtended ? 1.0 : 0.0,
+                                              child: Padding(
+                                                padding: const EdgeInsets.only(left: 8),
+                                                child: Text(
+                                                  context.t.home.newOperation,
+                                                  maxLines: 1,
+                                                  softWrap: false,
+                                                  style: theme.textTheme.labelLarge?.copyWith(
+                                                    color: theme.colorScheme.onPrimaryContainer,
+                                                    fontWeight: FontWeight.bold,
+                                                  ),
+                                                ),
                                               ),
                                             ),
                                           ),
                                         ),
-                                      ),
+                                      ],
                                     ),
-                                  ],
+                                  ),
                                 ),
                               ),
                             ),
                           ),
                         ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
-            ),
-            HomeQuickLookup(services: widget.services),
-          ],
+              HomeQuickLookup(services: widget.services),
+            ],
+          ),
         ),
       ),
     );
@@ -870,7 +890,7 @@ class _HomeQuickLookupState extends State<HomeQuickLookup> {
           if (hasContent)
             Container(
               width: double.infinity,
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              padding: PaneSafeArea.symmetricOf(context, horizontal: 16, vertical: 12),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -916,7 +936,7 @@ class _HomeQuickLookupState extends State<HomeQuickLookup> {
               ),
             ),
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+            padding: PaneSafeArea.symmetricOf(context, horizontal: 16, vertical: 8),
             child: TextField(
               controller: _controller,
               focusNode: _focusNode,

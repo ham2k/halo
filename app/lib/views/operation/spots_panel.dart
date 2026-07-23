@@ -690,9 +690,9 @@ class _SpotsSectionHeader extends StatelessWidget {
         ),
       ),
       // Background stays edge-to-edge; the label insets by the split's
-      // grab-strip clearance like the spot rows below it.
-      padding: EdgeInsets.symmetric(horizontal: 12, vertical: 4)
-          .add(EdgeInsets.only(left: PaneSafeArea.leftOf(context))),
+      // grab-strip clearance and the real device inset, like the spot rows
+      // below it (ham2k/app-halo-dist#205).
+      padding: PaneSafeArea.symmetricOf(context, horizontal: 12, vertical: 4),
       child: Text(
         label,
         style: theme.textTheme.bodyMedium?.copyWith(
@@ -899,10 +899,10 @@ class _SpotTile extends StatelessWidget {
 
     final tile = Padding(
       // Rows render edge-to-edge (the ink below spans the full width); the
-      // left content inset grows by the split's grab-strip clearance so
-      // nothing interactive sits under the divider overlay.
-      padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6)
-          .add(EdgeInsets.only(left: PaneSafeArea.leftOf(context))),
+      // content inset grows by the split's grab-strip clearance on the left
+      // and the real device inset on both edges (ham2k/app-halo-dist#205)
+      // so nothing interactive sits under the divider overlay or a cutout.
+      padding: PaneSafeArea.symmetricOf(context, horizontal: 12, vertical: 6),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -966,7 +966,10 @@ class _SpotsFilterPill extends StatelessWidget {
       // outer `Material`), so this toggle row reads as the same kind of UI chrome.
       color: theme.colorScheme.tertiaryContainer,
       child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 4),
+        // Left/right clear the real device inset (ham2k/app-halo-dist#205)
+        // — the row's own content is centered, but a wide enough pane on a
+        // device with a landscape cutout could still push a pill under it.
+        padding: PaneSafeArea.symmetricOf(context, vertical: 4),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [

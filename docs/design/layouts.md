@@ -108,14 +108,21 @@ resize). Over native platform views (the map) the strip stays
 near-invisibly painted so its events route through Flutter — that wash is
 load-bearing, see `ResizableSplitView._platformViewHitWashAlpha`.
 
-**PaneSafeArea holds in both styles.** Content that needs interactivity
-near the divider edge reads `PaneSafeArea.leftOf(context)` and insets
-itself — rows and backgrounds still render edge-to-edge, only their
-content shifts. Surfaces advises the grab-strip width; solid advises 0
-(nothing overlays the pane) — but the wrapper deliberately stays in the
-tree everywhere, including around every dock pane: it is the insertion
-point where device safe-area insets will reach pane content later. Do not
-remove a PaneSafeArea just because its value is currently zero.
+**PaneSafeArea holds in both styles, and also carries real device insets
+(ham2k/app-halo-dist#205).** Content that needs interactivity near the
+divider edge reads `PaneSafeArea.leftOf(context)` and insets itself — rows
+and backgrounds still render edge-to-edge, only their content shifts.
+Surfaces advises the grab-strip width; solid advises 0 (nothing overlays
+the pane) on that axis. Independently, each root view (`OperationView`,
+`Home`) wraps its `Scaffold.body` in `PaneSafeArea.root`, which reads the
+device's real safe-area insets (notch, home indicator, camera cutout) from
+`MediaQuery`; `ResizableSplitView` and `DockLayoutView` both forward that
+ambient value through their own `PaneSafeArea` insertion points, netting
+it against each pane's position — only the pane whose edge is actually AT
+a physical screen edge inherits that edge's inset; an interior pane (in a
+multi-way dock split) reads 0 there. `top`/`bottom`/`left`/`right` all
+compose this way. Do not remove a `PaneSafeArea` just because its value is
+currently zero for a given pane/edge.
 
 When `secondary` is null
 the primary fills the window — pass null on XS/S rather than swapping

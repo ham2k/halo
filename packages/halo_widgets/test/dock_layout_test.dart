@@ -79,6 +79,111 @@ void main() {
     expect(find.byKey(const Key('pane-c'), skipOffstage: false), findsOneWidget);
   });
 
+  testWidgets('an ambient device inset reaches only the group whose edge is at that physical edge (issue #205)',
+      (tester) async {
+    final areas = <String, PaneSafeArea>{};
+    Widget capture(String id) => Builder(
+      builder: (context) {
+        areas[id] = PaneSafeArea.maybeOf(context)!;
+        return SizedBox.expand(key: Key('pane-$id'));
+      },
+    );
+
+    final spec = DockSplit(Axis.horizontal, [
+      DockGroup(['a']),
+      DockGroup(['b']),
+      DockGroup(['c']),
+    ], [1, 1, 1]);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: PaneSafeArea(
+            // Simulates a root view's real device insets.
+            left: 10,
+            top: 20,
+            right: 30,
+            bottom: 40,
+            child: DockLayoutView(
+              initialSpec: spec,
+              titles: const {'a': 'Alpha', 'b': 'Bravo', 'c': 'Charlie'},
+              children: {'a': capture('a'), 'b': capture('b'), 'c': capture('c')},
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    // Leading child: owns the split's left edge, not its right (which
+    // borders the middle child, not the device).
+    expect(areas['a']!.left, 10, reason: 'leading child sits at the left device edge');
+    expect(areas['a']!.right, 0, reason: 'leading child borders the middle child, not a device edge');
+    // Cross-axis (top/bottom) isn't divided by a horizontal split — every
+    // child keeps it unchanged.
+    expect(areas['a']!.top, 20);
+    expect(areas['a']!.bottom, 40);
+
+    // Middle child: touches no device edge on the split's own axis.
+    expect(areas['b']!.left, 0, reason: 'middle child touches no device edge on the split axis');
+    expect(areas['b']!.right, 0, reason: 'middle child touches no device edge on the split axis');
+    expect(areas['b']!.top, 20);
+    expect(areas['b']!.bottom, 40);
+
+    // Trailing child: owns the split's right edge, not its left.
+    expect(areas['c']!.left, 0, reason: 'trailing child borders the middle child, not a device edge');
+    expect(areas['c']!.right, 30, reason: 'trailing child sits at the right device edge');
+    expect(areas['c']!.top, 20);
+    expect(areas['c']!.bottom, 40);
+  });
+
+  testWidgets("a group's own tab strip clears the real device inset only at its own edge, not the outer ambient "
+      '(issue #205)', (tester) async {
+    // _buildGroup is a plain Dart call from _buildSplit, not a fresh Element
+    // — it must use a position-correct Builder context for its tab strip's
+    // padding, not DockLayoutView's own outer `State.context` (which would
+    // give every group in the tree the SAME padding regardless of position).
+    final spec = DockSplit(Axis.horizontal, [
+      DockGroup(['a']),
+      DockGroup(['b']),
+    ], [1, 1]);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: PaneSafeArea(
+            left: 10,
+            right: 20,
+            child: DockLayoutView(
+              initialSpec: spec,
+              titles: const {'a': 'Alpha', 'b': 'Bravo'},
+              children: const {'a': SizedBox.expand(key: Key('pane-a')), 'b': SizedBox.expand(key: Key('pane-b'))},
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    // The tab strip's own Padding wraps a SingleChildScrollView directly —
+    // a structurally unique ancestor, unlike Padding (which _DockTab's own
+    // label also uses internally).
+    Padding tabStripPaddingFor(String label) => tester.widget<Padding>(
+      find.ancestor(
+        of: find.ancestor(of: find.text(label), matching: find.byType(SingleChildScrollView)),
+        matching: find.byType(Padding),
+      ).first,
+    );
+
+    final alphaPadding = tabStripPaddingFor('Alpha').padding.resolve(TextDirection.ltr);
+    final bravoPadding = tabStripPaddingFor('Bravo').padding.resolve(TextDirection.ltr);
+
+    expect(alphaPadding.left, 10, reason: "leading group's tab strip clears the left device edge");
+    expect(alphaPadding.right, 0, reason: "leading group's tab strip borders the trailing group, not a device edge");
+    expect(bravoPadding.left, 0, reason: "trailing group's tab strip borders the leading group, not a device edge");
+    expect(bravoPadding.right, 20, reason: "trailing group's tab strip clears the right device edge");
+  });
+
   testWidgets('tapping a tab selects it and persists the selection', (tester) async {
     final spec = twoGroups();
     DockNode? reported;

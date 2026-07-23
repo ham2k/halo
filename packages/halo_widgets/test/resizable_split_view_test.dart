@@ -267,6 +267,62 @@ void main() {
     );
   });
 
+  testWidgets('an ambient device inset reaches only the pane whose edge is at that physical edge (issue #205)',
+      (tester) async {
+    tester.view.physicalSize = const Size(1000, 600);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+
+    late PaneSafeArea primaryArea;
+    late PaneSafeArea secondaryArea;
+    Widget build({required bool twoPane}) => harness(
+      child: PaneSafeArea(
+        // Simulates a root view's real device insets (a notch top, a home
+        // indicator bottom, a landscape cutout right).
+        top: 10,
+        right: 20,
+        bottom: 30,
+        child: ResizableSplitView(
+          primary: Builder(
+            builder: (context) {
+              primaryArea = PaneSafeArea.maybeOf(context)!;
+              return primary;
+            },
+          ),
+          secondary: twoPane
+              ? Builder(
+                  builder: (context) {
+                    secondaryArea = PaneSafeArea.maybeOf(context)!;
+                    return secondary;
+                  },
+                )
+              : null,
+          preferredPrimaryWidth: 500,
+        ),
+      ),
+    );
+
+    await tester.pumpWidget(build(twoPane: true));
+    await tester.pumpAndSettle();
+    // Primary is at the split's left edge (a device edge) and top/bottom,
+    // but its right edge borders secondary, not the device — so it must
+    // NOT double-apply the device's right inset there.
+    expect(primaryArea.top, 10, reason: 'primary sits at the top device edge');
+    expect(primaryArea.right, 0, reason: 'primary borders secondary, not a device edge, on the right');
+    expect(primaryArea.bottom, 30, reason: 'primary sits at the bottom device edge');
+    // Secondary is at the split's right edge (a device edge) and top/bottom,
+    // but its left edge borders the divider, not the device.
+    expect(secondaryArea.top, 10, reason: 'secondary sits at the top device edge');
+    expect(secondaryArea.right, 20, reason: 'secondary sits at the right device edge');
+    expect(secondaryArea.bottom, 30, reason: 'secondary sits at the bottom device edge');
+
+    await tester.pumpWidget(build(twoPane: false));
+    await tester.pumpAndSettle();
+    // Single-pane: primary occupies the whole width, so it owns BOTH the
+    // left and right device edges.
+    expect(primaryArea.right, 20, reason: 'single-pane: primary spans the full width, so it owns the right edge too');
+  });
+
   testWidgets('the grab dots rest at half opacity and brighten on hover', (tester) async {
     tester.view.physicalSize = const Size(1000, 600);
     tester.view.devicePixelRatio = 1.0;

@@ -296,6 +296,19 @@ class _ResizableSplitViewState extends State<ResizableSplitView> {
         // primary's width cap below reserves it to keep the Row from
         // overflowing during an abrupt window shrink outrunning the tween.
         final primaryCap = twoPane && solid ? math.max(0.0, total - paneDividerWidth) : total;
+        // The ambient value this split itself sits inside — from an outer
+        // view's real device insets, or a split further out. This split is
+        // always horizontal (primary left of secondary): left/top/bottom
+        // pass straight through to whichever pane is at that edge, right
+        // only reaches the pane at the split's own right edge (secondary
+        // when present, primary when it's the only pane) — the OTHER pane's
+        // matching edge is internal (divider-adjacent), not a device edge,
+        // so it reads 0 there instead (ham2k/app-halo-dist#205).
+        final ambient = PaneSafeArea.maybeOf(context);
+        final ambientLeft = ambient?.left ?? 0;
+        final ambientTop = ambient?.top ?? 0;
+        final ambientRight = ambient?.right ?? 0;
+        final ambientBottom = ambient?.bottom ?? 0;
         return Row(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
@@ -312,7 +325,13 @@ class _ResizableSplitViewState extends State<ResizableSplitView> {
                 // single-pane rest so no right-edge gap.
                 return SizedBox(width: width >= primaryCap ? primaryCap : snapFloor(width), child: child);
               },
-              child: widget.primary,
+              child: PaneSafeArea(
+                left: ambientLeft,
+                top: ambientTop,
+                right: twoPane ? 0 : ambientRight,
+                bottom: ambientBottom,
+                child: widget.primary,
+              ),
             ),
             if (twoPane && solid)
               SolidPaneDivider(
@@ -330,8 +349,8 @@ class _ResizableSplitViewState extends State<ResizableSplitView> {
                   // The mechanism stays even though the solid divider needs
                   // no clearance today (it owns its own space): this wrapper
                   // is the insertion point where device safe-area insets
-                  // will flow to pane content later.
-                  ? PaneSafeArea(left: 0, child: widget.secondary!)
+                  // reach pane content.
+                  ? PaneSafeArea(left: 0, top: ambientTop, right: ambientRight, bottom: ambientBottom, child: widget.secondary!)
                   : Stack(
                       children: [
                         Positioned.fill(
@@ -340,7 +359,13 @@ class _ResizableSplitViewState extends State<ResizableSplitView> {
                           // clicks/hover near that edge reads
                           // PaneSafeArea.leftOf(context) and pads itself —
                           // backgrounds and rows still render edge-to-edge.
-                          child: PaneSafeArea(left: ResizableSplitView.dividerWidth, child: widget.secondary!),
+                          child: PaneSafeArea(
+                            left: ResizableSplitView.dividerWidth,
+                            top: ambientTop,
+                            right: ambientRight,
+                            bottom: ambientBottom,
+                            child: widget.secondary!,
+                          ),
                         ),
                         // The divider casts its shadow (a glow in dark
                         // mode) RIGHTWARD onto the secondary pane — the
@@ -405,26 +430,78 @@ class _ResizableSplitViewState extends State<ResizableSplitView> {
   }
 }
 
-/// Advisory clearance a split pane's content can read: the divider's grab
-/// strip overlays the secondary pane's edge pixels, so controls that need
-/// clicks or hover near that edge should inset by [left]/[right] —
-/// backgrounds, ink, and rows still render edge-to-edge, only their content
-/// shifts. Zero when not inside a split (single-pane layouts, the narrow
-/// arrangements), so consumers can read it unconditionally.
+/// Advisory clearance a pane's content can read (ham2k/app-halo-dist#205):
+/// composed of two independent sources, both by the same convention —
+/// backgrounds, ink, and rows still render edge-to-edge, only content that
+/// needs clicks/hover/legibility near an edge shifts in by padding:
+///   - A DIVIDER'S grab strip overlaying a pane's edge pixels — local to
+///     that one boundary, in [left]/[right] only (both existing dividers
+///     are horizontal).
+///   - The DEVICE's real safe-area insets (notch, home indicator, camera
+///     cutout) — but only on the side of a pane that's actually AT that
+///     physical screen edge. Every split/dock boundary re-derives this for
+///     each child from the ambient value it received: the leading/outer
+///     child of a split keeps that axis's outer edge value, the
+///     trailing/inner child keeps the other, and both keep the cross-axis
+///     values unchanged (a horizontal split doesn't touch top/bottom, a
+///     vertical one doesn't touch left/right) — see
+///     `ResizableSplitView`/`DockLayoutView`'s own wrapping. A pane in the
+///     middle of a split touches no physical edge on the split's axis, so
+///     it reads 0 there.
+/// Zero on every edge outside any wrapped pane, so consumers can read it
+/// unconditionally.
 class PaneSafeArea extends InheritedWidget {
   final double left;
+  final double top;
   final double right;
+  final double bottom;
 
-  const PaneSafeArea({super.key, this.left = 0, this.right = 0, required super.child});
+  const PaneSafeArea({super.key, this.left = 0, this.top = 0, this.right = 0, this.bottom = 0, required super.child});
 
   static PaneSafeArea? maybeOf(BuildContext context) => context.dependOnInheritedWidgetOfExactType<PaneSafeArea>();
 
   static double leftOf(BuildContext context) => maybeOf(context)?.left ?? 0;
 
+  static double topOf(BuildContext context) => maybeOf(context)?.top ?? 0;
+
   static double rightOf(BuildContext context) => maybeOf(context)?.right ?? 0;
 
+  static double bottomOf(BuildContext context) => maybeOf(context)?.bottom ?? 0;
+
+  /// Wraps a root view's `Scaffold.body` (or equivalent) so its panes see
+  /// the device's real safe-area insets. `top` is always 0: every root view
+  /// this wraps has an AppBar, and Scaffold already removes top padding
+  /// from the body's MediaQuery once an AppBar is present (the AppBar's own
+  /// SafeArea handles it) — carrying it through here would double it. Left/
+  /// right/bottom are NOT consumed by Scaffold (no bottomNavigationBar
+  /// here), so they pass through as-is.
+  factory PaneSafeArea.root(BuildContext context, {required Widget child}) {
+    // Aspect-scoped: subscribes the caller to `padding` only, not the whole
+    // MediaQueryData — a bare `MediaQuery.of` here would rebuild the entire
+    // body on every keyboard show/hide or text-scale change.
+    final padding = MediaQuery.paddingOf(context);
+    return PaneSafeArea(left: padding.left, right: padding.right, bottom: padding.bottom, child: child);
+  }
+
+  /// All 4 edges composed into one [EdgeInsets], for a consumer that pads
+  /// every side at once instead of reading each accessor separately.
+  static EdgeInsets paddingOf(BuildContext context) =>
+      EdgeInsets.fromLTRB(leftOf(context), topOf(context), rightOf(context), bottomOf(context));
+
+  /// A row's own fixed horizontal/vertical padding, widened on the left/right
+  /// by the ambient clearance — the shape every edge-to-edge row (a QSO, a
+  /// spot, a list tile) needs: background stays full-width, only the row's
+  /// own content shifts in from a real device edge or a divider's grab strip.
+  static EdgeInsets symmetricOf(BuildContext context, {double horizontal = 0, double vertical = 0}) => EdgeInsets.fromLTRB(
+    horizontal + leftOf(context),
+    vertical,
+    horizontal + rightOf(context),
+    vertical,
+  );
+
   @override
-  bool updateShouldNotify(PaneSafeArea oldWidget) => left != oldWidget.left || right != oldWidget.right;
+  bool updateShouldNotify(PaneSafeArea oldWidget) =>
+      left != oldWidget.left || top != oldWidget.top || right != oldWidget.right || bottom != oldWidget.bottom;
 }
 
 class _DividerHandle extends StatefulWidget {

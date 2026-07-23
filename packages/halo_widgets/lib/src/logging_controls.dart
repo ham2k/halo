@@ -45,6 +45,7 @@ import 'logging_controls_controller.dart';
 import 'mdi_icons.dart';
 import 'number_keys.dart';
 import 'platform_chrome.dart';
+import 'resizable_split_view.dart' show PaneSafeArea;
 import 'semantic_id.dart';
 import 'ref_text_input.dart';
 import 'secondary_control_row.dart';
@@ -3712,13 +3713,14 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
                 // panel slides out flush against the divider above, and the
                 // row itself animates the border→pills gap, so any padding
                 // here would show as bare panel background above the
-                // panel's dark area.
-                padding: EdgeInsets.fromLTRB(
-                  _secondaryPanelHorizontalInset,
-                  0,
-                  _secondaryPanelHorizontalInset,
-                  8,
-                ),
+                // panel's dark area. Left/right add the real device inset
+                // (ham2k/app-halo-dist#205) — SecondaryControlRow's own
+                // `horizontalBleed` stays keyed to the fixed
+                // `_secondaryPanelHorizontalInset` only, so its expanded
+                // panel still stops short of the physical edge by that
+                // device inset instead of bleeding into it.
+                padding: PaneSafeArea.symmetricOf(context, horizontal: _secondaryPanelHorizontalInset)
+                    .add(const EdgeInsets.only(bottom: 8)),
                 // Scoped so every field's label/underline reads clearly
                 // against the tertiary-tinted panel, without touching the
                 // rest of the theme (the log button keeps its own

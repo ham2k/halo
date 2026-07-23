@@ -1072,40 +1072,46 @@ class _OperationViewState extends State<OperationView> with SingleTickerProvider
           // it is never recreated, so the selected index carries across a
           // flip: index 0 maps QSOs ↔ Info, which is sensible since logging
           // is always visible in the wide split.
-          body: isTwoPane && _customLayout
-              ? _dockLayout(
-                  loggingPanel: loggingPanel,
-                  infoPanel: infoPanel,
-                  spotsPanel: spotsPanel,
-                  mapPanel: mapPanel,
-                  settingsPanel: settingsPanel,
-                  realQsoCount: realQsoCount,
-                )
-              : isTwoPane
-              ? ResizableSplitView(
-                  // Null when never dragged → the split's own 2/3-capped-
-                  // at-sMax default applies.
-                  preferredPrimaryWidth: widget.services.settings.layoutDimension(LayoutKeys.operationLeftColumn),
-                  onPreferredPrimaryWidthChanged: (width) =>
-                      widget.services.settings.setLayoutDimension(LayoutKeys.operationLeftColumn, width),
-                  primary: loggingPanel,
-                  secondary: Column(
-                    children: [
-                      Material(
-                        // The TabBar theme assumes it sits on the AppBar's
-                        // color (see theme.dart's tabBarTheme note). Tabs
-                        // deliberately do NOT inset by PaneSafeArea: they
-                        // stretch to the split's very edge (the grab strip
-                        // shaving a sliver off the first tab's tap area is
-                        // fine for a wide target like a tab).
-                        color: Theme.of(context).appBarTheme.backgroundColor ?? Theme.of(context).colorScheme.primary,
-                        child: tabBar,
-                      ),
-                      Expanded(child: tabView),
-                    ],
-                  ),
-                )
-              : tabView,
+          body: PaneSafeArea.root(
+            context,
+            // Real device safe-area insets (notch, home indicator) bubble
+            // in from here (ham2k/app-halo-dist#205); PaneSafeArea's own
+            // divider-clearance role composes with it further down.
+            child: isTwoPane && _customLayout
+                ? _dockLayout(
+                    loggingPanel: loggingPanel,
+                    infoPanel: infoPanel,
+                    spotsPanel: spotsPanel,
+                    mapPanel: mapPanel,
+                    settingsPanel: settingsPanel,
+                    realQsoCount: realQsoCount,
+                  )
+                : isTwoPane
+                ? ResizableSplitView(
+                    // Null when never dragged → the split's own 2/3-capped-
+                    // at-sMax default applies.
+                    preferredPrimaryWidth: widget.services.settings.layoutDimension(LayoutKeys.operationLeftColumn),
+                    onPreferredPrimaryWidthChanged: (width) =>
+                        widget.services.settings.setLayoutDimension(LayoutKeys.operationLeftColumn, width),
+                    primary: loggingPanel,
+                    secondary: Column(
+                      children: [
+                        Material(
+                          // The TabBar theme assumes it sits on the AppBar's
+                          // color (see theme.dart's tabBarTheme note). Tabs
+                          // deliberately do NOT inset by PaneSafeArea: they
+                          // stretch to the split's very edge (the grab strip
+                          // shaving a sliver off the first tab's tap area is
+                          // fine for a wide target like a tab).
+                          color: Theme.of(context).appBarTheme.backgroundColor ?? Theme.of(context).colorScheme.primary,
+                          child: tabBar,
+                        ),
+                        Expanded(child: tabView),
+                      ],
+                    ),
+                  )
+                : tabView,
+          ),
         );
       },
     );

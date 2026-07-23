@@ -317,6 +317,17 @@ class DockLayoutViewState extends State<DockLayoutView> {
         final available = math.max(0.0, total - _dividerExtent * (split.children.length - 1));
         final weightSum = split.weights.reduce((a, b) => a + b);
         final extents = [for (final w in split.weights) available * w / weightSum];
+        // The ambient value this split sits inside. Only the child at the
+        // split's own leading/trailing edge, on the split's OWN axis, is at
+        // a physical screen edge — an interior child (between two others)
+        // touches no device edge on that axis and reads 0 there. The
+        // cross-axis isn't divided by this split, so it passes through to
+        // every child unchanged (ham2k/app-halo-dist#205).
+        final ambient = PaneSafeArea.maybeOf(context);
+        final ambientLeft = ambient?.left ?? 0;
+        final ambientTop = ambient?.top ?? 0;
+        final ambientRight = ambient?.right ?? 0;
+        final ambientBottom = ambient?.bottom ?? 0;
         final children = <Widget>[];
         for (var i = 0; i < split.children.length; i++) {
           if (i > 0) {
@@ -348,11 +359,19 @@ class DockLayoutViewState extends State<DockLayoutView> {
               ),
             );
           }
+          final isFirst = i == 0;
+          final isLast = i == split.children.length - 1;
           children.add(
             SizedBox(
               width: horizontal ? extents[i] : null,
               height: horizontal ? null : extents[i],
-              child: _buildNode(split.children[i]),
+              child: PaneSafeArea(
+                left: horizontal ? (isFirst ? ambientLeft : 0) : ambientLeft,
+                top: horizontal ? ambientTop : (isFirst ? ambientTop : 0),
+                right: horizontal ? (isLast ? ambientRight : 0) : ambientRight,
+                bottom: horizontal ? ambientBottom : (isLast ? ambientBottom : 0),
+                child: _buildNode(split.children[i]),
+              ),
             ),
           );
         }
@@ -373,31 +392,44 @@ class DockLayoutViewState extends State<DockLayoutView> {
           color: headerColor,
           child: SizedBox(
             height: _headerHeight,
-            // Scrollable so many tabs in a narrow pane clip gracefully
-            // instead of overflowing (scroll-wheel reachable; tab drags win
-            // the gesture arena over the scroll view, which is fine — the
-            // strip is primarily tapped, and it usually fits).
-            child: SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: Row(
-                children: [
-                  for (var i = 0; i < group.modules.length; i++)
-                    _DockTab(
-                      title: widget.titles[group.modules[i]] ?? group.modules[i],
-                      selected: i == group.selected,
-                      showHandle: group.modules.length == 1 || i == group.selected,
-                      // Selection is part of the persisted spec (toJson carries
-                      // it), so a tap must emit like a drop does — otherwise
-                      // the saved arrangement reopens on a stale tab.
-                      onTap: () {
-                        setState(() => group.selected = i);
-                        _emit();
-                      },
-                      moduleId: group.modules[i],
-                      onDragStarted: (id) => setState(() => _dragging = id),
-                      onDragEnded: () => setState(() => _dragging = null),
-                    ),
-                ],
+            // A Builder, not this method's own `context`: `_buildGroup` is a
+            // plain Dart call from `_buildSplit`/`_buildNode`, not a fresh
+            // Element — reusing `State.context` here would always resolve
+            // PaneSafeArea against DockLayoutView's OWN outer ambient,
+            // ignoring the position-correct value `_buildSplit` wrapped THIS
+            // child in. Builder gets a context at this group's real tree
+            // position (ham2k/app-halo-dist#205).
+            child: Builder(
+              builder: (context) => Padding(
+                padding: EdgeInsets.only(left: PaneSafeArea.leftOf(context), right: PaneSafeArea.rightOf(context)),
+                // Scrollable so many tabs in a narrow pane clip gracefully
+                // instead of overflowing (scroll-wheel reachable; tab drags
+                // win the gesture arena over the scroll view, which is fine
+                // — the strip is primarily tapped, and it usually fits).
+                child: SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(
+                    children: [
+                      for (var i = 0; i < group.modules.length; i++)
+                        _DockTab(
+                          title: widget.titles[group.modules[i]] ?? group.modules[i],
+                          selected: i == group.selected,
+                          showHandle: group.modules.length == 1 || i == group.selected,
+                          // Selection is part of the persisted spec (toJson
+                          // carries it), so a tap must emit like a drop does —
+                          // otherwise the saved arrangement reopens on a
+                          // stale tab.
+                          onTap: () {
+                            setState(() => group.selected = i);
+                            _emit();
+                          },
+                          moduleId: group.modules[i],
+                          onDragStarted: (id) => setState(() => _dragging = id),
+                          onDragEnded: () => setState(() => _dragging = null),
+                        ),
+                    ],
+                  ),
+                ),
               ),
             ),
           ),
@@ -406,19 +438,18 @@ class DockLayoutViewState extends State<DockLayoutView> {
           child: Stack(
             fit: StackFit.expand,
             children: [
-              // Zero clearance today (solid dividers own their own space),
-              // but the PaneSafeArea mechanism is deliberately threaded
-              // through dock panes too: it's the insertion point where
-              // device safe-area insets will reach pane content later.
-              PaneSafeArea(
-                left: 0,
-                child: IndexedStack(
-                  // Tight constraints, like a TabBarView page — panes are
-                  // designed to fill their pane, not shrink-wrap.
-                  sizing: StackFit.expand,
-                  index: group.selected,
-                  children: [for (final id in group.modules) widget.children[id] ?? const SizedBox.shrink()],
-                ),
+              // No local PaneSafeArea wrap here: this group's content
+              // inherits whatever ambient value _buildSplit (or this dock's
+              // own outer ancestor, for a lone root group) already
+              // established — re-wrapping with a hardcoded value would
+              // shadow it (InheritedWidget lookup finds only the nearest
+              // ancestor).
+              IndexedStack(
+                // Tight constraints, like a TabBarView page — panes are
+                // designed to fill their pane, not shrink-wrap.
+                sizing: StackFit.expand,
+                index: group.selected,
+                children: [for (final id in group.modules) widget.children[id] ?? const SizedBox.shrink()],
               ),
               if (_dragging != null)
                 _GroupDropRegions(washAlpha: _hitWashAlpha, onDrop: (id, region) => _handleDrop(id, group, region)),

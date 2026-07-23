@@ -15,6 +15,7 @@ import 'package:halo_core/halo_core.dart';
 import 'activity_controls.dart';
 import 'format_utils.dart';
 import 'icon_resolver.dart';
+import 'resizable_split_view.dart' show PaneSafeArea;
 import 'semantic_id.dart';
 import 'theme.dart';
 
@@ -532,7 +533,7 @@ class _QsoListState extends State<QsoList> {
             onTap: () => onSelect(qso),
             mouseCursor: SystemMouseCursors.click,
             child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+              padding: PaneSafeArea.symmetricOf(context, horizontal: 12, vertical: 4),
               child: Row(
                 children: [
                   if (showQsoNumbers) ...[
@@ -854,7 +855,7 @@ class DayHeaderRow extends StatelessWidget {
       child: Padding(
         // Same vertical padding as a QSO row (see `buildRow`'s own
         // `Padding` above) so the header comes out exactly row-height.
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+        padding: PaneSafeArea.symmetricOf(context, horizontal: 12, vertical: 4),
         child: Row(
           children: [
             Text(
@@ -912,7 +913,7 @@ class EventRow extends StatelessWidget {
         onTap: onTap,
         mouseCursor: SystemMouseCursors.click,
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          padding: PaneSafeArea.symmetricOf(context, horizontal: 12, vertical: 6),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
@@ -1043,7 +1044,7 @@ class AnnotationRow extends StatelessWidget {
         onTap: onTap,
         mouseCursor: SystemMouseCursors.click,
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+          padding: PaneSafeArea.symmetricOf(context, horizontal: 12, vertical: 4),
           child: Row(
             children: [
               SizedBox(width: leadingWidth),

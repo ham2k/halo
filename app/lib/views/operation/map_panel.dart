@@ -139,8 +139,11 @@ class _MapPanelState extends State<MapPanel> {
         Positioned.fill(child: map),
         if (usesMapbox)
           Positioned(
-            top: 8,
-            right: 8,
+            // Clears the device's real top/right insets (notch, camera
+            // cutout) so the toggle isn't drawn under them — the map tiles
+            // themselves stay edge-to-edge (ham2k/app-halo-dist#205).
+            top: 8 + PaneSafeArea.topOf(context),
+            right: 8 + PaneSafeArea.rightOf(context),
             child: SegmentedButton<MapProjection>(
               segments: [
                 ButtonSegment(value: MapProjection.mercator, icon: const Icon(Icons.map), label: Text(context.t.map.flat)),

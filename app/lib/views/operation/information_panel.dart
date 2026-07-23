@@ -43,7 +43,7 @@ class InformationPanel extends StatelessWidget {
     final info = callInfo;
     if (info != null && services != null) {
       return Padding(
-        padding: EdgeInsets.only(left: PaneSafeArea.leftOf(context)),
+        padding: PaneSafeArea.paddingOf(context),
         child: CallInfoPanel(
           operation: operation,
           services: services!,
@@ -83,8 +83,9 @@ class InformationPanel extends StatelessWidget {
 
     final theme = Theme.of(context);
     return ListView(
-      // Extra left inset: the split's grab strip overlays this pane's edge.
-      padding: EdgeInsets.all(16).add(EdgeInsets.only(left: PaneSafeArea.leftOf(context))),
+      // Extra inset on every edge that's a divider grab strip or a real
+      // device safe area (ham2k/app-halo-dist#205).
+      padding: EdgeInsets.all(16).add(PaneSafeArea.paddingOf(context)),
       children: [
         if (commandMarkdown != null) ...[
           MarkdownBody(
