@@ -47,8 +47,10 @@ class AutoUpdateService {
       defaultTargetPlatform == TargetPlatform.windows ? 'windows' : 'macos';
 
   /// The per-edition, per-platform appcast, e.g.
-  /// `https://updates.ham2k.net/next/macos/appcast.xml`.
-  String get feedUrl => '$_baseUrl/${kEdition.name}/$_platform/appcast.xml';
+  /// `https://updates.ham2k.net/halo-next/macos/appcast.xml`. The path is
+  /// product-qualified (`halo-<edition>`) so the updates host can namespace
+  /// Ham2K products without collision.
+  String get feedUrl => '$_baseUrl/halo-${kEdition.name}/$_platform/appcast.xml';
 
   /// Point the native updater at this build's feed and enable silent scheduled
   /// checks. Deliberately does NOT run an interactive check here: the startup

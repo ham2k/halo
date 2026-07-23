@@ -53,7 +53,7 @@
 	<key>SUPublicEDKey</key>
 	<string>VLtiaqyGxaQ/3F44wFqN0zZ4Nul5aDNZ8XQxYMGJx/c=</string>
 	<key>SUFeedURL</key>
-	<string>https://updates.ham2k.net/$(HALO_EDITION)/macos/appcast.xml</string>
+	<string>https://updates.ham2k.net/halo-$(HALO_EDITION)/macos/appcast.xml</string>
 	<key>SUEnableAutomaticChecks</key>
 	<true/>
 	<!-- This build is sandboxed, so Sparkle can't swap the .app from inside the
