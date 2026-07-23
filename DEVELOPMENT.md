@@ -303,7 +303,7 @@ Defined in [`mise.toml`](mise.toml):
 | `mise run test` | Full verification (extensions + every Dart package + app). |
 | `mise run deploy-web` | Build extensions + web app and deploy to Cloudflare Pages. |
 | `mise run mac-files` | Open the macOS app's sandboxed Documents folder (sqlite db, exports). |
-| `mise run ops -- <cmd>` | `halo-ops` CLI: `… -- status` (released version per edition, from tags) / `… -- release [--edition next] [--dry-run] [--yes]` (compute the next build from the tag ledger, bump `version.dart`, commit, tag, and push to trigger CI). `--json` for automation. |
+| `mise run ops -- <cmd>` | `halo-ops` CLI. `status` (released version per edition, from tags); `release [--edition next] [--dry-run] [--yes]` (bump `version.dart`, commit, tag, push to trigger CI); `preview <name> [--dry-run]` (deploy a web preview of HEAD via a `web-preview-<name>` tag → `https://<name>-halo-dev.ham2k.net`); `prune-previews [--older-than <days>] [--name <n>] [--all]` (list/delete web previews — Pages + DNS + tag; needs `CLOUDFLARE_API_TOKEN`/`CLOUDFLARE_ACCOUNT_ID`). `--json` for automation. |
 
 ---
 

@@ -34,6 +34,10 @@ Future<void> main(List<String> args) async {
         await _status(rest, out: out, json: json);
       case 'release':
         await _release(rest, out: out, json: json);
+      case 'preview':
+        await _preview(rest, out: out, json: json);
+      case 'prune-previews':
+        await _prunePreviews(rest, out: out, json: json);
       default:
         stderr.writeln("halo-ops: unknown command '$command'");
         _printUsage();
@@ -242,6 +246,300 @@ Future<void> _cut({
   }
 }
 
+// ── preview ─────────────────────────────────────────────────────────────────
+
+Future<void> _preview(List<String> args, {required _Out out, required bool json}) async {
+  final rest = [...args];
+  final dryRun = rest.remove('--dry-run') || rest.remove('-n');
+  final yes = rest.remove('--yes') || rest.remove('-y');
+  if (rest.length != 1 || rest.first.startsWith('-')) {
+    throw _CliError('usage: halo-ops preview <name> [--dry-run] [--yes]');
+  }
+  final raw = rest.first;
+  final name = sanitizePreviewName(raw);
+  if (name == null) throw _CliError("invalid preview name '$raw' (empty or reserved after sanitizing)");
+  final tag = previewTagName(name);
+  final url = previewUrl(name);
+
+  final root = await _repoRoot();
+  final sha = (await _git(['rev-parse', '--short', 'HEAD'], cwd: root)).trim();
+
+  if (json) {
+    stdout.writeln(const JsonEncoder.withIndent('  ').convert({'name': name, 'tag': tag, 'url': url, 'commit': sha}));
+    return;
+  }
+
+  out.title('Ham2K Logger — deploy web preview');
+  out.blank();
+  out.field('Name', name + (name == raw ? '' : "  (from '$raw')"));
+  out.field('Commit', sha);
+  out.field('Tag', tag);
+  out.field('URL', url);
+  out.blank();
+  out.dim('  Pushing the tag runs deploy-web-preview.yml — it builds this commit');
+  out.dim('  and deploys it. Re-running the same name replaces the preview.');
+  out.blank();
+
+  if (dryRun) {
+    out.dim('  (dry run — nothing tagged or pushed.)');
+    return;
+  }
+  if (!yes && !_confirm(out, 'Deploy this preview?')) {
+    out.dim('  Aborted.');
+    return;
+  }
+
+  out.blank();
+  // Re-previewing a name is a deliberate replace, so move the tag to HEAD and
+  // force-push it (overwriting any existing tag). It's a GitHub Actions trigger,
+  // not Codemagic, so tag-push order doesn't matter here.
+  await _git(['tag', '-f', tag], cwd: root);
+  await _git(['push', _remote, '--force', 'refs/tags/$tag'], cwd: root);
+  out.ok('Pushed $tag → $url');
+  out.dim('  (give the workflow a minute; follow it in the Actions tab.)');
+}
+
+// ── prune-previews (#244) ─────────────────────────────────────────────────────
+
+Future<void> _prunePreviews(List<String> args, {required _Out out, required bool json}) async {
+  final rest = [...args];
+  final yes = rest.remove('--yes') || rest.remove('-y');
+  final all = rest.remove('--all');
+  final olderThanStr = _takeValue(rest, '--older-than');
+  final names = <String>{};
+  while (true) {
+    final value = _takeValue(rest, '--name');
+    if (value == null) break;
+    names.add(sanitizePreviewName(value) ?? value);
+  }
+  if (rest.isNotEmpty) throw _CliError("unexpected argument '${rest.first}'");
+  final olderThan = olderThanStr == null ? null : int.tryParse(olderThanStr);
+  if (olderThanStr != null && (olderThan == null || olderThan < 0)) {
+    throw _CliError('--older-than takes a number of days');
+  }
+
+  final token = Platform.environment['CLOUDFLARE_API_TOKEN'];
+  final account = Platform.environment['CLOUDFLARE_ACCOUNT_ID'];
+  if (token == null || token.isEmpty || account == null || account.isEmpty) {
+    throw _CliError('set CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID (the CI secrets) to prune previews');
+  }
+
+  final root = await _repoRoot();
+  final productionBranch = await _cfProductionBranch(token, account);
+  final groups = groupPreviews(await _cfListDeployments(token, account), productionBranch: productionBranch);
+  final zoneId = await _cfZoneId(token);
+  final dns = await _cfListPreviewDns(token, zoneId); // name -> record id
+  final tags = await _listPreviewTags(root); // set of names
+
+  final allNames = <String>{...groups.keys, ...dns.keys, ...tags}.toList()..sort();
+  final now = DateTime.now().toUtc();
+
+  if (json) {
+    stdout.writeln(const JsonEncoder.withIndent('  ').convert([
+      for (final name in allNames)
+        {
+          'name': name,
+          'url': previewUrl(name),
+          'deployments': groups[name]?.length ?? 0,
+          'ageDays': groups[name] == null ? null : now.difference(groups[name]!.first.createdOn).inDays,
+          'dns': dns.containsKey(name),
+          'tag': tags.contains(name),
+        },
+    ]));
+    return;
+  }
+
+  out.title('Ham2K Logger — web previews');
+  out.blank();
+  if (allNames.isEmpty) {
+    out.dim('  No previews found.');
+    return;
+  }
+  final index = <int, String>{};
+  for (var i = 0; i < allNames.length; i++) {
+    final name = allNames[i];
+    index[i + 1] = name;
+    final g = groups[name];
+    final age = g == null ? 'no deploy' : '${now.difference(g.first.createdOn).inDays}d';
+    final parts = [
+      g == null ? out.miss('no deploy') : '${g.length} deploy',
+      dns.containsKey(name) ? 'dns' : out.miss('no dns'),
+      tags.contains(name) ? 'tag' : out.miss('no tag'),
+    ];
+    out.previewLine(i + 1, name, age, parts.join(' · '), previewUrl(name));
+  }
+  out.blank();
+
+  // Selection: flags pre-select; otherwise ask interactively.
+  Set<String> selected;
+  if (all) {
+    selected = allNames.toSet();
+  } else if (olderThan != null || names.isNotEmpty) {
+    for (final name in names.where((n) => !allNames.contains(n))) {
+      out.warn("No preview named '$name' — ignoring.");
+    }
+    selected = {
+      ...names.where(allNames.contains),
+      if (olderThan != null) ...previewsOlderThan(groups, maxAge: Duration(days: olderThan), now: now),
+    };
+  } else {
+    stdout.write(out.prompt('Delete which? (numbers or names, comma-separated; blank to cancel) '));
+    selected = _parseSelection(stdin.readLineSync() ?? '', index, allNames);
+  }
+  if (selected.isEmpty) {
+    out.dim('  Nothing selected.');
+    return;
+  }
+
+  out.blank();
+  out.warn('Will delete ${selected.length} preview(s): ${(selected.toList()..sort()).join(', ')}');
+  out.dim('  (Pages deployments + DNS record + web-preview-* tag for each)');
+  if (!yes && !_confirm(out, 'Proceed?')) {
+    out.dim('  Aborted.');
+    return;
+  }
+
+  out.blank();
+  for (final name in selected.toList()..sort()) {
+    for (final d in groups[name] ?? const <PreviewDeployment>[]) {
+      await _cfDelete(token, '/accounts/$account/pages/projects/$kPreviewPagesProject/deployments/${d.id}?force=true');
+    }
+    final recordId = dns[name];
+    if (recordId != null) await _cfDelete(token, '/zones/$zoneId/dns_records/$recordId');
+    if (tags.contains(name)) {
+      await _gitExit(['push', _remote, ':refs/tags/${previewTagName(name)}'], root);
+    }
+    out.ok('Pruned $name');
+  }
+}
+
+/// Parses a `prune-previews` selection line: comma-separated numbers (from the
+/// listed index) and/or names, into the set of valid preview names.
+Set<String> _parseSelection(String answer, Map<int, String> index, List<String> known) {
+  final selected = <String>{};
+  for (final raw in answer.split(',')) {
+    final token = raw.trim();
+    if (token.isEmpty) continue;
+    final n = int.tryParse(token);
+    if (n != null) {
+      final name = index[n];
+      if (name != null) selected.add(name);
+    } else {
+      final name = sanitizePreviewName(token) ?? token;
+      if (known.contains(name)) selected.add(name);
+    }
+  }
+  return selected;
+}
+
+// ── Cloudflare API (dart:io HttpClient; no deps) ──────────────────────────────
+
+const String _cfBase = 'https://api.cloudflare.com/client/v4';
+
+Future<Map<String, dynamic>> _cf(String method, String path, String token, {Map<String, dynamic>? body}) async {
+  final client = HttpClient();
+  try {
+    final req = await client.openUrl(method, Uri.parse('$_cfBase$path'));
+    req.headers.set(HttpHeaders.authorizationHeader, 'Bearer $token');
+    if (body != null) {
+      req.headers.contentType = ContentType.json;
+      req.write(jsonEncode(body));
+    }
+    final resp = await req.close();
+    final text = await resp.transform(utf8.decoder).join();
+    Map<String, dynamic> data;
+    try {
+      data = text.isEmpty ? <String, dynamic>{} : jsonDecode(text) as Map<String, dynamic>;
+    } on FormatException {
+      // A gateway/5xx can answer with HTML rather than the API's JSON envelope.
+      throw _CliError('Cloudflare $method $path → ${resp.statusCode}: ${text.trim()}');
+    }
+    if (data['success'] != true) {
+      throw _CliError('Cloudflare $method $path → ${resp.statusCode}: ${data['errors'] ?? text}');
+    }
+    return data;
+  } finally {
+    client.close();
+  }
+}
+
+Future<void> _cfDelete(String token, String path) => _cf('DELETE', path, token);
+
+/// All Pages deployments for the preview project, as [PreviewDeployment]s
+/// (paginated).
+Future<List<PreviewDeployment>> _cfListDeployments(String token, String account) async {
+  final out = <PreviewDeployment>[];
+  for (var page = 1;; page++) {
+    final data =
+        await _cf('GET', '/accounts/$account/pages/projects/$kPreviewPagesProject/deployments?per_page=100&page=$page', token);
+    final result = (data['result'] as List?)?.cast<Map<String, dynamic>>() ?? const [];
+    for (final d in result) {
+      final branch = ((d['deployment_trigger'] as Map?)?['metadata'] as Map?)?['branch'] as String? ?? '';
+      final created = DateTime.tryParse(d['created_on'] as String? ?? '')?.toUtc();
+      if (created != null) out.add(PreviewDeployment(id: d['id'] as String, branch: branch, createdOn: created));
+    }
+    final totalPages = ((data['result_info'] as Map?)?['total_pages'] as num?)?.toInt() ?? 1;
+    if (result.isEmpty || page >= totalPages) break;
+  }
+  return out;
+}
+
+/// The Pages project's production branch — the one deploy alias a prune must
+/// never touch. Fetched rather than assumed, since force-deleting is destructive
+/// and the whole preview/production boundary rests on this one value.
+Future<String> _cfProductionBranch(String token, String account) async {
+  final data = await _cf('GET', '/accounts/$account/pages/projects/$kPreviewPagesProject', token);
+  final branch = (data['result'] as Map?)?['production_branch'] as String?;
+  if (branch == null || branch.isEmpty) {
+    throw _CliError('could not read the $kPreviewPagesProject production branch from Cloudflare');
+  }
+  return branch;
+}
+
+Future<String> _cfZoneId(String token) async {
+  final data = await _cf('GET', '/zones?name=$kPreviewZone', token);
+  final result = (data['result'] as List?)?.cast<Map<String, dynamic>>() ?? const [];
+  final id = result.isEmpty ? null : result.first['id'] as String?;
+  if (id == null) throw _CliError('could not find the $kPreviewZone zone');
+  return id;
+}
+
+/// The preview placeholder DNS records (the ones this pipeline creates), as a
+/// map of preview name -> record id.
+Future<Map<String, String>> _cfListPreviewDns(String token, String zoneId) async {
+  final byName = <String, String>{};
+  final pattern = RegExp(r'^(.+)-halo-dev\.ham2k\.net$');
+  for (var page = 1;; page++) {
+    final data = await _cf('GET', '/zones/$zoneId/dns_records?type=AAAA&per_page=100&page=$page', token);
+    final result = (data['result'] as List?)?.cast<Map<String, dynamic>>() ?? const [];
+    for (final r in result) {
+      // Only records this pipeline created (identified by its comment), so we
+      // never touch an unrelated AAAA that happens to match the host shape.
+      final comment = r['comment'] as String? ?? '';
+      if (!comment.contains('HaLo web preview')) continue;
+      final match = pattern.firstMatch(r['name'] as String? ?? '');
+      if (match != null) byName[match.group(1)!] = r['id'] as String;
+    }
+    final totalPages = ((data['result_info'] as Map?)?['total_pages'] as num?)?.toInt() ?? 1;
+    if (result.isEmpty || page >= totalPages) break;
+  }
+  return byName;
+}
+
+/// The preview names with a `web-preview-*` tag on the remote.
+Future<Set<String>> _listPreviewTags(String root) async {
+  final out = <String>{};
+  final lines = (await _git(['ls-remote', '--tags', _remote, 'web-preview-*'], cwd: root)).split('\n');
+  for (final line in lines) {
+    final parts = line.trim().split(RegExp(r'\s+'));
+    final ref = parts.isEmpty ? '' : parts.last;
+    if (!ref.startsWith('refs/tags/web-preview-')) continue;
+    final name = ref.replaceFirst('refs/tags/web-preview-', '');
+    if (name.isNotEmpty && !name.endsWith('^{}')) out.add(name);
+  }
+  return out;
+}
+
 // ── git + process helpers ─────────────────────────────────────────────────────
 
 Future<String> _repoRoot() async => (await _git(['rev-parse', '--show-toplevel'])).trim();
@@ -345,11 +643,23 @@ Usage: halo-ops <command> [options]
 Commands:
   status                 Show the released version for each edition, from tags.
   release                Preview and cut a release (bump version.dart, commit, tag, push).
+  preview <name>         Deploy a web preview of HEAD (tags web-preview-<name>, pushes it).
+  prune-previews         List web previews; delete selected ones (Pages + DNS + tag).
 
 Release options:
   --edition <dev|next|prod>   Override the branch→edition mapping.
   --dry-run, -n               Show the plan; don't write/commit/tag/push.
   --yes, -y                   Skip the confirmation prompt.
+
+preview options:
+  --dry-run, -n / --yes, -y   As above.
+
+prune-previews options (needs CLOUDFLARE_API_TOKEN + CLOUDFLARE_ACCOUNT_ID):
+  --older-than <days>         Select previews whose newest deploy is older than N days.
+  --name <name>               Select a preview by name (repeatable).
+  --all                       Select every preview.
+  --yes, -y                   Skip the confirmation prompt.
+  (with no selection flag, lists and asks interactively.)
 
 Global options:
   --json                 Machine-readable output (implies no color/prompts).
@@ -376,6 +686,13 @@ class _Out {
   void warn(String s) => stdout.writeln('  ${_wrap('!', '1;33')} ${_wrap(s, '33')}');
   void ok(String s) => stdout.writeln('  ${_wrap('✓', '1;32')} $s');
   String prompt(String s) => _wrap(s, '1');
+
+  /// A missing/orphaned piece in a preview row (e.g. `no dns`), tinted.
+  String miss(String s) => _wrap(s, '33');
+
+  void previewLine(int n, String name, String age, String flags, String url) {
+    stdout.writeln('  ${_wrap('[$n]', '1')} ${_wrap(name.padRight(20), '1')} ${age.padRight(11)} $flags   ${_wrap(url, '2')}');
+  }
 
   void field(String label, String value) {
     stdout.writeln('  ${_wrap(label.padRight(9), '1')}$value');

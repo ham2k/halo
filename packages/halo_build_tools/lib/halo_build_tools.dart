@@ -10,4 +10,5 @@ export 'src/platform_versions.dart';
 export 'src/public_version.dart';
 export 'src/release_tags.dart';
 export 'src/version_file.dart';
+export 'src/web_preview.dart';
 export 'src/version_ordering.dart';

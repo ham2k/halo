@@ -41,11 +41,11 @@ The workflow requires two repository secrets on `app-halo-dist`:
 
 ## 1c. Tagged Preview Deployments
 
-To deploy any commit as a **preview** (without touching the production URL), tag it `web-preview-<name>` and push the tag to `app-halo-dist`:
+To deploy any commit as a **preview** (without touching the production URL), tag it `web-preview-<name>` and push the tag to `app-halo-dist` — or just run `mise run ops -- preview <name>`, which tags `HEAD` and pushes for you (and prints the URL):
 
 ```bash
-git tag web-preview-my-feature
-git push app-halo-dist web-preview-my-feature
+mise run ops -- preview my-feature      # or, by hand:
+git tag web-preview-my-feature && git push app-halo-dist web-preview-my-feature
 ```
 
 The **Deploy Web Preview** workflow (`.github/workflows/deploy-web-preview.yml`) builds that commit and deploys it as a Cloudflare Pages preview, served at `https://<name>-halo-dev.ham2k.net`. Re-pushing a tag with the same name replaces the preview. There is no CI gate on previews.
@@ -56,7 +56,7 @@ Caveats:
 - Tag pushes run the workflow file **from the tagged commit**, so tags only work on commits that contain the workflow (branches based on `dist` after it landed). For older commits, run the workflow manually from the Actions tab, giving it a ref and a preview name.
 - Names are sanitized to Cloudflare's branch-alias rules (lowercase alphanumerics and hyphens, 28 chars max); the run summary shows the final URL.
 - The `CLOUDFLARE_API_TOKEN` secret needs **Zone → Zone → Read** and **Zone → DNS → Edit** on `ham2k.net` (in addition to Pages Edit) for the DNS step.
-- DNS records and preview deployments are never cleaned up automatically; prune old ones in the Cloudflare dashboard when they pile up.
+- DNS records and preview deployments are never cleaned up automatically. Run `mise run ops -- prune-previews` to list them and delete selected/old ones (removes the Pages deployments, the DNS record, and the `web-preview-*` tag together); it needs `CLOUDFLARE_API_TOKEN` + `CLOUDFLARE_ACCOUNT_ID` in the environment. (Or prune by hand in the Cloudflare dashboard, plus `git push app-halo-dist :refs/tags/web-preview-<name>`.)
 
 ---
 
