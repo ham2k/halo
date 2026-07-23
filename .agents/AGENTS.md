@@ -23,13 +23,13 @@ This is a multi-platform app for Amateur Radio Logging, called "Ham2K Logger" (o
 - Keep `dist` updated. Rebase your branches on top of the latest `dist` before submitting or updating a PR.
 
 - Steps when tackling a new task:
-  - Open a new branch, off the latest `dist`.
+  - Open a new branch, off the latest `dist`. Look for updates to AGENTS.md.
+  - Do a quick analisys of the problem, prepare a plan and open a PR to document this.
   - Take a full pass at the problem and then present the results to the developer. If possible and relevant, start a web build of the app for the developer to verify on.
   - Iterate with the developer. Don't pile up trivial commits. When iterating on a feature or approach, feel free to ammend the commits in the branch if it makes sense to keep work organized and easier to review, and skip running tests for short iterations unless it's useful.
   - Once the work has settled, run a code review, present the results to the developer and ask for followups.
-  - When the followups have been addressed, and only then, rebase on top of an updated `dist`, solve any merge conflicts, run tests and open a PR if everything is clean.
-
-- Don't push to the PR branch until it's ready for review. Avoid pushing to the remote repository until necessary. Test locally first.
+  - When the followups have been addressed, rebase on top of an updated `dist`, solve any merge conflicts, run tests and present the PR for user approval.
+  - Don't push to the PR branch until it's ready for review. Avoid pushing to the remote repository until necessary. Test locally first.
 
 - Whenever running the app (any `flutter run`, including the web dev server), always pass a `DEV_LABEL` set to your session name or a brief description of the work at hand, so the running build is identifiable in the home-screen header — e.g. `flutter run -d macos --dart-define=DEV_LABEL="header work"` or `DEV_LABEL="header work" flutter run -d web-server`. See [DEVELOPMENT.md](file:///Users/sd/Work/ham2k/app-halo/DEVELOPMENT.md).
 
