@@ -232,13 +232,23 @@ Future<void> _cut({
     // the commit objects, so tag-first is safe (GitHub also emits one webhook
     // per ref, so a combined push wouldn't help — the order is what matters).
     //
+    // Tag-first alone still isn't enough: the branch push lands on the SAME
+    // commit ~1s later, and Codemagic dedupes the tag build against it before it
+    // starts (observed — rapid back-to-back cuts +89/+90 delivered to the webhook
+    // (HTTP 202) but never built, with no "skipped" record). So wait between the
+    // two pushes, giving Codemagic time to register the tag build first.
+    //
     // The branch target is the *upstream* branch (e.g. `dist`), NOT the local
     // branch name: a `main-dist-private` local branch's same-named remote ref is
     // a different (stale) branch — pushing to the upstream keeps the target
     // identical to what _checkInSync already verified.
     final upstreamBranch = upstream.substring(_remote.length + 1);
-    out.dim('  Pushing tag $tagName, then HEAD → $upstream …');
+    const branchPushDelay = Duration(seconds: 10);
+    out.dim('  Pushing tag $tagName …');
     await _git(['push', _remote, 'refs/tags/$tagName'], cwd: root);
+    out.dim('  Waiting ${branchPushDelay.inSeconds}s for Codemagic to start the '
+        'tag build, then pushing HEAD → $upstream …');
+    await Future<void>.delayed(branchPushDelay);
     await _git(['push', _remote, 'HEAD:refs/heads/$upstreamBranch'], cwd: root);
     out.ok('Pushed.');
   } else {
