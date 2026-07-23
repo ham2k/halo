@@ -275,7 +275,7 @@ class _ReleaseOverlayViewState extends State<ReleaseOverlayView> {
                                 const SizedBox(height: 8),
                                 Align(
                                   alignment: Alignment.centerRight,
-                                  child: FilledButton(onPressed: widget.onDismiss, child: const Text('Continue')),
+                                  child: FilledButton(onPressed: widget.onDismiss, child: Text(context.t.onboarding.kContinue)),
                                 ),
                               ],
                             ),

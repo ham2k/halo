@@ -142,9 +142,9 @@ class _MapPanelState extends State<MapPanel> {
             top: 8,
             right: 8,
             child: SegmentedButton<MapProjection>(
-              segments: const [
-                ButtonSegment(value: MapProjection.mercator, icon: Icon(Icons.map), label: Text('Flat')),
-                ButtonSegment(value: MapProjection.globe, icon: Icon(Icons.public), label: Text('Globe')),
+              segments: [
+                ButtonSegment(value: MapProjection.mercator, icon: const Icon(Icons.map), label: Text(context.t.map.flat)),
+                ButtonSegment(value: MapProjection.globe, icon: const Icon(Icons.public), label: Text(context.t.map.globe)),
               ],
               selected: {_projection},
               onSelectionChanged: (selection) => setState(() => _projection = selection.first),

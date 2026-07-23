@@ -55,6 +55,8 @@ class TranslationsEs extends Translations with BaseTranslations<AppLocale, Trans
 	@override late final _Translations$callInfo$es callInfo = _Translations$callInfo$es._(_root);
 	@override late final _Translations$settings$es settings = _Translations$settings$es._(_root);
 	@override late final _Translations$operationLocationScreen$es operationLocationScreen = _Translations$operationLocationScreen$es._(_root);
+	@override late final _Translations$versionLabel$es versionLabel = _Translations$versionLabel$es._(_root);
+	@override late final _Translations$notices$es notices = _Translations$notices$es._(_root);
 }
 
 // Path: common
@@ -70,6 +72,9 @@ class _Translations$common$es extends Translations$common$en {
 	@override String get create => 'Crear';
 	@override String get error => 'Error';
 	@override String get apply => 'Aplicar';
+	@override String get close => 'Cerrar';
+	@override String get done => 'Listo';
+	@override String get callsign => 'Indicativo';
 }
 
 // Path: onboarding
@@ -136,7 +141,6 @@ class _Translations$home$es extends Translations$home$en {
 
 	// Translations
 	@override String get title => 'Registrador Portátil';
-	@override String get titleDesktop => 'Registrador de Escritorio';
 	@override String get newOperation => 'Nueva operación';
 	@override String get stationCallsign => 'Indicativo de la estación';
 	@override String get titleOptional => 'Título (opcional)';
@@ -154,6 +158,8 @@ class _Translations$dialogs$es extends Translations$dialogs$en {
 	@override String deleteOperationConfirm({required Object title}) => '¿Eliminar operación "${title}"?';
 	@override String get operationDetails => 'Detalles de la operación';
 	@override String get activities => 'Actividades';
+	@override String get stationCallsign => 'Indicativo de la estación';
+	@override String get notes => 'Notas';
 }
 
 // Path: operation
@@ -164,7 +170,6 @@ class _Translations$operation$es extends Translations$operation$en {
 
 	// Translations
 	@override late final _Translations$operation$tabs$es tabs = _Translations$operation$tabs$es._(_root);
-	@override String get noActivities => 'No hay actividades disponibles (¿el motor de extensiones aún está iniciando?)';
 	@override late final _Translations$operation$sections$es sections = _Translations$operation$sections$es._(_root);
 	@override String get stationCallsignNone => 'Sin indicativo de estación';
 	@override String get titleNone => 'Sin título';
@@ -187,6 +192,8 @@ class _Translations$map$es extends Translations$map$en {
 	@override String qthPopupTitle({required Object grid}) => 'QTH: ${grid}';
 	@override String distanceKm({required Object distance}) => '${distance} km';
 	@override String distanceMiles({required Object distance}) => '${distance} mi';
+	@override String get flat => 'Plano';
+	@override String get globe => 'Globo';
 }
 
 // Path: activitiesView
@@ -197,7 +204,6 @@ class _Translations$activitiesView$es extends Translations$activitiesView$en {
 
 	// Translations
 	@override String get title => 'Actividades';
-	@override String get thisOperation => 'Esta Operación';
 	@override String get activitiesCountZero => 'Sin actividades seleccionadas';
 	@override String get activitiesCountOne => '1 actividad';
 	@override String activitiesCountOther({required Object count}) => '${count} actividades';
@@ -214,12 +220,14 @@ class _Translations$activitiesView$es extends Translations$activitiesView$en {
 	@override String get invalidReference => 'Referencia no válida';
 	@override String get duplicateReference => 'Ya añadida';
 	@override String get searchHint => 'Busca por nombre, referencia o cualquier otra cosa…';
-	@override String get searchOptions => 'Opciones';
 	@override String get noSuggestions => 'Sin sugerencias';
 	@override String get allOptions => 'Tipos de actividad';
 	@override String get determiningLocation => 'Determinando ubicación actual…\nEsperando señal de GPS para encontrar referencias cercanas';
 	@override String get noNearbySuggestions => 'Datos de ubicación no disponibles\nPor lo tanto, no podemos determinar referencias cercanas';
 	@override String distanceKm({required Object distance}) => '${distance} km';
+	@override String get emptySheet => 'Usa las sugerencias y la búsqueda abajo para añadir una';
+	@override String activeCount({required Object count}) => '${count} activas';
+	@override String get exports => 'Exportar';
 }
 
 // Path: loggingControls
@@ -333,7 +341,6 @@ class _Translations$settings$es extends Translations$settings$en {
 
 	// Translations
 	@override String get title => 'Configuración';
-	@override String get general => 'Configuración General';
 	@override String get language => 'Idioma';
 	@override late final _Translations$settings$theme$es theme = _Translations$settings$theme$es._(_root);
 	@override late final _Translations$settings$themeDescription$es themeDescription = _Translations$settings$themeDescription$es._(_root);
@@ -346,7 +353,6 @@ class _Translations$settings$es extends Translations$settings$en {
 	@override late final _Translations$settings$privacy$es privacy = _Translations$settings$privacy$es._(_root);
 	@override String get operatorCall => 'Indicativo del Operador';
 	@override late final _Translations$settings$sync$es sync = _Translations$settings$sync$es._(_root);
-	@override late final _Translations$settings$qrz$es qrz = _Translations$settings$qrz$es._(_root);
 	@override String get developerMode => 'Modo Desarrollador';
 }
 
@@ -368,6 +374,27 @@ class _Translations$operationLocationScreen$es extends Translations$operationLoc
 	@override String get moreDetails => 'Más detalles';
 	@override String get stateOrProvince => 'Estado o provincia (opcional)';
 	@override String get county => 'Condado (opcional)';
+}
+
+// Path: versionLabel
+class _Translations$versionLabel$es extends Translations$versionLabel$en {
+	_Translations$versionLabel$es._(TranslationsEs root) : this._root = root, super.internal(root);
+
+	final TranslationsEs _root; // ignore: unused_field
+
+	// Translations
+	@override String version({required Object version}) => 'Versión ${version}';
+	@override String versionBuild({required Object version, required Object build}) => 'Versión ${version} - Build ${build}';
+}
+
+// Path: notices
+class _Translations$notices$es extends Translations$notices$en {
+	_Translations$notices$es._(TranslationsEs root) : this._root = root, super.internal(root);
+
+	final TranslationsEs _root; // ignore: unused_field
+
+	// Translations
+	@override String get emptyHistory => 'Aún no hay avisos';
 }
 
 // Path: operation.tabs
@@ -449,7 +476,6 @@ class _Translations$operation$spots$es extends Translations$operation$spots$en {
 	@override String get any => 'Cualquiera';
 	@override String get allBands => 'Todas las bandas';
 	@override String get allModes => 'Todos los modos';
-	@override String get notDigital => 'No digital';
 	@override String spotsCount({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count,
 		one: '${count} spot',
 		other: '${count} spots',
@@ -584,18 +610,6 @@ class _Translations$settings$sync$es extends Translations$settings$sync$en {
 	@override String get title => 'LoFi Cloud Sync';
 	@override String get enable => 'Habilitar Sincronización';
 	@override String get deviceKey => 'Clave del Dispositivo';
-}
-
-// Path: settings.qrz
-class _Translations$settings$qrz$es extends Translations$settings$qrz$en {
-	_Translations$settings$qrz$es._(TranslationsEs root) : this._root = root, super.internal(root);
-
-	final TranslationsEs _root; // ignore: unused_field
-
-	// Translations
-	@override String get title => 'Credenciales de QRZ.com';
-	@override String get username => 'Usuario';
-	@override String get password => 'Contraseña';
 }
 
 // Path: operation.spots.continents
@@ -777,6 +791,9 @@ extension on TranslationsEs {
 			'common.create' => 'Crear',
 			'common.error' => 'Error',
 			'common.apply' => 'Aplicar',
+			'common.close' => 'Cerrar',
+			'common.done' => 'Listo',
+			'common.callsign' => 'Indicativo',
 			'onboarding.welcomeTitle' => '¡Bienvenido a Ham2K Portable Logger!',
 			'onboarding.welcomeTitleDesktop' => '¡Bienvenido a Ham2K Logger!',
 			'onboarding.welcomeBody' => 'Tenemos algunas preguntas para ayudarnos a servirte mejor.',
@@ -807,7 +824,6 @@ extension on TranslationsEs {
 			'extensionsPanel.applying' => 'Activando cambios de extensiones, esto puede tardar un momento…',
 			'extensionsPanel.noMatches' => 'Ninguna extensión coincide con tu búsqueda',
 			'home.title' => 'Registrador Portátil',
-			'home.titleDesktop' => 'Registrador de Escritorio',
 			'home.newOperation' => 'Nueva operación',
 			'home.stationCallsign' => 'Indicativo de la estación',
 			'home.titleOptional' => 'Título (opcional)',
@@ -816,12 +832,13 @@ extension on TranslationsEs {
 			'dialogs.deleteOperationConfirm' => ({required Object title}) => '¿Eliminar operación "${title}"?',
 			'dialogs.operationDetails' => 'Detalles de la operación',
 			'dialogs.activities' => 'Actividades',
+			'dialogs.stationCallsign' => 'Indicativo de la estación',
+			'dialogs.notes' => 'Notas',
 			'operation.tabs.qsos' => ({required Object count}) => '${count} QSOs',
 			'operation.tabs.info' => 'INFO',
 			'operation.tabs.spots' => 'SPOTS',
 			'operation.tabs.map' => 'MAPA',
 			'operation.tabs.operation' => 'OPERACIÓN',
-			'operation.noActivities' => 'No hay actividades disponibles (¿el motor de extensiones aún está iniciando?)',
 			'operation.sections.stationOperator' => 'Estación y operador',
 			'operation.sections.activities' => 'Actividades',
 			'operation.sections.operationData' => 'Datos de operación',
@@ -858,7 +875,6 @@ extension on TranslationsEs {
 			'operation.spots.any' => 'Cualquiera',
 			'operation.spots.allBands' => 'Todas las bandas',
 			'operation.spots.allModes' => 'Todos los modos',
-			'operation.spots.notDigital' => 'No digital',
 			'operation.spots.spotsCount' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count, one: '${count} spot', other: '${count} spots', ), 
 			'operation.spots.spotsCountFiltered' => ({required Object count, required Object total}) => 'Mostrando ${count} de ${total} spots',
 			'operation.spots.ageMinutes' => ({required Object minutes}) => '${minutes} minutos',
@@ -884,8 +900,9 @@ extension on TranslationsEs {
 			'map.qthPopupTitle' => ({required Object grid}) => 'QTH: ${grid}',
 			'map.distanceKm' => ({required Object distance}) => '${distance} km',
 			'map.distanceMiles' => ({required Object distance}) => '${distance} mi',
+			'map.flat' => 'Plano',
+			'map.globe' => 'Globo',
 			'activitiesView.title' => 'Actividades',
-			'activitiesView.thisOperation' => 'Esta Operación',
 			'activitiesView.activitiesCountZero' => 'Sin actividades seleccionadas',
 			'activitiesView.activitiesCountOne' => '1 actividad',
 			'activitiesView.activitiesCountOther' => ({required Object count}) => '${count} actividades',
@@ -902,12 +919,14 @@ extension on TranslationsEs {
 			'activitiesView.invalidReference' => 'Referencia no válida',
 			'activitiesView.duplicateReference' => 'Ya añadida',
 			'activitiesView.searchHint' => 'Busca por nombre, referencia o cualquier otra cosa…',
-			'activitiesView.searchOptions' => 'Opciones',
 			'activitiesView.noSuggestions' => 'Sin sugerencias',
 			'activitiesView.allOptions' => 'Tipos de actividad',
 			'activitiesView.determiningLocation' => 'Determinando ubicación actual…\nEsperando señal de GPS para encontrar referencias cercanas',
 			'activitiesView.noNearbySuggestions' => 'Datos de ubicación no disponibles\nPor lo tanto, no podemos determinar referencias cercanas',
 			'activitiesView.distanceKm' => ({required Object distance}) => '${distance} km',
+			'activitiesView.emptySheet' => 'Usa las sugerencias y la búsqueda abajo para añadir una',
+			'activitiesView.activeCount' => ({required Object count}) => '${count} activas',
+			'activitiesView.exports' => 'Exportar',
 			'loggingControls.timeUtc' => 'Hora (UTC)',
 			'loggingControls.date' => 'Fecha',
 			'loggingControls.now' => 'Ahora',
@@ -981,7 +1000,6 @@ extension on TranslationsEs {
 			'callInfo.andMore' => ({required Object count}) => '… y ${count} más',
 			'callInfo.withCall' => ({required Object call}) => 'con ${call}',
 			'settings.title' => 'Configuración',
-			'settings.general' => 'Configuración General',
 			'settings.language' => 'Idioma',
 			'settings.theme.title' => 'Modo de Tema',
 			'settings.theme.system' => 'Sistema',
@@ -1045,9 +1063,6 @@ extension on TranslationsEs {
 			'settings.sync.title' => 'LoFi Cloud Sync',
 			'settings.sync.enable' => 'Habilitar Sincronización',
 			'settings.sync.deviceKey' => 'Clave del Dispositivo',
-			'settings.qrz.title' => 'Credenciales de QRZ.com',
-			'settings.qrz.username' => 'Usuario',
-			'settings.qrz.password' => 'Contraseña',
 			'settings.developerMode' => 'Modo Desarrollador',
 			'operationLocationScreen.title' => 'Ubicación de la operación',
 			'operationLocationScreen.selectedLocation' => 'Ubicación seleccionada',
@@ -1060,6 +1075,9 @@ extension on TranslationsEs {
 			'operationLocationScreen.moreDetails' => 'Más detalles',
 			'operationLocationScreen.stateOrProvince' => 'Estado o provincia (opcional)',
 			'operationLocationScreen.county' => 'Condado (opcional)',
+			'versionLabel.version' => ({required Object version}) => 'Versión ${version}',
+			'versionLabel.versionBuild' => ({required Object version, required Object build}) => 'Versión ${version} - Build ${build}',
+			'notices.emptyHistory' => 'Aún no hay avisos',
 			_ => null,
 		};
 	}

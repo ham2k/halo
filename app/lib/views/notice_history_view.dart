@@ -11,6 +11,7 @@
 import 'package:flutter/material.dart';
 import 'package:halo_widgets/halo_widgets.dart';
 
+import '../i18n/strings.g.dart';
 import '../main.dart';
 
 class NoticeHistoryView extends StatelessWidget {
@@ -23,7 +24,7 @@ class NoticeHistoryView extends StatelessWidget {
     final history = services.statusBar.history;
 
     return history.isEmpty
-        ? const Center(child: Text('No notices yet'))
+        ? Center(child: Text(context.t.notices.emptyHistory))
         : ListView.separated(
             padding: const EdgeInsets.all(12),
             itemCount: history.length,

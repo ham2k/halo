@@ -56,6 +56,8 @@ class Translations with BaseTranslations<AppLocale, Translations> {
 	late final Translations$callInfo$en callInfo = Translations$callInfo$en.internal(_root);
 	late final Translations$settings$en settings = Translations$settings$en.internal(_root);
 	late final Translations$operationLocationScreen$en operationLocationScreen = Translations$operationLocationScreen$en.internal(_root);
+	late final Translations$versionLabel$en versionLabel = Translations$versionLabel$en.internal(_root);
+	late final Translations$notices$en notices = Translations$notices$en.internal(_root);
 }
 
 // Path: common
@@ -83,6 +85,15 @@ class Translations$common$en {
 
 	/// en: 'Apply'
 	String get apply => 'Apply';
+
+	/// en: 'Close'
+	String get close => 'Close';
+
+	/// en: 'Done'
+	String get done => 'Done';
+
+	/// en: 'Callsign'
+	String get callsign => 'Callsign';
 }
 
 // Path: onboarding
@@ -210,9 +221,6 @@ class Translations$home$en {
 	/// en: 'Portable Logger'
 	String get title => 'Portable Logger';
 
-	/// en: 'Desktop Logger'
-	String get titleDesktop => 'Desktop Logger';
-
 	/// en: 'New operation'
 	String get newOperation => 'New operation';
 
@@ -245,6 +253,12 @@ class Translations$dialogs$en {
 
 	/// en: 'Activities'
 	String get activities => 'Activities';
+
+	/// en: 'Station Callsign'
+	String get stationCallsign => 'Station Callsign';
+
+	/// en: 'Notes'
+	String get notes => 'Notes';
 }
 
 // Path: operation
@@ -255,10 +269,6 @@ class Translations$operation$en {
 
 	// Translations
 	late final Translations$operation$tabs$en tabs = Translations$operation$tabs$en.internal(_root);
-
-	/// en: 'No activities available (extension runtime still starting?)'
-	String get noActivities => 'No activities available (extension runtime still starting?)';
-
 	late final Translations$operation$sections$en sections = Translations$operation$sections$en.internal(_root);
 
 	/// en: 'No station callsign'
@@ -300,6 +310,12 @@ class Translations$map$en {
 
 	/// en: '${distance} mi'
 	String distanceMiles({required Object distance}) => '${distance} mi';
+
+	/// en: 'Flat'
+	String get flat => 'Flat';
+
+	/// en: 'Globe'
+	String get globe => 'Globe';
 }
 
 // Path: activitiesView
@@ -312,9 +328,6 @@ class Translations$activitiesView$en {
 
 	/// en: 'Activities'
 	String get title => 'Activities';
-
-	/// en: 'This Operation'
-	String get thisOperation => 'This Operation';
 
 	/// en: 'No Activities Selected'
 	String get activitiesCountZero => 'No Activities Selected';
@@ -364,9 +377,6 @@ class Translations$activitiesView$en {
 	/// en: 'Search by name, reference or anything else…'
 	String get searchHint => 'Search by name, reference or anything else…';
 
-	/// en: 'Options'
-	String get searchOptions => 'Options';
-
 	/// en: 'No suggestions'
 	String get noSuggestions => 'No suggestions';
 
@@ -381,6 +391,15 @@ class Translations$activitiesView$en {
 
 	/// en: '${distance} km'
 	String distanceKm({required Object distance}) => '${distance} km';
+
+	/// en: 'Use suggestions & search below to add one'
+	String get emptySheet => 'Use suggestions & search below to add one';
+
+	/// en: '${count} active'
+	String activeCount({required Object count}) => '${count} active';
+
+	/// en: 'Exports'
+	String get exports => 'Exports';
 }
 
 // Path: loggingControls
@@ -612,9 +631,6 @@ class Translations$settings$en {
 	/// en: 'Settings'
 	String get title => 'Settings';
 
-	/// en: 'General Settings'
-	String get general => 'General Settings';
-
 	/// en: 'Language'
 	String get language => 'Language';
 
@@ -641,7 +657,6 @@ class Translations$settings$en {
 	String get operatorCall => 'Operator Callsign';
 
 	late final Translations$settings$sync$en sync = Translations$settings$sync$en.internal(_root);
-	late final Translations$settings$qrz$en qrz = Translations$settings$qrz$en.internal(_root);
 
 	/// en: 'Developer Mode'
 	String get developerMode => 'Developer Mode';
@@ -687,6 +702,33 @@ class Translations$operationLocationScreen$en {
 
 	/// en: 'County (optional)'
 	String get county => 'County (optional)';
+}
+
+// Path: versionLabel
+class Translations$versionLabel$en {
+	Translations$versionLabel$en.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Version ${version}'
+	String version({required Object version}) => 'Version ${version}';
+
+	/// en: 'Version ${version} - Build ${build}'
+	String versionBuild({required Object version, required Object build}) => 'Version ${version} - Build ${build}';
+}
+
+// Path: notices
+class Translations$notices$en {
+	Translations$notices$en.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'No notices yet'
+	String get emptyHistory => 'No notices yet';
 }
 
 // Path: operation.tabs
@@ -840,9 +882,6 @@ class Translations$operation$spots$en {
 
 	/// en: 'All Modes'
 	String get allModes => 'All Modes';
-
-	/// en: 'Not digital'
-	String get notDigital => 'Not digital';
 
 	/// en: '(one) {${count} spot} (other) {${count} spots}'
 	String spotsCount({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count,
@@ -1072,24 +1111,6 @@ class Translations$settings$sync$en {
 
 	/// en: 'Device Key'
 	String get deviceKey => 'Device Key';
-}
-
-// Path: settings.qrz
-class Translations$settings$qrz$en {
-	Translations$settings$qrz$en.internal(this._root);
-
-	final Translations _root; // ignore: unused_field
-
-	// Translations
-
-	/// en: 'QRZ.com Credentials'
-	String get title => 'QRZ.com Credentials';
-
-	/// en: 'Username'
-	String get username => 'Username';
-
-	/// en: 'Password'
-	String get password => 'Password';
 }
 
 // Path: operation.spots.continents
@@ -1367,6 +1388,9 @@ extension on Translations {
 			'common.create' => 'Create',
 			'common.error' => 'Error',
 			'common.apply' => 'Apply',
+			'common.close' => 'Close',
+			'common.done' => 'Done',
+			'common.callsign' => 'Callsign',
 			'onboarding.welcomeTitle' => 'Welcome to Ham2K Portable Logger!',
 			'onboarding.welcomeTitleDesktop' => 'Welcome to Ham2K Logger!',
 			'onboarding.welcomeBody' => 'We have a few questions to help us better suit your needs.',
@@ -1397,7 +1421,6 @@ extension on Translations {
 			'extensionsPanel.applying' => 'Activating extension changes, this may take a moment…',
 			'extensionsPanel.noMatches' => 'No extensions match your search',
 			'home.title' => 'Portable Logger',
-			'home.titleDesktop' => 'Desktop Logger',
 			'home.newOperation' => 'New operation',
 			'home.stationCallsign' => 'Station callsign',
 			'home.titleOptional' => 'Title (optional)',
@@ -1406,12 +1429,13 @@ extension on Translations {
 			'dialogs.deleteOperationConfirm' => ({required Object title}) => 'Delete operation "${title}"?',
 			'dialogs.operationDetails' => 'Operation details',
 			'dialogs.activities' => 'Activities',
+			'dialogs.stationCallsign' => 'Station Callsign',
+			'dialogs.notes' => 'Notes',
 			'operation.tabs.qsos' => ({required Object count}) => '${count} QSOs',
 			'operation.tabs.info' => 'INFO',
 			'operation.tabs.spots' => 'SPOTS',
 			'operation.tabs.map' => 'MAP',
 			'operation.tabs.operation' => 'OPERATION',
-			'operation.noActivities' => 'No activities available (extension runtime still starting?)',
 			'operation.sections.stationOperator' => 'Station & operator',
 			'operation.sections.activities' => 'Activities',
 			'operation.sections.operationData' => 'Operation data',
@@ -1448,7 +1472,6 @@ extension on Translations {
 			'operation.spots.any' => 'Any',
 			'operation.spots.allBands' => 'All Bands',
 			'operation.spots.allModes' => 'All Modes',
-			'operation.spots.notDigital' => 'Not digital',
 			'operation.spots.spotsCount' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: '${count} spot', other: '${count} spots', ), 
 			'operation.spots.spotsCountFiltered' => ({required Object count, required Object total}) => 'Showing ${count} of ${total} spots',
 			'operation.spots.ageMinutes' => ({required Object minutes}) => '${minutes} minutes',
@@ -1474,8 +1497,9 @@ extension on Translations {
 			'map.qthPopupTitle' => ({required Object grid}) => 'QTH: ${grid}',
 			'map.distanceKm' => ({required Object distance}) => '${distance} km',
 			'map.distanceMiles' => ({required Object distance}) => '${distance} mi',
+			'map.flat' => 'Flat',
+			'map.globe' => 'Globe',
 			'activitiesView.title' => 'Activities',
-			'activitiesView.thisOperation' => 'This Operation',
 			'activitiesView.activitiesCountZero' => 'No Activities Selected',
 			'activitiesView.activitiesCountOne' => '1 Activity',
 			'activitiesView.activitiesCountOther' => ({required Object count}) => '${count} Activities',
@@ -1492,12 +1516,14 @@ extension on Translations {
 			'activitiesView.invalidReference' => 'Not a valid reference',
 			'activitiesView.duplicateReference' => 'Already added',
 			'activitiesView.searchHint' => 'Search by name, reference or anything else…',
-			'activitiesView.searchOptions' => 'Options',
 			'activitiesView.noSuggestions' => 'No suggestions',
 			'activitiesView.allOptions' => 'Activity Types',
 			'activitiesView.determiningLocation' => 'Determining current location…\nWaiting for GPS fix to find nearby references',
 			'activitiesView.noNearbySuggestions' => 'Location data not available\nSo we cannot determine nearby references',
 			'activitiesView.distanceKm' => ({required Object distance}) => '${distance} km',
+			'activitiesView.emptySheet' => 'Use suggestions & search below to add one',
+			'activitiesView.activeCount' => ({required Object count}) => '${count} active',
+			'activitiesView.exports' => 'Exports',
 			'loggingControls.timeUtc' => 'Time (UTC)',
 			'loggingControls.date' => 'Date',
 			'loggingControls.now' => 'Now',
@@ -1571,7 +1597,6 @@ extension on Translations {
 			'callInfo.andMore' => ({required Object count}) => '… and ${count} more',
 			'callInfo.withCall' => ({required Object call}) => 'with ${call}',
 			'settings.title' => 'Settings',
-			'settings.general' => 'General Settings',
 			'settings.language' => 'Language',
 			'settings.theme.title' => 'Theme Mode',
 			'settings.theme.system' => 'System',
@@ -1635,9 +1660,6 @@ extension on Translations {
 			'settings.sync.title' => 'LoFi Cloud Sync',
 			'settings.sync.enable' => 'Enable Sync',
 			'settings.sync.deviceKey' => 'Device Key',
-			'settings.qrz.title' => 'QRZ.com Credentials',
-			'settings.qrz.username' => 'Username',
-			'settings.qrz.password' => 'Password',
 			'settings.developerMode' => 'Developer Mode',
 			'operationLocationScreen.title' => 'Operation Location',
 			'operationLocationScreen.selectedLocation' => 'Selected Location',
@@ -1650,6 +1672,9 @@ extension on Translations {
 			'operationLocationScreen.moreDetails' => 'More Details',
 			'operationLocationScreen.stateOrProvince' => 'State or Province (optional)',
 			'operationLocationScreen.county' => 'County (optional)',
+			'versionLabel.version' => ({required Object version}) => 'Version ${version}',
+			'versionLabel.versionBuild' => ({required Object version, required Object build}) => 'Version ${version} - Build ${build}',
+			'notices.emptyHistory' => 'No notices yet',
 			_ => null,
 		};
 	}

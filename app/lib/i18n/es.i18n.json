@@ -5,7 +5,10 @@
     "delete": "Eliminar",
     "create": "Crear",
     "error": "Error",
-    "apply": "Aplicar"
+    "apply": "Aplicar",
+    "close": "Cerrar",
+    "done": "Listo",
+    "callsign": "Indicativo"
   },
   "onboarding": {
     "welcomeTitle": "¡Bienvenido a Ham2K Portable Logger!",
@@ -44,7 +47,6 @@
   },
   "home": {
     "title": "Registrador Portátil",
-    "titleDesktop": "Registrador de Escritorio",
     "newOperation": "Nueva operación",
     "stationCallsign": "Indicativo de la estación",
     "titleOptional": "Título (opcional)",
@@ -54,7 +56,9 @@
   "dialogs": {
     "deleteOperationConfirm": "¿Eliminar operación \"${title}\"?",
     "operationDetails": "Detalles de la operación",
-    "activities": "Actividades"
+    "activities": "Actividades",
+    "stationCallsign": "Indicativo de la estación",
+    "notes": "Notas"
   },
   "operation": {
     "tabs": {
@@ -64,7 +68,6 @@
       "map": "MAPA",
       "operation": "OPERACIÓN"
     },
-    "noActivities": "No hay actividades disponibles (¿el motor de extensiones aún está iniciando?)",
     "sections": {
       "stationOperator": "Estación y operador",
       "activities": "Actividades",
@@ -108,7 +111,6 @@
       "any": "Cualquiera",
       "allBands": "Todas las bandas",
       "allModes": "Todos los modos",
-      "notDigital": "No digital",
       "spotsCount": {
         "one": "${count} spot",
         "other": "${count} spots"
@@ -143,11 +145,12 @@
     "emptyState": "Aún no hay ubicaciones de QSO.\nLos QSOs con cuadrícula, estado o país aparecerán aquí.",
     "qthPopupTitle": "QTH: ${grid}",
     "distanceKm": "${distance} km",
-    "distanceMiles": "${distance} mi"
+    "distanceMiles": "${distance} mi",
+    "flat": "Plano",
+    "globe": "Globo"
   },
   "activitiesView": {
     "title": "Actividades",
-    "thisOperation": "Esta Operación",
     "activitiesCountZero": "Sin actividades seleccionadas",
     "activitiesCountOne": "1 actividad",
     "activitiesCountOther": "${count} actividades",
@@ -164,12 +167,14 @@
     "invalidReference": "Referencia no válida",
     "duplicateReference": "Ya añadida",
     "searchHint": "Busca por nombre, referencia o cualquier otra cosa…",
-    "searchOptions": "Opciones",
     "noSuggestions": "Sin sugerencias",
     "allOptions": "Tipos de actividad",
     "determiningLocation": "Determinando ubicación actual…\nEsperando señal de GPS para encontrar referencias cercanas",
     "noNearbySuggestions": "Datos de ubicación no disponibles\nPor lo tanto, no podemos determinar referencias cercanas",
-    "distanceKm": "${distance} km"
+    "distanceKm": "${distance} km",
+    "emptySheet": "Usa las sugerencias y la búsqueda abajo para añadir una",
+    "activeCount": "${count} activas",
+    "exports": "Exportar"
   },
   "loggingControls": {
     "timeUtc": "Hora (UTC)",
@@ -257,7 +262,6 @@
   },
   "settings": {
     "title": "Configuración",
-    "general": "Configuración General",
     "language": "Idioma",
     "theme": {
       "title": "Modo de Tema",
@@ -357,11 +361,6 @@
       "enable": "Habilitar Sincronización",
       "deviceKey": "Clave del Dispositivo"
     },
-    "qrz": {
-      "title": "Credenciales de QRZ.com",
-      "username": "Usuario",
-      "password": "Contraseña"
-    },
     "developerMode": "Modo Desarrollador"
   },
   "operationLocationScreen": {
@@ -376,5 +375,12 @@
     "moreDetails": "Más detalles",
     "stateOrProvince": "Estado o provincia (opcional)",
     "county": "Condado (opcional)"
+  },
+  "versionLabel": {
+    "version": "Versión ${version}",
+    "versionBuild": "Versión ${version} - Build ${build}"
+  },
+  "notices": {
+    "emptyHistory": "Aún no hay avisos"
   }
 }

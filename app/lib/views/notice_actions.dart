@@ -23,6 +23,7 @@ import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:halo_widgets/halo_widgets.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../i18n/strings.g.dart';
 import '../main.dart' show navigatorKey;
 
 void handleNoticeAction(String noticeKey, Map<String, dynamic> action) {
@@ -80,7 +81,7 @@ void _showNoticeDialog(Map<String, dynamic> args) {
       content: MarkdownBody(data: text),
       cancel: TextButton(
         onPressed: () => Navigator.of(dialogContext).pop(),
-        child: const Text('Close'),
+        child: Text(t.common.close),
       ),
       actions: [
         for (final action in dialogActions)

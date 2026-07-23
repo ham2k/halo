@@ -12,6 +12,7 @@ import 'package:flutter/material.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 
 import '../config/version.dart';
+import '../i18n/strings.g.dart';
 
 // Shared across every VersionLabel instance so a widget rebuild (e.g. a
 // theme change dirtying a non-const VersionLabel) never hands FutureBuilder
@@ -30,7 +31,9 @@ final Future<PackageInfo> _packageInfoFuture = PackageInfo.fromPlatform();
 /// Zone, which never notifies a listener registered in a later test.
 Future<String> versionDetailsText() async {
   final buildNumber = (await PackageInfo.fromPlatform()).buildNumber;
-  final version = buildNumber.isEmpty ? 'Version $kPublicVersion' : 'Version $kPublicVersion - Build $buildNumber';
+  final version = buildNumber.isEmpty
+      ? t.versionLabel.version(version: kPublicVersion)
+      : t.versionLabel.versionBuild(version: kPublicVersion, build: buildNumber);
   return '$kEditionVersionName\n$version${_gitShaSuffix()}';
 }
 
@@ -94,8 +97,8 @@ class VersionLabel extends StatelessWidget {
               SelectableText(kEditionVersionName, style: firstLineStyle, textAlign: textAlign),
               SelectableText(
                 (buildNumber == null || buildNumber.isEmpty
-                        ? 'Version $kPublicVersion'
-                        : 'Version $kPublicVersion - Build $buildNumber') +
+                        ? t.versionLabel.version(version: kPublicVersion)
+                        : t.versionLabel.versionBuild(version: kPublicVersion, build: buildNumber)) +
                     _gitShaSuffix(),
                 style: detailStyle,
                 textAlign: textAlign,

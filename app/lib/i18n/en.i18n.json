@@ -5,7 +5,10 @@
     "delete": "Delete",
     "create": "Create",
     "error": "Error",
-    "apply": "Apply"
+    "apply": "Apply",
+    "close": "Close",
+    "done": "Done",
+    "callsign": "Callsign"
   },
   "onboarding": {
     "welcomeTitle": "Welcome to Ham2K Portable Logger!",
@@ -44,7 +47,6 @@
   },
   "home": {
     "title": "Portable Logger",
-    "titleDesktop": "Desktop Logger",
     "newOperation": "New operation",
     "stationCallsign": "Station callsign",
     "titleOptional": "Title (optional)",
@@ -54,7 +56,9 @@
   "dialogs": {
     "deleteOperationConfirm": "Delete operation \"${title}\"?",
     "operationDetails": "Operation details",
-    "activities": "Activities"
+    "activities": "Activities",
+    "stationCallsign": "Station Callsign",
+    "notes": "Notes"
   },
   "operation": {
     "tabs": {
@@ -64,7 +68,6 @@
       "map": "MAP",
       "operation": "OPERATION"
     },
-    "noActivities": "No activities available (extension runtime still starting?)",
     "sections": {
       "stationOperator": "Station & operator",
       "activities": "Activities",
@@ -108,7 +111,6 @@
       "any": "Any",
       "allBands": "All Bands",
       "allModes": "All Modes",
-      "notDigital": "Not digital",
       "spotsCount": {
         "one": "${count} spot",
         "other": "${count} spots"
@@ -143,11 +145,12 @@
     "emptyState": "No QSO locations yet.\nQSOs with a grid square, state, or country will show up here.",
     "qthPopupTitle": "QTH: ${grid}",
     "distanceKm": "${distance} km",
-    "distanceMiles": "${distance} mi"
+    "distanceMiles": "${distance} mi",
+    "flat": "Flat",
+    "globe": "Globe"
   },
   "activitiesView": {
     "title": "Activities",
-    "thisOperation": "This Operation",
     "activitiesCountZero": "No Activities Selected",
     "activitiesCountOne": "1 Activity",
     "activitiesCountOther": "${count} Activities",
@@ -164,12 +167,14 @@
     "invalidReference": "Not a valid reference",
     "duplicateReference": "Already added",
     "searchHint": "Search by name, reference or anything else…",
-    "searchOptions": "Options",
     "noSuggestions": "No suggestions",
     "allOptions": "Activity Types",
     "determiningLocation": "Determining current location…\nWaiting for GPS fix to find nearby references",
     "noNearbySuggestions": "Location data not available\nSo we cannot determine nearby references",
-    "distanceKm": "${distance} km"
+    "distanceKm": "${distance} km",
+    "emptySheet": "Use suggestions & search below to add one",
+    "activeCount": "${count} active",
+    "exports": "Exports"
   },
   "loggingControls": {
     "timeUtc": "Time (UTC)",
@@ -257,7 +262,6 @@
   },
   "settings": {
     "title": "Settings",
-    "general": "General Settings",
     "language": "Language",
     "theme": {
       "title": "Theme Mode",
@@ -357,11 +361,6 @@
       "enable": "Enable Sync",
       "deviceKey": "Device Key"
     },
-    "qrz": {
-      "title": "QRZ.com Credentials",
-      "username": "Username",
-      "password": "Password"
-    },
     "developerMode": "Developer Mode"
   },
   "operationLocationScreen": {
@@ -376,5 +375,12 @@
     "moreDetails": "More Details",
     "stateOrProvince": "State or Province (optional)",
     "county": "County (optional)"
+  },
+  "versionLabel": {
+    "version": "Version ${version}",
+    "versionBuild": "Version ${version} - Build ${build}"
+  },
+  "notices": {
+    "emptyHistory": "No notices yet"
   }
 }

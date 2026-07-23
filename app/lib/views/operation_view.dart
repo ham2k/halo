@@ -371,8 +371,8 @@ class _OperationViewState extends State<OperationView> with SingleTickerProvider
   Future<void> _promptForCallsign(Operation operation) async {
     final result = await editOneFieldDialog(
       context,
-      title: 'Callsign',
-      fieldLabel: 'Callsign',
+      title: context.t.common.callsign,
+      fieldLabel: context.t.common.callsign,
       fieldInitial: '',
       fieldCapitalization: TextCapitalization.characters,
     );

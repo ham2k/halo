@@ -614,9 +614,11 @@ class _ActivitiesBaseState extends State<_ActivitiesBase> {
                   Text(
                     widget.isOperationSheet
                         ? (refs.isEmpty
-                            ? 'Use suggestions & search below to add one'
+                            ? context.t.activitiesView.emptySheet
                             : _groupedActivitiesSubtitle(refs))
-                        : (refs.isEmpty ? context.t.operation.activitiesNone : '${refs.length} active'),
+                        : (refs.isEmpty
+                            ? context.t.operation.activitiesNone
+                            : context.t.activitiesView.activeCount(count: refs.length)),
                     style: theme.textTheme.bodyMedium?.copyWith(
                       color: theme.colorScheme.outline,
                     ),
@@ -635,7 +637,7 @@ class _ActivitiesBaseState extends State<_ActivitiesBase> {
                     child: TextButton.icon(
                       onPressed: widget.onExport,
                       icon: Icon(resolveIconName('file-export-outline'), size: 18),
-                      label: const Text('Exports'),
+                      label: Text(context.t.activitiesView.exports),
                       style: TextButton.styleFrom(
                         foregroundColor: onAccordionColor,
                       ),
@@ -871,7 +873,7 @@ class _ActivitiesBaseState extends State<_ActivitiesBase> {
                   trailing: isTwoPane
                       ? TextButton(
                           onPressed: () => Navigator.of(context).maybePop(),
-                          child: const Text('Done'),
+                          child: Text(context.t.common.done),
                         )
                       : null,
                   builder: (_) => ExtensionsPanel(services: widget.services),
