@@ -23,10 +23,27 @@
 # every extra job pays its own setup and rounds up to a whole minute.
 name: CI
 
+# Docs-only changes skip this workflow entirely (zero billed minutes). The
+# ignore list must stay the exact mirror of the `paths` list in
+# ci-docs-only.yml — that shim reports an instant `quick` success for
+# docs-only PRs so a future required-check rule can't block on a skipped
+# workflow. Note: on `dist`, a docs-only push therefore runs no CI, which
+# also means no web deploy (deploy-web.yml fires on CI completing) — the
+# previous deployment simply stays live.
 on:
   push:
     branches: [main, main-public, main-dist-private, dist]
+    paths-ignore:
+      - 'docs/**'
+      - '**/*.md'
+      - '.agents/**'
+      - '.claude/**'
   pull_request:
+    paths-ignore:
+      - 'docs/**'
+      - '**/*.md'
+      - '.agents/**'
+      - '.claude/**'
 
 jobs:
   quick:
