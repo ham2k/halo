@@ -184,12 +184,34 @@ export interface Ref {
   [key: string]: JSONValue | undefined
 }
 
+/// A fragment of an operation's title/subtitle sentence, contributed by one
+/// ref (ham2k/app-halo-dist#174) — `title`/`for`/`at` are alternative ways
+/// to phrase the fragment (the core picks one wording per group and joins
+/// with a LOCALIZED "for"/"at", never hardcoded English); `subtitle` is
+/// free-form detail shown below the title. Only return one for the ref type
+/// that means "this operation is happening AT/FOR this reference" (e.g. an
+/// activation, not a hunted ref).
+export interface TitleSuggestion {
+  title?: string
+  for?: string
+  at?: string
+  subtitle?: string
+  /// Breaks ties when multiple refs contribute the same fragment kind —
+  /// higher wins. Default 0.
+  priority?: number
+}
+
 /// Handles one ref type (registered under category `ref:<type>`).
 export interface RefHandlerHook {
   /// Cheap synchronous-ish validation/normalization of user input.
   validateRef?(args: { ref: Ref }, ctx: HookContext): Promise<{ valid: boolean; normalized?: string }>
   /// Enriches a ref with names/locations, possibly via the network.
   decorateRef?(args: { ref: Ref }, ctx: HookContext): Promise<Ref>
+  /// Suggests a title/subtitle fragment for the operation this ref is on.
+  suggestOperationTitle?(
+    args: { ref: Ref; operation: Record<string, JSONValue> },
+    ctx: HookContext,
+  ): Promise<TitleSuggestion | null>
 }
 
 /// Declarative UI contribution: the core renders these with native widgets

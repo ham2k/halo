@@ -178,13 +178,32 @@ activity references on QSOs and operations.
 interface RefHandlerHook {
   validateRef?(args: { ref: Ref }, ctx): Promise<{valid: boolean; normalized?: string}>
   decorateRef?(args: { ref: Ref }, ctx): Promise<Ref>   // may hit the network
+  suggestOperationTitle?(args: { ref: Ref; operation }, ctx): Promise<TitleSuggestion | null>
 }
 // Ref: {type, ref?, name?, label?, shortLabel?, grid?, location?, program?, ...}
+// TitleSuggestion: {title?, for?, at?, subtitle?, priority?} — a fragment of
+// the operation's title/subtitle sentence (ham2k/app-halo-dist#174). Only
+// return one for the ref type that means "this operation is happening AT/FOR
+// this reference" (e.g. an activation, not a hunted ref) — a hunting ref
+// contributes nothing here. `priority` breaks ties when multiple refs supply
+// the same fragment kind (higher wins); default 0.
 ```
 
 `decorateRef` fills names/locations/labels (park names via the POTA API,
 etc.); results update ref chips asynchronously in the UI. Implemented by:
 `pota` (both types).
+
+`suggestOperationTitle` lets an activity build a natural-language operation
+title/subtitle from its refs — "at Yosemite NP" (POTA), "for Field Day"
+(contest programs, when ported) — mirroring app-polo's
+`buildOperationTitle`. The core (`OperationTitleService`) calls this once per
+ref, groups the non-null results by fragment kind (`title`/`for`/`at`,
+highest `priority` first within a kind), and joins them with a **localized**
+"for"/"at" — unlike app-polo, which hardcodes those joiner words in English;
+HaLo threads them through `strings.g.dart` instead, so extensions only ever
+return proper nouns/names (locale-agnostic or self-translated via their own
+`tFor`), never the connective prose. Implemented by: `pota`, `sota`
+(activation ref types only).
 
 ## ✅ `activity` — declarative UI contributions
 
