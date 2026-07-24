@@ -97,18 +97,33 @@ hard format limits the projection respects:
 | **Android** | `versionCode` / `versionName` | code ≤ **2,100,000,000**, strictly increasing, single-use | `73` / `26.8.1-alpha1` |
 | **iOS** | `CFBundleVersion` / `CFBundleShortVersionString` | build ≤ **18 chars**; marketing = **≤ 3 integers, no suffixes** | `73` / `26.8.1` |
 | **macOS** | `CFBundleVersion` / `CFBundleShortVersionString` | direct distribution (no App Store review) → marketing **keeps the suffix** | `73` / `26.8.1-alpha1` |
-| **Windows** | MSIX / `FILEVERSION` `a.b.c.d` | each part **0–65535**, major ≠ 0, **revision = 0** for Store | `26.8.73.0` |
+| **Windows** | MSIX / `FILEVERSION` `a.b.c.d` | each part **0–65535**, major ≠ 0; revision **must be 0 only for MSIX/Store** (see note) | `26.8.73.73` |
 | **Linux** | package version | numeric, monotonic ordering | `26.8.73` |
 | **Web** | — | none (server-deployed) | n/a |
 
 Two projection rules follow from the table:
 
 - **Desktop carries the build number in the third slot.** Windows uses
-  `major.minor.build` with the mandatory `.0` revision (`26.8.73.0`); **Linux uses
-  `26.8.73` directly**. Because the counter is capped at 16 bits (0–65535) it fits
-  the desktop field with no encoding. Linux needs no `~preN` suffix — the number
-  already orders correctly and is unique, so a Next pre-release simply carries a
-  lower build number.
+  `major.minor.build`; **Linux uses `26.8.73` directly**. Because the counter is
+  capped at 16 bits (0–65535) it fits the desktop field with no encoding. Linux
+  needs no `~preN` suffix — the number already orders correctly and is unique, so
+  a Next pre-release simply carries a lower build number.
+  - **The build number also goes in `--build-number` (the 4th/revision slot), not
+    `0`.** `package_info_plus` reads the build number from the *native* field —
+    the `+N` suffix of the exe's `ProductVersion` on Windows, `version.json`'s
+    `build_number` on Linux — both of which come from `--build-number`. Passing
+    `0` there made the About view read **"Build 0"** on desktop while iOS/macOS/
+    Android (which pass the real number) showed it correctly. So CI now pairs the
+    `major.minor.build` build-name with `--build-number=<build>`, making the
+    revision slot the build number (`26.8.73.73`). The cost is that revision is no
+    longer `0` — which matters **only for an MSIX/Store submission**, where
+    Microsoft reserves the 4th part and requires it to be `0`. We ship a signed
+    portable ZIP + Inno installer (WinSparkle), *not* MSIX/Store, so nothing
+    requires revision `0` today; if a Store/MSIX artifact is ever added, that
+    packaging step can force its own revision to `0` without affecting this build.
+    (`PlatformVersions.windowsFileVersion` still models the Store-style `.0`
+    revision but is not what CI builds from — CI uses `linuxPackageVersion` as the
+    build-name.)
 - **iOS marketing string cannot carry `-preN`.** `CFBundleShortVersionString` must
   be pure `X.Y.Z`, so the plist marketing version stays `26.8.1` for all of
   `alpha1`/`pre1`, `pre2`, and the final release; the pre-release label lives in the

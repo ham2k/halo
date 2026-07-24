@@ -10,7 +10,7 @@
 //   eval "$(cd app && dart run tool/print_build_versions.dart)"
 //   flutter build ipa    --build-name="$HALO_MARKETING"    --build-number="$HALO_BUILD_ID"
 //   flutter build apk    --build-name="$HALO_ANDROID_NAME"  --build-number="$HALO_BUILD_ID"
-//   flutter build windows --build-name="$HALO_DESKTOP_NAME" --build-number=0
+//   flutter build windows --build-name="$HALO_DESKTOP_NAME" --build-number="$HALO_BUILD_ID"
 //
 // The build number is a single monotonic integer bumped per release; it fits
 // every platform's field (it is capped at 16 bits for Windows/Linux), so all
@@ -34,8 +34,9 @@ void main() {
     'HALO_BUILD_ID': '$kBuildNumber',
     // Android: versionName (keeps the suffix) + versionCode (= build number)
     'HALO_ANDROID_NAME': p.androidVersionName,
-    // Windows / Linux: FILEVERSION-safe build-name (major.minor.build), paired
-    // with --build-number=0.
+    // Windows / Linux: FILEVERSION-safe build-name (major.minor.build). CI pairs
+    // it with --build-number=HALO_BUILD_ID (not 0) so package_info_plus reports
+    // the real build in the About view (§2.2).
     'HALO_DESKTOP_NAME': p.linuxPackageVersion,
   };
   out.forEach((k, value) => print('$k=$value'));
