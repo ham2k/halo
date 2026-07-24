@@ -195,6 +195,13 @@ class LoggingControls extends StatefulWidget {
   final List<Qso> qsos;
   final void Function(Qso qso)? onLogged;
 
+  /// Fired after a QSO is soft-deleted / restored here (the pending-delete
+  /// save path and the deleted-QSO restore button) — deletes don't go
+  /// through [onLogged], so callers that track or react to them need their
+  /// own signal.
+  final void Function(Qso qso)? onQsoDeleted;
+  final void Function(Qso qso)? onQsoUndeleted;
+
   /// Fires once after a comma-separated call list (issue #7) finishes
   /// saving all its QSOs — never for an ordinary single-call log, which
   /// already gets its (cheap, cached) dupe/lookup handling inline. Intended
@@ -438,6 +445,8 @@ class LoggingControls extends StatefulWidget {
     this.controller,
     this.qsos = const [],
     this.onLogged,
+    this.onQsoDeleted,
+    this.onQsoUndeleted,
     this.onCallListLogged,
     this.lookup,
     this.enqueueLookup,
@@ -3273,6 +3282,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     try {
       await widget.qsosRepository.undelete(editingQso);
       if (!mounted) return;
+      widget.onQsoUndeleted?.call(editingQso);
       widget.onEditCanceled?.call();
     } finally {
       _isLogging = false;
@@ -3504,6 +3514,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
       _isLogging = true;
       try {
         await widget.qsosRepository.softDelete(editingQso);
+        widget.onQsoDeleted?.call(editingQso);
         widget.onEditCanceled?.call();
       } finally {
         _isLogging = false;

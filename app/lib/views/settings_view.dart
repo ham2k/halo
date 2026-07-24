@@ -157,6 +157,7 @@ class _SettingsViewState extends State<SettingsView> {
   void initState() {
     super.initState();
     _selectedPanel = widget.initialPanel ?? 'settings';
+    widget.services.track('screen_viewed', {'screen': 'settings'});
     _loadExtensionPanels();
     // A runtime restart (extension enabled/disabled) changes which panels
     // exist — re-fetch so a disabled extension's panel disappears (the
@@ -842,6 +843,7 @@ class _SyncPanelState extends State<_SyncPanel> {
 
   Future<void> _toggleSync(bool enabled) async {
     await widget.services.setSyncEnabled(enabled);
+    widget.services.track(enabled ? 'sync_enabled' : 'sync_disabled');
     if (enabled) {
       unawaited(_refreshSyncAccount());
     } else if (mounted) {

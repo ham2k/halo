@@ -58,7 +58,7 @@ class _OperationRow extends StatelessWidget {
             builder: (_) => OperationView(services: services, operationUuid: operation.uuid),
           ),
         ),
-        onLongPress: () => confirmDeleteOperation(context, services.operations, operation),
+        onLongPress: () => confirmDeleteOperation(context, services, operation),
         mouseCursor: SystemMouseCursors.click,
         child: Padding(
           padding: PaneSafeArea.symmetricOf(context, horizontal: 16, vertical: 10),
@@ -195,6 +195,7 @@ class _HomeViewState extends State<HomeView> {
       final operation = await widget.services.operations.create(
         stationCall: widget.services.settings.activeProfile.operatorCall,
       );
+      widget.services.track('operation_created');
       if (context.mounted) {
         // The guard stays up until the pushed route pops back to this
         // screen — the home screen remains hit-testable during the push

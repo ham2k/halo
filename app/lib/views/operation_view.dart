@@ -233,6 +233,7 @@ class _OperationViewState extends State<OperationView> with SingleTickerProvider
   @override
   void initState() {
     super.initState();
+    widget.services.track('screen_viewed', {'screen': 'operation'});
     widget.services.settings.addListener(_onSettingsChanged);
     _operationSub = widget.services.operations.watchOperation(widget.operationUuid).listen(_onOperationChanged);
     // Non-deleted, non-event set — the same QSOs the scorer sees. A
@@ -659,7 +660,7 @@ class _OperationViewState extends State<OperationView> with SingleTickerProvider
   }
 
   Future<void> _delete(Operation operation) async {
-    final deleted = await confirmDeleteOperation(context, widget.services.operations, operation);
+    final deleted = await confirmDeleteOperation(context, widget.services, operation);
     if (deleted && mounted) Navigator.of(context).pop();
   }
 

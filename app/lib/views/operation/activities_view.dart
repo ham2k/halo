@@ -379,6 +379,7 @@ class _ActivitiesBaseState extends State<_ActivitiesBase> {
   Future<void> _deleteRef(Map<String, dynamic> ref) async {
     final refs = _operation.refs.where((r) => !(r['type'] == ref['type'] && r['ref'] == ref['ref'])).toList();
     _saveRefs(refs);
+    widget.services.track('activity_removed', {'activity': ref['type']});
     if (!mounted) return;
     // Removing an activity is often a mistake to undo, so surface it back as
     // a suggestion — but only until the next search resolves (or this view
@@ -424,6 +425,7 @@ class _ActivitiesBaseState extends State<_ActivitiesBase> {
       return;
     }
     _saveRefs([..._operation.refs, suggestion]);
+    widget.services.track('activity_added', {'activity': type});
     _maybeAdoptGridFromNewRef(distanceKm: suggestion['distance'] as num?);
   }
 
@@ -455,6 +457,7 @@ class _ActivitiesBaseState extends State<_ActivitiesBase> {
     final ref = <String, dynamic>{'type': refType, 'ref': trimmed};
     final decorated = await widget.services.extensions.decorateRef(ref);
     _saveRefs([..._operation.refs, decorated]);
+    widget.services.track('activity_added', {'activity': refType});
     // No distance to check here (a manually-typed ref wasn't looked up
     // relative to any location) — only the no-GPS, first-ref-grid path
     // inside `_maybeAdoptGridFromNewRef` can apply.

@@ -59,6 +59,7 @@ class ExtensionsPanelState extends State<ExtensionsPanel> {
       // settings listenable), then restarts the runtime if the effective
       // set changed.
       await widget.services.extensions.setExtensionEnabled(key, enabled);
+      widget.services.track(enabled ? 'extension_enabled' : 'extension_disabled', {'extension': key});
     } finally {
       if (mounted) setState(() => _applying = false);
     }

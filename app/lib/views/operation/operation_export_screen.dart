@@ -75,6 +75,10 @@ class _OperationExportScreenState extends State<OperationExportScreen> {
     setState(() => _busy = true);
     try {
       final files = await widget.services.exports.generateExports(widget.operation, _selectedOptions);
+      widget.services.track('operation_exported', {
+        'formats': _selectedOptions.map((o) => o['format'] ?? o['key'] ?? '?').join(','),
+        'files': files.length,
+      });
       if (isMobilePlatform) {
         await widget.services.exports.shareFiles(files);
       } else {

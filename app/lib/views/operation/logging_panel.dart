@@ -432,9 +432,26 @@ class _LoggingPanelState extends State<LoggingPanel> {
             },
             onEscapeDeselect: _handleEscapeDeselect,
             onUndoDeselect: _handleUndoDeselect,
-            onLogged: (_) {
+            onLogged: (qso) {
+              // Event rows (NOTE/TODO/SOLAR/WEATHER annotations, operation
+              // start/break/end) also arrive here via the command `addQso`
+              // action — they're not contacts and must not count as QSOs.
+              // _selectedQso is still set here for a save-of-edit; it only
+              // clears below — that's what tells the two events apart.
+              if (!qso.isEvent) {
+                widget.services.track(
+                  _selectedQso != null ? 'qso_edited' : 'qso_added',
+                  _qsoTrackProps(qso),
+                );
+              }
               _lastDeselected.clear();
               setState(() => _selectedQso = null);
+            },
+            onQsoDeleted: (qso) {
+              if (!qso.isEvent) widget.services.track('qso_deleted', _qsoTrackProps(qso));
+            },
+            onQsoUndeleted: (qso) {
+              if (!qso.isEvent) widget.services.track('qso_undeleted', _qsoTrackProps(qso));
             },
             // A comma-separated call list (issue #7) logs several QSOs at
             // once — one rescore for the whole batch, not one per call.
@@ -491,4 +508,12 @@ class _LoggingPanelState extends State<LoggingPanel> {
       ),
     );
   }
+
+  /// The qso_* events' shared properties — same two app-polo sends: the
+  /// contact's DXCC prefix and the ref types on the QSO. Never the callsign
+  /// or any other identifying detail.
+  Map<String, Object?> _qsoTrackProps(Qso qso) => {
+        'their_prefix': qso.theirEntityPrefix,
+        'refs': qso.refs.map((r) => r['type']).join(','),
+      };
 }

@@ -98,6 +98,10 @@ class FlagsService extends ChangeNotifier {
   /// Optional — tests that don't exercise dismissal persistence omit it.
   final SharedPreferences? _prefs;
 
+  /// Consent-gated analytics hook (HaLoServices.track) for notice_shown /
+  /// notice_dismissed — optional so tests and standalone use stay silent.
+  final void Function(String event, [Map<String, Object?> properties])? _onTrack;
+
   FlagsService({
     required this.statusBar,
     this.annotate,
@@ -107,11 +111,13 @@ class FlagsService extends ChangeNotifier {
     Future<NoticeEnvironment> Function()? environmentProvider,
     NoticeActionHandler? onNoticeAction,
     SharedPreferences? prefs,
+    void Function(String event, [Map<String, Object?> properties])? onTrack,
   })  : _fetcher = fetcher,
         _client = client ?? http.Client(),
         _environmentProvider = environmentProvider ?? _defaultEnvironment,
         _onNoticeAction = onNoticeAction,
-        _prefs = prefs;
+        _prefs = prefs,
+        _onTrack = onTrack;
 
   Map<String, dynamic> _flags = const {};
 
@@ -313,6 +319,7 @@ class FlagsService extends ChangeNotifier {
       // resetting its position/timestamp on every refresh.
       if (active.contains(key)) continue;
 
+      _onTrack?.call('notice_shown', {'notice_key': key});
       statusBar.showNotice(
         key: key,
         icon: notice.icon,
@@ -323,6 +330,7 @@ class FlagsService extends ChangeNotifier {
             StatusBarAction(
               label: (action['label'] as String?) ?? t.updates.ok,
               onTap: () {
+                _onTrack?.call('notice_dismissed', {'notice_key': key});
                 statusBar.dismissNotice(key);
                 _onNoticeAction?.call(key, action);
               },

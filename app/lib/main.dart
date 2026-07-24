@@ -62,7 +62,19 @@ import 'i18n/strings.g.dart';
 
 final navigatorKey = GlobalKey<NavigatorState>();
 
-void main() {
+void main() => runHaLoApp();
+
+/// The whole app launch sequence, with the distribution-only services
+/// injectable — the OSS `main()` above runs it with the no-op defaults,
+/// while a private distribution entrypoint (`app_dist`'s `main_dist.dart`)
+/// passes real implementations (e.g. the analytics backend). Vendor-specific
+/// code stays out of this repo entirely; the app only knows the generic
+/// [MetricsService] interface and the consent-gated [HaLoServices.track].
+void runHaLoApp({
+  MetricsService? metrics,
+  PurchaseService? purchases,
+  UpdateService? updates,
+}) {
   // Global error capture (#76): Sentry upload in any build given a DSN at
   // build time, local logging + the error tile + a StatusBar notice
   // everywhere — see services/error_reporting_service.dart. The ENTIRE
@@ -71,10 +83,16 @@ void main() {
   // runs in trips Flutter's zone-mismatch warning, and on web uncaught
   // async errors are only catchable by the zone, not
   // PlatformDispatcher.onError.
-  unawaited(ErrorReportingService.run(_mainBody));
+  unawaited(ErrorReportingService.run(
+    () => _mainBody(metrics: metrics, purchases: purchases, updates: updates),
+  ));
 }
 
-void _mainBody() {
+void _mainBody({
+  MetricsService? metrics,
+  PurchaseService? purchases,
+  UpdateService? updates,
+}) {
   WidgetsFlutterBinding.ensureInitialized();
   // Turn on structured dev logging ([qso], [lookup], …) for all non-release
   // builds — console output + a buffer window.__halo.recentLog() can query.
@@ -97,10 +115,17 @@ void _mainBody() {
   // Kicked off before runApp (not awaited here) so the splash screen paints
   // on the very first frame instead of waiting on the DB/extension/settings
   // boot sequence — see `_BootGate`.
-  final servicesFuture = bootstrap();
+  final servicesFuture = bootstrap(metrics: metrics, purchases: purchases, updates: updates);
   runApp(TranslationProvider(child: _BootGate(servicesFuture: servicesFuture)));
 
   servicesFuture.then((services) async {
+    // One app_started per launch, with the UI preferences app-polo's
+    // matching event carries (consent-gated inside track, like everything).
+    services.track('app_started', {
+      'language': services.settings.locale,
+      'colorScheme': services.settings.themeMode,
+      'fontScale': services.settings.fontScale.name,
+    });
     ErrorReportingService.attachStatusBar(services.statusBar);
     // Check for an over-the-air Dart patch on the device's selected track
     // (docs/releases.md §4). Fire-and-forget on purpose: this makes a network
@@ -435,6 +460,7 @@ class HaLoServices {
     },
     onNoticeAction: handleNoticeAction,
     prefs: settings.prefs,
+    onTrack: track,
   );
 
   /// Named option vocabularies for `options: "$name"` settings
@@ -541,6 +567,17 @@ class HaLoServices {
         (key, {subkey}) => unawaited(showAccountDialogByKey(this, key, subkey: subkey));
   }
 
+  /// The ONE gate for analytics (ham2k/app-halo-dist#255): forwards to
+  /// [metrics] only while the user's "Share app usage data" consent is on.
+  /// Every instrumentation site calls this — never metrics.logEvent
+  /// directly — so consent is checked live at each event, and turning the
+  /// setting off silences tracking immediately. Event names and property
+  /// keys follow app-polo's set (docs/design/telemetry.md).
+  void track(String event, [Map<String, Object?> properties = const {}]) {
+    if (!settings.consentAppData) return;
+    metrics.logEvent(event, properties: properties);
+  }
+
 
 
   /// Sets the sync device identity + operator callsign in one call. Writes
@@ -591,6 +628,7 @@ class HaLoServices {
   /// cases return null since their `confirm` text already shows in the
   /// call field, and the status bar item itself is the visible result.
   Future<String?> handleCommandAction(String action, [Map<String, dynamic>? params]) async {
+    track('command_executed', {'command': action});
     switch (action) {
       case 'syncAll':
         if (!settings.syncEnabled) return t.commands.enableSyncFirst;

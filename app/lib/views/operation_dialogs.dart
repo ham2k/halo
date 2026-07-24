@@ -11,12 +11,13 @@ import 'package:flutter/services.dart';
 import 'package:halo_core/halo_core.dart';
 import 'package:halo_widgets/halo_widgets.dart';
 import '../i18n/strings.g.dart';
+import '../main.dart';
 
 /// Prompts to confirm, then soft-deletes on confirmation. Returns whether
 /// the operation was deleted.
 Future<bool> confirmDeleteOperation(
   BuildContext context,
-  OperationsRepository operations,
+  HaLoServices services,
   Operation operation,
 ) async {
   final confirmed = await showHaloDialog<bool>(
@@ -29,7 +30,10 @@ Future<bool> confirmDeleteOperation(
       ],
     ),
   );
-  if (confirmed == true) await operations.softDelete(operation.uuid);
+  if (confirmed == true) {
+    await services.operations.softDelete(operation.uuid);
+    services.track('operation_deleted');
+  }
   return confirmed == true;
 }
 
