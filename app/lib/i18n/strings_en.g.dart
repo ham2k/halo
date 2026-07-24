@@ -57,6 +57,7 @@ class Translations with BaseTranslations<AppLocale, Translations> {
 	late final Translations$callInfo$en callInfo = Translations$callInfo$en.internal(_root);
 	late final Translations$settings$en settings = Translations$settings$en.internal(_root);
 	late final Translations$commands$en commands = Translations$commands$en.internal(_root);
+	late final Translations$expiredBuild$en expiredBuild = Translations$expiredBuild$en.internal(_root);
 	late final Translations$spotting$en spotting = Translations$spotting$en.internal(_root);
 	late final Translations$dataFiles$en dataFiles = Translations$dataFiles$en.internal(_root);
 	late final Translations$updates$en updates = Translations$updates$en.internal(_root);
@@ -790,6 +791,27 @@ class Translations$commands$en {
 
 	/// en: 'Sentry is disabled in this build — test error logged locally only'
 	String get sentryTestLocalOnly => 'Sentry is disabled in this build — test error logged locally only';
+}
+
+// Path: expiredBuild
+class Translations$expiredBuild$en {
+	Translations$expiredBuild$en.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'This build has expired'
+	String get title => 'This build has expired';
+
+	/// en: 'Please visit ham2k.com and get a newer version.'
+	String get body => 'Please visit ham2k.com and get a newer version.';
+
+	/// en: 'Visit ham2k.com'
+	String get visit => 'Visit ham2k.com';
+
+	/// en: 'Continue anyway'
+	String get dismiss => 'Continue anyway';
 }
 
 // Path: spotting
@@ -2494,6 +2516,10 @@ extension on Translations {
 			'commands.experimentDisabled' => ({required Object name}) => '${name} disabled',
 			'commands.sentryTestSent' => 'Test error report sent to Sentry',
 			'commands.sentryTestLocalOnly' => 'Sentry is disabled in this build — test error logged locally only',
+			'expiredBuild.title' => 'This build has expired',
+			'expiredBuild.body' => 'Please visit ham2k.com and get a newer version.',
+			'expiredBuild.visit' => 'Visit ham2k.com',
+			'expiredBuild.dismiss' => 'Continue anyway',
 			'spotting.noQsoYet' => 'No QSO logged yet to spot.',
 			'spotting.setFrequencyFirst' => 'Set a frequency first.',
 			'spotting.nothingToSpot' => 'Nothing to spot — no extension offers spotting here.',

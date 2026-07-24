@@ -96,4 +96,55 @@ void main() {
       expect(v.releaseMessage(84), 'Release 26.8.1 pre 1.2 (84)');
     });
   });
+
+  // Build expiration: the release cut writes the cutting edition's date into
+  // version.dart and the app nags once it has passed. These tests pin the
+  // contract the two sides share: per-edition fields, empty = never expires,
+  // and a date-only expiry that lasts through the WHOLE expiration day (UTC)
+  // — a build must not start nagging at midnight the morning of its own
+  // printed date.
+  group('expiration dates', () {
+    const source = '''
+const kBuildNumber = 95;
+const kDevExpirationDate = '2026-08-01';
+const kNextExpirationDate = '';
+const kProdExpirationDate = '2027-01-23';
+''';
+
+    test('reads per-edition fields; empty means never', () {
+      expect(parseExpirationDate(source, Edition.next), isNull);
+      expect(parseExpirationDate(source, Edition.prod), '2027-01-23');
+      expect(parseExpirationDate(source, Edition.dev), '2026-08-01');
+    });
+
+    test('a missing declaration is a loud failure, not a silent never', () {
+      expect(() => parseExpirationDate('const kBuildNumber = 1;', Edition.next), throwsFormatException);
+    });
+
+    test('rewrites round-trip and touch only the target edition', () {
+      var s = rewriteExpirationDate(source, Edition.next, '2026-08-06');
+      s = rewriteExpirationDate(s, Edition.dev, '2026-08-06');
+      expect(parseExpirationDate(s, Edition.next), '2026-08-06');
+      expect(parseExpirationDate(s, Edition.dev), '2026-08-06');
+      expect(parseExpirationDate(s, Edition.prod), '2027-01-23',
+          reason: 'prod must survive a next cut (which also re-stamps dev)');
+    });
+
+    test('build horizons: two weeks for dev/next, six clamped months for prod', () {
+      final today = DateTime.utc(2026, 7, 24);
+      expect(expirationDateForBuild(Edition.dev, today), '2026-08-07');
+      expect(expirationDateForBuild(Edition.next, today), '2026-08-07');
+      expect(expirationDateForBuild(Edition.prod, today), '2027-01-24');
+      // Month-end cuts clamp instead of normalizing into the next month —
+      // an Aug 31 prod cut must expire in February, not slide to March 3.
+      expect(expirationDateForBuild(Edition.prod, DateTime.utc(2026, 8, 31)), '2027-02-28');
+    });
+
+    test('expiry starts the day AFTER the printed date, UTC', () {
+      final expiration = DateTime.parse('2026-08-06');
+      expect(expirationHasPassed(expiration, DateTime.utc(2026, 8, 6, 23, 59)), isFalse,
+          reason: 'the expiration day itself still works');
+      expect(expirationHasPassed(expiration, DateTime.utc(2026, 8, 7)), isTrue);
+    });
+  });
 }

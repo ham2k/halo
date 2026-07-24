@@ -56,6 +56,7 @@ class TranslationsEs extends Translations with BaseTranslations<AppLocale, Trans
 	@override late final _Translations$callInfo$es callInfo = _Translations$callInfo$es._(_root);
 	@override late final _Translations$settings$es settings = _Translations$settings$es._(_root);
 	@override late final _Translations$commands$es commands = _Translations$commands$es._(_root);
+	@override late final _Translations$expiredBuild$es expiredBuild = _Translations$expiredBuild$es._(_root);
 	@override late final _Translations$spotting$es spotting = _Translations$spotting$es._(_root);
 	@override late final _Translations$dataFiles$es dataFiles = _Translations$dataFiles$es._(_root);
 	@override late final _Translations$updates$es updates = _Translations$updates$es._(_root);
@@ -419,6 +420,19 @@ class _Translations$commands$es extends Translations$commands$en {
 	@override String experimentDisabled({required Object name}) => '${name} deshabilitado';
 	@override String get sentryTestSent => 'Reporte de error de prueba enviado a Sentry';
 	@override String get sentryTestLocalOnly => 'Sentry está deshabilitado en esta compilación — el error de prueba solo se registró localmente';
+}
+
+// Path: expiredBuild
+class _Translations$expiredBuild$es extends Translations$expiredBuild$en {
+	_Translations$expiredBuild$es._(TranslationsEs root) : this._root = root, super.internal(root);
+
+	final TranslationsEs _root; // ignore: unused_field
+
+	// Translations
+	@override String get title => 'Esta versión ha expirado';
+	@override String get body => 'Por favor visita ham2k.com para obtener una versión más reciente.';
+	@override String get visit => 'Visitar ham2k.com';
+	@override String get dismiss => 'Continuar de todos modos';
 }
 
 // Path: spotting
@@ -1540,6 +1554,10 @@ extension on TranslationsEs {
 			'commands.experimentDisabled' => ({required Object name}) => '${name} deshabilitado',
 			'commands.sentryTestSent' => 'Reporte de error de prueba enviado a Sentry',
 			'commands.sentryTestLocalOnly' => 'Sentry está deshabilitado en esta compilación — el error de prueba solo se registró localmente',
+			'expiredBuild.title' => 'Esta versión ha expirado',
+			'expiredBuild.body' => 'Por favor visita ham2k.com para obtener una versión más reciente.',
+			'expiredBuild.visit' => 'Visitar ham2k.com',
+			'expiredBuild.dismiss' => 'Continuar de todos modos',
 			'spotting.noQsoYet' => 'Aún no hay QSO registrado para spotear.',
 			'spotting.setFrequencyFirst' => 'Primero define una frecuencia.',
 			'spotting.nothingToSpot' => 'Nada que spotear — ninguna extensión ofrece spotting aquí.',

@@ -1,6 +1,7 @@
 // Copyright ©️ 2026 Sebastian Delmont <sd@ham2k.com>
 // SPDX-License-Identifier: MPL-2.0
 
+import 'edition.dart';
 import 'main_version.dart';
 import 'public_version.dart';
 
@@ -54,6 +55,68 @@ String rewriteBuildNumber(String source, int build) {
     throw const FormatException('version.dart: could not find `const kBuildNumber = …;` to rewrite');
   }
   return source.replaceFirst(re, 'const kBuildNumber = $build;');
+}
+
+/// The version.dart constant carrying [edition]'s expiration date.
+String expirationConstFor(Edition edition) => switch (edition) {
+      Edition.dev => 'kDevExpirationDate',
+      Edition.next => 'kNextExpirationDate',
+      Edition.prod => 'kProdExpirationDate',
+    };
+
+/// Reads [edition]'s expiration date (`YYYY-MM-DD`) out of version.dart
+/// source; null when the field is empty (= never expires). Throws
+/// [FormatException] when the declaration itself is missing — same
+/// stop-loudly contract as [parseVersionDart].
+String? parseExpirationDate(String source, Edition edition) {
+  final name = expirationConstFor(edition);
+  final m = RegExp("const\\s+$name\\s*=\\s*'([^']*)'\\s*;").firstMatch(source);
+  if (m == null) throw FormatException('version.dart: could not read $name');
+  final value = m.group(1)!;
+  return value.isEmpty ? null : value;
+}
+
+/// Returns [source] with [edition]'s expiration date set to [isoDate]
+/// (`YYYY-MM-DD`). Throws when the declaration isn't found.
+String rewriteExpirationDate(String source, Edition edition, String isoDate) {
+  final name = expirationConstFor(edition);
+  final re = RegExp("const\\s+$name\\s*=\\s*'[^']*'\\s*;");
+  if (!re.hasMatch(source)) {
+    throw FormatException("version.dart: could not find `const $name = '…';` to rewrite");
+  }
+  return source.replaceFirst(re, "const $name = '$isoDate';");
+}
+
+/// Whether [expiration] (a date-only `YYYY-MM-DD` value, i.e. midnight UTC)
+/// has passed as of [now]: true starting the day AFTER the expiration date,
+/// so a build expiring 2026-08-06 still works for all of the 6th, UTC.
+/// Shared by the app's `isBuildExpired` and halo-ops.
+bool expirationHasPassed(DateTime expiration, DateTime now) {
+  final endOfExpirationDay = DateTime.utc(expiration.year, expiration.month, expiration.day + 1);
+  return !now.isBefore(endOfExpirationDay);
+}
+
+/// The expiration date (`YYYY-MM-DD`) for a build of [edition] cut or
+/// patched on [today]: Dev and Next get two weeks (TODO: extend Next to 3
+/// months once the Next line settles down — two weeks fits today's alpha
+/// cadence), Regular six calendar months. Shared by `halo-ops release`
+/// (stamps version.dart on the cut) and app/tool/stamp_expiration.dart
+/// (re-stamps at patch build time, so a patched install's clock restarts).
+String expirationDateForBuild(Edition edition, DateTime today) => switch (edition) {
+      Edition.dev || Edition.next => isoDate(today.add(const Duration(days: 14))),
+      Edition.prod => isoDate(plusCalendarMonths(today, 6)),
+    };
+
+/// `2026-08-06` for the given date.
+String isoDate(DateTime d) =>
+    '${d.year.toString().padLeft(4, '0')}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
+
+/// [d] plus [months] calendar months, clamped to the target month's last day
+/// (Aug 31 + 6 → Feb 28/29, not Dart's normalized Mar 2/3) so the printed
+/// expiration always lands in the intended month.
+DateTime plusCalendarMonths(DateTime d, int months) {
+  final lastDay = DateTime.utc(d.year, d.month + months + 1, 0).day;
+  return DateTime.utc(d.year, d.month + months, d.day > lastDay ? lastDay : d.day);
 }
 
 int _requireInt(String s, RegExp re, String field) {

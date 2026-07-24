@@ -41,6 +41,36 @@ const kBuildNumber = 93;
 /// Shown in the About panel to identify exactly which build is running.
 const kGitSha = String.fromEnvironment('HALO_GIT_SHA');
 
+/// Per-edition build expiration dates (`YYYY-MM-DD`, UTC; empty = never
+/// expires). You don't edit these by hand: `halo-ops release` writes them —
+/// today + 14 days for the cutting edition (Next), + 6 months for Regular,
+/// and Dev is re-stamped to today + 14 days on EVERY cut (dev builds are
+/// made from dist commits, so they inherit the latest stamp) — so a stale
+/// install nags on every launch to go get a newer build (the dialog in
+/// views/expired_build_dialog.dart). Like [kBuildNumber] these live in
+/// compiled Dart so a Shorebird patch can rewrite them.
+const kDevExpirationDate = '';
+const kNextExpirationDate = '';
+const kProdExpirationDate = '';
+
+/// When THIS build expires: the running edition's date from above, or null
+/// when that field is empty or malformed (e.g. an OSS checkout that never
+/// saw a release cut).
+final DateTime? kBuildExpiration = switch (kEdition) {
+  Edition.dev => DateTime.tryParse(kDevExpirationDate),
+  Edition.next => DateTime.tryParse(kNextExpirationDate),
+  Edition.prod => DateTime.tryParse(kProdExpirationDate),
+};
+
+/// Whether [kBuildExpiration] has passed — true starting the day AFTER the
+/// expiration date (a build expiring 2026-08-06 still works all of the
+/// 6th, UTC). [now] is injectable for tests.
+bool isBuildExpired({DateTime? now}) {
+  final expiration = kBuildExpiration;
+  if (expiration == null) return false;
+  return expirationHasPassed(expiration, (now ?? DateTime.now()).toUtc());
+}
+
 /// e.g. `26.8.1-alpha1`.
 final kPublicVersion = kPublicVersionInfo.value;
 

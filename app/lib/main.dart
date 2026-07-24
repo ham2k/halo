@@ -26,6 +26,7 @@ import 'views/home_view.dart';
 import 'views/settings_view.dart';
 import 'views/notice_actions.dart';
 import 'views/onboarding_overlay.dart';
+import 'views/expired_build_dialog.dart';
 import 'views/release_overlay.dart';
 import 'views/splash_view.dart';
 import 'config/dev_bridge.dart';
@@ -127,6 +128,12 @@ void _mainBody({
       'fontScale': services.settings.fontScale.name,
     });
     ErrorReportingService.attachStatusBar(services.statusBar);
+
+    // Expired-build nag: if this build's expiration date (halo-ops release
+    // writes it into version.dart; two weeks for Next and Dev, six months
+    // for Regular) has passed, show a dismissible dialog — again on every
+    // launch — pointing at ham2k.com for a newer build.
+    maybeShowExpiredBuildDialog(navigatorKey);
     // Check for an over-the-air Dart patch on the device's selected track
     // (docs/releases.md §4). Fire-and-forget on purpose: this makes a network
     // call the Shorebird package warns can be slow, so it must NOT gate startup

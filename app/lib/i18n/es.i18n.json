@@ -519,6 +519,12 @@
     "sentryTestSent": "Reporte de error de prueba enviado a Sentry",
     "sentryTestLocalOnly": "Sentry está deshabilitado en esta compilación — el error de prueba solo se registró localmente"
   },
+  "expiredBuild": {
+    "title": "Esta versión ha expirado",
+    "body": "Por favor visita ham2k.com para obtener una versión más reciente.",
+    "visit": "Visitar ham2k.com",
+    "dismiss": "Continuar de todos modos"
+  },
   "spotting": {
     "noQsoYet": "Aún no hay QSO registrado para spotear.",
     "setFrequencyFirst": "Primero define una frecuencia.",

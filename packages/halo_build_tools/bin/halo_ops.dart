@@ -139,6 +139,18 @@ Future<void> _release(List<String> args, {required _Out out, required bool json}
   final tagName = parsed.version.releaseTagName(nextBuild);
   final message = parsed.version.releaseMessage(nextBuild);
 
+  // Build expirations (written into version.dart, read back by the app's
+  // expired-build dialog; horizons live in expirationDateForBuild). The
+  // cutting edition gets its own date, and Dev is ALWAYS re-stamped: dev
+  // builds are made from dist commits, so every cut refreshes their leash
+  // too. Patch builds re-stamp at build time instead (stamp_expiration.dart
+  // from the CI patch scripts) — the patch plane commits nothing.
+  final today = DateTime.now().toUtc();
+  final expirationDate = edition == Edition.dev
+      ? null // dev is never the cutting edition (guarded below)
+      : expirationDateForBuild(edition, today);
+  final devExpirationDate = expirationDateForBuild(Edition.dev, today);
+
   if (json) {
     stdout.writeln(const JsonEncoder.withIndent('  ').convert({
       'branch': branch,
@@ -148,6 +160,8 @@ Future<void> _release(List<String> args, {required _Out out, required bool json}
       'version': parsed.version.value,
       'tag': tagName,
       'message': message,
+      'expiration': expirationDate,
+      'devExpiration': devExpirationDate,
       'wouldTrigger': edition == Edition.dev ? null : 'next build matrix (codemagic, on tag push)',
     }));
     return;
@@ -161,6 +175,8 @@ Future<void> _release(List<String> args, {required _Out out, required bool json}
   out.field('Version', parsed.version.value);
   out.field('Tag', tagName);
   out.field('Message', message);
+  out.field('Expires', expirationDate ?? '—');
+  out.field('Dev expires', devExpirationDate);
   out.blank();
 
   if (edition == Edition.dev) {
@@ -190,8 +206,12 @@ Future<void> _release(List<String> args, {required _Out out, required bool json}
     nextBuild: nextBuild,
     tagName: tagName,
     message: message,
+    edition: edition,
+    expirationDate: expirationDate,
+    devExpirationDate: devExpirationDate,
   );
 }
+
 
 /// The actual release cut, in Dart (git shelled out): refuse to clobber an
 /// existing tag, write the new build into version.dart, commit ONLY that file
@@ -206,14 +226,25 @@ Future<void> _cut({
   required int nextBuild,
   required String tagName,
   required String message,
+  required Edition edition,
+  required String? expirationDate,
+  required String devExpirationDate,
 }) async {
   out.blank();
   if (await _gitExit(['rev-parse', '-q', '--verify', 'refs/tags/$tagName'], root) == 0) {
     throw _CliError("tag '$tagName' already exists");
   }
 
+  var newSource = source;
   if (nextBuild != currentBuild) {
-    await versionFile.writeAsString(rewriteBuildNumber(source, nextBuild));
+    newSource = rewriteBuildNumber(newSource, nextBuild);
+  }
+  if (expirationDate != null) {
+    newSource = rewriteExpirationDate(newSource, edition, expirationDate);
+  }
+  newSource = rewriteExpirationDate(newSource, Edition.dev, devExpirationDate);
+  if (newSource != source) {
+    await versionFile.writeAsString(newSource);
   }
 
   const path = 'app/lib/config/version.dart';
