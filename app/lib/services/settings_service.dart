@@ -12,7 +12,6 @@
 import 'dart:async';
 import 'dart:convert';
 
-import 'package:flutter/foundation.dart' show kReleaseMode;
 import 'package:intl/intl.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
@@ -82,10 +81,16 @@ class SettingsService extends ChangeNotifier implements SyncSettings {
     : _secureStorage =
           secureStorage ??
           const FlutterSecureStorage(
-            // Release uses the data-protection keychain (no consent prompt);
-            // debug uses the file keychain so ad-hoc-signed local builds work.
-            // See ExtensionService._secureStorage for the full rationale.
-            mOptions: MacOsOptions(usesDataProtectionKeychain: kReleaseMode, accountName: 'Ham2K Logger'),
+            // macOS uses the FILE keychain, not the data-protection keychain.
+            // The data-protection keychain requires the `keychain-access-groups`
+            // entitlement, which is RESTRICTED: a Developer ID direct-download
+            // build has no provisioning profile to validate it, so ADDING it
+            // makes the app fail to spawn (#276) and NOT adding it makes every
+            // save throw errSecMissingEntitlement (-34018). The file keychain
+            // needs no entitlement and works under the sandbox (it's what debug
+            // already uses). A future Mac App Store build (#285) has a profile
+            // and can switch back. See ExtensionService._secureStorage.
+            mOptions: MacOsOptions(usesDataProtectionKeychain: false, accountName: 'Ham2K Logger'),
             iOptions: IOSOptions(accountName: 'Ham2K Logger'),
           );
 

@@ -9,7 +9,7 @@
 import 'dart:async';
 import 'dart:convert';
 
-import 'package:flutter/foundation.dart' show kReleaseMode, setEquals;
+import 'package:flutter/foundation.dart' show setEquals;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show rootBundle;
 import 'package:flutter_markdown/flutter_markdown.dart';
@@ -48,11 +48,13 @@ class ExtensionService {
 
   final _secureStorage = const FlutterSecureStorage(
     mOptions: MacOsOptions(
-      // Release: the data-protection keychain (entitlement-gated, no consent
-      // prompt). Debug: the file keychain, which needs no keychain-access-group
-      // and so works under ad-hoc signing (see README "Building locally on
-      // macOS"). kReleaseMode is a compile-time const, so this stays const.
-      usesDataProtectionKeychain: kReleaseMode,
+      // FILE keychain on macOS. The data-protection keychain needs the RESTRICTED
+      // keychain-access-groups entitlement, which a Developer ID build can't
+      // carry (no provisioning profile → spawn crash #276), so it fails every
+      // save with errSecMissingEntitlement (-34018). The file keychain needs no
+      // entitlement and works under the sandbox (it's what debug already used).
+      // A future Mac App Store build (#285) has a profile and can switch back.
+      usesDataProtectionKeychain: false,
       accountName: _keychainAccountName,
     ),
     iOptions: IOSOptions(
@@ -105,13 +107,13 @@ class ExtensionService {
   /// never-started service doesn't hang) so the flag is resolved before the
   /// first read/write. Near-free once the flags are cached.
   ///
-  /// macOS: a synchronizable item requires the data-protection keychain, which
-  /// the app only uses in release (debug stays on the file keychain so ad-hoc
-  /// local builds work); pairing `synchronizable` with the file keychain is
-  /// unsupported on macOS. So an account only actually syncs on macOS in
-  /// release. iOS always uses the data-protection keychain, so it syncs in any
-  /// build. Both keep `synchronizable` and `usesDataProtectionKeychain` from
-  /// ever contradicting.
+  /// macOS: a synchronizable item requires the data-protection keychain, but the
+  /// app uses the FILE keychain on macOS (Developer ID can't carry the
+  /// keychain-access-groups entitlement the data-protection keychain needs — see
+  /// the instance default), so macOS accounts are never synchronizable and stay
+  /// device-local. iOS always uses the data-protection keychain, so it syncs when
+  /// the account declares it. Both keep `synchronizable` and
+  /// `usesDataProtectionKeychain` from ever contradicting.
   Future<({MacOsOptions mOptions, IOSOptions iOptions})> _accountKeychainOptions(String kvKey) async {
     if (!_accountSyncReady.isCompleted && (_starting != null || _host != null)) {
       await _accountSyncReady.future;
@@ -119,9 +121,14 @@ class ExtensionService {
     final declared = _accountSynchronizable[kvKey] ?? false;
     return (
       mOptions: MacOsOptions(
-        usesDataProtectionKeychain: kReleaseMode,
+        // File keychain on macOS (see the instance default), so accounts can't
+        // be synchronizable here — kSecAttrSynchronizable requires the
+        // data-protection keychain, which Developer ID can't use. macOS account
+        // creds stay device-local; iOS (always data-protection) still syncs when
+        // the account declares it.
+        usesDataProtectionKeychain: false,
         accountName: _keychainAccountName,
-        synchronizable: declared && kReleaseMode,
+        synchronizable: false,
       ),
       iOptions: IOSOptions(
         accountName: _keychainAccountName,
