@@ -27,13 +27,30 @@ subprojects {
 // compatible with the plugin's 1.6-era source). Same root cause as the macOS
 // sentry-cocoa pin: the old sentry_flutter lags the toolchain. Remove if
 // sentry_flutter is bumped to a version built against current Kotlin.
+//
+// The override must run AFTER the plugin set 1.6, i.e. after the subproject is
+// evaluated — but `evaluationDependsOn(":app")` above forces some subprojects to
+// evaluate early, and calling `afterEvaluate` on an already-evaluated project
+// throws ("project is already evaluated"). So branch on `state.executed`: if the
+// project is already evaluated, reconfigure its (existing) Kotlin tasks now
+// (`configureEach` runs immediately on them); otherwise defer with afterEvaluate.
+// Either way `configureEach` lands after the plugin's 1.6 and wins.
 subprojects {
-    afterEvaluate {
-        if (project.name == "sentry_flutter") {
+    if (project.name == "sentry_flutter") {
+        if (state.executed) {
             tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().configureEach {
                 compilerOptions {
                     languageVersion.set(org.jetbrains.kotlin.gradle.dsl.KotlinVersion.KOTLIN_2_0)
                     apiVersion.set(org.jetbrains.kotlin.gradle.dsl.KotlinVersion.KOTLIN_2_0)
+                }
+            }
+        } else {
+            afterEvaluate {
+                tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().configureEach {
+                    compilerOptions {
+                        languageVersion.set(org.jetbrains.kotlin.gradle.dsl.KotlinVersion.KOTLIN_2_0)
+                        apiVersion.set(org.jetbrains.kotlin.gradle.dsl.KotlinVersion.KOTLIN_2_0)
+                    }
                 }
             }
         }
