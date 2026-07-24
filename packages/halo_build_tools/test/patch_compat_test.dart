@@ -6,9 +6,17 @@ import 'package:test/test.dart';
 
 void main() {
   group('patch tag + wiring', () {
-    test('tag name is patch-<edition> (matches codemagic.yaml patterns)', () {
-      expect(patchTagName(Edition.next), 'patch-next');
-      expect(patchTagName(Edition.dev), 'patch-dev');
+    test('tag name is patch-<edition>-<commit> (matches codemagic.yaml patterns)', () {
+      expect(patchTagName(Edition.next, 'a1b2c3d'), 'patch-next-a1b2c3d');
+      expect(patchTagName(Edition.dev, 'a1b2c3d'), 'patch-dev-a1b2c3d');
+    });
+
+    test('isPatchTag matches patch-<edition>-<sha>, not bare or foreign tags', () {
+      expect(isPatchTag('patch-next-476483c'), isTrue);
+      expect(isPatchTag('patch-dev-abc'), isTrue);
+      expect(isPatchTag('patch-next'), isFalse); // no sha segment
+      expect(isPatchTag('v26.8.1-alpha1+90'), isFalse);
+      expect(isPatchTag('web-preview-foo'), isFalse);
     });
 
     test('platforms match the wired *-<edition>-patch workflows', () {
@@ -50,6 +58,26 @@ void main() {
       ]) {
         expect(isPatchBreakingPath(p), isFalse, reason: p);
       }
+    });
+  });
+
+  group('patchTagsOlderThan', () {
+    final now = DateTime.utc(2026, 7, 24, 12);
+    PatchTag tag(String name, int daysAgo) =>
+        PatchTag(tag: name, date: now.subtract(Duration(days: daysAgo)));
+
+    test('selects tags whose commit is strictly older than maxAge', () {
+      final tags = [
+        tag('patch-next-fresh', 10),
+        tag('patch-next-old', 61),
+        tag('patch-next-boundary', 60), // exactly 60d — not strictly older
+      ];
+      final old = patchTagsOlderThan(tags, maxAge: const Duration(days: 60), now: now);
+      expect(old.map((t) => t.tag), ['patch-next-old']);
+    });
+
+    test('default threshold is two months', () {
+      expect(kPatchTagMaxAgeDays, 60);
     });
   });
 

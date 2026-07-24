@@ -445,12 +445,16 @@ Dart (§4.2). A patch is never distributed, so the macOS patch build needs no
 Developer ID certificate and no notarization.
 
 Trigger it with **`halo-ops patch`** (or manually from the Codemagic UI): it
-force-moves a `patch-<edition>` tag to HEAD, which fans out to that edition's
-iOS/macOS/Android patch workflows (each `triggering:` on the tag). Before
-pushing, it diffs the current release tag → HEAD and **hard-blocks** when any
-change falls outside the pure-Dart/asset surface (native dirs, `pubspec.*`) —
-`--force` overrides that local pre-flight. It's only a heuristic; Shorebird's
-build-time diff of the compiled artifact is the authoritative gate.
+pushes a per-commit `patch-<edition>-<sha>` tag, which fans out to that edition's
+iOS/macOS/Android patch workflows (each `triggering:` on the `patch-<edition>-*`
+pattern). A fresh tag per commit means every patch is a tag creation, so
+Codemagic triggers reliably. Before pushing, it diffs the current release tag →
+HEAD and **hard-blocks** when any change falls outside the pure-Dart/asset
+surface (native dirs, `pubspec.*`) — `--force` overrides that local pre-flight.
+It's only a heuristic; Shorebird's build-time diff of the compiled artifact is
+the authoritative gate. Old trigger tags are swept by **`halo-ops
+prune-patches`** (anything older than two months by default) — they only trigger
+builds, so deleting them never touches a published patch.
 
 It passes **`--release-version` explicitly**, resolved by
 `shorebird_release_version` (newest release, or `SHOREBIRD_RELEASE_VERSION`).

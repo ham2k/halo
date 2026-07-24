@@ -12,10 +12,34 @@
 
 import 'edition.dart';
 
-/// The reusable git tag whose push triggers [edition]'s Codemagic patch
-/// workflows — `patch-next` / `patch-dev` (codemagic.yaml). Mirrors how a `v*`
-/// tag triggers the release matrix.
-String patchTagName(Edition edition) => 'patch-${edition.name}';
+/// The git tag whose push triggers [edition]'s Codemagic patch workflows — a
+/// per-commit `patch-<edition>-<commit>`, matched by the `patch-<edition>-*`
+/// pattern in codemagic.yaml. A fresh tag per commit means every patch is a tag
+/// *creation*, so Codemagic triggers reliably (a reusable tag force-moved to a
+/// new commit might not fire on the move). Mirrors how a `v*` tag drives the
+/// release matrix.
+String patchTagName(Edition edition, String commit) => 'patch-${edition.name}-$commit';
+
+/// How long a patch trigger tag is kept before `prune-patches` sweeps it — two
+/// months. The tag only triggers the build; deleting it never touches a
+/// published Shorebird patch, so aging them out is safe.
+const int kPatchTagMaxAgeDays = 60;
+
+/// Whether [tag] is a halo-ops patch tag (`patch-<edition>-<commit>`).
+bool isPatchTag(String tag) => RegExp(r'^patch-(dev|next|prod)-.+$').hasMatch(tag);
+
+/// A patch tag paired with the commit date used to age it.
+class PatchTag {
+  final String tag;
+  final DateTime date;
+
+  const PatchTag({required this.tag, required this.date});
+}
+
+/// The patch tags whose commit is older than [maxAge] as of [now] — the
+/// selection for `prune-patches`.
+List<PatchTag> patchTagsOlderThan(Iterable<PatchTag> tags, {required Duration maxAge, required DateTime now}) =>
+    [for (final t in tags) if (now.difference(t.date) > maxAge) t];
 
 /// The platforms with a wired `*-<edition>-patch` Codemagic workflow: Next has
 /// iOS/macOS/Android, Dev has iOS/macOS, prod isn't wired yet. An empty list

@@ -36,6 +36,8 @@ Future<void> main(List<String> args) async {
         await _release(rest, out: out, json: json);
       case 'patch':
         await _patch(rest, out: out, json: json);
+      case 'prune-patches':
+        await _prunePatches(rest, out: out, json: json);
       case 'preview':
         await _preview(rest, out: out, json: json);
       case 'prune-previews':
@@ -301,8 +303,8 @@ Future<void> _patch(List<String> args, {required _Out out, required bool json}) 
       .where((s) => s.trim().isNotEmpty)
       .toList();
   final compat = classifyPatchChanges(changed);
-  final tag = patchTagName(edition);
   final sha = (await _git(['rev-parse', '--short', 'HEAD'], cwd: root)).trim();
+  final tag = patchTagName(edition, sha);
 
   if (json) {
     stdout.writeln(const JsonEncoder.withIndent('  ').convert({
@@ -373,15 +375,107 @@ Future<void> _patch(List<String> args, {required _Out out, required bool json}) 
   }
 
   out.blank();
-  // Reusable pointer tag, force-moved to HEAD (like preview) — the patch plane is
-  // "current HEAD vs current release", not an immutable ledger. Codemagic builds
-  // on the tag push; these patch workflows are distinct from the release matrix,
-  // so there's no commit-dedup to fight (unlike `release`, hence no tag-first
-  // dance here).
+  // A per-commit tag (patch-<edition>-<sha>): a fresh ref each time, so Codemagic
+  // always sees a tag *creation* and triggers — no reliance on it firing when a
+  // reusable tag is moved. `-f`/`--force` only matter when re-patching the exact
+  // same commit (the tag already exists); a normal patch advances HEAD → new sha.
+  // These patch workflows are distinct from the release matrix, so there's no
+  // commit-dedup to fight (unlike `release`, hence no tag-first dance here).
   await _git(['tag', '-f', tag], cwd: root);
   await _git(['push', _remote, '--force', 'refs/tags/$tag'], cwd: root);
   out.ok('Pushed $tag → ${edition.name} patch builds (${platforms.join(', ')}).');
   out.dim('  (follow them in Codemagic; each patch lands on its Shorebird track.)');
+}
+
+// ── prune-patches ─────────────────────────────────────────────────────────────
+
+Future<void> _prunePatches(List<String> args, {required _Out out, required bool json}) async {
+  final rest = [...args];
+  final dryRun = rest.remove('--dry-run') || rest.remove('-n');
+  final yes = rest.remove('--yes') || rest.remove('-y');
+  final all = rest.remove('--all');
+  final olderThanStr = _takeValue(rest, '--older-than');
+  if (rest.isNotEmpty) throw _CliError("unexpected argument '${rest.first}'");
+  final olderThanDays = olderThanStr == null ? null : int.tryParse(olderThanStr);
+  if (olderThanStr != null && (olderThanDays == null || olderThanDays < 0)) {
+    throw _CliError('--older-than takes a number of days');
+  }
+  final maxAge = Duration(days: olderThanDays ?? kPatchTagMaxAgeDays);
+
+  final root = await _repoRoot();
+  await _fetchTagsBestEffort(out, root, quiet: json);
+  // Local patch tags mirror the remote after the fetch; for a lightweight tag
+  // `creatordate` is the tagged commit's date, which is how we age it.
+  final lines = (await _git([
+    'for-each-ref',
+    '--sort=creatordate',
+    '--format=%(refname:short)\t%(creatordate:unix)',
+    'refs/tags/patch-*',
+  ], cwd: root))
+      .split('\n');
+  final tags = <PatchTag>[];
+  for (final line in lines) {
+    final parts = line.split('\t');
+    if (parts.length != 2 || !isPatchTag(parts[0].trim())) continue;
+    final secs = int.tryParse(parts[1].trim());
+    if (secs == null) continue;
+    tags.add(PatchTag(tag: parts[0].trim(), date: DateTime.fromMillisecondsSinceEpoch(secs * 1000, isUtc: true)));
+  }
+
+  final now = DateTime.now().toUtc();
+  final selected = all ? tags : patchTagsOlderThan(tags, maxAge: maxAge, now: now);
+  final selectedTags = {for (final t in selected) t.tag};
+
+  if (json) {
+    stdout.writeln(const JsonEncoder.withIndent('  ').convert([
+      for (final t in tags)
+        {'tag': t.tag, 'ageDays': now.difference(t.date).inDays, 'selected': selectedTags.contains(t.tag)},
+    ]));
+    return;
+  }
+
+  out.title('Ham2K Logger — prune patch tags');
+  out.blank();
+  if (tags.isEmpty) {
+    out.dim('  No patch tags found.');
+    return;
+  }
+  for (final t in tags) {
+    out.patchLine(t.tag, '${now.difference(t.date).inDays}d', selected: selectedTags.contains(t.tag));
+  }
+  out.blank();
+
+  if (selected.isEmpty) {
+    out.dim(all ? '  Nothing to prune.' : '  Nothing older than ${maxAge.inDays} days.');
+    return;
+  }
+  out.warn('Will delete ${selected.length} patch tag(s)'
+      '${all ? '' : ' older than ${maxAge.inDays} days'}: ${selectedTags.join(', ')}');
+  out.dim('  (deletes the tag on $_remote + locally; only trigger tags — published Shorebird patches are untouched.)');
+
+  if (dryRun) {
+    out.dim('  (dry run — nothing deleted.)');
+    return;
+  }
+  if (!yes && !_confirm(out, 'Proceed?')) {
+    out.dim('  Aborted.');
+    return;
+  }
+
+  out.blank();
+  for (final t in selected) {
+    // Delete both refs. `git push :refs/tags/x` is non-zero both when the tag is
+    // already gone from the remote (fine) and when the push genuinely fails
+    // (network/auth) — we can't cleanly tell them apart, so surface a warning
+    // rather than claim a clean prune when the remote ref might survive.
+    final remoteOk = await _gitExit(['push', _remote, ':refs/tags/${t.tag}'], root) == 0;
+    await _gitExit(['tag', '-d', t.tag], root);
+    if (remoteOk) {
+      out.ok('Pruned ${t.tag}');
+    } else {
+      out.warn('Removed ${t.tag} locally; remote delete failed — it may still be on $_remote.');
+    }
+  }
 }
 
 // ── preview ─────────────────────────────────────────────────────────────────
@@ -781,7 +875,8 @@ Usage: halo-ops <command> [options]
 Commands:
   status                 Show the released version for each edition, from tags.
   release                Preview and cut a release (bump version.dart, commit, tag, push).
-  patch                  Publish a Shorebird Dart patch of HEAD (tags patch-<edition>, pushes it).
+  patch                  Publish a Shorebird Dart patch of HEAD (tags patch-<edition>-<sha>, pushes it).
+  prune-patches          Delete old patch-<edition>-<sha> trigger tags (default: older than 2 months).
   preview <name>         Deploy a web preview of HEAD (tags web-preview-<name>, pushes it).
   prune-previews         List web previews; delete selected ones (Pages + DNS + tag).
 
@@ -794,6 +889,11 @@ patch options:
   --edition <dev|next|prod>   Override the branch→edition mapping.
   --force                     Patch even when native/dependency files changed.
   --dry-run, -n / --yes, -y   As in release.
+
+prune-patches options:
+  --older-than <days>         Age threshold (default 60 — two months).
+  --all                       Delete every patch trigger tag.
+  --dry-run, -n / --yes, -y   Preview / skip the confirmation.
 
 preview options:
   --dry-run, -n / --yes, -y   As above.
@@ -836,6 +936,11 @@ class _Out {
 
   void previewLine(int n, String name, String age, String flags, String url) {
     stdout.writeln('  ${_wrap('[$n]', '1')} ${_wrap(name.padRight(20), '1')} ${age.padRight(11)} $flags   ${_wrap(url, '2')}');
+  }
+
+  void patchLine(String name, String age, {required bool selected}) {
+    final note = selected ? _wrap('prune', '33') : _wrap('keep', '2');
+    stdout.writeln('  ${_wrap(name.padRight(24), '1')} ${age.padRight(8)} $note');
   }
 
   void field(String label, String value) {
