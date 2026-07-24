@@ -577,7 +577,7 @@ real `next` or `prod`.** The edition *identity* (name, bundle id) is derived fro
 single `HALO_EDITION` switch, so a public checkout can produce a `dev` build with
 no configuration — but it cannot sign, notarize, or reach the official feeds.
 
-Ham2K develops on `app-halo-dist` (branches off `main-dist-private`). Commits that
+Ham2K develops on `app-halo-dist` (branches off `dist`). Commits that
 touch `app_dist/` are split out there and **not** cherry-picked to `main-public`, so
 `app_dist/` never reaches the public repo (see `.agents/AGENTS.md`). A public
 checkout simply has no `app_dist/` directory.

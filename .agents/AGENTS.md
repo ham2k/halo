@@ -18,7 +18,7 @@ This is a multi-platform app for Amateur Radio Logging, called "Ham2K Logger" (o
 
 ## Development Process
 
-- Except for small changes, agents should work on a worktree, with a branch off of the `dist` branch on the `app-halo-dist` origin (that branch is usually available as `main-dist-private` locally). As new tasks come in, use new branches and rename the worktree to keep the name relevant.
+- Except for small changes, agents should work on a worktree, with a branch off of the `dist` branch on the `app-halo-dist` origin (that branch is usually available as `dist` locally too, tracking `app-halo-dist/dist`). As new tasks come in, use new branches and rename the worktree to keep the name relevant.
 
 - Keep `dist` updated. Rebase your branches on top of the latest `dist` before submitting or updating a PR.
 
@@ -39,7 +39,7 @@ This is a multi-platform app for Amateur Radio Logging, called "Ham2K Logger" (o
 
 - New branches should be pushed to the `app-halo-dist` origin, never to regular `origin`.
 
-- Branches for Issues should be named using the convention `<issue-number>-<short-description>` and should be based off the `dist` branch of the `app-halo-dist` repository (available as `main-dist-private` locally).
+- Branches for Issues should be named using the convention `<issue-number>-<short-description>` and should be based off the `dist` branch of the `app-halo-dist` repository (available as `dist` locally too).
 
 - PRs should mention relevant Issues if possible, with the keyword "closes", "fixes" or "resolves" as appropriate.
 
@@ -52,7 +52,7 @@ This is a multi-platform app for Amateur Radio Logging, called "Ham2K Logger" (o
 
 - On the development environment, we use `mise` to manage dependencies and tool versions.
 
-- When adding commits, identify yourself as "Ham2K Bot <bot@ham2k.com>"
+- When adding commits, identify yourself as "Sebastian Delmont <sd@ham2k.com>"
 
 - When interacting with Github, use `export GH_TOKEN="$(security find-generic-password -a claude-code -s gh-bot-token -w)"` in the session to authenticate API requests as ham2k-bot.
 
