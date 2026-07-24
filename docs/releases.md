@@ -261,6 +261,9 @@ monthly main version is a binary release.
   uploads **both** editions to TestFlight — each keyed on its own app record
   (`com.ham2k.logger.next` / `.prod`); promoting Regular to the public App Store
   is a later manual step. `ios-dev-release` is a public, unsigned compile check.
+  The iOS build also publishes a metadata-only entry to the edition's download
+  manifest, so the download page lists which version/build iOS is at and says it
+  is TestFlight-only — there is nothing to download there.
 - **Android**: Google Play (stable), Play testing track — internal/closed/open —
   (Next).
 
