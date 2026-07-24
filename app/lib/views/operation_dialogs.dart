@@ -12,6 +12,7 @@ import 'package:halo_core/halo_core.dart';
 import 'package:halo_widgets/halo_widgets.dart';
 import '../i18n/strings.g.dart';
 import '../main.dart';
+import '../tools/operation_title.dart';
 
 /// Prompts to confirm, then soft-deletes on confirmation. Returns whether
 /// the operation was deleted.
@@ -23,7 +24,11 @@ Future<bool> confirmDeleteOperation(
   final confirmed = await showHaloDialog<bool>(
     context: context,
     builder: (context) => HaloDialog(
-      title: Text(context.t.dialogs.deleteOperationConfirm(title: operation.title.isEmpty ? operation.stationCall : operation.title)),
+      // The same title the user just saw on the row/header they deleted
+      // from (ham2k/app-halo-dist#174), not the raw (usually empty) title field.
+      title: Text(
+        context.t.dialogs.deleteOperationConfirm(title: '${operation.stationCall} ${displayTitleFor(context, operation)}'),
+      ),
       cancel: TextButton(onPressed: () => Navigator.of(context).pop(false), child: Text(context.t.common.cancel)),
       actions: [
         FilledButton(onPressed: () => Navigator.of(context).pop(true), child: Text(context.t.common.delete)),

@@ -294,6 +294,15 @@ class Translations$operation$en {
 	/// en: 'Not set'
 	String get locationNone => 'Not set';
 
+	/// en: 'General Operation'
+	String get generalOperation => 'General Operation';
+
+	/// en: 'for ${value}'
+	String titleFor({required Object value}) => 'for ${value}';
+
+	/// en: 'at ${value}'
+	String titleAt({required Object value}) => 'at ${value}';
+
 	late final Translations$operation$menu$en menu = Translations$operation$menu$en.internal(_root);
 	late final Translations$operation$export$en export = Translations$operation$export$en.internal(_root);
 	late final Translations$operation$spots$en spots = Translations$operation$spots$en.internal(_root);
@@ -2174,6 +2183,9 @@ extension on Translations {
 			'operation.activitiesNone' => 'None set',
 			'operation.deleteOperation' => 'Delete operation',
 			'operation.locationNone' => 'Not set',
+			'operation.generalOperation' => 'General Operation',
+			'operation.titleFor' => ({required Object value}) => 'for ${value}',
+			'operation.titleAt' => ({required Object value}) => 'at ${value}',
 			'operation.menu.showRstFields' => 'Show RST fields',
 			'operation.menu.showStateField' => 'Show State field',
 			'operation.menu.showGridField' => 'Show Grid field',

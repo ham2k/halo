@@ -5,6 +5,7 @@ import { test } from "node:test"
 import assert from "node:assert/strict"
 
 import { REFERENCE_REGEX, normalizeReference, transformsForPrefix, hunterDefaultPrefix, activationDefaultPrefix, potaCountryPrefixForCall } from "./refFormatting.ts"
+import { suggestOperationTitleForPota } from "./titleSuggestion.ts"
 
 // Mirrors the group-expansion logic in
 // `packages/halo_widgets/lib/src/ref_text_input.dart`'s
@@ -143,4 +144,25 @@ test("activationDefaultPrefix always uses our own station's country", () => {
   assert.equal(activationDefaultPrefix({ stationCall: "VE3ABC" }), "CA")
   assert.equal(activationDefaultPrefix({ stationCall: "KH6ABC" }), "US")
   assert.equal(activationDefaultPrefix({}), "US")
+})
+
+test("suggestOperationTitleForPota suggests the park reference as 'at' and the park's decorated name as subtitle (ham2k/app-halo-dist#174)", () => {
+  const suggestion = suggestOperationTitleForPota(
+    { type: "potaActivation", ref: "US-0757", name: "Golden Gate NRA" },
+    "potaActivation",
+  )
+  assert.deepEqual(suggestion, { at: "US-0757", subtitle: "Golden Gate NRA" })
+})
+
+test("suggestOperationTitleForPota returns null for a hunting ref — that's a station worked, not where this operation is", () => {
+  const suggestion = suggestOperationTitleForPota(
+    { type: "pota", ref: "US-0757", name: "Golden Gate NRA" },
+    "potaActivation",
+  )
+  assert.equal(suggestion, null)
+})
+
+test("suggestOperationTitleForPota returns null for an activation ref with no reference code yet", () => {
+  const suggestion = suggestOperationTitleForPota({ type: "potaActivation" }, "potaActivation")
+  assert.equal(suggestion, null)
 })

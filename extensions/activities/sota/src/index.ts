@@ -33,8 +33,10 @@ import type {
   SuggestArgs,
   ActivitySuggestion,
   LookupRow,
+  TitleSuggestion,
 } from "@ham2k/halo-extension-sdk"
 import { REFERENCE_REGEX, TRANSFORMS } from "./refFormatting.ts"
+import { suggestOperationTitleForSota } from "./titleSuggestion.ts"
 import { tFor } from "./i18n.ts"
 import { spotModeFor } from "./spotMode.ts"
 import { summitGlyphFromDetails } from "./summitGlyph.ts"
@@ -222,6 +224,10 @@ const RefHandler = {
       label: `SOTA ${reference}: ${summit.name}`,
       shortLabel: `SOTA ${reference}`,
     }
+  },
+
+  async suggestOperationTitle({ ref }: { ref: Ref }, _ctx: HookContext): Promise<TitleSuggestion | null> {
+    return suggestOperationTitleForSota(ref, ACTIVATION_TYPE)
   },
 }
 

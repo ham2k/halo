@@ -26,6 +26,7 @@ import 'operation/map_panel.dart';
 import 'operation/operation_export_screen.dart';
 import 'operation/operation_location_screen.dart';
 import 'operation/spots_panel.dart';
+import '../tools/operation_title.dart';
 import '../i18n/strings.g.dart';
 
 class OperationView extends StatefulWidget {
@@ -313,6 +314,10 @@ class _OperationViewState extends State<OperationView> with SingleTickerProvider
       }
       if (previous == null || !_sameRefs(previous.data['refs'], operation.data['refs'])) {
         unawaited(_refreshLoggingControls(operation));
+        // Refs are what suggestOperationTitle reads (ham2k/app-halo-dist#174)
+        // — no debounce needed, refs only change on a deliberate edit, unlike
+        // the QSO list's rescore trigger below.
+        unawaited(widget.services.operationTitles.retitleOperation(operation));
       }
     }
   }
@@ -327,6 +332,14 @@ class _OperationViewState extends State<OperationView> with SingleTickerProvider
     if (!mounted) return;
     await _refreshLoggingControls(operation);
     await _resolveOurEntityPrefix(operation);
+    // `_operation`, not the `operation` parameter: extension-runtime boot
+    // (the await above) can take long enough for the user to edit refs
+    // before it resolves, and the ref-changed branch below would then have
+    // already cached the correct, fresher suggestion — retitling from this
+    // stale closed-over snapshot would silently overwrite it with the old
+    // one (ham2k/app-halo-dist#174; there's no ordering guard on the cache
+    // write to catch this, unlike the fingerprinted rescore below).
+    unawaited(widget.services.operationTitles.retitleOperation(_operation ?? operation));
     // The extension runtime is ready now; a rescore scheduled before it was
     // (which no-op'd) never recorded a fingerprint, so this re-attempts it.
     _maybeScheduleRescore();
@@ -446,6 +459,11 @@ class _OperationViewState extends State<OperationView> with SingleTickerProvider
           services: widget.services,
           operation: operation,
           hasUpdatesNotifier: hasUpdatesNotifier,
+          // Unlike the 'opsheet' experiment's buffered edit + explicit
+          // Save/Cancel, this plain modal has no save control of its own —
+          // it must persist each edit immediately as it comes in, or
+          // everything is silently lost on close.
+          onOperationChanged: (updated) => widget.services.operations.saveData(updated),
           onExport: () => _export(operation),
         ),
       );
@@ -753,7 +771,13 @@ class _OperationViewState extends State<OperationView> with SingleTickerProvider
         // them inline) but aren't real contacts — every QSO *count* shown to
         // the user excludes them, matching scoring/export.
         final realQsoCount = qsos.where((q) => q.isRealContact).length;
-        final refsLine = operation.refs.map((r) => r['shortLabel'] ?? r['ref']).whereType<String>().join(' • ');
+        // The ref-derived subtitle (ham2k/app-halo-dist#174) only exists once
+        // OperationTitleService has run at least once — until then, fall
+        // back to the raw ref labels so the header isn't blank.
+        final suggestedSubtitle = displaySubtitleFor(operation);
+        final refsLine = suggestedSubtitle.isNotEmpty
+            ? suggestedSubtitle
+            : operation.refs.map((r) => r['shortLabel'] ?? r['ref']).whereType<String>().join(' • ');
 
         final isTwoPane = ShirtSize.of(context).isTwoPane;
 
@@ -1051,7 +1075,7 @@ class _OperationViewState extends State<OperationView> with SingleTickerProvider
                   // truncating — down to half their natural font size,
                   // past which the line ellipsizes instead.
                   shrinkToFitText(
-                    Text(operation.title.isEmpty ? operation.stationCall : '${operation.stationCall} ${operation.title}'),
+                    Text('${operation.stationCall} ${displayTitleFor(context, operation)}'),
                   ),
                   if (refsLine.isNotEmpty)
                     shrinkToFitText(

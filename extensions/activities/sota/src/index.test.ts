@@ -6,6 +6,7 @@ import assert from "node:assert/strict"
 
 import { REFERENCE_REGEX, TRANSFORMS } from "./refFormatting.ts"
 import { summitGlyphFromDetails } from "./summitGlyph.ts"
+import { suggestOperationTitleForSota } from "./titleSuggestion.ts"
 
 // Mirrors the group-expansion logic in
 // `packages/halo_widgets/lib/src/ref_text_input.dart`'s
@@ -57,4 +58,25 @@ test("summitGlyphFromDetails picks the matching circled digit for 1-10 points", 
 test("summitGlyphFromDetails returns an empty string when there's no points suffix", () => {
   assert.equal(summitGlyphFromDetails("Some Summit, 500m"), "")
   assert.equal(summitGlyphFromDetails(""), "")
+})
+
+test("suggestOperationTitleForSota suggests the summit reference as 'at' and the summit's decorated name as subtitle (ham2k/app-halo-dist#174)", () => {
+  const suggestion = suggestOperationTitleForSota(
+    { type: "sotaActivation", ref: "W6/SD-123", name: "Mount Example" },
+    "sotaActivation",
+  )
+  assert.deepEqual(suggestion, { at: "W6/SD-123", subtitle: "Mount Example" })
+})
+
+test("suggestOperationTitleForSota returns null for a hunting ref — that's a station worked, not where this operation is", () => {
+  const suggestion = suggestOperationTitleForSota(
+    { type: "sota", ref: "W6/SD-123", name: "Mount Example" },
+    "sotaActivation",
+  )
+  assert.equal(suggestion, null)
+})
+
+test("suggestOperationTitleForSota returns null for an activation ref with no reference code yet", () => {
+  const suggestion = suggestOperationTitleForSota({ type: "sotaActivation" }, "sotaActivation")
+  assert.equal(suggestion, null)
 })

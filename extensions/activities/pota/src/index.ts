@@ -30,8 +30,10 @@ import type {
   SuggestArgs,
   ActivitySuggestion,
   LookupRow,
+  TitleSuggestion,
 } from "@ham2k/halo-extension-sdk"
 import { REFERENCE_REGEX, normalizeReference, entityPrefixForCall, transformsForPrefix, hunterDefaultPrefix, activationDefaultPrefix } from "./refFormatting.ts"
+import { suggestOperationTitleForPota } from "./titleSuggestion.ts"
 import { tFor } from "./i18n.ts"
 
 import manifest from "../manifest.json" with { type: "json" }
@@ -136,6 +138,10 @@ const RefHandler = {
       label: `POTA ${reference}: ${park.name}`,
       shortLabel: `POTA ${reference}`,
     }
+  },
+
+  async suggestOperationTitle({ ref }: { ref: Ref }, _ctx: HookContext): Promise<TitleSuggestion | null> {
+    return suggestOperationTitleForPota(ref, ACTIVATION_TYPE)
   },
 }
 

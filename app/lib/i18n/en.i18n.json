@@ -80,6 +80,9 @@
     "activitiesNone": "None set",
     "deleteOperation": "Delete operation",
     "locationNone": "Not set",
+    "generalOperation": "General Operation",
+    "titleFor": "for ${value}",
+    "titleAt": "at ${value}",
     "menu": {
       "showRstFields": "Show RST fields",
       "showStateField": "Show State field",

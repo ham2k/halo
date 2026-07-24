@@ -184,6 +184,9 @@ class _Translations$operation$es extends Translations$operation$en {
 	@override String get activitiesNone => 'Ninguna seleccionada';
 	@override String get deleteOperation => 'Eliminar operación';
 	@override String get locationNone => 'Sin definir';
+	@override String get generalOperation => 'Operación general';
+	@override String titleFor({required Object value}) => 'para ${value}';
+	@override String titleAt({required Object value}) => 'en ${value}';
 	@override late final _Translations$operation$menu$es menu = _Translations$operation$menu$es._(_root);
 	@override late final _Translations$operation$export$es export = _Translations$operation$export$es._(_root);
 	@override late final _Translations$operation$spots$es spots = _Translations$operation$spots$es._(_root);
@@ -1212,6 +1215,9 @@ extension on TranslationsEs {
 			'operation.activitiesNone' => 'Ninguna seleccionada',
 			'operation.deleteOperation' => 'Eliminar operación',
 			'operation.locationNone' => 'Sin definir',
+			'operation.generalOperation' => 'Operación general',
+			'operation.titleFor' => ({required Object value}) => 'para ${value}',
+			'operation.titleAt' => ({required Object value}) => 'en ${value}',
 			'operation.menu.showRstFields' => 'Mostrar campos RST',
 			'operation.menu.showStateField' => 'Mostrar campo Estado/Provincia',
 			'operation.menu.showGridField' => 'Mostrar campo Locador',

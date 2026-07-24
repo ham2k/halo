@@ -12,6 +12,7 @@ import '../config/dev_flags.dart';
 import '../config/web_preview_label.dart';
 import '../main.dart';
 import '../services/settings_service.dart';
+import '../tools/operation_title.dart';
 import 'header_profile_label.dart';
 import 'operation_dialogs.dart';
 import 'operation_view.dart';
@@ -48,7 +49,13 @@ class _OperationRow extends StatelessWidget {
     final theme = Theme.of(context);
     final when = operation.startAtMax;
     final dateLabel = when == null ? '' : '${_monthName(when.month)} ${when.day}';
-    final subtitle = operation.refs.map((r) => r['name']).whereType<String>().join(' • ');
+    // The ref-derived subtitle (ham2k/app-halo-dist#174) only exists once
+    // OperationTitleService has run at least once for this operation — until
+    // then, fall back to the raw ref names so the row isn't blank.
+    final suggestedSubtitle = displaySubtitleFor(operation);
+    final subtitle = suggestedSubtitle.isNotEmpty
+        ? suggestedSubtitle
+        : operation.refs.map((r) => r['name']).whereType<String>().join(' • ');
 
     return Material(
       color: theme.colorScheme.surface,
@@ -78,11 +85,10 @@ class _OperationRow extends StatelessWidget {
                               fontFamily: 'RobotoMono',
                             ),
                           ),
-                          if (operation.title.isNotEmpty)
-                            TextSpan(
-                              text: ' ${operation.title}',
-                              style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
-                            ),
+                          TextSpan(
+                            text: ' ${displayTitleFor(context, operation)}',
+                            style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+                          ),
                         ],
                       ),
                       maxLines: 1,

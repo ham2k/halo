@@ -7,6 +7,8 @@
 
 import 'dart:convert';
 
+import 'operation_title.dart';
+
 /// A logging session: one station, one setup, one stretch of time.
 class Operation {
   final String uuid;
@@ -39,6 +41,23 @@ class Operation {
 
   List<Map<String, dynamic>> get refs =>
       ((data['refs'] as List?) ?? const []).whereType<Map>().map((r) => r.cast<String, dynamic>()).toList();
+
+  /// The ref-derived title/subtitle fragments `OperationTitleService` cached
+  /// under `localData['titleSuggestion']` (ham2k/app-halo-dist#174) — device-
+  /// local like `scoring`, since it's cheaply regenerable from `refs`. A UI
+  /// layer localizes the "for"/"at" prepositions and assembles the final
+  /// sentence (this model has no BuildContext to do that itself); `title`
+  /// falls back to this only when the user hasn't set one of their own.
+  OperationTitleFragments get titleFragments {
+    final cached = localData['titleSuggestion'];
+    if (cached is! Map) return const OperationTitleFragments();
+    return OperationTitleFragments(
+      title: (cached['title'] as String?) ?? '',
+      forText: (cached['for'] as String?) ?? '',
+      atText: (cached['at'] as String?) ?? '',
+      subtitle: (cached['subtitle'] as String?) ?? '',
+    );
+  }
 
   DateTime? get startAtMax =>
       startAtMillisMax == null ? null : DateTime.fromMillisecondsSinceEpoch(startAtMillisMax!, isUtc: true);
