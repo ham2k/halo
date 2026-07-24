@@ -85,11 +85,15 @@ jobs:
       - name: Use blank Mapbox token template
         run: cp app/lib/config/mapbox_token.dart.example app/lib/config/mapbox_token.dart
 
+      # HALO_GIT_SHA: short SHA of the built ref, shown after the build number in
+      # the About view (version_label.dart's kGitSha) so a preview identifies the
+      # exact commit it was built from. Matches the production deploy-web.yml.
       - name: Build Flutter web app
         run: |
           cd app
           flutter pub get
-          flutter build web --release --no-tree-shake-icons
+          flutter build web --release --no-tree-shake-icons \
+            --dart-define=HALO_GIT_SHA="$(git rev-parse --short HEAD)"
 
       # Any --branch other than "main" (the project's production branch)
       # creates a preview deployment aliased to that name.

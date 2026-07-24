@@ -72,12 +72,17 @@ jobs:
       # fills the index.html boot-failure reporter's placeholder (the app
       # can't report a failure to start — it never ran). Both no-op when the
       # secret is unset: empty define = disabled, placeholder left = disabled.
+      # HALO_GIT_SHA: the short SHA of the deployed commit, shown after the build
+      # number in the About view (version_label.dart's kGitSha) so we can tell
+      # exactly which commit halo-dev is serving. HEAD is the ref checked out
+      # above (workflow_run.head_sha), matching build-macos.sh's convention.
       - name: Build Flutter web app
         run: |
           cd app
           flutter pub get
           flutter build web --release --no-tree-shake-icons \
-            --dart-define=HALO_SENTRY_DSN="${HALO_SENTRY_DSN}"
+            --dart-define=HALO_SENTRY_DSN="${HALO_SENTRY_DSN}" \
+            --dart-define=HALO_GIT_SHA="$(git rev-parse --short HEAD)"
         env:
           HALO_SENTRY_DSN: ${{ secrets.HALO_SENTRY_DSN }}
 
