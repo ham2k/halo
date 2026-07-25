@@ -32,8 +32,7 @@ class OperationTitleService {
   /// a hook call fails — like scoring, this is a display enhancement, never
   /// load-bearing.
   Future<void> retitleOperation(Operation operation) async {
-    final host = extensions.host;
-    if (host == null) return;
+    if (extensions.host == null) return;
 
     // Captured synchronously, before any await — a call issued after this
     // point (even one that finishes first) bumps this past our value, so our
@@ -42,12 +41,32 @@ class OperationTitleService {
     _generationByUuid[operation.uuid] = generation;
     bool superseded() => _generationByUuid[operation.uuid] != generation;
 
+    final fragments = await suggestFragments(operation);
+    if (fragments == null || superseded()) return;
+
+    await operations.updateLocalData(operation.uuid, {
+      'titleSuggestion': fragments.isEmpty
+          ? null
+          : {
+              'title': fragments.title,
+              'for': fragments.forText,
+              'at': fragments.atText,
+              'subtitle': fragments.subtitle,
+            },
+    });
+  }
+
+  /// The same per-ref fan-out and merge, but returning the fragments instead
+  /// of caching them — for an operation that has no saved row to cache into
+  /// yet, i.e. the operation sheet's buffered draft, whose refs change as the
+  /// user picks activities and only reach the database on Save. `null` when
+  /// the extension runtime isn't up (nothing could be suggested).
+  Future<OperationTitleFragments?> suggestFragments(Operation operation) async {
+    final host = extensions.host;
+    if (host == null) return null;
+
     final refs = operation.refs;
-    if (refs.isEmpty) {
-      if (superseded()) return;
-      await operations.updateLocalData(operation.uuid, {'titleSuggestion': null});
-      return;
-    }
+    if (refs.isEmpty) return const OperationTitleFragments();
 
     final operationPayload = {...operation.data, 'uuid': operation.uuid};
 
@@ -79,18 +98,6 @@ class OperationTitleService {
       }
     }));
 
-    if (superseded()) return;
-
-    final fragments = mergeOperationTitleSuggestions(results.whereType<OperationTitleSuggestion>());
-    await operations.updateLocalData(operation.uuid, {
-      'titleSuggestion': fragments.isEmpty
-          ? null
-          : {
-              'title': fragments.title,
-              'for': fragments.forText,
-              'at': fragments.atText,
-              'subtitle': fragments.subtitle,
-            },
-    });
+    return mergeOperationTitleSuggestions(results.whereType<OperationTitleSuggestion>());
   }
 }

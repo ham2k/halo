@@ -48,7 +48,7 @@ class _OperationRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final when = operation.startAtMax;
-    final dateLabel = when == null ? '' : '${_monthName(when.month)} ${when.day}';
+    final dateLabel = when == null ? '' : formatShortDate(when);
     // The ref-derived subtitle (ham2k/app-halo-dist#174) only exists once
     // OperationTitleService has run at least once for this operation — until
     // then, fall back to the raw ref names so the row isn't blank.
@@ -127,8 +127,6 @@ class _OperationRow extends StatelessWidget {
     );
   }
 
-  String _monthName(int month) =>
-      const ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][month - 1];
 }
 
 class OperationListPanel extends StatelessWidget {
@@ -945,6 +943,7 @@ class _HomeQuickLookupState extends State<HomeQuickLookup> {
           Padding(
             padding: PaneSafeArea.symmetricOf(context, horizontal: 16, vertical: 8),
             child: TextField(
+              selectAllOnFocus: false,
               controller: _controller,
               focusNode: _focusNode,
               style: haloMonoStyle(context, fontSize: 15),

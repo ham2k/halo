@@ -75,6 +75,7 @@ class _SecretTextFieldState extends State<SecretTextField> {
       onPressed: () => setState(() => _obscured = !_obscured),
     );
     return TextField(
+      selectAllOnFocus: false,
       controller: widget.controller,
       focusNode: widget.focusNode,
       autofocus: widget.autofocus,

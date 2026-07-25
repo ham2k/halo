@@ -759,6 +759,7 @@ class _AllSettingsPanelState extends State<_AllSettingsPanel> {
         Padding(
           padding: EdgeInsets.fromLTRB(16 + safeLeft, 16, 16, 0),
           child: TextField(
+            selectAllOnFocus: false,
             key: const ValueKey('all-settings-search'),
             controller: _searchController,
             onChanged: (_) => setState(() {}),
@@ -2615,6 +2616,7 @@ class _AccountPaneState extends State<_AccountPane> {
                     )
                   else
                     TextField(
+                      selectAllOnFocus: false,
                       controller: controller,
                       style: theme.textTheme.bodyLarge?.copyWith(fontSize: 15),
                       keyboardType: field['type'] == 'email' ? TextInputType.emailAddress : TextInputType.text,

@@ -28,8 +28,4 @@ experiments:
     name: Customizable Layouts
     description: Rearrange the logging view's panes by dragging their tabs into splits and groups.
     aliases: [layout, dock, docking]
-  - key: opsheet
-    name: Operation Sheet
-    description: Use bottom Operation Sheet instead of separate activity and location dialogs.
-    aliases: [sheet, operationsheet, opsheet]
 

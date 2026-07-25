@@ -139,6 +139,7 @@ class _OperationLocationScreenState extends State<OperationLocationScreen> {
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
             child: TextField(
+              selectAllOnFocus: false,
               controller: _gridController,
               focusNode: _gridFocus,
               decoration: poloFieldDecoration(context, t.gridSquare),
@@ -172,6 +173,7 @@ class _OperationLocationScreenState extends State<OperationLocationScreen> {
             child: Column(
               children: [
                 TextField(
+                  selectAllOnFocus: false,
                   controller: _stateController,
                   focusNode: _stateFocus,
                   decoration: poloFieldDecoration(context, t.stateOrProvince),
@@ -179,6 +181,7 @@ class _OperationLocationScreenState extends State<OperationLocationScreen> {
                 ),
                 const SizedBox(height: 8),
                 TextField(
+                  selectAllOnFocus: false,
                   controller: _countyController,
                   focusNode: _countyFocus,
                   decoration: poloFieldDecoration(context, t.county),

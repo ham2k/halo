@@ -1468,10 +1468,15 @@ class ExtensionService {
   /// suggestions still work before the operation's location is set.
   /// `callsign` falls back from the operation's own settings to the
   /// operator's global default.
+  /// [activityKey] scopes the fan-out to ONE activity extension (the search
+  /// field's `pota:` prefix) — that hook alone is asked, rather than every
+  /// hook's results being merged and then filtered, so an unrelated
+  /// extension's slow search can't hold up a scoped one.
   Future<List<Map<String, dynamic>>> suggestActivities(
     Map<String, dynamic> operationData, {
     String? searchTerm,
     GridLocation? fallbackLocation,
+    String? activityKey,
   }) async {
     final host = _host;
     if (host == null) return const [];
@@ -1482,18 +1487,35 @@ class ExtensionService {
         ? operationData['stationCall'] as String
         : settings?.activeProfile.operatorCall;
 
+    final args = {
+      'operation': operationData,
+      if (gridLocation != null) 'location': {'lat': gridLocation.latitude, 'lon': gridLocation.longitude},
+      if (callsign != null && callsign.isNotEmpty) 'callsign': callsign,
+      if (searchTerm != null && searchTerm.isNotEmpty) 'searchTerm': searchTerm,
+    };
+
     try {
-      final entries = await host.invokeHookAll(
-        'activity',
-        method: 'suggest',
-        args: {
-          'operation': operationData,
-          if (gridLocation != null) 'location': {'lat': gridLocation.latitude, 'lon': gridLocation.longitude},
-          if (callsign != null && callsign.isNotEmpty) 'callsign': callsign,
-          if (searchTerm != null && searchTerm.isNotEmpty) 'searchTerm': searchTerm,
-        },
-        timeout: const Duration(seconds: 5),
-      );
+      final entries = activityKey == null
+          ? await host.invokeHookAll(
+              'activity',
+              method: 'suggest',
+              args: args,
+              timeout: const Duration(seconds: 5),
+            )
+          // Wrapped in invokeHookAll's own {ok, value} entry shape so the
+          // merge below doesn't need a second code path.
+          : [
+              {
+                'ok': true,
+                'value': await host.invokeHook(
+                  'activity',
+                  key: activityKey,
+                  method: 'suggest',
+                  args: args,
+                  timeout: const Duration(seconds: 5),
+                ),
+              },
+            ];
 
       final suggestions = <Map<String, dynamic>>[];
       for (final entry in entries) {
@@ -1674,6 +1696,22 @@ class ExtensionInfo {
         ...keywords,
         ...((translations[locale]?['keywords'] as List?) ?? const []).cast<String>(),
       ];
+
+  /// Whether a user's search text should surface this extension. Matches the
+  /// key, the name and description in BOTH the given locale and English (so
+  /// either spelling finds it), and the keywords. [query] is expected
+  /// already trimmed; an empty one matches nothing, since "show everything"
+  /// is the caller's decision, not a match.
+  bool matchesSearch(String query, {required String locale}) {
+    if (query.isEmpty) return false;
+    final needle = query.toLowerCase();
+    return key.toLowerCase().contains(needle) ||
+        name.toLowerCase().contains(needle) ||
+        nameFor(locale).toLowerCase().contains(needle) ||
+        (description ?? '').toLowerCase().contains(needle) ||
+        (descriptionFor(locale) ?? '').toLowerCase().contains(needle) ||
+        keywordsFor(locale).any((keyword) => keyword.toLowerCase().contains(needle));
+  }
 
   factory ExtensionInfo.fromJson(Map<String, dynamic> json) => ExtensionInfo(
         key: json['key'] as String,

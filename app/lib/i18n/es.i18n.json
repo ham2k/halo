@@ -54,30 +54,21 @@
     "quickLookup": "Búsqueda Rápida"
   },
   "dialogs": {
-    "deleteOperationConfirm": "¿Eliminar operación \"${title}\"?",
     "operationDetails": "Detalles de la operación",
     "activities": "Actividades",
     "stationCallsign": "Indicativo de la estación",
-    "notes": "Notas"
+    "notes": "Notas",
+    "deleteOperationTitle": "Borrar operación"
   },
   "operation": {
     "tabs": {
       "qsos": "${count} QSOs",
       "info": "INFO",
       "spots": "SPOTS",
-      "map": "MAPA",
-      "operation": "OPERACIÓN"
-    },
-    "sections": {
-      "stationOperator": "Estación y operador",
-      "activities": "Actividades",
-      "operationData": "Datos de operación",
-      "dangerZone": "Zona de peligro",
-      "location": "Ubicación"
+      "map": "MAPA"
     },
     "stationCallsignNone": "Sin indicativo de estación",
     "titleNone": "Sin título",
-    "activitiesNone": "Ninguna seleccionada",
     "deleteOperation": "Eliminar operación",
     "locationNone": "Sin definir",
     "generalOperation": "Operación general",
@@ -158,7 +149,6 @@
     "activitiesCountOne": "1 actividad",
     "activitiesCountOther": "${count} actividades",
     "empty": "Aún no hay actividades — usa Sugerencias y Búsqueda abajo para añadir una",
-    "addActivity": "Añadir actividad",
     "removeActivity": "Quitar",
     "editActivity": "Editar actividad",
     "manageExtensions": "Administrar extensiones",
@@ -176,8 +166,15 @@
     "noNearbySuggestions": "Datos de ubicación no disponibles\nPor lo tanto, no podemos determinar referencias cercanas",
     "distanceKm": "${distance} km",
     "emptySheet": "Usa las sugerencias y la búsqueda abajo para añadir una",
-    "activeCount": "${count} activas",
-    "exports": "Exportar"
+    "exports": "Exportar",
+    "options": "Opciones",
+    "optionsTitle": "Opciones de la operación",
+    "share": "Compartir",
+    "archive": "Archivar",
+    "deleteOperation": "Borrar operación",
+    "alreadySelected": "Ya seleccionada",
+    "enableExtension": "Activar ${name}",
+    "enableExtensionHint": "Esta extensión coincide con tu búsqueda, pero no está activada"
   },
   "loggingControls": {
     "timeUtc": "Hora (UTC)",

@@ -463,6 +463,7 @@ class _OnboardingOverlayViewState extends State<OnboardingOverlayView> {
               Text(s.callsignBody, style: bodyStyle),
               const SizedBox(height: 16),
               TextField(
+                selectAllOnFocus: false,
                 controller: _callsignController,
                 autofocus: true,
                 textCapitalization: TextCapitalization.characters,

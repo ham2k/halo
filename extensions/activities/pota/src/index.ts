@@ -159,6 +159,9 @@ const ActivityHook = {
         color: manifest.accentColor,
         order: 10,
         optionType: 'optional',
+        // POTA n-fers: one operation can activate several parks at once,
+        // and a QSO can hunt several.
+        allowsMultiple: true,
         input: {
           kind: 'refList',
           refType: HUNTING_TYPE,
@@ -183,6 +186,9 @@ const ActivityHook = {
         color: manifest.accentColor,
         order: 10,
         optionType: 'optional',
+        // POTA n-fers: one operation can activate several parks at once,
+        // and a QSO can hunt several.
+        allowsMultiple: true,
         input: {
           kind: 'refList',
           refType: ACTIVATION_TYPE,
@@ -237,6 +243,7 @@ const ActivityHook = {
         shortLabel: `POTA ${row.key}`,
         distance,
         relevance: relevanceForMatch(row, searchTerm),
+        allowsMultiple: true,
       }
     })
 
@@ -261,6 +268,7 @@ const ActivityHook = {
         label: `POTA ${normalizedSearch}: ${name}`,
         shortLabel: `POTA ${normalizedSearch}`,
         relevance: 1,
+        allowsMultiple: true,
       })
     }
 

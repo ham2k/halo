@@ -9,7 +9,9 @@
 
 import 'dart:async';
 import 'dart:convert';
+import 'dart:ui' show lerpDouble;
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:halo_core/halo_core.dart';
 import 'package:halo_widgets/halo_widgets.dart';
@@ -24,7 +26,6 @@ import 'operation/information_panel.dart';
 import 'operation/logging_panel.dart';
 import 'operation/map_panel.dart';
 import 'operation/operation_export_screen.dart';
-import 'operation/operation_location_screen.dart';
 import 'operation/spots_panel.dart';
 import '../tools/operation_title.dart';
 import '../i18n/strings.g.dart';
@@ -53,7 +54,12 @@ class OperationView extends StatefulWidget {
   State<OperationView> createState() => _OperationViewState();
 }
 
-class _OperationViewState extends State<OperationView> with SingleTickerProviderStateMixin {
+// TickerProviderStateMixin, not the Single- variant: this State creates a NEW
+// TabController whenever the tab count changes (the two-pane breakpoint swaps
+// a 4-tab layout for a 3-tab one), so more than one ticker exists over its
+// lifetime — which is exactly what SingleTickerProviderStateMixin asserts
+// against, and what resizing across the breakpoint used to trip.
+class _OperationViewState extends State<OperationView> with TickerProviderStateMixin {
   Operation? _operation;
   List<Map<String, dynamic>> _loggingControls = const [];
   late bool _showRSTFields = widget.services.settings.showRSTFields;
@@ -96,8 +102,99 @@ class _OperationViewState extends State<OperationView> with SingleTickerProvider
   /// only input that changes during the view's life (the uuid is fixed).
   Stream<List<Qso>>? _qsoStream;
   bool? _qsoStreamIncludesDeleted;
-  bool _activitiesSheetOpen = false;
   Operation? _draftOperation;
+
+  /// The open sheet's own slide animation, or null when no sheet is up —
+  /// what [_HeaderGrabHandle] animates against, so the handle moves WITH the
+  /// pane instead of guessing at its timing. Null again the moment the pane
+  /// is gone, which is the handle's cue to bounce back.
+  final ValueNotifier<Animation<double>?> _sheetAnimation = ValueNotifier(null);
+
+  /// The draft's ref-derived title fragments, suggested but deliberately not
+  /// cached (the draft has no saved row to cache into) — null until the first
+  /// suggestion for the current draft lands, at which point the header stops
+  /// using the saved row's now-stale cache. Same generation-counter guard as
+  /// OperationTitleService: an older, slower fan-out must not overwrite a
+  /// newer one's result.
+  OperationTitleFragments? _draftTitleFragments;
+  int _draftTitleGeneration = 0;
+
+  /// Re-suggests the header title for the sheet's buffered draft. Fire-and-
+  /// forget, like the saved-row retitle — the title is a display enhancement,
+  /// so a failed or superseded run just leaves the previous one showing.
+  Future<void> _retitleDraft(Operation draft) async {
+    final generation = ++_draftTitleGeneration;
+    final fragments = await widget.services.operationTitles.suggestFragments(draft);
+    if (!mounted || fragments == null || generation != _draftTitleGeneration) return;
+    setState(() => _draftTitleFragments = fragments);
+  }
+
+  /// The operation header, with the grab pill painted ON TOP of the toolbar
+  /// row rather than inside `flexibleSpace` — AppBar stacks flexibleSpace
+  /// BEHIND the title, so the pill (and the opaque plate meant to keep a long
+  /// subtitle clear of it) ended up under the very text it needed to mask.
+  /// The pill still anchors to the toolbar's own bottom edge, so a tab bar
+  /// attached below doesn't drag it down with it (issue #266).
+  PreferredSizeWidget _headerWithGrabHandle(
+    BuildContext context, {
+    required AppBar appBar,
+    required VoidCallback onGrabTap,
+  }) {
+    final theme = Theme.of(context);
+    return PreferredSize(
+      preferredSize: appBar.preferredSize,
+      // Clip.none so the pill can hang below the header's own bounds — see
+      // the translate below.
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          appBar,
+          Positioned(
+            top: 0,
+            left: 0,
+            right: 0,
+            height: theme.appBarTheme.toolbarHeight ?? kToolbarHeight,
+            child: Align(
+              alignment: Alignment.bottomCenter,
+              // The 5px clearance from the toolbar's own bottom edge that the
+              // original bottom:5 offset gave it, then translated DOWN so the
+              // pill straddles the header's edge. A translate, not padding,
+              // because it must not add to the header's height — the pill
+              // floats over what's below rather than pushing it down.
+              child: Padding(
+                padding: const EdgeInsets.only(bottom: 5),
+                child: Transform.translate(
+                  offset: const Offset(0, _headerGrabFloat),
+                  child: MouseRegion(
+                    cursor: SystemMouseCursors.click,
+                    child: GestureDetector(
+                      behavior: HitTestBehavior.opaque,
+                      onTap: onGrabTap,
+                      // Opaque, in the header's own color, so a long subtitle
+                      // runs behind the pill instead of through it. Sized by
+                      // the pill, so it grows and shrinks with the open/close
+                      // animation.
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 10),
+                        decoration: BoxDecoration(
+                          color: theme.appBarTheme.backgroundColor ?? theme.colorScheme.primary,
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: _HeaderGrabHandle(
+                          sheetAnimation: _sheetAnimation,
+                          color: theme.colorScheme.onPrimary.withValues(alpha: 0.5),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 
   Stream<List<Qso>> _qsosStream() {
     if (_qsoStream == null || _qsoStreamIncludesDeleted != _showDeletedQSOs) {
@@ -141,19 +238,24 @@ class _OperationViewState extends State<OperationView> with SingleTickerProvider
   /// calls `DefaultTabController.of(context)` here, it will throw (no
   /// ancestor found) — reach for `_tabController` directly instead, or
   /// thread it down explicitly.
-  /// ancestor found) — reach for `_tabController` directly instead, or
-  /// thread it down explicitly.
   TabController? _tabController;
 
   void _updateTabControllerIfNeeded(int requiredLength) {
     if (_tabController == null || _tabController!.length != requiredLength) {
       final oldIndex = _tabController?.index ?? 0;
-      _tabController?.dispose();
+      final previous = _tabController;
       _tabController = TabController(
         length: requiredLength,
         vsync: this,
         initialIndex: oldIndex.clamp(0, requiredLength - 1),
       );
+      // Disposed after the frame, not here: this runs DURING build, and the
+      // TabBar/TabBarView still holding the old controller are only rebuilt
+      // with the new one later in the same frame — disposing it inline makes
+      // them touch a dead controller.
+      if (previous != null) {
+        WidgetsBinding.instance.addPostFrameCallback((_) => previous.dispose());
+      }
     }
   }
 
@@ -277,6 +379,7 @@ class _OperationViewState extends State<OperationView> with SingleTickerProvider
     _rescoreSub?.cancel();
     _rescoreDebounce?.cancel();
     _tabController?.dispose();
+    _sheetAnimation.dispose();
     super.dispose();
   }
 
@@ -286,14 +389,16 @@ class _OperationViewState extends State<OperationView> with SingleTickerProvider
     setState(() => _operation = operation);
     if (operation == null) return;
 
-    // Post-frame: the view must be laid out before showModalPane can size
-    // itself against it. With no profile callsign yet (fresh install — no
-    // onboarding flow exists), the callsign editor takes the Activities
-    // pane's place: setting an identity comes first.
+    // With no profile callsign yet (fresh install — no onboarding flow
+    // exists), the callsign editor takes the Activities pane's place:
+    // setting an identity comes first.
     if (widget.openActivities && !_openedActivities) {
       _openedActivities = true;
-      Future.delayed(const Duration(milliseconds: 500), () {
-        if (!mounted) return;
+      _afterPushTransition(() {
+        // The screen we were pushed over can still hold focus while its
+        // subtree goes away; leaving it focused lets the engine move DOM
+        // focus through a Focus node that is already inactive (web).
+        FocusManager.instance.primaryFocus?.unfocus();
         if (widget.services.settings.activeProfile.operatorCall.isEmpty) {
           _promptForCallsign(operation);
         } else {
@@ -320,6 +425,28 @@ class _OperationViewState extends State<OperationView> with SingleTickerProvider
         unawaited(widget.services.operationTitles.retitleOperation(operation));
       }
     }
+  }
+
+  /// Runs [action] once this view's push transition has settled. The pane
+  /// showModalPane opens sizes itself against this view, so it must not go up
+  /// before the view is laid out — and pushing it mid-transition races the
+  /// teardown of the screen we were pushed over.
+  void _afterPushTransition(VoidCallback action) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final animation = ModalRoute.of(context)?.animation;
+      if (animation == null || animation.status == AnimationStatus.completed) {
+        action();
+        return;
+      }
+      void onStatus(AnimationStatus status) {
+        if (status != AnimationStatus.completed) return;
+        animation.removeStatusListener(onStatus);
+        if (mounted) action();
+      }
+
+      animation.addStatusListener(onStatus);
+    });
   }
 
   bool _sameRefs(Object? a, Object? b) => jsonEncode(a) == jsonEncode(b);
@@ -439,38 +566,7 @@ class _OperationViewState extends State<OperationView> with SingleTickerProvider
     );
   }
 
-  Future<void> _editActivities(Operation operation) async {
-    final opSheetEnabled = widget.services.settings.experimentEnabled('opsheet');
-    if (opSheetEnabled) {
-      return _openOperationSheet(operation);
-    }
-
-    final activitiesKey = GlobalKey<ActivitiesPaneState>();
-    final hasUpdatesNotifier = ValueNotifier<bool>(false);
-    if (!mounted) return;
-    try {
-      await showModalPane<void>(
-        context,
-        title: context.t.operation.sections.activities,
-        closeTooltip: context.t.common.close,
-        scrollable: false,
-        builder: (_) => ActivitiesPane(
-          key: activitiesKey,
-          services: widget.services,
-          operation: operation,
-          hasUpdatesNotifier: hasUpdatesNotifier,
-          // Unlike the 'opsheet' experiment's buffered edit + explicit
-          // Save/Cancel, this plain modal has no save control of its own —
-          // it must persist each edit immediately as it comes in, or
-          // everything is silently lost on close.
-          onOperationChanged: (updated) => widget.services.operations.saveData(updated),
-          onExport: () => _export(operation),
-        ),
-      );
-    } finally {
-      // no cleanup needed
-    }
-  }
+  Future<void> _editActivities(Operation operation) => _openOperationSheet(operation);
 
   Future<void> _openOperationSheet(Operation operation) async {
     // No manual re-fetch on pop: watchOperation streams the change back.
@@ -480,19 +576,39 @@ class _OperationViewState extends State<OperationView> with SingleTickerProvider
     // while typing in the suggestions search would close the whole pane.
     final sheetKey = GlobalKey<OperationSheetState>();
     final hasUpdatesNotifier = ValueNotifier<bool>(false);
+    // The pane's header lives in the modal route's own subtree, so this
+    // screen's setState never rebuilds it — the draft has to reach it as a
+    // listenable or the chips freeze at the values the sheet opened with.
+    final draftNotifier = ValueNotifier<Operation>(operation);
     if (!mounted) return;
-    setState(() {
-      _activitiesSheetOpen = true;
-      _draftOperation = operation;
-    });
+    setState(() => _draftOperation = operation);
     try {
       await showTopModalPane<void>(
         context,
         closeTooltip: context.t.common.close,
-        title: Builder(
-          builder: (context) {
-            final stationCall = _draftOperation?.stationCall ?? operation.stationCall;
-            final operatorCall = (_draftOperation?.data['operatorCall'] as String?) ?? (operation.data['operatorCall'] as String?);
+        onAnimation: (animation) => _sheetAnimation.value = animation,
+        title: ValueListenableBuilder<Operation>(
+          valueListenable: draftNotifier,
+          builder: (context, draft, _) {
+            final stationCall = draft.stationCall;
+            final operatorCall = draft.data['operatorCall'] as String?;
+            final operationTitle = draft.title;
+            final notes = (draft.data['notes'] as String?) ?? '';
+
+            final theme = Theme.of(context);
+            final chipColor = theme.appBarTheme.backgroundColor ?? theme.colorScheme.primary;
+            final chipTextStyle = theme.textTheme.labelLarge?.copyWith(
+              color: theme.colorScheme.onPrimary,
+              fontWeight: FontWeight.bold,
+            );
+            Widget chip(Widget child) => Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: chipColor,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: DefaultTextStyle.merge(style: chipTextStyle, child: child),
+                );
 
             return Align(
               alignment: Alignment.centerLeft,
@@ -520,6 +636,7 @@ class _OperationViewState extends State<OperationView> with SingleTickerProvider
                           localData: _draftOperation!.localData,
                         );
                       });
+                      draftNotifier.value = _draftOperation!;
                       sheetKey.currentState?.updateOperation(_draftOperation!);
                     }
                   },
@@ -527,13 +644,8 @@ class _OperationViewState extends State<OperationView> with SingleTickerProvider
                     spacing: 8,
                     runSpacing: 4,
                     children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: Theme.of(context).appBarTheme.backgroundColor ?? Theme.of(context).colorScheme.primary,
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Text.rich(
+                      chip(
+                        Text.rich(
                           TextSpan(
                             children: [
                               const TextSpan(text: 'Station: '),
@@ -543,20 +655,11 @@ class _OperationViewState extends State<OperationView> with SingleTickerProvider
                               ),
                             ],
                           ),
-                          style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                            color: Theme.of(context).colorScheme.onPrimary,
-                            fontWeight: FontWeight.bold,
-                          ),
                         ),
                       ),
                       if (operatorCall != null && operatorCall.isNotEmpty)
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                          decoration: BoxDecoration(
-                            color: Theme.of(context).appBarTheme.backgroundColor ?? Theme.of(context).colorScheme.primary,
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Text.rich(
+                        chip(
+                          Text.rich(
                             TextSpan(
                               children: [
                                 const TextSpan(text: 'Op: '),
@@ -566,9 +669,40 @@ class _OperationViewState extends State<OperationView> with SingleTickerProvider
                                 ),
                               ],
                             ),
-                            style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                              color: Theme.of(context).colorScheme.onPrimary,
-                              fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      // A title is free text and can run long — it ellipsizes
+                      // rather than pushing the callsign chips off the header
+                      // (or wrapping the whole row onto a second line).
+                      if (operationTitle.isNotEmpty)
+                        ConstrainedBox(
+                          constraints: const BoxConstraints(maxWidth: 240),
+                          child: chip(
+                            Text(operationTitle, maxLines: 1, overflow: TextOverflow.ellipsis),
+                          ),
+                        ),
+                      // Notes have no useful short form, so this chip only
+                      // says that there ARE notes — the details are one tap
+                      // away, in the same operation-details dialog. The icon
+                      // rides inside a Text so the chip takes its height from
+                      // the same line box as its text-bearing siblings,
+                      // rather than from the glyph.
+                      if (notes.trim().isNotEmpty)
+                        chip(
+                          Text.rich(
+                            WidgetSpan(
+                              alignment: PlaceholderAlignment.middle,
+                              // Nudged up 1px: the glyph's own bearing sits
+                              // it slightly low against the text line box
+                              // that PlaceholderAlignment.middle centers on.
+                              child: Transform.translate(
+                                offset: const Offset(0, -1),
+                                child: Icon(
+                                  resolveIconName('file-document'),
+                                  size: 16,
+                                  color: theme.colorScheme.onPrimary,
+                                ),
+                              ),
                             ),
                           ),
                         ),
@@ -634,28 +768,39 @@ class _OperationViewState extends State<OperationView> with SingleTickerProvider
           operation: operation,
           hasUpdatesNotifier: hasUpdatesNotifier,
           onOperationChanged: (updated) {
-            if (mounted) {
-              setState(() => _draftOperation = updated);
+            if (!mounted) return;
+            final previous = _draftOperation;
+            setState(() => _draftOperation = updated);
+            draftNotifier.value = updated;
+            // Refs are the only input the title is built from, so nothing
+            // else in the draft is worth a hook fan-out.
+            if (previous == null || !_sameRefs(previous.data['refs'], updated.data['refs'])) {
+              unawaited(_retitleDraft(updated));
             }
           },
           onExport: () => _export(_draftOperation ?? operation),
+          // Close the sheet first: both the confirmation and the pop that
+          // follows it belong to this screen, not to the pane stacked over
+          // it — and the draft's unsaved edits are moot once it's deleted.
+          onDelete: () {
+            Navigator.of(context).pop();
+            unawaited(_delete(operation));
+          },
         ),
       );
     } finally {
       if (mounted) {
         setState(() {
-          _activitiesSheetOpen = false;
           _draftOperation = null;
+          // Back to the saved row's own cache — which retitleOperation
+          // refreshes off the stream if the draft was saved.
+          _draftTitleFragments = null;
+          _draftTitleGeneration++;
         });
       }
+      _sheetAnimation.value = null;
+      draftNotifier.dispose();
     }
-  }
-
-  Future<void> _editDetails(Operation operation) async {
-    // The edit persists through the repository; watchOperation delivers the
-    // new row (and _onOperationChanged re-resolves the entity prefix if the
-    // station call changed) — no manual setState needed.
-    await editOperationDetails(context, widget.services.operations, operation);
   }
 
   Future<void> _resolveOurEntityPrefix(Operation operation) async {
@@ -667,14 +812,6 @@ class _OperationViewState extends State<OperationView> with SingleTickerProvider
     );
     final ourGuess = ourInfo?['guess'] as Map<String, dynamic>?;
     if (mounted) setState(() => _ourEntityPrefix = ourGuess?['entityPrefix'] as String?);
-  }
-
-  Future<void> _editLocation(Operation operation) async {
-    // No manual re-fetch on pop: watchOperation streams the change back.
-    await showHaloDialog<void>(
-      context: context,
-      builder: (_) => OperationLocationScreen(services: widget.services, operation: operation),
-    );
   }
 
   Future<void> _delete(Operation operation) async {
@@ -715,13 +852,10 @@ class _OperationViewState extends State<OperationView> with SingleTickerProvider
     required Widget infoPanel,
     required Widget spotsPanel,
     required Widget mapPanel,
-    required Widget settingsPanel,
     required int realQsoCount,
   }) {
-    final bool opSheetEnabled = widget.services.settings.experimentEnabled('opsheet');
-    final ids = opSheetEnabled
-        ? ['logging', 'info', 'spots', 'map']
-        : ['logging', 'info', 'spots', 'map', 'operation'];
+    // No 'operation' pane: its settings live in the operation sheet.
+    const ids = ['logging', 'info', 'spots', 'map'];
     if (_dockSpec == null || !DockLayoutView.specMatches(_dockSpec, ids)) {
       final persisted = DockNode.fromJson(widget.services.settings.layoutData(LayoutKeys.operationDock));
       _dockSpec = DockLayoutView.specMatches(persisted, ids)
@@ -729,7 +863,7 @@ class _OperationViewState extends State<OperationView> with SingleTickerProvider
           : DockSplit(Axis.horizontal, [
               DockGroup(['logging']),
               // Selected: Info, matching the fixed wide layout's initial tab.
-              DockGroup(opSheetEnabled ? ['info', 'spots', 'map'] : ['info', 'spots', 'map', 'operation']),
+              DockGroup(['info', 'spots', 'map']),
             ], [2, 1]);
     }
     return DockLayoutView(
@@ -740,14 +874,12 @@ class _OperationViewState extends State<OperationView> with SingleTickerProvider
         'info': context.t.operation.tabs.info,
         'spots': context.t.operation.tabs.spots,
         'map': context.t.operation.tabs.map,
-        if (!opSheetEnabled) 'operation': context.t.operation.tabs.operation,
       },
       children: {
         'logging': loggingPanel,
         'info': infoPanel,
         'spots': spotsPanel,
         'map': mapPanel,
-        if (!opSheetEnabled) 'operation': settingsPanel,
       },
       onSpecChanged: (node) {
         _dockSpec = node;
@@ -758,9 +890,34 @@ class _OperationViewState extends State<OperationView> with SingleTickerProvider
 
   @override
   Widget build(BuildContext context) {
-    final operation = _draftOperation ?? _operation;
-    if (operation == null) {
+    final current = _draftOperation ?? _operation;
+    if (current == null) {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
+    Operation operation = current;
+    // While the sheet buffers ref edits, the row's cached titleSuggestion
+    // still describes the SAVED refs — swap in the draft's freshly suggested
+    // fragments so the header retitles as activities are picked, not on Save.
+    final draftFragments = _draftTitleFragments;
+    if (_draftOperation != null && draftFragments != null) {
+      operation = Operation(
+        uuid: operation.uuid,
+        data: operation.data,
+        qsoCount: operation.qsoCount,
+        startAtMillisMin: operation.startAtMillisMin,
+        startAtMillisMax: operation.startAtMillisMax,
+        localData: {
+          ...operation.localData,
+          'titleSuggestion': draftFragments.isEmpty
+              ? null
+              : {
+                  'title': draftFragments.title,
+                  'for': draftFragments.forText,
+                  'at': draftFragments.atText,
+                  'subtitle': draftFragments.subtitle,
+                },
+        },
+      );
     }
 
     return StreamBuilder<List<Qso>>(
@@ -846,80 +1003,20 @@ class _OperationViewState extends State<OperationView> with SingleTickerProvider
           callInfo: _callInfo,
           ourEntityPrefix: _ourEntityPrefix,
         );
-        final settingsPanel = OperationSettingsPanel(
-          operation: operation,
-          qsoCount: realQsoCount,
-          onEditDetails: () => _editDetails(operation),
-          onEditActivities: () => _editActivities(operation),
-          onEditLocation: () => _editLocation(operation),
-          onExport: realQsoCount == 0 ? null : () => _export(operation),
-          onDelete: () => _delete(operation),
-        );
-
-        final bool opSheetEnabled = widget.services.settings.experimentEnabled('opsheet');
-
-        final List<Widget> tabs = [];
-        final List<Widget> tabChildren = [];
-
-        if (opSheetEnabled) {
-          if (isTwoPane) {
-            // Wide view + OPSHEET enabled: 3 tabs (Info, Spots, Map)
-            tabs.addAll([
-              Tab(text: context.t.operation.tabs.info),
-              Tab(text: context.t.operation.tabs.spots),
-              Tab(text: context.t.operation.tabs.map),
-            ]);
-            tabChildren.addAll([
-              infoPanel,
-              spotsPanel,
-              mapPanel,
-            ]);
-          } else {
-            // Narrow view + OPSHEET enabled: 4 tabs (QSOs, Info, Spots, Map)
-            tabs.addAll([
-              Tab(text: context.t.operation.tabs.qsos(count: formatNumber(realQsoCount))),
-              Tab(text: context.t.operation.tabs.info),
-              Tab(text: context.t.operation.tabs.spots),
-              Tab(text: context.t.operation.tabs.map),
-            ]);
-            tabChildren.addAll([
-              _KeepAlive(child: loggingPanel),
-              infoPanel,
-              spotsPanel,
-              mapPanel,
-            ]);
-          }
-        } else {
-          if (isTwoPane) {
-            // Wide view + OPSHEET disabled: 4 tabs (Info, Spots, Map, Operation)
-            tabs.addAll([
-              Tab(text: context.t.operation.tabs.info),
-              Tab(text: context.t.operation.tabs.spots),
-              Tab(text: context.t.operation.tabs.map),
-              Tab(text: context.t.operation.tabs.operation),
-            ]);
-            tabChildren.addAll([
-              infoPanel,
-              spotsPanel,
-              mapPanel,
-              settingsPanel,
-            ]);
-          } else {
-            // Narrow view + OPSHEET disabled: 4 tabs (QSOs, Spots, Map, Operation)
-            tabs.addAll([
-              Tab(text: context.t.operation.tabs.qsos(count: formatNumber(realQsoCount))),
-              Tab(text: context.t.operation.tabs.spots),
-              Tab(text: context.t.operation.tabs.map),
-              Tab(text: context.t.operation.tabs.operation),
-            ]);
-            tabChildren.addAll([
-              _KeepAlive(child: loggingPanel),
-              spotsPanel,
-              mapPanel,
-              settingsPanel,
-            ]);
-          }
-        }
+        // Wide: Info, Spots, Map — logging has its own pane in the split.
+        // Narrow: QSOs first, since logging is what the view is for.
+        final List<Widget> tabs = [
+          if (!isTwoPane) Tab(text: context.t.operation.tabs.qsos(count: formatNumber(realQsoCount))),
+          Tab(text: context.t.operation.tabs.info),
+          Tab(text: context.t.operation.tabs.spots),
+          Tab(text: context.t.operation.tabs.map),
+        ];
+        final List<Widget> tabChildren = [
+          if (!isTwoPane) _KeepAlive(child: loggingPanel),
+          infoPanel,
+          spotsPanel,
+          mapPanel,
+        ];
 
         _updateTabControllerIfNeeded(tabs.length);
 
@@ -945,153 +1042,124 @@ class _OperationViewState extends State<OperationView> with SingleTickerProvider
           // keyboard with its own bottom spacer (see LoggingControls); the
           // Quick Lookup / branding panes do the same on Home.
           resizeToAvoidBottomInset: false,
-          appBar: AppBar(
-            flexibleSpace: GestureDetector(
-              behavior: HitTestBehavior.opaque,
-              onTap: () => _editActivities(operation),
-              child: Stack(
-                children: [
-                  if (windowHeaderGestureArea() != null)
-                    windowHeaderGestureArea()!,
-                  if (!_activitiesSheetOpen)
-                    // flexibleSpace fills the AppBar's whole extent —
-                    // toolbarHeight PLUS the tab bar's height whenever
-                    // `bottom: tabBar` is set below (narrow windows). A
-                    // plain `Positioned(bottom: 5, ...)` measured from that
-                    // combined extent, so the grab pill painted flush with
-                    // the tabs instead of the header row on narrow windows
-                    // (issue #266). Anchoring a toolbarHeight-tall box to
-                    // the stack's own top, then aligning the pill to ITS
-                    // bottom, keeps the pill under the title regardless of
-                    // whether a tab bar is attached below.
-                    Positioned(
-                      top: 0,
-                      left: 0,
-                      right: 0,
-                      height: Theme.of(context).appBarTheme.toolbarHeight ?? kToolbarHeight,
-                      child: Align(
-                        alignment: Alignment.bottomCenter,
-                        // Same 5px clearance from the toolbar's own bottom
-                        // edge the old bottom:5 offset gave it.
-                        child: Padding(
-                          padding: const EdgeInsets.only(bottom: 5),
-                          child: MouseRegion(
-                            cursor: SystemMouseCursors.click,
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(vertical: 4),
-                              color: Colors.transparent,
-                              child: Container(
-                                key: const Key('operationHeaderGrab'),
-                                width: 24,
-                                height: 3,
-                                decoration: BoxDecoration(
-                                  color: Theme.of(context).colorScheme.onPrimary.withValues(alpha: 0.5),
-                                  borderRadius: BorderRadius.circular(1.5),
-                                ),
-                              ),
+          appBar: _headerWithGrabHandle(
+            context,
+            onGrabTap: () => _editActivities(operation),
+            appBar: AppBar(
+              flexibleSpace: GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onTap: () => _editActivities(operation),
+                child: Stack(
+                  children: [
+                    if (windowHeaderGestureArea() != null)
+                      windowHeaderGestureArea()!,
+                  ],
+                ),
+              ),
+              leadingWidth: macOSAwareLeadingWidth(context),
+              leading: macOSAwareBackButton(context),
+              actions: [
+                PopupMenuButton<VoidCallback>(
+                  icon: Icon(resolveIconName('dots-vertical')),
+                  onSelected: (toggle) => toggle(),
+                  itemBuilder: (context) => [
+                    CheckedPopupMenuItem<VoidCallback>(
+                      checked: _showRSTFields,
+                      value: () => _toggleMenuSetting(
+                        current: _showRSTFields,
+                        apply: (v) => _showRSTFields = v,
+                        persist: widget.services.settings.setShowRSTFields,
+                      ),
+                      child: Text(context.t.operation.menu.showRstFields),
+                    ),
+                    CheckedPopupMenuItem<VoidCallback>(
+                      checked: _showStateField,
+                      value: () => _toggleMenuSetting(
+                        current: _showStateField,
+                        apply: (v) => _showStateField = v,
+                        persist: widget.services.settings.setShowStateField,
+                      ),
+                      child: Text(context.t.operation.menu.showStateField),
+                    ),
+                    CheckedPopupMenuItem<VoidCallback>(
+                      checked: _showGridField,
+                      value: () => _toggleMenuSetting(
+                        current: _showGridField,
+                        apply: (v) => _showGridField = v,
+                        persist: widget.services.settings.setShowGridField,
+                      ),
+                      child: Text(context.t.operation.menu.showGridField),
+                    ),
+                    CheckedPopupMenuItem<VoidCallback>(
+                      checked: _showDeletedQSOs,
+                      value: () => _toggleMenuSetting(
+                        current: _showDeletedQSOs,
+                        apply: (v) => _showDeletedQSOs = v,
+                        persist: widget.services.settings.setShowDeletedQSOs,
+                      ),
+                      child: Text(context.t.operation.menu.showDeletedQsos),
+                    ),
+                    CheckedPopupMenuItem<VoidCallback>(
+                      checked: _showQsoNumbers,
+                      value: () => _toggleMenuSetting(
+                        current: _showQsoNumbers,
+                        apply: (v) => _showQsoNumbers = v,
+                        persist: widget.services.settings.setShowQsoNumbers,
+                      ),
+                      child: Text(context.t.operation.menu.showQsoNumbers),
+                    ),
+                    const PopupMenuDivider(),
+                    PopupMenuItem<VoidCallback>(
+                      // Refreshes lookup data (QRZ, HamDB…) for the whole log
+                      // via the background queue — progress shows in the
+                      // status bar, and rows repaint as results land. The
+                      // queue itself filters out event markers etc.
+                      value: () => widget.services.lookupQueue.enqueueAll(qsos),
+                      child: Text(context.t.operation.menu.lookupAllQsos),
+                    ),
+                  ],
+                ),
+                const SizedBox(width: 8),
+                windowsCaptionSpacer(context),
+              ],
+              title: InkWell(
+                onTap: () => _editActivities(operation),
+                mouseCursor: SystemMouseCursors.click,
+                // Keeps the text out of the grab pill's band along the
+                // toolbar's bottom edge (see _headerGrabBand). The pill
+                // floats over this row, and a long subtitle would otherwise
+                // run straight through it — most visibly mid-animation, when
+                // the pill is at its widest.
+                child: Padding(
+                  padding: const EdgeInsets.only(bottom: _headerGrabBand),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Title and description each shrink to fit their own
+                      // width independently (issue #182) rather than
+                      // truncating — down to half their natural font size,
+                      // past which the line ellipsizes instead.
+                      shrinkToFitText(
+                        Text('${operation.stationCall} ${displayTitleFor(context, operation)}'),
+                      ),
+                      if (refsLine.isNotEmpty)
+                        shrinkToFitText(
+                          Text(
+                            refsLine,
+                            style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                              color: Theme.of(context).colorScheme.onPrimary.withValues(alpha: 0.85),
                             ),
                           ),
                         ),
-                      ),
-                    ),
-                ],
+                    ],
+                  ),
+                ),
               ),
+              // On two-pane layouts the tabs move into the right-side pane
+              // below.
+              bottom: isTwoPane ? null : tabBar,
             ),
-            leadingWidth: macOSAwareLeadingWidth(context),
-            leading: macOSAwareBackButton(context),
-            actions: [
-              PopupMenuButton<VoidCallback>(
-                icon: Icon(resolveIconName('dots-vertical')),
-                onSelected: (toggle) => toggle(),
-                itemBuilder: (context) => [
-                  CheckedPopupMenuItem<VoidCallback>(
-                    checked: _showRSTFields,
-                    value: () => _toggleMenuSetting(
-                      current: _showRSTFields,
-                      apply: (v) => _showRSTFields = v,
-                      persist: widget.services.settings.setShowRSTFields,
-                    ),
-                    child: Text(context.t.operation.menu.showRstFields),
-                  ),
-                  CheckedPopupMenuItem<VoidCallback>(
-                    checked: _showStateField,
-                    value: () => _toggleMenuSetting(
-                      current: _showStateField,
-                      apply: (v) => _showStateField = v,
-                      persist: widget.services.settings.setShowStateField,
-                    ),
-                    child: Text(context.t.operation.menu.showStateField),
-                  ),
-                  CheckedPopupMenuItem<VoidCallback>(
-                    checked: _showGridField,
-                    value: () => _toggleMenuSetting(
-                      current: _showGridField,
-                      apply: (v) => _showGridField = v,
-                      persist: widget.services.settings.setShowGridField,
-                    ),
-                    child: Text(context.t.operation.menu.showGridField),
-                  ),
-                  CheckedPopupMenuItem<VoidCallback>(
-                    checked: _showDeletedQSOs,
-                    value: () => _toggleMenuSetting(
-                      current: _showDeletedQSOs,
-                      apply: (v) => _showDeletedQSOs = v,
-                      persist: widget.services.settings.setShowDeletedQSOs,
-                    ),
-                    child: Text(context.t.operation.menu.showDeletedQsos),
-                  ),
-                  CheckedPopupMenuItem<VoidCallback>(
-                    checked: _showQsoNumbers,
-                    value: () => _toggleMenuSetting(
-                      current: _showQsoNumbers,
-                      apply: (v) => _showQsoNumbers = v,
-                      persist: widget.services.settings.setShowQsoNumbers,
-                    ),
-                    child: Text(context.t.operation.menu.showQsoNumbers),
-                  ),
-                  const PopupMenuDivider(),
-                  PopupMenuItem<VoidCallback>(
-                    // Refreshes lookup data (QRZ, HamDB…) for the whole log
-                    // via the background queue — progress shows in the
-                    // status bar, and rows repaint as results land. The
-                    // queue itself filters out event markers etc.
-                    value: () => widget.services.lookupQueue.enqueueAll(qsos),
-                    child: Text(context.t.operation.menu.lookupAllQsos),
-                  ),
-                ],
-              ),
-              const SizedBox(width: 8),
-              windowsCaptionSpacer(context),
-            ],
-            title: InkWell(
-              onTap: () => _editActivities(operation),
-              mouseCursor: SystemMouseCursors.click,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Title and description each shrink to fit their own
-                  // width independently (issue #182) rather than
-                  // truncating — down to half their natural font size,
-                  // past which the line ellipsizes instead.
-                  shrinkToFitText(
-                    Text('${operation.stationCall} ${displayTitleFor(context, operation)}'),
-                  ),
-                  if (refsLine.isNotEmpty)
-                    shrinkToFitText(
-                      Text(
-                        refsLine,
-                        style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                          color: Theme.of(context).colorScheme.onPrimary.withValues(alpha: 0.85),
-                        ),
-                      ),
-                    ),
-                ],
-              ),
-            ),
-            // On two-pane layouts the tabs move into the right-side pane
-            // below.
-            bottom: isTwoPane ? null : tabBar,
           ),
           // One tab set either way, always 4 tabs on the one controller —
           // it is never recreated, so the selected index carries across a
@@ -1108,7 +1176,6 @@ class _OperationViewState extends State<OperationView> with SingleTickerProvider
                     infoPanel: infoPanel,
                     spotsPanel: spotsPanel,
                     mapPanel: mapPanel,
-                    settingsPanel: settingsPanel,
                     realQsoCount: realQsoCount,
                   )
                 : isTwoPane
@@ -1167,103 +1234,203 @@ class _KeepAliveState extends State<_KeepAlive> with AutomaticKeepAliveClientMix
   }
 }
 
-/// Operation settings/activities/data, a scoped-down port of app-polo's
-/// OpSettingsTab: just what this app already has actions for (editing
-/// station/title, managing activity refs, location, export, delete)
-/// rather than app-polo's full set (templates, Wavelog export, etc.), which
-/// this app doesn't have the underlying data/features for yet.
-class OperationSettingsPanel extends StatelessWidget {
-  final Operation operation;
-  final int qsoCount;
-  final VoidCallback onEditDetails;
-  final VoidCallback onEditActivities;
-  final VoidCallback onEditLocation;
-  final VoidCallback? onExport;
-  final VoidCallback onDelete;
 
-  const OperationSettingsPanel({
-    super.key,
-    required this.operation,
-    required this.qsoCount,
-    required this.onEditDetails,
-    required this.onEditActivities,
-    required this.onEditLocation,
-    required this.onExport,
-    required this.onDelete,
-  });
+/// How far the grab pill floats DOWN past the toolbar's bottom edge at rest.
+/// The header applies it as a fixed translate; [_HeaderGrabHandle] animates
+/// the pill back up by the same amount while a sheet is in play.
+const _headerGrabFloat = 8.0;
+
+/// How far the grab pill reaches back UP into the toolbar, plus a little
+/// breathing room. The plate is 11px tall (the 3px bar plus 4px of padding
+/// each side) and its bottom lands [_headerGrabFloat] less the 5px it's
+/// inset by BELOW the toolbar's edge, so the remainder sits inside the
+/// toolbar. The header title reserves that band, so a long subtitle never
+/// runs through the pill — most visible mid-animation, at the pill's widest.
+const _headerGrabBand = (3 + 4 + 4) - (_headerGrabFloat - 5) + 2.0;
+
+/// The grab pill in the operation header, animated against the sheet it
+/// opens (ham2k/app-halo-dist#312).
+///
+/// Opening: it widens slightly, then collapses into its own center — it
+/// reads as the pill *becoming* the sheet rather than blinking out.
+/// Closing: it grows back out of the center as the sheet slides up, ending
+/// [_expandFactor] wider than usual at the moment the sheet is gone, then
+/// springs back to its resting width.
+class _HeaderGrabHandle extends StatefulWidget {
+  /// The open sheet's slide animation (0 = closed, 1 = fully open), or null
+  /// when there's no sheet — see `_OperationViewState._sheetAnimation`.
+  final ValueListenable<Animation<double>?> sheetAnimation;
+  final Color color;
+
+  const _HeaderGrabHandle({required this.sheetAnimation, required this.color});
+
+  @override
+  State<_HeaderGrabHandle> createState() => _HeaderGrabHandleState();
+}
+
+class _HeaderGrabHandleState extends State<_HeaderGrabHandle> with SingleTickerProviderStateMixin {
+  /// Resting size — the pill as it looks with no sheet in play.
+  static const _width = 24.0;
+  static const _height = 3.0;
+
+  /// How far it widens on the way out (a hint of movement) and on the way
+  /// back in (the overshoot the spring settles from).
+  static const _peekFactor = 1.3;
+  static const _expandFactor = 2.4;
+
+  /// Beat between the sheet clearing the screen and the spring — the pill
+  /// sits at its widest for a moment, so the growth and the snap back read as
+  /// two gestures rather than one continuous wobble.
+  static const _holdBeforeSpring = Duration(milliseconds: 200);
+
+  /// Where in the sheet's opening slide the pill finishes widening, and
+  /// where it has finished collapsing. Both well before the sheet is fully
+  /// down, so the pill is long gone by the time it arrives.
+  static const _peekAt = 0.35;
+  static const _goneAt = 0.8;
+
+  /// The vertical move eases IN in both directions — it starts gently and
+  /// picks up speed, so the pill looks like it's being pulled rather than
+  /// snapping to its new spot.
+  static const _liftCurve = Curves.easeIn;
+
+  late final AnimationController _spring = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 700),
+  );
+
+  Animation<double>? _sheet;
+
+  /// True while the pill waits, fully grown, for [_holdBeforeSpring] to pass.
+  bool _holdingExpanded = false;
+  Timer? _holdTimer;
+
+  @override
+  void initState() {
+    super.initState();
+    widget.sheetAnimation.addListener(_onSheetAnimationChanged);
+    _attach(widget.sheetAnimation.value);
+  }
+
+  @override
+  void dispose() {
+    widget.sheetAnimation.removeListener(_onSheetAnimationChanged);
+    _sheet?.removeListener(_onTick);
+    _sheet?.removeStatusListener(_onStatus);
+    _holdTimer?.cancel();
+    _spring.dispose();
+    super.dispose();
+  }
+
+  void _onSheetAnimationChanged() {
+    final next = widget.sheetAnimation.value;
+    // Null means the sheet was POPPED, not that it has finished leaving:
+    // Navigator's future completes when the pop is requested, with the
+    // slide-up still to play. Dropping the animation here would end the
+    // pill's growth the moment the sheet started moving. The animation
+    // reaching `dismissed` is the real "gone" — see [_onStatus] — so a null
+    // is simply ignored.
+    if (next == null) return;
+
+    // A sheet opening cancels any hold or spring: the pill belongs to the
+    // new animation now.
+    _holdTimer?.cancel();
+    _holdingExpanded = false;
+    _spring.stop();
+    _attach(next);
+  }
+
+  void _attach(Animation<double>? animation) {
+    _sheet?.removeListener(_onTick);
+    _sheet?.removeStatusListener(_onStatus);
+    _sheet = animation;
+    _sheet?.addListener(_onTick);
+    _sheet?.addStatusListener(_onStatus);
+    if (mounted) setState(() {});
+  }
+
+  void _onStatus(AnimationStatus status) {
+    if (status != AnimationStatus.dismissed) return;
+    // The sheet has finished sliding up and the pill is at its widest: let go
+    // of the (about to be disposed) route animation, hold that width for a
+    // beat, then spring back.
+    _attach(null);
+    if (!mounted) return;
+    _holdTimer?.cancel();
+    setState(() => _holdingExpanded = true);
+    _holdTimer = Timer(_holdBeforeSpring, () {
+      if (!mounted) return;
+      setState(() => _holdingExpanded = false);
+      _spring.forward(from: 0);
+    });
+  }
+
+  void _onTick() => setState(() {});
+
+  /// Width for a sheet [t] between 0 (closed) and 1 (open). Opening and
+  /// closing are deliberately NOT mirror images: opening is a peek then a
+  /// collapse, closing is one continuous grow that the spring resolves.
+  double _widthForSheet(double t, AnimationStatus status) {
+    if (status == AnimationStatus.reverse) {
+      return _width * _expandFactor * Curves.easeOut.transform(1 - t);
+    }
+    if (t <= _peekAt) {
+      return lerpDouble(_width, _width * _peekFactor, Curves.easeOut.transform(t / _peekAt))!;
+    }
+    final collapsing = ((t - _peekAt) / (_goneAt - _peekAt)).clamp(0.0, 1.0);
+    return lerpDouble(_width * _peekFactor, 0, Curves.easeIn.transform(collapsing))!;
+  }
+
+  /// How far ABOVE its resting position the pill sits, 0..[_headerGrabFloat]:
+  /// it tucks INTO the header as it collapses on open, and drops back out as
+  /// it grows on close, so the vertical move reads as part of the same
+  /// gesture rather than a separate hop.
+  double get _currentLift {
+    final sheet = _sheet;
+    if (sheet == null) return 0;
+    if (sheet.status == AnimationStatus.reverse) {
+      return _headerGrabFloat * (1 - _liftCurve.transform(1 - sheet.value));
+    }
+    return _headerGrabFloat * _liftCurve.transform((sheet.value / _goneAt).clamp(0.0, 1.0));
+  }
+
+  double get _currentWidth {
+    final sheet = _sheet;
+    if (sheet != null) return _widthForSheet(sheet.value, sheet.status);
+    if (_holdingExpanded) return _width * _expandFactor;
+    if (_spring.isAnimating) {
+      // elasticOut overshoots past its end value, so the pill settles with a
+      // wobble rather than simply arriving.
+      return lerpDouble(_width * _expandFactor, _width, Curves.elasticOut.transform(_spring.value))!;
+    }
+    return _width;
+  }
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final refsLine = operation.refs.map((r) => r['shortLabel'] ?? r['ref']).whereType<String>().join(' • ');
-    final locationLine = [
-      operation.grid,
-      operation.data['state'],
-      operation.data['county'],
-    ].whereType<String>().where((s) => s.isNotEmpty).join(' • ');
-
-    // Rows render edge-to-edge; their CONTENT insets by the split's
-    // grab-strip clearance (PaneSafeArea — zero when this panel is a
-    // narrow-mode tab), and section headers shift with them so text stays
-    // aligned.
-    final safeLeft = PaneSafeArea.leftOf(context);
-    Widget header(String title, {Color? color}) =>
-        Padding(padding: EdgeInsets.only(left: safeLeft), child: SectionHeader(title, color: color));
-
-    return ListTileTheme.merge(
-      contentPadding: EdgeInsets.only(left: 16 + safeLeft, right: 16),
-      // Clears the bottom safe area (home indicator) itself, now that the
-      // status footer no longer reserves it globally; the panel fills behind.
-      child: SafeArea(
-        top: false,
-        left: false,
-        right: false,
-        child: ListView(
-      children: [
-        header(context.t.operation.sections.stationOperator),
-        ListTile(
-          leading: Icon(MdiIcons.radioTower),
-          title: operation.stationCall.isEmpty
-              ? Text(context.t.operation.stationCallsignNone)
-              : Text(operation.stationCall, style: const TextStyle(fontFamily: 'RobotoMono')),
-          subtitle: Text(operation.title.isEmpty ? context.t.operation.titleNone : operation.title),
-          onTap: onEditDetails,
-          mouseCursor: SystemMouseCursors.click,
-        ),
-        header(context.t.operation.sections.activities),
-        ListTile(
-          leading: Icon(MdiIcons.pineTree),
-          title: Text(context.t.operation.sections.activities),
-          subtitle: Text(refsLine.isEmpty ? context.t.operation.activitiesNone : refsLine),
-          onTap: onEditActivities,
-          mouseCursor: SystemMouseCursors.click,
-        ),
-        header(context.t.operation.sections.location),
-        ListTile(
-          leading: Icon(resolveIconName('map-marker')),
-          title: Text(context.t.operation.sections.location),
-          subtitle: Text(locationLine.isEmpty ? context.t.operation.locationNone : locationLine),
-          onTap: onEditLocation,
-          mouseCursor: SystemMouseCursors.click,
-        ),
-        header(context.t.operation.sections.operationData),
-        ListTile(
-          leading: Icon(MdiIcons.fileExport),
-          title: Text(context.t.operation.export.title),
-          subtitle: Text(context.t.operation.tabs.qsos(count: formatNumber(qsoCount))),
-          onTap: onExport,
-          mouseCursor: SystemMouseCursors.click,
-        ),
-        header(context.t.operation.sections.dangerZone, color: theme.colorScheme.error),
-        ListTile(
-          leading: Icon(MdiIcons.delete, color: theme.colorScheme.error),
-          title: Text(context.t.operation.deleteOperation, style: TextStyle(color: theme.colorScheme.error)),
-          onTap: onDelete,
-          mouseCursor: SystemMouseCursors.click,
-        ),
-      ],
-      ),
-      ),
+    return AnimatedBuilder(
+      animation: _spring,
+      builder: (context, _) {
+        final width = _currentWidth;
+        return Transform.translate(
+          offset: Offset(0, -_currentLift),
+          child: SizedBox(
+            // The pill's own box never changes height, so nothing around it
+            // reflows while it animates.
+            height: _height,
+            width: width <= 0 ? 0 : width,
+            child: width <= 0
+                ? null
+                : DecoratedBox(
+                    key: const Key('operationHeaderGrab'),
+                    decoration: BoxDecoration(
+                      color: widget.color,
+                      borderRadius: BorderRadius.circular(_height / 2),
+                    ),
+                  ),
+          ),
+        );
+      },
     );
   }
 }

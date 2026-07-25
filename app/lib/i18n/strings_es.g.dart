@@ -163,11 +163,11 @@ class _Translations$dialogs$es extends Translations$dialogs$en {
 	final TranslationsEs _root; // ignore: unused_field
 
 	// Translations
-	@override String deleteOperationConfirm({required Object title}) => '¿Eliminar operación "${title}"?';
 	@override String get operationDetails => 'Detalles de la operación';
 	@override String get activities => 'Actividades';
 	@override String get stationCallsign => 'Indicativo de la estación';
 	@override String get notes => 'Notas';
+	@override String get deleteOperationTitle => 'Borrar operación';
 }
 
 // Path: operation
@@ -178,10 +178,8 @@ class _Translations$operation$es extends Translations$operation$en {
 
 	// Translations
 	@override late final _Translations$operation$tabs$es tabs = _Translations$operation$tabs$es._(_root);
-	@override late final _Translations$operation$sections$es sections = _Translations$operation$sections$es._(_root);
 	@override String get stationCallsignNone => 'Sin indicativo de estación';
 	@override String get titleNone => 'Sin título';
-	@override String get activitiesNone => 'Ninguna seleccionada';
 	@override String get deleteOperation => 'Eliminar operación';
 	@override String get locationNone => 'Sin definir';
 	@override String get generalOperation => 'Operación general';
@@ -219,7 +217,6 @@ class _Translations$activitiesView$es extends Translations$activitiesView$en {
 	@override String get activitiesCountOne => '1 actividad';
 	@override String activitiesCountOther({required Object count}) => '${count} actividades';
 	@override String get empty => 'Aún no hay actividades — usa Sugerencias y Búsqueda abajo para añadir una';
-	@override String get addActivity => 'Añadir actividad';
 	@override String get removeActivity => 'Quitar';
 	@override String get editActivity => 'Editar actividad';
 	@override String get manageExtensions => 'Administrar extensiones';
@@ -237,8 +234,15 @@ class _Translations$activitiesView$es extends Translations$activitiesView$en {
 	@override String get noNearbySuggestions => 'Datos de ubicación no disponibles\nPor lo tanto, no podemos determinar referencias cercanas';
 	@override String distanceKm({required Object distance}) => '${distance} km';
 	@override String get emptySheet => 'Usa las sugerencias y la búsqueda abajo para añadir una';
-	@override String activeCount({required Object count}) => '${count} activas';
 	@override String get exports => 'Exportar';
+	@override String get options => 'Opciones';
+	@override String get optionsTitle => 'Opciones de la operación';
+	@override String get share => 'Compartir';
+	@override String get archive => 'Archivar';
+	@override String get deleteOperation => 'Borrar operación';
+	@override String get alreadySelected => 'Ya seleccionada';
+	@override String enableExtension({required Object name}) => 'Activar ${name}';
+	@override String get enableExtensionHint => 'Esta extensión coincide con tu búsqueda, pero no está activada';
 }
 
 // Path: loggingControls
@@ -598,21 +602,6 @@ class _Translations$operation$tabs$es extends Translations$operation$tabs$en {
 	@override String get info => 'INFO';
 	@override String get spots => 'SPOTS';
 	@override String get map => 'MAPA';
-	@override String get operation => 'OPERACIÓN';
-}
-
-// Path: operation.sections
-class _Translations$operation$sections$es extends Translations$operation$sections$en {
-	_Translations$operation$sections$es._(TranslationsEs root) : this._root = root, super.internal(root);
-
-	final TranslationsEs _root; // ignore: unused_field
-
-	// Translations
-	@override String get stationOperator => 'Estación y operador';
-	@override String get activities => 'Actividades';
-	@override String get operationData => 'Datos de operación';
-	@override String get dangerZone => 'Zona de peligro';
-	@override String get location => 'Ubicación';
 }
 
 // Path: operation.menu
@@ -1195,24 +1184,17 @@ extension on TranslationsEs {
 			'home.titleOptional' => 'Título (opcional)',
 			'home.emptyList' => 'Aún no hay operaciones. Crea una para comenzar a registrar.',
 			'home.quickLookup' => 'Búsqueda Rápida',
-			'dialogs.deleteOperationConfirm' => ({required Object title}) => '¿Eliminar operación "${title}"?',
 			'dialogs.operationDetails' => 'Detalles de la operación',
 			'dialogs.activities' => 'Actividades',
 			'dialogs.stationCallsign' => 'Indicativo de la estación',
 			'dialogs.notes' => 'Notas',
+			'dialogs.deleteOperationTitle' => 'Borrar operación',
 			'operation.tabs.qsos' => ({required Object count}) => '${count} QSOs',
 			'operation.tabs.info' => 'INFO',
 			'operation.tabs.spots' => 'SPOTS',
 			'operation.tabs.map' => 'MAPA',
-			'operation.tabs.operation' => 'OPERACIÓN',
-			'operation.sections.stationOperator' => 'Estación y operador',
-			'operation.sections.activities' => 'Actividades',
-			'operation.sections.operationData' => 'Datos de operación',
-			'operation.sections.dangerZone' => 'Zona de peligro',
-			'operation.sections.location' => 'Ubicación',
 			'operation.stationCallsignNone' => 'Sin indicativo de estación',
 			'operation.titleNone' => 'Sin título',
-			'operation.activitiesNone' => 'Ninguna seleccionada',
 			'operation.deleteOperation' => 'Eliminar operación',
 			'operation.locationNone' => 'Sin definir',
 			'operation.generalOperation' => 'Operación general',
@@ -1276,7 +1258,6 @@ extension on TranslationsEs {
 			'activitiesView.activitiesCountOne' => '1 actividad',
 			'activitiesView.activitiesCountOther' => ({required Object count}) => '${count} actividades',
 			'activitiesView.empty' => 'Aún no hay actividades — usa Sugerencias y Búsqueda abajo para añadir una',
-			'activitiesView.addActivity' => 'Añadir actividad',
 			'activitiesView.removeActivity' => 'Quitar',
 			'activitiesView.editActivity' => 'Editar actividad',
 			'activitiesView.manageExtensions' => 'Administrar extensiones',
@@ -1294,8 +1275,15 @@ extension on TranslationsEs {
 			'activitiesView.noNearbySuggestions' => 'Datos de ubicación no disponibles\nPor lo tanto, no podemos determinar referencias cercanas',
 			'activitiesView.distanceKm' => ({required Object distance}) => '${distance} km',
 			'activitiesView.emptySheet' => 'Usa las sugerencias y la búsqueda abajo para añadir una',
-			'activitiesView.activeCount' => ({required Object count}) => '${count} activas',
 			'activitiesView.exports' => 'Exportar',
+			'activitiesView.options' => 'Opciones',
+			'activitiesView.optionsTitle' => 'Opciones de la operación',
+			'activitiesView.share' => 'Compartir',
+			'activitiesView.archive' => 'Archivar',
+			'activitiesView.deleteOperation' => 'Borrar operación',
+			'activitiesView.alreadySelected' => 'Ya seleccionada',
+			'activitiesView.enableExtension' => ({required Object name}) => 'Activar ${name}',
+			'activitiesView.enableExtensionHint' => 'Esta extensión coincide con tu búsqueda, pero no está activada',
 			'loggingControls.timeUtc' => 'Hora (UTC)',
 			'loggingControls.date' => 'Fecha',
 			'loggingControls.now' => 'Ahora',

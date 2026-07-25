@@ -253,9 +253,6 @@ class Translations$dialogs$en {
 
 	// Translations
 
-	/// en: 'Delete operation "${title}"?'
-	String deleteOperationConfirm({required Object title}) => 'Delete operation "${title}"?';
-
 	/// en: 'Operation details'
 	String get operationDetails => 'Operation details';
 
@@ -267,6 +264,9 @@ class Translations$dialogs$en {
 
 	/// en: 'Notes'
 	String get notes => 'Notes';
+
+	/// en: 'Delete Operation'
+	String get deleteOperationTitle => 'Delete Operation';
 }
 
 // Path: operation
@@ -277,16 +277,12 @@ class Translations$operation$en {
 
 	// Translations
 	late final Translations$operation$tabs$en tabs = Translations$operation$tabs$en.internal(_root);
-	late final Translations$operation$sections$en sections = Translations$operation$sections$en.internal(_root);
 
 	/// en: 'No station callsign'
 	String get stationCallsignNone => 'No station callsign';
 
 	/// en: 'No title'
 	String get titleNone => 'No title';
-
-	/// en: 'None set'
-	String get activitiesNone => 'None set';
 
 	/// en: 'Delete operation'
 	String get deleteOperation => 'Delete operation';
@@ -358,9 +354,6 @@ class Translations$activitiesView$en {
 	/// en: 'No activities yet — use Suggestions & Search below to add one'
 	String get empty => 'No activities yet — use Suggestions & Search below to add one';
 
-	/// en: 'Add activity'
-	String get addActivity => 'Add activity';
-
 	/// en: 'Remove'
 	String get removeActivity => 'Remove';
 
@@ -412,11 +405,32 @@ class Translations$activitiesView$en {
 	/// en: 'Use suggestions & search below to add one'
 	String get emptySheet => 'Use suggestions & search below to add one';
 
-	/// en: '${count} active'
-	String activeCount({required Object count}) => '${count} active';
-
 	/// en: 'Exports'
 	String get exports => 'Exports';
+
+	/// en: 'Options'
+	String get options => 'Options';
+
+	/// en: 'Operation Options'
+	String get optionsTitle => 'Operation Options';
+
+	/// en: 'Share'
+	String get share => 'Share';
+
+	/// en: 'Archive'
+	String get archive => 'Archive';
+
+	/// en: 'Delete Operation'
+	String get deleteOperation => 'Delete Operation';
+
+	/// en: 'Already selected'
+	String get alreadySelected => 'Already selected';
+
+	/// en: 'Enable ${name}'
+	String enableExtension({required Object name}) => 'Enable ${name}';
+
+	/// en: 'This extension matches your search, but it is not currently enabled'
+	String get enableExtensionHint => 'This extension matches your search, but it is not currently enabled';
 }
 
 // Path: loggingControls
@@ -1121,33 +1135,6 @@ class Translations$operation$tabs$en {
 
 	/// en: 'MAP'
 	String get map => 'MAP';
-
-	/// en: 'OPERATION'
-	String get operation => 'OPERATION';
-}
-
-// Path: operation.sections
-class Translations$operation$sections$en {
-	Translations$operation$sections$en.internal(this._root);
-
-	final Translations _root; // ignore: unused_field
-
-	// Translations
-
-	/// en: 'Station & operator'
-	String get stationOperator => 'Station & operator';
-
-	/// en: 'Activities'
-	String get activities => 'Activities';
-
-	/// en: 'Operation data'
-	String get operationData => 'Operation data';
-
-	/// en: 'Danger zone'
-	String get dangerZone => 'Danger zone';
-
-	/// en: 'Location'
-	String get location => 'Location';
 }
 
 // Path: operation.menu
@@ -2163,24 +2150,17 @@ extension on Translations {
 			'home.titleOptional' => 'Title (optional)',
 			'home.emptyList' => 'No operations yet. Create one to start logging.',
 			'home.quickLookup' => 'Quick Lookup',
-			'dialogs.deleteOperationConfirm' => ({required Object title}) => 'Delete operation "${title}"?',
 			'dialogs.operationDetails' => 'Operation details',
 			'dialogs.activities' => 'Activities',
 			'dialogs.stationCallsign' => 'Station Callsign',
 			'dialogs.notes' => 'Notes',
+			'dialogs.deleteOperationTitle' => 'Delete Operation',
 			'operation.tabs.qsos' => ({required Object count}) => '${count} QSOs',
 			'operation.tabs.info' => 'INFO',
 			'operation.tabs.spots' => 'SPOTS',
 			'operation.tabs.map' => 'MAP',
-			'operation.tabs.operation' => 'OPERATION',
-			'operation.sections.stationOperator' => 'Station & operator',
-			'operation.sections.activities' => 'Activities',
-			'operation.sections.operationData' => 'Operation data',
-			'operation.sections.dangerZone' => 'Danger zone',
-			'operation.sections.location' => 'Location',
 			'operation.stationCallsignNone' => 'No station callsign',
 			'operation.titleNone' => 'No title',
-			'operation.activitiesNone' => 'None set',
 			'operation.deleteOperation' => 'Delete operation',
 			'operation.locationNone' => 'Not set',
 			'operation.generalOperation' => 'General Operation',
@@ -2244,7 +2224,6 @@ extension on Translations {
 			'activitiesView.activitiesCountOne' => '1 Activity',
 			'activitiesView.activitiesCountOther' => ({required Object count}) => '${count} Activities',
 			'activitiesView.empty' => 'No activities yet — use Suggestions & Search below to add one',
-			'activitiesView.addActivity' => 'Add activity',
 			'activitiesView.removeActivity' => 'Remove',
 			'activitiesView.editActivity' => 'Edit activity',
 			'activitiesView.manageExtensions' => 'Manage Extensions',
@@ -2262,8 +2241,15 @@ extension on Translations {
 			'activitiesView.noNearbySuggestions' => 'Location data not available\nSo we cannot determine nearby references',
 			'activitiesView.distanceKm' => ({required Object distance}) => '${distance} km',
 			'activitiesView.emptySheet' => 'Use suggestions & search below to add one',
-			'activitiesView.activeCount' => ({required Object count}) => '${count} active',
 			'activitiesView.exports' => 'Exports',
+			'activitiesView.options' => 'Options',
+			'activitiesView.optionsTitle' => 'Operation Options',
+			'activitiesView.share' => 'Share',
+			'activitiesView.archive' => 'Archive',
+			'activitiesView.deleteOperation' => 'Delete Operation',
+			'activitiesView.alreadySelected' => 'Already selected',
+			'activitiesView.enableExtension' => ({required Object name}) => 'Enable ${name}',
+			'activitiesView.enableExtensionHint' => 'This extension matches your search, but it is not currently enabled',
 			'loggingControls.timeUtc' => 'Time (UTC)',
 			'loggingControls.date' => 'Date',
 			'loggingControls.now' => 'Now',

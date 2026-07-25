@@ -49,6 +49,11 @@ Widget _accentIcon(String? iconName, Color? color) {
 // isn't a meaningful accuracy loss.
 const _nearbyGridAdoptionKm = 15;
 
+/// Height of the search section's progress bar — reserved whether or not a
+/// search is running, so the results below never shift. Matches
+/// LinearProgressIndicator's own default thickness.
+const _searchProgressHeight = 4.0;
+
 /// Decides which grid (if any) an operation should adopt right after a new
 /// activity ref is added, given it doesn't already have one:
 ///  - if live GPS is available, adopt it — but only when the just-added ref
@@ -75,12 +80,88 @@ String? gridToAdoptAfterAddingRef({
   return (firstGrid != null && firstGrid.isNotEmpty) ? firstGrid : null;
 }
 
+/// Whether an operation may carry more than one ref of [type] at a time, as
+/// the extension declared it: on the [suggestion] being added, or — for a
+/// ref typed in by hand, which has no suggestion — on the type's [control]
+/// descriptor. Defaults to FALSE: one reference of a kind is the safe
+/// assumption, and a type that genuinely stacks (POTA n-fers) says so
+/// explicitly. Anything else gets the replace-on-add behavior of
+/// [refsKeptWhenAdding].
+bool allowsMultipleRefsOfType(
+  String? type, {
+  Map<String, dynamic>? suggestion,
+  Map<String, dynamic>? control,
+}) {
+  final fromSuggestion = suggestion?['allowsMultiple'];
+  if (fromSuggestion is bool) return fromSuggestion;
+  final fromControl = control?['allowsMultiple'];
+  if (fromControl is bool) return fromControl;
+  return false;
+}
+
+/// Whether a ref of [type] has anything to edit once it's on the operation.
+/// Defaults to FALSE — a plain reference activity (POTA, SOTA) carries only
+/// the code its own search already resolved, so retyping it by hand invites a
+/// typo no lookup would catch. A type whose refs carry more than that says
+/// `editable: true` on its control descriptor.
+bool refTypeIsEditable(Map<String, dynamic>? control) => control?['editable'] == true;
+
+/// The refs to keep when adding one of [type]: all of them when the type
+/// allows multiple, and otherwise everything BUT that type — a single-ref
+/// type's new reference replaces the one already there rather than piling up
+/// next to it.
+List<Map<String, dynamic>> refsKeptWhenAdding({
+  required List<Map<String, dynamic>> refs,
+  required String? type,
+  required bool allowsMultiple,
+}) {
+  if (type == null || allowsMultiple) return refs;
+  return refs.where((r) => r['type'] != type).toList();
+}
+
+/// A search box entry split into an optional extension scope and the text
+/// after it: `pota:` scopes to POTA's own suggestions, `pota: bear mtn`
+/// scopes AND searches, plain `bear mtn` searches everything. The scope is
+/// what the "Activity Types" rows insert when tapped.
+class ActivitySearchQuery {
+  /// The extension key to ask, or null for "every activity hook".
+  final String? activityKey;
+
+  /// What's left to search for — empty means "just show me this scope's
+  /// nearby suggestions".
+  final String term;
+
+  const ActivitySearchQuery({this.activityKey, required this.term});
+
+  static final _scopePattern = RegExp(r'^([a-zA-Z][a-zA-Z0-9_-]*):(.*)$', dotAll: true);
+
+  /// A leading `key:` only scopes when [knownKeys] actually has that key —
+  /// references and park names carry colons too (`US-0001: Something`), and
+  /// treating one as a scope would quietly search the wrong extension, or
+  /// none, while looking like it worked.
+  factory ActivitySearchQuery.parse(String input, Set<String> knownKeys) {
+    final trimmed = input.trim();
+    final match = _scopePattern.firstMatch(trimmed);
+    final key = match?.group(1)?.toLowerCase();
+    if (key == null || !knownKeys.contains(key)) return ActivitySearchQuery(term: trimmed);
+    return ActivitySearchQuery(activityKey: key, term: (match!.group(2) ?? '').trim());
+  }
+
+  /// The text the search field holds for a bare scope — what tapping an
+  /// "Activity Types" row types for the user.
+  static String scopePrefixFor(String activityKey) => '$activityKey: ';
+}
+
+/// The operation sheet's body: the activities accordion plus the operation's
+/// own controls. Driven through its [OperationSheetState] by the screen that
+/// presents it (save/revert, and pushing draft edits back in).
 class OperationSheet extends StatefulWidget {
   final HaLoServices services;
   final Operation operation;
   final ValueNotifier<bool>? hasUpdatesNotifier;
   final ValueChanged<Operation>? onOperationChanged;
   final VoidCallback? onExport;
+  final VoidCallback? onDelete;
 
   const OperationSheet({
     super.key,
@@ -89,6 +170,7 @@ class OperationSheet extends StatefulWidget {
     this.hasUpdatesNotifier,
     this.onOperationChanged,
     this.onExport,
+    this.onDelete,
   });
 
   @override
@@ -96,90 +178,6 @@ class OperationSheet extends StatefulWidget {
 }
 
 class OperationSheetState extends State<OperationSheet> {
-  final _baseKey = GlobalKey<_ActivitiesBaseState>();
-
-  void updateOperation(Operation op) => _baseKey.currentState?.updateOperation(op);
-  void saveAndClose() => _baseKey.currentState?.saveAndClose();
-  void revertAndClose() => _baseKey.currentState?.revertAndClose();
-
-  @override
-  Widget build(BuildContext context) {
-    return _ActivitiesBase(
-      key: _baseKey,
-      services: widget.services,
-      operation: widget.operation,
-      hasUpdatesNotifier: widget.hasUpdatesNotifier,
-      onOperationChanged: widget.onOperationChanged,
-      onExport: widget.onExport,
-      isOperationSheet: true,
-    );
-  }
-}
-
-class ActivitiesPane extends StatefulWidget {
-  final HaLoServices services;
-  final Operation operation;
-  final ValueNotifier<bool>? hasUpdatesNotifier;
-  final ValueChanged<Operation>? onOperationChanged;
-  final VoidCallback? onExport;
-
-  const ActivitiesPane({
-    super.key,
-    required this.services,
-    required this.operation,
-    this.hasUpdatesNotifier,
-    this.onOperationChanged,
-    this.onExport,
-  });
-
-  @override
-  State<ActivitiesPane> createState() => ActivitiesPaneState();
-}
-
-class ActivitiesPaneState extends State<ActivitiesPane> {
-  final _baseKey = GlobalKey<_ActivitiesBaseState>();
-
-  void updateOperation(Operation op) => _baseKey.currentState?.updateOperation(op);
-  void saveAndClose() => _baseKey.currentState?.saveAndClose();
-  void revertAndClose() => _baseKey.currentState?.revertAndClose();
-
-  @override
-  Widget build(BuildContext context) {
-    return _ActivitiesBase(
-      key: _baseKey,
-      services: widget.services,
-      operation: widget.operation,
-      hasUpdatesNotifier: widget.hasUpdatesNotifier,
-      onOperationChanged: widget.onOperationChanged,
-      onExport: widget.onExport,
-      isOperationSheet: false,
-    );
-  }
-}
-
-class _ActivitiesBase extends StatefulWidget {
-  final HaLoServices services;
-  final Operation operation;
-  final ValueNotifier<bool>? hasUpdatesNotifier;
-  final ValueChanged<Operation>? onOperationChanged;
-  final VoidCallback? onExport;
-  final bool isOperationSheet;
-
-  const _ActivitiesBase({
-    super.key,
-    required this.services,
-    required this.operation,
-    this.hasUpdatesNotifier,
-    this.onOperationChanged,
-    this.onExport,
-    required this.isOperationSheet,
-  });
-
-  @override
-  State<_ActivitiesBase> createState() => _ActivitiesBaseState();
-}
-
-class _ActivitiesBaseState extends State<_ActivitiesBase> {
   late Operation _operation;
 
   void updateOperation(Operation op) {
@@ -200,6 +198,32 @@ class _ActivitiesBaseState extends State<_ActivitiesBase> {
   // more recent one and clobbering its results — only the response whose
   // id still matches the latest request gets applied.
   int _searchRequestId = 0;
+
+  /// Extensions that match what was typed but aren't turned on — offered as
+  /// "enable this?" rows above the results, since an activity the user
+  /// searched for looking like it simply doesn't exist is worse than one
+  /// extra row. Empty unless the box has text in it.
+  List<ExtensionInfo> _disabledMatches = const [];
+
+  /// Guards against a second tap while an enable-and-restart is in flight.
+  bool _enablingExtension = false;
+
+  /// Whether [_suggestions] came from a typed search rather than the nearby
+  /// list. Refs the operation already has are dropped from nearby suggestions
+  /// (they're proposals — proposing what you already have is noise), but kept
+  /// in search results: searching for something by name and getting nothing
+  /// back reads as "not found", which is worse than a marked-up hit.
+  bool _suggestionsAreSearchResults = false;
+
+  static const _flashDuration = Duration(milliseconds: 900);
+
+  /// The Current Activities row currently flashing (see [_flashExistingRef]),
+  /// as `type/ref`; null when nothing is. [_flashToken] only exists to make
+  /// each flash a distinct animation.
+  String? _flashingRefRowId;
+  int _flashToken = 0;
+  Timer? _flashTimer;
+  final Map<String, GlobalKey> _refRowKeys = {};
 
   bool _activitiesExpanded = true;
   bool _searchExpanded = true;
@@ -237,6 +261,7 @@ class _ActivitiesBaseState extends State<_ActivitiesBase> {
   @override
   void dispose() {
     _debounce?.cancel();
+    _flashTimer?.cancel();
     _searchController.dispose();
     _searchFocusNode.dispose();
     if (_watchingLocation) {
@@ -269,14 +294,8 @@ class _ActivitiesBaseState extends State<_ActivitiesBase> {
   bool _matchesPattern(String? pattern, String code) =>
       pattern == null || RegExp('^(?:$pattern)\$', caseSensitive: false).hasMatch(code);
 
-  bool _isDuplicateRef(String type, String code, {int? excludingIndex}) {
-    final refs = _operation.refs;
-    for (var i = 0; i < refs.length; i++) {
-      if (i == excludingIndex) continue;
-      if (refs[i]['type'] == type && refs[i]['ref'] == code) return true;
-    }
-    return false;
-  }
+  bool _isDuplicateRef(String type, String code) =>
+      _operation.refs.any((ref) => ref['type'] == type && ref['ref'] == code);
 
   bool _areRefsEqual(List<dynamic> a, List<dynamic> b) {
     if (a.length != b.length) return false;
@@ -341,6 +360,8 @@ class _ActivitiesBaseState extends State<_ActivitiesBase> {
     }
   }
 
+  /// Only reachable for a ref type that declares `editable` (see
+  /// [refTypeIsEditable]).
   Future<void> _editRef(Map<String, dynamic> ref) async {
     final t = context.t.activitiesView;
     final code = await editOneFieldDialog(
@@ -367,7 +388,8 @@ class _ActivitiesBaseState extends State<_ActivitiesBase> {
     final index = refs.indexWhere((r) => r['type'] == ref['type'] && r['ref'] == ref['ref']);
     if (index < 0) return;
 
-    if (_isDuplicateRef(type ?? '', trimmed, excludingIndex: index)) {
+    // The ref being edited is not its own duplicate.
+    if (refs.indexWhere((r) => r['type'] == type && r['ref'] == trimmed) case final existing when existing >= 0 && existing != index) {
       widget.services.statusBar.setMessage(key: 'activities:duplicate', text: t.duplicateReference);
       return;
     }
@@ -395,15 +417,24 @@ class _ActivitiesBaseState extends State<_ActivitiesBase> {
     _debounce = Timer(const Duration(milliseconds: 400), () => _search(text));
   }
 
+  /// The extension keys the loaded activity controls belong to — what a
+  /// `key:` prefix in the search box is checked against.
+  Set<String> get _activityKeys => _controls
+      .map((control) => ((control['key'] as String?) ?? '').split('/').first)
+      .where((key) => key.isNotEmpty)
+      .toSet();
+
   Future<void> _search(String term) async {
     final requestId = ++_searchRequestId;
     setState(() => _loadingSuggestions = true);
-    final trimmed = term.trim();
+    final query = ActivitySearchQuery.parse(term, _activityKeys);
+    final trimmed = query.term;
     final location = widget.services.location;
     final fallbackPosition = location.position;
     final results = await widget.services.extensions.suggestActivities(
       _operation.data,
       searchTerm: trimmed.isEmpty ? null : trimmed,
+      activityKey: query.activityKey,
       fallbackLocation:
           fallbackPosition == null ? null : GridLocation(fallbackPosition.latitude, fallbackPosition.longitude),
     );
@@ -412,56 +443,158 @@ class _ActivitiesBaseState extends State<_ActivitiesBase> {
     if (mounted && requestId == _searchRequestId) {
       setState(() {
         _suggestions = results;
+        _suggestionsAreSearchResults = trimmed.isNotEmpty;
+        _disabledMatches = _disabledExtensionsMatching(term);
         _loadingSuggestions = false;
       });
     }
+  }
+
+  /// The operation's refs minus the ones a new ref of [type] displaces (see
+  /// [refsKeptWhenAdding]), reading the type's multiplicity off the
+  /// suggestion being added or, for a hand-typed ref, its control descriptor.
+  List<Map<String, dynamic>> _refsKeeping(String? type, {Map<String, dynamic>? suggestion}) => refsKeptWhenAdding(
+        refs: _operation.refs,
+        type: type,
+        allowsMultiple: allowsMultipleRefsOfType(
+          type,
+          suggestion: suggestion,
+          control: controlForRefType(_controls, type),
+        ),
+      );
+
+  /// The operation-level actions that don't belong in the activities list
+  /// itself. Share and Archive are declared but inert — the rows are here so
+  /// the menu's shape is settled, and they stay disabled until each has an
+  /// implementation behind it.
+  Future<void> _showOptions() async {
+    final t = context.t.activitiesView;
+    final theme = Theme.of(context);
+    await showHaloDialog<void>(
+      context: context,
+      builder: (dialogContext) => HaloDialog(
+        title: Text(t.optionsTitle),
+        // The rows are the dialog's whole content, so they get the header's
+        // horizontal inset from the ListTiles themselves rather than a
+        // content padding that would double it.
+        contentPadding: const EdgeInsets.symmetric(vertical: 8),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              enabled: false,
+              leading: const Icon(Icons.share),
+              title: Text(t.share),
+            ),
+            ListTile(
+              enabled: false,
+              leading: Icon(resolveIconName('archive-outline')),
+              title: Text(t.archive),
+            ),
+            ListTile(
+              leading: Icon(Icons.delete, color: theme.colorScheme.error),
+              title: Text(t.deleteOperation, style: TextStyle(color: theme.colorScheme.error)),
+              // The sheet closes with the menu: deleting is about the
+              // operation as a whole, and its confirmation belongs to the
+              // screen underneath, not to a pane over a row that's going away.
+              onTap: () {
+                Navigator.of(dialogContext).pop();
+                widget.onDelete?.call();
+              },
+            ),
+          ],
+        ),
+        cancel: TextButton(
+          onPressed: () => Navigator.of(dialogContext).pop(),
+          child: Text(context.t.common.close),
+        ),
+      ),
+    );
   }
 
   Future<void> _addSuggestion(Map<String, dynamic> suggestion) async {
     final type = suggestion['type'] as String?;
     final code = suggestion['ref'] as String?;
     if (type != null && code != null && _isDuplicateRef(type, code)) {
-      widget.services.statusBar.setMessage(key: 'activities:duplicate', text: context.t.activitiesView.duplicateReference);
+      await _flashExistingRef(type, code);
       return;
     }
-    _saveRefs([..._operation.refs, suggestion]);
+    _saveRefs([..._refsKeeping(type, suggestion: suggestion), suggestion]);
     widget.services.track('activity_added', {'activity': type});
     _maybeAdoptGridFromNewRef(distanceKm: suggestion['distance'] as num?);
   }
 
-  Future<void> _addManually(Map<String, dynamic> control) async {
-    final t = context.t.activitiesView;
-    final input = (control['input'] as Map?) ?? const {};
-    final refType = input['refType'] as String?;
-    if (refType == null) return;
+  /// Non-core extensions that match [input] but are switched off. A lone
+  /// trailing colon is dropped first, so a half-typed scope (`sota:` for an
+  /// extension that isn't on, and so has no controls to validate against)
+  /// still finds it.
+  List<ExtensionInfo> _disabledExtensionsMatching(String input) {
+    final query = input.trim().replaceFirst(RegExp(r':$'), '').trim();
+    if (query.isEmpty) return const [];
+    final locale = LocaleSettings.currentLocale.languageCode;
+    final extensions = widget.services.extensions;
+    return [
+      for (final info in extensions.availableExtensions)
+        if (!info.core && !extensions.isExtensionEnabled(info) && info.matchesSearch(query, locale: locale)) info,
+    ];
+  }
 
-    final code = await editOneFieldDialog(
-      context,
-      title: (control['label'] as String?) ?? t.addActivity,
-      fieldLabel: t.reference,
-      fieldInitial: '',
-      fieldCapitalization: TextCapitalization.characters,
+  /// Turns an extension on from the search results, then scopes the search
+  /// to it — the user went looking for this activity, so its own suggestions
+  /// are what they want next, not the text that merely named it. Enabling
+  /// restarts the extension runtime, so the controls are reloaded too: the
+  /// new type has to appear under "Activity Types" as well, and the scope
+  /// prefix only parses once its key is among the loaded ones.
+  Future<void> _enableExtension(ExtensionInfo info) async {
+    // Enabling restarts the runtime, which takes a moment — a second tap
+    // would queue a second restart on top of the first.
+    if (_enablingExtension) return;
+    _enablingExtension = true;
+    setState(() => _loadingSuggestions = true);
+    try {
+      await widget.services.extensions.setExtensionEnabled(info.key, true);
+    } catch (e) {
+      // A failed restart must not strand the section on its spinner.
+      debugPrint('[activities] enabling ${info.key} failed: $e');
+      if (mounted) setState(() => _loadingSuggestions = false);
+      return;
+    } finally {
+      _enablingExtension = false;
+    }
+    if (!mounted) return;
+    await _loadControls();
+    if (!mounted) return;
+    final prefix = ActivitySearchQuery.scopePrefixFor(info.key);
+    _searchController.value = TextEditingValue(
+      text: prefix,
+      selection: TextSelection.collapsed(offset: prefix.length),
     );
-    if (code == null || code.trim().isEmpty || !mounted) return;
+    _debounce?.cancel();
+    await _search(prefix);
+  }
 
-    final trimmed = code.trim().toUpperCase();
-    if (!_matchesPattern(input['pattern'] as String?, trimmed)) {
-      widget.services.statusBar.setMessage(key: 'activities:invalid', text: t.invalidReference);
-      return;
-    }
-    if (_isDuplicateRef(refType, trimmed)) {
-      widget.services.statusBar.setMessage(key: 'activities:duplicate', text: t.duplicateReference);
-      return;
-    }
-
-    final ref = <String, dynamic>{'type': refType, 'ref': trimmed};
-    final decorated = await widget.services.extensions.decorateRef(ref);
-    _saveRefs([..._operation.refs, decorated]);
-    widget.services.track('activity_added', {'activity': refType});
-    // No distance to check here (a manually-typed ref wasn't looked up
-    // relative to any location) — only the no-GPS, first-ref-grid path
-    // inside `_maybeAdoptGridFromNewRef` can apply.
-    _maybeAdoptGridFromNewRef();
+  /// Tapping an activity type scopes the search to it (`pota: `) rather than
+  /// prompting for a reference: the extension's own suggestions and search
+  /// know its references — including ones it hasn't got data for yet, which
+  /// it offers verbatim — so there's nothing a free-text box adds beyond a
+  /// second place to typo.
+  void _scopeSearchTo(Map<String, dynamic> control) {
+    final activityKey = ((control['key'] as String?) ?? '').split('/').first;
+    if (activityKey.isEmpty) return;
+    final prefix = ActivitySearchQuery.scopePrefixFor(activityKey);
+    _searchController.value = TextEditingValue(
+      text: prefix,
+      selection: TextSelection.collapsed(offset: prefix.length),
+    );
+    setState(() {
+      // The results live in the section above, so open it and put the caret
+      // in the field ready for the reference or name.
+      _searchExpanded = true;
+      _allOptionsExpanded = false;
+    });
+    _searchFocusNode.requestFocus();
+    _debounce?.cancel();
+    unawaited(_search(prefix));
   }
 
   /// The message shown in the Suggestions & Search section when there are
@@ -557,6 +690,74 @@ class _ActivitiesBaseState extends State<_ActivitiesBase> {
   /// varies at runtime (Current Activities only fills when Search is
   /// collapsed), so this shape has to be chosen here rather than baked
   /// into a fixed widget tree.
+  String _refRowId(String? type, String? code) => '$type/$code';
+
+  /// Points at the ref the user just tried to add again. Rather than telling
+  /// them it's a duplicate, we show them: the Current Activities row for it
+  /// is scrolled into view and flashes once, which also answers the question
+  /// behind the mistake ("is this one already on the list?").
+  Future<void> _flashExistingRef(String type, String code) async {
+    final id = _refRowId(type, code);
+    setState(() {
+      // A collapsed section has no row to flash or scroll to.
+      _activitiesExpanded = true;
+      _flashingRefRowId = id;
+      _flashToken++;
+    });
+    _flashTimer?.cancel();
+
+    // The row may have only just been built (the section was collapsed, or
+    // this is the first frame it exists on), so wait for it to be laid out
+    // before asking the list to bring it into view.
+    await WidgetsBinding.instance.endOfFrame;
+    if (!mounted || _flashingRefRowId != id) return;
+    final rowContext = _refRowKeys[id]?.currentContext;
+    if (rowContext != null && rowContext.mounted) {
+      await Scrollable.ensureVisible(
+        rowContext,
+        duration: const Duration(milliseconds: 250),
+        curve: Curves.easeInOut,
+        alignment: 0.5,
+      );
+    }
+    if (!mounted) return;
+    _flashTimer = Timer(_flashDuration, () {
+      if (mounted && _flashingRefRowId == id) setState(() => _flashingRefRowId = null);
+    });
+  }
+
+  /// Tags a Current Activities row so [_flashExistingRef] can find it, and
+  /// paints the fading highlight over it while it's the flashing one.
+  Widget _flashableRow(Map<String, dynamic> ref, Widget row) {
+    final id = _refRowId(ref['type'] as String?, ref['ref'] as String?);
+    final rowKey = _refRowKeys.putIfAbsent(id, () => GlobalKey());
+    if (id != _flashingRefRowId) return KeyedSubtree(key: rowKey, child: row);
+    return KeyedSubtree(
+      key: rowKey,
+      child: TweenAnimationBuilder<double>(
+        // Re-keyed per flash so selecting the same duplicate twice replays
+        // the animation instead of sitting at its finished value.
+        key: ValueKey(_flashToken),
+        tween: Tween(begin: 1, end: 0),
+        duration: _flashDuration,
+        curve: Curves.easeOut,
+        builder: (context, value, child) => Stack(
+          children: [
+            child!,
+            Positioned.fill(
+              child: IgnorePointer(
+                child: ColoredBox(
+                  color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.35 * value),
+                ),
+              ),
+            ),
+          ],
+        ),
+        child: row,
+      ),
+    );
+  }
+
   Widget _sectionBody({required bool fill, required List<Widget> rows, required Widget emptyPlaceholder}) {
     if (rows.isEmpty) return emptyPlaceholder;
     if (!fill) return Column(mainAxisSize: MainAxisSize.min, children: rows);
@@ -603,11 +804,9 @@ class _ActivitiesBaseState extends State<_ActivitiesBase> {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(
-                    widget.isOperationSheet
-                        ? _activitiesTitle(
-                            refs.map((r) => r['type'] as String?).whereType<String>().where((t) => t.isNotEmpty).toSet().length,
-                          )
-                        : context.t.operation.sections.activities,
+                    _activitiesTitle(
+                      refs.map((r) => r['type'] as String?).whereType<String>().where((t) => t.isNotEmpty).toSet().length,
+                    ),
                     style: theme.textTheme.titleMedium?.copyWith(
                       color: onAccordionColor,
                       fontWeight: FontWeight.w600,
@@ -615,13 +814,7 @@ class _ActivitiesBaseState extends State<_ActivitiesBase> {
                   ),
                   const SizedBox(height: 2),
                   Text(
-                    widget.isOperationSheet
-                        ? (refs.isEmpty
-                            ? context.t.activitiesView.emptySheet
-                            : _groupedActivitiesSubtitle(refs))
-                        : (refs.isEmpty
-                            ? context.t.operation.activitiesNone
-                            : context.t.activitiesView.activeCount(count: refs.length)),
+                    refs.isEmpty ? context.t.activitiesView.emptySheet : _groupedActivitiesSubtitle(refs),
                     style: theme.textTheme.bodyMedium?.copyWith(
                       color: theme.colorScheme.outline,
                     ),
@@ -634,25 +827,38 @@ class _ActivitiesBaseState extends State<_ActivitiesBase> {
             onToggle: () => setState(() => _activitiesExpanded = !_activitiesExpanded),
             headerColor: accordionColor,
             onHeaderColor: onAccordionColor,
-            trailing: widget.isOperationSheet
-                ? Opacity(
-                    opacity: _operation.qsoCount == 0 ? 0.8 : 1.0,
-                    child: TextButton.icon(
-                      onPressed: widget.onExport,
-                      icon: Icon(resolveIconName('file-export-outline'), size: 18),
-                      label: Text(context.t.activitiesView.exports),
-                      style: TextButton.styleFrom(
-                        foregroundColor: onAccordionColor,
+            trailing: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      TextButton.icon(
+                        onPressed: _showOptions,
+                        icon: const Icon(Icons.settings, size: 18),
+                        label: Text(context.t.activitiesView.options),
+                        style: TextButton.styleFrom(
+                          foregroundColor: onAccordionColor,
+                        ),
                       ),
-                    ),
-                  )
-                : null,
+                      Opacity(
+                        opacity: _operation.qsoCount == 0 ? 0.8 : 1.0,
+                        child: TextButton.icon(
+                          onPressed: widget.onExport,
+                          icon: Icon(resolveIconName('file-export-outline'), size: 18),
+                          label: Text(context.t.activitiesView.exports),
+                          style: TextButton.styleFrom(
+                            foregroundColor: onAccordionColor,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
             child: _sectionBody(
               fill: activitiesFill,
               emptyPlaceholder: const SizedBox.shrink(),
               rows: [
                 for (final ref in refs)
-                  ListTile(
+                  _flashableRow(
+                    ref,
+                    ListTile(
                     tileColor: _loadingControls
                         ? rowColor
                         : (isUnknownRefType(_controls, ref['type'] as String?)
@@ -662,7 +868,7 @@ class _ActivitiesBaseState extends State<_ActivitiesBase> {
                     // horizontal inset, so this trailing icon button lines
                     // up under the search row's options button — same
                     // IconButton defaults (no custom size/padding) too.
-                    contentPadding: const EdgeInsets.only(left: 16, right: 4),
+                    contentPadding: const EdgeInsets.only(left: 16, right: 12),
                     leading: _loadingControls
                         ? Icon(resolveIconName('puzzle'))
                         : activityRefIcon(_controls, ref['type'] as String?),
@@ -671,11 +877,18 @@ class _ActivitiesBaseState extends State<_ActivitiesBase> {
                       style: const TextStyle(fontWeight: FontWeight.bold),
                     ),
                     subtitle: (ref['name'] as String?) != null ? Text(ref['name'] as String) : null,
-                    onTap: () => _editRef(ref),
+                    // Tappable only for a type that declares it has
+                    // something to edit — a plain ref activity doesn't, so
+                    // the row stays inert rather than offering to retype a
+                    // code its own search already resolved.
+                    onTap: refTypeIsEditable(controlForRefType(_controls, ref['type'] as String?))
+                        ? () => _editRef(ref)
+                        : null,
                     trailing: IconButton(
                       icon: const Icon(Icons.delete),
                       tooltip: t.removeActivity,
                       onPressed: () => _deleteRef(ref),
+                    ),
                     ),
                   ),
               ],
@@ -686,9 +899,12 @@ class _ActivitiesBaseState extends State<_ActivitiesBase> {
               final locStatus = widget.services.location.status;
               final operationGrid = _operation.grid;
 
+              // Every variation is the same filled button: white icon and
+              // label on a state color, rather than colored text on nothing.
+              const onLocationColor = Colors.white;
               final Widget locationPin;
               final String label;
-              Color? textColor;
+              final Color locationColor;
 
               if (operationGrid != null && operationGrid.isNotEmpty) {
                 final gridSource = _operation.data['gridSource'] as String? ?? (
@@ -698,36 +914,37 @@ class _ActivitiesBaseState extends State<_ActivitiesBase> {
                 );
 
                 if (gridSource == 'gps') {
-                  locationPin = Icon(resolveIconName('map-marker'), color: const Color(0xFF1B5E20));
+                  locationPin = Icon(resolveIconName('map-marker'), color: onLocationColor);
                   label = operationGrid;
-                  textColor = const Color(0xFF1B5E20);
+                  locationColor = const Color(0xFF1B5E20);
                 } else {
-                  locationPin = Icon(resolveIconName('pin'));
+                  locationPin = Icon(resolveIconName('pin'), color: onLocationColor);
                   label = operationGrid;
-                  textColor = null;
+                  locationColor = const Color(0xFF455A64);
                 }
               } else {
                 if (locStatus == LocationStatus.unknown || locStatus == LocationStatus.determining) {
-                  locationPin = const _PulsingGpsPin();
+                  locationPin = const _PulsingGpsPin(color: onLocationColor);
                   label = 'GPS…';
-                  textColor = Colors.blue;
+                  locationColor = const Color(0xFF1565C0);
                 } else if (locStatus == LocationStatus.available && widget.services.location.grid != null) {
-                  locationPin = Icon(resolveIconName('map-marker'), color: const Color(0xFF1B5E20));
+                  locationPin = Icon(resolveIconName('map-marker'), color: onLocationColor);
                   label = widget.services.location.grid!;
-                  textColor = const Color(0xFF1B5E20);
+                  locationColor = const Color(0xFF1B5E20);
                 } else if (locStatus == LocationStatus.available && widget.services.location.grid == null) {
-                  locationPin = const _PulsingGpsPin();
+                  locationPin = const _PulsingGpsPin(color: onLocationColor);
                   label = 'GPS…';
-                  textColor = Colors.blue;
+                  locationColor = const Color(0xFF1565C0);
                 } else {
-                  locationPin = Icon(resolveIconName('map-marker-off'), color: const Color(0xFFC62828));
+                  locationPin = Icon(resolveIconName('map-marker-off'), color: onLocationColor);
                   label = '';
-                  textColor = const Color(0xFFC62828);
+                  locationColor = const Color(0xFFC62828);
                 }
               }
 
               return _AccordionSection(
                 title: TextField(
+                  selectAllOnFocus: false,
                   controller: _searchController,
                   focusNode: _searchFocusNode,
                   decoration: InputDecoration(
@@ -744,42 +961,44 @@ class _ActivitiesBaseState extends State<_ActivitiesBase> {
                   onChanged: _onSearchChanged,
                 ),
                 titleIsInteractive: true,
-                trailing: widget.isOperationSheet
-                    ? TextButton.icon(
-                        icon: locationPin,
-                        label: Text(
-                          label,
-                          style: const TextStyle(
-                            fontFamily: 'RobotoMono',
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        style: TextButton.styleFrom(
-                          foregroundColor: textColor ?? onAccordionColor,
-                        ),
-                        onPressed: () async {
-                          final patch = await showHaloDialog<Map<String, dynamic>>(
-                            context: context,
-                            builder: (_) => OperationLocationScreen(
-                              services: widget.services,
-                              operation: _operation,
+                trailing: Padding(
+                        padding: const EdgeInsets.only(left: 8),
+                        child: TextButton.icon(
+                          icon: locationPin,
+                          label: Text(
+                            label,
+                            style: const TextStyle(
+                              fontFamily: 'RobotoMono',
+                              fontWeight: FontWeight.bold,
                             ),
-                          );
-                          if (patch != null && mounted) {
-                            final updated = Operation(
-                              uuid: _operation.uuid,
-                              data: {..._operation.data, ...patch},
-                              qsoCount: _operation.qsoCount,
-                              startAtMillisMin: _operation.startAtMillisMin,
-                              startAtMillisMax: _operation.startAtMillisMax,
-                              localData: _operation.localData,
+                          ),
+                          style: TextButton.styleFrom(
+                            backgroundColor: locationColor,
+                            foregroundColor: onLocationColor,
+                          ),
+                          onPressed: () async {
+                            final patch = await showHaloDialog<Map<String, dynamic>>(
+                              context: context,
+                              builder: (_) => OperationLocationScreen(
+                                services: widget.services,
+                                operation: _operation,
+                              ),
                             );
-                            updateOperation(updated);
-                            widget.onOperationChanged?.call(updated);
-                          }
-                        },
-                      )
-                    : null,
+                            if (patch != null && mounted) {
+                              final updated = Operation(
+                                uuid: _operation.uuid,
+                                data: {..._operation.data, ...patch},
+                                qsoCount: _operation.qsoCount,
+                                startAtMillisMin: _operation.startAtMillisMin,
+                                startAtMillisMax: _operation.startAtMillisMax,
+                                localData: _operation.localData,
+                              );
+                              updateOperation(updated);
+                              widget.onOperationChanged?.call(updated);
+                            }
+                          },
+                        ),
+                      ),
                 expanded: _searchExpanded,
                 fill: true,
                 onToggle: () => setState(() => _searchExpanded = !_searchExpanded),
@@ -787,7 +1006,15 @@ class _ActivitiesBaseState extends State<_ActivitiesBase> {
                 onHeaderColor: onAccordionColor,
             child: Column(
               children: [
-                if (_loadingSuggestions) const LinearProgressIndicator(),
+                // The slot is always there, empty when idle: showing and
+                // hiding the bar itself moved every row under it by its
+                // height each time a search resolved.
+                SizedBox(
+                  height: _searchProgressHeight,
+                  child: _loadingSuggestions
+                      ? const LinearProgressIndicator(minHeight: _searchProgressHeight)
+                      : null,
+                ),
                 Expanded(
                   child: _sectionBody(
                     fill: true,
@@ -798,9 +1025,33 @@ class _ActivitiesBaseState extends State<_ActivitiesBase> {
                             child: Text(_suggestionsEmptyMessage, style: TextStyle(color: theme.colorScheme.outline)),
                           ),
                     rows: [
+                      // Above the hits: an activity the user asked for by
+                      // name that's simply switched off would otherwise look
+                      // like it doesn't exist.
+                      for (final info in _disabledMatches)
+                        ListTile(
+                          tileColor: theme.colorScheme.secondaryContainer,
+                          leading: _accentIcon(info.icon, resolveExtensionColor(info.accentColor)),
+                          title: Text(
+                            t.enableExtension(name: info.nameFor(LocaleSettings.currentLocale.languageCode)),
+                            style: const TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                          subtitle: Text(t.enableExtensionHint),
+                          trailing: const Icon(Icons.add),
+                          onTap: () => _enableExtension(info),
+                        ),
                       for (final suggestion in _suggestions)
-                        if (!refs.any((r) => r['type'] == suggestion['type'] && r['ref'] == suggestion['ref']))
-                          ListTile(
+                        Builder(builder: (context) {
+                          final alreadySelected =
+                              refs.any((r) => r['type'] == suggestion['type'] && r['ref'] == suggestion['ref']);
+                          // A nearby suggestion for a ref already on the
+                          // operation is just noise, but a SEARCH hit has to
+                          // stay: dropping what you searched for reads as
+                          // "no such reference". Marked, not hidden.
+                          if (alreadySelected && !_suggestionsAreSearchResults) {
+                            return const SizedBox.shrink();
+                          }
+                          return ListTile(
                             tileColor: _loadingControls
                                 ? rowColor
                                 : (isUnknownRefType(_controls, suggestion['type'] as String?)
@@ -812,12 +1063,19 @@ class _ActivitiesBaseState extends State<_ActivitiesBase> {
                             title: Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
-                                Expanded(
+                                Flexible(
                                   child: Text(
                                     (suggestion['shortLabel'] ?? suggestion['ref'] ?? '?') as String,
                                     style: const TextStyle(fontWeight: FontWeight.bold),
+                                    overflow: TextOverflow.ellipsis,
                                   ),
                                 ),
+                                if (alreadySelected)
+                                  Padding(
+                                    padding: const EdgeInsets.only(left: 8),
+                                    child: _AlreadySelectedChip(label: t.alreadySelected),
+                                  ),
+                                const Spacer(),
                                 if (suggestion['distance'] is num)
                                   Text(
                                     t.distanceKm(distance: formatNumber((suggestion['distance'] as num).round())),
@@ -834,7 +1092,8 @@ class _ActivitiesBaseState extends State<_ActivitiesBase> {
                               ].whereType<String>().where((s) => s.isNotEmpty).join(' • '),
                             ),
                             onTap: () => _addSuggestion(suggestion),
-                          ),
+                          );
+                        }),
                     ],
                   ),
                 ),
@@ -847,7 +1106,7 @@ class _ActivitiesBaseState extends State<_ActivitiesBase> {
             title: Padding(
               padding: const EdgeInsets.only(right: 16),
               child: Text(
-                widget.isOperationSheet ? _allOptionsTitle(context.t) : t.allOptions,
+                _allOptionsTitle(context.t),
                 style: theme.textTheme.titleMedium?.copyWith(color: onAccordionColor, fontWeight: FontWeight.w600),
               ),
             ),
@@ -907,7 +1166,7 @@ class _ActivitiesBaseState extends State<_ActivitiesBase> {
                         tileColor: rowColor,
                         leading: _accentIcon(control['icon'] as String?, resolveExtensionColor(control['color'] as String?)),
                         title: Text((control['label'] as String?) ?? ''),
-                        onTap: () => _addManually(control),
+                        onTap: () => _scopeSearchTo(control),
                       ),
                 ],
               );
@@ -941,6 +1200,31 @@ class _ActivitiesBaseState extends State<_ActivitiesBase> {
 /// instant — animating who claims leftover flex space between sibling
 /// sections isn't something Flutter's implicit animations do — but its
 /// arrow still animates like every other section's.
+/// Marks a suggestion the operation already carries. Tapping the row still
+/// goes through `_addSuggestion`, which flashes the existing Current
+/// Activities row rather than adding a second copy.
+class _AlreadySelectedChip extends StatelessWidget {
+  final String label;
+
+  const _AlreadySelectedChip({required this.label});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.secondaryContainer,
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Text(
+        label,
+        style: theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.onSecondaryContainer),
+      ),
+    );
+  }
+}
+
 class _AccordionSection extends StatelessWidget {
   final Widget title;
   final bool expanded;
@@ -986,7 +1270,10 @@ class _AccordionSection extends StatelessWidget {
     );
 
     final headerRow = Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
+      // Extra room on the right so the trailing controls (Options /
+      // Exports, the search section's own buttons) don't sit flush against
+      // the pane's edge — the rows below match it, see `contentPadding`.
+      padding: const EdgeInsets.fromLTRB(4, 6, 12, 6),
       child: Row(
         children: [
           arrow,
@@ -1046,7 +1333,9 @@ class _AccordionSection extends StatelessWidget {
 }
 
 class _PulsingGpsPin extends StatefulWidget {
-  const _PulsingGpsPin();
+  final Color color;
+
+  const _PulsingGpsPin({this.color = Colors.blue});
 
   @override
   State<_PulsingGpsPin> createState() => _PulsingGpsPinState();
@@ -1083,7 +1372,7 @@ class _PulsingGpsPinState extends State<_PulsingGpsPin> with SingleTickerProvide
   Widget build(BuildContext context) {
     return FadeTransition(
       opacity: _animation,
-      child: Icon(resolveIconName('map-marker'), color: Colors.blue),
+      child: Icon(resolveIconName('map-marker'), color: widget.color),
     );
   }
 }

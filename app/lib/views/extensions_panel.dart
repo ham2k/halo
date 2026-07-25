@@ -94,13 +94,7 @@ class ExtensionsPanelState extends State<ExtensionsPanel> {
             ? listed
             : [
                 for (final info in listed)
-                  if (info.name.toLowerCase().contains(query) ||
-                      info.nameFor(locale).toLowerCase().contains(query) ||
-                      info.key.toLowerCase().contains(query) ||
-                      (info.description ?? '').toLowerCase().contains(query) ||
-                      (info.descriptionFor(locale) ?? '').toLowerCase().contains(query) ||
-                      info.keywordsFor(locale).any((k) => k.toLowerCase().contains(query)))
-                    info,
+                  if (info.matchesSearch(query, locale: locale)) info,
               ];
 
         // Fixed category order, then whatever else appears.
@@ -147,6 +141,7 @@ class ExtensionsPanelState extends State<ExtensionsPanel> {
             Padding(
               padding: EdgeInsets.fromLTRB(16 + safeLeft, 12, 16, 8),
               child: TextField(
+                selectAllOnFocus: false,
                 key: const ValueKey('extensions-search'),
                 controller: _searchController,
                 onChanged: (_) => setState(() {}),

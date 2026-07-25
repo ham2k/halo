@@ -57,11 +57,13 @@ void main() {
     await tester.pump(const Duration(milliseconds: 500));
     await tester.pump(const Duration(milliseconds: 500));
 
-    // 430 → S: the tab arrangement, with the QSO-count tab back and Info
-    // gone. Index 0 was Info, so tab 0 (QSOs = the logging pane) shows —
-    // with the in-progress callsign intact (GlobalKey reparenting).
-    expect(find.text('INFO'), findsNothing);
+    // 430 → S: the tab arrangement, with the QSO-count tab back — that tab
+    // is what tells the two arrangements apart, since the sheet took the
+    // Operation tab away and Info is now in both. Index 0 was Info, so tab 0
+    // (QSOs = the logging pane) shows, with the in-progress callsign intact
+    // (GlobalKey reparenting).
     expect(find.text('0 QSOs'), findsOneWidget);
+    expect(find.text('INFO'), findsOneWidget);
     expect(find.widgetWithText(TextField, 'W1AW'), findsOneWidget);
 
     // And back to wide: split returns, input still intact.
@@ -69,7 +71,7 @@ void main() {
     await tester.pump(const Duration(milliseconds: 500));
     await tester.pump(const Duration(milliseconds: 500));
 
-    expect(find.text('INFO'), findsOneWidget);
+    expect(find.text('0 QSOs'), findsNothing);
     expect(find.widgetWithText(TextField, 'W1AW'), findsOneWidget);
 
     // Flip with a NON-ZERO tab selected — the regression case. Wide with
@@ -96,7 +98,7 @@ void main() {
     await tester.pump(const Duration(milliseconds: 500));
     expect(tester.takeException(), isNull);
     expect(find.widgetWithText(TextField, 'W1AW'), findsOneWidget, reason: 'logging input survives a flip made with Spots selected');
-    expect(find.text('INFO'), findsOneWidget);
+    expect(find.text('0 QSOs'), findsNothing, reason: 'back to the split, where logging has its own pane');
 
     // Tear the tree down and drain the services' debounce timers (rescore,
     // lookup) so the binding's pending-timer invariant passes.
@@ -161,19 +163,20 @@ void main() {
     final grabBottom = tester.getBottomLeft(find.byKey(const Key('operationHeaderGrab'))).dy;
     final tabBarTop = tester.getTopLeft(find.byType(TabBar)).dy;
 
-    // The pill's own clearance from the toolbar row's bottom edge (measured
-    // from the AppBar's own top, i.e. y=0 here since the AppBar is the
-    // first thing on screen): the outer Padding's 5px, plus the pill's own
-    // Container's 4px bottom padding (the Key is on the innermost 24x3 bar,
-    // inside that Container) — tight enough that a regression shifting it a
-    // few px toward the tab row would actually fail this, unlike a loose
-    // "somewhere above the tabs" bound.
-    expect(grabBottom, closeTo(toolbarHeight - 5 - 4, 0.5));
-    // And a genuine, non-zero gap above the tab row (which starts exactly
-    // at the toolbar's bottom edge) — independent cross-check of the same
-    // fix using a different measurement than the toolbarHeight-derived one
-    // above, so it doesn't just restate the same arithmetic.
-    expect(tabBarTop - grabBottom, greaterThan(5));
+    // The pill hangs 10px BELOW where it lays out, so it straddles the
+    // header's bottom edge (deliberate: it reads as floating over the
+    // content rather than as part of the toolbar row). Measured from the
+    // AppBar's own top, i.e. y=0 here since the AppBar is the first thing on
+    // screen: the outer Padding's 5px and the pill Container's 4px bottom
+    // padding put it at toolbarHeight-9, then the Transform adds the float
+    // (_headerGrabFloat, 8). Tight enough that a regression shifting it a
+    // few px would fail this.
+    expect(grabBottom, closeTo(toolbarHeight - 5 - 4 + 8, 0.5));
+    // The float must NOT cost header height (issue #266's actual failure was
+    // the pill being dragged down WITH the header): the tab row still starts
+    // exactly at the toolbar's bottom edge, measured independently of the
+    // toolbarHeight arithmetic above.
+    expect(tabBarTop, closeTo(toolbarHeight, 0.5));
 
     await tester.pumpWidget(const SizedBox());
     await tester.pump(const Duration(seconds: 5));

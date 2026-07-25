@@ -512,6 +512,7 @@ class _SwitchAccountsPaneState extends State<SwitchAccountsPane> {
         Text(context.t.switchAccounts.enterEmailPrompt),
         const SizedBox(height: 12),
         TextField(
+          selectAllOnFocus: false,
           controller: _emailController,
           autofocus: true,
           enabled: !_busy,

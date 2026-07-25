@@ -160,6 +160,13 @@ Forms use a clear, consistent layout, with labels and fields aligned
 properly. When a form renders in a view instead of a dialog, its actions are
 pinned at the bottom, same as in a dialog.
 
+Text fields pass `selectAllOnFocus: false`. Flutter defaults it to **true**
+on web and desktop, so focusing a field flashes its whole contents selected
+before collapsing the caret to the end — distracting, and wrong for fields
+you focus to *append* to. The logging panel's own controls
+(`logging_controls.dart`, `ref_text_input.dart`) manage selection
+themselves; every other field opts out.
+
 ## Number Formatting
 
 All numbers displayed in the user interface (including QSO counts, QSO row index numbers, scoring summaries, statistics tallies, and general quantities) must be formatted with thousands separators to enhance readability.

@@ -231,6 +231,17 @@ export interface LoggingControlDescriptor {
   color?: string
   order?: number
   optionType?: 'optional' | 'mandatory'
+  /// Whether a reference of this type has anything to edit once it's on the
+  /// operation. Defaults to FALSE: a plain reference activity (POTA, SOTA)
+  /// carries only the code its own `suggest` already resolved, so the core
+  /// leaves those rows inert — remove and pick again instead of retyping a
+  /// code no lookup would re-check. Set true for a type whose references
+  /// carry more than that.
+  editable?: boolean
+
+  /// Same meaning as `ActivitySuggestion.allowsMultiple`, for references
+  /// typed in by hand rather than picked from a suggestion. Defaults to true.
+  allowsMultiple?: boolean
   input: RefListInputDescriptor
 }
 
@@ -264,6 +275,13 @@ export interface RefListInputDescriptor {
 export interface ActivitySuggestion extends Ref {
   distance?: number
   relevance?: number
+  /// Whether an operation may carry more than one reference of this type at
+  /// a time. Defaults to FALSE — selecting a reference REPLACES the
+  /// operation's existing one of that type. Set true for a type that
+  /// genuinely stacks (POTA n-fers, multiple hunted refs). Declare the same
+  /// value on the type's `LoggingControlDescriptor` so manually-typed
+  /// references behave the same.
+  allowsMultiple?: boolean
 }
 
 export interface SuggestArgs {

@@ -37,7 +37,7 @@ void main() {
     await tester.pumpWidget(TranslationProvider(
       child: MaterialApp(
         home: Scaffold(
-          body: ActivitiesPane(
+          body: OperationSheet(
             services: services,
             operation: operation,
           ),
@@ -89,7 +89,7 @@ void main() {
 
     await tester.pumpWidget(TranslationProvider(
       child: MaterialApp(
-        home: Scaffold(body: ActivitiesPane(services: services, operation: operation)),
+        home: Scaffold(body: OperationSheet(services: services, operation: operation)),
       ),
     ));
     await tester.pumpAndSettle();

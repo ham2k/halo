@@ -277,6 +277,11 @@ class _ModalPaneScaffold extends StatelessWidget {
   }
 }
 
+/// [onAnimation] hands the caller the pane's own slide animation (0 closed,
+/// 1 fully down) as soon as the route exists, so the screen underneath can
+/// animate *with* the pane — the operation header's grab handle does, and
+/// nothing else can observe a dismissal until the pushed future completes,
+/// which is already after the pane is gone.
 Future<T?> showTopModalPane<T>(
   BuildContext context, {
   required WidgetBuilder builder,
@@ -286,8 +291,9 @@ Future<T?> showTopModalPane<T>(
   Widget? leading,
   Widget? trailing,
   String closeTooltip = 'Close',
-}) => Navigator.of(context).push(
-  TopModalPaneRoute<T>(
+  ValueChanged<Animation<double>>? onAnimation,
+}) {
+  final route = TopModalPaneRoute<T>(
     builder: builder,
     title: title,
     barrierDismissible: barrierDismissible,
@@ -295,8 +301,14 @@ Future<T?> showTopModalPane<T>(
     leading: leading,
     trailing: trailing,
     closeTooltip: closeTooltip,
-  ),
-);
+  );
+  final result = Navigator.of(context).push(route);
+  // After push: the route's animation is created by install(), which the
+  // push above triggers.
+  final animation = route.animation;
+  if (animation != null) onAnimation?.call(animation);
+  return result;
+}
 
 class TopModalPaneRoute<T> extends PopupRoute<T> {
   final WidgetBuilder builder;

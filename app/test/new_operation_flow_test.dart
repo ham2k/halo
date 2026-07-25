@@ -56,13 +56,13 @@ void main() {
     ));
     await tester.pumpAndSettle();
 
-    expect(find.byType(ActivitiesPane), findsOneWidget);
+    expect(find.byType(OperationSheet), findsOneWidget);
 
     // A later operation write re-emits the stream — the pane must not
     // stack a second copy.
     await services.operations.saveData(Operation(uuid: operation.uuid, data: {...operation.data, 'title': 'Edited'}));
     await tester.pumpAndSettle();
-    expect(find.byType(ActivitiesPane), findsOneWidget);
+    expect(find.byType(OperationSheet), findsOneWidget);
 
     // Tear the tree down and drain the services' debounce timers (rescore,
     // lookup) so the binding's pending-timer invariant passes.
@@ -95,7 +95,7 @@ void main() {
     ));
     await tester.pumpAndSettle();
 
-    expect(find.byType(ActivitiesPane), findsNothing);
+    expect(find.byType(OperationSheet), findsNothing);
     expect(find.byType(HaloDialog), findsOneWidget);
     expect(find.descendant(of: find.byType(HaloDialog), matching: find.text('Callsign')), findsWidgets);
 

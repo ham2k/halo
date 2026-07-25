@@ -652,6 +652,7 @@ class FormRendererState extends State<FormRenderer> {
         // layout has never honored it there.
         final multiline = fieldType == 'multiline';
         return TextField(
+          selectAllOnFocus: false,
           controller: _controllers[key],
           focusNode: _focusNodes[key],
           maxLines: multiline ? null : 1,
@@ -1000,6 +1001,7 @@ class FormRendererState extends State<FormRenderer> {
                 decoration: decoration,
               )
             : TextField(
+                selectAllOnFocus: false,
                 controller: _controllers[key],
                 focusNode: _focusNodes[key],
                 textAlign: expanded ? TextAlign.start : TextAlign.end,
@@ -1389,6 +1391,7 @@ class FormRendererState extends State<FormRenderer> {
                       key: const ValueKey('multiselect-search'),
                       padding: const EdgeInsets.only(top: 8),
                       child: TextField(
+                        selectAllOnFocus: false,
                         controller: searchController,
                         onChanged: (_) => setDialogState(() {}),
                         decoration: InputDecoration(

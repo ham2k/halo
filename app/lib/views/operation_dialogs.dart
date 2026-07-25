@@ -16,6 +16,31 @@ import '../tools/operation_title.dart';
 
 /// Prompts to confirm, then soft-deletes on confirmation. Returns whether
 /// the operation was deleted.
+const _monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+/// A short month-and-day label, e.g. `Jan 3`.
+String formatShortDate(DateTime date) => '${_monthNames[date.month - 1]} ${date.day}';
+
+/// The span an operation covers: `Jan 3` for a single day, `Jan 3 – 5` within
+/// one month, `Jan 3 – Feb 1` across months, and empty when it has no logged
+/// times at all (a brand-new operation) — the caller drops the line entirely
+/// rather than printing a dangling dash.
+String formatOperationDateRange(DateTime? from, DateTime? to) {
+  final start = from ?? to;
+  final end = to ?? from;
+  if (start == null || end == null) return '';
+  if (start.year == end.year && start.month == end.month && start.day == end.day) {
+    return formatShortDate(start);
+  }
+  if (start.year == end.year && start.month == end.month) {
+    return '${formatShortDate(start)} – ${end.day}';
+  }
+  return '${formatShortDate(start)} – ${formatShortDate(end)}';
+}
+
+/// Confirms deleting [operation], naming it in the body rather than in the
+/// title: the title says what's about to happen, the body says to what, so a
+/// long operation name can't push the action itself out of view.
 Future<bool> confirmDeleteOperation(
   BuildContext context,
   HaLoServices services,
@@ -23,17 +48,42 @@ Future<bool> confirmDeleteOperation(
 ) async {
   final confirmed = await showHaloDialog<bool>(
     context: context,
-    builder: (context) => HaloDialog(
-      // The same title the user just saw on the row/header they deleted
-      // from (ham2k/app-halo-dist#174), not the raw (usually empty) title field.
-      title: Text(
-        context.t.dialogs.deleteOperationConfirm(title: '${operation.stationCall} ${displayTitleFor(context, operation)}'),
-      ),
-      cancel: TextButton(onPressed: () => Navigator.of(context).pop(false), child: Text(context.t.common.cancel)),
-      actions: [
-        FilledButton(onPressed: () => Navigator.of(context).pop(true), child: Text(context.t.common.delete)),
-      ],
-    ),
+    builder: (context) {
+      final theme = Theme.of(context);
+      final dateRange = formatOperationDateRange(
+        operation.startAtMillisMin == null
+            ? null
+            : DateTime.fromMillisecondsSinceEpoch(operation.startAtMillisMin!, isUtc: true),
+        operation.startAtMax,
+      );
+      final details = [
+        context.t.operation.tabs.qsos(count: formatNumber(operation.qsoCount)),
+        if (dateRange.isNotEmpty) dateRange,
+      ].join(' • ');
+
+      return HaloDialog(
+        title: Text(context.t.dialogs.deleteOperationTitle),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // The same name the user just saw on the row or header they're
+            // deleting from (ham2k/app-halo-dist#174), not the raw (usually
+            // empty) title field.
+            Text(
+              '${operation.stationCall} ${displayTitleFor(context, operation)}',
+              style: theme.textTheme.titleMedium,
+            ),
+            const SizedBox(height: 4),
+            Text(details, style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.outline)),
+          ],
+        ),
+        cancel: TextButton(onPressed: () => Navigator.of(context).pop(false), child: Text(context.t.common.cancel)),
+        actions: [
+          FilledButton(onPressed: () => Navigator.of(context).pop(true), child: Text(context.t.common.delete)),
+        ],
+      );
+    },
   );
   if (confirmed == true) {
     await services.operations.softDelete(operation.uuid);
@@ -146,6 +196,7 @@ class _TimeDialogState extends State<_TimeDialog> {
           SizedBox(
             width: 120,
             child: TextField(
+              selectAllOnFocus: false,
               controller: _timeController,
               style: haloMonoStyle(context, fontSize: 15),
               decoration: poloFieldDecoration(context, context.t.loggingControls.timeUtc),
@@ -155,6 +206,7 @@ class _TimeDialogState extends State<_TimeDialog> {
           SizedBox(
             width: 120,
             child: TextField(
+              selectAllOnFocus: false,
               controller: _dateController,
               style: haloMonoStyle(context, fontSize: 15),
               decoration: poloFieldDecoration(context, context.t.loggingControls.date),
@@ -257,6 +309,7 @@ class _OneFieldDialogState extends State<_OneFieldDialog> {
     return HaloDialog(
       title: Text(widget.title),
       content: TextField(
+        selectAllOnFocus: false,
         controller: _controller,
         autofocus: true,
         textCapitalization: widget.fieldCapitalization,
@@ -321,6 +374,7 @@ class _TwoFieldDialogState extends State<_TwoFieldDialog> {
         mainAxisSize: MainAxisSize.min,
         children: [
           TextField(
+            selectAllOnFocus: false,
             controller: _controller1,
             autofocus: true,
             textCapitalization: widget.field1Capitalization,
@@ -335,6 +389,7 @@ class _TwoFieldDialogState extends State<_TwoFieldDialog> {
             )
           else
             TextField(
+              selectAllOnFocus: false,
               controller: _controller2,
               decoration: poloFieldDecoration(context, widget.field2Label),
               onSubmitted: (_) => _save(),
@@ -400,6 +455,7 @@ class _OperationDetailsDialogState extends State<_OperationDetailsDialog> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             TextField(
+              selectAllOnFocus: false,
               controller: _stationCallController,
               autofocus: true,
               textCapitalization: TextCapitalization.characters,
@@ -414,6 +470,7 @@ class _OperationDetailsDialogState extends State<_OperationDetailsDialog> {
             ),
             const SizedBox(height: 12),
             TextField(
+              selectAllOnFocus: false,
               controller: _operatorCallController,
               textCapitalization: TextCapitalization.characters,
               style: const TextStyle(fontFamily: 'RobotoMono'),
@@ -427,6 +484,7 @@ class _OperationDetailsDialogState extends State<_OperationDetailsDialog> {
             ),
             const SizedBox(height: 72),
             TextField(
+              selectAllOnFocus: false,
               controller: _titleController,
               textCapitalization: TextCapitalization.sentences,
               decoration: poloFieldDecoration(context, context.t.home.titleOptional),
@@ -434,6 +492,7 @@ class _OperationDetailsDialogState extends State<_OperationDetailsDialog> {
             ),
             const SizedBox(height: 12),
             TextField(
+              selectAllOnFocus: false,
               controller: _notesController,
               textCapitalization: TextCapitalization.sentences,
               maxLines: null,

@@ -54,30 +54,21 @@
     "quickLookup": "Quick Lookup"
   },
   "dialogs": {
-    "deleteOperationConfirm": "Delete operation \"${title}\"?",
     "operationDetails": "Operation details",
     "activities": "Activities",
     "stationCallsign": "Station Callsign",
-    "notes": "Notes"
+    "notes": "Notes",
+    "deleteOperationTitle": "Delete Operation"
   },
   "operation": {
     "tabs": {
       "qsos": "${count} QSOs",
       "info": "INFO",
       "spots": "SPOTS",
-      "map": "MAP",
-      "operation": "OPERATION"
-    },
-    "sections": {
-      "stationOperator": "Station & operator",
-      "activities": "Activities",
-      "operationData": "Operation data",
-      "dangerZone": "Danger zone",
-      "location": "Location"
+      "map": "MAP"
     },
     "stationCallsignNone": "No station callsign",
     "titleNone": "No title",
-    "activitiesNone": "None set",
     "deleteOperation": "Delete operation",
     "locationNone": "Not set",
     "generalOperation": "General Operation",
@@ -158,7 +149,6 @@
     "activitiesCountOne": "1 Activity",
     "activitiesCountOther": "${count} Activities",
     "empty": "No activities yet — use Suggestions & Search below to add one",
-    "addActivity": "Add activity",
     "removeActivity": "Remove",
     "editActivity": "Edit activity",
     "manageExtensions": "Manage Extensions",
@@ -176,8 +166,15 @@
     "noNearbySuggestions": "Location data not available\nSo we cannot determine nearby references",
     "distanceKm": "${distance} km",
     "emptySheet": "Use suggestions & search below to add one",
-    "activeCount": "${count} active",
-    "exports": "Exports"
+    "exports": "Exports",
+    "options": "Options",
+    "optionsTitle": "Operation Options",
+    "share": "Share",
+    "archive": "Archive",
+    "deleteOperation": "Delete Operation",
+    "alreadySelected": "Already selected",
+    "enableExtension": "Enable ${name}",
+    "enableExtensionHint": "This extension matches your search, but it is not currently enabled"
   },
   "loggingControls": {
     "timeUtc": "Time (UTC)",

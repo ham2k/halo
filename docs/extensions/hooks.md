@@ -217,10 +217,11 @@ interface ActivityHook {
   operationControls?(args: { operation }, ctx): Promise<LoggingControlDescriptor[]>
   suggest?(args: SuggestArgs, ctx): Promise<ActivitySuggestion[]>
 }
-// LoggingControlDescriptor: {key, label, icon?, color?, order?, optionType?, input}
+// LoggingControlDescriptor: {key, label, icon?, color?, order?, optionType?,
+//   allowsMultiple?, editable?, input}
 // input (catalog v0): {kind: 'refList', refType, placeholder?, pattern?}
 // SuggestArgs: {operation, location?: {lat, lon}, callsign?, searchTerm?}
-// ActivitySuggestion: Ref & {distance?, relevance?}
+// ActivitySuggestion: Ref & {distance?, relevance?, allowsMultiple?}
 ```
 
 `icon` is a Material Design Icons name (e.g. `'pine-tree'`), or a FontAwesome6
@@ -248,6 +249,34 @@ extension may honor either, both, or neither (returning `[]`). The core fans
 out to every `activity` hook via `invokeHookAll`, merges results, and sorts
 by `distance * relevance` ascending (missing `distance` treated as
 unsorted/unknown, sorted after ranked ones). Implemented by: `pota`, `sota`.
+
+The activity search box also treats a leading `key:` as a scope — typing
+`pota:` (or tapping a row under "Activity Types") asks that extension alone,
+via a key-scoped `invokeHook` rather than the usual fan-out. For that to
+work, an extension's `activity` hook must be registered under its own
+**extension key**, and its control descriptors keyed `<extensionKey>/<name>`
+(`pota/activation`) — the core derives the scope from the part before the
+slash. An extension that deviates simply never gets scoped: its rows still
+add references, but `key:` would ask a hook that doesn't exist and come back
+empty.
+
+`editable` declares whether a reference of this type has anything to edit
+once it's on the operation. It defaults to **false**: a plain reference
+activity carries only the code its own `suggest` already resolved, so the
+Current Activities row stays inert — the user removes it and picks again
+rather than retyping a code no lookup would re-check. `pota` and `sota` leave
+it off. Set it true for a type whose references carry more than the code.
+
+`allowsMultiple` declares whether an operation may carry more than one
+reference of that type at a time. It defaults to **false**: picking one of
+the type's references **replaces** the operation's existing reference of
+that type rather than adding alongside it. A type that genuinely stacks
+declares `allowsMultiple: true` — `pota` does, for n-fers. Declare it on the
+suggestion (for the search/nearby list) *and* on the type's
+`LoggingControlDescriptor` (for references the user types in by hand); the
+core reads the suggestion's value first and falls back to the control's.
+Selecting a reference the operation already has is still a duplicate, not a
+replacement — the core flashes the existing row instead of adding it twice.
 
 ## ✅ `adifFields` — per-QSO export field contributions
 
