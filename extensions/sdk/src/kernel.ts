@@ -525,6 +525,7 @@ const kernel = {
                 url: record.hook.url,
                 maxAgeInDays: record.hook.maxAgeInDays,
                 fetchType: record.hook.fetchType,
+                encoding: record.hook.encoding ?? null,
                 category: record.hook.category,
                 csvOptions: record.hook.csvOptions ?? null,
                 jsonOptions: record.hook.jsonOptions ?? null,

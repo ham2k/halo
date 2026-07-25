@@ -797,6 +797,12 @@ export interface DataFileDefinition {
   maxAgeInDays: number
   fetchType: FetchType
 
+  /// Character encoding of the fetched file. When omitted the host uses the
+  /// response's Content-Type charset, defaulting to `'utf-8'`. Set this
+  /// (`'latin1'` / `'iso-8859-1'` / `'ascii'`) to OVERRIDE a server that sends
+  /// a wrong or missing charset for a non-UTF-8 source (#317).
+  encoding?: string
+
   category?: string
   csvOptions?: CsvOptions
   csvToLookupEntry?: (row: string[] | Record<string, string>) => LookupEntry | null

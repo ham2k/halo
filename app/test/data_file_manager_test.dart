@@ -48,6 +48,59 @@ void main() {
     );
   });
 
+  group('decodeDataFileBody (#317)', () {
+    // "Jærstrendene" — POTA NO-2526. The 'æ' is U+00E6, two bytes in UTF-8.
+    final utf8Bytes = utf8.encode('Jærstrendene');
+    final latin1Bytes = latin1.encode('Jærstrendene'); // single 0xE6 byte
+
+    test('defaults to UTF-8 when no encoding is given', () {
+      expect(decodeDataFileBody(utf8Bytes), 'Jærstrendene');
+    });
+
+    test('UTF-8 bytes read as latin1 (the old bug) would garble — UTF-8 decode fixes it', () {
+      // The regression: latin1-decoding UTF-8 bytes yields "JÃ¦rstrendene".
+      expect(latin1.decode(utf8Bytes), 'JÃ¦rstrendene');
+      // decodeDataFileBody defaults to UTF-8, so it round-trips correctly.
+      expect(decodeDataFileBody(utf8Bytes, encoding: 'utf-8'), 'Jærstrendene');
+    });
+
+    test('a declared latin1/iso-8859-1 encoding decodes a genuinely latin1 file', () {
+      expect(decodeDataFileBody(latin1Bytes, encoding: 'latin1'), 'Jærstrendene');
+      expect(decodeDataFileBody(latin1Bytes, encoding: 'ISO-8859-1'), 'Jærstrendene');
+    });
+
+    test('an unknown encoding falls back to UTF-8', () {
+      expect(decodeDataFileBody(utf8Bytes, encoding: 'windows-1252'), 'Jærstrendene');
+    });
+
+    test('malformed bytes are replaced, not thrown', () {
+      expect(() => decodeDataFileBody([0xFF, 0xFE, 0x41]), returnsNormally);
+      expect(decodeDataFileBody([0x41, 0xFF, 0x42]), contains('A'));
+    });
+  });
+
+  group('resolveDataFileEncoding (#317)', () {
+    test('the definition\'s encoding overrides the server Content-Type charset', () {
+      expect(resolveDataFileEncoding('latin1', 'text/csv; charset=utf-8'), 'latin1');
+    });
+
+    test('honors the server charset when the definition declares none', () {
+      expect(resolveDataFileEncoding(null, 'text/csv; charset=iso-8859-1'), 'iso-8859-1');
+    });
+
+    test('an empty definition encoding is treated as absent (server charset wins)', () {
+      expect(resolveDataFileEncoding('', 'text/plain; charset=latin1'), 'latin1');
+    });
+
+    test('null when the server sends no charset — decode then defaults to UTF-8', () {
+      expect(resolveDataFileEncoding(null, 'application/json'), isNull);
+    });
+
+    test('null when there is no Content-Type header at all', () {
+      expect(resolveDataFileEncoding(null, null), isNull);
+    });
+  });
+
   test('DataFileManager: parseCsvRow matches standard CSV expectations', () {
     // Basic comma separated
     expect(manager.parseCsvRow('val1,val2,val3', ','), ['val1', 'val2', 'val3']);
@@ -466,7 +519,7 @@ class TestDataFileManager extends DataFileManager {
   });
 
   @override
-  Future<String?> downloadFile(String key, String url, {bool force = false}) async {
+  Future<String?> downloadFile(String key, String url, {bool force = false, String? encoding}) async {
     return mockDownloadBody;
   }
 }

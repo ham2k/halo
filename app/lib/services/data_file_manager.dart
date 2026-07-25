@@ -14,6 +14,45 @@ import '../i18n/strings.g.dart';
 import 'extension_service.dart';
 import 'status_bar_service.dart';
 
+/// The encoding to decode a data file with, resolved by precedence (#317):
+/// the definition's [defEncoding] wins (it overrides a wrong/missing server
+/// header), else the `charset` from the response's Content-Type
+/// [contentTypeHeader], else null — [decodeDataFileBody] then defaults to
+/// UTF-8. This replaces Dart's `http.Response.body`, which silently defaults a
+/// charset-less response to latin1 and so garbled UTF-8 park names.
+String? resolveDataFileEncoding(String? defEncoding, String? contentTypeHeader) {
+  if (defEncoding != null && defEncoding.isNotEmpty) return defEncoding;
+  if (contentTypeHeader == null) return null;
+  try {
+    return ContentType.parse(contentTypeHeader).charset; // dart:io lowercases it
+  } catch (_) {
+    return null; // unparseable header — fall back to the UTF-8 default
+  }
+}
+
+/// Decodes a downloaded data-file body from raw bytes into a Dart string
+/// (internally Unicode). [encoding] comes from [resolveDataFileEncoding]
+/// (definition override → server charset → UTF-8 default). Malformed bytes are
+/// replaced (U+FFFD), never thrown, so one bad byte can't fail the whole file.
+/// Unknown/unsupported encodings fall back to UTF-8. See #317.
+String decodeDataFileBody(List<int> bytes, {String? encoding}) {
+  switch ((encoding ?? 'utf-8').toLowerCase().replaceAll('_', '-')) {
+    case 'latin1':
+    case 'latin-1':
+    case 'iso-8859-1':
+      return latin1.decode(bytes, allowInvalid: true);
+    case 'ascii':
+    case 'us-ascii':
+      return ascii.decode(bytes, allowInvalid: true);
+    case 'utf-8':
+    case 'utf8':
+      return utf8.decode(bytes, allowMalformed: true);
+    default:
+      debugPrint('[data-file] unknown encoding "$encoding" — decoding as UTF-8');
+      return utf8.decode(bytes, allowMalformed: true);
+  }
+}
+
 /// One registered data file's definition plus its last-download time, for
 /// the Data Files settings panel. [updatedAt] is null when the file has
 /// never been downloaded on this device.
@@ -150,11 +189,15 @@ class DataFileManager {
     return urlString;
   }
 
-  /// Downloads the file at [url] and returns the HTTP body string or throws.
-  /// Uses ETag cached in [prefs] to avoid duplicate downloads, unless
-  /// [force] skips sending it — a manual reload wants a full reprocess
+  /// Downloads the file at [url] and returns the decoded body string, or null
+  /// on a 304, or throws. Decoded per [resolveDataFileEncoding]: the
+  /// definition's [encoding] overrides the response's Content-Type charset,
+  /// which is otherwise honored, defaulting to UTF-8 — NOT `http.Response.body`,
+  /// which defaults a charset-less response to latin1 and so garbled UTF-8 park
+  /// names (#317). Uses ETag cached in [prefs] to avoid duplicate downloads,
+  /// unless [force] skips sending it — a manual reload wants a full reprocess
   /// even when the server would otherwise report the content unchanged.
-  Future<String?> downloadFile(String key, String url, {bool force = false}) async {
+  Future<String?> downloadFile(String key, String url, {bool force = false, String? encoding}) async {
     final resolvedUrl = _resolveFetchUrl(resolveDownloadUrl(url));
     final client = http.Client();
     final request = http.Request('GET', Uri.parse(resolvedUrl));
@@ -183,7 +226,8 @@ class DataFileManager {
     if (newEtag != null) {
       await prefs.setString(etagKey, newEtag);
     }
-    return response.body;
+    final resolved = resolveDataFileEncoding(encoding, response.headers['content-type']);
+    return decodeDataFileBody(response.bodyBytes, encoding: resolved);
   }
 
   /// Schedules sync and processing of registered data files. With
@@ -263,7 +307,7 @@ class DataFileManager {
 
     statusBar?.setProgress(key: statusKey, title: label, text: t.dataFiles.downloading);
     try {
-      final body = await downloadFile(key, url, force: force);
+      final body = await downloadFile(key, url, force: force, encoding: def['encoding'] as String?);
       if (body == null) {
         // Unchanged 304.
         statusBar?.clear(statusKey);

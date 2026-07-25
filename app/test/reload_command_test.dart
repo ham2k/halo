@@ -23,7 +23,7 @@ class _CannedDataFileManager extends DataFileManager {
   _CannedDataFileManager({required this.bodiesByKey, required super.lookups, required super.extensions, required super.prefs});
 
   @override
-  Future<String?> downloadFile(String key, String url, {bool force = false}) async {
+  Future<String?> downloadFile(String key, String url, {bool force = false, String? encoding}) async {
     if (key == 'pota-all-parks') callsForPota++;
     if (key == 'sota-all-summits') callsForSota++;
     return bodiesByKey[key];
