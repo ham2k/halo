@@ -60,6 +60,13 @@ This is a multi-platform app for Amateur Radio Logging, called "Ham2K Logger" (o
 
 ## Tooling
 
+- **Verify with `./scripts/test.sh`** (or `mise run test`) before saying tests
+  pass or opening a PR — it is what CI runs. Per-package `flutter test` is right
+  for a fast inner loop but is NOT the gate: it skips the extensions'
+  `npm run typecheck`, skips `halo_build_tools`, and skips rebuilding the
+  extension bundles that the Dart integration tests load, so stale bundles pass
+  silently. `--quick` for analyze+typecheck only. See DEVELOPMENT.md.
+
 - On the development environment, we use `mise` to manage dependencies and tool versions.
 
 - When adding commits, identify yourself as "Sebastian Delmont <sd@ham2k.com>"
