@@ -52,8 +52,10 @@ git ls-remote --tags --refs https://github.com/quickjs-ng/quickjs.git \
 ```
 
 **To bump:** replace the four `.c` files and the headers in
-`packages/halo_quickjs/src/quickjs/`, update `VERSION`, then run the package
-suite — it covers the API surface we actually use (eval, exceptions and
+`packages/halo_quickjs/src/quickjs/`, update `VERSION`, then run
+`packages/halo_quickjs/tool/verify_targets.sh` (cross-compiles every target
+ABI, including 32-bit armv7, and asserts the `JSValue` representation) and
+the package suite — it covers the API surface we actually use (eval, exceptions and
 stacks, the `sendMessage` bridge, promise pumping, interrupt, memory limit,
 re-entrancy). Read the upstream changelog for signature changes first;
 quickjs-ng has made deliberate breaking changes to the classic Bellard API,

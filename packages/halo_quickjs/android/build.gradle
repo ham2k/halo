@@ -1,0 +1,47 @@
+// quickjs-ng is compiled from source by the NDK, for every ABI the app
+// targets — including 32-bit armeabi-v7a, where quickjs.h switches JSValue to
+// a NaN-boxed uint64_t. Nothing in the shim's exported API changes shape
+// there, which is exactly why no JSValue crosses the FFI boundary
+// (see ../src/halo_qjs.h).
+group = "com.ham2k.halo_quickjs"
+version = "1.0"
+
+buildscript {
+    repositories {
+        google()
+        mavenCentral()
+    }
+    dependencies {
+        classpath("com.android.tools.build:gradle:9.0.1")
+    }
+}
+
+rootProject.allprojects {
+    repositories {
+        google()
+        mavenCentral()
+    }
+}
+
+apply plugin: "com.android.library"
+
+android {
+    namespace = "com.ham2k.halo_quickjs"
+    compileSdk = 36
+    ndkVersion = android.ndkVersion
+
+    externalNativeBuild {
+        cmake {
+            path = "../src/CMakeLists.txt"
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
+    }
+
+    defaultConfig {
+        minSdk = 24
+    }
+}

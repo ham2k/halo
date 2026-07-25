@@ -331,6 +331,13 @@ against a mutant with the gate removed.
 engine, from four translation units (`quickjs.c`, `libregexp.c`,
 `libunicode.c`, `dtoa.c`), built in 4.6s wall / ~5s CPU at `-O2`.
 
+**§4.1 is now confirmed on real 32-bit hardware toolchains, not just by
+reading the header.** `tool/verify_targets.sh` cross-compiles the shim and
+quickjs for every target ABI and asserts the `JSValue` representation with a
+`_Static_assert`: NaN-boxed `uint64_t` on `armeabi-v7a`, 16-byte struct on
+arm64 and iOS. The same shim source compiles against both, which is the
+property the flat boundary exists to guarantee.
+
 **§4.3 (host test library) and §4.4 (API drift) remain open** — the spike
 loaded a hand-built dylib by absolute path, which is not the answer for
 `flutter test`, and it exercised only the API subset listed above.
@@ -345,6 +352,7 @@ the engine swap (Phase 3) lands only once every platform builds.
 | **0 — Spike** | Answer §4.1–4.4. Throwaway code, one platform (macOS or Linux host). | ABI, callback, and host-test approach are settled with evidence |
 | **1 — Package** | `packages/halo_quickjs`: vendored source pinned, shim, FFI bindings, host build script. macOS + Linux. | Integration suite green against the new engine on both |
 | **2 — Platforms** | Windows, Android, iOS build integration. | All five native platforms build and pass in CI |
+
 | **3 — Swap** | `engine_runtime_io.dart` → new binding; drop `flutter_js`; delete the three workarounds; add interrupt handler + memory limit everywhere. | `flutter_js` gone from `pubspec.yaml`; full suite green |
 | **4 — ARM64** | `linux-arm64` CI workflow, packaging, download page. | An ARM64 Linux build is published |
 
