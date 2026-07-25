@@ -97,33 +97,40 @@ hard format limits the projection respects:
 | **Android** | `versionCode` / `versionName` | code ≤ **2,100,000,000**, strictly increasing, single-use | `73` / `26.8.1-alpha1` |
 | **iOS** | `CFBundleVersion` / `CFBundleShortVersionString` | build ≤ **18 chars**; marketing = **≤ 3 integers, no suffixes** | `73` / `26.8.1` |
 | **macOS** | `CFBundleVersion` / `CFBundleShortVersionString` | direct distribution (no App Store review) → marketing **keeps the suffix** | `73` / `26.8.1-alpha1` |
-| **Windows** | MSIX / `FILEVERSION` `a.b.c.d` | each part **0–65535**, major ≠ 0; revision **must be 0 only for MSIX/Store** (see note) | `26.8.73.73` |
-| **Linux** | package version | numeric, monotonic ordering | `26.8.73` |
+| **Windows** | MSIX / `FILEVERSION` `a.b.c.d` | each part **0–65535**, major ≠ 0; revision **must be 0 only for MSIX/Store** (see note) | `26.8.1.73` |
+| **Linux** | package version | string; build number distinguishes builds | `26.8.1-alpha1` (build 73) |
 | **Web** | — | none (server-deployed) | n/a |
 
 Two projection rules follow from the table:
 
-- **Desktop carries the build number in the third slot.** Windows uses
-  `major.minor.build`; **Linux uses `26.8.73` directly**. Because the counter is
-  capped at 16 bits (0–65535) it fits the desktop field with no encoding. Linux
-  needs no `~preN` suffix — the number already orders correctly and is unique, so
-  a Next pre-release simply carries a lower build number.
-  - **The build number also goes in `--build-number` (the 4th/revision slot), not
-    `0`.** `package_info_plus` reads the build number from the *native* field —
-    the `+N` suffix of the exe's `ProductVersion` on Windows, `version.json`'s
-    `build_number` on Linux — both of which come from `--build-number`. Passing
-    `0` there made the About view read **"Build 0"** on desktop while iOS/macOS/
-    Android (which pass the real number) showed it correctly. So CI now pairs the
-    `major.minor.build` build-name with `--build-number=<build>`, making the
-    revision slot the build number (`26.8.73.73`). The cost is that revision is no
-    longer `0` — which matters **only for an MSIX/Store submission**, where
-    Microsoft reserves the 4th part and requires it to be `0`. We ship a signed
-    portable ZIP + Inno installer (WinSparkle), *not* MSIX/Store, so nothing
-    requires revision `0` today; if a Store/MSIX artifact is ever added, that
-    packaging step can force its own revision to `0` without affecting this build.
-    (`PlatformVersions.windowsFileVersion` still models the Store-style `.0`
-    revision but is not what CI builds from — CI uses `linuxPackageVersion` as the
-    build-name.)
+- **Desktop uses the full public version as its build-name — same string as every
+  other platform.** Windows and Linux both build with
+  `--build-name=<public version>` (`26.8.1-alpha1`) and `--build-number=<build>`,
+  exactly like Android/macOS, so the version reads the same everywhere (the About
+  view, Windows file properties, and the WinSparkle update dialog all show
+  `26.8.1-alpha1`, never a desktop-only `26.8.96`).
+  - **Windows `FILEVERSION` is derived, not hand-encoded.** Flutter parses
+    `build-name+build-number` and emits the numeric `FILEVERSION` as
+    `major.minor.patch.build` — `26.8.1-alpha1+73` → `26.8.1.73` (each part well
+    under the 16-bit cap). The revision slot is the build number, not `0`, which
+    matters **only for an MSIX/Store submission** (Microsoft reserves the 4th part
+    and requires `0`). We ship a signed portable ZIP + Inno installer (WinSparkle),
+    *not* MSIX/Store, so nothing requires revision `0`; a future Store/MSIX
+    artifact can force its own revision to `0` for that build alone.
+    (`PlatformVersions.windowsFileVersion` / `linuxPackageVersion` still model the
+    old numeric `major.minor.build` encoding but are no longer what CI builds from.)
+  - **`package_info_plus` reads the real build** from the `+N` suffix of the exe's
+    `ProductVersion` (Windows) / `version.json`'s `build_number` (Linux), both from
+    `--build-number` — so the About view shows the build instead of the old
+    **"Build 0"** (which came from passing `--build-number=0`).
+  - **WinSparkle** compares the appcast's `<sparkle:version>` against the exe's
+    `FileVersion` string, so the appcast advertises the exact
+    `<public version>+<build>` string (`26.8.1-alpha1+73`); the trailing `+build`
+    increments per build, so a genuinely newer build still compares newer while a
+    build never re-offers itself. **Caveat:** two builds that share a public
+    version differ only in `+build`, so if a `.deb` is added later its packaging
+    must fold the build number into the Debian version for `dpkg` upgrade ordering
+    (AppImage needs no version comparison; the current scheme is fine for it).
 - **iOS marketing string cannot carry `-preN`.** `CFBundleShortVersionString` must
   be pure `X.Y.Z`, so the plist marketing version stays `26.8.1` for all of
   `alpha1`/`pre1`, `pre2`, and the final release; the pre-release label lives in the

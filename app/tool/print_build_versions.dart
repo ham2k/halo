@@ -11,6 +11,7 @@
 //   flutter build ipa    --build-name="$HALO_MARKETING"    --build-number="$HALO_BUILD_ID"
 //   flutter build apk    --build-name="$HALO_ANDROID_NAME"  --build-number="$HALO_BUILD_ID"
 //   flutter build windows --build-name="$HALO_DESKTOP_NAME" --build-number="$HALO_BUILD_ID"
+//   flutter build linux   --build-name="$HALO_DESKTOP_NAME" --build-number="$HALO_BUILD_ID"
 //
 // The build number is a single monotonic integer bumped per release; it fits
 // every platform's field (it is capped at 16 bits for Windows/Linux), so all
@@ -34,10 +35,13 @@ void main() {
     'HALO_BUILD_ID': '$kBuildNumber',
     // Android: versionName (keeps the suffix) + versionCode (= build number)
     'HALO_ANDROID_NAME': p.androidVersionName,
-    // Windows / Linux: FILEVERSION-safe build-name (major.minor.build). CI pairs
-    // it with --build-number=HALO_BUILD_ID (not 0) so package_info_plus reports
-    // the real build in the About view (§2.2).
-    'HALO_DESKTOP_NAME': p.linuxPackageVersion,
+    // Windows / Linux: the FULL public version WITH the suffix, same as macOS /
+    // Android — so every platform's version string reads "26.8.1-alpha1", not a
+    // desktop-only "26.8.96". CI pairs it with --build-number=HALO_BUILD_ID;
+    // Flutter derives the numeric Windows FILEVERSION from it as
+    // major.minor.patch.build (e.g. 26.8.1-alpha1+96 -> 26.8.1.96), and
+    // package_info_plus reads the real build for the About view (§2.2).
+    'HALO_DESKTOP_NAME': p.macMarketingVersion,
   };
   out.forEach((k, value) => print('$k=$value'));
 }
