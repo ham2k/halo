@@ -44,7 +44,19 @@ class _IoEngineRuntime implements EngineRuntime {
   fjs.JavascriptRuntime _createRuntime() {
     if (Platform.isAndroid || Platform.isWindows || Platform.isLinux) {
       final runtime = fjs.QuickJsRuntime2(
-        stackSize: 2 * 1024 * 1024,
+        // QuickJS's stack-overflow guard (jsSetMaxStackSize) must sit BELOW the
+        // host thread's real native stack. If it's larger, QuickJS never trips
+        // its own check, the OS stack overflows first, and the process dies with
+        // an uncatchable EXCEPTION_STACK_OVERFLOW — no Dart error, nothing on
+        // Sentry (this took down first-run onboarding on Windows the moment a
+        // real callsign hit the JS lookup). Extension-host isolate threads on
+        // Windows/Android get only ~1MB, so the old 2MB guard was inert there;
+        // 512KB is safely inside it and ample for the (shallow) extension hooks
+        // — a legitimately deeper call now raises a catchable RangeError that
+        // _evaluate turns into an ExtensionHostException (degrades to a failed
+        // hook) instead of crashing. Linux threads default to 8MB, so the guard
+        // stays at 2MB there to preserve headroom.
+        stackSize: Platform.isLinux ? 2 * 1024 * 1024 : 512 * 1024,
         memoryLimit: Platform.isAndroid ? 256 * 1024 * 1024 : null,
         hostPromiseRejectionHandler: (dynamic reason) {
           _onMessage?.call({'type': 'log', 'message': 'ERROR unhandled promise rejection: $reason'});
