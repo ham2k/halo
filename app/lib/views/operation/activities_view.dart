@@ -760,8 +760,20 @@ class OperationSheetState extends State<OperationSheet> {
 
   Widget _sectionBody({required bool fill, required List<Widget> rows, required Widget emptyPlaceholder}) {
     if (rows.isEmpty) return emptyPlaceholder;
-    if (!fill) return Column(mainAxisSize: MainAxisSize.min, children: rows);
-    return ListView(children: rows);
+    // One ink layer PER ROW. A ListTile paints its `tileColor` (and its
+    // splash) with `Ink`, onto the nearest ancestor Material — and a
+    // Material clips ink to ITS OWN bounds (`_RenderInkFeatures.paint`), not
+    // to anything in between. With the sheet's root Material as the nearest
+    // one, that clip is the whole sheet, so a row scrolled out of a viewport
+    // kept painting its background wherever it had got to. A Material around
+    // the list would just move the problem to the list's bounds; per row,
+    // the clip IS the row. MaterialType.transparency: an ink layer, no
+    // surface of its own.
+    final inkedRows = [
+      for (final row in rows) Material(type: MaterialType.transparency, child: row),
+    ];
+    if (!fill) return Column(mainAxisSize: MainAxisSize.min, children: inkedRows);
+    return ListView(children: inkedRows);
   }
 
   Future<void> saveAndClose() async {
@@ -1176,7 +1188,21 @@ class OperationSheetState extends State<OperationSheet> {
                       height: 84.0,
                       child: SingleChildScrollView(
                         physics: const ClampingScrollPhysics(),
-                        child: allOptionsContent,
+                        // Its own ink layer, INSIDE the scroll view, so the
+                        // viewport clips it along with the rows. A ListTile
+                        // paints `tileColor` with `Ink`, onto the nearest
+                        // ancestor Material — which was the sheet's root,
+                        // above this scroll view, and ink is clipped to that
+                        // Material's bounds rather than to the viewport in
+                        // between (see `_sectionBody`). So rows scrolled out
+                        // of this 84px window still painted their
+                        // backgrounds, over the sections above.
+                        // MaterialType.transparency: an ink layer, no
+                        // surface of its own.
+                        child: Material(
+                          type: MaterialType.transparency,
+                          child: allOptionsContent,
+                        ),
                       ),
                     );
             }(),
