@@ -62,11 +62,18 @@ class Operation {
   DateTime? get startAtMax =>
       startAtMillisMax == null ? null : DateTime.fromMillisecondsSinceEpoch(startAtMillisMax!, isUtc: true);
 
-  int? get createdAtMillis => data['createdAtMillis'] as int?;
+  /// Falls back to app-polo's older `createdOnMillis` spelling, which
+  /// operations synced from a long-lived polo install still carry (polo does
+  /// the same on read — `operationsDB.js`). Without the fallback an
+  /// operation with no QSOs has no date at all to sort by, so every legacy
+  /// empty operation collapses to the bottom of the home list together.
+  int? get createdAtMillis => ((data['createdAtMillis'] ?? data['createdOnMillis']) as num?)?.toInt();
 
   /// Revision stamp, set by the repositories on every local write (app-polo
-  /// convention: it lives in the QSON so it round-trips through sync).
-  int? get updatedAtMillis => (data['updatedAtMillis'] as num?)?.toInt();
+  /// convention: it lives in the QSON so it round-trips through sync). Same
+  /// legacy fallback as [createdAtMillis] — this one decides which side of a
+  /// sync merge wins, so a null would make a legacy record look revision-less.
+  int? get updatedAtMillis => ((data['updatedAtMillis'] ?? data['updatedOnMillis']) as num?)?.toInt();
 }
 
 /// One contact. QSON shape (same as app-polo):

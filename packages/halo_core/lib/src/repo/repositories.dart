@@ -31,6 +31,21 @@ int _nowMillis() => DateTime.now().toUtc().millisecondsSinceEpoch;
 /// synced. When the inbound record has no stamp (pre-stamp history), only
 /// local rows with unpushed edits (`synced == false`) are protected; clean
 /// rows accept it.
+/// Rewrites app-polo's older `*OnMillis` spellings to the `*AtMillis` ones
+/// this app reads, in place, the way polo's own `operationsDB.js` does on
+/// read. Inbound sync can carry either, and the merge below compares
+/// revisions BEFORE anything goes through the model's getters — so without
+/// this a legacy record looks revision-less and loses every comparison.
+void _normalizeLegacyStamps(Map<String, dynamic> data) {
+  for (final (legacy, current) in const [
+    ('createdOnMillis', 'createdAtMillis'),
+    ('updatedOnMillis', 'updatedAtMillis'),
+  ]) {
+    final value = data.remove(legacy);
+    if (value != null) data.putIfAbsent(current, () => value);
+  }
+}
+
 bool _inboundIsStale({
   required int? existingUpdatedAtMillis,
   required bool existingSynced,
@@ -211,16 +226,24 @@ class OperationsRepository {
 
   /// Total and pending-sync counts, reported in the sync payload's `meta`
   /// (mirrors `getSyncCounts()` in app-polo's `sync.js`).
+  ///
+  /// `total` is what this device HOLDS, so tombstones don't count — they're
+  /// records that no longer exist as far as the user is concerned. `pending`
+  /// is what it still owes the server, so tombstones DO count: a delete only
+  /// reaches other devices by being pushed.
   Future<({int total, int pending})> syncCounts() async {
-    final total = db.operations.uuid.count();
-    final query = db.selectOnly(db.operations)..addColumns([total]);
-    final totalCount = (await query.getSingle()).read(total) ?? 0;
-    final pendingCount = (await (db.selectOnly(db.operations)
-              ..addColumns([total])
-              ..where(db.operations.synced.equals(false)))
-            .getSingle())
-        .read(total) ?? 0;
-    return (total: totalCount, pending: pendingCount);
+    final count = db.operations.uuid.count();
+    Future<int> countWhere(Expression<bool> predicate) async {
+      final query = db.selectOnly(db.operations)
+        ..addColumns([count])
+        ..where(predicate);
+      return (await query.getSingle()).read(count) ?? 0;
+    }
+
+    return (
+      total: await countWhere(db.operations.deleted.equals(false)),
+      pending: await countWhere(db.operations.synced.equals(false)),
+    );
   }
 
   /// Upserts operations received from the sync server. Leaves the locally
@@ -247,6 +270,7 @@ class OperationsRepository {
         if (uuid == null) continue;
         final data = Map<String, dynamic>.from(incoming)..remove('uuid');
         final deleted = data.remove('deleted') == true;
+        _normalizeLegacyStamps(data);
         watermark.include((data['syncedAtMillis'] as num?)?.toInt());
 
         final existing = existingByUuid[uuid];
@@ -453,14 +477,30 @@ class QsosRepository {
   /// Every non-deleted, non-event QSO with [call] across every operation, most
   /// recent first — for the call-info detail's QSO history. Matches the
   /// denormalized `theirCall` column (stored uppercase), so no JSON parsing.
+  ///
+  /// Deleting an operation deliberately does NOT tombstone its QSOs — that
+  /// would be unrecoverable, since undeleting could no longer tell which of
+  /// them the user had deleted individually beforehand. So a cross-operation
+  /// query has to join: a QSO counts as gone when its own flag says so OR
+  /// when the operation it belongs to is deleted. The join is a LEFT OUTER
+  /// one because a QSO can outlive its operation row (an inbound sync batch
+  /// can carry QSOs before the operation they belong to arrives) — those
+  /// count as present, same as before.
   Future<List<Qso>> historyForCall(String call) async {
     final normalized = call.trim().toUpperCase();
     if (normalized.isEmpty) return const [];
-    final query = (db.select(db.qsos)
-      ..where((q) => q.theirCall.equals(normalized) & q.deleted.equals(false))
-      ..orderBy([(q) => OrderingTerm(expression: q.startAtMillis, mode: OrderingMode.desc)]));
+    final query = db.select(db.qsos).join([
+      leftOuterJoin(db.operations, db.operations.uuid.equalsExp(db.qsos.operation)),
+    ])
+      ..where(db.qsos.theirCall.equals(normalized) &
+          db.qsos.deleted.equals(false) &
+          (db.operations.deleted.equals(false) | db.operations.uuid.isNull()))
+      ..orderBy([OrderingTerm(expression: db.qsos.startAtMillis, mode: OrderingMode.desc)]);
     final rows = await query.get();
-    return [for (final row in rows.map(_qsoFromRow)) if (!row.isEvent) row];
+    return [
+      for (final row in rows.map((r) => _qsoFromRow(r.readTable(db.qsos))))
+        if (!row.isEvent) row,
+    ];
   }
 
   /// Up to `limit` dirty QSOs, most recent first — mirrors `sync.js`'s
@@ -496,15 +536,26 @@ class QsosRepository {
     });
   }
 
-  /// See `OperationsRepository.syncCounts`.
+  /// See `OperationsRepository.syncCounts`. `total` applies the same rule
+  /// `historyForCall` does — a QSO is gone when its own flag says so or when
+  /// its operation's does — so deleting an operation drops its contacts from
+  /// the count without touching a single QSO row.
   Future<({int total, int pending})> syncCounts() async {
-    final total = db.qsos.uuid.count();
-    final totalCount = (await (db.selectOnly(db.qsos)..addColumns([total])).getSingle()).read(total) ?? 0;
-    final pendingCount = (await (db.selectOnly(db.qsos)
-              ..addColumns([total])
-              ..where(db.qsos.synced.equals(false)))
-            .getSingle())
-        .read(total) ?? 0;
+    final count = db.qsos.uuid.count();
+
+    final totalQuery = db.selectOnly(db.qsos).join([
+      leftOuterJoin(db.operations, db.operations.uuid.equalsExp(db.qsos.operation)),
+    ])
+      ..addColumns([count])
+      ..where(db.qsos.deleted.equals(false) &
+          (db.operations.deleted.equals(false) | db.operations.uuid.isNull()));
+    final totalCount = (await totalQuery.getSingle()).read(count) ?? 0;
+
+    final pendingQuery = db.selectOnly(db.qsos)
+      ..addColumns([count])
+      ..where(db.qsos.synced.equals(false));
+    final pendingCount = (await pendingQuery.getSingle()).read(count) ?? 0;
+
     return (total: totalCount, pending: pendingCount);
   }
 
@@ -554,6 +605,7 @@ class QsosRepository {
 
         final data = Map<String, dynamic>.from(incoming)..remove('operation');
         final deleted = data.remove('deleted') == true;
+        _normalizeLegacyStamps(data);
         watermark.include((data['syncedAtMillis'] as num?)?.toInt());
 
         final existing = existingByUuid[uuid];

@@ -29,6 +29,14 @@ class StatusBarItem {
   /// Null when this isn't a progress item. 0.0-1.0 when determinate.
   final double? progressValue;
   final bool isIndeterminateProgress;
+
+  /// When this key was FIRST posted — kept across updates, so a message that
+  /// keeps refreshing (a download's percentage, a sync's phase) holds its
+  /// place in the footer instead of jumping to the end on each tick.
+  final DateTime createdAt;
+
+  /// When it was last written. Only [_capItems] reads this: eviction wants
+  /// the least recently ACTIVE item, which isn't the same as the oldest.
   final DateTime updatedAt;
 
   const StatusBarItem({
@@ -38,6 +46,7 @@ class StatusBarItem {
     this.text,
     this.progressValue,
     this.isIndeterminateProgress = false,
+    required this.createdAt,
     required this.updatedAt,
   });
 
@@ -120,7 +129,12 @@ class StatusBarService extends ChangeNotifier {
     _notices.addAll(_loadHistory());
   }
 
-  List<StatusBarItem> get items => _items.values.toList()..sort((a, b) => a.updatedAt.compareTo(b.updatedAt));
+  /// In the order the keys were first posted. Dart maps iterate in insertion
+  /// order, and assigning an EXISTING key leaves its position alone, so an
+  /// update never reshuffles the footer — deliberately not sorted by
+  /// [StatusBarItem.updatedAt], which is what used to make a refreshing
+  /// progress bar leapfrog the messages around it.
+  List<StatusBarItem> get items => _items.values.toList();
 
   /// The active progress/message item under [key], or null — a direct map
   /// lookup, so callers watching one keyed item (a data file's download, a
@@ -133,7 +147,15 @@ class StatusBarService extends ChangeNotifier {
   List<StatusBarNotice> get history => _notices.reversed.toList();
 
   void setMessage({required String key, String? icon, String? title, String? text}) {
-    _items[key] = StatusBarItem(key: key, icon: icon, title: title, text: text, updatedAt: DateTime.now());
+    final now = DateTime.now();
+    _items[key] = StatusBarItem(
+      key: key,
+      icon: icon,
+      title: title,
+      text: text,
+      createdAt: _items[key]?.createdAt ?? now,
+      updatedAt: now,
+    );
     _capItems();
     notifyListeners();
   }
@@ -152,6 +174,7 @@ class StatusBarService extends ChangeNotifier {
   /// (`value >= 1.0`) progress item auto-clears itself 5 seconds later,
   /// unless it's been replaced or cleared by then.
   void setProgress({required String key, String? icon, String? title, String? text, double? value}) {
+    final now = DateTime.now();
     _items[key] = StatusBarItem(
       key: key,
       icon: icon,
@@ -159,7 +182,11 @@ class StatusBarService extends ChangeNotifier {
       text: text,
       progressValue: value,
       isIndeterminateProgress: value == null,
-      updatedAt: DateTime.now(),
+      // A progress bar that switches from indeterminate to determinate, or
+      // a message that later becomes a progress bar, is still the same item
+      // — it keeps the slot its first post claimed.
+      createdAt: _items[key]?.createdAt ?? now,
+      updatedAt: now,
     );
     _capItems();
     notifyListeners();
