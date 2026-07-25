@@ -463,6 +463,28 @@ class ExtensionHost {
     }
     _pending.clear();
     _inFlight.clear();
+
+    // Ask the isolate to shut the engine down before killing it.
+    //
+    // Isolate.kill reclaims Dart memory, not the JS engine's. QuickJS holds a
+    // real malloc'd heap — the kernel bundle alone needs 10-12MB before any
+    // extension loads — and only halo_qjs_free returns it. The isolate entry
+    // point has always had a `{'type':'dispose'}` branch that runs
+    // core.dispose(), but nothing ever sent the message, so that branch and
+    // the EngineRuntime.dispose() behind it were dead code. Under flutter_js
+    // that was invisible; now it leaks the engine on every restart, and the
+    // crash-restart path in extension_service.dart retries with backoff.
+    //
+    // Best effort by design: the kill still happens, so a wedged isolate
+    // (mid-runaway-hook, say) cannot hold shutdown up.
+    if (_toIsolate != null) {
+      try {
+        _toIsolate!.send({'type': 'dispose'});
+        await Future<void>.delayed(const Duration(milliseconds: 200));
+      } catch (_) {
+        // The isolate may already be gone; killing below is still correct.
+      }
+    }
     _isolate?.kill(priority: Isolate.immediate);
     for (final port in _isolatePorts) {
       port.close();

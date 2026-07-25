@@ -123,28 +123,18 @@ jobs:
           name: extension-bundles
           path: app/assets/extensions
 
-      # flutter_js's QuickJS backend dlopen()s libquickjs_c_bridge_plugin.so,
-      # a prebuilt library that ships inside the pub package (linux/shared/).
-      # It's only staged next to the binary when building a full Linux app;
-      # `flutter test` runs in the host VM, so we must point the loader at
-      # the pub cache ourselves. Only halo_extension_host depends on
-      # flutter_js.
-      - name: Point loader at flutter_js's QuickJS bridge library
-        if: matrix.package == 'packages/halo_extension_host'
-        run: |
-          cd "${{ matrix.package }}"
-          flutter pub get
-          echo "LD_LIBRARY_PATH=$(ls -d "${PUB_CACHE:-$HOME/.pub-cache}"/hosted/pub.dev/flutter_js-*/linux/shared | sort -V | tail -1)" >> "$GITHUB_ENV"
-
       # halo_quickjs compiles quickjs-ng into its own plugin library, but
-      # `flutter test` runs in the host VM and never performs a platform
-      # native build — so there is nothing for the bindings to open unless we
-      # build a host copy first. Same gap as the flutter_js step above, which
-      # this eventually replaces; the difference is that this builds for the
-      # runner's actual architecture instead of relying on a prebuilt that
-      # only exists for x86-64. THIS is what compiles quickjs on Linux.
+      # `flutter test` runs in the host VM and never performs a platform native
+      # build — so there is nothing for the bindings to open unless a host copy
+      # is built first. Needed by BOTH the package's own tests and
+      # halo_extension_host's, which drive the real engine.
+      #
+      # This replaces a step that pointed LD_LIBRARY_PATH at flutter_js's
+      # prebuilt bridge in the pub cache. That step outlived flutter_js: its
+      # glob matched nothing, `echo` still exited 0, and CI went green having
+      # set an empty LD_LIBRARY_PATH.
       - name: Build the host JS engine library
-        if: matrix.package == 'packages/halo_quickjs'
+        if: matrix.package == 'packages/halo_quickjs' || matrix.package == 'packages/halo_extension_host'
         run: ./packages/halo_quickjs/tool/build_host.sh
 
       - name: pub get, analyze, test
@@ -188,14 +178,13 @@ jobs:
       - name: Use blank Mapbox token template
         run: cp app/lib/config/mapbox_token.dart.example app/lib/config/mapbox_token.dart
 
-      # app's tests construct a real ExtensionService/ExtensionHost, which on
-      # Linux uses flutter_js's QuickJS backend — same native-library caveat
-      # as packages/halo_extension_host above.
-      - name: Point loader at flutter_js's QuickJS bridge library
-        run: |
-          cd app
-          flutter pub get
-          echo "LD_LIBRARY_PATH=$(ls -d "${PUB_CACHE:-$HOME/.pub-cache}"/hosted/pub.dev/flutter_js-*/linux/shared | sort -V | tail -1)" >> "$GITHUB_ENV"
+      # app's tests construct a real ExtensionService/ExtensionHost, so they
+      # drive the JS engine — which under `flutter test` means the host build,
+      # not a platform one. This job previously only pointed LD_LIBRARY_PATH at
+      # flutter_js's prebuilt bridge and never built anything; with flutter_js
+      # gone that glob matched nothing and the step passed regardless.
+      - name: Build the host JS engine library
+        run: ./packages/halo_quickjs/tool/build_host.sh
 
       - name: analyze
         if: matrix.shard == 0

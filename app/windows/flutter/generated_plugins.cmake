@@ -7,7 +7,6 @@ list(APPEND FLUTTER_PLUGIN_LIST
   auto_updater_windows
   file_selector_windows
   flutter_inappwebview_windows
-  flutter_js
   flutter_secure_storage_windows
   geolocator_windows
   sentry_flutter
@@ -17,6 +16,7 @@ list(APPEND FLUTTER_PLUGIN_LIST
 )
 
 list(APPEND FLUTTER_FFI_PLUGIN_LIST
+  halo_quickjs
   jni
 )
 

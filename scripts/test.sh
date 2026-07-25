@@ -44,24 +44,9 @@ echo "▶ extensions: build bundles (must precede the Dart integration tests)"
 npm run build
 
 if [[ "$QUICK" -eq 0 ]]; then
-  # On Linux, flutter_js's QuickJS backend dlopen()s libquickjs_c_bridge_plugin.so,
-  # a prebuilt library that ships inside the pub package (linux/shared/). It is
-  # only staged next to the binary when building a full Linux app; `flutter test`
-  # runs in the host VM, so we must point the loader at the pub cache ourselves.
-  # macOS needs nothing — there flutter_js uses the system JavaScriptCore.
-  if [[ "$(uname -s)" == "Linux" ]]; then
-    echo "▶ halo_extension_host: pub get so the QuickJS bridge library is in the pub cache"
-    (cd "$ROOT_DIR/packages/halo_extension_host" && flutter pub get)
-    QUICKJS_SHARED="$(ls -d "${PUB_CACHE:-$HOME/.pub-cache}"/hosted/pub.dev/flutter_js-*/linux/shared | sort -V | tail -1)"
-    export LD_LIBRARY_PATH="$QUICKJS_SHARED${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
-  fi
-
-  # halo_quickjs is the replacement for the above, and has the same problem
-  # for the same reason: `flutter test` runs in the host VM and never performs
-  # a platform native build, so there is no plugin library to load. The
-  # difference is that this one is ours and builds for whatever architecture
-  # the host actually is, instead of a prebuilt that only exists for x86-64.
-  # Incremental — only a source change pays the rebuild.
+  # `flutter test` runs in the host VM and never performs a platform native
+  # build, so there is no plugin library for the tests to load — build one for
+  # the host. Incremental: only a source change pays the rebuild.
   echo "▶ halo_quickjs: build the host JS engine library (needed by its tests)"
   "$ROOT_DIR/packages/halo_quickjs/tool/build_host.sh"
 fi

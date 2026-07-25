@@ -342,6 +342,146 @@ property the flat boundary exists to guarantee.
 loaded a hand-built dylib by absolute path, which is not the answer for
 `flutter test`, and it exercised only the API subset listed above.
 
+### 4c. Shim hardening
+
+Four defects carried forward from the spike are now fixed, each with a
+regression test verified to fail against the old code:
+
+1. **A result that could not be stringified was reported as success.**
+   `failed` came from `JS_IsException` alone, so a `Symbol` result returned
+   rc=0 with `*out=NULL` — `ok: true, text: ''` in Dart, which is exactly the
+   flag `engine_runtime_io.dart`'s `_evaluate` branches on. The pending
+   exception was also left to surface inside a later, unrelated call.
+2. **Coercion ran outside the depth window.** `halo_leave` was called before
+   stringification, so `JS_ToCString` — which runs arbitrary JS — executed
+   with no deadline armed. An infinite `toString` hung indefinitely and was
+   then reported as success.
+3. **`halo_qjs_free` had no depth guard**, so freeing from inside the host
+   callback pulled the context out from under a live JS frame (verified
+   segfault). The free is now deferred to depth 0.
+4. **The trampoline swallowed a failed argument conversion**, delivering `""`
+   to the host and stranding the exception.
+
+**The stack guard now defaults to 512KB in `halo_qjs_new`.** QuickJS defaults
+to 1MB, but an extension-host isolate thread gets roughly that on Windows and
+Android, so QuickJS never trips its own check and the OS overflows first —
+#349, uncatchable, nothing on Sentry. Defaulting in the shim means the safe
+value is what Phase 3 gets without having to remember.
+
+**The interrupt is deliberately not catchable**, and `halo_qjs.h` now says so
+rather than claiming the opposite. A script killed by the budget cannot
+report its own failure, so the host must fail the outstanding request when
+eval returns non-zero instead of waiting for a JS-side result that can never
+arrive. `_evaluate` already throws on an error result, which is the shape
+this expects — Phase 3 needs to keep that property.
+
+**Unhandled promise rejections are now reported** (§4f), closing the gap where
+flutter_js logged them on Android/Windows/Linux and nothing did on macOS/iOS.
+
+**Still open:** static linking force-exports 248
+`JS_*` symbols on ELF/Mach-O, because `JS_EXTERN`'s explicit
+`visibility("default")` overrides `C_VISIBILITY_PRESET hidden`. Windows is
+unaffected — `JS_EXTERN` is empty there. The cheapest mitigation for the
+symbol overlap is simply removing flutter_js in the same change that adopts
+this package, so the two never coexist.
+
+### 4d. Apple platforms need Swift Package Manager, not just a podspec
+
+The app resolves **every** one of its Apple plugins through SPM — `app_links`,
+`sentry_flutter`, `sqlite3_flutter_libs` and eight others all appear as
+packages in `app/macos/Flutter/ephemeral/Packages/FlutterGeneratedPluginSwiftPackage/Package.swift`.
+A plugin that ships only a podspec draws:
+
+> The following plugins do not support Swift Package Manager for macos:
+> halo_quickjs. This will become an error in a future version of Flutter.
+
+So `macos/halo_quickjs/` and `ios/halo_quickjs/` carry a `Package.swift` each.
+The podspecs stay for CocoaPods consumers; the two coexist.
+
+`Sources/` holds the same kind of forwarder the podspec's `Classes/` uses, for
+the same reason: SPM requires a target's files to live inside the package
+directory. The trick works because `#include "..."` resolves relative to the
+**including file**, so quickjs's bare-name includes of each other still land
+in `src/quickjs/` without any header search path escaping the package.
+
+### 4e. Verified by building, on every platform that can be built here
+
+| Platform | Result |
+|---|---|
+| Android | APK contains `libhalo_quickjs.so` for arm64-v8a (1.16 MB), armeabi-v7a (682 KB) and x86_64 (1.26 MB) — Gradle's `externalNativeBuild` compiles quickjs from source. The armv7 size difference is the 32-bit NaN-boxed build. |
+| macOS | Builds and **runs**: `PROBE_OK version=quickjs-ng 0.15.1 eval=2 ok=true`. |
+| iOS | Builds and **runs** on the simulator, same output. |
+| Windows | x64 compiles in CI (`windows-quickjs-check`). ARM64 still unverified — the image lacks that toolchain. |
+| Linux | Not exercised at plugin level; its CMakeLists is the same three lines as Windows'. |
+
+Done with a throwaway app depending only on this package, so a failure would
+mean the plugin wiring rather than anything app-specific. On Apple platforms
+the engine lands in the app's `*.debug.dylib` (macOS 1.3 MB, iOS 2.6 MB), not
+in the thin launcher binary — worth knowing before concluding it is missing.
+
+### 4f. Phase 3: one engine everywhere
+
+`engine_runtime_io.dart` uses `halo_quickjs` on all five native platforms, and
+`flutter_js` is gone along with all three workarounds that propped up its
+prebuilt Linux bridge. The two-engine split is over: macOS and iOS ran
+JavaScriptCore while everything else ran QuickJS, so the same extension could
+behave differently by platform — and the test suite, running on macOS,
+exercised the engine the *minority* of users have.
+
+Verified by running: the full gate passes, including the 443 app tests that
+drive the real bundled extensions through the whole host and previously ran
+against JavaScriptCore.
+
+**`Intl` does not exist in quickjs-ng, and that was a silent regression.**
+`toLocaleString` is wired to `Number.prototype.toString` and ignores both
+arguments, so `fmtInteger` in `@ham2k/lib-format-tools` stopped grouping: a
+1500-QSO tally read `1500 QSOs`, and a contest score `345320`. No test caught
+it. `extensions/sdk/src/number-format.ts` patches
+`Number.prototype.toLocaleString` — imported first in `kernel.ts` so the patch
+precedes any module that formats a number, and behaviour-gated so the real
+implementation survives on the web runtime.
+
+Deliberately **not** an `Intl` shim: i18next activates its own Formatter on
+`typeof Intl !== "undefined"` and then calls `Intl.NumberFormat`,
+`DateTimeFormat` and `PluralRules`. A partial `Intl` would convert today's
+quiet degradation of `{{v, datetime}}` into a thrown error that fails the whole
+hook. Android, Windows and Linux gain separators for the first time, so all
+five platforms converge on what `docs/extensions/README.md` already promised.
+
+**The stack guard is 512KB everywhere**, not 2MB on Linux. The earlier value
+reasoned from the 8MB *pthread* default, but a Dart isolate thread is sized by
+the VM. Measured, recursing until the guard fires:
+
+| guard | result |
+|---|---|
+| 512KB | caught, 527 frames |
+| 1024KB | caught, 1056 frames |
+| 1536KB | **process killed, SIGBUS** |
+| 2048KB | **process killed, SIGBUS** |
+
+The "generous" value was the dangerous one — #349's exact failure mode.
+
+**Unhandled promise rejections are reported** via
+`JS_SetHostPromiseRejectionTracker`, deferred until the job queue drains. The
+delay is the point: quickjs reports a rejection immediately and again when a
+handler attaches, so reporting eagerly would log every
+`Promise.reject(x).catch(f)`.
+
+**`dispose()` became reachable.** `ExtensionHost.dispose()` killed the isolate
+without ever sending the `'dispose'` message its entry point waits for, so
+`EngineRuntime.dispose()` was dead code. Harmless under flutter_js; now it
+leaks the engine's native heap — 10-12MB for the kernel bundle alone — on
+every restart.
+
+**A 15s eval budget** exists on every platform. flutter_js armed no interrupt
+handler, so a runaway hook wedged the extension-host isolate permanently. 15s
+sits above the host's own 10s hook timeout deliberately: the host still
+reports first, and this only makes the isolate usable afterwards.
+
+**Unchanged on purpose:** the memory ceiling stays Android-only. Extending it
+to desktop, which has never had one and does the largest imports, belongs with
+the untrusted-extension work rather than an engine swap.
+
 ## 5. Phasing
 
 Each phase is independently reviewable; nothing ships half-migrated because

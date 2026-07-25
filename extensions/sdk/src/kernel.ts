@@ -21,6 +21,12 @@
 //               __polo.activateAll()
 //               __polo.hostResponse(callId, ok, resultJson)
 
+// FIRST: patches Number.prototype.toLocaleString on engines without Intl
+// (QuickJS-NG). Imported ahead of everything else so the patch is in place
+// before any module that formats a number is evaluated.
+import { installNumberFormatPolyfill } from "./number-format.ts"
+installNumberFormatPolyfill()
+
 import type { ExtensionDefinition, RegisterHookParams, FormDefinition, FormField, SettingsPanelDescriptor } from "./types"
 import { isValidHookKey, tier1FormDefinition, settingsPanelEntriesFor } from "./settingsPanels"
 

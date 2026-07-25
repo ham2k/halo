@@ -31,7 +31,7 @@ runtime — so **the extensions must be built before the app will run**.
   - Windows → Visual Studio 2026 with "C++ Desktop development" (see
     [README.md](README.md#windows))
   - Linux → the usual Flutter Linux desktop deps (plus a
-    [flutter_js quirk](docs/quirks.md))
+    [quirks](docs/quirks.md))
 
 ---
 
@@ -82,7 +82,7 @@ Run from `app/` (or use the `mise` tasks below, which rebuild extensions first).
 | iOS | `mise run run-ios` (opens Simulator, then `flutter run -d iphone`) |
 | Android | `cd app && flutter run -d android` — or `mise run android` |
 | Windows | `cd app && flutter run -d windows` |
-| Linux | `cd app && flutter run -d linux` (see [flutter_js quirk](docs/quirks.md)) |
+| Linux | `cd app && flutter run -d linux` |
 
 Tips:
 - Launch **debug** desktop builds through `flutter run` (or your IDE) rather than

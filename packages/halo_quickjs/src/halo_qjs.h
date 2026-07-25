@@ -28,7 +28,23 @@ extern "C" {
 #if defined(_WIN32)
 #define HALO_QJS_API __declspec(dllexport)
 #else
-#define HALO_QJS_API __attribute__((visibility("default")))
+// `used` matters as much as `visibility` here, and only on Apple platforms.
+// There the sources compile into a STATIC library that links straight into the
+// app executable (Package.swift declares .library(type: .static)), and the
+// Runner project sets DEAD_CODE_STRIPPING=YES. ld64 roots dead-stripping at
+// the entry point, and nothing in the app REFERENCES these symbols at link
+// time — Dart resolves them at runtime through DynamicLibrary.process(). So
+// visibility("default") alone exports them and the linker then discards every
+// one: a Release build shipped with zero quickjs symbols and the extension
+// host failing to start, retrying forever.
+//
+// Debug builds hid this completely, because there the engine lands in the
+// app's *.debug.dylib and a dylib roots all of its globals. Verify this with
+// `nm -gU` on a RELEASE bundle; a Debug one proves nothing.
+//
+// No-op elsewhere: the Linux/Windows/Android builds produce a shared library,
+// where exported symbols are roots already.
+#define HALO_QJS_API __attribute__((used, visibility("default")))
 #endif
 
 typedef struct HaloQjs HaloQjs;
@@ -65,9 +81,25 @@ HALO_QJS_API int halo_qjs_execute_pending_job(HaloQjs *h);
 HALO_QJS_API void halo_qjs_set_memory_limit(HaloQjs *h, size_t bytes);
 HALO_QJS_API void halo_qjs_set_max_stack_size(HaloQjs *h, size_t bytes);
 
-/// Arms the interrupt handler: any single eval running longer than
-/// `budget_ms` is aborted with a catchable JS exception. 0 disables.
-/// The budget restarts on each halo_qjs_eval call.
+/// Arms the interrupt handler: JS running longer than `budget_ms` is aborted.
+/// 0 disables.
+///
+/// The budget covers ONE OUTERMOST call and everything nested inside it, so a
+/// hook cannot extend its own deadline by calling back out into the host. It
+/// is armed on entry at depth 0, not on every halo_qjs_eval.
+///
+/// The abort is deliberately NOT catchable from JS. QuickJS raises it as an
+/// exception, but the handler stays latched until the outermost call returns,
+/// so a `catch` runs out of budget on its first bytecode. That is the point:
+/// the interrupt lands inside nested evals too, where a JS_GetException would
+/// otherwise clear it and let the runaway outer loop resume - measured at
+/// 2201ms against a 200ms budget before the latch existed.
+///
+/// The consequence for callers: a script killed this way cannot report its
+/// own failure, so the HOST must fail the outstanding request when eval
+/// returns non-zero rather than waiting for a JS-side result that can never
+/// arrive. engine_runtime_io.dart's _evaluate already throws on an error
+/// result, which is the shape this expects.
 HALO_QJS_API void halo_qjs_set_eval_budget_ms(HaloQjs *h, int64_t budget_ms);
 
 HALO_QJS_API void halo_qjs_free_string(char *s);

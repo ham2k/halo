@@ -20,6 +20,11 @@ static int64_t halo_now_ms(void) {
 }
 #endif
 
+// Bounded on purpose: this is a diagnostic, and a script generating more than
+// this many simultaneously-unhandled rejections has a problem the count itself
+// communicates better than 10000 log lines would.
+#define HALO_MAX_TRACKED_REJECTIONS 32
+
 struct HaloQjs {
   JSRuntime *rt;
   JSContext *ctx;
@@ -29,6 +34,17 @@ struct HaloQjs {
   int64_t deadline_ms; // absolute; only meaningful while budget_ms > 0
   int32_t depth;       // nested eval depth; gates stack re-anchoring
   int32_t interrupted; // latched once the deadline fires; cleared at depth 0
+  int32_t free_pending; // halo_qjs_free arrived while depth > 0; free on unwind
+
+  // Promise rejections seen but not yet known to be unhandled. See
+  // halo_promise_rejection: quickjs reports a rejection the moment it happens,
+  // then reports it AGAIN as handled if a catch attaches later, so deciding
+  // immediately would log every `Promise.reject(x).catch(...)`.
+  JSValue pending_rejections[HALO_MAX_TRACKED_REJECTIONS];
+  char *pending_rejection_text[HALO_MAX_TRACKED_REJECTIONS];
+  int32_t pending_rejection_count;
+  int32_t dropped_rejections; // overflow, reported rather than hidden
+  int32_t flushing;           // guards halo_flush_rejections against re-entry
 };
 
 static char *halo_strdup(const char *s) {
@@ -68,6 +84,17 @@ static JSValue halo_host_trampoline(JSContext *ctx, JSValueConst this_val, int a
   const char *ch = argc > 0 ? JS_ToCString(ctx, argv[0]) : NULL;
   const char *msg = argc > 1 ? JS_ToCString(ctx, argv[1]) : NULL;
 
+  // JS_ToCString returns NULL when conversion THREW - a Symbol argument, or a
+  // toString that throws - leaving a pending exception on the context.
+  // Swallowing it and delivering "" would make a broken caller look like a
+  // successful send, and would strand the exception to surface inside some
+  // later, unrelated call. Propagate it instead.
+  if ((argc > 0 && !ch) || (argc > 1 && !msg)) {
+    if (ch) JS_FreeCString(ctx, ch);
+    if (msg) JS_FreeCString(ctx, msg);
+    return JS_EXCEPTION;
+  }
+
   // The host may synchronously re-enter halo_qjs_eval from in here — the
   // kvGet/kvSet path in halo_extension_host.dart reaches hostResponse with
   // no await, so JS_Eval runs nested inside this callback. Nothing per-call
@@ -88,6 +115,123 @@ static JSValue halo_host_trampoline(JSContext *ctx, JSValueConst this_val, int a
   return JS_UNDEFINED; // kernel.ts discards the return value
 }
 
+// Defined below, next to the other conversion helpers; declared here because
+// the rejection tracker sits above them.
+static char *halo_to_cstring(JSContext *ctx, JSValueConst v);
+
+// An unhandled promise rejection is otherwise completely silent: nothing
+// throws, no eval returns non-zero, and the reaction simply never runs.
+// flutter_js took a hostPromiseRejectionHandler and logged it on
+// Android/Windows/Linux, so dropping this would be a regression on the
+// platforms that had it — and it is the first time macOS/iOS get it at all.
+//
+// Reported on the same channel as everything else rather than through a
+// separate callback: the host already routes 'polo' messages to its log, and
+// a second Dart callback would be another NativeCallable to own and close.
+static void halo_promise_rejection(JSContext *ctx, JSValueConst promise,
+                                   JSValueConst reason, bool is_handled,
+                                   void *opaque) {
+  HaloQjs *h = (HaloQjs *)opaque;
+  if (!h) return;
+
+  if (is_handled) {
+    // A handler attached after the fact — this RETRACTS an earlier report.
+    // `Promise.reject(x).catch(f)` produces exactly this pair, so retracting
+    // is what keeps ordinary code out of the log.
+    for (int32_t i = 0; i < h->pending_rejection_count; i++) {
+      if (JS_VALUE_GET_PTR(h->pending_rejections[i]) == JS_VALUE_GET_PTR(promise)) {
+        JS_FreeValue(ctx, h->pending_rejections[i]);
+        free(h->pending_rejection_text[i]);
+        h->pending_rejections[i] = h->pending_rejections[h->pending_rejection_count - 1];
+        h->pending_rejection_text[i] = h->pending_rejection_text[h->pending_rejection_count - 1];
+        h->pending_rejection_count--;
+        return;
+      }
+    }
+    return;
+  }
+
+  char *text = halo_to_cstring(ctx, reason);
+  // Converting the reason runs JS (toString), which can throw. This is not
+  // inside an eval, so a stranded exception would surface in an unrelated
+  // later call.
+  if (JS_HasException(ctx)) {
+    JSValue stranded = JS_GetException(ctx);
+    JS_FreeValue(ctx, stranded);
+  }
+
+  // Bound-check AFTER the conversion, not before. halo_to_cstring runs
+  // arbitrary JS — a `toString` on the rejection reason — and quickjs calls
+  // this tracker synchronously at rejection time, so that toString can queue
+  // rejections of its own and fill the array while we are inside it. Checking
+  // first and appending at the re-read count writes past the end:
+  //
+  //   Promise.reject({ toString() { for (let i=0;i<32;i++) Promise.reject(i); return 'x' } })
+  //
+  // put a JSValue at [32], aliasing pending_rejection_text[0..1], and the next
+  // flush then passed a JSObject* to strlen and free()d it. Heap corruption
+  // from ordinary extension JS, with no host involvement.
+  if (h->pending_rejection_count >= HALO_MAX_TRACKED_REJECTIONS) {
+    free(text);
+    h->dropped_rejections++;
+    return;
+  }
+
+  int32_t slot = h->pending_rejection_count++;
+  h->pending_rejections[slot] = JS_DupValue(ctx, promise);
+  h->pending_rejection_text[slot] = text ? text : halo_strdup("(unconvertible rejection value)");
+}
+
+// Called once the job queue drains, which is the point at which a rejection
+// that still has no handler genuinely is unhandled — the same moment a browser
+// fires `unhandledrejection`.
+static void halo_flush_rejections(HaloQjs *h) {
+  // Re-entrant call: the outer flush already owns this batch. Reporting goes
+  // through host_fn, the host is allowed to re-enter the engine synchronously,
+  // and engine_runtime_io.dart's _evaluate ends every hostResponse with
+  // pump() - which lands straight back here. VERIFIED: without this guard, two
+  // rejections plus a re-entering callback abort the process (SIGABRT), and
+  // the same rejection is reported once per level on the way down.
+  if (h->flushing) return;
+  if (!h->pending_rejection_count && !h->dropped_rejections) return;
+  h->flushing = 1;
+
+  // Take the whole batch onto the stack and clear the shared state BEFORE
+  // reporting any of it, so a re-entrant path sees an empty queue rather than
+  // entries this call is partway through freeing.
+  JSValue promises[HALO_MAX_TRACKED_REJECTIONS];
+  char *texts[HALO_MAX_TRACKED_REJECTIONS];
+  int32_t count = h->pending_rejection_count;
+  int32_t dropped = h->dropped_rejections;
+  for (int32_t i = 0; i < count; i++) {
+    promises[i] = h->pending_rejections[i];
+    texts[i] = h->pending_rejection_text[i];
+  }
+  h->pending_rejection_count = 0;
+  h->dropped_rejections = 0;
+
+  for (int32_t i = 0; i < count; i++) {
+    if (h->host_fn) {
+      h->host_fn(h->host_user, "polo:unhandledRejection", texts[i]);
+    }
+    JS_FreeValue(h->ctx, promises[i]);
+    free(texts[i]);
+  }
+
+  // Only worth saying alongside a real report. Overflowed rejections are
+  // counted but NOT stored, so the retraction scan can never find them when
+  // their handlers attach — reporting the bare count made 40 promises that
+  // were all subsequently caught indistinguishable from 40 genuinely
+  // unhandled ones.
+  if (dropped && count && h->host_fn) {
+    char note[96];
+    snprintf(note, sizeof(note), "(%d further rejections seen but not tracked)",
+             (int)dropped);
+    h->host_fn(h->host_user, "polo:unhandledRejection", note);
+  }
+  h->flushing = 0;
+}
+
 HaloQjs *halo_qjs_new(void) {
   HaloQjs *h = (HaloQjs *)calloc(1, sizeof(HaloQjs));
   if (!h) return NULL;
@@ -97,14 +241,50 @@ HaloQjs *halo_qjs_new(void) {
   if (!h->ctx) { JS_FreeRuntime(h->rt); free(h); return NULL; }
   JS_SetContextOpaque(h->ctx, h);
   JS_SetInterruptHandler(h->rt, halo_interrupt, h);
+  JS_SetHostPromiseRejectionTracker(h->rt, halo_promise_rejection, h);
+  // Default the stack guard to a value that can actually fire. QuickJS
+  // defaults to 1MB, but an extension-host isolate thread gets only about
+  // that much on Windows and Android, so QuickJS never trips its own check,
+  // the OS stack overflows first, and the process dies with an uncatchable
+  // fault - no Dart error, nothing on Sentry. That is #349, and it took down
+  // first-run onboarding on Windows. Defaulting here rather than relying on
+  // the caller means the safe value is what you get if Phase 3 forgets to set
+  // one; Linux threads default to 8MB and can raise it back to 2MB.
+  JS_SetMaxStackSize(h->rt, 512 * 1024);
   return h;
+}
+
+static void halo_qjs_destroy(HaloQjs *h) {
+  for (int32_t i = 0; i < h->pending_rejection_count; i++) {
+    JS_FreeValue(h->ctx, h->pending_rejections[i]);
+    free(h->pending_rejection_text[i]);
+  }
+  if (h->ctx) JS_FreeContext(h->ctx);
+  if (h->rt) JS_FreeRuntime(h->rt);
+  free(h);
 }
 
 void halo_qjs_free(HaloQjs *h) {
   if (!h) return;
-  if (h->ctx) JS_FreeContext(h->ctx);
-  if (h->rt) JS_FreeRuntime(h->rt);
-  free(h);
+  // Freeing while a JS frame is still on the stack - i.e. from inside the
+  // host callback - pulls the context out from under the code that is about
+  // to resume. Verified: segfault, EXC_BAD_ACCESS at 0x0. Defer instead, and
+  // destroy on the way out; halo_leave completes it at depth 0. Refusing
+  // outright would leak, and crashing is exactly the failure mode this
+  // package exists to escape.
+  if (h->depth > 0) {
+    h->free_pending = 1;
+    // Stop calling out immediately. Dart's dispose() does _free(_h) and then
+    // closes the NativeCallable behind onSend, so any further sendMessage from
+    // the still-unwinding JS frame would invoke a DELETED callback:
+    // "Callback invoked after it has been deleted", SIGABRT, no Dart
+    // exception. The host is going away; nothing it could say matters now, and
+    // the trampoline already treats a NULL host_fn as "no bridge installed".
+    h->host_fn = NULL;
+    h->host_user = NULL;
+    return;
+  }
+  halo_qjs_destroy(h);
 }
 
 void halo_qjs_set_host_fn(HaloQjs *h, const char *global_name, HaloQjsHostFn fn, void *user) {
@@ -131,6 +311,20 @@ static char *halo_to_cstring(JSContext *ctx, JSValueConst v) {
 static char *halo_format_exception(JSContext *ctx) {
   JSValue exc = JS_GetException(ctx);
   char *msg = halo_to_cstring(ctx, exc);
+
+  // Coercing the exception can itself throw — `throw Object.create(null)` has
+  // no toString, and a Symbol cannot be converted at all. Returning NULL then
+  // produced a hook failure with NO diagnostic text whatsoever
+  // ("evaluating invokeHook: "), and left the new exception pending. This is
+  // the same defect the eval path already guards against; this was the last
+  // site still doing it.
+  if (!msg) {
+    if (JS_HasException(ctx)) {
+      JSValue stranded = JS_GetException(ctx);
+      JS_FreeValue(ctx, stranded);
+    }
+    msg = halo_strdup("(exception could not be converted to a string)");
+  }
 
   // Append .stack when present — this is what makes a JS error actionable.
   char *combined = msg;
@@ -172,7 +366,12 @@ static void halo_enter(HaloQjs *h) {
   h->depth++;
 }
 
-static void halo_leave(HaloQjs *h) { h->depth--; }
+// NOTE: this can DESTROY h when a deferred free is pending, so every caller
+// must treat h as invalid afterwards. Both call sites only touch locals.
+static void halo_leave(HaloQjs *h) {
+  h->depth--;
+  if (h->depth == 0 && h->free_pending) halo_qjs_destroy(h);
+}
 
 int halo_qjs_eval(HaloQjs *h, const char *code, const char *filename, char **out) {
   if (out) *out = NULL;
@@ -181,11 +380,26 @@ int halo_qjs_eval(HaloQjs *h, const char *code, const char *filename, char **out
   halo_enter(h);
 
   JSValue v = JS_Eval(h->ctx, code, strlen(code), filename ? filename : "<eval>", JS_EVAL_TYPE_GLOBAL);
-  halo_leave(h);
 
+  // Stringify INSIDE the depth window. Coercion runs arbitrary JS - a toString
+  // that loops forever is exactly as dangerous as the eval itself - and
+  // leaving first meant it ran with no deadline armed and no interrupt, so an
+  // infinite toString hung here and was then reported as SUCCESS.
   int failed = JS_IsException(v);
   char *s = failed ? halo_format_exception(h->ctx) : halo_to_cstring(h->ctx, v);
+
+  // A value that cannot be stringified is a FAILURE, not success with empty
+  // text. JS_ToCString returns NULL only when it threw (a Symbol result, or a
+  // throwing toString) and leaves the exception pending - which would later
+  // surface inside an unrelated call. Report it and clear it here.
+  if (!failed && !s) {
+    failed = 1;
+    s = JS_HasException(h->ctx) ? halo_format_exception(h->ctx)
+                                : halo_strdup("value could not be converted to a string");
+  }
+
   JS_FreeValue(h->ctx, v);
+  halo_leave(h); // may destroy h; nothing below touches it
 
   if (out) *out = s; else free(s);
   return failed ? 1 : 0;
@@ -201,6 +415,18 @@ int halo_qjs_execute_pending_job(HaloQjs *h) {
   halo_enter(h);
   JSContext *pctx = NULL;
   int r = JS_ExecutePendingJob(h->rt, &pctx);
+  // Flush BEFORE halo_leave, not after: halo_leave DESTROYS h when a free was
+  // deferred (halo_qjs_free called from inside the callback), so flushing
+  // afterwards would touch freed memory. Staying inside the depth window also
+  // keeps h alive while host_fn re-enters.
+  // Only at the OUTERMOST depth. A nested pump reaching an empty queue does
+  // not mean a rejection is unhandled — kernel.ts calls post() inside a
+  // `new Promise` executor before the caller's await attaches its handler, and
+  // the kvGet/kvSet host path re-enters _evaluate (which pumps) synchronously
+  // in between. Flushing there reported a rejection whose handler attached
+  // microseconds later: a real, reachable ERROR log for a correctly handled
+  // failure (kvSet with a non-String key does it).
+  if (r == 0 && h->depth == 1) halo_flush_rejections(h);
   halo_leave(h);
   return r;
 }

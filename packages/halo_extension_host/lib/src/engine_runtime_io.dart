@@ -4,18 +4,25 @@
 import 'dart:convert';
 import 'dart:io' show Platform;
 
-import 'package:flutter_js/flutter_js.dart' as fjs;
-// The JavaScriptCore backend (macOS/iOS) isn't re-exported from the barrel.
-import 'package:flutter_js/javascriptcore/jscore_runtime.dart' show JavascriptCoreRuntime;
+import 'package:halo_quickjs/halo_quickjs.dart';
 
 import 'engine_runtime.dart';
 
 class _IoEngineRuntime implements EngineRuntime {
-  late final fjs.JavascriptRuntime _runtime;
+  // Deliberately nullable rather than `late final`: if construction fails,
+  // the host's error path calls dispose(), and a `late` field would throw
+  // LateInitializationError there and BURY the real cause. That is exactly
+  // what happened when the library search could not find the host build.
+  HaloQuickJs? _js;
   void Function(Map<String, dynamic>)? _onMessage;
+  bool _disposed = false;
+
+  /// Wall-clock ceiling for one pump() call. Well under the host's 10s hook
+  /// timeout so the isolate stays able to answer while jobs are still running.
+  static const int _maxDrainMs = 500;
 
   @override
-  String get engineDescription => _runtime.runtimeType.toString();
+  String get engineDescription => 'halo_quickjs (${HaloQuickJs.version})';
 
   @override
   void onMessage(void Function(Map<String, dynamic> message) callback) {
@@ -24,61 +31,83 @@ class _IoEngineRuntime implements EngineRuntime {
 
   @override
   void onFatalError(void Function(String message) callback) {
-    // QuickJS eval failures always surface synchronously from the call that
-    // triggered them (see _evaluate below) — there's no separate async crash
-    // mode to report here.
+    // Every failure surfaces synchronously from the call that caused it (see
+    // _evaluate) — there is no separate async crash mode for an in-process
+    // engine to report.
   }
 
-  /// Constructs the engine with resource limits where the backend supports
-  /// them. On Android/Windows/Linux that's QuickJS: a memory limit stops one
-  /// runaway extension from OOMing the whole app, and the stack limit is
-  /// made explicit rather than inherited. On macOS/iOS flutter_js uses
-  /// JavaScriptCore, which exposes no such knobs — full interrupt/memory
-  /// control on every platform is what DESIGN.md §3's direct-FFI QuickJS
-  /// binding is for; this is the portion available today.
-  ///
-  /// The memory limit is Android-only: flutter_js compiles the QuickJS
-  /// bridge from source there, but ships stale prebuilt binaries on Linux
-  /// and Windows that export jsSetMaxStackSize and NOT jsSetMemoryLimit, so
-  /// a non-null memoryLimit crashes engine startup on those platforms.
-  fjs.JavascriptRuntime _createRuntime() {
-    if (Platform.isAndroid || Platform.isWindows || Platform.isLinux) {
-      final runtime = fjs.QuickJsRuntime2(
-        // QuickJS's stack-overflow guard (jsSetMaxStackSize) must sit BELOW the
-        // host thread's real native stack. If it's larger, QuickJS never trips
-        // its own check, the OS stack overflows first, and the process dies with
-        // an uncatchable EXCEPTION_STACK_OVERFLOW — no Dart error, nothing on
-        // Sentry (this took down first-run onboarding on Windows the moment a
-        // real callsign hit the JS lookup). Extension-host isolate threads on
-        // Windows/Android get only ~1MB, so the old 2MB guard was inert there;
-        // 512KB is safely inside it and ample for the (shallow) extension hooks
-        // — a legitimately deeper call now raises a catchable RangeError that
-        // _evaluate turns into an ExtensionHostException (degrades to a failed
-        // hook) instead of crashing. Linux threads default to 8MB, so the guard
-        // stays at 2MB there to preserve headroom.
-        stackSize: Platform.isLinux ? 2 * 1024 * 1024 : 512 * 1024,
-        memoryLimit: Platform.isAndroid ? 256 * 1024 * 1024 : null,
-        hostPromiseRejectionHandler: (dynamic reason) {
-          _onMessage?.call({'type': 'log', 'message': 'ERROR unhandled promise rejection: $reason'});
-        },
-      );
-      runtime.enableHandlePromises();
-      return runtime;
-    }
-    // Same construction getJavascriptRuntime(xhr: false) performs on these
-    // platforms, minus the fetch polyfill.
-    final runtime = JavascriptCoreRuntime();
-    runtime.enableHandlePromises();
-    return runtime;
+  /// QuickJS-NG on every native platform, compiled into the app by
+  /// packages/halo_quickjs. Until Phase 3 this was flutter_js, which meant
+  /// JavaScriptCore on macOS/iOS and QuickJS elsewhere — two engines whose
+  /// observable behaviour differed (see docs/design/js-engine.md).
+  HaloQuickJs _createRuntime() {
+    final js = HaloQuickJs();
+
+    // The guard must sit BELOW the host thread's real native stack. If it is
+    // larger, QuickJS never trips its own check, the OS stack overflows first,
+    // and the process dies with an uncatchable fault — no Dart error, nothing
+    // on Sentry. That is #349, which took down first-run onboarding on Windows.
+    //
+    // 512KB on EVERY platform, deliberately. An earlier version of this used
+    // 2MB on Linux, reasoning that "Linux threads default to 8MB" — but that
+    // is the pthread default, not the stack a Dart isolate thread gets, which
+    // the VM sizes itself. Measured on a spawned isolate, recursing until the
+    // guard fires:
+    //
+    //     512KB -> caught,  527 frames
+    //    1024KB -> caught, 1056 frames
+    //    1536KB -> process killed, SIGBUS
+    //    2048KB -> process killed, SIGBUS
+    //
+    // So the "generous" value was the dangerous one. 512KB is the shim's own
+    // default and is safely inside the smallest plausible isolate stack; the
+    // only thing a larger guard buys is ~1000 extra frames, and extension
+    // hooks are shallow. A legitimately deeper call raises a catchable
+    // RangeError that _evaluate turns into an ExtensionHostException.
+    //
+    // Measured on macOS. The isolate thread stack on Linux, Windows and
+    // Android has NOT been measured — which is the reason to stay at the value
+    // that is safe everywhere rather than tune per platform.
+    js.maxStackSize = 512 * 1024;
+
+    // Unchanged from the flutter_js era, deliberately: Android is the platform
+    // where one runaway extension OOMing the app is a real, observed risk.
+    // Extending a ceiling to desktop is a behaviour change on platforms that
+    // have never had one and do the largest imports (~181k SOTA summits), so
+    // it belongs with the untrusted-extension work, not with an engine swap.
+    if (Platform.isAndroid) js.memoryLimit = 256 * 1024 * 1024;
+
+    // NEW, and only possible now that every platform runs an engine we
+    // control. flutter_js armed no interrupt handler at all, so a runaway hook
+    // wedged the extension-host isolate permanently: the host's own 10s
+    // timeout reported the failed hook, but the JS kept spinning forever and
+    // every later hook queued behind it. 15s sits above that timeout on
+    // purpose — the host still reports first, and this only exists to make the
+    // isolate usable again afterwards. The budget covers one outermost call
+    // including anything nested, so a hook cannot extend it by calling out.
+    js.evalBudgetMs = 15000;
+
+    return js;
   }
 
   @override
   Future<void> load(String kernelSource, List<ExtensionBundle> bundles) async {
-    _runtime = _createRuntime();
-    _runtime.onMessage('polo', (dynamic args) {
-      final msg = (args is String ? jsonDecode(args) : args) as Map;
-      _onMessage?.call(msg.cast<String, dynamic>());
-      return null;
+    final js = _createRuntime();
+    _js = js;
+    js.onSend((channel, message) {
+      // The shim reports unhandled promise rejections on their own channel.
+      // Without this they are utterly silent — nothing throws, no eval returns
+      // non-zero, the reaction just never runs. flutter_js logged them on
+      // Android/Windows/Linux; this restores that and extends it to macOS/iOS,
+      // which never had it. Shaped as a log message so it lands wherever every
+      // other extension diagnostic already does.
+      if (channel == 'polo:unhandledRejection') {
+        _onMessage?.call({'type': 'log', 'message': 'ERROR unhandled promise rejection: $message'});
+        return;
+      }
+      if (channel != 'polo') return;
+      final decoded = jsonDecode(message);
+      if (decoded is Map) _onMessage?.call(decoded.cast<String, dynamic>());
     });
 
     _evaluate(kernelSource, name: 'kernel');
@@ -131,24 +160,63 @@ class _IoEngineRuntime implements EngineRuntime {
   }
 
   void _evaluate(String code, {required String name}) {
-    final result = _runtime.evaluate(code);
-    if (result.isError) {
-      throw ExtensionHostException('evaluating $name: ${result.stringResult}');
+    final js = _js;
+    if (js == null) throw ExtensionHostException('evaluating $name: engine not loaded');
+    final result = js.eval(code, filename: name);
+    if (!result.ok) {
+      throw ExtensionHostException('evaluating $name: ${result.text}');
     }
     pump();
   }
 
+  /// Drains the queue rather than running a single job.
+  ///
+  /// halo_qjs_execute_pending_job runs exactly ONE job, where flutter_js
+  /// looped internally. A hook that awaits N times needs N turns, and pump()
+  /// is otherwise only driven again by the host's periodic timer — so running
+  /// one job per call would add a timer interval of latency per await, and a
+  /// chain long enough would not settle before the host's hook timeout.
+  ///
+  /// The bound is a runaway guard, not a queue limit: a job that schedules
+  /// another job unconditionally would spin here forever. Anything legitimate
+  /// settles in a handful of turns.
   @override
   void pump() {
-    try {
-      _runtime.executePendingJob();
-    } catch (_) {
-      // Engines without an explicit job queue may not support this.
+    final js = _js;
+    if (js == null || _disposed) return;
+    final elapsed = Stopwatch()..start();
+    for (var i = 0; i < 1000; i++) {
+      // 0 means the queue is empty; NEGATIVE means the job threw, and there
+      // may still be more queued behind it. Treating <0 as "done" (as the
+      // first version did) deferred the rest of the queue to the host's next
+      // 5ms tick.
+      if (js.pump() == 0) return;
+
+      // A COUNT bound is not enough. The eval budget is per outermost call and
+      // every pump() is one, so each job gets a fresh 15s — 1000 of them is
+      // hours of one synchronous drain, during which this isolate dispatches
+      // nothing at all, including 'dispose' and 'abandon'. Measured: two
+      // runaway jobs at the production budget blocked for 30s in a single
+      // call. Cutting the drain short loses nothing; the host's 5ms timer
+      // comes straight back for whatever is left.
+      if (elapsed.elapsedMilliseconds >= _maxDrainMs) return;
     }
   }
 
+  /// Unlike flutter_js's, this dispose actually does something: it frees the
+  /// engine's native heap (10-12MB for the kernel bundle alone) and closes the
+  /// NativeCallable behind onSend, which would otherwise keep its isolate
+  /// alive forever (docs/design/js-engine.md §4b).
+  ///
+  /// It only became reachable in Phase 3 — ExtensionHost.dispose() killed the
+  /// isolate without ever sending the 'dispose' message its entry point waits
+  /// for, so this and the branch behind it were dead code.
   @override
-  void dispose() {}
+  void dispose() {
+    if (_disposed) return;
+    _disposed = true;
+    _js?.dispose();
+  }
 }
 
 EngineRuntime createEngineRuntime() => _IoEngineRuntime();

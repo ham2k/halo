@@ -10,7 +10,7 @@
 
 import 'dart:convert';
 import 'dart:ffi';
-import 'dart:io' show Platform, File;
+import 'dart:io' show Platform, File, Directory;
 import 'dart:typed_data';
 
 import 'package:ffi/ffi.dart';
@@ -54,18 +54,38 @@ DynamicLibrary _openLibrary() {
   // Normal plugin case.
   if (Platform.isLinux || Platform.isAndroid) return DynamicLibrary.open('libhalo_quickjs.so');
   if (Platform.isWindows) return DynamicLibrary.open('halo_quickjs.dll');
-  return DynamicLibrary.process();
+
+  // macOS/iOS with the symbols not in the process and no host build found.
+  // Say what was actually looked for: the alternative is an opaque failure
+  // from whatever touches the engine first.
+  throw StateError(
+    'halo_quickjs: could not find the engine library.\n'
+    'Under `flutter test` it must be built first: packages/halo_quickjs/tool/build_host.sh\n'
+    '(scripts/test.sh does this). Looked in:\n'
+    '  ${_hostCandidates().join('\n  ')}',
+  );
 }
 
 List<String> _hostCandidates() {
   final ext = Platform.isMacOS ? 'dylib' : (Platform.isWindows ? 'dll' : 'so');
   final name = Platform.isWindows ? 'halo_quickjs.$ext' : 'libhalo_quickjs.$ext';
-  // Relative to the package root, wherever the test runner happens to be.
-  return [
-    'build/host/$name',
-    '../halo_quickjs/build/host/$name',
-    '../../packages/halo_quickjs/build/host/$name',
-  ];
+
+  // `flutter test` runs with the cwd set to whichever package is under test,
+  // and there is no platform build to provide the library — so find the one
+  // tool/build_host.sh produced by walking UP to the repo root. A fixed list
+  // of relative guesses only works for the depth it was written for: the
+  // first version handled packages/* and silently failed from app/, where the
+  // constructor then threw and a `late` field turned it into a
+  // LateInitializationError that named nothing useful.
+  final candidates = <String>['build/host/$name'];
+  var dir = Directory.current;
+  for (var i = 0; i < 6; i++) {
+    candidates.add('${dir.path}/packages/halo_quickjs/build/host/$name');
+    final parent = dir.parent;
+    if (parent.path == dir.path) break;
+    dir = parent;
+  }
+  return candidates;
 }
 
 final DynamicLibrary _lib = _openLibrary();
