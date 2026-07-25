@@ -389,6 +389,10 @@ class _SettingsViewState extends State<SettingsView> {
 
         return ListTile(
           selected: isSelected,
+          // Material's default selected color is colorScheme.primary — a fill
+          // color here (the AppBar/FAB teal), not tuned for reading directly
+          // on this sidebar's surface; only 2.67:1 in dark mode.
+          selectedColor: HaLoColors.of(context).onSurfaceAccent,
           leading: Icon(panel.icon),
           title: titleWidget,
           subtitle: panel.description == null ? null : Text(panel.description!),
@@ -1500,7 +1504,7 @@ class _ExtensionSettingsPanelState extends State<_ExtensionSettingsPanel> {
         children: [
           Padding(
             padding: const EdgeInsets.only(bottom: 16),
-            child: Text(title, style: Theme.of(context).textTheme.titleSmall?.copyWith(color: Theme.of(context).colorScheme.primary)),
+            child: Text(title, style: Theme.of(context).textTheme.titleSmall?.copyWith(color: HaLoColors.of(context).onSurfaceAccent)),
           ),
           form,
         ],
@@ -1535,7 +1539,7 @@ class _DeveloperPanel extends StatelessWidget {
             Text(
               context.t.settings.developer.options,
               style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                color: Theme.of(context).colorScheme.primary,
+                color: HaLoColors.of(context).onSurfaceAccent,
                 fontWeight: FontWeight.bold,
               ),
             ),
@@ -1593,7 +1597,7 @@ class _DeveloperPanel extends StatelessWidget {
               Text(
                 context.t.settings.developer.patchTrack,
                 style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  color: Theme.of(context).colorScheme.primary,
+                  color: HaLoColors.of(context).onSurfaceAccent,
                   fontWeight: FontWeight.bold,
                 ),
               ),
@@ -1902,7 +1906,7 @@ class _ActiveExtensionsListState extends State<_ActiveExtensionsList> {
             padding: const EdgeInsets.only(top: 8, bottom: 2),
             child: Text(
               categoryTitles[category] ?? category,
-              style: Theme.of(context).textTheme.labelMedium?.copyWith(color: Theme.of(context).colorScheme.primary),
+              style: Theme.of(context).textTheme.labelMedium?.copyWith(color: HaLoColors.of(context).onSurfaceAccent),
             ),
           ),
           for (final ext in grouped[category]!)
@@ -2649,7 +2653,7 @@ class _AccountPaneState extends State<_AccountPane> {
         const SizedBox(height: 8),
         Text(
           context.t.settings.accounts.connectedAs,
-          style: theme.textTheme.titleSmall?.copyWith(color: theme.colorScheme.primary),
+          style: theme.textTheme.titleSmall?.copyWith(color: HaLoColors.of(context).onSurfaceAccent),
         ),
         const SizedBox(height: 8),
         Row(

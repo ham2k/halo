@@ -7,6 +7,8 @@
 // figures on the numeric-heavy styles, and the app-bar title weight matching
 // app-polo's "Roboto Slab Black".
 
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:halo_widgets/halo_widgets.dart';
@@ -143,6 +145,52 @@ void main() {
         overlay.resolve({WidgetState.pressed})!.a,
         greaterThan(overlay.resolve({WidgetState.hovered})!.a),
       );
+    });
+  });
+
+  group('HaLoColors.onSurfaceAccent (dark-mode contrast)', () {
+    // WCAG 2.1 relative luminance / contrast ratio (spec formula), so these
+    // tests pin an actual accessibility threshold, not just "some color".
+    double linear(double c) => c <= 0.03928 ? c / 12.92 : math.pow((c + 0.055) / 1.055, 2.4).toDouble();
+    double luminance(Color c) =>
+        0.2126 * linear(c.r) + 0.7152 * linear(c.g) + 0.0722 * linear(c.b);
+    double contrast(Color a, Color b) {
+      final la = luminance(a), lb = luminance(b);
+      final hi = math.max(la, lb), lo = math.min(la, lb);
+      return (hi + 0.05) / (lo + 0.05);
+    }
+
+    test('light mode is unchanged — same value colorScheme.primary already had', () {
+      // Light mode's contrast was already fine (colorScheme.primary vs its
+      // surface is ~6.3:1) — no reason to touch what users see there.
+      expect(HaLoColors.light.onSurfaceAccent, buildHaLoTheme(Brightness.light).colorScheme.primary);
+    });
+
+    test('dark mode is lighter than colorScheme.primary — the reported bug', () {
+      final darkScheme = buildHaLoTheme(Brightness.dark).colorScheme;
+      // The bug: dark mode's colorScheme.primary was identical to light
+      // mode's (#006783), so as foreground text on the dark surface it had
+      // only ~2.67:1 contrast — well under WCAG AA's 4.5:1 floor for text.
+      expect(contrast(darkScheme.primary, darkScheme.surface), lessThan(3.0));
+      // The fix must actually be lighter, not just a different hue.
+      expect(HaLoColors.dark.onSurfaceAccent.computeLuminance(), greaterThan(darkScheme.primary.computeLuminance()));
+    });
+
+    test('dark mode meets WCAG AA text contrast (4.5:1) against the dark surface', () {
+      final darkScheme = buildHaLoTheme(Brightness.dark).colorScheme;
+      expect(contrast(HaLoColors.dark.onSurfaceAccent, darkScheme.surface), greaterThanOrEqualTo(4.5));
+    });
+
+    test('does not touch colorScheme.primary itself — the AppBar/FAB fill stays exactly as before', () {
+      // primary is a FILL color app-wide (AppBar, FAB, status bar, dock
+      // chrome), paired with the near-white onPrimary; lightening it directly
+      // would've broken that pairing everywhere. onSurfaceAccent is a
+      // separate role precisely to avoid that.
+      for (final brightness in Brightness.values) {
+        final theme = buildHaLoTheme(brightness);
+        expect(theme.appBarTheme.backgroundColor, theme.colorScheme.primary);
+      }
+      expect(buildHaLoTheme(Brightness.dark).colorScheme.primary, const Color(0xFF006783));
     });
   });
 

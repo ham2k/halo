@@ -496,7 +496,7 @@ class FormRendererState extends State<FormRenderer> {
               style: theme.textTheme.headlineSmall?.copyWith(
                 fontFamily: 'RobotoSlab',
                 fontWeight: FontWeight.bold,
-                color: theme.colorScheme.primary,
+                color: HaLoColors.of(context).onSurfaceAccent,
               ),
             ),
             const SizedBox(height: 4),
@@ -562,12 +562,15 @@ class FormRendererState extends State<FormRenderer> {
     final subtitle = el['subtitle'] as String?;
     final devModeColor = _devModeColor(el);
     final isSection = el['style'] == 'section';
+    // Text on the surface, not a fill — HaLoColors.onSurfaceAccent, not
+    // colorScheme.primary directly.
+    final onSurfaceAccent = (theme.extension<HaLoColors>() ?? HaLoColors.light).onSurfaceAccent;
     final titleStyle = isSection
-        ? theme.textTheme.titleSmall?.copyWith(color: devModeColor ?? theme.colorScheme.primary)
+        ? theme.textTheme.titleSmall?.copyWith(color: devModeColor ?? onSurfaceAccent)
         : theme.textTheme.titleMedium?.copyWith(
             fontFamily: 'RobotoSlab',
             fontWeight: FontWeight.w900,
-            color: devModeColor ?? theme.colorScheme.primary,
+            color: devModeColor ?? onSurfaceAccent,
           );
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -592,12 +595,13 @@ class FormRendererState extends State<FormRenderer> {
       return const Divider();
     }
     final devModeColor = _devModeColor(el);
+    final onSurfaceAccent = (theme.extension<HaLoColors>() ?? HaLoColors.light).onSurfaceAccent;
     return Row(
       children: [
         Text(
           title,
           style: theme.textTheme.titleSmall?.copyWith(
-            color: devModeColor ?? theme.colorScheme.primary,
+            color: devModeColor ?? onSurfaceAccent,
             fontWeight: FontWeight.bold,
           ),
         ),
@@ -1484,7 +1488,10 @@ class FormRendererState extends State<FormRenderer> {
       contentPadding: EdgeInsets.zero,
       leading: Icon(
         connected ? Icons.check_circle : Icons.radio_button_unchecked,
-        color: devModeColor ?? (connected ? theme.colorScheme.primary : theme.colorScheme.onSurfaceVariant),
+        color: devModeColor ??
+            (connected
+                ? (theme.extension<HaLoColors>() ?? HaLoColors.light).onSurfaceAccent
+                : theme.colorScheme.onSurfaceVariant),
       ),
       title: Text(label, style: devModeColor == null ? null : TextStyle(color: devModeColor)),
       subtitle: Text(

@@ -67,6 +67,22 @@ class HaLoColors extends ThemeExtension<HaLoColors> {
   /// (ham2k/app-halo-dist#272).
   final Color tabIndicator;
 
+  /// The teal accent for text/icons sitting directly on a surface (a section
+  /// title, a selected settings row) — as opposed to [ColorScheme.primary]
+  /// itself, which this app uses as a FILL (the AppBar/FAB/status-bar/dock
+  /// chrome) paired with the near-white `onPrimary`. `primary`'s dark-mode
+  /// value (#006783) is identical to light mode's — ported byte-for-byte from
+  /// app-polo's darkColors.json, which never defined a lighter dark-mode
+  /// primary either (unlike `secondary`/`tertiary`, which do have real
+  /// dark-mode tones) — so as a fill it's fine (still paired with light
+  /// onPrimary text), but the same value read directly as foreground text on
+  /// the dark surface (#191C1E) is only 2.67:1, well under WCAG AA's 4.5:1.
+  /// Lightening `primary` itself would break that AppBar/FAB pairing app-wide,
+  /// so this is a separate role instead: unchanged in light mode (already
+  /// 6.26:1, no need to touch it), a lighter same-hue teal in dark mode
+  /// (6.18:1, in line with `secondary`'s own dark-mode contrast).
+  final Color onSurfaceAccent;
+
   final Map<String, Color> bands;
 
   const HaLoColors({
@@ -77,6 +93,7 @@ class HaLoColors extends ThemeExtension<HaLoColors> {
     required this.secondaryLight,
     required this.devMode,
     required this.tabIndicator,
+    required this.onSurfaceAccent,
     required this.bands,
   });
 
@@ -90,6 +107,7 @@ class HaLoColors extends ThemeExtension<HaLoColors> {
     secondaryLight: Color(0xFF69A9DF),
     devMode: Color(0xFFDB7204),
     tabIndicator: _tabIndicatorBlue,
+    onSurfaceAccent: Color(0xFF006783), // = colorScheme.primary; already reads fine here
     bands: _bandColors,
   );
 
@@ -101,6 +119,7 @@ class HaLoColors extends ThemeExtension<HaLoColors> {
     secondaryLight: Color(0xFF244462),
     devMode: Color(0xFFF7A145),
     tabIndicator: _tabIndicatorBlue,
+    onSurfaceAccent: Color(0xFF00A8D6), // same hue/saturation as primary, lightened
     bands: _bandColors,
   );
 
@@ -132,6 +151,7 @@ class HaLoColors extends ThemeExtension<HaLoColors> {
     Color? secondaryLight,
     Color? devMode,
     Color? tabIndicator,
+    Color? onSurfaceAccent,
     Map<String, Color>? bands,
   }) {
     return HaLoColors(
@@ -142,6 +162,7 @@ class HaLoColors extends ThemeExtension<HaLoColors> {
       secondaryLight: secondaryLight ?? this.secondaryLight,
       devMode: devMode ?? this.devMode,
       tabIndicator: tabIndicator ?? this.tabIndicator,
+      onSurfaceAccent: onSurfaceAccent ?? this.onSurfaceAccent,
       bands: bands ?? this.bands,
     );
   }
