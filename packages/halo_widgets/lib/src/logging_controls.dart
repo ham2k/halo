@@ -1040,6 +1040,20 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     _manualStartAtMillis = null;
     setState(() {});
     _populating = false;
+    // Populating a suggestion sets the call without the user typing, so
+    // `_populating` suppressed _onCallChanged's own _scheduleLookup()/
+    // _scheduleScore(). Any source that sets the current QSO's callsign must
+    // still trigger a lookup — spots (#315) and a future deeplink both arrive
+    // here — so run them explicitly, like `_restoreFromUndoSlot` does.
+    // `_applyFieldsFromData` cleared `_lookupFor`/`_lookupCache` above, so the
+    // "only when changed" guard won't wrongly short-circuit. Guarded on
+    // `_callInfoActive` (a real call is present) so both only schedule their
+    // timers and never setState synchronously — this also runs from initState
+    // for a deeplink cold-start (see the editingQso init path above).
+    if (_callInfoActive) {
+      _scheduleLookup();
+      _scheduleScore();
+    }
   }
 
   /// Shared by `_populateFromEditingQso` (loading an existing record for

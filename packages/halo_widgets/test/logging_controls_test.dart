@@ -2972,6 +2972,58 @@ void main() {
     expect(tester.widget<TextField>(find.widgetWithText(TextField, 'Their call')).controller!.text, 'K1ABC');
   });
 
+  testWidgets('selecting a suggestedQso (spot/deeplink) triggers a lookup, not just population (#315)', (tester) async {
+    // #315: tapping a spot populates the call field but must also run a
+    // callsign lookup — the same as if the operator had typed the call.
+    // Regressed because _applySuggestedQso populated under `_populating`,
+    // which suppresses _onCallChanged's own lookup, and never scheduled one.
+    var lookups = 0;
+    Future<Map<String, dynamic>?> lookup(
+      String call, {
+      required Map<String, dynamic> qso,
+      required Map<String, dynamic> operation,
+      required bool online,
+    }) async {
+      lookups++;
+      if (call != 'W1AW') return null;
+      return {
+        'guess': {'name': 'ARRL HQ', 'location': 'Newington, CT', 'city': 'Newington', 'state': 'CT', 'grid': 'FN31pr'},
+      };
+    }
+
+    Widget build({Map<String, dynamic>? suggestedQso}) => MaterialApp(
+          home: Scaffold(
+            body: LoggingControls(
+              operation: operation,
+              qsosRepository: qsos,
+              lookup: lookup,
+              callLocationLine: (guess) => guess['location'] as String?,
+              suggestedQso: suggestedQso,
+            ),
+          ),
+        );
+
+    // A live logging panel with nothing entered yet — no call, no lookup.
+    await tester.pumpWidget(build());
+    await tester.pump(const Duration(milliseconds: 350));
+    expect(lookups, 0);
+
+    // A spot is tapped, delivering a suggestedQso (a new Map instance, as the
+    // real spot flow does — didUpdateWidget → _applySuggestedQso).
+    await tester.pumpWidget(build(suggestedQso: {
+      'their': {'call': 'W1AW'},
+      'freq': 14074.0,
+      'mode': 'FT8',
+    }));
+    expect(tester.widget<TextField>(find.widgetWithText(TextField, 'Their call')).controller!.text, 'W1AW');
+
+    // The populated call must be looked up, exactly as typing it would.
+    expect(lookups, 0); // debounced — nothing yet
+    await tester.pump(const Duration(milliseconds: 350));
+    expect(lookups, 2); // offline + online pass
+    expect(find.textContaining('ARRL HQ'), findsOneWidget);
+  });
+
   testWidgets('editing an existing QSO applies Radio control changes to the QSO, not the VFO', (tester) async {
     fakeRadio.setVfo('vfoA', freq: 14285, mode: 'CW');
     final existingQso = Qso(
