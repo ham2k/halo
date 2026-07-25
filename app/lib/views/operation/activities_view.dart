@@ -679,8 +679,7 @@ class OperationSheetState extends State<OperationSheet> {
     if (ref == null) return;
     final decorated = await widget.services.extensions.decorateRef(ref);
     _saveRefs([..._operation.refs, decorated]);
-    widget.services.track('activity_added', {'activity': refType});
-  }
+    widget.services.track('activity_added', {'activity': refType});  }
 
   /// The message shown in the Suggestions & Search section when there are
   /// no results: while there's a search term, a plain "no matches" message

@@ -1273,7 +1273,6 @@ class _KeepAliveState extends State<_KeepAlive> with AutomaticKeepAliveClientMix
   }
 }
 
-
 /// How far the grab pill floats DOWN past the toolbar's bottom edge at rest.
 /// The header applies it as a fixed translate; [_HeaderGrabHandle] animates
 /// the pill back up by the same amount while a sheet is in play.
