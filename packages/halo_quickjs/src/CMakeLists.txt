@@ -38,6 +38,26 @@ if (NOT WIN32)
   target_compile_definitions(halo_quickjs PRIVATE _GNU_SOURCE)
 endif()
 
+if (MSVC)
+  # quickjs.c gates C11 atomics on `!__STDC_NO_ATOMICS__` — note the missing
+  # defined(), so an UNDEFINED macro reads as 0 and the branch is taken. MSVC
+  # only defines __STDC_NO_ATOMICS__ in C11/C17 mode, so without /std:c11 the
+  # default C mode pulls in <stdatomic.h> and the _Atomic keyword it does not
+  # support, and the build fails outright. Upstream's own MSVC CI passes only
+  # because their CMakeLists sets a C standard; ours has to say so too.
+  #
+  # /std:c11 alone is the whole fix: it makes MSVC define __STDC_NO_ATOMICS__,
+  # CONFIG_ATOMICS preprocesses away, and we lose nothing — the extension
+  # sandbox is single-threaded with no SharedArrayBuffer. Deliberately NOT
+  # using /experimental:c11atomics, which would keep the atomics we don't want
+  # and narrow us to VS2022 17.5+.
+  #
+  # Spelled as a raw flag rather than C_STANDARD 11: CMake only learned to map
+  # C_STANDARD onto MSVC in 3.20, and this file targets 3.10.
+  target_compile_options(halo_quickjs PRIVATE /std:c11)
+  target_compile_definitions(halo_quickjs PRIVATE _CRT_SECURE_NO_WARNINGS _CRT_NONSTDC_NO_DEPRECATE)
+endif()
+
 # Release builds only; a debug-assert build of quickjs is far slower and we
 # never want it in a shipped app.
 target_compile_definitions(halo_quickjs PRIVATE NDEBUG)
