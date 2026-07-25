@@ -39,6 +39,7 @@
   },
   "extensionsPanel": {
     "categoryActivity": "Actividades",
+    "categoryContest": "Concursos",
     "categoryLookup": "Búsqueda de indicativos",
     "categoryOther": "Otras extensiones",
     "searchHint": "Buscar extensiones",
@@ -220,7 +221,13 @@
       "noticeDupe": "¡Dupe!",
       "noticeNewBand": "Nueva Banda",
       "noticeNewMode": "Nuevo Modo",
-      "noticeNewDXCC": "Nuevo DXCC"
+      "noticeNewDXCC": "Nuevo DXCC",
+      "noticeNewMult": "Nuevo Mult",
+      "noticeNewZone": "Nueva Zona",
+      "noticeInvalidMode": "Modo Incorrecto",
+      "noticeInvalidBand": "Banda Incorrecta",
+      "noticeInvalidCategory": "No Contactable",
+      "noticeWorkedBefore": "Ya Trabajado"
     }
   },
   "formChrome": {

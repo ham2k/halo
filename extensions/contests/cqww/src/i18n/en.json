@@ -1,0 +1,12 @@
+{
+  "setupLabel": "CQ WW Setup",
+  "modeLabel": "Contest Mode",
+  "ourZoneLabel": "Our CQ Zone",
+  "ourZonePlaceholder": "e.g. 5",
+  "zoneLabel": "Zone",
+  "unconfigured": "CQ WW (not set up)",
+  "adifExport": "Contest ADIF",
+  "cabrilloExport": "Cabrillo",
+  "activityLabel": "CQ WW Contests",
+  "ourZoneSubtitle": "Zone {{zone}}"
+}

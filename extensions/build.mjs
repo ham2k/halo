@@ -110,6 +110,10 @@ const bundles = [
   { key: 'call-notes', entry: 'lookups/call-notes/src/index.ts', kind: 'extension' },
   { key: 'pota', entry: 'activities/pota/src/index.ts', kind: 'extension' },
   { key: 'sota', entry: 'activities/sota/src/index.ts', kind: 'extension' },
+  { key: 'simple-contest', entry: 'contests/simple-contest/src/index.ts', kind: 'extension' },
+  { key: 'cqww', entry: 'contests/cqww/src/index.ts', kind: 'extension' },
+  { key: 'arrl-dx', entry: 'contests/arrl-dx/src/index.ts', kind: 'extension' },
+  { key: 'cqwpx', entry: 'contests/cqwpx/src/index.ts', kind: 'extension' },
   { key: 'ham2k-lofi', entry: 'sync/ham2k-lofi/src/index.ts', kind: 'extension' },
 ]
 

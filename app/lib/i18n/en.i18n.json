@@ -39,6 +39,7 @@
   },
   "extensionsPanel": {
     "categoryActivity": "Activities",
+    "categoryContest": "Contests",
     "categoryLookup": "Callsign Lookups",
     "categoryOther": "Other Extensions",
     "searchHint": "Search extensions",
@@ -220,7 +221,13 @@
       "noticeDupe": "Dupe!",
       "noticeNewBand": "New Band",
       "noticeNewMode": "New Mode",
-      "noticeNewDXCC": "New DXCC"
+      "noticeNewDXCC": "New DXCC",
+      "noticeNewMult": "New Mult",
+      "noticeNewZone": "New Zone",
+      "noticeInvalidMode": "Wrong Mode",
+      "noticeInvalidBand": "Wrong Band",
+      "noticeInvalidCategory": "Not Workable",
+      "noticeWorkedBefore": "Worked Before"
     }
   },
   "formChrome": {

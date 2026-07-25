@@ -110,6 +110,26 @@ class QsoListLabels {
   );
 }
 
+/// Whether a ref is contest metadata rather than an activity reference.
+///
+/// Two independent signals, because either can be missing: the ref's own
+/// `program` (set by a contest's `decorateRef`, so it survives the extension
+/// being switched off), and the shape of the control that owns its type — a
+/// contest writes its exchange through a primary field, while an activity
+/// reference comes from a `refList`.
+///
+/// "Primary field" must mean the same set here as in the logging panel's
+/// `_textControls`, i.e. `text` AND `serial`. It didn't, and since
+/// `controlForRefType` returns the FIRST control for a type and CQ WPX declares
+/// its serial (order 10) before its text exchange (order 20), every WPX QSO
+/// read as an activity reference and wore an icon.
+bool _isContestRef(Map<String, dynamic> ref, List<Map<String, dynamic>> controls) {
+  if (ref['program'] == 'Contest') return true;
+  final control = controlForRefType(controls, ref['type'] as String?);
+  final kind = (control?['input'] as Map?)?['kind'];
+  return kind == 'text' || kind == 'serial' || kind == 'form';
+}
+
 class QsoList extends StatefulWidget {
   final List<Qso> qsos;
   final String? noQsosLabel;
@@ -527,10 +547,15 @@ class _QsoListState extends State<QsoList> {
 
       // One icon per distinct ref type, "×N" appended when the QSO
       // carries more than one ref of that type.
+      // Icons here mark activity REFERENCES — a park worked, a summit chased.
+      // A contest ref carries the exchange, not a place, so it gets no icon:
+      // every row in a contest log would otherwise wear the same badge, which
+      // says nothing while crowding the columns that do.
       final refCountsByType = <String, int>{};
       for (final ref in qso.refs) {
         final type = ref['type'] as String?;
         if (type == null) continue;
+        if (_isContestRef(ref, activityControls)) continue;
         refCountsByType.update(type, (count) => count + 1, ifAbsent: () => 1);
       }
 
@@ -850,9 +875,12 @@ class DayHeaderRow extends StatelessWidget {
 
     final badges = <Widget>[];
     for (final entry in (scores ?? const <String, dynamic>{}).entries) {
-      if (entry.key == 'qsoCount') continue;
       final tally = entry.value;
       if (tally is! Map) continue;
+      // Key off the tally's own `key`, not the map key: with several scorers
+      // active the caller namespaces those (`core.qsoCount`), and the count is
+      // already shown by the header itself.
+      if (tally['key'] == 'qsoCount') continue;
       final icon = tally['icon'] as String?;
       final summary = tally['summary'] as String?;
       if (icon == null || summary == null || summary.isEmpty) continue;

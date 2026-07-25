@@ -17,6 +17,7 @@ import '../../services/settings_service.dart';
 import '../../tools/distance_format.dart';
 import '../../tools/form_chrome_labels.dart';
 import '../../tools/scoring_labels.dart';
+import '../../tools/scoring_summaries.dart';
 
 /// Builds the QSO list's day-header/event-row vocabulary for the active
 /// locale. Month/weekday abbreviations come from `intl`'s `DateFormat`
@@ -367,9 +368,10 @@ class _LoggingPanelState extends State<LoggingPanel> {
     // (never synced — DESIGN.md §4); absent until the first rescore lands.
     final scoring =
         widget.operation.localData['scoring'] as Map<String, dynamic>?;
-    final daySections = ((scoring?['daySections'] as List?) ?? const [])
-        .whereType<Map<String, dynamic>>()
-        .toList();
+    // Keyed by scorer since contest scoring landed, so this folds every
+    // active scorer's sections into one day-keyed list (see
+    // app/lib/tools/scoring_summaries.dart).
+    final daySections = mergedDaySections(scoring);
     final list = QsoList(
       qsos: widget.qsos,
       noQsosLabel: context.t.qsoList.empty,
@@ -409,6 +411,8 @@ class _LoggingPanelState extends State<LoggingPanel> {
             activityControls: widget.loggingControls,
             refreshActivityControls: (qso) => widget.services.extensions
                 .loggingControls(widget.operation.data, qso: qso),
+            decorateQsoBeforeSave: (qso) =>
+                widget.services.extensions.decorateQsoBeforeSave(qso, widget.operation.data),
             decorateRef: widget.services.extensions.decorateRef,
             interpretCommand: widget.services.extensions.interpretCommand,
             interpretationUpdates: widget.services.extensions.commandInterpretationUpdates,

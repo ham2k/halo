@@ -1,0 +1,19 @@
+{
+  "contestControl": "Contest",
+  "exchangeLabel": "Exch",
+  "exchangePlaceholder": "59 001",
+  "contestIdLabel": "Contest",
+  "contestIdPlaceholder": "e.g. CQ-WW-SSB",
+  "sentExchangeLabel": "Exchange Sent",
+  "defaultContestId": "TEST",
+  "oneQso": "1 QSO",
+  "manyQsos": "{{formatted}} QSOs",
+  "onePoint": "1 point",
+  "manyPoints": "{{formatted}} points",
+  "noValidQsos": "No valid QSOs yet",
+  "adifExport": "Contest ADIF",
+  "cabrilloExport": "Cabrillo",
+  "activityLabel": "Generic Contest",
+  "setupLabel": "Generic Contest Setup",
+  "unconfigured": "Contest (not set up)"
+}

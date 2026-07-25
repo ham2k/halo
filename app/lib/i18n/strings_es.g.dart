@@ -134,6 +134,7 @@ class _Translations$extensionsPanel$es extends Translations$extensionsPanel$en {
 
 	// Translations
 	@override String get categoryActivity => 'Actividades';
+	@override String get categoryContest => 'Concursos';
 	@override String get categoryLookup => 'Búsqueda de indicativos';
 	@override String get categoryOther => 'Otras extensiones';
 	@override String get searchHint => 'Buscar extensiones';
@@ -688,6 +689,12 @@ class _Translations$loggingControls$info$es extends Translations$loggingControls
 	@override String get noticeNewBand => 'Nueva Banda';
 	@override String get noticeNewMode => 'Nuevo Modo';
 	@override String get noticeNewDXCC => 'Nuevo DXCC';
+	@override String get noticeNewMult => 'Nuevo Mult';
+	@override String get noticeNewZone => 'Nueva Zona';
+	@override String get noticeInvalidMode => 'Modo Incorrecto';
+	@override String get noticeInvalidBand => 'Banda Incorrecta';
+	@override String get noticeInvalidCategory => 'No Contactable';
+	@override String get noticeWorkedBefore => 'Ya Trabajado';
 }
 
 // Path: settings.theme
@@ -1173,6 +1180,7 @@ extension on TranslationsEs {
 			'onboarding.consentOperationLabel' => 'Compartir datos de operaciones',
 			'startScreen.credits' => 'por KI2D y amigos',
 			'extensionsPanel.categoryActivity' => 'Actividades',
+			'extensionsPanel.categoryContest' => 'Concursos',
 			'extensionsPanel.categoryLookup' => 'Búsqueda de indicativos',
 			'extensionsPanel.categoryOther' => 'Otras extensiones',
 			'extensionsPanel.searchHint' => 'Buscar extensiones',
@@ -1327,6 +1335,12 @@ extension on TranslationsEs {
 			'loggingControls.info.noticeNewBand' => 'Nueva Banda',
 			'loggingControls.info.noticeNewMode' => 'Nuevo Modo',
 			'loggingControls.info.noticeNewDXCC' => 'Nuevo DXCC',
+			'loggingControls.info.noticeNewMult' => 'Nuevo Mult',
+			'loggingControls.info.noticeNewZone' => 'Nueva Zona',
+			'loggingControls.info.noticeInvalidMode' => 'Modo Incorrecto',
+			'loggingControls.info.noticeInvalidBand' => 'Banda Incorrecta',
+			'loggingControls.info.noticeInvalidCategory' => 'No Contactable',
+			'loggingControls.info.noticeWorkedBefore' => 'Ya Trabajado',
 			'formChrome.untitled' => '(sin título)',
 			'formChrome.showMore' => 'Mostrar más',
 			'formChrome.showAll' => 'Mostrar todo',

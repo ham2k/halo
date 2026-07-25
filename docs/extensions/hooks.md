@@ -213,15 +213,42 @@ for behavior.
 
 ```ts
 interface ActivityHook {
-  loggingControls?(args: { operation }, ctx): Promise<LoggingControlDescriptor[]>
-  operationControls?(args: { operation }, ctx): Promise<LoggingControlDescriptor[]>
+  // `qso` is the in-progress QSO, including `their.guess` from the callsign
+  // lookup — re-supplied when a lookup resolves, so a control can key a
+  // dynamic label/placeholder/suggestedValue off who's being worked.
+  loggingControls?(args: { operation, qso? }, ctx): Promise<LoggingControlDescriptor[]>
+  operationControls?(args: { operation, qso? }, ctx): Promise<LoggingControlDescriptor[]>
   suggest?(args: SuggestArgs, ctx): Promise<ActivitySuggestion[]>
+  processQsoBeforeSave?(args: { qso, operation }, ctx): Promise<Patch | null>
 }
 // LoggingControlDescriptor: {key, label, icon?, color?, order?, optionType?,
 //   allowsMultiple?, editable?, input}
-// input (catalog v0): {kind: 'refList', refType, placeholder?, pattern?}
 // SuggestArgs: {operation, location?: {lat, lon}, callsign?, searchTerm?}
 // ActivitySuggestion: Ref & {distance?, relevance?, allowsMultiple?}
+
+// The input catalog. A new kind is earned by a different WIDGET, never by
+// different validation — so a pattern-constrained field is `text` with a
+// `pattern`, not a kind of its own (docs/design/contests.md §5.3).
+//   {kind: 'refList', refType, placeholder?, pattern?, transforms?}
+//   {kind: 'text',    refType, field, placeholder?, pattern?, transforms?,
+//                     numeric?, uppercase? /* default true */, maxLength?,
+//                     suggestedValue?}
+//   {kind: 'serial',  refType, field, sequence: {key, scope?, start?, padTo?},
+//                     editable?}
+//   {kind: 'form',    refType, form}   // operationControls only
+//
+// `pattern` is anchored (`^(?:…)$`) and matched case-insensitively for every
+// kind; a malformed regex disables validation rather than throwing. A
+// mismatch tints the field but still accepts the value.
+//
+// `text` and `serial` values round-trip onto a ref of `refType` under `field`,
+// through the same core-owned path refList writes refs — several may share one
+// refType and are merged into a single ref. `suggestedValue` fills the field
+// only while the operator hasn't typed into it. A `serial`'s number is
+// allocated by the core (docs/design/contests.md §5.8), and both kinds render
+// as PRIMARY fields, shown only when the operation is running that activity.
+//
+// `optionType` is NOT yet honored by the core.
 ```
 
 `icon` is a Material Design Icons name (e.g. `'pine-tree'`), or a FontAwesome6
@@ -234,6 +261,20 @@ may use sparingly to highlight this control's icon — a tinted circle behind
 it in the Activities picker, or the icon itself once a reference is entered
 in the logging panel's secondary pills. Missing or unrecognized values just
 mean no accent.
+
+`processQsoBeforeSave` is the last chance to shape a QSO before it is written,
+for projecting data the extension owns into the generic QSON fields the rest of
+the app reads. A contest keeps its exchange on its own ref (`theirZone`,
+`theirSerial`, …), which nothing generic knows how to read — mirroring it into
+`their.exchange` is what fills the QSO row's exchange column and a plain ADIF
+export. Return a PATCH, not a mutated QSO: it merges shallowly except `our` and
+`their`, which merge one level deep, so `{their: {exchange: 'ZN5'}}` sets that
+field and leaves the callsign alone. `refs` and `uuid` in a patch are ignored —
+refs are shared with the core and with other activities. Return null to do
+nothing. Called on every save path (single QSO, call list, call stack, edit),
+and skipped entirely when the operation has no refs, so ordinary logging pays
+no bridge crossing. A serial the CORE allocates at commit is NOT visible here
+for the second and later calls of a call list (docs/design/contests.md §5.8).
 
 `loggingControls` appear on the logging panel (per-QSO refs);
 `operationControls` appear in the operation's Activities dialog (e.g. "which
@@ -440,15 +481,48 @@ buckets, following app-polo/web-lofi's convention) and accumulation both
 happen inside the runtime — the host just supplies the operation and its
 QSOs and gets back everything it needs to cache.
 
+Authors don't implement this directly. Write a **`ContestScorer`** — three
+pure functions — and wrap it with `contestScorer()`, which supplies the loop,
+day sectioning, checkpointing and the live single-QSO path
+(docs/design/contests.md §5.2):
+
 ```ts
+interface ContestScorer<S> {
+  startScoresheet({operation, ref?}, ctx): S
+  scoreQso({scoresheet, qso, operation, ref?, isNewDay}, ctx): {scoresheet: S, score}
+  summarizeScore({scoresheet, operation, ref?, scope}, ctx): Record<string, ScoreTally>
+}
+
+registerHook('scoring', {
+  hook: contestScorer(MyScorer, { scope: { refTypes: ['cqww'] } }),
+  key: 'cqww',
+})
+```
+
+`scope` decides which operations the scorer applies to, and the host reads it
+*before* invoking anything: `'always'` (core dupe/DXCC/bands) or a `refTypes`
+list, so an operation that doesn't carry the ref never crosses the bridge.
+Several scorers run on one operation — contests alongside core — and their
+results are namespaced per scorer.
+
+A scorer's internal *rules* stay private to its scoresheet: contests don't
+share a rule vocabulary, so only notices, alerts, points and summary tallies
+cross the boundary. `scoreQso` **may mutate** the scoresheet it's given and
+return it; copying accumulated state per QSO is quadratic, and the harness
+copies any checkpoint at its boundary.
+
+```ts
+// The wire shape the harness produces, for reference:
 interface ScoringHook {
   scoreQsos(args: ScoreQsosRequest, ctx): Promise<ScoreQsosResult>
+  scoreQso?(args: ScoreQsoRequest, ctx): Promise<QsoScoreNotices>
 }
-// ScoreQsosRequest: {operation, qsos}   — full QSON, one coarse call
+// ScoreQsosRequest: {operation, qsos, ref?, resumeFrom?}
 // ScoreQsosResult:  {
-//   qsoScores: Record<uuid, Record<ruleKey, QsoScoreVerdict>>,
-//   daySections: {day, count, scores: Record<ruleKey, ScoreTally>}[],
-//   operationSummary: Record<ruleKey, ScoreTally>,
+//   qsoScores: Record<uuid, QsoScoreVerdict>,   // one verdict per QSO
+//   daySections: {day, count, scores: Record<tallyKey, ScoreTally>}[],
+//   operationSummary: Record<tallyKey, ScoreTally>,
+//   scoresheet,                                  // checkpoint to resume from
 // }
 ```
 

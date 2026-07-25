@@ -5,9 +5,13 @@ import 'package:flutter/widgets.dart';
 
 import '../i18n/strings.g.dart';
 
-/// Localized pill text for a scoring notice/alert key (`duplicate`, `newBand`,
-/// `newMode`, `newDXCC`), falling back to the raw key. Shared by the compact
-/// call-info line (`logging_panel.dart`) and the call-info detail panel.
+/// Localized pill text for a scoring notice/alert key, falling back to the raw
+/// key. Shared by the compact call-info line (`logging_panel.dart`) and the
+/// call-info detail panel.
+///
+/// The vocabulary is open — a contest may emit its own keys — but every notice
+/// a shipped scorer produces belongs here: an unlabelled key reaches the
+/// operator as raw camelCase, which is worse than useless mid-contest.
 String scoreNoticeLabel(BuildContext context, String key) {
   final t = context.t.loggingControls.info;
   return switch (key) {
@@ -15,6 +19,14 @@ String scoreNoticeLabel(BuildContext context, String key) {
     'newBand' => t.noticeNewBand,
     'newMode' => t.noticeNewMode,
     'newDXCC' => t.noticeNewDXCC,
+    // Contest scorers (docs/design/contests.md M2 onward).
+    'newMult' => t.noticeNewMult,
+    'newZone' => t.noticeNewZone,
+    'workedBefore' => t.noticeWorkedBefore,
+    // Alerts: the QSO doesn't count toward this contest.
+    'invalidMode' => t.noticeInvalidMode,
+    'invalidBand' => t.noticeInvalidBand,
+    'invalidCategory' => t.noticeInvalidCategory,
     _ => key,
   };
 }

@@ -872,6 +872,54 @@ void main() {
   );
 
   testWidgets(
+    'a contest ref shows no icon, whichever primary field kind declares it first',
+    (tester) async {
+      // Contest refs are metadata, not somewhere you went to operate — an icon
+      // on every row of a contest log is noise. `_isContestRef` decides this
+      // from the control owning the ref type, and `controlForRefType` returns
+      // the FIRST one: CQ WPX declares its `serial` (order 10) before its
+      // `text` exchange (order 20), so leaving `serial` out of that check
+      // silently reinstated the icon for exactly one contest.
+      final operation = await operations.create(stationCall: 'KI2D');
+      final qso = await qsos.add(operation.uuid, {
+        'their': {'call': 'W1AW'},
+        'mode': 'CW',
+        'startAtMillis': 1000,
+        'refs': [
+          {'type': 'cqwpx', 'ourSerial': 1, 'theirSerial': '12'},
+        ],
+      });
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: QsoList(
+              qsos: [qso],
+              onSelect: (_) {},
+              activityControls: const [
+                {
+                  'key': 'cqwpx/ourSerial',
+                  'icon': 'flag-checkered',
+                  'input': {'kind': 'serial', 'refType': 'cqwpx', 'field': 'ourSerial'},
+                },
+                {
+                  'key': 'cqwpx/theirSerial',
+                  'icon': 'flag-checkered',
+                  'input': {'kind': 'text', 'refType': 'cqwpx', 'field': 'theirSerial'},
+                },
+              ],
+            ),
+          ),
+        ),
+      );
+
+      expect(find.byIcon(resolveIconName('flag-checkered')), findsNothing);
+      // And not mistaken for an unknown ref type either (issue #261's marker).
+      expect(find.text('?'), findsNothing);
+    },
+  );
+
+  testWidgets(
     'a ref-type icon is drawn in the neutral row foreground, not the tertiary accent (#354)',
     (tester) async {
       final operation = await operations.create(stationCall: 'KI2D');
@@ -1096,13 +1144,16 @@ void main() {
               body: QsoList(
                 qsos: [qso],
                 onSelect: (_) {},
+                // Map keys are namespaced per scorer once more than one is
+                // active, so the skip must key off the tally's own `key`
+                // (which ScoreTally always carries) rather than the map key.
                 daySections: [
                   {
                     'day': 0,
                     'count': 1,
                     'scores': {
-                      'qsoCount': {'icon': 'radio', 'summary': '1'},
-                      'dxcc': {'icon': 'earth', 'summary': '5'},
+                      'core.qsoCount': {'key': 'qsoCount', 'icon': 'radio', 'summary': '1'},
+                      'core.dxcc': {'key': 'dxcc', 'icon': 'earth', 'summary': '5'},
                     },
                   },
                 ],

@@ -1,0 +1,17 @@
+{
+  "setupLabel": "Configuración ARRL DX",
+  "modeLabel": "Modo del Concurso",
+  "stationTypeLabel": "Somos",
+  "stationTypeWve": "Una Estación W/VE",
+  "stationTypeDx": "Una Estación DX",
+  "ourPowerLabel": "Nuestra Potencia",
+  "ourPowerPlaceholder": "ej. 100, KW",
+  "ourStateLabel": "Nuestro Estado/Provincia",
+  "ourStatePlaceholder": "ej. MA",
+  "theirPowerLabel": "Pot",
+  "theirStateLabel": "Est/Prov",
+  "unconfigured": "ARRL DX (sin configurar)",
+  "adifExport": "ADIF de concurso",
+  "cabrilloExport": "Cabrillo",
+  "activityLabel": "Concursos ARRL DX"
+}

@@ -7,6 +7,7 @@
 // broken extension runtime degrades features, never the core loop.
 
 import 'dart:async';
+import 'dart:collection';
 import 'dart:convert';
 
 import 'package:flutter/foundation.dart' show setEquals;
@@ -27,6 +28,7 @@ import '../config/user_agent.dart';
 import '../i18n/strings.g.dart';
 import '../main.dart';
 import '../tools/form_chrome_labels.dart';
+import '../tools/qso_patch.dart';
 
 /// The QSON payload shape shared by every hook that takes a whole operation's
 /// worth of QSOs in one coarse call (export, scoring, …) — `operation.data`
@@ -1336,11 +1338,86 @@ class ExtensionService {
     }
   }
 
+  /// `{hookKey: scope}` for every `scoring` hook. `scope` is a plain data
+  /// member on each hook (same access pattern as `spots`' `sourceName`), either
+  /// the string `'always'` or `{refTypes: [...]}`, so the core can decide which
+  /// scorers an operation needs *before* invoking any of them — a user may have
+  /// dozens of extensions enabled while an operation references a handful
+  /// (docs/design/contests.md §5.1).
+  Future<Map<String, dynamic>> getScoringScopes() async {
+    final host = _host;
+    if (host == null) return const {};
+    try {
+      final entries = await host.invokeHookAll('scoring', method: 'scope', timeout: const Duration(seconds: 5));
+      return {
+        for (final entry in entries)
+          if (entry['ok'] == true && entry['value'] != null) entry['key'] as String: entry['value'],
+      };
+    } catch (e) {
+      debugPrint('[extensions] getScoringScopes failed: $e');
+      return const {};
+    }
+  }
+
+  /// The scoring hook keys relevant to [operation], paired with the ref that
+  /// selected each. An `'always'` scorer maps to a null ref; a ref-gated one is
+  /// listed once per matching ref, so a contest that appears twice scores twice.
+  static List<({String key, Map<String, dynamic>? ref})> scorersFor(
+    Map<String, dynamic> operation,
+    Map<String, dynamic> scopes,
+  ) {
+    final refs = ((operation['refs'] as List?) ?? const [])
+        .whereType<Map>()
+        .map((r) => r.cast<String, dynamic>())
+        .toList();
+
+    final selected = <({String key, Map<String, dynamic>? ref})>[];
+    for (final entry in scopes.entries) {
+      final scope = entry.value;
+      if (scope == 'always') {
+        selected.add((key: entry.key, ref: null));
+        continue;
+      }
+      final refTypes = ((scope is Map ? scope['refTypes'] : null) as List?)?.whereType<String>().toSet();
+      if (refTypes == null || refTypes.isEmpty) continue;
+      for (final ref in refs) {
+        if (refTypes.contains(ref['type'])) selected.add((key: entry.key, ref: ref));
+      }
+    }
+    return selected;
+  }
+
+  /// One scorer's batched pass over an operation's QSOs. [resumeFrom] hands back
+  /// that scorer's cached end-of-log scoresheet so only [qsos] — a tail — needs
+  /// replaying; omit it for a full pass.
+  Future<Map<String, dynamic>?> scoreQsos({
+    required String scorerKey,
+    required Map<String, dynamic> args,
+  }) async {
+    final host = _host;
+    if (host == null) return null;
+    try {
+      final result = await host.invokeHook(
+        'scoring',
+        key: scorerKey,
+        method: 'scoreQsos',
+        args: args,
+        timeout: const Duration(seconds: 10),
+      );
+      return result is Map ? result.cast<String, dynamic>() : null;
+    } catch (e) {
+      // One contest's scorer blowing up must not cost the operation its core
+      // scoring, so failures are per-scorer.
+      debugPrint('[extensions] scoreQsos($scorerKey) failed: $e');
+      return null;
+    }
+  }
+
   /// Scores the single in-progress QSO — the callsign being typed, before
   /// Enter — for the logging panel's live call-info line. Returns
   /// `{notices, alerts}` of scoring keys (`duplicate`, `newBand`, `newMode`,
-  /// `newDXCC`), or null when the runtime isn't up. Debounced on the caller's
-  /// side, so the hook's whole-log read is off the keystroke path.
+  /// `newDXCC`), merged across every scorer relevant to the operation, or null
+  /// when the runtime isn't up. Debounced on the caller's side.
   /// [excludeUuid] drops the record being edited so it can't flag itself as
   /// its own duplicate. [operation] must carry `uuid` (the hook reads the log
   /// via it) — pass the same uuid-folded shape command hooks get.
@@ -1351,24 +1428,42 @@ class ExtensionService {
   }) async {
     final host = _host;
     if (host == null) return null;
-    try {
-      final result = await host.invokeHook(
-        'scoring',
-        key: 'core',
-        method: 'scoreQso',
-        args: {
-          'operation': operation,
-          'qso': qso,
-          'excludeUuid': ?excludeUuid,
-        },
-        timeout: const Duration(seconds: 4),
-      );
-      if (result is! Map) return null;
-      return result.cast<String, dynamic>();
-    } on ExtensionHostException catch (e) {
-      debugPrint('[extensions] scoreQso failed: $e');
-      return null;
-    }
+
+    final scorers = scorersFor(operation, await getScoringScopes());
+    if (scorers.isEmpty) return null;
+
+    // Sorted by scorer key so the merged notice/alert order is stable —
+    // invokeHookAll gives no ordering guarantee, and the call-info line builds
+    // a dedupe signature by joining these lists.
+    final notices = SplayTreeSet<String>();
+    final alerts = SplayTreeSet<String>();
+    var any = false;
+
+    await Future.wait(scorers.map((scorer) async {
+      try {
+        final result = await host.invokeHook(
+          'scoring',
+          key: scorer.key,
+          method: 'scoreQso',
+          args: {
+            'operation': operation,
+            'qso': qso,
+            'excludeUuid': ?excludeUuid,
+            'ref': ?scorer.ref,
+          },
+          timeout: const Duration(seconds: 4),
+        );
+        if (result is! Map) return;
+        any = true;
+        notices.addAll(((result['notices'] as List?) ?? const []).whereType<String>());
+        alerts.addAll(((result['alerts'] as List?) ?? const []).whereType<String>());
+      } catch (e) {
+        debugPrint('[extensions] scoreQso(${scorer.key}) failed: $e');
+      }
+    }));
+
+    if (!any) return null;
+    return {'notices': notices.toList(), 'alerts': alerts.toList()};
   }
 
   /// Asks every registered `command` hook (priority order) to interpret the input command.
@@ -1430,6 +1525,48 @@ class ExtensionService {
   /// Descriptors for controls activities want in operation settings.
   Future<List<Map<String, dynamic>>> operationControls(Map<String, dynamic> operationData, {Map<String, dynamic>? qso}) =>
       _collectControls('operationControls', operationData, qso: qso);
+
+  /// Lets activities project data they own into generic QSON fields just
+  /// before a QSO is written — a contest mirroring the exchange it keeps on
+  /// its own ref into `their.exchange`, which is what the QSO row's exchange
+  /// column and a plain ADIF export read. See `ActivityHook.processQsoBeforeSave`.
+  ///
+  /// Returns [qsoData] with every hook's patch merged in, unchanged if nothing
+  /// contributed. Degrades silently: a hook that throws or times out must never
+  /// cost the operator their QSO, so the save proceeds undecorated.
+  ///
+  /// Skipped when the operation carries no refs — ordinary logging is the
+  /// common case and must not pay a bridge crossing per QSO for a hook only
+  /// contests implement.
+  Future<Map<String, dynamic>> decorateQsoBeforeSave(
+    Map<String, dynamic> qsoData,
+    Map<String, dynamic> operationData,
+  ) async {
+    final host = _host;
+    if (host == null) return qsoData;
+    final refs = operationData['refs'];
+    if (refs is! List || refs.isEmpty) return qsoData;
+
+    try {
+      final entries = await host.invokeHookAll(
+        'activity',
+        method: 'processQsoBeforeSave',
+        args: {'qso': qsoData, 'operation': operationData},
+        // Saving blocks the operator's next QSO, so a stalled hook loses its
+        // contribution rather than the log its pace.
+        timeout: const Duration(seconds: 2),
+      );
+      var merged = qsoData;
+      for (final entry in entries) {
+        if (entry['ok'] != true || entry['value'] is! Map) continue;
+        merged = mergeQsoPatch(merged, (entry['value'] as Map).cast<String, dynamic>());
+      }
+      return merged;
+    } on ExtensionHostException catch (e) {
+      debugPrint('[extensions] processQsoBeforeSave failed: $e');
+      return qsoData;
+    }
+  }
 
   Future<List<Map<String, dynamic>>> _collectControls(
     String method,

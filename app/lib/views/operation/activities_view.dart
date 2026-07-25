@@ -104,7 +104,15 @@ bool allowsMultipleRefsOfType(
 /// the code its own search already resolved, so retyping it by hand invites a
 /// typo no lookup would catch. A type whose refs carry more than that says
 /// `editable: true` on its control descriptor.
-bool refTypeIsEditable(Map<String, dynamic>? control) => control?['editable'] == true;
+bool refTypeIsEditable(Map<String, dynamic>? control) {
+  // A form-configured activity is editable by construction: the form IS the
+  // reference, so there is always something to open. Inferring it here rather
+  // than making every contest also set `editable: true` — the flag exists to
+  // mark the unusual reference type that carries more than a looked-up code,
+  // and a form control is that by definition.
+  if ((control?['input'] as Map?)?['kind'] == 'form') return true;
+  return control?['editable'] == true;
+}
 
 /// The refs to keep when adding one of [type]: all of them when the type
 /// allows multiple, and otherwise everything BUT that type — a single-ref
@@ -360,10 +368,59 @@ class OperationSheetState extends State<OperationSheet> {
     }
   }
 
+  /// Opens an `input.kind == 'form'` control's setup form (a contest's
+  /// identifier, sent exchange, mode…), pre-filled from [existing] if this ref
+  /// is already on the operation. Returns the ref to save, or null if the
+  /// operator cancelled.
+  ///
+  /// The form's values live directly on the ref, so they persist through the
+  /// same `_saveRefs` path every other activity ref uses — no separate
+  /// operation write-path is involved.
+  Future<Map<String, dynamic>?> _runSetupForm(
+    Map<String, dynamic> control, {
+    Map<String, dynamic>? existing,
+  }) async {
+    final input = (control['input'] as Map?) ?? const {};
+    final refType = input['refType'] as String?;
+    final form = (input['form'] as Map?)?.cast<String, dynamic>();
+    if (refType == null || form == null) return null;
+
+    // Seed from the ref itself: every field key is a key on the ref.
+    final initialState = <String, dynamic>{
+      for (final entry in (existing ?? const <String, dynamic>{}).entries)
+        if (entry.key != 'type') entry.key: entry.value,
+    };
+
+    final result = await showFormDialog(
+      context,
+      formDefinition: form,
+      initialState: initialState,
+      developerMode: widget.services.settings.developerMode,
+    );
+    if (result == null || !mounted) return null;
+
+    return {...?existing, 'type': refType, ...result};
+  }
+
   /// Only reachable for a ref type that declares `editable` (see
   /// [refTypeIsEditable]).
   Future<void> _editRef(Map<String, dynamic> ref) async {
     final t = context.t.activitiesView;
+
+    // A form-configured activity (a contest) edits through its own setup form
+    // rather than the single reference-code field below — it has no code.
+    final formControl = controlForRefType(_controls, ref['type'] as String?);
+    if ((formControl?['input'] as Map?)?['kind'] == 'form') {
+      final updated = await _runSetupForm(formControl!, existing: ref);
+      if (updated == null) return;
+      final refs = _operation.refs;
+      final index = refs.indexWhere((r) => r['type'] == ref['type'] && r['ref'] == ref['ref']);
+      if (index < 0) return;
+      final decorated = await widget.services.extensions.decorateRef(updated);
+      _saveRefs([...refs]..[index] = decorated);
+      return;
+    }
+
     final code = await editOneFieldDialog(
       context,
       title: t.editActivity,
@@ -578,7 +635,15 @@ class OperationSheetState extends State<OperationSheet> {
   /// know its references — including ones it hasn't got data for yet, which
   /// it offers verbatim — so there's nothing a free-text box adds beyond a
   /// second place to typo.
+  ///
+  /// A form-configured activity (a contest) is the exception: it has no
+  /// references at all, so there is nothing to scope a search to. Tapping it
+  /// opens its setup form instead.
   void _scopeSearchTo(Map<String, dynamic> control) {
+    if ((control['input'] as Map?)?['kind'] == 'form') {
+      unawaited(_addFormActivity(control));
+      return;
+    }
     final activityKey = ((control['key'] as String?) ?? '').split('/').first;
     if (activityKey.isEmpty) return;
     final prefix = ActivitySearchQuery.scopePrefixFor(activityKey);
@@ -595,6 +660,26 @@ class OperationSheetState extends State<OperationSheet> {
     _searchFocusNode.requestFocus();
     _debounce?.cancel();
     unawaited(_search(prefix));
+  }
+
+  /// Adds a form-configured activity by running its setup form. One per
+  /// operation: a second CQ WW ref would be meaningless, unlike a second park,
+  /// so tapping an already-added contest edits it instead.
+  Future<void> _addFormActivity(Map<String, dynamic> control) async {
+    final refType = ((control['input'] as Map?) ?? const {})['refType'] as String?;
+    if (refType == null) return;
+
+    final existing = _operation.refs.where((r) => r['type'] == refType).firstOrNull;
+    if (existing != null) {
+      await _editRef(existing);
+      return;
+    }
+
+    final ref = await _runSetupForm(control);
+    if (ref == null) return;
+    final decorated = await widget.services.extensions.decorateRef(ref);
+    _saveRefs([..._operation.refs, decorated]);
+    widget.services.track('activity_added', {'activity': refType});
   }
 
   /// The message shown in the Suggestions & Search section when there are
@@ -654,7 +739,9 @@ class OperationSheetState extends State<OperationSheet> {
   }
 
   String _allOptionsTitle(TranslationsEn t) {
-    final refListControls = _controls.where((c) => (c['input'] as Map?)?['kind'] == 'refList').toList();
+    final refListControls = _controls
+        .where((c) => (c['input'] as Map?)?['kind'] == 'refList' || (c['input'] as Map?)?['kind'] == 'form')
+        .toList();
     final labels = <String>[];
     for (final control in refListControls) {
       final controlKey = control['key'] as String? ?? '';
@@ -1173,7 +1260,8 @@ class OperationSheetState extends State<OperationSheet> {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   for (final control in _controls)
-                    if ((control['input'] as Map?)?['kind'] == 'refList')
+                    if ((control['input'] as Map?)?['kind'] == 'refList' ||
+                        (control['input'] as Map?)?['kind'] == 'form')
                       ListTile(
                         tileColor: rowColor,
                         leading: _accentIcon(control['icon'] as String?, resolveExtensionColor(control['color'] as String?)),

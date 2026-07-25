@@ -1,0 +1,11 @@
+{
+  "setupLabel": "Configuración CQ WPX",
+  "modeLabel": "Modo del Concurso",
+  "activityLabel": "Concursos CQ WPX",
+  "unconfigured": "CQ WPX (sin configurar)",
+  "ourSerialLabel": "N.º nuestro",
+  "theirSerialLabel": "N.º suyo",
+  "serialSubtitle": "Números de serie",
+  "adifExport": "ADIF de concurso",
+  "cabrilloExport": "Cabrillo"
+}

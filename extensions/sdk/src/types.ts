@@ -230,6 +230,13 @@ export interface LoggingControlDescriptor {
   /// unrecognized/missing value just means no accent, never an error.
   color?: string
   order?: number
+  /// **Not yet honored by the core.** Declared since the original catalog
+  /// sketch (DESIGN.md §5) and set by every shipped extension, but nothing in
+  /// Dart reads it: `'mandatory'` neither pins the control past the user's
+  /// hidden-controls setting nor gates logging. Every current caller passes
+  /// `'optional'`, so no behaviour depends on it — but a contest marking its
+  /// exchange mandatory would silently get nothing. Implement it or drop it
+  /// before a contest relies on it.
   optionType?: 'optional' | 'mandatory'
   /// Whether a reference of this type has anything to edit once it's on the
   /// operation. Defaults to FALSE: a plain reference activity (POTA, SOTA)
@@ -242,7 +249,112 @@ export interface LoggingControlDescriptor {
   /// Same meaning as `ActivitySuggestion.allowsMultiple`, for references
   /// typed in by hand rather than picked from a suggestion. Defaults to true.
   allowsMultiple?: boolean
-  input: RefListInputDescriptor
+  input: InputDescriptor
+}
+
+/// The logging-control input catalog (DESIGN.md §5). A new `kind` is earned by
+/// a different *widget*, never by different validation — a pattern-constrained
+/// field types and focuses exactly like a free-form one, so `pattern` is a
+/// modifier on `text` rather than a kind of its own.
+export type InputDescriptor =
+  | RefListInputDescriptor
+  | TextInputDescriptor
+  | SerialInputDescriptor
+  | FormInputDescriptor
+
+/// Names a sequence of serial numbers within an operation. Declarative on
+/// purpose: there is no `allocate()` to call, because by the time any hook sees
+/// a QSO the number is already on it. The core allocates once, at commit,
+/// inside the QSO insert — which is what makes "rescoring never renumbers" a
+/// structural fact rather than a discipline (docs/design/contests.md §5.8).
+export interface SequenceBinding {
+  /// Names the sequence within this operation and extension. A contest that
+  /// needs one flat run of numbers just uses `'serial'`.
+  key: string
+  /// Separate sequences per band and/or mode — several VHF contests restart
+  /// numbering on each band.
+  ///
+  /// The core resolves the label AT COMMIT from the committed QSO, not from
+  /// this descriptor: the descriptor is a snapshot taken when the callsign
+  /// lookup resolved, and the operator may still change band before pressing
+  /// Enter. Only the core, at commit, knows which band the QSO actually ended
+  /// up on.
+  scope?: ('band' | 'mode')[]
+  /// First number issued (default 1) — the operator can override it in
+  /// operation settings when they logged the first hour on paper.
+  start?: number
+  /// Zero-padding for DISPLAY only ('001'); the value is stored as an integer.
+  padTo?: number
+}
+
+/// An auto-allocated serial number sent as part of the exchange.
+///
+/// The operator may still type over it (a correction goes out on the air like
+/// anything else), and doing so raises the counter rather than renumbering
+/// anything else. Like every primary field it takes its turn in the keyboard
+/// cycle — Space and Tab both walk it — since the operator has to be able to
+/// reach the field to make that correction without leaving the keyboard.
+export interface SerialInputDescriptor {
+  kind: 'serial'
+  refType: string
+  field: string
+  sequence: SequenceBinding
+  /// Default true — an operator has to be able to correct what they actually
+  /// sent.
+  editable?: boolean
+}
+
+/// A whole setup form behind one control, for the enum-shaped configuration an
+/// operation needs once (a contest's mode, station type, sent exchange) rather
+/// than per QSO. Reuses the existing `FormDefinition` schema and renderer
+/// instead of growing this union with select/radio/checkbox kinds — the form
+/// schema already has them, and per-QSO exchanges never need them.
+///
+/// Only valid on `operationControls`. The form's values are read from, and
+/// saved back onto, the operation's ref of `refType` — the same core-owned path
+/// `refList` writes refs through.
+///
+/// The definition crosses the bridge as JSON, so it must be static: a
+/// `FormDefinition.onChange` closure cannot survive the trip.
+export interface FormInputDescriptor {
+  kind: 'form'
+  refType: string
+  form: FormDefinition
+}
+
+/// A free-form or pattern-constrained exchange field (contest exchanges: a CQ
+/// zone, a Field Day class, a name). The typed value round-trips onto a ref of
+/// `refType` under the key `field` — the same core-owned path `refList` writes
+/// refs through, so no new persistence is involved.
+export interface TextInputDescriptor {
+  kind: 'text'
+  /// Ref type the value is stored on, e.g. 'simple-contest'.
+  refType: string
+  /// Key within that ref, e.g. 'exchange' → `{type: 'simple-contest', exchange: '…'}`.
+  field: string
+  placeholder?: string
+  /// Regex source string. The core anchors it (`^(?:…)$`) and matches
+  /// case-insensitively — the same compilation `refList` uses, so one pattern
+  /// string means the same thing on either kind. A malformed regex disables
+  /// validation rather than throwing. The field tints on a mismatch but still
+  /// accepts the value: contest rules don't always anticipate what the other
+  /// station actually sends.
+  pattern?: string
+  /// Same live-reformatting passes `refList` supports (see below).
+  transforms?: { pattern: string; replacement: string; flags?: string }[]
+  /// Numeric keyboard and digits-only filtering (CQ zone, serial).
+  numeric?: boolean
+  /// Force typed input to uppercase — **the default**, matching every other
+  /// logging field and the uppercase-unless-explicitly-mixed-case convention
+  /// (`FormField.uppercase` documents the same rule). Set `false` for genuinely
+  /// mixed-case exchange data, such as NAQP's operator name.
+  uppercase?: boolean
+  maxLength?: number
+  /// Pre-filled into the field and flagged as a guess: the core writes it only
+  /// while the field is empty or still holds a previous suggestion, so a
+  /// callsign lookup that resolves late can never clobber operator input.
+  /// Use `placeholder` instead for a hint that must never become a value.
+  suggestedValue?: string
 }
 
 export interface RefListInputDescriptor {
@@ -314,6 +426,33 @@ export interface ActivityHook {
   /// Candidate activities for the "add activity" search/suggestions list —
   /// nearby references when `searchTerm` is empty, name/code matches when set.
   suggest?(args: SuggestArgs, ctx: HookContext): Promise<ActivitySuggestion[]>
+
+  /// Last chance to shape a QSO before it is written, so an extension can
+  /// project data it owns into the generic QSON fields the rest of the app
+  /// reads. A contest keeps its exchange on its own ref — `theirZone`,
+  /// `theirSerial`, `theirExchange` — which nothing generic knows how to
+  /// read; mirroring it into `their.exchange` is what puts it in the QSO
+  /// row's exchange column and in a plain ADIF export.
+  ///
+  /// Returns a PATCH to merge, not a mutated QSO: hooks are JSON in, JSON out
+  /// and never hold app state. The patch merges shallowly, except `our` and
+  /// `their`, which merge one level deep — so `{their: {exchange: 'ZN14'}}`
+  /// sets that one field and leaves `their.call` alone. Return null to do
+  /// nothing, which is what an operation not running your activity should do.
+  ///
+  /// Only called when the operation carries a ref of a type you contribute
+  /// controls for, so ordinary non-contest logging costs no bridge crossing.
+  ///
+  /// NOT visible here: a serial the CORE allocates at commit
+  /// (docs/design/contests.md §5.8). In the normal single-QSO path the number
+  /// is already on the ref by now, because the panel writes the number it
+  /// displayed; but for the second and later calls of a call list it is issued
+  /// after this hook has run, so don't derive anything that must hold for
+  /// every QSO from it.
+  processQsoBeforeSave?(
+    args: { qso: Record<string, JSONValue>; operation: Record<string, JSONValue> },
+    ctx: HookContext,
+  ): Promise<Record<string, JSONValue> | null>
 }
 
 /// Contributes extra ADIF fields per QSO (registered under 'adifFields').
@@ -376,8 +515,13 @@ export interface QsoScoreVerdict {
   [extra: string]: JSONValue | undefined
 }
 
-/// All rules' verdicts for one QSO, keyed by rule key (e.g. 'dupe', 'dxcc',
-/// 'bandsAndModes'). Cached verbatim into `qsos.score_cache`.
+/// One scorer's verdict for one QSO. A scorer's internal *rules* (core's
+/// dupe/dxcc/bands split, a contest's points-and-mults logic) stay private to
+/// its scoresheet — contests don't share a rule vocabulary, so only notices,
+/// alerts and points cross this boundary.
+///
+/// `qsos.score_cache` holds one of these per active scorer, keyed by scorer:
+/// `{core: {...}, cqww: {...}}`.
 export type QsoScoreEntry = Record<string, QsoScoreVerdict>
 
 /// One rule's running tally, either for a calendar day or the whole
@@ -404,15 +548,27 @@ export interface DayScoreSummary {
 export interface ScoreQsosRequest {
   operation: Record<string, JSONValue>
   qsos: Record<string, JSONValue>[]
+  /// The operation ref that selected this scorer (§5.1) — carries its setup
+  /// (contest identifier, sent exchange, mode). Absent for `scope: 'always'`
+  /// scorers like `core`.
+  ref?: Record<string, JSONValue>
+  /// A scoresheet checkpoint from an earlier pass. When present, `qsos` is only
+  /// the tail to replay from that point rather than the whole log, so appending
+  /// a QSO doesn't re-fold the operation.
+  resumeFrom?: JSONValue
 }
 
 export interface ScoreQsosResult {
-  /// Keyed by QSO uuid — written verbatim into that QSO's `score_cache` column.
-  qsoScores: Record<string, QsoScoreEntry>
+  /// Keyed by QSO uuid — this scorer's verdict for each. The core nests these
+  /// under the scorer's key before writing `qsos.score_cache`.
+  qsoScores: Record<string, QsoScoreVerdict>
   daySections: DayScoreSummary[]
   /// Cumulative tallies across the whole operation (last day section's
   /// running totals) — cached on the operation, not any one QSO.
   operationSummary: Record<string, ScoreTally>
+  /// End-of-pass scoresheet, cached by the core and handed back as
+  /// `resumeFrom` on the next append.
+  scoresheet?: JSONValue
 }
 
 /// Scores a single in-progress (not-yet-logged) QSO for the logging panel's
@@ -425,6 +581,11 @@ export interface ScoreQsoRequest {
   operation: Record<string, JSONValue>
   qso: Record<string, JSONValue>
   excludeUuid?: string
+  ref?: Record<string, JSONValue>
+  /// Same checkpoint as `ScoreQsosRequest.resumeFrom`: the cached
+  /// end-of-log scoresheet, so the candidate can be scored against it directly
+  /// instead of re-folding the whole log on every keystroke.
+  resumeFrom?: JSONValue
 }
 
 /// Merged, de-duped notice/alert keys for one candidate QSO — e.g.
@@ -440,9 +601,73 @@ export interface QsoScoreNotices {
 /// call, not 500 calls") — day-sectioning and accumulation both happen here,
 /// inside the runtime, not orchestrated call-by-call from Dart. `scoreQso`
 /// is the live single-candidate path used while typing a callsign.
+///
+/// Authors don't normally implement this directly: write a `ContestScorer` and
+/// wrap it with `contestScorer()`, which supplies the loop, the day
+/// checkpoints, resume, and the live path.
 export interface ScoringHook {
   scoreQsos(args: ScoreQsosRequest, ctx: HookContext): Promise<ScoreQsosResult>
   scoreQso?(args: ScoreQsoRequest, ctx: HookContext): Promise<QsoScoreNotices>
+}
+
+/// Which operations a scorer applies to. `'always'` scores every operation
+/// (DXCC, states, bands-and-modes); a `refTypes` list scores only operations
+/// carrying one of those refs, so the core can skip a contest entirely rather
+/// than invoke it to be told "not mine". Declared at `registerHook` time.
+export type ScoringScope = 'always' | { refTypes: string[] }
+
+/// A scorer's running record while it works through a log: worked calls, mult
+/// sets, running points. Opaque to the core and owned by the scorer, so it must
+/// be JSON-serializable (sets → arrays) — the core snapshots it as a checkpoint.
+export type Scoresheet = JSONValue
+
+/// The contract a contest implements. Three pure functions, named for the
+/// scoring process; the core owns the loop, the checkpointing and the live
+/// path, so caching and incremental rescoring are written once here rather than
+/// re-derived in every contest.
+export interface ContestScorer<S extends Scoresheet = Scoresheet> {
+  /// A blank scoresheet. `ref` carries this contest's setup off the operation.
+  startScoresheet(args: { operation: Record<string, JSONValue>; ref?: Record<string, JSONValue> }, ctx: HookContext): S
+
+  /// Score ONE QSO against the scoresheet so far. No I/O. This single function
+  /// serves the full pass, an append, a mid-log replay AND the live in-progress
+  /// QSO — for the live case the returned scoresheet is discarded.
+  ///
+  /// **May mutate `scoresheet` and return it.** Copying the accumulated state
+  /// per QSO is quadratic: measured on a 5,000-QSO contest log it cost 289ms
+  /// versus 18ms for 1,000 — 5x the QSOs for 16x the time, all of it spreading
+  /// the worked-call map. The harness takes one defensive copy of any resume
+  /// checkpoint it is handed, so a scorer that mutates can never corrupt a
+  /// cached scoresheet, and the fold stays linear.
+  ///
+  /// `operation` is the segment-effective operation for this QSO once segments
+  /// land, so a rover's current grid is simply what the scorer reads.
+  scoreQso(
+    args: {
+      scoresheet: S
+      qso: Record<string, JSONValue>
+      operation: Record<string, JSONValue>
+      ref?: Record<string, JSONValue>
+      /// True when this QSO opens a new UTC day. The harness computes day
+      /// boundaries anyway (for sectioning), so it reports them rather than
+      /// every scorer re-deriving the same rollover — reset day-scoped
+      /// counters here. False for the live candidate.
+      isNewDay: boolean
+    },
+    ctx: HookContext,
+  ): { scoresheet: S; score: QsoScoreVerdict }
+
+  /// Render the scoresheet into display tallies. The tally keys are the
+  /// scorer's own — nothing outside interprets them.
+  summarizeScore(
+    args: {
+      scoresheet: S
+      operation: Record<string, JSONValue>
+      ref?: Record<string, JSONValue>
+      scope: 'day' | 'operation'
+    },
+    ctx: HookContext,
+  ): Record<string, ScoreTally>
 }
 
 export interface CommandAction {

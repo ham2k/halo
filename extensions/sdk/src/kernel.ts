@@ -560,13 +560,19 @@ const kernel = {
   /// without crossing the bridge (e.g. the ADIF exporter collecting
   /// per-QSO fields from activity extensions). Returns settled entries in
   /// priority order; failing hooks are isolated.
+  /// [key] narrows the fan-out to one extension's hook. Passing null means
+  /// every hook in the category — INCLUDING the caller's own, which is a
+  /// recursion trap for any hook that delegates within its own category (a
+  /// contest's `generateExport` asking for ADIF re-enters itself). Target the
+  /// hook you actually want whenever you know its key.
   async invokeLocal(
     category: string,
     method: string,
     args: unknown,
     online = true,
+    key: string | null = null,
   ): Promise<{ key: string; ok: boolean; value?: unknown; error?: string }[]> {
-    const records = hooksFor(category, null).filter((r) => typeof r.hook[method] === 'function')
+    const records = hooksFor(category, key).filter((r) => typeof r.hook[method] === 'function')
     return await Promise.all(
       records.map(async (record) => {
         try {

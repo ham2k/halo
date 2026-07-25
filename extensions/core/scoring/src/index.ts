@@ -11,13 +11,16 @@
 
 import { defineExtension } from "@ham2k/halo-extension-sdk"
 
-import { scoreQso, scoreQsos } from "./scoring.ts"
+import { coreScoringHook } from "./scoring.ts"
 
 import manifest from "../manifest.json" with { type: "json" }
 
 defineExtension({
   ...manifest,
   onActivation({ registerHook }) {
-    registerHook('scoring', { hook: { scoreQsos, scoreQso }, key: 'core' })
+    // The hook carries `scope: 'always'` — core scoring applies to every
+    // operation and keeps running alongside whatever contest scorers that
+    // operation's refs select (docs/design/contests.md §5.1).
+    registerHook('scoring', { hook: coreScoringHook, key: 'core' })
   },
 })

@@ -26,6 +26,7 @@ export * from "./types"
 export * from "./i18n"
 export * from "./dxcc"
 export * from "./location"
+export * from "./scoring"
 
 interface KernelApi {
   defineExtension(def: ExtensionDefinition): void
@@ -35,6 +36,7 @@ interface KernelApi {
     method: string,
     args: unknown,
     online?: boolean,
+    key?: string | null,
   ): Promise<{ key: string; ok: boolean; value?: unknown; error?: string }[]>
   invokeLocalSequential(
     category: string,
@@ -92,8 +94,20 @@ export function defineExtension(def: ExtensionDefinition): void {
 
 /// Cross-extension composition inside the runtime (no bridge round-trip).
 export const hooks = {
+  /// EVERY hook in the category — including the CALLER's own. A hook that
+  /// delegates within its own category therefore re-enters itself; use
+  /// `invokeOne` when you know which extension you want.
   invokeAll(category: string, method: string, args: unknown, online?: boolean) {
     return kernel().invokeLocal(category, method, args, online)
+  },
+
+  /// One named extension's hook.
+  ///
+  /// Prefer this over filtering `invokeAll`'s results for the key you wanted.
+  /// A contest's `generateExport` delegating the ADIF build is exactly the
+  /// recursive shape described above, and spun forever until it did this.
+  invokeOne(category: string, key: string, method: string, args: unknown, online?: boolean) {
+    return kernel().invokeLocal(category, method, args, online, key)
   },
 
   /// Like `invokeAll`, but calls hooks one at a time in priority order,

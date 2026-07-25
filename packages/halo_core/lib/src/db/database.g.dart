@@ -2886,6 +2886,390 @@ class LookupsCompanion extends UpdateCompanion<LookupRow> {
   }
 }
 
+class $SequencesTable extends Sequences
+    with TableInfo<$SequencesTable, SequenceRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $SequencesTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _operationMeta = const VerificationMeta(
+    'operation',
+  );
+  @override
+  late final GeneratedColumn<String> operation = GeneratedColumn<String>(
+    'operation',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _labelMeta = const VerificationMeta('label');
+  @override
+  late final GeneratedColumn<String> label = GeneratedColumn<String>(
+    'label',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _nextValueMeta = const VerificationMeta(
+    'nextValue',
+  );
+  @override
+  late final GeneratedColumn<int> nextValue = GeneratedColumn<int>(
+    'next_value',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _startValueMeta = const VerificationMeta(
+    'startValue',
+  );
+  @override
+  late final GeneratedColumn<int> startValue = GeneratedColumn<int>(
+    'start_value',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(1),
+  );
+  static const VerificationMeta _updatedAtMillisMeta = const VerificationMeta(
+    'updatedAtMillis',
+  );
+  @override
+  late final GeneratedColumn<int> updatedAtMillis = GeneratedColumn<int>(
+    'updated_at_millis',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    operation,
+    label,
+    nextValue,
+    startValue,
+    updatedAtMillis,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'sequences';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<SequenceRow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('operation')) {
+      context.handle(
+        _operationMeta,
+        operation.isAcceptableOrUnknown(data['operation']!, _operationMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_operationMeta);
+    }
+    if (data.containsKey('label')) {
+      context.handle(
+        _labelMeta,
+        label.isAcceptableOrUnknown(data['label']!, _labelMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_labelMeta);
+    }
+    if (data.containsKey('next_value')) {
+      context.handle(
+        _nextValueMeta,
+        nextValue.isAcceptableOrUnknown(data['next_value']!, _nextValueMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_nextValueMeta);
+    }
+    if (data.containsKey('start_value')) {
+      context.handle(
+        _startValueMeta,
+        startValue.isAcceptableOrUnknown(data['start_value']!, _startValueMeta),
+      );
+    }
+    if (data.containsKey('updated_at_millis')) {
+      context.handle(
+        _updatedAtMillisMeta,
+        updatedAtMillis.isAcceptableOrUnknown(
+          data['updated_at_millis']!,
+          _updatedAtMillisMeta,
+        ),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {operation, label};
+  @override
+  SequenceRow map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return SequenceRow(
+      operation: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}operation'],
+      )!,
+      label: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}label'],
+      )!,
+      nextValue: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}next_value'],
+      )!,
+      startValue: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}start_value'],
+      )!,
+      updatedAtMillis: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}updated_at_millis'],
+      ),
+    );
+  }
+
+  @override
+  $SequencesTable createAlias(String alias) {
+    return $SequencesTable(attachedDatabase, alias);
+  }
+}
+
+class SequenceRow extends DataClass implements Insertable<SequenceRow> {
+  final String operation;
+
+  /// `<extensionKey>/<key>` plus any scope values, e.g. `cqwpx/serial` or
+  /// `rsgb/serial/2m`. Computed by the core at allocation time from the
+  /// committed QSO, never by the extension — only the core knows which band
+  /// the QSO actually ended up on.
+  final String label;
+
+  /// The next number to issue.
+  final int nextValue;
+
+  /// First number this sequence issues; the operator can set it when they
+  /// logged the first hour on paper.
+  final int startValue;
+  final int? updatedAtMillis;
+  const SequenceRow({
+    required this.operation,
+    required this.label,
+    required this.nextValue,
+    required this.startValue,
+    this.updatedAtMillis,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['operation'] = Variable<String>(operation);
+    map['label'] = Variable<String>(label);
+    map['next_value'] = Variable<int>(nextValue);
+    map['start_value'] = Variable<int>(startValue);
+    if (!nullToAbsent || updatedAtMillis != null) {
+      map['updated_at_millis'] = Variable<int>(updatedAtMillis);
+    }
+    return map;
+  }
+
+  SequencesCompanion toCompanion(bool nullToAbsent) {
+    return SequencesCompanion(
+      operation: Value(operation),
+      label: Value(label),
+      nextValue: Value(nextValue),
+      startValue: Value(startValue),
+      updatedAtMillis: updatedAtMillis == null && nullToAbsent
+          ? const Value.absent()
+          : Value(updatedAtMillis),
+    );
+  }
+
+  factory SequenceRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return SequenceRow(
+      operation: serializer.fromJson<String>(json['operation']),
+      label: serializer.fromJson<String>(json['label']),
+      nextValue: serializer.fromJson<int>(json['nextValue']),
+      startValue: serializer.fromJson<int>(json['startValue']),
+      updatedAtMillis: serializer.fromJson<int?>(json['updatedAtMillis']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'operation': serializer.toJson<String>(operation),
+      'label': serializer.toJson<String>(label),
+      'nextValue': serializer.toJson<int>(nextValue),
+      'startValue': serializer.toJson<int>(startValue),
+      'updatedAtMillis': serializer.toJson<int?>(updatedAtMillis),
+    };
+  }
+
+  SequenceRow copyWith({
+    String? operation,
+    String? label,
+    int? nextValue,
+    int? startValue,
+    Value<int?> updatedAtMillis = const Value.absent(),
+  }) => SequenceRow(
+    operation: operation ?? this.operation,
+    label: label ?? this.label,
+    nextValue: nextValue ?? this.nextValue,
+    startValue: startValue ?? this.startValue,
+    updatedAtMillis: updatedAtMillis.present
+        ? updatedAtMillis.value
+        : this.updatedAtMillis,
+  );
+  SequenceRow copyWithCompanion(SequencesCompanion data) {
+    return SequenceRow(
+      operation: data.operation.present ? data.operation.value : this.operation,
+      label: data.label.present ? data.label.value : this.label,
+      nextValue: data.nextValue.present ? data.nextValue.value : this.nextValue,
+      startValue: data.startValue.present
+          ? data.startValue.value
+          : this.startValue,
+      updatedAtMillis: data.updatedAtMillis.present
+          ? data.updatedAtMillis.value
+          : this.updatedAtMillis,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('SequenceRow(')
+          ..write('operation: $operation, ')
+          ..write('label: $label, ')
+          ..write('nextValue: $nextValue, ')
+          ..write('startValue: $startValue, ')
+          ..write('updatedAtMillis: $updatedAtMillis')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode =>
+      Object.hash(operation, label, nextValue, startValue, updatedAtMillis);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is SequenceRow &&
+          other.operation == this.operation &&
+          other.label == this.label &&
+          other.nextValue == this.nextValue &&
+          other.startValue == this.startValue &&
+          other.updatedAtMillis == this.updatedAtMillis);
+}
+
+class SequencesCompanion extends UpdateCompanion<SequenceRow> {
+  final Value<String> operation;
+  final Value<String> label;
+  final Value<int> nextValue;
+  final Value<int> startValue;
+  final Value<int?> updatedAtMillis;
+  final Value<int> rowid;
+  const SequencesCompanion({
+    this.operation = const Value.absent(),
+    this.label = const Value.absent(),
+    this.nextValue = const Value.absent(),
+    this.startValue = const Value.absent(),
+    this.updatedAtMillis = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  SequencesCompanion.insert({
+    required String operation,
+    required String label,
+    required int nextValue,
+    this.startValue = const Value.absent(),
+    this.updatedAtMillis = const Value.absent(),
+    this.rowid = const Value.absent(),
+  }) : operation = Value(operation),
+       label = Value(label),
+       nextValue = Value(nextValue);
+  static Insertable<SequenceRow> custom({
+    Expression<String>? operation,
+    Expression<String>? label,
+    Expression<int>? nextValue,
+    Expression<int>? startValue,
+    Expression<int>? updatedAtMillis,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (operation != null) 'operation': operation,
+      if (label != null) 'label': label,
+      if (nextValue != null) 'next_value': nextValue,
+      if (startValue != null) 'start_value': startValue,
+      if (updatedAtMillis != null) 'updated_at_millis': updatedAtMillis,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  SequencesCompanion copyWith({
+    Value<String>? operation,
+    Value<String>? label,
+    Value<int>? nextValue,
+    Value<int>? startValue,
+    Value<int?>? updatedAtMillis,
+    Value<int>? rowid,
+  }) {
+    return SequencesCompanion(
+      operation: operation ?? this.operation,
+      label: label ?? this.label,
+      nextValue: nextValue ?? this.nextValue,
+      startValue: startValue ?? this.startValue,
+      updatedAtMillis: updatedAtMillis ?? this.updatedAtMillis,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (operation.present) {
+      map['operation'] = Variable<String>(operation.value);
+    }
+    if (label.present) {
+      map['label'] = Variable<String>(label.value);
+    }
+    if (nextValue.present) {
+      map['next_value'] = Variable<int>(nextValue.value);
+    }
+    if (startValue.present) {
+      map['start_value'] = Variable<int>(startValue.value);
+    }
+    if (updatedAtMillis.present) {
+      map['updated_at_millis'] = Variable<int>(updatedAtMillis.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('SequencesCompanion(')
+          ..write('operation: $operation, ')
+          ..write('label: $label, ')
+          ..write('nextValue: $nextValue, ')
+          ..write('startValue: $startValue, ')
+          ..write('updatedAtMillis: $updatedAtMillis, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$HaLoDatabase extends GeneratedDatabase {
   _$HaLoDatabase(QueryExecutor e) : super(e);
   $HaLoDatabaseManager get managers => $HaLoDatabaseManager(this);
@@ -2896,6 +3280,7 @@ abstract class _$HaLoDatabase extends GeneratedDatabase {
   );
   late final $QsosBackupTable qsosBackup = $QsosBackupTable(this);
   late final $LookupsTable lookups = $LookupsTable(this);
+  late final $SequencesTable sequences = $SequencesTable(this);
   late final Index qsosOperationStart = Index(
     'qsos_operation_start',
     'CREATE INDEX qsos_operation_start ON qsos (operation, start_at_millis)',
@@ -2910,6 +3295,7 @@ abstract class _$HaLoDatabase extends GeneratedDatabase {
     operationsBackup,
     qsosBackup,
     lookups,
+    sequences,
     qsosOperationStart,
   ];
 }
@@ -4319,6 +4705,210 @@ typedef $$LookupsTableProcessedTableManager =
       LookupRow,
       PrefetchHooks Function()
     >;
+typedef $$SequencesTableCreateCompanionBuilder =
+    SequencesCompanion Function({
+      required String operation,
+      required String label,
+      required int nextValue,
+      Value<int> startValue,
+      Value<int?> updatedAtMillis,
+      Value<int> rowid,
+    });
+typedef $$SequencesTableUpdateCompanionBuilder =
+    SequencesCompanion Function({
+      Value<String> operation,
+      Value<String> label,
+      Value<int> nextValue,
+      Value<int> startValue,
+      Value<int?> updatedAtMillis,
+      Value<int> rowid,
+    });
+
+class $$SequencesTableFilterComposer
+    extends Composer<_$HaLoDatabase, $SequencesTable> {
+  $$SequencesTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get operation => $composableBuilder(
+    column: $table.operation,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get label => $composableBuilder(
+    column: $table.label,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get nextValue => $composableBuilder(
+    column: $table.nextValue,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get startValue => $composableBuilder(
+    column: $table.startValue,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get updatedAtMillis => $composableBuilder(
+    column: $table.updatedAtMillis,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$SequencesTableOrderingComposer
+    extends Composer<_$HaLoDatabase, $SequencesTable> {
+  $$SequencesTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get operation => $composableBuilder(
+    column: $table.operation,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get label => $composableBuilder(
+    column: $table.label,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get nextValue => $composableBuilder(
+    column: $table.nextValue,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get startValue => $composableBuilder(
+    column: $table.startValue,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get updatedAtMillis => $composableBuilder(
+    column: $table.updatedAtMillis,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$SequencesTableAnnotationComposer
+    extends Composer<_$HaLoDatabase, $SequencesTable> {
+  $$SequencesTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get operation =>
+      $composableBuilder(column: $table.operation, builder: (column) => column);
+
+  GeneratedColumn<String> get label =>
+      $composableBuilder(column: $table.label, builder: (column) => column);
+
+  GeneratedColumn<int> get nextValue =>
+      $composableBuilder(column: $table.nextValue, builder: (column) => column);
+
+  GeneratedColumn<int> get startValue => $composableBuilder(
+    column: $table.startValue,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get updatedAtMillis => $composableBuilder(
+    column: $table.updatedAtMillis,
+    builder: (column) => column,
+  );
+}
+
+class $$SequencesTableTableManager
+    extends
+        RootTableManager<
+          _$HaLoDatabase,
+          $SequencesTable,
+          SequenceRow,
+          $$SequencesTableFilterComposer,
+          $$SequencesTableOrderingComposer,
+          $$SequencesTableAnnotationComposer,
+          $$SequencesTableCreateCompanionBuilder,
+          $$SequencesTableUpdateCompanionBuilder,
+          (
+            SequenceRow,
+            BaseReferences<_$HaLoDatabase, $SequencesTable, SequenceRow>,
+          ),
+          SequenceRow,
+          PrefetchHooks Function()
+        > {
+  $$SequencesTableTableManager(_$HaLoDatabase db, $SequencesTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$SequencesTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$SequencesTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$SequencesTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> operation = const Value.absent(),
+                Value<String> label = const Value.absent(),
+                Value<int> nextValue = const Value.absent(),
+                Value<int> startValue = const Value.absent(),
+                Value<int?> updatedAtMillis = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => SequencesCompanion(
+                operation: operation,
+                label: label,
+                nextValue: nextValue,
+                startValue: startValue,
+                updatedAtMillis: updatedAtMillis,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String operation,
+                required String label,
+                required int nextValue,
+                Value<int> startValue = const Value.absent(),
+                Value<int?> updatedAtMillis = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => SequencesCompanion.insert(
+                operation: operation,
+                label: label,
+                nextValue: nextValue,
+                startValue: startValue,
+                updatedAtMillis: updatedAtMillis,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$SequencesTableProcessedTableManager =
+    ProcessedTableManager<
+      _$HaLoDatabase,
+      $SequencesTable,
+      SequenceRow,
+      $$SequencesTableFilterComposer,
+      $$SequencesTableOrderingComposer,
+      $$SequencesTableAnnotationComposer,
+      $$SequencesTableCreateCompanionBuilder,
+      $$SequencesTableUpdateCompanionBuilder,
+      (
+        SequenceRow,
+        BaseReferences<_$HaLoDatabase, $SequencesTable, SequenceRow>,
+      ),
+      SequenceRow,
+      PrefetchHooks Function()
+    >;
 
 class $HaLoDatabaseManager {
   final _$HaLoDatabase _db;
@@ -4332,4 +4922,6 @@ class $HaLoDatabaseManager {
       $$QsosBackupTableTableManager(_db, _db.qsosBackup);
   $$LookupsTableTableManager get lookups =>
       $$LookupsTableTableManager(_db, _db.lookups);
+  $$SequencesTableTableManager get sequences =>
+      $$SequencesTableTableManager(_db, _db.sequences);
 }

@@ -1,0 +1,35 @@
+{
+  "key": "cqwpx",
+  "name": "CQ WPX Contest",
+  "shortName": "CQ WPX",
+  "version": "0.0.1",
+  "description": "Every callsign prefix is a multiplier; serial numbers are the exchange",
+  "category": "contest",
+  "enabledByDefault": false,
+  "icon": "flag-checkered",
+  "accentColor": "#C8102E",
+  "keywords": [
+    "contest",
+    "prefix",
+    "serial",
+    "cabrillo"
+  ],
+  "hooks": [
+    "activity",
+    "adifFields",
+    "export",
+    "ref:cqwpx",
+    "scoring"
+  ],
+  "translations": {
+    "es": {
+      "name": "Concurso CQ WPX",
+      "description": "Cada prefijo de indicativo es un multiplicador; el intercambio son números de serie",
+      "keywords": [
+        "concurso",
+        "prefijo",
+        "serie"
+      ]
+    }
+  }
+}

@@ -1,0 +1,34 @@
+{
+  "key": "arrl-dx",
+  "name": "ARRL International DX Contest",
+  "shortName": "ARRL DX",
+  "version": "0.0.1",
+  "description": "W/VE stations work DX and vice versa: states and provinces against power",
+  "category": "contest",
+  "enabledByDefault": false,
+  "icon": "flag-variant",
+  "accentColor": "#00205B",
+  "keywords": [
+    "contest",
+    "dx",
+    "arrl",
+    "cabrillo"
+  ],
+  "hooks": [
+    "activity",
+    "adifFields",
+    "export",
+    "ref:arrl-dx",
+    "scoring"
+  ],
+  "translations": {
+    "es": {
+      "name": "Concurso ARRL International DX",
+      "description": "Las estaciones W/VE trabajan DX y viceversa: estados y provincias contra potencia",
+      "keywords": [
+        "concurso",
+        "potencia"
+      ]
+    }
+  }
+}

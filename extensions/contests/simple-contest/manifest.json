@@ -1,0 +1,33 @@
+{
+  "key": "simple-contest",
+  "name": "Generic Simple Contest",
+  "shortName": "Contest",
+  "version": "0.0.1",
+  "description": "Log any contest with a single free-form exchange, scored one point per contact",
+  "category": "contest",
+  "enabledByDefault": false,
+  "icon": "flag-checkered",
+  "accentColor": "#B3541E",
+  "keywords": [
+    "contest",
+    "exchange",
+    "cabrillo"
+  ],
+  "hooks": [
+    "activity",
+    "adifFields",
+    "export",
+    "ref:simple-contest",
+    "scoring"
+  ],
+  "translations": {
+    "es": {
+      "name": "Concurso Genérico",
+      "description": "Registra cualquier concurso con un solo intercambio libre, puntuando un punto por contacto",
+      "keywords": [
+        "concurso",
+        "intercambio"
+      ]
+    }
+  }
+}

@@ -35,6 +35,20 @@ void main() {
     await db.close();
   });
 
+  /// The same operation, but running the given activities.
+  ///
+  /// Primary fields are gated on this: a control only reaches the entry row if
+  /// the operation carries a ref of the type it writes to. Tests that exercise
+  /// a contest exchange have to say which contest is being run, exactly as the
+  /// operator has to add the activity before the field appears.
+  Operation running(List<String> refTypes) => Operation(
+        uuid: operation.uuid,
+        data: {
+          ...operation.data,
+          'refs': [for (final type in refTypes) {'type': type}],
+        },
+      );
+
   Widget host({
     List<Qso> existing = const [],
     CommandInterpreter? interpretCommand,
@@ -179,12 +193,24 @@ void main() {
     return null;
   }
 
+  /// Pumps until a serial field has picked up its previewed number. The peek is
+  /// a drift query kicked off outside the frame, so it needs interleaved pumps
+  /// to resolve — same reasoning as waitForQsos below.
+  Future<void> pumpUntilSerial(WidgetTester tester, String label) async {
+    for (var i = 0; i < 20; i++) {
+      await tester.pump(const Duration(milliseconds: 10));
+      final text = tester.widget<TextField>(find.widgetWithText(TextField, label)).controller?.text ?? '';
+      if (text.isNotEmpty) return;
+    }
+  }
+
   /// Pumps until the operation's QSO list reaches [count] (or gives up).
-  Future<List<Qso>> waitForQsos(WidgetTester tester, int count) async {
+  Future<List<Qso>> waitForQsos(WidgetTester tester, int count, {QsosRepository? repository}) async {
+    final repo = repository ?? qsos;
     var logged = <Qso>[];
     for (var i = 0; i < 20; i++) {
       await tester.pump(const Duration(milliseconds: 10));
-      logged = (await tester.runAsync(() => qsos.watchForOperation(operation.uuid).first))!;
+      logged = (await tester.runAsync(() => repo.watchForOperation(operation.uuid).first))!;
       if (logged.length >= count) break;
     }
     return logged;
@@ -1384,6 +1410,693 @@ void main() {
     expect(find.text('Dupe!'), findsOneWidget);
   });
 
+  group('only a running activity gets the entry row', () {
+    // The entry row is the scarcest space in the app, and EVERY enabled
+    // extension is asked for logging controls on every operation. So the core
+    // decides who gets in: a primary field only if the operation carries a ref
+    // of the type it writes to. Extensions may short-circuit for their own
+    // efficiency, but they are not what enforces this — an extension that
+    // forgets must not be able to put its exchange in front of someone logging
+    // an ordinary QSO, and a stray `serial` field would be worse still,
+    // handing out numbers from a series nobody is keeping.
+    const exchange = {
+      'key': 'contest/exchange',
+      'label': 'Exch',
+      'icon': 'flag-checkered',
+      'input': {'kind': 'text', 'refType': 'contest', 'field': 'exchange'},
+    };
+    const serial = {
+      'key': 'contest/ourSerial',
+      'label': 'Our #',
+      'icon': 'flag-checkered',
+      'input': {
+        'kind': 'serial',
+        'refType': 'contest',
+        'field': 'ourSerial',
+        'sequence': {'key': 'serial'},
+      },
+    };
+    // POTA's hunter chip is the reason secondary controls are NOT gated: you
+    // chase a park from whatever operation you happen to be running.
+    const hunter = {
+      'key': 'pota/hunter',
+      'label': 'POTA',
+      'icon': 'pine-tree',
+      'input': {'kind': 'refList', 'refType': 'potaHunter'},
+    };
+
+    Widget hostFor(Operation op, List<Map<String, dynamic>> controls, {QsosRepository? repo}) => MaterialApp(
+          home: Scaffold(
+            body: LoggingControls(operation: op, qsosRepository: repo ?? qsos, activityControls: controls),
+          ),
+        );
+
+    testWidgets('an exchange field is hidden when the operation is not running that contest', (tester) async {
+      await tester.pumpWidget(hostFor(operation, const [exchange]));
+      await tester.pump();
+      expect(find.widgetWithText(TextField, 'Exch'), findsNothing);
+    });
+
+    testWidgets('the same field appears once the activity is added', (tester) async {
+      await tester.pumpWidget(hostFor(running(['contest']), const [exchange]));
+      await tester.pump();
+      expect(find.widgetWithText(TextField, 'Exch'), findsOneWidget);
+    });
+
+    testWidgets('another contest running does not let this one in', (tester) async {
+      // The gate is per ref type, not "is any contest active" — two contests
+      // can be set up at once and only one may own a given field.
+      await tester.pumpWidget(hostFor(running(['other-contest']), const [exchange]));
+      await tester.pump();
+      expect(find.widgetWithText(TextField, 'Exch'), findsNothing);
+    });
+
+    testWidgets('a secondary chip is still offered from an operation running nothing', (tester) async {
+      await tester.pumpWidget(hostFor(operation, const [hunter]));
+      await tester.pump();
+      expect(find.byIcon(resolveIconName('pine-tree')), findsOneWidget);
+    });
+
+    testWidgets('a serial from a contest that is not running allocates no number', (tester) async {
+      // The severe case. A number issued here is spent forever — the counter
+      // never rolls back — so a log for a contest the operator never entered
+      // would silently consume the series.
+      final repo = QsosRepository(db, sequences: SequencesRepository(db));
+      await tester.pumpWidget(hostFor(operation, const [serial], repo: repo));
+      await tester.pump();
+      expect(find.widgetWithText(TextField, 'Our #'), findsNothing);
+
+      await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'W1AW');
+      await tester.pump();
+      await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+
+      final logged = await waitForQsos(tester, 1, repository: repo);
+      expect(logged.single.refs, isEmpty, reason: 'no contest ref, and no number spent');
+    });
+
+    testWidgets("an inactive contest's exchange survives editing a QSO that carries it", (tester) async {
+      // Removing the activity must not destroy what already went out on the
+      // air. The field is hidden, so nothing can edit it — and it has to
+      // round-trip untouched rather than being dropped on the next save.
+      final existing = await qsos.add(operation.uuid, {
+        'their': {'call': 'W1AW'},
+        'band': '20m',
+        'mode': 'CW',
+        'refs': [
+          {'type': 'contest', 'exchange': 'MA 042'},
+        ],
+      });
+
+      await tester.pumpWidget(MaterialApp(
+        home: Scaffold(
+          body: LoggingControls(
+            operation: operation,
+            qsosRepository: qsos,
+            activityControls: const [exchange],
+            editingQso: existing,
+          ),
+        ),
+      ));
+      await tester.pump();
+      expect(find.widgetWithText(TextField, 'Exch'), findsNothing);
+
+      await tester.enterText(find.widgetWithText(TextField, 'Sent'), '579');
+      await tester.pump();
+      await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+
+      final logged = await waitForQsos(tester, 1);
+      expect(logged.single.refs, [
+        {'type': 'contest', 'exchange': 'MA 042'},
+      ]);
+    });
+  });
+
+  group('decorateQsoBeforeSave', () {
+    // An activity's last chance to project data it owns into generic QSON
+    // fields. It has to run on EVERY save path — a QSO decorated only when
+    // logged one way would export differently depending on how it was typed.
+    Widget hostWith(
+      Future<Map<String, dynamic>> Function(Map<String, dynamic>) decorate, {
+      Qso? editing,
+    }) =>
+        MaterialApp(
+          home: Scaffold(
+            body: LoggingControls(
+              operation: operation,
+              qsosRepository: qsos,
+              decorateQsoBeforeSave: decorate,
+              editingQso: editing,
+            ),
+          ),
+        );
+
+    Future<Map<String, dynamic>> addExchange(Map<String, dynamic> qso) async => {
+          ...qso,
+          'their': {...(qso['their'] as Map?)?.cast<String, dynamic>() ?? {}, 'exchange': 'ZN5'},
+        };
+
+    testWidgets('decorates a single logged QSO', (tester) async {
+      await tester.pumpWidget(hostWith(addExchange));
+      await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'W1AW');
+      await tester.pump();
+      await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+
+      final logged = await waitForQsos(tester, 1);
+      expect(logged.single.theirExchange, 'ZN5');
+      expect(logged.single.theirCall, 'W1AW', reason: 'the patch must not clobber the callsign');
+    });
+
+    testWidgets('decorates every call of a call list, not just the first', (tester) async {
+      await tester.pumpWidget(hostWith(addExchange));
+      await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'W1AW,K1ABC,N1XYZ');
+      await tester.pump();
+      await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+
+      final logged = await waitForQsos(tester, 3);
+      expect(logged, hasLength(3));
+      expect(logged.map((q) => q.theirExchange), everyElement('ZN5'));
+    });
+
+    testWidgets('decorates an edited QSO too', (tester) async {
+      final existing = await qsos.add(operation.uuid, {
+        'their': {'call': 'W1AW'},
+        'band': '20m',
+        'mode': 'CW',
+      });
+      await tester.pumpWidget(hostWith(addExchange, editing: existing));
+      await tester.pump();
+
+      await tester.enterText(find.widgetWithText(TextField, 'Sent'), '579');
+      await tester.pump();
+      await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+
+      final logged = await waitForQsos(tester, 1);
+      expect(logged.single.theirExchange, 'ZN5');
+    });
+
+    testWidgets('a QSO still saves when no decorator is wired', (tester) async {
+      // Every test and tooling path leaves it null; saving must not depend on it.
+      await tester.pumpWidget(MaterialApp(
+        home: Scaffold(body: LoggingControls(operation: operation, qsosRepository: qsos)),
+      ));
+      await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'W1AW');
+      await tester.pump();
+      await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+
+      final logged = await waitForQsos(tester, 1);
+      expect(logged.single.theirCall, 'W1AW');
+      expect(logged.single.theirExchange, isNull);
+    });
+  });
+
+  testWidgets('activity text control folds a contest exchange into the logged QSO', (tester) async {
+    // The on-air exchange is the whole point of a contest control: whatever the
+    // operator types must reach the QSO's contest ref, or the log is unusable
+    // for submission.
+    const controls = [
+      {
+        'key': 'simple-contest/exchange',
+        'label': 'Exch',
+        'icon': 'flag-checkered',
+        'input': {'kind': 'text', 'refType': 'simple-contest', 'field': 'exchange', 'placeholder': '59 001'},
+      },
+    ];
+
+    await tester.pumpWidget(MaterialApp(
+      home: Scaffold(
+        body: LoggingControls(operation: running(['simple-contest']), qsosRepository: qsos, activityControls: controls),
+      ),
+    ));
+
+    await tester.enterText(find.widgetWithText(TextField, 'Exch'), 'MA 042');
+    await tester.pump();
+
+    await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'W1AW');
+    await tester.pump();
+    await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+
+    final logged = await waitForQsos(tester, 1);
+    expect(logged.single.refs, [
+      {'type': 'simple-contest', 'exchange': 'MA 042'},
+    ]);
+
+    // Logging wiped the field, so the next QSO starts clean rather than
+    // silently repeating the previous station's exchange.
+    final field = tester.widget<TextField>(find.widgetWithText(TextField, 'Exch'));
+    expect(field.controller?.text, '');
+  });
+
+  group('serial controls', () {
+    const controls = [
+      {
+        'key': 'cqwpx/ourSerial',
+        'label': 'Our #',
+        'icon': 'flag-checkered',
+        'input': {
+          'kind': 'serial',
+          'refType': 'cqwpx',
+          'field': 'ourSerial',
+          'sequence': {'key': 'serial'},
+        },
+      },
+    ];
+
+    /// A repository wired for allocation, as the app builds it.
+    QsosRepository allocating() => QsosRepository(db, sequences: SequencesRepository(db));
+
+    Widget hostWith(QsosRepository repo) => MaterialApp(
+          home: Scaffold(
+            body: LoggingControls(operation: running(['cqwpx']), qsosRepository: repo, activityControls: controls),
+          ),
+        );
+
+    testWidgets('shows the number the sequence will issue, and logs it', (tester) async {
+      final repo = allocating();
+      await tester.pumpWidget(hostWith(repo));
+      await pumpUntilSerial(tester, 'Our #');
+
+      // The operator has to be able to read the number they're about to send
+      // while they're still typing the callsign.
+      expect(tester.widget<TextField>(find.widgetWithText(TextField, 'Our #')).controller?.text, '1');
+
+      await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'W1AW');
+      await tester.pump();
+      await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+
+      final logged = await waitForQsos(tester, 1, repository: repo);
+      expect(logged.single.refs, [
+        {'type': 'cqwpx', 'ourSerial': 1},
+      ]);
+    });
+
+    testWidgets('advances after each QSO instead of repeating the last number', (tester) async {
+      final repo = allocating();
+      await tester.pumpWidget(hostWith(repo));
+      await pumpUntilSerial(tester, 'Our #');
+
+      await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'W1AW');
+      await tester.pump();
+      await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+      await waitForQsos(tester, 1, repository: repo);
+      await pumpUntilSerial(tester, 'Our #');
+
+      expect(tester.widget<TextField>(find.widgetWithText(TextField, 'Our #')).controller?.text, '2');
+    });
+
+    testWidgets('a number the operator types over the preview is what gets logged', (tester) async {
+      final repo = allocating();
+      await tester.pumpWidget(hostWith(repo));
+      await pumpUntilSerial(tester, 'Our #');
+
+      // "I've been logging on paper, I'm actually on 57."
+      await tester.enterText(find.widgetWithText(TextField, 'Our #'), '57');
+      await tester.pump();
+      await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'W1AW');
+      await tester.pump();
+      await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+
+      final logged = await waitForQsos(tester, 1, repository: repo);
+      expect(logged.single.refs, [
+        {'type': 'cqwpx', 'ourSerial': 57},
+      ]);
+    });
+
+    testWidgets('a serial takes digits only, and is never uppercased into nonsense', (tester) async {
+      await tester.pumpWidget(hostWith(allocating()));
+      await tester.pump();
+
+      await tester.enterText(find.widgetWithText(TextField, 'Our #'), '1a2b');
+      await tester.pump();
+      expect(tester.widget<TextField>(find.widgetWithText(TextField, 'Our #')).controller?.text, '12');
+    });
+
+    testWidgets('a call list numbers each call in turn, not all under the displayed one', (tester) async {
+      // The displayed number is what the operator read out — but only to the
+      // first station. The rest of a pileup got the next numbers in the series.
+      // Writing the displayed number through (rather than treating it as a
+      // guess) makes this the one place it must NOT be copied.
+      final repo = allocating();
+      await tester.pumpWidget(hostWith(repo));
+      await pumpUntilSerial(tester, 'Our #');
+
+      await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'W1AW,K1ABC,N1XYZ');
+      await tester.pump();
+      await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+
+      final logged = await waitForQsos(tester, 3, repository: repo);
+      expect(logged, hasLength(3));
+      final serials = [
+        for (final qso in logged)
+          (qso.refs.firstWhere((r) => r['type'] == 'cqwpx')['ourSerial'] as num).toInt(),
+      ]..sort();
+      expect(serials, [1, 2, 3], reason: 'three stations worked, three numbers sent');
+    });
+
+    const descriptor = SequenceDescriptor(refType: 'cqwpx', field: 'ourSerial', key: 'cqwpx/serial');
+
+    testWidgets('logs the number that was displayed, even once the sequence has moved on', (tester) async {
+      // THE reason the displayed number is written through instead of being
+      // re-allocated at commit. The operator read "1" off the screen and said
+      // it into the microphone. If something else consumes 1 in the meantime
+      // (another window on the same log), allocating at commit would file this
+      // QSO under 2 — and the log would disagree with what went out on the air.
+      // A duplicate is the honest outcome here; a silently wrong number is not.
+      final repo = allocating();
+      await tester.pumpWidget(hostWith(repo));
+      await pumpUntilSerial(tester, 'Our #');
+      expect(tester.widget<TextField>(find.widgetWithText(TextField, 'Our #')).controller?.text, '1');
+
+      // A second writer on the same operation takes 1 while this QSO is being
+      // composed. `peek` is deliberately not a reservation.
+      await tester.runAsync(() => repo.add(
+            operation.uuid,
+            {'their': {'call': 'DL1ABC'}, 'band': '20m', 'mode': 'CW'},
+            serialSequences: const [descriptor],
+          ));
+
+      await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'W1AW');
+      await tester.pump();
+      await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+
+      final logged = await waitForQsos(tester, 2, repository: repo);
+      final ours = logged.firstWhere((q) => q.theirCall == 'W1AW');
+      expect(
+        ours.refs.single['ourSerial'],
+        1,
+        reason: 'what the operator was shown and sent — not the next free number',
+      );
+    });
+
+    testWidgets('editing a logged QSO shows ITS number, not the next one', (tester) async {
+      // The number on a logged QSO is what that station was actually sent.
+      // Opening the record to fix a busted call must show 1, not whatever the
+      // sequence is up to — and saving must leave 1 on the record. Writing the
+      // displayed number through is exactly what makes this dangerous: a
+      // preview leaking into this field silently rewrites history.
+      final repo = allocating();
+      final first = await repo.add(
+        operation.uuid,
+        {'their': {'call': 'W1AW'}, 'band': '20m', 'mode': 'CW'},
+        serialSequences: const [descriptor],
+      );
+      await repo.add(
+        operation.uuid,
+        {'their': {'call': 'K1ABC'}, 'band': '20m', 'mode': 'CW'},
+        serialSequences: const [descriptor],
+      );
+      expect((first.refs.single['ourSerial'] as num).toInt(), 1);
+
+      await tester.pumpWidget(MaterialApp(
+        home: Scaffold(
+          body: LoggingControls(
+            operation: running(['cqwpx']),
+            qsosRepository: repo,
+            activityControls: controls,
+            editingQso: first,
+          ),
+        ),
+      ));
+      await tester.pump(const Duration(milliseconds: 50));
+      await tester.pump();
+
+      expect(
+        tester.widget<TextField>(find.widgetWithText(TextField, 'Our #')).controller?.text,
+        '1',
+        reason: "the number this QSO sent, not the sequence's next",
+      );
+
+      await tester.enterText(find.widgetWithText(TextField, 'Sent'), '579');
+      await tester.pump();
+      await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+
+      final logged = await waitForQsos(tester, 2, repository: repo);
+      final edited = logged.firstWhere((q) => q.uuid == first.uuid);
+      expect(edited.refs, [
+        {'type': 'cqwpx', 'ourSerial': 1},
+      ], reason: 'still an int, still the number that went on the air');
+    });
+
+    testWidgets('editing a QSO with no contest ref does not invent a serial for it', (tester) async {
+      // An ordinary QSO logged before the contest was set up. Correcting it
+      // must not attach a number the station was never sent.
+      final repo = allocating();
+      final plain = await repo.add(operation.uuid, {
+        'their': {'call': 'W1AW'},
+        'band': '20m',
+        'mode': 'CW',
+      });
+
+      await tester.pumpWidget(MaterialApp(
+        home: Scaffold(
+          body: LoggingControls(
+            operation: running(['cqwpx']),
+            qsosRepository: repo,
+            activityControls: controls,
+            editingQso: plain,
+          ),
+        ),
+      ));
+      await tester.pump(const Duration(milliseconds: 50));
+      await tester.pump();
+
+      expect(tester.widget<TextField>(find.widgetWithText(TextField, 'Our #')).controller?.text, '');
+
+      await tester.enterText(find.widgetWithText(TextField, 'Sent'), '579');
+      await tester.pump();
+      await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+
+      final logged = await waitForQsos(tester, 1, repository: repo);
+      expect(logged.single.refs, isEmpty);
+    });
+
+    testWidgets('a sibling exchange field on the same ref survives editing', (tester) async {
+      // cqwpx declares `ourSerial` before `theirSerial`, both on the cqwpx ref.
+      // Restoring only the first and bailing out leaves the second empty — and
+      // an empty primary field is an active clear on save, so the received
+      // number would be wiped by opening the record and saving it.
+      const both = [
+        {
+          'key': 'cqwpx/ourSerial',
+          'label': 'Our #',
+          'icon': 'flag-checkered',
+          'input': {
+            'kind': 'serial',
+            'refType': 'cqwpx',
+            'field': 'ourSerial',
+            'sequence': {'key': 'serial'},
+          },
+        },
+        {
+          'key': 'cqwpx/theirSerial',
+          'label': 'Their #',
+          'icon': 'flag-checkered',
+          'input': {'kind': 'text', 'refType': 'cqwpx', 'field': 'theirSerial', 'numeric': true},
+        },
+      ];
+
+      final repo = allocating();
+      final qso = await repo.add(
+        operation.uuid,
+        {
+          'their': {'call': 'W1AW'},
+          'band': '20m',
+          'mode': 'CW',
+          'refs': [
+            {'type': 'cqwpx', 'theirSerial': '101'},
+          ],
+        },
+        serialSequences: const [descriptor],
+      );
+
+      await tester.pumpWidget(MaterialApp(
+        home: Scaffold(
+          body: LoggingControls(
+            operation: running(['cqwpx']),
+            qsosRepository: repo,
+            activityControls: both,
+            editingQso: qso,
+          ),
+        ),
+      ));
+      await tester.pump(const Duration(milliseconds: 50));
+      await tester.pump();
+
+      expect(tester.widget<TextField>(find.widgetWithText(TextField, 'Our #')).controller?.text, '1');
+      expect(tester.widget<TextField>(find.widgetWithText(TextField, 'Their #')).controller?.text, '101');
+
+      await tester.enterText(find.widgetWithText(TextField, 'Sent'), '579');
+      await tester.pump();
+      await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+
+      final logged = await waitForQsos(tester, 1, repository: repo);
+      expect(logged.single.refs, [
+        {'type': 'cqwpx', 'theirSerial': '101', 'ourSerial': 1},
+      ]);
+    });
+
+    testWidgets('picks up a serial control that arrives after the first build', (tester) async {
+      // How it actually happens in the app: the panel builds, THEN the
+      // extension runtime answers with the operation's controls. Seeding the
+      // preview only from initState left the field blank in the running app
+      // while every construct-with-controls test here still passed.
+      final repo = allocating();
+      Widget hostControls(List<Map<String, dynamic>> active) => MaterialApp(
+            home: Scaffold(
+              body: LoggingControls(operation: running(['cqwpx']), qsosRepository: repo, activityControls: active),
+            ),
+          );
+
+      await tester.pumpWidget(hostControls(const []));
+      await tester.pump();
+      expect(find.widgetWithText(TextField, 'Our #'), findsNothing);
+
+      await tester.pumpWidget(hostControls(List<Map<String, dynamic>>.from(controls)));
+      await pumpUntilSerial(tester, 'Our #');
+      expect(tester.widget<TextField>(find.widgetWithText(TextField, 'Our #')).controller?.text, '1');
+    });
+
+    testWidgets('with no sequences wired up, the field stays empty rather than showing a fake number', (tester) async {
+      // A bare repository (tests, tooling, an import path) allocates nothing.
+      // Showing "1" there would be a number that never reaches the log.
+      await tester.pumpWidget(MaterialApp(
+        home: Scaffold(
+          body: LoggingControls(operation: running(['cqwpx']), qsosRepository: qsos, activityControls: controls),
+        ),
+      ));
+      await tester.pump();
+      expect(tester.widget<TextField>(find.widgetWithText(TextField, 'Our #')).controller?.text, '');
+    });
+  });
+
+  testWidgets('a text control uppercases by default, and honours uppercase:false', (tester) async {
+    // Contest exchanges are conventionally uppercase, and every other logging
+    // field forces it — a lowercase state would also fail a case-sensitive
+    // pattern. Names are the exception, hence the opt-out.
+    const controls = [
+      {
+        'key': 'c/state',
+        'label': 'St',
+        'icon': 'flag-checkered',
+        'input': {'kind': 'text', 'refType': 'c', 'field': 'state'},
+      },
+      {
+        'key': 'c/name',
+        'label': 'Name',
+        'icon': 'pound',
+        'input': {'kind': 'text', 'refType': 'c', 'field': 'name', 'uppercase': false},
+      },
+    ];
+
+    await tester.pumpWidget(MaterialApp(
+      home: Scaffold(body: LoggingControls(operation: running(['c']), qsosRepository: qsos, activityControls: controls)),
+    ));
+
+    await tester.enterText(find.widgetWithText(TextField, 'St'), 'ma');
+    await tester.pump();
+
+    await tester.enterText(find.widgetWithText(TextField, 'Name'), 'Steve');
+    await tester.pump();
+
+    await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'W1AW');
+    await tester.pump();
+    await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+
+    final logged = await waitForQsos(tester, 1);
+    expect(logged.single.refs.single['state'], 'MA');
+    expect(logged.single.refs.single['name'], 'Steve');
+  });
+
+  testWidgets('clearing a text control removes the field from the ref', (tester) async {
+    // Blanking an exchange while editing has to actually blank it — otherwise
+    // the old value silently stays in the log and gets exported.
+    const controls = [
+      {
+        'key': 'c/exchange',
+        'label': 'Exch',
+        'icon': 'flag-checkered',
+        'input': {'kind': 'text', 'refType': 'c', 'field': 'exchange'},
+      },
+    ];
+
+    final existing = await qsos.add(operation.uuid, {
+      'their': {'call': 'W1AW'},
+      'band': '20m',
+      'mode': 'SSB',
+      'startAtMillis': 1000,
+      'refs': [
+        {'type': 'c', 'exchange': 'MA'},
+      ],
+    });
+
+    await tester.pumpWidget(MaterialApp(
+      home: Scaffold(
+        body: LoggingControls(
+          operation: running(['c']),
+          qsosRepository: qsos,
+          activityControls: controls,
+          editingQso: existing,
+        ),
+      ),
+    ));
+    await tester.pump();
+
+    // The saved value is restored into the field...
+    expect(tester.widget<TextField>(find.widgetWithText(TextField, 'Exch')).controller?.text, 'MA');
+
+    await tester.enterText(find.widgetWithText(TextField, 'Exch'), '');
+    await tester.pump();
+    await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+
+    // Reading the repo has to go through runAsync — a drift stream can't
+    // resolve inside testWidgets' fake async (see waitForQsos above).
+    final stored = (await waitForQsos(tester, 1)).single;
+    expect(
+      stored.refs.where((r) => r['type'] == 'c' && r['exchange'] != null),
+      isEmpty,
+      reason: 'an emptied exchange must not survive on the ref',
+    );
+  });
+
+  testWidgets('two text controls sharing a ref type merge into one ref', (tester) async {
+    // A contest's setup writes several fields of the SAME ref, so they must
+    // merge rather than the last one winning.
+    const controls = [
+      {
+        'key': 'simple-contest/exchange',
+        'label': 'Exch',
+        'icon': 'flag-checkered',
+        'input': {'kind': 'text', 'refType': 'simple-contest', 'field': 'exchange'},
+      },
+      {
+        'key': 'simple-contest/serial',
+        'label': 'Nr',
+        'icon': 'pound',
+        'input': {'kind': 'text', 'refType': 'simple-contest', 'field': 'serial', 'numeric': true},
+      },
+    ];
+
+    await tester.pumpWidget(MaterialApp(
+      home: Scaffold(
+        body: LoggingControls(operation: running(['simple-contest']), qsosRepository: qsos, activityControls: controls),
+      ),
+    ));
+
+    await tester.enterText(find.widgetWithText(TextField, 'Exch'), 'MA');
+    await tester.pump();
+
+    await tester.enterText(find.widgetWithText(TextField, 'Nr'), '042');
+    await tester.pump();
+
+    await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'W1AW');
+    await tester.pump();
+    await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+
+    final logged = await waitForQsos(tester, 1);
+    expect(logged.single.refs, [
+      {'type': 'simple-contest', 'exchange': 'MA', 'serial': '042'},
+    ]);
+  });
+
   testWidgets('activity refList control folds refs into the logged QSO', (tester) async {
     const controls = [
       {
@@ -1575,6 +2288,103 @@ void main() {
     expect(field('Their call').controller!.selection.baseOffset, field('Their call').controller!.text.length);
   });
 
+  testWidgets('space cycles through contest exchange fields, not just the built-in ones', (tester) async {
+    // A contest exchange is a PRIMARY field, so it takes its turn in the same
+    // keyboard cycle as Sent/Rcvd — an operator running a contest never leaves
+    // the keyboard, and a field that Tab reaches but Space skips strands them
+    // mid-QSO. `_advancePrimaryFocus` listed these from the start; Space's own
+    // caller had a separate hardcoded list that didn't, so they cycled on Tab
+    // and sat inert on Space.
+    const controls = [
+      {
+        'key': 'cqwpx/ourSerial',
+        'label': 'Our #',
+        'icon': 'flag-checkered',
+        'input': {
+          'kind': 'serial',
+          'refType': 'cqwpx',
+          'field': 'ourSerial',
+          'sequence': {'key': 'serial'},
+        },
+      },
+      {
+        'key': 'cqwpx/theirSerial',
+        'label': 'Their #',
+        'icon': 'flag-checkered',
+        'input': {'kind': 'text', 'refType': 'cqwpx', 'field': 'theirSerial', 'numeric': true},
+      },
+    ];
+
+    await tester.pumpWidget(MaterialApp(
+      home: Scaffold(
+        body: LoggingControls(
+          operation: running(['cqwpx']),
+          qsosRepository: qsos,
+          activityControls: controls,
+        ),
+      ),
+    ));
+    await tester.pump();
+
+    TextField field(String label) => tester.widget<TextField>(find.widgetWithText(TextField, label));
+
+    await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'W1AW');
+    await tester.pump();
+
+    // Call → Sent → Rcvd, as before.
+    for (final label in ['Sent', 'Rcvd']) {
+      await tester.sendKeyEvent(LogicalKeyboardKey.space);
+      await tester.pump();
+      expect(field(label).focusNode!.hasFocus, isTrue, reason: 'space should reach $label');
+    }
+
+    // …then the exchanges, in declared order, before wrapping to Call.
+    await tester.sendKeyEvent(LogicalKeyboardKey.space);
+    await tester.pump();
+    expect(field('Our #').focusNode!.hasFocus, isTrue, reason: 'space advances Rcvd → Our #');
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.space);
+    await tester.pump();
+    expect(field('Their #').focusNode!.hasFocus, isTrue,
+        reason: 'space advances Our # → Their # — a serial is not skipped');
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.space);
+    await tester.pump();
+    expect(field('Their call').focusNode!.hasFocus, isTrue, reason: 'and wraps back to Call');
+    // Space is the advance shortcut here, never a literal character.
+    expect(field('Our #').controller!.text.contains(' '), isFalse);
+    expect(field('Their #').controller!.text.contains(' '), isFalse);
+  });
+
+  testWidgets('tab reaches the contest exchange fields as well', (tester) async {
+    const controls = [
+      {
+        'key': 'c/exchange',
+        'label': 'Exch',
+        'icon': 'flag-checkered',
+        'input': {'kind': 'text', 'refType': 'c', 'field': 'exchange'},
+      },
+    ];
+
+    await tester.pumpWidget(MaterialApp(
+      home: Scaffold(
+        body: LoggingControls(operation: running(['c']), qsosRepository: qsos, activityControls: controls),
+      ),
+    ));
+    await tester.pump();
+
+    tester.widget<TextField>(find.widgetWithText(TextField, 'Their call')).focusNode!.requestFocus();
+    await tester.pump();
+
+    var reached = false;
+    for (var i = 0; i < 8 && !reached; i++) {
+      await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+      await tester.pump();
+      reached = tester.widget<TextField>(find.widgetWithText(TextField, 'Exch')).focusNode!.hasFocus;
+    }
+    expect(reached, isTrue, reason: 'Tab traversal must reach a primary exchange field');
+  });
+
   testWidgets('a space from an on-screen keyboard advances focus too, not just the hardware Space key', (tester) async {
     await tester.pumpWidget(host());
     TextField field(String label) => tester.widget<TextField>(find.widgetWithText(TextField, label));
@@ -1597,6 +2407,66 @@ void main() {
     await tester.enterText(find.widgetWithText(TextField, 'Sent'), '59 ');
     await tester.pump();
     expect(field('Rcvd').focusNode!.hasFocus, isTrue);
+  });
+
+  testWidgets('an on-screen-keyboard space advances out of a contest exchange too', (tester) async {
+    // The soft-keyboard half of the same rule. `_exchangeField` was the one
+    // primary field that never installed `_virtualSpace`, so on a phone —
+    // where there IS no hardware Space — the exchange fields were dead ends,
+    // even though the hardware path had been fixed and tested.
+    const controls = [
+      {
+        'key': 'cqwpx/ourSerial',
+        'label': 'Our #',
+        'icon': 'flag-checkered',
+        'input': {
+          'kind': 'serial',
+          'refType': 'cqwpx',
+          'field': 'ourSerial',
+          'sequence': {'key': 'serial'},
+        },
+      },
+      {
+        'key': 'cqwpx/theirSerial',
+        'label': 'Their #',
+        'icon': 'flag-checkered',
+        'input': {'kind': 'text', 'refType': 'cqwpx', 'field': 'theirSerial', 'numeric': true},
+      },
+    ];
+
+    await tester.pumpWidget(MaterialApp(
+      home: Scaffold(
+        body: LoggingControls(
+          operation: running(['cqwpx']),
+          qsosRepository: qsos,
+          activityControls: controls,
+        ),
+      ),
+    ));
+    await tester.pump();
+
+    TextField field(String label) => tester.widget<TextField>(find.widgetWithText(TextField, label));
+
+    field('Our #').focusNode!.requestFocus();
+    await tester.pump();
+
+    // Both fields are numeric, so digitsOnly would silently eat the space if
+    // the interceptor weren't ahead of it — the exact dead-key symptom.
+    // Entered in two steps because the interceptor recognises the gesture by
+    // diffing: a LONE space appended to what was already there, not a paste
+    // that happens to contain one.
+    await tester.enterText(find.widgetWithText(TextField, 'Our #'), '7');
+    await tester.pump();
+    await tester.enterText(find.widgetWithText(TextField, 'Our #'), '7 ');
+    await tester.pump(); // let the interceptor's deferred handler run
+    expect(field('Our #').controller!.text, '7', reason: 'the space is consumed, not inserted');
+    expect(field('Their #').focusNode!.hasFocus, isTrue, reason: 'and it advances to the next primary field');
+
+    await tester.enterText(find.widgetWithText(TextField, 'Their #'), '12');
+    await tester.pump();
+    await tester.enterText(find.widgetWithText(TextField, 'Their #'), '12 ');
+    await tester.pump();
+    expect(field('Their call').focusNode!.hasFocus, isTrue, reason: 'wrapping back to Call');
   });
 
   testWidgets('a pasted value containing a space is filtered normally, not treated as an advance', (tester) async {

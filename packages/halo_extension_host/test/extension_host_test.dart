@@ -550,21 +550,27 @@ __polo.defineExtension({
       ],
     }) as Map;
 
+    // One verdict per QSO, not one per rule: a scorer's internal rules stay
+    // private to its scoresheet, so only points, notices and alerts surface
+    // (docs/design/contests.md §5.1).
     final qsoScores = result['qsoScores'] as Map;
-    expect(qsoScores['q1']['dupe']['value'], 1);
-    expect(qsoScores['q2']['dupe']['dupe'], true);
-    expect(qsoScores['q2']['dupe']['value'], 0);
-    expect(qsoScores['q3']['dupe']['value'], 1);
+    expect(qsoScores['q1']['value'], 1);
+    expect(qsoScores['q2']['dupe'], true);
+    expect(qsoScores['q2']['value'], 0);
+    expect(qsoScores['q3']['value'], 1);
 
-    expect(qsoScores['q1']['dxcc']['entityPrefix'], 'K');
-    expect(qsoScores['q3']['dxcc']['entityPrefix'], 'EA');
-    expect(qsoScores['q4']['dxcc']['entityPrefix'], 'JA');
+    // Each of these is the operation's first contact with that entity.
+    expect(qsoScores['q1']['notices'], contains('newDXCC'));
+    expect(qsoScores['q3']['notices'], contains('newDXCC'));
+    expect(qsoScores['q4']['notices'], contains('newDXCC'));
+    // A duplicate contributes nothing at all — no new band, mode or entity.
+    expect(qsoScores['q2']['notices'], anyOf(isNull, isEmpty));
 
     // q5 is a new band (15m) even though its mode (SSB) was already worked
     // on q1/q4 — scoring must credit a QSO as new if EITHER the band or the
     // mode is new, not require BOTH to already be known.
-    expect(qsoScores['q5']['bandsAndModes']['value'], 1);
-    expect(qsoScores['q5']['bandsAndModes']['band'], '15m');
+    expect(qsoScores['q5']['value'], 1);
+    expect(qsoScores['q5']['notices'], contains('newBand'));
 
     final daySections = result['daySections'] as List;
     expect(daySections.length, 2);

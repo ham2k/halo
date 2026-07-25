@@ -13,6 +13,7 @@ import 'package:drift/drift.dart';
 import 'package:uuid/uuid.dart';
 
 import '../db/database.dart';
+import 'sequences.dart';
 import '../dev_log.dart';
 import '../models/models.dart';
 
@@ -365,19 +366,104 @@ class QsosRepository {
   /// See `OperationsRepository.onChange`.
   final void Function()? onChange;
 
-  QsosRepository(this.db, {this.onChange});
+  /// Serial-number allocation (docs/design/contests.md §5.8). Null outside the
+  /// app, where nothing declares a sequence; `add` then allocates nothing,
+  /// which keeps `halo_core` free of any extension knowledge.
+  ///
+  /// Allocation must be atomic with the insert, so it happens here — but WHICH
+  /// sequences exist is extension-declared, so the caller passes the
+  /// descriptors to `add` instead of this layer going looking for them.
+  final SequencesRepository? sequences;
+
+  QsosRepository(this.db, {this.onChange, this.sequences});
+
+  /// Settles the serial on [qso]'s ref.
+  ///
+  /// A number already on the ref WINS — it is what the logging panel showed the
+  /// operator, which is what they sent on the air, so the log has to agree with
+  /// it. The sequence is then raised past it so it can never be issued again.
+  /// This is the normal path for a QSO logged through the UI.
+  ///
+  /// Allocation is the fallback, for QSOs that arrive without a number: the
+  /// second and later calls of a call list, an extension-driven `addQso`, or
+  /// any headless caller. It happens here, inside the insert transaction, so
+  /// two of them can't collide.
+  ///
+  /// Returns a QSO with a fresh data map rather than mutating: a call-list
+  /// batch shares one `refs` list across every `add()`, so mutating in place
+  /// would give every call in the batch the first one's number.
+  Future<Qso> _withAllocatedSerial(String operationUuid, Qso qso, SequenceRequest request) async {
+    final refs = [
+      for (final ref in qso.refs) Map<String, dynamic>.from(ref),
+    ];
+    final index = refs.indexWhere((r) => r['type'] == request.refType);
+
+    final existing = index < 0 ? null : refs[index][request.field];
+    final sent = existing is int ? existing : int.tryParse('${existing ?? ''}'.trim());
+
+    // Either way the field ends up an int, so exports and the derived
+    // high-water mark never have to care which path a number came from.
+    final value = sent ?? await sequences!.allocate(operationUuid, request);
+    if (sent != null) await sequences!.raiseTo(operationUuid, request, sent);
+    // Keep the derived-mark memo exact rather than making the next insert
+    // rescan the log — this is the hot path, once per QSO.
+    sequences!.noteIssued(operationUuid, request, value);
+
+    if (index < 0) {
+      refs.add({'type': request.refType, request.field: value});
+    } else {
+      refs[index][request.field] = value;
+    }
+    return Qso(
+      uuid: qso.uuid,
+      operationUuid: qso.operationUuid,
+      data: {...qso.data, 'refs': refs},
+      deleted: qso.deleted,
+      scoreCache: qso.scoreCache,
+    );
+  }
 
   /// Inserts a QSO from QSON data, deriving the indexed columns and
   /// refreshing the operation's counters, all in one transaction.
-  Future<Qso> add(String operationUuid, Map<String, dynamic> qsoData) async {
+  ///
+  /// [serialSequences] are the sequences the operation's contests declared
+  /// (docs/design/contests.md §5.8); each fills its field on the QSO's ref
+  /// unless the operator typed a number themselves.
+  Future<Qso> add(
+    String operationUuid,
+    Map<String, dynamic> qsoData, {
+    List<SequenceDescriptor> serialSequences = const [],
+  }) async {
     final data = Map<String, dynamic>.from(qsoData);
     data['startAtMillis'] ??= DateTime.now().toUtc().millisecondsSinceEpoch;
     data['uuid'] ??= _uuidGenerator.v4();
     data['updatedAtMillis'] = _nowMillis();
 
-    final qso = Qso(uuid: data['uuid'] as String, operationUuid: operationUuid, data: data);
+    var qso = Qso(uuid: data['uuid'] as String, operationUuid: operationUuid, data: data);
 
     await db.transaction(() async {
+      // Serial numbers are allocated HERE — once, at commit, atomically with
+      // the insert (docs/design/contests.md §5.8). Anywhere earlier is
+      // app-polo's root defect: a number claimed while composing leaks when the
+      // QSO is wiped, and tapping a spot mid-QSO gives two QSOs the same one.
+      //
+      // The label is resolved from the QSO as committed, not from whatever band
+      // was selected when the descriptor was fetched — the operator can still
+      // change band between the lookup and pressing Enter.
+      //
+      // Event rows never allocate. NOTE/TODO/SOLAR/WEATHER annotations reach
+      // this same `add` from the extension runtime carrying `band: 'event'`,
+      // and burning a serial on each would silently gap the contest log.
+      if (!qso.isEvent && sequences != null) {
+        for (final descriptor in serialSequences) {
+          qso = await _withAllocatedSerial(operationUuid, qso, descriptor.requestFor(qso));
+        }
+        // A real contact inserted with NO declared sequences may still carry a
+        // serial on a ref — an ADIF import, or an extension's `addQso` command.
+        // We can't know which labels it touched, so drop the memo and let the
+        // next peek re-derive rather than issue a number already in the log.
+        if (serialSequences.isEmpty && qso.refs.isNotEmpty) sequences!.invalidate();
+      }
       await db.into(db.qsos).insert(_companionFor(qso));
       await _refreshOperationCounters(operationUuid);
     });
@@ -415,6 +501,11 @@ class QsosRepository {
       await (db.update(db.qsos)..where((q) => q.uuid.equals(stamped.uuid))).write(_companionFor(stamped));
       await _refreshOperationCounters(stamped.operationUuid);
     });
+    // An edit can change a serial by hand, and never routes through the
+    // allocator — so the memoized high-water mark can no longer be trusted.
+    // AFTER the commit: invalidating first would let a scan started in between
+    // read the pre-edit log and memoize that as current.
+    sequences?.invalidate();
     onChange?.call();
   }
 
@@ -629,6 +720,10 @@ class QsosRepository {
         await _refreshOperationCounters(operationUuid);
       }
     });
+    // Another device's numbers arrived without passing through the allocator,
+    // so re-derive rather than hand out one already on the air. AFTER the
+    // commit — see `update` above for why the ordering matters.
+    sequences?.invalidate();
     // No onChange() here — see OperationsRepository.mergeFromSync.
     return watermark;
   }
@@ -655,6 +750,7 @@ class QsosRepository {
       }
       await db.delete(db.qsos).go();
     });
+    sequences?.invalidate();
   }
 
   Qso _qsoFromRow(QsoRow row) => Qso(

@@ -34,26 +34,54 @@ class ScoringService {
     if (qsoList.isEmpty) return;
 
     try {
-      final result = await host.invokeHook(
-        'scoring',
-        key: 'core',
-        method: 'scoreQsos',
-        args: qsonPayloadFor(operation: operation, qsos: qsoList),
-        timeout: const Duration(seconds: 10),
-      ) as Map;
+      // Only the scorers this operation actually needs: `always` scorers (core
+      // dupe/DXCC/bands) plus any whose declared refTypes match a ref on the
+      // operation. A user with dozens of extensions enabled never pays for the
+      // ones this operation doesn't reference (docs/design/contests.md §5.1).
+      final scopes = await extensions.getScoringScopes();
+      final scorers = ExtensionService.scorersFor(operation.data, scopes);
+      if (scorers.isEmpty) return;
 
-      final qsoScores = (result['qsoScores'] as Map?) ?? const {};
-      final scoreCacheByUuid = <String, String>{
-        for (final entry in qsoScores.entries) entry.key as String: jsonEncode(entry.value),
-      };
-      await qsos.updateScoreCache(scoreCacheByUuid);
+      final payload = qsonPayloadFor(operation: operation, qsos: qsoList);
 
-      await operations.updateLocalData(operation.uuid, {
-        'scoring': {
+      // Independent per-scorer calls — a contest scorer that throws must not
+      // cost the operation its core scoring, so each result is collected on its
+      // own and a failed one is simply absent below.
+      final results = await Future.wait(scorers.map((scorer) async {
+        final result = await extensions.scoreQsos(
+          scorerKey: scorer.key,
+          args: {...payload, 'ref': ?scorer.ref},
+        );
+        return (key: scorer.key, result: result);
+      }));
+
+      // Per-QSO verdicts are namespaced by scorer — `{core: {...}, cqww: {...}}`
+      // — so several scorers can annotate the same QSO without colliding.
+      final scoresByUuid = <String, Map<String, dynamic>>{};
+      final scoringByScorer = <String, dynamic>{};
+
+      for (final entry in results) {
+        final result = entry.result;
+        if (result == null) continue;
+
+        final qsoScores = (result['qsoScores'] as Map?) ?? const {};
+        for (final score in qsoScores.entries) {
+          (scoresByUuid[score.key as String] ??= <String, dynamic>{})[entry.key] = score.value;
+        }
+        scoringByScorer[entry.key] = {
           'daySections': result['daySections'],
           'operationSummary': result['operationSummary'],
-        },
+          // The end-of-log scoresheet, kept so a later append can resume from it
+          // instead of re-folding the whole log.
+          'scoresheet': result['scoresheet'],
+        };
+      }
+      if (scoringByScorer.isEmpty) return;
+
+      await qsos.updateScoreCache({
+        for (final entry in scoresByUuid.entries) entry.key: jsonEncode(entry.value),
       });
+      await operations.updateLocalData(operation.uuid, {'scoring': scoringByScorer});
     } catch (e) {
       debugPrint('[scoring] rescoreOperation failed: $e');
     }

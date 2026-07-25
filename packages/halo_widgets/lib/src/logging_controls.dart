@@ -239,6 +239,16 @@ class LoggingControls extends StatefulWidget {
   /// `activityControls` is used as-is.
   final Future<List<Map<String, dynamic>>> Function(Map<String, dynamic> qso)? refreshActivityControls;
 
+  /// Last chance for an activity to shape a QSO before it is written, via the
+  /// extension runtime's `processQsoBeforeSave` — a contest mirroring the
+  /// exchange it keeps on its own ref into the generic `their.exchange` that
+  /// the QSO row and a plain ADIF export read.
+  ///
+  /// Applied on EVERY save path (single, call list, call stack, edit), because
+  /// a QSO decorated only when logged one way would export differently
+  /// depending on how it was entered. When null the data is saved as-is.
+  final Future<Map<String, dynamic>> Function(Map<String, dynamic> qso)? decorateQsoBeforeSave;
+
   /// Async ref decoration via the extension runtime.
   final RefDecorator? decorateRef;
 
@@ -452,6 +462,7 @@ class LoggingControls extends StatefulWidget {
     this.enqueueLookup,
     this.activityControls = const [],
     this.refreshActivityControls,
+    this.decorateQsoBeforeSave,
     this.decorateRef,
     this.interpretCommand,
     this.interpretationUpdates,
@@ -635,6 +646,22 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
 
   List<Map<String, dynamic>> get _effectiveActivityControls => _refreshedActivityControls ?? widget.activityControls;
 
+  /// Ref types the operation is actually running right now.
+  ///
+  /// This is the gate on PRIMARY field real estate (see `_textControls`).
+  /// Secondary chips deliberately don't consult it: an extension can offer one
+  /// from any operation — POTA's hunter control is the case that matters, since
+  /// you chase a park from whatever you happen to be running.
+  ///
+  /// TODO(#149/M6): once segments land this reads the segment-effective
+  /// operation rather than the operation itself — a contest that only covers
+  /// part of an operation should only claim the entry row during its own
+  /// segment. `docs/design/contests.md` §5.1.
+  Set<String> get _activeRefTypes => {
+        for (final ref in widget.operation.refs)
+          if (ref['type'] case final String type) type,
+      };
+
   /// Pending push of a manually-typed frequency to `widget.radioService` —
   /// see `_onFreqChanged` and `_pushVfoToRadioService`.
   Timer? _vfoDebounce;
@@ -708,6 +735,253 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   /// Refs entered via activity controls for the QSO being composed,
   /// keyed by control key.
   final Map<String, List<Map<String, dynamic>>> _controlRefs = {};
+
+  /// Values typed into `kind: 'text'` activity controls (contest exchanges),
+  /// keyed by control key. Kept apart from [_controlRefs] because several text
+  /// controls can share one `refType` while writing different `field`s of it —
+  /// they're merged back into one ref per type on save.
+  final Map<String, String> _controlTextValues = {};
+
+  /// One controller per text control, created on demand and disposed with the
+  /// widget.
+  final Map<String, TextEditingController> _controlTextControllers = {};
+
+  /// Text controls the operator has actually typed into. A `suggestedValue`
+  /// from a callsign lookup fills a field only while it is untouched, so a
+  /// lookup resolving late can never clobber what someone already keyed in
+  /// (docs/design/contests.md §5.3).
+  final Set<String> _touchedTextControls = {};
+
+  /// Every typed-exchange activity control currently contributed — `text` and
+  /// `serial` alike, since both render the same way and differ only in who
+  /// supplies the value.
+  ///
+  /// These render as PRIMARY fields, inline after Sent/Rcvd — not as secondary
+  /// control chips like `refList`. A contest exchange is typed on every single
+  /// QSO, hundreds of times an hour, so it belongs in the entry row next to the
+  /// callsign; a chip that has to be expanded first is unusable at that rate.
+  /// app-polo lays them out in the same place, between the RSTs and Grid/State.
+  ///
+  /// Precisely because that row is the scarcest space in the app, a control only
+  /// earns a place in it if the operation is RUNNING that activity
+  /// ([_activeRefTypes]) — every enabled contest extension is asked for logging
+  /// controls, but merely having one installed must not put its exchange in
+  /// front of someone logging an ordinary QSO. Enforced here rather than left to
+  /// each extension: this is the core's rule about its own entry row, and the
+  /// consequences of an extension forgetting it are severe — a stray `serial`
+  /// field would hand out numbers from a series nobody is keeping.
+  ///
+  /// A control with no `refType` can never match, which is the intended
+  /// reading: a primary field writes to a ref, so one that names no ref has
+  /// nothing to attach itself to.
+  Iterable<Map<String, dynamic>> get _textControls {
+    final active = _activeRefTypes;
+    return _effectiveActivityControls.where((c) {
+      final input = c['input'] as Map?;
+      final kind = input?['kind'];
+      if (kind != 'text' && kind != 'serial') return false;
+      return active.contains(input?['refType']);
+    });
+  }
+
+  /// The serial number each `kind: 'serial'` control will send, as last peeked
+  /// from the sequence — shown so the operator can read it off while typing the
+  /// callsign, but NOT written to the QSO: the number is allocated at commit
+  /// (docs/design/contests.md §5.8), so a peek that goes stale (another window
+  /// logged in between) costs nothing.
+  final Map<String, int> _serialPreviews = {};
+
+  /// The sequences this operation's contests declared, resolved from the
+  /// current controls. Passed to `add` so the repository can allocate against
+  /// the QSO as committed — and so a number the operator was shown raises the
+  /// counter past itself rather than being handed out twice.
+  List<SequenceDescriptor> get _serialSequences => [
+        for (final control in _textControls)
+          if (_serialDescriptorFor(control) case final descriptor?) descriptor,
+      ];
+
+  /// Runs `widget.decorateQsoBeforeSave` if wired, so an activity can project
+  /// its ref data into generic QSON fields. Identity when no callback is
+  /// supplied, which is every test and tooling path.
+  Future<Map<String, dynamic>> _decorated(Map<String, dynamic> data) async {
+    final decorate = widget.decorateQsoBeforeSave;
+    if (decorate == null) return data;
+    return decorate(data);
+  }
+
+  /// [refs] with every declared serial field removed, so the sequence issues a
+  /// fresh number at commit instead of the one already on the ref. Only for the
+  /// second and later calls of a call list — see `dataFor`.
+  List<Map<String, dynamic>> _refsWithoutSerials(Object? refs) {
+    final descriptors = _serialSequences;
+    final list = [
+      for (final ref in (refs as List?) ?? const [])
+        if (ref is Map) ref.cast<String, dynamic>(),
+    ];
+    if (descriptors.isEmpty) return list;
+    return [
+      for (final ref in list)
+        {
+          ...ref,
+        }..removeWhere((field, _) => descriptors.any((d) => d.refType == ref['type'] && d.field == field)),
+    ];
+  }
+
+  SequenceDescriptor? _serialDescriptorFor(Map<String, dynamic> control) {
+    final key = control['key'] as String? ?? '';
+    final slash = key.indexOf('/');
+    return SequenceDescriptor.fromInput(
+      (control['input'] as Map).cast<String, dynamic>(),
+      // Control keys are `<extensionKey>/<name>` by convention; the prefix is
+      // what keeps two contests' counters apart.
+      extensionKey: slash > 0 ? key.substring(0, slash) : key,
+    );
+  }
+
+  /// What the previews were last computed against — which sequences exist, and
+  /// the band/mode a scoped one keys off. The parent hands down a fresh
+  /// controls list on most rebuilds, so without this the peek would re-query
+  /// the log every frame.
+  String? _serialPreviewSignature;
+
+  /// Refreshes the previewed next number for each serial control — one query
+  /// per sequence, and only when the declarations or their scope changed.
+  ///
+  /// Never while editing an existing QSO. That record's number was sent long
+  /// ago and is restored from the ref by `_applyFieldsFromData`; the sequence's
+  /// *next* number has nothing to do with it. Filling it here would overwrite a
+  /// logged serial on a record that merely had its RST corrected, or invent one
+  /// for a QSO that never carried a contest ref at all.
+  Future<void> _refreshSerialPreviews() async {
+    final sequences = widget.qsosRepository.sequences;
+    if (sequences == null || widget.editingQso != null) return;
+
+    final data = _getCurrentQsoData();
+    final descriptors = <String, SequenceDescriptor>{};
+    for (final control in _textControls) {
+      final descriptor = _serialDescriptorFor(control);
+      if (descriptor != null) descriptors[control['key'] as String] = descriptor;
+    }
+
+    final signature = '${descriptors.keys.join(',')}|${data['band']}|${data['mode']}';
+    if (signature == _serialPreviewSignature && _serialPreviews.isNotEmpty) return;
+    _serialPreviewSignature = signature;
+    if (descriptors.isEmpty) return;
+
+    final qso = Qso(uuid: '', operationUuid: widget.operation.uuid, data: data);
+    var changed = false;
+    for (final entry in descriptors.entries) {
+      final next = await sequences.peek(widget.operation.uuid, entry.value.requestFor(qso));
+      if (_serialPreviews[entry.key] == next) continue;
+      _serialPreviews[entry.key] = next;
+      changed = true;
+      // The preview fills the field itself so the number is readable at a
+      // glance, but the control stays untouched — only a number the operator
+      // actually edits overrides the commit-time allocation.
+      if (!_touchedTextControls.contains(entry.key)) {
+        _controlTextValues[entry.key] = '$next';
+        _textControllerFor(entry.key).text = '$next';
+      }
+    }
+    if (changed && mounted) setState(() {});
+  }
+
+  TextEditingController _textControllerFor(String key) =>
+      _controlTextControllers[key] ??= TextEditingController(text: _controlTextValues[key] ?? '');
+
+  /// One focus node per text control, so Space and Tab cycle through the
+  /// exchange fields the same way they cycle Call → Sent → Rcvd.
+  final Map<String, FocusNode> _controlTextFocus = {};
+
+  FocusNode _textFocusFor(String key) => _controlTextFocus[key] ??= FocusNode(debugLabel: 'exchange:$key');
+
+  void _clearTextControls() {
+    _controlTextValues.clear();
+    _touchedTextControls.clear();
+    // Dropped, not kept: a wipe must let the next refresh re-fill the serial
+    // fields, and the change-detection in `_refreshSerialPreviews` would
+    // otherwise see the same declarations and leave them blank.
+    _serialPreviews.clear();
+    _serialPreviewSignature = null;
+    for (final controller in _controlTextControllers.values) {
+      controller.clear();
+    }
+    unawaited(_refreshSerialPreviews());
+  }
+
+  /// Applies each text control's `suggestedValue` — a callsign-lookup-derived
+  /// prefill — to fields the operator hasn't touched. Called when the controls
+  /// are re-fetched after a lookup resolves.
+  void _applySuggestedTextValues() {
+    for (final control in _textControls) {
+      final key = control['key'] as String;
+      if (_touchedTextControls.contains(key)) continue;
+      final suggested = (control['input'] as Map)['suggestedValue'] as String?;
+      if (suggested == null || suggested.isEmpty) continue;
+      if (_controlTextValues[key] == suggested) continue;
+      _controlTextValues[key] = suggested;
+      _textControllerFor(key).text = suggested;
+    }
+  }
+
+  /// Merges the text controls' values into one ref per `refType`, folded in
+  /// with any ref of that type already held by a refList control — so a
+  /// contest's exchange and its refList-entered references coexist.
+  List<Map<String, dynamic>> _refsWithTextValues(List<Map<String, dynamic>> refs) {
+    if (_textControls.isEmpty) return refs;
+
+    // Values to write, and — separately — fields to REMOVE. An emptied field
+    // has to be an active removal, not just an absent value: skipping it would
+    // leave the old exchange on the ref, so clearing one while editing a QSO
+    // wouldn't stick. Same reasoning as the unconditional `refs`/`freq` writes
+    // in `_getCurrentQsoData`.
+    final byType = <String, Map<String, dynamic>>{};
+    final clearedByType = <String, Set<String>>{};
+    for (final control in _textControls) {
+      final input = control['input'] as Map;
+      final refType = input['refType'] as String?;
+      final field = input['field'] as String?;
+      if (refType == null || field == null) continue;
+      final key = control['key'] as String;
+      // A serial's displayed number is NOT a suggestion — it is what the
+      // operator read off the screen and sent on the air, so it is written to
+      // the ref exactly like something typed. Nobody re-keys it, and the log
+      // must agree with what went out. (The sequence is what guarantees the
+      // number was theirs to send; see `SequencesRepository`.)
+      final value = (_controlTextValues[key] ?? '').trim();
+      if (value.isEmpty) {
+        (clearedByType[refType] ??= {}).add(field);
+      } else {
+        // A serial is stored as an int, matching what `_withAllocatedSerial`
+        // writes — normalized HERE so the edit path agrees, since
+        // `QsosRepository.update` deliberately never allocates and so never
+        // passes through that method.
+        (byType[refType] ??= {'type': refType})[field] =
+            input['kind'] == 'serial' ? (int.tryParse(value) ?? value) : value;
+      }
+    }
+    if (byType.isEmpty && clearedByType.isEmpty) return refs;
+
+    final merged = <Map<String, dynamic>>[];
+    for (final ref in refs) {
+      final type = ref['type'];
+      final extra = byType.remove(type);
+      final cleared = clearedByType[type];
+      if (extra == null && cleared == null) {
+        merged.add(ref);
+        continue;
+      }
+      final next = {...ref, ...?extra};
+      for (final field in cleared ?? const <String>{}) {
+        next.remove(field);
+      }
+      // A ref left with nothing but its type carried no information to begin
+      // with — drop it rather than persisting an empty shell.
+      if (next.length > 1 || next['ref'] != null) merged.add(next);
+    }
+    merged.addAll(byType.values);
+    return merged;
+  }
 
   /// Refs from `editingQso.refs` whose `type` matched no currently
   /// registered activity control — round-tripped back into `refs` on save
@@ -908,6 +1182,10 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     // Wire the imperative handle (used by the app's dev bridge) so the call
     // field / Log / Wipe can be driven from outside the widget.
     widget.controller?.attach(setField: _devSetField, submit: _log, wipe: _wipe, isFieldsLocked: () => _fieldsLocked);
+    // Show the next serial number straight away — an operator opening a WPX
+    // operation needs to know where the series stands before the first QSO,
+    // not after it.
+    unawaited(_refreshSerialPreviews());
   }
 
   /// Sets a primary field as if typed — the controller listeners fire, so the
@@ -929,6 +1207,18 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   @override
   void didUpdateWidget(LoggingControls oldWidget) {
     super.didUpdateWidget(oldWidget);
+    // The controls a contest contributes arrive asynchronously, after this
+    // widget first builds — so a serial field is typically declared here
+    // rather than in initState, and this is where its first preview comes
+    // from. The operation's own refs matter just as much, since they decide
+    // which primary controls survive `_textControls` at all: adding the
+    // activity is what makes the serial field appear. Deliberately outside the
+    // editingQso guards below: showing the right number never depends on what
+    // is being composed.
+    if (!identical(oldWidget.activityControls, widget.activityControls) ||
+        !identical(oldWidget.operation.data['refs'], widget.operation.data['refs'])) {
+      unawaited(_refreshSerialPreviews());
+    }
     if (oldWidget.controller != widget.controller) {
       oldWidget.controller?.detach();
       widget.controller?.attach(setField: _devSetField, submit: _log, wipe: _wipe, isFieldsLocked: () => _fieldsLocked);
@@ -1094,14 +1384,42 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
       ..remove('startAtMillis');
     _controlRefs.clear();
     _unmatchedRefs = [];
+    _clearTextControls();
     final refs = (data['refs'] as List?)?.whereType<Map>().map((r) => r.cast<String, dynamic>()) ?? const [];
     for (final ref in refs) {
       String? key;
       for (final control in _effectiveActivityControls) {
-        if ((control['input'] as Map?)?['refType'] == ref['type']) {
-          key = control['key'] as String?;
-          break;
+        final input = control['input'] as Map?;
+        if (input?['refType'] != ref['type']) continue;
+        // A primary field reads ONE field out of the ref rather than owning the
+        // whole ref, and several may share a type — so it never claims the ref,
+        // which must still round-trip through a refList control or
+        // `_unmatchedRefs`. `serial` counts here exactly as `text` does: it is
+        // one field of the ref, and skipping it would both leave the number
+        // unrestored and `break` before any sibling field of the same ref
+        // (cqwpx declares `ourSerial` before `theirSerial`), silently clearing
+        // that sibling on the next save.
+        if (input?['kind'] == 'text' || input?['kind'] == 'serial') {
+          final field = input?['field'] as String?;
+          // Serials are stored as ints (see `_withAllocatedSerial`), exchanges
+          // as strings — read either.
+          final raw = field == null ? null : ref[field];
+          final value = raw is num ? '$raw' : (raw is String ? raw : '');
+          if (value.isNotEmpty) {
+            final controlKey = control['key'] as String;
+            _controlTextValues[controlKey] = value;
+            _textControllerFor(controlKey).text = value;
+            // A value loaded off a saved QSO is what actually went over the
+            // air, so it counts as operator input: without this a lookup
+            // resolving after the record opens would overwrite it with a
+            // suggestion — or, for a serial, the sequence's NEXT number would
+            // overwrite the one that was really sent.
+            _touchedTextControls.add(controlKey);
+          }
+          continue;
         }
+        key = control['key'] as String?;
+        break;
       }
       if (key != null) {
         (_controlRefs[key] ??= []).add(ref);
@@ -1171,6 +1489,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     _lookupCache.clear();
     _controlRefs.clear();
     _unmatchedRefs = [];
+    _clearTextControls();
     _currentQsoExtra.clear();
     _manualStartAtMillis = null;
     _manualBand = null;
@@ -1202,6 +1521,12 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     _spotStatusClearTimer?.cancel();
     _spotCommentController.dispose();
     _spotCommentFocus.dispose();
+    for (final controller in _controlTextControllers.values) {
+      controller.dispose();
+    }
+    for (final node in _controlTextFocus.values) {
+      node.dispose();
+    }
     _callController.dispose();
     _sentController.dispose();
     _rcvdController.dispose();
@@ -1591,6 +1916,8 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
             label: widget.spottingControlLabel ?? 'Spotting',
           ),
         for (final control in _effectiveActivityControls)
+          // `text` controls are primary fields (see `_textControls`), so only
+          // refList contributes a secondary chip.
           if ((control['input'] as Map?)?['kind'] == 'refList')
             _ControlDescriptor(
               key: control['key'] as String,
@@ -2321,6 +2648,76 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     );
   }
 
+  /// A `kind: 'text'` control rendered as a primary entry field — a contest
+  /// exchange, sitting inline with Call and the RSTs.
+  ///
+  /// A `pattern` mismatch tints the field but never blocks the keystroke:
+  /// contest rules don't always anticipate what the other station actually
+  /// sends, and refusing input mid-QSO is worse than accepting an oddity.
+  Widget _exchangeField(BuildContext context, Map<String, dynamic> control, {required bool enabled}) {
+    final key = control['key'] as String;
+    final input = control['input'] as Map;
+    final label = (control['label'] as String?) ?? key;
+    final value = (_controlTextValues[key] ?? '').trim();
+
+    // A serial is digits, never uppercased. The number shown is the one the
+    // sequence will issue; typing over it is an override, which the extension
+    // can disallow with `editable: false`.
+    final isSerial = input['kind'] == 'serial';
+    final numeric = input['numeric'] == true || isSerial;
+
+    final regex = compileRefPattern(input['pattern'] as String?);
+    final isInvalid = value.isNotEmpty && regex != null && !regex.hasMatch(value);
+    final uppercase = !isSerial && input['uppercase'] != false;
+    final transforms = [
+      for (final t in (input['transforms'] as List?) ?? const [])
+        RefTransform.fromMap((t as Map).cast<String, dynamic>()),
+    ];
+
+    return SizedBox(
+      // Wider than an RST, narrower than the callsign: an exchange is usually
+      // a zone, a serial or a state abbreviation.
+      width: 76,
+      child: TextField(
+        controller: _textControllerFor(key),
+        focusNode: _textFocusFor(key),
+        selectAllOnFocus: false,
+        enabled: enabled,
+        readOnly: isSerial && input['editable'] == false,
+        style: _primaryFieldStyle(context, fontWeight: FontWeight.w500),
+        keyboardType: numeric ? _numbersAndPunctuationOnIOS : null,
+        textCapitalization: TextCapitalization.characters,
+        autocorrect: false,
+        inputFormatters: [
+          // FIRST, exactly as every other primary field installs it: on an
+          // on-screen keyboard there is no hardware Space to hit the panel
+          // shortcut, so without this the space is just swallowed by the
+          // formatters below and the field becomes a dead end. Mobile is where
+          // most contest logging happens.
+          _virtualSpace,
+          if (numeric) FilteringTextInputFormatter.digitsOnly,
+          if (uppercase) const UpperCaseTextFormatter(),
+          if (transforms.isNotEmpty) RefTransformFormatter(transforms),
+          if (input['maxLength'] is int) LengthLimitingTextInputFormatter(input['maxLength'] as int),
+        ],
+        decoration: _primaryFieldDecoration(context, label).copyWith(
+          hintText: input['placeholder'] as String?,
+          errorText: isInvalid ? '' : null,
+          errorStyle: const TextStyle(height: 0, fontSize: 0),
+        ),
+        onChanged: (text) {
+          setState(() {
+            _controlTextValues[key] = text;
+            // Once typed, a later lookup-derived suggestion must not overwrite
+            // it (docs/design/contests.md §5.3).
+            _touchedTextControls.add(key);
+          });
+        },
+        onSubmitted: (_) => _log(),
+      ),
+    );
+  }
+
   SecondaryControlSpec _moreControlSpec() => SecondaryControlSpec(
         key: 'more',
         icon: resolveIconName('pencil'),
@@ -2386,7 +2783,11 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
       _advancePrimaryFocus();
     } else if (_freqFocus.hasFocus) {
       _callFocus.requestFocus();
-    } else if (_stateFocus.hasFocus || _gridFocus.hasFocus || _sentFocus.hasFocus || _rcvdFocus.hasFocus) {
+    } else if (_primaryFocusOrder.any((node) => node.hasFocus)) {
+      // Every primary field advances on Space, contest exchanges included —
+      // asked against the same list the advance walks, so a newly added kind of
+      // primary field can never end up in one and not the other. (Call and Freq
+      // are caught above; neither is reachable here.)
       _advancePrimaryFocus();
     } else if (_spotCommentFocus.hasFocus) {
       // Free prose, like NOTE's parameter: Space types a literal space —
@@ -2399,20 +2800,38 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     // shortcut.
   }
 
-  /// Space cycles through whichever primary exchange fields are currently
-  /// visible, in the same left-to-right order they're laid out in —
-  /// Sent/Rcvd (when RST is on) right after Call, then State/Grid (when
-  /// their "..." menu toggles are on) — wrapping back to Call after the
-  /// last one. Rebuilt on every call since `showRSTFields`/`showStateField`/
-  /// `showGridField` can change at runtime.
+  /// The primary fields currently on screen, in the left-to-right order
+  /// they're laid out in — Call, Sent/Rcvd (when RST is on), the contest
+  /// exchanges, then State/Grid (when their "..." menu toggles are on).
+  ///
+  /// The single source of truth for what "a primary field" means to the
+  /// keyboard: [_advancePrimaryFocus] walks it, and `_handleSpace` asks it
+  /// whether Space should advance. Any new kind of primary field is in both the
+  /// moment it appears here — an exchange field that cycled on Tab but sat inert
+  /// on Space (because only Space's caller had a hardcoded list) is exactly the
+  /// drift this prevents.
+  ///
+  /// Rebuilt on every call: `showRSTFields`/`showStateField`/`showGridField`
+  /// change at runtime, and so does the set of contest controls.
+  List<FocusNode> get _primaryFocusOrder => [
+        _callFocus,
+        if (widget.showRSTFields) _sentFocus,
+        if (widget.showRSTFields) _rcvdFocus,
+        // Only nodes already attached to a built field: creating one here for a
+        // control whose widget hasn't been built leaves an orphan with no
+        // context, which Flutter's focus traversal null-checks while sorting —
+        // taking down the whole frame rather than just misordering focus.
+        for (final control in _textControls)
+          if (_controlTextFocus[control['key'] as String]?.context != null)
+            _controlTextFocus[control['key'] as String]!,
+        if (widget.showStateField) _stateFocus,
+        if (widget.showGridField) _gridFocus,
+      ];
+
+  /// Moves focus to the next primary field, wrapping back to Call after the
+  /// last one.
   void _advancePrimaryFocus() {
-    final order = [
-      _callFocus,
-      if (widget.showRSTFields) _sentFocus,
-      if (widget.showRSTFields) _rcvdFocus,
-      if (widget.showStateField) _stateFocus,
-      if (widget.showGridField) _gridFocus,
-    ];
+    final order = _primaryFocusOrder;
     final current = order.indexWhere((f) => f.hasFocus);
     final next = order[(current + 1) % order.length];
     next.requestFocus();
@@ -2562,7 +2981,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
         });
       } else if (map.containsKey('addQso')) {
         final params = (map['addQso'] as Map).cast<String, dynamic>();
-        final qso = await widget.qsosRepository.add(widget.operation.uuid, params);
+        final qso = await widget.qsosRepository.add(widget.operation.uuid, await _decorated(params));
         widget.onLogged?.call(qso);
         // Command-added QSOs (e.g. SEED's batch) carry at most the fast
         // offline guess the extension attached itself — queue each for a
@@ -2646,10 +3065,10 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   Map<String, dynamic> _getCurrentQsoData({String? callOverride}) {
     final base = widget.editingQso?.data ?? const <String, dynamic>{};
     final call = callOverride ?? _call;
-    final refs = [
+    final refs = _refsWithTextValues([
       for (final list in _controlRefs.values) ...list,
       ..._unmatchedRefs,
-    ];
+    ]);
     return {
       ...base,
       // Unconditional (not `if (refs.isNotEmpty)`/`if (_freq != null)`):
@@ -3177,7 +3596,15 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     if (refresh == null) return;
     final controls = await refresh(_getCurrentQsoData(callOverride: activeCall));
     if (!mounted || _callAtCursor != activeCall) return;
-    setState(() => _refreshedActivityControls = controls);
+    setState(() {
+      _refreshedActivityControls = controls;
+      // A lookup just resolved, so any suggestedValue it produced can now fill
+      // fields the operator hasn't typed into.
+      _applySuggestedTextValues();
+    });
+    // The refreshed controls may have introduced a serial field, or changed the
+    // band a per-band sequence keys off.
+    unawaited(_refreshSerialPreviews());
   }
 
   // ---- Logging ----
@@ -3228,6 +3655,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     _clearScoreNotices();
     _lookupCache.clear();
     _controlRefs.clear();
+    _clearTextControls();
     _currentQsoExtra.clear();
     _manualStartAtMillis = null;
     _selectedControlKey = null;
@@ -3254,6 +3682,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
       _manualStartAtMillis != null ||
       _theirNameOverride != null ||
       _controlRefs.values.any((refs) => refs.isNotEmpty) ||
+      _controlTextValues.values.any((v) => v.trim().isNotEmpty) ||
       _unmatchedRefs.isNotEmpty ||
       _currentQsoExtra.isNotEmpty ||
       _gridController.text.trim().isNotEmpty ||
@@ -3555,7 +3984,8 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
           }
           final qso = await widget.qsosRepository.add(
             widget.operation.uuid,
-            _getCurrentQsoData(callOverride: stacked.call),
+            await _decorated(_getCurrentQsoData(callOverride: stacked.call)),
+            serialSequences: _serialSequences,
           );
           widget.onLogged?.call(qso);
           widget.enqueueLookup?.call(qso);
@@ -3603,6 +4033,12 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
         final keepOriginal = !isList || (editingQso != null && index == 0);
         return {
           ...baseData,
+          // The displayed serial belongs to the FIRST call only — that is the
+          // one number the operator actually read out. Everyone after it in the
+          // list got the next numbers in the series, so strip the field and let
+          // the sequence issue them at commit; without this the whole list logs
+          // under one serial.
+          if (index > 0) 'refs': _refsWithoutSerials(baseData['refs']),
           'their': {
             if (keepOriginal) ...?(baseData['their'] as Map<String, dynamic>?),
             'call': call,
@@ -3622,7 +4058,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
           Qso(
             uuid: editingQso.uuid,
             operationUuid: widget.operation.uuid,
-            data: dataFor(calls.first, 0),
+            data: await _decorated(dataFor(calls.first, 0)),
           ),
         );
         for (var i = 1; i < calls.length; i++) {
@@ -3630,7 +4066,8 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
           // from its record) — strip it so add() generates a fresh one for
           // this new QSO instead of colliding with the original.
           final data = dataFor(calls[i], i)..remove('uuid');
-          final qso = await widget.qsosRepository.add(widget.operation.uuid, data);
+          final qso = await widget.qsosRepository
+              .add(widget.operation.uuid, await _decorated(data), serialSequences: _serialSequences);
           widget.onLogged?.call(qso);
           widget.enqueueLookup?.call(qso);
         }
@@ -3645,7 +4082,8 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
           _pushVfoToRadioService();
         }
         for (var i = 0; i < calls.length; i++) {
-          final qso = await widget.qsosRepository.add(widget.operation.uuid, dataFor(calls[i], i));
+          final qso = await widget.qsosRepository
+              .add(widget.operation.uuid, await _decorated(dataFor(calls[i], i)), serialSequences: _serialSequences);
           widget.onLogged?.call(qso);
           widget.enqueueLookup?.call(qso);
         }
@@ -3957,6 +4395,12 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
                               filter: FilteringTextInputFormatter.allow(RegExp(r'[0-9a-zA-Z+\-]')),
                               onChanged: (_) => _rstsTouched = true,
                             ),
+                          ],
+                          // Contest exchanges, inline right after the RSTs —
+                          // see `_textControls` for why these are primary.
+                          for (final control in _textControls) ...[
+                            const SizedBox(width: 8),
+                            _exchangeField(context, control, enabled: !fieldsLocked),
                           ],
                           if (widget.showStateField) ...[
                             const SizedBox(width: 10),

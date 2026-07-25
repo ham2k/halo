@@ -15,6 +15,9 @@
 - [design/ui-scaling.md](design/ui-scaling.md) — how the Font Scale setting
   scales the whole UI, and the rules that keep it working. **Read before any
   scaling-, layout-, or macOS-window-related change.**
+- [design/contests.md](design/contests.md) — **RFC (draft):** the core
+  infrastructure needed to port app-polo's contest extensions, and the porting
+  sequence. Open questions at the end need decisions before M0 starts.
 
 ## Extensions
 

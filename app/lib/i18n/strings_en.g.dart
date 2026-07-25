@@ -202,6 +202,9 @@ class Translations$extensionsPanel$en {
 	/// en: 'Activities'
 	String get categoryActivity => 'Activities';
 
+	/// en: 'Contests'
+	String get categoryContest => 'Contests';
+
 	/// en: 'Callsign Lookups'
 	String get categoryLookup => 'Callsign Lookups';
 
@@ -1312,6 +1315,24 @@ class Translations$loggingControls$info$en {
 
 	/// en: 'New DXCC'
 	String get noticeNewDXCC => 'New DXCC';
+
+	/// en: 'New Mult'
+	String get noticeNewMult => 'New Mult';
+
+	/// en: 'New Zone'
+	String get noticeNewZone => 'New Zone';
+
+	/// en: 'Wrong Mode'
+	String get noticeInvalidMode => 'Wrong Mode';
+
+	/// en: 'Wrong Band'
+	String get noticeInvalidBand => 'Wrong Band';
+
+	/// en: 'Not Workable'
+	String get noticeInvalidCategory => 'Not Workable';
+
+	/// en: 'Worked Before'
+	String get noticeWorkedBefore => 'Worked Before';
 }
 
 // Path: settings.theme
@@ -2139,6 +2160,7 @@ extension on Translations {
 			'onboarding.consentOperationLabel' => 'Share Operation Data',
 			'startScreen.credits' => 'by KI2D and friends',
 			'extensionsPanel.categoryActivity' => 'Activities',
+			'extensionsPanel.categoryContest' => 'Contests',
 			'extensionsPanel.categoryLookup' => 'Callsign Lookups',
 			'extensionsPanel.categoryOther' => 'Other Extensions',
 			'extensionsPanel.searchHint' => 'Search extensions',
@@ -2293,6 +2315,12 @@ extension on Translations {
 			'loggingControls.info.noticeNewBand' => 'New Band',
 			'loggingControls.info.noticeNewMode' => 'New Mode',
 			'loggingControls.info.noticeNewDXCC' => 'New DXCC',
+			'loggingControls.info.noticeNewMult' => 'New Mult',
+			'loggingControls.info.noticeNewZone' => 'New Zone',
+			'loggingControls.info.noticeInvalidMode' => 'Wrong Mode',
+			'loggingControls.info.noticeInvalidBand' => 'Wrong Band',
+			'loggingControls.info.noticeInvalidCategory' => 'Not Workable',
+			'loggingControls.info.noticeWorkedBefore' => 'Worked Before',
 			'formChrome.untitled' => '(untitled)',
 			'formChrome.showMore' => 'Show more',
 			'formChrome.showAll' => 'Show all',

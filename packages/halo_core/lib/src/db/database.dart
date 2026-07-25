@@ -106,12 +106,44 @@ class Lookups extends Table {
   Set<Column> get primaryKey => {category, key};
 }
 
-@DriftDatabase(tables: [Operations, Qsos, OperationsBackup, QsosBackup, Lookups])
+/// Serial-number counters, one row per (operation, label) — the sequences a
+/// contest sends as part of its exchange (docs/design/contests.md §5.8).
+///
+/// Device-local and never synced, like `score_cache` and `local_data`: the
+/// numbers themselves are data of record and live on the QSOs, while this is
+/// only a high-water mark. It can always be rebuilt as `max(serial across the
+/// log, including soft-deleted rows) + 1`, which is what makes every hard case
+/// — a delete, an edit, a crash, an inbound sync, an ADIF import — answerable
+/// with "rebuild the counter, never the numbers".
+@DataClassName('SequenceRow')
+class Sequences extends Table {
+  TextColumn get operation => text()();
+
+  /// `<extensionKey>/<key>` plus any scope values, e.g. `cqwpx/serial` or
+  /// `rsgb/serial/2m`. Computed by the core at allocation time from the
+  /// committed QSO, never by the extension — only the core knows which band
+  /// the QSO actually ended up on.
+  TextColumn get label => text()();
+
+  /// The next number to issue.
+  IntColumn get nextValue => integer()();
+
+  /// First number this sequence issues; the operator can set it when they
+  /// logged the first hour on paper.
+  IntColumn get startValue => integer().withDefault(const Constant(1))();
+
+  IntColumn get updatedAtMillis => integer().nullable()();
+
+  @override
+  Set<Column> get primaryKey => {operation, label};
+}
+
+@DriftDatabase(tables: [Operations, Qsos, OperationsBackup, QsosBackup, Lookups, Sequences])
 class HaLoDatabase extends _$HaLoDatabase {
   HaLoDatabase(super.executor);
 
   @override
-  int get schemaVersion => 4;
+  int get schemaVersion => 5;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -130,6 +162,12 @@ class HaLoDatabase extends _$HaLoDatabase {
             // information" on both sides of the comparison.
             await m.addColumn(operations, operations.updatedAtMillis);
             await m.addColumn(qsos, qsos.updatedAtMillis);
+          }
+          if (from < 5) {
+            // No backfill: the counter is derived, so an operation that
+            // already has serials on its QSOs rebuilds its high-water mark
+            // from the log the first time it allocates.
+            await m.createTable(sequences);
           }
         },
       );

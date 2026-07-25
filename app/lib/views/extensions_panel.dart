@@ -18,7 +18,7 @@ import '../i18n/strings.g.dart';
 import '../main.dart';
 
 /// Category display order; anything unrecognized lands in "other".
-const _categoryOrder = ['activity', 'lookup'];
+const _categoryOrder = ['activity', 'contest', 'lookup'];
 
 class ExtensionsPanel extends StatefulWidget {
   final HaLoServices services;
@@ -67,12 +67,14 @@ class ExtensionsPanelState extends State<ExtensionsPanel> {
 
   String _categoryTitle(String category) => switch (category) {
         'activity' => t.extensionsPanel.categoryActivity,
+        'contest' => t.extensionsPanel.categoryContest,
         'lookup' => t.extensionsPanel.categoryLookup,
         _ => t.extensionsPanel.categoryOther,
       };
 
   IconData _categoryIcon(String? category) => switch (category) {
         'activity' => Icons.explore,
+        'contest' => Icons.emoji_events,
         'lookup' => Icons.person_search,
         _ => Icons.extension,
       };

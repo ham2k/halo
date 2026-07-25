@@ -27,6 +27,22 @@ typedef RefDecorator = Future<Map<String, dynamic>> Function(Map<String, dynamic
 /// `$1`, because a replacement can concatenate a group directly against a
 /// literal that starts with a digit (e.g. a DXCC prefix like "3D2") — bare
 /// `$13` would misparse as group 13 instead of group 1 followed by "3".
+/// Compiles a descriptor's `pattern` the way every control kind must: anchored
+/// to the whole value, case-insensitive (logging input is uppercased anyway),
+/// and returning null rather than throwing on a malformed regex — an extension
+/// typo should disable validation, not crash the logging panel.
+///
+/// Shared so `refList` and `text` can't drift apart: the same pattern string
+/// has to mean the same thing whichever kind an extension puts it on.
+RegExp? compileRefPattern(String? pattern) {
+  if (pattern == null) return null;
+  try {
+    return RegExp('^(?:$pattern)\$', caseSensitive: false);
+  } catch (_) {
+    return null;
+  }
+}
+
 class RefTransform {
   final String pattern;
   final String replacement;
@@ -64,7 +80,7 @@ TextEditingValue _typedAtCursor(TextEditingValue oldValue, String text, List<Ref
   );
   newValue = _upperCaseFormatter.formatEditUpdate(oldValue, newValue);
   if (transforms.isNotEmpty) {
-    newValue = _RefTransformFormatter(transforms).formatEditUpdate(oldValue, newValue);
+    newValue = RefTransformFormatter(transforms).formatEditUpdate(oldValue, newValue);
   }
   return newValue;
 }
@@ -73,10 +89,10 @@ TextEditingValue _typedAtCursor(TextEditingValue oldValue, String text, List<Ref
 /// native side of the extension's declarative reformatting contract.
 /// Malformed transform sources (an extension bug) are skipped rather than
 /// thrown, since this formatter runs on every keystroke.
-class _RefTransformFormatter extends TextInputFormatter {
+class RefTransformFormatter extends TextInputFormatter {
   final List<RefTransform> transforms;
 
-  _RefTransformFormatter(this.transforms);
+  RefTransformFormatter(this.transforms);
 
   @override
   TextEditingValue formatEditUpdate(TextEditingValue oldValue, TextEditingValue newValue) {
@@ -171,15 +187,7 @@ class _RefTextInputState extends State<RefTextInput> {
 
   String _joined(List<Map<String, dynamic>> refs) => refs.map((r) => r['ref'] as String? ?? '').join(', ');
 
-  RegExp? get _regex {
-    final pattern = widget.pattern;
-    if (pattern == null) return null;
-    try {
-      return RegExp('^(?:$pattern)\$', caseSensitive: false);
-    } catch (_) {
-      return null;
-    }
-  }
+  RegExp? get _regex => compileRefPattern(widget.pattern);
 
   @override
   void initState() {
@@ -284,7 +292,7 @@ class _RefTextInputState extends State<RefTextInput> {
         inputFormatters: [
           FilteringTextInputFormatter.allow(RegExp(r'[a-zA-Z0-9\-, ]')),
           _upperCaseFormatter,
-          if (widget.transforms.isNotEmpty) _RefTransformFormatter(widget.transforms),
+          if (widget.transforms.isNotEmpty) RefTransformFormatter(widget.transforms),
         ],
         onChanged: _emit,
       ),

@@ -13,4 +13,5 @@ export 'src/ham/radio.dart';
 export 'src/models/models.dart';
 export 'src/models/operation_title.dart';
 export 'src/repo/repositories.dart';
+export 'src/repo/sequences.dart';
 export 'src/sync/sync_engine.dart';
