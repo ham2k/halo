@@ -32,7 +32,8 @@
     "consentUsageBody": "Para ayudarnos a mejorar la app, nos gustaría recopilar datos de rendimiento, fallos y uso.",
     "consentUsageLabel": "Compartir datos de uso",
     "consentOperationBody": "Algunas funciones pueden implicar compartir datos de tus operaciones con otros usuarios. Puedes desactivarlo en cualquier momento.",
-    "consentOperationLabel": "Compartir datos de operaciones"
+    "consentOperationLabel": "Compartir datos de operaciones",
+    "finishingSetup": "Terminando la configuración — descargando datos de referencia…"
   },
   "startScreen": {
     "credits": "por KI2D y amigos"

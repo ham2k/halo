@@ -209,6 +209,39 @@ void main() {
     await drainTimers(tester);
   });
 
+  testWidgets('Done shows a finishing-setup wait state before dismissing (issue #379)', (tester) async {
+    final services = await makeServices();
+    await pumpApp(tester, services);
+
+    // Walk to the consent (final) step.
+    await tester.tap(find.text('Continue'));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.widgetWithText(TextField, "Operator's Callsign"), 'ki2d');
+    await tester.tap(find.text('Continue'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Continue'));
+    await tester.pumpAndSettle();
+    expect(find.text('Data & Privacy'), findsOneWidget);
+
+    await tester.tap(find.text('Done'));
+    // A single frame, not pumpAndSettle: catches the wait state mid-flight,
+    // before the (mocked, near-instant) data-file sync resolves and the
+    // overlay dismisses — proving Done actually pauses rather than just
+    // eventually finishing.
+    await tester.pump();
+
+    expect(find.byType(CircularProgressIndicator), findsOneWidget);
+    expect(find.text('Finishing setup — downloading reference data…'), findsOneWidget);
+    expect(find.byType(OnboardingOverlayView), findsOneWidget, reason: 'must still be up mid-sync');
+    // Both buttons disabled while finishing — no way to back out or double-tap.
+    expect(tester.widget<FilledButton>(find.widgetWithText(FilledButton, 'Done')).onPressed, isNull);
+    expect(tester.widget<TextButton>(find.widgetWithText(TextButton, 'Back')).onPressed, isNull);
+
+    await tester.pumpAndSettle();
+    expect(find.byType(OnboardingOverlayView), findsNothing);
+    await drainTimers(tester);
+  });
+
   testWidgets('Enter advances every step like its primary button', (tester) async {
     final services = await makeServices();
     await pumpApp(tester, services);

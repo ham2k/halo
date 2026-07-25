@@ -177,6 +177,9 @@ class Translations$onboarding$en {
 
 	/// en: 'Share Operation Data'
 	String get consentOperationLabel => 'Share Operation Data';
+
+	/// en: 'Finishing setup — downloading reference data…'
+	String get finishingSetup => 'Finishing setup — downloading reference data…';
 }
 
 // Path: startScreen
@@ -2158,6 +2161,7 @@ extension on Translations {
 			'onboarding.consentUsageLabel' => 'Share Usage Data',
 			'onboarding.consentOperationBody' => 'Some features might involve sharing your operation data with other users. You can opt-out at any time.',
 			'onboarding.consentOperationLabel' => 'Share Operation Data',
+			'onboarding.finishingSetup' => 'Finishing setup — downloading reference data…',
 			'startScreen.credits' => 'by KI2D and friends',
 			'extensionsPanel.categoryActivity' => 'Activities',
 			'extensionsPanel.categoryContest' => 'Contests',

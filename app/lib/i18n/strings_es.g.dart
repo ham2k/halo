@@ -114,6 +114,7 @@ class _Translations$onboarding$es extends Translations$onboarding$en {
 	@override String get consentUsageLabel => 'Compartir datos de uso';
 	@override String get consentOperationBody => 'Algunas funciones pueden implicar compartir datos de tus operaciones con otros usuarios. Puedes desactivarlo en cualquier momento.';
 	@override String get consentOperationLabel => 'Compartir datos de operaciones';
+	@override String get finishingSetup => 'Terminando la configuración — descargando datos de referencia…';
 }
 
 // Path: startScreen
@@ -1178,6 +1179,7 @@ extension on TranslationsEs {
 			'onboarding.consentUsageLabel' => 'Compartir datos de uso',
 			'onboarding.consentOperationBody' => 'Algunas funciones pueden implicar compartir datos de tus operaciones con otros usuarios. Puedes desactivarlo en cualquier momento.',
 			'onboarding.consentOperationLabel' => 'Compartir datos de operaciones',
+			'onboarding.finishingSetup' => 'Terminando la configuración — descargando datos de referencia…',
 			'startScreen.credits' => 'por KI2D y amigos',
 			'extensionsPanel.categoryActivity' => 'Actividades',
 			'extensionsPanel.categoryContest' => 'Concursos',

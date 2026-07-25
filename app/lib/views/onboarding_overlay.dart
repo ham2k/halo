@@ -89,6 +89,14 @@ class _OnboardingOverlayViewState extends State<OnboardingOverlayView> {
   bool _navLocked = false;
   Timer? _navLockTimer;
 
+  /// True from the moment Done is tapped until the overlay dismisses —
+  /// swaps the consent step's body/buttons for a wait state (issue #379):
+  /// call-notes' data file and any just-enabled extension's own data file
+  /// (POTA/SOTA parks/summits) may still be downloading, and letting the
+  /// user in before they land means the app looks broken (empty lookups,
+  /// no nearby suggestions) rather than still setting up.
+  bool _finishingSetup = false;
+
   void _goTo(_OnboardingStep step) {
     if (_navLocked || step == _step) return;
     _navLocked = true;
@@ -228,11 +236,11 @@ class _OnboardingOverlayViewState extends State<OnboardingOverlayView> {
   Future<void> _persistChoices() async {
     final settings = widget.services.settings;
     // The activity picks are real extension enable/disable overrides
-    // (Extensions settings panel, issue #25). Not awaited: the overrides
-    // persist synchronously inside before any runtime restart, and the
-    // restart — only when the effective set actually changed — can run
-    // behind the overlay.
-    unawaited(widget.services.extensions.setExtensionsEnabled({'pota': _pota, 'sota': _sota}));
+    // (Extensions settings panel, issue #25). Awaited (unlike before
+    // issue #379): _finish syncs data files right after, which needs the
+    // runtime restart this triggers to have already loaded a newly-enabled
+    // extension, or its dataFile hook wouldn't be there to ask yet.
+    await widget.services.extensions.setExtensionsEnabled({'pota': _pota, 'sota': _sota});
     await settings.updateSettingsGroup(SettingsService.privacyGroup, {
       'consentAppData': _consentAppData,
       'consentOpData': _consentOpData,
@@ -240,8 +248,16 @@ class _OnboardingOverlayViewState extends State<OnboardingOverlayView> {
   }
 
   Future<void> _finish() async {
+    if (_finishingSetup) return;
     FocusManager.instance.primaryFocus?.unfocus();
+    setState(() => _finishingSetup = true);
     await _persistChoices();
+    // Waits for call-notes' data file and any now-enabled extension's own
+    // (POTA/SOTA parks/summits) to finish downloading (issue #379) — already
+    // a no-op for anything fresh (see syncAllDataFiles' staleness check), so
+    // this only actually waits on what genuinely still needs fetching.
+    await widget.services.dataFiles.syncAllDataFiles();
+    if (!mounted) return;
     widget.onDone();
   }
 
@@ -545,32 +561,42 @@ class _OnboardingOverlayViewState extends State<OnboardingOverlayView> {
       case _OnboardingStep.consent:
         return _stepScaffold(
           title: Text(s.consentTitle, style: titleStyle),
-          body: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Text(s.consentUsageBody, style: bodyStyle),
-              SwitchListTile(
-                dense: true,
-                contentPadding: EdgeInsets.zero,
-                title: Text(s.consentUsageLabel, style: bodyStyle?.copyWith(fontWeight: FontWeight.bold)),
-                value: _consentAppData,
-                onChanged: (v) => setState(() => _consentAppData = v),
-              ),
-              const SizedBox(height: 8),
-              Text(s.consentOperationBody, style: bodyStyle),
-              SwitchListTile(
-                dense: true,
-                contentPadding: EdgeInsets.zero,
-                title: Text(s.consentOperationLabel, style: bodyStyle?.copyWith(fontWeight: FontWeight.bold)),
-                value: _consentOpData,
-                onChanged: (v) => setState(() => _consentOpData = v),
-              ),
-            ],
-          ),
+          body: _finishingSetup
+              ? Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const SizedBox(height: 24),
+                    const CircularProgressIndicator(),
+                    const SizedBox(height: 16),
+                    Text(s.finishingSetup, style: bodyStyle, textAlign: TextAlign.center),
+                  ],
+                )
+              : Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Text(s.consentUsageBody, style: bodyStyle),
+                    SwitchListTile(
+                      dense: true,
+                      contentPadding: EdgeInsets.zero,
+                      title: Text(s.consentUsageLabel, style: bodyStyle?.copyWith(fontWeight: FontWeight.bold)),
+                      value: _consentAppData,
+                      onChanged: (v) => setState(() => _consentAppData = v),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(s.consentOperationBody, style: bodyStyle),
+                    SwitchListTile(
+                      dense: true,
+                      contentPadding: EdgeInsets.zero,
+                      title: Text(s.consentOperationLabel, style: bodyStyle?.copyWith(fontWeight: FontWeight.bold)),
+                      value: _consentOpData,
+                      onChanged: (v) => setState(() => _consentOpData = v),
+                    ),
+                  ],
+                ),
           secondaryLabel: s.back,
-          onSecondary: () => _goTo(_OnboardingStep.activities),
+          onSecondary: _finishingSetup ? null : () => _goTo(_OnboardingStep.activities),
           primaryLabel: s.done,
-          onPrimary: _finish,
+          onPrimary: _finishingSetup ? null : _finish,
           isHeightConstrained: isHeightConstrained,
         );
     }
@@ -581,9 +607,9 @@ class _OnboardingOverlayViewState extends State<OnboardingOverlayView> {
     required Widget title,
     required Widget body,
     required String secondaryLabel,
-    required VoidCallback onSecondary,
+    required VoidCallback? onSecondary,
     required String primaryLabel,
-    required VoidCallback onPrimary,
+    required VoidCallback? onPrimary,
     ButtonStyle? secondaryButtonStyle,
     required bool isHeightConstrained,
   }) {
