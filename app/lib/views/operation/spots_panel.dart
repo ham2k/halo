@@ -26,6 +26,11 @@ const _digitalModes = {'FT8', 'FT4', 'RTTY', 'DATA'};
 const _ageOptionsInMinutes = [15, 30, 60, 180];
 
 String? _callOf(Map<String, dynamic> spot) => (spot['their'] as Map?)?['call'] as String?;
+/// The individual operator callsigns within a `their.call` — a comma-joined
+/// compound for a multi-op spot (see `mergeSpotsByFreqAndRefs`), a single call
+/// otherwise. Empty segments are dropped. Everything that keys off `_callNotes`
+/// (per single call) must iterate these, not the raw compound string (#316).
+Iterable<String> _callsIn(String? call) => (call ?? '').split(',').where((c) => c.isNotEmpty);
 double? _freqOf(Map<String, dynamic> spot) => (spot['freq'] as num?)?.toDouble();
 String? _bandOf(Map<String, dynamic> spot) => spot['band'] as String?;
 String? _modeOf(Map<String, dynamic> spot) => spot['mode'] as String?;
@@ -164,10 +169,9 @@ List<({String key, List<Map<String, dynamic>> spots})> sectionSpots(
   final sections = <({String key, List<Map<String, dynamic>> spots})>[];
 
   if (callsWithNotes.isNotEmpty) {
-    final noted = spots.where((s) {
-      final call = _callOf(s);
-      return call != null && callsWithNotes.contains(call);
-    }).toList();
+    // Pin a multi-op spot when ANY of its operators has a note (#316) — a
+    // compound `their.call` never matches the per-call `callsWithNotes` set.
+    final noted = spots.where((s) => _callsIn(_callOf(s)).any(callsWithNotes.contains)).toList();
     if (noted.isNotEmpty) sections.add((key: 'notes', spots: noted));
   }
 
@@ -197,6 +201,34 @@ Map<String, dynamic> suggestedQsoFromSpot(Map<String, dynamic> spot) => {
       if (_modeOf(spot) != null) 'mode': _modeOf(spot),
       'refs': _refsOf(spot),
     };
+
+/// Whether a spot survives the Continent filter. `call` is the spot's
+/// `their.call`, which for a multi-op spot is the comma-joined compound of
+/// every operator on that frequency (see `mergeSpotsByFreqAndRefs`);
+/// `continentOf` resolves a SINGLE callsign to its continent (null when it
+/// hasn't been looked up yet, or never resolves).
+///
+/// A spot passes if ANY of its operators is on a continent that isn't
+/// disabled — or whose continent is still unknown. Reading the compound
+/// `their.call` as one key was the bug behind #316: it never matched the
+/// per-call `continentOf` map, so every multi-op spot looked
+/// permanently-unresolved and slipped through the filter untouched. Keeping
+/// the "unknown continent never hides a spot" rule means we only hide a spot
+/// when EVERY known operator is on a disabled continent. Public for
+/// `spots_panel_merge_test.dart`.
+bool spotPassesContinentFilter(
+  String? call,
+  Set<String> disabledContinents,
+  String? Function(String call) continentOf,
+) {
+  if (disabledContinents.isEmpty) return true;
+  final calls = _callsIn(call);
+  if (calls.isEmpty) return true;
+  return calls.any((c) {
+    final continent = continentOf(c);
+    return continent == null || !disabledContinents.contains(continent);
+  });
+}
 
 String _timeAgo(int millis) {
   final seconds = (DateTime.now().millisecondsSinceEpoch - millis) ~/ 1000;
@@ -427,14 +459,11 @@ class _SpotsPanelState extends State<SpotsPanel> {
       spots = spots.where((s) => _timeOf(s) >= cutoff).toList();
     }
     if (_disabledContinents.isNotEmpty) {
-      // A callsign whose continent hasn't resolved yet (or never will —
-      // e.g. an unparseable call) always passes through: the Continent
-      // filter can only ever narrow calls it actually knows about, never
-      // hide a spot just because the lookup hasn't finished.
-      spots = spots.where((s) {
-        final continent = _callNotes[_callOf(s)]?.continent;
-        return continent == null || !_disabledContinents.contains(continent);
-      }).toList();
+      // Per-operator so multi-op spots narrow correctly (#316); an unresolved
+      // continent never hides a spot. See spotPassesContinentFilter.
+      spots = spots
+          .where((s) => spotPassesContinentFilter(_callOf(s), _disabledContinents, (c) => _callNotes[c]?.continent))
+          .toList();
     }
     spots = sortSpots(spots, _sortBy);
     return (filtered: spots, total: total);
@@ -451,6 +480,17 @@ class _SpotsPanelState extends State<SpotsPanel> {
       if (continent != null) counts.update(continent, (c) => c + 1, ifAbsent: () => 1);
     }
     return counts;
+  }
+
+  /// The note emoji to show on a spot's tile — the first of its operators
+  /// that has one, so a multi-op spot still shows a marker when any op is
+  /// noted (#316; the compound `their.call` never matched `_callNotes`).
+  String? _noteEmojiOf(Map<String, dynamic> spot) {
+    for (final call in _callsIn(_callOf(spot))) {
+      final emoji = _callNotes[call]?.emoji;
+      if (emoji != null) return emoji;
+    }
+    return null;
   }
 
   /// Merged spots, same as `_filteredSpotsSummary`'s `total` stage — the
@@ -643,7 +683,7 @@ class _SpotsPanelState extends State<SpotsPanel> {
                   for (final spot in section.spots)
                     _SpotTile(
                       spot: spot,
-                      noteEmoji: _callNotes[_callOf(spot)]?.emoji,
+                      noteEmoji: _noteEmojiOf(spot),
                       hzDigits: hzDigits,
                       leftWidth: leftWidth,
                       sortByAge: _sortBy == 'time',

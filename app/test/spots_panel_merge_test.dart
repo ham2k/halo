@@ -286,6 +286,18 @@ void main() {
 
       expect(sections.map((s) => s.key), ['20m']);
     });
+
+    test('a multi-op spot is pinned when ANY of its operators has a note (#316)', () {
+      // A merged multi-op spot's call is the comma-joined compound; the notes
+      // set holds individual calls, so pinning must match on any operator.
+      final spots = [_spot(call: 'K1ABC,W1XYZ', band: '20m', timeInMillis: 1000)];
+
+      // Note on the SECOND op only — the compound never equals 'W1XYZ'.
+      final sections = sectionSpots(spots, callsWithNotes: {'W1XYZ'});
+
+      expect(sections.map((s) => s.key), ['notes', '20m']);
+      expect((sections.first.spots.single['their'] as Map)['call'], 'K1ABC,W1XYZ');
+    });
   });
 
   group('suggestedQsoFromSpot', () {
@@ -368,6 +380,56 @@ void main() {
 
     test('the retired "notDigital" resets to auto (it spanned two super modes)', () {
       expect(normalizeModeFilter('notDigital'), 'auto');
+    });
+  });
+
+  group('spotPassesContinentFilter (#316)', () {
+    // Resolver from a per-call continent map, mirroring _callNotes.
+    String? Function(String) continentOf(Map<String, String?> byCall) => (c) => byCall[c];
+    final continents = continentOf({'K1ABC': 'NA', 'W1XYZ': 'NA', 'DL1ABC': 'EU', 'JA1ABC': 'AS'});
+
+    test('single-op spot on a disabled continent is hidden', () {
+      expect(spotPassesContinentFilter('DL1ABC', {'EU'}, continents), isFalse);
+    });
+
+    test('single-op spot on an enabled continent passes', () {
+      expect(spotPassesContinentFilter('K1ABC', {'EU'}, continents), isTrue);
+    });
+
+    test('a call with an unresolved continent always passes (never hidden by the filter)', () {
+      expect(spotPassesContinentFilter('UNKNOWN', {'EU'}, continents), isTrue);
+    });
+
+    test('empty disabled set never narrows', () {
+      expect(spotPassesContinentFilter('DL1ABC', const {}, continents), isTrue);
+    });
+
+    // The #316 regression: a multi-op spot's their.call is the comma-joined
+    // compound; the old code looked the whole string up in the per-call map,
+    // always missed, and let every multi-op spot bypass the filter.
+    test('multi-op spot where EVERY operator is on a disabled continent is hidden', () {
+      expect(spotPassesContinentFilter('DL1ABC,DL1ABC', {'EU'}, continents), isFalse);
+    });
+
+    test('multi-op spot passes when ANY operator is on an enabled continent', () {
+      // DL1ABC (EU, disabled) + K1ABC (NA, enabled) — the NA op is workable, keep it.
+      expect(spotPassesContinentFilter('DL1ABC,K1ABC', {'EU'}, continents), isTrue);
+    });
+
+    test('multi-op spot passes when any operator\'s continent is still unresolved', () {
+      expect(spotPassesContinentFilter('DL1ABC,UNKNOWN', {'EU'}, continents), isTrue);
+    });
+
+    test('multi-op spot hidden only when all its disabled-continent ops are known', () {
+      // Both ops on disabled continents (EU + AS both disabled) → hidden.
+      expect(spotPassesContinentFilter('DL1ABC,JA1ABC', {'EU', 'AS'}, continents), isFalse);
+      // Same spot but AS re-enabled → the JA op is workable → passes.
+      expect(spotPassesContinentFilter('DL1ABC,JA1ABC', {'EU'}, continents), isTrue);
+    });
+
+    test('a call-less spot passes', () {
+      expect(spotPassesContinentFilter('', {'EU'}, continents), isTrue);
+      expect(spotPassesContinentFilter(null, {'EU'}, continents), isTrue);
     });
   });
 }
