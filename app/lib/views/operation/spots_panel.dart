@@ -25,6 +25,12 @@ const _digitalModes = {'FT8', 'FT4', 'RTTY', 'DATA'};
 
 const _ageOptionsInMinutes = [15, 30, 60, 180];
 
+/// Height of the initial-load progress bar above the spots list — reserved
+/// whether or not a fetch is running, matching LinearProgressIndicator's own
+/// default thickness. Same value/convention as activities_view.dart's
+/// `_searchProgressHeight` (#360).
+const _spotsProgressHeight = 4.0;
+
 String? _callOf(Map<String, dynamic> spot) => (spot['their'] as Map?)?['call'] as String?;
 /// The individual operator callsigns within a `their.call` — a comma-joined
 /// compound for a multi-op spot (see `mergeSpotsByFreqAndRefs`), a single call
@@ -595,7 +601,6 @@ class _SpotsPanelState extends State<SpotsPanel> {
     final theme = Theme.of(context);
     final vfo = widget.services.radio.vfoA;
 
-    if (_loading) return const Center(child: CircularProgressIndicator());
     if (_error != null) {
       return Center(child: Text(t.operation.spots.error(error: _error!), style: theme.textTheme.bodyMedium));
     }
@@ -613,6 +618,7 @@ class _SpotsPanelState extends State<SpotsPanel> {
           onTap: _openFilterDialog,
           onRefresh: _refresh,
           refreshing: _refreshing,
+          loading: _loading,
         ),
         // Clears the bottom safe area (home indicator) itself, now that the
         // status footer no longer reserves it globally; the panel fills behind.
@@ -670,12 +676,18 @@ class _SpotsPanelState extends State<SpotsPanel> {
     return RefreshIndicator(
       onRefresh: _fetch,
       child: filtered.isEmpty
-          ? ListView(children: [
-              Padding(
-                padding: const EdgeInsets.all(32),
-                child: Center(child: Text(t.operation.spots.empty, style: theme.textTheme.bodyMedium)),
-              ),
-            ])
+          // While the initial fetch is still in flight (see the progress bar
+          // above), "no spots" would be misleading — none have loaded yet,
+          // not necessarily none exist (#360, matches activities_view.dart's
+          // own loading/empty-message split).
+          ? (_loading
+              ? const SizedBox.shrink()
+              : ListView(children: [
+                  Padding(
+                    padding: const EdgeInsets.all(32),
+                    child: Center(child: Text(t.operation.spots.empty, style: theme.textTheme.bodyMedium)),
+                  ),
+                ]))
           : ListView(
               children: [
                 for (final section in sections) ...[
@@ -982,6 +994,10 @@ class _SpotsFilterPill extends StatelessWidget {
   final VoidCallback onRefresh;
   final bool refreshing;
 
+  /// Whether the initial spots fetch is still in flight (#360) — shows the
+  /// progress bar reserved at the bottom of this pill's own background.
+  final bool loading;
+
   const _SpotsFilterPill({
     required this.bandLabel,
     required this.modeLabel,
@@ -991,6 +1007,7 @@ class _SpotsFilterPill extends StatelessWidget {
     required this.onTap,
     required this.onRefresh,
     required this.refreshing,
+    required this.loading,
   });
 
   @override
@@ -1005,54 +1022,67 @@ class _SpotsFilterPill extends StatelessWidget {
       // Same background as the main logging control area (logging_controls.dart's
       // outer `Material`), so this toggle row reads as the same kind of UI chrome.
       color: theme.colorScheme.tertiaryContainer,
-      child: Padding(
-        // Left/right clear the real device inset (ham2k/app-halo-dist#205)
-        // — the row's own content is centered, but a wide enough pane on a
-        // device with a landscape cutout could still push a pill under it.
-        padding: PaneSafeArea.symmetricOf(context, vertical: 4),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            // Extra breathing room above and below the pill row.
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: 6),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  // Desktop-only manual refresh — mobile refreshes by
-                  // pull-to-refresh instead (RefreshIndicator on the list below).
-                  if (!isMobilePlatform) ...[
-                    _FilterInfoPill(
-                      icon: 'refresh',
-                      color: Colors.black,
-                      loading: refreshing,
-                      onTap: refreshing ? null : onRefresh,
-                    ),
-                    const SizedBox(width: 6),
-                  ],
-                  // The only pill that can grow; flex it so it ellipsizes on a
-                  // narrow panel rather than overflowing the row.
-                  Flexible(child: _FilterInfoPill(icon: 'radio', label: '$bandLabel • $modeLabel', onTap: onTap)),
-                  if (ageMinutes != null) ...[
-                    const SizedBox(width: 6),
-                    _FilterInfoPill(icon: 'clock', label: '${ageMinutes}m', onTap: onTap),
-                  ],
-                  const SizedBox(width: 6),
-                  _FilterInfoPill(icon: 'tune', color: Colors.black, onTap: onTap),
-                ],
-              ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Padding(
+            // Left/right clear the real device inset (ham2k/app-halo-dist#205)
+            // — the row's own content is centered, but a wide enough pane on a
+            // device with a landscape cutout could still push a pill under it.
+            padding: PaneSafeArea.symmetricOf(context, vertical: 4),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Extra breathing room above and below the pill row.
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 6),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      // Desktop-only manual refresh — mobile refreshes by
+                      // pull-to-refresh instead (RefreshIndicator on the list below).
+                      if (!isMobilePlatform) ...[
+                        _FilterInfoPill(
+                          icon: 'refresh',
+                          color: Colors.black,
+                          loading: refreshing,
+                          onTap: refreshing ? null : onRefresh,
+                        ),
+                        const SizedBox(width: 6),
+                      ],
+                      // The only pill that can grow; flex it so it ellipsizes on a
+                      // narrow panel rather than overflowing the row.
+                      Flexible(child: _FilterInfoPill(icon: 'radio', label: '$bandLabel • $modeLabel', onTap: onTap)),
+                      if (ageMinutes != null) ...[
+                        const SizedBox(width: 6),
+                        _FilterInfoPill(icon: 'clock', label: '${ageMinutes}m', onTap: onTap),
+                      ],
+                      const SizedBox(width: 6),
+                      _FilterInfoPill(icon: 'tune', color: Colors.black, onTap: onTap),
+                    ],
+                  ),
+                ),
+                Text(
+                  countLabel,
+                  // Two points larger than the default caption so the spot count
+                  // reads clearly under the pills.
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.onTertiaryContainer,
+                    fontSize: (theme.textTheme.bodySmall?.fontSize ?? 12) + 2,
+                  ),
+                ),
+              ],
             ),
-            Text(
-              countLabel,
-              // Two points larger than the default caption so the spot count
-              // reads clearly under the pills.
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: theme.colorScheme.onTertiaryContainer,
-                fontSize: (theme.textTheme.bodySmall?.fontSize ?? 12) + 2,
-              ),
-            ),
-          ],
-        ),
+          ),
+          // Reserved whether or not the initial fetch is in flight (#360) —
+          // lives at the bottom of THIS pill's own (salmon/tertiaryContainer)
+          // background, flush with its lower edge, rather than floating on
+          // the plain scaffold background below the whole filter area.
+          SizedBox(
+            height: _spotsProgressHeight,
+            child: loading ? const LinearProgressIndicator(minHeight: _spotsProgressHeight) : null,
+          ),
+        ],
       ),
     );
   }
