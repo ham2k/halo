@@ -1,5 +1,7 @@
 import 'dart:async';
+import 'dart:io' as io;
 import 'dart:math' as math;
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_svg/flutter_svg.dart';
@@ -174,6 +176,16 @@ class HomeView extends StatefulWidget {
   State<HomeView> createState() => _HomeViewState();
 }
 
+/// How many new operations a user has to open before the FAB's onboarding
+/// nudge (see [_NewOperationNudge]) stops — issue #348.
+const _newOperationNudgeThreshold = 2;
+
+/// A vivid cyan-leaning version of colorScheme.primary (#006783, same hue,
+/// lightness pushed up), used only for the FAB so it stands out against the
+/// operation list rather than blending in like a regular primary-colored
+/// control.
+const _fabColor = Color(0xFF00B4E6);
+
 class _HomeViewState extends State<HomeView> {
   bool _isFabExtended = true;
 
@@ -200,6 +212,9 @@ class _HomeViewState extends State<HomeView> {
         stationCall: widget.services.settings.activeProfile.operatorCall,
       );
       widget.services.track('operation_created');
+      // Counts opened new operations, not overlay displays (issue #348) —
+      // what the FAB's nudge (_NewOperationNudge) is gated on.
+      unawaited(widget.services.settings.recordOnboardingShown(OnboardingFlows.newOperation));
       if (context.mounted) {
         // The guard stays up until the pushed route pops back to this
         // screen — the home screen remains hit-testable during the push
@@ -393,64 +408,73 @@ class _HomeViewState extends State<HomeView> {
                           // under them.
                           bottom: 16 + PaneSafeArea.bottomOf(context),
                           right: 16 + PaneSafeArea.rightOf(context),
-                          child: AnimatedSize(
-                            duration: const Duration(milliseconds: 300),
-                            curve: Curves.easeInOut,
-                            child: Container(
-                              height: 56,
-                              width: _isFabExtended ? null : 56,
-                              decoration: BoxDecoration(
-                                color: theme.colorScheme.primaryContainer,
-                                borderRadius: BorderRadius.circular(16),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: Colors.black.withValues(alpha: 0.15),
-                                    blurRadius: 6,
-                                    offset: const Offset(0, 3),
+                          child: ListenableBuilder(
+                            listenable: widget.services.settings,
+                            builder: (context, _) {
+                              final fab = AnimatedSize(
+                                duration: const Duration(milliseconds: 300),
+                                curve: Curves.easeInOut,
+                                child: Container(
+                                  height: 56,
+                                  width: _isFabExtended ? null : 56,
+                                  decoration: BoxDecoration(
+                                    color: _fabColor,
+                                    borderRadius: BorderRadius.circular(16),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: Colors.black.withValues(alpha: 0.15),
+                                        blurRadius: 6,
+                                        offset: const Offset(0, 3),
+                                      ),
+                                    ],
                                   ),
-                                ],
-                              ),
-                              child: Material(
-                                color: Colors.transparent,
-                                child: InkWell(
-                                  borderRadius: BorderRadius.circular(16),
-                                  onTap: () => _newOperation(context),
-                                  child: Padding(
-                                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                                    child: Row(
-                                      mainAxisAlignment: MainAxisAlignment.center,
-                                      children: [
-                                        Icon(MdiIcons.plus, color: theme.colorScheme.onPrimaryContainer),
-                                        AnimatedSize(
-                                          duration: const Duration(milliseconds: 300),
-                                          curve: Curves.easeInOut,
-                                          child: SizedBox(
-                                            width: _isFabExtended ? null : 0,
-                                            child: AnimatedOpacity(
+                                  child: Material(
+                                    color: Colors.transparent,
+                                    child: InkWell(
+                                      borderRadius: BorderRadius.circular(16),
+                                      onTap: () => _newOperation(context),
+                                      child: Padding(
+                                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                                        child: Row(
+                                          mainAxisAlignment: MainAxisAlignment.center,
+                                          children: [
+                                            Icon(MdiIcons.plus, color: theme.colorScheme.onPrimary),
+                                            AnimatedSize(
                                               duration: const Duration(milliseconds: 300),
                                               curve: Curves.easeInOut,
-                                              opacity: _isFabExtended ? 1.0 : 0.0,
-                                              child: Padding(
-                                                padding: const EdgeInsets.only(left: 8),
-                                                child: Text(
-                                                  context.t.home.newOperation,
-                                                  maxLines: 1,
-                                                  softWrap: false,
-                                                  style: theme.textTheme.labelLarge?.copyWith(
-                                                    color: theme.colorScheme.onPrimaryContainer,
-                                                    fontWeight: FontWeight.bold,
+                                              child: SizedBox(
+                                                width: _isFabExtended ? null : 0,
+                                                child: AnimatedOpacity(
+                                                  duration: const Duration(milliseconds: 300),
+                                                  curve: Curves.easeInOut,
+                                                  opacity: _isFabExtended ? 1.0 : 0.0,
+                                                  child: Padding(
+                                                    padding: const EdgeInsets.only(left: 8),
+                                                    child: Text(
+                                                      context.t.home.newOperation,
+                                                      maxLines: 1,
+                                                      softWrap: false,
+                                                      style: theme.textTheme.labelLarge?.copyWith(
+                                                        color: theme.colorScheme.onPrimary,
+                                                        fontWeight: FontWeight.bold,
+                                                      ),
+                                                    ),
                                                   ),
                                                 ),
                                               ),
                                             ),
-                                          ),
+                                          ],
                                         ),
-                                      ],
+                                      ),
                                     ),
                                   ),
                                 ),
-                              ),
-                            ),
+                              );
+                              final needsNudge = widget.services.settings
+                                      .onboardingShownCount(OnboardingFlows.newOperation) <
+                                  _newOperationNudgeThreshold;
+                              return needsNudge ? _NewOperationNudge(child: fab) : fab;
+                            },
                           ),
                         ),
                       ),
@@ -463,6 +487,81 @@ class _HomeViewState extends State<HomeView> {
           ),
         ),
       ),
+    );
+  }
+}
+
+/// The home view's right column on two-pane layouts: the operation list has
+
+/// Wraps the FAB with a repeating wiggle to draw a first-time user's eye
+/// (issue #348), for as long as [_newOperationNudgeThreshold] new operations
+/// haven't been opened yet. The caller decides WHETHER to include this
+/// widget (by reading the onboarding count) rather than this widget deciding
+/// whether to animate — so once the threshold is reached, it's simply
+/// dropped from the tree instead of needing to smoothly stop a mid-cycle
+/// rotation.
+class _NewOperationNudge extends StatefulWidget {
+  final Widget child;
+
+  const _NewOperationNudge({required this.child});
+
+  @override
+  State<_NewOperationNudge> createState() => _NewOperationNudgeState();
+}
+
+class _NewOperationNudgeState extends State<_NewOperationNudge> with SingleTickerProviderStateMixin {
+  static const _cycle = Duration(milliseconds: 1200);
+
+  late final AnimationController _controller = AnimationController(vsync: this, duration: _cycle);
+
+  @override
+  void initState() {
+    super.initState();
+    // An endlessly-repeating controller never lets pumpAndSettle finish
+    // (same trap as _PulsingGpsPin in activities_view.dart) — settle at rest
+    // under test instead of animating.
+    final isTest = !kIsWeb && io.Platform.environment.containsKey('FLUTTER_TEST');
+    if (isTest) {
+      _controller.value = 0;
+    } else {
+      // Three bursts per mount, then hold still at rest (the sequence's last
+      // segment is already a 0.0 pause) rather than fluttering the whole
+      // time the FAB is below the nudge threshold.
+      _controller.repeat(count: 3);
+    }
+  }
+
+  /// A rapid, small-angle flutter burst, then a pause at rest — reads as an
+  /// occasional nudge rather than constant jitter. Each item's `weight` is
+  /// its share of one [_cycle]; ten short alternating swings over a
+  /// shortened cycle pack many direction changes into a small window,
+  /// reading as a fast tremble rather than a slow rock.
+  late final Animation<double> _angle = TweenSequence<double>([
+    TweenSequenceItem(tween: Tween(begin: 0.0, end: -0.08), weight: 1),
+    TweenSequenceItem(tween: Tween(begin: -0.08, end: 0.08), weight: 1),
+    TweenSequenceItem(tween: Tween(begin: 0.08, end: -0.08), weight: 1),
+    TweenSequenceItem(tween: Tween(begin: -0.08, end: 0.08), weight: 1),
+    TweenSequenceItem(tween: Tween(begin: 0.08, end: -0.08), weight: 1),
+    TweenSequenceItem(tween: Tween(begin: -0.08, end: 0.08), weight: 1),
+    TweenSequenceItem(tween: Tween(begin: 0.08, end: -0.08), weight: 1),
+    TweenSequenceItem(tween: Tween(begin: -0.08, end: 0.08), weight: 1),
+    TweenSequenceItem(tween: Tween(begin: 0.08, end: -0.08), weight: 1),
+    TweenSequenceItem(tween: Tween(begin: -0.08, end: 0.0), weight: 1),
+    TweenSequenceItem(tween: ConstantTween(0.0), weight: 4),
+  ]).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut));
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _angle,
+      builder: (context, child) => Transform.rotate(angle: _angle.value, child: child),
+      child: widget.child,
     );
   }
 }

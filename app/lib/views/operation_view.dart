@@ -228,6 +228,14 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
   /// re-emits on every change, and the pane must only auto-open once.
   bool _openedActivities = false;
 
+  /// Whether THIS view has already auto-opened the sheet for the
+  /// 'operation-sheet' onboarding flow (issue #348) — same one-shot guard as
+  /// [_openedActivities], for the same reason: the operation stream re-emits
+  /// on every change. Independent of [_openedActivities]: this fires for
+  /// ANY operation, new or existing, the first time ever for this user;
+  /// that one only fires for a freshly created operation.
+  bool _openedOperationSheetOnboarding = false;
+
   /// Explicit (not `DefaultTabController`) so `_suggestQso` can switch to
   /// the QSOs tab programmatically — this is its only use in the app.
   /// Because of this, the `Scaffold` below is NOT wrapped in a
@@ -394,17 +402,24 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
     // setting an identity comes first.
     if (widget.openActivities && !_openedActivities) {
       _openedActivities = true;
-      _afterPushTransition(() {
-        // The screen we were pushed over can still hold focus while its
-        // subtree goes away; leaving it focused lets the engine move DOM
-        // focus through a Focus node that is already inactive (web).
-        FocusManager.instance.primaryFocus?.unfocus();
-        if (widget.services.settings.activeProfile.operatorCall.isEmpty) {
-          _promptForCallsign(operation);
-        } else {
-          _editActivities(operation);
-        }
-      });
+      // Also consumes the independent trigger below for THIS view: a new
+      // operation is this view's to handle end to end, including the
+      // existing (pre-#348) case where operatorCall is still empty and only
+      // the callsign prompt shows, never the sheet — that must stay exactly
+      // as it was, not get a second, onboarding-driven attempt to reopen
+      // something on a later re-emission of the operation stream.
+      _openedOperationSheetOnboarding = true;
+      final markOnboardingSeen =
+          widget.services.settings.onboardingShownCount(OnboardingFlows.operationSheet) == 0;
+      _afterPushTransition(() => _openActivitiesOrPromptForCallsign(operation, markOnboardingSeen: markOnboardingSeen));
+    } else if (!_openedOperationSheetOnboarding &&
+        widget.services.settings.onboardingShownCount(OnboardingFlows.operationSheet) == 0) {
+      // Independent of the new-operation auto-open above (issue #348): the
+      // FIRST operation this user ever opens — new or existing — shows the
+      // sheet once, so it isn't a surprise the first time they go looking
+      // for it on an operation that predates the sheet.
+      _openedOperationSheetOnboarding = true;
+      _afterPushTransition(() => _openActivitiesOrPromptForCallsign(operation, markOnboardingSeen: true));
     }
 
     if (!_sideInitStarted) {
@@ -567,6 +582,27 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
   }
 
   Future<void> _editActivities(Operation operation) => _openOperationSheet(operation);
+
+  /// Opens the operation sheet, or — if the profile still has no operator
+  /// callsign (fresh install, no onboarding flow existed for it before) —
+  /// the callsign prompt in its place. [markOnboardingSeen] records the
+  /// 'operation-sheet' onboarding flow as shown, but only once the sheet
+  /// ITSELF actually opens: the callsign prompt isn't the sheet, so hitting
+  /// that branch must not count as having seen it.
+  void _openActivitiesOrPromptForCallsign(Operation operation, {required bool markOnboardingSeen}) {
+    // The screen we were pushed over can still hold focus while its
+    // subtree goes away; leaving it focused lets the engine move DOM
+    // focus through a Focus node that is already inactive (web).
+    FocusManager.instance.primaryFocus?.unfocus();
+    if (widget.services.settings.activeProfile.operatorCall.isEmpty) {
+      _promptForCallsign(operation);
+    } else {
+      if (markOnboardingSeen) {
+        unawaited(widget.services.settings.recordOnboardingShown(OnboardingFlows.operationSheet));
+      }
+      _editActivities(operation);
+    }
+  }
 
   Future<void> _openOperationSheet(Operation operation) async {
     // No manual re-fetch on pop: watchOperation streams the change back.

@@ -57,6 +57,9 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byType(OperationSheet), findsOneWidget);
+    // The new-operation path counts as having seen the 'operation-sheet'
+    // onboarding (issue #348) — it genuinely showed.
+    expect(settings.onboardingShownCount(OnboardingFlows.operationSheet), 1);
 
     // A later operation write re-emits the stream — the pane must not
     // stack a second copy.
@@ -97,6 +100,10 @@ void main() {
 
     expect(find.byType(OperationSheet), findsNothing);
     expect(find.byType(HaloDialog), findsOneWidget);
+    // The callsign prompt took the sheet's place — it must NOT count as
+    // having seen the sheet (issue #348), or the independent "first ever
+    // operation" trigger would never get a chance to show it for real.
+    expect(settings.onboardingShownCount(OnboardingFlows.operationSheet), 0);
     expect(find.descendant(of: find.byType(HaloDialog), matching: find.text('Callsign')), findsWidgets);
 
     await tester.enterText(find.descendant(of: find.byType(HaloDialog), matching: find.byType(TextField)), 'ki2d');

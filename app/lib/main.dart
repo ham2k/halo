@@ -364,6 +364,10 @@ Future<HaLoServices> bootstrap({
   // core logging loop never waits on the extension runtime either way.
   extensions.start();
   final settings = await SettingsService.load();
+  // Existing installs never ran through the 'first-use' counter — it didn't
+  // exist yet — but they've already onboarded (see the method doc); a no-op
+  // once seeded, so this is safe on every boot.
+  await settings.seedFirstUseOnboardingForExistingUsers();
   LocaleSettings.setLocaleRaw(settings.locale);
   Intl.defaultLocale = settings.locale;
   final services = HaLoServices(
@@ -1030,6 +1034,10 @@ class _OnboardingGateState extends State<_OnboardingGate> {
         unawaited(applyOnboardAsSpec(widget.services, onboardAs));
       } else {
         _firstRun = true;
+        // 'shown' the moment the organic flow is decided, not when it's
+        // dismissed — this is a display count, and DEVONBOARD re-shows
+        // (the only other caller of _show()) must not bump it.
+        unawaited(widget.services.settings.recordOnboardingShown(OnboardingFlows.firstUse));
         _show();
       }
     }

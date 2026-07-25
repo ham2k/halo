@@ -50,6 +50,7 @@ class SettingsService extends ChangeNotifier implements SyncSettings {
   static const _distanceUnitsKey = 'distanceUnits';
   static const _spottingFiltersKey = 'spottingFilters';
   static const _experimentsKey = 'experiments';
+  static const _onboardingKey = 'onboarding';
   static const _layoutKey = 'layout';
   static const _lastSeenReleaseVersionKey = 'lastSeenReleaseVersion';
   static const _shorebirdTrackKey = 'shorebirdTrack';
@@ -353,6 +354,56 @@ class SettingsService extends ChangeNotifier implements SyncSettings {
     notifyListeners();
   }
 
+  /// Per-flow onboarding state, keyed by flow id ([OnboardingFlows]):
+  /// `{shownCount: int, firstShownAtMillis: int, lastShownAtMillis: int}`.
+  /// "Shown" is flow-specific — for a flow that gates a UI overlay
+  /// (`OnboardingFlows.firstUse`, `.operationSheet`) it's a real display of
+  /// that overlay; for one that just counts an outcome the flow is nudging
+  /// toward (`.newOperation` counts operations opened, not times a nudge
+  /// showed) it's whatever [recordOnboardingShown] is called for. A missing
+  /// entry reads as never shown (count 0).
+  Map<String, dynamic> get onboardingStates => _jsonMapPref(_onboardingKey);
+
+  int onboardingShownCount(String flow) {
+    final state = onboardingStates[flow];
+    return state is Map ? ((state['shownCount'] as num?)?.toInt() ?? 0) : 0;
+  }
+
+  Future<void> recordOnboardingShown(String flow) async {
+    final states = onboardingStates;
+    final entry = {...?(states[flow] as Map?)?.cast<String, dynamic>()};
+    final now = DateTime.now().millisecondsSinceEpoch;
+    entry['shownCount'] = ((entry['shownCount'] as num?)?.toInt() ?? 0) + 1;
+    entry['firstShownAtMillis'] ??= now;
+    entry['lastShownAtMillis'] = now;
+    await _prefs.setString(_onboardingKey, jsonEncode({...states, flow: entry}));
+    notifyListeners();
+  }
+
+  /// Existing installs never ran through the `first-use` flow's counter — it
+  /// didn't exist yet — but they've unambiguously already been through
+  /// onboarding: the default profile has a callsign (or an explicit blank
+  /// one from skipping it). Seeds the counter to 1 so they don't read as
+  /// "never onboarded"; a no-op once the counter is non-zero, so it's safe
+  /// to call on every boot.
+  Future<void> seedFirstUseOnboardingForExistingUsers() async {
+    if (!defaultProfileCallsignDefined) return;
+    if (onboardingShownCount(OnboardingFlows.firstUse) > 0) return;
+    final now = DateTime.now().millisecondsSinceEpoch;
+    await _prefs.setString(
+      _onboardingKey,
+      jsonEncode({
+        ...onboardingStates,
+        OnboardingFlows.firstUse: {
+          'shownCount': 1,
+          'firstShownAtMillis': now,
+          'lastShownAtMillis': now,
+        },
+      }),
+    );
+    notifyListeners();
+  }
+
   /// Which Shorebird patch track this device follows (docs/releases.md §4.3).
   /// Defaults to `stable`; an unrecognized stored value also falls back to
   /// `stable`, so a track that later disappears can't strand a device.
@@ -627,4 +678,20 @@ abstract final class LayoutKeys {
   static const homeLeftColumn = 'home.leftColumn';
   static const operationLeftColumn = 'operation.leftColumn';
   static const operationDock = 'operation.dock';
+}
+
+/// Flow ids for [SettingsService.onboardingShownCount] /
+/// [SettingsService.recordOnboardingShown].
+abstract final class OnboardingFlows {
+  /// The app's first-run overlay (issue #43) — renamed from a bare
+  /// callsign-undefined check to a tracked flow (issue #348).
+  static const firstUse = 'first-use';
+
+  /// The operation sheet, auto-opened once for a user who's never seen it —
+  /// independent of (and in addition to) the existing new-operation auto-open.
+  static const operationSheet = 'operation-sheet';
+
+  /// Not an overlay: counts new operations opened, so the home FAB's nudge
+  /// (see `_NewOperationNudge`) knows when to stop.
+  static const newOperation = 'new-operation';
 }
