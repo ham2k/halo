@@ -1,0 +1,52 @@
+# Builds the plugin library with quickjs-ng compiled STATICALLY into it.
+#
+# There is deliberately no separate quickjs shared object. Every problem we
+# had with flutter_js — the hand re-bundling in app/linux/CMakeLists.txt, the
+# LD_LIBRARY_PATH hack in scripts/test.sh, the CI safety-net copy, and the
+# x86-64-only prebuilt that blocked ARM64 entirely — came from quickjs
+# arriving as a separate, prebuilt, dlopen'd library. Compiling it in means
+# there is nothing to locate, ship, sign, or get out of sync, and the
+# architecture is whatever the platform toolchain is already targeting.
+#
+# Build cost is ~5 CPU-seconds for the four quickjs translation units, and
+# CMake caches objects, so this is noise against a Flutter build. See
+# docs/design/js-engine.md §2.
+cmake_minimum_required(VERSION 3.10)
+
+project(halo_quickjs_library VERSION 0.0.1 LANGUAGES C)
+
+add_library(halo_quickjs SHARED
+  "halo_qjs.c"
+  "quickjs/quickjs.c"
+  "quickjs/libregexp.c"
+  "quickjs/libunicode.c"
+  "quickjs/dtoa.c"
+)
+
+target_include_directories(halo_quickjs PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/quickjs")
+
+set_target_properties(halo_quickjs PROPERTIES
+  PUBLIC_HEADER halo_qjs.h
+  OUTPUT_NAME "halo_quickjs"
+  C_VISIBILITY_PRESET hidden
+)
+
+target_compile_definitions(halo_quickjs PUBLIC DART_SHARED_LIB)
+
+# quickjs-ng needs these; _GNU_SOURCE is what its own CMakeLists sets.
+if (NOT WIN32)
+  target_compile_definitions(halo_quickjs PRIVATE _GNU_SOURCE)
+endif()
+
+# Release builds only; a debug-assert build of quickjs is far slower and we
+# never want it in a shipped app.
+target_compile_definitions(halo_quickjs PRIVATE NDEBUG)
+
+if (ANDROID)
+  # Android 15 16k page size
+  target_link_options(halo_quickjs PRIVATE "-Wl,-z,max-page-size=16384")
+  # quickjs uses libm
+  target_link_libraries(halo_quickjs m)
+elseif (UNIX)
+  target_link_libraries(halo_quickjs m)
+endif()

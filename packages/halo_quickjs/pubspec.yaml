@@ -1,0 +1,26 @@
+name: halo_quickjs
+description: "Direct dart:ffi binding to QuickJS-NG, statically linked into the plugin — the JS engine for HaLo's extension host."
+version: 0.0.1
+homepage: https://ham2k.com
+
+environment:
+  sdk: ^3.12.2
+  flutter: ">=3.3.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  ffi: ^2.1.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+flutter:
+  plugin:
+    platforms:
+      macos:
+        ffiPlugin: true
+      linux:
+        ffiPlugin: true

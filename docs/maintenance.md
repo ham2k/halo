@@ -1,0 +1,190 @@
+# Maintenance — things that rot quietly
+
+> Status: living document · Last reviewed: 2026-07-25
+
+Most of what breaks a shipped app is not a bug someone wrote; it is something
+that was correct when it was written and stopped being correct while nobody
+was looking. Pinned dependencies drift out of support, data files go stale,
+certificates and API keys expire, build-expiration dates pass, and upstream
+projects get abandoned.
+
+This is the list of those things, what to check, and — the part that matters
+most — **how you find out it went wrong if nobody checks**. Anything whose
+failure mode is "silently wrong" deserves attention before anything whose
+failure mode is "loud build error", because the loud one tells you itself.
+
+Add to this list whenever something bites; that is what it is for.
+
+---
+
+## Suggested rhythm
+
+| When | What |
+|---|---|
+| Each release cut | Build expiration dates, Shorebird token, appcast health |
+| Monthly | Reference data files, extension npm deps, Flutter/Dart pin |
+| Quarterly | quickjs-ng, signing certificates, dependency audit, this document |
+| Whenever CI goes strange | The "silent failure" column below, top to bottom |
+
+---
+
+## 1. quickjs-ng (the JS engine)
+
+**Pinned at:** `v0.15.1` — see `packages/halo_quickjs/src/quickjs/VERSION`,
+which records the tag and the exact commit sha.
+
+We vendor the source and compile it into the plugin
+([design/js-engine.md](design/js-engine.md)). That is deliberate, and it means
+**nothing updates this for us** — the flip side of not depending on someone
+else's prebuilt binaries.
+
+**Check:** <https://github.com/quickjs-ng/quickjs/releases> for new tags, and
+skim the changelog for API changes and for anything security-related. The
+project is active (multiple releases a year).
+
+```bash
+# what we're pinned to
+cat packages/halo_quickjs/src/quickjs/VERSION
+
+# what upstream has
+git ls-remote --tags --refs https://github.com/quickjs-ng/quickjs.git \
+  | awk -F/ '{print $NF}' | sort -V | tail -5
+```
+
+**To bump:** replace the four `.c` files and the headers in
+`packages/halo_quickjs/src/quickjs/`, update `VERSION`, then run the package
+suite — it covers the API surface we actually use (eval, exceptions and
+stacks, the `sendMessage` bridge, promise pumping, interrupt, memory limit,
+re-entrancy). Read the upstream changelog for signature changes first;
+quickjs-ng has made deliberate breaking changes to the classic Bellard API,
+so a clean compile is necessary but not sufficient.
+
+**Why this needs a human:** the API surface we bind is small but load-bearing,
+and several invariants live in *our* shim rather than in quickjs — the depth
+gate, the interrupt latch, the entry/exit rules. An upstream change to
+interrupt or stack handling would not necessarily fail to compile.
+
+**Silent failure:** none for the pin itself — it just stays old. The risk is
+missing a security or correctness fix, so this is a "read the changelog" check
+rather than a "does it still build" one.
+
+## 2. `flutter_js` — remove it
+
+**Status:** being removed. Its native bridge
+([`abner/quickjs-c-bridge`](https://github.com/abner/quickjs-c-bridge)) has
+been unmaintained since **2021-04**, ships x86-64-only prebuilts on Linux and
+Windows, and has already cost a production crash (#349).
+
+Until the swap lands, three workarounds exist purely to prop it up, and all
+three should disappear together:
+
+- `app/linux/CMakeLists.txt` — hand re-bundles the prebuilt `.so`
+- `scripts/test.sh` — `LD_LIBRARY_PATH` into the pub cache
+- `app_dist/ci/build-linux.sh` — a "safety net" copy of the same file
+
+**When this section can be deleted:** when `flutter_js` is gone from
+`packages/halo_extension_host/pubspec.yaml` and those three are removed.
+
+## 3. Reference data files
+
+Extensions declare downloadable datasets: `pota-all-parks`,
+`sota-all-summits`, `call-notes`. They refresh at runtime through
+`DataFileManager`, so staleness is usually self-correcting — but the
+*definitions* (URLs, parsers) are not.
+
+**Check:** that each still downloads and parses. A source changing its URL or
+format is the realistic failure.
+
+**Silent failure:** yes, and this is the nasty one — a parser that silently
+yields zero records looks exactly like "no nearby parks", not like an error.
+Worth spot-checking that a known reference still resolves.
+
+## 4. Amateur-radio reference libraries
+
+`extensions/package.json` pins the `@ham2k/lib-*` packages. Note
+`@ham2k/lib-country-files` is version-stamped by date
+(`^1.0.202605301` ≈ 2026-05), which is exactly the shape of a dependency that
+goes quietly out of date.
+
+**Check:** `cd extensions && npm outdated`. DXCC entities and prefixes do
+change — new entities, prefix reassignments, callsign-block changes.
+
+**Silent failure:** yes. Stale country data means wrong entity, wrong flag,
+wrong scoring — plausible-looking output, not an error.
+
+## 5. Build expiration dates
+
+`app/lib/config/version.dart` carries `kDevExpirationDate`,
+`kNextExpirationDate`, `kProdExpirationDate` (and `kBuildExpiration`). Past
+the date, the app nags on every launch (#339). Dev and Next are short-lived
+by design; Regular is roughly six months.
+
+**Check:** at every release cut — this is the one item that is *supposed* to
+expire, so the check is that the new build's date is sensible, not that it
+hasn't passed.
+
+**Silent failure:** no, it is loud by construction — but it is loud *to
+users*, which is worse than loud to us. Do not let a release ship with a date
+that has already passed.
+
+## 6. Signing, notarization, and update feeds
+
+Everything here fails at build or install time, often confusingly:
+
+- **Apple Developer ID** certificate — expires; renewal changes the identity.
+- **Notarization** credentials (App Store Connect API key).
+- **Windows Trusted Signing** — see [releases.md](releases.md).
+- **Sparkle / WinSparkle appcasts** — the feeds macOS/Windows self-update
+  from. A published appcast pointing at a missing or unsigned artifact breaks
+  updates for people who already installed.
+- **Shorebird `SHOREBIRD_TOKEN`** — releases.md notes explicitly that **key
+  expiry silently starts failing CI**.
+
+**Check:** expiry dates on each; fetch each edition's appcast and confirm the
+artifact it names actually downloads.
+
+**Silent failure:** yes, in the worst way — existing installs stop receiving
+updates while new builds still work, so nothing looks broken from here.
+
+## 7. Toolchain pins
+
+`mise.toml` pins Flutter (and Node/Bun) with per-platform URLs. CI and local
+dev share the pin, which is what keeps them honest.
+
+**Check:** `mise outdated`, plus whether the pinned Flutter is still a
+supported stable. Bumping Flutter is a real change — it moves the Dart SDK,
+the engine, and plugin compatibility together, so treat it as its own piece of
+work with the full suite behind it.
+
+## 8. Housekeeping commands
+
+`halo-ops` already has the tools; they just need running:
+
+```bash
+mise run ops -- prune-patches     # old Shorebird patch tags
+mise run ops -- prune-previews    # stale web preview deployments
+mise run ops -- status            # released version per edition
+```
+
+**Also worth pruning:** merged git branches and stale worktrees — this repo
+accumulated 28 worktrees and 90+ branches before a cleanup in July 2026.
+
+## 9. Dependency audit
+
+```bash
+(cd app && flutter pub outdated)
+(cd extensions && npm outdated)
+```
+
+Expect a standing tail of "newer versions incompatible with dependency
+constraints" — that is normal and not automatically actionable. What matters
+is anything **unmaintained**: check last-release dates, not just version
+numbers. `flutter_js` looked maintained (its Dart side still shipped
+releases) while the native bridge that actually mattered had been dead for
+four years. Judge a dependency by the layer you depend on.
+
+## 10. This document
+
+**Check quarterly.** Update the "Last reviewed" date at the top. Remove
+sections that stop applying (section 2 is written to be deleted), and add
+whatever most recently bit us.

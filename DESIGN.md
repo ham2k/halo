@@ -112,6 +112,9 @@ knowledge we do not re-port. Only hot-path utilities the UI needs at 60fps
 - The engine choice is hidden behind the bridge interface. If QuickJS ever
   becomes the bottleneck, Hermes or JavaScriptCore can be swapped in — the
   protocol, not the engine, is the contract.
+- We run on `flutter_js` today, not yet the direct binding described above.
+  [js-engine.md](docs/design/js-engine.md) covers why that has to change and
+  the plan to get there.
 
 ### Protocol
 

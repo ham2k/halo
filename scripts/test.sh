@@ -55,6 +55,15 @@ if [[ "$QUICK" -eq 0 ]]; then
     QUICKJS_SHARED="$(ls -d "${PUB_CACHE:-$HOME/.pub-cache}"/hosted/pub.dev/flutter_js-*/linux/shared | sort -V | tail -1)"
     export LD_LIBRARY_PATH="$QUICKJS_SHARED${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
   fi
+
+  # halo_quickjs is the replacement for the above, and has the same problem
+  # for the same reason: `flutter test` runs in the host VM and never performs
+  # a platform native build, so there is no plugin library to load. The
+  # difference is that this one is ours and builds for whatever architecture
+  # the host actually is, instead of a prebuilt that only exists for x86-64.
+  # Incremental — only a source change pays the rebuild.
+  echo "▶ halo_quickjs: build the host JS engine library (needed by its tests)"
+  "$ROOT_DIR/packages/halo_quickjs/tool/build_host.sh"
 fi
 
 # The real Mapbox token file is gitignored, so fresh checkouts (like CI)
@@ -65,7 +74,7 @@ if [[ ! -f "$ROOT_DIR/app/lib/config/mapbox_token.dart" ]]; then
   cp "$ROOT_DIR/app/lib/config/mapbox_token.dart.example" "$ROOT_DIR/app/lib/config/mapbox_token.dart"
 fi
 
-for pkg in packages/halo_core packages/halo_build_tools packages/halo_extension_host packages/halo_widgets app; do
+for pkg in packages/halo_core packages/halo_build_tools packages/halo_extension_host packages/halo_quickjs packages/halo_widgets app; do
   if [[ "$QUICK" -eq 1 ]]; then
     echo "▶ $pkg: pub get, analyze (quick mode: no tests)"
   else

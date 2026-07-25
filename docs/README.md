@@ -31,6 +31,12 @@
 - [deployment.md](deployment.md) — runbook for building and deploying the web
   version to Cloudflare Pages.
 
+## Keeping it working
+
+- [maintenance.md](maintenance.md) — what to check periodically and how each
+  item fails if nobody does: pinned upstreams (quickjs-ng), reference data,
+  certificates and tokens, build expiration, toolchain pins.
+
 ## Work tracking
 
 - [backlog.md](backlog.md) — known issues, planned features, and larger TODOs

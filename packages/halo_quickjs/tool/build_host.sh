@@ -1,0 +1,30 @@
+#!/usr/bin/env bash
+# Builds the shim + quickjs for the HOST, for `flutter test`.
+#
+# `flutter test` runs in the host VM and never performs a platform native
+# build, so there is no plugin library for the bindings to open. This is the
+# same gap that forced the LD_LIBRARY_PATH hack in scripts/test.sh for
+# flutter_js — the difference is that this one is ours and builds for
+# whatever architecture the host actually is.
+set -euo pipefail
+cd "$(dirname "$0")/.."
+
+case "$(uname -s)" in
+  Darwin) EXT=dylib ;;
+  *)      EXT=so ;;
+esac
+OUT="build/host/libhalo_quickjs.$EXT"
+mkdir -p build/host
+
+SRCS=(src/halo_qjs.c src/quickjs/quickjs.c src/quickjs/libregexp.c src/quickjs/libunicode.c src/quickjs/dtoa.c)
+
+# Skip the rebuild when nothing has changed — quickjs is ~5 CPU-seconds, but
+# every `flutter test` invocation paying it adds up.
+if [[ -f "$OUT" ]]; then
+  newest=$(ls -t "${SRCS[@]}" src/halo_qjs.h | head -1)
+  [[ "$OUT" -nt "$newest" ]] && { echo "halo_quickjs: host lib up to date"; exit 0; }
+fi
+
+echo "halo_quickjs: building host lib -> $OUT"
+cc -shared -fPIC -O2 -DNDEBUG -D_GNU_SOURCE -Isrc -Isrc/quickjs -w "${SRCS[@]}" -lm -o "$OUT"
+echo "halo_quickjs: ok ($(du -h "$OUT" | cut -f1))"

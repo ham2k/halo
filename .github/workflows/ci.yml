@@ -108,6 +108,7 @@ jobs:
           - packages/halo_core
           - packages/halo_build_tools
           - packages/halo_extension_host
+          - packages/halo_quickjs
           - packages/halo_widgets
     steps:
       - uses: actions/checkout@v4
@@ -134,6 +135,17 @@ jobs:
           cd "${{ matrix.package }}"
           flutter pub get
           echo "LD_LIBRARY_PATH=$(ls -d "${PUB_CACHE:-$HOME/.pub-cache}"/hosted/pub.dev/flutter_js-*/linux/shared | sort -V | tail -1)" >> "$GITHUB_ENV"
+
+      # halo_quickjs compiles quickjs-ng into its own plugin library, but
+      # `flutter test` runs in the host VM and never performs a platform
+      # native build — so there is nothing for the bindings to open unless we
+      # build a host copy first. Same gap as the flutter_js step above, which
+      # this eventually replaces; the difference is that this builds for the
+      # runner's actual architecture instead of relying on a prebuilt that
+      # only exists for x86-64. THIS is what compiles quickjs on Linux.
+      - name: Build the host JS engine library
+        if: matrix.package == 'packages/halo_quickjs'
+        run: ./packages/halo_quickjs/tool/build_host.sh
 
       - name: pub get, analyze, test
         run: |
