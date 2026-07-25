@@ -26,6 +26,7 @@ import type {
   DayScoreSummary,
   HookContext,
   JSONValue,
+  OperationSegmentPayload,
   QsoScoreNotices,
   QsoScoreVerdict,
   ScoreQsoRequest,
@@ -81,11 +82,30 @@ export interface ContestScorerOptions {
 ///   key: 'simple-contest',
 /// })
 /// ```
+/// A QSO's timestamp, or 0 — a QSO with no time falls into the first segment,
+/// which is the base operation and the safest place for it.
+function startAtMillisOf(qso: Record<string, JSONValue>): number {
+  const at = qso.startAtMillis
+  return typeof at === 'number' ? at : 0
+}
+
 export function contestScorer<S extends Scoresheet = Scoresheet>(
   scorer: ContestScorer<S>,
   options: ContestScorerOptions = {},
 ): ScoringHook & { scope: ScoringScope } {
   const scope: ScoringScope = options.scope ?? 'always'
+  const scopedRefTypes = typeof scope === 'object' && Array.isArray(scope.refTypes) ? scope.refTypes : undefined
+
+  /// This scorer's own ref on a segment-effective operation, if it has one. A
+  /// contest set up once and left running resolves the same object every time;
+  /// a segment that restates it wins for that stretch. Undefined means the
+  /// activity was not running then — segments replace rather than merge, so a
+  /// segment naming other refs has genuinely dropped this one.
+  function refOfScopedType(operation: Record<string, JSONValue>): Record<string, JSONValue> | undefined {
+    if (!scopedRefTypes) return undefined
+    const refs = (operation.refs as Record<string, JSONValue>[] | undefined) ?? []
+    return refs.find((r) => typeof r?.type === 'string' && scopedRefTypes.includes(r.type as string))
+  }
 
   /// Folds `qsos` into `scoresheet`, reporting each QSO's verdict and taking a
   /// day summary at every boundary. Shared by the batch pass and by the live
@@ -97,13 +117,38 @@ export function contestScorer<S extends Scoresheet = Scoresheet>(
     ctx: HookContext,
     onQso?: (uuid: string | undefined, score: QsoScoreVerdict) => void,
     onDayEnd?: (day: number, count: number, sheet: S) => void,
+    segments?: OperationSegmentPayload[],
   ): S {
     let sheet = scoresheet
     let currentDay: number | undefined
     let dayCount = 0
+    // Segments advance WITH the fold rather than being searched per QSO — the
+    // loop is already chronological, so this is a pointer, not a lookup.
+    const timeline = segments && segments.length > 1 ? segments : undefined
+    let segmentIndex = 0
 
     for (const qso of qsos) {
       if (isEvent(qso)) continue
+
+      let operation = args.operation
+      let ref = args.ref
+      if (timeline) {
+        const at = startAtMillisOf(qso)
+        while (segmentIndex + 1 < timeline.length && timeline[segmentIndex + 1].fromMillis <= at) segmentIndex += 1
+        operation = timeline[segmentIndex].operation
+        if (scopedRefTypes) {
+          // A segment states what was true for its stretch, and one that carries
+          // no ref of our types says this activity was not running — so the QSO
+          // is not ours to score at all. Selection spans every segment, so a
+          // contest confined to the back half of a log is invoked for the whole
+          // of it; without this it would claim the front half too. It does not
+          // even count toward the day tally: it is somebody else's contact.
+          const segmentRef = refOfScopedType(operation)
+          if (!segmentRef) continue
+          ref = segmentRef
+        }
+      }
+
       const day = dayOf(qso)
       const isNewDay = currentDay !== day
       if (isNewDay) {
@@ -114,7 +159,7 @@ export function contestScorer<S extends Scoresheet = Scoresheet>(
       }
       dayCount += 1
 
-      const result = scorer.scoreQso({ scoresheet: sheet, qso, operation: args.operation, ref: args.ref, isNewDay }, ctx)
+      const result = scorer.scoreQso({ scoresheet: sheet, qso, operation, ref, isNewDay }, ctx)
       sheet = result.scoresheet
       onQso?.(typeof qso.uuid === 'string' ? qso.uuid : undefined, result.score)
     }
@@ -151,6 +196,7 @@ export function contestScorer<S extends Scoresheet = Scoresheet>(
             scores: scorer.summarizeScore({ scoresheet: sheet, operation: args.operation, ref: args.ref, scope: 'day' }, ctx),
           })
         },
+        args.segments,
       )
 
       return {
@@ -183,7 +229,19 @@ export function contestScorer<S extends Scoresheet = Scoresheet>(
         const rest = chronological(log as Record<string, JSONValue>[]).filter(
           (q) => !args.excludeUuid || q.uuid !== args.excludeUuid,
         )
-        sheet = fold(scorer.startScoresheet({ operation: args.operation, ref: args.ref }, ctx), rest, args, ctx)
+        // Segmented exactly as the batch pass folds it, so the candidate is
+        // judged against the same history the score summary counted — without
+        // this a contest that started mid-log would call a pre-contest contact
+        // a duplicate.
+        sheet = fold(
+          scorer.startScoresheet({ operation: args.operation, ref: args.ref }, ctx),
+          rest,
+          args,
+          ctx,
+          undefined,
+          undefined,
+          args.segments,
+        )
       }
 
       const { score } = scorer.scoreQso(

@@ -30,8 +30,14 @@ class ScoringService {
     final host = extensions.host;
     if (host == null) return;
 
-    final qsoList = (await qsos.watchForOperation(operation.uuid).first).where((q) => !q.isEvent).toList();
+    final all = await qsos.watchForOperation(operation.uuid).first;
+    final qsoList = all.where((q) => !q.isEvent).toList();
     if (qsoList.isEmpty) return;
+
+    // Resolved from the FULL list — the event rows carrying the segment
+    // overrides are exactly what `qsoList` just filtered out
+    // (docs/design/contests.md §5.1.3).
+    final segmented = SegmentedOperation.from(operation: operation.data, qsos: all);
 
     try {
       // Only the scorers this operation actually needs: `always` scorers (core
@@ -39,10 +45,15 @@ class ScoringService {
       // operation. A user with dozens of extensions enabled never pays for the
       // ones this operation doesn't reference (docs/design/contests.md §5.1).
       final scopes = await extensions.getScoringScopes();
-      final scorers = ExtensionService.scorersFor(operation.data, scopes);
+      final scorers = ExtensionService.scorersFor(operation.data, scopes, segments: segmented);
       if (scorers.isEmpty) return;
 
-      final payload = qsonPayloadFor(operation: operation, qsos: qsoList);
+      final payload = {
+        ...qsonPayloadFor(operation: operation, qsos: qsoList),
+        // Only when there is something to resolve — an unsegmented operation
+        // sends nothing extra and the harness takes its existing path.
+        if (segmented.isSegmented) 'segments': segmented.payload,
+      };
 
       // Independent per-scorer calls — a contest scorer that throws must not
       // cost the operation its core scoring, so each result is collected on its

@@ -327,6 +327,180 @@ One useful consequence: **checkpoints never need to be persisted.** Every open
 rebuilds them from a full pass, so they can live in memory for the session, and
 there is no checkpoint invalidation or versioning story to build.
 
+### 5.1.3 Segments (M6) — the shape actually being built
+
+§5.1's box decided segments are in scope and own three pieces. This is how they
+land, written after reading what the code already does.
+
+**The payload.** A `break`/`start` event row may carry `event.operation`: a
+PARTIAL operation, spread over the base one, exactly as app-polo does
+(`qsonToADIF.js:89-99`). Any operation attribute may appear, and `refs` and
+`grid` are the two that matter — a second park, or a rover's new square.
+`QsosRepository.addEvent` gains an optional override so a segment is reachable
+without new UI.
+
+**Resolution belongs to the core.** `ScoringService.rescoreOperation` filters
+event rows OUT before building the payload, so nothing on the JS side can see a
+segment even in principle. A pure `SegmentedOperation` in `halo_core` folds the
+overrides in `startAtMillis` order and answers two questions: what the operation
+looked like at a given instant, and what it looks like now. It stores one map
+per SEGMENT, not per QSO — overrides are rare, so a 5000-QSO log holds a handful
+of maps and a binary search, not 5000 copies.
+
+**Getting it to the scorers.** The batched contract sends one `operation` for
+the whole fold, but `ScoringHook.scoreQso`'s own doc already promises the
+segment-effective one (`types.ts:377`). Rather than fattening every QSO with a
+copy, the payload carries the base operation plus an ordered `segments` array,
+and the SDK harness resolves per QSO as it folds — it already walks
+chronologically for day boundaries, so this is a pointer advanced in the same
+pass. Extensions change nothing: they receive the right `operation` because the
+harness hands it to them.
+
+**Selection spans segments.** `scorersFor` must consider the union of ref types
+across the base operation and every segment, or a contest that only covers the
+back half of a log never gets invoked at all.
+
+**So the fold has to put back what selection let through.** Selecting a scorer
+because *some* segment carries its ref means handing it the *whole* log. A QSO
+whose segment carries no ref of that scorer's types was made when the activity
+was not running, so the harness skips it outright — it doesn't even count toward
+the day tally. Falling back to the selection ref instead would let a contest
+that covered half a log claim all of it, and the Cabrillo built from that is a
+false claim. This is the direct consequence of segments REPLACING (below): a
+segment naming `refs` that omit ours has genuinely dropped us, so "no ref" is a
+statement, not a gap to fill in.
+
+**And the entry row follows the current segment.** `_activeRefTypes` (§5.3's
+primary-field gate) reads the operation's own refs today, with a standing TODO;
+it becomes the LATEST segment, so a contest that ended at a break stops claiming
+the entry row.
+
+The live single-candidate pass (`ScoringHook.scoreQso`) follows that same
+segment, for the same reason — the scoring pills and the primary fields have to
+agree about what is running. It gets the timeline as well: it always runs cold
+(the host sends no `resumeFrom`), so it rebuilds the scoresheet from the log on
+every keystroke, and that rebuild has to be segmented too or a contest's dupe
+check counts contacts made before it started.
+
+**Segments REPLACE, and they do not carry forward.** A `break`/`start` states
+what is true for the stretch that follows. A segment that names `refs` owns them
+outright — no union with what came before, because "I moved to a second park"
+and "I am now at two parks" are different claims and only the operator knows
+which.
+
+An attribute a segment does NOT name falls back to the **base operation**, never
+to the previous segment. The base is a default that lets an unsegmented log skip
+segments entirely; it is not an accumulator. So a grid set in segment one does
+not leak into segment two — anything meant to persist across segments is written
+into each of them by whatever creates them, which is a UI concern.
+
+This is a deliberate divergence from app-polo, which accumulates
+(`operation = {...operation, ...qso.event.operation}`, `qsonToADIF.js:89-99`).
+
+**Deliberately not in this milestone:** any UI for creating or editing a
+segment. The data path and `addEvent` make one reachable and testable, but
+choosing where that lives in the operation sheet is a separate design question,
+and bundling it would make this milestone unreviewable.
+
+### 5.1.4 Segments and exports — one export per REFERENCE
+
+Scoring wants the segment-effective operation per QSO. Exports want something
+different, and getting it wrong produces a plainly wrong file rather than a
+subtly wrong score.
+
+The motivating case: one operation that runs a contest throughout while also
+activating two parks, with a stretch in the middle at neither.
+
+**An activity that supports multiple references gets one export per
+reference.** Not one export that knows about segments — two POTA exports, one
+per park. And each is asked for, and generated against, a view in which it sees
+**one operation carrying one ref, plus the QSOs that correspond to it**. The
+export hook does not reason about segments at all; the core has already reduced
+the log to the slice that reference is responsible for.
+
+**How polo arranges this, and why HaLo can't copy it directly.** Polo collects
+options in TWO passes (`dataExportOptions.js:136-172`):
+
+```js
+for (const ref of refs) {                        // per-REFERENCE
+  findBestHook(`ref:${ref.type}`).suggestExportOptions({ operation, qsos, ref, settings })
+  // keyed handler-format-exportType-refKey, so each reference gets its own option
+}
+findHooks('export').forEach(h =>                 // operation-WIDE
+  h.suggestExportOptions({ operation, qsos, settings }))   // no ref
+```
+
+Per-reference exports come from `ref:<type>` hooks; operation-wide ones from
+`export` hooks. The category a hook registers under is what decides which it
+gets, so nothing has to disambiguate.
+
+HaLo collapsed those into a single `export` category — every contest and
+activity registers there — which is why there is nowhere for a `ref` to arrive.
+Rather than reintroduce polo's split, `ExportOptionsRequest` gains an optional
+`ref` and the host asks each hook **both ways**: once per reference whose type
+it handles, and once with no ref at all. A hook answers whichever it supports —
+contests answer the ref-less call, activities answer the per-reference one —
+and options are keyed on `(hookKey, exportType, reference identity)` so a hook
+that ignores the distinction cannot produce duplicates.
+
+The generated export then sees the segment-effective operation for its
+reference, with `refs` reduced to that one — matching polo's POTA, which sets
+`exportData: { refs: [ref] }`, commented *"exports only see this one ref"*.
+
+> **Unresolved:** which segment, when one reference spans several with
+> different other attributes — an operator who leaves a park and returns to it
+> later under a different grid. Planned as the FIRST segment carrying the
+> reference, since that is where the activation began, but it is a guess and
+> polo has no answer.
+
+Two flags widen that default view, each answering a different question:
+
+| Flag | Question it answers |
+|---|---|
+| `includeAllSegments` | "Give me the whole log, not just the segments carrying my reference." The contest export, which covers the operation regardless of where the parks were. **Defaults off** — an export claims only its own reference's QSOs until it says otherwise. |
+| `includeOtherRefHandlers` | "Let OTHER extensions contribute their fields to each QSO too." A full-log ADIF, which should carry everyone's fields; a park submission, which should not. |
+
+**On the names.** `includeAllSegments` is what polo calls `combineSegmentRefs`
+— but polo's flag doesn't select segments at all. It chooses whether the
+effective operation's refs *follow* the segments or stay pinned to the base
+(`qsonToADIF.js:89-99`); neither branch filters QSOs, and polo has no
+segment-based QSO filtering anywhere. Its only narrowing mechanism is
+`selectQSOsToExport`, which has one checklist-based implementation unrelated to
+segments. **So per-reference slicing is new in HaLo, not a port.**
+
+`includeOtherRefHandlers` keeps polo's real semantics under a name that states
+them. Polo's `includeOtherRefs` gathers `[...qso.refs, ...operation.refs]`,
+finds each one's `ref:<type>` handler, skips the export's own, and merges that
+handler's `adifFieldsForOneQSO` output — first definition wins, except a `false`
+value which removes a field. It is about which extensions get to CONTRIBUTE,
+not which refs are visible. Exactly one polo export sets it: core ADIF's "Full
+ADIF Export".
+
+> **Note for implementation:** HaLo behaves as though that were always on —
+> `core/adif` calls `hooks.invokeAll('adifFields', …)` unconditionally, so every
+> contributor's fields land in every ADIF, including the contest ADIFs that
+> delegate to it. Honouring the flag means the default has to SUBTRACT, which
+> changes existing ADIF output for scoped exports.
+
+**Expect to revisit both flags.** They come from ONE motivating case,
+generalised into two booleans, with no prior art to validate them. Four of
+sixteen extensions are ported; the ones still to come are the ones likely to
+stress the shape:
+
+- **VHF contests (M7)** — a rover's grid changes per segment, and the export
+  needs each QSO stamped with the grid true when it was made. That is a
+  per-segment *value*, not an inclusion decision, and neither flag expresses it.
+- **QSO parties (M10)** — county-line operation lets one QSO count for two
+  locations, so "which slice does this QSO belong to" stops having one answer.
+- **`georgia-pota` (M9)** — synthesises POTA refs from another extension's, so
+  "segments carrying my own reference" is the wrong test by construction.
+- **Multi-program activations** (WWFF and POTA at one site) — two exports over
+  the same QSOs, each wanting its own subset.
+
+A hook answering "is this slice mine?" would cover all four, at the cost of a
+bridge crossing per segment. Not worth building on one case — but worth
+recording that this IS one case generalised, and that polo validates none of it.
+
 ### 5.2 The scorer contract and the caching design
 
 **Problem.** Full rescore on every append/edit is `O(N)` per scorer. With

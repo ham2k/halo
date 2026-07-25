@@ -129,6 +129,7 @@ typedef ScoreQso = Future<Map<String, dynamic>?> Function({
   required Map<String, dynamic> operation,
   required Map<String, dynamic> qso,
   String? excludeUuid,
+  List<Map<String, dynamic>>? segments,
 });
 
 /// A snapshot of the current call-info for the detail panel (the Info tab on
@@ -646,6 +647,12 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
 
   List<Map<String, dynamic>> get _effectiveActivityControls => _refreshedActivityControls ?? widget.activityControls;
 
+  /// The operation resolved into its segments. `widget.qsos` is the whole log,
+  /// which is what carries the `break`/`start` event rows; an unsegmented
+  /// operation resolves to a single segment that is its own data, unchanged.
+  SegmentedOperation get _segmented =>
+      SegmentedOperation.from(operation: widget.operation.data, qsos: widget.qsos);
+
   /// Ref types the operation is actually running right now.
   ///
   /// This is the gate on PRIMARY field real estate (see `_textControls`).
@@ -653,14 +660,17 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   /// from any operation — POTA's hunter control is the case that matters, since
   /// you chase a park from whatever you happen to be running.
   ///
-  /// TODO(#149/M6): once segments land this reads the segment-effective
-  /// operation rather than the operation itself — a contest that only covers
-  /// part of an operation should only claim the entry row during its own
-  /// segment. `docs/design/contests.md` §5.1.
-  Set<String> get _activeRefTypes => {
-        for (final ref in widget.operation.refs)
-          if (ref['type'] case final String type) type,
-      };
+  /// Reads the CURRENT segment, not the base operation: a QSO being typed now
+  /// belongs to whatever the last `break`/`start` established, so a contest
+  /// that ended at a break stops claiming the entry row and a park entered at
+  /// one starts claiming it (docs/design/contests.md §5.1.3).
+  Set<String> get _activeRefTypes {
+    final current = _segmented.current;
+    return {
+      for (final ref in ((current['refs'] as List?) ?? const []).whereType<Map>())
+        if (ref['type'] case final String type) type,
+    };
+  }
 
   /// Pending push of a manually-typed frequency to `widget.radioService` —
   /// see `_onFreqChanged` and `_pushVfoToRadioService`.
@@ -3429,10 +3439,17 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
       return;
     }
     _scoreDebounce = Timer(const Duration(milliseconds: 300), () async {
+      // Scored against the CURRENT segment, matching the entry row's own gate
+      // (`_activeRefTypes`): the pills and the fields have to agree about which
+      // activities are running. The timeline goes along so the log the
+      // candidate is judged against is folded per-segment too — otherwise a
+      // contest that started at a break calls a pre-contest contact a dupe.
+      final segmented = _segmented;
       final result = await scoreFn(
-        operation: _operationDataForCommands,
+        operation: {...segmented.current, 'uuid': widget.operation.uuid},
         qso: _getCurrentQsoData(callOverride: activeCall),
         excludeUuid: widget.editingQso?.uuid,
+        segments: segmented.isSegmented ? segmented.payload : null,
       );
       if (!mounted || _callAtCursor != activeCall) return; // stale — the active call moved on
       setState(() {

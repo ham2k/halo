@@ -729,7 +729,7 @@ void main() {
             operation: operation,
             qsosRepository: qsos,
             lookup: guessLookup({'name': 'Marco'}),
-            scoreQso: ({required operation, required qso, excludeUuid}) async =>
+            scoreQso: ({required operation, required qso, excludeUuid, segments}) async =>
                 {'notices': ['newDXCC', 'newBand'], 'alerts': <String>[]},
             scoreNoticeLabel: (key) => const {'newDXCC': 'New DXCC', 'newBand': 'New Band'}[key] ?? key,
           ),
@@ -752,7 +752,7 @@ void main() {
           body: LoggingControls(
             operation: operation,
             qsosRepository: qsos,
-            scoreQso: ({required operation, required qso, excludeUuid}) async =>
+            scoreQso: ({required operation, required qso, excludeUuid, segments}) async =>
                 {'notices': <String>[], 'alerts': ['duplicate']},
             scoreNoticeLabel: (key) => key == 'duplicate' ? 'Dupe!' : key,
           ),
@@ -775,7 +775,7 @@ void main() {
           body: LoggingControls(
             operation: operation,
             qsosRepository: qsos,
-            scoreQso: ({required operation, required qso, excludeUuid}) async {
+            scoreQso: ({required operation, required qso, excludeUuid, segments}) async {
               scored.add(((qso['their'] as Map)['call']) as String);
               return {'notices': <String>[], 'alerts': <String>[]};
             },
@@ -1386,7 +1386,7 @@ void main() {
         body: LoggingControls(
           operation: operation,
           qsosRepository: qsos,
-          scoreQso: ({required operation, required qso, excludeUuid}) async =>
+          scoreQso: ({required operation, required qso, excludeUuid, segments}) async =>
               {'notices': <String>[], 'alerts': ['duplicate']},
           scoreNoticeLabel: (key) => key == 'duplicate' ? 'Dupe!' : key,
         ),
@@ -4091,7 +4091,7 @@ void main() {
           qsosRepository: qsos,
           qsos: [existingQso],
           editingQso: existingQso,
-          scoreQso: ({required operation, required qso, excludeUuid}) async {
+          scoreQso: ({required operation, required qso, excludeUuid, segments}) async {
             excluded = excludeUuid;
             return {'notices': <String>[], 'alerts': <String>[]};
           },
@@ -4103,6 +4103,84 @@ void main() {
     // Editing populates the fields from the QSO, then scores it excluding
     // itself, so it can never flag itself as its own duplicate.
     expect(excluded, 'existing-uuid');
+  });
+
+  group('scoreQso and segments', () {
+    // The scoring pills and the entry row's primary fields both have to follow
+    // the CURRENT segment, or the operator sees a contest's exchange field
+    // while the dupe check still belongs to the activity it replaced.
+    late Qso editing;
+
+    Qso segmentBreak(List<String> refTypes) => Qso(
+          uuid: 'break-1',
+          operationUuid: operation.uuid,
+          data: {
+            'startAtMillis': 1000,
+            'band': 'event',
+            'event': {
+              'event': 'break',
+              'operation': {
+                'refs': [for (final type in refTypes) {'type': type}],
+              },
+            },
+          },
+        );
+
+    setUp(() {
+      editing = Qso(
+        uuid: 'existing-uuid',
+        operationUuid: operation.uuid,
+        data: {
+          'their': {'call': 'W1AW'},
+          'band': '20m',
+          'mode': 'SSB',
+        },
+      );
+    });
+
+    Future<({Map<String, dynamic>? operation, List<Map<String, dynamic>>? segments})> scored(
+      WidgetTester tester, {
+      required List<Qso> log,
+    }) async {
+      Map<String, dynamic>? sentOperation;
+      List<Map<String, dynamic>>? sentSegments;
+      await tester.pumpWidget(MaterialApp(
+        home: Scaffold(
+          body: LoggingControls(
+            operation: running(['pota']),
+            qsosRepository: qsos,
+            qsos: log,
+            editingQso: editing,
+            scoreQso: ({required operation, required qso, excludeUuid, segments}) async {
+              sentOperation = operation;
+              sentSegments = segments;
+              return {'notices': <String>[], 'alerts': <String>[]};
+            },
+          ),
+        ),
+      ));
+      await tester.pump(const Duration(milliseconds: 500));
+      return (operation: sentOperation, segments: sentSegments);
+    }
+
+    testWidgets('sends the current segment, not the base operation', (tester) async {
+      final sent = await scored(tester, log: [segmentBreak(['cqww']), editing]);
+
+      // The operation is a park activation; a break turned it into a contest.
+      // Scoring must follow, or the contest's dupe rules never apply.
+      expect([for (final ref in (sent.operation!['refs'] as List)) ref['type']], ['cqww']);
+      // The hook reads the log through this uuid — dropping it would silently
+      // score the candidate against an empty log.
+      expect(sent.operation!['uuid'], operation.uuid);
+      expect(sent.segments, hasLength(2), reason: 'base plus the break');
+    });
+
+    testWidgets('sends no timeline for an unsegmented operation', (tester) async {
+      final sent = await scored(tester, log: [editing]);
+
+      expect([for (final ref in (sent.operation!['refs'] as List)) ref['type']], ['pota']);
+      expect(sent.segments, isNull, reason: 'one segment is not a timeline; sending it is pure payload');
+    });
   });
 
   group('secondary control row', () {

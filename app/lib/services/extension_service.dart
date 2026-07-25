@@ -1362,14 +1362,25 @@ class ExtensionService {
   /// The scoring hook keys relevant to [operation], paired with the ref that
   /// selected each. An `'always'` scorer maps to a null ref; a ref-gated one is
   /// listed once per matching ref, so a contest that appears twice scores twice.
+  /// [segments] resolves the operation's `break`/`start` overrides. Selection
+  /// spans EVERY segment: a contest that only covers the back half of a log
+  /// would never be invoked if this read the base operation alone
+  /// (docs/design/contests.md §5.1.3). The ref handed back is the first
+  /// occurrence — the harness re-resolves it per QSO from the segment-effective
+  /// operation, so a segment that restates its setup still wins.
   static List<({String key, Map<String, dynamic>? ref})> scorersFor(
     Map<String, dynamic> operation,
-    Map<String, dynamic> scopes,
-  ) {
-    final refs = ((operation['refs'] as List?) ?? const [])
-        .whereType<Map>()
-        .map((r) => r.cast<String, dynamic>())
-        .toList();
+    Map<String, dynamic> scopes, {
+    SegmentedOperation? segments,
+  }) {
+    final refs = [
+      for (final segment in segments?.segments ?? const [])
+        ...segment.refs,
+      if (segments == null)
+        ...((operation['refs'] as List?) ?? const [])
+            .whereType<Map>()
+            .map((r) => r.cast<String, dynamic>()),
+    ];
 
     final selected = <({String key, Map<String, dynamic>? ref})>[];
     for (final entry in scopes.entries) {
@@ -1380,8 +1391,12 @@ class ExtensionService {
       }
       final refTypes = ((scope is Map ? scope['refTypes'] : null) as List?)?.whereType<String>().toSet();
       if (refTypes == null || refTypes.isEmpty) continue;
+      final seen = <String>{};
       for (final ref in refs) {
-        if (refTypes.contains(ref['type'])) selected.add((key: entry.key, ref: ref));
+        final type = ref['type'];
+        if (type is! String || !refTypes.contains(type)) continue;
+        // One selection per type, however many segments carry it.
+        if (seen.add(type)) selected.add((key: entry.key, ref: ref));
       }
     }
     return selected;
@@ -1421,10 +1436,18 @@ class ExtensionService {
   /// [excludeUuid] drops the record being edited so it can't flag itself as
   /// its own duplicate. [operation] must carry `uuid` (the hook reads the log
   /// via it) — pass the same uuid-folded shape command hooks get.
+  ///
+  /// [operation] is the CURRENT segment, not the base, so scorer selection
+  /// follows what the operator is doing right now: a contest that ended at a
+  /// break stops contributing pills, one that started at a break begins.
+  /// [segments] (`SegmentedOperation.payload`, omitted when unsegmented) is
+  /// what lets the hook fold the history under each QSO's own segment
+  /// (docs/design/contests.md §5.1.3).
   Future<Map<String, dynamic>?> scoreQso({
     required Map<String, dynamic> operation,
     required Map<String, dynamic> qso,
     String? excludeUuid,
+    List<Map<String, dynamic>>? segments,
   }) async {
     final host = _host;
     if (host == null) return null;
@@ -1450,6 +1473,7 @@ class ExtensionService {
             'qso': qso,
             'excludeUuid': ?excludeUuid,
             'ref': ?scorer.ref,
+            'segments': ?segments,
           },
           timeout: const Duration(seconds: 4),
         );

@@ -545,9 +545,24 @@ export interface DayScoreSummary {
   scores: Record<string, ScoreTally>
 }
 
+/// One stretch of a log and the operation that was true for it — the core's
+/// resolution of `break`/`start` segment overrides (docs/design/contests.md
+/// §5.1.3), sent so the harness can hand each QSO its own operation.
+export interface OperationSegmentPayload {
+  /// When this segment takes over. A QSO at exactly this instant belongs to it.
+  fromMillis: number
+  /// The FULL operation for this stretch, already resolved — base operation
+  /// with this segment's override applied. Not a diff.
+  operation: Record<string, JSONValue>
+}
+
 export interface ScoreQsosRequest {
   operation: Record<string, JSONValue>
   qsos: Record<string, JSONValue>[]
+  /// Present only when the operation actually has segments. The harness uses
+  /// it to give `scoreQso` the segment-effective operation for each QSO; a
+  /// scorer written against `operation` alone needs no change.
+  segments?: OperationSegmentPayload[]
   /// The operation ref that selected this scorer (§5.1) — carries its setup
   /// (contest identifier, sent exchange, mode). Absent for `scope: 'always'`
   /// scorers like `core`.
@@ -578,10 +593,18 @@ export interface ScoreQsosResult {
 /// `ctx.getQsos`). `excludeUuid` drops the record being edited so it can't
 /// flag itself as its own duplicate.
 export interface ScoreQsoRequest {
+  /// The operation as it stands NOW — the last segment, not the base — because
+  /// the candidate is being logged now. The host selects scorers from this same
+  /// shape, so a contest that ended at a break is never invoked here.
   operation: Record<string, JSONValue>
   qso: Record<string, JSONValue>
   excludeUuid?: string
   ref?: Record<string, JSONValue>
+  /// Present only when the operation has segments, and only used for the
+  /// rebuild from the log: the history the candidate is judged against is
+  /// scored under each QSO's own segment. Without it a contest's dupe check
+  /// counts contacts made before it started.
+  segments?: OperationSegmentPayload[]
   /// Same checkpoint as `ScoreQsosRequest.resumeFrom`: the cached
   /// end-of-log scoresheet, so the candidate can be scored against it directly
   /// instead of re-folding the whole log on every keystroke.

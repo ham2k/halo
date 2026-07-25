@@ -482,11 +482,22 @@ class QsosRepository {
   }
 
   /// Adds a start/break/end marker to the QSO timeline (see `Qso.isEvent`).
-  Future<Qso> addEvent(String operationUuid, {required String kind, required int atMillis}) {
+  /// [operation] makes this a SEGMENT boundary rather than a plain marker: a
+  /// `break`/`start` carrying one states the operation for the stretch that
+  /// follows — a second park, a rover's new grid (docs/design/contests.md
+  /// §5.1.3). It is a complete statement, not a diff: attributes it omits fall
+  /// back to the base operation, never to the previous segment, so whatever
+  /// calls this is responsible for restating anything meant to persist.
+  Future<Qso> addEvent(
+    String operationUuid, {
+    required String kind,
+    required int atMillis,
+    Map<String, dynamic>? operation,
+  }) {
     return add(operationUuid, {
       'band': 'event',
       'startAtMillis': atMillis,
-      'event': {'event': kind},
+      'event': {'event': kind, if (operation != null) 'operation': operation},
     });
   }
 
