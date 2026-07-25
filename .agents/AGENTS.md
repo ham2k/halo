@@ -22,6 +22,16 @@ This is a multi-platform app for Amateur Radio Logging, called "Ham2K Logger" (o
 
 - Keep `dist` updated. Rebase your branches on top of the latest `dist` before submitting or updating a PR.
 
+- The `/next` skill (`.claude/skills/next/SKILL.md`) runs the start-of-task
+  steps below — refreshing `dist`, naming the branch and worktree, bootstrapping
+  a fresh worktree, a first pass, and the PR. Invoke it as
+  `/next <issue URL or description>`; keep it in step with this section.
+
+- The `/iterate` skill (`.claude/skills/iterate/SKILL.md`) covers the
+  "iterate with the developer" step: it keeps a build running and refreshed and
+  skips commits and test runs until the user says iteration is done, at which
+  point the steps below resume.
+
 - Steps when tackling a new task:
   - Open a new branch, off the latest `dist`. Look for updates to AGENTS.md.
   - Do a quick analisys of the problem, prepare a plan and open a PR to document this.
