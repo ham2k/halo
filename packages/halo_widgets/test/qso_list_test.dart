@@ -386,6 +386,47 @@ void main() {
 
       expect(find.text('40m'), findsOneWidget);
     });
+
+    testWidgets(
+      'a QSO with neither frequency nor band still reserves the column, so later columns line up (#354)',
+      (tester) async {
+        final withFreq = Qso(
+          uuid: 'q1',
+          operationUuid: 'op-1',
+          data: {
+            'their': {'call': 'W1AW'},
+            'freq': 14074,
+            'mode': 'SSB',
+            'startAtMillis': 1000,
+          },
+        );
+        // Equal-length callsign, same mode (so no Mode column), but NO freq and
+        // NO band — its freq/band cell used to collapse to zero width and pull
+        // the callsign left.
+        final withNeither = Qso(
+          uuid: 'q2',
+          operationUuid: 'op-1',
+          data: {
+            'their': {'call': 'W2AW'},
+            'mode': 'SSB',
+            'startAtMillis': 2000,
+          },
+        );
+
+        await tester.pumpWidget(
+          MaterialApp(
+            home: Scaffold(
+              body: QsoList(qsos: [withFreq, withNeither], onSelect: (_) {}),
+            ),
+          ),
+        );
+
+        expect(
+          tester.getTopLeft(find.text('W1AW')).dx,
+          tester.getTopLeft(find.text('W2AW')).dx,
+        );
+      },
+    );
   });
 
   group('mode column', () {
@@ -827,6 +868,76 @@ void main() {
       expect(find.byIcon(resolveIconName('pine-tree')), findsOneWidget);
       expect(find.byIcon(resolveIconName('image-filter-hdr')), findsOneWidget);
       expect(find.text('×2'), findsOneWidget);
+    },
+  );
+
+  testWidgets(
+    'a ref-type icon is drawn in the neutral row foreground, not the tertiary accent (#354)',
+    (tester) async {
+      final operation = await operations.create(stationCall: 'KI2D');
+      final qso = await qsos.add(operation.uuid, {
+        'their': {'call': 'W1AW'},
+        'mode': 'SSB',
+        'startAtMillis': 1000,
+        'refs': [
+          {'type': 'pota', 'ref': 'US-1234'},
+        ],
+      });
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: QsoList(
+              qsos: [qso],
+              onSelect: (_) {},
+              activityControls: [
+                {
+                  'icon': 'pine-tree',
+                  'input': {'refType': 'pota'},
+                },
+              ],
+            ),
+          ),
+        ),
+      );
+
+      final finder = find.byIcon(resolveIconName('pine-tree'));
+      final icon = tester.widget<Icon>(finder);
+      final scheme = Theme.of(tester.element(finder)).colorScheme;
+      expect(icon.color, scheme.onSurface);
+      expect(icon.color, isNot(scheme.tertiary));
+    },
+  );
+
+  testWidgets(
+    'shows the other station\'s exchange after the signal reports (#354)',
+    (tester) async {
+      final qso = Qso(
+        uuid: 'q1',
+        operationUuid: 'op-1',
+        data: {
+          'our': {'sent': '599'},
+          'their': {'call': 'W1AW', 'sent': '599', 'exchange': 'ZN14'},
+          'mode': 'CW',
+          'startAtMillis': 1000,
+        },
+      );
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: QsoList(qsos: [qso], onSelect: (_) {}),
+          ),
+        ),
+      );
+
+      final exchange = find.text('ZN14');
+      expect(exchange, findsOneWidget);
+      // Positioned after the RST cell ("599 599").
+      expect(
+        tester.getTopLeft(exchange).dx,
+        greaterThan(tester.getTopLeft(find.text('599 599')).dx),
+      );
     },
   );
 

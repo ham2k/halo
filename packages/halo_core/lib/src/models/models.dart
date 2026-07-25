@@ -140,6 +140,12 @@ class Qso {
   String? get sentRST => _our['sent'] as String?;
   String? get receivedRST => _their['sent'] as String?;
 
+  /// The contest/activity exchange the other station sent (QSON `their.exchange`,
+  /// alongside their RST) — a serial number, name, zone, etc. HaLo has no
+  /// exchange input field yet, so today this is populated only via import/sync
+  /// or a lookup guess; the QSO row shows it after the signal reports (#354).
+  String? get theirExchange => (_their['exchange'] as String?) ?? (_theirGuess['exchange'] as String?);
+
   /// Whether the value returned for `their[field]` (e.g. `'name'`, `'grid'`,
   /// `'state'`, `'entityPrefix'`, `'flag'`) is coming from the nested `guess`
   /// rather than an entered value — true exactly when the coalescing getters

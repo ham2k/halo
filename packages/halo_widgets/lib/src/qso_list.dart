@@ -312,6 +312,11 @@ class _QsoListState extends State<QsoList> {
     var longestCall = '';
     final freqsInKHz = <double?>[];
     final modesUsed = <String>{};
+    // Widest band shown in the freq/band column (only null-freq rows fall back
+    // to the band) and widest their-exchange, so both columns reserve a
+    // list-wide width and stay aligned even on rows that lack them (#354).
+    var longestBand = '';
+    var longestExchange = '';
     // Only the single longest flag and longest state ever matter for
     // dxStateWidth below — tracking them here costs the same cheap
     // length comparison as longestCall, deferring the two (not N) actual
@@ -322,6 +327,10 @@ class _QsoListState extends State<QsoList> {
       if (q.isEvent) continue;
       if (q.theirCall.length > longestCall.length) longestCall = q.theirCall;
       freqsInKHz.add(q.freq);
+      // Band only renders when the QSO has no frequency (freqField below).
+      if (q.freq == null && (q.band?.length ?? 0) > longestBand.length) longestBand = q.band!;
+      final exchange = q.theirExchange;
+      if (exchange != null && exchange.length > longestExchange.length) longestExchange = exchange;
       final mode = q.mode;
       if (mode != null) modesUsed.add(mode);
       final dxState = _dxStateContentFor(q, ourEntityPrefix);
@@ -356,6 +365,24 @@ class _QsoListState extends State<QsoList> {
     // The Mode column only earns its place when the operation actually mixes
     // modes — otherwise every row would repeat the same value.
     final usesMultipleModes = modesUsed.length > 1;
+
+    // Reserve the freq/band column at a fixed list-wide width so a QSO with
+    // neither still holds it open and Mode/Callsign line up on every row
+    // (#354). Freq strings depend on hzDigits, so measure after it's known;
+    // mono means string length tracks width, and measuring the full string in
+    // regular `mono` (the Hz part actually renders smaller) only over-reserves
+    // a hair, which is safe. Bands (null-freq rows) compete for the same width.
+    var longestFreqOrBand = longestBand;
+    for (final f in freqsInKHz) {
+      if (f == null) continue;
+      final parts = freqDisplayParts(f, hzDigits: hzDigits);
+      final s = parts.hz != null ? '${parts.mhz}.${parts.khz}.${parts.hz}' : '${parts.mhz}.${parts.khz}';
+      if (s.length > longestFreqOrBand.length) longestFreqOrBand = s;
+    }
+    final freqWidth = longestFreqOrBand.isEmpty ? 0.0 : textWidth(context, longestFreqOrBand, mono);
+    // The their-exchange column (after the signal reports) reserves width only
+    // when some QSO actually carries an exchange, like DX/State above (#354).
+    final exchangeWidth = longestExchange.isEmpty ? 0.0 : textWidth(context, longestExchange, monoDim);
 
     // `qsos` arrives oldest-first (QsosRepository.watchForOperation orders
     // by startAtMillis) — bucket it into consecutive UTC-day runs so each
@@ -549,7 +576,9 @@ class _QsoListState extends State<QsoList> {
                   ],
                   Text(timeLabel, style: rowMonoDim),
                   const SizedBox(width: _columnGap),
-                  freqField,
+                  // Fixed width so an empty freq/band still holds the column
+                  // open and the columns after it stay aligned (#354).
+                  SizedBox(width: freqWidth, child: freqField),
                   const SizedBox(width: _columnGap),
                   if (usesMultipleModes) ...[
                     SizedBox(
@@ -607,7 +636,9 @@ class _QsoListState extends State<QsoList> {
                                 iconForRefType(activityControls, entry.key),
                               ),
                               size: 14,
-                              color: theme.colorScheme.tertiary,
+                              // Neutral row foreground ("black" in the light
+                              // theme), not the tertiary accent (#354).
+                              color: theme.colorScheme.onSurface,
                             ),
                           if (entry.value > 1)
                             Text(
@@ -628,6 +659,23 @@ class _QsoListState extends State<QsoList> {
                         textAlign: TextAlign.right,
                       ),
                     ),
+                  // Their exchange, after the signal reports (#354). Reserved
+                  // list-wide only when some QSO carries one, so it costs no
+                  // space in the common (RST-only) case.
+                  if (exchangeWidth > 0) ...[
+                    const SizedBox(width: _columnGap),
+                    SizedBox(
+                      width: exchangeWidth,
+                      child: Opacity(
+                        opacity: qso.theirFieldIsGuessed('exchange') ? 0.8 : 1.0,
+                        child: Text(
+                          qso.theirExchange ?? '',
+                          style: rowMonoDim,
+                          textAlign: TextAlign.right,
+                        ),
+                      ),
+                    ),
+                  ],
                 ],
               ),
             ),
