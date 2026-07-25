@@ -373,26 +373,45 @@ Widget shrinkToFit(Widget child, {AlignmentGeometry alignment = Alignment.center
 /// Wraps an AppBar title/subtitle line so it reads the full text at a
 /// smaller size instead of truncating outright — use in place of
 /// `overflow: TextOverflow.ellipsis`. Font size shrinks to fit, but never
-/// below [minScale] (default 50%) of its natural size — past that point the
+/// below [minScale] (default 75%) of its natural size — past that point the
 /// line falls back to an ellipsis instead of shrinking into illegibility
-/// (issue #182).
-Widget shrinkToFitText(Text text, {double minScale = 0.5}) => LayoutBuilder(
+/// (issue #182, floor raised from 50% in #361).
+///
+/// [condensed], for a secondary line (a subtitle under its own title — not
+/// the title itself, which should stay at normal width), tries Roboto's
+/// variable-font 'wdth' axis at its Condensed value (75, vs. 100 Normal) —
+/// same font size, narrower glyphs — BEFORE shrinking the font size at all:
+/// a condensed render stays fully legible, unlike a smaller one, so it's the
+/// cheaper trade to make first (#361). No-ops if condensing wouldn't
+/// actually narrow the text (e.g. a font with no 'wdth' axis).
+Widget shrinkToFitText(Text text, {double minScale = 0.75, bool condensed = false}) => LayoutBuilder(
   builder: (context, constraints) {
     final style = DefaultTextStyle.of(context).style.merge(text.style);
     final data = text.data ?? text.textSpan?.toPlainText() ?? '';
+    final direction = text.textDirection ?? Directionality.of(context);
+
+    double widthOf(TextStyle s) =>
+        (TextPainter(text: TextSpan(text: data, style: s), textDirection: direction)..layout()).width;
+
+    var effectiveStyle = style;
     var scale = 1.0;
     if (constraints.maxWidth.isFinite) {
-      final painter = TextPainter(
-        text: TextSpan(text: data, style: style),
-        textDirection: text.textDirection ?? Directionality.of(context),
-      )..layout();
-      if (painter.width > constraints.maxWidth) {
-        scale = (constraints.maxWidth / painter.width).clamp(minScale, 1.0);
+      var width = widthOf(effectiveStyle);
+      if (condensed && width > constraints.maxWidth) {
+        final condensedStyle = effectiveStyle.copyWith(fontVariations: const [FontVariation('wdth', 75)]);
+        final condensedWidth = widthOf(condensedStyle);
+        if (condensedWidth < width) {
+          effectiveStyle = condensedStyle;
+          width = condensedWidth;
+        }
+      }
+      if (width > constraints.maxWidth) {
+        scale = (constraints.maxWidth / width).clamp(minScale, 1.0);
       }
     }
     return Text(
       data,
-      style: style.copyWith(fontSize: (style.fontSize ?? 14) * scale),
+      style: effectiveStyle.copyWith(fontSize: (effectiveStyle.fontSize ?? 14) * scale),
       maxLines: 1,
       overflow: TextOverflow.ellipsis,
     );

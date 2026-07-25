@@ -9,6 +9,8 @@
 // still win hit-testing (a double-click on a button must act on the button,
 // never zoom the window under it).
 
+import 'dart:io';
+
 import 'package:flutter/foundation.dart' show debugDefaultTargetPlatformOverride;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -404,10 +406,10 @@ void main() {
           ),
         );
 
-    testWidgets('reads the full text, scaled down but above the 50% floor, when moderately too wide', (tester) async {
+    testWidgets('reads the full text, scaled down but above the 75% floor, when moderately too wide', (tester) async {
       final natural = naturalWidth(tester);
       // Comfortably requires a scale between the floor and 1.0.
-      await tester.pumpWidget(host(natural * 0.7));
+      await tester.pumpWidget(host(natural * 0.85));
       await tester.pump();
 
       expect(tester.takeException(), isNull);
@@ -415,13 +417,13 @@ void main() {
 
       final rendered = tester.widget<Text>(find.text(longTitle));
       final scale = rendered.style!.fontSize! / style.fontSize!;
-      expect(scale, inInclusiveRange(0.5, 1.0));
+      expect(scale, inInclusiveRange(0.75, 1.0));
     });
 
-    testWidgets('locks at the 50% floor and relies on ellipsis for the rest', (tester) async {
+    testWidgets('locks at the 75% floor and relies on ellipsis for the rest', (tester) async {
       final natural = naturalWidth(tester);
       final width = natural * 0.2;
-      // Would need well under a 50% scale to avoid overflowing — the floor
+      // Would need well under a 75% scale to avoid overflowing — the floor
       // must win, with the residual overflow handled by ellipsis instead.
       await tester.pumpWidget(host(width));
       await tester.pump();
@@ -429,17 +431,100 @@ void main() {
       expect(tester.takeException(), isNull);
 
       final rendered = tester.widget<Text>(find.text(longTitle));
-      expect(rendered.style!.fontSize, style.fontSize! * 0.5, reason: 'font size should lock at the 50% floor, not keep shrinking');
+      expect(rendered.style!.fontSize, style.fontSize! * 0.75, reason: 'font size should lock at the 75% floor, not keep shrinking');
       expect(rendered.overflow, TextOverflow.ellipsis);
       expect(rendered.maxLines, 1);
 
       // Unlike shrinkToFit's FittedBox (which reports the OUTER constrained
       // size while the child stays at its natural, unclipped size), Text
       // lays itself out AT the given constraint — so a width close to what
-      // was given (rather than to `natural * 0.5`) is the signature of the
+      // was given (rather than to `natural * 0.75`) is the signature of the
       // ellipsis actually clipping the overflow, not silently overflowing.
       final renderedWidth = tester.getSize(find.text(longTitle)).width;
       expect(renderedWidth, lessThanOrEqualTo(width + 0.5));
+    });
+
+    testWidgets('condensed defaults to false — a title never gets the width-axis treatment', (tester) async {
+      final natural = naturalWidth(tester);
+      await tester.pumpWidget(host(natural * 0.2)); // needs the floor regardless
+      await tester.pump();
+
+      final rendered = tester.widget<Text>(find.text(longTitle));
+      expect(rendered.style!.fontVariations, isNull);
+    });
+
+    // #361: a subtitle should narrow (Roboto's variable 'wdth' axis, 100
+    // Normal -> 75 Condensed) before its font size shrinks at all — a
+    // condensed render at full size stays legible, unlike a smaller one.
+    // Needs the REAL Roboto.ttf (the axis doesn't exist on flutter_test's
+    // built-in stand-in font), loaded once for this group only — no other
+    // test file in the repo does this; keep it scoped here.
+    group('condensed', () {
+      const condensedStyle = TextStyle(fontSize: 18, fontFamily: 'Roboto');
+
+      setUpAll(() async {
+        final bytes = await File('../../app/assets/fonts/Roboto.ttf').readAsBytes();
+        final loader = FontLoader('Roboto')..addFont(Future.value(ByteData.view(bytes.buffer)));
+        await loader.load();
+      });
+
+      double widthOf(TextStyle style) => (TextPainter(
+            text: TextSpan(text: longTitle, style: style),
+            textDirection: TextDirection.ltr,
+          )..layout())
+          .width;
+
+      Widget condensedHost(double width) => MaterialApp(
+            home: Scaffold(
+              body: Align(
+                alignment: Alignment.topLeft,
+                child: SizedBox(
+                  width: width,
+                  child: shrinkToFitText(const Text(longTitle, style: condensedStyle), condensed: true),
+                ),
+              ),
+            ),
+          );
+
+      testWidgets('narrows the glyphs at full size when that alone is enough to fit', (tester) async {
+        final natural = widthOf(condensedStyle);
+        final condensed = widthOf(condensedStyle.copyWith(fontVariations: const [FontVariation('wdth', 75)]));
+        expect(condensed, lessThan(natural), reason: 'the real Roboto VF must actually narrow at wdth=75 for this test to be meaningful');
+
+        // Between the two: condensing alone fits, no font-size shrink needed.
+        final width = (natural + condensed) / 2;
+        await tester.pumpWidget(condensedHost(width));
+        await tester.pump();
+
+        expect(tester.takeException(), isNull);
+        final rendered = tester.widget<Text>(find.text(longTitle));
+        expect(rendered.style!.fontVariations, contains(const FontVariation('wdth', 75)));
+        expect(rendered.style!.fontSize, condensedStyle.fontSize, reason: 'condensing should avoid needing any font-size shrink here');
+      });
+
+      testWidgets('still shrinks the font size (condensed) once condensing alone is not enough', (tester) async {
+        final condensed = widthOf(condensedStyle.copyWith(fontVariations: const [FontVariation('wdth', 75)]));
+        final width = condensed * 0.85; // condensed alone still overflows this
+
+        await tester.pumpWidget(condensedHost(width));
+        await tester.pump();
+
+        expect(tester.takeException(), isNull);
+        final rendered = tester.widget<Text>(find.text(longTitle));
+        expect(rendered.style!.fontVariations, contains(const FontVariation('wdth', 75)), reason: 'condensed width should still be used as the base to shrink from');
+        expect(rendered.style!.fontSize, lessThan(condensedStyle.fontSize!));
+        expect(rendered.style!.fontSize, greaterThanOrEqualTo(condensedStyle.fontSize! * 0.75));
+      });
+
+      testWidgets('does not condense when the text already fits', (tester) async {
+        final natural = widthOf(condensedStyle);
+        await tester.pumpWidget(condensedHost(natural * 1.5));
+        await tester.pump();
+
+        final rendered = tester.widget<Text>(find.text(longTitle));
+        expect(rendered.style!.fontVariations, isNull);
+        expect(rendered.style!.fontSize, condensedStyle.fontSize);
+      });
     });
   });
 }

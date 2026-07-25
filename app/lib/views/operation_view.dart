@@ -1138,8 +1138,10 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
                     children: [
                       // Title and description each shrink to fit their own
                       // width independently (issue #182) rather than
-                      // truncating — down to half their natural font size,
-                      // past which the line ellipsizes instead.
+                      // truncating — down to 75% of their natural font size,
+                      // past which the line ellipsizes instead (#361). The
+                      // description tries Roboto's condensed glyph width
+                      // first, before shrinking its font size at all.
                       shrinkToFitText(
                         Text('${operation.stationCall} ${displayTitleFor(context, operation)}'),
                       ),
@@ -1151,6 +1153,7 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
                               color: Theme.of(context).colorScheme.onPrimary.withValues(alpha: 0.85),
                             ),
                           ),
+                          condensed: true,
                         ),
                     ],
                   ),
