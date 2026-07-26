@@ -243,8 +243,8 @@ const ExportHook = {
     if (!refOfType(args.operation, TYPE)) return []
     const t = tFor(ctx)
     return [
-      { exportType: 'contest-adif', format: 'adif', label: t('adifExport'), selectedByDefault: true },
-      { exportType: 'cabrillo', format: 'cabrillo', label: t('cabrilloExport'), selectedByDefault: true },
+      { exportType: 'contest-adif', format: 'adif', label: t('adifExport'), selectedByDefault: true, refType: TYPE },
+      { exportType: 'cabrillo', format: 'cabrillo', label: t('cabrilloExport'), selectedByDefault: true, refType: TYPE },
     ]
   },
 

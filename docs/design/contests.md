@@ -453,6 +453,39 @@ reference, with `refs` reduced to that one — matching polo's POTA, which sets
 > reference, since that is where the activation began, but it is a guess and
 > polo has no answer.
 
+#### What of this is BUILT
+
+Only the half with consumers: **an export is sliced to the segments carrying
+its own ref type.** `ExportOption.refType` names that type, and the core hands
+`generateExport` only the matching QSOs. All six contest exports set it; core
+ADIF doesn't, because the full ADIF covers the operation rather than one
+activity within it.
+
+That was a live bug, not preparation. M6 gated scoring on segments and left
+exports behind, so a contest that started or ended at a break put contacts made
+when it wasn't running into its Cabrillo — the same mistake the scorer made,
+in a file the operator submits.
+
+**Deferred, with the reason:**
+
+| Piece | Why not yet |
+|---|---|
+| One export **per reference** | **POTA and SOTA register no `export` hook at all** — their manifests list `activity`, `adifFields`, `dataFile`, `lookup`, `ref:*`, `spots`. So nothing can produce the two park submissions this was designed to split, and the two-pass collection above would be an interface with no caller. |
+| `includeAllSegments` | Only means anything once an export is per-reference. |
+| `includeOtherRefHandlers` | Same, and honouring it changes ADIF output users have already submitted (see the implementation note below). |
+
+Until then, several refs of one type **union**: one export covers the type,
+because quietly dropping half a log would be worse than covering both. And the
+"which segment heads it" question above stays open, since it only arises for a
+per-reference export.
+
+The two-pass collection sketched above also needs rethinking before it is
+built. It assumes each hook's own guard decides whether it answers a
+per-reference call — but `core/adif`'s `suggestExportOptions` has **no guard**,
+so it would answer every one and offer N+1 identical "ADIF Export" options. An
+export that wants slicing probably has to opt in, as `refType` already does,
+rather than the core inferring it from who answers.
+
 Two flags widen that default view, each answering a different question:
 
 | Flag | Question it answers |
@@ -463,10 +496,33 @@ Two flags widen that default view, each answering a different question:
 **On the names.** `includeAllSegments` is what polo calls `combineSegmentRefs`
 — but polo's flag doesn't select segments at all. It chooses whether the
 effective operation's refs *follow* the segments or stay pinned to the base
-(`qsonToADIF.js:89-99`); neither branch filters QSOs, and polo has no
-segment-based QSO filtering anywhere. Its only narrowing mechanism is
-`selectQSOsToExport`, which has one checklist-based implementation unrelated to
-segments. **So per-reference slicing is new in HaLo, not a port.**
+(`qsonToADIF.js:89-99`); neither branch filters QSOs.
+
+> **Corrected while implementing.** This section previously said polo has "no
+> segment-based QSO filtering anywhere" and that per-reference slicing is "new
+> in HaLo, not a port". Both are wrong. `filterQSOsWithSectionRefs` runs on
+> EVERY polo export (`generateExports.js:37`, implemented in
+> `@ham2k/lib-qson-tools`): it walks the log tracking `sectionRefs`, updating
+> them at each `break`/`start`, and keeps a QSO only if its section carries the
+> requested ref. That is `qsosFor`, shipped. So this is largely a PORT, which
+> lowers the risk rather than raising it.
+>
+> **But polo only filters for a ref carrying an IDENTIFIER** —
+> `withSectionRefs.filter(ref => ref?.type && ref?.ref)`. A contest ref is
+> `{type: 'cqww', mode: 'CW'}` with no `ref`, so the list comes back empty and
+> polo exports the WHOLE log for it. Polo therefore does not slice contest
+> exports at all.
+>
+> **HaLo deliberately does** (fix-on-port, §8). A Cabrillo containing contacts
+> made after the contest ended is a false claim in a submitted file, and
+> §5.1.3 already gates contest SCORING exactly this way — leaving the export
+> unsliced would have the score and the submission disagree, which is the thing
+> §5.1.3 and §8 both exist to prevent.
+>
+> One more: this section says "contests answer the ref-less call, activities
+> answer the per-reference one". In polo the categories are the other way
+> round — contests register under `ref:<type>` (`CQWWExtension.js:27`), and
+> only three hooks are in `export` at all.
 
 `includeOtherRefHandlers` keeps polo's real semantics under a name that states
 them. Polo's `includeOtherRefs` gathers `[...qso.refs, ...operation.refs]`,
@@ -1544,6 +1600,13 @@ during the milestone that hits them:
      (`HG19`, `LY1000`). Both are silent under-counts.
    - **WPX serials** — every failure mode listed at the top of §5.8 is gone by
      construction, not by fixing the counter logic.
+   - **Contest exports are sliced to their own segments** — polo filters QSOs
+     by segment on every export, but only for a ref carrying an IDENTIFIER
+     (`ref?.type && ref?.ref`), so a contest ref never qualifies and polo
+     exports the whole log for it. A Cabrillo containing contacts made after
+     the contest ended is a false claim, and §5.1.3 already gates contest
+     SCORING this way, so leaving the export unsliced would have the score and
+     the submission disagree.
    - **NAQP band and mode** — polo validates NEITHER. It defines `VALID_BANDS`
      and never consults it, so a 30m QSO scores, and it never compares the QSO's
      mode against the contest's, so a CW contact counts in the SSB running.
