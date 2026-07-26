@@ -113,6 +113,119 @@ void main() {
     expect(ErrorReportingService.reportingEnabled, isFalse);
   });
 
+  group("Flutter's web focus-traversal null (#271)", () {
+    // The one error this app swallows outright. It comes from an unsound `!` in
+    // Flutter's own ReadingOrderTraversalPolicy, is reached only on web and only
+    // when the browser view's focus changes, and the operator can do nothing
+    // about it — so the notice it used to raise was pure alarm. These tests are
+    // about the NARROWNESS of that exemption: everything else still reports.
+
+    /// The real shape, from the stack recorded in ham2k/app-halo-dist#271.
+    FlutterErrorDetails focusTraversalNull({
+      Object? error,
+      String? context = 'while dispatching notifications for WidgetsBindingObserver.didChangeViewFocus',
+    }) =>
+        FlutterErrorDetails(
+          exception: error ?? TypeError(),
+          stack: StackTrace.fromString('focus_traversal.dart 1685:90  _pickNext'),
+          library: 'widgets library',
+          context: context == null ? null : ErrorDescription(context),
+        );
+
+    test('is recognized on web, and only on web', () {
+      final details = focusTraversalNull();
+      ErrorReportingService.debugTreatAsWeb = false;
+      expect(
+        ErrorReportingService.isKnownWebFocusTraversalNoise(details),
+        isFalse,
+        reason: 'didChangeViewFocus only reaches that path on the multi-view embedder',
+      );
+      ErrorReportingService.debugTreatAsWeb = true;
+      expect(ErrorReportingService.isKnownWebFocusTraversalNoise(details), isTrue);
+    });
+
+    test('a null check in that dispatch is recognized however the runtime spells it', () {
+      ErrorReportingService.debugTreatAsWeb = true;
+      // dart2js's own null-check failure has not always been a `TypeError`, so
+      // the message is matched as well as the type.
+      for (final error in <Object>[
+        TypeError(),
+        StateError('Unexpected null value.'),
+        StateError('Null check operator used on a null value'),
+      ]) {
+        expect(
+          ErrorReportingService.isKnownWebFocusTraversalNoise(focusTraversalNull(error: error)),
+          isTrue,
+          reason: '$error',
+        );
+      }
+    });
+
+    test('nothing else in that dispatch is swallowed', () {
+      ErrorReportingService.debugTreatAsWeb = true;
+      // Same place, a different failure. An observer of ours throwing here would
+      // be a real bug, and matching the null check specifically is what keeps it
+      // reportable.
+      expect(
+        ErrorReportingService.isKnownWebFocusTraversalNoise(focusTraversalNull(error: RangeError('index'))),
+        isFalse,
+      );
+      expect(
+        ErrorReportingService.isKnownWebFocusTraversalNoise(focusTraversalNull(error: StateError('boom'))),
+        isFalse,
+      );
+    });
+
+    test('the same null check from anywhere else is still reported', () {
+      ErrorReportingService.debugTreatAsWeb = true;
+      // A null check thrown during a build, a layout, a gesture: every other one
+      // of these is a bug of ours and has to stay loud.
+      expect(
+        ErrorReportingService.isKnownWebFocusTraversalNoise(
+          focusTraversalNull(context: 'while building MyWidget'),
+        ),
+        isFalse,
+      );
+      expect(
+        ErrorReportingService.isKnownWebFocusTraversalNoise(focusTraversalNull(context: null)),
+        isFalse,
+        reason: 'no context at all is not a match either',
+      );
+    });
+
+    testWidgets('is dropped before the notice, the console dump, or the backend', (tester) async {
+      await withErrorHooks(() async {
+        final statusBar = StatusBarService(await SharedPreferences.getInstance());
+        ErrorReportingService.attachStatusBar(statusBar);
+        ErrorReportingService.debugTreatAsWeb = true;
+
+        final chained = FlutterError.onError!;
+        chained(focusTraversalNull());
+        await tester.pump(); // the notice would be queued as a microtask
+
+        expect(
+          statusBar.activeNotices.where((n) => n.key == 'error-reporting:first-error'),
+          isEmpty,
+          reason: 'no "Something went wrong" for a framework bug the operator cannot act on',
+        );
+        // And it never even reached the rest of the chain — which in production is
+        // the backend's own handler and `presentError`. The test binding sits at
+        // the end of that chain and records everything that gets there, so a null
+        // pending exception is the proof.
+        expect(tester.takeException(), isNull);
+
+        // An ordinary framework error in the same session still does both.
+        chained(FlutterErrorDetails(exception: StateError('boom')));
+        expect(tester.takeException(), isA<StateError>());
+        await tester.pump();
+        expect(
+          statusBar.activeNotices.where((n) => n.key == 'error-reporting:first-error'),
+          hasLength(1),
+        );
+      });
+    });
+  });
+
   test('report() reaches the backend\'s captureException with the given context', () async {
     final backend = FakeErrorReportingBackend();
     await withErrorHooks(() async {

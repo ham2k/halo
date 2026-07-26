@@ -28,6 +28,7 @@
 
 import 'dart:async';
 
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/services.dart' show Clipboard, ClipboardData;
 import 'package:flutter/widgets.dart';
 
@@ -120,6 +121,17 @@ class ErrorReportingService {
     // handler, when active, is already in this chain; preserve it.
     final previousOnError = FlutterError.onError;
     FlutterError.onError = (details) {
+      // Dropped before anything sees it: no console dump, no upload, no notice.
+      if (isKnownWebFocusTraversalNoise(details)) {
+        if (!_focusTraversalNoiseLogged) {
+          _focusTraversalNoiseLogged = true;
+          debugPrint(
+            '[error-reporting] ignoring the Flutter web focus-traversal null on '
+            'view-focus change (ham2k/app-halo-dist#271); later ones are silent',
+          );
+        }
+        return;
+      }
       if (previousOnError != null) {
         previousOnError(details);
       } else {
@@ -132,6 +144,59 @@ class ErrorReportingService {
     // failed widget's slot shows the tile, the rest of the app keeps
     // working (#76 — see views/error_tile.dart).
     ErrorWidget.builder = (details) => HaLoErrorTile(details: details);
+  }
+
+  static bool _focusTraversalNoiseLogged = false;
+
+  /// Pretend we are on web, for the tests — `kIsWeb` is a compile-time false in
+  /// the VM the tests run in, so without this seam the one predicate that only
+  /// ever fires on web could not be exercised at all.
+  @visibleForTesting
+  static bool? debugTreatAsWeb;
+
+  /// Whether [details] is Flutter's own focus-traversal crash on web
+  /// (ham2k/app-halo-dist#271), which this app drops on the floor.
+  ///
+  /// `ReadingOrderTraversalPolicy._pickNext` force-unwraps a directionality that
+  /// legitimately comes back null when a transiently-defunct node is pulled into
+  /// the sort, and `View.didChangeViewFocus` sorts EVERY traversable node in the
+  /// view scope rather than just the active scope — so on web, where that fires
+  /// on every browser focus change, the unsound `!` throws out of an observer.
+  /// The framework catches it and the app carries on; the only thing it produces
+  /// is a "Something went wrong" notice about a framework bug, on a screen the
+  /// operator was only clicking into, that they can do nothing about.
+  ///
+  /// Narrow deliberately — three conditions, all of which must hold:
+  ///
+  ///  * **Web.** `handleViewFocusChanged` only reaches this path on the
+  ///    multi-view embedder, so on every other platform this is dead code.
+  ///  * **The framework's own literal context** for that dispatch
+  ///    (`widgets/binding.dart`'s `'while dispatching notifications for
+  ///    WidgetsBindingObserver.didChangeViewFocus'`), so no error raised
+  ///    anywhere else is affected.
+  ///  * **A null-check failure**, which is the specific unsound `!` in #271 and
+  ///    not, say, a range error some future observer throws in the same place.
+  ///
+  /// The STACK is deliberately not matched: it names `focus_traversal.dart` in a
+  /// debug build and is minified in a release one, so requiring it would make
+  /// this work only where the noise matters least.
+  ///
+  /// This cannot hide a bug of ours. No observer in this app implements
+  /// `didChangeViewFocus` — only Flutter's own `View` does — so nothing of ours
+  /// can throw inside that dispatch. Delete this the day Flutter's `!` is fixed;
+  /// #271 tracks the upstream side.
+  @visibleForTesting
+  static bool isKnownWebFocusTraversalNoise(FlutterErrorDetails details) {
+    if (!(debugTreatAsWeb ?? kIsWeb)) return false;
+    if (!(details.context?.toString() ?? '').contains('WidgetsBindingObserver.didChangeViewFocus')) {
+      return false;
+    }
+    final error = details.exception;
+    if (error is TypeError) return true;
+    // Belt and braces for the web runtime's own null-check type, whose identity
+    // has moved between Dart versions; the message has not.
+    final text = error.toString();
+    return text.contains('Unexpected null value') || text.contains('Null check operator used on a null value');
   }
 
   /// Queue the once-per-session StatusBar notice (if the bar is attached).
@@ -172,5 +237,7 @@ class ErrorReportingService {
     _statusBar = null;
     _noticeShown = false;
     _backend = const NoopErrorReportingBackend();
+    _focusTraversalNoiseLogged = false;
+    debugTreatAsWeb = null;
   }
 }
