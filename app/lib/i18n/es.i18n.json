@@ -566,7 +566,9 @@
     "updateReady": "Actualización lista",
     "restartToApply": "Se descargó una actualización. Reinicia para aplicarla.",
     "appliesNextLaunch": "Se descargó una actualización. Se aplicará la próxima vez que abras la app.",
-    "restartNow": "Reiniciar ahora"
+    "restartNow": "Reiniciar ahora",
+    "reloadToUpdate": "Hay una versión más reciente de esta página disponible. Recarga para obtenerla.",
+    "reloadNow": "Recargar ahora"
   },
   "extensionService": {
     "runtimeNotReady": "El motor de extensiones aún no está listo.",

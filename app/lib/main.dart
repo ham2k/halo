@@ -39,6 +39,7 @@ import 'config/version.dart';
 import 'services/auto_update_service.dart';
 import 'services/deep_link_service.dart';
 import 'services/export_service.dart';
+import 'services/build_freshness_service.dart';
 import 'services/error_reporting_backend.dart';
 import 'services/error_reporting_service.dart';
 import 'services/extension_service.dart';
@@ -133,6 +134,7 @@ void _mainBody({
     });
     ErrorReportingService.attachStatusBar(services.statusBar);
     ErrorReportingService.attachSettings(services.settings);
+    BuildFreshnessService(statusBar: services.statusBar).start();
 
     // Expired-build nag: if this build's expiration date (halo-ops release
     // writes it into version.dart; two weeks for Next and Dev, six months

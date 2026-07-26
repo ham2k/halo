@@ -496,6 +496,8 @@ class _Translations$updates$es extends Translations$updates$en {
 	@override String get restartToApply => 'Se descargó una actualización. Reinicia para aplicarla.';
 	@override String get appliesNextLaunch => 'Se descargó una actualización. Se aplicará la próxima vez que abras la app.';
 	@override String get restartNow => 'Reiniciar ahora';
+	@override String get reloadToUpdate => 'Hay una versión más reciente de esta página disponible. Recarga para obtenerla.';
+	@override String get reloadNow => 'Recargar ahora';
 }
 
 // Path: extensionService
@@ -1593,6 +1595,8 @@ extension on TranslationsEs {
 			'updates.restartToApply' => 'Se descargó una actualización. Reinicia para aplicarla.',
 			'updates.appliesNextLaunch' => 'Se descargó una actualización. Se aplicará la próxima vez que abras la app.',
 			'updates.restartNow' => 'Reiniciar ahora',
+			'updates.reloadToUpdate' => 'Hay una versión más reciente de esta página disponible. Recarga para obtenerla.',
+			'updates.reloadNow' => 'Recargar ahora',
 			'extensionService.runtimeNotReady' => 'El motor de extensiones aún no está listo.',
 			'extensionService.testFailed' => ({required Object error}) => 'Prueba fallida: ${error}',
 			'extensionService.connectedAs' => ({required Object identity}) => 'Conectado como ${identity}',

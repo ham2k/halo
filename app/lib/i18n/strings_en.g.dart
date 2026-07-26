@@ -937,6 +937,12 @@ class Translations$updates$en {
 
 	/// en: 'Restart now'
 	String get restartNow => 'Restart now';
+
+	/// en: 'A newer version of this page is available. Reload to get it.'
+	String get reloadToUpdate => 'A newer version of this page is available. Reload to get it.';
+
+	/// en: 'Reload now'
+	String get reloadNow => 'Reload now';
 }
 
 // Path: extensionService
@@ -2579,6 +2585,8 @@ extension on Translations {
 			'updates.restartToApply' => 'An update has been downloaded. Restart to apply it.',
 			'updates.appliesNextLaunch' => 'An update has been downloaded. It will apply the next time you open the app.',
 			'updates.restartNow' => 'Restart now',
+			'updates.reloadToUpdate' => 'A newer version of this page is available. Reload to get it.',
+			'updates.reloadNow' => 'Reload now',
 			'extensionService.runtimeNotReady' => 'Extension runtime not ready.',
 			'extensionService.testFailed' => ({required Object error}) => 'Test failed: ${error}',
 			'extensionService.connectedAs' => ({required Object identity}) => 'Connected as ${identity}',

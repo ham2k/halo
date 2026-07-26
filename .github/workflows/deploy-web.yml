@@ -90,6 +90,14 @@ jobs:
         env:
           HALO_SENTRY_DSN: ${{ secrets.HALO_SENTRY_DSN }}
 
+      # BuildFreshnessService's deploy-stamp: the same sha baked into
+      # kGitSha above, but fetched at runtime (cache-busted per request) so a
+      # tab left open can tell it's stale even though Cloudflare's default
+      # caching keeps flutter_service_worker.js around for hours — the
+      # dashboard showing a fresh deploy doesn't mean an open tab has it.
+      - name: Stamp the deployed commit for BuildFreshnessService
+        run: git rev-parse --short HEAD > app/build/web/build_sha.txt
+
       # perl, not sed: the replacement interpolates the env var literally, so
       # a secret containing sed metacharacters (&, |, \) can't silently
       # corrupt the deployed page.

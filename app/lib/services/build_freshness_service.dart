@@ -1,0 +1,101 @@
+// Copyright ©️ 2026 Sebastian Delmont <sd@ham2k.com>
+// SPDX-License-Identifier: MPL-2.0
+//
+// Web only: Cloudflare Pages caches flutter_service_worker.js for hours, so a
+// browser tab can keep running an old build for a long time after a real
+// deploy — the CDN dashboard shows the new version live while the page a user
+// actually has open is stale, with no way for them to know. This polls a
+// small deploy-stamped file (build_sha.txt, written by
+// .github/workflows/deploy-web.yml) and compares it to this build's own
+// baked-in kGitSha, prompting a reload the moment they genuinely differ —
+// independent of whatever the browser's HTTP cache thinks is fresh, since the
+// fetch itself is cache-busted per request.
+
+import 'dart:async';
+
+import 'package:flutter/foundation.dart' show kIsWeb, visibleForTesting;
+import 'package:flutter/widgets.dart';
+import 'package:http/http.dart' as http;
+
+import '../config/build_reload.dart';
+import '../config/version.dart';
+import '../i18n/strings.g.dart';
+import 'status_bar_service.dart';
+
+class BuildFreshnessService with WidgetsBindingObserver {
+  final StatusBarService statusBar;
+  final http.Client _client;
+
+  /// Overridable for tests; defaults to the real deployed path.
+  final Uri Function() _urlBuilder;
+
+  /// This build's own sha to compare against — overridable for tests, since
+  /// kGitSha (like kIsWeb) can't be faked from a test binary; defaults to the
+  /// real compile-time constant.
+  final String _currentSha;
+
+  static const _checkInterval = Duration(minutes: 10);
+  static const noticeKey = 'build:stale';
+
+  Timer? _timer;
+  bool _notified = false;
+
+  BuildFreshnessService({
+    required this.statusBar,
+    http.Client? client,
+    Uri Function()? urlBuilder,
+    String? currentSha,
+  })  : _client = client ?? http.Client(),
+        _urlBuilder = urlBuilder ??
+            (() => Uri.base.resolve('build_sha.txt?_=${DateTime.now().millisecondsSinceEpoch}')),
+        _currentSha = currentSha ?? kGitSha;
+
+  /// No-op off the web (every other platform updates through its own
+  /// channel) and for a local/dev build (kGitSha empty — nothing to compare
+  /// against, and it would otherwise nag on every single check).
+  void start() {
+    if (!kIsWeb || _currentSha.isEmpty) return;
+    WidgetsBinding.instance.addObserver(this);
+    _timer = Timer.periodic(_checkInterval, (_) => unawaited(check()));
+  }
+
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _timer?.cancel();
+  }
+
+  /// Catches the common "left the tab open for hours, then came back" case
+  /// immediately on refocus, rather than waiting for the next timer tick.
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) unawaited(check());
+  }
+
+  /// Public (not gated on kIsWeb, unlike [start]) so tests can drive the
+  /// actual comparison/notice logic directly — kIsWeb is never true in a test
+  /// binary, so [start] itself can never be exercised there.
+  @visibleForTesting
+  Future<void> check() async {
+    if (_notified) return;
+    final String deployedSha;
+    try {
+      final response = await _client.get(_urlBuilder()).timeout(const Duration(seconds: 5));
+      if (response.statusCode != 200) return;
+      deployedSha = response.body.trim();
+    } catch (_) {
+      // Best-effort: a network hiccup or a build predating this file (no
+      // build_sha.txt yet) must not nag, and isn't worth reporting either —
+      // this check runs every few minutes for the app's whole lifetime.
+      return;
+    }
+    if (deployedSha.isEmpty || deployedSha == _currentSha) return;
+    _notified = true;
+    statusBar.showNotice(
+      key: noticeKey,
+      icon: 'refresh',
+      title: t.updates.updateAvailable,
+      text: t.updates.reloadToUpdate,
+      actions: [StatusBarAction(label: t.updates.reloadNow, onTap: reloadPage)],
+    );
+  }
+}

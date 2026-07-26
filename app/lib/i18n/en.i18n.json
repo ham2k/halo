@@ -566,7 +566,9 @@
     "updateReady": "Update ready",
     "restartToApply": "An update has been downloaded. Restart to apply it.",
     "appliesNextLaunch": "An update has been downloaded. It will apply the next time you open the app.",
-    "restartNow": "Restart now"
+    "restartNow": "Restart now",
+    "reloadToUpdate": "A newer version of this page is available. Reload to get it.",
+    "reloadNow": "Reload now"
   },
   "extensionService": {
     "runtimeNotReady": "Extension runtime not ready.",
