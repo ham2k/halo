@@ -74,7 +74,15 @@ async function registerClient(): Promise<string> {
 
   const json = parseJson(response.body)
   if (response.status !== 200 || typeof json.token !== 'string') {
-    throw new Error(`LoFi registration failed: ${(json.error as string) ?? `HTTP ${response.status}`}`)
+    // A LoFiRequestError, not a plain Error: the server can reject a
+    // brand-new registration (e.g. a stored callsign that no longer matches
+    // its expected format) same as it can reject any other authenticated
+    // request, and callers already know how to treat that class of failure
+    // as recoverable rather than a hard failure — see `sync`.
+    throw new LoFiRequestError(
+      `LoFi registration failed: ${(json.error as string) ?? `HTTP ${response.status}`}`,
+      response.status,
+    )
   }
   cachedToken = json.token
   await host.kvSet('token', cachedToken)
@@ -138,8 +146,20 @@ function parseJson(body: string): Record<string, JSONValue> {
   }
 }
 
+// A 422 here is a rejected registration, not a bug: the server refusing a
+// brand-new client's account details (e.g. a stored callsign that no longer
+// matches its expected format) is part of the periodic sync flow, and
+// SyncEngine treats an `error`-shaped response as recoverable — same
+// convention `linkClient` already uses below. Any other status (500, 429, a
+// real outage, ...) is a genuine failure and must keep propagating so it
+// still reaches onError/crash reporting like before this existed.
 async function sync(payload: SyncPayload, _ctx: HookContext): Promise<SyncResponse> {
-  return (await request('POST', 'v1/sync', payload as unknown as JSONValue)) as SyncResponse
+  try {
+    return (await request('POST', 'v1/sync', payload as unknown as JSONValue)) as SyncResponse
+  } catch (e) {
+    if (e instanceof LoFiRequestError && e.status === 422) return { error: e.message, error_status: e.status }
+    throw e
+  }
 }
 
 async function getAccountData(_args: Record<string, never>, _ctx: HookContext): Promise<Record<string, JSONValue>> {

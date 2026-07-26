@@ -837,12 +837,18 @@ export interface SyncPayload {
 
 /// The server's response: any records it wants merged in locally, tuning
 /// knobs for the next round, and the account this device is currently
-/// linked to.
+/// linked to. `error`/`error_status` mark a rejected round instead (same
+/// shape as `linkClient`'s error data) — specifically a 422 rejecting a
+/// brand-new client's account details, which is part of the sync flow, not
+/// a transport failure, so the engine retries rather than treating it as
+/// one. Any other status is a genuine failure and still throws.
 export interface SyncResponse {
   operations?: Record<string, JSONValue>[]
   qsos?: Record<string, JSONValue>[]
   meta?: Record<string, JSONValue>
   account?: Record<string, JSONValue>
+  error?: string
+  error_status?: number
 }
 
 /// Registered under category `syncTransport`. Handles authentication and

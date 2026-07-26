@@ -1589,6 +1589,15 @@ class Translations$settings$syncPanel$en {
 
 	/// en: 'Combine'
 	String get combine => 'Combine';
+
+	/// en: 'Sync can't connect'
+	String get authIssueTitle => 'Sync can\'t connect';
+
+	/// en: 'Ham2K Log Filer keeps rejecting this device. Check your callsign in Sync settings.'
+	String get authIssueText => 'Ham2K Log Filer keeps rejecting this device. Check your callsign in Sync settings.';
+
+	/// en: 'Open Sync settings'
+	String get openSettings => 'Open Sync settings';
 }
 
 // Path: settings.accounts
@@ -2483,6 +2492,9 @@ extension on Translations {
 			'settings.syncPanel.pendingBannerTitle' => 'New Ham2K Log Filer account detected',
 			'settings.syncPanel.pendingBannerBody' => 'Keep this device\'s existing operations and QSOs and merge them into the account, or replace them with the account\'s data (a backup stays on this device either way).',
 			'settings.syncPanel.combine' => 'Combine',
+			'settings.syncPanel.authIssueTitle' => 'Sync can\'t connect',
+			'settings.syncPanel.authIssueText' => 'Ham2K Log Filer keeps rejecting this device. Check your callsign in Sync settings.',
+			'settings.syncPanel.openSettings' => 'Open Sync settings',
 			'settings.accounts.title' => 'Accounts & Services',
 			'settings.accounts.none' => 'No active extensions with accounts',
 			'settings.accounts.notConfigured' => 'Not configured',

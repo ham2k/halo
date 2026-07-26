@@ -14,6 +14,8 @@ class _FakeSyncSettings extends SyncSettings {
   bool enabled = true;
   @override
   Map<String, dynamic> state;
+  @override
+  String operatorCall = 'KI2D';
 
   _FakeSyncSettings({Map<String, dynamic>? state}) : state = state ?? const {};
 
@@ -748,4 +750,131 @@ void main() {
     });
   });
 
+  group('rejected registration', () {
+    // The server can refuse a brand-new client registration (e.g. a stale
+    // callsign that no longer matches its expected format) the same way it
+    // can refuse any other authenticated call — ham2k-lofi's `sync` returns
+    // this as `{error, error_status}` data rather than throwing, so it must
+    // not be treated like an arbitrary transport failure.
+    Map<String, dynamic> rejection() =>
+        {'error': 'LoFi registration failed: HTTP 422', 'error_status': 422};
+
+    test('a single rejected round is not counted or reported', () async {
+      Object? reported;
+      var errorRounds = 0;
+      String? authNotice;
+      final rejected = _FakeTransport((method, args) => rejection());
+      final e = SyncEngine(
+        operations: operations,
+        qsos: qsos,
+        transport: rejected.call,
+        settings: settings,
+        log: (m) {
+          if (m.contains('round failed')) errorRounds++;
+        },
+        onError: (error, st, {context}) => reported = error,
+        onAuthError: (message, {status}) => authNotice = message,
+      );
+      addTearDown(e.dispose);
+
+      await e.runOneRound();
+
+      expect(reported, isNull, reason: 'a rejected round is expected, not a bug — it must not reach crash reporting');
+      expect(errorRounds, 0, reason: 'and must not be logged as a failed round');
+      expect(authNotice, isNull, reason: 'one rejection is not yet a stuck registration');
+    });
+
+    test('onAuthError fires once the streak hits the threshold, not before or repeatedly after', () async {
+      var authNoticeCount = 0;
+      final rejected = _FakeTransport((method, args) => rejection());
+      final e = SyncEngine(
+        operations: operations,
+        qsos: qsos,
+        transport: rejected.call,
+        settings: settings,
+        onAuthError: (message, {status}) => authNoticeCount++,
+      );
+      addTearDown(e.dispose);
+
+      for (var i = 0; i < SyncEngine.authErrorNotifyThreshold - 1; i++) {
+        await e.runOneRound();
+        expect(authNoticeCount, 0, reason: 'still short of the threshold');
+      }
+      await e.runOneRound();
+      expect(authNoticeCount, 1, reason: 'the streak just hit the threshold');
+
+      await e.runOneRound();
+      expect(authNoticeCount, 1, reason: 'must not re-notify every round once already shown');
+    });
+
+    test('a round that succeeds resets the rejection streak', () async {
+      var authNoticeCount = 0;
+      var rejecting = true;
+      final flaky = _FakeTransport((method, args) => rejecting ? rejection() : {'account': {'uuid': 'acct-1'}});
+      final e = SyncEngine(
+        operations: operations,
+        qsos: qsos,
+        transport: flaky.call,
+        settings: settings,
+        onAuthError: (message, {status}) => authNoticeCount++,
+      );
+      addTearDown(e.dispose);
+
+      await e.runOneRound();
+      await e.runOneRound();
+      rejecting = false;
+      await e.runOneRound(); // a clean round in between clears the streak
+      rejecting = true;
+      await e.runOneRound();
+      await e.runOneRound();
+
+      expect(authNoticeCount, 0, reason: 'each rejection streak was broken up before reaching the threshold');
+    });
+
+    test('a rejection with no callsign and nothing local to sync is fully silent', () async {
+      Object? reported;
+      String? authNotice;
+      settings.operatorCall = '';
+      final rejected = _FakeTransport((method, args) => rejection());
+      final e = SyncEngine(
+        operations: operations,
+        qsos: qsos,
+        transport: rejected.call,
+        settings: settings,
+        onError: (error, st, {context}) => reported = error,
+        onAuthError: (message, {status}) => authNotice = message,
+      );
+      addTearDown(e.dispose);
+
+      // Well past the notify threshold — it must never trip, since a device
+      // with no callsign and no local data has nothing at stake yet.
+      for (var i = 0; i < SyncEngine.authErrorNotifyThreshold + 2; i++) {
+        await e.runOneRound();
+      }
+
+      expect(reported, isNull);
+      expect(authNotice, isNull);
+    });
+
+    test('a rejection with local data to sync still surfaces, even with no callsign', () async {
+      settings.operatorCall = '';
+      await operations.create(stationCall: 'KI2D');
+      var authNoticeCount = 0;
+      final rejected = _FakeTransport((method, args) => rejection());
+      final e = SyncEngine(
+        operations: operations,
+        qsos: qsos,
+        transport: rejected.call,
+        settings: settings,
+        onAuthError: (message, {status}) => authNoticeCount++,
+      );
+      addTearDown(e.dispose);
+
+      for (var i = 0; i < SyncEngine.authErrorNotifyThreshold; i++) {
+        await e.runOneRound();
+      }
+
+      expect(authNoticeCount, 1, reason: 'there is real local data at risk, so this must still surface');
+    });
+  });
 }

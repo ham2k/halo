@@ -463,6 +463,9 @@ class SettingsService extends ChangeNotifier implements SyncSettings {
   }
 
   @override
+  String get operatorCall => activeProfile.operatorCall;
+
+  @override
   bool get enabled => syncEnabled;
 
   @override

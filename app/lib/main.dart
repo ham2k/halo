@@ -520,11 +520,39 @@ class HaLoServices {
     log: debugPrint,
     onProgress: _showSyncProgress,
     onError: ErrorReportingService.report,
+    onAuthError: _showSyncAuthNotice,
   );
 
   /// Status-bar item key for backfill progress; the Sync settings panel
   /// renders the same item inline (see `settings_view.dart`).
   static const syncProgressStatusKey = 'sync_backfill_progress';
+
+  /// Stable key so a later rejection replaces rather than stacks, and a
+  /// round that finally succeeds can clear it.
+  static const syncAuthNoticeKey = 'sync:auth';
+
+  /// The server has rejected this device's registration for several rounds
+  /// running (SyncEngine's [SyncEngine.authErrorNotifyThreshold]) — not a
+  /// transient blip, so it's worth surfacing. The likely fix is on the
+  /// user's end (e.g. the callsign on file no longer matches the server's
+  /// expected format), so the action opens Sync settings directly rather
+  /// than just naming the problem.
+  void _showSyncAuthNotice(String message, {int? status}) {
+    statusBar.showNotice(
+      key: syncAuthNoticeKey,
+      icon: 'cloud-off',
+      title: t.settings.syncPanel.authIssueTitle,
+      text: t.settings.syncPanel.authIssueText,
+      actions: [
+        StatusBarAction(
+          label: t.settings.syncPanel.openSettings,
+          onTap: () => navigatorKey.currentState?.push(
+            MaterialPageRoute(builder: (_) => SettingsView(services: this, initialPanel: 'sync')),
+          ),
+        ),
+      ],
+    );
+  }
 
   /// Surfaces backfill progress in the footer. Backfill can take a while on
   /// a large account (the server cooldown-gates fetch rounds), so without

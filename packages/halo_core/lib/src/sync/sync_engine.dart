@@ -59,6 +59,13 @@ abstract class SyncSettings {
   Future<void> setState(Map<String, dynamic> state);
   bool get developerMode => false;
   Future<void> setDeveloperMode(bool enabled) async {}
+
+  /// The active profile's operator callsign — empty before onboarding sets
+  /// one. Used only to decide whether a rejected registration is worth
+  /// telling the user about (see `runOneRound`'s handling of a `sync`
+  /// response's `error`): a device with no callsign and nothing logged yet
+  /// has nothing at stake, so there's nothing to warn about.
+  String get operatorCall => '';
 }
 
 class SyncBatch {
@@ -122,6 +129,16 @@ class SyncEngine {
   /// rejection, a dead extension runtime) funneled into [log] alone.
   final void Function(Object error, StackTrace? stackTrace, {String? context})? onError;
 
+  /// Called once a `sync` round comes back rejected (the transport's
+  /// `error`/`error_status`, e.g. a brand-new client registration the server
+  /// refuses) for [authErrorNotifyThreshold] consecutive rounds in a row —
+  /// a stuck rejection, as opposed to a one-off blip that clears on its
+  /// own. Distinct from [onError]: the server saying no is a known, expected
+  /// outcome of the sync flow, not a bug, so it is never reported to crash
+  /// reporting — the app layer surfaces it to the user instead, with a way
+  /// to act on it (e.g. a status bar notice pointing at Settings).
+  final void Function(String message, {int? status})? onAuthError;
+
   /// Called with server-reported counts after each backfill round (and once
   /// more, with `backfilling: false`, on the round that completes it) — see
   /// [SyncProgress]. Null when the app layer doesn't surface progress.
@@ -133,6 +150,7 @@ class SyncEngine {
   static const debounceMaxWait = Duration(seconds: 3);
   static const defaultLoopDelay = Duration(seconds: 20);
   static const maxErrorBackoffShift = 8; // caps the exponential backoff at 2^8s; the loop itself never gives up
+  static const authErrorNotifyThreshold = 3; // ~a minute of retries before bothering the user
 
   /// Cap for [_backfillLimitBoost] — see `_processResponseMeta`'s
   /// stuck-cursor handling.
@@ -141,6 +159,7 @@ class SyncEngine {
   int _largeBatchSize = defaultLargeBatchSize;
   Duration _loopDelay = defaultLoopDelay;
   int _errorCount = 0;
+  int _authErrorStreak = 0;
   bool _running = false;
   bool _disposed = false;
 
@@ -173,6 +192,7 @@ class SyncEngine {
     this.log,
     this.onProgress,
     this.onError,
+    this.onAuthError,
   });
 
   void start() {
@@ -349,6 +369,34 @@ class SyncEngine {
         await _buildPayload(batch, pull: pull, backfilling: backfilling, limit: pullLimit),
       );
       if (generation != _generation) return _abandonRound();
+
+      // The transport turns a rejected round into data instead of throwing
+      // (see ham2k-lofi's `sync`) — a stale registration is a known outcome
+      // of the sync flow, not a transport failure, so it does not count
+      // against _errorCount or reach onError/crash reporting. It only
+      // reaches the user, via onAuthError, once it's stuck rather than a
+      // one-off blip.
+      final responseError = response['error'] as String?;
+      if (responseError != null) {
+        if (settings.operatorCall.isEmpty && batch.isEmpty) {
+          // Nothing at stake: no callsign configured yet and nothing local
+          // to push this round either, so a rejected registration has
+          // nothing to warn about — stay fully silent, not even counted
+          // toward the streak, rather than nagging someone who hasn't
+          // started using the app yet.
+          if (!smallBatch) _scheduleLoop(_loopDelay);
+          return;
+        }
+        _authErrorStreak++;
+        log?.call('[sync] round rejected (streak #$_authErrorStreak): $responseError');
+        if (_authErrorStreak == authErrorNotifyThreshold) {
+          onAuthError?.call(responseError, status: response['error_status'] as int?);
+        }
+        final backoffShift = _authErrorStreak < maxErrorBackoffShift ? _authErrorStreak : maxErrorBackoffShift;
+        if (!smallBatch) _scheduleLoop(_loopDelay + Duration(seconds: 1 << backoffShift));
+        return;
+      }
+      _authErrorStreak = 0;
 
       final responseAccountUuid = (response['account'] as Map?)?['uuid'] as String?;
       if (responseAccountUuid != null && responseAccountUuid != state['lastSyncAccountUUID']) {

@@ -424,7 +424,10 @@
       "replace": "Replace",
       "pendingBannerTitle": "New Ham2K Log Filer account detected",
       "pendingBannerBody": "Keep this device's existing operations and QSOs and merge them into the account, or replace them with the account's data (a backup stays on this device either way).",
-      "combine": "Combine"
+      "combine": "Combine",
+      "authIssueTitle": "Sync can't connect",
+      "authIssueText": "Ham2K Log Filer keeps rejecting this device. Check your callsign in Sync settings.",
+      "openSettings": "Open Sync settings"
     },
     "accounts": {
       "title": "Accounts & Services",

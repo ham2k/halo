@@ -839,6 +839,9 @@ class _Translations$settings$syncPanel$es extends Translations$settings$syncPane
 	@override String get pendingBannerTitle => 'Nueva cuenta de Ham2K Log Filer detectada';
 	@override String get pendingBannerBody => 'Conserva las operaciones y QSOs existentes en este dispositivo y combínalos con la cuenta, o reemplázalos con los datos de la cuenta (en ambos casos queda un respaldo en este dispositivo).';
 	@override String get combine => 'Combinar';
+	@override String get authIssueTitle => 'Sync no puede conectarse';
+	@override String get authIssueText => 'Ham2K Log Filer sigue rechazando este dispositivo. Revisa tu indicativo en la configuración de Sync.';
+	@override String get openSettings => 'Abrir configuración de Sync';
 }
 
 // Path: settings.accounts
@@ -1489,6 +1492,9 @@ extension on TranslationsEs {
 			'settings.syncPanel.pendingBannerTitle' => 'Nueva cuenta de Ham2K Log Filer detectada',
 			'settings.syncPanel.pendingBannerBody' => 'Conserva las operaciones y QSOs existentes en este dispositivo y combínalos con la cuenta, o reemplázalos con los datos de la cuenta (en ambos casos queda un respaldo en este dispositivo).',
 			'settings.syncPanel.combine' => 'Combinar',
+			'settings.syncPanel.authIssueTitle' => 'Sync no puede conectarse',
+			'settings.syncPanel.authIssueText' => 'Ham2K Log Filer sigue rechazando este dispositivo. Revisa tu indicativo en la configuración de Sync.',
+			'settings.syncPanel.openSettings' => 'Abrir configuración de Sync',
 			'settings.accounts.title' => 'Cuentas y servicios',
 			'settings.accounts.none' => 'No hay extensiones activas con cuentas',
 			'settings.accounts.notConfigured' => 'Sin configurar',
