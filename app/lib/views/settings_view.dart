@@ -534,7 +534,7 @@ class _ProfilesPanel extends StatelessWidget {
       builder: (context, _) {
         final call = settings.activeProfile.operatorCall;
         return ListView(
-          padding: const EdgeInsets.symmetric(vertical: 8),
+          padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 8),
           children: [
             ListTile(
               leading: Icon(resolveIconName('account')),
@@ -696,11 +696,12 @@ class _CommonSettingsPanel extends StatelessWidget {
       if (keys.isEmpty) continue;
       sections.add(_SettingsGroupForm(services: services, group: group, fieldFilter: keys));
     }
-    // FormRenderer rows zero their own contentPadding, so the wide layout's
-    // grab-strip clearance must come from this panel's padding (layouts.md).
-    final safeLeft = PaneSafeArea.leftOf(context);
+    // FormRenderer rows now pick up their own content inset from the
+    // ambient ListTileTheme (settings_view.dart's wide-layout wrapper), so
+    // this is just the small margin between a row's background and the
+    // pane edge — matching the ListTile-based panels' own ListView padding.
     return SingleChildScrollView(
-      padding: EdgeInsets.fromLTRB(16 + safeLeft, 16, 16, 16),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [for (final section in sections) ...[section, const SizedBox(height: 24)]],
@@ -751,8 +752,10 @@ class _AllSettingsPanelState extends State<_AllSettingsPanel> {
   Widget build(BuildContext context) {
     final extensionPanels = _extensionPanels;
     final query = _searchController.text.trim().toLowerCase();
-    // FormRenderer rows zero their own contentPadding, so the wide layout's
-    // grab-strip clearance must come from this panel's padding (layouts.md).
+    // The search bar isn't a FormRenderer row, so it carries the full
+    // content inset itself (grab-strip clearance included — layouts.md);
+    // the scroll view below only needs the smaller row-background margin,
+    // since its rows pick theirs up from the ambient ListTileTheme.
     final safeLeft = PaneSafeArea.leftOf(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -761,7 +764,7 @@ class _AllSettingsPanelState extends State<_AllSettingsPanel> {
         // key, title, and description; sections with no match disappear
         // entirely, title included.
         Padding(
-          padding: EdgeInsets.fromLTRB(16 + safeLeft, 16, 16, 0),
+          padding: EdgeInsets.fromLTRB(24 + safeLeft, 16, 24, 0),
           child: TextField(
             selectAllOnFocus: false,
             key: const ValueKey('all-settings-search'),
@@ -784,7 +787,11 @@ class _AllSettingsPanelState extends State<_AllSettingsPanel> {
         ),
         Expanded(
           child: SingleChildScrollView(
-            padding: EdgeInsets.fromLTRB(16 + safeLeft, 16, 16, 16),
+            // Just the row-background margin — FormRenderer rows get their
+            // own content inset from the ambient ListTileTheme (see
+            // _rowContentPadding in form_renderer.dart), matching the
+            // search bar's 24 + safeLeft above.
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 16),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
@@ -928,7 +935,7 @@ class _SyncPanelState extends State<_SyncPanel> {
       listenable: settings,
       builder: (context, _) {
         return ListView(
-          padding: const EdgeInsets.symmetric(vertical: 8),
+          padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 8),
           children: [
             Padding(
                 padding: EdgeInsets.only(left: safeLeft),
@@ -1058,7 +1065,7 @@ class _AccountsPanelState extends State<_AccountsPanel> {
     final safeLeft = PaneSafeArea.leftOf(context);
 
     return ListView(
-      padding: const EdgeInsets.symmetric(vertical: 8),
+      padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 8),
       children: [
         Padding(
             padding: EdgeInsets.only(left: safeLeft), child: SectionHeader(context.t.settings.accounts.title)),
@@ -1158,7 +1165,7 @@ class _DataFilesPanelState extends State<_DataFilesPanel> {
     final safeLeft = PaneSafeArea.leftOf(context);
 
     return ListView(
-      padding: const EdgeInsets.symmetric(vertical: 8),
+      padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 8),
       children: [
         Padding(
             padding: EdgeInsets.only(left: safeLeft), child: SectionHeader(context.t.settings.offlineData.title)),
@@ -1499,11 +1506,14 @@ class _ExtensionSettingsPanelState extends State<_ExtensionSettingsPanel> {
     if (widget.embedded) {
       final title = widget.sectionTitle;
       if (title == null) return form;
+      // Same content inset as form's own rows below (the ambient
+      // ListTileTheme), so the section title lines up with them.
+      final contentPadding = ListTileTheme.of(context).contentPadding ?? EdgeInsets.zero;
       return Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Padding(
-            padding: const EdgeInsets.only(bottom: 16),
+            padding: contentPadding.add(const EdgeInsets.only(bottom: 16)),
             child: Text(title, style: Theme.of(context).textTheme.titleSmall?.copyWith(color: HaLoColors.of(context).onSurfaceAccent)),
           ),
           form,
@@ -1511,10 +1521,10 @@ class _ExtensionSettingsPanelState extends State<_ExtensionSettingsPanel> {
       );
     }
 
-    final safeLeft = PaneSafeArea.leftOf(context);
-
     return SingleChildScrollView(
-      padding: EdgeInsets.fromLTRB(16 + safeLeft, 16, 16, 16),
+      // form's own rows pick up the content inset from the ambient
+      // ListTileTheme; this is just the row-background margin.
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 16),
       child: form,
     );
   }
@@ -1534,7 +1544,7 @@ class _DeveloperPanel extends StatelessWidget {
       listenable: settings,
       builder: (context, _) {
         return ListView(
-          padding: EdgeInsets.fromLTRB(16 + safeLeft, 16, 16, 16),
+          padding: EdgeInsets.fromLTRB(24 + safeLeft, 16, 24, 16),
           children: [
             Text(
               context.t.settings.developer.options,

@@ -234,6 +234,13 @@ class FormRendererState extends State<FormRenderer> {
   /// own visibility check, only this color check.
   Color? _devModeColor(Map<String, dynamic> el) => el['devMode'] == true ? HaLoColors.of(context).devMode : null;
 
+  /// Every row (ListTile-based or not) aligns to the SAME inset: whatever an
+  /// ancestor `ListTileTheme` declares as its default `contentPadding` (e.g.
+  /// settings_view.dart's wide-layout wrapper), or none at all for every
+  /// other FormRenderer caller (dialogs, embedded forms), which keep the
+  /// flush-left look those callers already size their own container for.
+  EdgeInsetsGeometry get _rowContentPadding => ListTileTheme.of(context).contentPadding ?? EdgeInsets.zero;
+
   List<Map<String, dynamic>> get _fields =>
       _elements.where((el) => el['type'] == 'field').toList();
 
@@ -606,20 +613,23 @@ class FormRendererState extends State<FormRenderer> {
             fontWeight: FontWeight.w900,
             color: devModeColor ?? onSurfaceAccent,
           );
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(title, style: titleStyle),
-        if (subtitle != null && subtitle.isNotEmpty) ...[
-          const SizedBox(height: 4),
-          Text(
-            subtitle,
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: devModeColor ?? theme.colorScheme.onSurfaceVariant,
+    return Padding(
+      padding: _rowContentPadding,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(title, style: titleStyle),
+          if (subtitle != null && subtitle.isNotEmpty) ...[
+            const SizedBox(height: 4),
+            Text(
+              subtitle,
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: devModeColor ?? theme.colorScheme.onSurfaceVariant,
+              ),
             ),
-          ),
+          ],
         ],
-      ],
+      ),
     );
   }
 
@@ -630,27 +640,33 @@ class FormRendererState extends State<FormRenderer> {
     }
     final devModeColor = _devModeColor(el);
     final onSurfaceAccent = (theme.extension<HaLoColors>() ?? HaLoColors.light).onSurfaceAccent;
-    return Row(
-      children: [
-        Text(
-          title,
-          style: theme.textTheme.titleSmall?.copyWith(
-            color: devModeColor ?? onSurfaceAccent,
-            fontWeight: FontWeight.bold,
+    return Padding(
+      padding: _rowContentPadding,
+      child: Row(
+        children: [
+          Text(
+            title,
+            style: theme.textTheme.titleSmall?.copyWith(
+              color: devModeColor ?? onSurfaceAccent,
+              fontWeight: FontWeight.bold,
+            ),
           ),
-        ),
-        const SizedBox(width: 8),
-        const Expanded(child: Divider()),
-      ],
+          const SizedBox(width: 8),
+          const Expanded(child: Divider()),
+        ],
+      ),
     );
   }
 
   Widget _buildMarkdown(Map<String, dynamic> el, ThemeData theme) {
     final text = el['text'] as String? ?? '';
     final devModeColor = _devModeColor(el);
-    return MarkdownBody(
-      data: text,
-      styleSheet: devModeColor == null ? null : MarkdownStyleSheet(p: TextStyle(color: devModeColor)),
+    return Padding(
+      padding: _rowContentPadding,
+      child: MarkdownBody(
+        data: text,
+        styleSheet: devModeColor == null ? null : MarkdownStyleSheet(p: TextStyle(color: devModeColor)),
+      ),
     );
   }
 
@@ -768,7 +784,7 @@ class FormRendererState extends State<FormRenderer> {
                           });
                           _handleFieldBlurOrInteraction(key, val);
                         },
-                  contentPadding: EdgeInsets.zero,
+                  contentPadding: _rowContentPadding,
                   dense: true,
                 ),
               if (errorText != null)
@@ -798,7 +814,7 @@ class FormRendererState extends State<FormRenderer> {
                     });
                     _handleFieldBlurOrInteraction(key, finalVal);
                   },
-            contentPadding: EdgeInsets.zero,
+            contentPadding: _rowContentPadding,
             controlAffinity: ListTileControlAffinity.leading,
             dense: true,
             subtitle: errorText != null
@@ -848,7 +864,7 @@ class FormRendererState extends State<FormRenderer> {
 
     if (fieldType == 'checkbox') {
       return ListTile(
-        contentPadding: EdgeInsets.zero,
+        contentPadding: _rowContentPadding,
         leading: leading,
         title: title,
         subtitle: subtitle,
@@ -864,7 +880,7 @@ class FormRendererState extends State<FormRenderer> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           ListTile(
-            contentPadding: EdgeInsets.zero,
+            contentPadding: _rowContentPadding,
             leading: leading,
             title: title,
             subtitle: subtitle,
@@ -899,7 +915,7 @@ class FormRendererState extends State<FormRenderer> {
     }
 
     return ListTile(
-      contentPadding: EdgeInsets.zero,
+      contentPadding: _rowContentPadding,
       leading: icon != null ? Icon(resolveIconName(icon), color: devModeColor) : null,
       title: Text(label, style: theme.textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.bold, color: devModeColor)),
       subtitle: subtitle,
@@ -963,7 +979,7 @@ class FormRendererState extends State<FormRenderer> {
 
     final open = url.isEmpty || widget.onOpenLink == null ? null : () => widget.onOpenLink!(url);
     return ListTile(
-      contentPadding: EdgeInsets.zero,
+      contentPadding: _rowContentPadding,
       leading: icon != null ? Icon(resolveIconName(icon), color: devModeColor) : null,
       title: Text(label, style: theme.textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.bold, color: devModeColor)),
       subtitle: description != null && description.isNotEmpty ? Text(description, style: TextStyle(color: devModeColor)) : null,
@@ -1092,7 +1108,7 @@ class FormRendererState extends State<FormRenderer> {
     }
 
     return ListTile(
-      contentPadding: EdgeInsets.zero,
+      contentPadding: _rowContentPadding,
       leading: icon != null ? Icon(resolveIconName(icon), color: devModeColor) : null,
       title: Text(label, style: theme.textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.bold, color: devModeColor)),
       subtitle: subtitle,
@@ -1263,7 +1279,7 @@ class FormRendererState extends State<FormRenderer> {
     }
 
     return ListTile(
-      contentPadding: EdgeInsets.zero,
+      contentPadding: _rowContentPadding,
       leading: icon != null ? Icon(resolveIconName(icon), color: devModeColor) : null,
       title: Text(label, style: theme.textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.bold, color: devModeColor)),
       subtitle: subtitle,
@@ -1519,7 +1535,7 @@ class FormRendererState extends State<FormRenderer> {
     final devModeColor = _devModeColor(el);
 
     return ListTile(
-      contentPadding: EdgeInsets.zero,
+      contentPadding: _rowContentPadding,
       leading: Icon(
         connected ? Icons.check_circle : Icons.radio_button_unchecked,
         color: devModeColor ??
