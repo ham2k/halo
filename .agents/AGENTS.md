@@ -18,7 +18,7 @@ This is a multi-platform app for Amateur Radio Logging, called "Ham2K Logger" (o
 
 ## Development Process
 
-- Except for small changes, agents should work on a worktree, with a branch off of the `dist` branch on the `app-halo-dist` origin (that branch is usually available as `dist` locally too, tracking `app-halo-dist/dist`). As new tasks come in, use new branches and rename the worktree to keep the name relevant.
+- Agents should always work on a worktree, with a branch off of the `dist` branch on the `app-halo-dist` origin (that branch is usually available as `dist` locally too, tracking `app-halo-dist/dist`). As new tasks come in, use new branches and rename the worktree to keep the name relevant.
 
 - Keep `dist` updated. Rebase your branches on top of the latest `dist` before submitting or updating a PR.
 
