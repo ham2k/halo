@@ -1,0 +1,16 @@
+{
+  "activityLabel": "Fiesta de QSO de Norteamérica",
+  "setupLabel": "Configuración NAQP",
+  "modeLabel": "Modo del Concurso",
+  "ourNameLabel": "Nuestro Nombre",
+  "ourNamePlaceholder": "ej. SEB",
+  "ourLocationLabel": "Nuestra Ubicación",
+  "ourLocationPlaceholder": "ej. NY",
+  "rulesLink": "[Reglas oficiales](https://ncjweb.com/naqp/)",
+  "nameLabel": "Nombre",
+  "locationLabel": "Ubic",
+  "unconfigured": "NAQP (sin configurar)",
+  "adifExport": "ADIF de concurso",
+  "cabrilloExport": "Cabrillo",
+  "ourExchangeSubtitle": "{{name}} en {{location}}"
+}

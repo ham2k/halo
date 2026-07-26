@@ -732,7 +732,14 @@ Two rules M1 settled, both of which a contest would otherwise hit:
   uppercase-unless-explicitly-mixed-case convention. `textCapitalization` alone
   is only a soft-keyboard hint, so on desktop a state typed `ma` stayed
   lowercase — and then failed the case-sensitive pattern above. Set
-  `uppercase: false` for genuinely mixed-case data such as NAQP's operator name.
+  `uppercase: false` for genuinely mixed-case data.
+
+  **The worked example this used to give was NAQP's operator name, and that was
+  wrong** (corrected at M4, when it was ported). An on-air exchange is not prose:
+  an operator not reaching for shift logs `bob`, and a Cabrillo full of
+  mixed-case names reads as sloppy against a field everyone else submits in
+  caps. polo forces uppercase there too. No contest exchange has yet wanted
+  `uppercase: false`; free-prose fields like notes are where it belongs.
 
 `grid` earns its own kind for a concrete reason: Maidenhead's case convention
 (`AB12cd`) **cannot be expressed as a find/replace transform**, because regex
@@ -867,6 +874,39 @@ construction since it lands in the same `lookups` table as `dataFile` datasets.
 Only the contest-facing option sets are in scope for this effort; folding band
 plans in is the same extension's broader remit, not a prerequisite for M0.
 
+#### Amended at M4: `operation-data` can only ever serve the UI, and nothing needs it yet
+
+Two things came out of building against this design that the design did not
+anticipate.
+
+**A core extension structurally cannot serve a scorer.** `ContestScorer`'s three
+methods are SYNCHRONOUS (`types.ts`: `startScoresheet`, `scoreQso`,
+`summarizeScore` all return plain values, not promises), while the only
+cross-extension call path — `hooks.invokeOne` → `kernel.invokeLocal` — is async.
+So a scorer can never await an option set. The one synchronous channel into a
+bundle is `__polo.sharedModules`, and `build.mjs` gates that on
+`/^(@ham2k\/lib-|i18next$)/`. The consequence is a hard split, and it is worth
+stating before someone designs against the wrong half:
+
+- **Scorer-visible reference data must live in an `@ham2k/lib-*` package** — for
+  which `@ham2k/lib-operation-data` is already allowlisted in `build.mjs`.
+- **An `operation-data` EXTENSION can only back async UI lookups** — form fields
+  and logging-control option lists. That is still worth having; it just isn't
+  the "one copy the rest of the app draws on" this section imagined.
+
+**And nothing in the porting sequence needs it.** Checked when M4 came up:
+
+| Would-be consumer | What it actually needs |
+|---|---|
+| `iaru-hf` | Nothing. ITU zone and continent come from the bundled country file. |
+| `naqp` | 110 location codes — 613 bytes — which the table above already assigns *inline in the extension*. |
+| `arrl-dx` (shipped, M2) | Nothing. It uppercases what the operator typed and uses that as the multiplier key. |
+| ARRL/RAC sections | Only FD and WFD, which are activities and appear in neither §7's sequence nor §9's twelve contests. |
+
+So `operation-data` is **deferred until a real consumer appears** rather than
+built speculatively at M4. The table above stands as the plan for when one does.
+
+
 **Two behaviours to carry over from polo's logging panel:** SPACE advances to the
 next exchange field, and serial fields deliberately **opt out** of that cycle
 (polo passes `skipFocus` on every "Our #"). HaLo's logging controls already own
@@ -939,6 +979,57 @@ Two extensions to the form schema fall out and should land with it: the
 uses the same dataset and widget as the on-air exchange; and **dynamic labels**,
 since ARRL DX's sent-exchange field is "Your Power" or "Your State/Province"
 depending on the station type chosen in the same form.
+
+**A form field key IS a ref key, and some ref keys belong to the core.** This
+bit NAQP during M4 and is worth stating outright, because nothing enforces it.
+The setup form's values are written onto the contest ref under their field keys,
+and `decorateRef` then writes DISPLAY data onto that same ref — `label`,
+`shortLabel`, `program`, and `name`, which the Activities row renders as its
+subtitle. The decorated ref is what gets persisted. So a setup field called
+`name` is silently overwritten by whatever `decorateRef` composes, and the
+contest then exports a display string as its sent exchange. NAQP's fields are
+`ourName`/`ourLocation` for exactly this reason. **Prefix a setup key whenever
+it could collide with `label`, `shortLabel`, `program`, `name`, `type` or
+`ref`.**
+
+#### 5.4.1 Conditional fields (M4)
+
+IARU HF is what forces this. Its setup shows **one of three** sent-exchange
+controls depending on the station type: a normal station sends its ITU zone, an
+HQ station its society abbreviation, an IARU official one of `AC`/`R1`/`R2`/`R3`.
+Nothing in HaLo can express that today — `FormField` has no visibility predicate,
+and the two obvious workarounds are both closed:
+
+- A `FormDefinition.onChange` closure **cannot survive the trip** across the
+  bridge; `FormInputDescriptor` says so explicitly, and the definition is static
+  JSON by construction.
+- Recomputing the descriptor per `operationControls` call — arrl-dx's trick for
+  its dynamic *label* — cannot change a field **inside an already-open dialog**,
+  because the controls are loaded once on init.
+
+So the predicate is declarative and lives on the field:
+
+```ts
+interface FormField {
+  // …
+  /// Show this field only while a sibling holds one of these values. A list
+  /// means "any of". Naming a field that does not exist resolves to null and
+  /// therefore hides — safe rather than a crash.
+  visibleWhen?: { field: string; equals: JSONValue | JSONValue[] }
+}
+```
+
+**Only `build` filters.** `FormRenderer` passes `controller: _controllers[key]`
+with no lazy creation, so a field first initialized when it becomes visible would
+render against a null controller and silently drop everything typed into it — a
+hazard the class's own doc comment already names. Field registration, state
+initialization and submit therefore keep iterating **every declared field**; the
+visibility filter applies to the rendered element list alone.
+
+**Hidden fields still submit their values**, which is the behaviour we want: an
+operator who types a zone, switches to HQ, and switches back gets their zone
+again. It does mean a contest reading these values must select by the
+discriminator field — never "first non-empty".
 
 ### 5.5 Cabrillo export
 
@@ -1306,7 +1397,7 @@ log** to settle checkpoint granularity (§5.2).
 | **M1** | Harden: finalize input union, settle checkpoint granularity from M0's timings, lock the current-QSO score display | — |
 | **M2** | Band-mult conventions + numeric exchange + suggested values (§5.3) | `cqww` (zone), `arrl-dx` (state/power) |
 | **M3** | Core-owned labeled sequence service (§5.8) | `cqwpx` |
-| **M4** | `operation-data` core extension (US states, provinces, sections) + form-schema setup (§5.4) | `iaru-hf`, `naqp` |
+| **M4** | Form-schema conditional fields (`visibleWhen`, §5.4); `operation-data` deferred for want of a consumer (§5.3) | `iaru-hf`, `naqp` |
 | **M5** | Searchable-options input incl. multi-value per-token feedback + dated `suggest` ranking (§5.6) | `stateparks`, then `qp` |
 | **M6** | **Segments** — `event.operation` override, segment-effective operation, scorer selection across segments (§5.1) | — |
 | **M7** | Great-circle distance scoring + `grid` input + rover our-grid from segments | `arrl-vhf-tests` |
@@ -1352,10 +1443,38 @@ goal is met without a per-event bundle explosion.
   (§5.3) — US states, Canadian provinces, ARRL/RAC sections now; band plans and
   other operating reference tables as its broader remit. Contests address sets by
   `operation-data:<key>`; one copy, offline, no per-contest vendoring.
+  **Amended at M4** (§5.3): scorers are synchronous and cross-extension calls
+  are not, so scorer-visible data has to live in an `@ham2k/lib-*` package and
+  an `operation-data` extension can only back async UI lookups. Nothing in the
+  sequence needs one yet, so it is deferred rather than built speculatively.
 - **Operation setup reuses and extends the form schema** (§5.4) rather than
   adding `select`/`segmented` to the input union. `operationControls` carries a
   `FormDefinition`; the schema gains a searchable-options field backed by
-  `optionSet`, plus dynamic labels.
+  `optionSet`, plus dynamic labels — and, from M4, `visibleWhen` (§5.4.1), since
+  IARU HF's sent exchange is one of three fields chosen by station type.
+- **`optionType` is DROPPED, not implemented** (M4). It is declared in the SDK,
+  set five times (always to `'optional'`, which equals the default) and read
+  nowhere. Porting it would not work: polo's secondary row is **opt-in**, so
+  `mandatory` is how a control appears at all, whereas HaLo's row is **opt-out**
+  — every contributed chip is already visible, so `mandatory` could only revoke
+  the user's ability to hide one. Worse, it cannot reach a contest exchange at
+  all: `_ControlDescriptor` is built only for `kind: 'refList'`, and every
+  contest exchange is a `text`/`serial` primary field. The three newest contests
+  already omit the field.
+- **An exchange the operator EMPTIES stays empty** (M4). The guess above fires
+  on an ABSENT field only. When the operator clears a field they touched, the
+  core records `field: ''` rather than dropping it, so "nothing was received" is
+  a decision the log carries and re-editing the QSO cannot undo it. Reopening
+  such a QSO restores the field as operator input, so a lookup resolving
+  afterwards can't refill it either. Serials are exempt — the sequence owns the
+  number, and a blank there is not something an operator records.
+- **A received exchange nobody typed is written onto the ref at save** (M4),
+  following polo's IARU: `processQsoBeforeSave` stamps the country-file value —
+  IARU's ITU zone, CQ WW's CQ zone — onto the contest ref, so the log, the
+  scorer and the export all agree. This settles an inconsistency already shipped
+  in `cqww`, whose scorer falls back to the country-file zone (earning the
+  multiplier) while its Cabrillo and `SRX_STRING` print `-` or omit it, so a log
+  could score a zone and export a dash. Fixing `cqww` to match is part of M4.
 - **Multi-operator serials → detect and alert in v1** (§5.8). Concurrent-multi-op
   duplicates raise an alert on the affected QSOs rather than blocking on
   distributed allocation. The path can fire in v1, so it gets built, not just
@@ -1425,6 +1544,17 @@ during the milestone that hits them:
      (`HG19`, `LY1000`). Both are silent under-counts.
    - **WPX serials** — every failure mode listed at the top of §5.8 is gone by
      construction, not by fixing the counter logic.
+   - **NAQP band and mode** — polo validates NEITHER. It defines `VALID_BANDS`
+     and never consults it, so a 30m QSO scores, and it never compares the QSO's
+     mode against the contest's, so a CW contact counts in the SSB running.
+     Both are checked on port.
+   - **NAQP duplicates** — polo's dupe test mixes exact mode (`q.mode === mode`)
+     with super-mode in the same function, so USB and LSB on one band read as
+     two different contacts. NAQP is single-mode per running, so a duplicate is
+     simply the same station on the same band.
+   - **IARU HQ multipliers** — namespaced (`HQ:ARRL`) so a society abbreviating
+     to `R1` can't silently merge with the IARU Region 1 office. polo keys both
+     off the raw exchange.
 
 ---
 

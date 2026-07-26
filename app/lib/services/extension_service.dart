@@ -1583,7 +1583,15 @@ class ExtensionService {
       var merged = qsoData;
       for (final entry in entries) {
         if (entry['ok'] != true || entry['value'] is! Map) continue;
-        merged = mergeQsoPatch(merged, (entry['value'] as Map).cast<String, dynamic>());
+        // The hook's own key is what lets a patch touch that extension's ref
+        // and no other (see `mergeQsoPatch`). An entry with no key can still
+        // project into `their`/`our`, but writes no ref at all.
+        final owner = entry['key'];
+        merged = mergeQsoPatch(
+          merged,
+          (entry['value'] as Map).cast<String, dynamic>(),
+          owner: owner is String ? owner : '',
+        );
       }
       return merged;
     } on ExtensionHostException catch (e) {

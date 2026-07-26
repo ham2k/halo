@@ -114,6 +114,8 @@ const bundles = [
   { key: 'cqww', entry: 'contests/cqww/src/index.ts', kind: 'extension' },
   { key: 'arrl-dx', entry: 'contests/arrl-dx/src/index.ts', kind: 'extension' },
   { key: 'cqwpx', entry: 'contests/cqwpx/src/index.ts', kind: 'extension' },
+  { key: 'iaru-hf', entry: 'contests/iaru-hf/src/index.ts', kind: 'extension' },
+  { key: 'naqp', entry: 'contests/naqp/src/index.ts', kind: 'extension' },
   { key: 'ham2k-lofi', entry: 'sync/ham2k-lofi/src/index.ts', kind: 'extension' },
 ]
 

@@ -152,8 +152,13 @@ const ActivityHook = {
   ): Promise<Record<string, JSONValue> | null> {
     if (!refOfType(args.operation, TYPE)) return null
     // the whole free-form exchange
-    const exchange = str(refOfType(args.qso, TYPE)?.exchange)
-    if (!exchange) return null
+    const qsoRef = refOfType(args.qso, TYPE)
+    const exchange = str(qsoRef?.exchange)
+    // A field the operator EMPTIED is present-but-blank rather than absent (see
+    // `_refsWithTextValues`). Returning null there would leave the previous
+    // save's `their.exchange` showing in the QSO row and in a plain ADIF export,
+    // so a cleared exchange has to project the blank.
+    if (!exchange) return qsoRef && 'exchange' in qsoRef ? { their: { exchange: '' } } : null
     return { their: { exchange } }
   },
 }

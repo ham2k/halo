@@ -960,7 +960,24 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
       // number was theirs to send; see `SequencesRepository`.)
       final value = (_controlTextValues[key] ?? '').trim();
       if (value.isEmpty) {
-        (clearedByType[refType] ??= {}).add(field);
+        // An empty field means one of two different things, and a contest has
+        // to be able to tell them apart: it either was never filled in, or the
+        // operator deliberately emptied it. Only the operator touching it
+        // distinguishes the two.
+        //
+        // A DELIBERATE blank is recorded as `field: ''` rather than dropped, so
+        // it survives as a decision — `processQsoBeforeSave` stamps a guessed
+        // exchange onto an ABSENT field, and would otherwise put back the value
+        // the operator just removed (docs/design/contests.md §8).
+        //
+        // Serials are exempt: the sequence owns the number, "no serial" isn't a
+        // thing an operator records, and an empty string on the field would
+        // confuse the allocator that reads it at commit.
+        if (_touchedTextControls.contains(key) && input['kind'] != 'serial') {
+          (byType[refType] ??= {'type': refType})[field] = '';
+        } else {
+          (clearedByType[refType] ??= {}).add(field);
+        }
       } else {
         // A serial is stored as an int, matching what `_withAllocatedSerial`
         // writes — normalized HERE so the edit path agrees, since
@@ -1415,7 +1432,11 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
           // as strings — read either.
           final raw = field == null ? null : ref[field];
           final value = raw is num ? '$raw' : (raw is String ? raw : '');
-          if (value.isNotEmpty) {
+          // PRESENT, not non-empty: an explicit `field: ''` is the operator
+          // having emptied it on purpose (see `_refsWithTextValues`), and
+          // restoring it as touched-but-blank is what keeps a lookup from
+          // helpfully filling it back in the moment the record opens.
+          if (field != null && ref.containsKey(field)) {
             final controlKey = control['key'] as String;
             _controlTextValues[controlKey] = value;
             _textControllerFor(controlKey).text = value;

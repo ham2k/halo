@@ -39,6 +39,26 @@ function run(qsos: Record<string, JSONValue>[], operation = usOperation, ref: Re
   return { sheet, scores }
 }
 
+test('a zone the operator deliberately emptied earns no multiplier', () => {
+  // The core writes `theirZone: ''` for a field the operator cleared and drops
+  // the key when none was entered. Falling back on the country file for the
+  // first would score a multiplier the Cabrillo line exports as a dash — the
+  // log disagreeing with its own score, which is what §8 exists to prevent.
+  const { scores, sheet } = run([
+    { their: { call: 'DL1ABC' }, band: '20m', mode: 'SSB', refs: [{ type: 'cqww', theirZone: '' }] },
+  ])
+  // Still a contact worth its points, and still a COUNTRY multiplier — only the
+  // zone, which nobody sent, is absent.
+  assert.ok(scores[0].value > 0)
+  assert.deepEqual(Object.keys(sheet.mults), ['20m|CDL'])
+})
+
+test('a zone nobody entered still falls back to the country file', () => {
+  // The other side of the same rule: an ABSENT field is not a decision.
+  const { sheet } = run([{ their: { call: 'DL1ABC' }, band: '20m', mode: 'SSB' }])
+  assert.deepEqual(Object.keys(sheet.mults).sort(), ['20m|CDL', '20m|Z14'])
+})
+
 test('zones normalize so 05 and 5 are one multiplier, not two', () => {
   assert.equal(normalizeZone('05'), '5')
   assert.equal(normalizeZone('5'), '5')

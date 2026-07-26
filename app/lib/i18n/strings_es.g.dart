@@ -696,6 +696,8 @@ class _Translations$loggingControls$info$es extends Translations$loggingControls
 	@override String get noticeInvalidBand => 'Banda Incorrecta';
 	@override String get noticeInvalidCategory => 'No Contactable';
 	@override String get noticeWorkedBefore => 'Ya Trabajado';
+	@override String get noticeMissingExchange => 'Sin Intercambio';
+	@override String get noticeInvalidExchange => 'Intercambio Inválido';
 }
 
 // Path: settings.theme
@@ -1343,6 +1345,8 @@ extension on TranslationsEs {
 			'loggingControls.info.noticeInvalidBand' => 'Banda Incorrecta',
 			'loggingControls.info.noticeInvalidCategory' => 'No Contactable',
 			'loggingControls.info.noticeWorkedBefore' => 'Ya Trabajado',
+			'loggingControls.info.noticeMissingExchange' => 'Sin Intercambio',
+			'loggingControls.info.noticeInvalidExchange' => 'Intercambio Inválido',
 			'formChrome.untitled' => '(sin título)',
 			'formChrome.showMore' => 'Mostrar más',
 			'formChrome.showAll' => 'Mostrar todo',

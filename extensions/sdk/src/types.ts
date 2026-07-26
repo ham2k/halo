@@ -1152,6 +1152,21 @@ export interface FormField {
   /// it can reflect the field's current value. Ignored when `icon` isn't
   /// set.
   description?: string
+  /// Show this field only while a sibling field holds one of these values.
+  /// `equals` may be a single value or a list meaning "any of"; naming a field
+  /// that doesn't exist reads as null, so the element simply stays hidden.
+  ///
+  /// This is how a form varies with itself. A closure can't do it — the
+  /// definition that crosses the bridge is static JSON — and recomputing the
+  /// whole descriptor can't reach a dialog that is already open. IARU HF is
+  /// the motivating case: its sent exchange is an ITU zone, a society
+  /// abbreviation, or an IARU office, chosen by the station type in the same
+  /// form (docs/design/contests.md §5.4.1).
+  ///
+  /// A hidden field is still initialized and still submitted, so switching a
+  /// discriminator away and back preserves what was already typed. Read the
+  /// value you want by the discriminator, never by "whichever is non-empty".
+  visibleWhen?: { field: string; equals: any }
 }
 
 export interface FormHeader {

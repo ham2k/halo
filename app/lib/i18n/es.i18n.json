@@ -228,7 +228,9 @@
       "noticeInvalidMode": "Modo Incorrecto",
       "noticeInvalidBand": "Banda Incorrecta",
       "noticeInvalidCategory": "No Contactable",
-      "noticeWorkedBefore": "Ya Trabajado"
+      "noticeWorkedBefore": "Ya Trabajado",
+      "noticeMissingExchange": "Sin Intercambio",
+      "noticeInvalidExchange": "Intercambio Inválido"
     }
   },
   "formChrome": {

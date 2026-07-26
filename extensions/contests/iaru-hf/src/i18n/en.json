@@ -1,0 +1,23 @@
+{
+  "activityLabel": "IARU HF Championship",
+  "setupLabel": "IARU HF Setup",
+  "modeLabel": "Contest Mode",
+  "modeMixed": "Mixed",
+  "modeCW": "CW Only",
+  "modePhone": "Phone Only",
+  "stationTypeLabel": "Station Type",
+  "stationNormal": "Normal",
+  "stationHQ": "HQ Station",
+  "stationOfficial": "IARU Official",
+  "ourZoneLabel": "Our ITU Zone",
+  "ourZonePlaceholder": "e.g. 8",
+  "societyLabel": "Society Abbreviation",
+  "societyPlaceholder": "e.g. ARRL",
+  "officialLabel": "IARU Office",
+  "rulesLink": "[Official rules](https://www.arrl.org/iaru-hf-world-championship)",
+  "exchangeLabel": "Zone / HQ",
+  "unconfigured": "IARU HF (not set up)",
+  "adifExport": "Contest ADIF",
+  "cabrilloExport": "Cabrillo",
+  "ourExchangeSubtitle": "Sending {{exchange}}"
+}

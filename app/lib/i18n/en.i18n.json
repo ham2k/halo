@@ -228,7 +228,9 @@
       "noticeInvalidMode": "Wrong Mode",
       "noticeInvalidBand": "Wrong Band",
       "noticeInvalidCategory": "Not Workable",
-      "noticeWorkedBefore": "Worked Before"
+      "noticeWorkedBefore": "Worked Before",
+      "noticeMissingExchange": "No Exchange",
+      "noticeInvalidExchange": "Bad Exchange"
     }
   },
   "formChrome": {

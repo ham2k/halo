@@ -1646,6 +1646,83 @@ void main() {
     expect(field.controller?.text, '');
   });
 
+  group('clearing an exchange', () {
+    // An empty field means two different things and a contest has to tell them
+    // apart: never filled in, or emptied on purpose. Only the latter is
+    // recorded, as `field: ''`, and that record is the only thing stopping
+    // `processQsoBeforeSave` from guessing the value straight back.
+    const clearingControls = [
+      {
+        'key': 'c/exchange',
+        'label': 'Exch',
+        'icon': 'flag-checkered',
+        'input': {'kind': 'text', 'refType': 'c', 'field': 'exchange'},
+      },
+    ];
+
+    Widget clearingHost({Qso? editing}) => MaterialApp(
+          home: Scaffold(
+            body: LoggingControls(
+              operation: running(['c']),
+              qsosRepository: qsos,
+              activityControls: clearingControls,
+              editingQso: editing,
+              qsos: editing == null ? const [] : [editing],
+            ),
+          ),
+        );
+
+    testWidgets('a field never filled in leaves no trace on the ref', (tester) async {
+      await tester.pumpWidget(clearingHost());
+      await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'W1AW');
+      await tester.pump();
+      await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+
+      final logged = await waitForQsos(tester, 1);
+      expect(logged.single.refs, isEmpty, reason: 'an untouched empty field is not a decision');
+    });
+
+    testWidgets('a field the operator empties is recorded as an explicit blank', (tester) async {
+      await tester.pumpWidget(clearingHost());
+      await tester.enterText(find.widgetWithText(TextField, 'Exch'), 'MA');
+      await tester.pump();
+      // …thought better of it.
+      await tester.enterText(find.widgetWithText(TextField, 'Exch'), '');
+      await tester.pump();
+
+      await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'W1AW');
+      await tester.pump();
+      await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+
+      final logged = await waitForQsos(tester, 1);
+      expect(logged.single.refs, [
+        {'type': 'c', 'exchange': ''},
+      ]);
+    });
+
+    testWidgets('reopening a QSO with a blanked exchange restores it as blank', (tester) async {
+      // The other half: an explicit blank comes back as operator input, so a
+      // lookup resolving after the record opens cannot helpfully fill it.
+      final existing = Qso(
+        uuid: 'existing',
+        operationUuid: operation.uuid,
+        data: {
+          'their': {'call': 'W1AW'},
+          'band': '20m',
+          'mode': 'CW',
+          'refs': [
+            {'type': 'c', 'exchange': ''},
+          ],
+        },
+      );
+      await tester.pumpWidget(clearingHost(editing: existing));
+      await tester.pump(const Duration(milliseconds: 500));
+
+      final field = tester.widget<TextField>(find.widgetWithText(TextField, 'Exch'));
+      expect(field.controller?.text, '');
+    });
+  });
+
   group('serial controls', () {
     const controls = [
       {
@@ -2006,9 +2083,15 @@ void main() {
     expect(logged.single.refs.single['name'], 'Steve');
   });
 
-  testWidgets('clearing a text control removes the field from the ref', (tester) async {
+  testWidgets('clearing a text control blanks the field on the ref', (tester) async {
     // Blanking an exchange while editing has to actually blank it — otherwise
     // the old value silently stays in the log and gets exported.
+    //
+    // It is recorded as `exchange: ''` rather than dropped, which is a change
+    // from simply removing it: a contest guesses an exchange onto an ABSENT
+    // field at save (docs/design/contests.md §8), so a removed field would be
+    // indistinguishable from one never filled in, and the value the operator
+    // just deleted would come straight back.
     const controls = [
       {
         'key': 'c/exchange',
@@ -2050,11 +2133,8 @@ void main() {
     // Reading the repo has to go through runAsync — a drift stream can't
     // resolve inside testWidgets' fake async (see waitForQsos above).
     final stored = (await waitForQsos(tester, 1)).single;
-    expect(
-      stored.refs.where((r) => r['type'] == 'c' && r['exchange'] != null),
-      isEmpty,
-      reason: 'an emptied exchange must not survive on the ref',
-    );
+    final ref = stored.refs.firstWhere((r) => r['type'] == 'c');
+    expect(ref['exchange'], '', reason: 'the old value must not survive, and the blank must be recorded');
   });
 
   testWidgets('two text controls sharing a ref type merge into one ref', (tester) async {

@@ -107,9 +107,18 @@ export const CQWWScorer: ContestScorer<CQWWScoresheet> = {
 
     // The exchange the operator typed wins; the country file's zone for that
     // call is the fallback, so a QSO logged without an exchange still scores.
+    //
+    // PRESENCE of the field decides, not truthiness. The core writes
+    // `theirZone: ''` for a zone the operator deliberately emptied and drops the
+    // key when none was ever entered, so falling back on `||` would score a
+    // guessed multiplier for a QSO whose Cabrillo line exports a dash — the
+    // exact log-disagrees-with-its-own-score problem §8 exists to prevent, just
+    // arrived at from the other side.
     const theirInfo = annotateCallAgainstCountryFile(call)
     const contestRef = ((qso.refs as Record<string, JSONValue>[] | undefined) ?? []).find((r) => r?.type === 'cqww')
-    const zone = normalizeZone(contestRef?.theirZone) || normalizeZone(theirInfo.cqZone)
+    const zone = contestRef && 'theirZone' in contestRef
+      ? normalizeZone(contestRef.theirZone)
+      : normalizeZone(theirInfo.cqZone)
     const entity = theirInfo.entityPrefix
 
     // Points are relative to us: our own entity is worth nothing, our own

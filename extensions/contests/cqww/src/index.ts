@@ -136,22 +136,50 @@ const ActivityHook = {
     ]
   },
 
-  /// Mirrors the exchange this contest keeps on its own ref into the generic
-  /// `their.exchange`. Nothing outside this extension knows to look inside a
-  /// contest ref, so without this the QSO row's exchange column and a plain
-  /// (non-contest) ADIF export both come up empty on a contest log.
+  /// Records the zone they sent, and mirrors it where the rest of the app can
+  /// see it.
   ///
-  /// Only ever a projection: the ref stays the source of truth, and the patch
-  /// touches exactly one field.
+  /// When the operator typed nothing, the country file's zone for that call is
+  /// written onto the ref as DATA OF RECORD (docs/design/contests.md §8). The
+  /// scorer already falls back to the same value, so without this a QSO could
+  /// earn a zone multiplier and then export a dash — the log disagreeing with
+  /// its own score. The logging control's `suggestedValue` fills this in
+  /// whenever a lookup resolves; this covers the QSOs where none did.
+  ///
+  /// `their.exchange` is the projection on top: nothing outside this extension
+  /// knows to look inside a contest ref, so without it the QSO row's exchange
+  /// column and a plain (non-contest) ADIF export both come up empty.
   async processQsoBeforeSave(
     args: { qso: Record<string, JSONValue>; operation: Record<string, JSONValue> },
     _ctx: HookContext,
   ): Promise<Record<string, JSONValue> | null> {
     if (!refOfType(args.operation, TYPE)) return null
-    // the CQ zone they sent
-    const exchange = normalizeZone(refOfType(args.qso, TYPE)?.theirZone)
-    if (!exchange) return null
-    return { their: { exchange } }
+
+    const their = ((args.qso.their as Record<string, JSONValue>) ?? {})
+    const guess = (their.guess as Record<string, JSONValue>) ?? {}
+    const call = str(their.call)
+    const qsoRef = refOfType(args.qso, TYPE)
+
+    // PRESENCE of the field, not its truthiness. The core writes `theirZone: ''`
+    // when the operator empties the field on purpose, and drops the key
+    // entirely when it was simply never filled in — so a present key, blank or
+    // not, is a decision, and guessing over it would put back what they just
+    // removed.
+    const exchange = qsoRef && 'theirZone' in qsoRef
+      ? normalizeZone(qsoRef.theirZone)
+      : normalizeZone(guess.cqZone) || (call ? normalizeZone(annotateCallAgainstCountryFile(call).cqZone) : '')
+
+    // A deliberate blank still projects, so clearing an exchange on an edit
+    // clears the QSO row's column too instead of leaving the old value there.
+    if (!exchange) {
+      return qsoRef && 'theirZone' in qsoRef ? { their: { exchange: '' } } : null
+    }
+
+    return {
+      // Field-wise into our own ref; the core allows this extension no other.
+      refs: [{ type: TYPE, theirZone: exchange }],
+      their: { exchange },
+    }
   },
 }
 

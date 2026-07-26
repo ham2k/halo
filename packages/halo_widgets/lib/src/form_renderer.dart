@@ -237,6 +237,40 @@ class FormRendererState extends State<FormRenderer> {
   List<Map<String, dynamic>> get _fields =>
       _elements.where((el) => el['type'] == 'field').toList();
 
+  /// [_elements] minus any whose `visibleWhen` predicate doesn't currently
+  /// hold (docs/design/contests.md §5.4.1) — IARU HF's setup shows one of three
+  /// sent-exchange fields depending on the station type chosen in the same
+  /// form, which no static definition and no `onChange` closure can express
+  /// across the extension bridge.
+  ///
+  /// **Only [build] may use this.** [_fields] — and therefore field
+  /// registration, [_initializeFormState] and [submit] — stays deliberately
+  /// unfiltered: [_buildField] passes `controller: _controllers[key]` with no
+  /// lazy creation, so a field first initialized when it became visible would
+  /// render against a null controller and silently drop everything typed into
+  /// it. Registering every declared field up front is what makes that
+  /// impossible.
+  ///
+  /// The consequence is that a hidden field still submits its value, which is
+  /// the behaviour we want: type a zone, switch to HQ, switch back, and the
+  /// zone is still there. A form's consumer must therefore choose by the
+  /// discriminator field, never by "first non-empty".
+  ///
+  /// Reads [_values], so any field's `setState` re-evaluates visibility.
+  List<Map<String, dynamic>> get _visibleElements => _elements.where(_isVisible).toList();
+
+  /// Whether [el]'s `visibleWhen` holds. `equals` may be a single value or a
+  /// list meaning "any of". Naming a field that doesn't exist reads as null and
+  /// so hides the element — a definition that points at nothing shows nothing,
+  /// rather than throwing in the middle of someone's setup dialog.
+  bool _isVisible(Map<String, dynamic> el) {
+    final when = el['visibleWhen'];
+    if (when is! Map) return true;
+    final actual = _values[when['field']];
+    final expected = when['equals'];
+    return expected is List ? expected.contains(actual) : actual == expected;
+  }
+
   @override
   void initState() {
     super.initState();
@@ -483,7 +517,7 @@ class FormRendererState extends State<FormRenderer> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final elements = _elements;
+    final elements = _visibleElements;
 
     return AutofillGroup(
       child: Column(

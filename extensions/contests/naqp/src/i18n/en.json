@@ -1,0 +1,16 @@
+{
+  "activityLabel": "North American QSO Party",
+  "setupLabel": "NAQP Setup",
+  "modeLabel": "Contest Mode",
+  "ourNameLabel": "Our Name",
+  "ourNamePlaceholder": "e.g. SEB",
+  "ourLocationLabel": "Our Location",
+  "ourLocationPlaceholder": "e.g. NY",
+  "rulesLink": "[Official rules](https://ncjweb.com/naqp/)",
+  "nameLabel": "Name",
+  "locationLabel": "Loc",
+  "unconfigured": "NAQP (not set up)",
+  "adifExport": "Contest ADIF",
+  "cabrilloExport": "Cabrillo",
+  "ourExchangeSubtitle": "{{name}} in {{location}}"
+}

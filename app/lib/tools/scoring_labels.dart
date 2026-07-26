@@ -27,6 +27,11 @@ String scoreNoticeLabel(BuildContext context, String key) {
     'invalidMode' => t.noticeInvalidMode,
     'invalidBand' => t.noticeInvalidBand,
     'invalidCategory' => t.noticeInvalidCategory,
+    // The QSO counts, but its exchange doesn't — nothing was sent, or what was
+    // sent isn't a value this contest recognizes. Either way a multiplier is
+    // being lost silently unless the operator is told (M4).
+    'missingExchange' => t.noticeMissingExchange,
+    'invalidExchange' => t.noticeInvalidExchange,
     _ => key,
   };
 }

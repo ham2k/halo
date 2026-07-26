@@ -1095,4 +1095,172 @@ void main() {
       expect(submittedValues!['extra'], 'hello');
     });
   });
+
+  group('visibleWhen', () {
+    // A form that varies with itself (docs/design/contests.md §5.4.1). Shaped
+    // on IARU HF's setup, which is why this exists: the sent exchange is an ITU
+    // zone, a society abbreviation, or an IARU office, chosen by station type.
+    final conditionalForm = {
+      'title': 'Contest Setup',
+      'elements': [
+        {
+          'type': 'field',
+          'fieldType': 'radio',
+          'key': 'stationType',
+          'label': 'Station Type',
+          'value': 'normal',
+          'options': [
+            {'label': 'Normal', 'value': 'normal'},
+            {'label': 'HQ', 'value': 'hq'},
+            {'label': 'Official', 'value': 'official'},
+          ],
+        },
+        {
+          'type': 'field',
+          'fieldType': 'text',
+          'key': 'zone',
+          'label': 'ITU Zone',
+          'visibleWhen': {'field': 'stationType', 'equals': 'normal'},
+        },
+        {
+          'type': 'field',
+          'fieldType': 'text',
+          'key': 'society',
+          'label': 'Society',
+          'visibleWhen': {'field': 'stationType', 'equals': 'hq'},
+        },
+        {
+          // "any of" — an office applies to HQ stations and officials alike.
+          'type': 'field',
+          'fieldType': 'text',
+          'key': 'office',
+          'label': 'IARU Office',
+          'visibleWhen': {
+            'field': 'stationType',
+            'equals': ['hq', 'official'],
+          },
+        },
+        {'type': 'field', 'fieldType': 'text', 'key': 'call', 'label': 'Station Call'},
+        {
+          'type': 'field',
+          'fieldType': 'text',
+          'key': 'ghost',
+          'label': 'Ghost',
+          'visibleWhen': {'field': 'noSuchField', 'equals': 'anything'},
+        },
+      ],
+    };
+
+    Map<String, dynamic>? submitted;
+
+    Widget host() => MaterialApp(
+          home: Scaffold(
+            body: SingleChildScrollView(
+              child: FormRenderer(
+                formDefinition: conditionalForm,
+                initialState: const {},
+                onSubmit: (vals) => submitted = vals,
+                onCancel: () {},
+              ),
+            ),
+          ),
+        );
+
+    setUp(() => submitted = null);
+
+    testWidgets('shows only the field its discriminator selects', (tester) async {
+      await tester.pumpWidget(host());
+      await tester.pumpAndSettle();
+
+      expect(find.text('ITU Zone'), findsOneWidget, reason: 'stationType defaults to normal');
+      expect(find.text('Society'), findsNothing);
+      expect(find.text('IARU Office'), findsNothing);
+      // A field with no predicate is unaffected — the filter must not become a
+      // whitelist.
+      expect(find.text('Station Call'), findsOneWidget);
+    });
+
+    testWidgets('changing the discriminator swaps which fields are shown', (tester) async {
+      await tester.pumpWidget(host());
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('HQ'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('ITU Zone'), findsNothing);
+      expect(find.text('Society'), findsOneWidget);
+      expect(find.text('IARU Office'), findsOneWidget, reason: 'hq is in the equals list');
+    });
+
+    testWidgets('a list in equals means any of', (tester) async {
+      await tester.pumpWidget(host());
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Official'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('IARU Office'), findsOneWidget);
+      expect(find.text('Society'), findsNothing, reason: 'official is not hq');
+      expect(find.text('ITU Zone'), findsNothing);
+    });
+
+    testWidgets('a predicate naming a field that does not exist hides, and does not throw', (tester) async {
+      await tester.pumpWidget(host());
+      await tester.pumpAndSettle();
+
+      expect(find.text('Ghost'), findsNothing);
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('a value typed into a field that is then hidden survives being shown again', (tester) async {
+      // THE test for this feature. FormRenderer creates no controller lazily,
+      // so if hiding a field also deregistered it, the field would come back
+      // with a null controller and silently eat what the operator had typed.
+      // Registration must stay independent of visibility.
+      await tester.pumpWidget(host());
+      await tester.pumpAndSettle();
+
+      await tester.enterText(find.widgetWithText(TextField, 'ITU Zone'), '08');
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('HQ'));
+      await tester.pumpAndSettle();
+      expect(find.text('ITU Zone'), findsNothing);
+
+      await tester.tap(find.text('Normal'));
+      await tester.pumpAndSettle();
+
+      expect(
+        tester.widget<TextField>(find.widgetWithText(TextField, 'ITU Zone')).controller!.text,
+        '08',
+        reason: 'switching station type away and back must not cost the operator their zone',
+      );
+    });
+
+    testWidgets('a hidden field still submits its value', (tester) async {
+      // The deliberate consequence of registering every field: submit carries
+      // hidden values too. Pinned because a consumer reading "whichever is
+      // non-empty" would silently pick the wrong exchange — it has to select by
+      // the discriminator instead.
+      await tester.pumpWidget(host());
+      await tester.pumpAndSettle();
+
+      await tester.enterText(find.widgetWithText(TextField, 'ITU Zone'), '08');
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('HQ'));
+      await tester.pumpAndSettle();
+      await tester.enterText(find.widgetWithText(TextField, 'Society'), 'ARRL');
+      await tester.pumpAndSettle();
+
+      final save = find.widgetWithText(FilledButton, 'Save');
+      await tester.ensureVisible(save);
+      await tester.tap(save);
+      await tester.pumpAndSettle();
+
+      expect(submitted!['society'], 'ARRL');
+      expect(submitted!['zone'], '08', reason: 'hidden, but still registered and still submitted');
+      expect(submitted!['stationType'], 'hq');
+    });
+  });
 }

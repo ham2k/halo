@@ -1,0 +1,35 @@
+{
+  "key": "iaru-hf",
+  "name": "IARU HF World Championship",
+  "shortName": "IARU HF",
+  "version": "0.0.1",
+  "description": "Work the world's societies: ITU zones, HQ stations and IARU officials",
+  "category": "contest",
+  "enabledByDefault": false,
+  "icon": "earth",
+  "accentColor": "#1B5E9E",
+  "keywords": [
+    "contest",
+    "iaru",
+    "zone",
+    "hq",
+    "cabrillo"
+  ],
+  "hooks": [
+    "activity",
+    "adifFields",
+    "export",
+    "ref:iaru-hf",
+    "scoring"
+  ],
+  "translations": {
+    "es": {
+      "name": "Campeonato Mundial de HF de IARU",
+      "description": "Trabaja las sociedades del mundo: zonas ITU, estaciones HQ y oficiales de IARU",
+      "keywords": [
+        "concurso",
+        "zona"
+      ]
+    }
+  }
+}

@@ -1336,6 +1336,12 @@ class Translations$loggingControls$info$en {
 
 	/// en: 'Worked Before'
 	String get noticeWorkedBefore => 'Worked Before';
+
+	/// en: 'No Exchange'
+	String get noticeMissingExchange => 'No Exchange';
+
+	/// en: 'Bad Exchange'
+	String get noticeInvalidExchange => 'Bad Exchange';
 }
 
 // Path: settings.theme
@@ -2325,6 +2331,8 @@ extension on Translations {
 			'loggingControls.info.noticeInvalidBand' => 'Wrong Band',
 			'loggingControls.info.noticeInvalidCategory' => 'Not Workable',
 			'loggingControls.info.noticeWorkedBefore' => 'Worked Before',
+			'loggingControls.info.noticeMissingExchange' => 'No Exchange',
+			'loggingControls.info.noticeInvalidExchange' => 'Bad Exchange',
 			'formChrome.untitled' => '(untitled)',
 			'formChrome.showMore' => 'Show more',
 			'formChrome.showAll' => 'Show all',

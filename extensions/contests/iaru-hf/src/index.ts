@@ -1,0 +1,371 @@
+// Copyright ©️ 2026 Sebastian Delmont <sd@ham2k.com>
+// SPDX-License-Identifier: MPL-2.0
+//
+// IARU HF World Championship. Ported from app-polo's IARUHFExtension.
+//
+// The fifth contest ported (docs/design/contests.md M4). What it exercises that
+// the first four didn't: a setup form that VARIES WITH ITSELF. What we send is
+// an ITU zone, a society abbreviation or an IARU office depending on the kind
+// of station we are, so the form shows one of three fields — which is the whole
+// reason `visibleWhen` exists (§5.4.1).
+//
+// It needs no reference data. ITU zone and continent both come from the bundled
+// country file, which is why M4 ships no `operation-data` extension (§5.3).
+
+import { contestScorer, defineExtension } from "@ham2k/halo-extension-sdk"
+import type {
+  ExportOption,
+  ExportOptionsRequest,
+  ExportRequest,
+  ExportResult,
+  HookContext,
+  JSONValue,
+  LoggingControlDescriptor,
+  Ref,
+} from "@ham2k/halo-extension-sdk"
+import { annotateCallAgainstCountryFile } from "../../../sdk/src/dxcc.ts"
+
+import { qsonToCabrillo } from "../../simple-contest/src/cabrillo.ts"
+import { tFor } from "./i18n.ts"
+import { EXCHANGE_PATTERN, IARUHFScorer, normalizeZone, ourExchange } from "./scorer.ts"
+
+import manifest from "../manifest.json" with { type: "json" }
+
+const TYPE = 'iaru-hf'
+
+function refOfType(container: Record<string, JSONValue>, type: string): Record<string, JSONValue> | undefined {
+  return (((container.refs as Record<string, JSONValue>[] | undefined) ?? [])).find((r) => r?.type === type)
+}
+
+function str(value: JSONValue | undefined): string {
+  return typeof value === 'string' ? value : ''
+}
+
+/// The ITU zone the country file resolves for a callsign, as a string. Used
+/// both to prefill the exchange field and to stamp it at save.
+function guessedZoneFor(their: Record<string, JSONValue>): string {
+  const guess = (their.guess as Record<string, JSONValue>) ?? {}
+  const call = str(their.call)
+  return (
+    normalizeZone(their.ituZone) ||
+    normalizeZone(guess.ituZone) ||
+    (call ? normalizeZone(annotateCallAgainstCountryFile(call).ituZone) : '')
+  )
+}
+
+const ActivityHook = {
+  async operationControls(
+    _args: { operation: Record<string, JSONValue> },
+    ctx: HookContext,
+  ): Promise<LoggingControlDescriptor[]> {
+    const t = tFor(ctx)
+    return [
+      {
+        key: 'iaru-hf/setup',
+        label: t('activityLabel'),
+        icon: manifest.icon,
+        color: manifest.accentColor,
+        order: 10,
+        input: {
+          kind: 'form',
+          refType: TYPE,
+          form: {
+            title: t('setupLabel'),
+            elements: [
+              {
+                type: 'field',
+                fieldType: 'radio',
+                key: 'modeRestriction',
+                label: t('modeLabel'),
+                // IARU is one weekend with three entry categories, unlike CQ WW's
+                // three separate contests — so this restricts what counts rather
+                // than naming which contest you're in.
+                value: 'Mixed',
+                options: [
+                  { value: 'Mixed', label: t('modeMixed') },
+                  { value: 'CW', label: t('modeCW') },
+                  { value: 'Phone', label: t('modePhone') },
+                ],
+              },
+              {
+                type: 'field',
+                fieldType: 'radio',
+                key: 'stationType',
+                label: t('stationTypeLabel'),
+                // Defaulted, and not merely for convenience: the three fields
+                // below key their visibility off this, so leaving it unset would
+                // show none of them.
+                value: 'normal',
+                options: [
+                  { value: 'normal', label: t('stationNormal') },
+                  { value: 'hq', label: t('stationHQ') },
+                  { value: 'official', label: t('stationOfficial') },
+                ],
+              },
+              // Exactly one of the next three shows at a time (§5.4.1). All three
+              // keep their values when hidden, so trying HQ and going back to
+              // Normal doesn't cost the operator the zone they typed.
+              {
+                type: 'field',
+                fieldType: 'text',
+                key: 'zone',
+                label: t('ourZoneLabel'),
+                placeholder: t('ourZonePlaceholder'),
+                visibleWhen: { field: 'stationType', equals: 'normal' },
+              },
+              {
+                type: 'field',
+                fieldType: 'text',
+                key: 'society',
+                label: t('societyLabel'),
+                placeholder: t('societyPlaceholder'),
+                uppercase: true,
+                visibleWhen: { field: 'stationType', equals: 'hq' },
+              },
+              {
+                type: 'field',
+                fieldType: 'radio',
+                key: 'official',
+                label: t('officialLabel'),
+                value: 'AC',
+                options: [
+                  { value: 'AC', label: 'AC' },
+                  { value: 'R1', label: 'R1' },
+                  { value: 'R2', label: 'R2' },
+                  { value: 'R3', label: 'R3' },
+                ],
+                visibleWhen: { field: 'stationType', equals: 'official' },
+              },
+              // Markdown rather than a `link` element: a link renders dead from a
+              // setup form, which has no link handler wired to it.
+              { type: 'markdown', text: t('rulesLink') },
+            ],
+          },
+        },
+      },
+    ]
+  },
+
+  /// The one field typed per QSO — and it holds three different kinds of value,
+  /// so it can't be numeric-only the way CQ WW's zone is. The country file
+  /// resolves a zone for most callsigns offline, which covers the common case;
+  /// nothing can guess a society, so those are always typed.
+  async loggingControls(
+    args: { operation: Record<string, JSONValue>; qso?: Record<string, JSONValue> },
+    ctx: HookContext,
+  ): Promise<LoggingControlDescriptor[]> {
+    // Off-contest, contribute nothing — an optimization, not the rule. The core
+    // already refuses a primary field to an activity the operation isn't
+    // running; what this saves is a country-file annotation per refresh.
+    if (!refOfType(args.operation, TYPE)) return []
+
+    const their = ((args.qso?.their as Record<string, JSONValue>) ?? {})
+    const suggested = guessedZoneFor(their)
+
+    return [
+      {
+        key: 'iaru-hf/exchange',
+        label: tFor(ctx)('exchangeLabel'),
+        icon: manifest.icon,
+        color: manifest.accentColor,
+        order: 10,
+        input: {
+          kind: 'text',
+          refType: TYPE,
+          field: 'theirExchange',
+          maxLength: 10,
+          pattern: EXCHANGE_PATTERN,
+          // Societies are sent as letters and offices as AC/R1/R2/R3, so this
+          // field is uppercase like any other on-air exchange.
+          uppercase: true,
+          // Only ever the guessed zone for THIS callsign — never a format hint,
+          // which reads as a real value at a glance.
+          placeholder: suggested || undefined,
+          suggestedValue: suggested || undefined,
+        },
+      },
+    ]
+  },
+
+  /// Records what was actually received, and mirrors it where the rest of the
+  /// app can see it.
+  ///
+  /// When the operator typed nothing, the country file's ITU zone for that call
+  /// is written onto the ref as DATA OF RECORD — not left to be re-derived
+  /// later (docs/design/contests.md §8). The scorer falls back to the same
+  /// value, so leaving the ref empty is how a log ends up scoring a zone and
+  /// exporting a dash. polo's IARU does exactly this.
+  ///
+  /// `their.exchange` is the projection on top: nothing outside this extension
+  /// knows to look inside a contest ref, so without it the QSO row's exchange
+  /// column and a plain (non-contest) ADIF export both come up empty.
+  async processQsoBeforeSave(
+    args: { qso: Record<string, JSONValue>; operation: Record<string, JSONValue> },
+    _ctx: HookContext,
+  ): Promise<Record<string, JSONValue> | null> {
+    if (!refOfType(args.operation, TYPE)) return null
+
+    const qsoRef = refOfType(args.qso, TYPE)
+    // PRESENCE of the field, not its truthiness. The core writes
+    // `theirExchange: ''` when the operator empties the field on purpose, and
+    // drops the key entirely when it was never filled in — so a present key,
+    // blank or not, is a decision, and guessing over it would put back what
+    // they just removed.
+    const decided = qsoRef !== undefined && 'theirExchange' in qsoRef
+    // Only a ZONE can be guessed — nothing can infer a society or an office, so
+    // those are always the operator's own typing.
+    const exchange = decided
+      ? str(qsoRef.theirExchange).trim().toUpperCase()
+      : guessedZoneFor((args.qso.their as Record<string, JSONValue>) ?? {})
+
+    // A deliberate blank still projects, so clearing an exchange on an edit
+    // clears the QSO row's column too instead of leaving the old value there.
+    if (!exchange) return decided ? { their: { exchange: '' } } : null
+
+    return {
+      // Field-wise into our own ref; the core allows this extension no other.
+      refs: [{ type: TYPE, theirExchange: exchange }],
+      their: { exchange },
+    }
+  },
+}
+
+const RefHandler = {
+  async validateRef({ ref }: { ref: Ref }, _ctx: HookContext) {
+    return { valid: true, normalized: (ref.ref ?? '').trim() }
+  },
+
+  async decorateRef({ ref }: { ref: Ref }, ctx: HookContext): Promise<Ref> {
+    const restriction = str((ref as Record<string, JSONValue>).modeRestriction)
+    // "Mixed" is the default and adding it to every label is noise; a
+    // restriction is what's worth seeing at a glance.
+    const label = ['IARU HF', restriction && restriction !== 'Mixed' ? restriction : undefined]
+      .filter(Boolean)
+      .join(' ')
+    const sent = ourExchange({}, ref as Record<string, JSONValue>)
+    return {
+      ...ref,
+      program: 'Contest',
+      label: label || tFor(ctx)('unconfigured'),
+      shortLabel: label || tFor(ctx)('unconfigured'),
+      name: sent || undefined,
+    }
+  },
+
+  /// "KI2D for IARU HF" with "Sending 8" beneath it: the sent exchange is the
+  /// one thing an operator re-reads constantly, so it goes in the subtitle
+  /// rather than being buried in setup.
+  async suggestOperationTitle(
+    { ref, operation }: { ref: Ref; operation: Record<string, JSONValue> },
+    ctx: HookContext,
+  ) {
+    const restriction = str((ref as Record<string, JSONValue>).modeRestriction)
+    const sent = ourExchange(operation, ref as Record<string, JSONValue>)
+    return {
+      for: ['IARU HF', restriction && restriction !== 'Mixed' ? restriction : undefined].filter(Boolean).join(' '),
+      subtitle: sent ? tFor(ctx)('ourExchangeSubtitle', { exchange: sent }) : undefined,
+    }
+  },
+}
+
+const AdifFieldsHook = {
+  async fieldsForOneQSO(
+    { qso, operation }: { qso: Record<string, JSONValue>; operation: Record<string, JSONValue> },
+    _ctx: HookContext,
+  ): Promise<{ name: string; value: string }[]> {
+    const opRef = refOfType(operation, TYPE)
+    if (!opRef) return []
+
+    // One contest, one identifier — the mode restriction is an entry category,
+    // not a different contest, so it never appears here.
+    const fields: { name: string; value: string }[] = [{ name: 'CONTEST_ID', value: 'IARU-HF' }]
+    const sent = ourExchange(operation, opRef)
+    const received = str(refOfType(qso, TYPE)?.theirExchange)
+    if (sent) fields.push({ name: 'STX_STRING', value: sent })
+    if (received) fields.push({ name: 'SRX_STRING', value: received })
+    return fields
+  },
+}
+
+function reportFor(qso: Record<string, JSONValue>, side: 'our' | 'their'): string {
+  const sideData = (qso[side] as Record<string, JSONValue>) ?? {}
+  const sent = str(sideData.sent)
+  if (sent) return sent
+  return str(qso.mode) === 'CW' || str(qso.mode) === 'RTTY' ? '599' : '59'
+}
+
+const ExportHook = {
+  async suggestExportOptions(args: ExportOptionsRequest, ctx: HookContext): Promise<ExportOption[]> {
+    if (!refOfType(args.operation, TYPE)) return []
+    const t = tFor(ctx)
+    return [
+      { exportType: 'contest-adif', format: 'adif', label: t('adifExport'), selectedByDefault: true },
+      { exportType: 'cabrillo', format: 'cabrillo', label: t('cabrilloExport'), selectedByDefault: true },
+    ]
+  },
+
+  async generateExport(args: ExportRequest, ctx: HookContext): Promise<ExportResult> {
+    // Only the two exportTypes offered above. Belt and braces alongside the
+    // keyed `invokeOne` below: a hook answering for an exportType it never
+    // offered is how the ADIF delegation once recursed into itself.
+    if (args.exportType !== 'cabrillo' && args.exportType !== 'contest-adif') {
+      return { filename: '', mimeType: '', content: '' }
+    }
+
+    const operation = args.operation
+    const opRef = refOfType(operation, TYPE)
+    const ourCall = str(operation.stationCall)
+    const sent = ourExchange(operation, opRef)
+    const stamp = `IARU-HF-${ourCall || 'log'}`.replace(/[^A-Za-z0-9_-]+/g, '-')
+
+    if (args.exportType === 'cabrillo') {
+      const content = qsonToCabrillo(args.qsos, {
+        headers: [
+          ['CONTEST', 'IARU-HF'],
+          ['CALLSIGN', ourCall],
+          ['OPERATORS', str((operation.local as Record<string, JSONValue>)?.operatorCall)],
+          ['GRID-LOCATOR', str(operation.grid)],
+        ],
+        qsoParts: (qso) => [
+          ourCall || '-',
+          reportFor(qso, 'our'),
+          sent || '-',
+          str(((qso.their as Record<string, JSONValue>) ?? {}).call) || '-',
+          reportFor(qso, 'their'),
+          str(refOfType(qso, TYPE)?.theirExchange) || '-',
+        ],
+      })
+      return { filename: `${stamp}.log`, mimeType: 'text/plain', content }
+    }
+
+    const { hooks } = await import("@ham2k/halo-extension-sdk")
+    // invokeOne, NOT invokeAll: the fan-out includes this contest's own
+    // `generateExport`, which would take the same ADIF branch and delegate
+    // again — unbounded recursion that only surfaced as an export timeout.
+    const entries = await hooks.invokeOne('export', 'adif', 'generateExport', {
+      operation: args.operation,
+      qsos: args.qsos,
+      exportType: 'adif',
+    })
+    const adif = entries.find((e) => e.ok)
+    return {
+      filename: `${stamp}.adi`,
+      mimeType: 'text/plain',
+      content: ((adif?.value as ExportResult | undefined)?.content) ?? '',
+    }
+  },
+}
+
+defineExtension({
+  ...manifest,
+  onActivation({ registerHook }) {
+    registerHook('activity', { hook: ActivityHook, key: TYPE })
+    registerHook(`ref:${TYPE}`, { hook: RefHandler, key: TYPE })
+    registerHook('adifFields', { hook: AdifFieldsHook, key: TYPE })
+    registerHook('export', { hook: ExportHook, key: TYPE })
+    registerHook('scoring', {
+      hook: contestScorer(IARUHFScorer, { scope: { refTypes: [TYPE] } }),
+      key: TYPE,
+    })
+  },
+})
