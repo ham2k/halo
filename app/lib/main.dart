@@ -39,6 +39,7 @@ import 'config/version.dart';
 import 'services/auto_update_service.dart';
 import 'services/deep_link_service.dart';
 import 'services/export_service.dart';
+import 'services/error_reporting_backend.dart';
 import 'services/error_reporting_service.dart';
 import 'services/extension_service.dart';
 import 'services/location_service.dart';
@@ -69,24 +70,26 @@ void main() => runHaLoApp();
 /// The whole app launch sequence, with the distribution-only services
 /// injectable — the OSS `main()` above runs it with the no-op defaults,
 /// while a private distribution entrypoint (`app_dist`'s `main_dist.dart`)
-/// passes real implementations (e.g. the analytics backend). Vendor-specific
-/// code stays out of this repo entirely; the app only knows the generic
-/// [MetricsService] interface and the consent-gated [HaLoServices.track].
+/// passes real implementations (e.g. the analytics and crash-reporting
+/// backends). Vendor-specific code stays out of this repo entirely; the app
+/// only knows the generic [MetricsService]/[ErrorReportingBackend]
+/// interfaces and the consent-gated [HaLoServices.track].
 void runHaLoApp({
   MetricsService? metrics,
   PurchaseService? purchases,
   UpdateService? updates,
+  ErrorReportingBackend? errorReporting,
 }) {
-  // Global error capture (#76): Sentry upload in any build given a DSN at
-  // build time, local logging + the error tile + a StatusBar notice
-  // everywhere — see services/error_reporting_service.dart. The ENTIRE
-  // startup sequence (binding init included) runs inside so everything
-  // shares one zone: a binding initialized outside the zone that runApp
-  // runs in trips Flutter's zone-mismatch warning, and on web uncaught
-  // async errors are only catchable by the zone, not
-  // PlatformDispatcher.onError.
+  // Global error capture (#76): backend upload when one is injected, local
+  // logging + the error tile + a StatusBar notice everywhere — see
+  // services/error_reporting_service.dart. The ENTIRE startup sequence
+  // (binding init included) runs inside so everything shares one zone: a
+  // binding initialized outside the zone that runApp runs in trips
+  // Flutter's zone-mismatch warning, and on web uncaught async errors are
+  // only catchable by the zone, not PlatformDispatcher.onError.
   unawaited(ErrorReportingService.run(
     () => _mainBody(metrics: metrics, purchases: purchases, updates: updates),
+    backend: errorReporting,
   ));
 }
 
@@ -129,6 +132,7 @@ void _mainBody({
       'fontScale': services.settings.fontScale.name,
     });
     ErrorReportingService.attachStatusBar(services.statusBar);
+    ErrorReportingService.attachSettings(services.settings);
 
     // Expired-build nag: if this build's expiration date (halo-ops release
     // writes it into version.dart; two weeks for Next and Dev, six months
@@ -721,7 +725,7 @@ class HaLoServices {
           StackTrace.current,
           context: 'devsentry',
         );
-        return ErrorReportingService.sentryEnabled ? t.commands.sentryTestSent : t.commands.sentryTestLocalOnly;
+        return ErrorReportingService.reportingEnabled ? t.commands.sentryTestSent : t.commands.sentryTestLocalOnly;
       case 'sendSpots':
         return _sendSpot(params ?? const {});
       case 'toggleExperiment':

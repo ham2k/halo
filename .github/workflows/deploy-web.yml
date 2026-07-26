@@ -68,10 +68,13 @@ jobs:
         run: cp app/lib/config/mapbox_token.dart.example app/lib/config/mapbox_token.dart
 
       # HALO_SENTRY_DSN (optional secret): error reporting (#76). The
-      # dart-define feeds the Flutter app's ErrorReportingService; the sed
-      # fills the index.html boot-failure reporter's placeholder (the app
-      # can't report a failure to start — it never ran). Both no-op when the
-      # secret is unset: empty define = disabled, placeholder left = disabled.
+      # dart-define feeds --target=../app_dist/lib/main_dist.dart, which
+      # constructs the real SentryErrorReportingBackend (Sentry-specific
+      # code lives entirely in app_dist, same as every other platform's
+      # build script); the sed below fills the index.html boot-failure
+      # reporter's placeholder separately (the app can't report a failure to
+      # start — it never ran). Both no-op when the secret is unset: empty
+      # define = disabled, placeholder left = disabled.
       # HALO_GIT_SHA: the short SHA of the deployed commit, shown after the build
       # number in the About view (version_label.dart's kGitSha) so we can tell
       # exactly which commit halo-dev is serving. HEAD is the ref checked out
@@ -82,7 +85,8 @@ jobs:
           flutter pub get
           flutter build web --release --no-tree-shake-icons \
             --dart-define=HALO_SENTRY_DSN="${HALO_SENTRY_DSN}" \
-            --dart-define=HALO_GIT_SHA="$(git rev-parse --short HEAD)"
+            --dart-define=HALO_GIT_SHA="$(git rev-parse --short HEAD)" \
+            --target=../app_dist/lib/main_dist.dart
         env:
           HALO_SENTRY_DSN: ${{ secrets.HALO_SENTRY_DSN }}
 

@@ -1,43 +1,49 @@
 // Copyright ©️ 2026 Sebastian Delmont <sd@ham2k.com>
 // SPDX-License-Identifier: MPL-2.0
 //
-// Global error capture (#76): Sentry upload when configured, local logging
-// and a StatusBar notice always.
+// Global error capture (#76): backend upload when one is injected, local
+// logging and a StatusBar notice always.
 //
-// Sentry activates whenever a DSN was baked in at build time via
-// --dart-define=HALO_SENTRY_DSN=… — DSN presence is the only gate (same
-// absent-secret-means-disabled convention as the Mapbox token), so OSS and
-// local builds carry zero reporting behavior, while any edition — including
-// Dev, e.g. the halo-dev web deploy — reports when its build was given the
-// secret. options.environment carries the edition, keeping dev noise
-// separable in Sentry even with per-edition DSNs (it doubles as a tripwire
-// for a secret wired to the wrong edition). Passing the define to a local
-// `flutter run` is also the way to smoke-test the pipeline.
+// Vendor-specific reporting code (Sentry, DSN handling, …) lives entirely in
+// app_dist, behind the [ErrorReportingBackend] interface — this file only
+// knows the generic shape. The OSS app runs with no backend at all (see
+// [NoopErrorReportingBackend]); a real one is injected via [run]'s `backend`
+// parameter, mirroring MetricsService/runHaLoApp.
 //
 // Static rather than a HaLoServices member on purpose: the hooks must be
 // installed around runApp(), long before bootstrap() has built any
 // services. The StatusBar surface attaches later via [attachStatusBar]
 // (errors before that point are logged/uploaded but produce no notice).
+//
+// User context (callsign + LoFi account id) flows through [attachSettings]
+// the same way: SettingsService already notifyListeners on a callsign
+// change, an account link/switch, and the consent toggle itself, so one
+// listener here re-evaluates on every trigger without duplicating this
+// logic at each call site. Only the identifying fields are gated behind
+// SettingsService.consentAppData ("Share Usage Data") — reporting itself
+// (this file, and a real backend's crash uploads) is NOT consent-gated,
+// unlike app-polo's own Sentry integration, which disables Sentry entirely
+// without consent. Cleared (both fields null) the moment consent is off, so
+// a prior opt-in's value can't linger in the backend's own scope.
 
 import 'dart:async';
 
-import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart' show Clipboard, ClipboardData;
 import 'package:flutter/widgets.dart';
-import 'package:sentry_flutter/sentry_flutter.dart';
 
-import '../config/version.dart';
+import 'error_reporting_backend.dart';
 import '../views/error_tile.dart';
+import 'settings_service.dart';
 import 'status_bar_service.dart';
 
 class ErrorReportingService {
   ErrorReportingService._();
 
-  static const String dsn = String.fromEnvironment('HALO_SENTRY_DSN');
+  static ErrorReportingBackend _backend = const NoopErrorReportingBackend();
 
-  /// Whether errors are uploaded to Sentry: a build-time DSN is the only
-  /// gate (file header). Local logging and notices are independent of this.
-  static bool get sentryEnabled => dsn.isNotEmpty;
+  /// Whether a real backend is active (vs. the OSS no-op default). Local
+  /// logging and notices happen either way.
+  static bool get reportingEnabled => _backend is! NoopErrorReportingBackend;
 
   static StatusBarService? _statusBar;
   static bool _noticeShown = false;
@@ -49,16 +55,13 @@ class ErrorReportingService {
   /// escape capture on web, where async errors reach the zone handler
   /// rather than PlatformDispatcher.onError).
   ///
-  /// Sentry enabled → the app runs inside `SentryFlutter.init`'s appRunner
-  /// (its guarded zone + its own hooks, which ours chain onto). If init
-  /// itself throws — e.g. a malformed DSN secret — the app MUST still
-  /// start: fall through to the local-only path rather than stranding every
-  /// build of an edition on the native splash.
-  ///
-  /// Sentry disabled → [body] runs in our own runZonedGuarded, so uncaught
-  /// async errors are logged and noticed (but don't take the session down)
-  /// on every platform, including web.
-  static Future<void> run(FutureOr<void> Function() body) async {
+  /// [backend] takes ownership of [startBody] if it can (e.g. Sentry's own
+  /// guarded zone); if it can't (no backend, or its own init failed before
+  /// ever starting the body), [startBody] runs in our own runZonedGuarded
+  /// instead, so uncaught async errors are logged and noticed (but don't
+  /// take the session down) on every platform, including web.
+  static Future<void> run(FutureOr<void> Function() body, {ErrorReportingBackend? backend}) async {
+    _backend = backend ?? const NoopErrorReportingBackend();
     var bodyStarted = false;
     FutureOr<void> startBody() {
       bodyStarted = true;
@@ -66,69 +69,26 @@ class ErrorReportingService {
       return body();
     }
 
-    if (sentryEnabled) {
-      try {
-        await SentryFlutter.init(
-          (options) {
-            options.dsn = dsn;
-            options.environment = kEdition.name;
-            options.release = 'ham2k-logger@$kPublicVersion+$kBuildNumber';
-            options.dist = '$kBuildNumber';
-            // Crash reporting only — no performance tracing, session replay,
-            // screenshots, or PII. A logging app handles operator callsigns
-            // and locations; keep uploads to the error and its stack.
-            options.tracesSampleRate = null;
-            options.attachScreenshot = false;
-            options.sendDefaultPii = false;
-            // Every captured event (framework, uncaught-async — which on web
-            // arrives via Sentry's zone, not PlatformDispatcher.onError —
-            // or manual report()) also feeds the once-per-session notice,
-            // and stays visible on the console during DSN smoke tests
-            // (Sentry's onError integration otherwise swallows the default
-            // print of uncaught async errors).
-            options.beforeSend = (event, hint) {
-              if (kDebugMode) debugPrint('[error-reporting] sentry event: ${event.throwable ?? event.message?.formatted}');
-              _notify(event.throwable ?? 'Reported error', null);
-              return event;
-            };
-          },
-          appRunner: () async {
-            if (kGitSha.isNotEmpty) {
-              await Sentry.configureScope((scope) => scope.setTag('git_sha', kGitSha));
-            }
-            await startBody();
-          },
-        );
-        return;
-      } catch (error, stackTrace) {
-        debugPrint('[error-reporting] Sentry init failed (malformed DSN?), continuing without upload: $error\n$stackTrace');
-        // If init failed after the app was already running there's nothing
-        // left to start; otherwise fall through to the local-only path.
-        if (bodyStarted) return;
-      }
-    }
+    final tookOwnership = await _backend.run(startBody);
+    if (tookOwnership || bodyStarted) return;
 
     runZonedGuarded(() {
       startBody();
     }, (error, stackTrace) {
-      // Uncaught async error with Sentry off (or its init broken): log +
+      // Uncaught async error with no backend (or its init broken): log +
       // notice. Reaching a zone handler means it never propagates, so a
       // stray async error can't take down a logging session mid-contact.
       debugPrint('[error-reporting] uncaught async error: $error\n$stackTrace');
-      _notify(error, stackTrace);
+      notify(error, stackTrace);
     });
   }
 
   /// Report a caught error explicitly (e.g. bootstrap() failures that are
-  /// already surfaced by BootErrorScreen). Uploads when Sentry is enabled;
+  /// already surfaced by BootErrorScreen). Uploads via the active backend;
   /// always logs locally.
   static void report(Object error, StackTrace? stackTrace, {String? context}) {
     debugPrint('[error-reporting] ${context ?? 'caught'}: $error\n${stackTrace ?? ''}');
-    if (sentryEnabled) {
-      unawaited(Sentry.captureException(error, stackTrace: stackTrace, withScope: (scope) {
-        if (context != null) scope.setTag('halo_context', context);
-      }));
-    }
+    _backend.captureException(error, stackTrace, context: context);
   }
 
   /// Called once bootstrap() has services; from then on the first runtime
@@ -137,9 +97,27 @@ class ErrorReportingService {
     _statusBar = statusBar;
   }
 
+  /// Keeps the backend's user context (callsign + LoFi account id) in step
+  /// with [settings] for the rest of the session — see file header.
+  static void attachSettings(SettingsService settings) {
+    _updateUserContext(settings);
+    settings.addListener(() => _updateUserContext(settings));
+  }
+
+  static void _updateUserContext(SettingsService settings) {
+    if (!settings.consentAppData) {
+      _backend.updateUserContext();
+      return;
+    }
+    final call = settings.activeProfile.operatorCall;
+    final accountData = settings.syncState['accountData'] as Map?;
+    final accountId = (accountData?['current_account'] as Map?)?['uuid'] as String?;
+    _backend.updateUserContext(callsign: call.isEmpty ? null : call, accountId: accountId);
+  }
+
   static void _installLocalHooks() {
-    // Framework errors (widget build/layout/paint). Sentry's own handler —
-    // when enabled — is already in this chain; preserve it.
+    // Framework errors (widget build/layout/paint). A real backend's own
+    // handler, when active, is already in this chain; preserve it.
     final previousOnError = FlutterError.onError;
     FlutterError.onError = (details) {
       if (previousOnError != null) {
@@ -147,7 +125,7 @@ class ErrorReportingService {
       } else {
         FlutterError.presentError(details);
       }
-      _notify(details.exception, details.stack);
+      notify(details.exception, details.stack);
     };
 
     // Replace Flutter's grey/red box with the compact branded tile; the
@@ -157,12 +135,15 @@ class ErrorReportingService {
   }
 
   /// Queue the once-per-session StatusBar notice (if the bar is attached).
-  /// Deferred to a microtask: this is called from inside error handlers,
-  /// which for widget errors means mid build/layout — and showNotice()'s
-  /// notifyListeners() would then trip "markNeedsBuild() called during
-  /// build" and throw from within the error handler itself. The throttle
-  /// flag is set synchronously so concurrent errors can't double-post.
-  static void _notify(Object error, StackTrace? stackTrace) {
+  /// Public so a backend (app_dist) can feed its own captured events (e.g.
+  /// Sentry's beforeSend, the only path for an uncaught async error, which
+  /// [_installLocalHooks] never sees) into the same throttle. Deferred to a
+  /// microtask: this is called from inside error handlers, which for widget
+  /// errors means mid build/layout — and showNotice()'s notifyListeners()
+  /// would then trip "markNeedsBuild() called during build" and throw from
+  /// within the error handler itself. The throttle flag is set synchronously
+  /// so concurrent errors can't double-post.
+  static void notify(Object error, StackTrace? stackTrace) {
     final statusBar = _statusBar;
     if (statusBar == null || _noticeShown) return;
     _noticeShown = true;
@@ -172,7 +153,7 @@ class ErrorReportingService {
         key: 'error-reporting:first-error',
         icon: 'error_outline',
         title: 'Something went wrong',
-        text: sentryEnabled
+        text: reportingEnabled
             ? 'An unexpected error occurred and was reported. The app should keep working; restart if anything looks off.'
             : 'An unexpected error occurred. The app should keep working; restart if anything looks off.',
         actions: [
@@ -185,10 +166,11 @@ class ErrorReportingService {
     });
   }
 
-  /// Test seam: forget the attached status bar and notice throttle.
+  /// Test seam: forget the attached status bar, notice throttle, and backend.
   @visibleForTesting
   static void resetForTesting() {
     _statusBar = null;
     _noticeShown = false;
+    _backend = const NoopErrorReportingBackend();
   }
 }
