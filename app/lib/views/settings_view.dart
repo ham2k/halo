@@ -309,11 +309,25 @@ class _SettingsViewState extends State<SettingsView> {
             child: Scaffold(
             appBar: AppBar(
               flexibleSpace: windowHeaderGestureArea(),
-              // Centered to match each panel's own content below, which
-              // centers (rather than pins left) at the same idealPaneWidth
-              // cap — see _buildPanelContent.
-              centerTitle: true,
-              title: shrinkToFitText(Text(effectivePanel.effectiveScreenTitle)),
+              // Left-aligned with the list items below, which cap at the
+              // same idealPaneWidth and start at 24 + safeLeft into it (the
+              // row-background margin plus the ambient ListTileTheme inset
+              // — see _buildPanelContent and the ListTileTheme.merge below).
+              // Replicates that same cap-and-center, rather than centering
+              // the title on its own within the whole pane.
+              centerTitle: false,
+              title: Center(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: idealPaneWidth),
+                  child: Align(
+                    alignment: Alignment.centerLeft,
+                    child: Padding(
+                      padding: EdgeInsets.only(left: 24 + safeLeft),
+                      child: shrinkToFitText(Text(effectivePanel.effectiveScreenTitle)),
+                    ),
+                  ),
+                ),
+              ),
               automaticallyImplyLeading: false,
               actions: [
                 HeaderProfileLabel(settings: widget.services.settings),
