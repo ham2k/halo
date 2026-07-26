@@ -77,6 +77,13 @@ class ExtensionService {
   /// consult this; secret settings fields stay device-local (the default).
   final Map<String, bool> _accountSynchronizable = {};
 
+  /// The resolved flags, so a test can assert the boot-time refresh actually
+  /// captured them. Nothing else observes this map directly — its effect is a
+  /// keychain option on a platform tests don't run on — so without this the
+  /// only provable symptom of the refresh failing is a log line.
+  @visibleForTesting
+  Map<String, bool> get accountSynchronizable => Map.unmodifiable(_accountSynchronizable);
+
   /// Completes once [_refreshAccountSynchronizable] has resolved the flags for
   /// the current runtime generation (or start failed) — reset per [_start],
   /// completed in its `finally`. Account access awaits this so an early lookup
@@ -86,9 +93,20 @@ class ExtensionService {
   /// [_accountKeychainOptions] only awaits it when a start is actually in play.
   Completer<void> _accountSyncReady = Completer<void>();
 
+  /// True while [_refreshAccountSynchronizable] is in flight.
+  ///
+  /// The refresh asks the kernel for the account definitions, and the kernel
+  /// answers by CALLING BACK into Dart (`getAccount`, to build the hook ctx for
+  /// any account member that is a function). Without this flag that host call
+  /// waits on [_accountSyncReady] — the completer the refresh itself is on its
+  /// way to completing — and the two wait on each other until the hook times
+  /// out. See [_accountKeychainOptions].
+  bool _refreshingAccountSynchronizable = false;
+
   /// Rebuilds [_accountSynchronizable] from the current account definitions.
   /// Best-effort: a failure leaves accounts device-local, never crashes boot.
   Future<void> _refreshAccountSynchronizable() async {
+    _refreshingAccountSynchronizable = true;
     try {
       final accounts = await getAccounts();
       _accountSynchronizable
@@ -98,6 +116,8 @@ class ExtensionService {
             .map((a) => MapEntry(a['kvKey'] as String, a['synchronizable'] == true)));
     } catch (e) {
       debugPrint('[extensions] refreshAccountSynchronizable failed: $e');
+    } finally {
+      _refreshingAccountSynchronizable = false;
     }
   }
 
@@ -117,8 +137,25 @@ class ExtensionService {
   /// device-local. iOS always uses the data-protection keychain, so it syncs when
   /// the account declares it. Both keep `synchronizable` and
   /// `usesDataProtectionKeychain` from ever contradicting.
-  Future<({MacOsOptions mOptions, IOSOptions iOptions})> _accountKeychainOptions(String kvKey) async {
-    if (!_accountSyncReady.isCompleted && (_starting != null || _host != null)) {
+  /// [fromHostCall] marks the calls the extension runtime makes back into us
+  /// while a hook is running. Those must never wait on [_accountSyncReady]
+  /// during [_refreshAccountSynchronizable]: the refresh is what completes that
+  /// completer, and it cannot finish until the hook it is waiting on returns —
+  /// which cannot happen until this call does. Deliberately NOT a blanket
+  /// bypass: direct Dart callers (a lookup firing as soon as [ready] flips)
+  /// still wait, because getting them the right flag is the whole reason the
+  /// gate exists.
+  ///
+  /// Bypassing yields the device-local defaults, which is exactly what the
+  /// caller got before this fix — the refresh timed out, so the flag map stayed
+  /// empty for the whole session — so this is never worse than the status quo,
+  /// and unlike the status quo the flags are correct a moment later.
+  Future<({MacOsOptions mOptions, IOSOptions iOptions})> _accountKeychainOptions(
+    String kvKey, {
+    bool fromHostCall = false,
+  }) async {
+    final wouldDeadlock = fromHostCall && _refreshingAccountSynchronizable;
+    if (!wouldDeadlock && !_accountSyncReady.isCompleted && (_starting != null || _host != null)) {
       await _accountSyncReady.future;
     }
     final declared = _accountSynchronizable[kvKey] ?? false;
@@ -938,7 +975,7 @@ class ExtensionService {
     switch (method) {
       case 'getAccount':
         final kvKey = params['kvKey'] as String;
-        final o = await _accountKeychainOptions(kvKey);
+        final o = await _accountKeychainOptions(kvKey, fromHostCall: true);
         final credsStr = await _secureStorage.read(key: 'account_creds_$kvKey', mOptions: o.mOptions, iOptions: o.iOptions);
         final sessionStr = await _secureStorage.read(key: 'account_session_$kvKey', mOptions: o.mOptions, iOptions: o.iOptions);
         return {
@@ -947,7 +984,7 @@ class ExtensionService {
         };
       case 'setAccountSession':
         final kvKey = params['kvKey'] as String;
-        final o = await _accountKeychainOptions(kvKey);
+        final o = await _accountKeychainOptions(kvKey, fromHostCall: true);
         final session = params['session'] as Map<dynamic, dynamic>;
         await _secureStorage.write(
           key: 'account_session_$kvKey',
