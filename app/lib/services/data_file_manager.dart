@@ -11,6 +11,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../config/user_agent.dart';
 import '../i18n/strings.g.dart';
+import 'error_reporting_service.dart';
 import 'extension_service.dart';
 import 'status_bar_service.dart';
 
@@ -100,8 +101,9 @@ class DataFileManager {
     final List<dynamic> entries;
     try {
       entries = await host.invokeHookAll('dataFile', method: 'getDefinition');
-    } catch (e) {
+    } catch (e, st) {
       debugPrint('[data-file] failed to fetch definitions: $e');
+      ErrorReportingService.report(e, st, context: 'data-files:fetch-definitions');
       return const [];
     }
     return [
@@ -248,8 +250,9 @@ class DataFileManager {
     final List<dynamic> entries;
     try {
       entries = await host.invokeHookAll('dataFile', method: 'getDefinition');
-    } catch (e) {
+    } catch (e, st) {
       debugPrint('[data-file] failed to fetch definitions: $e');
+      ErrorReportingService.report(e, st, context: 'data-files:sync-all-fetch-definitions');
       return 0;
     }
 
@@ -286,6 +289,7 @@ class DataFileManager {
         }
       } catch (e, stack) {
         debugPrint('[data-file] Error processing data file entry ${entry['value']}: $e\n$stack');
+        ErrorReportingService.report(e, stack, context: 'data-files:process-entry');
       }
     }));
     return matched;
@@ -442,7 +446,8 @@ class DataFileManager {
     final List<dynamic> entries;
     try {
       entries = await host.invokeHookAll('dataFile', method: 'getDefinition');
-    } catch (e) {
+    } catch (e, st) {
+      ErrorReportingService.report(e, st, context: 'data-files:load-raw-fetch-definitions');
       return;
     }
 
@@ -468,8 +473,9 @@ class DataFileManager {
                 method: 'onLoadRawData',
                 args: processedJson,
               );
-            } catch (e) {
+            } catch (e, st) {
               debugPrint('[data-file] Error loading raw cache file $key: $e');
+              ErrorReportingService.report(e, st, context: 'data-files:load-raw-cache-file');
             }
           }
         }

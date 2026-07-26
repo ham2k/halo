@@ -19,6 +19,8 @@ import 'package:halo_core/halo_core.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uuid/uuid.dart';
 
+import 'error_reporting_service.dart';
+
 const _uuidGenerator = Uuid();
 
 /// The theme mode the light/dark toggle (⌘⇧D) switches to: always the opposite
@@ -275,8 +277,9 @@ class SettingsService extends ChangeNotifier implements SyncSettings {
       final key = _uuidGenerator.v4();
       await _secureStorage.write(key: _syncDeviceKeyKey, value: key);
       return _cachedDeviceKey = key;
-    } catch (e) {
+    } catch (e, st) {
       debugPrint('[settings] secure storage unavailable ($e) — sync disabled this session');
+      ErrorReportingService.report(e, st, context: 'settings:sync-device-key');
       return null;
     }
   }

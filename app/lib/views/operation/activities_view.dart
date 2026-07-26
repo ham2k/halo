@@ -27,6 +27,7 @@ import 'package:halo_core/halo_core.dart';
 import 'package:halo_widgets/halo_widgets.dart';
 
 import '../../main.dart';
+import '../../services/error_reporting_service.dart';
 import '../../services/location_service.dart';
 import '../../services/extension_service.dart';
 import 'operation_location_screen.dart';
@@ -610,9 +611,10 @@ class OperationSheetState extends State<OperationSheet> {
     setState(() => _loadingSuggestions = true);
     try {
       await widget.services.extensions.setExtensionEnabled(info.key, true);
-    } catch (e) {
+    } catch (e, st) {
       // A failed restart must not strand the section on its spinner.
       debugPrint('[activities] enabling ${info.key} failed: $e');
+      ErrorReportingService.report(e, st, context: 'activities:enable-extension');
       if (mounted) setState(() => _loadingSuggestions = false);
       return;
     } finally {

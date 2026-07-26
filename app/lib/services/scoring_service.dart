@@ -13,6 +13,7 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:halo_core/halo_core.dart';
 
+import 'error_reporting_service.dart';
 import 'extension_service.dart';
 
 class ScoringService {
@@ -93,8 +94,9 @@ class ScoringService {
         for (final entry in scoresByUuid.entries) entry.key: jsonEncode(entry.value),
       });
       await operations.updateLocalData(operation.uuid, {'scoring': scoringByScorer});
-    } catch (e) {
+    } catch (e, st) {
       debugPrint('[scoring] rescoreOperation failed: $e');
+      ErrorReportingService.report(e, st, context: 'scoring:rescore-operation');
     }
   }
 }

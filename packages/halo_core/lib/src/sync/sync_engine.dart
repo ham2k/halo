@@ -91,6 +91,16 @@ class SyncEngine {
   /// silently into backoff by design, but they must not be *invisible*.
   final void Function(String message)? log;
 
+  /// Reports a round failure to crash reporting, in addition to [log]'s
+  /// plain-text line — same shape as `ErrorReportingService.report` so the
+  /// app layer can wire it in directly (`onError: ErrorReportingService.
+  /// report`) rather than wrapping it. Null when the app layer doesn't want
+  /// round failures reported (this package stays free of a Sentry/Flutter
+  /// dependency itself — file header). "Not syncing" reports were
+  /// previously undiagnosable: every failure mode (HTTP error, auth
+  /// rejection, a dead extension runtime) funneled into [log] alone.
+  final void Function(Object error, StackTrace? stackTrace, {String? context})? onError;
+
   /// Called with server-reported counts after each backfill round (and once
   /// more, with `backfilling: false`, on the round that completes it) — see
   /// [SyncProgress]. Null when the app layer doesn't surface progress.
@@ -141,6 +151,7 @@ class SyncEngine {
     required this.settings,
     this.log,
     this.onProgress,
+    this.onError,
   });
 
   void start() {
@@ -358,9 +369,10 @@ class SyncEngine {
         final fullPage = inboundOperations.length >= pullLimit || inboundQsos.length >= pullLimit;
         _scheduleLoop((morePending || (fullPage && !_backfillStuckAtCap)) ? Duration.zero : _loopDelay);
       }
-    } catch (e) {
+    } catch (e, st) {
       _errorCount++;
       log?.call('[sync] round failed (error #$_errorCount${smallBatch ? ', small batch' : ''}): $e');
+      onError?.call(e, st, context: 'sync:round #$_errorCount${smallBatch ? ' (small batch)' : ''}');
       // Keep retrying no matter how many failures pile up (an extended
       // outage shouldn't permanently stop the periodic loop) — just cap
       // how far the backoff grows. A failed small-batch round pulls the

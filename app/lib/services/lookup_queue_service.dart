@@ -24,6 +24,7 @@ import 'package:flutter/foundation.dart';
 import 'package:halo_core/halo_core.dart';
 import 'package:halo_widgets/halo_widgets.dart' show CallLookup;
 
+import 'error_reporting_service.dart';
 import 'status_bar_service.dart';
 
 class LookupQueueService {
@@ -214,8 +215,12 @@ class LookupQueueService {
     for (final item in completed) {
       try {
         await _applyOne(item);
-      } catch (e) {
+      } catch (e, st) {
+        // The write path that actually persists a lookup onto a QSO — a
+        // failure here means the lookup ran but nothing got saved, which
+        // reads to the operator as "lookups just don't work."
         debugPrint('[lookup queue] failed to apply result for ${item.entry.qsoUuid}: $e');
+        ErrorReportingService.report(e, st, context: 'lookup-queue:apply-result');
       }
     }
   }
@@ -248,6 +253,11 @@ class LookupQueueService {
     if (guessCall != null && guessCall.toUpperCase() != item.call.toUpperCase()) {
       debugPrint('[lookup queue] DROPPED crossed result: asked for ${item.call}, '
           'guess was for $guessCall (qso ${item.entry.qsoUuid})');
+      ErrorReportingService.report(
+        StateError('crossed lookup result: asked for ${item.call}, guess was for $guessCall'),
+        StackTrace.current,
+        context: 'lookup-queue:crossed-result',
+      );
       return;
     }
 

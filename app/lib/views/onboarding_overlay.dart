@@ -20,6 +20,7 @@ import 'package:halo_widgets/halo_widgets.dart';
 import '../config/release_notes.dart';
 import '../i18n/strings.g.dart';
 import '../main.dart';
+import '../services/error_reporting_service.dart';
 import '../services/settings_service.dart';
 import 'package:halo_core/halo_core.dart';
 import 'ham2k_logo.dart';
@@ -216,11 +217,12 @@ class _OnboardingOverlayViewState extends State<OnboardingOverlayView> {
       // mid-flow must not leave them unwritten, since onboarding never
       // re-offers. Done overwrites them with the final toggles.
       await _persistChoices();
-    } catch (e) {
+    } catch (e, st) {
       // The profile write happens first inside setOperatorCall; a keychain
       // or extension-bridge failure seeding sync credentials must not
       // strand the user on this step (credentials re-seed at next boot).
       debugPrint('[onboarding] persisting callsign step failed: $e');
+      ErrorReportingService.report(e, st, context: 'onboarding:persist-callsign-step');
     }
 
     if (keyboardIsOpen) {
@@ -259,13 +261,14 @@ class _OnboardingOverlayViewState extends State<OnboardingOverlayView> {
       // check), so this only actually waits on what genuinely still needs
       // fetching.
       await widget.services.dataFiles.syncAllDataFiles();
-    } catch (e) {
+    } catch (e, st) {
       // setExtensionsEnabled's runtime restart can throw (e.g. disposing the
       // outgoing host) outside of its own internal retry handling — must not
       // strand the user on the wait state with both buttons disabled and no
       // way out. Finish anyway; a failed restart/sync just means the app
       // sorts itself out on next boot, same as any other transient failure.
       debugPrint('[onboarding] finishing setup failed: $e');
+      ErrorReportingService.report(e, st, context: 'onboarding:finishing-setup');
     }
     if (!mounted) return;
     widget.onDone();

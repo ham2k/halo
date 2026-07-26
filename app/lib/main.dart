@@ -517,6 +517,7 @@ class HaLoServices {
     settings: settings,
     log: debugPrint,
     onProgress: _showSyncProgress,
+    onError: ErrorReportingService.report,
   );
 
   /// Status-bar item key for backfill progress; the Sync settings panel

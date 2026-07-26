@@ -122,6 +122,33 @@ void main() {
     expect(merged.map((q) => q.theirCall), containsAll(['W1AW', 'N1MM']));
   });
 
+  test('a failing round reports the error via onError, in addition to log', () async {
+    final loggedLines = <String>[];
+    final reported = <(Object, StackTrace?, String?)>[];
+    final reportingEngine = SyncEngine(
+      operations: operations,
+      qsos: qsos,
+      transport: transport.call,
+      settings: settings,
+      log: loggedLines.add,
+      onError: (error, stackTrace, {context}) => reported.add((error, stackTrace, context)),
+    );
+    addTearDown(reportingEngine.dispose);
+
+    transport.responder = (method, args) => throw StateError('server unreachable');
+
+    await reportingEngine.runOneRound();
+
+    // Every failure mode (HTTP error, auth rejection, a dead extension
+    // runtime) funnels into this one catch — onError must fire alongside
+    // the plain-text log, not instead of it, so "not syncing" reports are
+    // actually diagnosable (issue: LoFi sync silent failures).
+    expect(loggedLines, hasLength(1));
+    expect(reported, hasLength(1));
+    expect(reported.single.$1, isA<StateError>());
+    expect(reported.single.$3, contains('sync:round'));
+  });
+
   test('runOneRound does nothing when sync is disabled', () async {
     settings.enabled = false;
     await operations.create(stationCall: 'KI2D');

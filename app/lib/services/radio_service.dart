@@ -17,6 +17,8 @@ import 'package:flutter/foundation.dart';
 import 'package:halo_core/halo_core.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'error_reporting_service.dart';
+
 const _prefsKey = 'radioVfoState';
 
 class RadioService extends ChangeNotifier implements VfoStore {
@@ -63,8 +65,9 @@ class RadioService extends ChangeNotifier implements VfoStore {
         for (final entry in decoded.entries)
           if (entry.value is Map) entry.key: Vfo.fromJson((entry.value as Map).cast<String, dynamic>()),
       };
-    } catch (e) {
+    } catch (e, st) {
       debugPrint('[radio] failed to parse persisted VFO state, discarding it: $e');
+      ErrorReportingService.report(e, st, context: 'radio:load-vfo-state');
       return {};
     }
   }

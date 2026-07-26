@@ -19,6 +19,7 @@ import 'package:halo_build_tools/halo_build_tools.dart' show kEdition;
 import 'package:halo_extension_host/halo_extension_host.dart';
 import 'package:halo_core/halo_core.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'error_reporting_service.dart';
 import 'settings_service.dart';
 import 'status_bar_service.dart';
 import 'package:halo_widgets/halo_widgets.dart';
@@ -881,6 +882,10 @@ class ExtensionService {
     _restartAttempts++;
     final delay = Duration(seconds: 1 << _restartAttempts.clamp(1, 5)); // 2s..32s, then flat
     debugPrint('[extensions] $reason — restarting runtime in ${delay.inSeconds}s (attempt $_restartAttempts)');
+    // A crash-looping runtime is a single point of failure for lookups, data
+    // files, spots, and scoring all at once — the same "app just isn't doing
+    // the thing" symptom class sync's own silent failures had.
+    ErrorReportingService.report(reason, StackTrace.current, context: 'extensions:restart (attempt $_restartAttempts)');
     _restartTimer = Timer(delay, () async {
       _restartTimer = null;
       // onlyIfDead: by the time the backoff fires the runtime may have
@@ -1332,8 +1337,9 @@ class ExtensionService {
       );
       if (result is! Map) return null;
       return result.cast<String, dynamic>();
-    } on ExtensionHostException catch (e) {
+    } on ExtensionHostException catch (e, st) {
       debugPrint('[extensions] lookup failed: $e');
+      ErrorReportingService.report(e, st, context: 'extensions:lookup-call');
       return null;
     }
   }

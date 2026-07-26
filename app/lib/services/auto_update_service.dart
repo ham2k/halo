@@ -20,6 +20,7 @@ import 'package:auto_updater/auto_updater.dart';
 import 'package:flutter/foundation.dart';
 
 import '../config/version.dart' show Edition, kEdition;
+import 'error_reporting_service.dart';
 
 class AutoUpdateService {
   const AutoUpdateService();
@@ -63,9 +64,10 @@ class AutoUpdateService {
     try {
       await autoUpdater.setFeedURL(feedUrl);
       await autoUpdater.setScheduledCheckInterval(_checkIntervalSeconds);
-    } catch (e) {
+    } catch (e, st) {
       // A failed setup must never break startup — just log it.
       debugPrint('[auto-update] setup failed for $feedUrl: $e');
+      ErrorReportingService.report(e, st, context: 'auto-update:start');
     }
   }
 
@@ -78,8 +80,9 @@ class AutoUpdateService {
     try {
       await autoUpdater.setFeedURL(feedUrl);
       await autoUpdater.checkForUpdates();
-    } catch (e) {
+    } catch (e, st) {
       debugPrint('[auto-update] manual check failed for $feedUrl: $e');
+      ErrorReportingService.report(e, st, context: 'auto-update:check-interactively');
     }
   }
 }
