@@ -494,6 +494,18 @@ export interface ExportOption {
   icon?: string
   priority?: number
   selectedByDefault?: boolean
+  /// The ref type this export is responsible for. Set it and the core hands
+  /// `generateExport` only the QSOs made while that activity was actually
+  /// running — those in segments carrying a ref of this type (§5.1.4).
+  ///
+  /// A contest that started at a break, or ended at one, otherwise puts the
+  /// WHOLE operation into its Cabrillo, including contacts made when it wasn't
+  /// running. That is a false claim in a submitted file, and it is the same
+  /// mistake the scorer used to make before §5.1.3 gated it.
+  ///
+  /// Omit it for an export that genuinely covers the whole log, like the full
+  /// ADIF. On an unsegmented operation it changes nothing either way.
+  refType?: string
 }
 
 export interface ExportHook {

@@ -58,19 +58,96 @@ class ExportService {
     };
   }
 
-  Future<List<Qso>> _qsoListFor(Operation operation) async {
-    final qsoList = (await qsos.watchForOperation(operation.uuid).first).where((q) => !q.isEvent).toList();
+  /// The operation's contacts, and its segments.
+  ///
+  /// The segments are resolved from the FULL list, because the `break`/`start`
+  /// event rows carrying the overrides are exactly what the contact list
+  /// filters out (docs/design/contests.md §5.1.3) — the same trap
+  /// `ScoringService.rescoreOperation` documents.
+  Future<({List<Qso> qsos, SegmentedOperation segmented})> _logFor(Operation operation) async {
+    final all = await qsos.watchForOperation(operation.uuid).first;
+    final qsoList = all.where((q) => !q.isEvent).toList();
     if (qsoList.isEmpty) {
       throw ExportException('Nothing to export: this operation has no QSOs.');
     }
-    return qsoList;
+    return (qsos: qsoList, segmented: SegmentedOperation.from(operation: operation.data, qsos: all));
+  }
+
+  /// The QSOs one export is responsible for.
+  ///
+  /// An option naming a `refType` covers only the stretches where that activity
+  /// was actually running — the segments carrying a ref of that type (§5.1.4).
+  /// A contest that started at a break would otherwise put the whole operation
+  /// into its Cabrillo, including the contacts made before it began: a false
+  /// claim in a submitted file, and the same mistake the scorer made before
+  /// §5.1.3 gated it.
+  ///
+  /// An option with no `refType` — the full ADIF — takes the whole log. So does
+  /// an unsegmented operation, where every QSO is in the one segment and this
+  /// is identity.
+  ///
+  /// Several refs of one type (two parks) union rather than picking one: until
+  /// a per-REFERENCE export exists (§5.1.4's other half, which nothing yet
+  /// needs), one export covers the type, and quietly dropping half the log
+  /// would be worse than covering both.
+  List<Qso> _qsosForOption(
+    Map<String, dynamic> option,
+    List<Qso> qsoList,
+    SegmentedOperation segmented,
+  ) {
+    final refType = option['refType'];
+    if (refType is! String || refType.isEmpty) return qsoList;
+
+    final refs = segmented.allRefs.where((ref) => ref['type'] == refType).toList();
+    // Offered for an operation that doesn't carry the ref at all: leave the log
+    // alone rather than writing an empty file over a hook's own judgement.
+    if (refs.isEmpty) return qsoList;
+
+    final keep = <String>{
+      for (final ref in refs)
+        for (final qso in segmented.qsosFor(qsoList, ref)) qso.uuid,
+    };
+    final scoped = [
+      for (final qso in qsoList)
+        if (keep.contains(qso.uuid)) qso,
+    ];
+
+    // Same promise as the bail-out above, and it has to be made here too: a ref
+    // can be on the operation while every segment override omits it, and then
+    // the slice comes back EMPTY rather than absent.
+    //
+    // That state means the segments and the operation disagree, and today it
+    // comes from HaLo itself — the Activities view writes `operation.refs` with
+    // no segment bookkeeping, because there is no segment UI yet (§5.1.3), so
+    // turning an activity on for a polo-synced log produces exactly it. An
+    // empty submission file is the worse failure of the two: the operator gets
+    // a Cabrillo with no QSOs in it and no indication why, while an over-broad
+    // one is visible in the file and can be pruned. So the whole log wins until
+    // segments are something the app maintains rather than only imports.
+    return scoped.isEmpty ? qsoList : scoped;
   }
 
   /// Every export option offered by every extension for this operation, for
   /// the Exports Panel's checkbox list.
   Future<List<Map<String, dynamic>>> getExportOptions(Operation operation) async {
-    final qsoList = await _qsoListFor(operation);
-    final options = await extensions.getExportOptions(qsonPayloadFor(operation: operation, qsos: qsoList));
+    final log = await _logFor(operation);
+    final payload = qsonPayloadFor(operation: operation, qsos: log.qsos);
+
+    // Hooks are asked about every ref ANY segment carries, not just the base's.
+    // Each contest's `suggestExportOptions` opens with
+    // `if (!refOfType(args.operation, TYPE)) return []`, so a contest that
+    // ended at a break — its ref living on in the segments while the operation
+    // has moved on — would otherwise be offered no Cabrillo at all, for a log
+    // that is half contest QSOs.
+    //
+    // The same asymmetry `ScoringService` fixed for scorers by handing
+    // `scorersFor` the segments (§5.1.3): an operation is scored as a contest
+    // it can no longer be exported as, which is worse than either alone.
+    if (log.segmented.isSegmented) {
+      (payload['operation'] as Map<String, dynamic>)['refs'] = log.segmented.allRefs;
+    }
+
+    final options = await extensions.getExportOptions(payload);
     if (settings.developerMode) {
       return [...options, _qsonOptionFor(operation)];
     }
@@ -88,8 +165,10 @@ class ExportService {
     if (host == null && selectedOptions.any((o) => !_isQsonOption(o))) {
       throw ExportException('Extension runtime is not ready yet — try again in a moment.');
     }
-    final qsoList = await _qsoListFor(operation);
-    final payload = qsonPayloadFor(operation: operation, qsos: qsoList);
+    final log = await _logFor(operation);
+    // The developer QSON dump is the raw log, deliberately unsliced — it exists
+    // to show what the hooks were given for the operation as a whole.
+    final payload = qsonPayloadFor(operation: operation, qsos: log.qsos);
 
     // Independent per-option calls (each produces its own file) — no
     // ordering dependency, so run them concurrently rather than paying for
@@ -102,11 +181,15 @@ class ExportService {
           'content': jsonEncode(payload),
         };
       }
+      final scoped = _qsosForOption(option, log.qsos, log.segmented);
       final result = await host!.invokeHook(
         'export',
         key: option['hookKey'] as String?,
         method: 'generateExport',
-        args: {...payload, 'exportType': option['exportType']},
+        args: {
+          ...qsonPayloadFor(operation: operation, qsos: scoped),
+          'exportType': option['exportType'],
+        },
         timeout: const Duration(seconds: 30),
       ) as Map;
       return result.cast<String, dynamic>();
