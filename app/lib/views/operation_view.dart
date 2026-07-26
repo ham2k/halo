@@ -200,14 +200,10 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
   /// reference here is harmless.
   Map<String, dynamic>? _suggestedQso;
 
-  /// The last logging command's output, shown on the Info pane. Lives here
-  /// (not in LoggingPanel, which produces it) because on two-pane layouts
-  /// the producer and the display are sibling panes.
-  String? _commandMarkdown;
-
   /// The current call-info (issue #40), pushed up from LoggingControls — shown
-  /// as the Call Info detail on the Info tab (wide) or a modal (narrow). Same
-  /// producer/sibling-pane reasoning as `_commandMarkdown`.
+  /// as the Call Info detail on the Info tab (wide) or a modal (narrow) — the
+  /// producer (LoggingPanel) and the display (InformationPanel) are sibling
+  /// panes.
   CallInfoData? _callInfo;
 
   /// Keep the pane subtrees' State alive when the layout flips between the
@@ -937,21 +933,6 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
             showQsoNumbers: _showQsoNumbers,
             ourEntityPrefix: _ourEntityPrefix,
             suggestedQso: _suggestedQso,
-            onCommandMessageChanged: (message) => setState(() {
-              final appeared = message != null && _commandMarkdown == null;
-              _commandMarkdown = message;
-              // On two-pane layouts the output renders on the Info tab; the
-              // old >=900 layout kept it always co-visible with the controls,
-              // so surface it when a command starts producing output and
-              // another tab is hiding it.
-              if (appeared && ShirtSize.of(context).isTwoPane) {
-                if (_customLayout) {
-                  _dockKey.currentState?.revealModule('info');
-                } else if (_tabController?.index != 0) {
-                  _tabController?.animateTo(0);
-                }
-              }
-            }),
             onCallInfoChanged: (info) => setState(() => _callInfo = info),
             onCallInfoTap: () => _handleCallInfoTap(operation),
           ),
@@ -981,7 +962,6 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
         final infoPanel = InformationPanel(
           operation: operation,
           qsos: qsos,
-          commandMarkdown: _commandMarkdown,
           services: widget.services,
           callInfo: _callInfo,
           ourEntityPrefix: _ourEntityPrefix,

@@ -352,9 +352,7 @@ class _Translations$loggingPanel$es extends Translations$loggingPanel$en {
 	final TranslationsEs _root; // ignore: unused_field
 
 	// Translations
-	@override String get station => 'Estación';
-	@override String get byBand => 'Por banda';
-	@override String get byMode => 'Por modo';
+	@override String get stats => 'Estadísticas de la Operación';
 	@override String get scoring => 'Puntuación';
 	@override String get dxccEntities => 'Entidades DXCC';
 	@override String get duplicates => 'Duplicados';
@@ -1390,9 +1388,7 @@ extension on TranslationsEs {
 			'qsoList.eventStarted' => 'Operación iniciada',
 			'qsoList.eventBreak' => 'Descanso',
 			'qsoList.eventEnded' => 'Operación finalizada',
-			'loggingPanel.station' => 'Estación',
-			'loggingPanel.byBand' => 'Por banda',
-			'loggingPanel.byMode' => 'Por modo',
+			'loggingPanel.stats' => 'Estadísticas de la Operación',
 			'loggingPanel.scoring' => 'Puntuación',
 			'loggingPanel.dxccEntities' => 'Entidades DXCC',
 			'loggingPanel.duplicates' => 'Duplicados',

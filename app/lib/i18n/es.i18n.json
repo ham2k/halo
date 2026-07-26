@@ -275,9 +275,7 @@
     "eventEnded": "Operación finalizada"
   },
   "loggingPanel": {
-    "station": "Estación",
-    "byBand": "Por banda",
-    "byMode": "Por modo",
+    "stats": "Estadísticas de la Operación",
     "scoring": "Puntuación",
     "dxccEntities": "Entidades DXCC",
     "duplicates": "Duplicados"

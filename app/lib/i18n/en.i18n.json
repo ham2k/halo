@@ -275,9 +275,7 @@
     "eventEnded": "Operation ended"
   },
   "loggingPanel": {
-    "station": "Station",
-    "byBand": "By band",
-    "byMode": "By mode",
+    "stats": "Operation Stats",
     "scoring": "Scoring",
     "dxccEntities": "DXCC entities",
     "duplicates": "Duplicates"

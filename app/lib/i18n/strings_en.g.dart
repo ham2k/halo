@@ -668,14 +668,8 @@ class Translations$loggingPanel$en {
 
 	// Translations
 
-	/// en: 'Station'
-	String get station => 'Station';
-
-	/// en: 'By band'
-	String get byBand => 'By band';
-
-	/// en: 'By mode'
-	String get byMode => 'By mode';
+	/// en: 'Operation Stats'
+	String get stats => 'Operation Stats';
 
 	/// en: 'Scoring'
 	String get scoring => 'Scoring';
@@ -2392,9 +2386,7 @@ extension on Translations {
 			'qsoList.eventStarted' => 'Operation started',
 			'qsoList.eventBreak' => 'Break',
 			'qsoList.eventEnded' => 'Operation ended',
-			'loggingPanel.station' => 'Station',
-			'loggingPanel.byBand' => 'By band',
-			'loggingPanel.byMode' => 'By mode',
+			'loggingPanel.stats' => 'Operation Stats',
 			'loggingPanel.scoring' => 'Scoring',
 			'loggingPanel.dxccEntities' => 'DXCC entities',
 			'loggingPanel.duplicates' => 'Duplicates',

@@ -52,11 +52,11 @@ Operation _operation() => Operation(
       },
     );
 
-Future<void> _pump(WidgetTester tester, Operation operation) async {
+Future<void> _pump(WidgetTester tester, Operation operation, {List<Qso> qsos = const []}) async {
   await tester.pumpWidget(TranslationProvider(
     child: MaterialApp(
       home: Scaffold(
-        body: InformationPanel(operation: operation, qsos: const []),
+        body: InformationPanel(operation: operation, qsos: qsos),
       ),
     ),
   ));
@@ -97,7 +97,7 @@ void main() {
 
   testWidgets('an operation with no scoring yet renders without a contest section', (tester) async {
     await _pump(tester, Operation(uuid: 'op-2', data: {'stationCall': 'N0DEV'}));
-    expect(find.text('N0DEV'), findsOneWidget);
+    expect(find.text('Operation Stats'), findsOneWidget);
     expect(find.byType(MarkdownBody), findsNothing);
   });
 
@@ -105,5 +105,22 @@ void main() {
     await _pump(tester, _operation());
     expect(find.byType(ListView), findsOneWidget);
     expect(tester.widget<ListView>(find.byType(ListView)).physics, isNot(isA<NeverScrollableScrollPhysics>()));
+  });
+
+  testWidgets('never shows the station callsign — the pane is stats and scoring, not identity', (tester) async {
+    await _pump(tester, _operation());
+    expect(find.text('N0DEV'), findsNothing);
+  });
+
+  testWidgets('leads with the basic stats block (count/duration, then rate)', (tester) async {
+    final qsos = [
+      for (var i = 0; i < 11; i++)
+        Qso(uuid: 'q$i', operationUuid: 'op-1', data: {'their': {'call': 'W1AW$i'}, 'startAtMillis': i * 60000}),
+    ];
+    await _pump(tester, Operation(uuid: 'op-1', data: {'stationCall': 'N0DEV'}), qsos: qsos);
+
+    expect(find.text('Operation Stats'), findsOneWidget);
+    expect(find.textContaining('11 QSOs in'), findsOneWidget);
+    expect(find.textContaining('Q/h for last 10'), findsOneWidget);
   });
 }
