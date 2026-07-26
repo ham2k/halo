@@ -444,7 +444,8 @@
       "connectedAs": "Conectado como",
       "test": "Probar",
       "saveFailed": "Error al guardar: ${error}",
-      "loginFailed": "Error al iniciar sesión: ${error}"
+      "loginFailed": "Error al iniciar sesión: ${error}",
+      "lookupFailed": "Las cuentas no están disponibles ahora mismo; inténtalo de nuevo en un momento"
     },
     "offlineData": {
       "title": "Datos sin conexión",

@@ -1652,6 +1652,9 @@ class Translations$settings$accounts$en {
 
 	/// en: 'Login failed: ${error}'
 	String loginFailed({required Object error}) => 'Login failed: ${error}';
+
+	/// en: 'Accounts are unavailable right now — try again in a moment'
+	String get lookupFailed => 'Accounts are unavailable right now — try again in a moment';
 }
 
 // Path: settings.offlineData
@@ -2510,6 +2513,7 @@ extension on Translations {
 			'settings.accounts.test' => 'Test',
 			'settings.accounts.saveFailed' => ({required Object error}) => 'Save failed: ${error}',
 			'settings.accounts.loginFailed' => ({required Object error}) => 'Login failed: ${error}',
+			'settings.accounts.lookupFailed' => 'Accounts are unavailable right now — try again in a moment',
 			'settings.offlineData.title' => 'Offline Data',
 			'settings.offlineData.noFiles' => 'No data files',
 			'settings.offlineData.noFilesDescription' => 'Enable activity or lookup extensions to download their offline data here.',

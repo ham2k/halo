@@ -29,7 +29,8 @@ void main() {
     await extensions.start();
 
     final accounts = await extensions.getAccounts();
-    final sota = accounts.singleWhere((a) => a['key'] == 'sota');
+    expect(accounts, isNotNull, reason: 'the account fan-out failed outright, so nothing below is testable');
+    final sota = accounts!.singleWhere((a) => a['key'] == 'sota');
     final oauth2 = (sota['oauth2'] as Map).cast<String, dynamic>();
 
     // dev — this test binary's own edition (no HALO_EDITION define set).

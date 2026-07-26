@@ -444,7 +444,8 @@
       "connectedAs": "Connected as",
       "test": "Test",
       "saveFailed": "Save failed: ${error}",
-      "loginFailed": "Login failed: ${error}"
+      "loginFailed": "Login failed: ${error}",
+      "lookupFailed": "Accounts are unavailable right now — try again in a moment"
     },
     "offlineData": {
       "title": "Offline Data",

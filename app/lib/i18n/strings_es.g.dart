@@ -866,6 +866,7 @@ class _Translations$settings$accounts$es extends Translations$settings$accounts$
 	@override String get test => 'Probar';
 	@override String saveFailed({required Object error}) => 'Error al guardar: ${error}';
 	@override String loginFailed({required Object error}) => 'Error al iniciar sesión: ${error}';
+	@override String get lookupFailed => 'Las cuentas no están disponibles ahora mismo; inténtalo de nuevo en un momento';
 }
 
 // Path: settings.offlineData
@@ -1510,6 +1511,7 @@ extension on TranslationsEs {
 			'settings.accounts.test' => 'Probar',
 			'settings.accounts.saveFailed' => ({required Object error}) => 'Error al guardar: ${error}',
 			'settings.accounts.loginFailed' => ({required Object error}) => 'Error al iniciar sesión: ${error}',
+			'settings.accounts.lookupFailed' => 'Las cuentas no están disponibles ahora mismo; inténtalo de nuevo en un momento',
 			'settings.offlineData.title' => 'Datos sin conexión',
 			'settings.offlineData.noFiles' => 'No hay archivos de datos',
 			'settings.offlineData.noFilesDescription' => 'Habilita extensiones de actividades o búsquedas para descargar aquí sus datos sin conexión.',

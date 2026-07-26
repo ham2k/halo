@@ -1043,7 +1043,9 @@ class _AccountsPanelState extends State<_AccountsPanel> {
 
   Future<void> _loadAccounts() async {
     await widget.services.extensions.start();
-    final accounts = await widget.services.extensions.getAccounts();
+    // A failure (null) shows the panel empty, same as before — but this panel
+    // re-asks on every open and after every save, so it recovers on its own.
+    final accounts = await widget.services.extensions.getAccounts() ?? const <Map<String, dynamic>>[];
     final identities = <String, String>{};
     for (final account in accounts) {
       final kvKey = account['kvKey'] as String;
@@ -1338,12 +1340,24 @@ class _ExtensionSettingsPanelState extends State<_ExtensionSettingsPanel> {
     // keyboard shortcuts (main.dart) — which call SettingsService directly
     // and never go through _autosave's own reload.
     widget.services.settings.addListener(_load);
+    widget.services.extensions.runtimeGeneration.addListener(_runtimeChanged);
   }
 
   @override
   void dispose() {
     widget.services.settings.removeListener(_load);
+    widget.services.extensions.runtimeGeneration.removeListener(_runtimeChanged);
     super.dispose();
+  }
+
+  /// A restart (crash recovery, or the user enabling/disabling an extension)
+  /// replaces the whole runtime: the panel's definition and the accounts it
+  /// references both belong to the generation they were fetched from, so
+  /// neither may outlive it — [_accountsCache] especially, since nothing
+  /// else clears it until a dialog saves.
+  void _runtimeChanged() {
+    _accountsCache = null;
+    _load();
   }
 
   Future<void> _load() async {
@@ -1450,7 +1464,18 @@ class _ExtensionSettingsPanelState extends State<_ExtensionSettingsPanel> {
         'subkey-based account disambiguation is not implemented yet — matching by kvKey only.',
       );
     }
-    final accounts = _accountsCache ??= await widget.services.extensions.getAccounts();
+    // Cache only a real answer: getAccounts() returns null when the extensions
+    // couldn't be asked (dead runtime, a hook timing out), and caching that
+    // would freeze this panel into "no accounts" for the rest of its life —
+    // every later tap on the field would then do nothing.
+    final accounts = _accountsCache ?? await widget.services.extensions.getAccounts();
+    if (accounts == null) {
+      // Say so: the user pressed Connect and no dialog is coming, which
+      // otherwise reads as a dead button with the reason only in the log.
+      widget.services.statusBar.setMessage(key: 'accounts:lookup', text: t.settings.accounts.lookupFailed);
+      return;
+    }
+    _accountsCache = accounts;
     Map<String, dynamic>? account;
     for (final a in accounts) {
       if (a['kvKey'] == accountKey) {
@@ -2272,7 +2297,15 @@ class _PendingAccountBanner extends StatelessWidget {
 /// (declarative `account` actions — e.g. an extension's "reconnect your
 /// account" dialog button). `accountKey` matches the account's kvKey.
 Future<void> showAccountDialogByKey(HaLoServices services, String accountKey, {String? subkey}) async {
+  // Same as the settings panel's own account field: this is a button press
+  // with a dialog expected, so a failed lookup has to say so rather than
+  // leave the press looking ignored. Nothing is cached here, so the next
+  // press asks again.
   final accounts = await services.extensions.getAccounts();
+  if (accounts == null) {
+    services.statusBar.setMessage(key: 'accounts:lookup', text: t.settings.accounts.lookupFailed);
+    return;
+  }
   Map<String, dynamic>? account;
   for (final a in accounts) {
     if (a['kvKey'] == accountKey || a['key'] == accountKey) {

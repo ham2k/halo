@@ -109,6 +109,12 @@ class ExtensionService {
     _refreshingAccountSynchronizable = true;
     try {
       final accounts = await getAccounts();
+      // Couldn't ask (already logged by getAccounts). Leave whatever the last
+      // successful refresh resolved in place rather than wiping it: on a
+      // restart, stale flags still describe the accounts the user has, while
+      // an empty map silently reads and writes every account under the
+      // device-local default — the exact miss #402 was about.
+      if (accounts == null) return;
       _accountSynchronizable
         ..clear()
         ..addEntries(accounts
@@ -195,9 +201,17 @@ class ExtensionService {
     return _starting ??= _start();
   }
 
-  Future<List<Map<String, dynamic>>> getAccounts() async {
-    final host = _host;
-    if (host == null) return const [];
+  /// Every extension-declared account, or null when the extensions could not
+  /// be asked at all — no runtime yet, a dead one, or the fan-out failing or
+  /// timing out. That is deliberately distinct from an empty list ("asked,
+  /// and nobody declares an account"): the two look identical to a caller but
+  /// mean opposite things, and a caller that caches the answer must never
+  /// cache a failure (see settings_view's `_accountsCache`). Failures are
+  /// logged here rather than thrown, so a caller that has nothing better to do
+  /// can still treat null as "no accounts" with `?? const []`.
+  Future<List<Map<String, dynamic>>?> getAccounts() async {
+    final host = this.host;
+    if (host == null) return null;
     try {
       final entries = await host.invokeHookAll('account', method: 'getDefinition', timeout: const Duration(seconds: 2));
       final accounts = <Map<String, dynamic>>[];
@@ -209,7 +223,7 @@ class ExtensionService {
       return accounts;
     } catch (e) {
       debugPrint('[extensions] getAccounts failed: $e');
-      return const [];
+      return null;
     }
   }
 
