@@ -242,6 +242,28 @@ void main() {
     await drainTimers(tester);
   });
 
+  testWidgets('Done still finishes onboarding if enabling extensions/syncing data files throws', (tester) async {
+    // A restart failure (e.g. disposing the outgoing runtime) must not strand
+    // the user on the finishing-setup wait state with no way out.
+    final services = await makeServices(extensions: ThrowingExtensionService());
+    await pumpApp(tester, services);
+
+    await tester.tap(find.text('Continue'));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.widgetWithText(TextField, "Operator's Callsign"), 'ki2d');
+    await tester.tap(find.text('Continue'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Continue'));
+    await tester.pumpAndSettle();
+    expect(find.text('Data & Privacy'), findsOneWidget);
+
+    await tester.tap(find.text('Done'));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(OnboardingOverlayView), findsNothing);
+    await drainTimers(tester);
+  });
+
   testWidgets('Enter advances every step like its primary button', (tester) async {
     final services = await makeServices();
     await pumpApp(tester, services);
@@ -462,5 +484,16 @@ class MockExtensionService extends ExtensionServiceWithMockHost {
   Future<Map<String, dynamic>?> syncLinkClientWithEmail(String email) async {
     if (onLinkClientWithEmail != null) return onLinkClientWithEmail!(email);
     return null;
+  }
+}
+
+/// Simulates a runtime-restart failure (e.g. disposing the outgoing host)
+/// from onboarding's extension-enable step.
+class ThrowingExtensionService extends ExtensionServiceWithMockHost {
+  ThrowingExtensionService() : super(const MockExtensionHost({}));
+
+  @override
+  Future<void> setExtensionsEnabled(Map<String, bool> changes) async {
+    throw StateError('simulated runtime restart failure');
   }
 }

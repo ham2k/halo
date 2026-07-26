@@ -251,12 +251,22 @@ class _OnboardingOverlayViewState extends State<OnboardingOverlayView> {
     if (_finishingSetup) return;
     FocusManager.instance.primaryFocus?.unfocus();
     setState(() => _finishingSetup = true);
-    await _persistChoices();
-    // Waits for call-notes' data file and any now-enabled extension's own
-    // (POTA/SOTA parks/summits) to finish downloading (issue #379) — already
-    // a no-op for anything fresh (see syncAllDataFiles' staleness check), so
-    // this only actually waits on what genuinely still needs fetching.
-    await widget.services.dataFiles.syncAllDataFiles();
+    try {
+      await _persistChoices();
+      // Waits for call-notes' data file and any now-enabled extension's own
+      // (POTA/SOTA parks/summits) to finish downloading (issue #379) —
+      // already a no-op for anything fresh (see syncAllDataFiles' staleness
+      // check), so this only actually waits on what genuinely still needs
+      // fetching.
+      await widget.services.dataFiles.syncAllDataFiles();
+    } catch (e) {
+      // setExtensionsEnabled's runtime restart can throw (e.g. disposing the
+      // outgoing host) outside of its own internal retry handling — must not
+      // strand the user on the wait state with both buttons disabled and no
+      // way out. Finish anyway; a failed restart/sync just means the app
+      // sorts itself out on next boot, same as any other transient failure.
+      debugPrint('[onboarding] finishing setup failed: $e');
+    }
     if (!mounted) return;
     widget.onDone();
   }
