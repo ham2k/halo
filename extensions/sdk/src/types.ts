@@ -1120,7 +1120,10 @@ export interface DataFileDefinition {
   key: string
   name: Localizable<string>
   description: Localizable<string>
-  url: string
+  /// Usually a plain string. A function when the URL depends on something the
+  /// extension must ask for — TOTA's list carries its API key as a query
+  /// parameter — resolved once per refresh, like `name` and `description`.
+  url: Localizable<string>
   maxAgeInDays: number
   fetchType: FetchType
 

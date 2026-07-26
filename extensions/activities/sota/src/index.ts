@@ -390,9 +390,29 @@ const SOTA_OAUTH2_BY_EDITION: Record<string, { clientId: string; redirectUrl: st
   dev: { clientId: 'com.ham2k.logger.dev', redirectUrl: 'com.ham2k.logger.dev.auth://sota' },
 }
 
-function sotaOAuth2Config(edition: string | undefined): { issuer: string; clientId: string; redirectUrl: string; scopes: string[] } {
-  const { clientId, redirectUrl } = SOTA_OAUTH2_BY_EDITION[edition ?? 'dev'] ?? SOTA_OAUTH2_BY_EDITION.dev
-  return { issuer: SOTA_SSO_REALM, clientId, redirectUrl, scopes: ['openid'] }
+/// The registered client for an edition, from the build's secrets when it has
+/// them and from the table above otherwise.
+///
+/// These are PUBLIC identifiers — a Keycloak public client id and the redirect
+/// it is registered against — not credentials. They live in the secrets store
+/// because that is where per-build configuration lives, so a re-registration
+/// no longer needs a code change. The table stays as the fallback so a fresh
+/// checkout can still log in to SOTAWatch, which is the whole feature.
+async function sotaOAuth2Config(
+  edition: string | undefined,
+): Promise<{ issuer: string; clientId: string; redirectUrl: string; scopes: string[] }> {
+  const name = (edition ?? 'dev').toUpperCase()
+  const fallback = SOTA_OAUTH2_BY_EDITION[edition ?? 'dev'] ?? SOTA_OAUTH2_BY_EDITION.dev
+  const [clientId, redirectUrl] = await Promise.all([
+    host.secret(`SOTA_OAUTH_CLIENT_ID_${name}`),
+    host.secret(`SOTA_OAUTH_REDIRECT_${name}`),
+  ])
+  return {
+    issuer: SOTA_SSO_REALM,
+    clientId: clientId || fallback.clientId,
+    redirectUrl: redirectUrl || fallback.redirectUrl,
+    scopes: ['openid'],
+  }
 }
 
 const SOTA_SPOTS_API = 'https://api-db2.sota.org.uk/api/spots'
@@ -428,7 +448,7 @@ async function refreshTokens(ctx: HookContext, { persistSession = true } = {}): 
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
         body: [
           'grant_type=refresh_token',
-          `client_id=${encodeURIComponent(sotaOAuth2Config(ctx.edition).clientId)}`,
+          `client_id=${encodeURIComponent((await sotaOAuth2Config(ctx.edition)).clientId)}`,
           `refresh_token=${encodeURIComponent(refreshToken)}`,
         ].join('&'),
       })

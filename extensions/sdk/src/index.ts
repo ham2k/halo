@@ -189,6 +189,27 @@ export const host = {
     return (await hostCallFn()('translateAll', { keys })) as Record<string, string | null>
   },
 
+  /// A build-time secret by name, or null when this build has no such value.
+  ///
+  /// "Secret" in the sense every cloud platform uses it — real credentials and
+  /// plain per-build configuration alike: an award's API key, an OAuth client
+  /// id that differs per edition, a token tied to whoever's account pays.
+  ///
+  /// An extension reads the names that start with its own key — `sota` reads
+  /// `SOTA_*`. The kernel binds the caller's identity onto the call, so asking
+  /// for anything outside that prefix returns null. See
+  /// `app/lib/config/secret_policy.dart` for the two escape hatches.
+  ///
+  /// Expect null and degrade: a fresh checkout, a fork, and every CI build
+  /// without the value configured all have none, and a hook that throws
+  /// instead of returning empty takes its whole feature down for them.
+  ///
+  /// This is a stopgap around a flat map. A real secrets service, and flags to
+  /// gate the calls that use these, are follow-up work.
+  async secret(name: string): Promise<string | null> {
+    return (await hostCallFn()('secret', { name })) as string | null
+  },
+
   async dbLookupSelectOne(category: string, key: string): Promise<LookupRow | null> {
     return (await hostCallFn()('dbLookupSelectOne', { category, key })) as LookupRow | null
   },

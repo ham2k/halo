@@ -129,6 +129,28 @@ void main() {
     expect(manager.resolveRootPath(doc, 'nonexistent.path'), null);
   });
 
+  test('DataFileManager: a logged fetch URL keeps no query string', () {
+    // Some award programs carry their API key as a query parameter — TOTA's
+    // list is `tower.php?key=<secret>` — and `debugPrint` is not stripped from
+    // release builds, so logging the URL whole would put a real secret in the
+    // device log on every refresh.
+    expect(
+      DataFileManager.redactUrlForLog('https://www.rozhledny.eu/apidata/tower.php?key=s3cret'),
+      'https://www.rozhledny.eu/apidata/tower.php?…',
+    );
+    // Enough is kept to say WHICH file was fetched.
+    expect(
+      DataFileManager.redactUrlForLog('https://pota.app/all_parks_ext.csv'),
+      'https://pota.app/all_parks_ext.csv',
+    );
+    // A fragment could carry one too, and nothing needs it.
+    expect(
+      DataFileManager.redactUrlForLog('https://example.com/a?k=1#tok'),
+      'https://example.com/a?…',
+    );
+    expect(DataFileManager.redactUrlForLog('::: not a url'), '(unparseable url)');
+  });
+
   test('DataFileManager: resolveRootPath indexes into lists', () {
     // The ECA and ELA lists wrap their rows in a positional envelope —
     // `[meta, meta, {data: [...]}]` — so a path has to be able to step through

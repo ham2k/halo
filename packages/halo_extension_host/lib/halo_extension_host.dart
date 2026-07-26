@@ -127,6 +127,17 @@ class ExtensionHost {
   /// exact hosts, `*.example.com` for subdomains, or a lone `*` for any
   /// https host. Extensions with no entry get no network access.
   ///
+  /// [httpClient] replaces the transport `host.fetch` goes out on. Supplying
+  /// one forces in-process mode, since a client cannot cross an isolate
+  /// boundary.
+  ///
+  /// This is the seam for testing anything that fetches — spot feeds, spot
+  /// posting, data files — and it is deliberately BELOW the interesting code:
+  /// the allowlist check, the https requirement, the canonical User-Agent and
+  /// both timeouts all still run. Stubbing `host.fetch` itself would test none
+  /// of them, and the absence of any seam here previously let a wrong spot
+  /// payload reach review untested.
+  ///
   /// [userAgent], when set, is stamped as the `User-Agent` on every
   /// `host.fetch` request — overriding any the extension supplied — so all
   /// extension traffic identifies HaLo consistently (see
@@ -141,6 +152,8 @@ class ExtensionHost {
     required List<ExtensionBundle> extensions,
     bool useIsolate = true,
     HostCallHandler? onHostCall,
+    Map<String, Map<String, String>> secrets = const {},
+    http.Client? httpClient,
     Map<String, List<String>> fetchAllowlists = const {},
     String? userAgent,
     Set<String> userAgentOverrides = const {},
@@ -149,22 +162,28 @@ class ExtensionHost {
     // Worker anyway, so extension work is still off the UI thread. Branching
     // here (instead of letting Isolate.spawn throw) keeps a misleading
     // "isolate mode failed" warning out of every web boot.
-    if (useIsolate && !kIsWeb) {
+    // A client is not sendable across an isolate boundary, so supplying one
+    // means in-process — tests that stub the network want that anyway, and
+    // silently ignoring it would leave them hitting the real one.
+    if (useIsolate && !kIsWeb && httpClient == null) {
       try {
-        return await _startInIsolate(kernelSource, extensions, onHostCall, fetchAllowlists, userAgent, userAgentOverrides);
+        return await _startInIsolate(kernelSource, extensions, onHostCall, fetchAllowlists, userAgent, userAgentOverrides, secrets);
       } catch (e) {
         // Fall through to in-process mode; the spike wants to know when this
         // happens, so surface it loudly on the first log line.
-        final host = await _startInProcess(kernelSource, extensions, onHostCall, fetchAllowlists, userAgent, userAgentOverrides);
+        final host = await _startInProcess(
+            kernelSource, extensions, onHostCall, fetchAllowlists, userAgent, userAgentOverrides, secrets, httpClient);
         host._log('WARN isolate mode failed ($e), running in-process');
         return host;
       }
     }
-    return _startInProcess(kernelSource, extensions, onHostCall, fetchAllowlists, userAgent, userAgentOverrides);
+    return _startInProcess(
+        kernelSource, extensions, onHostCall, fetchAllowlists, userAgent, userAgentOverrides, secrets, httpClient);
   }
 
   static Future<ExtensionHost> _startInIsolate(String kernelSource, List<ExtensionBundle> extensions, HostCallHandler? onHostCall,
-      Map<String, List<String>> fetchAllowlists, String? userAgent, Set<String> userAgentOverrides) async {
+      Map<String, List<String>> fetchAllowlists, String? userAgent, Set<String> userAgentOverrides,
+      Map<String, Map<String, String>> secrets) async {
     final fromIsolate = ReceivePort();
     final onError = ReceivePort();
     final onExit = ReceivePort();
@@ -202,6 +221,7 @@ class ExtensionHost {
         kernelSource: kernelSource,
         bundles: [for (final p in extensions) [p.key, p.source]],
         fetchAllowlists: fetchAllowlists,
+        secrets: secrets,
         userAgent: userAgent,
         userAgentOverrides: userAgentOverrides,
       ),
@@ -255,11 +275,14 @@ class ExtensionHost {
   }
 
   static Future<ExtensionHost> _startInProcess(String kernelSource, List<ExtensionBundle> extensions, HostCallHandler? onHostCall,
-      Map<String, List<String>> fetchAllowlists, String? userAgent, Set<String> userAgentOverrides) async {
+      Map<String, List<String>> fetchAllowlists, String? userAgent, Set<String> userAgentOverrides,
+      Map<String, Map<String, String>> secrets, [http.Client? httpClient]) async {
     final earlyMessages = <Map<String, dynamic>>[];
     ExtensionHost? host;
     final core = _HostCore(
         fetchAllowlists: fetchAllowlists,
+        secrets: secrets,
+        httpClient: httpClient,
         userAgent: userAgent,
         userAgentOverrides: userAgentOverrides,
         emit: (msg) {
@@ -501,6 +524,8 @@ class _HostIsolateInit {
   final String kernelSource;
   final List<List<String>> bundles;
   final Map<String, List<String>> fetchAllowlists;
+  /// Extension key → its own build-time API key, resolved host-side.
+  final Map<String, Map<String, String>> secrets;
   final String? userAgent;
   final Set<String> userAgentOverrides;
 
@@ -509,6 +534,7 @@ class _HostIsolateInit {
     required this.kernelSource,
     required this.bundles,
     required this.fetchAllowlists,
+    required this.secrets,
     required this.userAgent,
     required this.userAgentOverrides,
   });
@@ -521,6 +547,7 @@ Future<void> _hostIsolateMain(_HostIsolateInit init) async {
   final core = _HostCore(
       emit: init.mainPort.send,
       fetchAllowlists: init.fetchAllowlists,
+      secrets: init.secrets,
       userAgent: init.userAgent,
       userAgentOverrides: init.userAgentOverrides);
   try {
@@ -558,6 +585,9 @@ class _HostCore {
   /// Per-extension fetch capability — see [ExtensionHost.start].
   final Map<String, List<String>> fetchAllowlists;
 
+  /// Extension key → its own build-time API key, resolved host-side.
+  final Map<String, Map<String, String>> secrets;
+
   /// Canonical `User-Agent` stamped on every `host.fetch` — see
   /// [ExtensionHost.start] and docs/design/network.md.
   final String? userAgent;
@@ -567,7 +597,17 @@ class _HostCore {
   final Set<String> userAgentOverrides;
 
   late final EngineRuntime _js;
-  final _http = http.Client();
+
+  /// The transport `host.fetch` goes out on. Injectable so a test can answer
+  /// requests without a network, while everything ABOVE it — the manifest
+  /// allowlist, the https requirement, the canonical User-Agent, the two
+  /// timeouts — still runs for real. Replacing `_hostFetch` wholesale would
+  /// test none of that.
+  final http.Client _http;
+
+  /// Only close what we opened: an injected client belongs to the caller and
+  /// may outlive this host (or be shared between several).
+  final bool _ownsHttpClient;
   final Map<String, Map<String, Object?>> _kv = {};
   final Map<int, Completer<dynamic>> _pendingHostCalls = {};
   Timer? _pump;
@@ -578,7 +618,15 @@ class _HostCore {
   /// hook's own late result eventually arrives too.
   final Set<int> _outstandingIds = {};
 
-  _HostCore({required this.emit, this.fetchAllowlists = const {}, this.userAgent, this.userAgentOverrides = const {}});
+  _HostCore(
+      {required this.emit,
+      this.fetchAllowlists = const {},
+      this.secrets = const {},
+      this.userAgent,
+      this.userAgentOverrides = const {},
+      http.Client? httpClient})
+      : _http = httpClient ?? http.Client(),
+        _ownsHttpClient = httpClient == null;
 
   String get engineDescription => _js.engineDescription;
 
@@ -673,6 +721,12 @@ class _HostCore {
       switch (method) {
         case 'fetch':
           result = await _hostFetch(params);
+        case 'secret':
+          // `extensionKey` is kernel-bound, so this really is "what the caller
+          // declared" — an extension cannot read a name it never listed, nor
+          // one belonging to somebody else. Absent is null, not an error: a
+          // build without the value is a normal build.
+          result = secrets[params['extensionKey'] as String?]?[params['name'] as String?];
         case 'kvGet':
           // In-memory per-extension namespaces; credentials move to the
           // platform keychain when settings become persistent.
@@ -824,7 +878,7 @@ class _HostCore {
 
   void dispose() {
     _pump?.cancel();
-    _http.close();
+    if (_ownsHttpClient) _http.close();
     _js.dispose();
   }
 }

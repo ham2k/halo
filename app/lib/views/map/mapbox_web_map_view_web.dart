@@ -18,7 +18,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 import 'package:web/web.dart' as web;
 
-import '../../config/mapbox_token.dart';
+import '../../config/secrets.dart';
 import 'map_gl_script.dart';
 import 'map_marker_data.dart';
 
@@ -92,7 +92,7 @@ class _MapboxWebMapViewState extends State<MapboxWebMapView> {
     await _ensureGlLoaded();
     if (!mounted || _container == null || _handle != null) return;
     final gl = web.window.getProperty<JSObject>('poloMapGl'.toJS);
-    _handle = gl.callMethod<JSObject>('create'.toJS, _container!, mapboxAccessToken.toJS);
+    _handle = gl.callMethod<JSObject>('create'.toJS, _container!, (secrets['MAPBOX_ACCESS_TOKEN'] ?? '').toJS);
     _applyProjection();
     // Defer the data (and its camera fit) one frame so the div has been
     // attached and laid out — fitBounds on a still-zero-sized container

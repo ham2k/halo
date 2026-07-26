@@ -51,12 +51,13 @@ if [[ "$QUICK" -eq 0 ]]; then
   "$ROOT_DIR/packages/halo_quickjs/tool/build_host.sh"
 fi
 
-# The real Mapbox token file is gitignored, so fresh checkouts (like CI)
-# don't have it and the app package fails to analyze. The blank template is
-# a supported configuration — the Map tab falls back to OpenStreetMap.
-if [[ ! -f "$ROOT_DIR/app/lib/config/mapbox_token.dart" ]]; then
-  echo "▶ app: no Mapbox token present, using the blank template"
-  cp "$ROOT_DIR/app/lib/config/mapbox_token.dart.example" "$ROOT_DIR/app/lib/config/mapbox_token.dart"
+# secrets.dart is gitignored, so fresh checkouts (like CI) don't have it and
+# the app package fails to analyze. The blank template is a supported
+# configuration — every consumer degrades rather than failing, and the Map tab
+# falls back to OpenStreetMap.
+if [[ ! -f "$ROOT_DIR/app/lib/config/secrets.dart" ]]; then
+  echo "▶ app: no secrets present, using the blank template"
+  cp "$ROOT_DIR/app/lib/config/secrets.dart.example" "$ROOT_DIR/app/lib/config/secrets.dart"
 fi
 
 for pkg in packages/halo_core packages/halo_build_tools packages/halo_extension_host packages/halo_quickjs packages/halo_widgets app; do

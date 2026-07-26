@@ -44,9 +44,9 @@ app.*.map.json
 /android/app/profile
 /android/app/release
 
-# Bundled Mapbox access token — tied to whoever's account is paying for
-# usage; see lib/config/mapbox_token.dart.example for the template.
-/lib/config/mapbox_token.dart
+# Build-time secrets: award API keys, the Mapbox token, per-edition OAuth
+# client ids. See lib/config/secrets.dart.example for the template.
+/lib/config/secrets.dart
 
 # Cloudflare Wrangler local cache/config
 .wrangler/

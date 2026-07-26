@@ -16,7 +16,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart' hide Visibility;
 import 'package:mapbox_maps_flutter/mapbox_maps_flutter.dart';
 
-import '../../config/mapbox_token.dart';
+import '../../config/secrets.dart';
 import 'map_marker_data.dart';
 import 'map_popup.dart';
 
@@ -86,7 +86,7 @@ class _MapboxNativeMapViewState extends State<MapboxNativeMapView> {
   @override
   void initState() {
     super.initState();
-    MapboxOptions.setAccessToken(mapboxAccessToken);
+    MapboxOptions.setAccessToken(secrets['MAPBOX_ACCESS_TOKEN'] ?? '');
   }
 
   @override

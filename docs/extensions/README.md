@@ -33,6 +33,94 @@ that imports it and calls `defineExtension`:
 }
 ```
 
+### Secrets
+
+`host.secret(name)` reads a build-time value: "secrets" in the sense every cloud
+platform uses it — real credentials and plain per-build configuration alike. An
+award's API key is one; so is an OAuth client id that differs per build edition.
+
+**An extension sees a secret when its NAME starts with the extension's key.**
+`sota` reads `SOTA_OAUTH_CLIENT_ID_PROD`, `tota` reads `TOTA_API_KEY`. That
+convention covers every secret in the app today, so nothing needs declaring
+anywhere; name a new one after the extension that uses it and it just works.
+
+Two escape hatches exist in `app/lib/config/secret_policy.dart` for values that
+belong to no single extension — `sharedSecrets` (any extension may read) and
+`grants` (a named list of extension keys). Both are empty. The policy is
+committed code rather than a manifest field on purpose: an extension asking for
+access is not the same as being granted it, and one reviewable list beats a
+claim spread across thirty manifests.
+
+The host resolves each extension's readable subset once, at load, and holds only
+that. The kernel stamps the caller's identity onto the call, so an extension can
+reach neither another's values nor a name outside its own prefix.
+
+Values come from the environment (`mise.local.toml` locally, the CI env in
+`app_dist/ci/*.sh`) into a gitignored `app/lib/config/secrets.dart`. App code
+reads that map directly — the Mapbox access token is in it too. See
+`secrets.dart.example`.
+
+**Expect null and degrade.** A fresh checkout, a fork, and every build without
+the value configured all have none. A hook that throws instead of returning
+empty takes its whole feature down for them. Where a sensible default exists,
+prefer it: SOTA keeps its per-edition OAuth clients in code as a fallback, so a
+fresh checkout can still log in to SOTAWatch.
+
+**Don't log a URL that carries one.** Some programs take their key as a query
+parameter, and `debugPrint` is not stripped from release builds — the data-file
+downloader redacts query strings for exactly this reason
+(`DataFileManager.redactUrlForLog`). An extension that logs its own fetch URLs
+has to do the same.
+
+### Testing anything that fetches
+
+`ExtensionHost.start` takes an `httpClient`. Supply one (a `MockClient` from
+`package:http/testing.dart`) and `host.fetch` goes out over it instead of the
+network — while the manifest allowlist, the https requirement, the canonical
+User-Agent and both timeouts still run, because the seam sits below them.
+Supplying a client forces in-process mode, since a client cannot cross an
+isolate boundary.
+
+`spot_network_test.dart` is the worked example: feeds, spot posting, and a check
+that an undeclared domain is still blocked through the stub.
+
+This flat map is a stopgap — see below.
+
+### 🔜 Planned: a secrets service, and flags to gate external calls
+
+Two related pieces of infrastructure, agreed 2026-07-26 while porting the
+activities that need keys.
+
+**A secrets service.** `host.secret()` is deliberately minimal: one accessor
+over a flat const map, with scoping by declared name and nothing else. It wants
+replacing with somewhere secrets are registered, described, scoped and audited —
+including knowing which are real credentials and which are plain configuration,
+a distinction the flat map does not carry.
+
+The open question worth settling first is whether user-supplied credentials
+(`fieldType: 'secret'`, the `account` hook) and build-time values should share
+one service or stay separate — they have different lifetimes, different storage
+(keychain vs. compiled-in) and different failure modes, but an extension author
+currently has to learn both.
+
+**Flags gating external API calls.** app-polo already does this — every
+network-touching activity hook starts with a check like
+
+```js
+if (GLOBAL?.flags?.services?.wwbota === false) return []
+```
+
+(see `src/extensions/activities/wwbota/WWBOTAExtension.js` and its siblings).
+HaLo has a flags service in `app/lib/services/flags_service.dart` but nothing
+reaching extensions. The point is being able to turn off one program's spot feed
+or spot posting remotely — when an award's API breaks, starts rate-limiting, or
+has to be pulled — without shipping a build. That argues for the check living in
+the host rather than in each extension's own code, so an extension cannot forget
+it and a flag cannot be ignored.
+
+Worth reading first: this file, `hooks.md`, `docs/design/activities.md` §3.4,
+and `app/lib/services/flags_service.dart`.
+
 ```ts
 import { defineExtension, host } from "@ham2k/halo-extension-sdk"
 import manifest from "../manifest.json" with { type: "json" }

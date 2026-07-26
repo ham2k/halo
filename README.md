@@ -67,7 +67,7 @@ start ms-settings:developers # Enable Developer Mode
 # Close and reopen the terminal
 
 cd app/lib/config
-copy mapbox_token.dart.example mapbox_token.dart
+copy secrets.dart.example secrets.dart
 cd ../../..
 ```
 

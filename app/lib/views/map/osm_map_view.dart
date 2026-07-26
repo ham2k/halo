@@ -5,7 +5,7 @@
 // tiles via flutter_map. Used automatically whenever no Mapbox token is
 // configured (see map_panel.dart's facade routing), and works on every
 // platform — the safety net a fresh checkout falls back to before
-// lib/config/mapbox_token.dart is filled in. Has no globe projection —
+// MAPBOX_ACCESS_TOKEN is set in lib/config/secrets.dart. Has no globe —
 // flutter_map is a 2D tile compositor, not a 3D renderer.
 //
 // QSOs are band-colored circles, the QTH a black one, connected by

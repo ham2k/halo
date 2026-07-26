@@ -162,6 +162,7 @@ function hooksFor(category: string, key: string | null): HookRecord[] {
 // any other's keychain credentials, KV state, or clear its status items.
 const IDENTITY_HOST_METHODS = new Set([
   'fetch',
+  'secret',
   'kvGet',
   'kvSet',
   'getAccount',
@@ -528,7 +529,12 @@ const kernel = {
                 extensionName: extensions[record.extensionKey]?.name,
                 name: await callHookMethod(record, 'name', {}),
                 description: await callHookMethod(record, 'description', {}),
-                url: record.hook.url,
+                // Through callHookMethod like `name` and `description`, not
+                // read raw: a definition whose URL depends on something the
+                // extension has to ASK for — TOTA's list carries its API key as
+                // a query parameter — supplies a function, and a plain string
+                // still comes back unchanged.
+                url: await callHookMethod(record, 'url', {}),
                 maxAgeInDays: record.hook.maxAgeInDays,
                 fetchType: record.hook.fetchType,
                 encoding: record.hook.encoding ?? null,

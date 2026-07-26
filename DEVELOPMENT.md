@@ -48,7 +48,7 @@ npm run build            # → app/assets/extensions/*.js + index.json  (gitigno
 cd ..
 
 # 3. Map token (optional — the Map tab falls back to OpenStreetMap without it)
-cp app/lib/config/mapbox_token.dart.example app/lib/config/mapbox_token.dart
+cp app/lib/config/secrets.dart.example app/lib/config/secrets.dart
 #   then paste a public Mapbox token (starts with `pk.`) into that file.
 #   Get one at https://account.mapbox.com/access-tokens/ . The file is gitignored.
 
@@ -169,7 +169,8 @@ ONBOARD_AS=KI2D,pota flutter run -d macos
 cd app && flutter run -d macos --dart-define=DEV_LABEL="header work"
 ```
 
-The map token (`app/lib/config/mapbox_token.dart`) and, for release CI, secrets
+Build-time values (`app/lib/config/secrets.dart` — the Mapbox token, award API
+keys, per-edition OAuth clients) and, for release CI, secrets
 like `MAPBOX_ACCESS_TOKEN` / `SDK_REGISTRY_TOKEN` are **not** dart-defines —
 they're a gitignored source file and CI shell env vars, respectively.
 

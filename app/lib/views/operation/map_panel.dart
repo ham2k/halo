@@ -25,7 +25,7 @@ import 'package:flutter/material.dart';
 import 'package:halo_core/halo_core.dart';
 import 'package:halo_widgets/halo_widgets.dart';
 
-import '../../config/mapbox_token.dart';
+import '../../config/secrets.dart';
 import '../../i18n/strings.g.dart';
 import '../../services/settings_service.dart';
 import '../../tools/distance_format.dart';
@@ -116,7 +116,9 @@ class _MapPanelState extends State<MapPanel> {
     }
 
     final Widget map;
-    var usesMapbox = mapboxAccessToken.isNotEmpty;
+    // No token is a supported state, not a broken build: a fresh checkout, a
+    // fork, and every CI build without one fall back to OpenStreetMap below.
+    var usesMapbox = (secrets['MAPBOX_ACCESS_TOKEN'] ?? '').isNotEmpty;
     if (usesMapbox && kIsWeb) {
       // The app already runs in a browser — Mapbox GL JS mounts directly on
       // a platform-view div, no webview needed.

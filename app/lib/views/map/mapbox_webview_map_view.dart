@@ -19,7 +19,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 
-import '../../config/mapbox_token.dart';
+import '../../config/secrets.dart';
 import 'map_gl_script.dart';
 import 'map_marker_data.dart';
 
@@ -72,7 +72,7 @@ class _MapboxWebviewMapViewState extends State<MapboxWebviewMapView> {
   Widget build(BuildContext context) {
     return InAppWebView(
       initialData: InAppWebViewInitialData(
-        data: _html(mapboxAccessToken),
+        data: _html(secrets['MAPBOX_ACCESS_TOKEN'] ?? ''),
         baseUrl: WebUri('https://ham2k.com/'),
       ),
       initialSettings: InAppWebViewSettings(transparentBackground: true),

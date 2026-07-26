@@ -23,6 +23,8 @@ import 'error_reporting_service.dart';
 import 'settings_service.dart';
 import 'status_bar_service.dart';
 import 'package:halo_widgets/halo_widgets.dart';
+import '../config/secret_policy.dart';
+import '../config/secrets.dart';
 import '../config/dev_flags.dart';
 import '../config/dev_fixture.dart';
 import '../config/user_agent.dart';
@@ -762,6 +764,7 @@ class ExtensionService {
       final available = await loadAvailableExtensions(index: index);
       final bundles = <ExtensionBundle>[];
       final fetchAllowlists = <String, List<String>>{};
+      final extensionSecrets = <String, Map<String, String>>{};
       final userAgentOverrides = <String>{};
       final loaded = <String>{};
       for (final info in available) {
@@ -778,12 +781,23 @@ class ExtensionService {
         // and `allowUserAgentOverride`).
         fetchAllowlists[info.key] = info.domains;
         if (info.allowUserAgentOverride) userAgentOverrides.add(info.key);
+        // Resolve what this extension is allowed to see, once, at load time —
+        // the host then holds only that subset and needs no policy of its own.
+        // A build without a value configured simply has none, and every
+        // consumer degrades rather than failing: a fresh checkout must run.
+        final visible = <String, String>{
+          for (final entry in secrets.entries)
+            if (entry.value.isNotEmpty && extensionMaySeeSecret(info.key, entry.key))
+              entry.key: entry.value,
+        };
+        if (visible.isNotEmpty) extensionSecrets[info.key] = visible;
       }
       _host = await ExtensionHost.start(
         kernelSource: kernelSource,
         extensions: bundles,
         onHostCall: _handleHostCall,
         fetchAllowlists: fetchAllowlists,
+        secrets: extensionSecrets,
         // Resolve the UA resiliently: a missing native build number (headless
         // test host, or an early-boot platform channel not yet ready) must
         // not throw here and leave every extension dark.
@@ -1852,6 +1866,7 @@ class ExtensionInfo {
   final String key;
   final String file;
   final List<String> domains;
+
 
   /// Whether this extension may set its own `User-Agent` on host.fetch
   /// (build.mjs `allowUserAgentOverride`). Off by default: the host stamps

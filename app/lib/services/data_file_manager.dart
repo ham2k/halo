@@ -191,6 +191,25 @@ class DataFileManager {
     return urlString;
   }
 
+  /// A fetch URL safe to write to a log: everything up to the path, with any
+  /// query string replaced by `?…`.
+  ///
+  /// Some award programs carry their API key as a query parameter — TOTA's
+  /// list is `tower.php?key=<secret>` — and the key is a real secret, not a
+  /// public token. Logging the URL whole would put it in the device log on
+  /// every refresh, and `debugPrint` is not stripped from release builds.
+  /// Nothing downstream needs the query to identify which file was fetched:
+  /// the key and the host already say that.
+  @visibleForTesting
+  static String redactUrlForLog(String url) {
+    final uri = Uri.tryParse(url);
+    if (uri == null || !uri.hasScheme) return '(unparseable url)';
+    // Cut the string rather than rebuilding through Uri: `replace(query: '')`
+    // leaves the empty `?` and `#` markers behind.
+    final cut = url.indexOf(RegExp(r'[?#]'));
+    return cut < 0 ? url : '${url.substring(0, cut)}?…';
+  }
+
   /// Downloads the file at [url] and returns the decoded body string, or null
   /// on a 304, or throws. Decoded per [resolveDataFileEncoding]: the
   /// definition's [encoding] overrides the response's Content-Type charset,
@@ -210,7 +229,7 @@ class DataFileManager {
       request.headers['If-None-Match'] = cachedEtag;
     }
 
-    debugPrint('[data-file] Fetching $key from $resolvedUrl (cached ETag: $cachedEtag)');
+    debugPrint('[data-file] Fetching $key from ${redactUrlForLog(resolvedUrl)} (cached ETag: $cachedEtag)');
     final streamedResponse = await client.send(request);
     final response = await http.Response.fromStream(streamedResponse);
     client.close();
