@@ -282,6 +282,159 @@ void main() {
     expect((result!['qsoScores'] as Map).keys.toSet(), {'q0', 'q10'});
   }, timeout: const Timeout(Duration(seconds: 60)));
 
+  group('a scorer that reads another activity\'s refs', () {
+    // CQ WW above only ever reads its OWN ref and the station call, so none of
+    // it proves what happens to a scorer that reaches for a ref it does not own.
+    // `stateparks` does exactly that — a state-park event is played THROUGH POTA,
+    // and the parks it scores come from `potaActivation` on the operation and
+    // `pota` on the QSO — which makes the segment-effective operation load
+    // bearing in a way no other contest can show.
+    //
+    // The workflow this is really about is the one the events are designed
+    // around: an activator works one park, packs up, drives to another, and
+    // carries on under the same event. That is a `break` whose override restates
+    // the event ref and swaps the park, and every number in the summary depends
+    // on the harness handing each QSO the park that was true when it was made.
+    const ohsp = {'type': 'stateparks', 'ref': 'OHSP'};
+    const adaPark = {'type': 'potaActivation', 'ref': 'US-1932'}; // Adams Lake SP
+    const hocPark = {'type': 'potaActivation', 'ref': 'US-1958'}; // Hocking Hills SP
+
+    /// Ohio runs 80-10m, so 20m; ten QSOs is POTA's activation threshold, which
+    /// is what makes a park count toward the multiplier.
+    List<Map<String, dynamic>> tenQsos(int from, {int day = 12}) => [
+          for (var i = 0; i < 10; i++)
+            {
+              'uuid': 'q${from + i}',
+              'startAtMillis': DateTime.utc(2026, 9, day, 14, from + i).millisecondsSinceEpoch,
+              'band': '20m',
+              'mode': 'CW',
+              'our': {'call': 'N0DEV'},
+              'their': {'call': 'W${from + i}AW'},
+            },
+        ];
+
+    Future<Map<String, dynamic>?> scoreStateparks(Map<String, dynamic> args) async {
+      final host = await ExtensionHost.start(
+        kernelSource: bundle('kernel').readAsStringSync(),
+        extensions: [ExtensionBundle(key: 'stateparks', source: bundle('stateparks').readAsStringSync())],
+      );
+      addTearDown(host.dispose);
+      final result = await host.invokeHook(
+        'scoring',
+        key: 'stateparks',
+        method: 'scoreQsos',
+        args: args,
+        timeout: const Duration(seconds: 20),
+      ) as Map?;
+      return result?.cast<String, dynamic>();
+    }
+
+    test('the park it credits is the one the segment was activating', () async {
+      if (!bundle('kernel').existsSync() || !bundle('stateparks').existsSync()) {
+        markTestSkipped('bundles not built — run `npm run build` in extensions/ first');
+        return;
+      }
+      final atAda = tenQsos(0);
+      final atHoc = tenQsos(10);
+      final movedAt = atHoc.first['startAtMillis'] as int;
+
+      final result = await scoreStateparks({
+        // The base operation carries only the FIRST park — which is what an
+        // operation looks like after `_saveRefs` wrote the second one into a
+        // break override rather than onto the operation itself.
+        'operation': {
+          'uuid': 'op',
+          'stationCall': 'N0DEV',
+          'refs': [ohsp, adaPark],
+        },
+        'qsos': [...atAda, ...atHoc],
+        'ref': ohsp,
+        'segments': [
+          segment(dawnOfTime, [ohsp, adaPark]),
+          segment(movedAt, [ohsp, hocPark]),
+        ],
+      });
+
+      final summary = (result!['operationSummary'] as Map)['stateparks'] as Map;
+      expect(summary['qsos'], 20, reason: 'the event ran across both parks');
+      // TWO activated parks, ten QSOs each: Ohio multiplies by activated + hunted,
+      // and nothing was hunted here, so 20 points x 2 parks. Handed the BASE
+      // operation for every QSO instead, this reads one park with twenty QSOs —
+      // mult 1, total 20 — and the operator's second park is simply missing.
+      expect(summary['mults'], 2);
+      expect(summary['total'], 40);
+    }, timeout: const Timeout(Duration(seconds: 60)));
+
+    test('a park worked too little to activate still does not count', () async {
+      if (!bundle('kernel').existsSync() || !bundle('stateparks').existsSync()) {
+        markTestSkipped('bundles not built — run `npm run build` in extensions/ first');
+        return;
+      }
+      // The same move, but the operator only made three QSOs at the second park
+      // before the weather turned. POTA's threshold is ten, so that park is not
+      // activated and cannot be claimed as a multiplier — the per-QSO points are
+      // still theirs.
+      final atAda = tenQsos(0);
+      final atHoc = tenQsos(10).take(3).toList();
+      final movedAt = atHoc.first['startAtMillis'] as int;
+
+      final result = await scoreStateparks({
+        'operation': {
+          'uuid': 'op',
+          'stationCall': 'N0DEV',
+          'refs': [ohsp, adaPark],
+        },
+        'qsos': [...atAda, ...atHoc],
+        'ref': ohsp,
+        'segments': [
+          segment(dawnOfTime, [ohsp, adaPark]),
+          segment(movedAt, [ohsp, hocPark]),
+        ],
+      });
+
+      final summary = (result!['operationSummary'] as Map)['stateparks'] as Map;
+      expect(summary['qsos'], 13);
+      expect(summary['mults'], 1, reason: 'three QSOs is not an activation');
+      expect(summary['total'], 13);
+    }, timeout: const Timeout(Duration(seconds: 60)));
+
+    test('a stretch the event was not running is not scored at all', () async {
+      if (!bundle('kernel').existsSync() || !bundle('stateparks').existsSync()) {
+        markTestSkipped('bundles not built — run `npm run build` in extensions/ first');
+        return;
+      }
+      // The case worth pinning for THIS scorer specifically: a break that keeps
+      // the park but drops the event — the operator carried on activating after
+      // the event's 8-hour window closed. Those contacts are POTA's and not the
+      // event's, and the park they were made from must not reach the event's
+      // activation count either, or a park that was never activated DURING the
+      // event becomes a multiplier.
+      final during = tenQsos(0);
+      final after = tenQsos(10);
+      final closedAt = after.first['startAtMillis'] as int;
+
+      final result = await scoreStateparks({
+        'operation': {
+          'uuid': 'op',
+          'stationCall': 'N0DEV',
+          'refs': [ohsp, adaPark],
+        },
+        'qsos': [...during, ...after],
+        'ref': ohsp,
+        'segments': [
+          segment(dawnOfTime, [ohsp, adaPark]),
+          segment(closedAt, [hocPark]), // POTA only — no event ref
+        ],
+      });
+
+      final summary = (result!['operationSummary'] as Map)['stateparks'] as Map;
+      expect(summary['qsos'], 10, reason: 'only the QSOs made while the event was running');
+      expect(summary['mults'], 1, reason: 'the after-hours park is not an event multiplier');
+      final scores = (result['qsoScores'] as Map).cast<String, dynamic>();
+      expect(scores.keys.length, 10, reason: 'and the rest get no verdict at all, not a zero');
+    }, timeout: const Timeout(Duration(seconds: 60)));
+  });
+
   group('the live single-candidate pass', () {
     // This one runs cold on every debounced keystroke — `ExtensionService`
     // sends no `resumeFrom` — so it rebuilds the scoresheet from the log each
