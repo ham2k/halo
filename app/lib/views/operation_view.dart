@@ -9,9 +9,7 @@
 
 import 'dart:async';
 import 'dart:convert';
-import 'dart:ui' show lerpDouble;
 
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:halo_core/halo_core.dart';
 import 'package:halo_widgets/halo_widgets.dart';
@@ -104,12 +102,6 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
   bool? _qsoStreamIncludesDeleted;
   Operation? _draftOperation;
 
-  /// The open sheet's own slide animation, or null when no sheet is up —
-  /// what [_HeaderGrabHandle] animates against, so the handle moves WITH the
-  /// pane instead of guessing at its timing. Null again the moment the pane
-  /// is gone, which is the handle's cue to bounce back.
-  final ValueNotifier<Animation<double>?> _sheetAnimation = ValueNotifier(null);
-
   /// The draft's ref-derived title fragments, suggested but deliberately not
   /// cached (the draft has no saved row to cache into) — null until the first
   /// suggestion for the current draft lands, at which point the header stops
@@ -127,73 +119,6 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
     final fragments = await widget.services.operationTitles.suggestFragments(draft);
     if (!mounted || fragments == null || generation != _draftTitleGeneration) return;
     setState(() => _draftTitleFragments = fragments);
-  }
-
-  /// The operation header, with the grab pill painted ON TOP of the toolbar
-  /// row rather than inside `flexibleSpace` — AppBar stacks flexibleSpace
-  /// BEHIND the title, so the pill (and the opaque plate meant to keep a long
-  /// subtitle clear of it) ended up under the very text it needed to mask.
-  /// The pill still anchors to the toolbar's own bottom edge, so a tab bar
-  /// attached below doesn't drag it down with it (issue #266).
-  PreferredSizeWidget _headerWithGrabHandle(
-    BuildContext context, {
-    required AppBar appBar,
-    required VoidCallback onGrabTap,
-  }) {
-    final theme = Theme.of(context);
-    return PreferredSize(
-      preferredSize: appBar.preferredSize,
-      // Clip.none so the pill can hang below the header's own bounds — see
-      // the translate below.
-      child: Stack(
-        clipBehavior: Clip.none,
-        children: [
-          appBar,
-          Positioned(
-            top: 0,
-            left: 0,
-            right: 0,
-            height: theme.appBarTheme.toolbarHeight ?? kToolbarHeight,
-            child: Align(
-              alignment: Alignment.bottomCenter,
-              // The 5px clearance from the toolbar's own bottom edge that the
-              // original bottom:5 offset gave it, then translated DOWN so the
-              // pill straddles the header's edge. A translate, not padding,
-              // because it must not add to the header's height — the pill
-              // floats over what's below rather than pushing it down.
-              child: Padding(
-                padding: const EdgeInsets.only(bottom: 5),
-                child: Transform.translate(
-                  offset: const Offset(0, _headerGrabFloat),
-                  child: MouseRegion(
-                    cursor: SystemMouseCursors.click,
-                    child: GestureDetector(
-                      behavior: HitTestBehavior.opaque,
-                      onTap: onGrabTap,
-                      // Opaque, in the header's own color, so a long subtitle
-                      // runs behind the pill instead of through it. Sized by
-                      // the pill, so it grows and shrinks with the open/close
-                      // animation.
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 10),
-                        decoration: BoxDecoration(
-                          color: theme.appBarTheme.backgroundColor ?? theme.colorScheme.primary,
-                          borderRadius: BorderRadius.circular(6),
-                        ),
-                        child: _HeaderGrabHandle(
-                          sheetAnimation: _sheetAnimation,
-                          color: theme.colorScheme.onPrimary.withValues(alpha: 0.5),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
   }
 
   Stream<List<Qso>> _qsosStream() {
@@ -304,6 +229,20 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
   final _spotsKey = GlobalKey();
   final _mapKey = GlobalKey();
 
+  /// The header's dots-and-title control — measured (not computed from
+  /// theme constants) to left-align the operation sheet with it, since
+  /// AppBar's actual leading width when `leadingWidth` is null varies by
+  /// platform in ways not worth re-deriving here.
+  final _headerTitleKey = GlobalKey();
+
+  /// The control's current on-screen left edge, or null before its first
+  /// layout (falls back to [showTopModalPane]'s default centering).
+  double? get _headerTitleLeftInset {
+    final box = _headerTitleKey.currentContext?.findRenderObject() as RenderBox?;
+    if (box == null || !box.attached) return null;
+    return box.localToGlobal(Offset.zero).dx;
+  }
+
   /// Tracks the arrangement across dependency changes so the flip can be
   /// detected BEFORE build (see didChangeDependencies). Null until first
   /// resolved.
@@ -387,7 +326,6 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
     _rescoreSub?.cancel();
     _rescoreDebounce?.cancel();
     _tabController?.dispose();
-    _sheetAnimation.dispose();
     super.dispose();
   }
 
@@ -622,7 +560,9 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
       await showTopModalPane<void>(
         context,
         closeTooltip: context.t.common.close,
-        onAnimation: (animation) => _sheetAnimation.value = animation,
+        // Left-aligned with the dots-and-title control that opens it,
+        // rather than centered in the pane.
+        leftInset: _headerTitleLeftInset,
         title: ValueListenableBuilder<Operation>(
           valueListenable: draftNotifier,
           builder: (context, draft, _) {
@@ -834,7 +774,6 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
           _draftTitleGeneration++;
         });
       }
-      _sheetAnimation.value = null;
       draftNotifier.dispose();
     }
   }
@@ -1078,10 +1017,7 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
           // keyboard with its own bottom spacer (see LoggingControls); the
           // Quick Lookup / branding panes do the same on Home.
           resizeToAvoidBottomInset: false,
-          appBar: _headerWithGrabHandle(
-            context,
-            onGrabTap: () => _editActivities(operation),
-            appBar: AppBar(
+          appBar: AppBar(
               flexibleSpace: GestureDetector(
                 behavior: HitTestBehavior.opaque,
                 onTap: () => _editActivities(operation),
@@ -1094,9 +1030,13 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
               ),
               leadingWidth: macOSAwareLeadingWidth(context),
               leading: macOSAwareBackButton(context),
+              // Tight against the back button — the dots-and-title control
+              // supplies its own (small) inset instead of relying on the
+              // theme's default gap here.
+              titleSpacing: 0,
               actions: [
                 PopupMenuButton<VoidCallback>(
-                  icon: Icon(resolveIconName('dots-vertical')),
+                  icon: const Icon(Icons.tune),
                   onSelected: (toggle) => toggle(),
                   itemBuilder: (context) => [
                     CheckedPopupMenuItem<VoidCallback>(
@@ -1159,38 +1099,58 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
                 windowsCaptionSpacer(context),
               ],
               title: InkWell(
+                key: _headerTitleKey,
                 onTap: () => _editActivities(operation),
                 mouseCursor: SystemMouseCursors.click,
-                // Keeps the text out of the grab pill's band along the
-                // toolbar's bottom edge (see _headerGrabBand). The pill
-                // floats over this row, and a long subtitle would otherwise
-                // run straight through it — most visibly mid-animation, when
-                // the pill is at its widest.
+                borderRadius: BorderRadius.circular(8),
+                // Default M3 hover/pressed overlays are tuned for a surface-
+                // colored widget and barely show up on this teal AppBar —
+                // same bump as TabBar's own overlayColor (theme.dart).
+                overlayColor: WidgetStateProperty.resolveWith((states) {
+                  final onPrimary = Theme.of(context).colorScheme.onPrimary;
+                  if (states.contains(WidgetState.pressed) || states.contains(WidgetState.focused)) {
+                    return onPrimary.withValues(alpha: 0.20);
+                  }
+                  if (states.contains(WidgetState.hovered)) {
+                    return onPrimary.withValues(alpha: 0.16);
+                  }
+                  return null;
+                }),
                 child: Padding(
-                  padding: const EdgeInsets.only(bottom: _headerGrabBand),
-                  child: Column(
+                  padding: const EdgeInsets.symmetric(vertical: 2),
+                  child: Row(
                     mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // Title and description each shrink to fit their own
-                      // width independently (issue #182) rather than
-                      // truncating — down to 75% of their natural font size,
-                      // past which the line ellipsizes instead (#361). The
-                      // description tries Roboto's condensed glyph width
-                      // first, before shrinking its font size at all.
-                      shrinkToFitText(
-                        Text('${operation.stationCall} ${displayTitleFor(context, operation)}'),
-                      ),
-                      if (refsLine.isNotEmpty)
-                        shrinkToFitText(
-                          Text(
-                            refsLine,
-                            style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                              color: Theme.of(context).colorScheme.onPrimary.withValues(alpha: 0.85),
+                      // A plain "more" hint, not a button of its own — the
+                      // whole row (icon, title, subtitle) is one tap target.
+                      Icon(Icons.more_vert, size: 20, color: Theme.of(context).colorScheme.onPrimary),
+                      Expanded(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            // Title and description each shrink to fit their own
+                            // width independently (issue #182) rather than
+                            // truncating — down to 75% of their natural font size,
+                            // past which the line ellipsizes instead (#361). The
+                            // description tries Roboto's condensed glyph width
+                            // first, before shrinking its font size at all.
+                            shrinkToFitText(
+                              Text('${operation.stationCall} ${displayTitleFor(context, operation)}'),
                             ),
-                          ),
-                          condensed: true,
+                            if (refsLine.isNotEmpty)
+                              shrinkToFitText(
+                                Text(
+                                  refsLine,
+                                  style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                                    color: Theme.of(context).colorScheme.onPrimary.withValues(alpha: 0.85),
+                                  ),
+                                ),
+                                condensed: true,
+                              ),
+                          ],
                         ),
+                      ),
                     ],
                   ),
                 ),
@@ -1199,7 +1159,6 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
               // below.
               bottom: isTwoPane ? null : tabBar,
             ),
-          ),
           // One tab set either way, always 4 tabs on the one controller —
           // it is never recreated, so the selected index carries across a
           // flip: index 0 maps QSOs ↔ Info, which is sensible since logging
@@ -1273,202 +1232,3 @@ class _KeepAliveState extends State<_KeepAlive> with AutomaticKeepAliveClientMix
   }
 }
 
-/// How far the grab pill floats DOWN past the toolbar's bottom edge at rest.
-/// The header applies it as a fixed translate; [_HeaderGrabHandle] animates
-/// the pill back up by the same amount while a sheet is in play.
-const _headerGrabFloat = 8.0;
-
-/// How far the grab pill reaches back UP into the toolbar, plus a little
-/// breathing room. The plate is 11px tall (the 3px bar plus 4px of padding
-/// each side) and its bottom lands [_headerGrabFloat] less the 5px it's
-/// inset by BELOW the toolbar's edge, so the remainder sits inside the
-/// toolbar. The header title reserves that band, so a long subtitle never
-/// runs through the pill — most visible mid-animation, at the pill's widest.
-const _headerGrabBand = (3 + 4 + 4) - (_headerGrabFloat - 5) + 2.0;
-
-/// The grab pill in the operation header, animated against the sheet it
-/// opens (ham2k/app-halo-dist#312).
-///
-/// Opening: it widens slightly, then collapses into its own center — it
-/// reads as the pill *becoming* the sheet rather than blinking out.
-/// Closing: it grows back out of the center as the sheet slides up, ending
-/// [_expandFactor] wider than usual at the moment the sheet is gone, then
-/// springs back to its resting width.
-class _HeaderGrabHandle extends StatefulWidget {
-  /// The open sheet's slide animation (0 = closed, 1 = fully open), or null
-  /// when there's no sheet — see `_OperationViewState._sheetAnimation`.
-  final ValueListenable<Animation<double>?> sheetAnimation;
-  final Color color;
-
-  const _HeaderGrabHandle({required this.sheetAnimation, required this.color});
-
-  @override
-  State<_HeaderGrabHandle> createState() => _HeaderGrabHandleState();
-}
-
-class _HeaderGrabHandleState extends State<_HeaderGrabHandle> with SingleTickerProviderStateMixin {
-  /// Resting size — the pill as it looks with no sheet in play.
-  static const _width = 24.0;
-  static const _height = 3.0;
-
-  /// How far it widens on the way out (a hint of movement) and on the way
-  /// back in (the overshoot the spring settles from).
-  static const _peekFactor = 1.3;
-  static const _expandFactor = 2.4;
-
-  /// Beat between the sheet clearing the screen and the spring — the pill
-  /// sits at its widest for a moment, so the growth and the snap back read as
-  /// two gestures rather than one continuous wobble.
-  static const _holdBeforeSpring = Duration(milliseconds: 200);
-
-  /// Where in the sheet's opening slide the pill finishes widening, and
-  /// where it has finished collapsing. Both well before the sheet is fully
-  /// down, so the pill is long gone by the time it arrives.
-  static const _peekAt = 0.35;
-  static const _goneAt = 0.8;
-
-  /// The vertical move eases IN in both directions — it starts gently and
-  /// picks up speed, so the pill looks like it's being pulled rather than
-  /// snapping to its new spot.
-  static const _liftCurve = Curves.easeIn;
-
-  late final AnimationController _spring = AnimationController(
-    vsync: this,
-    duration: const Duration(milliseconds: 700),
-  );
-
-  Animation<double>? _sheet;
-
-  /// True while the pill waits, fully grown, for [_holdBeforeSpring] to pass.
-  bool _holdingExpanded = false;
-  Timer? _holdTimer;
-
-  @override
-  void initState() {
-    super.initState();
-    widget.sheetAnimation.addListener(_onSheetAnimationChanged);
-    _attach(widget.sheetAnimation.value);
-  }
-
-  @override
-  void dispose() {
-    widget.sheetAnimation.removeListener(_onSheetAnimationChanged);
-    _sheet?.removeListener(_onTick);
-    _sheet?.removeStatusListener(_onStatus);
-    _holdTimer?.cancel();
-    _spring.dispose();
-    super.dispose();
-  }
-
-  void _onSheetAnimationChanged() {
-    final next = widget.sheetAnimation.value;
-    // Null means the sheet was POPPED, not that it has finished leaving:
-    // Navigator's future completes when the pop is requested, with the
-    // slide-up still to play. Dropping the animation here would end the
-    // pill's growth the moment the sheet started moving. The animation
-    // reaching `dismissed` is the real "gone" — see [_onStatus] — so a null
-    // is simply ignored.
-    if (next == null) return;
-
-    // A sheet opening cancels any hold or spring: the pill belongs to the
-    // new animation now.
-    _holdTimer?.cancel();
-    _holdingExpanded = false;
-    _spring.stop();
-    _attach(next);
-  }
-
-  void _attach(Animation<double>? animation) {
-    _sheet?.removeListener(_onTick);
-    _sheet?.removeStatusListener(_onStatus);
-    _sheet = animation;
-    _sheet?.addListener(_onTick);
-    _sheet?.addStatusListener(_onStatus);
-    if (mounted) setState(() {});
-  }
-
-  void _onStatus(AnimationStatus status) {
-    if (status != AnimationStatus.dismissed) return;
-    // The sheet has finished sliding up and the pill is at its widest: let go
-    // of the (about to be disposed) route animation, hold that width for a
-    // beat, then spring back.
-    _attach(null);
-    if (!mounted) return;
-    _holdTimer?.cancel();
-    setState(() => _holdingExpanded = true);
-    _holdTimer = Timer(_holdBeforeSpring, () {
-      if (!mounted) return;
-      setState(() => _holdingExpanded = false);
-      _spring.forward(from: 0);
-    });
-  }
-
-  void _onTick() => setState(() {});
-
-  /// Width for a sheet [t] between 0 (closed) and 1 (open). Opening and
-  /// closing are deliberately NOT mirror images: opening is a peek then a
-  /// collapse, closing is one continuous grow that the spring resolves.
-  double _widthForSheet(double t, AnimationStatus status) {
-    if (status == AnimationStatus.reverse) {
-      return _width * _expandFactor * Curves.easeOut.transform(1 - t);
-    }
-    if (t <= _peekAt) {
-      return lerpDouble(_width, _width * _peekFactor, Curves.easeOut.transform(t / _peekAt))!;
-    }
-    final collapsing = ((t - _peekAt) / (_goneAt - _peekAt)).clamp(0.0, 1.0);
-    return lerpDouble(_width * _peekFactor, 0, Curves.easeIn.transform(collapsing))!;
-  }
-
-  /// How far ABOVE its resting position the pill sits, 0..[_headerGrabFloat]:
-  /// it tucks INTO the header as it collapses on open, and drops back out as
-  /// it grows on close, so the vertical move reads as part of the same
-  /// gesture rather than a separate hop.
-  double get _currentLift {
-    final sheet = _sheet;
-    if (sheet == null) return 0;
-    if (sheet.status == AnimationStatus.reverse) {
-      return _headerGrabFloat * (1 - _liftCurve.transform(1 - sheet.value));
-    }
-    return _headerGrabFloat * _liftCurve.transform((sheet.value / _goneAt).clamp(0.0, 1.0));
-  }
-
-  double get _currentWidth {
-    final sheet = _sheet;
-    if (sheet != null) return _widthForSheet(sheet.value, sheet.status);
-    if (_holdingExpanded) return _width * _expandFactor;
-    if (_spring.isAnimating) {
-      // elasticOut overshoots past its end value, so the pill settles with a
-      // wobble rather than simply arriving.
-      return lerpDouble(_width * _expandFactor, _width, Curves.elasticOut.transform(_spring.value))!;
-    }
-    return _width;
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return AnimatedBuilder(
-      animation: _spring,
-      builder: (context, _) {
-        final width = _currentWidth;
-        return Transform.translate(
-          offset: Offset(0, -_currentLift),
-          child: SizedBox(
-            // The pill's own box never changes height, so nothing around it
-            // reflows while it animates.
-            height: _height,
-            width: width <= 0 ? 0 : width,
-            child: width <= 0
-                ? null
-                : DecoratedBox(
-                    key: const Key('operationHeaderGrab'),
-                    decoration: BoxDecoration(
-                      color: widget.color,
-                      borderRadius: BorderRadius.circular(_height / 2),
-                    ),
-                  ),
-          ),
-        );
-      },
-    );
-  }
-}

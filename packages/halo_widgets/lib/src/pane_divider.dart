@@ -33,7 +33,7 @@ class SolidPaneDivider extends StatefulWidget {
   final VoidCallback? onDragEnd;
   final VoidCallback? onDragCancel;
 
-  /// Keeps the grab dots at full strength while a drag is in progress even
+  /// Keeps the grab line at full strength while a drag is in progress even
   /// if the pointer overshoots off the bar (which would end the hover).
   final bool dragging;
 
@@ -47,10 +47,10 @@ class SolidPaneDivider extends StatefulWidget {
     this.dragging = false,
   });
 
-  /// The grab dots' resting opacity; hovering (or dragging) raises them to
+  /// The grab line's resting opacity; hovering (or dragging) raises it to
   /// full strength — same invitation-not-furniture treatment as the
-  /// surfaces divider's dots.
-  static const double restingDotOpacity = 0.5;
+  /// surfaces divider's own grab line.
+  static const double restingLineOpacity = 0.5;
 
   @override
   State<SolidPaneDivider> createState() => _SolidPaneDividerState();
@@ -66,23 +66,15 @@ class _SolidPaneDividerState extends State<SolidPaneDivider> {
     // The header's own surface: the divider reads as chrome, not content.
     final barColor = theme.appBarTheme.backgroundColor ?? theme.colorScheme.primary;
     final active = _hovered || widget.dragging;
-    final dotColor = theme.colorScheme.onPrimary;
-    final dots = AnimatedOpacity(
-      opacity: active ? 1.0 : SolidPaneDivider.restingDotOpacity,
+    final lineColor = theme.colorScheme.onPrimary;
+    final grabLine = AnimatedOpacity(
+      opacity: active ? 1.0 : SolidPaneDivider.restingLineOpacity,
       duration: const Duration(milliseconds: 150),
       curve: Curves.easeOut,
-      child: Flex(
-        direction: widget.axis == Axis.horizontal ? Axis.vertical : Axis.horizontal,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          for (var i = 0; i < 3; i++)
-            Container(
-              width: 3,
-              height: 3,
-              margin: const EdgeInsets.all(2),
-              decoration: BoxDecoration(color: dotColor, shape: BoxShape.circle),
-            ),
-        ],
+      child: Container(
+        width: horizontal ? 3 : 16,
+        height: horizontal ? 16 : 3,
+        decoration: BoxDecoration(color: lineColor, borderRadius: BorderRadius.circular(1.5)),
       ),
     );
     return MouseRegion(
@@ -103,7 +95,7 @@ class _SolidPaneDividerState extends State<SolidPaneDivider> {
           width: horizontal ? paneDividerWidth : null,
           height: horizontal ? null : paneDividerWidth,
           color: barColor,
-          child: Center(child: dots),
+          child: Center(child: grabLine),
         ),
       ),
     );

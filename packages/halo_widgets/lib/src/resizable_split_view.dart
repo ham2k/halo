@@ -510,7 +510,7 @@ class _DividerHandle extends StatefulWidget {
   final VoidCallback onDragEnd;
   final VoidCallback onDragCancel;
 
-  /// Keeps the dots at full strength while a drag is in progress even if
+  /// Keeps the line at full strength while a drag is in progress even if
   /// the pointer overshoots off the strip (which would end the hover).
   final bool dragging;
 
@@ -522,9 +522,9 @@ class _DividerHandle extends StatefulWidget {
     required this.dragging,
   });
 
-  /// The grab dots' resting opacity; hovering (or dragging) raises them to
+  /// The grab line's resting opacity; hovering (or dragging) raises it to
   /// full strength.
-  static const double restingDotOpacity = 0.5;
+  static const double restingLineOpacity = 0.5;
 
   @override
   State<_DividerHandle> createState() => _DividerHandleState();
@@ -558,19 +558,19 @@ class _DividerHandleState extends State<_DividerHandle> {
           width: ResizableSplitView.dividerWidth,
           child: ColoredBox(
             color: Colors.black.withValues(alpha: ResizableSplitView._platformViewHitWashAlpha),
-            // Centre the grab dots in the VISIBLE strip, not the full divider
+            // Centre the grab line in the VISIBLE strip, not the full divider
             // height: the split now runs full height behind the on-screen
             // keyboard (panes paint their own bottom), so reserve that inset
-            // to keep the dots above it. Zero where the Scaffold still resizes
+            // to keep the line above it. Zero where the Scaffold still resizes
             // for the keyboard (Settings) — the body is already visible-height.
             child: Padding(
               padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(context).bottom),
               child: Center(
               // Subdued until the pointer is over the strip (or dragging):
-              // the dots are an invitation, not furniture. Light mode dims
-              // them via opacity; dark mode instead rests them at pure
-              // black and lets hover bring up the usual light color (a
-              // half-transparent light dot would just vanish against the
+              // the line is an invitation, not furniture. Light mode dims
+              // it via opacity; dark mode instead rests it at pure black
+              // and lets hover bring up the usual light color (a
+              // half-transparent light line would just vanish against the
               // glow). Hover changes never coincide with the resize-snap
               // frames, so these transitions actually play (unlike
               // flip-driven ones).
@@ -578,25 +578,18 @@ class _DividerHandleState extends State<_DividerHandle> {
                 builder: (context) {
                   final dark = Theme.of(context).brightness == Brightness.dark;
                   final active = _hovered || widget.dragging;
-                  final opacity = active || dark ? 1.0 : _DividerHandle.restingDotOpacity;
-                  final dotColor = dark && !active ? Colors.black : colors.onSurfaceVariant;
+                  final opacity = active || dark ? 1.0 : _DividerHandle.restingLineOpacity;
+                  final lineColor = dark && !active ? Colors.black : colors.onSurfaceVariant;
                   return AnimatedOpacity(
                     opacity: opacity,
                     duration: const Duration(milliseconds: 150),
                     curve: Curves.easeOut,
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        for (var i = 0; i < 3; i++)
-                          AnimatedContainer(
-                            duration: const Duration(milliseconds: 150),
-                            curve: Curves.easeOut,
-                            width: 4,
-                            height: 4,
-                            margin: const EdgeInsets.symmetric(vertical: 2.5),
-                            decoration: BoxDecoration(color: dotColor, shape: BoxShape.circle),
-                          ),
-                      ],
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 150),
+                      curve: Curves.easeOut,
+                      width: 3,
+                      height: 16,
+                      decoration: BoxDecoration(color: lineColor, borderRadius: BorderRadius.circular(1.5)),
                     ),
                   );
                 },

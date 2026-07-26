@@ -12,6 +12,8 @@
 // For brief messages or one-or-two-field prompts keep using plain
 // `showDialog` — Modal Panes are for content that fills a pane.
 
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 
 import 'halo_dialog.dart';
@@ -279,9 +281,12 @@ class _ModalPaneScaffold extends StatelessWidget {
 
 /// [onAnimation] hands the caller the pane's own slide animation (0 closed,
 /// 1 fully down) as soon as the route exists, so the screen underneath can
-/// animate *with* the pane — the operation header's grab handle does, and
-/// nothing else can observe a dismissal until the pushed future completes,
-/// which is already after the pane is gone.
+/// animate *with* the pane — nothing else can observe a dismissal until the
+/// pushed future completes, which is already after the pane is gone.
+///
+/// [leftInset], when given, left-aligns the pane at that offset from the
+/// screen's left edge instead of centering it — for matching the pane up
+/// with a specific control in the header behind it.
 Future<T?> showTopModalPane<T>(
   BuildContext context, {
   required WidgetBuilder builder,
@@ -292,6 +297,7 @@ Future<T?> showTopModalPane<T>(
   Widget? trailing,
   String closeTooltip = 'Close',
   ValueChanged<Animation<double>>? onAnimation,
+  double? leftInset,
 }) {
   final route = TopModalPaneRoute<T>(
     builder: builder,
@@ -301,6 +307,7 @@ Future<T?> showTopModalPane<T>(
     leading: leading,
     trailing: trailing,
     closeTooltip: closeTooltip,
+    leftInset: leftInset,
   );
   final result = Navigator.of(context).push(route);
   // After push: the route's animation is created by install(), which the
@@ -321,6 +328,9 @@ class TopModalPaneRoute<T> extends PopupRoute<T> {
   /// See [ModalPaneRoute.closeTooltip].
   final String closeTooltip;
 
+  /// See [showTopModalPane]'s doc comment. Null centers, as before.
+  final double? leftInset;
+
   final _bodyKey = GlobalKey();
 
   TopModalPaneRoute({
@@ -331,6 +341,7 @@ class TopModalPaneRoute<T> extends PopupRoute<T> {
     this.leading,
     this.trailing,
     this.closeTooltip = 'Close',
+    this.leftInset,
   });
 
   @override
@@ -373,11 +384,34 @@ class _TopModalPaneScaffold extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final dialogConstraints = haloDialogConstraints(context);
-    final topOffset = MediaQuery.of(context).padding.top + (theme.appBarTheme.toolbarHeight ?? kToolbarHeight);
-    final screenWidth = MediaQuery.sizeOf(context).width;
-    final sheetWidth = screenWidth < maxDialogWidth ? screenWidth : maxDialogWidth;
-    final sheetMaxHeight = dialogConstraints.maxHeight - topOffset;
+    final headerHeight = theme.appBarTheme.toolbarHeight ?? kToolbarHeight;
+    final topOffset = MediaQuery.of(context).padding.top + headerHeight;
+    final screenSize = MediaQuery.sizeOf(context);
+    // Below S: no room for a floating card — the sheet becomes the screen,
+    // edge to edge, clearing only the header above and the device's own
+    // bottom safe area (home indicator) below.
+    final isNarrow = !ShirtSize.of(context).isTwoPane;
+    final sheetWidth = isNarrow
+        ? screenSize.width
+        : (screenSize.width < maxDialogWidth ? screenSize.width : maxDialogWidth);
+    // Never negative: a window shorter than the clearance below (no native
+    // min-size floor on web/Linux; a large font scale divides the logical
+    // height further) would otherwise assert on invalid constraints — same
+    // guard as haloDialogConstraints.
+    final sheetMaxHeight = math.max(
+      0.0,
+      isNarrow
+          ? screenSize.height - topOffset - MediaQuery.of(context).padding.bottom
+          // Wide: still a floating card, just taller than before — down to
+          // half a header's height above the screen's bottom edge rather than
+          // the generic haloDialogConstraints' 1.5-header-height clearance.
+          : screenSize.height - topOffset - headerHeight / 2,
+    );
+    // A few pixels left of the header control it lines up with — purely a
+    // visual nudge, not worth applying in the full-width narrow case.
+    final leftInset = isNarrow
+        ? null
+        : (route.leftInset == null ? null : route.leftInset! - 8);
 
     final curvedAnimation = CurvedAnimation(parent: route.animation!, curve: Curves.easeOutCubic);
 
@@ -437,25 +471,32 @@ class _TopModalPaneScaffold extends StatelessWidget {
                 child: SlideTransition(
                   position: Tween<Offset>(begin: const Offset(0, -1), end: Offset.zero).animate(curvedAnimation),
                   child: Align(
-                    alignment: Alignment.topCenter,
-                    child: GestureDetector(
-                      onTap: () {},
-                      child: ConstrainedBox(
-                        constraints: BoxConstraints(
-                          maxWidth: sheetWidth,
-                          maxHeight: sheetMaxHeight,
-                          minHeight: route.scrollable ? 0 : sheetMaxHeight,
-                        ),
-                        child: Material(
+                    alignment: leftInset == null ? Alignment.topCenter : Alignment.topLeft,
+                    child: Padding(
+                      padding: EdgeInsets.only(left: leftInset ?? 0),
+                      child: GestureDetector(
+                        onTap: () {},
+                        child: ConstrainedBox(
+                          constraints: BoxConstraints(
+                            maxWidth: sheetWidth,
+                            maxHeight: sheetMaxHeight,
+                            // Narrow: always fills to the bottom edge, same as
+                            // the full-width requirement. Wide: only when not
+                            // scrollable, as before.
+                            minHeight: (isNarrow || !route.scrollable) ? sheetMaxHeight : 0,
+                          ),
+                          child: Material(
                           color: theme.dialogTheme.backgroundColor ?? haloDialogBandColor(context),
                           elevation: 6,
                           shadowColor: Colors.transparent,
                           surfaceTintColor: theme.colorScheme.surfaceTint,
-                          borderRadius: const BorderRadius.vertical(bottom: Radius.circular(28)),
+                          // Square at the bottom in the narrow case — it
+                          // reaches the screen's true edge there, so a
+                          // rounded corner would just look clipped.
+                          borderRadius:
+                              isNarrow ? BorderRadius.zero : const BorderRadius.vertical(bottom: Radius.circular(28)),
                           clipBehavior: Clip.antiAlias,
-                          child: Stack(
-                            children: [
-                              Column(
+                          child: Column(
                                 mainAxisSize: MainAxisSize.min,
                                 crossAxisAlignment: CrossAxisAlignment.stretch,
                                 children: [
@@ -490,39 +531,12 @@ class _TopModalPaneScaffold extends StatelessWidget {
                                     ),
                                 ],
                               ),
-                              Positioned(
-                                left: 0,
-                                right: 0,
-                                bottom: 4,
-                                child: Align(
-                                  alignment: Alignment.bottomCenter,
-                                  child: MouseRegion(
-                                    cursor: SystemMouseCursors.click,
-                                    child: GestureDetector(
-                                      onTap: () => Navigator.of(context).maybePop(),
-                                      behavior: HitTestBehavior.opaque,
-                                      child: Container(
-                                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                                        child: Container(
-                                          width: 24,
-                                          height: 3,
-                                          decoration: BoxDecoration(
-                                            color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.4),
-                                            borderRadius: BorderRadius.circular(1.5),
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
                         ),
                       ),
                     ),
                   ),
                 ),
+              ),
               ),
             ),
           ],

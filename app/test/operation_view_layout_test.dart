@@ -19,6 +19,7 @@ import 'package:ham2k_logger/i18n/strings.g.dart';
 import 'package:ham2k_logger/main.dart';
 import 'package:ham2k_logger/services/extension_service.dart';
 import 'package:ham2k_logger/services/settings_service.dart';
+import 'package:ham2k_logger/views/operation/activities_view.dart';
 import 'package:ham2k_logger/views/operation_view.dart';
 
 void main() {
@@ -136,11 +137,11 @@ void main() {
     await tester.pump(const Duration(seconds: 5));
   });
 
-  testWidgets('the header grab pill sits under the title row, not the tab bar below it (issue #266)',
-      (tester) async {
-    // Narrow — the only width where the AppBar gets `bottom: tabBar`, which
-    // is what stretched flexibleSpace (and thus the old bottom:5-positioned
-    // pill) down past the header and onto the tab row.
+  testWidgets('closed header has no floating grab pill and keeps its original height', (tester) async {
+    // Narrow — the width where the AppBar gets `bottom: tabBar`, so a
+    // regression that adds height to the header (the old floating grab
+    // pill's job) would show up as the tab row no longer starting exactly
+    // at the toolbar's bottom edge (issue #266's original guarantee).
     tester.view.physicalSize = const Size(430, 800);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.reset);
@@ -159,24 +160,58 @@ void main() {
     ));
     await tester.pumpAndSettle();
 
-    final toolbarHeight = Theme.of(tester.element(find.byType(AppBar))).appBarTheme.toolbarHeight ?? kToolbarHeight;
-    final grabBottom = tester.getBottomLeft(find.byKey(const Key('operationHeaderGrab'))).dy;
-    final tabBarTop = tester.getTopLeft(find.byType(TabBar)).dy;
+    expect(find.byKey(const Key('operationHeaderGrab')), findsNothing);
+    // The plain "more" hint next to the title/subtitle — not a button of
+    // its own, part of the same tap target.
+    expect(find.byIcon(Icons.more_vert), findsOneWidget);
 
-    // The pill hangs 10px BELOW where it lays out, so it straddles the
-    // header's bottom edge (deliberate: it reads as floating over the
-    // content rather than as part of the toolbar row). Measured from the
-    // AppBar's own top, i.e. y=0 here since the AppBar is the first thing on
-    // screen: the outer Padding's 5px and the pill Container's 4px bottom
-    // padding put it at toolbarHeight-9, then the Transform adds the float
-    // (_headerGrabFloat, 8). Tight enough that a regression shifting it a
-    // few px would fail this.
-    expect(grabBottom, closeTo(toolbarHeight - 5 - 4 + 8, 0.5));
-    // The float must NOT cost header height (issue #266's actual failure was
-    // the pill being dragged down WITH the header): the tab row still starts
-    // exactly at the toolbar's bottom edge, measured independently of the
-    // toolbarHeight arithmetic above.
+    final toolbarHeight = Theme.of(tester.element(find.byType(AppBar))).appBarTheme.toolbarHeight ?? kToolbarHeight;
+    final tabBarTop = tester.getTopLeft(find.byType(TabBar)).dy;
     expect(tabBarTop, closeTo(toolbarHeight, 0.5));
+
+    await tester.pumpWidget(const SizedBox());
+    await tester.pump(const Duration(seconds: 5));
+  });
+
+  testWidgets('tapping the header title toggles the operation sheet open and closed', (tester) async {
+    // The header's own tap handler always opens — the "toggle" comes from
+    // TopModalPaneRoute's own header-area GestureDetector (modal_pane.dart),
+    // which pops on a second tap in the same spot while the pane is up. This
+    // just pins the resulting end-to-end behavior.
+    //
+    // Wide enough that the sheet's own (non-scrollable) accordion content
+    // fits without overflowing — narrow widths are a pre-existing, separate
+    // layout issue in the sheet body, not something this test is about.
+    tester.view.physicalSize = const Size(1000, 800);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+
+    SharedPreferences.setMockInitialValues({});
+    final settings = SettingsService(await SharedPreferences.getInstance());
+    // Otherwise the 'operation-sheet' onboarding flow auto-opens the sheet
+    // on mount (issue #348), which would race with the tap below.
+    await settings.recordOnboardingShown(OnboardingFlows.operationSheet);
+    final db = HaLoDatabase(NativeDatabase.memory());
+    final extensions = ExtensionServiceWithMockHost(MockExtensionHost(const {}))..settings = settings;
+    final services = HaLoServices(db, settings, extensions: extensions);
+    final operation = await services.operations.create(stationCall: 'N0CALL', title: 'Test Op');
+
+    await tester.pumpWidget(TranslationProvider(
+      child: MaterialApp(
+        home: OperationView(services: services, operationUuid: operation.uuid),
+      ),
+    ));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(OperationSheet), findsNothing);
+
+    await tester.tap(find.text('N0CALL Test Op'));
+    await tester.pumpAndSettle();
+    expect(find.byType(OperationSheet), findsOneWidget, reason: 'first tap opens the sheet');
+
+    await tester.tap(find.text('N0CALL Test Op'));
+    await tester.pumpAndSettle();
+    expect(find.byType(OperationSheet), findsNothing, reason: 'second tap closes it again, rather than opening another');
 
     await tester.pumpWidget(const SizedBox());
     await tester.pump(const Duration(seconds: 5));
