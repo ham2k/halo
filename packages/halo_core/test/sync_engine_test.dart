@@ -695,4 +695,57 @@ void main() {
       expect(settings.state['completedFullSync'], isNot(true));
     });
   });
+  group('transport not ready', () {
+    // A cold start fires the first periodic round before the extension host
+    // has finished loading, and the transport reaches the network THROUGH that
+    // host. That is not a sync failure, but it used to be indistinguishable
+    // from one: every launch counted an error, applied the failure backoff,
+    // and called onError - which the app wires straight to crash reporting.
+    test('is not counted as a failure and is not reported', () async {
+      Object? reported;
+      var errorRounds = 0;
+      final notReady = _FakeTransport((method, args) => throw const SyncTransportNotReady());
+      final e = SyncEngine(
+        operations: operations,
+        qsos: qsos,
+        transport: notReady.call,
+        settings: settings,
+        log: (m) {
+          if (m.contains('round failed')) errorRounds++;
+        },
+        onError: (error, st, {context}) => reported = error,
+      );
+      addTearDown(e.dispose);
+
+      await e.runOneRound();
+
+      expect(reported, isNull, reason: 'a host that has not loaded yet must not reach crash reporting');
+      expect(errorRounds, 0, reason: 'and must not be logged as a failed round');
+    });
+
+    test('a real transport failure IS still counted and reported', () async {
+      // The point of the new exception type is to distinguish the two; if this
+      // stopped reporting, the fix would have silenced genuine outages.
+      Object? reported;
+      var errorRounds = 0;
+      final broken = _FakeTransport((method, args) => throw StateError('network exploded'));
+      final e = SyncEngine(
+        operations: operations,
+        qsos: qsos,
+        transport: broken.call,
+        settings: settings,
+        log: (m) {
+          if (m.contains('round failed')) errorRounds++;
+        },
+        onError: (error, st, {context}) => reported = error,
+      );
+      addTearDown(e.dispose);
+
+      await e.runOneRound();
+
+      expect(reported, isA<StateError>());
+      expect(errorRounds, 1);
+    });
+  });
+
 }

@@ -786,7 +786,12 @@ class HaLoServices {
 
   Future<Map<String, dynamic>> _syncTransportCall(String method, Map<String, dynamic> args) async {
     final host = extensions.host;
-    if (host == null) throw StateError('extension runtime is not ready yet');
+    // Not an error - the extension host is still loading. On a cold start the
+    // first periodic round can fire before it is up, and every other consumer
+    // (scoring, operation titles, export) already treats that as a no-op.
+    // Throwing a plain StateError here made each launch count a sync failure
+    // and file a crash report for a race that clears in seconds.
+    if (host == null) throw const SyncTransportNotReady();
     final result =
         await host.invokeHook('syncTransport', method: method, args: args, timeout: const Duration(seconds: 30));
     return (result as Map).cast<String, dynamic>();

@@ -29,6 +29,27 @@ import '../repo/repositories.dart';
 /// import today.
 typedef SyncTransportCall = Future<Map<String, dynamic>> Function(String method, Map<String, dynamic> args);
 
+/// Thrown by a [SyncTransportCall] that cannot run YET, as opposed to one that
+/// failed.
+///
+/// The transport reaches the network through the `ham2k-lofi` extension, so it
+/// is unusable until the extension host has finished loading — which on a cold
+/// start is after the first periodic round has already fired. Every other
+/// consumer of the host treats "not loaded yet" as a no-op and returns; only
+/// this path had no way to say so, so it threw and each launch counted a sync
+/// failure and filed a crash report for a race that resolves itself a moment
+/// later.
+///
+/// [SyncEngine.runOneRound] treats this like its other "nothing to do right
+/// now" exits: reschedule, no error count, no onError.
+class SyncTransportNotReady implements Exception {
+  final String message;
+  const SyncTransportNotReady([this.message = 'sync transport is not ready yet']);
+
+  @override
+  String toString() => 'SyncTransportNotReady: $message';
+}
+
 /// Sync-related state the engine reads/writes, backed by the app's
 /// SettingsService (SharedPreferences) rather than a drift table — see the
 /// design note in DESIGN.md §6: it's a handful of scalars, not per-row data.
@@ -369,6 +390,14 @@ class SyncEngine {
         final fullPage = inboundOperations.length >= pullLimit || inboundQsos.length >= pullLimit;
         _scheduleLoop((morePending || (fullPage && !_backfillStuckAtCap)) ? Duration.zero : _loopDelay);
       }
+    } on SyncTransportNotReady catch (e) {
+      // Not a failure: the extension host simply has not finished loading. Do
+      // not count it, do not report it - just come back. Deliberately a short
+      // fixed delay rather than the error backoff, because this clears in
+      // seconds and the backoff would push the first real sync out for no
+      // reason.
+      log?.call('[sync] transport not ready, retrying shortly: $e');
+      if (!smallBatch) _scheduleLoop(const Duration(seconds: 2));
     } catch (e, st) {
       _errorCount++;
       log?.call('[sync] round failed (error #$_errorCount${smallBatch ? ', small batch' : ''}): $e');
