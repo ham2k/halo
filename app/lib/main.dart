@@ -712,8 +712,9 @@ class HaLoServices {
         return target == 'ALL' ? t.commands.reloadingAll : t.commands.reloadingTarget(target: target);
       case 'devNotice':
         final p = params ?? const {};
+        final devNoticeKey = p['key'] as String? ?? 'devNotice-${DateTime.now().microsecondsSinceEpoch}';
         statusBar.showNotice(
-          key: 'command:devNotice',
+          key: 'command:devNotice:$devNoticeKey',
           icon: p['icon'] as String?,
           title: p['title'] as String?,
           text: p['text'] as String? ?? '',

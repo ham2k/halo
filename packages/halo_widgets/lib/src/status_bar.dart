@@ -121,29 +121,44 @@ class _StatusBarFooterState extends State<StatusBarFooter> {
     final backgroundColor = theme.appBarTheme.backgroundColor ?? theme.colorScheme.primary;
     final foregroundColor = theme.appBarTheme.foregroundColor ?? theme.colorScheme.onPrimary;
 
-    // With no items the footer collapses to nothing, so each screen's own
-    // content fills the bottom safe area with its own colour — teal Quick
-    // Lookup on Home, the canvas on Settings, the separate split panes in
-    // landscape — rather than one footer colour imposed over every screen.
-    if (!hasItems) {
-      return const SizedBox.shrink();
-    }
-
-    return Material(
-      color: backgroundColor,
-      child: SafeArea(
-        top: false,
-        child: InkWell(
-          onTap: canExpand ? () => setState(() => _expanded = !_expanded) : null,
-          // Animates every size change this widget can go through: an item
-          // being added/dismissed while collapsed (changes the collapsed
-          // row's natural height not at all, but empty<->non-empty toggles
-          // between zero height and the bar), and expand/collapse.
-          child: AnimatedSize(
-            duration: const Duration(milliseconds: 150),
-            alignment: Alignment.bottomCenter,
-            child: expanded ? _buildExpanded(context, foregroundColor) : _buildCollapsed(context, foregroundColor),
-          ),
+    return ClipRect(
+      child: AnimatedSize(
+        duration: const Duration(milliseconds: 200),
+        curve: Curves.fastOutSlowIn,
+        alignment: Alignment.bottomCenter,
+        child: AnimatedSwitcher(
+          duration: const Duration(milliseconds: 200),
+          reverseDuration: const Duration(milliseconds: 200),
+          switchInCurve: Curves.fastOutSlowIn,
+          switchOutCurve: Curves.fastOutSlowIn,
+          transitionBuilder: (child, animation) {
+            final offsetAnimation = Tween<Offset>(
+              begin: const Offset(0, 1.0),
+              end: Offset.zero,
+            ).animate(animation);
+            return SlideTransition(
+              position: offsetAnimation,
+              child: child,
+            );
+          },
+          child: !hasItems
+              ? const SizedBox(key: ValueKey('footer_empty'), width: double.infinity, height: 0)
+              : Material(
+                  key: const ValueKey('footer_active'),
+                  color: backgroundColor,
+                  child: SafeArea(
+                    top: false,
+                    child: InkWell(
+                      onTap: canExpand ? () => setState(() => _expanded = !_expanded) : null,
+                      child: AnimatedSize(
+                        duration: const Duration(milliseconds: 200),
+                        curve: Curves.fastOutSlowIn,
+                        alignment: Alignment.bottomCenter,
+                        child: expanded ? _buildExpanded(context, foregroundColor) : _buildCollapsed(context, foregroundColor),
+                      ),
+                    ),
+                  ),
+                ),
         ),
       ),
     );
@@ -158,11 +173,17 @@ class _StatusBarFooterState extends State<StatusBarFooter> {
       height: _collapsedHeight,
       child: last == null
           ? const SizedBox.shrink()
-          // Cross-fades whenever the displayed item or item count changes
-          // (a message/progress item added or dismissed), rather than
-          // snapping the text/pills to their new state instantly.
           : AnimatedSwitcher(
               duration: const Duration(milliseconds: 200),
+              transitionBuilder: (child, animation) {
+                return SlideTransition(
+                  position: Tween<Offset>(
+                    begin: const Offset(0, 1.0),
+                    end: Offset.zero,
+                  ).animate(animation),
+                  child: FadeTransition(opacity: animation, child: child),
+                );
+              },
               child: Padding(
                 key: _collapsedSwitchKey(last),
                 padding: const EdgeInsets.symmetric(horizontal: 12),
@@ -312,9 +333,21 @@ class _StatusBarProgressIndicator extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final trackColor = color.withValues(alpha: 0.3);
-    return item.isIndeterminateProgress
-        ? LinearProgressIndicator(color: color, backgroundColor: trackColor)
-        : LinearProgressIndicator(value: item.progressValue, color: color, backgroundColor: trackColor);
+    if (item.isIndeterminateProgress) {
+      return LinearProgressIndicator(color: color, backgroundColor: trackColor);
+    }
+    return TweenAnimationBuilder<double>(
+      tween: Tween<double>(begin: 0, end: item.progressValue ?? 0),
+      duration: const Duration(milliseconds: 250),
+      curve: Curves.easeInOut,
+      builder: (context, val, child) {
+        return LinearProgressIndicator(
+          value: val,
+          color: color,
+          backgroundColor: trackColor,
+        );
+      },
+    );
   }
 }
 
@@ -432,24 +465,47 @@ class _NoticeStackState extends State<NoticeStack> {
 
   @override
   Widget build(BuildContext context) {
-    if (widget.notices.isEmpty) return const SizedBox.shrink();
+    final hasNotices = widget.notices.isNotEmpty;
 
     final theme = Theme.of(context);
     final footerColor = theme.appBarTheme.backgroundColor ?? theme.colorScheme.primary;
-    final top = widget.notices.last;
+    final top = hasNotices ? widget.notices.last : null;
     final second = widget.notices.length > 1 ? widget.notices[widget.notices.length - 2] : null;
-    final isDismissingTop = top.key == _dismissingKey;
+    final isDismissingTop = top != null && top.key == _dismissingKey;
 
-    return Container(
-      width: double.infinity,
-      color: footerColor,
-      padding: const EdgeInsets.fromLTRB(12, 12, 12, 8),
-      // Hold the notice card to the ideal pane width, centered, rather than
-      // letting it stretch across a wide window (the full-width band behind it
-      // stays, matching the footer).
-      child: Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: idealPaneWidth),
+    return ClipRect(
+      child: AnimatedSize(
+        duration: const Duration(milliseconds: 250),
+        curve: Curves.fastOutSlowIn,
+        alignment: Alignment.bottomCenter,
+        child: AnimatedSwitcher(
+          duration: const Duration(milliseconds: 250),
+          reverseDuration: const Duration(milliseconds: 200),
+          switchInCurve: Curves.easeOutCubic,
+          switchOutCurve: Curves.easeInCubic,
+          transitionBuilder: (child, animation) {
+            final offsetAnimation = Tween<Offset>(
+              begin: const Offset(0, 1.0),
+              end: Offset.zero,
+            ).animate(animation);
+            return SlideTransition(
+              position: offsetAnimation,
+              child: child,
+            );
+          },
+          child: !hasNotices || top == null
+              ? const SizedBox(key: ValueKey('notice_empty'), width: double.infinity, height: 0)
+              : Container(
+                  key: const ValueKey('notice_active'),
+                  width: double.infinity,
+                  color: footerColor,
+                  padding: const EdgeInsets.fromLTRB(12, 12, 12, 8),
+                  // Hold the notice card to the ideal pane width, centered, rather than
+                  // letting it stretch across a wide window (the full-width band behind it
+                  // stays, matching the footer).
+                  child: Center(
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: idealPaneWidth),
           child: Stack(
             clipBehavior: Clip.none,
             children: [
@@ -494,9 +550,9 @@ class _NoticeStackState extends State<NoticeStack> {
                 duration: _noticeDismissDuration,
                 curve: Curves.easeInOut,
                 left: 0,
-                top: 0,
+                top: isDismissingTop ? 80 : 0,
                 right: 0,
-                bottom: 0,
+                bottom: isDismissingTop ? -80 : 0,
                 child: IgnorePointer(
                   ignoring: isDismissingTop,
                   child: AnimatedOpacity(
@@ -513,8 +569,11 @@ class _NoticeStackState extends State<NoticeStack> {
           ),
         ),
       ),
-    );
-  }
+    ),
+  ),
+),
+);
+}
 }
 
 class _NoticeSurface extends StatelessWidget {

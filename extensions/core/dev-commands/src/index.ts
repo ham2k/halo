@@ -71,10 +71,11 @@ const DevNoticeCommand = {
   async interpret({ input }: { input: string }, _ctx: HookContext): Promise<CommandInterpretation | null> {
     if (input.trim().toUpperCase() !== 'DEVNOTICE') return null
     const notice = pickNext(DEV_NOTICES, lastNoticeIndex)
+    const key = `devNotice-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`
     return {
       describe: 'Show a random dev notice?',
       confirm: 'Added a random notice',
-      commands: [{ devNotice: notice }],
+      commands: [{ devNotice: { key, ...notice } }],
     }
   },
 }

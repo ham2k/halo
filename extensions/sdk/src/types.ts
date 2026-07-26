@@ -738,7 +738,7 @@ export interface CommandAction {
   /// `dev-commands`'s DEVNOTICE). Dispatched by the app, not the extension
   /// itself, so it goes through the same confirm/preview flow as any other
   /// command action.
-  devNotice?: { icon?: string; title?: string; text: string }
+  devNotice?: { key?: string; icon?: string; title?: string; text: string }
   /// Developer-only: posts a transient status message (DEVSTATUS). `key`
   /// lets the caller post more than one at once (e.g. a fresh key per call)
   /// instead of always replacing the same status item.
