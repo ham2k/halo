@@ -40,10 +40,13 @@ test('a park reference answers for a station who sent nothing', () => {
   assert.equal(theirParkAbbreviation(OHSP, hunted), 'HOC')
   assert.deepEqual(theirParkRefs(OHSP, hunted), ['US-1958'])
 
-  // A park-to-park pair: several references, all counted, because a typed
-  // abbreviation can only ever name one.
+  // A POTA two-fer is still ONE Ohio contact. The two programs' exchanges are
+  // independent: OHSP's exchange is a single abbreviation, and the sponsor's park
+  // list is a subset of POTA with no multi-reference location in it, so no station
+  // can be at two of Ohio's parks at once and a second POTA reference is never a
+  // second state-park claim.
   const twofer = qso([{ type: 'pota', ref: 'US-1958' }, { type: 'pota', ref: 'US-1933' }])
-  assert.deepEqual(theirParkRefs(OHSP, twofer), ['US-1958', 'US-1933'])
+  assert.deepEqual(theirParkRefs(OHSP, twofer), ['US-1958'])
 
   // Parks outside the event are somebody else's activity.
   assert.deepEqual(theirParkRefs(OHSP, qso([{ type: 'pota', ref: 'US-0001' }])), [])
@@ -69,6 +72,13 @@ test('an exchange the operator DECIDED is honoured, blank or wrong', () => {
   const untouched = qso([{ type: 'pota', ref: 'US-1958' }])
   assert.equal(theirParkWasDecided(untouched), false)
   assert.deepEqual(theirParkRefs(OHSP, untouched), ['US-1958'])
+})
+
+test('an event with NO exchange counts every park of theirs — there is no list to be a subset of', () => {
+  // Texas has no abbreviation to type, so a genuine park-to-park pair is a
+  // contact for each park.
+  const twofer = qso([{ type: 'pota', ref: 'US-2984' }, { type: 'pota', ref: 'US-2985' }])
+  assert.deepEqual(theirParkRefs(TXSP, twofer), ['US-2984', 'US-2985'])
 })
 
 test('an event with no exchange reads its parks from the references alone', () => {

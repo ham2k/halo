@@ -55,6 +55,11 @@ void main() {
     expect(isAcceptableExchangeMatch('CR', crane), isTrue);
     expect(isAcceptableExchangeMatch('CR', alum), isFalse);
 
+    // A CODE substring is refused too, not just a name substring: loosening the
+    // rule by one tier would put this back, and it is the same failure — the
+    // operator's text is not the start of what they would get.
+    expect(isAcceptableExchangeMatch('ALU', const ExchangeOption(code: 'XALU', name: 'Xenia')), isFalse);
+
     // An exact code, a code prefix and a name prefix are all safe to swap in.
     expect(isAcceptableExchangeMatch('ALU', alum), isTrue);
     expect(isAcceptableExchangeMatch('AL', alum), isTrue);

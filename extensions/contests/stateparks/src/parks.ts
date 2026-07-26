@@ -109,23 +109,37 @@ export function theirParkAbbreviation(event: StateParkEvent, qso: Container): st
 
 /// The parks in [event] the station we worked is in, as POTA references.
 ///
-/// One QSO can be several parks: a park-to-park pair counts each. The typed
-/// abbreviation names at most one, so a multi-park hunt comes from the POTA
-/// references — but a typed abbreviation still wins over them, since the
-/// operator is telling us what was sent.
+/// AN EVENT WITH AN EXCHANGE CLAIMS AT MOST ONE PARK PER QSO, and that is a fact
+/// about the events rather than a limitation here: the exchange is one park
+/// abbreviation, and the sponsor's park list is a subset of POTA that contains no
+/// multi-reference location — so no station can be at two of Ohio's parks at
+/// once. A QSO may perfectly well be a POTA two-fer AND a single OHSP contact;
+/// the two programs' exchanges are independent, and a second POTA reference never
+/// becomes a second state-park claim.
+///
+/// The events with NO exchange (Texas, Florida, Georgia) have no such list to be
+/// a subset of, so there every park of theirs in the event counts — a park-to-park
+/// pair is a contact for each.
+///
+/// Either way a POTA reference only INFORMS this: it is where the abbreviation
+/// comes from when the operator hasn't keyed one.
 export function theirParkRefs(event: StateParkEvent, qso: Container): string[] {
-  // An exchange the operator DECIDED settles it, and settles it alone: what they
-  // keyed is what was sent, so a reference that disagrees gets no second claim,
-  // and a decided-but-unrecognized value claims nothing rather than falling
-  // through to a park they just told us they weren't in.
-  if (event.usesParkAbbreviations && theirParkWasDecided(qso)) {
+  const hunted = refsOfType(qso, POTA_HUNTING)
+    .map((r) => str(r.ref).toUpperCase())
+    .filter((r) => event.parkByRef[r])
+
+  if (!event.usesParkAbbreviations) return hunted
+
+  // An exchange the operator DECIDED settles it: what they keyed is what was
+  // sent, so a reference that disagrees gets no claim of its own, and a
+  // decided-but-unrecognized value claims nothing rather than falling through to
+  // a park they just told us they weren't in.
+  if (theirParkWasDecided(qso)) {
     const typed = event.parkByAbbreviation[theirParkAbbreviation(event, qso)]?.ref
     return typed ? [typed] : []
   }
 
-  // Nothing typed: every park of theirs counts, because a park-to-park pair is a
-  // contact for each — which one abbreviation could never say.
-  return refsOfType(qso, POTA_HUNTING)
-    .map((r) => str(r.ref).toUpperCase())
-    .filter((r) => event.parkByRef[r])
+  // Nothing keyed: the abbreviation would have come from the first of their
+  // references, so that is the one park claimed — never two.
+  return hunted.slice(0, 1)
 }

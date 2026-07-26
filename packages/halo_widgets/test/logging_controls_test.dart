@@ -2057,18 +2057,21 @@ void main() {
       await tester.pump();
       await tester.tap(find.widgetWithText(TextField, 'County'));
       await tester.pump();
-      await tester.enterText(find.widgetWithText(TextField, 'County'), 'CUY');
+      // A PREFIX, not the whole code: an exact match would make `_acceptOptionSuggestion`
+      // bail on `typed == chosen.code` and this test would pass even if Enter
+      // stopped checking whether anything was pending at all.
+      await tester.enterText(find.widgetWithText(TextField, 'County'), 'CU');
       await tester.pump();
 
-      // The menu is open on an exact match, but nothing is pending — the operator
-      // typed the whole code themselves, and Enter has to mean send.
+      // The menu is open and CUY is the top hit, but nothing is PENDING — the
+      // operator hasn't chosen anything, so Enter has to mean send.
       expect(find.byKey(exchangeSuggestionsKey), findsOneWidget);
       await tester.sendKeyEvent(LogicalKeyboardKey.enter);
 
       final logged = await waitForQsos(tester, 1);
       expect(logged.single.refs, [
-        {'type': 'qp', 'county': 'CUY'},
-      ]);
+        {'type': 'qp', 'county': 'CU'},
+      ], reason: 'logged as typed — Enter did not quietly complete it first');
     });
 
     testWidgets('the arrow keys walk the highlight, and Space takes what is highlighted', (tester) async {
@@ -2120,6 +2123,42 @@ void main() {
       await tester.pump();
       expect(find.byKey(exchangeSuggestionsKey), findsNothing);
       expect(callField(), before, reason: 'and neither must an unrecognized one');
+    });
+
+    testWidgets('an arrow that cannot move the highlight is not a choice', (tester) async {
+      // The menu is drawn best-at-the-bottom, so ↓ from an untouched selection has
+      // nowhere to go — and neither arrow moves anything on a one-row menu. Those
+      // keystrokes used to arm "the operator chose this" anyway, which took the
+      // prefix guard off the NEXT Space: `SH` matches Ashland and Washington by
+      // name substring only, and Space turned the field into `ASD`, a county
+      // nobody worked.
+      await tester.pumpWidget(host());
+      await tester.tap(find.widgetWithText(TextField, 'County'));
+      await tester.pump();
+      await tester.enterText(find.widgetWithText(TextField, 'County'), 'SH');
+      await tester.pump();
+      String text() => tester.widget<TextField>(find.widgetWithText(TextField, 'County')).controller?.text ?? '';
+
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown); // already at the bottom
+      await tester.pump();
+      await tester.sendKeyEvent(LogicalKeyboardKey.space);
+      await tester.pumpAndSettle();
+      expect(text(), 'SH', reason: 'nothing moved, so nothing was chosen, so the guard still applies');
+
+      // Enter is the other reader of the same flag: with nothing chosen it has to
+      // mean "log", not "pick".
+      await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'W1AW');
+      await tester.pump();
+      await tester.tap(find.widgetWithText(TextField, 'County'));
+      await tester.pump();
+      await tester.enterText(find.widgetWithText(TextField, 'County'), 'SH');
+      await tester.pump();
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
+      await tester.pump();
+      await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+      final logged = await waitForQsos(tester, 1);
+      expect(logged, hasLength(1), reason: 'that Enter had no pending choice to take, so it sent the contact');
+      expect(text(), '', reason: 'and the field was not rewritten under the operator');
     });
 
     testWidgets('editing a QSO restores the exchange, and focus alone paints the offer', (tester) async {

@@ -149,6 +149,12 @@ void main() {
         ['IN1CONTEST'],
         reason: 'the contest ended at the break, so the later QSO is not its to claim',
       );
+
+      // And it is handed the option's OWN type's refs, deduped — not every ref
+      // every segment carried. Without the narrowing this reads ['cqww', 'pota'],
+      // and `adifFields` would stamp the park onto the contest's own records.
+      final given = ((host.calls.single['args'] as Map)['operation'] as Map)['refs'] as List;
+      expect([for (final ref in given) (ref as Map)['type']], ['cqww']);
     });
 
     test('an export with no refType still gets the whole log', () async {

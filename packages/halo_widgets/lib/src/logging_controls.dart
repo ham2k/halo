@@ -885,9 +885,17 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   void _moveOptionSelection(int delta) {
     final suggestions = _optionSuggestions;
     if (suggestions.isEmpty) return;
-    setState(() {
-      _optionSelection = (_selectedOptionIndex(suggestions.length) + delta).clamp(0, suggestions.length - 1);
-    });
+    final current = _selectedOptionIndex(suggestions.length);
+    final next = (current + delta).clamp(0, suggestions.length - 1);
+    // An arrow that CANNOT move the highlight is not a choice. The menu is drawn
+    // best-at-the-bottom, so ↓ from an untouched selection is already at the end
+    // of the list (as is either arrow on a one-row menu): nothing moves on
+    // screen. Arming "the operator chose this" on a keystroke with no visible
+    // effect let the next Space rewrite what they typed with a match the prefix
+    // rule exists to refuse — type `SH`, press ↓, press Space, and the field
+    // became `ASD`, a county nobody worked.
+    if (next == current && _optionSelection == null) return;
+    setState(() => _optionSelection = next);
   }
 
   /// Enter, which means two different things depending on whether the operator
@@ -5023,6 +5031,12 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   /// over the info area above rather than pushing the fields down under the
   /// cursor. It is inside the panel's own subtree — not an `Overlay` — so it
   /// rebuilds with the panel and needs no entry to insert, update or dispose.
+  ///
+  /// COVERING the info area while it is open — the DUPE warning and the rest of
+  /// the scoring notices with it — is a SETTLED decision rather than an oversight
+  /// (Sebastian, 2026-07-26): it is the price of not pushing the fields down under
+  /// the operator's hands mid-exchange, and polo made the opposite trade. Two
+  /// separate reviews have raised it as a defect; it isn't one.
   Widget? _buildOptionSuggestionMenu(ThemeData theme) {
     final control = _focusedOptionsControl;
     if (control == null) return null;
