@@ -55,6 +55,17 @@ dependencies:
   # Desktop binary self-update (Sparkle/WinSparkle), see auto_update_service.dart
   # (§3.2). Confirm/pin the exact version on the first `flutter pub get`.
   auto_updater: ^1.0.0
+  # Must be declared HERE, not only in app_dist/pubspec.yaml, even though only
+  # the dist entry point imports it. The dist build runs `flutter pub get` in
+  # app/ and then compiles --target=../app_dist/lib/main_dist.dart against
+  # APP's package config; nothing ever runs pub get in app_dist/, so a
+  # dependency declared only there is inert and the import cannot resolve:
+  #
+  #   Couldn't resolve the package 'sentry_flutter' in
+  #   'package:sentry_flutter/sentry_flutter.dart'
+  #
+  # That broke every platform in 26.8.1-alpha1+98 (#385 moved it out of here).
+  sentry_flutter: ^9.0.0
 
 dev_dependencies:
   flutter_test:
