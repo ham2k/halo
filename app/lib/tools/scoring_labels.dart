@@ -27,6 +27,10 @@ String scoreNoticeLabel(BuildContext context, String key) {
     'newMult' => t.noticeNewMult,
     'newZone' => t.noticeNewZone,
     'workedBefore' => t.noticeWorkedBefore,
+    // A park new to the log (M5's state-park events), and a station the event
+    // pays a bonus for working.
+    'newPark' => t.noticeNewPark,
+    'bonusStation' => t.noticeBonusStation,
     // Alerts: the QSO doesn't count toward this contest.
     'invalidMode' => t.noticeInvalidMode,
     'invalidBand' => t.noticeInvalidBand,
@@ -36,6 +40,10 @@ String scoreNoticeLabel(BuildContext context, String key) {
     // being lost silently unless the operator is told (M4).
     'missingExchange' => t.noticeMissingExchange,
     'invalidExchange' => t.noticeInvalidExchange,
+    // The operation names an event this build doesn't know — a log from a newer
+    // app, or next year's event added elsewhere first. Nothing scores, and the
+    // operator has to be told why rather than reading a silent zero.
+    'unknownEvent' => t.noticeUnknownEvent,
     _ => key,
   };
 }

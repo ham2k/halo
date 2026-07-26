@@ -44,6 +44,7 @@ import 'keyboard_dismiss.dart';
 import 'logging_controls_controller.dart';
 import 'mdi_icons.dart';
 import 'number_keys.dart';
+import 'option_matching.dart';
 import 'platform_chrome.dart';
 import 'resizable_split_view.dart' show PaneSafeArea;
 import 'semantic_id.dart';
@@ -187,6 +188,11 @@ class _ControlDescriptor {
 /// [SecondaryControlRow] so its expanded control panel can bleed past it
 /// and reach the view's true edges.
 const _secondaryPanelHorizontalInset = 12.0;
+
+/// The floating pills a `kind: 'options'` exchange field offers. Named because a
+/// focused TextField carries a `CompositedTransformFollower` of its own for
+/// selection handles, so "the follower" is ambiguous without it.
+const exchangeSuggestionsKey = ValueKey('exchange.suggestions');
 
 class LoggingControls extends StatefulWidget {
   final Operation operation;
@@ -789,9 +795,175 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     return _effectiveActivityControls.where((c) {
       final input = c['input'] as Map?;
       final kind = input?['kind'];
-      if (kind != 'text' && kind != 'serial') return false;
+      // `options` rides the same pipeline as `text`: it is a typed exchange
+      // field that happens to search a known set, so save, restore, focus
+      // cycling, the suggestion rule and the explicit-blank rule all come free
+      // by joining here rather than by reimplementing any of them.
+      if (kind != 'text' && kind != 'serial' && kind != 'options') return false;
       return active.contains(input?['refType']);
     });
+  }
+
+  /// The exchange options a `kind: 'options'` control declares, parsed once per
+  /// build from the descriptor. Malformed entries are dropped rather than
+  /// crashing the entry row — options cross the bridge from third-party code.
+  List<ExchangeOption> _optionsFor(Map control) => [
+        for (final raw in ((control['input'] as Map?)?['options'] as List?) ?? const [])
+          if (raw is Map)
+            if (ExchangeOption.fromMap(raw.cast<String, dynamic>()) case final option?) option,
+      ];
+
+  /// The `kind: 'options'` control that currently has focus, if any.
+  ///
+  /// Read straight from the focus map rather than tracked in state: the
+  /// suggestion line and the SPACE handler then compute from the same inputs at
+  /// the same moment, so neither can act on a stale copy of the other's idea of
+  /// what the operator is looking at. `_controlTextFocus[key]` is read without
+  /// creating a node, so this never conjures one for a field that hasn't built.
+  Map<String, dynamic>? get _focusedOptionsControl {
+    for (final control in _textControls) {
+      if ((control['input'] as Map?)?['kind'] != 'options') continue;
+      if (_controlTextFocus[control['key']]?.hasFocus == true) return control;
+    }
+    return null;
+  }
+
+  /// Suggestions for the focused options field, best first — empty when no
+  /// options field has focus, the set is empty, or it declares a
+  /// `minCharsForSuggestions` the operator hasn't reached.
+  ///
+  /// Cheap by construction: the set is inline in the descriptor (§5.3's
+  /// `optionSet` was deferred for want of a consumer big enough to need it), so
+  /// this is a list scan and not a query.
+  /// Set by Escape and cleared by the next keystroke, a focus change or an
+  /// accept: "I've seen the offer, get it out of the way".
+  ///
+  /// Not a per-value memory on purpose. The operator dismissed THIS offer, and
+  /// typing another character is a new question — anything longer-lived would
+  /// have them wondering why the menu stopped coming back.
+  bool _optionsMenuDismissed = false;
+
+  List<ExchangeOption> get _optionSuggestions {
+    if (_optionsMenuDismissed) return const [];
+    final control = _focusedOptionsControl;
+    if (control == null) return const [];
+    final input = control['input'] as Map;
+    final options = _optionsFor(control);
+    if (options.isEmpty) return const [];
+
+    final typed = _controlTextValues[control['key']] ?? '';
+    final minChars = input['minCharsForSuggestions'];
+    if (minChars is int && typed.trim().length < minChars) return const [];
+
+    final matchOn = {
+      for (final m in (input['matchOn'] as List?) ?? const ['code', 'name'])
+        if (m is String) m,
+    };
+    return matchExchangeOptions(
+      typed,
+      options,
+      matchOn: matchOn.isEmpty ? const {'code', 'name'} : matchOn,
+      preferred: [
+        for (final c in (input['preferredCodes'] as List?) ?? const [])
+          if (c is String) c,
+      ],
+    );
+  }
+
+  /// Which suggestion the operator has walked to with the arrow keys, or null
+  /// while they haven't touched the selection.
+  ///
+  /// Null is not the same as 0. An untouched selection means Space is still just
+  /// "next field" and the accept is a GUESS on the app's part, so it is held to
+  /// the prefix rule below; once the operator has moved the highlight, or tapped
+  /// a row, they have chosen, and what they chose is taken as-is.
+  int? _optionSelection;
+
+  /// Index into [_optionSuggestions] of the highlighted row.
+  int _selectedOptionIndex(int length) => length == 0 ? 0 : (_optionSelection ?? 0).clamp(0, length - 1);
+
+  void _moveOptionSelection(int delta) {
+    final suggestions = _optionSuggestions;
+    if (suggestions.isEmpty) return;
+    setState(() {
+      _optionSelection = (_selectedOptionIndex(suggestions.length) + delta).clamp(0, suggestions.length - 1);
+    });
+  }
+
+  /// Enter, which means two different things depending on whether the operator
+  /// has a suggestion picked out.
+  ///
+  /// A highlight they walked to with the arrow keys is a PENDING CHOICE, so Enter
+  /// takes it and stops there: logging a QSO whose exchange they were still
+  /// choosing is the worst available reading of that keystroke, and unlike a
+  /// wrong exchange it cannot be undone by pressing Enter again. With the
+  /// highlight untouched there is no pending choice and Enter is just Enter — it
+  /// logs, exactly as it does from every other field.
+  ///
+  /// The second Enter therefore logs, because accepting clears the highlight,
+  /// which is the sequence the operator's hands were making anyway: pick, send.
+  void _handleEnter() {
+    if (_optionSelection != null && _acceptOptionSuggestion(explicit: true)) {
+      setState(() {});
+      return;
+    }
+    _log();
+  }
+
+  /// Writes a suggestion into the focused options field, as though it had been
+  /// typed. Returns false when there was nothing to accept.
+  ///
+  /// [index] names the row (a tap); otherwise the highlighted one. [explicit]
+  /// marks a choice the operator made — a tap, or Space after arrowing — which
+  /// skips the prefix guard that keeps a plain Space from swapping in a
+  /// substring match.
+  ///
+  /// Two traps this has to cover. A controller write does NOT fire `onChanged`,
+  /// so `_controlTextValues` and the touched set are updated by hand — the same
+  /// trap the numbers row documents. And on mobile the space arrives through
+  /// `_VirtualSpaceFormatter`, which rejects the edit and schedules this in a
+  /// microtask, so it must be safe to run when the field already holds the
+  /// value: accepting the same code twice is a no-op rather than a second
+  /// write.
+  bool _acceptOptionSuggestion({int? index, bool explicit = false}) {
+    final control = _focusedOptionsControl;
+    if (control == null) return false;
+    final suggestions = _optionSuggestions;
+    if (suggestions.isEmpty) return false;
+
+    final key = control['key'] as String;
+    final typed = _controlTextValues[key] ?? '';
+    final chosen = suggestions[(index ?? _selectedOptionIndex(suggestions.length)).clamp(0, suggestions.length - 1)];
+
+    if (!explicit) {
+      // Nothing typed, nothing to accept. An empty field's suggestion list is the
+      // whole SET (`matchExchangeOptions` answers an empty query with everything
+      // in declaration order), so without this, Space in an empty exchange field
+      // — which is just how an operator skips past one they haven't been given
+      // yet — logged whichever park happened to be declared first.
+      if (typed.trim().isEmpty) return false;
+      // And only a suggestion the typed text is the START of: accepting a
+      // substring hit replaces what they typed with something it isn't a prefix
+      // of. See `isAcceptableExchangeMatch`.
+      final input = control['input'] as Map;
+      final matchOn = {
+        for (final m in (input['matchOn'] as List?) ?? const ['code', 'name'])
+          if (m is String) m,
+      };
+      if (!isAcceptableExchangeMatch(typed, chosen, matchOn: matchOn.isEmpty ? const {'code', 'name'} : matchOn)) {
+        return false;
+      }
+    }
+
+    if (typed == chosen.code) return false;
+
+    _controlTextValues[key] = chosen.code;
+    _textControllerFor(key).text = chosen.code;
+    _touchedTextControls.add(key);
+    // The menu closes on the accepted value, so the highlight it belonged to
+    // goes with it.
+    _optionSelection = null;
+    return true;
   }
 
   /// The serial number each `kind: 'serial'` control will send, as last peeked
@@ -903,7 +1075,59 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   /// exchange fields the same way they cycle Call → Sent → Rcvd.
   final Map<String, FocusNode> _controlTextFocus = {};
 
-  FocusNode _textFocusFor(String key) => _controlTextFocus[key] ??= FocusNode(debugLabel: 'exchange:$key');
+  /// One per exchange field, so the `options` suggestion pills can be anchored
+  /// to the field they belong to rather than to the panel. Keyed the same way as
+  /// the controllers and focus nodes, and just as long-lived.
+  final Map<String, LayerLink> _controlTextLinks = {};
+
+  LayerLink _textLinkFor(String key) => _controlTextLinks[key] ??= LayerLink();
+
+  /// A node per exchange field, created on first build, listened to, and given a
+  /// key handler for Tab.
+  ///
+  /// The listener is what makes the `options` suggestion menu appear: the menu is
+  /// derived from which field has focus, and focus alone rebuilds nothing. On a
+  /// new QSO the panel is repainting anyway (the callsign is being typed), which
+  /// is why this looked like it worked — but on an existing QSO opened for
+  /// editing, tabbing into a searchable exchange showed no offer at all while
+  /// Space would still have rewritten the field.
+  FocusNode _textFocusFor(String key) => _controlTextFocus[key] ??= (FocusNode(
+        debugLabel: 'exchange:$key',
+        onKeyEvent: _onExchangeKeyEvent,
+      )..addListener(() {
+        // A dismissal and a highlight both belong to the field that had focus
+        // when they were made, so leaving or entering a field clears them.
+        if (mounted) {
+          setState(() {
+            _optionsMenuDismissed = false;
+            _optionSelection = null;
+          });
+        }
+      }));
+
+  /// Tab out of an exchange field takes the offer on the way, exactly as Space
+  /// does — leaving the field forward is the same statement either way, and an
+  /// operator who tabs rather than spaces shouldn't lose the suggestion for it.
+  ///
+  /// Shift+Tab is going BACK, so it takes nothing: it isn't leaving the field
+  /// behind, it is stepping away from a field the operator may be about to
+  /// return to.
+  ///
+  /// On the node itself rather than as a panel-wide shortcut, and always
+  /// `ignored`: binding Tab in `CallbackShortcuts` would take it away from
+  /// Flutter's traversal for the whole panel, which would then have to be
+  /// reimplemented here. This only ADDS the accept and lets the traversal that
+  /// follows be the ordinary one.
+  KeyEventResult _onExchangeKeyEvent(FocusNode node, KeyEvent event) {
+    if (event is KeyDownEvent &&
+        event.logicalKey == LogicalKeyboardKey.tab &&
+        !HardwareKeyboard.instance.isShiftPressed) {
+      // Same reading of the highlight as Space: an untouched one is still the
+      // app guessing, and stays held to the prefix rule.
+      if (_acceptOptionSuggestion(explicit: _optionSelection != null)) setState(() {});
+    }
+    return KeyEventResult.ignored;
+  }
 
   void _clearTextControls() {
     _controlTextValues.clear();
@@ -1426,7 +1650,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
         // unrestored and `break` before any sibling field of the same ref
         // (cqwpx declares `ourSerial` before `theirSerial`), silently clearing
         // that sibling on the next save.
-        if (input?['kind'] == 'text' || input?['kind'] == 'serial') {
+        if (input?['kind'] == 'text' || input?['kind'] == 'serial' || input?['kind'] == 'options') {
           final field = input?['field'] as String?;
           // Serials are stored as ints (see `_withAllocatedSerial`), exchanges
           // as strings — read either.
@@ -1781,6 +2005,14 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   /// against this panel's tertiaryContainer background.
   TextStyle _primaryFieldStyle(BuildContext context, {required FontWeight fontWeight}) =>
       haloMonoStyle(context, fontSize: 15, fontWeight: fontWeight);
+
+  /// The underline an exchange field wears while its value isn't one this
+  /// contest recognizes. Same weights as the normal borders (1 idle, 2 focused,
+  /// matching Material's own focused default), so the tint costs no layout.
+  UnderlineInputBorder _invalidUnderline(BuildContext context, {required double width}) =>
+      UnderlineInputBorder(
+        borderSide: BorderSide(color: Theme.of(context).colorScheme.error, width: width),
+      );
 
   InputDecoration _primaryFieldDecoration(BuildContext context, String label, {String? hintText}) =>
       poloFieldDecoration(
@@ -2698,7 +2930,17 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     final numeric = input['numeric'] == true || isSerial;
 
     final regex = compileRefPattern(input['pattern'] as String?);
-    final isInvalid = value.isNotEmpty && regex != null && !regex.hasMatch(value);
+    var isInvalid = value.isNotEmpty && regex != null && !regex.hasMatch(value);
+
+    // An `options` field validates against its SET as well as any pattern: a
+    // county that isn't in the party's list is a lost multiplier, and the
+    // operator can still fix it while the QSO is in front of them. A contest
+    // whose exchange is genuinely open-ended says `allowFreeform: true`.
+    final isOptions = input['kind'] == 'options';
+    final options = isOptions ? _optionsFor(control) : const <ExchangeOption>[];
+    if (isOptions && value.isNotEmpty && input['allowFreeform'] != true && options.isNotEmpty) {
+      isInvalid = isInvalid || !isKnownExchangeOption(value, options);
+    }
     final uppercase = !isSerial && input['uppercase'] != false;
     final transforms = [
       for (final t in (input['transforms'] as List?) ?? const [])
@@ -2709,7 +2951,13 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
       // Wider than an RST, narrower than the callsign: an exchange is usually
       // a zone, a serial or a state abbreviation.
       width: 76,
-      child: TextField(
+      // Linked so the `options` suggestion pills can hang off this field's own
+      // top-right corner — they are right-aligned to the field, wherever the
+      // row happens to put it (RSTs on or off, a state field, several
+      // exchanges).
+      child: CompositedTransformTarget(
+        link: _textLinkFor(key),
+        child: TextField(
         controller: _textControllerFor(key),
         focusNode: _textFocusFor(key),
         selectAllOnFocus: false,
@@ -2731,10 +2979,17 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
           if (transforms.isNotEmpty) RefTransformFormatter(transforms),
           if (input['maxLength'] is int) LengthLimitingTextInputFormatter(input['maxLength'] as int),
         ],
+        // An unrecognized value tints the field's own underline rather than
+        // going through `errorText`. A decorator with an error — even an empty
+        // one styled to zero height — still reserves its error slot, which made
+        // the field 5px taller and, through the row's IntrinsicHeight, moved
+        // every primary control and the submit button DOWN as the operator
+        // typed. A contest exchange is invalid for most of the keystrokes it
+        // takes to type it, so that was a jump per QSO.
         decoration: _primaryFieldDecoration(context, label).copyWith(
           hintText: input['placeholder'] as String?,
-          errorText: isInvalid ? '' : null,
-          errorStyle: const TextStyle(height: 0, fontSize: 0),
+          enabledBorder: isInvalid ? _invalidUnderline(context, width: 1) : null,
+          focusedBorder: isInvalid ? _invalidUnderline(context, width: 2) : null,
         ),
         onChanged: (text) {
           setState(() {
@@ -2742,9 +2997,16 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
             // Once typed, a later lookup-derived suggestion must not overwrite
             // it (docs/design/contests.md §5.3).
             _touchedTextControls.add(key);
+            // A new character is a new question: the offer comes back even if
+            // the last one was dismissed, and the highlight starts over at the
+            // best match rather than pointing at a row that may no longer be
+            // in the list.
+            _optionsMenuDismissed = false;
+            _optionSelection = null;
           });
         },
-        onSubmitted: (_) => _log(),
+        onSubmitted: (_) => _handleEnter(),
+      ),
       ),
     );
   }
@@ -2815,6 +3077,15 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     } else if (_freqFocus.hasFocus) {
       _callFocus.requestFocus();
     } else if (_primaryFocusOrder.any((node) => node.hasFocus)) {
+      // An options field accepts the highlighted suggestion first, then advances
+      // like everything else. The advance is unconditional either way: it is what
+      // an operator's hands expect, and losing it to a field that happens to be
+      // searchable would be worse than never suggesting at all.
+      //
+      // Having walked the highlight with the arrow keys IS a choice, so Space
+      // then takes that row as-is; an untouched highlight is still the app
+      // guessing, and stays held to the prefix rule.
+      if (_acceptOptionSuggestion(explicit: _optionSelection != null)) setState(() {});
       // Every primary field advances on Space, contest exchanges included —
       // asked against the same list the advance walks, so a newly added kind of
       // primary field can never end up in one and not the other. (Call and Freq
@@ -3662,6 +3933,18 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   /// finally wiping (a no-op on an already-empty form).
   void _handleEscape() {
     if (_fieldsLocked) return;
+    // An open exchange menu takes the first Escape, and takes it whether or not
+    // the operator has touched the highlight: with a menu up, Escape means "not
+    // that" — and everything else Escape does here throws away work (a wipe, a
+    // discarded edit, a deselected QSO). Losing a half-typed contact to a
+    // keystroke aimed at a dropdown is not a recoverable mistake.
+    if (_optionSuggestions.isNotEmpty) {
+      setState(() {
+        _optionsMenuDismissed = true;
+        _optionSelection = null;
+      });
+      return;
+    }
     if (widget.editingQso != null) {
       (widget.onEscapeDeselect ?? widget.onEditCanceled)?.call();
     } else if (_hasComposedValues) {
@@ -4193,9 +4476,22 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     final panel = CallbackShortcuts(
       bindings: {
         const SingleActivator(LogicalKeyboardKey.escape): _handleEscape,
-        const SingleActivator(LogicalKeyboardKey.enter): _log,
-        const SingleActivator(LogicalKeyboardKey.numpadEnter): _log,
+        // Enter picks a highlighted suggestion instead of logging — see
+        // `_handleEnter`. Bound here AND on the exchange field's own
+        // `onSubmitted`, because a single-line TextField consumes Enter itself
+        // and never lets it reach an ancestor Shortcuts.
+        const SingleActivator(LogicalKeyboardKey.enter): _handleEnter,
+        const SingleActivator(LogicalKeyboardKey.numpadEnter): _handleEnter,
         const SingleActivator(LogicalKeyboardKey.space): _handleSpace,
+        // Only while an exchange menu is actually open. Bound unconditionally,
+        // these would swallow the arrow keys everywhere else in the panel —
+        // including a text field's own caret movement.
+        if (_optionSuggestions.isNotEmpty) ...{
+          // The menu is drawn best-at-the-bottom, so Up walks up the screen,
+          // away from the field, which is +1 in rank order.
+          const SingleActivator(LogicalKeyboardKey.arrowUp): () => _moveOptionSelection(1),
+          const SingleActivator(LogicalKeyboardKey.arrowDown): () => _moveOptionSelection(-1),
+        },
       },
       child: FocusTraversalGroup(
         child: Material(
@@ -4343,6 +4639,15 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
                         ],
                       ),
                       const SizedBox(height: 8),
+                      // A Stack so the `options` suggestion pills can float over
+                      // the info area above instead of pushing the fields down
+                      // under the operator's cursor. Clip.none: the pills are
+                      // deliberately painted outside this box, and the row itself
+                      // is what gives the Stack its size (the pills are
+                      // positioned, so they never enlarge it).
+                      Stack(
+                        clipBehavior: Clip.none,
+                        children: [
                       // IntrinsicHeight + stretch, rather than a guessed
                       // pixel height, so the submit button (an AspectRatio
                       // circle) is guaranteed to exactly match whatever
@@ -4515,6 +4820,9 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
                         ],
                         ),
                       ),
+                          if (_buildOptionSuggestionMenu(accentTheme) case final menu?) menu,
+                        ],
+                      ),
                     ],
                   ),
                 ),
@@ -4662,6 +4970,12 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   /// The info area has three states (issue #40): a command message (markdown)
   /// takes priority; otherwise, once a callsign of ≥3 letters/digits is in the
   /// field, the call-info panel; otherwise the operation-statistics default.
+  ///
+  /// The `options` exchange suggestions are NOT here. They started out as a line
+  /// in this area, which cost the call-info panel — the DUPE warning with it —
+  /// its space for as long as an exchange field had focus. They are a menu
+  /// floating over the fields instead (`_buildOptionSuggestionMenu`), so this
+  /// area keeps saying what it always said.
   Widget _buildInfoArea(ThemeData theme) {
     final message = _commandMessage;
     if (message != null) {
@@ -4679,6 +4993,151 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
 
     if (_callInfoActive) return _buildCallInfo(theme);
     return _buildOperationStats(theme);
+  }
+
+  /// The searchable-exchange suggestions, as a menu floating over the fields.
+  ///
+  /// Anchored so the CODE column lines up with the exchange field's left edge —
+  /// the codes are the column the operator is comparing against what they typed,
+  /// so they sit directly above the field the value lands in, and the names hang
+  /// off to the left where there is room for them. Hung off the field itself
+  /// through a [LayerLink], so that holds wherever the row puts the field: RSTs
+  /// on or off, a state field, two exchanges side by side.
+  ///
+  /// Ordered BOTTOM-UP: the best match is the row nearest the field, and it is
+  /// the row Space takes. Rows are tappable and the arrow keys walk the highlight
+  /// (see [_moveOptionSelection]); all three go through
+  /// [_acceptOptionSuggestion], so a tap, an arrow-then-Space and a plain Space
+  /// are one path.
+  ///
+  /// Both columns are sized from the widest value measured in BOLD, so the menu
+  /// keeps its shape as the highlight moves — a menu that resized under the
+  /// arrow keys would be the same jump the fields themselves used to have.
+  ///
+  /// Colours are the dialog scheme, not the panel's: this is a surface floating
+  /// over the panel rather than part of it, so it reads like every other thing
+  /// the app puts on top — `surface` for the rows, the dialog band tone for the
+  /// value column, and a plain onSurface wash for the highlighted row.
+  ///
+  /// Floating, not laid out, so nothing moves as the operator types: it paints
+  /// over the info area above rather than pushing the fields down under the
+  /// cursor. It is inside the panel's own subtree — not an `Overlay` — so it
+  /// rebuilds with the panel and needs no entry to insert, update or dispose.
+  Widget? _buildOptionSuggestionMenu(ThemeData theme) {
+    final control = _focusedOptionsControl;
+    if (control == null) return null;
+    final suggestions = _optionSuggestions;
+    if (suggestions.isEmpty) return null;
+
+    final colors = theme.colorScheme;
+    final selected = _selectedOptionIndex(suggestions.length);
+
+    // Monospace for the codes: they are log data, read as a column and compared
+    // character by character against what is in the field — the same reason the
+    // QSO list and the spots panel set callsigns in it.
+    // Weights are explicit on both variants: the regular one has to SAY it is
+    // regular, or a row inherits whatever weight the ambient text theme brought
+    // and the highlight stops being the only difference between rows.
+    final codeStyle = haloMonoStyle(context, color: colors.onSurface, fontWeight: FontWeight.w400);
+    final boldCode = codeStyle.copyWith(fontWeight: FontWeight.w700);
+    final nameStyle = (theme.textTheme.bodyMedium ?? const TextStyle())
+        .copyWith(color: colors.onSurface, fontWeight: FontWeight.w400);
+    final boldName = nameStyle.copyWith(fontWeight: FontWeight.w700);
+
+    // Measured in BOLD even for the rows that aren't: the highlight moves with
+    // the arrow keys, and a column sized to the regular weight would have to
+    // grow the moment its row became the selected one.
+    var codeText = 0.0;
+    var nameText = 0.0;
+    for (final option in suggestions) {
+      codeText = math.max(codeText, textWidth(context, option.code, boldCode));
+      nameText = math.max(nameText, textWidth(context, option.name ?? option.code, boldName));
+    }
+    const namePadding = 10.0;
+    const codePadding = 8.0;
+    // A long name is ellipsized rather than allowed to push the menu off the
+    // side of a narrow window; the code column, which is the point, is never cut.
+    final nameWidth = math.min(nameText, 220.0) + namePadding * 2;
+    final codeWidth = codeText + codePadding * 2;
+
+    Widget row(int index, ExchangeOption option) {
+      final isSelected = index == selected;
+      return InkWell(
+        // The field keeps focus: this is a value picker, not somewhere to land.
+        // Without this, tapping a row moves focus out of the exchange field and
+        // the menu it belongs to closes under the operator's finger.
+        canRequestFocus: false,
+        onTap: () => setState(() => _acceptOptionSuggestion(index: index, explicit: true)),
+        child: DecoratedBox(
+          // In FRONT, so the wash covers the value column too and the whole row
+          // reads as one selected thing.
+          position: DecorationPosition.foreground,
+          decoration: BoxDecoration(
+            color: isSelected ? colors.onSurface.withValues(alpha: 0.10) : Colors.transparent,
+          ),
+          child: Row(
+            children: [
+              SizedBox(
+                width: nameWidth,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: namePadding, vertical: 5),
+                  child: Text(
+                    option.name ?? option.code,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: isSelected ? boldName : nameStyle,
+                  ),
+                ),
+              ),
+              Container(
+                width: codeWidth,
+                color: haloDialogBandColor(context),
+                padding: const EdgeInsets.symmetric(vertical: 5),
+                alignment: Alignment.center,
+                child: Text(
+                  option.code,
+                  maxLines: 1,
+                  style: isSelected ? boldCode : codeStyle,
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    return Positioned(
+      left: 0,
+      top: 0,
+      child: CompositedTransformFollower(
+        // A focused TextField has a follower of its own (selection handles), so
+        // this one is named — for tests, and for the same agent/browser tooling
+        // `semanticId` serves elsewhere in this panel.
+        key: exchangeSuggestionsKey,
+        link: _textLinkFor(control['key'] as String),
+        // The menu's bottom-LEFT corner against the field's top-left, then shifted
+        // left by exactly the name column: that puts the code column's left edge
+        // on the field's own left edge.
+        targetAnchor: Alignment.topLeft,
+        followerAnchor: Alignment.bottomLeft,
+        offset: Offset(-nameWidth, -6),
+        child: Material(
+          // A menu, so it casts a shadow over what it covers rather than looking
+          // like part of the panel underneath.
+          elevation: 8,
+          color: colors.surface,
+          borderRadius: BorderRadius.circular(8),
+          clipBehavior: Clip.antiAlias,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Reversed: worst at the top, best at the bottom against the field.
+              for (final entry in suggestions.indexed.toList().reversed) row(entry.$1, entry.$2),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   /// AnimatedSwitcher key for the info area — changes when the DISPLAYED

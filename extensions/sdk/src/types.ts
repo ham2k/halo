@@ -259,6 +259,7 @@ export interface LoggingControlDescriptor {
 export type InputDescriptor =
   | RefListInputDescriptor
   | TextInputDescriptor
+  | OptionsInputDescriptor
   | SerialInputDescriptor
   | FormInputDescriptor
 
@@ -355,6 +356,66 @@ export interface TextInputDescriptor {
   /// callsign lookup that resolves late can never clobber operator input.
   /// Use `placeholder` instead for a hint that must never become a value.
   suggestedValue?: string
+}
+
+/// A typed exchange that searches a KNOWN SET — QSO-party counties, park
+/// abbreviations, sections (docs/design/contests.md §5.3).
+///
+/// It is a `text` field in every other respect: same primary-field row, same
+/// focus cycling, same save and edit round-trip, same suggestion and
+/// explicit-blank rules. What it adds is a ranked suggestion line and Space to
+/// accept the top hit — Space still advances afterwards, because that is what
+/// an operator's hands expect on every field.
+///
+/// The set is INLINE. §5.3 sketched a registered `optionSet` for large sets;
+/// that was deferred at M5, because nothing can currently write rows into the
+/// lookups table (the host exposes three READ calls and no writer) and the
+/// largest set any real contest puts in one descriptor is a few hundred
+/// entries — small next to the QSO log the scoring hooks already ship on every
+/// pass.
+export interface OptionsInputDescriptor {
+  kind: 'options'
+  /// Ref type the value is stored on, as `text`.
+  refType: string
+  /// Key within that ref.
+  field: string
+  /// The selectable values. `code` is what goes in the log; `name` is matched
+  /// against as well as shown, because a full name is often easier to recall
+  /// than an abbreviation.
+  options: { code: string; name?: string }[]
+  /// Which fields the search looks at. Defaults to both.
+  matchOn?: ('code' | 'name')[]
+  /// Accept a value that isn't in the set. Off by default: for most of these
+  /// exchanges an unknown value is a lost multiplier, and the operator can
+  /// still fix it while the QSO is in front of them.
+  allowFreeform?: boolean
+  /// Float likely values to the top of their tier — a QSO party surfacing the
+  /// counties of the caller's guessed state. Ranking rather than pre-filling,
+  /// because a location guess is wrong often enough to be annoying, and an
+  /// exact code the operator typed in full is never displaced by it.
+  preferredCodes?: string[]
+  /// Hold the suggestion line back until this many characters are typed.
+  ///
+  /// SPACE never acts on less than one character either way: with no minimum, an
+  /// empty field's suggestion list is the whole set, and Space — which an operator
+  /// presses to leave a field they were never given a value for — would otherwise
+  /// accept whichever option happened to be declared first. Space also only
+  /// accepts a suggestion the typed text is a PREFIX of; a substring hit is shown
+  /// but never swapped in.
+  minCharsForSuggestions?: number
+  placeholder?: string
+  /// As `text` — uppercase is the default.
+  uppercase?: boolean
+  maxLength?: number
+  suggestedValue?: string
+  /// The same three modifiers `text` takes, honoured identically here because the
+  /// core builds both kinds from one code path: an anchored, case-insensitive
+  /// `pattern`, live-reformatting `transforms`, and a numeric keyboard. A
+  /// `pattern` tints in ADDITION to the set check, so a contest whose codes have a
+  /// shape can say so as well as list them.
+  pattern?: string
+  transforms?: { pattern: string; replacement: string; flags?: string }[]
+  numeric?: boolean
 }
 
 export interface RefListInputDescriptor {

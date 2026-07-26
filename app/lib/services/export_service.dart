@@ -182,12 +182,40 @@ class ExportService {
         };
       }
       final scoped = _qsosForOption(option, log.qsos, log.segmented);
+      final args = qsonPayloadFor(operation: operation, qsos: scoped);
+      // Same reason `getExportOptions` patches the refs above: a hook offered an
+      // option off a ref that lives only in a segment has to be able to READ
+      // that ref when it writes the file. Without it the two halves of one
+      // contract see different operations — the option is offered, then
+      // generated against a base operation that no longer carries the activity.
+      // For a contest that produced a file with no content and no name; for
+      // `activityExportHook`, which throws when it can't find the reference its
+      // exportType names, it produces an outright export failure.
+      //
+      // NARROWER than the options call, deliberately. That one has to show every
+      // hook every ref, since it is asking who has anything to offer. Here the
+      // option has already named the type it covers, so only that type's segment
+      // refs are added, on top of the operation's own. Swapping in the whole set
+      // would hand a plain ADIF — no refType at all — every segment's refs, and
+      // `adifFields` would stamp a later segment's park onto every earlier QSO.
+      final optionRefType = option['refType'];
+      if (log.segmented.isSegmented && optionRefType is String && optionRefType.isNotEmpty) {
+        final refs = [...?(args['operation'] as Map<String, dynamic>)['refs'] as List?];
+        final present = {
+          for (final ref in refs)
+            if (ref is Map) '${ref['type']} ${ref['ref']}',
+        };
+        for (final ref in log.segmented.allRefs.where((r) => r['type'] == optionRefType)) {
+          if (present.add('${ref['type']} ${ref['ref']}')) refs.add(ref);
+        }
+        (args['operation'] as Map<String, dynamic>)['refs'] = refs;
+      }
       final result = await host!.invokeHook(
         'export',
         key: option['hookKey'] as String?,
         method: 'generateExport',
         args: {
-          ...qsonPayloadFor(operation: operation, qsos: scoped),
+          ...args,
           'exportType': option['exportType'],
         },
         timeout: const Duration(seconds: 30),

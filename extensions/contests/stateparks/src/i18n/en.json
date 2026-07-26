@@ -1,0 +1,20 @@
+{
+  "activityLabel": "State Parks Event",
+  "setupLabel": "State Parks Setup",
+  "eventLabel": "Event",
+  "ourParkLabel": "Our Park",
+  "theirParkLabel": "Park",
+  "unconfigured": "State Parks (no event chosen)",
+  "adifExport": "Contest ADIF",
+  "cabrilloExport": "Cabrillo",
+  "whenLastWeekend": "last weekend",
+  "whenThisWeekend": "this weekend",
+  "whenInDays": "in {{days}} days",
+  "whenAlreadyHappened": "already happened",
+  "unknownEventOption": "not an event this version knows",
+  "pickAnEvent": "Choose the event you are taking part in.",
+  "checkPota": "**Check your POTA activation too** — these events are scored from the parks you activate and the parks you work.",
+  "period": "**Period:** {{period}}",
+  "status": "**Status:** {{status}}",
+  "lastUpdated": "**Data last updated:** {{lastUpdated}}"
+}

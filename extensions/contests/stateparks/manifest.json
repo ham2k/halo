@@ -1,0 +1,42 @@
+{
+  "key": "stateparks",
+  "name": "State Parks Events (Beta)",
+  "shortName": "State Parks",
+  "version": "0.0.1",
+  "description": "State park on-the-air events — Texas, Florida, Georgia and Ohio — scored alongside your POTA activation",
+  "category": "contest",
+  "enabledByDefault": false,
+  "icon": "flag-checkered",
+  "accentColor": "#00695C",
+  "keywords": [
+    "contest",
+    "stateparks",
+    "park",
+    "pota",
+    "txsp",
+    "flsp",
+    "gasp",
+    "ohsp",
+    "ospota",
+    "cabrillo"
+  ],
+  "hooks": [
+    "activity",
+    "adifFields",
+    "export",
+    "ref:stateparks",
+    "scoring"
+  ],
+  "translations": {
+    "es": {
+      "name": "Eventos de Parques Estatales (Beta)",
+      "description": "Eventos de parques estatales — Texas, Florida, Georgia y Ohio — puntuados junto con tu activación POTA",
+      "keywords": [
+        "concurso",
+        "parques",
+        "parque",
+        "estatal"
+      ]
+    }
+  }
+}

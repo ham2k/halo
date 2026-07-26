@@ -231,8 +231,11 @@
       "noticeInvalidBand": "Wrong Band",
       "noticeInvalidCategory": "Not Workable",
       "noticeWorkedBefore": "Worked Before",
+      "noticeNewPark": "New Park",
+      "noticeBonusStation": "Bonus Station!",
       "noticeMissingExchange": "No Exchange",
-      "noticeInvalidExchange": "Bad Exchange"
+      "noticeInvalidExchange": "Bad Exchange",
+      "noticeUnknownEvent": "Unknown Event"
     }
   },
   "formChrome": {

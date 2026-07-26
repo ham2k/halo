@@ -217,6 +217,42 @@ void main() {
         [for (final ref in asked) (ref as Map)['type']],
         containsAll(<String>['pota', 'cqww']),
       );
+
+      // ...and it must still SEE that ref when it writes the file. Both halves
+      // of one contract, and they were asymmetric: the options call patched the
+      // refs and the generate call didn't, so an extension gating its writer on
+      // its own ref — every shipped contest does — produced an empty file with
+      // an empty filename for a log it had just offered to export. Since
+      // `activityExportHook` THROWS when it can't find the reference its
+      // exportType names, the same gap turns POTA's per-park ADIF into an
+      // outright failure rather than a quiet one.
+      await service.generateExports((await operations.get(created.uuid))!, [
+        {'hookKey': 'cqww', 'exportType': 'cabrillo', 'refType': 'cqww'},
+      ]);
+      final given = ((extensions.host as _CapturingHost).calls.single['args'] as Map)['operation'] as Map;
+      expect(
+        [for (final ref in (given['refs'] as List)) (ref as Map)['type']],
+        containsAll(<String>['pota', 'cqww']),
+      );
+    });
+
+    test('an export that names no refType keeps the operation’s own refs', () async {
+      // The other half of the same rule, and the one that bites an operator who
+      // never enters a contest: the plain ADIF covers the whole operation, so it
+      // must NOT be handed refs from segments the base operation has moved on
+      // from. `adifFields` reads them, so a park activated after a break would
+      // otherwise be stamped onto every QSO made before it — including this log's
+      // first contact, made when the operation was a contest and no park at all.
+      await sliced.generateExports(segmentedOp, [
+        {'hookKey': 'adif', 'exportType': 'adif'},
+      ]);
+
+      final given = (host.calls.single['args'] as Map)['operation'] as Map;
+      expect(
+        [for (final ref in (given['refs'] as List)) (ref as Map)['type']],
+        ['cqww'],
+        reason: 'the base operation carried only the contest; the park is a segment override',
+      );
     });
 
     test('a slice that comes out empty falls back rather than writing an empty file', () async {

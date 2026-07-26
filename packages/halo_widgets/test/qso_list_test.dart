@@ -920,6 +920,53 @@ void main() {
   );
 
   testWidgets(
+    'a searchable-options exchange is contest metadata too, not a place you went',
+    (tester) async {
+      // Same rule as above for the kind M5 added. The core writes only
+      // `{type, field}` onto the ref an exchange field fills — no `program` — so
+      // this control's kind is the ONLY thing that can say a state-park QSO is a
+      // contest contact rather than an activity reference.
+      final operation = await operations.create(stationCall: 'KI2D');
+      final qso = await qsos.add(operation.uuid, {
+        'their': {'call': 'W1AW'},
+        'mode': 'CW',
+        'startAtMillis': 1000,
+        'refs': [
+          {'type': 'stateparks', 'park': 'ADA'},
+        ],
+      });
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: QsoList(
+              qsos: [qso],
+              onSelect: (_) {},
+              activityControls: const [
+                {
+                  'key': 'stateparks/park',
+                  'icon': 'flag-checkered',
+                  'input': {
+                    'kind': 'options',
+                    'refType': 'stateparks',
+                    'field': 'park',
+                    'options': [
+                      {'code': 'ADA', 'name': 'Adams Lake SP'},
+                    ],
+                  },
+                },
+              ],
+            ),
+          ),
+        ),
+      );
+
+      expect(find.byIcon(resolveIconName('flag-checkered')), findsNothing);
+      expect(find.text('?'), findsNothing);
+    },
+  );
+
+  testWidgets(
     'a ref-type icon is drawn in the neutral row foreground, not the tertiary accent (#354)',
     (tester) async {
       final operation = await operations.create(stationCall: 'KI2D');

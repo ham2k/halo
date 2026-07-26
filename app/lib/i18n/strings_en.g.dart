@@ -1343,11 +1343,20 @@ class Translations$loggingControls$info$en {
 	/// en: 'Worked Before'
 	String get noticeWorkedBefore => 'Worked Before';
 
+	/// en: 'New Park'
+	String get noticeNewPark => 'New Park';
+
+	/// en: 'Bonus Station!'
+	String get noticeBonusStation => 'Bonus Station!';
+
 	/// en: 'No Exchange'
 	String get noticeMissingExchange => 'No Exchange';
 
 	/// en: 'Bad Exchange'
 	String get noticeInvalidExchange => 'Bad Exchange';
+
+	/// en: 'Unknown Event'
+	String get noticeUnknownEvent => 'Unknown Event';
 }
 
 // Path: settings.theme
@@ -2351,8 +2360,11 @@ extension on Translations {
 			'loggingControls.info.noticeInvalidBand' => 'Wrong Band',
 			'loggingControls.info.noticeInvalidCategory' => 'Not Workable',
 			'loggingControls.info.noticeWorkedBefore' => 'Worked Before',
+			'loggingControls.info.noticeNewPark' => 'New Park',
+			'loggingControls.info.noticeBonusStation' => 'Bonus Station!',
 			'loggingControls.info.noticeMissingExchange' => 'No Exchange',
 			'loggingControls.info.noticeInvalidExchange' => 'Bad Exchange',
+			'loggingControls.info.noticeUnknownEvent' => 'Unknown Event',
 			'formChrome.untitled' => '(untitled)',
 			'formChrome.showMore' => 'Show more',
 			'formChrome.showAll' => 'Show all',

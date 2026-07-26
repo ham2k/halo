@@ -29,6 +29,7 @@ import '../config/user_agent.dart';
 import '../i18n/strings.g.dart';
 import '../main.dart';
 import '../tools/form_chrome_labels.dart';
+import '../tools/activity_suggestions.dart';
 import '../tools/qso_patch.dart';
 
 /// The QSON payload shape shared by every hook that takes a whole operation's
@@ -1418,7 +1419,10 @@ class ExtensionService {
 
   /// The scoring hook keys relevant to [operation], paired with the ref that
   /// selected each. An `'always'` scorer maps to a null ref; a ref-gated one is
-  /// listed once per matching ref, so a contest that appears twice scores twice.
+  /// listed once per matching ref TYPE — two refs of one type are ONE
+  /// invocation, carrying the first, so an operation running two events of the
+  /// same contest scores only one of them (this comment used to claim the
+  /// opposite, which is a promise the loop below has never kept).
   /// [segments] resolves the operation's `break`/`start` overrides. Selection
   /// spans EVERY segment: a contest that only covers the back half of a log
   /// would never be invoked if this read the base operation alone
@@ -1749,15 +1753,7 @@ class ExtensionService {
         suggestions.addAll((entry['value'] as List).cast<Map>().map((s) => s.cast<String, dynamic>()));
       }
 
-      double rank(Map<String, dynamic> s) {
-        final distance = s['distance'] as num?;
-        final relevance = s['relevance'] as num?;
-        if (distance == null || relevance == null || relevance <= 0) return double.infinity;
-        return (distance / relevance).toDouble();
-      }
-
-      suggestions.sort((a, b) => rank(a).compareTo(rank(b)));
-      return suggestions;
+      return rankActivitySuggestions(suggestions);
     } on ExtensionHostException catch (e) {
       debugPrint('[extensions] suggestActivities failed: $e');
       return const [];

@@ -119,15 +119,18 @@ class QsoListLabels {
 /// reference comes from a `refList`.
 ///
 /// "Primary field" must mean the same set here as in the logging panel's
-/// `_textControls`, i.e. `text` AND `serial`. It didn't, and since
+/// `_textControls`, i.e. `text`, `serial` AND `options`. It didn't, and since
 /// `controlForRefType` returns the FIRST control for a type and CQ WPX declares
 /// its serial (order 10) before its text exchange (order 20), every WPX QSO
-/// read as an activity reference and wore an icon.
+/// read as an activity reference and wore an icon. `options` — M5's searchable
+/// exchange — had to join this list the moment it joined `_textControls`: the
+/// core writes only `{type, field}` onto the ref an exchange field fills, so a
+/// state-park QSO carries nothing else to say it is a contest contact.
 bool _isContestRef(Map<String, dynamic> ref, List<Map<String, dynamic>> controls) {
   if (ref['program'] == 'Contest') return true;
   final control = controlForRefType(controls, ref['type'] as String?);
   final kind = (control?['input'] as Map?)?['kind'];
-  return kind == 'text' || kind == 'serial' || kind == 'form';
+  return kind == 'text' || kind == 'serial' || kind == 'options' || kind == 'form';
 }
 
 class QsoList extends StatefulWidget {

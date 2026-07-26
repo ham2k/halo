@@ -470,7 +470,7 @@ in a file the operator submits.
 
 | Piece | Why not yet |
 |---|---|
-| One export **per reference** | **POTA and SOTA register no `export` hook at all** — their manifests list `activity`, `adifFields`, `dataFile`, `lookup`, `ref:*`, `spots`. So nothing can produce the two park submissions this was designed to split, and the two-pass collection above would be an interface with no caller. |
+| One export **per reference** | **Built elsewhere, and not by the core.** When this was written POTA and SOTA registered no `export` hook at all, so the two-pass collection would have been an interface with no caller. The activities work (ham2k/app-halo-dist#398) then gave them one: `sdk/src/activityExports.ts` offers one ADIF per activated reference by encoding the reference into the `exportType` (`pota-adif:US-1234`) and declaring `refType` for the QSO slicing. No core change was needed — `exportType` round-trips verbatim and the panel keys selections by `hookKey:exportType`. Whether the core should ALSO grow a per-reference axis is now a genuinely open question rather than a deferral; nothing needs it. |
 | `includeAllSegments` | Only means anything once an export is per-reference. |
 | `includeOtherRefHandlers` | Same, and honouring it changes ADIF output users have already submitted (see the implementation note below). |
 
@@ -913,6 +913,21 @@ interface OptionSetDefinition {
 This reuses the `dataFile` → `lookups` → `dbLookupSelectAll` machinery that
 already exists and adds no sync surface.
 
+> **Deferred at M5, and the claim above is wrong.** It does NOT reuse existing
+> machinery. The host exposes three lookup calls and all three READ
+> (`dbLookupSelectOne`/`SelectAll`/`SelectByLocation`) — nothing can write rows
+> into the `lookups` table, and the one thing that fills it, `DataFileDefinition`,
+> mandates `url` + `maxAgeInDays` + `fetchType`, i.e. an HTTP fetch of a file the
+> extension does not have. A registered `optionSet` therefore needs a new host
+> capability, not a pointer.
+>
+> It also has no consumer yet. `kind: 'options'` ships with its set **inline in
+> the descriptor**, which the table above already prescribes for everything except
+> QSO-party counties — and `qp` moved to M10 (§7). Ohio's 76 parks are ~2KB
+> against a scoring payload that carries the whole log on every pass, so the cost
+> the registered form exists to avoid is not measurable here. Build it when a
+> party's 3,478 counties arrive, and measure first.
+
 **Shared datasets live in a new core extension: `operation-data`.** Rather than
 each contest vendoring its own copy of the US states table, one always-on core
 extension owns the reference data the rest of the app draws on — US states,
@@ -1047,6 +1062,17 @@ contest then exports a display string as its sent exchange. NAQP's fields are
 `ourName`/`ourLocation` for exactly this reason. **Prefix a setup key whenever
 it could collide with `label`, `shortLabel`, `program`, `name`, `type` or
 `ref`.**
+
+> **Narrowed at M5.** `ref` is the one exception, and this rule as written
+> forbade what §5.6 elsewhere prescribes. A multi-event contest keeps the event
+> key in the ref's own `ref` field, and the setup form is the only operation-level
+> editor there is — so `stateparks` declares a `select` field keyed `ref` to
+> choose the event. That is safe *because the form owns the ref's identity*: the
+> form result is merged over the existing ref, `_editRef` finds the row by the
+> pre-edit ref before replacing it, and a form activity is added keyed on `type`
+> alone, so one event per operation falls out. Read the rule as **never write a
+> core key you don't own** — display keys always belong to `decorateRef`, and
+> `ref` belongs to a form only when the form is what chooses it.
 
 #### 5.4.1 Conditional fields (M4)
 
@@ -1454,7 +1480,7 @@ log** to settle checkpoint granularity (§5.2).
 | **M2** | Band-mult conventions + numeric exchange + suggested values (§5.3) | `cqww` (zone), `arrl-dx` (state/power) |
 | **M3** | Core-owned labeled sequence service (§5.8) | `cqwpx` |
 | **M4** | Form-schema conditional fields (`visibleWhen`, §5.4); `operation-data` deferred for want of a consumer (§5.3) | `iaru-hf`, `naqp` |
-| **M5** | Searchable-options input incl. multi-value per-token feedback + dated `suggest` ranking (§5.6) | `stateparks`, then `qp` |
+| **M5** | Searchable-options input (`kind: 'options'`) + dated `suggest` ranking (§5.6) | `stateparks` |
 | **M6** | **Segments** — `event.operation` override, segment-effective operation, scorer selection across segments (§5.1) | — |
 | **M7** | Great-circle distance scoring + `grid` input + rover our-grid from segments | `arrl-vhf-tests` |
 | **M8** | REG1TEST/EDI export writer | `r1-vhf-tests`, `rsgb-vhf-tests` |
@@ -1464,6 +1490,27 @@ log** to settle checkpoint granularity (§5.2).
 Per §5.6, `qp` and `stateparks` each stay a **single extension** whose individual
 events are offered through the activity `suggest` search, so #149's discovery
 goal is met without a per-event bundle explosion.
+
+**Amended at M5.** `qp` moved out of M5 in full: multi-value per-token feedback
+(a county line, `ORDES/JEF`) is a QSO-party need and nothing in `stateparks`
+exercises it, so it goes with the rest of the party rules to M10 rather than
+being built speculatively against no consumer. What M5 actually shipped is the
+single-value `kind: 'options'` field, the ranking behind it
+(`option_matching.dart`), the two-band fix to `suggest` ranking that `relevance`
+needed to mean anything at all (`activity_suggestions.dart`), and `stateparks`.
+
+Two things `stateparks` needed that this section did not anticipate, both
+recorded where they belong (§5.3, §5.4) rather than only here:
+- `kind: 'options'` is a **logging-panel kind**. Operation settings render
+  `refList` and `form` and drop every other kind silently, and the form schema
+  has no searchable single select — so "which park am I activating" is a plain
+  76-option `select` inside the setup form, answered once per operation and
+  usually pre-filled from the POTA activation.
+- An event ref reaches an operation by **two paths with different behaviour**:
+  the setup form (which decorates) and a `suggest` tap (which does not). A
+  multi-event contest has to carry `label`/`shortLabel`/`name`/`program` on the
+  suggestion itself or the same ref reads differently depending on how it was
+  added.
 
 ---
 
@@ -1488,9 +1535,40 @@ goal is met without a per-event bundle explosion.
   the scoresheet they're handed, with the harness taking one defensive copy of
   any checkpoint at its boundary — 289ms → 31ms, and linear.
 - **Beta-fidelity → fix on port, document the divergence.** Known polo defects
-  (10 GHz VHF `distanceAndPoints` leaving `value` undefined; stateparks
-  power-mult/bonus double-count) get fixed as they're ported rather than
-  reproduced, with each divergence noted in the extension so polo can follow.
+  (10 GHz VHF `distanceAndPoints` leaving `value` undefined; the stateparks
+  bonus handling below) get fixed as they're ported rather than reproduced,
+  with each divergence noted in the extension so polo can follow.
+
+  > **Corrected at M5.** This bullet used to say "stateparks power-mult/bonus
+  > double-count", and both halves were wrong. `powerMultipliers` appears in two
+  > JSON files (`txsp`, and `qp`'s `ky`) and is read by **no code at all**, so
+  > there is nothing to double-count. And the bonus double-count — two
+  > consecutive blocks with the identical guard, each adding to
+  > `score.bonusPoints` (`StateParksExtension.js:373-379`) — is **dead**: it
+  > guards on `sp.options?.bonusPoints?.perParkActivated`, while every data file
+  > puts `bonusPoints` at the TOP level and `options` holds only `multipliers`.
+  > So the real defect is the opposite of the one recorded: TXSP's 100 points
+  > per park activated are never awarded at all.
+  >
+  > A third defect, unrecorded and worse, is a crash. `scoring.bonusStations.push(…)`
+  > (`:281`) runs whenever the worked station is one of the event's bonus
+  > stations, but `scoring` is initialised with `bonuses: []` and no
+  > `bonusStations` (`:243-255`) — so working TXSP's `K5LRK` throws a
+  > TypeError out of the scorer.
+  >
+  > **And four more, found while porting.** Recorded here because this list was
+  > taken as the defect checklist for the port and was not sufficient:
+  > `activationRefs` is mapped to strings and then filtered as if the entries were
+  > still objects (`:228-232`), so the parks an operator activates are ALWAYS zero
+  > — which silently turns Georgia's activated-park multiplier into 1 and halves
+  > the activated+hunted rule for Texas and Ohio; `score.bonusPoints` is computed
+  > and then never added, because the total adds `score.bonus`, a third name
+  > nothing assigns (`:371-390`); the per-event `bands`/`excludedBands` the data
+  > files carry are read by nothing, so one hard-coded WARC exclusion stands in
+  > for Ohio's 80-10m rule and Florida's 160-6m list; and GASP's
+  > `points.distinctStatePark` is read by nothing either, which its own notes
+  > admit. All four are fixed in the port, which therefore does NOT reproduce
+  > polo's numbers — see the divergence list in `stateparks/src/scorer.ts`.
 - **Per-QSO scoring stays out of the QSON blob** (§5.1.1) — it lives in
   `score_cache`/`local_data.scoring`, is never synced, and is regenerable.
   Extensions get a read-only `_scoring` projection instead (§5.7), which is a
@@ -1636,12 +1714,15 @@ no exchange, no export; needs scoring fan-out + a POTA-ref annotation). Effort i
 | `iaru-hf` | complex | ✓ / ✓ | zone/HQ-abbr (polymorphic) | adif, cabrillo | none | large |
 | `naqp` | moderate | ✓ / ✓ | name + state (guessed) | adif, cabrillo | none (needs states data) | large |
 | `georgia-pota` | moderate | ✓ / – | state (standard field) | – | none | medium *(partial)* |
-| `stateparks` | complex | ✓ / – | state + park | adif, cabrillo | `states/*.json` | large |
+| `stateparks` | complex | ✓ / – | park abbreviation (OHSP only) | adif, cabrillo (OHSP) | `states/*.json` | large |
 | `qp` | complex | ✓ / ✓ | serial + county/state | adif, cabrillo | 49 `parties/*.json` | large |
 | `arrl-vhf-tests` | complex | ✓ / ✓ | grid (4/6) | adif, cabrillo | `all-events.js` | large |
 | `r1-vhf-tests` | moderate | – / ✓ | serial + grid | adif, **reg1test** | `all-events.js` (8) | large |
 | `rsgb-vhf-tests` | complex | ✓ / ✓ | serial + grid + district | adif, **reg1test** | `all-events.js` (~124) | large |
 
-Rows describe **app-polo's** structure. Per #149, `qp` and `stateparks` ship in
-HaLo as one extension *per event* over a shared engine (§5.6), so their "data
-files" become per-event extension inputs rather than one bundled catalog.
+Rows describe **app-polo's** structure, except `stateparks`, corrected at M5 when
+it was ported: only Ohio has a typed exchange (a park abbreviation, not a state)
+and only Ohio exports a Cabrillo — the other three events read their parks off
+the POTA references already being logged. Per #149 and §5.6, `qp` and
+`stateparks` ship in HaLo as ONE extension each whose events are offered through
+the activity `suggest` search, and their data files stay one bundled catalog.

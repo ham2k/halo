@@ -24,14 +24,19 @@ void main() {
   final assets = Directory('../../app/assets/extensions');
   File bundle(String key) => File('${assets.path}/$key.js');
 
-  // Every contest ships the same delegation, so every contest can recurse.
-  const contests = ['simple-contest', 'cqww', 'cqwpx', 'arrl-dx'];
+  // Every contest ships the same delegation, so every contest can recurse. The
+  // list had drifted — iaru-hf and naqp shipped without being added, and this is
+  // the only place the delegation is exercised at all.
+  const contests = ['simple-contest', 'cqww', 'cqwpx', 'arrl-dx', 'iaru-hf', 'naqp', 'stateparks'];
 
+  /// `ref` names WHICH event for a contest that has several (stateparks
+  /// contributes nothing without one); the rest ignore the extra keys.
   Map<String, dynamic> operationFor(String key) => {
         'uuid': 'op-1',
         'stationCall': 'N0DEV',
+        'grid': 'EN91',
         'refs': [
-          {'type': key, 'mode': 'CW', 'exchange': '59 001'},
+          {'type': key, 'mode': 'CW', 'exchange': '59 001', 'ref': 'OHSP', 'ourPark': 'HOC'},
         ],
       };
 
@@ -40,12 +45,12 @@ void main() {
       {
         'uuid': 'q$i',
         'our': {'call': 'N0DEV'},
-        'their': {'call': 'W${i}AW'},
+        'their': {'call': 'W${i}AW', 'state': 'OH'},
         'band': '20m',
         'mode': 'CW',
         'startAtMillis': DateTime.utc(2026, 3, 28, 12, i).millisecondsSinceEpoch,
         'refs': [
-          {'type': key, 'exchange': '59 00$i', 'theirZone': '5', 'theirExchange': 'MA', 'theirSerial': '$i'},
+          {'type': key, 'exchange': '59 00$i', 'theirZone': '5', 'theirExchange': 'MA', 'theirSerial': '$i', 'park': 'ADA'},
         ],
       },
   ];
@@ -120,5 +125,87 @@ void main() {
 
     expect(result, isNotNull);
     expect(result!['content'], isEmpty, reason: 'not an exportType this hook offers');
+  }, timeout: const Timeout(Duration(seconds: 60)));
+
+  test('the Ohio State Parks Cabrillo is written the way the sponsor reads it', () async {
+    if (!bundle('kernel').existsSync() || !bundle('stateparks').existsSync()) {
+      markTestSkipped('bundles not built — run `npm run build` in extensions/ first');
+      return;
+    }
+    // The only contest here whose Cabrillo has its own row layout — no signal
+    // reports, a park column each side — and nothing executed it. A format the
+    // sponsor's checker rejects is not a failure any unit test can see, so the
+    // header block and one QSO line are pinned verbatim.
+    final host = await ExtensionHost.start(
+      kernelSource: bundle('kernel').readAsStringSync(),
+      extensions: [ExtensionBundle(key: 'stateparks', source: bundle('stateparks').readAsStringSync())],
+    );
+    addTearDown(host.dispose);
+
+    final result = await host.invokeHook(
+      'export',
+      key: 'stateparks',
+      method: 'generateExport',
+      args: {
+        'operation': operationFor('stateparks'),
+        'qsos': [
+          // Their park typed, as the exchange field writes it.
+          {
+            'uuid': 'q1',
+            'their': {'call': 'W1AW'},
+            'band': '40m',
+            'mode': 'CW',
+            'freq': 7035,
+            'startAtMillis': DateTime.utc(2026, 9, 12, 14, 5).millisecondsSinceEpoch,
+            'refs': [
+              {'type': 'stateparks', 'park': 'ALU'},
+            ],
+          },
+          // No park: a US station falls back to their state, per Ohio's rules.
+          {
+            'uuid': 'q2',
+            'their': {'call': 'K2DEF', 'state': 'PA', 'entityPrefix': 'K'},
+            'band': '40m',
+            'mode': 'SSB',
+            'freq': 7185,
+            'startAtMillis': DateTime.utc(2026, 9, 12, 14, 9).millisecondsSinceEpoch,
+          },
+          // Not in the US at all, and not in a park: DX.
+          {
+            'uuid': 'q3',
+            'their': {'call': 'DL1ABC', 'entityPrefix': 'DL'},
+            'band': '20m',
+            'mode': 'CW',
+            'freq': 14035,
+            'startAtMillis': DateTime.utc(2026, 9, 12, 15, 0).millisecondsSinceEpoch,
+          },
+        ],
+        'exportType': 'cabrillo',
+      },
+      timeout: const Duration(seconds: 10),
+    ) as Map?;
+
+    expect(result, isNotNull);
+    expect(result!['filename'], 'OHSP-N0DEV.log');
+    final lines = (result['content'] as String).trim().split('\n');
+
+    expect(lines.first, 'START-OF-LOG: 3.0');
+    expect(lines, contains('CONTEST: OHSPOTA'), reason: 'the sponsor’s own contest name, not the event key');
+    expect(lines, contains('CALLSIGN: N0DEV'));
+    expect(lines, contains('LOCATION: HOC'), reason: 'the park we are activating');
+    expect(lines, contains('GRID-LOCATOR: EN91'));
+    expect(lines.last, 'END-OF-LOG:');
+
+    final qsoLines = lines.where((l) => l.startsWith('QSO:')).toList();
+    expect(qsoLines, hasLength(3));
+    // Frequency, mode, date, time, then our call / our park / their call / their
+    // park — column widths included, since a fixed-width format is the point.
+    expect(
+      qsoLines[0],
+      'QSO: 7035  CW 2026-09-12 1405 N0DEV              HOC          W1AW              ALU         ',
+    );
+    expect(qsoLines[1], contains('PA'), reason: 'no park, so their state stands in');
+    expect(qsoLines[1], contains('PH'), reason: 'Cabrillo collapses SSB to PH');
+    expect(qsoLines[2], contains('DX'), reason: 'and a non-US station with no park is DX');
   }, timeout: const Timeout(Duration(seconds: 60)));
 }

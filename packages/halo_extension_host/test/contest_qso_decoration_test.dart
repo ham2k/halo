@@ -21,7 +21,8 @@ void main() {
 
   /// Each contest, the ref field it stores the received exchange in, what
   /// should end up in `their.exchange`, and whether it also writes back to its
-  /// OWN ref.
+  /// OWN ref. `opFields` carries anything a contest needs on the OPERATION's ref
+  /// to be running at all — which of several events, for the ones that have them.
   ///
   /// Only the contests whose exchange can be GUESSED write back: they stamp the
   /// country file's zone when the operator typed nothing, so the ref records
@@ -30,14 +31,19 @@ void main() {
   /// can guess a state, a serial or a free-form exchange, so those three stay
   /// pure projections.
   const cases = [
-    (key: 'cqww', refFields: {'theirZone': '05'}, expected: '5', writesBack: true),
-    (key: 'arrl-dx', refFields: {'theirExchange': 'MA'}, expected: 'MA', writesBack: false),
-    (key: 'simple-contest', refFields: {'exchange': '59 042'}, expected: '59 042', writesBack: false),
-    (key: 'cqwpx', refFields: {'theirSerial': '0012'}, expected: '12', writesBack: false),
-    (key: 'iaru-hf', refFields: {'theirExchange': 'ARRL'}, expected: 'ARRL', writesBack: true),
+    (key: 'cqww', refFields: {'theirZone': '05'}, expected: '5', writesBack: true, opFields: <String, Object>{}),
+    (key: 'arrl-dx', refFields: {'theirExchange': 'MA'}, expected: 'MA', writesBack: false, opFields: <String, Object>{}),
+    (key: 'simple-contest', refFields: {'exchange': '59 042'}, expected: '59 042', writesBack: false, opFields: <String, Object>{}),
+    (key: 'cqwpx', refFields: {'theirSerial': '0012'}, expected: '12', writesBack: false, opFields: <String, Object>{}),
+    (key: 'iaru-hf', refFields: {'theirExchange': 'ARRL'}, expected: 'ARRL', writesBack: true, opFields: <String, Object>{}),
     // Both halves of NAQP's exchange are guessable, so both are recorded — and
     // the projection joins them the way the QSO row and a plain ADIF read it.
-    (key: 'naqp', refFields: {'name': 'BOB', 'location': 'ct'}, expected: 'BOB CT', writesBack: true),
+    (key: 'naqp', refFields: {'name': 'BOB', 'location': 'ct'}, expected: 'BOB CT', writesBack: true, opFields: <String, Object>{}),
+    // A state park event's exchange is a park abbreviation, and it IS guessable
+    // — from a POTA reference already hunted on the QSO — so it is recorded on
+    // the ref as well as projected. `ref` says which event: without it the
+    // extension is running none of them.
+    (key: 'stateparks', refFields: {'park': 'ada'}, expected: 'ADA', writesBack: true, opFields: <String, Object>{'ref': 'OHSP'}),
   ];
 
   for (final c in cases) {
@@ -59,7 +65,7 @@ void main() {
           'operation': {
             'stationCall': 'N0DEV',
             'refs': [
-              {'type': c.key, 'mode': 'CW', 'exchange': '59 001'},
+              {'type': c.key, 'mode': 'CW', 'exchange': '59 001', ...c.opFields},
             ],
           },
           'qso': {
@@ -229,14 +235,15 @@ void main() {
     // field must clear the projection too, or the QSO row and a plain ADIF
     // export keep showing the exchange from the previous save.
     const cases = [
-      (key: 'cqww', cleared: {'theirZone': ''}, call: 'W1AW'),
-      (key: 'iaru-hf', cleared: {'theirExchange': ''}, call: 'W1AW'),
-      (key: 'naqp', cleared: {'name': '', 'location': ''}, call: 'W1AW'),
+      (key: 'cqww', cleared: {'theirZone': ''}, call: 'W1AW', opFields: <String, Object>{}),
+      (key: 'iaru-hf', cleared: {'theirExchange': ''}, call: 'W1AW', opFields: <String, Object>{}),
+      (key: 'naqp', cleared: {'name': '', 'location': ''}, call: 'W1AW', opFields: <String, Object>{}),
       // These three never guess, so nothing put the value back — but a stale
       // `their.exchange` outliving the field is its own bug.
-      (key: 'arrl-dx', cleared: {'theirExchange': ''}, call: 'W1AW'),
-      (key: 'simple-contest', cleared: {'exchange': ''}, call: 'W1AW'),
-      (key: 'cqwpx', cleared: {'theirSerial': ''}, call: 'W1AW'),
+      (key: 'arrl-dx', cleared: {'theirExchange': ''}, call: 'W1AW', opFields: <String, Object>{}),
+      (key: 'simple-contest', cleared: {'exchange': ''}, call: 'W1AW', opFields: <String, Object>{}),
+      (key: 'cqwpx', cleared: {'theirSerial': ''}, call: 'W1AW', opFields: <String, Object>{}),
+      (key: 'stateparks', cleared: {'park': ''}, call: 'W1AW', opFields: <String, Object>{'ref': 'OHSP'}),
     ];
 
     for (final c in cases) {
@@ -258,7 +265,7 @@ void main() {
             'operation': {
               'stationCall': 'N0DEV',
               'refs': [
-                {'type': c.key, 'mode': 'CW'},
+                {'type': c.key, 'mode': 'CW', ...c.opFields},
               ],
             },
             'qso': {
@@ -337,6 +344,56 @@ void main() {
       final enriched = await patchFor({'call': 'W1AW', 'guess': {'state': 'CT'}});
       expect(((enriched['refs'] as List).single as Map)['location'], 'CT');
       expect((enriched['their'] as Map)['exchange'], 'BOB CT');
+    });
+
+    test('stateparks does not put a park back from the POTA ref the QSO carries', () async {
+      if (!bundle('kernel').existsSync() || !bundle('stateparks').existsSync()) {
+        markTestSkipped('bundles not built — run `npm run build` in extensions/ first');
+        return;
+      }
+      // The stateparks-shaped version of the same trap, and the one a hunted
+      // reference makes easy to get wrong: the operator clears the park field
+      // BECAUSE the station wasn't in a park this time, while the hunter chip
+      // from the previous QSO is still on the row. Deriving over a cleared field
+      // would submit a park they explicitly said no to.
+      final host = await ExtensionHost.start(
+        kernelSource: bundle('kernel').readAsStringSync(),
+        extensions: [ExtensionBundle(key: 'stateparks', source: bundle('stateparks').readAsStringSync())],
+      );
+      addTearDown(host.dispose);
+
+      Future<Map?> patchFor(List<Map<String, Object>> refs) async {
+        final entries = await host.invokeHookAll(
+          'activity',
+          method: 'processQsoBeforeSave',
+          args: {
+            'operation': {
+              'stationCall': 'N0DEV',
+              'refs': [
+                {'type': 'stateparks', 'ref': 'OHSP'},
+              ],
+            },
+            'qso': {'band': '40m', 'mode': 'CW', 'their': {'call': 'W1AW'}, 'refs': refs},
+          },
+        );
+        final hit = entries.where((e) => e['ok'] == true && e['value'] is Map).toList();
+        return hit.isEmpty ? null : hit.first['value'] as Map;
+      }
+
+      // US-1932 is Ohio's ADA. Untouched, it fills the exchange in.
+      final derived = await patchFor([
+        {'type': 'pota', 'ref': 'US-1932'},
+      ]);
+      expect(((derived!['refs'] as List).single as Map)['park'], 'ADA');
+      expect((derived['their'] as Map)['exchange'], 'ADA');
+
+      // Cleared on purpose, with the same reference still there: it stays clear.
+      final cleared = await patchFor([
+        {'type': 'pota', 'ref': 'US-1932'},
+        {'type': 'stateparks', 'park': ''},
+      ]);
+      expect(cleared!.containsKey('refs'), isFalse, reason: 'a blank is not worth recording');
+      expect((cleared['their'] as Map)['exchange'], '');
     });
 
     test('naqp decides its two halves independently', () async {

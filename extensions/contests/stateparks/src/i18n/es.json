@@ -1,0 +1,20 @@
+{
+  "activityLabel": "Evento de Parques Estatales",
+  "setupLabel": "Configuración de Parques Estatales",
+  "eventLabel": "Evento",
+  "ourParkLabel": "Nuestro Parque",
+  "theirParkLabel": "Parque",
+  "unconfigured": "Parques Estatales (sin evento)",
+  "adifExport": "ADIF de concurso",
+  "cabrilloExport": "Cabrillo",
+  "whenLastWeekend": "el fin de semana pasado",
+  "whenThisWeekend": "este fin de semana",
+  "whenInDays": "en {{days}} días",
+  "whenAlreadyHappened": "ya ocurrió",
+  "unknownEventOption": "no es un evento que esta versión conozca",
+  "pickAnEvent": "Elige el evento en el que participas.",
+  "checkPota": "**Revisa también tu activación POTA** — estos eventos se puntúan con los parques que activas y los que trabajas.",
+  "period": "**Período:** {{period}}",
+  "status": "**Estado:** {{status}}",
+  "lastUpdated": "**Datos actualizados:** {{lastUpdated}}"
+}

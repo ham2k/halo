@@ -122,6 +122,7 @@ const bundles = [
   { key: 'cqwpx', entry: 'contests/cqwpx/src/index.ts', kind: 'extension' },
   { key: 'iaru-hf', entry: 'contests/iaru-hf/src/index.ts', kind: 'extension' },
   { key: 'naqp', entry: 'contests/naqp/src/index.ts', kind: 'extension' },
+  { key: 'stateparks', entry: 'contests/stateparks/src/index.ts', kind: 'extension' },
   { key: 'ham2k-lofi', entry: 'sync/ham2k-lofi/src/index.ts', kind: 'extension' },
 ]
 

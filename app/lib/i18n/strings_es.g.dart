@@ -698,8 +698,11 @@ class _Translations$loggingControls$info$es extends Translations$loggingControls
 	@override String get noticeInvalidBand => 'Banda Incorrecta';
 	@override String get noticeInvalidCategory => 'No Contactable';
 	@override String get noticeWorkedBefore => 'Ya Trabajado';
+	@override String get noticeNewPark => 'Parque Nuevo';
+	@override String get noticeBonusStation => '¡Estación Bonus!';
 	@override String get noticeMissingExchange => 'Sin Intercambio';
 	@override String get noticeInvalidExchange => 'Intercambio Inválido';
+	@override String get noticeUnknownEvent => 'Evento Desconocido';
 }
 
 // Path: settings.theme
@@ -1353,8 +1356,11 @@ extension on TranslationsEs {
 			'loggingControls.info.noticeInvalidBand' => 'Banda Incorrecta',
 			'loggingControls.info.noticeInvalidCategory' => 'No Contactable',
 			'loggingControls.info.noticeWorkedBefore' => 'Ya Trabajado',
+			'loggingControls.info.noticeNewPark' => 'Parque Nuevo',
+			'loggingControls.info.noticeBonusStation' => '¡Estación Bonus!',
 			'loggingControls.info.noticeMissingExchange' => 'Sin Intercambio',
 			'loggingControls.info.noticeInvalidExchange' => 'Intercambio Inválido',
+			'loggingControls.info.noticeUnknownEvent' => 'Evento Desconocido',
 			'formChrome.untitled' => '(sin título)',
 			'formChrome.showMore' => 'Mostrar más',
 			'formChrome.showAll' => 'Mostrar todo',

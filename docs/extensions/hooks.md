@@ -233,6 +233,10 @@ interface ActivityHook {
 //   {kind: 'text',    refType, field, placeholder?, pattern?, transforms?,
 //                     numeric?, uppercase? /* default true */, maxLength?,
 //                     suggestedValue?}
+//   {kind: 'options', refType, field, options: [{code, name?}], matchOn?,
+//                     allowFreeform?, preferredCodes?, minCharsForSuggestions?,
+//                     placeholder?, pattern?, transforms?, numeric?, uppercase?,
+//                     maxLength?, suggestedValue?}
 //   {kind: 'serial',  refType, field, sequence: {key, scope?, start?, padTo?},
 //                     editable?}
 //   {kind: 'form',    refType, form}   // operationControls only
@@ -241,12 +245,25 @@ interface ActivityHook {
 // kind; a malformed regex disables validation rather than throwing. A
 // mismatch tints the field but still accepts the value.
 //
-// `text` and `serial` values round-trip onto a ref of `refType` under `field`,
-// through the same core-owned path refList writes refs — several may share one
-// refType and are merged into a single ref. `suggestedValue` fills the field
-// only while the operator hasn't typed into it. A `serial`'s number is
-// allocated by the core (docs/design/contests.md §5.8), and both kinds render
-// as PRIMARY fields, shown only when the operation is running that activity.
+// `text`, `options` and `serial` values round-trip onto a ref of `refType` under
+// `field`, through the same core-owned path refList writes refs — several may
+// share one refType and are merged into a single ref. `suggestedValue` fills the
+// field only while the operator hasn't typed into it. A `serial`'s number is
+// allocated by the core (docs/design/contests.md §5.8), and all three kinds
+// render as PRIMARY fields, shown only when the operation is running that
+// activity.
+//
+// An `options` field searches a KNOWN SET: it shows a ranked suggestion line and
+// Space accepts the top hit before advancing, and a value outside the set tints
+// the field unless `allowFreeform`. Space accepts only a suggestion the typed
+// text is a PREFIX of, and never from an empty field — a substring hit is worth
+// showing, but swapping one in rewrites the operator's own text into something it
+// isn't the start of. The suggestion line is added to the info area, above
+// whatever it was already showing, so a DUPE stays visible while an exchange
+// field has focus. The set is inline — §5.3's registered `optionSet` is deferred
+// (nothing can write rows into the lookups table today).
+// `text`, `serial` and `options` are logging-panel kinds: operation settings
+// render `refList` and `form` and silently ignore the rest.
 //
 // `optionType` is NOT yet honored by the core.
 ```
@@ -287,9 +304,14 @@ proposing a new `input.kind` is a core PR, deliberately (DESIGN.md §5's
 station defaults (extensions never need to know which). Called with no
 `searchTerm` for nearby suggestions, or with one for name/code search — an
 extension may honor either, both, or neither (returning `[]`). The core fans
-out to every `activity` hook via `invokeHookAll`, merges results, and sorts
-by `distance * relevance` ascending (missing `distance` treated as
-unsorted/unknown, sorted after ranked ones). Implemented by: `pota`, `sota`.
+out to every `activity` hook via `invokeHookAll`, merges results, and ranks them
+in TWO BANDS (`app/lib/tools/activity_suggestions.dart`): everything carrying a
+`distance` first, by `distance / relevance` ascending — a more relevant hit
+counts as nearer — then everything without one, by DESCENDING `relevance`, with
+ties broken on the order the extension emitted them. So `relevance` alone orders
+a set of placeless suggestions (dated contest events, say) among themselves, but
+never lifts one above a located park. Implemented by: `pota`, `sota`,
+`stateparks`.
 
 The activity search box also treats a leading `key:` as a scope — typing
 `pota:` (or tapping a row under "Activity Types") asks that extension alone,
