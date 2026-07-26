@@ -1074,7 +1074,11 @@ class _HomeQuickLookupState extends State<HomeQuickLookup> {
                 isDense: true,
                 border: OutlineInputBorder(borderRadius: BorderRadius.circular(24.0), borderSide: BorderSide.none),
               ),
-              onSubmitted: (_) => _submit(),
+              // Not onSubmitted: the default TextInputAction.done handling
+              // unfocuses (closing the keyboard) before onSubmitted even
+              // runs. onEditingComplete replaces that default entirely, so
+              // the field keeps focus for the next command.
+              onEditingComplete: () => _submit(),
             ),
           ),
           // The mobile numbers row (issue #27), same setting as the logging

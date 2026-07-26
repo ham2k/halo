@@ -114,6 +114,44 @@ void main() {
     await tester.pump(const Duration(seconds: 5));
   });
 
+  testWidgets('the field keeps focus after executing a command, so the next one can be typed right away', (tester) async {
+    SharedPreferences.setMockInitialValues({});
+    final settings = SettingsService(await SharedPreferences.getInstance());
+    final db = HaLoDatabase(NativeDatabase.memory());
+    final services = HaLoServices(db, settings, extensions: _CannedCommandExtensions());
+    addTearDown(db.close);
+
+    await tester.pumpWidget(TranslationProvider(
+      child: MaterialApp(
+        home: Scaffold(body: HomeQuickLookup(services: services)),
+      ),
+    ));
+
+    // Checked on the field's own FocusNode, not FocusManager.primaryFocus:
+    // unfocus() falls back to the enclosing FocusScopeNode, which then IS
+    // primaryFocus and trivially reports hasFocus — that would make this
+    // assertion pass even if the field itself lost focus.
+    final focusNode = tester.widget<TextField>(find.byType(TextField)).focusNode!;
+
+    await tester.tap(find.byType(TextField));
+    await tester.pump();
+    expect(focusNode.hasFocus, isTrue);
+
+    await tester.enterText(find.byType(TextField), 'DEVMODE');
+    await tester.pump(const Duration(milliseconds: 200));
+    // The soft keyboard's "done"/"go"/"search" action would, by default,
+    // unfocus the field before onSubmitted even runs — the field must not
+    // rely on that path, or every executed command would dismiss the
+    // keyboard and force a re-tap to type the next one.
+    await tester.testTextInput.receiveAction(TextInputAction.done);
+    await tester.pump();
+
+    expect(tester.widget<TextField>(find.byType(TextField)).controller!.text, isEmpty);
+    expect(focusNode.hasFocus, isTrue);
+
+    await tester.pump(const Duration(seconds: 5));
+  });
+
   group('hardening the field against stray spaces (issue #190)', () {
     Future<HaLoServices> makeServices() async {
       SharedPreferences.setMockInitialValues({});
