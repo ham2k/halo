@@ -575,7 +575,10 @@
     "appliesNextLaunch": "An update has been downloaded. It will apply the next time you open the app.",
     "restartNow": "Restart now",
     "reloadToUpdate": "A newer version of this page is available. Reload to get it.",
-    "reloadNow": "Reload now"
+    "reloadNow": "Reload now",
+    "checkForUpdates": "Check for Updates",
+    "checkingForUpdates": "Checking for updates…",
+    "upToDate": "Up to date"
   },
   "extensionService": {
     "runtimeNotReady": "Extension runtime not ready.",

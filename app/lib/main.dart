@@ -57,6 +57,7 @@ import 'settings/core_settings_groups.dart';
 import 'settings/settings_registry.dart';
 import 'settings/system_lists.dart';
 import 'services/window_chrome_service.dart';
+import 'services/update_check_service.dart';
 import 'services/update_service.dart';
 import 'services/update_notices.dart';
 import 'services/shorebird_update_service.dart';
@@ -72,13 +73,15 @@ void main() => runHaLoApp();
 /// injectable — the OSS `main()` above runs it with the no-op defaults,
 /// while a private distribution entrypoint (`app_dist`'s `main_dist.dart`)
 /// passes real implementations (e.g. the analytics and crash-reporting
-/// backends). Vendor-specific code stays out of this repo entirely; the app
-/// only knows the generic [MetricsService]/[ErrorReportingBackend]
+/// backends, and a Shorebird+Sparkle-aware [UpdateCheckService]). Vendor-
+/// specific code stays out of this repo entirely; the app only knows the
+/// generic [MetricsService]/[ErrorReportingBackend]/[UpdateCheckService]
 /// interfaces and the consent-gated [HaLoServices.track].
 void runHaLoApp({
   MetricsService? metrics,
   PurchaseService? purchases,
   UpdateService? updates,
+  UpdateCheckService? updateCheck,
   ErrorReportingBackend? errorReporting,
 }) {
   // Global error capture (#76): backend upload when one is injected, local
@@ -89,7 +92,7 @@ void runHaLoApp({
   // Flutter's zone-mismatch warning, and on web uncaught async errors are
   // only catchable by the zone, not PlatformDispatcher.onError.
   unawaited(ErrorReportingService.run(
-    () => _mainBody(metrics: metrics, purchases: purchases, updates: updates),
+    () => _mainBody(metrics: metrics, purchases: purchases, updates: updates, updateCheck: updateCheck),
     backend: errorReporting,
   ));
 }
@@ -98,6 +101,7 @@ void _mainBody({
   MetricsService? metrics,
   PurchaseService? purchases,
   UpdateService? updates,
+  UpdateCheckService? updateCheck,
 }) {
   WidgetsFlutterBinding.ensureInitialized();
   // Turn on structured dev logging ([qso], [lookup], …) for all non-release
@@ -121,7 +125,7 @@ void _mainBody({
   // Kicked off before runApp (not awaited here) so the splash screen paints
   // on the very first frame instead of waiting on the DB/extension/settings
   // boot sequence — see `_BootGate`.
-  final servicesFuture = bootstrap(metrics: metrics, purchases: purchases, updates: updates);
+  final servicesFuture = bootstrap(metrics: metrics, purchases: purchases, updates: updates, updateCheck: updateCheck);
   runApp(TranslationProvider(child: _BootGate(servicesFuture: servicesFuture)));
 
   servicesFuture.then((services) async {
@@ -353,6 +357,7 @@ Future<HaLoServices> bootstrap({
   MetricsService? metrics,
   PurchaseService? purchases,
   UpdateService? updates,
+  UpdateCheckService? updateCheck,
 }) async {
   WidgetsFlutterBinding.ensureInitialized();
   final db = HaLoDatabase(driftDatabase(
@@ -385,6 +390,7 @@ Future<HaLoServices> bootstrap({
     // The running app checks Shorebird for a Dart patch on the selected track
     // (§4.3); no-ops in any build without the engine. Overridable for tests.
     updates: updates ?? ShorebirdUpdateService(settings),
+    updateCheck: updateCheck,
   );
   // A locked/absent keyring yields a null device key (ensureSyncDeviceKey no
   // longer throws) — boot must still complete, so skip sync setup and pick it
@@ -436,6 +442,7 @@ class HaLoServices {
   final MetricsService metrics;
   final PurchaseService purchases;
   final UpdateService updates;
+  final UpdateCheckService updateCheck;
 
   late final OperationsRepository operations = OperationsRepository(db, onChange: () => syncEngine.notifyChanged());
   late final SequencesRepository sequences = SequencesRepository(db);
@@ -597,6 +604,7 @@ class HaLoServices {
     MetricsService? metrics,
     PurchaseService? purchases,
     UpdateService? updates,
+    UpdateCheckService? updateCheck,
     DataFileManager? dataFiles,
     LookupQueueService? lookupQueue,
   })  : extensions = extensions ?? ExtensionService(),
@@ -606,6 +614,10 @@ class HaLoServices {
         // never touch the Shorebird FFI; bootstrap() injects the real
         // ShorebirdUpdateService for the running app.
         updates = updates ?? const NoopUpdateService(),
+        // Defaults to the web-only build-SHA check; app_dist's main_dist.dart
+        // injects a real Shorebird+Sparkle-aware implementation (see
+        // update_check_service.dart).
+        updateCheck = updateCheck ?? const WebFreshnessUpdateCheckService(),
         _dataFilesOverride = dataFiles,
         _lookupQueueOverride = lookupQueue {
     this.extensions.settings = settings;

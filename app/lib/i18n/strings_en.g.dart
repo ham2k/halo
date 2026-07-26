@@ -937,6 +937,15 @@ class Translations$updates$en {
 
 	/// en: 'Reload now'
 	String get reloadNow => 'Reload now';
+
+	/// en: 'Check for Updates'
+	String get checkForUpdates => 'Check for Updates';
+
+	/// en: 'Checking for updates…'
+	String get checkingForUpdates => 'Checking for updates…';
+
+	/// en: 'Up to date'
+	String get upToDate => 'Up to date';
 }
 
 // Path: extensionService
@@ -2615,6 +2624,9 @@ extension on Translations {
 			'updates.restartNow' => 'Restart now',
 			'updates.reloadToUpdate' => 'A newer version of this page is available. Reload to get it.',
 			'updates.reloadNow' => 'Reload now',
+			'updates.checkForUpdates' => 'Check for Updates',
+			'updates.checkingForUpdates' => 'Checking for updates…',
+			'updates.upToDate' => 'Up to date',
 			'extensionService.runtimeNotReady' => 'Extension runtime not ready.',
 			'extensionService.testFailed' => ({required Object error}) => 'Test failed: ${error}',
 			'extensionService.connectedAs' => ({required Object identity}) => 'Connected as ${identity}',

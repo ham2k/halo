@@ -575,7 +575,10 @@
     "appliesNextLaunch": "Se descargó una actualización. Se aplicará la próxima vez que abras la app.",
     "restartNow": "Reiniciar ahora",
     "reloadToUpdate": "Hay una versión más reciente de esta página disponible. Recarga para obtenerla.",
-    "reloadNow": "Recargar ahora"
+    "reloadNow": "Recargar ahora",
+    "checkForUpdates": "Buscar actualizaciones",
+    "checkingForUpdates": "Buscando actualizaciones…",
+    "upToDate": "Actualizado"
   },
   "extensionService": {
     "runtimeNotReady": "El motor de extensiones aún no está listo.",

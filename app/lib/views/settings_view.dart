@@ -40,6 +40,7 @@ import 'notice_history_view.dart';
 import 'operation_dialogs.dart';
 import 'release_overlay.dart';
 import 'switch_accounts_dialog.dart';
+import 'update_check_row.dart';
 import 'version_label.dart';
 
 /// A sidebar entry: `key` identifies it (a fixed core key, or an
@@ -2069,6 +2070,16 @@ class _AboutPanel extends StatelessWidget {
                 ),
               ),
             ),
+            // The leading divider is conditional (unlike every other one in
+            // this panel) because UpdateCheckRow hides itself entirely when
+            // no update mechanism applies to the running build — most
+            // local/debug builds — and a divider either side of a
+            // zero-height row would double up. It has to live out here,
+            // not inside the row's own centered()-wrapped content, to span
+            // the pane's full width like its neighbors rather than getting
+            // capped to idealPaneWidth along with the row.
+            if (updateCheckAppliesTo(services)) const SliverToBoxAdapter(child: Divider(height: 1)),
+            SliverToBoxAdapter(child: centered(UpdateCheckRow(services: services))),
             const SliverToBoxAdapter(child: Divider(height: 1)),
             // Notices & Messages used to be its own top-level settings
             // panel — moved here (issue #183), between the version and the

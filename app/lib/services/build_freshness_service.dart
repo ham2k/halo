@@ -13,7 +13,7 @@
 
 import 'dart:async';
 
-import 'package:flutter/foundation.dart' show kIsWeb, visibleForTesting;
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/widgets.dart';
 import 'package:http/http.dart' as http;
 
@@ -21,6 +21,9 @@ import '../config/build_reload.dart';
 import '../config/version.dart';
 import '../i18n/strings.g.dart';
 import 'status_bar_service.dart';
+
+/// Outcome of a [BuildFreshnessService.check] call.
+enum BuildCheckResult { upToDate, updateAvailable, unknown }
 
 class BuildFreshnessService with WidgetsBindingObserver {
   final StatusBarService statusBar;
@@ -71,24 +74,27 @@ class BuildFreshnessService with WidgetsBindingObserver {
     if (state == AppLifecycleState.resumed) unawaited(check());
   }
 
-  /// Public (not gated on kIsWeb, unlike [start]) so tests can drive the
-  /// actual comparison/notice logic directly — kIsWeb is never true in a test
-  /// binary, so [start] itself can never be exercised there.
-  @visibleForTesting
-  Future<void> check() async {
-    if (_notified) return;
+  /// Public (not gated on kIsWeb, unlike [start]) both so tests can drive
+  /// the actual comparison/notice logic directly — kIsWeb is never true in a
+  /// test binary, so [start] itself can never be exercised there — and so
+  /// the About panel's "Check for Updates" row can call it on a fresh
+  /// instance per check, where its own [_notified] latch never suppresses a
+  /// user-initiated re-check.
+  Future<BuildCheckResult> check() async {
+    if (_notified) return BuildCheckResult.updateAvailable;
     final String deployedSha;
     try {
       final response = await _client.get(_urlBuilder()).timeout(const Duration(seconds: 5));
-      if (response.statusCode != 200) return;
+      if (response.statusCode != 200) return BuildCheckResult.unknown;
       deployedSha = response.body.trim();
     } catch (_) {
       // Best-effort: a network hiccup or a build predating this file (no
       // build_sha.txt yet) must not nag, and isn't worth reporting either —
       // this check runs every few minutes for the app's whole lifetime.
-      return;
+      return BuildCheckResult.unknown;
     }
-    if (deployedSha.isEmpty || deployedSha == _currentSha) return;
+    if (deployedSha.isEmpty) return BuildCheckResult.unknown;
+    if (deployedSha == _currentSha) return BuildCheckResult.upToDate;
     _notified = true;
     statusBar.showNotice(
       key: noticeKey,
@@ -97,5 +103,6 @@ class BuildFreshnessService with WidgetsBindingObserver {
       text: t.updates.reloadToUpdate,
       actions: [StatusBarAction(label: t.updates.reloadNow, onTap: reloadPage)],
     );
+    return BuildCheckResult.updateAvailable;
   }
 }

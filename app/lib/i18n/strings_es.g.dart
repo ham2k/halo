@@ -496,6 +496,9 @@ class _Translations$updates$es extends Translations$updates$en {
 	@override String get restartNow => 'Reiniciar ahora';
 	@override String get reloadToUpdate => 'Hay una versión más reciente de esta página disponible. Recarga para obtenerla.';
 	@override String get reloadNow => 'Recargar ahora';
+	@override String get checkForUpdates => 'Buscar actualizaciones';
+	@override String get checkingForUpdates => 'Buscando actualizaciones…';
+	@override String get upToDate => 'Actualizado';
 }
 
 // Path: extensionService
@@ -1611,6 +1614,9 @@ extension on TranslationsEs {
 			'updates.restartNow' => 'Reiniciar ahora',
 			'updates.reloadToUpdate' => 'Hay una versión más reciente de esta página disponible. Recarga para obtenerla.',
 			'updates.reloadNow' => 'Recargar ahora',
+			'updates.checkForUpdates' => 'Buscar actualizaciones',
+			'updates.checkingForUpdates' => 'Buscando actualizaciones…',
+			'updates.upToDate' => 'Actualizado',
 			'extensionService.runtimeNotReady' => 'El motor de extensiones aún no está listo.',
 			'extensionService.testFailed' => ({required Object error}) => 'Prueba fallida: ${error}',
 			'extensionService.connectedAs' => ({required Object identity}) => 'Conectado como ${identity}',
