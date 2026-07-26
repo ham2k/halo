@@ -13,7 +13,7 @@
 import { DXCC_BY_CODE } from "@ham2k/lib-dxcc-data"
 import { bandForFrequency } from "@ham2k/lib-operation-data"
 import { locationToGrid6, distanceOnEarth } from "@ham2k/lib-geo-tools"
-import { defineExtension, host, LOCATION_ACCURACY } from "@ham2k/halo-extension-sdk"
+import { activityExportHook, activityScorer, contestScorer, defineExtension, host, LOCATION_ACCURACY } from "@ham2k/halo-extension-sdk"
 import type {
   AnnotatedCallInfo,
   HookContext,
@@ -351,6 +351,40 @@ const AdifFieldsHook = {
     }
     return fields
   },
+
+  /// A park-to-park contact with a station at several parks is submitted as one
+  /// record PER hunted park — which is why it also counts once per park toward
+  /// an activation (docs/design/activities.md §4). Each record names a single
+  /// hunted park rather than the comma-joined list `fieldsForOneQSO` writes.
+  ///
+  /// The ACTIVATION side stays joined for now. app-polo names one park here
+  /// because its POTA export offers one file per activated park and each file
+  /// sees only its own ref; HaLo has no per-reference export slicing yet
+  /// (§3.2/A4), so naming only the first would silently drop the others from
+  /// an n-fer activation's export.
+  async fieldCombinationsForOneQSO(
+    { qso, operation }: { qso: Record<string, unknown>; operation: Record<string, unknown> },
+    _ctx: HookContext,
+  ): Promise<{ name: string; value: string }[][]> {
+    const huntingRefs = refsOfType(qso, HUNTING_TYPE)
+    const activationRefs = refsOfType(operation, ACTIVATION_TYPE)
+
+    const activationFields: { name: string; value: string }[] = []
+    if (activationRefs.length > 0) {
+      activationFields.push({ name: 'MY_SIG', value: 'POTA' })
+      activationFields.push({ name: 'MY_SIG_INFO', value: activationRefs[0].ref! })
+      activationFields.push({ name: 'MY_POTA_REF', value: activationRefs.map((r) => r.ref).join(',') })
+    }
+
+    if (huntingRefs.length === 0) return [activationFields]
+
+    return huntingRefs.map((ref) => [
+      ...activationFields,
+      { name: 'SIG', value: 'POTA' },
+      { name: 'SIG_INFO', value: ref.ref! },
+      { name: 'POTA_REF', value: ref.ref! },
+    ])
+  },
 }
 
 interface POTAApiSpot {
@@ -525,6 +559,21 @@ const potaDataFile: DataFileDefinition = {
   },
 }
 
+/// POTA's award rules (docs/design/activities.md §4). A park is activated per
+/// UTC day with ten contacts; n-fers mean one operation activates several parks
+/// and one contact can hunt several. A repeat contact counts again on a new
+/// day, band, mode, or park.
+const POTA_SCORING = {
+  label: 'POTA',
+  icon: 'pine-tree',
+  activationType: ACTIVATION_TYPE,
+  huntingType: HUNTING_TYPE,
+  qsosToActivate: 10,
+  allowsMultipleReferences: true,
+  uniquePer: ['band', 'mode', 'day', 'ref'] as const,
+  activates: 'daily' as const,
+}
+
 defineExtension({
   ...manifest,
   onActivation({ registerHook }) {
@@ -539,5 +588,29 @@ defineExtension({
     // hook once a lower-priority qth-scope grid was already merged in.
     registerHook('lookup', { hook: { lookupCall }, key: 'pota', priority: 100 })
     registerHook('dataFile', { hook: potaDataFile, key: 'pota-all-parks' })
+    // Scoped to the ref types rather than 'always': the core reads the
+    // OPERATION's refs to decide which scorers run, and paying a full-log
+    // bridge crossing per activity on every operation is what `scope` exists to
+    // avoid. The consequence is that an operation which only HUNTS parks (no
+    // activation ref) doesn't select this scorer, so its hunted-reference tally
+    // is missing — app-polo covers that case with `generalHuntingType`, which
+    // has no HaLo equivalent yet (docs/design/activities.md §4).
+    registerHook('scoring', {
+      hook: contestScorer(activityScorer(POTA_SCORING), {
+        scope: { refTypes: [ACTIVATION_TYPE, HUNTING_TYPE] },
+      }),
+      key: 'pota',
+    })
+    // One submittable ADIF per activated park — an n-fer owes the program a log
+    // for each (docs/design/activities.md §3.2).
+    registerHook('export', {
+      hook: activityExportHook({
+        key: 'pota',
+        label: 'POTA',
+        activationType: ACTIVATION_TYPE,
+        icon: 'pine-tree',
+      }),
+      key: 'pota',
+    })
   },
 })

@@ -129,6 +129,31 @@ void main() {
     expect(manager.resolveRootPath(doc, 'nonexistent.path'), null);
   });
 
+  test('DataFileManager: resolveRootPath indexes into lists', () {
+    // The ECA and ELA lists wrap their rows in a positional envelope —
+    // `[meta, meta, {data: [...]}]` — so a path has to be able to step through
+    // a list, not only through maps.
+    final envelope = [
+      {'note': 'ignored'},
+      {'note': 'also ignored'},
+      {
+        'data': [
+          {'WCA': 'G-00001'}
+        ]
+      },
+    ];
+
+    expect(manager.resolveRootPath(envelope, '2.data'), [
+      {'WCA': 'G-00001'}
+    ]);
+    // Out of range and non-numeric segments are misses, not crashes — a
+    // published list that changes shape should degrade to "no rows", which the
+    // caller already reports, rather than take down the refresh.
+    expect(manager.resolveRootPath(envelope, '9.data'), null);
+    expect(manager.resolveRootPath(envelope, 'data'), null);
+    expect(manager.resolveRootPath(envelope, '-1.data'), null);
+  });
+
   test('DataFileManager: CSV parsing and Drift batch write integration', () async {
     final mockResults = <String, dynamic>{
       'dataFile:*:getDefinition': [

@@ -706,6 +706,14 @@ class DataFileManager {
     for (final part in parts) {
       if (current is Map) {
         current = current[part];
+      } else if (current is List) {
+        // A numeric segment indexes a list, so a payload that wraps its rows in
+        // a positional envelope is reachable — ECA and ELA publish
+        // `[meta, meta, {data: [...]}]`, i.e. rootPath `2.data`. A non-numeric
+        // or out-of-range segment is a miss, not a crash.
+        final index = int.tryParse(part);
+        if (index == null || index < 0 || index >= current.length) return null;
+        current = current[index];
       } else {
         return null;
       }

@@ -692,6 +692,8 @@ class _Translations$loggingControls$info$es extends Translations$loggingControls
 	@override String get noticeNewBand => 'Nueva Banda';
 	@override String get noticeNewMode => 'Nuevo Modo';
 	@override String get noticeNewDXCC => 'Nuevo DXCC';
+	@override String get noticeNewDay => 'Nuevo Día';
+	@override String get noticeNewRef => 'Nueva Ref';
 	@override String get noticeNewMult => 'Nuevo Mult';
 	@override String get noticeNewZone => 'Nueva Zona';
 	@override String get noticeInvalidMode => 'Modo Incorrecto';
@@ -1341,6 +1343,8 @@ extension on TranslationsEs {
 			'loggingControls.info.noticeNewBand' => 'Nueva Banda',
 			'loggingControls.info.noticeNewMode' => 'Nuevo Modo',
 			'loggingControls.info.noticeNewDXCC' => 'Nuevo DXCC',
+			'loggingControls.info.noticeNewDay' => 'Nuevo Día',
+			'loggingControls.info.noticeNewRef' => 'Nueva Ref',
 			'loggingControls.info.noticeNewMult' => 'Nuevo Mult',
 			'loggingControls.info.noticeNewZone' => 'Nueva Zona',
 			'loggingControls.info.noticeInvalidMode' => 'Modo Incorrecto',

@@ -251,9 +251,11 @@ __polo.defineExtension({
     }) as Map;
 
     final content = result['content'] as String;
+    // Two hunted parks means two records, one per park, each separately
+    // submittable — see nfer_export_test.dart for that rule in full.
     expect(content, contains('<SIG:4>POTA'));
     expect(content, contains('<SIG_INFO:7>US-1234'));
-    expect(content, contains('<POTA_REF:15>US-1234,US-4321'));
+    expect(content, contains('<SIG_INFO:7>US-4321'));
     expect(content, contains('<MY_SIG:4>POTA'));
     expect(content, contains('<MY_SIG_INFO:7>US-5678'));
     expect(content, contains('<MY_POTA_REF:7>US-5678'));

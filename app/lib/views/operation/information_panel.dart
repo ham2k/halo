@@ -145,10 +145,18 @@ class InformationPanel extends StatelessWidget {
     // The contest's own name, as its `decorateRef` labelled it ("CQ WW CW") —
     // better than the bare extension key, and it already reflects the mode the
     // operator chose at setup.
-    final ref = operation.refs.cast<Map<String, dynamic>?>().firstWhere(
-      (r) => r?['type'] == scorerKey,
-      orElse: () => null,
-    );
+    //
+    // A contest's ref type IS its scorer key, but an activity's is the key plus
+    // a suffix (`pota` scores an operation whose ref type is `potaActivation`),
+    // so an exact match alone would leave every activity headed by its bare key.
+    // Ref types are namespaced by extension key, which is what makes the prefix
+    // fallback safe.
+    final refs = operation.refs.cast<Map<String, dynamic>?>();
+    final ref = refs.firstWhere((r) => r?['type'] == scorerKey, orElse: () => null) ??
+        refs.firstWhere(
+          (r) => (r?['type'] as String?)?.startsWith(scorerKey) ?? false,
+          orElse: () => null,
+        );
     final heading = (ref?['shortLabel'] ?? ref?['label']) as String? ?? scorerKey;
 
     final widgets = <Widget>[const SizedBox(height: 16), Text(heading, style: theme.textTheme.titleSmall)];

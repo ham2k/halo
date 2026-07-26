@@ -17,9 +17,11 @@
     "activity",
     "adifFields",
     "dataFile",
+    "export",
     "lookup",
     "ref:pota",
     "ref:potaActivation",
+    "scoring",
     "spots"
   ],
   "domains": [

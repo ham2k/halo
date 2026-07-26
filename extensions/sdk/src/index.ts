@@ -27,6 +27,9 @@ export * from "./i18n"
 export * from "./dxcc"
 export * from "./location"
 export * from "./scoring"
+export * from "./activityScoring"
+export * from "./activityExports"
+export * from "./referenceActivity"
 
 interface KernelApi {
   defineExtension(def: ExtensionDefinition): void

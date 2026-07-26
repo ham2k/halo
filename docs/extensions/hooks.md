@@ -328,11 +328,27 @@ knowing them. Called by the `adif` extension **inside the runtime** via
 ```ts
 interface AdifFieldsHook {
   fieldsForOneQSO(args: { qso, operation }, ctx): Promise<{name, value}[]>
+  // One field set PER ADIF RECORD this contact should produce.
+  fieldCombinationsForOneQSO?(args: { qso, operation }, ctx): Promise<{name, value}[][]>
 }
 ```
 
 POTA contributes `SIG/SIG_INFO/POTA_REF` (hunted refs on the QSO) and
 `MY_SIG/MY_SIG_INFO/MY_POTA_REF` (activation refs on the operation).
+
+`fieldCombinationsForOneQSO` exists because **one contact can owe several ADIF
+records**: work a station standing in two parks and each park is submitted
+separately, which is also why it counts twice toward an activation
+(docs/design/activities.md §4). Return one field set per record; the exporter
+writes that many, shifting each successive record's `QSO_DATE`/`TIME_ON` by a
+second so otherwise-identical records aren't read as duplicates (app-polo's
+`qsonToADIF.js:144` does the same).
+
+Record count is the largest any hook asks for. A hook returning a single set
+is describing the *contact*, so its fields go on every record; only a hook
+returning several is describing individual records. Declaring both methods is
+fine and expected — a hook that does is asked only for its combinations, so
+its plain fields aren't written twice. Implemented by: `pota`.
 
 ## ✅ `command` — call-field text shortcuts
 

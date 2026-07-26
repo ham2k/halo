@@ -13,7 +13,7 @@ import { parseCallsign } from "@ham2k/lib-callsigns"
 import { annotateFromCountryFile, useBuiltinCountryFile } from "@ham2k/lib-country-files"
 import { bandForFrequency } from "@ham2k/lib-operation-data"
 import { locationToGrid6, distanceOnEarth } from "@ham2k/lib-geo-tools"
-import { defineExtension, host, LOCATION_ACCURACY } from "@ham2k/halo-extension-sdk"
+import { activityExportHook, activityScorer, contestScorer, defineExtension, host, LOCATION_ACCURACY } from "@ham2k/halo-extension-sdk"
 import type {
   AnnotatedCallInfo,
   FetchOptions,
@@ -745,6 +745,22 @@ const sotaDataFile: DataFileDefinition = {
   },
 }
 
+/// SOTA's award rules (docs/design/activities.md §4). Four contacts qualify a
+/// summit for points, and a chaser may only claim a given summit once per UTC
+/// day — so day and summit are the axes that make a repeat contact fresh, while
+/// band and mode are not. There are no n-fers: one summit at a time, and a QSO
+/// credits only its first summit ref.
+const SOTA_SCORING = {
+  label: 'SOTA',
+  icon: 'image-filter-hdr',
+  activationType: ACTIVATION_TYPE,
+  huntingType: HUNTING_TYPE,
+  qsosToActivate: 4,
+  allowsMultipleReferences: false,
+  uniquePer: ['day', 'ref'] as const,
+  activates: 'daily' as const,
+}
+
 defineExtension({
   ...manifest,
   onActivation({ registerHook }) {
@@ -759,5 +775,25 @@ defineExtension({
     // lookup can set callInfo.grid and trip this hook's early-return guard.
     registerHook('lookup', { hook: { lookupCall }, key: 'sota', priority: 100 })
     registerHook('dataFile', { hook: sotaDataFile, key: 'sota-all-summits' })
+    // Ref-scoped, not 'always' — see POTA's identical comment for why, and for
+    // what a hunting-only operation loses by it.
+    registerHook('scoring', {
+      hook: contestScorer(activityScorer(SOTA_SCORING), {
+        scope: { refTypes: [ACTIVATION_TYPE, HUNTING_TYPE] },
+      }),
+      key: 'sota',
+    })
+    // SOTA has no n-fers, so this is always a single option — but it is still
+    // the summit-scoped log rather than the whole operation's, which is what a
+    // summit sat between two breaks needs.
+    registerHook('export', {
+      hook: activityExportHook({
+        key: 'sota',
+        label: 'SOTA',
+        activationType: ACTIVATION_TYPE,
+        icon: 'image-filter-hdr',
+      }),
+      key: 'sota',
+    })
   },
 })

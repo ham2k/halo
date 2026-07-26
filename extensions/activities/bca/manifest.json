@@ -1,0 +1,40 @@
+{
+  "key": "bca",
+  "name": "Belgium Castles & Fortresses",
+  "shortName": "BCA",
+  "version": "0.0.1",
+  "description": "Belgian castle references, activation logging, and self-spotting",
+  "category": "activity",
+  "enabledByDefault": false,
+  "icon": "castle",
+  "accentColor": "#7B5E3B",
+  "keywords": [
+    "castles",
+    "fortresses",
+    "belgium",
+    "activation"
+  ],
+  "hooks": [
+    "activity",
+    "adifFields",
+    "dataFile",
+    "export",
+    "ref:bcaActivation",
+    "scoring",
+    "spots"
+  ],
+  "domains": [
+    "drive.google.com",
+    "www.cqgma.org"
+  ],
+  "translations": {
+    "es": {
+      "description": "Referencias de castillos belgas, registro de activaciones y auto-spotting",
+      "keywords": [
+        "castillos",
+        "bélgica",
+        "activación"
+      ]
+    }
+  }
+}

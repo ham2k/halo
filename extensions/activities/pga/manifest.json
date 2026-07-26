@@ -1,0 +1,36 @@
+{
+  "key": "pga",
+  "name": "Polish Gmina Award",
+  "shortName": "PGA",
+  "version": "0.0.1",
+  "description": "Polish gmina references and activation logging",
+  "category": "activity",
+  "enabledByDefault": false,
+  "icon": "map-outline",
+  "accentColor": "#B03A48",
+  "keywords": [
+    "gmina",
+    "poland",
+    "activation"
+  ],
+  "hooks": [
+    "activity",
+    "adifFields",
+    "dataFile",
+    "export",
+    "ref:pgaActivation"
+  ],
+  "domains": [
+    "www.sq7acp.pl"
+  ],
+  "translations": {
+    "es": {
+      "description": "Referencias de gminas polacas y registro de activaciones",
+      "keywords": [
+        "gmina",
+        "polonia",
+        "activación"
+      ]
+    }
+  }
+}

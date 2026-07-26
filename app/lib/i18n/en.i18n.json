@@ -223,6 +223,8 @@
       "noticeNewBand": "New Band",
       "noticeNewMode": "New Mode",
       "noticeNewDXCC": "New DXCC",
+      "noticeNewDay": "New Day",
+      "noticeNewRef": "New Ref",
       "noticeNewMult": "New Mult",
       "noticeNewZone": "New Zone",
       "noticeInvalidMode": "Wrong Mode",

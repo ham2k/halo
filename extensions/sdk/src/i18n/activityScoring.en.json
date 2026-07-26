@@ -1,0 +1,6 @@
+{
+  "activatingOne": "{{program}} Activation — 1 QSO",
+  "activatingMany": "{{program}} Activation — {{formatted}} QSOs",
+  "huntedOne": "1 {{program}} Reference Hunted",
+  "huntedMany": "{{formatted}} {{program}} References Hunted"
+}

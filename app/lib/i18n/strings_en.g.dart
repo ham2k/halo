@@ -1325,6 +1325,12 @@ class Translations$loggingControls$info$en {
 	/// en: 'New DXCC'
 	String get noticeNewDXCC => 'New DXCC';
 
+	/// en: 'New Day'
+	String get noticeNewDay => 'New Day';
+
+	/// en: 'New Ref'
+	String get noticeNewRef => 'New Ref';
+
 	/// en: 'New Mult'
 	String get noticeNewMult => 'New Mult';
 
@@ -2331,6 +2337,8 @@ extension on Translations {
 			'loggingControls.info.noticeNewBand' => 'New Band',
 			'loggingControls.info.noticeNewMode' => 'New Mode',
 			'loggingControls.info.noticeNewDXCC' => 'New DXCC',
+			'loggingControls.info.noticeNewDay' => 'New Day',
+			'loggingControls.info.noticeNewRef' => 'New Ref',
 			'loggingControls.info.noticeNewMult' => 'New Mult',
 			'loggingControls.info.noticeNewZone' => 'New Zone',
 			'loggingControls.info.noticeInvalidMode' => 'Wrong Mode',

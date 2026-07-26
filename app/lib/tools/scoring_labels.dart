@@ -19,6 +19,10 @@ String scoreNoticeLabel(BuildContext context, String key) {
     'newBand' => t.noticeNewBand,
     'newMode' => t.noticeNewMode,
     'newDXCC' => t.noticeNewDXCC,
+    // Activity scorers: a repeat contact that counts again because the award's
+    // `uniquePer` axes make it fresh (docs/design/activities.md §4).
+    'newDay' => t.noticeNewDay,
+    'newRef' => t.noticeNewRef,
     // Contest scorers (docs/design/contests.md M2 onward).
     'newMult' => t.noticeNewMult,
     'newZone' => t.noticeNewZone,

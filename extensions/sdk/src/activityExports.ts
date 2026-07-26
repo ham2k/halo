@@ -1,0 +1,155 @@
+// Copyright ©️ 2026 Sebastian Delmont <sd@ham2k.com>
+// SPDX-License-Identifier: MPL-2.0
+//
+// Activity exports: one submittable log PER ACTIVATED REFERENCE.
+//
+// Activate two parks at once and you owe the program two logs, one claiming
+// each — same contacts, each file naming its own reference. That is the
+// convention across the reference programs, and it is a different axis from
+// the per-record split in `adifFields.fieldCombinationsForOneQSO`, which
+// multiplies by the references the OTHER station was at, WITHIN one file
+// (docs/design/activities.md §3.2).
+//
+// Needs nothing from the core. `exportType` is opaque to it and round-trips
+// verbatim into `generateExport`, and the Exports panel keys selections by
+// `hookKey:exportType` — so encoding the reference into the exportType is
+// enough to offer several options from one hook and know which was chosen.
+//
+// The QSO set is the core's business, not ours: declaring `refType` makes it
+// hand `generateExport` only the contacts made while this activity was actually
+// running (ham2k/app-halo-dist#389), which is what keeps a park activated after
+// a break from claiming the whole day's log.
+//
+// Types and `hooks` come in by relative path, not the
+// `@ham2k/halo-extension-sdk` alias, so this module's tests can run under plain
+// `node --test` — the constraint dxcc.ts and scoring.ts document.
+
+import type {
+  ExportOption,
+  ExportOptionsRequest,
+  ExportRequest,
+  ExportResult,
+  HookContext,
+  JSONValue,
+} from "./types.ts"
+
+export interface ActivityExportRules {
+  /// The extension's key, which namespaces the exportType — 'pota'.
+  key: string
+  /// Short program name for the option label — 'POTA'.
+  label: string
+  /// The ref type an operation carries while activating ('potaActivation').
+  activationType: string
+  icon?: string
+}
+
+/// Separates the program's own exportType prefix from the reference it names.
+/// A colon can't appear in a reference in any program ported so far, and if one
+/// ever does, only the FIRST colon is treated as the separator.
+const SEPARATOR = ':'
+
+interface ActivationRef {
+  ref: string
+  name?: string
+}
+
+function activationRefsOf(operation: Record<string, JSONValue>, type: string): ActivationRef[] {
+  const refs = (operation.refs as Record<string, JSONValue>[] | undefined) ?? []
+  return refs
+    .filter((r) => r && r.type === type && typeof r.ref === 'string' && r.ref.length > 0)
+    .map((r) => ({ ref: r.ref as string, name: typeof r.name === 'string' ? r.name : undefined }))
+}
+
+function slug(text: string): string {
+  return text.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
+}
+
+/// Shared by the option listing and the generated result, which must agree —
+/// the panel shows one and the core writes the other, so two copies of this
+/// expression would eventually disagree in front of the user. Drops the station
+/// when there isn't one rather than emitting a leading dash.
+function filenameFor(stationCall: JSONValue | undefined, ref: string): string {
+  const station = slug(String(stationCall ?? ''))
+  return `${station ? `${station}-at-` : ''}${slug(ref)}.adi`
+}
+
+/// An `ExportHook` offering one ADIF per activated reference. Register it
+/// alongside the activity's other hooks:
+///
+/// ```ts
+/// registerHook('export', { hook: activityExportHook(POTA_EXPORTS), key: 'pota' })
+/// ```
+export function activityExportHook(rules: ActivityExportRules) {
+  const prefix = `${rules.key}-adif`
+
+  return {
+    async suggestExportOptions({ operation }: ExportOptionsRequest, _ctx: HookContext): Promise<ExportOption[]> {
+      // No activation, nothing to submit. A pure hunting log is the plain ADIF
+      // export's business, not ours.
+      const refs = activationRefsOf(operation, rules.activationType)
+
+      return refs.map((ref) => ({
+        exportType: `${prefix}${SEPARATOR}${ref.ref}`,
+        format: 'adif',
+        label: `${rules.label} ${ref.ref}`,
+        filename: filenameFor(operation.stationCall, ref.ref),
+        icon: rules.icon,
+        selectedByDefault: true,
+        // Segment slicing: only the contacts made while this activity ran.
+        refType: rules.activationType,
+      }))
+    },
+
+    async generateExport(args: ExportRequest, ctx: HookContext): Promise<ExportResult> {
+      // Answer ONLY for the exportTypes suggested above. A hook that answers
+      // for one it never offered is how the ADIF delegation below recursed into
+      // itself and hung the export (see contest_export_test.dart).
+      const exportType = String(args.exportType ?? '')
+      if (!exportType.startsWith(`${prefix}${SEPARATOR}`)) {
+        throw new Error(`${rules.key}: unknown export type '${exportType}'`)
+      }
+      const wanted = exportType.slice(prefix.length + SEPARATOR.length)
+
+      // The option was listed from the operation's refs, but the two are read
+      // at different moments — remove a park between opening the Exports panel
+      // and running it and `wanted` is gone. Filtering to nothing below would
+      // then produce a perfectly valid ADIF that claims no reference at all,
+      // which is worse than failing: it looks submittable and isn't.
+      if (!activationRefsOf(args.operation, rules.activationType).some((r) => r.ref === wanted)) {
+        throw new Error(`${rules.key}: operation has no ${rules.activationType} reference '${wanted}'`)
+      }
+
+      // The whole point of the split: this file claims ONE reference, so the
+      // operation the ADIF exporter sees carries only that one and every record
+      // names it. Other activities' refs are left alone — a park that is also a
+      // summit still says so in the POTA file.
+      const refs = ((args.operation.refs as Record<string, JSONValue>[] | undefined) ?? []).filter(
+        (r) => r?.type !== rules.activationType || r?.ref === wanted,
+      )
+      const operation = { ...args.operation, refs: refs as unknown as JSONValue }
+
+      const content = await adifFor({ operation, qsos: args.qsos })
+      return { filename: filenameFor(args.operation.stationCall, wanted), mimeType: 'text/plain', content }
+    },
+  }
+}
+
+/// Delegates to the core ADIF exporter inside the runtime (no bridge crossing),
+/// so an activity's file is byte-identical to a normal export of the same
+/// narrowed operation. `invokeOne`, not `invokeAll` — see the guard above.
+async function adifFor(
+  { operation, qsos }: { operation: Record<string, JSONValue>; qsos: Record<string, JSONValue>[] },
+): Promise<string> {
+  // Imported dynamically, as simple-contest does: a static import of the SDK
+  // barrel from inside the SDK is circular (the barrel re-exports this module),
+  // and it would drag `defineExtension` — which needs the kernel global — into
+  // this module's `node --test` runs.
+  const { hooks } = await import("@ham2k/halo-extension-sdk")
+  const entries = await hooks.invokeOne('export', 'adif', 'generateExport', {
+    operation,
+    qsos,
+    exportType: 'adif',
+  })
+  const adif = entries.find((e) => e.ok)
+  return ((adif?.value as ExportResult | undefined)?.content) ?? ''
+}

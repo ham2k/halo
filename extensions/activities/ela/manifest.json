@@ -1,0 +1,39 @@
+{
+  "key": "ela",
+  "name": "English Lighthouse Awards",
+  "shortName": "ELA",
+  "version": "0.0.1",
+  "description": "English lighthouse references, activation logging, and self-spotting",
+  "category": "activity",
+  "enabledByDefault": false,
+  "icon": "lighthouse",
+  "accentColor": "#2E6F9E",
+  "keywords": [
+    "lighthouses",
+    "england",
+    "activation"
+  ],
+  "hooks": [
+    "activity",
+    "adifFields",
+    "dataFile",
+    "export",
+    "ref:elaActivation",
+    "scoring",
+    "spots"
+  ],
+  "domains": [
+    "ham2k.com",
+    "www.cqgma.org"
+  ],
+  "translations": {
+    "es": {
+      "description": "Referencias de faros ingleses, registro de activaciones y auto-spotting",
+      "keywords": [
+        "faros",
+        "inglaterra",
+        "activación"
+      ]
+    }
+  }
+}

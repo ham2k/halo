@@ -18,9 +18,11 @@
     "activity",
     "adifFields",
     "dataFile",
+    "export",
     "lookup",
     "ref:sota",
     "ref:sotaActivation",
+    "scoring",
     "spots"
   ],
   "domains": [

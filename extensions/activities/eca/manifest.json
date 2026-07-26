@@ -1,0 +1,39 @@
+{
+  "key": "eca",
+  "name": "English Castles Awards",
+  "shortName": "ECA",
+  "version": "0.0.1",
+  "description": "English castle references, activation logging, and self-spotting",
+  "category": "activity",
+  "enabledByDefault": false,
+  "icon": "castle",
+  "accentColor": "#7B5E3B",
+  "keywords": [
+    "castles",
+    "england",
+    "activation"
+  ],
+  "hooks": [
+    "activity",
+    "adifFields",
+    "dataFile",
+    "export",
+    "ref:ecaActivation",
+    "scoring",
+    "spots"
+  ],
+  "domains": [
+    "ham2k.com",
+    "www.cqgma.org"
+  ],
+  "translations": {
+    "es": {
+      "description": "Referencias de castillos ingleses, registro de activaciones y auto-spotting",
+      "keywords": [
+        "castillos",
+        "inglaterra",
+        "activación"
+      ]
+    }
+  }
+}

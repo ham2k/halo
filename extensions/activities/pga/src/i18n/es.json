@@ -1,0 +1,7 @@
+{
+  "invalidReference": "Referencia inválida",
+  "unknownReference": "Gmina desconocida",
+  "activationControl": "Activación PGA",
+  "dataFileName": "PGA: Gminas",
+  "dataFileDescription": "Base de datos de todas las referencias PGA"
+}
