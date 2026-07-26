@@ -298,6 +298,7 @@ Future<T?> showTopModalPane<T>(
   String closeTooltip = 'Close',
   ValueChanged<Animation<double>>? onAnimation,
   double? leftInset,
+  VoidCallback? onDismiss,
 }) {
   final route = TopModalPaneRoute<T>(
     builder: builder,
@@ -308,6 +309,7 @@ Future<T?> showTopModalPane<T>(
     trailing: trailing,
     closeTooltip: closeTooltip,
     leftInset: leftInset,
+    onDismiss: onDismiss,
   );
   final result = Navigator.of(context).push(route);
   // After push: the route's animation is created by install(), which the
@@ -331,6 +333,9 @@ class TopModalPaneRoute<T> extends PopupRoute<T> {
   /// See [showTopModalPane]'s doc comment. Null centers, as before.
   final double? leftInset;
 
+  /// Called when tapping outside the sheet (barrier below or header above).
+  final VoidCallback? onDismiss;
+
   final _bodyKey = GlobalKey();
 
   TopModalPaneRoute({
@@ -342,6 +347,7 @@ class TopModalPaneRoute<T> extends PopupRoute<T> {
     this.trailing,
     this.closeTooltip = 'Close',
     this.leftInset,
+    this.onDismiss,
   });
 
   @override
@@ -445,7 +451,15 @@ class _TopModalPaneScaffold extends StatelessWidget {
               bottom: 0,
               child: GestureDetector(
                 behavior: HitTestBehavior.opaque,
-                onTap: route.barrierDismissible ? () => Navigator.of(context).maybePop() : null,
+                onTap: route.barrierDismissible
+                    ? () {
+                        if (route.onDismiss != null) {
+                          route.onDismiss!();
+                        } else {
+                          Navigator.of(context).maybePop();
+                        }
+                      }
+                    : null,
                 child: const SizedBox.expand(),
               ),
             ),
@@ -456,8 +470,16 @@ class _TopModalPaneScaffold extends StatelessWidget {
               right: 0,
               height: topOffset,
               child: GestureDetector(
-                behavior: HitTestBehavior.opaque,
-                onTap: route.barrierDismissible ? () => Navigator.of(context).maybePop() : null,
+                behavior: HitTestBehavior.translucent,
+                onTap: route.barrierDismissible
+                    ? () {
+                        if (route.onDismiss != null) {
+                          route.onDismiss!();
+                        } else {
+                          Navigator.of(context).maybePop();
+                        }
+                      }
+                    : null,
                 child: const SizedBox.expand(),
               ),
             ),

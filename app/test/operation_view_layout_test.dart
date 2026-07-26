@@ -161,9 +161,8 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byKey(const Key('operationHeaderGrab')), findsNothing);
-    // The plain "more" hint next to the title/subtitle — not a button of
-    // its own, part of the same tap target.
-    expect(find.byIcon(Icons.more_vert), findsOneWidget);
+    // The 3-dots and accept morphing control next to the title/subtitle.
+    expect(find.byWidgetPredicate((w) => w.runtimeType.toString() == '_HeaderDotsAndAcceptControl'), findsOneWidget);
 
     final toolbarHeight = Theme.of(tester.element(find.byType(AppBar))).appBarTheme.toolbarHeight ?? kToolbarHeight;
     final tabBarTop = tester.getTopLeft(find.byType(TabBar)).dy;

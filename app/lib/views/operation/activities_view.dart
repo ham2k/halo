@@ -869,7 +869,13 @@ class OperationSheetState extends State<OperationSheet> {
     if (mounted) Navigator.of(context).pop();
   }
 
+  void revert() {
+    _searchController.clear();
+    updateOperation(widget.operation);
+  }
+
   void revertAndClose() {
+    revert();
     Navigator.of(context).pop();
   }
 
