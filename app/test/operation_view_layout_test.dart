@@ -215,6 +215,93 @@ void main() {
     await tester.pumpWidget(const SizedBox());
     await tester.pump(const Duration(seconds: 5));
   });
+
+  testWidgets('the header title only claims as much width as its own text needs', (tester) async {
+    tester.view.physicalSize = const Size(1000, 800);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+
+    SharedPreferences.setMockInitialValues({});
+    final settings = SettingsService(await SharedPreferences.getInstance());
+    await settings.recordOnboardingShown(OnboardingFlows.operationSheet);
+    final db = HaLoDatabase(NativeDatabase.memory());
+    addTearDown(db.close);
+    final extensions = ExtensionServiceWithMockHost(MockExtensionHost(const {}))..settings = settings;
+    final services = HaLoServices(db, settings, extensions: extensions);
+    final operation = await services.operations.create(stationCall: 'N0CALL', title: 'Test Op');
+
+    await tester.pumpWidget(TranslationProvider(
+      child: MaterialApp(
+        home: OperationView(services: services, operationUuid: operation.uuid),
+      ),
+    ));
+    await tester.pumpAndSettle();
+
+    // Used to stretch to fill the AppBar's whole remaining width (an
+    // Expanded child forces that regardless of mainAxisSize.min) — the
+    // active/hover area should now hug the short "N0CALL Test Op" text
+    // instead, nowhere near the ~900px it used to claim in a 1000px window.
+    final titleInkWell = find.ancestor(of: find.text('N0CALL Test Op'), matching: find.byType(InkWell));
+    expect(tester.getSize(titleInkWell).width, lessThan(500));
+
+    await tester.pumpWidget(const SizedBox());
+    await tester.pump(const Duration(seconds: 5));
+  });
+
+  testWidgets('the dots/accept control animates back on close, not an instant snap to plain dots', (tester) async {
+    tester.view.physicalSize = const Size(1000, 800);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+
+    SharedPreferences.setMockInitialValues({});
+    final settings = SettingsService(await SharedPreferences.getInstance());
+    await settings.recordOnboardingShown(OnboardingFlows.operationSheet);
+    final db = HaLoDatabase(NativeDatabase.memory());
+    addTearDown(db.close);
+    final extensions = ExtensionServiceWithMockHost(MockExtensionHost(const {}))..settings = settings;
+    final services = HaLoServices(db, settings, extensions: extensions);
+    final operation = await services.operations.create(stationCall: 'N0CALL', title: 'Test Op');
+
+    await tester.pumpWidget(TranslationProvider(
+      child: MaterialApp(
+        home: OperationView(services: services, operationUuid: operation.uuid),
+      ),
+    ));
+    await tester.pumpAndSettle();
+
+    // _HeaderDotsAndAcceptControl's own width IS its progress (10px..28px,
+    // see operation_view.dart) — reading it black-box like this avoids
+    // needing access to the private painter's progress field.
+    final control = find.byWidgetPredicate((w) => w.runtimeType.toString() == '_HeaderDotsAndAcceptControl');
+
+    await tester.tap(find.text('N0CALL Test Op'));
+    await tester.pumpAndSettle();
+    expect(find.byType(OperationSheet), findsOneWidget);
+    expect(tester.getSize(control).width, closeTo(28, 0.5), reason: 'fully morphed to the accept circle while open');
+
+    // Closing: saveAndClose() awaits saveData() before calling pop(), so a
+    // couple of bare pumps first flush that gap; the awaited showTopModalPane
+    // future (and so _openOperationSheet's `finally`) resolves at pop() time
+    // — well before the route's 600ms reverse transition finishes — which is
+    // exactly the bug this pins: _sheetAnimation must keep reflecting the
+    // reversing route animation for that whole stretch, not go null the
+    // instant pop() is called.
+    await tester.tap(find.text('N0CALL Test Op'));
+    await tester.pump();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 150));
+
+    final midWidth = tester.getSize(control).width;
+    expect(midWidth, greaterThan(10.5), reason: 'still mid-close — must not have already snapped back to plain dots');
+    expect(midWidth, lessThan(27.5), reason: 'and must not still read as fully open either — genuinely animating');
+
+    await tester.pumpAndSettle();
+    expect(find.byType(OperationSheet), findsNothing);
+    expect(tester.getSize(control).width, closeTo(10, 0.5), reason: 'settles back to plain dots once fully closed');
+
+    await tester.pumpWidget(const SizedBox());
+    await tester.pump(const Duration(seconds: 5));
+  });
 }
 
 class MockExtensionHost implements ExtensionHost {

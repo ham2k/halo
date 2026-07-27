@@ -111,6 +111,21 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
   OperationTitleFragments? _draftTitleFragments;
   int _draftTitleGeneration = 0;
 
+  /// Carries the draft's last-known-good title fragments PAST the moment the
+  /// sheet closes and _draftTitleFragments is dropped — saveAndClose()
+  /// persists the sheet's own (still stale-titleSuggestion) operation, so
+  /// watchOperation's very next emission reads that stale cache straight
+  /// back over whatever _withTitleSuggestion patched into _operation at
+  /// close. Kept alive and re-applied to every incoming stream emission
+  /// (see [_onOperationChanged]) until the row's OWN persisted cache
+  /// actually catches up — the separate, async
+  /// OperationTitleService.retitleOperation() call that same emission
+  /// triggers — at which point it's cleared as redundant.
+  OperationTitleFragments? _pendingTitleFragments;
+
+  bool _sameTitleFragments(OperationTitleFragments a, OperationTitleFragments b) =>
+      a.title == b.title && a.forText == b.forText && a.atText == b.atText && a.subtitle == b.subtitle;
+
   /// Re-suggests the header title for the sheet's buffered draft. Fire-and-
   /// forget, like the saved-row retitle — the title is a display enhancement,
   /// so a failed or superseded run just leaves the previous one showing.
@@ -328,7 +343,18 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
   void _onOperationChanged(Operation? operation) {
     if (!mounted) return;
     final previous = _operation;
-    setState(() => _operation = operation);
+    var patched = operation;
+    final pending = _pendingTitleFragments;
+    if (patched != null && pending != null) {
+      if (_sameTitleFragments(patched.titleFragments, pending)) {
+        // The row's own cache has caught up (retitleOperation's write from
+        // a PRIOR emission landed) — stop overriding, it's redundant now.
+        _pendingTitleFragments = null;
+      } else {
+        patched = _withTitleSuggestion(patched, pending);
+      }
+    }
+    setState(() => _operation = patched);
     if (operation == null) return;
 
     // With no profile callsign yet (fresh install — no onboarding flow
@@ -576,8 +602,33 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
           void animListener() {
             if (mounted) setState(() {});
           }
+          // Navigator.push()'s Future (what `await showTopModalPane` below
+          // is waiting on) completes the instant saveAndClose()/revert-
+          // AndClose() calls pop() — well before the route's reverse
+          // transition actually finishes playing. If this listener were
+          // torn down in that `finally` block instead, _sheetAnimation
+          // would go null immediately, snapping the header's dots/accept
+          // control straight to "closed" while the sheet itself keeps
+          // sliding away for the rest of its 600ms. So this detaches
+          // itself only once the animation genuinely reaches
+          // AnimationStatus.dismissed, keeping the header in sync with
+          // the pane for the whole reverse transition; the `identical`
+          // check guards against a late-firing dismissal from a PREVIOUS
+          // sheet clobbering a new one that's already open.
+          void statusListener(AnimationStatus status) {
+            if (status != AnimationStatus.dismissed) return;
+            anim.removeListener(animListener);
+            anim.removeStatusListener(statusListener);
+            if (mounted && identical(_sheetAnimation, anim)) {
+              setState(() => _sheetAnimation = null);
+            }
+          }
           anim.addListener(animListener);
-          _sheetAnimationListener = () => anim.removeListener(animListener);
+          anim.addStatusListener(statusListener);
+          _sheetAnimationListener = () {
+            anim.removeListener(animListener);
+            anim.removeStatusListener(statusListener);
+          };
         },
         closeTooltip: context.t.common.close,
         // Left-aligned with the dots-and-title control that opens it,
@@ -768,15 +819,46 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
       );
     } finally {
       hasUpdatesNotifier.removeListener(onUpdatesChanged);
-      _sheetAnimationListener?.call();
-      _sheetAnimationListener = null;
+      // _sheetAnimation/_sheetAnimationListener are NOT reset here — this
+      // `finally` runs as soon as Navigator.push() resolves, which is at
+      // pop() time, well before the route's reverse transition actually
+      // finishes. The status listener attached in onAnimation above cleans
+      // both up itself once the animation truly reaches
+      // AnimationStatus.dismissed (with a defensive re-detach at the top of
+      // the next onAnimation call, in case a sheet reopens before that
+      // fires).
       if (mounted) {
         setState(() {
-          _sheetAnimation = null;
           _activeSheetKey = null;
           _activeHasUpdatesNotifier = null;
-          // Back to the saved row's own cache — which retitleOperation
-          // refreshes off the stream if the draft was saved.
+          // Carry the draft's final (just-saved — see saveAndClose(), the
+          // only path that reaches here today) values into _operation
+          // BEFORE dropping the draft, rather than leaving the header to
+          // fall back on _operation as it stood before this edit session
+          // and wait for watchOperation's stream to catch up. That gap
+          // used to show a flicker of stale values in the header for a
+          // frame or two while the sheet was still closing. If a live
+          // title-preview was showing (refs edited during this session),
+          // bake ITS suggestion into the carried-forward operation too —
+          // otherwise the draft's own titleSuggestion cache is still the
+          // PRE-edit one (only the ephemeral preview knew about the new
+          // refs), so dropping _draftTitleFragments in the same breath
+          // would swap the correct preview for that stale cached title.
+          // The fragments also live on as _pendingTitleFragments (NOT
+          // cleared here) — saveAndClose() persisted the sheet's own,
+          // still stale-titleSuggestion operation, so watchOperation's very
+          // next emission would read that stale cache straight back over
+          // this fix; _onOperationChanged keeps re-patching it in until the
+          // row's real cache (retitleOperation's separate async write)
+          // actually catches up.
+          final draft = _draftOperation;
+          final fragments = _draftTitleFragments;
+          _operation = draft == null
+              ? _operation
+              : fragments == null
+                  ? draft
+                  : _withTitleSuggestion(draft, fragments);
+          _pendingTitleFragments = fragments ?? _pendingTitleFragments;
           _draftOperation = null;
           _draftTitleFragments = null;
           _draftTitleGeneration++;
@@ -867,6 +949,34 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
     );
   }
 
+  /// Bakes [fragments] into [operation]'s own `localData['titleSuggestion']`
+  /// — the same shape `OperationTitleService` persists, and the one
+  /// `displayTitleFor`/`operation.titleFragments` actually reads. Used both
+  /// by the live preview in [build] and, on close, to carry that preview's
+  /// result into `_operation` in the same breath the draft is dropped — see
+  /// the `finally` block in [_openOperationSheet] for why the LATTER matters:
+  /// without it, the header falls back to whatever stale titleSuggestion is
+  /// still cached on the saved row until retitleOperation's own async
+  /// refresh catches up, flickering back to the pre-edit title in between.
+  Operation _withTitleSuggestion(Operation operation, OperationTitleFragments fragments) => Operation(
+        uuid: operation.uuid,
+        data: operation.data,
+        qsoCount: operation.qsoCount,
+        startAtMillisMin: operation.startAtMillisMin,
+        startAtMillisMax: operation.startAtMillisMax,
+        localData: {
+          ...operation.localData,
+          'titleSuggestion': fragments.isEmpty
+              ? null
+              : {
+                  'title': fragments.title,
+                  'for': fragments.forText,
+                  'at': fragments.atText,
+                  'subtitle': fragments.subtitle,
+                },
+        },
+      );
+
   @override
   Widget build(BuildContext context) {
     final current = _draftOperation ?? _operation;
@@ -877,26 +987,8 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
     // While the sheet buffers ref edits, the row's cached titleSuggestion
     // still describes the SAVED refs — swap in the draft's freshly suggested
     // fragments so the header retitles as activities are picked, not on Save.
-    final draftFragments = _draftTitleFragments;
-    if (_draftOperation != null && draftFragments != null) {
-      operation = Operation(
-        uuid: operation.uuid,
-        data: operation.data,
-        qsoCount: operation.qsoCount,
-        startAtMillisMin: operation.startAtMillisMin,
-        startAtMillisMax: operation.startAtMillisMax,
-        localData: {
-          ...operation.localData,
-          'titleSuggestion': draftFragments.isEmpty
-              ? null
-              : {
-                  'title': draftFragments.title,
-                  'for': draftFragments.forText,
-                  'at': draftFragments.atText,
-                  'subtitle': draftFragments.subtitle,
-                },
-        },
-      );
+    if (_draftOperation != null && _draftTitleFragments != null) {
+      operation = _withTitleSuggestion(operation, _draftTitleFragments!);
     }
 
     return StreamBuilder<List<Qso>>(
@@ -1112,7 +1204,13 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
                   return null;
                 }),
                 child: Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 2),
+                  // A small left inset for the dots/accept control — it used
+                  // to sit flush against the back button with no breathing
+                  // room at all — and a small right inset now that the
+                  // title no longer stretches to fill the AppBar, so the
+                  // button's own edge doesn't sit flush against whatever's
+                  // to its right (actions, or the window's own edge).
+                  padding: const EdgeInsets.only(left: 8, right: 12, top: 2, bottom: 2),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
@@ -1121,7 +1219,19 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
                         hasUpdates: _activeHasUpdatesNotifier?.value ?? false,
                       ),
                       const SizedBox(width: 4),
-                      Expanded(
+                      // Flexible (loose), not Expanded (tight): Expanded
+                      // forces this Column — and so the InkWell's whole
+                      // tap/hover area above — to stretch to the AppBar's
+                      // full available width regardless of how little text
+                      // there is. Flexible still hands shrinkToFitText below
+                      // a bounded max width to shrink/ellipsize against (a
+                      // bare, non-flexible Row child gets an UNBOUNDED main-
+                      // axis constraint instead — Flutter only bounds a
+                      // Row's main axis for Expanded/Flexible children —
+                      // which is what caused the overflow when this was
+                      // first tried as a plain child), but no longer forces
+                      // the Column to consume space it doesn't need.
+                      Flexible(
                         child: Column(
                           mainAxisSize: MainAxisSize.min,
                           crossAxisAlignment: CrossAxisAlignment.start,
