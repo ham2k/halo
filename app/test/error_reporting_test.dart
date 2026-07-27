@@ -226,6 +226,61 @@ void main() {
     });
   });
 
+  group('RenderFlex overflow warnings', () {
+    // A debug-only layout assertion (release builds clip silently and never
+    // throw this at all) — worth seeing locally, since it flags a real
+    // layout bug, but not a "Something went wrong" notice aimed at an
+    // operator who can't act on it, and not an external report for
+    // something that literally cannot reach a release build.
+    FlutterErrorDetails overflow({Object? error}) => FlutterErrorDetails(
+          exception: error ?? FlutterError('A RenderFlex overflowed by 13 pixels on the right.\n'),
+          library: 'rendering library',
+        );
+
+    test('is recognized by its message, whatever widget threw it', () {
+      expect(ErrorReportingService.isKnownRenderFlexOverflowNoise(overflow()), isTrue);
+    });
+
+    test('nothing else with the same FlutterError type is swallowed', () {
+      expect(
+        ErrorReportingService.isKnownRenderFlexOverflowNoise(overflow(error: FlutterError('some other message'))),
+        isFalse,
+      );
+    });
+
+    test('a non-FlutterError exception is never matched, even with the same text', () {
+      expect(
+        ErrorReportingService.isKnownRenderFlexOverflowNoise(
+          overflow(error: StateError('A RenderFlex overflowed by 13 pixels on the right.')),
+        ),
+        isFalse,
+      );
+    });
+
+    testWidgets('is still console-visible, but posts no notice and never reaches the backend', (tester) async {
+      final backend = FakeErrorReportingBackend();
+      await withErrorHooks(() async {
+        final statusBar = StatusBarService(await SharedPreferences.getInstance());
+        ErrorReportingService.attachStatusBar(statusBar);
+
+        final chained = FlutterError.onError!;
+        chained(overflow());
+
+        // Unlike the focus-traversal noise, this doesn't reach the test
+        // binding's own exception capture (that's presentError()'s job,
+        // not debugPrint's) — nothing pending is still the right check,
+        // since it proves the call returned cleanly rather than propagating.
+        expect(tester.takeException(), isNull);
+        await tester.pump(); // the notice would be queued as a microtask
+        expect(
+          statusBar.activeNotices.where((n) => n.key == 'error-reporting:first-error'),
+          isEmpty,
+        );
+        expect(backend.exceptions, isEmpty);
+      }, backend: backend);
+    });
+  });
+
   test('report() reaches the backend\'s captureException with the given context', () async {
     final backend = FakeErrorReportingBackend();
     await withErrorHooks(() async {

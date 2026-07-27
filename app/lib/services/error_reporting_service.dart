@@ -132,6 +132,18 @@ class ErrorReportingService {
         }
         return;
       }
+      // Console-only, unlike the focus-traversal noise above: a RenderFlex
+      // overflow is a real layout bug worth seeing locally (and Flutter's
+      // debug-mode paint already marks the offending widget on-screen with
+      // its own yellow/black stripes), but it's cosmetic and debug-only —
+      // never worth a user-facing notice or an external report. Skips
+      // previousOnError entirely, unlike an ordinary error below — that's
+      // the chain a real backend's capture hooks into.
+      if (isKnownRenderFlexOverflowNoise(details)) {
+        debugPrint('[error-reporting] RenderFlex overflow (debug-only layout warning, not reported): '
+            '${details.exception}');
+        return;
+      }
       if (previousOnError != null) {
         previousOnError(details);
       } else {
@@ -197,6 +209,19 @@ class ErrorReportingService {
     // has moved between Dart versions; the message has not.
     final text = error.toString();
     return text.contains('Unexpected null value') || text.contains('Null check operator used on a null value');
+  }
+
+  /// Whether [details] is Flutter's own "RenderFlex overflowed by N pixels"
+  /// layout warning — a debug-only assertion (release builds clip silently
+  /// and never throw this at all), thrown whenever a Row/Column's children
+  /// don't fit, however minor the overflow. Real layout bugs worth fixing,
+  /// but not worth a "Something went wrong" notice aimed at an operator who
+  /// can't do anything about it, or an external report for something that
+  /// literally cannot happen in the release build users run.
+  @visibleForTesting
+  static bool isKnownRenderFlexOverflowNoise(FlutterErrorDetails details) {
+    final error = details.exception;
+    return error is FlutterError && error.toString().contains('A RenderFlex overflowed by');
   }
 
   /// Queue the once-per-session StatusBar notice (if the bar is attached).
