@@ -26,7 +26,7 @@ String _templateString(String template, Map<String, dynamic> item) {
 }
 
 /// The localizable vocabulary for the renderer's own chrome — action
-/// buttons, editor dialogs, tooltips, and error prefixes. Field labels,
+/// buttons, editor dialogs, icon-button names, and error prefixes. Field labels,
 /// titles, and options come from the form definition itself, so localizing
 /// those is the definition author's job. Defaults to English so the widget
 /// package stays usable standalone (same pattern as QsoListLabels); the app
@@ -50,12 +50,15 @@ class FormRendererLabels {
   /// The multiselect editor's restore-defaults button.
   final String defaults;
 
-  /// The multiselect editor's search field hint and clear-button tooltip.
+  /// The multiselect editor's search field hint and clear-button name.
   final String searchHint;
-  final String clearTooltip;
+  final String clearLabel;
 
-  /// A `type: 'link'` element's open button tooltip.
-  final String openPageTooltip;
+  /// A `type: 'link'` element's open button name.
+  final String openPageLabel;
+
+  /// A repeating-list row's remove button name (icon-only).
+  final String removeItemLabel;
 
   /// An `account` field's status line and Manage/Connect button.
   final String connected;
@@ -66,9 +69,9 @@ class FormRendererLabels {
   /// [showFormDialog]'s title when the definition has none.
   final String formTitle;
 
-  /// [showFormPane]'s modal-pane close button tooltip (threaded through to
+  /// [showFormPane]'s modal-pane close button name (threaded through to
   /// [showModalPane]).
-  final String closeTooltip;
+  final String closeLabel;
 
   /// The list editor's "Add `<field label>`" / "Edit `<field label>`" titles.
   final String Function(String label)? addItem;
@@ -94,14 +97,15 @@ class FormRendererLabels {
     this.showFewer = 'Show fewer',
     this.defaults = 'Defaults',
     this.searchHint = 'Search',
-    this.clearTooltip = 'Clear',
-    this.openPageTooltip = 'Open page',
+    this.clearLabel = 'Clear',
+    this.openPageLabel = 'Open page',
+    this.removeItemLabel = 'Remove',
     this.connected = 'Connected',
     this.notConnected = 'Not Connected',
     this.manage = 'Manage',
     this.connect = 'Connect',
     this.formTitle = 'Form',
-    this.closeTooltip = 'Close',
+    this.closeLabel = 'Close',
     this.addItem,
     this.editItem,
     this.multiselectStatus,
@@ -1003,8 +1007,12 @@ class FormRendererState extends State<FormRenderer> {
       title: Text(label, style: theme.textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.bold, color: devModeColor)),
       subtitle: description != null && description.isNotEmpty ? Text(description, style: TextStyle(color: devModeColor)) : null,
       trailing: IconButton(
-        icon: Icon(resolveIconName('open-in-new'), size: 22, color: devModeColor),
-        tooltip: widget.labels.openPageTooltip,
+        icon: Icon(
+          resolveIconName('open-in-new'),
+          size: 22,
+          color: devModeColor,
+          semanticLabel: widget.labels.openPageLabel,
+        ),
         onPressed: open,
       ),
       onTap: open,
@@ -1220,7 +1228,7 @@ class FormRendererState extends State<FormRenderer> {
                 children: [
                   if (orderable) const Icon(Icons.drag_handle, size: 20),
                   IconButton(
-                    icon: const Icon(Icons.delete, size: 20),
+                    icon: Icon(Icons.delete, size: 20, semanticLabel: widget.labels.removeItemLabel),
                     onPressed: _isSubmitting ? null : () => deleteItem(index),
                   ),
                 ],
@@ -1473,8 +1481,7 @@ class FormRendererState extends State<FormRenderer> {
                           suffixIcon: !filtering
                               ? null
                               : IconButton(
-                                  icon: const Icon(Icons.close, size: 18),
-                                  tooltip: widget.labels.clearTooltip,
+                                  icon: Icon(Icons.close, size: 18, semanticLabel: widget.labels.clearLabel),
                                   onPressed: () => setDialogState(() => searchController!.clear()),
                                 ),
                           hintText: widget.labels.searchHint,
@@ -1723,7 +1730,7 @@ Future<Map<String, dynamic>?> showFormPane(
     title: formDefinition['title'] as String?,
     barrierDismissible: false,
     scrollable: false,
-    closeTooltip: labels.closeTooltip,
+    closeLabel: labels.closeLabel,
     builder: (context) => ValueListenableBuilder<bool>(
       valueListenable: submittingNotifier,
       // While a submit's async validators/transformers are in flight the

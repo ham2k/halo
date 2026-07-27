@@ -151,7 +151,7 @@ void main() {
     await tester.tap(find.text('Link account'));
     await tester.pumpAndSettle();
 
-    await tester.tap(find.byTooltip('Copy code'));
+    await tester.tap(find.bySemanticsLabel('Copy code'));
     await tester.pumpAndSettle();
 
     expect(copied, 'A1B2C3');

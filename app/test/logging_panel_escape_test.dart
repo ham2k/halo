@@ -66,21 +66,24 @@ void main() {
         ),
       );
 
-  // The info row's second button's tooltip is 'Wipe'/'Undo' while composing
-  // a new QSO, 'Delete'/'Revert'/'Restore' while editing one — a more
-  // direct signal for "is a QSO selected" than matching its icon, which
+  // The info row's second button's accessible name is 'Wipe'/'Undo' while
+  // composing a new QSO, 'Delete'/'Revert'/'Restore' while editing one — a
+  // more direct signal for "is a QSO selected" than matching its icon, which
   // depends on whether the fields still exactly match the record (Delete
-  // vs Revert), not on selection itself.
+  // vs Revert), not on selection itself. (The app has no hover tooltips —
+  // user-interface.md — so the name lives on the Icon's semanticLabel.)
   bool isEditing(WidgetTester tester) {
-    final tooltips = tester.widgetList<IconButton>(find.byType(IconButton)).map((b) => b.tooltip).toSet();
-    return tooltips.contains('Delete') || tooltips.contains('Revert') || tooltips.contains('Restore');
+    final labels = tester.widgetList<Icon>(find.byType(Icon)).map((i) => i.semanticLabel).toSet();
+    return labels.contains('Delete') || labels.contains('Revert') || labels.contains('Restore');
   }
 
-  // Same rationale as `isEditing` for using tooltip over icon/`find.byTooltip`
-  // (which looks for a `Tooltip` widget, not `IconButton.tooltip`) — matches
-  // the info row's second button regardless of which state it's showing.
-  Finder infoRowButton(String tooltip) =>
-      find.byWidgetPredicate((w) => w is IconButton && w.tooltip == tooltip);
+  // Matches the info row's second button regardless of which state it's
+  // showing. Finds the Icon (which carries the name) and walks up to the
+  // button, so `tap` hits the whole target rather than the glyph.
+  Finder infoRowButton(String label) => find.ancestor(
+        of: find.byWidgetPredicate((w) => w is Icon && w.semanticLabel == label),
+        matching: find.byType(IconButton),
+      );
 
   testWidgets('Escape deselects a QSO selected via the list, even though the tap never focused a compose field',
       (tester) async {

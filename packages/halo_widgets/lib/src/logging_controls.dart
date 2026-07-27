@@ -394,12 +394,13 @@ class LoggingControls extends StatefulWidget {
   final String? saveLabel;
   final String? cancelLabel;
 
-  /// The secondary control row's grid expand/collapse caret tooltips.
-  final String? expandControlsTooltip;
-  final String? collapseControlsTooltip;
+  /// Accessible names for the secondary control row's grid expand/collapse
+  /// caret (icon-only, and the app has no hover tooltips).
+  final String? expandControlsLabel;
+  final String? collapseControlsLabel;
 
   /// Localized chrome for the "More" full-edit pane's form renderer
-  /// (Cancel/Save buttons, close tooltip, error prefixes — see
+  /// (Cancel/Save buttons, close button, error prefixes — see
   /// FormRendererLabels). Null keeps the English defaults.
   final FormRendererLabels? formLabels;
 
@@ -519,8 +520,8 @@ class LoggingControls extends StatefulWidget {
     this.controlSettingsTitle,
     this.saveLabel,
     this.cancelLabel,
-    this.expandControlsTooltip,
-    this.collapseControlsTooltip,
+    this.expandControlsLabel,
+    this.collapseControlsLabel,
     this.formLabels,
     this.enabledBands,
     this.enabledModes,
@@ -4116,17 +4117,17 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   Widget _buildWipeOrEditButton(ThemeData accentTheme) {
     final editingQso = widget.editingQso;
     final IconData icon;
-    final String? tooltip;
+    final String? actionLabel;
     final VoidCallback? onPressed;
 
     if (editingQso == null) {
       if (_wipeUndoSlot.value != null) {
         icon = resolveIconName('undo');
-        tooltip = widget.undoLabel ?? 'Undo';
+        actionLabel = widget.undoLabel ?? 'Undo';
         onPressed = _restoreFromUndoSlot;
       } else {
         icon = resolveIconName('backspace-outline');
-        tooltip = widget.wipeLabel ?? 'Wipe';
+        actionLabel = widget.wipeLabel ?? 'Wipe';
         onPressed = _hasComposedValues ? _handleWipeTap : null;
       }
     } else if (editingQso.deleted) {
@@ -4134,19 +4135,19 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
       // toggle) — one tap restores it immediately (ham2k/app-halo-dist#59);
       // no staged-until-save step, since restoring isn't destructive.
       icon = resolveIconName('delete-restore');
-      tooltip = widget.restoreLabel ?? 'Restore';
+      actionLabel = widget.restoreLabel ?? 'Restore';
       onPressed = () => _handleRestoreTap(editingQso);
     } else if (_pendingDelete) {
       icon = resolveIconName('undo');
-      tooltip = widget.undoDeleteLabel ?? 'Undo delete';
+      actionLabel = widget.undoDeleteLabel ?? 'Undo delete';
       onPressed = () => setState(() => _pendingDelete = false);
     } else if (_qsoDataChanged()) {
       icon = resolveIconName('undo');
-      tooltip = widget.revertLabel ?? 'Revert';
+      actionLabel = widget.revertLabel ?? 'Revert';
       onPressed = () => _populateFromEditingQso(editingQso);
     } else {
       icon = resolveIconName('trash-can-outline');
-      tooltip = widget.deleteLabel ?? 'Delete';
+      actionLabel = widget.deleteLabel ?? 'Delete';
       onPressed = () => setState(() => _pendingDelete = true);
     }
 
@@ -4162,9 +4163,9 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
       width: diameter,
       height: diameter,
       child: IconButton(
-        tooltip: tooltip,
         onPressed: onPressed,
-        icon: Icon(icon),
+        // Screen-reader name only — no hover tooltip (user-interface.md).
+        icon: Icon(icon, semanticLabel: actionLabel),
         color: accentTheme.colorScheme.tertiary,
         padding: EdgeInsets.zero,
         iconSize: diameter * 0.5 * 1.2,
@@ -4574,8 +4575,8 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
                             onSelect: _onSelectControl,
                             onOpenSettings: _openControlSettingsDialog,
                             horizontalBleed: _secondaryPanelHorizontalInset,
-                            expandTooltip: widget.expandControlsTooltip,
-                            collapseTooltip: widget.collapseControlsTooltip,
+                            expandLabel: widget.expandControlsLabel,
+                            collapseLabel: widget.collapseControlsLabel,
                             // The dupe warning (and the other scoring notices)
                             // now live on the info area's third line — see
                             // `_buildInfoArea` (issue #40).

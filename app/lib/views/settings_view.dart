@@ -792,8 +792,7 @@ class _AllSettingsPanelState extends State<_AllSettingsPanel> {
               suffixIcon: query.isEmpty
                   ? null
                   : IconButton(
-                      icon: const Icon(Icons.close, size: 18),
-                      tooltip: context.t.settings.search.clear,
+                      icon: Icon(Icons.close, size: 18, semanticLabel: context.t.settings.search.clear),
                       onPressed: () => setState(() => _searchController.clear()),
                     ),
               hintText: context.t.settings.search.hint,
@@ -1003,8 +1002,7 @@ class _SyncPanelState extends State<_SyncPanel> {
                 title: Text(context.t.settings.syncPanel.account),
                 subtitle: Text(_syncAccountSubtitle),
                 trailing: IconButton(
-                  icon: Icon(resolveIconName('refresh')),
-                  tooltip: context.t.settings.syncPanel.refresh,
+                  icon: Icon(resolveIconName('refresh'), semanticLabel: context.t.settings.syncPanel.refresh),
                   onPressed: _refreshSyncAccount,
                   mouseCursor: SystemMouseCursors.click,
                 ),
@@ -1070,7 +1068,7 @@ class _AccountsPanelState extends State<_AccountsPanel> {
       context,
       title: account['label'] as String,
       barrierDismissible: false,
-      closeTooltip: context.t.common.close,
+      closeLabel: context.t.common.close,
       builder: (context) => _AccountPane(services: widget.services, account: account, onSaved: _loadAccounts),
     );
   }
@@ -1235,8 +1233,7 @@ class _DataFilesPanelState extends State<_DataFilesPanel> {
       title: Text(file.name),
       subtitle: Text(_dataFileUpdatedLabel(file.updatedAt)),
       trailing: IconButton(
-        icon: Icon(resolveIconName('refresh')),
-        tooltip: context.t.settings.offlineData.refresh,
+        icon: Icon(resolveIconName('refresh'), semanticLabel: context.t.settings.offlineData.refresh),
         onPressed: () => _refresh(file),
         mouseCursor: SystemMouseCursors.click,
       ),
@@ -1490,7 +1487,7 @@ class _ExtensionSettingsPanelState extends State<_ExtensionSettingsPanel> {
       context,
       title: account['label'] as String,
       barrierDismissible: false,
-      closeTooltip: context.t.common.close,
+      closeLabel: context.t.common.close,
       builder: (context) => _AccountPane(
         services: widget.services,
         account: account!,
@@ -1633,7 +1630,7 @@ class _DeveloperPanel extends StatelessWidget {
                     onTap: () => showModalPane<void>(
                       context,
                       title: context.t.settings.developer.experiments,
-                      closeTooltip: context.t.common.close,
+                      closeLabel: context.t.common.close,
                       builder: (_) => ExperimentsPane(settings: settings),
                     ),
                   );
@@ -2095,7 +2092,7 @@ class _AboutPanel extends StatelessWidget {
                   onTap: () => showModalPane<void>(
                     context,
                     title: context.t.settings.about.notices,
-                    closeTooltip: context.t.common.close,
+                    closeLabel: context.t.common.close,
                     // NoticeHistoryView is its own scrolling ListView — the
                     // pane must not also wrap it in a SingleChildScrollView.
                     scrollable: false,
@@ -2168,7 +2165,7 @@ class _ReleaseNotesPreview extends StatelessWidget {
       onTap: () => showModalPane<void>(
         context,
         title: context.t.settings.about.releaseNotes,
-        closeTooltip: context.t.common.close,
+        closeLabel: context.t.common.close,
         builder: (context) => MarkdownBody(data: markdown, styleSheet: styleSheet),
       ),
       child: ClipRect(
@@ -2335,7 +2332,7 @@ Future<void> showAccountDialogByKey(HaLoServices services, String accountKey, {S
     context,
     title: account['label'] as String? ?? accountKey,
     barrierDismissible: false,
-    closeTooltip: context.t.common.close,
+    closeLabel: context.t.common.close,
     builder: (context) => _AccountPane(services: services, account: account!, onSaved: () {}),
   );
 }

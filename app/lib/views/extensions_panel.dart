@@ -153,8 +153,7 @@ class ExtensionsPanelState extends State<ExtensionsPanel> {
                   suffixIcon: query.isEmpty
                       ? null
                       : IconButton(
-                          icon: const Icon(Icons.close, size: 18),
-                          tooltip: 'Clear',
+                          icon: const Icon(Icons.close, size: 18, semanticLabel: 'Clear'),
                           onPressed: () => setState(() => _searchController.clear()),
                         ),
                   hintText: t.extensionsPanel.searchHint,

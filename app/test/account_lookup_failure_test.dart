@@ -206,7 +206,7 @@ void main() {
     await tester.tap(connect);
     await tester.pumpAndSettle();
     expect(find.text('My Account Username'), findsOneWidget);
-    await tester.tap(find.byTooltip('Close'));
+    await tester.tap(find.bySemanticsLabel('Close'));
     await tester.pumpAndSettle();
 
     // A restart (crash recovery, or an extension being enabled or disabled)

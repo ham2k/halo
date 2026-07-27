@@ -1014,8 +1014,7 @@ class OperationSheetState extends State<OperationSheet> {
                         ? () => _editRef(ref)
                         : null,
                     trailing: IconButton(
-                      icon: const Icon(Icons.delete),
-                      tooltip: t.removeActivity,
+                      icon: Icon(Icons.delete, semanticLabel: t.removeActivity),
                       onPressed: () => _deleteRef(ref),
                     ),
                     ),
@@ -1260,7 +1259,7 @@ class OperationSheetState extends State<OperationSheet> {
                 await showModalPane<void>(
                   context,
                   title: t.manageExtensions,
-                  closeTooltip: context.t.common.close,
+                  closeLabel: context.t.common.close,
                   scrollable: false,
                   trailing: isTwoPane
                       ? TextButton(
@@ -1408,7 +1407,11 @@ class _AccordionSection extends StatelessWidget {
         turns: expanded ? 0.5 : 0,
         duration: _duration,
         curve: Curves.easeInOut,
-        child: Icon(Icons.expand_more, color: onHeaderColor),
+        child: Icon(
+          Icons.expand_more,
+          color: onHeaderColor,
+          semanticLabel: expanded ? context.t.common.collapse : context.t.common.expand,
+        ),
       ),
       onPressed: onToggle,
     );

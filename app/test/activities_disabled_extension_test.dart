@@ -96,7 +96,7 @@ void main() {
 
     // Deleting the unsupported ref resurfaces it as a Suggestion (so the
     // removal is easy to undo) — same unknown type, now in the other list.
-    await tester.tap(find.byTooltip('Remove'));
+    await tester.tap(find.bySemanticsLabel('Remove'));
     await tester.pumpAndSettle();
 
     final suggestionTileFinder = find.ancestor(of: find.text('UN-9999'), matching: find.byType(ListTile));

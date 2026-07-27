@@ -60,7 +60,7 @@ Future<T?> showModalPane<T>(
   bool scrollable = true,
   Widget? leading,
   Widget? trailing,
-  String closeTooltip = 'Close',
+  String closeLabel = 'Close',
 }) => Navigator.of(context).push(
   ModalPaneRoute<T>(
     builder: builder,
@@ -69,7 +69,7 @@ Future<T?> showModalPane<T>(
     scrollable: scrollable,
     leading: leading,
     trailing: trailing,
-    closeTooltip: closeTooltip,
+    closeLabel: closeLabel,
   ),
 );
 
@@ -81,9 +81,10 @@ class ModalPaneRoute<T> extends PopupRoute<T> {
   final Widget? leading;
   final Widget? trailing;
 
-  /// The dialog presentation's close-button tooltip — English default so
-  /// the package stays i18n-free; the app passes a translated value.
-  final String closeTooltip;
+  /// The dialog presentation's close-button accessible name (it is icon-only,
+  /// and the app has no hover tooltips) — English default so the package stays
+  /// i18n-free; the app passes a translated value.
+  final String closeLabel;
 
   /// Carries the body's Element (and State) across the presentation flip:
   /// the two presentations have different widget trees, so without this
@@ -98,7 +99,7 @@ class ModalPaneRoute<T> extends PopupRoute<T> {
     this.scrollable = true,
     this.leading,
     this.trailing,
-    this.closeTooltip = 'Close',
+    this.closeLabel = 'Close',
   });
 
   @override
@@ -238,8 +239,7 @@ class _ModalPaneScaffold extends StatelessWidget {
                           leading: route.leading,
                           title: route.title == null ? null : Text(route.title!),
                           trailing: route.trailing ?? IconButton(
-                            icon: const Icon(Icons.close),
-                            tooltip: route.closeTooltip,
+                            icon: Icon(Icons.close, semanticLabel: route.closeLabel),
                             // maybePop — see the barrier handler above.
                             onPressed: () => Navigator.of(context).maybePop(),
                           ),
@@ -295,7 +295,7 @@ Future<T?> showTopModalPane<T>(
   bool scrollable = true,
   Widget? leading,
   Widget? trailing,
-  String closeTooltip = 'Close',
+  String closeLabel = 'Close',
   ValueChanged<Animation<double>>? onAnimation,
   double? leftInset,
   VoidCallback? onDismiss,
@@ -307,7 +307,7 @@ Future<T?> showTopModalPane<T>(
     scrollable: scrollable,
     leading: leading,
     trailing: trailing,
-    closeTooltip: closeTooltip,
+    closeLabel: closeLabel,
     leftInset: leftInset,
     onDismiss: onDismiss,
   );
@@ -327,8 +327,8 @@ class TopModalPaneRoute<T> extends PopupRoute<T> {
   final Widget? leading;
   final Widget? trailing;
 
-  /// See [ModalPaneRoute.closeTooltip].
-  final String closeTooltip;
+  /// See [ModalPaneRoute.closeLabel].
+  final String closeLabel;
 
   /// See [showTopModalPane]'s doc comment. Null centers, as before.
   final double? leftInset;
@@ -345,7 +345,7 @@ class TopModalPaneRoute<T> extends PopupRoute<T> {
     this.scrollable = true,
     this.leading,
     this.trailing,
-    this.closeTooltip = 'Close',
+    this.closeLabel = 'Close',
     this.leftInset,
     this.onDismiss,
   });
@@ -526,8 +526,7 @@ class _TopModalPaneScaffold extends StatelessWidget {
                                     leading: route.leading,
                                     title: route.title,
                                     trailing: route.trailing ?? IconButton(
-                                      icon: const Icon(Icons.close),
-                                      tooltip: route.closeTooltip,
+                                      icon: Icon(Icons.close, semanticLabel: route.closeLabel),
                                       onPressed: () => Navigator.of(context).maybePop(),
                                     ),
                                   ),

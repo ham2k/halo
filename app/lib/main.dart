@@ -1010,28 +1010,38 @@ class _HaLoAppState extends State<HaLoApp> {
             ]);
           }
 
-          return Theme(
-            // Outside UiScale so the Flutter-drawn Windows caption buttons
-            // (which size themselves off the same theme value) match the
-            // headers they float over.
-            data: Theme.of(context).copyWith(
-              appBarTheme: Theme.of(context).appBarTheme.copyWith(toolbarHeight: toolbarHeight),
-            ),
-            child: ValueListenableBuilder<bool>(
-              valueListenable: macOSWindowIsFullScreen,
-              builder: (context, isFullScreen, _) => MacOSFullScreenScope(
-                isFullScreen: isFullScreen,
-                child: UiScale(
-                  scale: scale,
-                  // Outermost so it covers every field in the app — the gates'
-                  // own overlays and anything pushed on the Navigator (which is
-                  // `content`, i.e. dialogs and panes) included.
-                  child: TapToDismissEmptyField(
-                    child: _OnboardingGate(
-                      services: widget.services,
-                      child: _ReleaseOverlayGate(
+          // The app shows NO hover labels (docs/design/user-interface.md).
+          // Our own buttons simply don't set one, but Flutter's built-ins
+          // (BackButton, CloseButton, PopupMenuButton, Chip's delete icon)
+          // supply their own from MaterialLocalizations and take no parameter
+          // to turn it off — so the rule is enforced here, for the whole app
+          // at once, instead of being re-litigated per widget. Accessible
+          // names live on `Icon(semanticLabel:)`, which this does not touch.
+          return TooltipVisibility(
+            visible: false,
+            child: Theme(
+              // Outside UiScale so the Flutter-drawn Windows caption buttons
+              // (which size themselves off the same theme value) match the
+              // headers they float over.
+              data: Theme.of(context).copyWith(
+                appBarTheme: Theme.of(context).appBarTheme.copyWith(toolbarHeight: toolbarHeight),
+              ),
+              child: ValueListenableBuilder<bool>(
+                valueListenable: macOSWindowIsFullScreen,
+                builder: (context, isFullScreen, _) => MacOSFullScreenScope(
+                  isFullScreen: isFullScreen,
+                  child: UiScale(
+                    scale: scale,
+                    // Outermost so it covers every field in the app — the gates'
+                    // own overlays and anything pushed on the Navigator (which is
+                    // `content`, i.e. dialogs and panes) included.
+                    child: TapToDismissEmptyField(
+                      child: _OnboardingGate(
                         services: widget.services,
-                        child: _StatusBarOverlay(services: widget.services, child: content),
+                        child: _ReleaseOverlayGate(
+                          services: widget.services,
+                          child: _StatusBarOverlay(services: widget.services, child: content),
+                        ),
                       ),
                     ),
                   ),
@@ -1356,8 +1366,13 @@ class _StatusBarOverlay extends StatelessWidget {
           children: [
             Expanded(child: child),
             if (notices.isNotEmpty && !hideFooter)
-              NoticeStack(notices: notices, onDismiss: statusBar.dismissNotice),
-            if (!hideFooter) StatusBarFooter(items: items, onDismiss: statusBar.clear),
+              NoticeStack(
+                notices: notices,
+                onDismiss: statusBar.dismissNotice,
+                dismissLabel: context.t.common.dismiss,
+              ),
+            if (!hideFooter)
+              StatusBarFooter(items: items, onDismiss: statusBar.clear, dismissLabel: context.t.common.dismiss),
           ],
         );
       },

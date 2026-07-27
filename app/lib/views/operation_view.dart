@@ -527,7 +527,7 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
     await showModalPane<void>(
       context,
       title: info.call,
-      closeTooltip: context.t.common.close,
+      closeLabel: context.t.common.close,
       builder: (_) => CallInfoPanel(
         operation: operation,
         services: widget.services,
@@ -630,7 +630,7 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
             anim.removeStatusListener(statusListener);
           };
         },
-        closeTooltip: context.t.common.close,
+        closeLabel: context.t.common.close,
         // Left-aligned with the dots-and-title control that opens it,
         // rather than centered in the pane.
         leftInset: _headerTitleLeftInset,
@@ -770,8 +770,7 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
             final theme = Theme.of(context);
             if (updates) {
               return IconButton(
-                icon: const Icon(Icons.undo),
-                tooltip: context.t.common.cancel,
+                icon: Icon(Icons.undo, semanticLabel: context.t.common.cancel),
                 style: IconButton.styleFrom(
                   backgroundColor: theme.colorScheme.errorContainer,
                   foregroundColor: theme.colorScheme.onErrorContainer,
@@ -780,8 +779,7 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
               );
             } else {
               return IconButton(
-                icon: Icon(Icons.undo, color: theme.disabledColor),
-                tooltip: context.t.common.cancel,
+                icon: Icon(Icons.undo, color: theme.disabledColor, semanticLabel: context.t.common.cancel),
                 onPressed: null,
               );
             }
@@ -930,11 +928,12 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
     // tab-switch animation — doesn't also reconstruct the whole menu.
     return Builder(
       builder: (buttonContext) => IconButton(
-        icon: Icon(Icons.tune, color: iconColor),
         // PopupMenuButton (what this replaced) supplies this same label by
         // default when none is given; a plain IconButton doesn't, so it has
-        // to be set explicitly to keep the button accessible.
-        tooltip: MaterialLocalizations.of(context).showMenuTooltip,
+        // to be set explicitly to keep the button accessible. As a
+        // semanticLabel, not a tooltip — the app shows no hover labels
+        // (docs/design/user-interface.md).
+        icon: Icon(Icons.tune, color: iconColor, semanticLabel: MaterialLocalizations.of(context).showMenuTooltip),
         onPressed: () => _showLoggingSettingsMenu(buttonContext, _loggingSettingsMenuItems(qsos)),
       ),
     );

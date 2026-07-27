@@ -84,10 +84,11 @@ class SecondaryControlRow extends StatefulWidget {
   /// edges instead of stopping at the parent's padding.
   final double horizontalBleed;
 
-  /// The caret's expand/collapse tooltips — nullable with English fallbacks
-  /// so the package stays i18n-free; the app passes translated values.
-  final String? expandTooltip;
-  final String? collapseTooltip;
+  /// The caret's expand/collapse accessible names — nullable with English
+  /// fallbacks so the package stays i18n-free; the app passes translated
+  /// values.
+  final String? expandLabel;
+  final String? collapseLabel;
 
   const SecondaryControlRow({
     super.key,
@@ -97,8 +98,8 @@ class SecondaryControlRow extends StatefulWidget {
     this.trailing,
     this.onOpenSettings,
     this.horizontalBleed = 0,
-    this.expandTooltip,
-    this.collapseTooltip,
+    this.expandLabel,
+    this.collapseLabel,
   });
 
   @override
@@ -609,7 +610,6 @@ class _SecondaryControlRowState extends State<SecondaryControlRow> with SingleTi
               ),
             ),
             IconButton(
-              tooltip: _gridExpanded ? (widget.collapseTooltip ?? 'Collapse') : (widget.expandTooltip ?? 'Expand'),
               visualDensity: VisualDensity.compact,
               style: IconButton.styleFrom(
                 backgroundColor: HaLoColors.of(context).tertiaryLight.withValues(alpha: 0.5),
@@ -618,7 +618,12 @@ class _SecondaryControlRowState extends State<SecondaryControlRow> with SingleTi
                 turns: _gridExpanded ? 0.5 : 0,
                 duration: _duration,
                 curve: Curves.easeInOut,
-                child: const Icon(Icons.expand_more),
+                child: Icon(
+                  Icons.expand_more,
+                  semanticLabel: _gridExpanded
+                      ? (widget.collapseLabel ?? 'Collapse')
+                      : (widget.expandLabel ?? 'Expand'),
+                ),
               ),
               onPressed: () => setState(() => _gridExpanded = !_gridExpanded),
             ),

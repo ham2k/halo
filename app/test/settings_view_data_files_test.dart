@@ -64,7 +64,7 @@ void main() {
     expect(find.text('Updated 2d 7h ago'), findsOneWidget);
     expect(find.text('Never downloaded'), findsOneWidget);
     // A Refresh control per row.
-    expect(find.byTooltip('Refresh'), findsNWidgets(2));
+    expect(find.bySemanticsLabel('Refresh'), findsNWidgets(2));
   });
 
   testWidgets('tapping Refresh shows progress and updates the row from the returned time without re-listing',
@@ -97,10 +97,10 @@ void main() {
     expect(find.text('Never downloaded'), findsOneWidget);
 
     // Tap Refresh — the refresh future stays pending on the gate.
-    await tester.tap(find.byTooltip('Refresh'));
+    await tester.tap(find.bySemanticsLabel('Refresh'));
     await tester.pump();
     expect(find.text('Refreshing…'), findsOneWidget, reason: 'row shows live progress');
-    expect(find.byTooltip('Refresh'), findsNothing, reason: 'button replaced by spinner while refreshing');
+    expect(find.bySemanticsLabel('Refresh'), findsNothing, reason: 'button replaced by spinner while refreshing');
 
     // Let the refresh complete; the row updates from the returned time.
     fake.completeRefresh();

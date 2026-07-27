@@ -69,9 +69,12 @@ class _SecretTextFieldState extends State<SecretTextField> {
       constraints: const BoxConstraints(minWidth: 24, minHeight: 24),
       iconSize: 20,
       // Obscured → an eye (tap to show); revealed → eye-with-slash (tap to
-      // hide). The tooltip doubles as the screen-reader label.
-      icon: Icon(_obscured ? Icons.visibility_outlined : Icons.visibility_off_outlined),
-      tooltip: _obscured ? 'Show' : 'Hide',
+      // hide). No hover tooltip (user-interface.md); the label is for screen
+      // readers only, and flips with the icon.
+      icon: Icon(
+        _obscured ? Icons.visibility_outlined : Icons.visibility_off_outlined,
+        semanticLabel: _obscured ? 'Show' : 'Hide',
+      ),
       onPressed: () => setState(() => _obscured = !_obscured),
     );
     return TextField(

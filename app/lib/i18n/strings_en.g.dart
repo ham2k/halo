@@ -102,6 +102,18 @@ class Translations$common$en {
 
 	/// en: 'Callsign'
 	String get callsign => 'Callsign';
+
+	/// en: 'Clear'
+	String get clear => 'Clear';
+
+	/// en: 'Dismiss'
+	String get dismiss => 'Dismiss';
+
+	/// en: 'Expand'
+	String get expand => 'Expand';
+
+	/// en: 'Collapse'
+	String get collapse => 'Collapse';
 }
 
 // Path: onboarding
@@ -598,6 +610,9 @@ class Translations$formChrome$en {
 
 	/// en: 'Error: ${error}'
 	String actionError({required Object error}) => 'Error: ${error}';
+
+	/// en: 'Remove'
+	String get removeItem => 'Remove';
 }
 
 // Path: qsoEditForm
@@ -2211,6 +2226,10 @@ extension on Translations {
 			'common.close' => 'Close',
 			'common.done' => 'Done',
 			'common.callsign' => 'Callsign',
+			'common.clear' => 'Clear',
+			'common.dismiss' => 'Dismiss',
+			'common.expand' => 'Expand',
+			'common.collapse' => 'Collapse',
 			'onboarding.welcomeTitle' => 'Welcome to Ham2K Portable Logger!',
 			'onboarding.welcomeTitleDesktop' => 'Welcome to Ham2K Logger!',
 			'onboarding.welcomeBody' => 'We have a few questions to help us better suit your needs.',
@@ -2423,6 +2442,7 @@ extension on Translations {
 			'formChrome.validationError' => ({required Object error}) => 'Validation error: ${error}',
 			'formChrome.transformationError' => ({required Object error}) => 'Transformation error: ${error}',
 			'formChrome.actionError' => ({required Object error}) => 'Error: ${error}',
+			'formChrome.removeItem' => 'Remove',
 			'qsoEditForm.title' => 'Edit QSO',
 			'qsoEditForm.theirName' => 'Name',
 			'qsoEditForm.theirGrid' => 'Grid',
@@ -2709,6 +2729,8 @@ extension on Translations {
 			'switchAccounts.resendEmail' => 'Resend email',
 			'switchAccounts.qrPrompt' => 'Scan this QR code from a device already linked to the account you want — for example with Ham2K Portable Logger on your phone.',
 			'switchAccounts.serverUnreachable' => 'Could not reach the sync server. Try again later.',
+			_ => null,
+		} ?? switch (path) {
 			'switchAccounts.qsoCount' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: '${count} QSO', other: '${count} QSOs', ), 
 			'switchAccounts.operationCount' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: '${count} operation', other: '${count} operations', ), 
 			_ => null,

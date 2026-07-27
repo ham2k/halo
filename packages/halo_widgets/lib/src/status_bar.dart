@@ -81,7 +81,18 @@ class StatusBarFooter extends StatefulWidget {
   final List<StatusBarItemData> items;
   final void Function(String key) onDismiss;
 
-  const StatusBarFooter({super.key, required this.items, required this.onDismiss});
+  /// Accessible name for an item's dismiss button — it is icon-only, and the
+  /// app has no hover tooltips (docs/design/user-interface.md). English
+  /// default so the package stays i18n-free; the app passes a translated
+  /// value.
+  final String dismissLabel;
+
+  const StatusBarFooter({
+    super.key,
+    required this.items,
+    required this.onDismiss,
+    this.dismissLabel = 'Dismiss',
+  });
 
   @override
   State<StatusBarFooter> createState() => _StatusBarFooterState();
@@ -235,7 +246,11 @@ class _StatusBarFooterState extends State<StatusBarFooter> {
                             ),
                           ),
                         const SizedBox(width: 4),
-                        _DismissButton(color: foregroundColor, onPressed: () => widget.onDismiss(last.key)),
+                        _DismissButton(
+                          color: foregroundColor,
+                          onPressed: () => widget.onDismiss(last.key),
+                          label: widget.dismissLabel,
+                        ),
                       ],
                     ),
                   ),
@@ -265,6 +280,7 @@ class _StatusBarFooterState extends State<StatusBarFooter> {
           item: list[index],
           color: foregroundColor,
           onDismiss: () => widget.onDismiss(list[index].key),
+          dismissLabel: widget.dismissLabel,
         ),
       ),
     );
@@ -316,13 +332,14 @@ class _IconCountPill extends StatelessWidget {
 class _DismissButton extends StatelessWidget {
   final Color color;
   final VoidCallback onPressed;
+  final String label;
 
-  const _DismissButton({required this.color, required this.onPressed});
+  const _DismissButton({required this.color, required this.onPressed, required this.label});
 
   @override
   Widget build(BuildContext context) {
     return IconButton(
-      icon: Icon(Icons.close, size: 14, color: color),
+      icon: Icon(Icons.close, size: 14, color: color, semanticLabel: label),
       onPressed: onPressed,
       padding: EdgeInsets.zero,
       constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
@@ -362,8 +379,14 @@ class _StatusBarItemRow extends StatelessWidget {
   final StatusBarItemData item;
   final Color color;
   final VoidCallback onDismiss;
+  final String dismissLabel;
 
-  const _StatusBarItemRow({required this.item, required this.color, required this.onDismiss});
+  const _StatusBarItemRow({
+    required this.item,
+    required this.color,
+    required this.onDismiss,
+    required this.dismissLabel,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -422,7 +445,7 @@ class _StatusBarItemRow extends StatelessWidget {
                     ),
                   ),
                 const SizedBox(width: 4),
-                _DismissButton(color: color, onPressed: onDismiss),
+                _DismissButton(color: color, onPressed: onDismiss, label: dismissLabel),
               ],
             ),
           ),
@@ -440,7 +463,16 @@ class NoticeStack extends StatefulWidget {
   final List<StatusBarNoticeData> notices;
   final void Function(String key) onDismiss;
 
-  const NoticeStack({super.key, required this.notices, required this.onDismiss});
+  /// Accessible name for each card's dismiss button (see
+  /// [StatusBarFooter.dismissLabel]).
+  final String dismissLabel;
+
+  const NoticeStack({
+    super.key,
+    required this.notices,
+    required this.onDismiss,
+    this.dismissLabel = 'Dismiss',
+  });
 
   @override
   State<NoticeStack> createState() => _NoticeStackState();
@@ -528,7 +560,7 @@ class _NoticeStackState extends State<NoticeStack> {
               // its box.
               Opacity(
                 opacity: 0,
-                child: IgnorePointer(child: _capHeight(context, NoticeCard(notice: top, onDismiss: () {}))),
+                child: IgnorePointer(child: _capHeight(context, NoticeCard(notice: top, onDismiss: () {}, dismissLabel: widget.dismissLabel))),
               ),
               if (second != null)
                 AnimatedPositioned(
@@ -548,7 +580,7 @@ class _NoticeStackState extends State<NoticeStack> {
                       // cards — see the ghost's comment above. It's inert
                       // either way since this whole subtree is wrapped in
                       // `IgnorePointer`.
-                      child: _capHeight(context, NoticeCard(notice: second, onDismiss: () {})),
+                      child: _capHeight(context, NoticeCard(notice: second, onDismiss: () {}, dismissLabel: widget.dismissLabel)),
                     ),
                   ),
                 ),
@@ -567,7 +599,7 @@ class _NoticeStackState extends State<NoticeStack> {
                     opacity: isDismissingTop ? 0 : 1,
                     child: _capHeight(
                       context,
-                      NoticeCard(notice: top, onDismiss: () => _startDismiss(top.key)),
+                      NoticeCard(notice: top, onDismiss: () => _startDismiss(top.key), dismissLabel: widget.dismissLabel),
                     ),
                   ),
                 ),
@@ -605,7 +637,10 @@ class NoticeCard extends StatelessWidget {
   final StatusBarNoticeData notice;
   final VoidCallback? onDismiss;
 
-  const NoticeCard({super.key, required this.notice, this.onDismiss});
+  /// Accessible name for the dismiss button (see [StatusBarFooter.dismissLabel]).
+  final String dismissLabel;
+
+  const NoticeCard({super.key, required this.notice, this.onDismiss, this.dismissLabel = 'Dismiss'});
 
   @override
   Widget build(BuildContext context) {
@@ -636,7 +671,7 @@ class NoticeCard extends StatelessWidget {
                   const Spacer(),
                 if (onDismiss != null)
                   IconButton(
-                    icon: Icon(Icons.close, size: 18, color: onNotice),
+                    icon: Icon(Icons.close, size: 18, color: onNotice, semanticLabel: dismissLabel),
                     onPressed: onDismiss,
                     padding: EdgeInsets.zero,
                     constraints: const BoxConstraints(minWidth: 32, minHeight: 32),

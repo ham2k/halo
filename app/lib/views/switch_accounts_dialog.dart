@@ -51,7 +51,7 @@ Future<bool?> showSwitchAccountsDialog(
     context,
     title: context.t.settings.syncPanel.switchAccounts,
     barrierDismissible: false,
-    closeTooltip: context.t.common.close,
+    closeLabel: context.t.common.close,
     builder: (context) => SwitchAccountsPane(
       fetchAccountData: fetchAccountData,
       linkClient: linkClient,
@@ -554,8 +554,7 @@ class _SwitchAccountsPaneState extends State<SwitchAccountsPane> {
               if (_challengeCode != null) ...[
                 const SizedBox(width: 8),
                 IconButton(
-                  icon: Icon(resolveIconName('content-copy')),
-                  tooltip: context.t.switchAccounts.copyCode,
+                  icon: Icon(resolveIconName('content-copy'), semanticLabel: context.t.switchAccounts.copyCode),
                   onPressed: () => _copyChallengeCode(context),
                   mouseCursor: SystemMouseCursors.click,
                 ),

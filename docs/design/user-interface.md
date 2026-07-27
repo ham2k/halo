@@ -125,6 +125,33 @@ How views arrange their panes at each window size — the shirt-size
 breakpoints, the ideal pane width, resizable splits, and Modal Panes — is
 specified in [layouts.md](layouts.md).
 
+### Buttons and hover labels
+
+**No tooltips.** Icon-only buttons do not get a hover label — never pass
+`tooltip:` to an `IconButton` (or wrap a control in a `Tooltip`). A label that
+pops up over whatever is under the pointer is noise on desktop, and on touch
+it is unreachable anyway; an icon that needs a hover label to be understood
+needs a better icon, or a visible text label.
+
+Icons still need an accessible name for screen readers. Put it on the icon
+itself — `Icon(Icons.close, semanticLabel: t.common.close)` — which names the
+button without displaying anything, and flips with state where the icon does
+(Show/Hide, Delete/Revert/Restore). Tests find these buttons with
+`find.bySemanticsLabel(...)`, not `find.byTooltip(...)`.
+
+Flutter's own built-ins (`BackButton`, `CloseButton`, `PopupMenuButton`, a
+`Chip`'s delete icon) supply a tooltip from `MaterialLocalizations` and take no
+parameter to turn it off, so the app root wraps everything in
+`TooltipVisibility(visible: false)` (`main.dart`). That is what actually
+enforces the rule; not setting `tooltip:` in our own code is the other half.
+Both halves are guarded by `app/test/no_hover_tooltips_test.dart`.
+
+Widget APIs that let a caller name an icon-only button do so with a `…Label`
+parameter (`closeLabel`, `expandLabel`/`collapseLabel`, `clearLabel`,
+`openPageLabel`) — the app passes a translated string, and the widget package
+defaults it to English so it stays i18n-free. Nothing named `…Tooltip`
+survives; don't add one back.
+
 ### Header
 
 Windows (or screens on mobile) have a header with a title and optional

@@ -310,8 +310,7 @@ class _HomeViewState extends State<HomeView> {
         actions: [
           HeaderProfileLabel(settings: widget.services.settings),
           IconButton(
-            tooltip: context.t.settings.title,
-            icon: Icon(MdiIcons.cog),
+            icon: Icon(MdiIcons.cog, semanticLabel: context.t.settings.title),
             onPressed: () =>
                 Navigator.of(context).push(MaterialPageRoute(builder: (_) => SettingsView(services: widget.services))),
             mouseCursor: SystemMouseCursors.click,
@@ -1064,7 +1063,7 @@ class _HomeQuickLookupState extends State<HomeQuickLookup> {
                 prefixIcon: const Icon(Icons.search),
                 suffixIcon: _controller.text.isNotEmpty
                     ? IconButton(
-                        icon: const Icon(Icons.close),
+                        icon: Icon(Icons.close, semanticLabel: context.t.common.clear),
                         onPressed: () {
                           _controller.clear();
                         },

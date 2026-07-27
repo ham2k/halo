@@ -83,6 +83,10 @@ class _Translations$common$es extends Translations$common$en {
 	@override String get close => 'Cerrar';
 	@override String get done => 'Listo';
 	@override String get callsign => 'Indicativo';
+	@override String get clear => 'Limpiar';
+	@override String get dismiss => 'Descartar';
+	@override String get expand => 'Expandir';
+	@override String get collapse => 'Contraer';
 }
 
 // Path: onboarding
@@ -311,6 +315,7 @@ class _Translations$formChrome$es extends Translations$formChrome$en {
 	@override String validationError({required Object error}) => 'Error de validación: ${error}';
 	@override String transformationError({required Object error}) => 'Error de transformación: ${error}';
 	@override String actionError({required Object error}) => 'Error: ${error}';
+	@override String get removeItem => 'Quitar';
 }
 
 // Path: qsoEditForm
@@ -1181,6 +1186,10 @@ extension on TranslationsEs {
 			'common.close' => 'Cerrar',
 			'common.done' => 'Listo',
 			'common.callsign' => 'Indicativo',
+			'common.clear' => 'Limpiar',
+			'common.dismiss' => 'Descartar',
+			'common.expand' => 'Expandir',
+			'common.collapse' => 'Contraer',
 			'onboarding.welcomeTitle' => '¡Bienvenido a Ham2K Portable Logger!',
 			'onboarding.welcomeTitleDesktop' => '¡Bienvenido a Ham2K Logger!',
 			'onboarding.welcomeBody' => 'Tenemos algunas preguntas para ayudarnos a servirte mejor.',
@@ -1393,6 +1402,7 @@ extension on TranslationsEs {
 			'formChrome.validationError' => ({required Object error}) => 'Error de validación: ${error}',
 			'formChrome.transformationError' => ({required Object error}) => 'Error de transformación: ${error}',
 			'formChrome.actionError' => ({required Object error}) => 'Error: ${error}',
+			'formChrome.removeItem' => 'Quitar',
 			'qsoEditForm.title' => 'Editar QSO',
 			'qsoEditForm.theirName' => 'Nombre',
 			'qsoEditForm.theirGrid' => 'Locador',
@@ -1679,6 +1689,8 @@ extension on TranslationsEs {
 			'switchAccounts.resendEmail' => 'Reenviar email',
 			'switchAccounts.qrPrompt' => 'Escanea este código QR desde un dispositivo ya vinculado a la cuenta que quieres — por ejemplo, con Ham2K Portable Logger en tu teléfono.',
 			'switchAccounts.serverUnreachable' => 'No se pudo contactar el servidor de sincronización. Inténtalo más tarde.',
+			_ => null,
+		} ?? switch (path) {
 			'switchAccounts.qsoCount' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count, one: '${count} QSO', other: '${count} QSOs', ), 
 			'switchAccounts.operationCount' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count, one: '${count} operación', other: '${count} operaciones', ), 
 			_ => null,

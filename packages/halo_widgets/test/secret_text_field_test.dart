@@ -17,12 +17,12 @@ void main() {
     expect(editable(tester).obscureText, isTrue);
 
     // The eye button reveals it...
-    await tester.tap(find.byTooltip('Show'));
+    await tester.tap(find.bySemanticsLabel('Show'));
     await tester.pump();
     expect(editable(tester).obscureText, isFalse);
 
     // ...and hides it again (the tooltip flips with the state).
-    await tester.tap(find.byTooltip('Hide'));
+    await tester.tap(find.bySemanticsLabel('Hide'));
     await tester.pump();
     expect(editable(tester).obscureText, isTrue);
   });
@@ -42,7 +42,7 @@ void main() {
     // Reveal it: obscureText no longer forces these off, so the field itself
     // must — a shown password must not be autocorrected or learned/suggested
     // by the soft keyboard.
-    await tester.tap(find.byTooltip('Show'));
+    await tester.tap(find.bySemanticsLabel('Show'));
     await tester.pump();
     final e = editable(tester);
     expect(e.obscureText, isFalse);

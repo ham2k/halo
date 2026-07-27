@@ -8,7 +8,11 @@
     "apply": "Apply",
     "close": "Close",
     "done": "Done",
-    "callsign": "Callsign"
+    "callsign": "Callsign",
+    "clear": "Clear",
+    "dismiss": "Dismiss",
+    "expand": "Expand",
+    "collapse": "Collapse"
   },
   "onboarding": {
     "welcomeTitle": "Welcome to Ham2K Portable Logger!",
@@ -257,7 +261,8 @@
     "multiselectStatus": "Showing ${shown} of ${total} (${selected} selected)",
     "validationError": "Validation error: ${error}",
     "transformationError": "Transformation error: ${error}",
-    "actionError": "Error: ${error}"
+    "actionError": "Error: ${error}",
+    "removeItem": "Remove"
   },
   "qsoEditForm": {
     "title": "Edit QSO",
