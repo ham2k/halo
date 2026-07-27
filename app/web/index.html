@@ -48,7 +48,14 @@
        then it's indistinguishable from SplashScreen underneath; a fast fade
        instead of an instant swap avoids a one-frame flicker between the two
        (different rendering pipelines — the browser compositor vs. Flutter's
-       canvas — don't swap on exactly the same frame). */
+       canvas — don't swap on exactly the same frame).
+
+       Starts invisible: the logo below is a ~15-20KB SVG, and on a slow
+       connection the browser can paint this whole overlay — background,
+       reserved spinner footprint — before that download finishes, leaving
+       the logo's spot empty (or a broken-image glyph) for a moment. The
+       script below adds startup-splash-visible once the image has actually
+       loaded, so the overlay only ever appears fully formed. */
     #startup-splash {
       position: fixed;
       inset: 0;
@@ -58,8 +65,11 @@
       justify-content: center;
       background: #DCE4E9;
       z-index: 9999;
-      opacity: 1;
+      opacity: 0;
       transition: opacity 50ms linear;
+    }
+    #startup-splash.startup-splash-visible {
+      opacity: 1;
     }
     #startup-splash.startup-splash-hidden {
       opacity: 0;
@@ -148,6 +158,32 @@
       setTimeout(() => splash.remove(), 50);
     }
 
+    // Reveals the overlay once its logo has actually downloaded (see the
+    // #startup-splash CSS comment above). Skipped if Flutter has already
+    // painted its own first frame by then — that first frame is this same
+    // splash (SplashScreen mirrors it pixel-for-pixel), so there is nothing
+    // left to reveal, and doing so would just add a pointless flash right
+    // before removeSplash() takes it back out.
+    function revealSplash() {
+      if (firstFramePainted) return;
+      const splash = document.getElementById('startup-splash');
+      if (splash) splash.classList.add('startup-splash-visible');
+    }
+
+    const splashImg = document.querySelector('#startup-splash img');
+    if (splashImg) {
+      if (splashImg.complete) {
+        // Already in cache by the time this script runs — no 'load' event
+        // will fire for it.
+        revealSplash();
+      } else {
+        splashImg.addEventListener('load', revealSplash);
+        // A missing/failed logo shouldn't hide the spinner (and, past
+        // BOOT_TIMEOUT_MS below, the boot-failure message) forever.
+        splashImg.addEventListener('error', revealSplash);
+      }
+    }
+
     // The documented hook: Flutter's own bootstrap dispatches this once its
     // first frame is actually painted — almost always Flutter's own
     // SplashScreen widget (lib/views/splash_view.dart), not the real app,
@@ -198,6 +234,10 @@
 
     setTimeout(() => {
       if (firstFramePainted) return;
+      // In case the logo is still mid-download (or somehow never fired
+      // 'load'/'error') on an extremely slow connection — this message
+      // must be seen even if the splash itself never was.
+      revealSplash();
       const spinner = document.querySelector('#startup-splash .spinner');
       if (spinner) spinner.remove();
       const errorBox = document.getElementById('startup-error');
