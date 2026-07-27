@@ -5,11 +5,18 @@
 # Packaging and publishing are NOT here - this is the engineering half, kept in
 # the public repo so it can be read, reviewed and run from any checkout.
 #
-# Invoked TODAY only by the `linux-arm64-build` workflow in codemagic.yaml,
-# which calls it directly. Nothing in app_dist/ calls it yet: the distribution
-# half (AppImage, naming, publishing) is not wired up. Whoever does that should
-# note the x64 path passes several dist-only flags to `flutter build` that the
-# --config-only invocation below does not.
+# Usage: build-linux-arm64.sh [extra `flutter build linux` args...]
+#
+# Any arguments are appended to the --config-only invocation below, which is the
+# seam a distribution build needs: --config-only is what bakes the dart-defines
+# and the Dart entry point into generated_config.cmake, and `flutter assemble`
+# reads them back from there. The x64 release passes --target
+# (app_dist/lib/main_dist.dart), the Sentry DSN, the MetricsBackend keys and
+# --build-name/--build-number; without forwarding them an arm64 release would
+# quietly ship the wrong entry point and no telemetry, and look fine doing it.
+#
+# With no arguments it produces a plain unbranded build, which is what the
+# manual workflow wants.
 #
 # A throwaway probe answered the feasibility question first - can an x86-64
 # instance produce the arm64 half at all - and reported PASS on a real Codemagic
@@ -392,7 +399,17 @@ if [ ! -f app/lib/config/secrets.dart ]; then
 fi
 
 ( cd app && flutter build linux --release --no-tree-shake-icons --config-only \
-    --dart-define=HALO_EDITION="$EDITION" )
+    --dart-define=HALO_EDITION="$EDITION" "$@" )
+# Show what actually got baked in, decoded. generated_config.cmake stores the
+# dart-defines base64-encoded, so a wrong or missing one is invisible in a diff
+# and would only show up as a mysteriously unbranded build.
+echo "--- dart-defines baked into the CMake config ---"
+sed -n 's/.*DART_DEFINES=\([^"]*\).*/\1/p' "app/linux/flutter/generated_config.cmake" 2>/dev/null |
+  tr ',' '\n' | while read -r d; do
+    [ -n "$d" ] && printf '  %s\n' "$(printf '%s' "$d" | base64 --decode 2>/dev/null || echo "$d")"
+  done
+echo "--- entry point ---"
+grep -E '^\s*set\(FLUTTER_TARGET' "app/linux/flutter/generated_config.cmake" 2>/dev/null | sed 's/^/  /' || true
 
 # ---------------------------------------------------------------------------
 say "Build for arm64"

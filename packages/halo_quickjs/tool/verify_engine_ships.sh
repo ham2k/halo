@@ -24,8 +24,9 @@
 #
 # Usage:  verify_engine_ships.sh <artifact> [more...]
 #
-#   <artifact> may be a macOS or iOS .app bundle, a shared library, or an
-#   executable. Bundles are resolved to their executable automatically.
+#   <artifact> may be a macOS or iOS .app bundle, an .ipa, an Android .apk or
+#   .aab, a shared library, or an executable. Bundles are resolved to their
+#   executable automatically; Android archives are checked ABI by ABI.
 #
 # Windows lives in the PowerShell sibling, verify_engine_ships.ps1, because a
 # bash script is not something the Windows CI image can be relied on to run.
@@ -184,12 +185,68 @@ symbols_of() {
   return 0
 }
 
+# Android ships one libhalo_quickjs.so PER ABI inside the archive, and Dart
+# opens it by name (DynamicLibrary.open('libhalo_quickjs.so')), so a packaging
+# bug that drops it from one ABI is invisible on every other device. armeabi-v7a
+# is the likeliest to differ: it is the only 32-bit target, and quickjs.h
+# switches JSValue to a NaN-boxed uint64_t there.
+#
+# The expected ABI set is DERIVED from the archive rather than hardcoded. If the
+# app ships an ABI at all it has other native libraries under that directory, so
+# "every lib/<abi>/ that exists must also contain the engine" calibrates itself
+# to whatever the build produced - a hardcoded list would silently stop covering
+# a newly added ABI.
+check_android() {
+  local archive="$1" tmp root abi so bad=0 seen=0
+  tmp=$(mktemp -d "$TMPROOT/apk.XXXXXX")
+  # An .aab nests everything under base/; an .apk does not.
+  unzip -q -o "$archive" 'lib/*' 'base/lib/*' -d "$tmp" > /dev/null 2>&1 || true
+  root="$tmp/lib"
+  if [ ! -d "$root" ]; then root="$tmp/base/lib"; fi
+  if [ ! -d "$root" ]; then
+    echo "FATAL: $archive contains no lib/ directory"
+    echo "       It ships no native libraries at all, so the engine cannot be"
+    echo "       there. Extension host would never start on any device."
+    return 1
+  fi
+  for abi in $(ls "$root" 2>/dev/null); do
+    seen=$((seen + 1))
+    so="$root/$abi/libhalo_quickjs.so"
+    if [ ! -f "$so" ]; then
+      echo "FATAL: the $abi ABI ships native libraries but no libhalo_quickjs.so"
+      echo "       Devices on $abi would launch and never start the extension host."
+      echo "       what $abi does contain:"
+      ls "$root/$abi" 2>/dev/null | head -10 | sed 's/^/         /'
+      bad=1
+      continue
+    fi
+    if defines_symbol "$so"; then
+      printf '  OK   %-52s defines %s\n' "$abi/libhalo_quickjs.so" "$SYMBOL"
+    else
+      echo "FATAL: $abi/libhalo_quickjs.so does not define $SYMBOL"
+      bad=1
+    fi
+  done
+  if [ "$seen" -eq 0 ]; then
+    echo "FATAL: $archive has a lib/ directory with no ABIs in it"
+    return 1
+  fi
+  return "$bad"
+}
+
 for artifact in "$@"; do
   if [ ! -e "$artifact" ]; then
     echo "FATAL: $artifact does not exist"
     fail=1
     continue
   fi
+
+  case "$artifact" in
+    *.apk|*.aab)
+      if ! check_android "$artifact"; then fail=1; fi
+      continue
+      ;;
+  esac
 
   bin=$(resolve_binary "$artifact")
   if [ -z "$bin" ] || [ ! -f "$bin" ]; then
