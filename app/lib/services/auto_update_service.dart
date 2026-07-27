@@ -76,8 +76,19 @@ class AutoUpdateService {
         defaultTargetPlatform == TargetPlatform.windows;
   }
 
-  String get _platform =>
-      defaultTargetPlatform == TargetPlatform.windows ? 'windows' : 'macos';
+  /// The R2 prefix segment for this build's feed. Names the VARIANT, not just
+  /// the OS, so a future arm64-only or Intel-only macOS build can ship its own
+  /// feed rather than fighting over one path (same reasoning as linux-x64 vs
+  /// linux-arm64).
+  ///
+  /// CHANGING THIS STRANDS EVERY EXISTING INSTALL. Each app polls the URL baked
+  /// into it, so a build that starts asking for a new path leaves everything
+  /// already installed asking for the old one - which 404s, silently, forever.
+  /// The old path must keep serving this same appcast until those installs have
+  /// taken an update; see LEGACY_APPCAST_PREFIXES in app_dist/ci/build-macos.sh.
+  String get _platform => defaultTargetPlatform == TargetPlatform.windows
+      ? 'windows-x64'
+      : 'macos-universal';
 
   /// The per-edition, per-platform appcast, e.g.
   /// `https://updates.ham2k.net/halo-next/macos/appcast.xml`. The path is
