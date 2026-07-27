@@ -116,6 +116,48 @@ assert_exports_engine() {
 # loses is pure timing.
 APT_WAIT=(-o DPkg::Lock::Timeout=600)
 
+# ...but the option alone was not enough, twice. The second failure dropped the
+# "held by process N (unattended-upgr)" line and printed only
+#
+#   E: Unable to acquire the dpkg frontend lock (/var/lib/dpkg/lock-frontend)
+#
+# i.e. apt waited and then gave up: DPkg::Lock::Timeout does not cover every
+# lock `apt-get update` takes, and the daemon can hold them for minutes on a
+# freshly booted image.
+#
+# So: stop the daemons that grab the locks, then WAIT for the locks to actually
+# be free before touching apt at all. Stopping is best-effort - an image without
+# these units is fine - but the wait is enforced, and it fails loudly with the
+# holder named rather than letting apt fail cryptically later.
+apt_prepare() {
+  sudo systemctl stop unattended-upgrades.service apt-daily.service \
+    apt-daily-upgrade.service > /dev/null 2>&1 || true
+  sudo systemctl kill --kill-who=all unattended-upgrades.service > /dev/null 2>&1 || true
+
+  local waited=0 limit=300
+  while sudo fuser /var/lib/dpkg/lock-frontend /var/lib/dpkg/lock \
+        /var/lib/apt/lists/lock > /dev/null 2>&1; do
+    if [ "$waited" -ge "$limit" ]; then
+      echo "FATAL: dpkg/apt locks still held after ${waited}s"
+      # Name the holder. The whole reason this is hard to debug from a CI log
+      # is that apt reports the lock without saying who has it.
+      sudo fuser -v /var/lib/dpkg/lock-frontend /var/lib/dpkg/lock \
+        /var/lib/apt/lists/lock 2>&1 | sed 's/^/  /' || true
+      exit 1
+    fi
+    # A plain `if`. The `[ cond ] && echo` idiom as the last command in a loop
+    # body returns non-zero when the test fails and `set -e` kills the script -
+    # which is exactly how the dart-defines diagnostic took a build down.
+    if [ $((waited % 30)) -eq 0 ]; then
+      echo "  waiting for the dpkg/apt locks to free up (${waited}s)..."
+    fi
+    sleep 5
+    waited=$((waited + 5))
+  done
+  if [ "$waited" -gt 0 ]; then echo "  locks free after ${waited}s"; fi
+}
+apt_prepare
+
 # ---------------------------------------------------------------------------
 say "Flutter root and engine revision"
 # ---------------------------------------------------------------------------
