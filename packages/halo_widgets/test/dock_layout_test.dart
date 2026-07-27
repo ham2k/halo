@@ -13,7 +13,12 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:halo_widgets/halo_widgets.dart';
 
 void main() {
-  Widget harness({required DockNode spec, ValueChanged<DockNode>? onChanged, Map<String, Widget>? children}) =>
+  Widget harness({
+    required DockNode spec,
+    ValueChanged<DockNode>? onChanged,
+    Map<String, Widget>? children,
+    Map<String, WidgetBuilder>? tabActions,
+  }) =>
       MaterialApp(
         home: Scaffold(
           body: DockLayoutView(
@@ -25,6 +30,7 @@ void main() {
                   'b': SizedBox.expand(key: Key('pane-b')),
                   'c': SizedBox.expand(key: Key('pane-c')),
                 },
+            tabActions: tabActions,
             onSpecChanged: onChanged,
           ),
         ),
@@ -77,6 +83,31 @@ void main() {
     // Unselected tab content stays MOUNTED (IndexedStack, offstage),
     // preserving state.
     expect(find.byKey(const Key('pane-c'), skipOffstage: false), findsOneWidget);
+  });
+
+  testWidgets("a tab-action always shows for a standalone module's own header", (tester) async {
+    // Group 'a' has one module — solo modules are always their own group's
+    // selected tab, so an action registered for 'a' shows unconditionally.
+    await tester.pumpWidget(harness(
+      spec: twoGroups(),
+      tabActions: {'a': (context) => const Icon(Icons.tune, key: Key('action-a'))},
+    ));
+    expect(find.byKey(const Key('action-a')), findsOneWidget);
+  });
+
+  testWidgets('a tab-action only shows when its module is the selected tab in a combined group', (tester) async {
+    // Group ['b', 'c'] starts with 'b' selected (index 0) — 'c's action must
+    // stay hidden until 'c' becomes the active tab, since the group's header
+    // has no room to show every tab's own action at once.
+    await tester.pumpWidget(harness(
+      spec: twoGroups(),
+      tabActions: {'c': (context) => const Icon(Icons.tune, key: Key('action-c'))},
+    ));
+    expect(find.byKey(const Key('action-c')), findsNothing);
+
+    await tester.tap(find.text('Charlie'));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('action-c')), findsOneWidget);
   });
 
   testWidgets('an ambient device inset reaches only the group whose edge is at that physical edge (issue #205)',

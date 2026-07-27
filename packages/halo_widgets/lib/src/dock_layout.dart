@@ -113,6 +113,13 @@ class DockLayoutView extends StatefulWidget {
   /// the panes get their latest props; must cover every id in the spec.
   final Map<String, Widget> children;
 
+  /// Module id → a trailing widget for that module's group header — shown
+  /// at the header's right edge, and only when the module is the group's
+  /// selected tab (so a solo module's trailing widget is always visible,
+  /// and one sharing a group with others only shows when it's the active
+  /// tab). Absent ids show nothing.
+  final Map<String, WidgetBuilder>? tabActions;
+
   final ValueChanged<DockNode>? onSpecChanged;
 
   const DockLayoutView({
@@ -120,6 +127,7 @@ class DockLayoutView extends StatefulWidget {
     required this.initialSpec,
     required this.titles,
     required this.children,
+    this.tabActions,
     this.onSpecChanged,
   });
 
@@ -434,37 +442,49 @@ class DockLayoutViewState extends State<DockLayoutView> {
             // child in. Builder gets a context at this group's real tree
             // position (ham2k/app-halo-dist#205).
             child: Builder(
-              builder: (context) => Padding(
-                padding: EdgeInsets.only(left: PaneSafeArea.leftOf(context), right: PaneSafeArea.rightOf(context)),
-                // Scrollable so many tabs in a narrow pane clip gracefully
-                // instead of overflowing (scroll-wheel reachable; tab drags
-                // win the gesture arena over the scroll view, which is fine
-                // — the strip is primarily tapped, and it usually fits).
-                child: SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
+              builder: (context) {
+                final selectedModule = group.modules[group.selected];
+                final trailing = widget.tabActions?[selectedModule]?.call(context);
+                return Padding(
+                  padding: EdgeInsets.only(left: PaneSafeArea.leftOf(context), right: PaneSafeArea.rightOf(context)),
                   child: Row(
                     children: [
-                      for (var i = 0; i < group.modules.length; i++)
-                        _DockTab(
-                          title: widget.titles[group.modules[i]] ?? group.modules[i],
-                          selected: i == group.selected,
-                          showHandle: group.modules.length == 1 || i == group.selected,
-                          // Selection is part of the persisted spec (toJson
-                          // carries it), so a tap must emit like a drop does —
-                          // otherwise the saved arrangement reopens on a
-                          // stale tab.
-                          onTap: () {
-                            setState(() => group.selected = i);
-                            _emit();
-                          },
-                          moduleId: group.modules[i],
-                          onDragStarted: (id) => setState(() => _dragging = id),
-                          onDragEnded: () => setState(() => _dragging = null),
+                      Expanded(
+                        // Scrollable so many tabs in a narrow pane clip
+                        // gracefully instead of overflowing (scroll-wheel
+                        // reachable; tab drags win the gesture arena over the
+                        // scroll view, which is fine — the strip is primarily
+                        // tapped, and it usually fits).
+                        child: SingleChildScrollView(
+                          scrollDirection: Axis.horizontal,
+                          child: Row(
+                            children: [
+                              for (var i = 0; i < group.modules.length; i++)
+                                _DockTab(
+                                  title: widget.titles[group.modules[i]] ?? group.modules[i],
+                                  selected: i == group.selected,
+                                  showHandle: group.modules.length == 1 || i == group.selected,
+                                  // Selection is part of the persisted spec
+                                  // (toJson carries it), so a tap must emit
+                                  // like a drop does — otherwise the saved
+                                  // arrangement reopens on a stale tab.
+                                  onTap: () {
+                                    setState(() => group.selected = i);
+                                    _emit();
+                                  },
+                                  moduleId: group.modules[i],
+                                  onDragStarted: (id) => setState(() => _dragging = id),
+                                  onDragEnded: () => setState(() => _dragging = null),
+                                ),
+                            ],
+                          ),
                         ),
+                      ),
+                      if (trailing != null) trailing,
                     ],
                   ),
-                ),
-              ),
+                );
+              },
             ),
           ),
         ),

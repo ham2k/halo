@@ -45,9 +45,11 @@ void main() {
     await tester.pumpAndSettle();
 
     // 1000 logical px → L: split layout with the Info tab, logging pane
-    // visible on the left, and no QSO-count tab (logging isn't a tab here).
+    // visible on the left. Its title bar shows the same "0 QSOs" label the
+    // narrow tab uses, but not as a tab — logging isn't a tab here.
     expect(find.text('INFO'), findsOneWidget);
-    expect(find.text('0 QSOs'), findsNothing);
+    expect(find.text('0 QSOs'), findsOneWidget);
+    expect(find.widgetWithText(Tab, '0 QSOs'), findsNothing);
     expect(find.widgetWithText(TextField, 'Their call'), findsOneWidget);
 
     // Type into the logging pane, then flip to narrow.
@@ -58,13 +60,13 @@ void main() {
     await tester.pump(const Duration(milliseconds: 500));
     await tester.pump(const Duration(milliseconds: 500));
 
-    // 430 → S: the tab arrangement, with the QSO-count tab back — that tab
-    // is what tells the two arrangements apart, since the sheet took the
-    // Operation tab away and Info is now in both. Index 0 was Info, so tab 0
-    // (QSOs = the logging pane) shows, with the in-progress callsign intact
-    // (GlobalKey reparenting).
+    // 430 → S: the tab arrangement, with the QSO-count tab back — Info
+    // isn't a narrow tab (it's one tap away via the callsign area instead),
+    // so QSOs/Spots/Map is what tells the two arrangements apart. Index 0
+    // was Info, so tab 0 (QSOs = the logging pane) shows, with the
+    // in-progress callsign intact (GlobalKey reparenting).
     expect(find.text('0 QSOs'), findsOneWidget);
-    expect(find.text('INFO'), findsOneWidget);
+    expect(find.text('INFO'), findsNothing);
     expect(find.widgetWithText(TextField, 'W1AW'), findsOneWidget);
 
     // And back to wide: split returns, input still intact.
@@ -72,7 +74,7 @@ void main() {
     await tester.pump(const Duration(milliseconds: 500));
     await tester.pump(const Duration(milliseconds: 500));
 
-    expect(find.text('0 QSOs'), findsNothing);
+    expect(find.widgetWithText(Tab, '0 QSOs'), findsNothing, reason: 'the split\'s title bar shows the label, not a tab');
     expect(find.widgetWithText(TextField, 'W1AW'), findsOneWidget);
 
     // Flip with a NON-ZERO tab selected — the regression case. Wide with
@@ -99,7 +101,11 @@ void main() {
     await tester.pump(const Duration(milliseconds: 500));
     expect(tester.takeException(), isNull);
     expect(find.widgetWithText(TextField, 'W1AW'), findsOneWidget, reason: 'logging input survives a flip made with Spots selected');
-    expect(find.text('0 QSOs'), findsNothing, reason: 'back to the split, where logging has its own pane');
+    expect(
+      find.widgetWithText(Tab, '0 QSOs'),
+      findsNothing,
+      reason: 'back to the split, where logging has its own pane (with a title, not a tab)',
+    );
 
     // Tear the tree down and drain the services' debounce timers (rescore,
     // lookup) so the binding's pending-timer invariant passes.
@@ -165,7 +171,7 @@ void main() {
     expect(find.byWidgetPredicate((w) => w.runtimeType.toString() == '_HeaderDotsAndAcceptControl'), findsOneWidget);
 
     final toolbarHeight = Theme.of(tester.element(find.byType(AppBar))).appBarTheme.toolbarHeight ?? kToolbarHeight;
-    final tabBarTop = tester.getTopLeft(find.byType(TabBar)).dy;
+    final tabBarTop = tester.getTopLeft(find.byKey(const Key('narrowTabBar'))).dy;
     expect(tabBarTop, closeTo(toolbarHeight, 0.5));
 
     await tester.pumpWidget(const SizedBox());
@@ -248,6 +254,70 @@ void main() {
     await tester.pump(const Duration(seconds: 5));
   });
 
+  testWidgets('the logging settings menu moved off the AppBar, onto the narrow QSOs tab, visible only when selected', (tester) async {
+    // Narrow: the settings menu used to live in the AppBar's actions,
+    // regardless of which tab was showing — but its toggles (RST/State/Grid
+    // fields, dupe/number display) only ever affected the logging panel.
+    tester.view.physicalSize = const Size(430, 800);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+
+    SharedPreferences.setMockInitialValues({});
+    final settings = SettingsService(await SharedPreferences.getInstance());
+    // Otherwise the 'operation-sheet' onboarding flow auto-opens the sheet
+    // on mount (issue #348), which sits over the whole header/tab area and
+    // swallows every tap below it.
+    await settings.recordOnboardingShown(OnboardingFlows.operationSheet);
+    final db = HaLoDatabase(NativeDatabase.memory());
+    final extensions = ExtensionServiceWithMockHost(MockExtensionHost(const {}))..settings = settings;
+    final services = HaLoServices(db, settings, extensions: extensions);
+    final operation = await services.operations.create(stationCall: 'N0CALL', title: 'Test Op');
+
+    await tester.pumpWidget(TranslationProvider(
+      child: MaterialApp(
+        home: OperationView(services: services, operationUuid: operation.uuid),
+      ),
+    ));
+    await tester.pumpAndSettle();
+
+    expect(
+      find.descendant(of: find.byType(AppBar), matching: find.byIcon(Icons.tune)),
+      findsOneWidget,
+      reason: 'lives with the tab bar now, not as a standalone action — but see the next check',
+    );
+    expect(
+      find.ancestor(of: find.byIcon(Icons.tune), matching: find.byType(Tab)),
+      findsNothing,
+      reason: "overlaid next to the tab, not nested inside its Tab — nesting would compete with "
+          "the tab bar's own tap handling for the same tap and the button would never receive one",
+    );
+    expect(find.byIcon(Icons.tune), findsOneWidget, reason: 'QSOs is the selected tab on mount');
+
+    // The button's own space stays reserved even when hidden (so the tab
+    // doesn't reflow on selection changes) via Visibility(maintainState:
+    // true) — which keeps the Icon mounted in the widget tree, just not
+    // painted or hit-testable. So `find.byIcon` alone can't tell hidden
+    // from shown; check the Visibility flag that actually controls it.
+    Visibility tuneVisibility() =>
+        tester.widget<Visibility>(find.ancestor(of: find.byIcon(Icons.tune), matching: find.byType(Visibility)));
+
+    await tester.tap(find.text('SPOTS'));
+    await tester.pumpAndSettle();
+    expect(tuneVisibility().visible, isFalse, reason: 'hidden once QSOs is no longer the active tab');
+
+    await tester.tap(find.text('0 QSOs'));
+    await tester.pumpAndSettle();
+    expect(tuneVisibility().visible, isTrue, reason: 'reappears once QSOs is selected again');
+
+    // The menu itself is unchanged — same toggle, same effect.
+    await tester.tap(find.byIcon(Icons.tune));
+    await tester.pumpAndSettle();
+    expect(find.text('Show RST fields'), findsOneWidget);
+
+    await tester.pumpWidget(const SizedBox());
+    await tester.pump(const Duration(seconds: 5));
+  });
+
   testWidgets('the dots/accept control animates back on close, not an instant snap to plain dots', (tester) async {
     tester.view.physicalSize = const Size(1000, 800);
     tester.view.devicePixelRatio = 1.0;
@@ -298,6 +368,43 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.byType(OperationSheet), findsNothing);
     expect(tester.getSize(control).width, closeTo(10, 0.5), reason: 'settles back to plain dots once fully closed');
+
+    await tester.pumpWidget(const SizedBox());
+    await tester.pump(const Duration(seconds: 5));
+  });
+
+  testWidgets('the fixed wide split gains a logging-pane title bar holding the settings menu', (tester) async {
+    tester.view.physicalSize = const Size(1000, 800);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+
+    SharedPreferences.setMockInitialValues({});
+    final settings = SettingsService(await SharedPreferences.getInstance());
+    await settings.recordOnboardingShown(OnboardingFlows.operationSheet);
+    final db = HaLoDatabase(NativeDatabase.memory());
+    final extensions = ExtensionServiceWithMockHost(MockExtensionHost(const {}))..settings = settings;
+    final services = HaLoServices(db, settings, extensions: extensions);
+    final operation = await services.operations.create(stationCall: 'N0CALL', title: 'Test Op');
+
+    await tester.pumpWidget(TranslationProvider(
+      child: MaterialApp(
+        home: OperationView(services: services, operationUuid: operation.uuid),
+      ),
+    ));
+    await tester.pumpAndSettle();
+
+    expect(
+      find.descendant(of: find.byType(AppBar), matching: find.byIcon(Icons.tune)),
+      findsNothing,
+      reason: 'no longer a global AppBar action',
+    );
+    // Exactly one — the split's own logging pane always shows (it has no
+    // other tab to hide behind), unlike the narrow case.
+    expect(find.byIcon(Icons.tune), findsOneWidget);
+
+    await tester.tap(find.byIcon(Icons.tune));
+    await tester.pumpAndSettle();
+    expect(find.text('Show RST fields'), findsOneWidget);
 
     await tester.pumpWidget(const SizedBox());
     await tester.pump(const Duration(seconds: 5));

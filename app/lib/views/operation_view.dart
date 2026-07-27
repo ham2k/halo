@@ -891,8 +891,8 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
   Future<void> _handleCommandAction(String action, [Map<String, dynamic>? params]) =>
       runCommandAction(widget.services, this, action, params);
 
-  /// Flips one of the logging-view menu's toggles: updates the local mirror
-  /// (`apply`) so the AppBar menu's checkmark and the widgets below react
+  /// Flips one of the logging panel's menu toggles: updates the local mirror
+  /// (`apply`) so the menu's checkmark and the widgets below react
   /// immediately, and persists via `persist` so it survives a restart.
   void _toggleMenuSetting({
     required bool current,
@@ -902,6 +902,282 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
     final value = !current;
     setState(() => apply(value));
     persist(value);
+  }
+
+  /// The logging panel's own settings menu (field visibility, dupe/number
+  /// display, a bulk lookup refresh) — lives with the panel it affects
+  /// rather than the operation view's AppBar, since none of this applies to
+  /// the Info/Spots/Map tabs. Rendered at three call sites depending on
+  /// layout (the dock module header, the narrow tab bar's QSOs tab, the
+  /// fixed wide split's new logging-pane title bar) — same content
+  /// everywhere, so they can't drift.
+  Widget _buildLoggingSettingsButton(List<Qso> qsos) {
+    // Every call site sits on a header-colored surface (the dock module
+    // header, the tab bar riding on the AppBar's own color, the wide
+    // split's new title bar) — same resolution the headers themselves use
+    // for their foreground, so the icon reads against all three.
+    final theme = Theme.of(context);
+    final iconColor = theme.appBarTheme.foregroundColor ?? theme.colorScheme.onPrimary;
+    // A plain PopupMenuButton picks left-vs-right placement from a single
+    // fixed `offset`, but that offset only reads as "80% of the button
+    // stays visible" for whichever direction it was tuned for — the button
+    // moves around a lot across call sites (narrow tab near the left edge,
+    // wide split/dock headers anywhere else), and the OTHER direction ends
+    // up fully burying the button instead. Building the menu by hand lets
+    // each open pick its own direction and its own correctly-signed offset.
+    // The item list is built lazily inside onPressed (not here) so a
+    // rebuild of this button — e.g. every frame of the narrow tab bar's
+    // tab-switch animation — doesn't also reconstruct the whole menu.
+    return Builder(
+      builder: (buttonContext) => IconButton(
+        icon: Icon(Icons.tune, color: iconColor),
+        // PopupMenuButton (what this replaced) supplies this same label by
+        // default when none is given; a plain IconButton doesn't, so it has
+        // to be set explicitly to keep the button accessible.
+        tooltip: MaterialLocalizations.of(context).showMenuTooltip,
+        onPressed: () => _showLoggingSettingsMenu(buttonContext, _loggingSettingsMenuItems(qsos)),
+      ),
+    );
+  }
+
+  List<PopupMenuEntry<VoidCallback>> _loggingSettingsMenuItems(List<Qso> qsos) {
+    return [
+      CheckedPopupMenuItem<VoidCallback>(
+        checked: _showRSTFields,
+        value: () => _toggleMenuSetting(
+          current: _showRSTFields,
+          apply: (v) => _showRSTFields = v,
+          persist: widget.services.settings.setShowRSTFields,
+        ),
+        child: Text(context.t.operation.menu.showRstFields),
+      ),
+      CheckedPopupMenuItem<VoidCallback>(
+        checked: _showStateField,
+        value: () => _toggleMenuSetting(
+          current: _showStateField,
+          apply: (v) => _showStateField = v,
+          persist: widget.services.settings.setShowStateField,
+        ),
+        child: Text(context.t.operation.menu.showStateField),
+      ),
+      CheckedPopupMenuItem<VoidCallback>(
+        checked: _showGridField,
+        value: () => _toggleMenuSetting(
+          current: _showGridField,
+          apply: (v) => _showGridField = v,
+          persist: widget.services.settings.setShowGridField,
+        ),
+        child: Text(context.t.operation.menu.showGridField),
+      ),
+      CheckedPopupMenuItem<VoidCallback>(
+        checked: _showDeletedQSOs,
+        value: () => _toggleMenuSetting(
+          current: _showDeletedQSOs,
+          apply: (v) => _showDeletedQSOs = v,
+          persist: widget.services.settings.setShowDeletedQSOs,
+        ),
+        child: Text(context.t.operation.menu.showDeletedQsos),
+      ),
+      CheckedPopupMenuItem<VoidCallback>(
+        checked: _showQsoNumbers,
+        value: () => _toggleMenuSetting(
+          current: _showQsoNumbers,
+          apply: (v) => _showQsoNumbers = v,
+          persist: widget.services.settings.setShowQsoNumbers,
+        ),
+        child: Text(context.t.operation.menu.showQsoNumbers),
+      ),
+      const PopupMenuDivider(),
+      PopupMenuItem<VoidCallback>(
+        // Refreshes lookup data (QRZ, HamDB…) for the whole log via the
+        // background queue — progress shows in the status bar, and rows
+        // repaint as results land. The queue itself filters out event
+        // markers etc.
+        value: () => widget.services.lookupQueue.enqueueAll(qsos),
+        child: Text(context.t.operation.menu.lookupAllQsos),
+      ),
+    ];
+  }
+
+  /// Opens [_buildLoggingSettingsButton]'s menu, always leaving 80% of the
+  /// button visible (a 20% overlap) regardless of where on screen the
+  /// button ended up. [PopupMenuButton] itself picks left-vs-right by
+  /// comparing how close the (already-offset) button is to each edge of
+  /// the overlay — see `_PopupMenuRouteLayout.getPositionForChild` — so
+  /// forcing that comparison ourselves, using the button's *actual*
+  /// position, is what makes the two directions independently correct
+  /// instead of one working by accident and the other burying the button.
+  Future<void> _showLoggingSettingsMenu(BuildContext buttonContext, List<PopupMenuEntry<VoidCallback>> items) async {
+    final button = buttonContext.findRenderObject()! as RenderBox;
+    final overlay = Navigator.of(buttonContext).overlay!.context.findRenderObject()! as RenderBox;
+    final buttonTopLeft = button.localToGlobal(Offset.zero, ancestor: overlay);
+    final buttonSize = button.size;
+    final overlayWidth = overlay.size.width;
+    final top = buttonTopLeft.dy;
+
+    final openRight = buttonTopLeft.dx + buttonSize.width / 2 < overlayWidth / 2;
+    final RelativeRect position;
+    if (openRight) {
+      final left = buttonTopLeft.dx + buttonSize.width * 0.8;
+      position = RelativeRect.fromLTRB(left, top, overlayWidth, 0);
+    } else {
+      final right = overlayWidth - (buttonTopLeft.dx + buttonSize.width * 0.2);
+      position = RelativeRect.fromLTRB(overlayWidth, top, right, 0);
+    }
+
+    final selected = await showMenu<VoidCallback>(context: buttonContext, position: position, items: items);
+    selected?.call();
+  }
+
+  /// Floor for [_narrowTabBar]'s QSOs-tab padding — shrunk before the tab
+  /// is ever allowed to grow past an even third (and, in turn, before
+  /// Spots/Map are ever asked to give up any of their own share).
+  static const double _kNarrowTabMinPadding = 4;
+
+  /// The narrow layout's tab strip. Hand-built rather than a stock [TabBar]
+  /// (which always splits its width equally across tabs): the QSOs tab
+  /// carries both its label and the settings button
+  /// (_buildLoggingSettingsButton), so on the narrowest phones an equal
+  /// third isn't always enough room for both, and a widget nested inside a
+  /// `Tab` competes with the tab bar's own tap handling for that gesture and
+  /// loses, so it never receives taps either. The label stays centered
+  /// across the tab's full width, same as any other tab, with the button
+  /// pinned to the tab's right edge regardless — which needs room for the
+  /// button on *both* sides of the centered label, not just the one it
+  /// occupies, to avoid the two overlapping. Fitting that: first the tab's
+  /// own horizontal padding shrinks (down to [_kNarrowTabMinPadding]); only
+  /// once padding is already at that floor does the tab grow past an even
+  /// third, taking space from Spots/Map. The reserved width always assumes
+  /// the button is showing (not just when QSOs is selected), so the strip
+  /// doesn't reflow when the selection changes.
+  PreferredSizeWidget _narrowTabBar(int realQsoCount, List<Qso> qsos) {
+    final theme = Theme.of(context);
+    final labelStyle = theme.textTheme.titleSmall;
+    final qsosLabel = context.t.operation.tabs.qsos(count: formatNumber(realQsoCount));
+    final qsosLabelWidth = (TextPainter(
+          text: TextSpan(text: qsosLabel, style: labelStyle?.copyWith(fontWeight: FontWeight.bold)),
+          textDirection: Directionality.of(context),
+        )..layout())
+        .width;
+    // The button's own width, reserved on both sides of the centered label
+    // (see the doc comment above).
+    final qsosContentWidth = qsosLabelWidth + kMinInteractiveDimension * 2;
+
+    return PreferredSize(
+      key: const Key('narrowTabBar'),
+      preferredSize: const Size.fromHeight(kTextTabBarHeight),
+      child: AnimatedBuilder(
+        animation: _tabController!,
+        builder: (context, child) {
+          return Material(
+            color: theme.appBarTheme.backgroundColor ?? theme.colorScheme.primary,
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final evenShare = constraints.maxWidth / 3;
+                double qsosWidth;
+                double qsosPadding;
+                if (qsosContentWidth + kTabLabelPadding.horizontal <= evenShare) {
+                  qsosWidth = evenShare;
+                  qsosPadding = kTabLabelPadding.horizontal / 2;
+                } else if (qsosContentWidth + _kNarrowTabMinPadding * 2 <= evenShare) {
+                  qsosWidth = evenShare;
+                  qsosPadding = (evenShare - qsosContentWidth) / 2;
+                } else {
+                  qsosWidth = qsosContentWidth + _kNarrowTabMinPadding * 2;
+                  qsosPadding = _kNarrowTabMinPadding;
+                }
+                return Row(
+                  children: [
+                    SizedBox(
+                      width: qsosWidth,
+                      // Row's incoming height constraint here is loose, so a
+                      // shorter tab (Spots/Map, just a label) would
+                      // otherwise size its Container to its own content and
+                      // paint the bottom-border indicator at ITS bottom
+                      // edge — above the bar's true bottom — while the
+                      // taller QSOs tab (label + button) sits lower. An
+                      // explicit height forces every tab's Container to the
+                      // bar's full height regardless, so every indicator
+                      // lands flush at the same bottom edge, same as a
+                      // stock TabBar.
+                      height: kTextTabBarHeight,
+                      child: _narrowTab(
+                        0,
+                        qsosLabel,
+                        labelStyle,
+                        padding: EdgeInsets.symmetric(horizontal: qsosPadding),
+                        trailing: _buildLoggingSettingsButton(qsos),
+                      ),
+                    ),
+                    Expanded(
+                      child: SizedBox(
+                        height: kTextTabBarHeight,
+                        child: _narrowTab(1, context.t.operation.tabs.spots, labelStyle),
+                      ),
+                    ),
+                    Expanded(
+                      child: SizedBox(
+                        height: kTextTabBarHeight,
+                        child: _narrowTab(2, context.t.operation.tabs.map, labelStyle),
+                      ),
+                    ),
+                  ],
+                );
+              },
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _narrowTab(
+    int index,
+    String label,
+    TextStyle? labelStyle, {
+    Widget? trailing,
+    EdgeInsetsGeometry padding = kTabLabelPadding,
+  }) {
+    final theme = Theme.of(context);
+    final tabTheme = theme.tabBarTheme;
+    final selected = _tabController!.index == index;
+    final labelColor = (selected ? tabTheme.labelColor : tabTheme.unselectedLabelColor) ?? theme.colorScheme.onPrimary;
+    final text = Text(label, style: labelStyle?.copyWith(color: labelColor, fontWeight: selected ? FontWeight.bold : null));
+    return InkWell(
+      onTap: () => _tabController!.animateTo(index),
+      overlayColor: tabTheme.overlayColor,
+      child: Container(
+        decoration: BoxDecoration(
+          border: Border(
+            bottom: BorderSide(color: selected ? (tabTheme.indicatorColor ?? labelColor) : Colors.transparent, width: 4),
+          ),
+        ),
+        padding: padding,
+        child: trailing == null
+            ? Center(child: text)
+            : Stack(
+                alignment: Alignment.center,
+                children: [
+                  Center(child: text),
+                  Align(
+                    alignment: Alignment.centerRight,
+                    // Reserved width already accounts for the button
+                    // whether it's showing or not (see _narrowTabBar's doc
+                    // comment) — maintainSize keeps that space instead of
+                    // collapsing it, so the tab doesn't reflow when the
+                    // selection changes.
+                    child: Visibility(
+                      visible: selected,
+                      maintainSize: true,
+                      maintainAnimation: true,
+                      maintainState: true,
+                      child: trailing,
+                    ),
+                  ),
+                ],
+              ),
+      ),
+    );
   }
 
   /// The dock-layout prototype's wide arrangement: the same five panes as
@@ -914,6 +1190,7 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
     required Widget spotsPanel,
     required Widget mapPanel,
     required int realQsoCount,
+    required List<Qso> qsos,
   }) {
     // No 'operation' pane: its settings live in the operation sheet.
     const ids = ['logging', 'info', 'spots', 'map'];
@@ -942,6 +1219,7 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
         'spots': spotsPanel,
         'map': mapPanel,
       },
+      tabActions: {'logging': (context) => _buildLoggingSettingsButton(qsos)},
       onSpecChanged: (node) {
         _dockSpec = node;
         widget.services.settings.setLayoutData(LayoutKeys.operationDock, node.toJson());
@@ -1058,22 +1336,27 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
           callInfo: _callInfo,
           ourEntityPrefix: _ourEntityPrefix,
         );
+        // Built before `tabBar`/`tabView`/`_narrowTabBar` below, all of
+        // which read `_tabController!` directly — the controller must
+        // already be this build's final instance, not the one about to be
+        // replaced, by the time any of them are constructed.
+        _updateTabControllerIfNeeded(3);
+
         // Wide: Info, Spots, Map — logging has its own pane in the split.
-        // Narrow: QSOs first, since logging is what the view is for.
+        // Narrow: QSOs, Spots, Map — logging is what the view is for, and
+        // Info is one tap away via the callsign area.
         final List<Widget> tabs = [
           if (!isTwoPane) Tab(text: context.t.operation.tabs.qsos(count: formatNumber(realQsoCount))),
-          Tab(text: context.t.operation.tabs.info),
+          if (isTwoPane) Tab(text: context.t.operation.tabs.info),
           Tab(text: context.t.operation.tabs.spots),
           Tab(text: context.t.operation.tabs.map),
         ];
         final List<Widget> tabChildren = [
           if (!isTwoPane) _KeepAlive(child: loggingPanel),
-          infoPanel,
+          if (isTwoPane) infoPanel,
           spotsPanel,
           mapPanel,
         ];
-
-        _updateTabControllerIfNeeded(tabs.length);
 
         final tabBar = TabBar(
           controller: _tabController!,
@@ -1114,70 +1397,12 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
               // supplies its own (small) inset instead of relying on the
               // theme's default gap here.
               titleSpacing: 0,
-              actions: [
-                PopupMenuButton<VoidCallback>(
-                  icon: const Icon(Icons.tune),
-                  onSelected: (toggle) => toggle(),
-                  itemBuilder: (context) => [
-                    CheckedPopupMenuItem<VoidCallback>(
-                      checked: _showRSTFields,
-                      value: () => _toggleMenuSetting(
-                        current: _showRSTFields,
-                        apply: (v) => _showRSTFields = v,
-                        persist: widget.services.settings.setShowRSTFields,
-                      ),
-                      child: Text(context.t.operation.menu.showRstFields),
-                    ),
-                    CheckedPopupMenuItem<VoidCallback>(
-                      checked: _showStateField,
-                      value: () => _toggleMenuSetting(
-                        current: _showStateField,
-                        apply: (v) => _showStateField = v,
-                        persist: widget.services.settings.setShowStateField,
-                      ),
-                      child: Text(context.t.operation.menu.showStateField),
-                    ),
-                    CheckedPopupMenuItem<VoidCallback>(
-                      checked: _showGridField,
-                      value: () => _toggleMenuSetting(
-                        current: _showGridField,
-                        apply: (v) => _showGridField = v,
-                        persist: widget.services.settings.setShowGridField,
-                      ),
-                      child: Text(context.t.operation.menu.showGridField),
-                    ),
-                    CheckedPopupMenuItem<VoidCallback>(
-                      checked: _showDeletedQSOs,
-                      value: () => _toggleMenuSetting(
-                        current: _showDeletedQSOs,
-                        apply: (v) => _showDeletedQSOs = v,
-                        persist: widget.services.settings.setShowDeletedQSOs,
-                      ),
-                      child: Text(context.t.operation.menu.showDeletedQsos),
-                    ),
-                    CheckedPopupMenuItem<VoidCallback>(
-                      checked: _showQsoNumbers,
-                      value: () => _toggleMenuSetting(
-                        current: _showQsoNumbers,
-                        apply: (v) => _showQsoNumbers = v,
-                        persist: widget.services.settings.setShowQsoNumbers,
-                      ),
-                      child: Text(context.t.operation.menu.showQsoNumbers),
-                    ),
-                    const PopupMenuDivider(),
-                    PopupMenuItem<VoidCallback>(
-                      // Refreshes lookup data (QRZ, HamDB…) for the whole log
-                      // via the background queue — progress shows in the
-                      // status bar, and rows repaint as results land. The
-                      // queue itself filters out event markers etc.
-                      value: () => widget.services.lookupQueue.enqueueAll(qsos),
-                      child: Text(context.t.operation.menu.lookupAllQsos),
-                    ),
-                  ],
-                ),
-                const SizedBox(width: 8),
-                windowsCaptionSpacer(context),
-              ],
+              // The logging-only settings menu used to live here; it now
+              // travels with the logging panel itself (dock module header,
+              // narrow QSOs tab, or the fixed wide split's pane title bar —
+              // see _buildLoggingSettingsButton), since none of its toggles
+              // apply to the Info/Spots/Map tabs.
+              actions: [windowsCaptionSpacer(context)],
               title: InkWell(
                 key: _headerTitleKey,
                 onTap: () {
@@ -1264,7 +1489,7 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
               ),
               // On two-pane layouts the tabs move into the right-side pane
               // below.
-              bottom: isTwoPane ? null : tabBar,
+              bottom: isTwoPane ? null : _narrowTabBar(realQsoCount, qsos),
             ),
           // One tab set either way, always 4 tabs on the one controller —
           // it is never recreated, so the selected index carries across a
@@ -1282,6 +1507,7 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
                     spotsPanel: spotsPanel,
                     mapPanel: mapPanel,
                     realQsoCount: realQsoCount,
+                    qsos: qsos,
                   )
                 : isTwoPane
                 ? ResizableSplitView(
@@ -1290,7 +1516,46 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
                     preferredPrimaryWidth: widget.services.settings.layoutDimension(LayoutKeys.operationLeftColumn),
                     onPreferredPrimaryWidthChanged: (width) =>
                         widget.services.settings.setLayoutDimension(LayoutKeys.operationLeftColumn, width),
-                    primary: loggingPanel,
+                    // The fixed split's counterpart to the dock layout's
+                    // module header and the narrow view's QSOs tab: the
+                    // logging pane has no title of its own otherwise, and
+                    // that's where its settings button now lives.
+                    // `kTextTabBarHeight` matches the secondary's TabBar so
+                    // both sides of the split line up at the divider.
+                    primary: Column(
+                      children: [
+                        Material(
+                          color:
+                              Theme.of(context).appBarTheme.backgroundColor ?? Theme.of(context).colorScheme.primary,
+                          child: SizedBox(
+                            height: kTextTabBarHeight,
+                            child: Padding(
+                              padding: EdgeInsets.only(left: PaneSafeArea.leftOf(context)),
+                              child: Row(
+                                children: [
+                                  Expanded(
+                                    child: Padding(
+                                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                                      child: Text(
+                                        context.t.operation.tabs.qsos(count: formatNumber(realQsoCount)),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                                          color: Theme.of(context).appBarTheme.foregroundColor ??
+                                              Theme.of(context).colorScheme.onPrimary,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                  _buildLoggingSettingsButton(qsos),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                        Expanded(child: loggingPanel),
+                      ],
+                    ),
                     secondary: Column(
                       children: [
                         Material(
