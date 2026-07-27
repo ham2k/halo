@@ -80,3 +80,16 @@ Future<List<ReleaseNotesEntry>> loadReleaseNotes() {
 /// isn't what those tests are checking anyway. Call from `setUp()`.
 @visibleForTesting
 void setReleaseNotesForTesting(List<ReleaseNotesEntry> notes) => _releaseNotesFuture = Future.value(notes);
+
+/// Companion to [setReleaseNotesForTesting]: makes [loadReleaseNotes] reject
+/// instead of resolving, for exercising a broken/missing release-notes
+/// asset's failure path (see `BootGateState._prepareOnboardingPhoto` and its
+/// try/catch in main.dart) without actually corrupting a real asset file.
+/// `Future(() => throw error)`, not `Future.error(error)`: the latter
+/// completes synchronously at construction, before any consumer has had a
+/// chance to attach a handler, which trips Dart's "unhandled error" zone
+/// reporting even though every real consumer does handle it a turn later.
+/// Scheduling the throw instead defers completion until after those
+/// handlers are attached.
+@visibleForTesting
+void setReleaseNotesFailureForTesting(Object error) => _releaseNotesFuture = Future(() => throw error);

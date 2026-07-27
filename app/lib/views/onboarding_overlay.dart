@@ -27,7 +27,7 @@ import 'ham2k_logo.dart';
 import 'settings_view.dart';
 import 'switch_accounts_dialog.dart';
 import 'version_label.dart';
-import 'release_overlay.dart' show overlayCreditsText, overlayCreditsStyle, overlayVersionLabelStyle;
+import 'release_overlay.dart' show overlayCreditsText, overlayCreditsStyle, overlayVersionLabelStyle, ReleasePhoto;
 
 // Matches release_overlay.dart's fixed light-panel palette — this overlay
 // also sits over a photo and never follows dark mode.
@@ -351,9 +351,8 @@ class _OnboardingOverlayViewState extends State<OnboardingOverlayView> {
             children: [
               if (release != null)
                 Positioned.fill(
-                  child: Image.asset(
-                    release.imageAssetPath,
-                    fit: BoxFit.cover,
+                  child: ReleasePhoto(
+                    imageAssetPath: release.imageAssetPath,
                     errorBuilder: (context, error, stackTrace) => const ColoredBox(color: _photoFallbackColor),
                   ),
                 ),

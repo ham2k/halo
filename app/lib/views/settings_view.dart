@@ -2241,9 +2241,8 @@ class _AboutHeader extends StatelessWidget {
         fit: StackFit.expand,
         children: [
           if (release != null)
-            Image.asset(
-              release!.imageAssetPath,
-              fit: BoxFit.cover,
+            ReleasePhoto(
+              imageAssetPath: release!.imageAssetPath,
               errorBuilder: (context, error, stackTrace) => ColoredBox(color: theme.colorScheme.primaryContainer),
             )
           else

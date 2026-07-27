@@ -34,6 +34,52 @@ const _bandHeightFactorCollapsed = 0.25;
 const _bandHeightFactorExpanded = 2 / 3;
 const _bandAnimationDuration = Duration(milliseconds: 250);
 
+/// A release photo (`ReleaseNotesEntry.imageAssetPath`) that precaches and
+/// crossfades in once actually loaded, instead of popping in abruptly — a
+/// JPEG several hundred KB, real weight on web. Shared by every place that
+/// paints the same asset: this file's startup overlay and About-screen photo
+/// modal below, the onboarding overlay, and the About screen's own header.
+class ReleasePhoto extends StatefulWidget {
+  final String imageAssetPath;
+  final ImageErrorWidgetBuilder errorBuilder;
+
+  const ReleasePhoto({super.key, required this.imageAssetPath, required this.errorBuilder});
+
+  @override
+  State<ReleasePhoto> createState() => _ReleasePhotoState();
+}
+
+class _ReleasePhotoState extends State<ReleasePhoto> {
+  bool _ready = false;
+  bool _precached = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Guarded to run once per mount: didChangeDependencies can re-fire (e.g.
+    // a MediaQuery change), and re-listening to the same image's stream on
+    // every one of those would be pure waste.
+    if (_precached) return;
+    _precached = true;
+    // Resolves even on a failed/missing image (the completer completes from
+    // the stream's onError branch too) — this build's own errorBuilder is
+    // what actually renders the fallback; _ready just means "stop waiting",
+    // not "succeeded".
+    precacheImage(AssetImage(widget.imageAssetPath), context).then((_) {
+      if (mounted) setState(() => _ready = true);
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedOpacity(
+      opacity: _ready ? 1 : 0,
+      duration: const Duration(milliseconds: 200),
+      child: Image.asset(widget.imageAssetPath, fit: BoxFit.cover, errorBuilder: widget.errorBuilder),
+    );
+  }
+}
+
 /// The "KI2D" callsign in the credits line ("by KI2D and friends"/"por KI2D
 /// y amigos") reads as a monospace callsign rather than plain prose — every
 /// translation keeps the callsign untranslated, so splitting on the literal
@@ -155,9 +201,8 @@ class _ReleaseOverlayViewState extends State<ReleaseOverlayView> {
               fit: StackFit.expand,
               children: [
                 Positioned.fill(
-                  child: Image.asset(
-                    release.imageAssetPath,
-                    fit: BoxFit.cover,
+                  child: ReleasePhoto(
+                    imageAssetPath: release.imageAssetPath,
                     errorBuilder: (context, error, stackTrace) => ColoredBox(color: _photoFallbackColor),
                   ),
                 ),
@@ -451,9 +496,8 @@ class _PhotoWordmarkContent extends StatelessWidget {
           fit: StackFit.expand,
           children: [
             if (release != null)
-              Image.asset(
-                release!.imageAssetPath,
-                fit: BoxFit.cover,
+              ReleasePhoto(
+                imageAssetPath: release!.imageAssetPath,
                 errorBuilder: (context, error, stackTrace) => const SizedBox.shrink(),
               ),
             SafeArea(

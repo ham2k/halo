@@ -24,6 +24,7 @@ import 'package:ham2k_logger/services/extension_service.dart';
 import 'package:ham2k_logger/views/ham2k_logo.dart';
 import 'package:ham2k_logger/views/onboarding_overlay.dart';
 import 'package:ham2k_logger/views/settings_view.dart';
+import 'package:ham2k_logger/views/splash_view.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 
 import 'fake_secure_storage.dart';
@@ -78,6 +79,29 @@ void main() {
     final defined = await makeServices(prefs: {'profiles': '{"default": {"operatorCall": "KI2D"}}'});
     await pumpApp(tester, defined);
     expect(find.byType(OnboardingOverlayView), findsNothing);
+    await drainTimers(tester);
+  });
+
+  testWidgets('BootGate: a broken release-notes asset does not block boot for a first run', (tester) async {
+    // Regression test for main.dart's BootGateState: _prepareOnboardingPhoto
+    // (loadReleaseNotes + precacheImage) used to run outside the try/catch
+    // that exists to stop non-bootstrap errors from being mislabeled as a
+    // bootstrap failure — a broken release-notes.yaml took down the whole
+    // app (BootErrorScreen) instead of onboarding just showing without its
+    // photo.
+    setReleaseNotesFailureForTesting(Exception('malformed release-notes.yaml'));
+    final services = await makeServices();
+    await tester.pumpWidget(TranslationProvider(child: BootGate(servicesFuture: Future.value(services))));
+    // A couple of plain pumps first, not just pumpAndSettle: BootGate's
+    // servicesFuture.then chain needs a few microtask turns (including the
+    // rejected release-notes future) before it calls _switchTo, which is
+    // what starts the fade animation pumpAndSettle actually waits for.
+    await tester.pump();
+    await tester.pump();
+    await tester.pumpAndSettle();
+
+    expect(find.byType(BootErrorScreen), findsNothing);
+    expect(find.byType(OnboardingOverlayView), findsOneWidget);
     await drainTimers(tester);
   });
 

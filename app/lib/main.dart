@@ -125,9 +125,9 @@ void _mainBody({
   }
   // Kicked off before runApp (not awaited here) so the splash screen paints
   // on the very first frame instead of waiting on the DB/extension/settings
-  // boot sequence — see `_BootGate`.
+  // boot sequence — see `BootGate`.
   final servicesFuture = bootstrap(metrics: metrics, purchases: purchases, updates: updates, updateCheck: updateCheck);
-  runApp(TranslationProvider(child: _BootGate(servicesFuture: servicesFuture)));
+  runApp(TranslationProvider(child: BootGate(servicesFuture: servicesFuture)));
 
   servicesFuture.then((services) async {
     // One app_started per launch, with the UI preferences app-polo's
@@ -185,7 +185,7 @@ void _mainBody({
       });
     }
   }).catchError((Object error, StackTrace stackTrace) {
-    // _BootGate's own catchError (below) is what surfaces this to the user;
+    // BootGate's own catchError (below) is what surfaces this to the user;
     // this one only exists so bootstrap() failing doesn't also throw an
     // unrelated unhandled-rejection for the openFirstOp dev nicety above.
     debugPrint('[boot] bootstrap() failed: $error');
@@ -250,16 +250,17 @@ Future<Map<String, dynamic>> resetDevFixture(HaLoServices services) async {
 /// only fading the incoming one in on top removes both the ghosting and the
 /// wash-out: at every point during the transition there's exactly one
 /// opaque screen plus one partially-visible screen layered on it, not two.
-class _BootGate extends StatefulWidget {
+@visibleForTesting
+class BootGate extends StatefulWidget {
   final Future<HaLoServices> servicesFuture;
 
-  const _BootGate({required this.servicesFuture});
+  const BootGate({super.key, required this.servicesFuture});
 
   @override
-  State<_BootGate> createState() => _BootGateState();
+  State<BootGate> createState() => _BootGateState();
 }
 
-class _BootGateState extends State<_BootGate> with SingleTickerProviderStateMixin {
+class _BootGateState extends State<BootGate> with SingleTickerProviderStateMixin {
   static const _transitionDuration = Duration(milliseconds: 200);
 
   late final AnimationController _fadeController = AnimationController(vsync: this, duration: _transitionDuration)..value = 1;
@@ -271,10 +272,53 @@ class _BootGateState extends State<_BootGate> with SingleTickerProviderStateMixi
   );
   Widget? _previousChild;
 
+  /// Bounds how long [initState] waits for the onboarding photo (see below)
+  /// before giving up and switching off the splash without it.
+  static const _onboardingPhotoTimeout = Duration(seconds: 5);
+
+  /// Warms the image cache with onboarding's full-bleed release photo (a
+  /// JPEG several hundred KB — real weight on web) so that by the time
+  /// `_OnboardingGate` mounts moments after this resolves, `Image.asset`
+  /// paints it immediately instead of a frame (or several, on a slow
+  /// connection) behind — the whole point of waiting here instead of
+  /// switching off the splash first. Takes the already-started
+  /// [releaseNotes] future rather than loading it itself, since [initState]
+  /// kicks that off before `servicesFuture` resolves. `context` is fine to
+  /// use for `precacheImage` despite no `MaterialApp`/`MediaQuery` ancestor
+  /// existing yet (see this class's own build() comment): the release photo
+  /// has no resolution-variant assets declared, so its cache key doesn't
+  /// depend on the devicePixelRatio that'd otherwise come from one.
+  Future<void> _prepareOnboardingPhoto(Future<List<ReleaseNotesEntry>> releaseNotes) async {
+    final notes = await releaseNotes;
+    if (notes.isEmpty || !mounted) return;
+    await precacheImage(AssetImage(notes.first.imageAssetPath), context);
+  }
+
   @override
   void initState() {
     super.initState();
-    widget.servicesFuture.then((services) {
+    // Started here, not inside the `.then` below: loading the release notes
+    // has no actual dependency on `services` — only the decision to wait on
+    // it (below) does — so this overlaps with bootstrap() instead of being
+    // serialized behind it. Cheap regardless of whether onboarding ends up
+    // showing: `loadReleaseNotes` caches its result, and the release-overlay
+    // gate reads the same asset unconditionally on every boot anyway.
+    final releaseNotes = loadReleaseNotes();
+    widget.servicesFuture.then((services) async {
+      if (!mounted) return;
+      if (_onboardingWillShow(services)) {
+        try {
+          await _prepareOnboardingPhoto(releaseNotes).timeout(_onboardingPhotoTimeout, onTimeout: () {});
+        } catch (error, stackTrace) {
+          // Best-effort, same "fine to arrive late, or never" tolerance as
+          // _OnboardingGateState._show() itself — a broken/missing
+          // release-notes asset or photo must not block boot. Caught here
+          // rather than left to the `.catchError` below, which would
+          // otherwise mislabel it as `bootstrap()` failing and take down
+          // the whole app instead of just onboarding's photo.
+          debugPrint('[boot] onboarding photo prep failed (not a bootstrap() failure): $error\n$stackTrace');
+        }
+      }
       if (!mounted) return;
       // Wrapped separately from the `.catchError` below: that one exists to
       // catch `bootstrap()` itself failing, and without this try/catch it
@@ -327,7 +371,7 @@ class _BootGateState extends State<_BootGate> with SingleTickerProviderStateMixi
 
   @override
   Widget build(BuildContext context) {
-    // `_BootGate` sits above `TranslationProvider`/`MaterialApp`, so there's
+    // `BootGate` sits above `TranslationProvider`/`MaterialApp`, so there's
     // no `Directionality` ancestor yet — `Stack`'s default alignment
     // (`AlignmentDirectional.topStart`) needs one; `Alignment.topLeft`
     // doesn't, since it's not text-direction-relative.
@@ -1103,9 +1147,12 @@ class _HaLoAppState extends State<HaLoApp> {
 /// First-run onboarding (Issue #43): wraps the release overlay gate so the
 /// onboarding paints on top of everything, whenever the default profile has
 /// NEVER had a callsign set — undefined, not '' (an explicit empty from a
-/// previous Skip counts as answered). Same presentation split as the
-/// release overlay: full screen on XS/S, `wideModalChrome` on L/XL — but
-/// with no barrier dismissal; the flow's own Skip/Done are the exits.
+/// previous Skip counts as answered). Unlike the release overlay/About photo
+/// modal, always full screen — even on wide layouts — rather than
+/// `wideModalChrome`'s centered card: this is a first impression, and the
+/// release photo should fill the whole window rather than float over a
+/// blurred backdrop. No barrier dismissal either way; the flow's own
+/// Skip/Done are the exits.
 /// Debug-only shortcut for skipping the onboarding flow: set
 /// `ONBOARD_AS=CALL,activity,...` — e.g. `ONBOARD_AS=KI2D,pota,sota` — as a
 /// `--dart-define` or an environment variable, and a first run applies that
@@ -1113,6 +1160,15 @@ class _HaLoAppState extends State<HaLoApp> {
 /// showing onboarding. The first comma-separated token is the callsign; the
 /// rest are extension keys to enable. Empty (and inert) in release builds.
 String get _onboardAsConfig => debugEnvFlag(const String.fromEnvironment('ONBOARD_AS'), 'ONBOARD_AS');
+
+/// Whether onboarding is about to show for [services]: the default profile
+/// has never had a callsign set, and no ONBOARD_AS debug override is
+/// skipping the flow instead. Shared by `_OnboardingGateState.initState`
+/// (which decides whether to actually show it) and `_BootGateState` (which
+/// decides whether to wait for its photo before switching off the splash)
+/// so the two can't silently drift apart into two different answers.
+bool _onboardingWillShow(HaLoServices services) =>
+    !services.settings.defaultProfileCallsignDefined && _onboardAsConfig.isEmpty;
 
 /// Applies an `ONBOARD_AS=CALL,activity,...` spec (see [_onboardAsConfig]):
 /// sets the operator callsign and enables the listed activity extensions.
@@ -1153,19 +1209,17 @@ class _OnboardingGateState extends State<_OnboardingGate> {
   @override
   void initState() {
     super.initState();
-    if (!widget.services.settings.defaultProfileCallsignDefined) {
-      final onboardAs = _onboardAsConfig;
-      if (onboardAs.isNotEmpty) {
-        // Debug-only: apply ONBOARD_AS and skip the onboarding flow entirely.
-        unawaited(applyOnboardAsSpec(widget.services, onboardAs));
-      } else {
-        _firstRun = true;
-        // 'shown' the moment the organic flow is decided, not when it's
-        // dismissed — this is a display count, and DEVONBOARD re-shows
-        // (the only other caller of _show()) must not bump it.
-        unawaited(widget.services.settings.recordOnboardingShown(OnboardingFlows.firstUse));
-        _show();
-      }
+    if (_onboardingWillShow(widget.services)) {
+      _firstRun = true;
+      // 'shown' the moment the organic flow is decided, not when it's
+      // dismissed — this is a display count, and DEVONBOARD re-shows
+      // (the only other caller of _show()) must not bump it.
+      unawaited(widget.services.settings.recordOnboardingShown(OnboardingFlows.firstUse));
+      _show();
+    } else if (!widget.services.settings.defaultProfileCallsignDefined) {
+      // Debug-only: ONBOARD_AS is set — apply it and skip the onboarding
+      // flow entirely.
+      unawaited(applyOnboardAsSpec(widget.services, _onboardAsConfig));
     }
     widget.services.devOnboardTrigger.addListener(_show);
   }
@@ -1186,10 +1240,18 @@ class _OnboardingGateState extends State<_OnboardingGate> {
       _dismissing = false;
     });
     // The background photo is the newest release's — same imagery as the
-    // release overlay. Fine to arrive late (or never): the overlay shows
-    // a plain backdrop until then.
+    // release overlay. Onboarding must never be stuck waiting on it (this is
+    // a first run — the flow has to appear right away), so it's fine to
+    // arrive late (or never); OnboardingOverlayView itself crossfades the
+    // photo in once it's actually finished downloading rather than popping
+    // it in, so a late arrival still doesn't look broken.
     loadReleaseNotes().then((notes) {
       if (mounted && notes.isNotEmpty) setState(() => _release = notes.first);
+    }).catchError((Object error, StackTrace stackTrace) {
+      // Same tolerance as above: a broken/missing release-notes asset just
+      // means no photo, not a broken onboarding flow — but still needs a
+      // handler, or this becomes an unhandled rejection.
+      debugPrint('[onboarding] release notes unavailable: $error\n$stackTrace');
     });
   }
 
@@ -1221,7 +1283,9 @@ class _OnboardingGateState extends State<_OnboardingGate> {
   Widget build(BuildContext context) {
     Widget? overlay;
     if (_pending) {
-      Widget view = OnboardingOverlayView(
+      // Always full screen — see this class's doc comment — so no
+      // wideModalChrome wrap on wide layouts, unlike the release overlay.
+      final view = OnboardingOverlayView(
         // A fresh State per showing (matters for DEVONBOARD re-shows —
         // step position and toggles reset).
         key: ValueKey('onboarding-$_firstRun-$_pending'),
@@ -1229,10 +1293,6 @@ class _OnboardingGateState extends State<_OnboardingGate> {
         release: _release,
         onDone: _dismiss,
       );
-      if (ShirtSize.of(context).isTwoPane) {
-        // No barrier dismissal — onboarding exits through its own Skip/Done.
-        view = wideModalChrome(context: context, onDismiss: () {}, child: view);
-      }
       // The onboarding subtree mounts inside its OWN Overlay (Overlay.wrap):
       // this gate sits in MaterialApp.builder, above the Navigator, and the
       // callsign step's TextField requires an Overlay ancestor. Done/Skip
