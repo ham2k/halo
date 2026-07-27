@@ -28,8 +28,9 @@ This is a multi-platform app for Amateur Radio Logging, called "Ham2K Logger" (o
 
 - The `/next` skill (`.claude/skills/next/SKILL.md`) runs the start-of-task
   steps below — refreshing `dist`, naming the branch and worktree, bootstrapping
-  a fresh worktree, a first pass, and the PR. Invoke it as
-  `/next <issue URL or description>`; keep it in step with this section.
+  a fresh worktree, opening a draft PR with the plan, then a first pass and
+  updating that PR. Invoke it as `/next <issue URL or description>`; keep it in
+  step with this section.
 
 - The `/iterate` skill (`.claude/skills/iterate/SKILL.md`) covers the
   "iterate with the developer" step: it keeps a build running and refreshed and
@@ -49,12 +50,12 @@ This is a multi-platform app for Amateur Radio Logging, called "Ham2K Logger" (o
 
 - Steps when tackling a new task:
   - Open a new branch, off the latest `dist`. Look for updates to AGENTS.md.
-  - Do a quick analisys of the problem, prepare a plan and open a PR to document this.
-  - Take a full pass at the problem and then present the results to the developer. If possible and relevant, start a web build of the app for the developer to verify on.
+  - Do a quick analisys of the problem, prepare a plan and open a **draft** PR to document this, before implementing anything. An empty commit is enough to open it. That PR is how the developer tracks which branch carries the task, what the plan is, and what's been found — so give them the link right away.
+  - Take a full pass at the problem and then present the results to the developer. Bring the PR body up to date as the plan turns into findings — rewrite it, don't append. If possible and relevant, start a web build of the app for the developer to verify on.
   - Iterate with the developer. Don't pile up trivial commits. When iterating on a feature or approach, feel free to ammend the commits in the branch if it makes sense to keep work organized and easier to review, and skip running tests for short iterations unless it's useful.
   - Once the work has settled, run a code review, present the results to the developer and ask for followups.
   - When the followups have been addressed, rebase on top of an updated `dist`, solve any merge conflicts, run tests and present the PR for user approval.
-  - Don't push to the PR branch until it's ready for review. Avoid pushing to the remote repository until necessary. Test locally first.
+  - Apart from that early draft PR, don't push to the PR branch until it's ready for review. Avoid pushing to the remote repository until necessary. Test locally first.
 
 - Whenever running the app (any `flutter run`, including the web dev server), always pass a `DEV_LABEL` set to your session name or a brief description of the work at hand, so the running build is identifiable in the home-screen header — e.g. `flutter run -d macos --dart-define=DEV_LABEL="header work"` or `DEV_LABEL="header work" flutter run -d web-server`. See [DEVELOPMENT.md](file:///Users/sd/Work/ham2k/app-halo/DEVELOPMENT.md).
 
@@ -70,7 +71,7 @@ This is a multi-platform app for Amateur Radio Logging, called "Ham2K Logger" (o
 
 - Agents should name their sessions with "[HaLo]" as a prefix, followed by a very short description of the work at hand. It's ok to update the name of the session as we go along.
 
-- Except for trivial work, when completing the first round of planned work, open a PR and run a code review.
+- Except for trivial work, open the draft PR before implementing, and when completing the first round of planned work bring it up to date and run a code review.
 
 
 ## Tooling
