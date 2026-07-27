@@ -73,35 +73,6 @@ assert_aarch64() {
   esac
 }
 
-# Being the right ARCHITECTURE is not the same as containing the code. The
-# Apple Release shipped a real, correctly-built binary that exported zero
-# quickjs symbols, and every arch check in the world would have passed it. So
-# the engine is checked for a symbol it must define, not just for existing.
-assert_exports_engine() {
-  local f="$1" nm=""
-  for candidate in aarch64-linux-gnu-nm llvm-nm nm; do
-    if command -v "$candidate" > /dev/null 2>&1; then nm="$candidate"; break; fi
-  done
-  if [ -z "$nm" ]; then
-    echo "FATAL: no nm available to check engine symbols in $f"
-    exit 1
-  fi
-  # -D reads the DYNAMIC table (what a shared library actually exports, and
-  # what dlopen/FFI can find); --defined-only excludes imports.
-  if ! "$nm" -D --defined-only "$f" 2>/dev/null | grep -q 'halo_qjs_new'; then
-    echo "FATAL: $f defines no halo_qjs_new"
-    echo "       the file exists and has the right architecture, but the engine"
-    echo "       is not in it - the app would start and fail to bring up the"
-    echo "       extension host, retrying forever. This exact shape has shipped"
-    echo "       three times in this project: a Windows build that compiled zero"
-    echo "       lines of quickjs, an Apple Release with zero engine symbols, and"
-    echo "       a podspec path that linked zero."
-    echo "       symbols actually exported (first 20):"
-    "$nm" -D --defined-only "$f" 2>/dev/null | head -20 | sed 's/^/         /'
-    exit 1
-  fi
-  printf '  OK   %-52s %s\n' "$(basename "$f")" "exports halo_qjs_new"
-}
 
 # Ubuntu images run unattended-upgrades in the background, which holds the dpkg
 # frontend lock. Every apt-get here raced it and one lost:
@@ -604,13 +575,24 @@ assert_aarch64 "$BUNDLE/lib/libflutter_linux_gtk.so"
 QJS=$(find "$BUNDLE" -name 'libhalo_quickjs.so' | head -1)
 if [ -n "$QJS" ]; then
   assert_aarch64 "$QJS" "the JS engine, built by packages/halo_quickjs"
-  assert_exports_engine "$QJS"
+  ENGINE_TARGET="$QJS"
 else
   # Statically linked into the executable rather than bundled is also fine, so
   # long as the engine is demonstrably in there.
   echo "note: no separate libhalo_quickjs.so; expecting it linked into $EXE"
-  assert_exports_engine "$EXE"
+  ENGINE_TARGET="$EXE"
 fi
+# The SHARED checker, not a local copy. This script used to carry its own, and
+# the copy still had the bug the shared one was fixed for: `nm | grep -q` under
+# `pipefail` reports failure when the symbol IS present, because grep exits at
+# the first match and nm dies of SIGPIPE. It failed a perfectly good build with
+# exit 141 - SIGPIPE's code - while printing `halo_qjs_new` in its own list of
+# what the file exports.
+#
+# One implementation. The shared one also matches the symbol exactly, ignores
+# undefined references, and checks every slice of a universal binary; a second
+# copy would have to relearn all of that, and this one demonstrably did not.
+bash packages/halo_quickjs/tool/verify_engine_ships.sh "$ENGINE_TARGET"
 
 echo
 echo "OK: aarch64 release bundle at $BUNDLE"
