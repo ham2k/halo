@@ -79,11 +79,18 @@ jobs:
           npm ci
           npm run build
 
-      # lib/config/mapbox_token.dart is gitignored; the blank template is a
-      # supported configuration (the Map tab falls back to OpenStreetMap, and
-      # the web build never uses Mapbox). Same fallback as scripts/test.sh.
-      - name: Use blank Mapbox token template
-        run: cp app/lib/config/mapbox_token.dart.example app/lib/config/mapbox_token.dart
+      # lib/config/secrets.dart is gitignored, so a fresh checkout doesn't have
+      # it and the build fails to compile. The blank template is a supported
+      # configuration — every consumer degrades rather than failing. This deploy
+      # passes no MAPBOX_ACCESS_TOKEN, so the Map tab falls back to
+      # OpenStreetMap. Same handling, and the same wording, as
+      # scripts/test.sh:54-61.
+      - name: Use blank secrets template
+        run: |
+          if [ ! -f app/lib/config/secrets.dart ]; then
+            echo "no secrets present, using the blank template"
+            cp app/lib/config/secrets.dart.example app/lib/config/secrets.dart
+          fi
 
       # HALO_GIT_SHA: short SHA of the built ref, shown after the build number in
       # the About view (version_label.dart's kGitSha) so a preview identifies the

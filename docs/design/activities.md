@@ -138,12 +138,13 @@ So `wwff` and `llota` can be ported without a key and simply lose spotting;
 HaLo had `fieldType: 'secret'` for *user-entered* credentials but no way to
 thread a build-time app secret into an extension. It does now:
 
-- a manifest's `apiKey` NAMES the key it may read (see `docs/extensions/README.md`);
-- `host.apiKey()` returns it, and the kernel stamps the caller's identity onto
-  the call — `'apiKey'` joined `IDENTITY_HOST_METHODS` — so an extension can
-  only ever receive its own;
+- `app/lib/config/secret_policy.dart` decides which extension may read which
+  secret — by default its own `KEY_*` prefix (see `docs/extensions/README.md`);
+- `host.secret(name)` returns it, and the kernel stamps the caller's identity
+  onto the call — `'secret'` is in `IDENTITY_HOST_METHODS` — so an extension can
+  only ever receive secrets that policy grants it;
 - values come from the environment into a gitignored
-  `app/lib/config/api_keys.dart`, the same pattern as `mapbox_token.dart`.
+  `app/lib/config/secrets.dart`, generated from `secrets.dart.example`.
 
 Every consumer must expect null and degrade: a fresh checkout, a fork and any
 build without the secret all have none.

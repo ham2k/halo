@@ -21,6 +21,13 @@
 # a failure on `dist` blocks the web deploy via deploy-web.yml). One
 # sequential job instead of a matrix keeps the billed runner minutes down:
 # every extra job pays its own setup and rounds up to a whole minute.
+#
+# ONE exception, on the `extensions` gate below: a PR that touches
+# .github/workflows/** or scripts/** is changing the machinery that runs the
+# tests, so `quick` passing says nothing about whether the suite still runs.
+# #411 deleted a file three workflow steps still copied; app-test was red on
+# every push to `dist` for four merges (and the web deploy, which fires on CI
+# succeeding, stopped with it) because no PR had ever exercised that job.
 name: CI
 
 # Docs-only changes skip this workflow entirely (zero billed minutes). The
@@ -49,8 +56,43 @@ jobs:
   quick:
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
+    # Stated explicitly, not left to the repository default: the step below
+    # reads the PR's file list from the API, and `bash -e` would fail this job
+    # on EVERY pull request if the default token happened to lack that scope.
+    permissions:
+      contents: read
+      pull-requests: read
+    # Read by the `extensions` gate to decide whether this PR also needs the
+    # full suite. Computed as a step here rather than in a job of its own
+    # precisely to hold the line on billed minutes: `quick` already runs on
+    # every PR, so this costs nothing, where a separate job would round up to a
+    # whole extra minute on every PR forever.
+    outputs:
+      touches_ci: ${{ steps.touches_ci.outputs.result }}
     steps:
       - uses: actions/checkout@v4
+
+      # First, and needing no toolchain: the answer is still recorded when the
+      # checks below fail, which keeps the gate's own logic readable.
+      #
+      # Asks the API for the PR's file list rather than diffing against the base
+      # — the checkout above is shallow and has no base commit to diff against,
+      # and `fetch-depth: 0` would slow down every PR to serve the rare one.
+      - name: Does this PR touch CI or the build scripts?
+        id: touches_ci
+        run: |
+          files=$(gh api \
+            "repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }}/files" \
+            --paginate --jq '.[].filename')
+          if grep -qE '^(\.github/workflows/|scripts/)' <<<"$files"; then
+            echo 'result=true' >> "$GITHUB_OUTPUT"
+            echo 'touches CI or the build scripts — the full suite will run too'
+          else
+            echo 'result=false' >> "$GITHUB_OUTPUT"
+            echo 'no CI or build-script changes — quick only'
+          fi
+        env:
+          GH_TOKEN: ${{ github.token }}
 
       - name: Set up Node
         uses: actions/setup-node@v4
@@ -67,8 +109,21 @@ jobs:
       - name: Basic checks (typecheck + analyze, no tests)
         run: ./scripts/test.sh --quick
 
+  # This is the single gate for the whole heavy suite: `dart` and `app-test`
+  # declare `needs: extensions` and no `if:` of their own, so skipping this job
+  # skips both of them with it.
+  #
+  # `always()` is what lets a push through at all — `quick` is
+  # pull_request-only, and a skipped dependency would otherwise skip this job
+  # too. On the PR path `quick` must also have SUCCEEDED: a CI-touching PR then
+  # runs the suite after it rather than alongside (a few minutes more wall
+  # clock, on a rare PR), which beats spending nine jobs on a branch that
+  # doesn't even analyze.
   extensions:
-    if: github.event_name == 'push'
+    needs: quick
+    if: >-
+      always() && (github.event_name == 'push' ||
+      (needs.quick.result == 'success' && needs.quick.outputs.touches_ci == 'true'))
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -173,10 +228,17 @@ jobs:
           name: extension-bundles
           path: app/assets/extensions
 
-      # The real Mapbox token file is gitignored; the blank template is a
-      # supported configuration (the Map tab falls back to OpenStreetMap).
-      - name: Use blank Mapbox token template
-        run: cp app/lib/config/mapbox_token.dart.example app/lib/config/mapbox_token.dart
+      # secrets.dart is gitignored, so a fresh checkout doesn't have it and the
+      # app package fails to analyze. The blank template is a supported
+      # configuration — every consumer degrades rather than failing, and the Map
+      # tab falls back to OpenStreetMap. Same handling, and the same wording, as
+      # scripts/test.sh:54-61.
+      - name: Use blank secrets template
+        run: |
+          if [ ! -f app/lib/config/secrets.dart ]; then
+            echo "no secrets present, using the blank template"
+            cp app/lib/config/secrets.dart.example app/lib/config/secrets.dart
+          fi
 
       # app's tests construct a real ExtensionService/ExtensionHost, so they
       # drive the JS engine — which under `flutter test` means the host build,
