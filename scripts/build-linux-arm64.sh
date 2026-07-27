@@ -416,13 +416,31 @@ fi
 # Show what actually got baked in, decoded. generated_config.cmake stores the
 # dart-defines base64-encoded, so a wrong or missing one is invisible in a diff
 # and would only show up as a mysteriously unbranded build.
+# Wrapped so it can NEVER fail the build. This is a diagnostic - it exists to
+# make a wrong dart-define visible - and the first version of it aborted the
+# whole run: `[ -n "$d" ] && printf ...` as the last command in a while body
+# returns non-zero on a trailing empty field, the loop adopts that status, and
+# `set -e` kills the script. Which is the exact idiom this file already warns
+# about a hundred lines above, reintroduced in a print statement.
+show_baked_config() {
+  local cfg="app/linux/flutter/generated_config.cmake" defines="" d=""
+  if [ ! -f "$cfg" ]; then echo "  (no generated_config.cmake)"; return 0; fi
+  defines=$(sed -n 's/.*DART_DEFINES=\([^"]*\).*/\1/p' "$cfg" 2>/dev/null | head -1)
+  if [ -z "$defines" ]; then
+    echo "  (no DART_DEFINES entry found)"
+  else
+    printf '%s' "$defines" | tr ',' '\n' | while read -r d; do
+      if [ -n "$d" ]; then
+        printf '  %s\n' "$(printf '%s' "$d" | base64 --decode 2>/dev/null || printf '%s' "$d")"
+      fi
+    done
+  fi
+  echo "--- entry point ---"
+  grep -E 'FLUTTER_TARGET' "$cfg" 2>/dev/null | head -3 | sed 's/^/  /'
+  return 0
+}
 echo "--- dart-defines baked into the CMake config ---"
-sed -n 's/.*DART_DEFINES=\([^"]*\).*/\1/p' "app/linux/flutter/generated_config.cmake" 2>/dev/null |
-  tr ',' '\n' | while read -r d; do
-    [ -n "$d" ] && printf '  %s\n' "$(printf '%s' "$d" | base64 --decode 2>/dev/null || echo "$d")"
-  done
-echo "--- entry point ---"
-grep -E '^\s*set\(FLUTTER_TARGET' "app/linux/flutter/generated_config.cmake" 2>/dev/null | sed 's/^/  /' || true
+show_baked_config || true
 
 # ---------------------------------------------------------------------------
 say "Build for arm64"
