@@ -37,6 +37,13 @@ class SolidPaneDivider extends StatefulWidget {
   /// if the pointer overshoots off the bar (which would end the hover).
   final bool dragging;
 
+  /// The bar's thickness across [axis], defaulting to [paneDividerWidth].
+  /// Callers pass a DEVICE-PIXEL-SNAPPED value (see `PixelGrid`) so the bar's
+  /// far edge lands on the grid too — the near edge being snapped is only half
+  /// the boundary, and an off-grid far edge is a hairline seam against the
+  /// next pane just the same.
+  final double? extent;
+
   const SolidPaneDivider({
     super.key,
     required this.axis,
@@ -45,6 +52,7 @@ class SolidPaneDivider extends StatefulWidget {
     this.onDragEnd,
     this.onDragCancel,
     this.dragging = false,
+    this.extent,
   });
 
   /// The grab line's resting opacity; hovering (or dragging) raises it to
@@ -92,8 +100,8 @@ class _SolidPaneDividerState extends State<SolidPaneDivider> {
         onVerticalDragEnd: horizontal ? null : (_) => widget.onDragEnd?.call(),
         onVerticalDragCancel: horizontal ? null : () => widget.onDragCancel?.call(),
         child: Container(
-          width: horizontal ? paneDividerWidth : null,
-          height: horizontal ? null : paneDividerWidth,
+          width: horizontal ? (widget.extent ?? paneDividerWidth) : null,
+          height: horizontal ? null : (widget.extent ?? paneDividerWidth),
           color: barColor,
           child: Center(child: grabLine),
         ),

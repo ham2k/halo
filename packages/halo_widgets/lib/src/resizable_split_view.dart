@@ -232,6 +232,14 @@ class _ResizableSplitViewState extends State<ResizableSplitView> {
         final total = constraints.maxWidth;
         final lower = widget.minPrimaryWidth;
         final solid = widget.dividerStyle == SplitDividerStyle.solid;
+        // Pane edges snap to whole DEVICE pixels — see PixelGrid: an edge
+        // that lands between device pixels antialiases against the
+        // neighboring pane and reads as a hairline seam along the divider.
+        final grid = PixelGrid.of(context);
+        // The solid divider's own thickness is snapped too, so its FAR edge
+        // (the secondary pane's left edge) lands on the grid as well — with
+        // the near edge already snapped, that makes both boundaries crisp.
+        final dividerExtent = grid.snapUp(paneDividerWidth);
         // The bound reserves the divider on top of minSecondaryWidth — for
         // surfaces because the grab strip overlays the secondary's leftmost
         // pixels (at max drag the secondary still has its full minimum
@@ -239,22 +247,13 @@ class _ResizableSplitViewState extends State<ResizableSplitView> {
         // space outright. The window may be too small to honor both
         // minimums; the primary's minimum wins (upper >= lower keeps
         // clamp() valid).
-        final reservedDivider = solid ? paneDividerWidth : ResizableSplitView.dividerWidth;
+        final reservedDivider = solid ? dividerExtent : ResizableSplitView.dividerWidth;
         final upper = math.max(
           lower,
           math.min(widget.maxPrimaryWidth, total - widget.minSecondaryWidth - reservedDivider),
         );
         _dragLowerBound = lower;
         _dragUpperBound = upper;
-        // Pane edges snap to whole DEVICE pixels: one logical (UiScale-
-        // divided) px paints as `UiScale × devicePixelRatio` device px, and
-        // an edge that lands between device pixels antialiases against the
-        // neighboring pane as a hairline seam along the divider. Snapping
-        // whole logical pixels isn't enough — at a non-1.0 font scale those
-        // still land off the device grid.
-        final grid = UiScale.of(context) * MediaQuery.devicePixelRatioOf(context);
-        double snapRound(double v) => (v * grid).roundToDouble() / grid;
-        double snapFloor(double v) => (v * grid).floorToDouble() / grid;
         // No preference yet → the primary takes about two thirds of the
         // width, never more than sMax (the widest a single-pane phone
         // layout gets — content designed for a pane reads fine up to
@@ -263,7 +262,7 @@ class _ResizableSplitViewState extends State<ResizableSplitView> {
         final preferred = widget.primaryFraction != null
             ? total * widget.primaryFraction!
             : (_preferredWidth ?? math.min(total * 2 / 3, ShirtSize.sMax));
-        final effectiveWidth = snapRound(preferred.clamp(lower, upper).toDouble());
+        final effectiveWidth = grid.snap(preferred.clamp(lower, upper).toDouble());
         _effectiveWidthForDrag = effectiveWidth;
 
         final twoPane = widget.secondary != null;
@@ -295,7 +294,7 @@ class _ResizableSplitViewState extends State<ResizableSplitView> {
         // the divider is a real Row child of paneDividerWidth, so the
         // primary's width cap below reserves it to keep the Row from
         // overflowing during an abrupt window shrink outrunning the tween.
-        final primaryCap = twoPane && solid ? math.max(0.0, total - paneDividerWidth) : total;
+        final primaryCap = twoPane && solid ? math.max(0.0, total - dividerExtent) : total;
         // The ambient value this split itself sits inside — from an outer
         // view's real device insets, or a split further out. This split is
         // always horizontal (primary left of secondary): left/top/bottom
@@ -323,7 +322,7 @@ class _ResizableSplitViewState extends State<ResizableSplitView> {
                 // values during an abrupt shrink, or a tiny window where
                 // minPrimaryWidth > total), and exactly `total` at
                 // single-pane rest so no right-edge gap.
-                return SizedBox(width: width >= primaryCap ? primaryCap : snapFloor(width), child: child);
+                return SizedBox(width: width >= primaryCap ? primaryCap : grid.snapDown(width), child: child);
               },
               child: PaneSafeArea(
                 left: ambientLeft,
@@ -336,6 +335,7 @@ class _ResizableSplitViewState extends State<ResizableSplitView> {
             if (twoPane && solid)
               SolidPaneDivider(
                 axis: Axis.horizontal,
+                extent: dividerExtent,
                 onDragStart: _handleDragStart,
                 onDragUpdate: _handleDragUpdate,
                 onDragEnd: _handleDragEnd,
@@ -399,7 +399,10 @@ class _ResizableSplitViewState extends State<ResizableSplitView> {
                             left: 0,
                             top: 0,
                             bottom: 0,
-                            width: 1,
+                            // A whole number of device pixels, so the line
+                            // paints crisp instead of smeared across two
+                            // (1 logical px is 1.7 device px at some scales).
+                            width: grid.snapUp(1),
                             child: IgnorePointer(child: ColoredBox(color: borderColor)),
                           ),
                         // Fixed splits render the shadow/hairline above as

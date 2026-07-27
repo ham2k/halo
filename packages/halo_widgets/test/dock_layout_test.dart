@@ -307,6 +307,89 @@ void main() {
     await dragTab(tester, 'Alpha', bravoPane.center);
     expect(find.text('count-a: 1'), findsOneWidget, reason: 'moving a pane must not reset its State');
   });
+
+  testWidgets('pane boundaries land on whole device pixels and tile the run', (tester) async {
+    // Weight-derived extents are fractional, and a boundary that falls
+    // between device pixels antialiases into both — the neighboring panes
+    // blend there and it reads as a hairline gap along the divider. Every
+    // edge must snap to the device grid AND the panes plus dividers must
+    // still cover the run exactly, with nothing left over at the end.
+    tester.view.physicalSize = const Size(2500, 1500);
+    tester.view.devicePixelRatio = 2.5;
+    addTearDown(tester.view.reset);
+
+    await tester.pumpWidget(
+      harness(
+        spec: DockSplit(Axis.horizontal, [
+          DockGroup(['a']),
+          DockGroup(['b']),
+          DockGroup(['c']),
+        ], [1, 2, 3]),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final panes = [
+      for (final key in ['pane-a', 'pane-b', 'pane-c']) tester.getRect(find.byKey(Key(key))),
+    ];
+    for (final pane in panes) {
+      for (final edge in [pane.left, pane.right]) {
+        expect(edge * 2.5, moreOrLessEquals((edge * 2.5).roundToDouble()), reason: 'edge $edge is off the device grid');
+      }
+    }
+    // Weights still respected (within one device pixel of the ideal share),
+    // and the run is covered end to end.
+    expect(panes.first.left, 0);
+    expect(panes.last.right, moreOrLessEquals(1000));
+    final available = 1000 - paneDividerWidth * 2;
+    expect(panes[0].width, moreOrLessEquals(available / 6, epsilon: 0.4));
+    expect(panes[1].width, moreOrLessEquals(available * 2 / 6, epsilon: 0.4));
+  });
+
+  testWidgets('snapping never pushes the panes past the end of the run', (tester) async {
+    // Snapping rounds to the NEAREST device pixel, so an intermediate
+    // boundary can round past a run whose own end is off-grid — and then the
+    // children overflow it. Both halves are reachable: a vertical split's
+    // height is the window minus the AppBar (off-grid at several scales), and
+    // fromJson accepts any finite positive weights, so a degenerate persisted
+    // spec gives the last pane less than a device pixel to round away.
+    tester.view.physicalSize = const Size(2500, 1500);
+    tester.view.devicePixelRatio = 2.5;
+    addTearDown(tester.view.reset);
+
+    // 500.3 × 2.5 = 1250.75 device px: the grid point above the run's end is
+    // within rounding reach of the boundary before it.
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: SizedBox(
+            width: 500.3,
+            height: 600,
+            child: DockLayoutView(
+              initialSpec: DockNode.fromJson({
+                'type': 'split',
+                'axis': 'h',
+                'children': [
+                  {'type': 'group', 'modules': ['a']},
+                  {'type': 'group', 'modules': ['b']},
+                ],
+                'weights': [1, 0.000001],
+              })!,
+              titles: const {'a': 'Alpha', 'b': 'Bravo'},
+              children: const {
+                'a': SizedBox.expand(key: Key('pane-a')),
+                'b': SizedBox.expand(key: Key('pane-b')),
+              },
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(tester.takeException(), isNull, reason: 'the panes must not overflow the run');
+    expect(tester.getRect(find.byKey(const Key('pane-b'))).right, moreOrLessEquals(500.3));
+  });
 }
 
 class _Counter extends StatefulWidget {

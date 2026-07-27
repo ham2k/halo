@@ -613,6 +613,31 @@ void main() {
     await tester.pump();
   });
 
+  testWidgets('the solid divider snaps its own thickness, so BOTH its edges are on-grid', (tester) async {
+    // Snapping only the primary's width leaves the divider's far edge — the
+    // secondary pane's left edge — off the device grid whenever the divider
+    // width times the grid is fractional (7 × 2.5 = 17.5 device px), which
+    // seams the divider against the secondary exactly like an unsnapped pane.
+    tester.view.physicalSize = const Size(2500, 1500);
+    tester.view.devicePixelRatio = 2.5;
+    addTearDown(tester.view.reset);
+
+    await tester.pumpWidget(
+      harness(
+        devicePixelRatio: 2.5,
+        child: const ResizableSplitView(primary: primary, secondary: secondary, preferredPrimaryWidth: 500),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final secondaryLeft = tester.getTopLeft(find.byKey(const Key('secondary'))).dx;
+    expect(primaryWidth(tester), 500);
+    // 7 logical → 17.5 device px → 18 → 7.2 logical, so the secondary starts
+    // at 507.2 logical = 1268 whole device px.
+    expect(secondaryLeft, moreOrLessEquals(507.2));
+    expect(secondaryLeft * 2.5, moreOrLessEquals((secondaryLeft * 2.5).roundToDouble()));
+  });
+
   testWidgets('drag cannot push the width outside what fits', (tester) async {
     tester.view.physicalSize = const Size(1000, 600);
     tester.view.devicePixelRatio = 1.0;

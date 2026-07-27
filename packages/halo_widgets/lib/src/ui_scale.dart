@@ -16,6 +16,8 @@
 // any scale — only embedded raster images and native platform views (e.g. a
 // map webview) scale as textures.
 
+import 'dart:math' as math;
+
 import 'package:flutter/widgets.dart';
 
 class UiScale extends StatelessWidget {
@@ -79,6 +81,42 @@ class UiScale extends StatelessWidget {
       ),
     );
   }
+}
+
+/// The DEVICE pixel grid, as seen from inside the scaled coordinate space:
+/// one logical (UiScale-divided) pixel paints as `UiScale × devicePixelRatio`
+/// device pixels.
+///
+/// A boundary between two differently-colored surfaces that lands BETWEEN
+/// device pixels is antialiased into both, and the blended pair reads as a
+/// hairline seam — the gaps you see between panes. So every such boundary
+/// (pane edges, divider edges, the top of a pane's header bar) snaps to this
+/// grid. Snapping whole LOGICAL pixels is not enough: at a non-1.0 font scale
+/// those still land off the device grid (0.85 × 2.0 = a 1.7 device-px step).
+///
+/// Snap BOUNDARY POSITIONS, not extents: an extent snapped in isolation still
+/// lands off-grid if the element before it started off-grid. The pattern is to
+/// walk a run cumulatively, snap each edge, and take each child's extent as the
+/// difference between its two snapped edges — see `DockLayoutView._buildSplit`.
+class PixelGrid {
+  /// Device pixels per logical pixel in this coordinate space.
+  final double devicePixelsPerLogical;
+
+  const PixelGrid(this.devicePixelsPerLogical);
+
+  static PixelGrid of(BuildContext context) =>
+      PixelGrid(UiScale.of(context) * MediaQuery.devicePixelRatioOf(context));
+
+  double snap(double value) => (value * devicePixelsPerLogical).roundToDouble() / devicePixelsPerLogical;
+
+  /// Snaps DOWN — for a value that must not exceed a cap (an in-flight
+  /// animation value against the space actually available).
+  double snapDown(double value) => (value * devicePixelsPerLogical).floorToDouble() / devicePixelsPerLogical;
+
+  /// Snaps UP, never below one whole device pixel — for a thin line that must
+  /// stay visible as well as crisp (rounding 0.4 device px to 0 erases it).
+  double snapUp(double value) =>
+      math.max(1.0, (value * devicePixelsPerLogical).ceilToDouble()) / devicePixelsPerLogical;
 }
 
 class _UiScaleScope extends InheritedWidget {

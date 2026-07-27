@@ -290,4 +290,43 @@ void main() {
       await tester.pump(const Duration(seconds: 5));
     });
   });
+
+  group('Device pixel grid', () {
+    testWidgets('the header height lands on whole device pixels at every font scale', (tester) async {
+      // The header's bottom edge is a color boundary against the body, so an
+      // off-grid height antialiases into the content below as a hairline
+      // seam. The base 48 is fine at 1.0 but not at 0.85 (48 × 0.85 × 2.0 =
+      // 81.6 device px), so main.dart snaps it into the theme once for the
+      // whole app — this drives the real HaLoApp so that wiring is what's
+      // under test, not a copy of the arithmetic.
+      tester.view.physicalSize = const Size(2400, 1600);
+      tester.view.devicePixelRatio = 2.0;
+      addTearDown(tester.view.reset);
+
+      SharedPreferences.setMockInitialValues({});
+      setReleaseNotesForTesting(const []);
+      final settings = SettingsService(await SharedPreferences.getInstance(), secureStorage: FakeSecureStorage());
+      await settings.setFontScale(FontScale.smaller);
+      final db = HaLoDatabase(NativeDatabase.memory());
+      final extensions = ExtensionServiceWithMockHost(const MockExtensionHost({}))..settings = settings;
+      final services = HaLoServices(db, settings, extensions: extensions);
+
+      await tester.pumpWidget(TranslationProvider(child: HaLoApp(services: services)));
+      await tester.pumpAndSettle();
+
+      final height = tester.getSize(find.byType(AppBar).first).height;
+      final devicePixels = height * FontScale.smaller.scaleFactor * 2.0;
+      expect(
+        devicePixels,
+        moreOrLessEquals(devicePixels.roundToDouble()),
+        reason: 'header height $height is off the device grid',
+      );
+      // Snapping moves it by less than a device pixel, not to some other size.
+      expect(height, moreOrLessEquals(48.0, epsilon: 1.0));
+
+      // Drain pending timers to avoid test errors.
+      await tester.pumpWidget(const SizedBox());
+      await tester.pump(const Duration(seconds: 5));
+    });
+  });
 }

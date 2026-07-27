@@ -27,6 +27,7 @@ import 'icon_resolver.dart';
 import 'layout.dart';
 import 'pane_divider.dart';
 import 'resizable_split_view.dart' show PaneSafeArea;
+import 'ui_scale.dart';
 
 /// A node in the dock tree: either a [DockSplit] (row/column of children
 /// with weights) or a [DockGroup] (a tabbed stack of module ids).
@@ -316,7 +317,36 @@ class DockLayoutViewState extends State<DockLayoutView> {
         // degrade to zero-extent panes, not negative SizedBox widths.
         final available = math.max(0.0, total - _dividerExtent * (split.children.length - 1));
         final weightSum = split.weights.reduce((a, b) => a + b);
-        final extents = [for (final w in split.weights) available * w / weightSum];
+        // Weights give fractional extents; laying panes out at those puts
+        // every boundary after the first one between device pixels, where it
+        // antialiases against its neighbor and reads as a hairline gap. Walk
+        // the run cumulatively instead and snap each BOUNDARY (a pane extent
+        // snapped on its own still starts off-grid if the pane before it did),
+        // taking each element's extent as the difference between its two
+        // snapped edges. `flat` interleaves pane and divider extents:
+        // pane i is at 2i, the divider before it at 2i-1.
+        final grid = PixelGrid.of(context);
+        final flat = <double>[];
+        for (var i = 0; i < split.children.length; i++) {
+          if (i > 0) flat.add(_dividerExtent);
+          flat.add(available * split.weights[i] / weightSum);
+        }
+        var edge = 0.0;
+        var snappedEdge = 0.0;
+        for (var j = 0; j < flat.length; j++) {
+          edge += flat[j];
+          // The run's own trailing edge stays exactly `total`: if this dock
+          // sits inside something that is itself off-grid, snapping the last
+          // edge can't fix that and would only open a real gap at the end.
+          // Intermediate edges are capped at `total` for the same reason in
+          // reverse — with an off-grid `total` (a vertical split's body height
+          // is the window minus a 56pt AppBar, fractional at several scales) a
+          // sub-device-pixel last pane lets snap() round the edge BEFORE it
+          // past the end, and the children would then overflow the run.
+          final next = j == flat.length - 1 ? total : math.min(total, grid.snap(edge));
+          flat[j] = math.max(0.0, next - snappedEdge);
+          snappedEdge = next;
+        }
         // The ambient value this split sits inside. Only the child at the
         // split's own leading/trailing edge, on the split's OWN axis, is at
         // a physical screen edge — an interior child (between two others)
@@ -334,6 +364,7 @@ class DockLayoutViewState extends State<DockLayoutView> {
             children.add(
               SolidPaneDivider(
                 axis: split.axis,
+                extent: flat[2 * i - 1],
                 onDragUpdate: (delta) => setState(() {
                   if (available <= 0) return;
                   // Move the boundary between i-1 and i, keeping both panes
@@ -363,8 +394,8 @@ class DockLayoutViewState extends State<DockLayoutView> {
           final isLast = i == split.children.length - 1;
           children.add(
             SizedBox(
-              width: horizontal ? extents[i] : null,
-              height: horizontal ? null : extents[i],
+              width: horizontal ? flat[2 * i] : null,
+              height: horizontal ? null : flat[2 * i],
               child: PaneSafeArea(
                 left: horizontal ? (isFirst ? ambientLeft : 0) : ambientLeft,
                 top: horizontal ? ambientTop : (isFirst ? ambientTop : 0),
@@ -391,7 +422,10 @@ class DockLayoutViewState extends State<DockLayoutView> {
         Material(
           color: headerColor,
           child: SizedBox(
-            height: _headerHeight,
+            // Snapped: the header's color meets the pane body at this edge,
+            // and _headerHeight × the grid is fractional at some scale/DPR
+            // combinations (40 × 0.85 × 2.75), which seams the two.
+            height: PixelGrid.of(context).snap(_headerHeight),
             // A Builder, not this method's own `context`: `_buildGroup` is a
             // plain Dart call from `_buildSplit`/`_buildNode`, not a fresh
             // Element — reusing `State.context` here would always resolve

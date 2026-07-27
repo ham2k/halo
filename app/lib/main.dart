@@ -968,7 +968,17 @@ class _HaLoAppState extends State<HaLoApp> {
           // height = the base AppBar height scaled by UiScale below (see
           // WindowChromeService; deduped, so calling it every build is fine).
           final baseToolbarHeight = Theme.of(context).appBarTheme.toolbarHeight ?? 48.0;
-          WindowChromeService.reportTitleBarHeight(baseToolbarHeight * scale);
+          // The header's bottom edge is a color boundary against the body, so
+          // it has to land on the device pixel grid: inside UiScale one
+          // logical pixel is `scale × devicePixelRatio` device pixels, and
+          // 48 × 0.85 × 2.0 = 81.6 is not a whole one — the leftover
+          // antialiases into the content below as a hairline seam. Snapped
+          // ONCE here and pushed into the theme below, so every AppBar in the
+          // app inherits it and the seam can't come back view by view.
+          final toolbarHeight = PixelGrid(scale * MediaQuery.devicePixelRatioOf(context)).snap(baseToolbarHeight);
+          // The same (snapped) height the headers render at, so the native
+          // traffic lights stay centered in it.
+          WindowChromeService.reportTitleBarHeight(toolbarHeight * scale);
           // The window's resize floor is the S-size layout width plus room for
           // the native window controls that float over the header (traffic
           // lights / caption buttons), so neither the S content nor the
@@ -1000,21 +1010,29 @@ class _HaLoAppState extends State<HaLoApp> {
             ]);
           }
 
-          return ValueListenableBuilder<bool>(
-            valueListenable: macOSWindowIsFullScreen,
-            builder: (context, isFullScreen, _) => MacOSFullScreenScope(
-              isFullScreen: isFullScreen,
-              child: UiScale(
-                scale: scale,
-                // Outermost so it covers every field in the app — the gates'
-                // own overlays and anything pushed on the Navigator (which is
-                // `content`, i.e. dialogs and panes) included.
-                child: TapToDismissEmptyField(
-                  child: _OnboardingGate(
-                    services: widget.services,
-                    child: _ReleaseOverlayGate(
+          return Theme(
+            // Outside UiScale so the Flutter-drawn Windows caption buttons
+            // (which size themselves off the same theme value) match the
+            // headers they float over.
+            data: Theme.of(context).copyWith(
+              appBarTheme: Theme.of(context).appBarTheme.copyWith(toolbarHeight: toolbarHeight),
+            ),
+            child: ValueListenableBuilder<bool>(
+              valueListenable: macOSWindowIsFullScreen,
+              builder: (context, isFullScreen, _) => MacOSFullScreenScope(
+                isFullScreen: isFullScreen,
+                child: UiScale(
+                  scale: scale,
+                  // Outermost so it covers every field in the app — the gates'
+                  // own overlays and anything pushed on the Navigator (which is
+                  // `content`, i.e. dialogs and panes) included.
+                  child: TapToDismissEmptyField(
+                    child: _OnboardingGate(
                       services: widget.services,
-                      child: _StatusBarOverlay(services: widget.services, child: content),
+                      child: _ReleaseOverlayGate(
+                        services: widget.services,
+                        child: _StatusBarOverlay(services: widget.services, child: content),
+                      ),
                     ),
                   ),
                 ),

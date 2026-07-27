@@ -15,6 +15,7 @@ import 'format_utils.dart';
 import 'icon_resolver.dart';
 import 'layout.dart';
 import 'theme.dart';
+import 'ui_scale.dart';
 
 /// One row in the footer: a transient message or progress bar. Mirrors the
 /// app's `StatusBarItem` without depending on it, so this package doesn't
@@ -170,7 +171,11 @@ class _StatusBarFooterState extends State<StatusBarFooter> {
     final showGroups = widget.items.length > 1;
 
     return SizedBox(
-      height: _collapsedHeight,
+      // Snapped: the bar sits against the content above it in a different
+      // color, and its height is what places that boundary (the bar itself is
+      // pinned to the window's bottom edge, which is always on-grid). See
+      // PixelGrid — 28 × 0.85 × 2.0 is 47.6 device px, a hairline seam.
+      height: PixelGrid.of(context).snap(_collapsedHeight),
       child: last == null
           ? const SizedBox.shrink()
           : AnimatedSwitcher(
@@ -249,7 +254,9 @@ class _StatusBarFooterState extends State<StatusBarFooter> {
     final contentHeight = _expandedRowHeight * list.length;
     final cap = maxHeight < _expandedRowHeight ? _expandedRowHeight : maxHeight;
     return SizedBox(
-      height: contentHeight.clamp(_expandedRowHeight, cap),
+      // Snapped for the same reason as the collapsed bar: this height is what
+      // positions the expanded panel's top edge against the content above it.
+      height: PixelGrid.of(context).snap(contentHeight.clamp(_expandedRowHeight, cap).toDouble()),
       child: ListView.separated(
         padding: const EdgeInsets.symmetric(vertical: 4),
         itemCount: list.length,

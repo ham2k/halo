@@ -42,10 +42,9 @@ Because everything the app draws lives in that one logical space:
    fill factor works out to exactly the scale factor.
 3. It publishes the scale to descendants via an inherited widget, read with
    `UiScale.of(context)`. Only two things need it: the macOS traffic-light
-   clearance (see below) and the split divider's device-pixel-grid snapping
-   (`resizable_split_view.dart` — scale-neutral rounding, not a hand-scaled
-   dimension). Reaching for it anywhere else is almost certainly rule 1's
-   bug.
+   clearance (see below) and `PixelGrid` (below — scale-neutral rounding, not
+   a hand-scaled dimension). Reaching for it anywhere else is almost certainly
+   rule 1's bug.
 
 Text and vector icons stay crisp at any scale: Flutter records the scene as
 vector drawing commands and rasterizes *after* the transform, so glyphs and
@@ -116,6 +115,47 @@ place scaling interacts with window chrome.
 
 ---
 
+## Hairline seams: `PixelGrid`
+
+Scaling has one visual side effect. Inside the scaled space, one logical pixel
+paints as `UiScale × devicePixelRatio` device pixels — a *fractional* step at
+most font scales (0.85 × 2.0 = 1.7). A boundary between two differently
+colored surfaces that lands *between* device pixels is antialiased into both,
+and the blended pair reads as a **hairline gap** — most visibly along the
+dividers between panes.
+
+[`PixelGrid`](../../packages/halo_widgets/lib/src/ui_scale.dart) is the one
+primitive for this: `PixelGrid.of(context).snap(x)` rounds a value to whole
+device pixels (`snapDown` / `snapUp` for values that must not exceed a cap, or
+must stay at least one device pixel thick).
+
+Two rules when using it:
+
+- **Snap boundary POSITIONS, not extents.** An extent snapped on its own still
+  starts off-grid if the element before it did. Walk a run cumulatively, snap
+  each edge, and take each child's extent as the difference between its two
+  snapped edges (`DockLayoutView._buildSplit` is the reference implementation).
+  Leave the run's own trailing edge at exactly the incoming extent — snapping
+  it can only open a real gap.
+- **Snap both edges of a separator.** A divider of a fixed logical width has an
+  off-grid *far* edge even when its near edge is snapped, which seams it
+  against the next pane just the same (`SolidPaneDivider.extent`).
+
+The AppBar is snapped **once, app-wide**: `main.dart`'s builder rounds the
+theme's `toolbarHeight` to the grid and pushes it into an overriding `Theme`,
+so every header in the app inherits an on-grid bottom edge instead of each
+view having to remember. That snapped height is also what
+`WindowChromeService.reportTitleBarHeight` reports, so the macOS traffic
+lights stay centered in the height the headers actually render at. The status
+bar snaps its own height for the same reason (its top edge is the boundary;
+its bottom is the window edge, always on-grid).
+
+This is not a licence to snap every dimension — only boundaries where two
+surfaces meet, and thin lines that must paint crisply. Ordinary padding and
+sizes stay plain logical pixels (rule 2).
+
+---
+
 ## macOS traffic lights: the one thing that must NOT scale
 
 The macOS window's close/minimise/zoom buttons are **native, fixed-size system
@@ -176,7 +216,7 @@ draw.
 
 | Piece | File |
 |---|---|
-| The scaling widget | `packages/halo_widgets/lib/src/ui_scale.dart` |
+| The scaling widget, and `PixelGrid` | `packages/halo_widgets/lib/src/ui_scale.dart` |
 | Applied once at the root | `app/lib/main.dart` (`MaterialApp.builder`) |
 | Font-scale factors | `app/lib/services/settings_service.dart` (`enum FontScale`) |
 | Window-chrome clearance helpers, caption buttons, header gestures | `packages/halo_widgets/lib/src/platform_chrome.dart` |
