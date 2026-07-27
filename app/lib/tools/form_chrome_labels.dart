@@ -25,6 +25,7 @@ FormRendererLabels formRendererLabelsFor(Translations t) => FormRendererLabels(
       removeItemLabel: t.formChrome.removeItem,
       connected: t.formChrome.connected,
       notConnected: t.formChrome.notConnected,
+      storageUnavailable: t.formChrome.storageUnavailable,
       manage: t.formChrome.manage,
       connect: t.formChrome.connect,
       formTitle: t.formChrome.formTitle,

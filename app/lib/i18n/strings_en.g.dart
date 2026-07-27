@@ -613,6 +613,9 @@ class Translations$formChrome$en {
 
 	/// en: 'Remove'
 	String get removeItem => 'Remove';
+
+	/// en: 'Logins unavailable'
+	String get storageUnavailable => 'Logins unavailable';
 }
 
 // Path: qsoEditForm
@@ -1712,6 +1715,18 @@ class Translations$settings$accounts$en {
 
 	/// en: 'That link looks cut off. Copy the whole thing and paste it again.'
 	String get pastedLinkMalformed => 'That link looks cut off. Copy the whole thing and paste it again.';
+
+	/// en: 'Account logins can’t be saved'
+	String get noKeyringTitle => 'Account logins can’t be saved';
+
+	/// en: 'Ham2K Logger can’t reach a keyring service on this computer, so account logins can’t be stored or read — connecting an account will fail until this is sorted. Install and start **gnome-keyring**, **KWallet** or **KeePassXC**, or unlock the keyring you already have, then restart. Logging, exports and data files are unaffected; log sync stays off while this lasts.'
+	String get noKeyringText => 'Ham2K Logger can’t reach a keyring service on this computer, so account logins can’t be stored or read — connecting an account will fail until this is sorted. Install and start **gnome-keyring**, **KWallet** or **KeePassXC**, or unlock the keyring you already have, then restart. Logging, exports and data files are unaffected; log sync stays off while this lasts.';
+
+	/// en: 'Logins can’t be saved: this computer’s keyring can’t be reached. Install and start gnome-keyring, KWallet or KeePassXC, or unlock the one you have.'
+	String get noKeyringInline => 'Logins can’t be saved: this computer’s keyring can’t be reached. Install and start gnome-keyring, KWallet or KeePassXC, or unlock the one you have.';
+
+	/// en: 'Logins can’t be saved: this computer’s secure storage can’t be reached.'
+	String get noSecureStorageInline => 'Logins can’t be saved: this computer’s secure storage can’t be reached.';
 }
 
 // Path: settings.offlineData
@@ -2443,6 +2458,7 @@ extension on Translations {
 			'formChrome.transformationError' => ({required Object error}) => 'Transformation error: ${error}',
 			'formChrome.actionError' => ({required Object error}) => 'Error: ${error}',
 			'formChrome.removeItem' => 'Remove',
+			'formChrome.storageUnavailable' => 'Logins unavailable',
 			'qsoEditForm.title' => 'Edit QSO',
 			'qsoEditForm.theirName' => 'Name',
 			'qsoEditForm.theirGrid' => 'Grid',
@@ -2587,6 +2603,10 @@ extension on Translations {
 			'settings.accounts.pastedLinkWrongLogin' => 'That link belongs to a different login attempt. Close this page and connect again.',
 			'settings.accounts.pastedLinkNoCode' => 'That link carries no login code. Finish signing in first, then copy the link it sends you to.',
 			'settings.accounts.pastedLinkMalformed' => 'That link looks cut off. Copy the whole thing and paste it again.',
+			'settings.accounts.noKeyringTitle' => 'Account logins can’t be saved',
+			'settings.accounts.noKeyringText' => 'Ham2K Logger can’t reach a keyring service on this computer, so account logins can’t be stored or read — connecting an account will fail until this is sorted. Install and start **gnome-keyring**, **KWallet** or **KeePassXC**, or unlock the keyring you already have, then restart. Logging, exports and data files are unaffected; log sync stays off while this lasts.',
+			'settings.accounts.noKeyringInline' => 'Logins can’t be saved: this computer’s keyring can’t be reached. Install and start gnome-keyring, KWallet or KeePassXC, or unlock the one you have.',
+			'settings.accounts.noSecureStorageInline' => 'Logins can’t be saved: this computer’s secure storage can’t be reached.',
 			'settings.offlineData.title' => 'Offline Data',
 			'settings.offlineData.noFiles' => 'No data files',
 			'settings.offlineData.noFilesDescription' => 'Enable activity or lookup extensions to download their offline data here.',
@@ -2724,13 +2744,13 @@ extension on Translations {
 			'switchAccounts.copyCode' => 'Copy code',
 			'switchAccounts.codePrompt' => ({required Object email}) => 'Open the Ham2K app on a device already linked with ${email} and enter this code to approve the request:',
 			'switchAccounts.waitingForConfirmation' => 'Waiting for confirmation…',
+			_ => null,
+		} ?? switch (path) {
 			'switchAccounts.sendEmailInstead' => 'Send a confirmation email instead',
 			'switchAccounts.emailSent' => ({required Object email}) => 'An email was sent to ${email}. Open it and confirm the request to link this device.',
 			'switchAccounts.resendEmail' => 'Resend email',
 			'switchAccounts.qrPrompt' => 'Scan this QR code from a device already linked to the account you want — for example with Ham2K Portable Logger on your phone.',
 			'switchAccounts.serverUnreachable' => 'Could not reach the sync server. Try again later.',
-			_ => null,
-		} ?? switch (path) {
 			'switchAccounts.qsoCount' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: '${count} QSO', other: '${count} QSOs', ), 
 			'switchAccounts.operationCount' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: '${count} operation', other: '${count} operations', ), 
 			_ => null,

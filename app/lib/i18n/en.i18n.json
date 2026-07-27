@@ -262,7 +262,8 @@
     "validationError": "Validation error: ${error}",
     "transformationError": "Transformation error: ${error}",
     "actionError": "Error: ${error}",
-    "removeItem": "Remove"
+    "removeItem": "Remove",
+    "storageUnavailable": "Logins unavailable"
   },
   "qsoEditForm": {
     "title": "Edit QSO",
@@ -461,7 +462,11 @@
       "pastedLinkNotARedirect": "That is not the login link — it should start with \"${prefix}\".",
       "pastedLinkWrongLogin": "That link belongs to a different login attempt. Close this page and connect again.",
       "pastedLinkNoCode": "That link carries no login code. Finish signing in first, then copy the link it sends you to.",
-      "pastedLinkMalformed": "That link looks cut off. Copy the whole thing and paste it again."
+      "pastedLinkMalformed": "That link looks cut off. Copy the whole thing and paste it again.",
+      "noKeyringTitle": "Account logins can’t be saved",
+      "noKeyringText": "Ham2K Logger can’t reach a keyring service on this computer, so account logins can’t be stored or read — connecting an account will fail until this is sorted. Install and start **gnome-keyring**, **KWallet** or **KeePassXC**, or unlock the keyring you already have, then restart. Logging, exports and data files are unaffected; log sync stays off while this lasts.",
+      "noKeyringInline": "Logins can’t be saved: this computer’s keyring can’t be reached. Install and start gnome-keyring, KWallet or KeePassXC, or unlock the one you have.",
+      "noSecureStorageInline": "Logins can’t be saved: this computer’s secure storage can’t be reached."
     },
     "offlineData": {
       "title": "Offline Data",

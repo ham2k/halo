@@ -316,6 +316,7 @@ class _Translations$formChrome$es extends Translations$formChrome$en {
 	@override String transformationError({required Object error}) => 'Error de transformación: ${error}';
 	@override String actionError({required Object error}) => 'Error: ${error}';
 	@override String get removeItem => 'Quitar';
+	@override String get storageUnavailable => 'Cuentas no disponibles';
 }
 
 // Path: qsoEditForm
@@ -886,6 +887,10 @@ class _Translations$settings$accounts$es extends Translations$settings$accounts$
 	@override String get pastedLinkWrongLogin => 'Ese enlace pertenece a otro intento de inicio de sesión. Cierra esta página y conéctate de nuevo.';
 	@override String get pastedLinkNoCode => 'Ese enlace no lleva ningún código de inicio de sesión. Termina de iniciar sesión y luego copia el enlace al que te envíe.';
 	@override String get pastedLinkMalformed => 'Ese enlace parece estar incompleto. Cópialo por completo y pégalo de nuevo.';
+	@override String get noKeyringTitle => 'No se pueden guardar las cuentas';
+	@override String get noKeyringText => 'Ham2K Logger no puede acceder a un servicio de llavero en esta computadora, así que no puede guardar ni leer las cuentas — conectar una cuenta fallará hasta que lo resuelvas. Instala y arranca **gnome-keyring**, **KWallet** o **KeePassXC**, o desbloquea el llavero que ya tengas, y reinicia. El registro, las exportaciones y los archivos de datos no se ven afectados; la sincronización queda desactivada mientras tanto.';
+	@override String get noKeyringInline => 'Las cuentas no se pueden guardar: no se puede acceder al llavero de esta computadora. Instala y arranca gnome-keyring, KWallet o KeePassXC, o desbloquea el que ya tengas.';
+	@override String get noSecureStorageInline => 'Las cuentas no se pueden guardar: no se puede acceder al almacenamiento seguro de esta computadora.';
 }
 
 // Path: settings.offlineData
@@ -1403,6 +1408,7 @@ extension on TranslationsEs {
 			'formChrome.transformationError' => ({required Object error}) => 'Error de transformación: ${error}',
 			'formChrome.actionError' => ({required Object error}) => 'Error: ${error}',
 			'formChrome.removeItem' => 'Quitar',
+			'formChrome.storageUnavailable' => 'Cuentas no disponibles',
 			'qsoEditForm.title' => 'Editar QSO',
 			'qsoEditForm.theirName' => 'Nombre',
 			'qsoEditForm.theirGrid' => 'Locador',
@@ -1547,6 +1553,10 @@ extension on TranslationsEs {
 			'settings.accounts.pastedLinkWrongLogin' => 'Ese enlace pertenece a otro intento de inicio de sesión. Cierra esta página y conéctate de nuevo.',
 			'settings.accounts.pastedLinkNoCode' => 'Ese enlace no lleva ningún código de inicio de sesión. Termina de iniciar sesión y luego copia el enlace al que te envíe.',
 			'settings.accounts.pastedLinkMalformed' => 'Ese enlace parece estar incompleto. Cópialo por completo y pégalo de nuevo.',
+			'settings.accounts.noKeyringTitle' => 'No se pueden guardar las cuentas',
+			'settings.accounts.noKeyringText' => 'Ham2K Logger no puede acceder a un servicio de llavero en esta computadora, así que no puede guardar ni leer las cuentas — conectar una cuenta fallará hasta que lo resuelvas. Instala y arranca **gnome-keyring**, **KWallet** o **KeePassXC**, o desbloquea el llavero que ya tengas, y reinicia. El registro, las exportaciones y los archivos de datos no se ven afectados; la sincronización queda desactivada mientras tanto.',
+			'settings.accounts.noKeyringInline' => 'Las cuentas no se pueden guardar: no se puede acceder al llavero de esta computadora. Instala y arranca gnome-keyring, KWallet o KeePassXC, o desbloquea el que ya tengas.',
+			'settings.accounts.noSecureStorageInline' => 'Las cuentas no se pueden guardar: no se puede acceder al almacenamiento seguro de esta computadora.',
 			'settings.offlineData.title' => 'Datos sin conexión',
 			'settings.offlineData.noFiles' => 'No hay archivos de datos',
 			'settings.offlineData.noFilesDescription' => 'Habilita extensiones de actividades o búsquedas para descargar aquí sus datos sin conexión.',
@@ -1684,13 +1694,13 @@ extension on TranslationsEs {
 			'switchAccounts.copyCode' => 'Copiar código',
 			'switchAccounts.codePrompt' => ({required Object email}) => 'Abre la app Ham2K en un dispositivo ya vinculado con ${email} e introduce este código para aprobar la solicitud:',
 			'switchAccounts.waitingForConfirmation' => 'Esperando confirmación…',
+			_ => null,
+		} ?? switch (path) {
 			'switchAccounts.sendEmailInstead' => 'Enviar un email de confirmación en su lugar',
 			'switchAccounts.emailSent' => ({required Object email}) => 'Se envió un email a ${email}. Ábrelo y confirma la solicitud para vincular este dispositivo.',
 			'switchAccounts.resendEmail' => 'Reenviar email',
 			'switchAccounts.qrPrompt' => 'Escanea este código QR desde un dispositivo ya vinculado a la cuenta que quieres — por ejemplo, con Ham2K Portable Logger en tu teléfono.',
 			'switchAccounts.serverUnreachable' => 'No se pudo contactar el servidor de sincronización. Inténtalo más tarde.',
-			_ => null,
-		} ?? switch (path) {
 			'switchAccounts.qsoCount' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count, one: '${count} QSO', other: '${count} QSOs', ), 
 			'switchAccounts.operationCount' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count, one: '${count} operación', other: '${count} operaciones', ), 
 			_ => null,

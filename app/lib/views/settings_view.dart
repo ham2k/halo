@@ -10,6 +10,7 @@ import 'dart:convert';
 import 'dart:math';
 
 import 'package:crypto/crypto.dart';
+import 'package:flutter/foundation.dart' show defaultTargetPlatform, kIsWeb, TargetPlatform;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
@@ -1022,6 +1023,20 @@ class _SyncPanelState extends State<_SyncPanel> {
   }
 }
 
+/// What to say when secure storage cannot be reached.
+///
+/// The Linux advice names gnome-keyring/KWallet/KeePassXC, which would be
+/// nonsense anywhere else — and this IS reachable elsewhere: the darwin plugin
+/// turns any non-`noErr` OSStatus into a PlatformException, including the
+/// -34018 this project already meets on macOS. Neither string claims WHY: on
+/// Linux libsecret reports "nothing running", "no default collection" and
+/// "locked" identically, so no message may pick one.
+String storageUnavailableMessage(BuildContext context) {
+  final t = context.t.settings.accounts;
+  if (!kIsWeb && defaultTargetPlatform == TargetPlatform.linux) return t.noKeyringInline;
+  return t.noSecureStorageInline;
+}
+
 class _AccountsPanel extends StatefulWidget {
   final HaLoServices services;
 
@@ -1033,6 +1048,7 @@ class _AccountsPanel extends StatefulWidget {
 
 class _AccountsPanelState extends State<_AccountsPanel> {
   List<Map<String, dynamic>>? _accounts;
+  bool _secureStorageUnavailable = false;
   final Map<String, String> _accountIdentities = {};
 
   @override
@@ -1047,15 +1063,25 @@ class _AccountsPanelState extends State<_AccountsPanel> {
     // re-asks on every open and after every save, so it recovers on its own.
     final accounts = await widget.services.extensions.getAccounts() ?? const <Map<String, dynamic>>[];
     final identities = <String, String>{};
+    var storageUnavailable = false;
     for (final account in accounts) {
       final kvKey = account['kvKey'] as String;
+      // Null means secure storage could not be reached — not that the account is
+      // disconnected (#438). Stop asking (every account would fail the same way)
+      // and let the pane say so, rather than throwing out of here and leaving
+      // `_accounts` null, which spun the panel's progress indicator forever.
       final creds = await widget.services.extensions.getAccountCredentials(kvKey);
+      if (creds == null) {
+        storageUnavailable = true;
+        break;
+      }
       if (creds.isNotEmpty) {
         identities[kvKey] = ExtensionService.identityFromCredentials(creds) ?? t.settings.accounts.connected;
       }
     }
     if (mounted) {
       setState(() {
+        _secureStorageUnavailable = storageUnavailable;
         _accounts = accounts;
         _accountIdentities.clear();
         _accountIdentities.addAll(identities);
@@ -1085,6 +1111,13 @@ class _AccountsPanelState extends State<_AccountsPanel> {
       children: [
         Padding(
             padding: EdgeInsets.only(left: safeLeft), child: SectionHeader(context.t.settings.accounts.title)),
+        // The panel used to spin here forever instead (#438). Saying it once, at
+        // the top, beats each row claiming to be disconnected.
+        if (_secureStorageUnavailable)
+          ListTile(
+            leading: const Icon(Icons.key_off),
+            title: Text(storageUnavailableMessage(context)),
+          ),
         if (_accounts!.isEmpty)
           ListTile(title: Text(context.t.settings.accounts.none))
         else
@@ -2353,6 +2386,7 @@ class _AccountPaneState extends State<_AccountPane> {
   bool _testing = false;
   String? _testResult;
   bool _loggedIn = false;
+  bool _secureStorageUnavailable = false;
 
   /// OAuth tokens obtained from a Login that haven't been saved yet — only
   /// persisted when the user presses Save, discarded on Cancel/close.
@@ -2379,8 +2413,13 @@ class _AccountPaneState extends State<_AccountPane> {
   }
 
   Future<void> _loadInitialData() async {
-    final creds = await widget.services.extensions.getAccountCredentials(_kvKey);
+    // Null is "secure storage is unreachable", and it must not stop the rest of
+    // this: the controllers below are what the fields render from, so throwing
+    // here left the dialog with no fields at all (#438).
+    final stored = await widget.services.extensions.getAccountCredentials(_kvKey);
+    final creds = stored ?? const <String, String>{};
     setState(() {
+      _secureStorageUnavailable = stored == null;
       _loggedIn = creds.isNotEmpty;
     });
     for (final field in _fields) {
@@ -2449,7 +2488,19 @@ class _AccountPaneState extends State<_AccountPane> {
 
     final Map<String, String> creds;
     if (_oauth2 != null) {
-      creds = _pendingCredentials ?? await widget.services.extensions.getAccountCredentials(_kvKey);
+      final stored = _pendingCredentials ?? await widget.services.extensions.getAccountCredentials(_kvKey);
+      if (stored == null) {
+        // The read failed. Resetting `_testing` is the point: it was left true,
+        // which disabled Test AND Connect for as long as the dialog stayed open.
+        if (mounted && generation == _testGeneration) {
+          setState(() {
+            _testing = false;
+            _secureStorageUnavailable = true;
+          });
+        }
+        return;
+      }
+      creds = stored;
     } else {
       creds = _controllers.map((key, controller) => MapEntry(key, controller.text.trim()));
     }
@@ -2660,6 +2711,12 @@ class _AccountPaneState extends State<_AccountPane> {
             const SizedBox(height: 8),
             Text(
               context.t.settings.accounts.pressSaveToKeep,
+              style: theme.textTheme.bodyMedium,
+              textAlign: TextAlign.center,
+            ),
+          ] else if (_secureStorageUnavailable) ...[
+            Text(
+              storageUnavailableMessage(context),
               style: theme.textTheme.bodyMedium,
               textAlign: TextAlign.center,
             ),

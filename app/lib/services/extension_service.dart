@@ -52,6 +52,7 @@ class ExtensionService {
 
   static const _keychainAccountName = 'Ham2K Logger';
 
+
   final _secureStorage = const FlutterSecureStorage(
     mOptions: MacOsOptions(
       // FILE keychain on macOS. The data-protection keychain needs the RESTRICTED
@@ -402,9 +403,35 @@ class ExtensionService {
     }
   }
 
-  Future<Map<String, String>> getAccountCredentials(String kvKey) async {
+  /// The credentials stored for [kvKey]: a map, `{}` when nothing is stored —
+  /// and NULL when secure storage could not be reached at all.
+  ///
+  /// The distinction is the whole point. An empty map means "this account is not
+  /// connected", which is a fact about the account; null means "we cannot know",
+  /// which is a fact about the machine — a Linux box with no Secret Service
+  /// running, a locked keyring (#438). Collapsing the two would tell an operator
+  /// they had been logged out, and invite them to log in again into a store that
+  /// cannot keep it.
+  ///
+  /// Before, this threw: `_loadAccounts` spun forever and the account dialog
+  /// rendered with no fields at all, because both read it before their own
+  /// `setState`.
+  Future<Map<String, String>?> getAccountCredentials(String kvKey) async {
     final o = await _accountKeychainOptions(kvKey);
-    final raw = await _secureStorage.read(key: 'account_creds_$kvKey', mOptions: o.mOptions, iOptions: o.iOptions);
+    final String? raw;
+    try {
+      raw = await _secureStorage.read(key: 'account_creds_$kvKey', mOptions: o.mOptions, iOptions: o.iOptions);
+    } catch (e, st) {
+      // EVERYTHING, not just PlatformException: a build where the plugin failed
+      // to register raises MissingPluginException, and catching only the former
+      // reopened the exact hang this exists to prevent — `_loadAccounts` reads
+      // this before its own `setState`. `KeyringLocked` on Linux covers three
+      // different situations anyway (no Secret Service, no default collection,
+      // one that would not unlock), so nothing here claims which.
+      debugPrint('[extensions] secure storage unavailable reading $kvKey: $e');
+      ErrorReportingService.report(e, st, context: 'accounts:read-credentials');
+      return null;
+    }
     if (raw == null) return const {};
     try {
       return (jsonDecode(raw) as Map).cast<String, String>();
@@ -539,6 +566,9 @@ class ExtensionService {
   Future<Map<String, dynamic>> _resolveAccountStatus(String accountKey) async {
     try {
       final creds = await getAccountCredentials(accountKey);
+      // Null is "we could not look", not "not connected" — say so, so an
+      // extension's own UI can tell the difference too.
+      if (creds == null) return {'connected': false, 'unavailable': true};
       if (creds.isEmpty) return {'connected': false};
       final identity = identityFromCredentials(creds);
       return {'connected': true, if (identity != null) 'label': t.extensionService.connectedAs(identity: identity)};
@@ -1000,17 +1030,34 @@ class ExtensionService {
     }
   }
 
+  /// [_handleHostCall] for tests — the runtime credential path has no other
+  /// seam, and it is the one that decides what an extension believes.
+  @visibleForTesting
+  Future<dynamic> debugHandleHostCall(String method, Map<String, dynamic> params) => _handleHostCall(method, params);
+
   Future<dynamic> _handleHostCall(String method, Map<String, dynamic> params) async {
     switch (method) {
       case 'getAccount':
         final kvKey = params['kvKey'] as String;
         final o = await _accountKeychainOptions(kvKey, fromHostCall: true);
-        final credsStr = await _secureStorage.read(key: 'account_creds_$kvKey', mOptions: o.mOptions, iOptions: o.iOptions);
-        final sessionStr = await _secureStorage.read(key: 'account_session_$kvKey', mOptions: o.mOptions, iOptions: o.iOptions);
-        return {
-          'credentials': credsStr != null ? jsonDecode(credsStr) : const {},
-          'session': sessionStr != null ? jsonDecode(sessionStr) : const {},
-        };
+        // This is the path an extension actually uses at runtime, and it was the
+        // one still lying: an unguarded throw here rejects the host call, the
+        // kernel turns a rejection into `undefined` (sdk/src/kernel.ts), and the
+        // extension reads that as a logged-out account — the same collapse
+        // `getAccountCredentials` refuses to make. Saying `unavailable` instead
+        // lets an extension tell "you are signed out" from "we could not look".
+        try {
+          final credsStr = await _secureStorage.read(key: 'account_creds_$kvKey', mOptions: o.mOptions, iOptions: o.iOptions);
+          final sessionStr = await _secureStorage.read(key: 'account_session_$kvKey', mOptions: o.mOptions, iOptions: o.iOptions);
+          return {
+            'credentials': credsStr != null ? jsonDecode(credsStr) : const {},
+            'session': sessionStr != null ? jsonDecode(sessionStr) : const {},
+          };
+        } catch (e, st) {
+          debugPrint('[extensions] secure storage unavailable for host getAccount $kvKey: $e');
+          ErrorReportingService.report(e, st, context: 'accounts:host-get-account');
+          return {'credentials': const {}, 'session': const {}, 'unavailable': true};
+        }
       case 'setAccountSession':
         final kvKey = params['kvKey'] as String;
         final o = await _accountKeychainOptions(kvKey, fromHostCall: true);

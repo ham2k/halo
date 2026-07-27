@@ -63,6 +63,11 @@ class FormRendererLabels {
   /// An `account` field's status line and Manage/Connect button.
   final String connected;
   final String notConnected;
+
+  /// Shown in place of [notConnected] when the account's status says the
+  /// credential store could not be reached — "not connected" would be a claim
+  /// about the account, when the truth is about the machine.
+  final String storageUnavailable;
   final String manage;
   final String connect;
 
@@ -102,6 +107,7 @@ class FormRendererLabels {
     this.removeItemLabel = 'Remove',
     this.connected = 'Connected',
     this.notConnected = 'Not Connected',
+    this.storageUnavailable = 'Logins unavailable',
     this.manage = 'Manage',
     this.connect = 'Connect',
     this.formTitle = 'Form',
@@ -1557,13 +1563,17 @@ class FormRendererState extends State<FormRenderer> {
     final subkey = account?['subkey'] as String?;
     final status = (_values[key] is Map) ? (_values[key] as Map).cast<String, dynamic>() : const <String, dynamic>{};
     final connected = status['connected'] == true;
+    // The account hook reports this when the credential store threw: the app
+    // could not look, which is not the same as a signed-out account, and a
+    // Connect button here would walk the operator into a save that fails.
+    final unavailable = status['unavailable'] == true;
     final statusLabel = status['label'] as String?;
     final devModeColor = _devModeColor(el);
 
     return ListTile(
       contentPadding: _rowContentPadding,
       leading: Icon(
-        connected ? Icons.check_circle : Icons.radio_button_unchecked,
+        unavailable ? Icons.key_off : (connected ? Icons.check_circle : Icons.radio_button_unchecked),
         color: devModeColor ??
             (connected
                 ? (theme.extension<HaLoColors>() ?? HaLoColors.light).onSurfaceAccent
@@ -1571,11 +1581,17 @@ class FormRendererState extends State<FormRenderer> {
       ),
       title: Text(label, style: devModeColor == null ? null : TextStyle(color: devModeColor)),
       subtitle: Text(
-        connected ? (statusLabel ?? widget.labels.connected) : widget.labels.notConnected,
+        unavailable
+            ? widget.labels.storageUnavailable
+            : connected
+                ? (statusLabel ?? widget.labels.connected)
+                : widget.labels.notConnected,
         style: devModeColor == null ? null : TextStyle(color: devModeColor),
       ),
       trailing: TextButton(
-        onPressed: accountKey == null || widget.onManageAccount == null ? null : () => widget.onManageAccount!(accountKey, subkey),
+        onPressed: accountKey == null || widget.onManageAccount == null || unavailable
+            ? null
+            : () => widget.onManageAccount!(accountKey, subkey),
         child: Text(connected ? widget.labels.manage : widget.labels.connect),
       ),
     );

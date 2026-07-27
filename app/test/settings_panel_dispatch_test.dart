@@ -114,10 +114,11 @@ void main() {
       },
     });
     // No account credentials override in this test — getAccountCredentials
-    // hits real (unmocked) secure storage and throws, exercising
-    // _resolveAccountStatus's own guard, which must fall back to
-    // {connected: false} rather than let the exception take down the whole
-    // panel fetch.
+    // hits real (unmocked) secure storage, which raises MissingPluginException
+    // under `flutter test`. That must not take down the whole panel fetch. It
+    // now also reports `unavailable: true` (#438): a store that could not be
+    // READ is not an account that is disconnected, and the account row renders
+    // differently for the two.
     final extensions = MockExtensionService(mockHost)..settings = settings;
 
     await extensions.commitSettingsFieldValue(
@@ -130,7 +131,7 @@ void main() {
     );
 
     final definition = await extensions.getSettingsPanelDefinition(hookKey: 'pota', panelKey: 'pota', kind: 'simple');
-    expect((definition!['elements'] as List).first['value'], {'connected': false});
+    expect((definition!['elements'] as List).first['value'], {'connected': false, 'unavailable': true});
   });
 
   test('getSettingsPanelDefinition resolves fieldType account to {connected: true, label} from account credentials, for either tier', () async {

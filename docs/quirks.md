@@ -36,4 +36,36 @@ Linux implementation ([backlog.md](backlog.md)). BOTH of the above want
 revisiting together: they are one gap, and whoever bumps the plugin for the map
 has no reason to discover the login page.
 
+## `flutter_secure_storage` on Linux needs libsecret AND a Secret Service
+
+**Breaks:** two different ways, and they are worth keeping apart.
+
+- **The libsecret SHARED LIBRARY is absent.** `flutter_secure_storage_linux`
+  links it with `pkg_check_modules(... REQUIRED ...)` and bundles nothing, and
+  our AppImage/tarball take every library from the host — so `ld.so` fails before
+  `main()`. No window, no dialog, no Sentry event, nothing for the operator to
+  search for. **Nothing in the app can report this**; it is why the requirement
+  is documented rather than detected.
+- **libsecret is present but no Secret Service is running** (no gnome-keyring,
+  KWallet or KeePassXC), or the keyring will not unlock. Reads and writes throw.
+  libsecret reports all three of "no service", "no default collection" and
+  "locked" as the SAME `KeyringLocked` code, so no message may claim which.
+
+**Carried for it (#438):** `SettingsService.ensureSyncDeviceKey` returns null
+rather than throwing, so boot completes and sync stays off;
+`ExtensionService.getAccountCredentials` answers **null** — distinct from `{}`,
+which means "not connected" — and the Accounts panel and account dialog say so
+instead of spinning; one notice, once, on Linux, names what to install.
+
+**Decided, deliberately NOT done:** bundling libsecret into the artifacts, and
+any file-backed credential store. Bundling fixes only the first failure, leaves
+most of that population in the second, and addresses one of at least two
+identically-shaped host dependencies (`libsentry.so` needs the host's libcurl the
+same way) — with no Linux machine in the loop to verify it. A local file store
+would put the key beside the data, which is the downgrade
+`settings_service.dart` already refuses for the device key.
+
+**When to revisit:** if a user reports the launch failure — which they now can,
+because the requirement is written down where they can find it.
+
 Add the next one here rather than leaving it to be rediscovered.

@@ -80,6 +80,21 @@ class SettingsService extends ChangeNotifier implements SyncSettings {
 
   String? _cachedDeviceKey;
 
+  /// True once a secure-storage call has failed this session.
+  ///
+  /// On Linux that means no Secret Service is reachable — nothing running
+  /// (gnome-keyring, KWallet, KeePassXC), no default collection, or one that is
+  /// locked and would not unlock. The plugin reports all three as
+  /// `KeyringLocked`, so this deliberately does not claim which
+  /// (flutter_secure_storage_linux, `Secret.hpp` `warmupKeyring`). Boot reads it
+  /// to say, once, that account logins cannot be saved (#438).
+  ///
+  /// Not persisted: it describes THIS session, and a keyring installed or
+  /// unlocked later must be picked up on the next launch without anything to
+  /// reset.
+  bool get secureStorageUnavailable => _secureStorageUnavailable;
+  bool _secureStorageUnavailable = false;
+
   SettingsService(this._prefs, {FlutterSecureStorage? secureStorage})
     : _secureStorage =
           secureStorage ??
@@ -271,15 +286,18 @@ class SettingsService extends ChangeNotifier implements SyncSettings {
     try {
       final fromSecure = await _secureStorage.read(key: _syncDeviceKeyKey);
       if (fromSecure != null && fromSecure.isNotEmpty) {
+        _secureStorageUnavailable = false;
         return _cachedDeviceKey = fromSecure;
       }
 
       final key = _uuidGenerator.v4();
       await _secureStorage.write(key: _syncDeviceKeyKey, value: key);
+      _secureStorageUnavailable = false;
       return _cachedDeviceKey = key;
     } catch (e, st) {
       debugPrint('[settings] secure storage unavailable ($e) — sync disabled this session');
       ErrorReportingService.report(e, st, context: 'settings:sync-device-key');
+      _secureStorageUnavailable = true;
       return null;
     }
   }

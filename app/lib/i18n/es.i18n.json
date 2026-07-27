@@ -262,7 +262,8 @@
     "validationError": "Error de validación: ${error}",
     "transformationError": "Error de transformación: ${error}",
     "actionError": "Error: ${error}",
-    "removeItem": "Quitar"
+    "removeItem": "Quitar",
+    "storageUnavailable": "Cuentas no disponibles"
   },
   "qsoEditForm": {
     "title": "Editar QSO",
@@ -461,7 +462,11 @@
       "pastedLinkNotARedirect": "Ese no es el enlace de inicio de sesión — debe empezar con \"${prefix}\".",
       "pastedLinkWrongLogin": "Ese enlace pertenece a otro intento de inicio de sesión. Cierra esta página y conéctate de nuevo.",
       "pastedLinkNoCode": "Ese enlace no lleva ningún código de inicio de sesión. Termina de iniciar sesión y luego copia el enlace al que te envíe.",
-      "pastedLinkMalformed": "Ese enlace parece estar incompleto. Cópialo por completo y pégalo de nuevo."
+      "pastedLinkMalformed": "Ese enlace parece estar incompleto. Cópialo por completo y pégalo de nuevo.",
+      "noKeyringTitle": "No se pueden guardar las cuentas",
+      "noKeyringText": "Ham2K Logger no puede acceder a un servicio de llavero en esta computadora, así que no puede guardar ni leer las cuentas — conectar una cuenta fallará hasta que lo resuelvas. Instala y arranca **gnome-keyring**, **KWallet** o **KeePassXC**, o desbloquea el llavero que ya tengas, y reinicia. El registro, las exportaciones y los archivos de datos no se ven afectados; la sincronización queda desactivada mientras tanto.",
+      "noKeyringInline": "Las cuentas no se pueden guardar: no se puede acceder al llavero de esta computadora. Instala y arranca gnome-keyring, KWallet o KeePassXC, o desbloquea el que ya tengas.",
+      "noSecureStorageInline": "Las cuentas no se pueden guardar: no se puede acceder al almacenamiento seguro de esta computadora."
     },
     "offlineData": {
       "title": "Datos sin conexión",

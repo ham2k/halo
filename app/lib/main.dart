@@ -13,7 +13,8 @@ import 'package:intl/intl.dart';
 
 
 import 'package:drift_flutter/drift_flutter.dart';
-import 'package:flutter/foundation.dart' show kIsWeb, kReleaseMode, visibleForTesting;
+import 'package:flutter/foundation.dart'
+    show defaultTargetPlatform, kIsWeb, kReleaseMode, visibleForTesting, TargetPlatform;
 import 'package:flutter/material.dart';
 import 'package:flutter/semantics.dart' show SemanticsBinding;
 import 'package:flutter/services.dart';
@@ -402,6 +403,10 @@ Future<HaLoServices> bootstrap({
   } else {
     debugPrint('[boot] no sync device key (secure storage unavailable) — continuing without sync');
   }
+  // Reads the flag rather than this branch: a null device key means storage
+  // threw, but saying so out loud keeps the notice tied to the fact it reports
+  // instead of to one caller's control flow.
+  if (settings.secureStorageUnavailable) maybeShowNoKeyringNotice(services);
 
   // macOS app-menu actions (see WindowChromeService and macos/Runner): "About"
   // shows the release overlay, "Preferences…" (⌘,) opens the Settings view.
@@ -432,6 +437,46 @@ Future<HaLoServices> bootstrap({
   }));
 
   return services;
+}
+
+/// Key for the notice below, and the pref that keeps it to one showing.
+const noKeyringNoticeKey = 'accounts:no-keyring';
+const _noKeyringNoticeShownKey = 'accounts:noKeyringNoticeShown';
+
+/// Says once, on Linux, that account logins cannot be saved (#438).
+///
+/// Public for its test: the Linux-only condition and the once-ness are the parts
+/// worth pinning.
+///
+/// Reached when `ensureSyncDeviceKey` came back null, which happens only when
+/// secure storage threw — on Linux that is libsecret reporting `KeyringLocked`,
+/// which covers no Secret Service running, no default collection, and a
+/// genuinely locked one. The copy therefore names all three rather than picking.
+///
+/// Deliberately NOT shown for the other failure this has: if the libsecret
+/// SHARED LIBRARY is missing, the process dies before `main()` and no notice can
+/// exist. That case is documentation only (docs/quirks.md).
+///
+/// Shown once, tracked in prefs rather than in notice history — history is
+/// capped at 50 entries and would eventually let this reappear. An undismissed
+/// notice is persisted and comes back on its own next launch, so posting it a
+/// second time would also resurrect one the operator had dismissed.
+@visibleForTesting
+void maybeShowNoKeyringNotice(HaLoServices services) {
+  // `defaultTargetPlatform` reports the HOST on web, so the kIsWeb guard is what
+  // keeps a Linux browser out of a desktop-only message.
+  if (kIsWeb || defaultTargetPlatform != TargetPlatform.linux) return;
+  final prefs = services.settings.prefs;
+  if (prefs.getBool(_noKeyringNoticeShownKey) ?? false) return;
+  unawaited(prefs.setBool(_noKeyringNoticeShownKey, true));
+  services.statusBar.showNotice(
+    key: noKeyringNoticeKey,
+    // `key-off` is NOT in the bundled MDI table and renders the puzzle-piece
+    // fallback; `key-alert` is.
+    icon: 'key-alert',
+    title: t.settings.accounts.noKeyringTitle,
+    text: t.settings.accounts.noKeyringText,
+  );
 }
 
 /// The core services bundle passed down to screens.
