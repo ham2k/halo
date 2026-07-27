@@ -365,6 +365,40 @@ void main() {
       final errorNotices = statusBar.activeNotices.where((n) => n.key == 'error-reporting:first-error');
       expect(errorNotices.length, 1);
       expect(errorNotices.single.actions.map((a) => a.label), contains('Copy details'));
+      // 'error_outline' is a Flutter Icons constant name, not a Material
+      // Design Icons one — resolveIconName only understands the latter (or
+      // fa-prefixed FontAwesome), so that name silently fell back to the
+      // puzzle-piece placeholder glyph instead of an actual error icon.
+      expect(errorNotices.single.icon, 'alert-circle');
+    });
+  });
+
+  testWidgets("an error notice doesn't survive a restart, unlike an ordinary one", (tester) async {
+    await withErrorHooks(() async {
+      final prefs = await SharedPreferences.getInstance();
+      final statusBar = StatusBarService(prefs);
+      ErrorReportingService.attachStatusBar(statusBar);
+
+      // An ordinary notice persists fine — only the error notice opts out.
+      statusBar.showNotice(key: 'ordinary', text: 'a plain notice');
+
+      FlutterError.onError!(FlutterErrorDetails(exception: StateError('boom')));
+      tester.takeException(); // drain it — not what this test is about
+      await tester.pump(); // the error notice is posted via a microtask
+
+      expect(statusBar.activeNotices.map((n) => n.key), containsAll(['ordinary', 'error-reporting:first-error']));
+
+      // Simulate a restart: a fresh StatusBarService reads back whatever
+      // actually made it to disk.
+      final reloaded = StatusBarService(prefs);
+      final reloadedKeys = reloaded.activeNotices.map((n) => n.key);
+      expect(reloadedKeys, contains('ordinary'));
+      expect(
+        reloadedKeys,
+        isNot(contains('error-reporting:first-error')),
+        reason: 'its "Copy details" action cannot survive a restart anyway — a dead, '
+            'button-less copy left sitting in the footer forever would be worse than gone',
+      );
     });
   });
 }

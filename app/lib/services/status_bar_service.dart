@@ -75,6 +75,14 @@ class StatusBarNotice {
   final DateTime createdAt;
   final DateTime? dismissedAt;
 
+  /// Whether this notice survives to disk at all. False for notices whose
+  /// actions matter enough that showing a stale, action-less copy of them
+  /// after a restart would be worse than not showing them again — e.g. an
+  /// error notice's actions can't survive a restart anyway (see the
+  /// `_notices` field doc below), so an un-dismissed one would otherwise
+  /// come back forever as a dead husk of its former self.
+  final bool persist;
+
   const StatusBarNotice({
     required this.key,
     this.icon,
@@ -83,6 +91,7 @@ class StatusBarNotice {
     this.actions = const [],
     required this.createdAt,
     this.dismissedAt,
+    this.persist = true,
   });
 
   StatusBarNotice copyWith({DateTime? dismissedAt}) => StatusBarNotice(
@@ -93,6 +102,7 @@ class StatusBarNotice {
         actions: actions,
         createdAt: createdAt,
         dismissedAt: dismissedAt ?? this.dismissedAt,
+        persist: persist,
       );
 
   Map<String, dynamic> _toJson() => {
@@ -122,7 +132,9 @@ class StatusBarService extends ChangeNotifier {
   /// the single source of truth for both `activeNotices` and `history`, kept
   /// in sync with the persisted copy by `_persistNotices`. Actions aren't
   /// persisted since a `VoidCallback` can't survive a restart — history
-  /// entries are read-only past that point.
+  /// entries are read-only past that point. A notice whose actions matter
+  /// enough that a dead, action-less copy of it would be worse than nothing
+  /// (see [StatusBarNotice.persist]) skips that round-trip entirely instead.
   final List<StatusBarNotice> _notices = [];
 
   StatusBarService(this._prefs) {
@@ -209,6 +221,7 @@ class StatusBarService extends ChangeNotifier {
     String? title,
     required String text,
     List<StatusBarAction> actions = const [],
+    bool persist = true,
   }) {
     final notice = StatusBarNotice(
       key: key,
@@ -217,6 +230,7 @@ class StatusBarService extends ChangeNotifier {
       text: text,
       actions: actions,
       createdAt: DateTime.now(),
+      persist: persist,
     );
     _notices.removeWhere((n) => n.key == key);
     _notices.add(notice);
@@ -250,6 +264,7 @@ class StatusBarService extends ChangeNotifier {
   }
 
   Future<void> _persistNotices() async {
-    await _prefs.setString(_historyKey, jsonEncode(_notices.map((n) => n._toJson()).toList()));
+    final persisted = _notices.where((n) => n.persist);
+    await _prefs.setString(_historyKey, jsonEncode(persisted.map((n) => n._toJson()).toList()));
   }
 }

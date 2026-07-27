@@ -241,7 +241,11 @@ class ErrorReportingService {
     scheduleMicrotask(() {
       statusBar.showNotice(
         key: 'error-reporting:first-error',
-        icon: 'error_outline',
+        // resolveIconName expects a Material Design Icons name (kebab-case)
+        // or an fa- prefixed FontAwesome one — 'error_outline' (Flutter's
+        // own Icons constant name, a different set entirely) matched
+        // neither and silently fell back to the puzzle-piece placeholder.
+        icon: 'alert-circle',
         title: 'Something went wrong',
         text: reportingEnabled
             ? 'An unexpected error occurred and was reported. The app should keep working; restart if anything looks off.'
@@ -252,6 +256,12 @@ class ErrorReportingService {
             onTap: () => unawaited(Clipboard.setData(ClipboardData(text: details))),
           ),
         ],
+        // Its whole point is the "Copy details" action, which can't survive
+        // a restart (a VoidCallback isn't serializable) — persisting it
+        // anyway just leaves a dead, button-less copy of a past error
+        // sitting in the footer indefinitely, with no way to act on it or
+        // learn what it even was.
+        persist: false,
       );
     });
   }
