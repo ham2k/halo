@@ -36,6 +36,17 @@ This is a multi-platform app for Amateur Radio Logging, called "Ham2K Logger" (o
   skips commits and test runs until the user says iteration is done, at which
   point the steps below resume.
 
+- The `/finalize` skill (`.claude/skills/finalize/SKILL.md`) covers the "work
+  has settled" step: closes out an `/iterate` cycle if one's running, makes
+  sure the PR exists and is current, runs the full test and checks suite,
+  ensures a code review has run (re-running it if more than trivial changes
+  landed since), and hands over a fresh build for the developer to check.
+
+- The `/merge` skill (`.claude/skills/merge/SKILL.md`) covers the last step:
+  rebases the branch onto the latest `dist`, resolves any conflicts, verifies
+  the full test and checks suite is green, and squash-merges the PR without
+  waiting on a recorded GitHub review — then asks what's next.
+
 - Steps when tackling a new task:
   - Open a new branch, off the latest `dist`. Look for updates to AGENTS.md.
   - Do a quick analisys of the problem, prepare a plan and open a PR to document this.
