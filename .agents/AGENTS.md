@@ -20,6 +20,10 @@ This is a multi-platform app for Amateur Radio Logging, called "Ham2K Logger" (o
 
 - Agents should always work on a worktree, with a branch off of the `dist` branch on the `app-halo-dist` origin (that branch is usually available as `dist` locally too, tracking `app-halo-dist/dist`). As new tasks come in, use new branches and rename the worktree to keep the name relevant.
 
+- **`app-halo-dist/dist` is the only base.** Never `main` or `main-public`: both are stale local-only branches, absent from every remote, and every commit on them is already in `dist` under a different SHA. Do not trust the branch a session hands you — a worktree created for you may already be on the wrong base, and nothing about it looks unusual. Check before editing:
+  `git fetch app-halo-dist dist && git rev-list --count $(git merge-base HEAD app-halo-dist/dist)..app-halo-dist/dist`
+  A large number means the branch was cut from the wrong place; re-cut it with `git checkout -b <task-name> app-halo-dist/dist` rather than rebasing. `.claude/hooks/base-branch-guard.sh` enforces this and will block edits, but the check is yours to make first.
+
 - Keep `dist` updated. Rebase your branches on top of the latest `dist` before submitting or updating a PR.
 
 - The `/next` skill (`.claude/skills/next/SKILL.md`) runs the start-of-task

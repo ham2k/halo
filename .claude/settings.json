@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "worktree": {
+    "baseRef": "fresh"
+  },
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "G=\"$(git rev-parse --show-toplevel 2>/dev/null)/.claude/hooks/base-branch-guard.sh\"; [ -x \"$G\" ] || G=\"$CLAUDE_PROJECT_DIR/.claude/hooks/base-branch-guard.sh\"; [ -x \"$G\" ] && exec \"$G\" session || exit 0",
+            "timeout": 25,
+            "statusMessage": "Checking branch base against app-halo-dist/dist"
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Edit|Write|NotebookEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "G=\"$(git rev-parse --show-toplevel 2>/dev/null)/.claude/hooks/base-branch-guard.sh\"; [ -x \"$G\" ] || G=\"$CLAUDE_PROJECT_DIR/.claude/hooks/base-branch-guard.sh\"; [ -x \"$G\" ] && exec \"$G\" guard || exit 0",
+            "timeout": 10
+          }
+        ]
+      }
+    ]
+  }
+}

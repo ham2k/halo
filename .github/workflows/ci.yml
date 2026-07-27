@@ -14,7 +14,7 @@
 # required asset directory (fresh checkouts don't have it, it's gitignored)
 # and app's own tests load real bundle content through it.
 #
-# Two tiers: pushes to the long-lived branches run the full parallel suite
+# Two tiers: pushes to `dist` run the full parallel suite
 # below; pull requests run ONLY the single `quick` job (typecheck + analyze
 # via scripts/test.sh --quick — tests are run locally before opening a PR,
 # and the full suite runs on the target branch right after the merge, where
@@ -39,7 +39,14 @@ name: CI
 # previous deployment simply stays live.
 on:
   push:
-    branches: [main, main-public, main-dist-private, dist]
+    # `dist` is the only branch this repo pushes to and the only base for new
+    # work. The list here used to also name main, main-public and
+    # main-dist-private; none of the three exists on the remote — main-dist-
+    # private was renamed to `dist`, and the other two are stale local-only
+    # branches whose every commit is already in `dist` under a different SHA
+    # (the July 2026 history rewrite). Triggers that can never fire read as
+    # coverage this workflow does not have.
+    branches: [dist]
     paths-ignore:
       - 'docs/**'
       - '**/*.md'
@@ -153,8 +160,15 @@ jobs:
           path: app/assets/extensions
           retention-days: 1
 
+  # `always() &&` is load-bearing, not decoration. A skip propagates TRANSITIVELY
+  # down a needs chain: `extensions` needs `quick`, `quick` is pull_request-only,
+  # so on a push to `dist` the skipped `quick` skipped this job too — even though
+  # `extensions` itself succeeded. Three pushes to `dist` reported a green CI in
+  # 29 seconds having run no tests at all. Gate on `extensions` explicitly
+  # instead, which is the only upstream result that should decide this.
   dart:
     needs: extensions
+    if: always() && needs.extensions.result == 'success'
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -206,8 +220,10 @@ jobs:
   # so its `flutter test` run is sharded across runners on top of the job
   # split. `flutter analyze` only runs once, on shard 0, since it isn't
   # shardable and gains nothing from repeating it per shard.
+  # `always() &&` here for the same reason as `dart` above — see that comment.
   app-test:
     needs: extensions
+    if: always() && needs.extensions.result == 'success'
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
