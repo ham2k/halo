@@ -8,3 +8,26 @@
 // HALO_EDITION override for official builds — see Local.xcconfig.sample and
 // README.md "Building locally on macOS".
 #include? "Local.xcconfig"
+
+// Keep GLOBAL symbols. Xcode's default for an iOS Release app target is
+// STRIP_STYLE = all, which removes every symbol from both the symbol table and
+// the dyld EXPORT TRIE - leaving exactly two entries, ___cxa_throw and
+// __mh_execute_header.
+//
+// That breaks the JS engine. On Apple platforms halo_quickjs is compiled INTO
+// the app binary, and Dart finds it at runtime with
+// DynamicLibrary.process().lookup('halo_qjs_new') (halo_quickjs.dart:41-46),
+// which is dlsym - and dlsym reads the export trie. Measured: after a
+// STRIP_STYLE=all strip, dlsym("halo_qjs_new") returns NOT FOUND on a binary
+// that had it a moment earlier.
+//
+// The symptom is silent and total: the app launches, the extension host never
+// starts, it retries forever, nothing is reported, and scoring, lookups, export
+// and sync are all simply absent. It ships as "the app is broken", not as a
+// missing library. macOS was unaffected - it does not strip this hard, which is
+// why only iOS failed the engine check.
+//
+// non-global still strips local and debug symbols; it only keeps the globals,
+// which is what dlsym needs. Verified with `strip -x`: symbol table and export
+// trie both intact.
+STRIP_STYLE = non-global

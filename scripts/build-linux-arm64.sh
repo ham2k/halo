@@ -103,6 +103,19 @@ assert_exports_engine() {
   printf '  OK   %-52s %s\n' "$(basename "$f")" "exports halo_qjs_new"
 }
 
+# Ubuntu images run unattended-upgrades in the background, which holds the dpkg
+# frontend lock. Every apt-get here raced it and one lost:
+#
+#   E: Could not get lock /var/lib/dpkg/lock-frontend. It is held by
+#      process 4976 (unattended-upgr)
+#   Build failed :| ... exited with status code 100
+#
+# apt has supported waiting for the lock since 1.9.11, which is what this option
+# does; there is no need to kill the daemon or poll for the lockfile. Applied to
+# EVERY apt-get, not just the one that happened to lose the race - which one
+# loses is pure timing.
+APT_WAIT=(-o DPkg::Lock::Timeout=600)
+
 # ---------------------------------------------------------------------------
 say "Flutter root and engine revision"
 # ---------------------------------------------------------------------------
@@ -147,8 +160,8 @@ say "Emulate gen_snapshot"
 # real reason `build linux` refuses. Its only dynamic dependencies are glibc
 # (no GTK, no X11, no ICU), so qemu-user-static plus the cross libc is enough:
 # no binfmt_misc registration, no privileged container.
-sudo apt-get update -qq
-sudo apt-get install -y -qq qemu-user-static libc6-arm64-cross
+sudo apt-get "${APT_WAIT[@]}" update -qq
+sudo apt-get "${APT_WAIT[@]}" install -y -qq qemu-user-static libc6-arm64-cross
 GEN_SNAPSHOT="$ARTIFACTS/linux-arm64-release/gen_snapshot"
 if [ ! -f "$GEN_SNAPSHOT.real" ]; then
   sudo mv "$GEN_SNAPSHOT" "$GEN_SNAPSHOT.real"
@@ -244,7 +257,7 @@ PIN
   # confusing dependency-resolution error. Note `apt-get update -qq` can exit 0
   # despite "Some index files failed to download" - which is very likely why
   # the probe's B step passed while this same setup failed here.
-  sudo apt-get update
+  sudo apt-get "${APT_WAIT[@]}" update
 fi
 
 # Mirrors the x64 dependency list in app_dist/ci/build-linux.sh. libcurl is for
@@ -270,7 +283,7 @@ fi
 # required, because clang cross-compiles by flag but links against the crt
 # files, libgcc and libstdc++ that the GNU cross toolchain provides, and uses
 # its binutils for as/ld.
-sudo apt-get install -y -qq -o Dpkg::Options::=--force-overwrite \
+sudo apt-get "${APT_WAIT[@]}" install -y -qq -o Dpkg::Options::=--force-overwrite \
   clang \
   crossbuild-essential-arm64 \
   libgtk-3-dev:arm64 libglib2.0-dev:arm64 \
@@ -311,7 +324,7 @@ export PKG_CONFIG_SYSROOT_DIR=/
 # fails with "file in wrong format". Install the arm64 JRE for its libjvm.so.
 # The headers stay the host's: OpenJDK's jni.h and linux/jni_md.h use only
 # standard types and are identical across x86-64 and aarch64.
-sudo apt-get install -y -qq -o Dpkg::Options::=--force-overwrite openjdk-17-jre-headless:arm64
+sudo apt-get "${APT_WAIT[@]}" install -y -qq -o Dpkg::Options::=--force-overwrite openjdk-17-jre-headless:arm64
 ARM_JVM=$(find /usr/lib/jvm -name libjvm.so -path '*arm64*' 2>/dev/null | head -1)
 # Check the find result BEFORE dirname: `dirname ""` prints "." and exits 0, so
 # folding them into one line would smuggle a bogus "." past the guard below and
