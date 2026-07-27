@@ -294,20 +294,21 @@ void main() {
     expect(find.byIcon(Icons.tune), findsOneWidget, reason: 'QSOs is the selected tab on mount');
 
     // The button's own space stays reserved even when hidden (so the tab
-    // doesn't reflow on selection changes) via Visibility(maintainState:
-    // true) — which keeps the Icon mounted in the widget tree, just not
-    // painted or hit-testable. So `find.byIcon` alone can't tell hidden
-    // from shown; check the Visibility flag that actually controls it.
-    Visibility tuneVisibility() =>
-        tester.widget<Visibility>(find.ancestor(of: find.byIcon(Icons.tune), matching: find.byType(Visibility)));
+    // doesn't reflow on selection changes) — it fades via AnimatedOpacity
+    // rather than actually leaving the tree, which keeps the Icon mounted
+    // regardless. So `find.byIcon` alone can't tell hidden from shown;
+    // check the opacity that actually controls it (pumpAndSettle above
+    // and below waits out the fade, so it's always fully settled here).
+    double tuneOpacity() =>
+        tester.widget<AnimatedOpacity>(find.ancestor(of: find.byIcon(Icons.tune), matching: find.byType(AnimatedOpacity))).opacity;
 
     await tester.tap(find.text('SPOTS'));
     await tester.pumpAndSettle();
-    expect(tuneVisibility().visible, isFalse, reason: 'hidden once QSOs is no longer the active tab');
+    expect(tuneOpacity(), 0, reason: 'hidden once QSOs is no longer the active tab');
 
     await tester.tap(find.text('0 QSOs'));
     await tester.pumpAndSettle();
-    expect(tuneVisibility().visible, isTrue, reason: 'reappears once QSOs is selected again');
+    expect(tuneOpacity(), 1, reason: 'reappears once QSOs is selected again');
 
     // The menu itself is unchanged — same toggle, same effect.
     await tester.tap(find.byIcon(Icons.tune));

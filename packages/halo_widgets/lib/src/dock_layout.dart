@@ -27,6 +27,7 @@ import 'icon_resolver.dart';
 import 'layout.dart';
 import 'pane_divider.dart';
 import 'resizable_split_view.dart' show PaneSafeArea;
+import 'tab_chrome.dart';
 import 'ui_scale.dart';
 
 /// A node in the dock tree: either a [DockSplit] (row/column of children
@@ -159,7 +160,13 @@ class DockLayoutViewState extends State<DockLayoutView> {
   // Dock splits use the shared solid divider (pane_divider.dart) — same
   // header-colored bar as ResizableSplitView's default style.
   static const double _dividerExtent = paneDividerWidth;
-  static const double _headerHeight = 40.0;
+  // kMinInteractiveDimension (48), not an arbitrary compact height: a
+  // shorter header squeezes any IconButton placed in it (e.g. a module's
+  // tabActions trailing widget) below Material's own minimum tap target,
+  // silently shrinking it — matches kTextTabBarHeight, which the narrow
+  // tab bar and the fixed split's title bar both already use for the same
+  // reason.
+  static const double _headerHeight = kMinInteractiveDimension;
   static const double _minPaneExtent = 120.0;
 
   /// Same trick as ResizableSplitView._platformViewHitWashAlpha: a painted
@@ -536,31 +543,25 @@ class _DockTab extends StatelessWidget {
     required this.onDragEnded,
   });
 
+  Widget _labelRow(Color labelColor, {required TextStyle? style}) => Row(
+    mainAxisSize: MainAxisSize.min,
+    children: [
+      if (showHandle)
+        Padding(
+          padding: const EdgeInsets.only(right: 4),
+          child: Icon(resolveIconName('drag-vertical'), size: 16, color: labelColor.withValues(alpha: 0.6)),
+        ),
+      Text(title, style: style?.copyWith(color: labelColor)),
+    ],
+  );
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final tabTheme = theme.tabBarTheme;
-    final labelColor = (selected ? tabTheme.labelColor : tabTheme.unselectedLabelColor) ?? theme.colorScheme.onPrimary;
-    final label = Container(
-      decoration: BoxDecoration(
-        border: Border(
-          bottom: BorderSide(color: selected ? (tabTheme.indicatorColor ?? labelColor) : Colors.transparent, width: 3),
-        ),
-      ),
-      padding: const EdgeInsets.symmetric(horizontal: 12),
-      alignment: Alignment.center,
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          if (showHandle)
-            Padding(
-              padding: const EdgeInsets.only(right: 4),
-              child: Icon(resolveIconName('drag-vertical'), size: 16, color: labelColor.withValues(alpha: 0.6)),
-            ),
-          Text(title, style: theme.textTheme.titleSmall?.copyWith(color: labelColor)),
-        ],
-      ),
-    );
+    // Only used for the drag ghost below — the live tab's own label color
+    // comes from TabChrome, which resolves the same way.
+    final ghostLabelColor = (selected ? tabTheme.labelColor : tabTheme.unselectedLabelColor) ?? theme.colorScheme.onPrimary;
     return MouseRegion(
       cursor: SystemMouseCursors.grab,
       child: Draggable<String>(
@@ -578,8 +579,24 @@ class _DockTab extends StatelessWidget {
             child: Text(title, style: theme.textTheme.titleSmall?.copyWith(color: theme.colorScheme.onPrimary)),
           ),
         ),
-        childWhenDragging: Opacity(opacity: 0.35, child: label),
-        child: InkWell(onTap: onTap, child: label),
+        // Not TabChrome here: while its counterpart is being dragged
+        // elsewhere, this dimmed placeholder shouldn't itself be tappable
+        // or announced as a tab.
+        childWhenDragging: Opacity(
+          opacity: 0.35,
+          child: Container(
+            decoration: TabChrome.indicatorDecoration(selected: selected, labelColor: ghostLabelColor, tabTheme: tabTheme),
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            alignment: Alignment.center,
+            child: _labelRow(ghostLabelColor, style: theme.textTheme.titleSmall),
+          ),
+        ),
+        child: TabChrome(
+          selected: selected,
+          semanticLabel: title,
+          onTap: onTap,
+          builder: (context, labelColor) => _labelRow(labelColor, style: Theme.of(context).textTheme.titleSmall),
+        ),
       ),
     );
   }

@@ -188,6 +188,13 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
   /// thread it down explicitly.
   TabController? _tabController;
 
+  /// Both layouts always show exactly 3 tabs — one primary tab (QSOs
+  /// narrow / Info wide) plus Spots and Map — which is why the call site
+  /// below can't just pass `tabs.length`: it has to run before `tabs` is
+  /// built (see that call site's own comment). Keep this in sync if a tab
+  /// is ever added to or removed from either layout's list.
+  static const int _kTabCount = 3;
+
   void _updateTabControllerIfNeeded(int requiredLength) {
     if (_tabController == null || _tabController!.length != requiredLength) {
       final oldIndex = _tabController?.index ?? 0;
@@ -909,12 +916,20 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
   /// layout (the dock module header, the narrow tab bar's QSOs tab, the
   /// fixed wide split's new logging-pane title bar) — same content
   /// everywhere, so they can't drift.
-  Widget _buildLoggingSettingsButton(List<Qso> qsos) {
+  Widget _buildLoggingSettingsButton(List<Qso> qsos, {BuildContext? context}) {
+    // Defaults to this State's own context, but the dock layout's
+    // `tabActions` is a `WidgetBuilder` specifically so its call site can
+    // pass a context at the module's real tree position instead (see
+    // `_buildGroup`'s own Builder, ham2k/app-halo-dist#205) — using the
+    // wrong one is currently harmless (no nested Theme/Localizations
+    // override exists anywhere in the dock tree today) but would silently
+    // read the wrong ambient values the day one is added.
+    final effectiveContext = context ?? this.context;
     // Every call site sits on a header-colored surface (the dock module
     // header, the tab bar riding on the AppBar's own color, the wide
     // split's new title bar) — same resolution the headers themselves use
     // for their foreground, so the icon reads against all three.
-    final theme = Theme.of(context);
+    final theme = Theme.of(effectiveContext);
     final iconColor = theme.appBarTheme.foregroundColor ?? theme.colorScheme.onPrimary;
     // A plain PopupMenuButton picks left-vs-right placement from a single
     // fixed `offset`, but that offset only reads as "80% of the button
@@ -933,7 +948,7 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
         // to be set explicitly to keep the button accessible. As a
         // semanticLabel, not a tooltip — the app shows no hover labels
         // (docs/design/user-interface.md).
-        icon: Icon(Icons.tune, color: iconColor, semanticLabel: MaterialLocalizations.of(context).showMenuTooltip),
+        icon: Icon(Icons.tune, color: iconColor, semanticLabel: MaterialLocalizations.of(effectiveContext).showMenuTooltip),
         onPressed: () => _showLoggingSettingsMenu(buttonContext, _loggingSettingsMenuItems(qsos)),
       ),
     );
@@ -1053,11 +1068,11 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
     final theme = Theme.of(context);
     final labelStyle = theme.textTheme.titleSmall;
     final qsosLabel = context.t.operation.tabs.qsos(count: formatNumber(realQsoCount));
-    final qsosLabelWidth = (TextPainter(
-          text: TextSpan(text: qsosLabel, style: labelStyle?.copyWith(fontWeight: FontWeight.bold)),
-          textDirection: Directionality.of(context),
-        )..layout())
-        .width;
+    // textWidth (not a bare TextPainter): it folds in the ambient
+    // DefaultTextStyle and text scaler the same way the actual rendered
+    // Text does, so this reservation doesn't under-measure under OS/browser
+    // accessibility text scaling the way a raw TextPainter would.
+    final qsosLabelWidth = textWidth(context, qsosLabel, (labelStyle ?? const TextStyle()).copyWith(fontWeight: FontWeight.bold));
     // The button's own width, reserved on both sides of the centered label
     // (see the doc comment above).
     final qsosContentWidth = qsosLabelWidth + kMinInteractiveDimension * 2;
@@ -1137,45 +1152,51 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
     Widget? trailing,
     EdgeInsetsGeometry padding = kTabLabelPadding,
   }) {
-    final theme = Theme.of(context);
-    final tabTheme = theme.tabBarTheme;
     final selected = _tabController!.index == index;
-    final labelColor = (selected ? tabTheme.labelColor : tabTheme.unselectedLabelColor) ?? theme.colorScheme.onPrimary;
-    final text = Text(label, style: labelStyle?.copyWith(color: labelColor, fontWeight: selected ? FontWeight.bold : null));
-    return InkWell(
+    return TabChrome(
+      selected: selected,
+      semanticLabel: label,
+      indicatorWidth: 4,
+      padding: padding,
       onTap: () => _tabController!.animateTo(index),
-      overlayColor: tabTheme.overlayColor,
-      child: Container(
-        decoration: BoxDecoration(
-          border: Border(
-            bottom: BorderSide(color: selected ? (tabTheme.indicatorColor ?? labelColor) : Colors.transparent, width: 4),
-          ),
-        ),
-        padding: padding,
-        child: trailing == null
-            ? Center(child: text)
-            : Stack(
-                alignment: Alignment.center,
-                children: [
-                  Center(child: text),
-                  Align(
-                    alignment: Alignment.centerRight,
-                    // Reserved width already accounts for the button
-                    // whether it's showing or not (see _narrowTabBar's doc
-                    // comment) — maintainSize keeps that space instead of
-                    // collapsing it, so the tab doesn't reflow when the
-                    // selection changes.
-                    child: Visibility(
-                      visible: selected,
-                      maintainSize: true,
-                      maintainAnimation: true,
-                      maintainState: true,
+      builder: (context, labelColor) {
+        final text = Text(label, style: labelStyle?.copyWith(color: labelColor, fontWeight: selected ? FontWeight.bold : null));
+        if (trailing == null) return Center(child: text);
+        return Stack(
+          alignment: Alignment.center,
+          children: [
+            Center(child: text),
+            Align(
+              alignment: Alignment.centerRight,
+              // Reserved width already accounts for the button whether
+              // it's showing or not (see _narrowTabBar's doc comment) —
+              // AnimatedOpacity never collapses its own layout space
+              // either way, so the tab doesn't reflow when the selection
+              // changes. IgnorePointer keeps the faded-out button from
+              // eating taps meant for the tab underneath it (opacity alone
+              // doesn't affect hit testing); ExcludeSemantics keeps a
+              // screen reader from landing on a "Show menu" control that
+              // isn't actually there to look at; ExcludeFocus does the
+              // same for keyboard/switch-access focus traversal, which
+              // IgnorePointer alone doesn't block.
+              child: ExcludeSemantics(
+                excluding: !selected,
+                child: ExcludeFocus(
+                  excluding: !selected,
+                  child: IgnorePointer(
+                    ignoring: !selected,
+                    child: AnimatedOpacity(
+                      opacity: selected ? 1 : 0,
+                      duration: const Duration(milliseconds: 150),
                       child: trailing,
                     ),
                   ),
-                ],
+                ),
               ),
-      ),
+            ),
+          ],
+        );
+      },
     );
   }
 
@@ -1218,7 +1239,7 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
         'spots': spotsPanel,
         'map': mapPanel,
       },
-      tabActions: {'logging': (context) => _buildLoggingSettingsButton(qsos)},
+      tabActions: {'logging': (context) => _buildLoggingSettingsButton(qsos, context: context)},
       onSpecChanged: (node) {
         _dockSpec = node;
         widget.services.settings.setLayoutData(LayoutKeys.operationDock, node.toJson());
@@ -1339,7 +1360,7 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
         // which read `_tabController!` directly — the controller must
         // already be this build's final instance, not the one about to be
         // replaced, by the time any of them are constructed.
-        _updateTabControllerIfNeeded(3);
+        _updateTabControllerIfNeeded(_kTabCount);
 
         // Wide: Info, Spots, Map — logging has its own pane in the split.
         // Narrow: QSOs, Spots, Map — logging is what the view is for, and
@@ -1490,10 +1511,10 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
               // below.
               bottom: isTwoPane ? null : _narrowTabBar(realQsoCount, qsos),
             ),
-          // One tab set either way, always 4 tabs on the one controller —
-          // it is never recreated, so the selected index carries across a
-          // flip: index 0 maps QSOs ↔ Info, which is sensible since logging
-          // is always visible in the wide split.
+          // One tab set either way, always _kTabCount tabs on the one
+          // controller — it is never recreated, so the selected index
+          // carries across a flip: index 0 maps QSOs ↔ Info, which is
+          // sensible since logging is always visible in the wide split.
           body: PaneSafeArea.root(
             context,
             // Real device safe-area insets (notch, home indicator) bubble
@@ -1528,26 +1549,35 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
                               Theme.of(context).appBarTheme.backgroundColor ?? Theme.of(context).colorScheme.primary,
                           child: SizedBox(
                             height: kTextTabBarHeight,
-                            child: Padding(
-                              padding: EdgeInsets.only(left: PaneSafeArea.leftOf(context)),
-                              child: Row(
-                                children: [
-                                  Expanded(
-                                    child: Padding(
-                                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                                      child: Text(
-                                        context.t.operation.tabs.qsos(count: formatNumber(realQsoCount)),
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                        style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                                          color: Theme.of(context).appBarTheme.foregroundColor ??
-                                              Theme.of(context).colorScheme.onPrimary,
+                            // A Builder, not this method's own `context`: that
+                            // context is an ANCESTOR of the `PaneSafeArea.root`
+                            // wrapping the whole body below, so `leftOf` would
+                            // always resolve to its `?? 0` default instead of
+                            // the real inset — the same mistake dock_layout.dart's
+                            // `_buildGroup` already hit and fixed this way
+                            // (ham2k/app-halo-dist#205).
+                            child: Builder(
+                              builder: (context) => Padding(
+                                padding: EdgeInsets.only(left: PaneSafeArea.leftOf(context)),
+                                child: Row(
+                                  children: [
+                                    Expanded(
+                                      child: Padding(
+                                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                                        child: Text(
+                                          context.t.operation.tabs.qsos(count: formatNumber(realQsoCount)),
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                                            color: Theme.of(context).appBarTheme.foregroundColor ??
+                                                Theme.of(context).colorScheme.onPrimary,
+                                          ),
                                         ),
                                       ),
                                     ),
-                                  ),
-                                  _buildLoggingSettingsButton(qsos),
-                                ],
+                                    _buildLoggingSettingsButton(qsos),
+                                  ],
+                                ),
                               ),
                             ),
                           ),
