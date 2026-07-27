@@ -1,0 +1,8 @@
+{
+  "invalidReference": "Invalid reference",
+  "unknownReference": "Unknown tower",
+  "activationControl": "TOTA activation",
+  "huntingControl": "TOTA",
+  "dataFileName": "TOTA: All Towers",
+  "dataFileDescription": "Database of all TOTA references"
+}

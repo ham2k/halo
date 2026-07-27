@@ -347,6 +347,367 @@ void main() {
     }, timeout: const Timeout(Duration(seconds: 60)));
   });
 
+  group('the key-gated awards', () {
+    // Every field name below is transcribed from app-polo's own request
+    // builders, not inferred. Inferring them is how three of these shipped
+    // wrong: LLOTA posted to the feed's collection instead of `spots/spot`,
+    // and TOTA both read and wrote field names the API has never used.
+
+    test('wwff posts the fields the award names', () async {
+      if (missing('wwff')) {
+        markTestSkipped('bundles not built');
+        return;
+      }
+      final rec = recorder('{}', status: 201);
+      final host = await ExtensionHost.start(
+        kernelSource: bundle('kernel').readAsStringSync(),
+        extensions: [ExtensionBundle(key: 'wwff', source: bundle('wwff').readAsStringSync())],
+        secrets: const {'wwff': {'WWFF_API_KEY': 'k'}},
+        fetchAllowlists: const {'wwff': ['wwff.co', 'spots.wwff.co']},
+        httpClient: rec.client,
+        onHostCall: (m, p) async => null,
+      );
+      addTearDown(host.dispose);
+
+      final result = await host.invokeHook('spots', key: 'wwff', method: 'postSelfSpot', args: {
+        'operation': {'stationCall': 'W1AW', 'refs': [{'type': 'wwffActivation', 'ref': 'KFF-0001'}]},
+        'freq': 14285,
+        'mode': 'SSB',
+        'comment': 'up 5',
+      }, timeout: const Duration(seconds: 20)) as Map;
+
+      expect(result['ok'], true);
+      final body = jsonDecode(rec.sent.single.body) as Map<String, dynamic>;
+      expect(rec.sent.single.url.path, '/api/spots/add');
+      expect(body['activator'], 'W1AW');
+      expect(body['reference'], 'KFF-0001');
+      expect(body['frequency_khz'], 14285);
+      expect(body['remarks'], 'up 5');
+    }, timeout: const Timeout(Duration(seconds: 60)));
+
+    test('llota posts to spots/spot with operator_callsign, not the feed collection', () async {
+      if (missing('llota')) {
+        markTestSkipped('bundles not built');
+        return;
+      }
+      final rec = recorder('{}', status: 201);
+      final host = await ExtensionHost.start(
+        kernelSource: bundle('kernel').readAsStringSync(),
+        extensions: [ExtensionBundle(key: 'llota', source: bundle('llota').readAsStringSync())],
+        secrets: const {'llota': {'LLOTA_API_KEY': 'k'}},
+        fetchAllowlists: const {'llota': ['llota.app']},
+        httpClient: rec.client,
+        onHostCall: (m, p) async => null,
+      );
+      addTearDown(host.dispose);
+
+      await host.invokeHook('spots', key: 'llota', method: 'postSelfSpot', args: {
+        'operation': {
+          'stationCall': 'W1AW',
+          'refs': [
+            {'type': 'llotaActivation', 'ref': 'LLUS-0001'},
+            {'type': 'llotaActivation', 'ref': 'LLUS-0002'},
+          ],
+        },
+        'freq': 14285,
+      }, timeout: const Duration(seconds: 20));
+
+      // `spots/spot`, not `spots` — that one is the feed, and POSTing to it
+      // silently does nothing useful.
+      expect(rec.sent.single.url.path, '/api/public/spots/spot');
+      final body = jsonDecode(rec.sent.single.body) as Map<String, dynamic>;
+      expect(body['callsign'], 'W1AW');
+      expect(body['operator_callsign'], 'W1AW');
+      expect(body['reference'], 'LLUS-0001');
+      // The endpoint takes one lake, so the rest go in the comment.
+      expect(body['comments'], contains('2-fer: LLUS-0001 LLUS-0002'));
+      expect(body['source'], isNotEmpty);
+    }, timeout: const Timeout(Duration(seconds: 60)));
+
+    test('tota reads callsign/frequency/tower_ref/time_utc from its feed', () async {
+      if (missing('tota')) {
+        markTestSkipped('bundles not built');
+        return;
+      }
+      // Read `call`/`freq`/`ref`/`time` instead and every spot comes back
+      // blank — which is exactly what happened.
+      final rec = recorder('[{"callsign":"ok1abc","frequency":14285,"mode":"ssb",'
+          '"tower_ref":"OKR-0001","time_utc":"2026-07-01T12:00:00Z","comment":"hi"}]');
+      final host = await ExtensionHost.start(
+        kernelSource: bundle('kernel').readAsStringSync(),
+        extensions: [ExtensionBundle(key: 'tota', source: bundle('tota').readAsStringSync())],
+        secrets: const {'tota': {'TOTA_API_KEY': 'k'}},
+        fetchAllowlists: const {'tota': ['rozhledny.eu', 'www.rozhledny.eu']},
+        httpClient: rec.client,
+        onHostCall: (m, p) async => null,
+      );
+      addTearDown(host.dispose);
+
+      final spots = (await host.invokeHook('spots', key: 'tota', method: 'fetchSpots',
+          args: {'online': true}, timeout: const Duration(seconds: 20)) as List).cast<Map>();
+
+      expect((spots.single['their'] as Map)['call'], 'OK1ABC');
+      expect(spots.single['freq'], 14285);
+      expect((spots.single['refs'] as List).single, {'ref': 'OKR-0001', 'type': 'tota'});
+      expect((spots.single['spot'] as Map)['timeInMillis'], isNot(0));
+    }, timeout: const Timeout(Duration(seconds: 60)));
+
+    test('tota self-spots with a POST body, one per tower', () async {
+      if (missing('tota')) {
+        markTestSkipped('bundles not built');
+        return;
+      }
+      final rec = recorder('{}');
+      final host = await ExtensionHost.start(
+        kernelSource: bundle('kernel').readAsStringSync(),
+        extensions: [ExtensionBundle(key: 'tota', source: bundle('tota').readAsStringSync())],
+        secrets: const {'tota': {'TOTA_API_KEY': 'tota-secret'}},
+        fetchAllowlists: const {'tota': ['rozhledny.eu', 'www.rozhledny.eu']},
+        httpClient: rec.client,
+        onHostCall: (m, p) async => null,
+      );
+      addTearDown(host.dispose);
+
+      final result = await host.invokeHook('spots', key: 'tota', method: 'postSelfSpot', args: {
+        'operation': {
+          'stationCall': 'OK1ABC',
+          'refs': [
+            {'type': 'totaActivation', 'ref': 'OKR-0001'},
+            {'type': 'totaActivation', 'ref': 'OKR-0002'},
+          ],
+        },
+        'freq': 14285,
+        'mode': 'SSB',
+      }, timeout: const Duration(seconds: 20)) as Map;
+
+      expect(result['ok'], true);
+      // The endpoint takes a single tower_ref, so an n-fer is several posts.
+      expect(rec.sent.length, 2);
+      expect(rec.sent.first.method, 'POST');
+      // Only the KEY rides in the query string.
+      expect(rec.sent.first.url.queryParameters['key'], 'tota-secret');
+      final body = jsonDecode(rec.sent.first.body) as Map<String, dynamic>;
+      expect(body['callsign'], 'OK1ABC');
+      expect(body['tower_ref'], 'OKR-0001');
+      expect(body['frequency'], 14285);
+      expect(jsonDecode(rec.sent[1].body)['tower_ref'], 'OKR-0002');
+    }, timeout: const Timeout(Duration(seconds: 60)));
+  });
+
+  group('what the award considers a failure', () {
+    // All three divergences found by reading app-polo's own `*PostSelfSpot.js`
+    // rather than the API docs. Each makes HaLo stricter than the award is, and
+    // each is invisible until an operator is standing on a hill wondering why
+    // the app says their spot failed.
+
+    Future<ExtensionHost> keyed(String key, List<String> domains, http.Client client) async {
+      final host = await ExtensionHost.start(
+        kernelSource: bundle('kernel').readAsStringSync(),
+        extensions: [ExtensionBundle(key: key, source: bundle(key).readAsStringSync())],
+        secrets: {key: {'${key.toUpperCase()}_API_KEY': 'k'}},
+        fetchAllowlists: {key: domains},
+        httpClient: client,
+        onHostCall: (m, p) async => null,
+      );
+      addTearDown(host.dispose);
+      return host;
+    }
+
+    test('an unset mode is sent as null, not guessed as SSB', () async {
+      if (missing('wwff') || missing('tota')) {
+        markTestSkipped('bundles not built');
+        return;
+      }
+      // app-polo passes `vfo.mode` straight through for both of these. Telling
+      // the cluster SSB when the activator is on CW sends hunters to the wrong
+      // mode. (LLOTA is the exception and keeps its default — polo's own
+      // LLOTAPostSpotAPI really does write `mode ?? 'SSB'`.)
+      final wwff = recorder('{}');
+      await (await keyed('wwff', ['wwff.co', 'spots.wwff.co'], wwff.client))
+          .invokeHook('spots', key: 'wwff', method: 'postSelfSpot', args: {
+        'operation': {'stationCall': 'W1AW', 'refs': [{'type': 'wwffActivation', 'ref': 'KFF-0001'}]},
+        'freq': 14285,
+      }, timeout: const Duration(seconds: 20));
+      expect(jsonDecode(wwff.sent.single.body)['mode'], isNull);
+
+      final tota = recorder('{}');
+      await (await keyed('tota', ['rozhledny.eu', 'www.rozhledny.eu'], tota.client))
+          .invokeHook('spots', key: 'tota', method: 'postSelfSpot', args: {
+        'operation': {'stationCall': 'OK1ABC', 'refs': [{'type': 'totaActivation', 'ref': 'OKR-0001'}]},
+        'freq': 14285,
+      }, timeout: const Duration(seconds: 20));
+      expect(jsonDecode(tota.sent.single.body)['mode'], isNull);
+    }, timeout: const Timeout(Duration(seconds: 90)));
+
+    test('a duplicate spot is a success, not an error', () async {
+      if (missing('wwff') || missing('tota')) {
+        markTestSkipped('bundles not built');
+        return;
+      }
+      // Re-spotting is routine — a new comment, back after a break. app-polo
+      // matches these messages by name and swallows them; reporting them paints
+      // a red failure over a spot that is fine, and invites a pointless retry.
+      final wwff = recorder('{"message":"Duplicate spot detected"}', status: 400);
+      final wwffResult = await (await keyed('wwff', ['wwff.co', 'spots.wwff.co'], wwff.client))
+          .invokeHook('spots', key: 'wwff', method: 'postSelfSpot', args: {
+        'operation': {'stationCall': 'W1AW', 'refs': [{'type': 'wwffActivation', 'ref': 'KFF-0001'}]},
+        'freq': 14285, 'mode': 'SSB',
+      }, timeout: const Duration(seconds: 20)) as Map;
+      expect(wwffResult['ok'], true);
+
+      final tota = recorder('{"message":"Duplicate self-spot"}', status: 400);
+      final totaResult = await (await keyed('tota', ['rozhledny.eu', 'www.rozhledny.eu'], tota.client))
+          .invokeHook('spots', key: 'tota', method: 'postSelfSpot', args: {
+        'operation': {'stationCall': 'OK1ABC', 'refs': [{'type': 'totaActivation', 'ref': 'OKR-0001'}]},
+        'freq': 14285, 'mode': 'SSB',
+      }, timeout: const Duration(seconds: 20)) as Map;
+      expect(totaResult['ok'], true);
+
+      // A real error is still an error.
+      final broken = recorder('{"message":"Bad reference"}', status: 400);
+      final brokenResult = await (await keyed('tota', ['rozhledny.eu', 'www.rozhledny.eu'], broken.client))
+          .invokeHook('spots', key: 'tota', method: 'postSelfSpot', args: {
+        'operation': {'stationCall': 'OK1ABC', 'refs': [{'type': 'totaActivation', 'ref': 'OKR-0001'}]},
+        'freq': 14285, 'mode': 'SSB',
+      }, timeout: const Duration(seconds: 20)) as Map;
+      expect(brokenResult['ok'], false);
+    }, timeout: const Timeout(Duration(seconds: 120)));
+
+    test('every tower is attempted even when one fails, and the failure is named', () async {
+      if (missing('tota')) {
+        markTestSkipped('bundles not built');
+        return;
+      }
+      // The one that compounds: TOTA posts one request per tower, and returning
+      // early left a tower the operator IS activating unspotted, with nothing
+      // saying which. Tower 2 fails here; tower 3 must still go out.
+      final sent = <http.Request>[];
+      final client = MockClient((request) async {
+        sent.add(request);
+        final ref = jsonDecode(request.body)['tower_ref'];
+        return ref == 'OKR-0002'
+            ? http.Response('{"message":"Server exploded"}', 500)
+            : http.Response('{}', 200);
+      });
+      final host = await keyed('tota', ['rozhledny.eu', 'www.rozhledny.eu'], client);
+
+      final result = await host.invokeHook('spots', key: 'tota', method: 'postSelfSpot', args: {
+        'operation': {
+          'stationCall': 'OK1ABC',
+          'refs': [
+            {'type': 'totaActivation', 'ref': 'OKR-0001'},
+            {'type': 'totaActivation', 'ref': 'OKR-0002'},
+            {'type': 'totaActivation', 'ref': 'OKR-0003'},
+          ],
+        },
+        'freq': 14285, 'mode': 'SSB',
+      }, timeout: const Duration(seconds: 20)) as Map;
+
+      expect(sent.length, 3, reason: 'all three towers attempted');
+      expect(sent.map((r) => jsonDecode(r.body)['tower_ref']), ['OKR-0001', 'OKR-0002', 'OKR-0003']);
+      expect(result['ok'], false);
+      // Named, because "one of your three failed" is not actionable. The URL
+      // carries the key and must never appear here.
+      expect(result['message'], contains('OKR-0002'));
+      expect(result['message'], isNot(contains('key=')));
+    }, timeout: const Timeout(Duration(seconds: 90)));
+  });
+
+  group('an empty callsign is not a callsign', () {
+    // The case a `??` chain misses everywhere it appears: `'' ?? fallback` is
+    // `''`, so an empty string defeats the fallback that an ABSENT key takes
+    // correctly. `models.dart`'s `ourCall` getter coerces a null column to '',
+    // which is the likelier of the two shapes for "no callsign yet".
+    //
+    // Two consequences, both silent: the operator's own callsign is dropped
+    // instead of used as the spotter, and a spot can go out naming no station
+    // at all — which reaches everybody watching.
+
+    Future<ExtensionHost> keyed(String key, List<String> domains, http.Client client) async {
+      final host = await ExtensionHost.start(
+        kernelSource: bundle('kernel').readAsStringSync(),
+        extensions: [ExtensionBundle(key: key, source: bundle(key).readAsStringSync())],
+        secrets: {key: {'${key.toUpperCase()}_API_KEY': 'k'}},
+        fetchAllowlists: {key: domains},
+        httpClient: client,
+        onHostCall: (m, p) async => null,
+      );
+      addTearDown(host.dispose);
+      return host;
+    }
+
+    test('wwff falls back to the spotter rather than dropping it', () async {
+      if (missing('wwff')) {
+        markTestSkipped('bundles not built');
+        return;
+      }
+      final rec = recorder('{}');
+      final host = await keyed('wwff', ['wwff.co', 'spots.wwff.co'], rec.client);
+
+      await host.invokeHook('spots', key: 'wwff', method: 'postOtherSpot', args: {
+        'qso': {
+          'their': {'call': 'M0XYZ'},
+          'our': {'call': ''},
+          'freq': 7120,
+          'refs': [{'type': 'wwff', 'ref': 'GFF-0001'}],
+        },
+        'spotterCall': 'W1AW',
+      }, timeout: const Duration(seconds: 20));
+
+      expect(rec.sent.single.body, contains('W1AW'));
+    }, timeout: const Timeout(Duration(seconds: 60)));
+
+    test('llota falls back to the spotter rather than dropping it', () async {
+      if (missing('llota')) {
+        markTestSkipped('bundles not built');
+        return;
+      }
+      final rec = recorder('{}', status: 201);
+      final host = await keyed('llota', ['llota.app'], rec.client);
+
+      await host.invokeHook('spots', key: 'llota', method: 'postOtherSpot', args: {
+        'qso': {
+          'their': {'call': 'M0XYZ'},
+          'our': {'call': '  '},
+          'freq': 7120,
+          'refs': [{'type': 'llota', 'ref': 'LLUS-0001'}],
+        },
+        'spotterCall': 'W1AW',
+      }, timeout: const Duration(seconds: 20));
+
+      expect(jsonDecode(rec.sent.single.body)['operator_callsign'], 'W1AW');
+    }, timeout: const Timeout(Duration(seconds: 60)));
+
+    test('none of them post a spot naming no station', () async {
+      if (missing('wwff') || missing('llota') || missing('tota')) {
+        markTestSkipped('bundles not built');
+        return;
+      }
+      // TOTA has no spotter field of its own, so the empty CALLSIGN is the
+      // whole exposure there — and it is the one that reaches the cluster.
+      for (final (key, domains, hunting) in [
+        ('wwff', ['wwff.co', 'spots.wwff.co'], 'wwff'),
+        ('llota', ['llota.app'], 'llota'),
+        ('tota', ['rozhledny.eu', 'www.rozhledny.eu'], 'tota'),
+      ]) {
+        final rec = recorder('{}');
+        final host = await keyed(key, domains, rec.client);
+
+        final result = await host.invokeHook('spots', key: key, method: 'postOtherSpot', args: {
+          'qso': {
+            'their': {'call': ''},
+            'freq': 7120,
+            'refs': [{'type': hunting, 'ref': 'X-0001'}],
+          },
+          'spotterCall': 'W1AW',
+        }, timeout: const Duration(seconds: 20)) as Map;
+
+        expect(result['ok'], false, reason: '$key should refuse');
+        expect(rec.sent, isEmpty, reason: '$key should send nothing');
+      }
+    }, timeout: const Timeout(Duration(seconds: 120)));
+  });
+
   test('a feed the manifest never declared is still blocked', () async {
     if (missing('zlota')) {
       markTestSkipped('bundles not built');

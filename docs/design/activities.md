@@ -1,6 +1,6 @@
 # Porting app-polo's activity extensions
 
-Status: **A0–A2 built; A3 next**. Tracking issue: ham2k/app-halo-dist#148.
+Status: **A0–A3 built; `custom` and `satellites` remain**. Tracking issue: ham2k/app-halo-dist#148.
 
 Companion to [contests.md](contests.md), which owns the twelve contest
 extensions and, per the decision in §5 below, also owns `fd`, `wfd` and
@@ -319,7 +319,7 @@ contests plus Field Day"). Add all three to that porting sequence.
 | **A0** ✅ | `activityScorer` and `activityExportHook` in the SDK; per-record ADIF combinations; retrofit `pota` + `sota` | §3.1/§3.2. Unblocks everything; fixes the two shipped activities |
 | **A1** ✅ | `bca` `blha` `eca` `ela` `wca` `pga` + the GMA spot API and the `referenceActivity` factory | Six activation-only extensions over one data-file shape and one spot API — widest validation for the least code |
 | **A2** ✅ | `gma` `mota` `siota` `wwbota` `zlota` | Adds hunting refs and a second reference type per extension |
-| **A3** | `wwff` `llota` `tota` | The three behind API keys; `tota`'s LIST needs one |
+| **A3** ✅ | `wwff` `llota` `tota` | The three behind API keys; `tota`'s LIST needs one |
 | **A4** | `custom` | Free-form SIG/SIG_INFO; needs no data file but does need a two-field control |
 | **A5** | `satellites` | §3.5. Most new ground, least shared with the rest |
 
