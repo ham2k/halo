@@ -2768,6 +2768,195 @@ void main() {
     expect(potaField.controller?.text, '');
   });
 
+  group('expanding a secondary control moves the cursor into it', () {
+    // Expanding a control is a statement of intent — the operator opened it to
+    // type into it. Leaving focus back in the callsign field means every
+    // expand costs an extra tap, and on a phone the keyboard points at the
+    // wrong field. Collapsing hands the cursor back so logging continues.
+    const potaControl = {
+      'key': 'pota/hunter',
+      'label': 'POTA',
+      'icon': 'pine-tree',
+      'input': {'kind': 'refList', 'refType': 'pota', 'placeholder': 'US-1234', 'pattern': r'[A-Z0-9]+-[0-9]{4,5}'},
+    };
+
+    Widget hostWithPota() => MaterialApp(
+          home: Scaffold(
+            body: LoggingControls(
+              operation: operation,
+              qsosRepository: qsos,
+              activityControls: const [potaControl],
+            ),
+          ),
+        );
+
+    testWidgets('an activity ref field takes focus when its chip is tapped', (tester) async {
+      await tester.pumpWidget(hostWithPota());
+      await openControl(tester, MdiIcons.pineTree);
+
+      expect(
+        tester.widget<TextField>(find.widgetWithText(TextField, 'POTA')).focusNode?.hasFocus,
+        isTrue,
+        reason: 'the ref field is what the operator opened the control to fill in',
+      );
+    });
+
+    testWidgets('the Radio control focuses Frequency, not the Band dropdown', (tester) async {
+      // Band and Mode are dropdowns — Frequency is the one you type into, and
+      // on touch platforms the dropdowns refuse focus outright.
+      await tester.pumpWidget(host());
+      await openControl(tester, MdiIcons.radio);
+
+      expect(
+        tester.widget<TextField>(find.widgetWithText(TextField, 'Frequency')).focusNode?.hasFocus,
+        isTrue,
+      );
+    });
+
+    testWidgets('the Time control focuses the time field', (tester) async {
+      await tester.pumpWidget(host());
+      await openControl(tester, MdiIcons.clockOutline);
+
+      expect(
+        tester.widget<TextField>(find.widgetWithText(TextField, 'Time (UTC)')).focusNode?.hasFocus,
+        isTrue,
+      );
+    });
+
+    testWidgets('collapsing returns the cursor to the primary field it came from', (tester) async {
+      await tester.pumpWidget(host());
+      TextField field(String label) => tester.widget<TextField>(find.widgetWithText(TextField, label));
+
+      // Land on Rcvd rather than Call, so "went back where it came from" is
+      // distinguishable from "always goes to Call".
+      await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'W1AW');
+      await tester.pump();
+      await tester.sendKeyEvent(LogicalKeyboardKey.space);
+      await tester.pump();
+      await tester.sendKeyEvent(LogicalKeyboardKey.space);
+      await tester.pump();
+      expect(field('Rcvd').focusNode!.hasFocus, isTrue, reason: 'test setup');
+
+      await openControl(tester, MdiIcons.radio);
+      expect(field('Frequency').focusNode!.hasFocus, isTrue);
+
+      await openControl(tester, MdiIcons.radio); // same chip again — collapse
+      expect(
+        field('Rcvd').focusNode!.hasFocus,
+        isTrue,
+        reason: 'collapsing must resume where logging left off, not jump to Call',
+      );
+    });
+
+    testWidgets('collapsing returns to the last primary field even if the tap blurred it first', (tester) async {
+      // The real failure this guards: in the app the root TapToDismissEmptyField
+      // drops focus on any tap outside a field, so by the time the chip's
+      // handler runs NOTHING is focused — sampling "what has focus now" read as
+      // none and every collapse fell back to Call. The field the operator was
+      // last in is what has to be remembered, not what happens to hold focus
+      // at the moment of the tap.
+      await tester.pumpWidget(host());
+      TextField field(String label) => tester.widget<TextField>(find.widgetWithText(TextField, label));
+
+      await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'W1AW');
+      await tester.pump();
+      await tester.sendKeyEvent(LogicalKeyboardKey.space);
+      await tester.pump();
+      expect(field('Sent').focusNode!.hasFocus, isTrue, reason: 'test setup');
+
+      FocusManager.instance.primaryFocus?.unfocus();
+      await tester.pump();
+      expect(field('Sent').focusNode!.hasFocus, isFalse, reason: 'test setup: the tap blurred it');
+
+      await openControl(tester, MdiIcons.radio);
+      await openControl(tester, MdiIcons.radio); // collapse
+
+      expect(field('Sent').focusNode!.hasFocus, isTrue, reason: 'must resume at Sent, not Call');
+    });
+
+    testWidgets('collapsing falls back to the call field when nothing was focused', (tester) async {
+      await tester.pumpWidget(host());
+      await tester.pump();
+
+      // Nothing focused yet: the panel is fresh and untouched.
+      await openControl(tester, MdiIcons.radio);
+      await openControl(tester, MdiIcons.radio);
+
+      expect(
+        tester.widget<TextField>(find.widgetWithText(TextField, 'Their call')).focusNode?.hasFocus,
+        isTrue,
+      );
+    });
+
+    testWidgets('switching between two activity controls keeps each ref field working', (tester) async {
+      // The expanded panel is ONE widget position, so switching chips rebuilds
+      // RefTextInput with a different caller-owned focus node against a REUSED
+      // State. If the field kept listening to the old node, the cursor-at-end
+      // behavior would silently attach to the wrong control — and the stale
+      // listener would outlive the controller it touches.
+      const controls = [
+        {
+          'key': 'pota/hunter',
+          'label': 'POTA',
+          'icon': 'pine-tree',
+          'input': {'kind': 'refList', 'refType': 'pota', 'pattern': r'[A-Z0-9]+-[0-9]{4,5}'},
+        },
+        {
+          'key': 'sota/chaser',
+          'label': 'SOTA',
+          'icon': 'summit',
+          'input': {'kind': 'refList', 'refType': 'sota', 'pattern': r'[A-Z0-9/]+-[0-9]{3}'},
+        },
+      ];
+      await tester.pumpWidget(MaterialApp(
+        home: Scaffold(
+          body: LoggingControls(operation: operation, qsosRepository: qsos, activityControls: controls),
+        ),
+      ));
+
+      await openControl(tester, MdiIcons.pineTree);
+      await tester.enterText(find.widgetWithText(TextField, 'POTA'), 'US-1234');
+      await tester.pump();
+
+      await openControl(tester, resolveIconName('summit'));
+      expect(
+        tester.widget<TextField>(find.widgetWithText(TextField, 'SOTA')).focusNode?.hasFocus,
+        isTrue,
+        reason: 'the second control gets focus on its own node',
+      );
+      await tester.enterText(find.widgetWithText(TextField, 'SOTA'), 'W1/AM-001');
+      await tester.pump();
+
+      // Back to the first: its value survived and it takes focus again.
+      await openControl(tester, MdiIcons.pineTree);
+      final pota = tester.widget<TextField>(find.widgetWithText(TextField, 'POTA'));
+      expect(pota.controller?.text, 'US-1234');
+      expect(pota.focusNode?.hasFocus, isTrue);
+    });
+
+    testWidgets('hopping between controls keeps the ORIGINAL primary field for the way back', (tester) async {
+      // The second expand happens while focus is inside the first control's
+      // panel — recording "nothing was focused" there would lose Rcvd.
+      await tester.pumpWidget(hostWithPota());
+      TextField field(String label) => tester.widget<TextField>(find.widgetWithText(TextField, label));
+
+      await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'W1AW');
+      await tester.pump();
+      await tester.sendKeyEvent(LogicalKeyboardKey.space);
+      await tester.pump();
+      await tester.sendKeyEvent(LogicalKeyboardKey.space);
+      await tester.pump();
+      expect(field('Rcvd').focusNode!.hasFocus, isTrue, reason: 'test setup');
+
+      await openControl(tester, MdiIcons.radio);
+      await openControl(tester, MdiIcons.pineTree);
+      expect(field('POTA').focusNode!.hasFocus, isTrue);
+
+      await openControl(tester, MdiIcons.pineTree); // collapse
+      expect(field('Rcvd').focusNode!.hasFocus, isTrue);
+    });
+  });
+
   testWidgets("activity control's chip icon accents to the extension's color once a reference is entered (issue #187)",
       (tester) async {
     const controls = [

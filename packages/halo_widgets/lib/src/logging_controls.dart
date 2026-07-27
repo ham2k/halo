@@ -1104,6 +1104,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
         debugLabel: 'exchange:$key',
         onKeyEvent: _onExchangeKeyEvent,
       )..addListener(() {
+        _notePrimaryFocus(_controlTextFocus[key]!);
         // A dismissal and a highlight both belong to the field that had focus
         // when they were made, so leaving or entering a field clears them.
         if (mounted) {
@@ -1382,6 +1383,10 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     _freqController.addListener(_onFreqChanged);
     _timeController.addListener(_onTimeOrDateFieldChanged);
     _dateController.addListener(_onTimeOrDateFieldChanged);
+    // Start in sync with whatever the fields already hold: an initial seed
+    // that ran before these listeners existed notified nobody, and an
+    // out-of-date baseline reads the first cursor move as an edit.
+    _recordTimeDateText();
     // Sent/Rcvd don't otherwise need a rebuild on every keystroke, but the
     // info row's second button (_buildWipeOrEditButton) re-evaluates
     // _qsoDataChanged() on every build, which reads these controllers —
@@ -1413,6 +1418,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     ]) {
       focus.addListener(() {
         if (focus.hasFocus) {
+          _notePrimaryFocus(focus);
           controller.selection = TextSelection.collapsed(offset: controller.text.length);
         } else if (identical(focus, _freqFocus)) {
           // Flush a pending debounced push immediately on blur, rather than
@@ -1788,6 +1794,9 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     for (final controller in _controlTextControllers.values) {
       controller.dispose();
     }
+    for (final node in _controlRefFocus.values) {
+      node.dispose();
+    }
     for (final node in _controlTextFocus.values) {
       node.dispose();
     }
@@ -1995,6 +2004,56 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
 
   // ---- Secondary control row ----
 
+  /// The primary field the cursor was in most recently, so collapsing a
+  /// secondary control puts the operator back where they left off rather than
+  /// always at Call. Null until one has been focused at all.
+  ///
+  /// Tracked continuously, NOT sampled when a chip is tapped: by the time the
+  /// tap reaches [_onSelectControl] the field has usually already been blurred
+  /// (the app root's TapToDismissEmptyField drops focus on any tap outside a
+  /// field), so "which field has focus right now" reads as none and every
+  /// collapse fell back to Call.
+  FocusNode? _lastPrimaryFocus;
+
+  /// Only [_primaryFocusOrder]'s own nodes reach here — a secondary control's
+  /// field (Frequency, Time, a ref) must never become the place we return to.
+  void _notePrimaryFocus(FocusNode node) {
+    if (_primaryFocusOrder.any((f) => identical(f, node))) _lastPrimaryFocus = node;
+  }
+
+  /// One focus node per activity ref control, owned here rather than inside
+  /// [RefTextInput] so expanding the control can move the cursor into it —
+  /// the field itself is rebuilt on every expand, the node outlives it.
+  final Map<String, FocusNode> _controlRefFocus = {};
+
+  FocusNode _refFocusFor(String key) =>
+      _controlRefFocus[key] ??= FocusNode(debugLabel: 'ref:$key');
+
+  /// The field a control expands *into* — what the operator opened it to type
+  /// in. Null for a control with nothing to type (Spotting with its comment
+  /// hidden is just a button; `more` opens a pane instead of expanding), which
+  /// leaves focus alone rather than yanking it somewhere useless.
+  FocusNode? _expandedFocusFor(String? key) {
+    if (key == null) return null;
+    switch (key) {
+      case 'time':
+        return _timeFocus;
+      // Frequency, not the Band dropdown: it is the field you actually type
+      // into, and on touch platforms the dropdowns refuse focus outright.
+      case 'radio':
+        return _freqFocus;
+      case 'spotting':
+        return _spotState.showComment ? _spotCommentFocus : null;
+      default:
+        // Every remaining control is an extension's. Only `refList` builds a
+        // field to focus — the same condition that gave it a chip.
+        final control = _effectiveActivityControls
+            .where((c) => c['key'] == key && (c['input'] as Map?)?['kind'] == 'refList')
+            .firstOrNull;
+        return control == null ? null : _refFocusFor(key);
+    }
+  }
+
   void _onSelectControl(String? key) {
     if (key == 'more') {
       _openMoreEditor();
@@ -2004,6 +2063,24 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
       if (key == 'time' && _selectedControlKey != 'time') _seedTimeFields();
       _selectedControlKey = key;
     });
+    final target = _expandedFocusFor(key);
+    if (target != null) {
+      // After the frame, not during: the panel's field doesn't exist yet at
+      // this point, and a node with no context silently drops the request.
+      // (app-polo does the same thing with a 200ms timer; a post-frame
+      // callback is the same idea without guessing at a duration.)
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && _selectedControlKey == key) target.requestFocus();
+      });
+    }
+    if (key == null) {
+      // Collapsing hands the cursor back so logging continues without a tap.
+      // A remembered node whose field is gone (the contest changed, RSTs were
+      // hidden) has no context and would swallow the request silently, so
+      // Call is both the fallback and the default first time.
+      final remembered = _lastPrimaryFocus;
+      ((remembered?.context != null) ? remembered! : _callFocus).requestFocus();
+    }
   }
 
   /// Shared look for the primary logging row (Their call/Sent/Rcvd) — same
@@ -2101,11 +2178,33 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     _populating = true;
     _timeController.text = _fmtTime(dt);
     _dateController.text = _fmtDate(dt);
+    _recordTimeDateText();
     _populating = wasPopulating;
   }
 
+  /// The time/date text as of the last notification, so a selection-only one
+  /// can be told apart from a real edit. Kept current even while [_populating]
+  /// — a seeded value that never got recorded here would look like an edit the
+  /// next time the cursor moved.
+  String _lastTimeDateText = '';
+
+  /// Re-baselines [_lastTimeDateText] after a programmatic write. Needed even
+  /// when the write notified (the listener records it anyway) because an
+  /// assignment of the SAME text notifies nothing at all — and a seed that
+  /// happens before the listeners are attached notifies nobody either.
+  void _recordTimeDateText() => _lastTimeDateText = '${_timeController.text} ${_dateController.text}';
+
   void _onTimeOrDateFieldChanged() {
-    if (_populating) return;
+    // A TextEditingController notifies on SELECTION changes too, not just
+    // text. Focusing a field moves the cursor to the end (see the focus
+    // listeners in initState), so without this guard merely EXPANDING the
+    // Time control would read its own seeded value back as a manual override:
+    // auto-timestamping would freeze and the "Now" button would appear,
+    // without the operator typing anything.
+    final text = '${_timeController.text} ${_dateController.text}';
+    final changed = text != _lastTimeDateText;
+    _lastTimeDateText = text;
+    if (_populating || !changed) return;
     final time = _timeController.text.split(':');
     final date = _dateController.text.split('-');
     if (time.length != 2 || date.length != 3) return;
@@ -2898,6 +2997,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
       expandedBuilder: (context) => SizedBox(
         width: 160,
         child: RefTextInput(
+          focusNode: _refFocusFor(control['key'] as String),
           refType: (control['input'] as Map)['refType'] as String,
           label: (control['label'] as String?) ?? '',
           placeholder: (control['input'] as Map)['placeholder'] as String?,

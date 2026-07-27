@@ -158,6 +158,13 @@ class RefTextInput extends StatefulWidget {
   final RefDecorator? decorate;
   final Color? labelColor;
 
+  /// A caller-owned focus node, for a caller that needs to move focus HERE
+  /// on its own schedule — the secondary control row focuses this field when
+  /// its chip is tapped. Left null, the field owns (and disposes) its own;
+  /// a supplied one belongs to the caller and outlives this widget, so it is
+  /// deliberately not disposed here.
+  final FocusNode? focusNode;
+
   const RefTextInput({
     super.key,
     required this.refType,
@@ -169,6 +176,7 @@ class RefTextInput extends StatefulWidget {
     this.transforms = const [],
     this.decorate,
     this.labelColor,
+    this.focusNode,
   });
 
   @override
@@ -177,7 +185,12 @@ class RefTextInput extends StatefulWidget {
 
 class _RefTextInputState extends State<RefTextInput> {
   late final _controller = TextEditingController(text: _joined(widget.refs));
-  final _focus = FocusNode();
+
+  /// Only set when no [RefTextInput.focusNode] was supplied — the field's own
+  /// node, and the only one it may dispose.
+  FocusNode? _ownFocus;
+
+  FocusNode get _focus => widget.focusNode ?? (_ownFocus ??= FocusNode());
 
   /// Decorated ref data by code, so a code already resolved this session
   /// (including ones the parent handed us in `widget.refs`) doesn't need a
@@ -196,18 +209,30 @@ class _RefTextInputState extends State<RefTextInput> {
       final code = ref['ref'] as String?;
       if (code != null) _decorations[code] = ref;
     }
-    // Place the cursor at the end on focus rather than selecting the
-    // existing text — matches every other logging field.
-    _focus.addListener(() {
-      if (_focus.hasFocus) {
-        _controller.selection = TextSelection.collapsed(offset: _controller.text.length);
-      }
-    });
+    _focus.addListener(_onFocusChange);
+  }
+
+  /// Places the cursor at the end on focus rather than selecting the existing
+  /// text — matches every other logging field.
+  void _onFocusChange() {
+    if (_focus.hasFocus) {
+      _controller.selection = TextSelection.collapsed(offset: _controller.text.length);
+    }
   }
 
   @override
   void didUpdateWidget(RefTextInput oldWidget) {
     super.didUpdateWidget(oldWidget);
+    // The node can change under a REUSED State: the expanded panel is one
+    // widget position, so switching from one activity control's chip to
+    // another's rebuilds this widget with a different caller-owned node
+    // instead of building a fresh State. Left unhandled, the listener would
+    // stay on the old node — which outlives this widget in the caller's map —
+    // and fire against a controller this State later disposes.
+    if (widget.focusNode != oldWidget.focusNode) {
+      (oldWidget.focusNode ?? _ownFocus)?.removeListener(_onFocusChange);
+      _focus.addListener(_onFocusChange);
+    }
     // Only resync the field's text from the parent's refs while it isn't
     // focused — otherwise a decorate() round trip landing mid-keystroke
     // would fight the user's typing.
@@ -219,7 +244,11 @@ class _RefTextInputState extends State<RefTextInput> {
   @override
   void dispose() {
     _controller.dispose();
-    _focus.dispose();
+    // A caller-supplied node outlives this widget (it is reused across
+    // expand/collapse cycles), so only remove what we added to it. Our own
+    // node goes with the widget, listener and all.
+    _focus.removeListener(_onFocusChange);
+    _ownFocus?.dispose();
     super.dispose();
   }
 
