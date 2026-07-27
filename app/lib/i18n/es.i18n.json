@@ -446,7 +446,17 @@
       "test": "Probar",
       "saveFailed": "Error al guardar: ${error}",
       "loginFailed": "Error al iniciar sesión: ${error}",
-      "lookupFailed": "Las cuentas no están disponibles ahora mismo; inténtalo de nuevo en un momento"
+      "lookupFailed": "Las cuentas no están disponibles ahora mismo; inténtalo de nuevo en un momento",
+      "browserLoginTitle": "Termina de iniciar sesión con tu navegador",
+      "browserLoginSteps": "Cuando termines, el navegador intentará abrir un enlace que empieza con \"${prefix}\". Es muy probable que tu escritorio no tenga nada registrado para abrirlo, así que copia ese enlace — de la barra de direcciones o de la página de error del navegador — y pégalo aquí.",
+      "browserLoginNotOpened": "Ham2K Logger no pudo abrir tu navegador. Copia el enlace de inicio de sesión y ábrelo tú mismo; luego copia el enlace al que te envíe — empieza con \"${prefix}\" — y pégalo aquí.",
+      "copyLoginLink": "Copiar enlace de inicio de sesión",
+      "pastedLinkLabel": "Pega el enlace aquí",
+      "finishLogin": "Terminar inicio de sesión",
+      "pastedLinkNotARedirect": "Ese no es el enlace de inicio de sesión — debe empezar con \"${prefix}\".",
+      "pastedLinkWrongLogin": "Ese enlace pertenece a otro intento de inicio de sesión. Cierra esta página y conéctate de nuevo.",
+      "pastedLinkNoCode": "Ese enlace no lleva ningún código de inicio de sesión. Termina de iniciar sesión y luego copia el enlace al que te envíe.",
+      "pastedLinkMalformed": "Ese enlace parece estar incompleto. Cópialo por completo y pégalo de nuevo."
     },
     "offlineData": {
       "title": "Datos sin conexión",

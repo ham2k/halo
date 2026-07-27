@@ -23,7 +23,10 @@ goes stable.** 6.2.0-beta.3 endorses a WPE WebKit Linux implementation
 (`flutter_inappwebview_linux`), so the fix is a version bump plus adding
 `Platform.isLinux` to the webview branch of `map_panel.dart`'s routing —
 the shared `map_gl_script.dart` means Linux then gets the exact same
-markers/lines/popups/globe as macOS/Windows/web. Needs WPE WebKit 2.0
+markers/lines/popups/globe as macOS/Windows/web. **That bump also retires the
+OTHER workaround for this same gap** — the paste-the-link OAuth login at
+`app/lib/views/oauth_browser_login.dart` (see [quirks.md](quirks.md)); revisit
+the two together. Needs WPE WebKit 2.0
 system libraries and a Linux machine to verify; adopting the beta early
 was rejected to avoid moving the verified macOS webview onto a beta.
 (CEF-based alternatives were considered and rejected: ~100MB+ payload and

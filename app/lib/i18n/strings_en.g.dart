@@ -1667,6 +1667,36 @@ class Translations$settings$accounts$en {
 
 	/// en: 'Accounts are unavailable right now — try again in a moment'
 	String get lookupFailed => 'Accounts are unavailable right now — try again in a moment';
+
+	/// en: 'Finish signing in with your web browser'
+	String get browserLoginTitle => 'Finish signing in with your web browser';
+
+	/// en: 'When you are done, the browser will try to open a link starting with "${prefix}". Your desktop most likely has nothing registered to open it, so copy that link — from the address bar, or from the error page the browser shows — and paste it here.'
+	String browserLoginSteps({required Object prefix}) => 'When you are done, the browser will try to open a link starting with "${prefix}". Your desktop most likely has nothing registered to open it, so copy that link — from the address bar, or from the error page the browser shows — and paste it here.';
+
+	/// en: 'Ham2K Logger could not open your browser. Copy the login link below and open it yourself, then copy the link it sends you to — it starts with "${prefix}" — and paste that here.'
+	String browserLoginNotOpened({required Object prefix}) => 'Ham2K Logger could not open your browser. Copy the login link below and open it yourself, then copy the link it sends you to — it starts with "${prefix}" — and paste that here.';
+
+	/// en: 'Copy login link'
+	String get copyLoginLink => 'Copy login link';
+
+	/// en: 'Paste the link here'
+	String get pastedLinkLabel => 'Paste the link here';
+
+	/// en: 'Finish Login'
+	String get finishLogin => 'Finish Login';
+
+	/// en: 'That is not the login link — it should start with "${prefix}".'
+	String pastedLinkNotARedirect({required Object prefix}) => 'That is not the login link — it should start with "${prefix}".';
+
+	/// en: 'That link belongs to a different login attempt. Close this page and connect again.'
+	String get pastedLinkWrongLogin => 'That link belongs to a different login attempt. Close this page and connect again.';
+
+	/// en: 'That link carries no login code. Finish signing in first, then copy the link it sends you to.'
+	String get pastedLinkNoCode => 'That link carries no login code. Finish signing in first, then copy the link it sends you to.';
+
+	/// en: 'That link looks cut off. Copy the whole thing and paste it again.'
+	String get pastedLinkMalformed => 'That link looks cut off. Copy the whole thing and paste it again.';
 }
 
 // Path: settings.offlineData
@@ -2527,6 +2557,16 @@ extension on Translations {
 			'settings.accounts.saveFailed' => ({required Object error}) => 'Save failed: ${error}',
 			'settings.accounts.loginFailed' => ({required Object error}) => 'Login failed: ${error}',
 			'settings.accounts.lookupFailed' => 'Accounts are unavailable right now — try again in a moment',
+			'settings.accounts.browserLoginTitle' => 'Finish signing in with your web browser',
+			'settings.accounts.browserLoginSteps' => ({required Object prefix}) => 'When you are done, the browser will try to open a link starting with "${prefix}". Your desktop most likely has nothing registered to open it, so copy that link — from the address bar, or from the error page the browser shows — and paste it here.',
+			'settings.accounts.browserLoginNotOpened' => ({required Object prefix}) => 'Ham2K Logger could not open your browser. Copy the login link below and open it yourself, then copy the link it sends you to — it starts with "${prefix}" — and paste that here.',
+			'settings.accounts.copyLoginLink' => 'Copy login link',
+			'settings.accounts.pastedLinkLabel' => 'Paste the link here',
+			'settings.accounts.finishLogin' => 'Finish Login',
+			'settings.accounts.pastedLinkNotARedirect' => ({required Object prefix}) => 'That is not the login link — it should start with "${prefix}".',
+			'settings.accounts.pastedLinkWrongLogin' => 'That link belongs to a different login attempt. Close this page and connect again.',
+			'settings.accounts.pastedLinkNoCode' => 'That link carries no login code. Finish signing in first, then copy the link it sends you to.',
+			'settings.accounts.pastedLinkMalformed' => 'That link looks cut off. Copy the whole thing and paste it again.',
 			'settings.offlineData.title' => 'Offline Data',
 			'settings.offlineData.noFiles' => 'No data files',
 			'settings.offlineData.noFilesDescription' => 'Enable activity or lookup extensions to download their offline data here.',

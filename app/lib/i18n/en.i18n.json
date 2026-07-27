@@ -446,7 +446,17 @@
       "test": "Test",
       "saveFailed": "Save failed: ${error}",
       "loginFailed": "Login failed: ${error}",
-      "lookupFailed": "Accounts are unavailable right now — try again in a moment"
+      "lookupFailed": "Accounts are unavailable right now — try again in a moment",
+      "browserLoginTitle": "Finish signing in with your web browser",
+      "browserLoginSteps": "When you are done, the browser will try to open a link starting with \"${prefix}\". Your desktop most likely has nothing registered to open it, so copy that link — from the address bar, or from the error page the browser shows — and paste it here.",
+      "browserLoginNotOpened": "Ham2K Logger could not open your browser. Copy the login link below and open it yourself, then copy the link it sends you to — it starts with \"${prefix}\" — and paste that here.",
+      "copyLoginLink": "Copy login link",
+      "pastedLinkLabel": "Paste the link here",
+      "finishLogin": "Finish Login",
+      "pastedLinkNotARedirect": "That is not the login link — it should start with \"${prefix}\".",
+      "pastedLinkWrongLogin": "That link belongs to a different login attempt. Close this page and connect again.",
+      "pastedLinkNoCode": "That link carries no login code. Finish signing in first, then copy the link it sends you to.",
+      "pastedLinkMalformed": "That link looks cut off. Copy the whole thing and paste it again."
     },
     "offlineData": {
       "title": "Offline Data",

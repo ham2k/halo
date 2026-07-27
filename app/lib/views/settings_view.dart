@@ -37,6 +37,7 @@ import 'experiments_pane.dart';
 import 'extensions_panel.dart';
 import 'ham2k_logo.dart';
 import 'notice_history_view.dart';
+import 'oauth_browser_login.dart';
 import 'operation_dialogs.dart';
 import 'release_overlay.dart';
 import 'switch_accounts_dialog.dart';
@@ -2515,57 +2516,74 @@ class _AccountPaneState extends State<_AccountPane> {
 
       InAppWebViewController? webViewController;
 
-      final code = await navigator.push<String>(
-        MaterialPageRoute(
-          builder: (context) => Scaffold(
-            appBar: AppBar(
-              flexibleSpace: windowHeaderGestureArea(),
-              title: Text(context.t.settings.accounts.connectTo(label: '${widget.account['label']}')),
-              actions: [
-                // Continues the login in the system browser (from wherever
-                // the in-app page currently is); the redirect then comes
-                // back through the deep-link listener above. Keep this page
-                // open — closing it abandons the flow.
-                TextButton(
-                  child: Text(context.t.settings.accounts.openInBrowser),
-                  onPressed: () async {
-                    final current = await webViewController?.getUrl();
-                    unawaited(launchUrl(Uri.parse((current ?? authUri).toString()), mode: LaunchMode.externalApplication));
-                  },
+      // Linux has no in-app webview to log in through — building one there
+      // crashes (oauth_browser_login.dart) — so the login happens in the
+      // operator's own browser and comes back by paste.
+      final code = oauthNeedsSystemBrowser()
+          ? await navigator.push<String>(
+              MaterialPageRoute(
+                builder: (context) => OAuthBrowserLoginPage(
+                  accountLabel: '${widget.account['label']}',
+                  authUri: authUri,
+                  redirectUrl: redirectUrl,
+                  expectedState: state,
+                  // A redirect that carries `error` instead of `code` ends the
+                  // login the same way the webview route's listener ends it.
+                  onError: (error) => authError = error,
                 ),
-                windowsCaptionSpacer(context),
-              ],
-              leadingWidth: macOSAwareLeadingWidth(context),
-              leading: isMacOSChromelessWindow
-                  ? Padding(
-                      padding: EdgeInsets.only(left: macOSTrafficLightClearance(context)),
-                      child: CloseButton(onPressed: () => Navigator.of(context).pop()),
-                    )
-                  : CloseButton(onPressed: () => Navigator.of(context).pop()),
-            ),
-            body: InAppWebView(
-              onWebViewCreated: (controller) => webViewController = controller,
-              initialUrlRequest: URLRequest(url: WebUri(authUri.toString())),
-              initialSettings: InAppWebViewSettings(javaScriptEnabled: true, useShouldOverrideUrlLoading: true),
-              shouldOverrideUrlLoading: (controller, navigationAction) async {
-                final url = navigationAction.request.url?.toString();
-                if (url != null && url.startsWith(redirectUrl)) {
-                  final uri = Uri.parse(url);
-                  final redirectCode = uri.queryParameters['code'];
-                  final redirectState = uri.queryParameters['state'];
-                  if (redirectState == state) {
-                    Navigator.of(context).pop(redirectCode);
-                  } else {
-                    Navigator.of(context).pop();
-                  }
-                  return NavigationActionPolicy.CANCEL;
-                }
-                return NavigationActionPolicy.ALLOW;
-              },
-            ),
-          ),
-        ),
-      );
+              ),
+            )
+          : await navigator.push<String>(
+              MaterialPageRoute(
+                builder: (context) => Scaffold(
+                  appBar: AppBar(
+                    flexibleSpace: windowHeaderGestureArea(),
+                    title: Text(context.t.settings.accounts.connectTo(label: '${widget.account['label']}')),
+                    actions: [
+                      // Continues the login in the system browser (from wherever
+                      // the in-app page currently is); the redirect then comes
+                      // back through the deep-link listener above. Keep this page
+                      // open — closing it abandons the flow.
+                      TextButton(
+                        child: Text(context.t.settings.accounts.openInBrowser),
+                        onPressed: () async {
+                          final current = await webViewController?.getUrl();
+                          unawaited(launchUrl(Uri.parse((current ?? authUri).toString()), mode: LaunchMode.externalApplication));
+                        },
+                      ),
+                      windowsCaptionSpacer(context),
+                    ],
+                    leadingWidth: macOSAwareLeadingWidth(context),
+                    leading: isMacOSChromelessWindow
+                        ? Padding(
+                            padding: EdgeInsets.only(left: macOSTrafficLightClearance(context)),
+                            child: CloseButton(onPressed: () => Navigator.of(context).pop()),
+                          )
+                        : CloseButton(onPressed: () => Navigator.of(context).pop()),
+                  ),
+                  body: InAppWebView(
+                    onWebViewCreated: (controller) => webViewController = controller,
+                    initialUrlRequest: URLRequest(url: WebUri(authUri.toString())),
+                    initialSettings: InAppWebViewSettings(javaScriptEnabled: true, useShouldOverrideUrlLoading: true),
+                    shouldOverrideUrlLoading: (controller, navigationAction) async {
+                      final url = navigationAction.request.url?.toString();
+                      if (url != null && url.startsWith(redirectUrl)) {
+                        final uri = Uri.parse(url);
+                        final redirectCode = uri.queryParameters['code'];
+                        final redirectState = uri.queryParameters['state'];
+                        if (redirectState == state) {
+                          Navigator.of(context).pop(redirectCode);
+                        } else {
+                          Navigator.of(context).pop();
+                        }
+                        return NavigationActionPolicy.CANCEL;
+                      }
+                      return NavigationActionPolicy.ALLOW;
+                    },
+                  ),
+                ),
+              ),
+            );
 
       await linkSub.cancel();
 

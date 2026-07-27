@@ -871,6 +871,16 @@ class _Translations$settings$accounts$es extends Translations$settings$accounts$
 	@override String saveFailed({required Object error}) => 'Error al guardar: ${error}';
 	@override String loginFailed({required Object error}) => 'Error al iniciar sesión: ${error}';
 	@override String get lookupFailed => 'Las cuentas no están disponibles ahora mismo; inténtalo de nuevo en un momento';
+	@override String get browserLoginTitle => 'Termina de iniciar sesión con tu navegador';
+	@override String browserLoginSteps({required Object prefix}) => 'Cuando termines, el navegador intentará abrir un enlace que empieza con "${prefix}". Es muy probable que tu escritorio no tenga nada registrado para abrirlo, así que copia ese enlace — de la barra de direcciones o de la página de error del navegador — y pégalo aquí.';
+	@override String browserLoginNotOpened({required Object prefix}) => 'Ham2K Logger no pudo abrir tu navegador. Copia el enlace de inicio de sesión y ábrelo tú mismo; luego copia el enlace al que te envíe — empieza con "${prefix}" — y pégalo aquí.';
+	@override String get copyLoginLink => 'Copiar enlace de inicio de sesión';
+	@override String get pastedLinkLabel => 'Pega el enlace aquí';
+	@override String get finishLogin => 'Terminar inicio de sesión';
+	@override String pastedLinkNotARedirect({required Object prefix}) => 'Ese no es el enlace de inicio de sesión — debe empezar con "${prefix}".';
+	@override String get pastedLinkWrongLogin => 'Ese enlace pertenece a otro intento de inicio de sesión. Cierra esta página y conéctate de nuevo.';
+	@override String get pastedLinkNoCode => 'Ese enlace no lleva ningún código de inicio de sesión. Termina de iniciar sesión y luego copia el enlace al que te envíe.';
+	@override String get pastedLinkMalformed => 'Ese enlace parece estar incompleto. Cópialo por completo y pégalo de nuevo.';
 }
 
 // Path: settings.offlineData
@@ -1517,6 +1527,16 @@ extension on TranslationsEs {
 			'settings.accounts.saveFailed' => ({required Object error}) => 'Error al guardar: ${error}',
 			'settings.accounts.loginFailed' => ({required Object error}) => 'Error al iniciar sesión: ${error}',
 			'settings.accounts.lookupFailed' => 'Las cuentas no están disponibles ahora mismo; inténtalo de nuevo en un momento',
+			'settings.accounts.browserLoginTitle' => 'Termina de iniciar sesión con tu navegador',
+			'settings.accounts.browserLoginSteps' => ({required Object prefix}) => 'Cuando termines, el navegador intentará abrir un enlace que empieza con "${prefix}". Es muy probable que tu escritorio no tenga nada registrado para abrirlo, así que copia ese enlace — de la barra de direcciones o de la página de error del navegador — y pégalo aquí.',
+			'settings.accounts.browserLoginNotOpened' => ({required Object prefix}) => 'Ham2K Logger no pudo abrir tu navegador. Copia el enlace de inicio de sesión y ábrelo tú mismo; luego copia el enlace al que te envíe — empieza con "${prefix}" — y pégalo aquí.',
+			'settings.accounts.copyLoginLink' => 'Copiar enlace de inicio de sesión',
+			'settings.accounts.pastedLinkLabel' => 'Pega el enlace aquí',
+			'settings.accounts.finishLogin' => 'Terminar inicio de sesión',
+			'settings.accounts.pastedLinkNotARedirect' => ({required Object prefix}) => 'Ese no es el enlace de inicio de sesión — debe empezar con "${prefix}".',
+			'settings.accounts.pastedLinkWrongLogin' => 'Ese enlace pertenece a otro intento de inicio de sesión. Cierra esta página y conéctate de nuevo.',
+			'settings.accounts.pastedLinkNoCode' => 'Ese enlace no lleva ningún código de inicio de sesión. Termina de iniciar sesión y luego copia el enlace al que te envíe.',
+			'settings.accounts.pastedLinkMalformed' => 'Ese enlace parece estar incompleto. Cópialo por completo y pégalo de nuevo.',
 			'settings.offlineData.title' => 'Datos sin conexión',
 			'settings.offlineData.noFiles' => 'No hay archivos de datos',
 			'settings.offlineData.noFilesDescription' => 'Habilita extensiones de actividades o búsquedas para descargar aquí sus datos sin conexión.',
