@@ -38,6 +38,7 @@ import type {
 } from "@ham2k/halo-extension-sdk"
 
 import { qsonToCabrillo } from "../../simple-contest/src/cabrillo.ts"
+import { cabrilloPower, configuredCategory, configuredOurPower } from "./entry.ts"
 import { daysUntil, EVENTS, eventFor, hasAlreadyRun, type StateParkEvent } from "./events.ts"
 import { tFor } from "./i18n.ts"
 import {
@@ -176,6 +177,12 @@ const ActivityHook = {
           label: `${park.abbreviation} — ${park.name ?? park.ref}`,
         })),
       })
+    }
+
+    // The classes we DECLARE — asked only where the answer reaches something we
+    // produce, which is Texas's score and Ohio's Cabrillo (events.ts).
+    if (event) {
+      for (const element of entryElements(t, event, operation)) elements.push(element)
     }
 
     elements.push({ type: 'markdown', text: infoMarkdown(t, event) })
@@ -338,7 +345,7 @@ const ExportHook = {
     if (!event) return []
     const t = tFor(ctx)
 
-    // A contest ADIF for every event, on a different axis from POTA's own.
+    // A contest ADIF, on a different axis from POTA's own.
     //
     // polo leaves three of the four events to "regular POTA exports". HaLo now
     // has those — `activityExportHook` gives POTA one ADIF per activated park —
@@ -347,9 +354,17 @@ const ExportHook = {
     // stretch the EVENT was running and claims the event, which is what a
     // sponsor asking for your log means, and is the only file that carries
     // `CONTEST_ID`. An operator submitting to both programs wants both.
-    const options: ExportOption[] = [
-      { exportType: 'contest-adif', format: 'adif', label: t('adifExport'), selectedByDefault: true, refType: TYPE },
-    ]
+    //
+    // Except where the sponsor has said they won't read one. Ohio takes a
+    // Cabrillo and nothing else (events.ts, `CABRILLO_ONLY`), and offering a
+    // file that gets a log rejected is worse than not offering it — polo offers
+    // it for all four. `generateExport` below still honours a contest-adif it is
+    // asked for: the sponsor's policy is which options exist, not what the
+    // generator can build.
+    const options: ExportOption[] = []
+    if (event.exportsAdif) {
+      options.push({ exportType: 'contest-adif', format: 'adif', label: t('adifExport'), selectedByDefault: true, refType: TYPE })
+    }
     if (event.exportsCabrillo) {
       options.push({ exportType: 'cabrillo', format: 'cabrillo', label: t('cabrilloExport'), selectedByDefault: true, refType: TYPE })
     }
@@ -373,11 +388,26 @@ const ExportHook = {
       // other three events' sponsors take an ADIF, and polo's non-Ohio Cabrillo
       // row is unreachable code there, so it isn't ported.
       const ours = ourParkAbbreviation(event, operation) || NOT_IN_A_PARK
+      const category = configuredCategory(event, operation)
       const content = qsonToCabrillo(args.qsos, {
+        // In the sponsor's own order, from their sample log
+        // (https://ospota.org/Files/OSPOTA_Sample-rev2.log): the checker is
+        // automated, and these four CATEGORY lines are what tells it which
+        // entry it is scoring. Empty values are dropped by the writer, so an
+        // operator who never opened the category field submits what polo does.
+        //
+        // `CATEGORY-MODE` is fixed: the sponsor's sample has MIXED written in
+        // rather than a placeholder, and their categories don't split by mode.
+        // CLUB-NAME is in that sample too and is NOT emitted — their rules never
+        // mention a club, so there is no field to fill it from.
         headers: [
           ['CONTEST', event.cabrilloName],
           ['CALLSIGN', ourCall],
           ['LOCATION', ours],
+          ['CATEGORY-OPERATOR', category?.value],
+          ['CATEGORY-TRANSMITTER', category?.transmitter],
+          ['CATEGORY-POWER', cabrilloPower(event, operation)],
+          ['CATEGORY-MODE', 'MIXED'],
           ['OPERATORS', str((operation.local as Record<string, JSONValue>)?.operatorCall)],
           ['GRID-LOCATOR', str(operation.grid)],
         ],
@@ -406,6 +436,50 @@ const ExportHook = {
       content: ((adif?.value as ExportResult | undefined)?.content) ?? '',
     }
   },
+}
+
+/// The power class and entry category fields, for the events that publish them.
+///
+/// Neither is defaulted. A power class is a claim about how we operated, and a
+/// guess at one either invents a multiplier Texas would not award or puts a
+/// wrong `CATEGORY-POWER` in front of Ohio's log checker — so unanswered stays
+/// unanswered, and both readers treat it as "no claim" (entry.ts).
+function entryElements(
+  t: (key: string, args?: Record<string, JSONValue>) => string,
+  event: StateParkEvent,
+  operation: Record<string, JSONValue>,
+): FormElement[] {
+  const elements: FormElement[] = []
+
+  if (event.powerClasses.length > 0) {
+    elements.push({
+      type: 'field',
+      fieldType: 'select',
+      key: 'ourPower',
+      label: t('ourPowerLabel'),
+      value: configuredOurPower(event, operation) || undefined,
+      options: event.powerClasses.map((power) => ({
+        value: power.value,
+        label: `${t(`power${power.value}`)} — ${power.watts}`,
+      })),
+    })
+  }
+
+  if (event.categories.length > 0) {
+    elements.push({
+      type: 'field',
+      fieldType: 'select',
+      key: 'ourCategory',
+      label: t('ourCategoryLabel'),
+      value: configuredCategory(event, operation)?.value,
+      options: event.categories.map((category) => ({
+        value: category.value,
+        label: `${category.value} — ${category.description}`,
+      })),
+    })
+  }
+
+  return elements
 }
 
 /// What Ohio's sponsor expects in a location column for a station that wasn't in

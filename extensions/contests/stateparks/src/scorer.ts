@@ -69,14 +69,20 @@
 // the same park either way; what the operator loses is the POTA hunter chip
 // filling itself in, which is M9's `georgia-pota` work.
 //
-// Not ported, because no shipped event's data uses them: `powerMultipliers`
-// (read by nothing in polo either), and the `bonusStationPerMode` /
-// `bonusStationPerBandMode` options.
+//   9. `powerMultipliers` is read by nothing in polo, so a Texas QRP entrant
+//      there is scored short of a term the rules give them. Read here, from the
+//      power class the setup form now asks for — as a SUMMAND, which is what
+//      §6.5.1 makes it despite the name: "total QSO points X (power multiplier +
+//      ... worked multiplier + ... activated multiplier) + bonus points".
+//
+// Not ported, because no shipped event's data uses them: the
+// `bonusStationPerMode` / `bonusStationPerBandMode` options.
 
 import { fmtInteger } from "@ham2k/lib-format-tools"
 import { superModeForMode } from "@ham2k/lib-operation-data"
 import type { ContestScorer, JSONValue, QsoScoreVerdict, ScoreTally } from "@ham2k/halo-extension-sdk"
 
+import { powerMultiplier } from "./entry.ts"
 import { bandCounts, eventFor, type StateParkEvent } from "./events.ts"
 import { ourParkRefs, refOfType, theirParkAbbreviation, theirParkRefs } from "./parks.ts"
 
@@ -97,6 +103,11 @@ export type StateParksScoresheet = {
   /// therefore accumulated here as the fold goes, which is the same reason NAQP's
   /// summary ignores `operation` and `ref` entirely.
   eventKey?: string
+  /// What our power class adds to the multiplier sum, recorded from the first
+  /// QSO scored for the same reason `eventKey` is: `summarizeScore` is handed
+  /// the BASE operation's ref, and on a segmented log the event — and so the
+  /// power class declared alongside it — may arrive only in a later segment.
+  powerMult?: number
   /// call → `band|SUPERMODE` → the parks already credited in that slot. `''`
   /// stands for a contact from no park in the event, so an ordinary QSO still
   /// occupies the slot and a second one is a duplicate.
@@ -149,6 +160,11 @@ export const StateParksScorer: ContestScorer<StateParksScoresheet> = {
     const event = eventFor(str(ref?.ref))
     if (!event) return { scoresheet: sheet, score: { value: 0, alerts: ['unknownEvent'] } }
     sheet.eventKey ??= event.key
+    // The first DECLARED class wins, not the first QSO's answer: `??=` would
+    // treat the 0 that stands for "no class declared" as an answer and latch it,
+    // so a class arriving in a later segment — the very case this is recorded
+    // for — could never fill it in.
+    if (!sheet.powerMult) sheet.powerMult = powerMultiplier(event, operation, ref)
 
     const their = (qso.their as Record<string, JSONValue>) ?? {}
     const call = str(their.call)
@@ -259,11 +275,16 @@ export const StateParksScorer: ContestScorer<StateParksScoresheet> = {
 
     const activated = Object.values(sheet.activated).filter((qsos) => qsos >= QSOS_TO_ACTIVATE).length
     const hunted = Object.keys(sheet.hunted).length
-    const mult = event?.multipliers === 'stateParksActivatedAndHunted'
-      ? (activated + hunted) || 1
+    const parkMult = event?.multipliers === 'stateParksActivatedAndHunted'
+      ? activated + hunted
       : event?.multipliers === 'stateParksActivated'
-        ? activated || 1
-        : 1
+        ? activated
+        : 0
+    // The power class ADDS to the park multipliers rather than scaling them
+    // (events.ts), and is 0 for the three events that publish no such term and
+    // for a class the operator never declared. `|| 1` is the floor either way:
+    // a log with no parks yet is still worth its points.
+    const mult = (parkMult + (sheet.powerMult ?? 0)) || 1
 
     const bonusPoints = Object.values(sheet.bonusStations).reduce((sum, points) => sum + points, 0)
       + activated * (event?.bonusPointsPerParkActivated ?? 0)

@@ -1263,4 +1263,99 @@ void main() {
       expect(submitted!['stationType'], 'hq');
     });
   });
+
+  testWidgets('a select fills its field rather than its widest option', (tester) async {
+    // An unexpanded dropdown takes the width of its WIDEST ITEM, so one long
+    // option label — a contest sponsor's own words for an entry category —
+    // pushed the field past the dialog and painted the overflow stripes over
+    // it. A narrow viewport is the case that matters: the labels are data an
+    // extension supplies and the renderer cannot shorten.
+    tester.view.physicalSize = const Size(400, 800);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+
+    await tester.pumpWidget(MaterialApp(
+      home: Scaffold(
+        body: FormRenderer(
+          formDefinition: const {
+            'title': 'Entry',
+            'elements': [
+              {
+                'type': 'field',
+                'fieldType': 'select',
+                'key': 'category',
+                'label': 'Entry Category',
+                'options': [
+                  {'value': 'SL', 'label': 'SL — Single Op, Low Power'},
+                  {
+                    'value': 'MML',
+                    'label': 'MML — Multi-Op Multi-Transmitter Low Power (.1 to 100 watts) located at one Ohio State Park',
+                  },
+                ],
+              },
+            ],
+          },
+          initialState: const {},
+          onSubmit: (_) async {},
+          onCancel: () {},
+        ),
+      ),
+    ));
+    await tester.pumpAndSettle();
+
+    // A RenderFlex overflow is reported as a test failure in its own right, so
+    // reaching this line is most of the assertion; the width pins it in the
+    // form the bug took — a field wider than the screen it sits on.
+    expect(
+      tester.getSize(find.byType(DropdownButtonFormField<dynamic>)).width,
+      lessThanOrEqualTo(400),
+      reason: 'the field follows the dialog, not the longest label an extension sent',
+    );
+  });
+  testWidgets('a select drops a seeded value its options no longer contain', (tester) async {
+    // The ref outlives the option list. State Parks writes `ourPower` on the
+    // contest ref, and the classes on offer are the EVENT's: switch an operation
+    // from Texas (QRP/LP/HP) to Ohio (LP/HP) and the ref still says QRP, which is
+    // not one of Ohio's two. _initializeField seeds `initialState[key]` OVER the
+    // element's own `value`, and DropdownButton asserts that its value is exactly
+    // one of its items — so reopening that setup form threw instead of rendering.
+    Map<String, dynamic>? submitted;
+    await tester.pumpWidget(MaterialApp(
+      home: Scaffold(
+        body: FormRenderer(
+          formDefinition: const {
+            'title': 'Entry',
+            'elements': [
+              {
+                'type': 'field',
+                'fieldType': 'select',
+                'key': 'ourPower',
+                'label': 'Power',
+                'options': [
+                  {'value': 'LP', 'label': 'Low Power'},
+                  {'value': 'HP', 'label': 'High Power'},
+                ],
+              },
+            ],
+          },
+          initialState: const {'ourPower': 'QRP'},
+          onSubmit: (values) async => submitted = values,
+          onCancel: () {},
+        ),
+      ),
+    ));
+    await tester.pumpAndSettle();
+
+    // Renders, with nothing selected rather than a value the form cannot show.
+    expect(find.text('Low Power'), findsNothing);
+    expect(find.text('High Power'), findsNothing);
+
+    // And saving CLEARS the stale value rather than writing it back: leaving it
+    // on the ref would keep the form unopenable and keep a class the sponsor
+    // does not publish in front of whatever reads it next.
+    await tester.tap(find.widgetWithText(FilledButton, 'Save'));
+    await tester.pumpAndSettle();
+    expect(submitted, isNotNull);
+    expect(submitted!['ourPower'], isNull);
+  });
 }

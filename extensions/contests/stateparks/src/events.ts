@@ -16,10 +16,16 @@
 //   * `parks` is a ref → 1 set for three events and a ref → abbreviation map
 //     for Ohio, which also repeats the same pairs in `parkReferences`.
 //
-// Keys polo's code reads and this does not: `powerMultipliers` (in txsp, read
-// by nothing there either — see docs/design/contests.md §8), `questions`,
-// `internalNotes`, `disabled`, `secondStart`/`secondEnd` (no shipped event has
-// a split period).
+// Keys polo's code reads and this does not: `questions`, `internalNotes`,
+// `disabled`, `secondStart`/`secondEnd` (no shipped event has a split period).
+// `powerMultipliers` is read by nothing in polo either, and IS read here now
+// that the setup form asks for a power class — see `powerMultipliers` below for
+// what Texas's rules actually do with it.
+//
+// Two things the files DON'T carry, and so live here as tables against the
+// event key: which format each sponsor accepts, and the classes each publishes.
+// polo has no notion of either, so putting them in the files would fork them
+// from the copies this re-syncs against every year.
 //
 // Keys polo's code IGNORES and this honours — the band lists. polo applies one
 // hard-coded WARC exclusion to every event and never consults the per-event
@@ -40,6 +46,103 @@ export const WARC_BANDS = ['60m', '30m', '17m', '12m']
 
 /// How an event counts multipliers, from `options.multipliers`.
 export type MultiplierRule = 'none' | 'stateParksActivated' | 'stateParksActivatedAndHunted'
+
+/// The one sponsor that will not take an ADIF, by event key.
+///
+/// Ohio says so three times over: "No ADIF, no CSV, no Text files - send in a
+/// standard Cabrillo file only" (OSPOTA-Rules-2026-Rev-1.pdf). The other three
+/// all upload a log FILE to their own site and name ADIF for it — Texas §8.2
+/// ("Your log must be uploaded in ADIF format to the TSPOA website"), Florida
+/// §7.1 ("ONLY ADIF formatted logs will be accepted for this contest"), Georgia
+/// §7.2.2, whose upload wants the worked park in `SIG_INFO`. Hunters submit
+/// nothing at all to Florida and Georgia, but their activators do.
+///
+/// KNOWN LIMIT, Florida: this extension's ADIF covers the whole EVENT, and
+/// Florida wants one file per park — "One ADIF format log file must be submitted
+/// for each park activated. Combined log files for multiple parks will not be
+/// accepted" (§7.5.3). So the option is right for a single-park activation and
+/// wrong for two, where POTA's own per-park export is the file to send. Texas
+/// (§8.4.1.1) and Georgia (§7.2.2) both allow the combined file explicitly.
+const CABRILLO_ONLY = ['OHSP']
+
+/// A power class an event publishes: the value stored on our ref, and the
+/// sponsor's own ceiling for it.
+///
+/// The values are `powerMultipliers`' keys in txsp.json, because that is the
+/// vocabulary the data already uses.
+export interface PowerClass {
+  value: string
+  /// As the sponsor writes it. Not translated — it is a number of watts, and
+  /// an operator checking which class they are in wants the rule book's figure.
+  watts: string
+}
+
+/// Power classes, for the two events where the class CHANGES SOMETHING WE
+/// PRODUCE: Texas, where it is a term in the score (§6.3.4), and Ohio, where it
+/// is a Cabrillo header their checker reads (`CATEGORY-POWER`).
+///
+/// Florida (§5.2) and Georgia (§5.3) publish classes too, but claim them on
+/// their own upload form rather than in the log, and neither scores on power —
+/// so asking would be a question with nowhere to go.
+const POWER_CLASSES: Record<string, PowerClass[]> = {
+  TXSP: [
+    { value: 'QRP', watts: '≤5W CW/digital, ≤10W SSB' },
+    { value: 'LP', watts: '≤150W' },
+    { value: 'HP', watts: '>150W' },
+  ],
+  OHSP: [
+    { value: 'LP', watts: '0.1–100W' },
+    { value: 'HP', watts: '>100W' },
+  ],
+}
+
+/// One entry category as a sponsor publishes it.
+export interface EntryCategory {
+  /// The code the sponsor's Cabrillo expects in `CATEGORY-OPERATOR`.
+  value: string
+  /// The sponsor's own description. Not translated: it is their taxonomy, and
+  /// the operator is picking the line they read in the rule book.
+  description: string
+  /// `CATEGORY-TRANSMITTER`, where the category settles it. Undefined for the
+  /// categories whose own definition says "Single or Multi" — those get no
+  /// header rather than a guess.
+  transmitter?: 'SINGLE' | 'MULTI'
+  /// `CATEGORY-POWER`, where the category settles it. Six of Ohio's nine codes
+  /// end in L or H and so name the power themselves; the rest fall back to the
+  /// power class the operator chose.
+  power?: 'LOW' | 'HIGH'
+}
+
+/// OSPOTA's nine entry categories, from their rules PDF's "Entry Categories"
+/// list. The only event with any: the other three sponsors take a class on their
+/// upload form, not in a file.
+///
+/// Single-operator first, where the rules list multi-op first — this is a picker,
+/// and one entrant in a park on their own is the common case. The codes and what
+/// they mean are the sponsor's.
+/// Kept SHORT: these are one line of a picker, and the sponsor's own sentences
+/// ("Multi-Op Multi-Transmitter Low Power (.1 to 100 watts) located at one Ohio
+/// State Park") are long enough to be truncated where it matters. All six of the
+/// power-bearing ones say "at one Ohio State Park", which is what makes them not
+/// MPO, and the wattages are on the Power field right above.
+const OHIO_CATEGORIES: EntryCategory[] = [
+  { value: 'SL', description: 'Single Op, Low Power', transmitter: 'SINGLE', power: 'LOW' },
+  { value: 'SH', description: 'Single Op, High Power', transmitter: 'SINGLE', power: 'HIGH' },
+  { value: 'MSL', description: 'Multi-Op, Single TX, Low Power', transmitter: 'SINGLE', power: 'LOW' },
+  { value: 'MSH', description: 'Multi-Op, Single TX, High Power', transmitter: 'SINGLE', power: 'HIGH' },
+  { value: 'MML', description: 'Multi-Op, Multi-TX, Low Power', transmitter: 'MULTI', power: 'LOW' },
+  { value: 'MMH', description: 'Multi-Op, Multi-TX, High Power', transmitter: 'MULTI', power: 'HIGH' },
+  // MPO names its transmitter count in the definitions section rather than in
+  // the code: "Entries where one or more persons perform the operating and/or
+  // logging functions using only one transmitter operating at multiple Ohio
+  // State Parks (one at a time)". It is single-transmitter, multi-op, and says
+  // nothing about power.
+  { value: 'MPO', description: 'Multi-Park Operator(s)', transmitter: 'SINGLE' },
+  // These two say "(Single or Multi)" — of OPERATORS. The rules define no
+  // transmitter count for either, so neither gets one invented.
+  { value: 'INOH', description: 'Inside Ohio, not at a state park' },
+  { value: 'OUT', description: 'Outside Ohio' },
+]
 
 /// One park in an event's list: its POTA reference, and — where the event runs
 /// on abbreviations rather than references — the code operators exchange.
@@ -81,12 +184,28 @@ export interface StateParkEvent {
   /// Points per park WE activate (`bonusPoints.perParkActivated`).
   bonusPointsPerParkActivated: number
 
+  /// Power class → what it is worth in the multiplier SUM (`powerMultipliers`).
+  ///
+  /// Texas alone, and a summand rather than a factor despite the name the data
+  /// gives it: "Total score = total QSO points X (power multiplier + Texas State
+  /// Parks worked multiplier + Texas State Parks activated multiplier) + bonus
+  /// points" (§6.5.1; §6.5.2 is the same without the activated term). So QRP's
+  /// `3` adds three multipliers, it does not treble the score.
+  powerMultipliers: Record<string, number>
+  /// The classes this event's setup offers, empty where asking would change
+  /// nothing we produce.
+  powerClasses: PowerClass[]
+  /// The entry categories this event's sponsor publishes, empty where they are
+  /// claimed somewhere other than the log.
+  categories: EntryCategory[]
+
   /// True when the exchange is a park abbreviation rather than nothing at all
   /// (`options.exchange === 'parkAbbreviation'`) — Ohio alone, today.
   usesParkAbbreviations: boolean
-  /// This event's own Cabrillo (`options.exportCabrillo`). The other three ride
-  /// POTA's exports, since their sponsors take a plain ADIF.
+  /// This event's own Cabrillo (`options.exportCabrillo`).
   exportsCabrillo: boolean
+  /// Whether this event's sponsor accepts an ADIF at all (`CABRILLO_ONLY`).
+  exportsAdif: boolean
   /// CONTEST line for that Cabrillo.
   cabrilloName: string
 
@@ -112,6 +231,7 @@ interface RawEvent {
   lastUpdated?: string
   cabrilloName?: string
   options?: { multipliers?: string; exchange?: string; exportCabrillo?: boolean }
+  powerMultipliers?: Record<string, number>
   points?: Record<string, number>
   bands?: string[]
   excludedBands?: string[]
@@ -190,8 +310,13 @@ function normalize(raw: RawEvent): StateParkEvent {
     bonusStations,
     bonusPointsPerParkActivated: raw.bonusPoints?.perParkActivated ?? 0,
 
+    powerMultipliers: raw.powerMultipliers ?? {},
+    powerClasses: POWER_CLASSES[raw.key] ?? [],
+    categories: raw.key === 'OHSP' ? OHIO_CATEGORIES : [],
+
     usesParkAbbreviations,
     exportsCabrillo: raw.options?.exportCabrillo === true,
+    exportsAdif: !CABRILLO_ONLY.includes(raw.key),
     // Sponsors name their own Cabrillo contest; `<KEY>OTA` is what the three
     // whose sponsors don't take a Cabrillo would use if they started to.
     cabrilloName: raw.cabrilloName ?? `${raw.key}OTA`,

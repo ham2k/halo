@@ -191,12 +191,15 @@ class OperationSheetState extends State<OperationSheet> {
 
   void updateOperation(Operation op) {
     if (mounted) {
+      final before = _operation;
       setState(() => _operation = op);
       widget.hasUpdatesNotifier?.value = _hasUpdates(op, widget.operation);
+      _reloadControlsIfRefsChanged(before, op);
     }
   }
   List<Map<String, dynamic>> _controls = const [];
   bool _loadingControls = true;
+  int _controlsRequest = 0;
 
   final _searchController = TextEditingController();
   final _searchFocusNode = FocusNode();
@@ -291,13 +294,31 @@ class OperationSheetState extends State<OperationSheet> {
   }
 
   Future<void> _loadControls() async {
+    // Refs change faster than the host answers — adding two activities in a row
+    // leaves two lookups in flight, and the slower one must not install the
+    // descriptors for the earlier state.
+    final request = ++_controlsRequest;
     final controls = await widget.services.extensions.operationControls(_operation.data);
-    if (mounted) {
+    if (mounted && request == _controlsRequest) {
       setState(() {
         _controls = controls;
         _loadingControls = false;
       });
     }
+  }
+
+  /// Rebuilds the descriptors when the operation's REFS change, from wherever
+  /// `_operation` was replaced — a save, a revert, or a draft pushed in by the
+  /// parent.
+  ///
+  /// A control's own form is allowed to depend on which refs the operation
+  /// carries: State Parks asks Ohio for the park it is in, a power class and an
+  /// entry category, Texas for a power class, and an operation with no event
+  /// chosen for none of them. The refs are the only part of the operation a
+  /// descriptor is built from, so a title or grid edit doesn't pay for a round
+  /// trip.
+  void _reloadControlsIfRefsChanged(Operation before, Operation after) {
+    if (!_areRefsEqual(before.refs, after.refs)) _loadControls();
   }
 
   bool _matchesPattern(String? pattern, String code) =>
@@ -339,9 +360,11 @@ class OperationSheetState extends State<OperationSheet> {
       localData: _operation.localData,
     );
     if (mounted) {
+      final before = _operation;
       setState(() => _operation = updated);
       widget.hasUpdatesNotifier?.value = _hasUpdates(updated, widget.operation);
       widget.onOperationChanged?.call(updated);
+      _reloadControlsIfRefsChanged(before, updated);
     }
   }
 

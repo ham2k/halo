@@ -352,6 +352,20 @@ class FormRendererState extends State<FormRenderer> {
     final key = field['key'] as String;
     final fieldType = field['fieldType'] as String;
     var val = widget.initialState[key] ?? field['value'];
+    if (fieldType == 'select' && val != null) {
+      // The state a field is seeded from OUTLIVES the options it is offered.
+      // An extension's option list can depend on the rest of the form — State
+      // Parks offers Texas three power classes and Ohio two — while the value
+      // persists on the ref, so switching that operation to Ohio leaves a `QRP`
+      // no Ohio dropdown has an item for. `DropdownButton` asserts that its
+      // value is exactly one of its items, so the form THREW instead of
+      // rendering. Dropping it here also means Save clears it, rather than
+      // writing back a value nothing downstream will honour.
+      final options = (field['options'] as List?)?.cast<Map>() ?? const [];
+      if (options.isNotEmpty && !options.any((opt) => opt['value'] == val)) {
+        val = options.any((opt) => opt['value'] == field['value']) ? field['value'] : null;
+      }
+    }
     if (val == null) {
       if (fieldType == 'checkbox') {
         val = false;
@@ -738,6 +752,11 @@ class FormRendererState extends State<FormRenderer> {
           value: _values[key],
           focusNode: _focusNodes[key],
           menuMaxHeight: dropdownMenuMaxHeight(context),
+          // Fill the field rather than taking the width of the widest OPTION,
+          // which is what an unexpanded dropdown does — so one long label (a
+          // contest sponsor's own description of an entry category, say)
+          // overflowed the whole dialog to the right, for every extension.
+          isExpanded: true,
           decoration: poloFieldDecoration(context, label, hintText: placeholder, errorText: errorText, labelColor: devModeColor),
           hint: placeholder != null ? Text(placeholder) : null,
           items: [

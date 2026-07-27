@@ -8,7 +8,7 @@
   "notes": "Contributed by W8NI",
   "lastUpdated": "2026-05-26 19:00z",
   "status": "Updated for 2026",
-  "cabrilloName": "OHSPOTA",
+  "cabrilloName": "OSPOTA",
   "options": {
     "multipliers": "stateParksActivatedAndHunted",
     "exchange": "parkAbbreviation",

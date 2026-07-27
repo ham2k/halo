@@ -45,12 +45,28 @@ const _setupControl = {
 class _ContestExtensions extends ExtensionServiceWithMockHost {
   _ContestExtensions() : super(const MockExtensionHost({}));
 
+  /// A field the control only offers once the operation carries the ref. Stands
+  /// in for the State Parks setup, which asks Ohio for the park it is in, a
+  /// power class and an entry category — and asks an operation with no event
+  /// chosen for none of them.
+  static const _refDependentField = {'type': 'field', 'fieldType': 'text', 'key': 'mode', 'label': 'Mode'};
+
   @override
   Future<List<Map<String, dynamic>>> operationControls(
     Map<String, dynamic> operationData, {
     Map<String, dynamic>? qso,
-  }) async =>
-      [Map<String, dynamic>.from(_setupControl)];
+  }) async {
+    final refs = (operationData['refs'] as List?)?.cast<Map>() ?? const <Map>[];
+    final control = Map<String, dynamic>.from(_setupControl);
+    if (refs.any((ref) => ref['type'] == 'simple-contest')) {
+      final input = Map<String, dynamic>.from(control['input'] as Map);
+      final form = Map<String, dynamic>.from(input['form'] as Map);
+      form['elements'] = [...form['elements'] as List, _refDependentField];
+      input['form'] = form;
+      control['input'] = input;
+    }
+    return [control];
+  }
 
   /// Stands in for simple-contest's own decorateRef: label the ref with the
   /// contest identifier so the Activities row has something to show.
@@ -120,6 +136,42 @@ void main() {
     // The untouched field survives — a form save must not drop ref data it
     // didn't ask about.
     expect(refs.single['contestIdentifier'], 'CQ-WW-SSB');
+  });
+
+  testWidgets('adding the ref rebuilds the controls, so its own form is complete right away',
+      (tester) async {
+    // A setup form can only ask what the ref it configures makes sense of: the
+    // State Parks form asks Ohio for the park it is in, a power class and an
+    // entry category, and an operation with no event chosen for none of them.
+    // The descriptors were built once when the panel opened, so the form an
+    // operator got straight after adding an event was the empty version, and
+    // stayed that way until they closed the panel and came back — with no way to
+    // tell that the fields they never saw existed.
+    final (services, operation) = await _setUp([]);
+
+    Operation? saved;
+    await _pumpPane(tester, services, operation, onChanged: (op) => saved = op);
+
+    // Adding it from the activity-type list, which is where an operation with no
+    // contest ref yet starts.
+    await tester.tap(find.text('Contest Setup').last);
+    await tester.pumpAndSettle();
+    await tester.enterText(find.widgetWithText(TextField, 'Contest'), 'CQ-WW-SSB');
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Save').last);
+    await tester.pumpAndSettle();
+
+    expect((saved ?? operation).refs.single['contestIdentifier'], 'CQ-WW-SSB');
+
+    // Reopening it: the field that only exists once the ref does is there, with
+    // no trip out of the panel in between.
+    await tester.tap(find.text('CQ-WW-SSB'));
+    await tester.pumpAndSettle();
+    expect(
+      find.widgetWithText(TextField, 'Mode'),
+      findsOneWidget,
+      reason: 'the form was rebuilt against the ref that now exists',
+    );
   });
 
   testWidgets('cancelling the setup form leaves the ref untouched', (tester) async {

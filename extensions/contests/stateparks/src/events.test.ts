@@ -30,7 +30,9 @@ test('every event has a park list, and Ohio alone exchanges abbreviations', () =
 
   assert.deepEqual(EVENTS.map((e) => e.usesParkAbbreviations), [false, false, false, true])
   assert.deepEqual(EVENTS.map((e) => e.exportsCabrillo), [false, false, false, true])
-  assert.equal(EVENTS[3].cabrilloName, 'OHSPOTA')
+  // The sponsor's own sample Cabrillo, not the event key and not polo's guess:
+  // https://ospota.org/Files/OSPOTA_Sample-rev2.log
+  assert.equal(EVENTS[3].cabrilloName, 'OSPOTA')
 })
 
 test("Ohio's abbreviations and references agree, and both directions resolve", () => {
@@ -123,4 +125,61 @@ test('each event honours its own band list — the rule polo carries and never r
   // Texas and Georgia state no list, so anything not excluded counts.
   assert.equal(bandCounts(eventFor('TXSP')!, '6m'), true)
   assert.equal(bandCounts(eventFor('GASP')!, '160m'), true)
+})
+
+test('only Ohio’s sponsor refuses an ADIF, and Ohio alone takes a Cabrillo', () => {
+  // "No ADIF, no CSV, no Text files - send in a standard Cabrillo file only" —
+  // OSPOTA-Rules-2026-Rev-1.pdf, which says it three times over. The other
+  // three upload a log FILE to their own site and name ADIF for it: Texas §8.2,
+  // Florida §7.1, Georgia §7.2.2. Offering a file the sponsor throws away is
+  // how a log goes unscored, and polo offers one for all four.
+  assert.deepEqual(EVENTS.filter((e) => !e.exportsAdif).map((e) => e.key), ['OHSP'])
+  assert.deepEqual(EVENTS.filter((e) => e.exportsCabrillo).map((e) => e.key), ['OHSP'])
+})
+
+test('power classes and entry categories are asked for only where the answer lands somewhere', () => {
+  const txsp = eventFor('TXSP')!
+  // Texas's own numbers, from the data file — a summand in the multiplier sum
+  // (§6.5.1), not a factor.
+  assert.deepEqual(txsp.powerMultipliers, { QRP: 3, LP: 2, HP: 1 })
+  assert.deepEqual(txsp.powerClasses.map((p) => p.value), ['QRP', 'LP', 'HP'])
+  assert.deepEqual(txsp.categories, [], 'claimed on Texas’s upload form, not in the log')
+
+  // Ohio awards nothing for power and its Cabrillo carries the class anyway. It
+  // publishes two — there is no QRP class to claim.
+  const ohsp = eventFor('OHSP')!
+  assert.deepEqual(ohsp.powerMultipliers, {})
+  assert.deepEqual(ohsp.powerClasses.map((p) => p.value), ['LP', 'HP'])
+  assert.deepEqual(
+    ohsp.categories.map((c) => c.value),
+    ['SL', 'SH', 'MSL', 'MSH', 'MML', 'MMH', 'MPO', 'INOH', 'OUT'],
+  )
+  // The whole mapping, not a count of it: a code whose power or transmitter is
+  // wrong puts a false entry class in front of the sponsor's log checker, and a
+  // count cannot see a swap. Every value here is the sponsor's own sentence —
+  // MPO's transmitter comes from the definitions section ("using only one
+  // transmitter operating at multiple Ohio State Parks"), and INOH/OUT are the
+  // two the rules genuinely leave open.
+  assert.deepEqual(
+    ohsp.categories.map((c) => [c.value, c.transmitter ?? '-', c.power ?? '-']),
+    [
+      ['SL', 'SINGLE', 'LOW'],
+      ['SH', 'SINGLE', 'HIGH'],
+      ['MSL', 'SINGLE', 'LOW'],
+      ['MSH', 'SINGLE', 'HIGH'],
+      ['MML', 'MULTI', 'LOW'],
+      ['MMH', 'MULTI', 'HIGH'],
+      ['MPO', 'SINGLE', '-'],
+      ['INOH', '-', '-'],
+      ['OUT', '-', '-'],
+    ],
+  )
+
+  // Florida (§5.2) and Georgia (§5.3) publish power classes too, but claim them
+  // on the sponsor's own upload form and score nothing on them: a question with
+  // nowhere to go is not asked.
+  for (const key of ['FLSP', 'GASP']) {
+    assert.deepEqual(eventFor(key)!.powerClasses, [], key)
+    assert.deepEqual(eventFor(key)!.categories, [], key)
+  }
 })

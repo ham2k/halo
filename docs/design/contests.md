@@ -1569,6 +1569,15 @@ recorded where they belong (§5.3, §5.4) rather than only here:
   > `points.distinctStatePark` is read by nothing either, which its own notes
   > admit. All four are fixed in the port, which therefore does NOT reproduce
   > polo's numbers — see the divergence list in `stateparks/src/scorer.ts`.
+  >
+  > **Amended after M5.** `powerMultipliers` is read now: setup asks for a power
+  > class where the answer reaches something we produce (Texas's score, Ohio's
+  > Cabrillo), and Texas §6.5.1 makes that number a **term in the multiplier
+  > sum** — "total QSO points X (power multiplier + Texas State Parks worked
+  > multiplier + Texas State Parks activated multiplier) + bonus points" — not
+  > the factor its name suggests. The same pass stopped offering the contest ADIF
+  > for Ohio, whose rules refuse it in as many words, and put the four CATEGORY
+  > headers their checker reads into Ohio's Cabrillo.
 - **Per-QSO scoring stays out of the QSON blob** (§5.1.1) — it lives in
   `score_cache`/`local_data.scoring`, is never synced, and is regenerable.
   Extensions get a read-only `_scoring` projection instead (§5.7), which is a
@@ -1714,7 +1723,7 @@ no exchange, no export; needs scoring fan-out + a POTA-ref annotation). Effort i
 | `iaru-hf` | complex | ✓ / ✓ | zone/HQ-abbr (polymorphic) | adif, cabrillo | none | large |
 | `naqp` | moderate | ✓ / ✓ | name + state (guessed) | adif, cabrillo | none (needs states data) | large |
 | `georgia-pota` | moderate | ✓ / – | state (standard field) | – | none | medium *(partial)* |
-| `stateparks` | complex | ✓ / – | park abbreviation (OHSP only) | adif, cabrillo (OHSP) | `states/*.json` | large |
+| `stateparks` | complex | ✓ / – | park abbreviation (OHSP only) | adif (not OHSP), cabrillo (OHSP only) | `states/*.json` | large |
 | `qp` | complex | ✓ / ✓ | serial + county/state | adif, cabrillo | 49 `parties/*.json` | large |
 | `arrl-vhf-tests` | complex | ✓ / ✓ | grid (4/6) | adif, cabrillo | `all-events.js` | large |
 | `r1-vhf-tests` | moderate | – / ✓ | serial + grid | adif, **reg1test** | `all-events.js` (8) | large |
@@ -1723,6 +1732,7 @@ no exchange, no export; needs scoring fan-out + a POTA-ref annotation). Effort i
 Rows describe **app-polo's** structure, except `stateparks`, corrected at M5 when
 it was ported: only Ohio has a typed exchange (a park abbreviation, not a state)
 and only Ohio exports a Cabrillo — the other three events read their parks off
-the POTA references already being logged. Per #149 and §5.6, `qp` and
+the POTA references already being logged, and are the only three offered a
+contest ADIF, Ohio's sponsor having ruled one out. Per #149 and §5.6, `qp` and
 `stateparks` ship in HaLo as ONE extension each whose events are offered through
 the activity `suggest` search, and their data files stay one bundled catalog.

@@ -54,9 +54,19 @@ function qso({ call = 'K1ABC', band = '20m', mode = 'CW', hunting, park, state, 
 
 function run(
   qsos: Record<string, JSONValue>[],
-  { event = 'TXSP', operation = operationFor(), ourPark }: { event?: string; operation?: Record<string, JSONValue>; ourPark?: string } = {},
+  { event = 'TXSP', operation = operationFor(), ourPark, ourPower }: {
+    event?: string
+    operation?: Record<string, JSONValue>
+    ourPark?: string
+    ourPower?: string
+  } = {},
 ) {
-  const ref: Record<string, JSONValue> = { type: 'stateparks', ref: event, ...(ourPark ? { ourPark } : {}) }
+  const ref: Record<string, JSONValue> = {
+    type: 'stateparks',
+    ref: event,
+    ...(ourPark ? { ourPark } : {}),
+    ...(ourPower ? { ourPower } : {}),
+  }
   let sheet: StateParksScoresheet = StateParksScorer.startScoresheet({ operation, ref }, ctx)
   const scores = qsos.map((q) => {
     const result = StateParksScorer.scoreQso({ scoresheet: sheet, qso: q, operation, ref, isNewDay: false }, ctx)
@@ -398,6 +408,91 @@ test('a day’s total leaves the event’s bonuses out, so they are not paid twi
   assert.equal(day.label, '10 × 1')
 })
 
+test('Texas’s power class ADDS to the multiplier sum, where the event has one', () => {
+  // §6.5.1, verbatim: "total QSO points X (power multiplier + Texas State Parks
+  // worked multiplier + Texas State Parks activated multiplier) + bonus points".
+  // So QRP's 3 is three more multipliers, NOT a trebled score — the name
+  // `powerMultipliers` reads the other way, and polo reads the key nowhere at
+  // all, scoring a QRP entrant short of a term their rules give them.
+  const hunt = [qso({ mode: 'SSB', hunting: [TX_B] })] // 1 point, 1 park worked
+
+  assert.equal(run(hunt).summary().total, 1, 'no class declared claims no term')
+  assert.equal(run(hunt, { ourPower: 'QRP' }).summary().total, 4) // 1 × (3 + 1)
+  assert.equal(run(hunt, { ourPower: 'LP' }).summary().total, 3) // 1 × (2 + 1)
+  assert.equal(run(hunt, { ourPower: 'HP' }).summary().total, 2) // 1 × (1 + 1)
+  assert.equal(run(hunt, { ourPower: 'QRP' }).summary().label, '1 × 4')
+  // Not one of the classes Texas publishes: no term, rather than a term of its
+  // own invention.
+  assert.equal(run(hunt, { ourPower: 'MEDIUM' }).summary().total, 1)
+
+  // Nothing else claimed: the power class is the WHOLE multiplier, not a floor of
+  // 1 with the class ignored. §6.5.2 is "total QSO points X (power multiplier +
+  // Texas State Parks worked multiplier)", and a hunter who has yet to work a
+  // park still ran the power they declared. This is the case that moved when the
+  // `|| 1` floor moved off the park term.
+  const noParks = [qso({ mode: 'SSB' })] // 1 point, no park either side
+  assert.equal(run(noParks).summary().total, 1, 'nothing declared and nothing claimed')
+  assert.equal(run(noParks, { ourPower: 'QRP' }).summary().total, 3) // 1 × (3 + 0)
+
+  // Ohio asks for a power class too — its Cabrillo carries one — and awards no
+  // multiplier for it. The term follows the event's DATA, not the presence of
+  // the field, which is also what keeps a class left behind by a switched
+  // event from paying out.
+  const ohio = [qso({ mode: 'SSB', park: 'ALU' })]
+  assert.equal(run(ohio, { event: 'OHSP' }).summary().total, 1)
+  assert.equal(run(ohio, { event: 'OHSP', ourPower: 'HP' }).summary().total, 1)
+})
+
+test('the power term is read from the SCORESHEET, not from the ref the summary is handed', () => {
+  // This is the only reason `sheet.powerMult` exists rather than a read of
+  // `ref.ourPower` in summarizeScore: the harness hands scoreQso the
+  // SEGMENT-effective operation and summarizeScore the BASE one (sdk/src/scoring.ts),
+  // so on a segmented log the ref that carried the class may not be the ref the
+  // summary sees. Score with a ref that declares QRP, summarize with one that
+  // declares nothing, and the multiplier must still be the one the QSOs were
+  // scored under — otherwise a moved-park log silently loses three multipliers.
+  const operation = operationFor()
+  const scoringRef: Record<string, JSONValue> = { type: 'stateparks', ref: 'TXSP', ourPower: 'QRP' }
+  const baseRef: Record<string, JSONValue> = { type: 'stateparks', ref: 'TXSP' }
+
+  let sheet = StateParksScorer.startScoresheet({ operation, ref: baseRef }, ctx)
+  sheet = StateParksScorer.scoreQso(
+    { scoresheet: sheet, qso: qso({ mode: 'SSB', hunting: [TX_B] }), operation, ref: scoringRef, isNewDay: false },
+    ctx,
+  ).scoresheet
+
+  assert.equal(sheet.powerMult, 3)
+  const summary = StateParksScorer.summarizeScore({ scoresheet: sheet, operation, ref: baseRef, scope: 'operation' }, ctx).stateparks
+  assert.equal(summary.total, 4, '1 point × (3 power + 1 park worked)')
+})
+
+test('a class declared in a later segment still counts', () => {
+  // The scoresheet records the power term as the fold goes, and 0 is what "no
+  // class declared" looks like — so recording it with `??=` latched that 0 and
+  // the class could never arrive afterwards. Which is the case it is recorded
+  // for: on a segmented log, `scoreQso` is handed the SEGMENT's ref, and the
+  // segment that carries the class may not be the first one scored.
+  const operation = operationFor()
+  const bare: Record<string, JSONValue> = { type: 'stateparks', ref: 'TXSP' }
+  const declared: Record<string, JSONValue> = { type: 'stateparks', ref: 'TXSP', ourPower: 'QRP' }
+
+  let sheet = StateParksScorer.startScoresheet({ operation, ref: bare }, ctx)
+  sheet = StateParksScorer.scoreQso(
+    { scoresheet: sheet, qso: qso({ mode: 'SSB', hunting: [TX_B] }), operation, ref: bare, isNewDay: false },
+    ctx,
+  ).scoresheet
+  assert.equal(sheet.powerMult, 0, 'nothing declared yet')
+
+  sheet = StateParksScorer.scoreQso(
+    { scoresheet: sheet, qso: qso({ call: 'K2XYZ', mode: 'SSB', hunting: [TX_C] }), operation, ref: declared, isNewDay: false },
+    ctx,
+  ).scoresheet
+  assert.equal(sheet.powerMult, 3, 'the class arrived in the second segment')
+
+  // 2 points × (3 power + 2 parks worked).
+  assert.equal(StateParksScorer.summarizeScore({ scoresheet: sheet, operation, ref: bare, scope: 'operation' }, ctx).stateparks.total, 10)
+})
+
 test('the summary reads back as a scoreboard, and survives a JSON round trip', () => {
   const { sheet, summary } = run(
     [qso({ call: 'K5LRK', mode: 'SSB', hunting: [TX_B] })],
@@ -418,4 +513,5 @@ test('the summary reads back as a scoreboard, and survives a JSON round trip', (
   // JSON — anything that isn't plain data would vanish without an error.
   assert.deepEqual(JSON.parse(JSON.stringify(sheet)), sheet)
   assert.equal(sheet.eventKey, 'TXSP')
+  assert.equal(sheet.powerMult, 0, 'recorded on the first QSO, like the event key')
 })

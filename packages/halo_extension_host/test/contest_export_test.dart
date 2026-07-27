@@ -31,12 +31,26 @@ void main() {
 
   /// `ref` names WHICH event for a contest that has several (stateparks
   /// contributes nothing without one); the rest ignore the extra keys.
-  Map<String, dynamic> operationFor(String key) => {
+  ///
+  /// `ourCategory`/`ourPower` are Ohio's entry class, and MPO with a declared HP
+  /// is the awkward pair deliberately: MPO is one of the three categories whose
+  /// own definition names neither a transmitter count nor a power, so it is the
+  /// case where the Cabrillo must fall back to the declared class for one header
+  /// and emit nothing at all for the other.
+  Map<String, dynamic> operationFor(String key, {String event = 'OHSP'}) => {
         'uuid': 'op-1',
         'stationCall': 'N0DEV',
         'grid': 'EN91',
         'refs': [
-          {'type': key, 'mode': 'CW', 'exchange': '59 001', 'ref': 'OHSP', 'ourPark': 'HOC'},
+          {
+            'type': key,
+            'mode': 'CW',
+            'exchange': '59 001',
+            'ref': event,
+            'ourPark': 'HOC',
+            'ourCategory': 'MPO',
+            'ourPower': 'HP',
+          },
         ],
       };
 
@@ -78,7 +92,10 @@ void main() {
         key: key,
         method: 'generateExport',
         args: {
-          'operation': operationFor(key),
+          // Texas, because Ohio is the one event that offers no contest ADIF at
+          // all — the recursion this guards against lives in the shared
+          // delegation, so exercise it on an operation that really reaches it.
+          'operation': operationFor(key, event: 'TXSP'),
           'qsos': qsosFor(key),
           'exportType': 'contest-adif',
         },
@@ -125,6 +142,79 @@ void main() {
 
     expect(result, isNotNull);
     expect(result!['content'], isEmpty, reason: 'not an exportType this hook offers');
+  }, timeout: const Timeout(Duration(seconds: 60)));
+
+  test('the state park setup form asks each event only what its sponsor uses', () async {
+    if (!bundle('kernel').existsSync() || !bundle('stateparks').existsSync()) {
+      markTestSkipped('bundles not built — run `npm run build` in extensions/ first');
+      return;
+    }
+    // The fields are the operator-facing half of the same rules reading as the
+    // export options above: a power class where it changes a score or a header,
+    // an entry category only where the sponsor publishes one. Asserted through
+    // the real runtime because the form is data the extension returns, and a
+    // field that never renders is indistinguishable from one never asked for.
+    final host = await ExtensionHost.start(
+      kernelSource: bundle('kernel').readAsStringSync(),
+      extensions: [ExtensionBundle(key: 'stateparks', source: bundle('stateparks').readAsStringSync())],
+    );
+    addTearDown(host.dispose);
+
+    Future<List<String>> fieldsFor(String event) async {
+      final controls = (await host.invokeHook(
+        'activity',
+        key: 'stateparks',
+        method: 'operationControls',
+        args: {'operation': operationFor('stateparks', event: event)},
+        timeout: const Duration(seconds: 10),
+      ) as List).cast<Map>();
+      final form = (controls.single['input'] as Map)['form'] as Map;
+      return [
+        for (final element in (form['elements'] as List).cast<Map>())
+          if (element['type'] == 'field') element['key'] as String,
+      ];
+    }
+
+    // Ohio: the park we are in, its two power classes, its nine categories.
+    expect(await fieldsFor('OHSP'), ['ref', 'ourPark', 'ourPower', 'ourCategory']);
+    // Texas: power, because §6.3.4 pays for it. No exchange, so no park field.
+    expect(await fieldsFor('TXSP'), ['ref', 'ourPower']);
+    // Florida and Georgia publish power classes their sponsors take on a web
+    // form and score nothing on, so there is nothing to ask here.
+    expect(await fieldsFor('FLSP'), ['ref']);
+    expect(await fieldsFor('GASP'), ['ref']);
+  }, timeout: const Timeout(Duration(seconds: 60)));
+
+  test('a state park event offers only the formats its own sponsor will read', () async {
+    if (!bundle('kernel').existsSync() || !bundle('stateparks').existsSync()) {
+      markTestSkipped('bundles not built — run `npm run build` in extensions/ first');
+      return;
+    }
+    // Ohio refuses an ADIF in as many words — "No ADIF, no CSV, no Text files -
+    // send in a standard Cabrillo file only" — so offering one is offering a file
+    // that gets the log rejected. Texas requires the opposite (§8.2, upload an
+    // ADIF), and takes no Cabrillo. polo offers a contest ADIF for all four.
+    final host = await ExtensionHost.start(
+      kernelSource: bundle('kernel').readAsStringSync(),
+      extensions: [ExtensionBundle(key: 'stateparks', source: bundle('stateparks').readAsStringSync())],
+    );
+    addTearDown(host.dispose);
+
+    Future<List<String>> typesFor(String event) async {
+      final options = await host.invokeHook(
+        'export',
+        key: 'stateparks',
+        method: 'suggestExportOptions',
+        args: {'operation': operationFor('stateparks', event: event), 'qsos': qsosFor('stateparks')},
+        timeout: const Duration(seconds: 10),
+      ) as List?;
+      return (options ?? []).map((o) => (o as Map)['exportType'] as String).toList();
+    }
+
+    expect(await typesFor('OHSP'), ['cabrillo']);
+    expect(await typesFor('TXSP'), ['contest-adif']);
+    expect(await typesFor('FLSP'), ['contest-adif']);
+    expect(await typesFor('GASP'), ['contest-adif']);
   }, timeout: const Timeout(Duration(seconds: 60)));
 
   test('the Ohio State Parks Cabrillo is written the way the sponsor reads it', () async {
@@ -190,10 +280,23 @@ void main() {
     final lines = (result['content'] as String).trim().split('\n');
 
     expect(lines.first, 'START-OF-LOG: 3.0');
-    expect(lines, contains('CONTEST: OHSPOTA'), reason: 'the sponsor’s own contest name, not the event key');
+    // The sponsor's own sample Cabrillo says OSPOTA — https://ospota.org/Files/OSPOTA_Sample-rev2.log
+    // — and their checker is automated, so the event key (OHSP) and polo's
+    // OHSPOTA are both wrong here.
+    expect(lines, contains('CONTEST: OSPOTA'), reason: 'the sponsor’s own contest name, not the event key');
     expect(lines, contains('CALLSIGN: N0DEV'));
     expect(lines, contains('LOCATION: HOC'), reason: 'the park we are activating');
     expect(lines, contains('GRID-LOCATOR: EN91'));
+    // The entry, which is what tells their automated checker which class it is
+    // scoring — https://ospota.org/Files/OSPOTA_Sample-rev2.log names these four.
+    expect(lines, contains('CATEGORY-OPERATOR: MPO'));
+    expect(lines, contains('CATEGORY-POWER: HIGH'), reason: 'MPO names no power, so the declared class stands');
+    expect(lines, contains('CATEGORY-MODE: MIXED'), reason: 'fixed in the sponsor’s own sample');
+    // MPO's own definition settles the transmitter count even though its code
+    // does not: "using only one transmitter operating at multiple Ohio State
+    // Parks (one at a time)". Only INOH and OUT are left open by the rules, and
+    // those emit no header at all rather than a guess.
+    expect(lines, contains('CATEGORY-TRANSMITTER: SINGLE'));
     expect(lines.last, 'END-OF-LOG:');
 
     final qsoLines = lines.where((l) => l.startsWith('QSO:')).toList();
