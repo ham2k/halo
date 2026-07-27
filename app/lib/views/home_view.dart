@@ -186,7 +186,7 @@ const _newOperationNudgeThreshold = 2;
 /// control.
 const _fabColor = Color(0xFF00B4E6);
 
-class _HomeViewState extends State<HomeView> {
+class _HomeViewState extends State<HomeView> with WidgetsBindingObserver {
   bool _isFabExtended = true;
 
   /// Memoized: build now depends on MediaQuery.sizeOf (ShirtSize.of), so it
@@ -237,6 +237,36 @@ class _HomeViewState extends State<HomeView> {
       _creatingOperation = false;
       rethrow;
     }
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  // The FAB's extend/collapse (an AnimatedSize/AnimatedOpacity pair) has been
+  // seen stuck mid-transition, at least on web. AnimatedSize's own render
+  // object is built to resume a stopped-mid-animation controller once
+  // reattached (see RenderAnimatedSize.attach/_layoutStable in the Flutter
+  // SDK) — this isn't a broken state machine we need to replace. The more
+  // likely cause is a web tab backgrounding mid-transition and the browser's
+  // own frame pump not resuming on its own once the tab is visible again, so
+  // whatever frame the animation was mid-paint on just never gets redrawn.
+  // AppLifecycleState.resumed fires for both app-foregrounding (mobile) and
+  // tab-visibility-regained (web, via the PlatformDispatcher) — forcing a
+  // rebuild here asks Flutter for a fresh frame either way, which is enough
+  // for the animation to either finish or repaint at its actual (correct)
+  // current state instead of a stale one.
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed && mounted) setState(() {});
   }
 
   @override
