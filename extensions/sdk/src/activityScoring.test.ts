@@ -303,6 +303,72 @@ test("a 'once' program's day row reports the running total", async () => {
   assert.equal(tally(result.daySections[1].scores, 'activation')!.summary, '9/44')
 })
 
+// --- Rules the hunt-and-activate awards need (A2) ----------------------------
+
+/// WWBOTA: 10 contacts in Slovenia and North Macedonia, 25 everywhere else.
+const WWBOTA = {
+  label: 'WWBOTA',
+  activationType: 'wwbotaActivation',
+  huntingType: 'wwbota',
+  qsosToActivate: (refs: string[]) =>
+    Math.max(...refs.map((r) => (['S5', 'Z3'].includes(r.split(/[/-]/)[1]) ? 10 : 25))),
+  uniquePer: ['band', 'day', 'ref'] as const,
+  activates: 'once' as const,
+}
+
+test("the threshold can depend on which reference is being activated", async () => {
+  const slovenian = await score(WWBOTA, operationActivating('wwbotaActivation', 'B/S5-0001'), manyCalls(3))
+  assert.equal(tally(slovenian.operationSummary, 'activation')!.summary, '3/10')
+
+  const british = await score(WWBOTA, operationActivating('wwbotaActivation', 'B/G-0001'), manyCalls(3))
+  assert.equal(tally(british.operationSummary, 'activation')!.summary, '3/25')
+})
+
+test("activating two bunkers at once takes the HARDER threshold", async () => {
+  // Clearing the easy one must not declare the hard one done.
+  const operation = operationActivating('wwbotaActivation', 'B/S5-0001', 'B/G-0001')
+  const result = await score(WWBOTA, operation, manyCalls(12))
+  const activation = tally(result.operationSummary, 'activation')!
+  assert.equal(activation.summary, '12/25')
+  assert.equal(activation.activated, false)
+})
+
+test("a fresh reference on a repeat contact earns ref-to-ref but not the activation", async () => {
+  // MOTA and SiOTA: "Doesn't count towards activation, but towards Silo 2 Silo
+  // award." The operator already worked this station on this band today.
+  const MOTA = {
+    label: 'MOTA',
+    activationType: 'motaActivation',
+    huntingType: 'mota',
+    qsosToActivate: 10,
+    uniquePer: ['band', 'day', 'ref'] as const,
+    activates: 'once' as const,
+    freshRefRescuesActivation: false,
+  }
+  const operation = operationActivating('motaActivation', 'X00001')
+  const result = await score(MOTA, operation, [
+    qso('W1AW', { uuid: 'q1', huntingType: 'mota', hunting: ['X09001'] }),
+    qso('W1AW', { uuid: 'q2', huntingType: 'mota', hunting: ['X09002'] }),
+  ])
+
+  assert.deepEqual(result.qsoScores.q2.notices, ['newRef'])
+  assert.equal(result.qsoScores.q2.dupe, undefined)
+  // One contact toward the mill, not two...
+  assert.deepEqual(tally(result.operationSummary, 'activation')!.activatedRefs, { 'X00001': 1 })
+  // ...but both mills hunted.
+  assert.deepEqual(tally(result.operationSummary, 'hunting')!.huntedRefs, { 'X09001': 1, 'X09002': 1 })
+})
+
+test("WWBOTA is the exception: a fresh bunker does advance the activation", async () => {
+  const operation = operationActivating('wwbotaActivation', 'B/G-0001')
+  const result = await score(WWBOTA, operation, [
+    qso('W1AW', { uuid: 'q1', huntingType: 'wwbota', hunting: ['B/G-9001'] }),
+    qso('W1AW', { uuid: 'q2', huntingType: 'wwbota', hunting: ['B/G-9002'] }),
+  ])
+  assert.deepEqual(result.qsoScores.q2.notices, ['newRef'])
+  assert.deepEqual(tally(result.operationSummary, 'activation')!.activatedRefs, { 'B/G-0001': 2 })
+})
+
 // --- What the operator reads ------------------------------------------------
 
 test("the label is singular for one contact", async () => {

@@ -1,6 +1,6 @@
 # Porting app-polo's activity extensions
 
-Status: **A0 built, A1 next**. Tracking issue: ham2k/app-halo-dist#148.
+Status: **A0–A2 built; A3 next**. Tracking issue: ham2k/app-halo-dist#148.
 
 Companion to [contests.md](contests.md), which owns the twelve contest
 extensions and, per the decision in §5 below, also owns `fd`, `wfd` and
@@ -127,12 +127,31 @@ It lives outside any extension directory because no single one of them owns it;
 `build.mjs` lists its bundles explicitly, so nothing there is mistaken for an
 extension. `postOtherSpot` is not ported yet — none of A1's programs use it.
 
-### 3.4 A build-time secret for a data-file URL (`tota` only)
+### 3.4 Build-time API keys — **BUILT** (the secrets store, #411)
 
-`tota` fetches `rozhledny.eu/apidata/tower.php?key=${Config.TOTA_API_KEY}`.
-HaLo has `fieldType: 'secret'` for *user-entered* credentials but no way to
-thread a build-time app secret into an extension. `tota` is blocked on that
-decision; nothing else is.
+Three of app-polo's activities sit behind a key, and not only for their lists:
+`tota` puts one in its data-file URL as a query parameter, while `wwff` and
+`llota` send one as an `X-API-Key` header on their spot feeds and spot posting.
+So `wwff` and `llota` can be ported without a key and simply lose spotting;
+`tota` cannot be ported at all without one.
+
+HaLo had `fieldType: 'secret'` for *user-entered* credentials but no way to
+thread a build-time app secret into an extension. It does now:
+
+- a manifest's `apiKey` NAMES the key it may read (see `docs/extensions/README.md`);
+- `host.apiKey()` returns it, and the kernel stamps the caller's identity onto
+  the call — `'apiKey'` joined `IDENTITY_HOST_METHODS` — so an extension can
+  only ever receive its own;
+- values come from the environment into a gitignored
+  `app/lib/config/api_keys.dart`, the same pattern as `mapbox_token.dart`.
+
+Every consumer must expect null and degrade: a fresh checkout, a fork and any
+build without the secret all have none.
+
+A flat key map plus one accessor is a **stopgap**. A proper secrets service, and
+flags to gate the external calls that use these keys, are planned — written up
+under "Planned: a secrets service, and flags to gate external calls" in
+`docs/extensions/README.md`.
 
 ### 3.5 Satellites (bespoke)
 
@@ -262,6 +281,21 @@ castle and lighthouse awards only recognise activations, and app-polo says so by
 leaving it off its Info. Their scorers then credit one per contact and report no
 hunting tally.
 
+**A2 added the hunting side** — `huntingType` on the factory brings a per-QSO
+control, SIG/SIG_INFO on export, and other-spotting — plus three rules that
+batch's awards need and A1's never did. Each is configuration because the
+programs genuinely disagree, not because the shape was unclear:
+
+| Rule | Who needs it |
+|---|---|
+| `splitRecordsPerHuntedRef` — one ADIF record per hunted reference, or one naming them all | split: `pota`, `mota`; join: `gma`, `siota`, `wwbota`, `zlota` |
+| `qsosToActivate` as a function of the activated references | `wwbota` (10 in S5/Z3, else 25), `zlota` (1–4 by kind of place) |
+| `freshRefRescuesActivation` — does a fresh hunted reference rescue the activation credit on a repeat contact? | false for `mota`, `siota`; true elsewhere |
+| `tracksActivation` — does the award have a threshold at all? | false for `mota`, which counts nothing |
+
+A joining program must declare NO `fieldCombinationsForOneQSO`, not one that
+returns a single set — the exporter would otherwise ask twice for one answer.
+
 ---
 
 ## 5. Scope
@@ -284,8 +318,8 @@ contests plus Field Day"). Add all three to that porting sequence.
 |---|---|---|
 | **A0** ✅ | `activityScorer` and `activityExportHook` in the SDK; per-record ADIF combinations; retrofit `pota` + `sota` | §3.1/§3.2. Unblocks everything; fixes the two shipped activities |
 | **A1** ✅ | `bca` `blha` `eca` `ela` `wca` `pga` + the GMA spot API and the `referenceActivity` factory | Six activation-only extensions over one data-file shape and one spot API — widest validation for the least code |
-| **A2** | `gma` `mota` `siota` `wwbota` `zlota` | Adds hunting refs and a second reference type per extension |
-| **A3** | `wwff` `llota` `tota` | Adds spot *feeds*; `tota` gated on §3.4 |
+| **A2** ✅ | `gma` `mota` `siota` `wwbota` `zlota` | Adds hunting refs and a second reference type per extension |
+| **A3** | `wwff` `llota` `tota` | The three behind API keys; `tota`'s LIST needs one |
 | **A4** | `custom` | Free-form SIG/SIG_INFO; needs no data file but does need a two-field control |
 | **A5** | `satellites` | §3.5. Most new ground, least shared with the rest |
 

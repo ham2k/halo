@@ -56,6 +56,19 @@ export interface ReferenceActivityConfig {
   label: string
   /// The ref type an operation carries while activating ('wcaActivation').
   activationType: string
+  /// The ref type a QSO carries for a reference the other station was at
+  /// ('gma'). Omit it for an award that only recognises activations — several
+  /// of the castle and lighthouse programs do, and app-polo says so by leaving
+  /// `huntingType` off its Info. With it, the logging panel gains a per-QSO
+  /// control and exports carry SIG/SIG_INFO.
+  huntingType?: string
+  /// Whether a contact that hunts several references is submitted as one
+  /// record PER reference, or as a single record naming them all.
+  ///
+  /// The programs genuinely disagree and it is not cosmetic — it decides how
+  /// many contacts the award sees. POTA and MOTA split; SiOTA, WWBOTA and
+  /// ZLOTA join with commas. Ignored without a `huntingType`.
+  splitRecordsPerHuntedRef?: boolean
   /// What a reference looks like. Anchored and matched case-insensitively.
   referenceRegex: RegExp
   icon?: string
@@ -72,6 +85,13 @@ export interface ReferenceActivityConfig {
   /// The program name written to ADIF's MY_SIG. Defaults to `label` — set it
   /// where the award and the ADIF program differ.
   adifProgram?: string
+  /// Emit `<NAME>_REF` / `MY_<NAME>_REF` alongside SIG_INFO / MY_SIG_INFO.
+  ///
+  /// The bigger programs have a field of their own that logging software and
+  /// the awards' own uploaders read in preference to SIG_INFO — `POTA_REF`,
+  /// `WWFF_REF`, `LLOTA_REF`. Omit it for a program that has none; writing an
+  /// invented field would be worse than writing none.
+  adifRefField?: string
   /// Whether the program recognises several references activated at once.
   /// Defaults to false; none of the simple awards allow it.
   allowsMultiple?: boolean
@@ -194,8 +214,37 @@ export function referenceActivity(config: ReferenceActivityConfig): ReferenceAct
       ]
     },
 
-    // No `loggingControls`: these programs have no hunting side, so there is
-    // nothing to record per QSO.
+    // Only offered when the program HAS a hunting side; an activation-only
+    // award has nothing to record per QSO. One control either way, unlike
+    // app-polo which swaps between an activator and a hunter control depending
+    // on whether the operation is activating — both write the same hunting
+    // refs, and POTA's HaLo port already settled on the single control.
+    ...(config.huntingType
+      ? {
+          async loggingControls(
+            _args: { operation: Record<string, JSONValue>; qso?: Record<string, JSONValue> },
+            ctx: HookContext,
+          ) {
+            return [
+              {
+                key: `${config.key}/hunter`,
+                label: config.tFor(ctx)('huntingControl'),
+                icon: config.icon,
+                color: config.color,
+                order: 10,
+                optionType: 'optional',
+                allowsMultiple: true,
+                input: {
+                  kind: 'refList',
+                  refType: config.huntingType,
+                  placeholder: config.placeholder,
+                  pattern: config.referenceRegex.source,
+                },
+              },
+            ]
+          },
+        }
+      : {}),
 
     async suggest({ location, searchTerm }: SuggestArgs, _ctx: HookContext): Promise<ActivitySuggestion[]> {
       const host = await hostApi()
@@ -238,20 +287,68 @@ export function referenceActivity(config: ReferenceActivityConfig): ReferenceAct
     },
   }
 
-  const adifFieldsHook = {
+  type AdifField = { name: string; value: string }
+
+  /// MY_SIG/MY_SIG_INFO for the operation's activation. MY_SIG_INFO takes the
+  /// primary reference only, matching app-polo.
+  function activationFields(operation: Record<string, unknown>): AdifField[] {
+    const refs = refsOfType(operation, config.activationType)
+    if (refs.length === 0) return []
+    return [
+      { name: 'MY_SIG', value: program },
+      { name: 'MY_SIG_INFO', value: refs[0].ref! },
+      ...(config.adifRefField
+        ? [{ name: `MY_${config.adifRefField}_REF`, value: refs.map((r) => r.ref).join(',') }]
+        : []),
+    ]
+  }
+
+  function huntedRefsOn(qso: Record<string, unknown>): Ref[] {
+    return config.huntingType ? refsOfType(qso, config.huntingType) : []
+  }
+
+  const adifFieldsHook: Record<string, unknown> = {
     async fieldsForOneQSO(
-      { operation }: { qso: Record<string, unknown>; operation: Record<string, unknown> },
+      { qso, operation }: { qso: Record<string, unknown>; operation: Record<string, unknown> },
       _ctx: HookContext,
-    ): Promise<{ name: string; value: string }[]> {
-      const activationRefs = refsOfType(operation, config.activationType)
-      if (activationRefs.length === 0) return []
-      // MY_SIG_INFO takes the primary reference only, matching app-polo. These
-      // programs have no hunting side, so nothing writes SIG/SIG_INFO.
+    ): Promise<AdifField[]> {
+      const hunted = huntedRefsOn(qso)
+      const huntedJoined = hunted.map((r) => r.ref).join(',')
       return [
-        { name: 'MY_SIG', value: program },
-        { name: 'MY_SIG_INFO', value: activationRefs[0].ref! },
+        ...(hunted.length > 0
+          ? [
+              { name: 'SIG', value: program },
+              { name: 'SIG_INFO', value: huntedJoined },
+              ...(config.adifRefField ? [{ name: `${config.adifRefField}_REF`, value: huntedJoined }] : []),
+            ]
+          : []),
+        ...activationFields(operation),
       ]
     },
+  }
+
+  // Only a splitting program needs combinations: joining is what
+  // `fieldsForOneQSO` already does, and declaring both would just make the
+  // exporter ask twice for the same answer.
+  if (config.huntingType && config.splitRecordsPerHuntedRef) {
+    /// One ADIF record per hunted reference — the contact is submitted to each
+    /// program reference separately, which is also why it counts once per
+    /// reference toward an activation (docs/design/activities.md §4).
+    adifFieldsHook.fieldCombinationsForOneQSO = async (
+      { qso, operation }: { qso: Record<string, unknown>; operation: Record<string, unknown> },
+      _ctx: HookContext,
+    ): Promise<AdifField[][]> => {
+      const activation = activationFields(operation)
+      const hunted = huntedRefsOn(qso)
+      if (hunted.length === 0) return [activation]
+      return hunted.map((ref) => [
+        ...activation,
+        { name: 'SIG', value: program },
+        { name: 'SIG_INFO', value: ref.ref! },
+        // One record names ONE reference, so the program field names it too.
+        ...(config.adifRefField ? [{ name: `${config.adifRefField}_REF`, value: ref.ref! }] : []),
+      ])
+    }
   }
 
   return { refHandler, activityHook, adifFieldsHook }

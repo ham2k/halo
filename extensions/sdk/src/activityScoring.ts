@@ -62,7 +62,33 @@ export interface ActivityScoringRules {
   huntingType?: string
   /// Contacts one reference needs before it counts as activated. POTA is 10,
   /// SOTA 4, WWFF 44.
-  qsosToActivate?: number
+  ///
+  /// A function when the threshold depends on WHICH reference is being
+  /// activated — it is handed the activated reference codes and returns the
+  /// bar for the operation. WWBOTA asks 10 contacts in Slovenia and North
+  /// Macedonia and 25 everywhere else; ZLOTA asks between 1 and 4 depending on
+  /// the kind of place. Both take the HIGHEST bar among the references being
+  /// activated at once, which is what app-polo does and the only safe reading:
+  /// clearing the easier one first must not declare the harder one done.
+  qsosToActivate?: number | ((activatedRefs: string[]) => number)
+
+  /// Whether the award has an activation threshold at all.
+  ///
+  /// MOTA has duplicate rules but no accumulator in app-polo: it tells the
+  /// operator a contact is a repeat and never counts mills toward anything.
+  /// Set false and no activation tally is reported — inventing a threshold the
+  /// award doesn't have would be worse than showing none. Defaults to true.
+  tracksActivation?: boolean
+
+  /// Whether a hunted reference this station hasn't given before rescues the
+  /// ACTIVATION credit on a contact that is otherwise a repeat.
+  ///
+  /// It always earns the reference-to-reference credit. What differs is
+  /// whether it also counts toward the activation: WWBOTA says yes, MOTA and
+  /// SiOTA say no — "Doesn't count towards activation, but towards Silo 2 Silo
+  /// award", in SiOTA's own words. Defaults to true, which is what a program
+  /// with no opinion (and every A1 award) gets.
+  freshRefRescuesActivation?: boolean
   /// Whether ONE contact can credit several hunted references — POTA n-fers do,
   /// SOTA does not (only the first ref on the QSO counts).
   allowsMultipleReferences?: boolean
@@ -140,7 +166,15 @@ function unpackContact(packed: string): Contact {
 }
 
 export function activityScorer(rules: ActivityScoringRules): ContestScorer<ActivityScoresheet> {
-  const qsosToActivate = rules.qsosToActivate ?? 10
+  /// The bar for the references actually being activated. Resolved at summary
+  /// time rather than up front, because a per-reference rule can't know it
+  /// until it knows which references those are.
+  function thresholdFor(activatedRefs: string[]): number {
+    const rule = rules.qsosToActivate ?? 10
+    return typeof rule === 'function' ? rule(activatedRefs) : rule
+  }
+  const freshRefRescuesActivation = rules.freshRefRescuesActivation ?? true
+  const tracksActivation = rules.tracksActivation ?? true
   const allowsMultiple = rules.allowsMultipleReferences ?? false
   const activatesDaily = (rules.activates ?? 'daily') === 'daily'
   const unique = new Set<UniqueAxis>(rules.uniquePer ?? [])
@@ -275,7 +309,14 @@ export function activityScorer(rules: ActivityScoringRules): ContestScorer<Activ
       const verdict = judge(priors, now)
       const isDupe = verdict === 'duplicate'
 
-      const score: QsoScoreVerdict = { value: isDupe ? 0 : activationValue + huntingValue }
+      // A contact that is only fresh because it hands over a reference this
+      // station hasn't given before. It earns the reference-to-reference
+      // credit, but for MOTA and SiOTA it does NOT advance the activation —
+      // the operator already worked this station on this band and day.
+      const freshRefOnly = verdict === 'ref' && !freshRefRescuesActivation
+      const activationCredit = freshRefOnly ? 0 : activationValue
+
+      const score: QsoScoreVerdict = { value: isDupe ? 0 : activationCredit + huntingValue }
       if (isDupe) {
         score.dupe = true
         score.alerts = ['duplicate']
@@ -293,12 +334,15 @@ export function activityScorer(rules: ActivityScoringRules): ContestScorer<Activ
         return { scoresheet: sheet, score }
       }
 
+      // Adding zero still records the reference, so a park whose every contact
+      // so far was a repeat still shows in the summary — at 0, which is the
+      // truth, rather than vanishing.
       for (const ref of activationRefs) {
-        sheet.activatedRefs[ref] = (sheet.activatedRefs[ref] ?? 0) + activationValue
-        sheet.dayActivatedRefs[ref] = (sheet.dayActivatedRefs[ref] ?? 0) + activationValue
+        sheet.activatedRefs[ref] = (sheet.activatedRefs[ref] ?? 0) + activationCredit
+        sheet.dayActivatedRefs[ref] = (sheet.dayActivatedRefs[ref] ?? 0) + activationCredit
       }
-      sheet.activatedQsos += activationValue
-      sheet.dayActivatedQsos += activationValue
+      sheet.activatedQsos += activationCredit
+      sheet.dayActivatedQsos += activationCredit
       for (const ref of huntedRefs) {
         sheet.huntedRefs[ref] = (sheet.huntedRefs[ref] ?? 0) + 1
         sheet.dayHuntedRefs[ref] = (sheet.dayHuntedRefs[ref] ?? 0) + 1
@@ -320,13 +364,13 @@ export function activityScorer(rules: ActivityScoringRules): ContestScorer<Activ
 
       const tallies: Record<string, ScoreTally> = {}
       const activatedRefs = perDay ? scoresheet.dayActivatedRefs : scoresheet.activatedRefs
-      if (Object.keys(activatedRefs).length > 0) {
+      if (tracksActivation && Object.keys(activatedRefs).length > 0) {
         tallies.activation = summarizeActivation(
           activatedRefs,
           perDay ? scoresheet.dayActivatedQsos : scoresheet.activatedQsos,
           perDay ? scoresheet.dayDuplicates : scoresheet.duplicates,
           scope,
-          qsosToActivate,
+          thresholdFor(Object.keys(activatedRefs)),
           rules,
           t,
         )

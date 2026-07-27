@@ -1,0 +1,8 @@
+{
+  "invalidReference": "Invalid reference",
+  "unknownReference": "Unknown silo",
+  "activationControl": "SiOTA activation",
+  "huntingControl": "SiOTA",
+  "dataFileName": "SiOTA: All Silos",
+  "dataFileDescription": "Database of all SiOTA references"
+}

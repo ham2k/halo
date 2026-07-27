@@ -1,0 +1,320 @@
+// Copyright ©️ 2026 Sebastian Delmont <sd@ham2k.com>
+// SPDX-License-Identifier: MPL-2.0
+//
+// WWBOTA (Bunkers on the Air) — the first ported award with its own spot FEED,
+// and the first whose activation threshold depends on WHICH reference is being
+// activated: 10 contacts in Slovenia and North Macedonia, 25 everywhere else.
+//
+// It also answers for the legacy `ukbota` ref types. The award was UKBOTA
+// before it went worldwide and logs synced from app-polo still carry those, so
+// dropping them would leave old bunker references undecorated.
+
+import {
+  activityExportHook,
+  activityScorer,
+  contestScorer,
+  defineExtension,
+  host,
+  referenceActivity,
+} from "@ham2k/halo-extension-sdk"
+import type {
+  DataFileDefinition,
+  HookContext,
+  JSONValue,
+  PostOtherSpotRequest,
+  PostResult,
+  PostSelfSpotRequest,
+  Ref,
+  Spot,
+  SpotEligibility,
+} from "@ham2k/halo-extension-sdk"
+import { bandForFrequency } from "@ham2k/lib-operation-data"
+import { DXCC_BY_CODE } from "@ham2k/lib-dxcc-data"
+
+import { tFor } from "./i18n.ts"
+
+import manifest from "../manifest.json" with { type: "json" }
+
+const HUNTING_TYPE = 'wwbota'
+const ACTIVATION_TYPE = 'wwbotaActivation'
+/// Pre-worldwide ref types, still present in synced logs.
+const LEGACY_TYPES = ['ukbota', 'ukbotaActivation']
+
+const REFERENCE_REGEX = /^B\/(?:[0-9][A-Z][0-9A-Z]*|[A-Z][0-9A-Z]*)-[0-9]{4,}$/i
+
+const API_BASE = 'https://api.wwbota.org'
+
+const { refHandler, activityHook, adifFieldsHook } = referenceActivity({
+  key: 'wwbota',
+  label: 'WWBOTA',
+  activationType: ACTIVATION_TYPE,
+  huntingType: HUNTING_TYPE,
+  referenceRegex: REFERENCE_REGEX,
+  icon: manifest.icon,
+  color: manifest.accentColor,
+  placeholder: 'B/G-0001',
+  tFor,
+  // app-polo names every hunted bunker in a single record's SIG_INFO.
+  splitRecordsPerHuntedRef: false,
+})
+
+/// Slovenia and North Macedonia ask 10 contacts; everywhere else asks 25. The
+/// country is the second segment of the reference (`B/S5-0001`).
+///
+/// Upper-cased here rather than trusted: the scorer reads refs off the
+/// operation verbatim, so this depends on whatever wrote them having
+/// normalised. Getting it wrong is silent — a Slovenian activator would simply
+/// be shown 25 instead of 10, with no error to notice.
+function bunkerThreshold(refs: string[]): number {
+  return Math.max(
+    ...refs.map((ref) => (['S5', 'Z3'].includes(ref.toUpperCase().split(/[/-]/)[1]) ? 10 : 25)),
+  )
+}
+
+/// A repeat contact is a duplicate on the same band and day. Unlike MOTA and
+/// SiOTA, a bunker the station hasn't given before DOES advance the activation
+/// as well as earning the bunker-to-bunker credit.
+const WWBOTA_SCORING = {
+  label: 'WWBOTA',
+  icon: manifest.icon,
+  activationType: ACTIVATION_TYPE,
+  huntingType: HUNTING_TYPE,
+  allowsMultipleReferences: true,
+  qsosToActivate: bunkerThreshold,
+  uniquePer: ['band', 'day', 'ref'] as const,
+  activates: 'once' as const,
+}
+
+function refsOfType(container: Record<string, unknown>, type: string): Ref[] {
+  return (((container.refs as Ref[] | undefined) ?? [])).filter((r) => r.type === type && r.ref)
+}
+
+interface WWBOTAApiSpot {
+  call: string
+  /// MHz, unlike most spot feeds.
+  freq: number
+  mode?: string
+  time: string
+  type?: string
+  comment?: string
+  spotter?: string
+  references: { reference: string }[]
+}
+
+const SpotsHook = {
+  sourceName: 'WWBOTA',
+
+  async fetchSpots(_args: Record<string, never>, ctx: HookContext): Promise<Spot[]> {
+    if (!ctx.online) return []
+
+    const response = await host.fetch(`${API_BASE}/spots/`, { headers: { Accept: 'application/json' } })
+    if (response.status !== 200) throw new Error(`WWBOTA API returned HTTP ${response.status}`)
+    const apiSpots = JSON.parse(response.body) as WWBOTAApiSpot[]
+
+    return apiSpots.map((spot) => {
+      const references = spot.references ?? []
+      // Frequencies arrive in MHz; the rest of HaLo works in kHz.
+      const freqKHz = spot.freq ? spot.freq * 1000 : undefined
+      // One bunker is worth naming; several are only worth listing, since the
+      // names would not fit and app-polo makes the same call.
+      const label = references.length === 1
+        ? references[0].reference
+        : references.map((r) => r.reference).join(' ')
+
+      // Only what the feed actually supplied — `sourceInfo` is a JSON map, and
+      // an absent field belongs absent rather than set to undefined.
+      const sourceInfo: Record<string, JSONValue> = {}
+      if (spot.type != null) sourceInfo.type = spot.type
+      if (spot.comment != null) sourceInfo.comments = spot.comment
+      if (spot.spotter != null) sourceInfo.spotter = spot.spotter
+
+      return {
+        their: { call: (spot.call ?? '').toUpperCase() },
+        freq: freqKHz,
+        band: freqKHz ? bandForFrequency(freqKHz) : undefined,
+        mode: spot.mode?.toUpperCase(),
+        refs: references.map((r) => ({ ref: r.reference, type: HUNTING_TYPE })),
+        spot: {
+          timeInMillis: Date.parse(spot.time),
+          source: 'wwbota',
+          label,
+          sourceInfo,
+        },
+      }
+    })
+  },
+
+  async isSelfSpotEnabled({ operation }: { operation: Record<string, any> }, _ctx: HookContext): Promise<SpotEligibility> {
+    return refsOfType(operation, ACTIVATION_TYPE).length > 0
+      ? { enabled: true, icon: manifest.icon }
+      : { enabled: false }
+  },
+
+  async isOtherSpotEnabled({ qso }: { qso: Record<string, any> }, _ctx: HookContext): Promise<SpotEligibility> {
+    return refsOfType(qso, HUNTING_TYPE).length > 0
+      ? { enabled: true, icon: manifest.icon }
+      : { enabled: false }
+  },
+
+  async postSelfSpot({ operation, freq, mode, comment }: PostSelfSpotRequest, _ctx: HookContext): Promise<PostResult> {
+    const refs = refsOfType(operation, ACTIVATION_TYPE)
+    if (refs.length === 0) return { ok: false, message: 'No WWBOTA activation on this operation' }
+    const call = String(operation.stationCall ?? '').trim()
+    if (!call) return { ok: false, message: 'This operation has no station callsign to spot' }
+    return postSpotToWWBOTA({ call, refs, freq, mode, comment, spotterCall: call })
+  },
+
+  async postOtherSpot({ qso, comment, spotterCall }: PostOtherSpotRequest, _ctx: HookContext): Promise<PostResult> {
+    const refs = refsOfType(qso, HUNTING_TYPE)
+    if (refs.length === 0) return { ok: false, message: 'No WWBOTA reference on this QSO' }
+    const freq = Number(qso.freq)
+    if (!freq) return { ok: false, message: 'This QSO has no frequency to spot' }
+    const their = (qso.their ?? {}) as Record<string, unknown>
+    const our = (qso.our ?? {}) as Record<string, unknown>
+    // Trimmed and `||`-chained rather than `??`-chained: the core hands over an
+    // EMPTY STRING as readily as it omits a key, and `'' ?? fallback` is `''` —
+    // so a `??` chain silently loses the operator's own callsign instead of
+    // falling back to it. Same rule as gmaSpots' `firstNonEmpty`.
+    const call = String(their.call ?? '').trim()
+    if (!call) return { ok: false, message: 'This QSO has no callsign to spot' }
+    return postSpotToWWBOTA({
+      call,
+      refs,
+      freq,
+      mode: qso.mode ? String(qso.mode) : undefined,
+      comment,
+      spotterCall: String(our.call ?? '').trim() || String(spotterCall ?? '').trim() || undefined,
+    })
+  },
+}
+
+/// The references go in the COMMENT, not in a field of their own — the spot
+/// endpoint takes a single flat record. They are grouped by scheme so a
+/// multi-bunker spot reads `B/G-0001,0002` rather than repeating the prefix,
+/// which is what the award's own tooling expects to parse back out.
+function referenceComment(refs: Ref[], comment?: string): string {
+  const byScheme = new Map<string, string[]>()
+  for (const ref of refs) {
+    const [scheme, number] = (ref.ref ?? '').split('-')
+    if (!scheme || !number) continue
+    const numbers = byScheme.get(scheme)
+    if (numbers) numbers.push(number)
+    else byScheme.set(scheme, [number])
+  }
+  const grouped = [...byScheme.entries()].map(([scheme, nums]) => `${scheme}-${nums.join(',')}`).join(' ')
+  return [grouped, comment].filter((part) => part).join(' ')
+}
+
+/// One flat record, frequency in MHz, and no credentials — WWBOTA's spot API is
+/// open. `type` tells the feed whether the operator is on the air or done;
+/// app-polo reads it out of the comment and so do we.
+async function postSpotToWWBOTA(
+  { call, refs, freq, mode, comment, spotterCall }: {
+    call: string
+    refs: Ref[]
+    freq: number
+    mode?: string
+    comment?: string
+    spotterCall?: string
+  },
+): Promise<PostResult> {
+  try {
+    const response = await host.fetch(`${API_BASE}/spots/`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+      body: JSON.stringify({
+        // Omitted rather than guessed when we have none: an in-progress QSO has
+        // no `our.call` yet, and sending the SPOTTED station as its own spotter
+        // would be a plain lie.
+        ...(spotterCall ? { spotter: spotterCall } : {}),
+        call,
+        freq: freq / 1000,
+        // Null, not a guess: the feed would rather know the mode is unknown
+        // than be told SSB.
+        mode: mode || null,
+        comment: referenceComment(refs, comment),
+        type: /QRT/i.test(comment ?? '') ? 'QRT' : 'Live',
+      }),
+    })
+    if (response.status !== 200 && response.status !== 201) {
+      return { ok: false, message: `WWBOTA API returned HTTP ${response.status}` }
+    }
+    return { ok: true }
+  } catch (e) {
+    return { ok: false, message: e instanceof Error ? e.message : String(e) }
+  }
+}
+
+const wwbotaDataFile: DataFileDefinition = {
+  key: 'wwbota-all-bunkers',
+  name: (_args: Record<string, never>, ctx: HookContext) => tFor(ctx)('dataFileName'),
+  description: (_args: Record<string, never>, ctx: HookContext) => tFor(ctx)('dataFileDescription'),
+  url: `${API_BASE}/bunkers/?format=CSV`,
+  maxAgeInDays: 30,
+  fetchType: 'csv',
+  category: 'wwbota',
+  csvOptions: { hasHeaders: true, delimiter: ',' },
+  csvToLookupEntry: (row: Record<string, string> | string[]) => {
+    const r = row as Record<string, string>
+    const ref = (r.Reference ?? '').trim().toUpperCase()
+    if (!ref) return null
+
+    const parsedLat = Number.parseFloat(r.Lat)
+    const parsedLon = Number.parseFloat(r.Long)
+    const lat = Number.isNaN(parsedLat) ? undefined : parsedLat
+    const lon = Number.isNaN(parsedLon) ? undefined : parsedLon
+
+    // The column is `Maidenhead` in some exports and `Locator` in others.
+    const published = (r.Maidenhead || r.Locator || '').trim()
+    const grid = published ? published.replace(/[A-Z]{2}$/, (x) => x.toLowerCase()) : undefined
+
+    // The DXCC code is authoritative; the reference's own country segment
+    // (`B/G-0001` → `G`) is the fallback when the list omits it.
+    const dxccCode = Number.parseInt(r.DXCC, 10)
+    const entityPrefix = DXCC_BY_CODE[dxccCode]?.entityPrefix ?? ref.split('-')[0].split('/')[1]
+
+    return {
+      subCategory: entityPrefix,
+      key: ref,
+      name: r.Name,
+      lat,
+      lon,
+      flags: 1,
+      data: {
+        ref,
+        name: r.Name,
+        type: r.Type,
+        entityPrefix,
+        grid,
+        lat,
+        lon,
+      },
+    }
+  },
+}
+
+defineExtension({
+  ...manifest,
+  onActivation({ registerHook }) {
+    registerHook(`ref:${HUNTING_TYPE}`, { hook: refHandler, key: 'wwbota' })
+    registerHook(`ref:${ACTIVATION_TYPE}`, { hook: refHandler, key: 'wwbota' })
+    // Logs synced from app-polo still carry the pre-worldwide types.
+    for (const type of LEGACY_TYPES) {
+      registerHook(`ref:${type}`, { hook: refHandler, key: 'wwbota' })
+    }
+    registerHook('activity', { hook: activityHook, key: 'wwbota' })
+    registerHook('adifFields', { hook: adifFieldsHook, key: 'wwbota' })
+    registerHook('spots', { hook: SpotsHook, key: 'wwbota' })
+    registerHook('dataFile', { hook: wwbotaDataFile, key: 'wwbota-all-bunkers' })
+    registerHook('scoring', {
+      hook: contestScorer(activityScorer(WWBOTA_SCORING), {
+        scope: { refTypes: [ACTIVATION_TYPE, HUNTING_TYPE] },
+      }),
+      key: 'wwbota',
+    })
+    registerHook('export', {
+      hook: activityExportHook({ key: 'wwbota', label: 'WWBOTA', activationType: ACTIVATION_TYPE, icon: manifest.icon }),
+      key: 'wwbota',
+    })
+  },
+})

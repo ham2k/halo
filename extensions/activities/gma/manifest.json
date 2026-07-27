@@ -1,0 +1,39 @@
+{
+  "key": "gma",
+  "name": "Global Mountain Activity",
+  "shortName": "GMA",
+  "version": "0.0.1",
+  "description": "Summit references, activation and chasing, and spotting",
+  "category": "activity",
+  "enabledByDefault": false,
+  "icon": "summit",
+  "accentColor": "#6B7F4B",
+  "keywords": [
+    "summits",
+    "mountains",
+    "activation",
+    "chasing"
+  ],
+  "hooks": [
+    "activity",
+    "adifFields",
+    "dataFile",
+    "export",
+    "ref:gma",
+    "ref:gmaActivation",
+    "spots"
+  ],
+  "domains": [
+    "www.cqgma.org"
+  ],
+  "translations": {
+    "es": {
+      "description": "Referencias de cumbres, activación y caza, y spotting",
+      "keywords": [
+        "cumbres",
+        "montañas",
+        "activación"
+      ]
+    }
+  }
+}

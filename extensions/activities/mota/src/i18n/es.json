@@ -1,0 +1,8 @@
+{
+  "invalidReference": "Referencia inválida",
+  "unknownReference": "Molino desconocido",
+  "activationControl": "Activación MOTA",
+  "huntingControl": "MOTA",
+  "dataFileName": "MOTA: Todos los Molinos",
+  "dataFileDescription": "Base de datos de todas las referencias MOTA"
+}

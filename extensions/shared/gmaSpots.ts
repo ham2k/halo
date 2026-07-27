@@ -21,6 +21,34 @@ import type { PostResult, Ref } from "@ham2k/halo-extension-sdk"
 
 const GMA_SPOT_URL = 'https://www.cqgma.org/spotsmart2.php'
 
+/// `application/x-www-form-urlencoded`, by hand.
+///
+/// QuickJS has no `URLSearchParams` — it is a Web API, not part of the
+/// language — and reaching for it here threw `URLSearchParams is not defined`
+/// at the first real spot. Spaces become `+` rather than `%20`, matching what
+/// app-polo's `URLSearchParams` produced and what the endpoint has always been
+/// fed.
+export function formEncode(fields: Record<string, string>): string {
+  return Object.entries(fields)
+    .map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(v).replace(/%20/g, '+')}`)
+    .join('&')
+}
+
+/// The first of these that holds something, trimmed.
+///
+/// `??` is not enough for any of the callsigns below: the core hands over an
+/// EMPTY STRING as readily as it omits a key — `models.dart`'s `ourCall` getter
+/// coerces a null column to `''` — and `'' ?? fallback` is `''`. That silently
+/// posted a spot with no spotter, which reads on the cluster as a spot nobody
+/// sent.
+function firstNonEmpty(...values: unknown[]): string {
+  for (const value of values) {
+    const text = value == null ? '' : String(value).trim()
+    if (text) return text
+  }
+  return ''
+}
+
 export interface GmaSpotRequest {
   /// The station being spotted.
   call: string
@@ -41,7 +69,7 @@ export interface GmaSpotRequest {
 export async function postSpotToGMA(
   { call, spotterCall, ref, freq, mode, comments = [], url }: GmaSpotRequest,
 ): Promise<PostResult> {
-  const body = new URLSearchParams({
+  const body = formEncode({
     yspotter: spotterCall,
     ycall: call,
     yreference: ref,
@@ -49,7 +77,7 @@ export async function postSpotToGMA(
     ymode: mode ?? 'SSB',
     ycomment: comments.filter((c) => c).join(' '),
     B1: 'Submit',
-  }).toString()
+  })
 
   try {
     const response = await host.fetch(url ?? GMA_SPOT_URL, {
@@ -80,11 +108,12 @@ export async function postSelfSpotToGMA(
 ): Promise<PostResult> {
   if (refs.length === 0) return { ok: false, message: 'No reference to spot' }
 
-  const call = String(operation.stationCall ?? '')
+  const call = firstNonEmpty(operation.stationCall)
+  if (!call) return { ok: false, message: 'This operation has no station callsign to spot' }
   // The spotter is the base call even when spotting a portable — app-polo sends
   // `parseCallsign(call).baseCall`, and the endpoint rejects some suffixed
   // spotters outright.
-  const baseCall = parseCallsign(call)?.baseCall ?? call
+  const baseCall = firstNonEmpty(parseCallsign(call)?.baseCall, call)
   const others = refs.length > 1 ? `also ${refs.slice(1).map((r) => r.ref).join(' ')}` : undefined
 
   return postSpotToGMA({
@@ -93,6 +122,44 @@ export async function postSelfSpotToGMA(
     ref: refs[0].ref!,
     freq,
     mode,
+    comments: [comment, others],
+    url,
+  })
+}
+
+/// Spotting somebody else at a reference you hunted. Same one-reference rule as
+/// self-spotting: the first is spotted, the rest are named in the comment.
+export async function postOtherSpotToGMA(
+  { qso, refs, comment, spotterCall, url }: {
+    qso: Record<string, unknown>
+    refs: Ref[]
+    comment?: string
+    spotterCall?: string
+    url?: string
+  },
+): Promise<PostResult> {
+  if (refs.length === 0) return { ok: false, message: 'No reference to spot' }
+
+  const their = (qso.their ?? {}) as Record<string, unknown>
+  const our = (qso.our ?? {}) as Record<string, unknown>
+  const freq = Number(qso.freq)
+  if (!freq) return { ok: false, message: 'This QSO has no frequency to spot' }
+
+  // Guarded like the frequency above, and for the same reason: a spot naming no
+  // station is worse than no spot, because it reaches everybody watching.
+  const call = firstNonEmpty(their.call)
+  if (!call) return { ok: false, message: 'This QSO has no callsign to spot' }
+
+  const others = refs.length > 1 ? `also ${refs.slice(1).map((r) => r.ref).join(' ')}` : undefined
+
+  return postSpotToGMA({
+    call,
+    // An in-progress QSO has no `our.call` yet, so the caller's own callsign is
+    // the fallback — app-polo's comment on the same line.
+    spotterCall: firstNonEmpty(our.call, spotterCall),
+    ref: refs[0].ref!,
+    freq,
+    mode: qso.mode ? String(qso.mode) : undefined,
     comments: [comment, others],
     url,
   })
