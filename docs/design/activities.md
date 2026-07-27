@@ -1,6 +1,7 @@
 # Porting app-polo's activity extensions
 
-Status: **A0–A3 built; `custom` and `satellites` remain**. Tracking issue: ham2k/app-halo-dist#148.
+Status: **`satellites` is the last activity left to port** — it is the one item
+here that needs core work (§3.5). Tracking issue: ham2k/app-halo-dist#148.
 
 Companion to [contests.md](contests.md), which owns the twelve contest
 extensions and, per the decision in §5 below, also owns `fd`, `wfd` and
@@ -162,6 +163,26 @@ new QSOs, and a transponder picker no existing `input.kind` covers. HaLo has
 no satellite support of any kind. Sequenced last, and it is the only item
 here likely to need a core PR.
 
+
+### 3.6 Custom: one activation reference
+
+`custom` is the only activity with nothing to search — the operator names the
+program, the reference and an optional name, so there is no list, no lookup and
+no validation beyond "not empty". HaLo's closest existing surface is the
+`kind: 'form'` operation control the contest work added, which reads and writes
+**one** ref of a type.
+
+app-polo lets an operation carry SEVERAL custom references, added one at a time
+through a bespoke three-field composer with its own add/remove list. HaLo ships
+**one**, deliberately: a repeating add/remove group is a core addition to
+`FormDefinition` and its renderer, and nothing in the submitted log depends on
+it — `MY_SIG_INFO` carries a single reference in either app. Hunting is
+unaffected; a QSO records as many of the other station's references as it is
+given, and exports one record each.
+
+If someone actually needs to activate two unsupported programs at once, the
+repeating group is the fix, and it is worth doing properly rather than
+approximating with a delimiter convention.
 ---
 
 ## 4. Design — the activity scorer
@@ -321,7 +342,7 @@ contests plus Field Day"). Add all three to that porting sequence.
 | **A1** ✅ | `bca` `blha` `eca` `ela` `wca` `pga` + the GMA spot API and the `referenceActivity` factory | Six activation-only extensions over one data-file shape and one spot API — widest validation for the least code |
 | **A2** ✅ | `gma` `mota` `siota` `wwbota` `zlota` | Adds hunting refs and a second reference type per extension |
 | **A3** ✅ | `wwff` `llota` `tota` | The three behind API keys; `tota`'s LIST needs one |
-| **A4** | `custom` | Free-form SIG/SIG_INFO; needs no data file but does need a two-field control |
+| **A4** ✅ | `custom` | Free-form SIG/SIG_INFO; no data file, no scoring, no network — a three-field `kind: 'form'` control, §3.6 |
 | **A5** | `satellites` | §3.5. Most new ground, least shared with the rest |
 
 A1 is one PR, not six: the six differ only in reference regex, data-file URL
@@ -351,7 +372,7 @@ others. `Score` = implements `scoringForQSO` in app-polo.
 | `wwff` | H+A | CSV | F S O | ✓ | A3 | shared scorer, `qsosToActivate: 44` |
 | `llota` | H+A | JSON | F S O | ✓ | A3 | shared scorer |
 | `tota` | H+A | API + key | F S O | ✓ | A3 | **blocked** on §3.4 |
-| `custom` | H+A | – | – | – | A4 | user-supplied SIG/SIG_INFO |
+| `custom` | H+A | – | – | – | A4 | user-supplied SIG/SIG_INFO; §3.6 |
 | `satellites` | one type | JSON | – | – | A5 | **blocked** on §3.5 |
 | `fd` | one type | – | – | ✓ | — | → contests.md |
 | `wfd` | one type | – | – | ✓ | — | → contests.md |

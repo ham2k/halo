@@ -1,0 +1,33 @@
+{
+  "key": "custom",
+  "name": "Custom Activity",
+  "shortName": "Custom",
+  "version": "0.0.1",
+  "description": "Log and export an award program HaLo doesn't know about",
+  "category": "activity",
+  "enabledByDefault": false,
+  "icon": "radio-handheld",
+  "accentColor": "#546E7A",
+  "keywords": [
+    "custom",
+    "activation",
+    "sig"
+  ],
+  "hooks": [
+    "activity",
+    "adifFields",
+    "export",
+    "ref:custom",
+    "ref:customActivation"
+  ],
+  "translations": {
+    "es": {
+      "description": "Registra y exporta un programa que HaLo no conoce",
+      "keywords": [
+        "personalizado",
+        "activación",
+        "sig"
+      ]
+    }
+  }
+}

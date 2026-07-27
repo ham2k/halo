@@ -1,0 +1,12 @@
+{
+  "activationControl": "Activación personalizada",
+  "setupLabel": "Actividad personalizada",
+  "programLabel": "Actividad — MY_SIG en ADIF (opcional)",
+  "programPlaceholder": "p.ej. COTA…",
+  "referenceLabel": "Referencia — MY_SIG_INFO en ADIF",
+  "referencePlaceholder": "p.ej. XY-1234…",
+  "nameLabel": "Nombre (opcional)",
+  "namePlaceholder": "p.ej. Castillo XYZ…",
+  "huntingControl": "Su ref.",
+  "huntingPlaceholder": "Su referencia"
+}

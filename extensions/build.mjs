@@ -124,6 +124,7 @@ const bundles = [
   { key: 'eca', entry: 'activities/eca/src/index.ts', kind: 'extension' },
   { key: 'ela', entry: 'activities/ela/src/index.ts', kind: 'extension' },
   { key: 'pga', entry: 'activities/pga/src/index.ts', kind: 'extension' },
+  { key: 'custom', entry: 'activities/custom/src/index.ts', kind: 'extension' },
   { key: 'simple-contest', entry: 'contests/simple-contest/src/index.ts', kind: 'extension' },
   { key: 'cqww', entry: 'contests/cqww/src/index.ts', kind: 'extension' },
   { key: 'arrl-dx', entry: 'contests/arrl-dx/src/index.ts', kind: 'extension' },

@@ -44,8 +44,11 @@ export interface ActivityExportRules {
 }
 
 /// Separates the program's own exportType prefix from the reference it names.
-/// A colon can't appear in a reference in any program ported so far, and if one
-/// ever does, only the FIRST colon is treated as the separator.
+///
+/// A colon CAN appear in a reference — `custom` lets the operator type one
+/// freely — which is why the split is by prefix LENGTH below rather than by
+/// searching for a colon. Don't switch this to `split(':')`: it would truncate
+/// such a reference and then fail to match it back against the operation.
 const SEPARATOR = ':'
 
 interface ActivationRef {

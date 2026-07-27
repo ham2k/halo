@@ -1,0 +1,12 @@
+{
+  "activationControl": "Custom activation",
+  "setupLabel": "Custom activity",
+  "programLabel": "Activity — MY_SIG in ADIF (optional)",
+  "programPlaceholder": "i.e. COTA…",
+  "referenceLabel": "Reference — MY_SIG_INFO in ADIF",
+  "referencePlaceholder": "i.e. XY-1234…",
+  "nameLabel": "Name (optional)",
+  "namePlaceholder": "i.e. XYZ Castle…",
+  "huntingControl": "Their Ref",
+  "huntingPlaceholder": "Their reference"
+}
