@@ -1,0 +1,38 @@
+{
+  "key": "satellites",
+  "name": "Satellite Operations",
+  "shortName": "Sats",
+  "version": "0.0.1",
+  "description": "Log contacts through amateur satellites, with the bird and its transponder",
+  "category": "activity",
+  "enabledByDefault": false,
+  "icon": "satellite-variant",
+  "accentColor": "#3F51B5",
+  "keywords": [
+    "satellite",
+    "sat",
+    "amsat",
+    "transponder"
+  ],
+  "hooks": [
+    "activity",
+    "adifFields",
+    "command",
+    "dataFile",
+    "ref:satellite"
+  ],
+  "domains": [
+    "polo.ham2k.com"
+  ],
+  "translations": {
+    "es": {
+      "description": "Registra contactos vía satélites de radioaficionados, con el satélite y su transpondedor",
+      "keywords": [
+        "satélite",
+        "sat",
+        "amsat",
+        "transpondedor"
+      ]
+    }
+  }
+}

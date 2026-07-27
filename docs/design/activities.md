@@ -1,7 +1,7 @@
 # Porting app-polo's activity extensions
 
-Status: **`satellites` is the last activity left to port** — it is the one item
-here that needs core work (§3.5). Tracking issue: ham2k/app-halo-dist#148.
+Status: **every activity is ported** (A0–A5). Tracking issue:
+ham2k/app-halo-dist#148.
 
 Companion to [contests.md](contests.md), which owns the twelve contest
 extensions and, per the decision in §5 below, also owns `fd`, `wfd` and
@@ -157,11 +157,104 @@ under "Planned: a secrets service, and flags to gate external calls" in
 
 ### 3.5 Satellites (bespoke)
 
-`satellites` needs a compound `name/freq/mode` reference, `PROP_MODE`/
-`SAT_NAME`/`BAND_RX` ADIF fields, an `operation.satellite` default applied to
-new QSOs, and a transponder picker no existing `input.kind` covers. HaLo has
-no satellite support of any kind. Sequenced last, and it is the only item
-here likely to need a core PR.
+HaLo has no satellite support of any kind. app-polo's extension is small — 256
+lines across five files — but almost none of it is award logic: it is a picker,
+a radio action, and three ADIF fields.
+
+**This section's earlier assessment was wrong and is corrected here.** It
+claimed satellites needed "a transponder picker no existing `input.kind`
+covers". That was true when it was written; the contest work has since shipped
+`kind: 'options'` (a searchable set with a code and a name, for QSO-party
+counties and park abbreviations), and a transponder list is exactly that shape.
+Re-checking what the core can already do turned four assumed gaps into two.
+
+#### What app-polo does
+
+| | |
+|---|---|
+| Reference | `{type: 'satellite', ref: 'SO-50/145.85/fm'}` — name, uplink MHz and uplink mode joined by `/` |
+| Data | `polo.ham2k.com/data/satellites.json`: per bird a `name`, `aliases`, and parallel `uplinks`/`downlinks` arrays of `{lowerMHz, upperMHz, mode}` |
+| Picker | one dropdown row per satellite × uplink, labelled `SO-50 • Fm: 145.850 → 436.795` |
+| On select | writes the QSO ref, **tunes the radio** to the uplink, and stores `operation.satellite` |
+| New QSO | `prepareNewQSO` copies `operation.satellite` onto each new QSO |
+| Exchange | forces the `grid` field on — a grid is the normal satellite exchange |
+| ADIF | `PROP_MODE: SAT`, `SAT_NAME`, `BAND_RX` from the matching DOWNLINK |
+| QSO list | shows the other station's 4-character grid |
+
+#### What HaLo already covers
+
+- **The compound reference.** Refs are opaque strings; `custom` already ships one
+  built from two fields (§3.6). Nothing needed.
+- **The data file.** `dataFile` + `jsonToLookupEntry`, one row per bird with the
+  transponder arrays in `data`. Note `queryLookups` caps at **100 rows** — fine
+  for ~40 active birds, but it is a silent cap, so store per BIRD, not per
+  transponder.
+- **The picker.** `kind: 'options'` on `loggingControls`. The option list is
+  data, not a closure, and `loggingControls` is a hook call — so it can read the
+  data file and expand each bird's uplinks per call.
+- **The per-operation default.** `OptionsInputDescriptor.suggestedValue`,
+  computed from the operation's own satellite ref. No `prepareNewQSO` equivalent
+  is needed, and no new operation field: the operation carries a ref like every
+  other activity.
+- **The ADIF fields.** `adifFields.fieldsForOneQSO`, and `bandForFrequency` is
+  already in the SDK.
+
+#### The two real gaps
+
+1. **Tuning the radio from a control.** `CommandAction.setVfo` exists and does
+   exactly the right thing — but only the `command` hook can emit actions. A
+   `loggingControls` selection writes its value through the core and cannot ask
+   for anything else to happen.
+2. **An exchange field that is a QSO field, not a ref field.** Every input
+   descriptor targets a `refType`; `their.grid` is neither. There is no way for
+   an extension to say "show the grid field on this QSO".
+
+A third, minor: no equivalent of `relevantInfoForQSOItem`, so the QSO list would
+not show the worked station's grid.
+
+#### Options for gap 1 — **C was chosen and built**
+
+| | Cost | Gives up |
+|---|---|---|
+| **A. Command only** (`SAT SO-50`) | none — `setVfo` + `updateQso` already work end to end | the picker; the operator types a name |
+| **B. Picker only** | none | tuning; the operator sets frequency themselves |
+| **C. Both** ✅ | none | nothing, but two ways to do one thing |
+| **D. Let controls emit `CommandAction`s** | a core change to the control result path | nothing |
+
+C ships the picker AND the command, and needed no core change at all. D remains
+the honest fix and is reusable — any control that should have a side effect
+wants it — so if a second extension needs one, build D and let the picker tune
+directly.
+
+What that means in practice:
+
+- `operationControls` is a **`form`** with one `select` of every transponder,
+  because `operationControls` renders only `refList` and `form` (an `options`
+  control there would silently never appear). It sets the operation's bird.
+- `loggingControls` is **`options`**, whose `suggestedValue` is that same bird —
+  so a pass is one choice rather than one per contact, which is what app-polo's
+  `operation.satellite` buys, without a second place to store it.
+- `SAT SO-50` tunes and names in one move. It merges `refs` rather than writing
+  them, because `updateQso` writes whole fields and a bare list would drop the
+  park the contact is also for.
+
+Gap 2 is smaller than it looks: a grid can be typed into the exchange the same
+way any other field is, and forcing it on is a convenience. **Deferred.**
+
+#### Two things the data settled
+
+The feed was read before any of this was written, which is the rule this port
+learned the hard way.
+
+- **`aliases` does not exist.** app-polo's picker label appends `sat.aliases`;
+  no bird in the feed has the field. Dead code, not ported.
+- **AO-7 is why the reference names a TRANSPONDER.** Of 38 birds only two have
+  more than one uplink, and only AO-7's differ in downlink band — 2m up → 10m
+  down, 70cm up → 2m down. A reference naming just the bird would put the wrong
+  `BAND_RX` on half its contacts and tune 300 MHz away.
+
+`fmtFreq` is not used for these labels: it reads its argument as kHz, so
+QO-100's 10489.5 MHz renders as "10.489.500" (as it does in app-polo).
 
 
 ### 3.6 Custom: one activation reference
@@ -343,7 +436,7 @@ contests plus Field Day"). Add all three to that porting sequence.
 | **A2** ✅ | `gma` `mota` `siota` `wwbota` `zlota` | Adds hunting refs and a second reference type per extension |
 | **A3** ✅ | `wwff` `llota` `tota` | The three behind API keys; `tota`'s LIST needs one |
 | **A4** ✅ | `custom` | Free-form SIG/SIG_INFO; no data file, no scoring, no network — a three-field `kind: 'form'` control, §3.6 |
-| **A5** | `satellites` | §3.5. Most new ground, least shared with the rest |
+| **A5** ✅ | `satellites` | §3.5. The only non-award activity: a picker, a `SAT` command, and three ADIF fields |
 
 A1 is one PR, not six: the six differ only in reference regex, data-file URL
 and strings, and splitting them would review six copies of the same diff.

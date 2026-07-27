@@ -1,0 +1,12 @@
+{
+  "operationControl": "Satellite",
+  "loggingControl": "Satellite",
+  "setupTitle": "Satellite operation",
+  "satelliteLabel": "Satellite and transponder",
+  "dataFileName": "Satellites: Active Birds",
+  "dataFileDescription": "Active amateur satellites and their transponders",
+  "commandExpects": "Satellite…",
+  "commandDescribe": "Satellite {{label}}",
+  "commandConfirm": "Satellite {{name}}",
+  "commandUnknown": "No active satellite matching \"{{name}}\""
+}
