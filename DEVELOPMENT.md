@@ -315,6 +315,30 @@ Defined in [`mise.toml`](mise.toml):
 | `app/` | The Flutter app. |
 | `packages/` | Local Dart packages: `halo_core`, `halo_widgets`, `halo_extension_host`, `halo_build_tools`. |
 | `extensions/` | TypeScript extensions + `build.mjs` (bundles → `app/assets/extensions/`). |
-| `scripts/` | `test.sh`, `deploy-web.sh`, `apply-web-edition.sh`. |
+| `scripts/` | `test.sh`, `deploy-web.sh`, `apply-web-edition.sh`, and the Linux arm64 cross-build (`build-linux-arm64.sh`, `aarch64-linux-gnu.cmake` — see below). |
 | `docs/` | [Index](docs/README.md), [design/](docs/design/), [extensions/](docs/extensions/README.md), [quirks](docs/quirks.md), [releases](docs/releases.md). |
 | `.github/workflows/`, `codemagic.yaml` | CI (GitHub Actions) and release builds (Codemagic). |
+
+### Linux arm64
+
+`flutter build linux --target-platform linux-arm64` **refuses to run on an x64
+host** (`build_linux.dart:88-94`, unconditional). The refusal is in the command,
+not the machinery, so `scripts/build-linux-arm64.sh` drives CMake directly and
+lets Flutter's own rules do the Dart half. Run it from the
+`🐧 Linux ARM64 — 🔨 full app build (manual)` Codemagic workflow; it is a CI
+script and is not expected to work on a developer machine.
+
+Three things it has to supply by hand, because Flutter will not fetch them for a
+foreign target: the linux-arm64 engine artifacts (two zips), a `gen_snapshot`
+that runs under `qemu-user-static`, and a Debian multiarch arm64 sysroot.
+
+The compiler is **clang**, not `aarch64-linux-gnu-g++`, and that is not a
+preference — `flutter assemble`'s `dart_build` step requires a compiler named
+literally `clang` next to the `CMAKE_CXX_COMPILER` it reads from
+`CMakeCache.txt`. See the header of `scripts/aarch64-linux-gnu.cmake`; it also
+explains why the toolchain file uses `find_program` rather than `set`, and why
+ASM needs its target spelled out separately.
+
+It stops at a verified bundle. Packaging and publishing are the `app_dist` half
+and are not wired up yet.
+
