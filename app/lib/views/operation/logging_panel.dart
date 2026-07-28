@@ -4,7 +4,8 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart' show LogicalKeyboardKey;
+import 'package:flutter/services.dart'
+    show HardwareKeyboard, KeyDownEvent, KeyEvent, KeyRepeatEvent, LogicalKeyboardKey;
 import 'package:halo_core/halo_core.dart';
 import 'package:halo_widgets/halo_widgets.dart';
 import 'package:intl/intl.dart';
@@ -96,13 +97,12 @@ class LoggingPanel extends StatefulWidget {
 class _LoggingPanelState extends State<LoggingPanel> {
   Qso? _selectedQso;
 
-  /// A QSO Escape just deselected (ham2k/app-halo-dist#199 follow-up) — kept
-  /// for a few seconds so a second Escape can re-select it, the same way a
-  /// wiped-but-not-yet-lost new QSO can be restored (LoggingControls' own
-  /// `_wipeUndoSlot`). Never set by Save/Delete/Restore/Revert ending an
-  /// edit, only by Escape itself — those are deliberate, final actions, not
-  /// something to offer undoing.
-  final _lastDeselected = TimedUndoSlot<Qso>();
+  /// The QSO list as a rung of the keyboard's focus ladder (APP-19): Arrow Up
+  /// off the logging controls' pill strip lands here, Up/Down then walk the
+  /// list selecting each row for editing, and Enter/Escape hand the keyboard
+  /// back down. The list's own rows stay plain tap targets — this is one node
+  /// for "the keyboard is in the list", not one per row.
+  final _listFocus = FocusNode(debugLabel: 'qsoList');
   // Imperative handle into LoggingControls, used to drive the dev bridge
   // (window.__halo setField/tap) when it's installed (dev/preview web).
   final _loggingController = LoggingControlsController();
@@ -156,49 +156,186 @@ class _LoggingPanelState extends State<LoggingPanel> {
       DevBridge.instance.setFieldHandler = null;
       DevBridge.instance.actionHandler = null;
     }
-    _lastDeselected.dispose();
+    _listFocus.dispose();
     super.dispose();
   }
 
-  /// Escape's own way of ending an editing session — see
-  /// `LoggingControls.onEscapeDeselect`'s doc. Stashes the QSO for a few
-  /// seconds so `_handleUndoDeselect` can restore it.
-  void _handleEscapeDeselect() {
-    final qso = _selectedQso;
-    if (qso == null) return;
-    _lastDeselected.set(qso, onExpire: () {
-      if (mounted) setState(() {});
-    });
-    setState(() => _selectedQso = null);
+  // ── Keyboard navigation of the QSO list (APP-19) ─────────────────────────
+
+  /// The rows arrow navigation can land on, and where the current selection
+  /// sits among them.
+  ///
+  /// Navigable is every QSO the list shows except the event and annotation
+  /// markers (operation start/break/end, NOTE/TODO/SOLAR/WEATHER). Those
+  /// aren't editable contacts — tapping one opens a time dialog rather than
+  /// loading the editor — so walking onto one would put the logging controls
+  /// in a state no keystroke could get out of.
+  ///
+  /// `slot` is the selection's position in `indices`, or -1 when nothing is
+  /// selected or the selection has since left the list (deleted, or filtered
+  /// out by the view menu). Found in the same pass that builds the list, since
+  /// this runs on every arrow keypress — including auto-repeat — over a log
+  /// that can hold tens of thousands of contacts.
+  ({List<int> indices, int slot}) get _navigable {
+    final selectedUuid = _selectedQso?.uuid;
+    final indices = <int>[];
+    var slot = -1;
+    for (var i = 0; i < widget.qsos.length; i++) {
+      final qso = widget.qsos[i];
+      if (qso.isEvent) continue;
+      if (selectedUuid != null && qso.uuid == selectedUuid) slot = indices.length;
+      indices.add(i);
+    }
+    return (indices: indices, slot: slot);
   }
 
-  /// Re-selects the QSO `_handleEscapeDeselect` most recently deselected, if
-  /// any and still within its undo window. Returns whether it did —
-  /// `LoggingControls` falls through to its own empty-form wipe when it
-  /// didn't (see `onUndoDeselect`'s doc).
-  bool _handleUndoDeselect() {
-    final qso = _lastDeselected.take();
-    if (qso == null) return false;
-    setState(() => _selectedQso = qso);
-    return true;
+  /// Selects a row for editing without touching field focus — the keyboard
+  /// stays in the list so the next arrow keeps walking. Unlike a tap
+  /// ([_handleSelectQso]) this never toggles: arrowing onto a row means "this
+  /// one", never "none".
+  void _selectQsoAt(int index) {
+    setState(() => _selectedQso = widget.qsos[index]);
+  }
+
+  /// Arrow Up walked off the top of the logging controls. Takes the keyboard
+  /// into the list, on the row already being edited or — much more often —
+  /// the newest one. Nothing navigable (an empty operation, or one holding
+  /// only event markers) leaves focus where it was.
+  void _handleNavigateToQsoList() {
+    final (:indices, :slot) = _navigable;
+    if (indices.isEmpty) return;
+    if (slot < 0) _selectQsoAt(indices.last);
+    _listFocus.requestFocus();
+  }
+
+  /// Moves the selection [delta] rows through [_navigable].
+  ///
+  /// Walking a single row past the newest QSO leaves the list entirely and
+  /// hands the keyboard back to the pill strip, mirroring the Up that got
+  /// here. A [jump] — a page or an end key — clamps at that edge instead:
+  /// nobody presses Page Down meaning "and then leave the list".
+  void _moveListSelection(int delta, {bool jump = false}) {
+    final (:indices, :slot) = _navigable;
+    if (indices.isEmpty) return;
+    // Nothing selected, or a selection that has since left the list: start
+    // over at the newest row rather than guessing where the walk had got to.
+    if (slot < 0) {
+      _selectQsoAt(indices.last);
+      return;
+    }
+    final next = slot + delta;
+    if (next >= indices.length && !jump) {
+      _loggingController.focusSecondaryControls();
+      return;
+    }
+    final target = next.clamp(0, indices.length - 1);
+    if (target == slot) return; // already sitting at that end
+    _selectQsoAt(indices[target]);
+  }
+
+  /// Straight to the oldest or newest contact — Home/End, and Cmd+Up/Down on
+  /// macOS. One pass over the log, like every other move.
+  void _selectListEdge({required bool newest}) {
+    final (:indices, :slot) = _navigable;
+    if (indices.isEmpty) return;
+    final target = newest ? indices.length - 1 : 0;
+    if (target == slot) return;
+    _selectQsoAt(indices[target]);
+  }
+
+  /// How many rows a page key moves: as many as the list can show, less one so
+  /// a row of context carries over — the convention every list follows.
+  ///
+  /// Measured off the list's own box (the Focus wrapping it fills the same
+  /// space), divided by a row's height. Before the first layout there is
+  /// nothing to measure, so a modest jump stands in.
+  int get _pageRows {
+    final box = _listFocus.context?.findRenderObject() as RenderBox?;
+    if (box == null || !box.hasSize) return 10;
+    final rows = (box.size.height / QsoList.rowHeight).floor() - 1;
+    return rows < 1 ? 1 : rows;
+  }
+
+  KeyEventResult _onQsoListKeyEvent(FocusNode node, KeyEvent event) {
+    if (event is! KeyDownEvent && event is! KeyRepeatEvent) return KeyEventResult.ignored;
+    final keyboard = HardwareKeyboard.instance;
+    // Shift+arrow is a range-selection gesture (this list has no such thing to
+    // extend) and Ctrl belongs to the platform — neither means anything here.
+    // Cmd and Option DO, but only on the arrows: see below.
+    if (keyboard.isShiftPressed || keyboard.isControlPressed) return KeyEventResult.ignored;
+    final meta = keyboard.isMetaPressed;
+    final alt = keyboard.isAltPressed;
+    final key = event.logicalKey;
+
+    // The arrows, with the two modifiers the platform gives them: Cmd+Up/Down
+    // is "to the start/end of the document" and Option+Up/Down is the bigger
+    // step between them — a screenful here, the same as Page Up/Down. Both
+    // together mean nothing, so they're left alone rather than guessed at.
+    if (key == LogicalKeyboardKey.arrowUp || key == LogicalKeyboardKey.arrowDown) {
+      final down = key == LogicalKeyboardKey.arrowDown;
+      if (meta && alt) return KeyEventResult.ignored;
+      if (meta) {
+        _selectListEdge(newest: down);
+      } else if (alt) {
+        _moveListSelection(down ? _pageRows : -_pageRows, jump: true);
+      } else {
+        _moveListSelection(down ? 1 : -1);
+      }
+      return KeyEventResult.handled;
+    }
+    // Nothing below takes a modifier.
+    if (meta || alt) return KeyEventResult.ignored;
+
+    switch (key) {
+      case LogicalKeyboardKey.pageUp:
+        _moveListSelection(-_pageRows, jump: true);
+        return KeyEventResult.handled;
+      case LogicalKeyboardKey.pageDown:
+        _moveListSelection(_pageRows, jump: true);
+        return KeyEventResult.handled;
+      case LogicalKeyboardKey.home:
+        _selectListEdge(newest: false);
+        return KeyEventResult.handled;
+      case LogicalKeyboardKey.end:
+        _selectListEdge(newest: true);
+        return KeyEventResult.handled;
+      case LogicalKeyboardKey.enter:
+      case LogicalKeyboardKey.numpadEnter:
+        // The row stays selected — this is "now let me edit it", not "open
+        // it": the editor has been loaded with it since the arrow key landed.
+        _loggingController.focusCall();
+        return KeyEventResult.handled;
+      case LogicalKeyboardKey.escape:
+        // The same deselect Escape makes anywhere else in the panel, plus the
+        // part only the list needs: the keyboard goes back to composing.
+        // Locked QSOs are `_handlePanelEscape`'s own business — it declines,
+        // and the disabled call field declines the focus too, so the keyboard
+        // simply stays here.
+        _handlePanelEscape();
+        _loggingController.focusCall();
+        return KeyEventResult.handled;
+    }
+    return KeyEventResult.ignored;
   }
 
   /// Escape reaching here (not `LoggingControls`' own `CallbackShortcuts`)
   /// means focus is elsewhere in this panel — the QSO list, or nowhere at
   /// all — issue #199's follow-up ask that Escape deselect regardless of
-  /// what has focus. Deselecting takes priority; with nothing selected,
-  /// falls through to undoing the last deselect instead. A locked (staged-
-  /// delete or deleted) QSO's fields are always disabled, so its view can
-  /// never hold focus and `LoggingControls`' own Escape guard never gets a
-  /// chance to run — this mirrors that guard here so Escape doesn't close
-  /// the read-only view it's meant to protect.
+  /// what has focus.
+  ///
+  /// It only ever deselects. Escape used to toggle: a second press within a
+  /// few seconds re-selected the QSO the first had just dropped, mirroring
+  /// the compose form's wipe-undo. That fights the focus ladder (APP-19),
+  /// where Escape is uniformly the way *out* of wherever the keyboard is —
+  /// walking back *in* is the one thing it must never do.
+  ///
+  /// A locked (staged-delete or deleted) QSO's fields are always disabled, so
+  /// its view can never hold focus and `LoggingControls`' own Escape guard
+  /// never gets a chance to run — this mirrors that guard here so Escape
+  /// doesn't close the read-only view it's meant to protect.
   void _handlePanelEscape() {
-    if (_selectedQso != null) {
-      if (_loggingController.isFieldsLocked) return;
-      _handleEscapeDeselect();
-    } else {
-      _handleUndoDeselect();
-    }
+    if (_selectedQso == null || _loggingController.isFieldsLocked) return;
+    setState(() => _selectedQso = null);
   }
 
   /// Only rebuild when a numbers-row setting actually changes —
@@ -218,7 +355,6 @@ class _LoggingPanelState extends State<LoggingPanel> {
   }
 
   void _handleSelectQso(Qso qso) {
-    _lastDeselected.clear();
     setState(() {
       _selectedQso = _selectedQso?.uuid == qso.uuid ? null : qso;
     });
@@ -351,7 +487,17 @@ class _LoggingPanelState extends State<LoggingPanel> {
       bindings: {const SingleActivator(LogicalKeyboardKey.escape): _handlePanelEscape},
       child: Column(
         children: [
-          Expanded(child: list),
+          Expanded(
+            // skipTraversal: Tab belongs to the logging controls' own field
+            // rotation; the list is reached with the arrow keys (APP-19), not
+            // by tabbing into it.
+            child: Focus(
+              focusNode: _listFocus,
+              skipTraversal: true,
+              onKeyEvent: _onQsoListKeyEvent,
+              child: list,
+            ),
+          ),
           LoggingControls(
             controller: _loggingController,
             operation: widget.operation,
@@ -389,12 +535,8 @@ class _LoggingPanelState extends State<LoggingPanel> {
             spotCommentHint: context.t.loggingControls.spotComment,
             editingQso: _selectedQso,
             suggestedQso: widget.suggestedQso,
-            onEditCanceled: () {
-              _lastDeselected.clear();
-              setState(() => _selectedQso = null);
-            },
-            onEscapeDeselect: _handleEscapeDeselect,
-            onUndoDeselect: _handleUndoDeselect,
+            onEditCanceled: () => setState(() => _selectedQso = null),
+            onNavigateToQsoList: _handleNavigateToQsoList,
             onLogged: (qso) {
               // Event rows (NOTE/TODO/SOLAR/WEATHER annotations, operation
               // start/break/end) also arrive here via the command `addQso`
@@ -407,7 +549,6 @@ class _LoggingPanelState extends State<LoggingPanel> {
                   _qsoTrackProps(qso),
                 );
               }
-              _lastDeselected.clear();
               setState(() => _selectedQso = null);
             },
             onQsoDeleted: (qso) {

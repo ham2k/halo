@@ -6,9 +6,11 @@
 // selected by tapping its row in the list, which never focuses anything
 // inside LoggingControls (a sibling widget). LoggingPanel wraps both in its
 // own CallbackShortcuts for exactly this gap; these tests exercise THAT
-// outer path specifically (tapping a list row, not typing into a field),
-// plus the "press Escape again to undo" behavior it and LoggingControls'
-// own inner Escape handling share.
+// outer path specifically (tapping a list row, not typing into a field).
+//
+// Escape deselects and stops there. It used to toggle — a second press
+// re-selected what the first had dropped — until APP-19's focus ladder made
+// Escape uniformly the way out of wherever the keyboard is.
 
 import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
@@ -111,7 +113,13 @@ void main() {
     await drainLookupQueueTimer(tester);
   });
 
-  testWidgets('a second Escape re-selects the QSO the first one deselected', (tester) async {
+  testWidgets('a second Escape does NOT re-select the QSO the first one deselected', (tester) async {
+    // Escape used to toggle: a second press within a few seconds brought the
+    // QSO back, mirroring the compose form's wipe-undo. APP-19 removed that.
+    // Under the focus ladder Escape is uniformly the way *out* of wherever the
+    // keyboard is — an operator pressing it twice is backing further out, and
+    // landing back in the editor they just left is the one outcome that makes
+    // the gesture unpredictable.
     await tester.pumpWidget(wrap(LoggingPanel(
       operation: operation,
       services: services,
@@ -132,11 +140,12 @@ void main() {
     await tester.sendKeyEvent(LogicalKeyboardKey.escape);
     await tester.pump();
 
-    // Re-selected: back to editing the same QSO, its own Rcvd value shown
-    // ('their.sent' — what THEY sent, i.e. what we received).
-    expect(isEditing(tester), isTrue);
-    final rcvdField = tester.widget<TextField>(find.widgetWithText(TextField, 'Rcvd'));
-    expect(rcvdField.controller!.text, '59');
+    // Still composing a new QSO — not back in the editor. The callsign is the
+    // check that actually distinguishes the two: re-selecting would load
+    // 'W1AW' back into the form. (Rcvd wouldn't — '59' is also the default
+    // report for SSB, so it reads the same either way.)
+    expect(isEditing(tester), isFalse);
+    expect(tester.widget<TextField>(find.widgetWithText(TextField, 'Their call')).controller!.text, isEmpty);
     await drainLookupQueueTimer(tester);
   });
 
@@ -167,51 +176,6 @@ void main() {
 
     // Still locked on the same QSO — Escape must not have deselected it.
     expect(infoRowButton('Restore'), findsOneWidget);
-    await drainLookupQueueTimer(tester);
-  });
-
-  testWidgets('selecting a different QSO drops a pending deselect-undo, so a later Escape does not resurrect it',
-      (tester) async {
-    final qso2 = await services.qsos.add(operation.uuid, {
-      'their': {'call': 'K1ABC', 'sent': '55'},
-      'mode': 'SSB',
-    });
-
-    await tester.pumpWidget(wrap(LoggingPanel(
-      operation: operation,
-      services: services,
-      qsos: [qso, qso2],
-      loggingControls: const [],
-      onCommandAction: (action, [params]) async {},
-    )));
-    await tester.pump(const Duration(milliseconds: 100));
-
-    await tester.tap(find.text('W1AW'));
-    await tester.pump();
-    await tester.sendKeyEvent(LogicalKeyboardKey.escape); // deselects W1AW, offers undo
-    await tester.pump();
-    expect(isEditing(tester), isFalse);
-
-    // Select K1ABC directly (not via Escape) — the pending "undo" for W1AW
-    // must not survive this, since it's no longer the QSO the user most
-    // recently backed out of. `find.widgetWithText(InkWell, ...)` targets
-    // the list row specifically, since selecting it also echoes 'K1ABC'
-    // into the compose form's own call field, which plain `find.text`
-    // would ambiguously match too.
-    final row = find.widgetWithText(InkWell, 'K1ABC');
-    await tester.tap(row);
-    await tester.pump();
-    expect(isEditing(tester), isTrue);
-    await tester.tap(row); // toggle it back off
-    await tester.pump();
-    expect(isEditing(tester), isFalse);
-
-    await tester.sendKeyEvent(LogicalKeyboardKey.escape);
-    await tester.pump();
-
-    // Nothing to undo anymore — W1AW's stale undo slot was cleared by the
-    // K1ABC selection, so this Escape is a no-op, not a resurrection of W1AW.
-    expect(isEditing(tester), isFalse);
     await drainLookupQueueTimer(tester);
   });
 }

@@ -109,6 +109,67 @@ secondary control while one is already open moves focus straight to the new
 control's field and keeps the remembered main field, so closing the strip
 still returns to where the operator left off.
 
+## Leaving the entry row: the focus ladder
+
+Tab and the arrows above keep the operator inside the entry row. **Arrow Up
+is the way out of it**, and out of each rung above it in turn; Arrow Down
+walks back in. Between them the whole panel — and the QSO list above it — is
+reachable without a pointer.
+
+```
+QSO list  ──▲──  secondary pills  ──▲──  main logging fields
+          ──▼──                   ──▼──
+```
+
+- **From a main field**, Up moves to the secondary pill strip. An open
+  `options` suggestion menu keeps Up and Down for its own highlight.
+- **On the pills**, Left and Right move along the strip, wrapping at both
+  ends. Enter opens the pill's controls, placing focus by the rules above.
+  Down returns to the remembered main field.
+- **In an open control**, Down or Enter closes it and returns to its pill.
+  Enter there does *not* log, in any secondary control — logging is one rung
+  down, from a main field. (It used to log from all of them: the radio
+  control by its own submit handler, the reference controls and the spot
+  comment by falling through to the panel's Enter shortcut.)
+- **In the QSO list**, Up and Down walk the log, loading each contact into
+  the editor **without moving focus**, so the next arrow keeps walking.
+  Event and annotation rows are skipped, since they aren't editable
+  contacts. Enter moves the cursor to the callsign field with that contact
+  still loaded; Down past the newest contact leaves for the pills.
+
+  The list also takes the jumps every list is expected to: **Home** and
+  **End** go to the oldest and newest contact, **Page Up** and **Page Down**
+  move a screenful (as many rows as fit, less one carried over for context),
+  and on macOS **Cmd+Up/Down** repeat Home/End while **Option+Up/Down**
+  repeat the page keys. Unlike a single-row Down, none of them ever walks off
+  the end of the list — they stop at the last contact, because nobody presses
+  Page Down meaning "and then leave".
+
+**Escape** is the way *out*, at every rung, one layer per press: an open
+suggestion menu, then an open control — all the way back to the main fields,
+where Down and Enter stop at the pill — then the editing session, then the
+composed QSO. It never walks back *in*: in particular a second Escape does
+not re-select the QSO the first one deselected, which it used to do.
+
+**Every rung claims bare keys only.** A held Cmd, Ctrl or Option makes the
+keystroke a platform gesture (Cmd+Down is "caret to the end of the text" on
+macOS), and Shift+arrow is a text selection — the ladder stands aside for
+both, exactly as the entry row's own Tab and arrow rules do.
+
+Each rung hangs its handling off a `FocusNode`'s own `onKeyEvent`, never a
+panel-wide `Shortcuts` binding — a panel-wide arrow binding would swallow the
+arrow keys for every field underneath it, caret movement included. Crossing
+between the logging controls and the QSO list goes through
+`LoggingControls.onNavigateToQsoList` and `LoggingControlsController`: the two
+are siblings, and the panel above them owns the selection.
+
+Whichever key moved the selection, the list scrolls to it — the row is placed
+from its position in the log rather than measured, so a jump to the far end
+lands as surely as a single step does.
+
+Still to come: a "goto" search (Cmd/Ctrl-G) for jumping to a QSO by number or
+callsign — see [backlog.md](../backlog.md).
+
 ## Related conventions
 
 - All logging input is uppercase unless the input explicitly declares
@@ -135,6 +196,7 @@ Implemented except for:
   are blocked on a decision, not on the work; see [backlog.md](../backlog.md).
 - The serial fields' `focus: 'skip'` opt-out noted above, which does not exist
   yet.
-- A keyboard-only route *out* of the entry row. Tab now loops within it, so
-  reaching the Log button or the secondary controls takes a pointer; a separate
-  change is adding a way out.
+- The Log button, which the focus ladder doesn't reach: Tab loops within the
+  entry row and Arrow Up leaves it for the pills, so pressing Log still takes a
+  pointer. Enter from any main field logs, so this is a gap in reaching the
+  *button*, not in logging.

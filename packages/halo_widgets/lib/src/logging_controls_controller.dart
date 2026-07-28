@@ -13,6 +13,8 @@ class LoggingControlsController {
   Future<void> Function()? _submit;
   void Function()? _wipe;
   bool Function()? _isFieldsLocked;
+  void Function()? _focusCall;
+  void Function()? _focusSecondaryControls;
 
   /// Wired by [LoggingControls] on mount/unmount — not meant for callers.
   void attach({
@@ -20,11 +22,15 @@ class LoggingControlsController {
     required Future<void> Function() submit,
     required void Function() wipe,
     required bool Function() isFieldsLocked,
+    required void Function() focusCall,
+    required void Function() focusSecondaryControls,
   }) {
     _setField = setField;
     _submit = submit;
     _wipe = wipe;
     _isFieldsLocked = isFieldsLocked;
+    _focusCall = focusCall;
+    _focusSecondaryControls = focusSecondaryControls;
   }
 
   /// Wired by [LoggingControls] on unmount — not meant for callers.
@@ -33,6 +39,8 @@ class LoggingControlsController {
     _submit = null;
     _wipe = null;
     _isFieldsLocked = null;
+    _focusCall = null;
+    _focusSecondaryControls = null;
   }
 
   /// Whether a LoggingControls is currently attached.
@@ -54,4 +62,14 @@ class LoggingControlsController {
   /// `LoggingControls._handleEscape`'s doc). False (never locked) while
   /// nothing is attached.
   bool get isFieldsLocked => _isFieldsLocked?.call() ?? false;
+
+  /// Puts the keyboard back on the callsign field — the bottom rung of
+  /// APP-19's focus ladder, used when the QSO list hands focus back (Enter on
+  /// a row, or Escape ending the edit).
+  void focusCall() => _focusCall?.call();
+
+  /// Puts the keyboard on the secondary control strip, on the pill the
+  /// operator last used (or the first one). The rung between the main fields
+  /// and the QSO list; the list calls this when Down walks off its newest row.
+  void focusSecondaryControls() => _focusSecondaryControls?.call();
 }

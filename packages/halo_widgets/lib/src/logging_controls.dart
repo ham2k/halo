@@ -321,18 +321,11 @@ class LoggingControls extends StatefulWidget {
   /// `didUpdateWidget` once `editingQso` becomes null on the next build.
   final VoidCallback? onEditCanceled;
 
-  /// Escape's own way of ending an editing session (ham2k/app-halo-dist#199
-  /// follow-up) — called instead of [onEditCanceled] so the caller can offer
-  /// to undo it (re-select the QSO on a second Escape), unlike Save/Delete/
-  /// Restore/Revert, which end the session for good. Falls back to
-  /// [onEditCanceled] when unset.
-  final VoidCallback? onEscapeDeselect;
-
-  /// Escape, with nothing composed and no wipe to undo, asks the caller
-  /// whether *it* has something to undo instead — a QSO [onEscapeDeselect]
-  /// just deselected. Returns whether it actually undid something; when
-  /// false (or unset), Escape falls through to its normal empty-form wipe.
-  final bool Function()? onUndoDeselect;
+  /// Arrow Up on a secondary control pill walks off the top of this panel —
+  /// the caller (which owns the QSO list and its selection) takes the
+  /// keyboard from there. Unset means the panel is the top of the ladder and
+  /// Up simply stops at the pills. See APP-19.
+  final VoidCallback? onNavigateToQsoList;
 
   /// Settings engine interface.
   final SyncSettings? settings;
@@ -495,8 +488,7 @@ class LoggingControls extends StatefulWidget {
     this.editingQso,
     this.suggestedQso,
     this.onEditCanceled,
-    this.onEscapeDeselect,
-    this.onUndoDeselect,
+    this.onNavigateToQsoList,
     this.settings,
     this.radioService,
     this.controlOrder = const [],
@@ -1497,10 +1489,12 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
         _rebuildForNumbersRow();
       });
     }
-    // Tab's edge-wrap and the arrow keys' end-of-value traversal, on the fixed
-    // primary fields. The exchange fields get the same handler through
-    // [_onExchangeKeyEvent], which their nodes are built with; Freq and Time
-    // are secondary-control fields and deliberately keep the default.
+    // Tab's edge-wrap, the arrow keys' end-of-value traversal, and Arrow Up out
+    // to the pills, on the fixed primary fields. The exchange fields get the
+    // same handler through [_onExchangeKeyEvent], which their nodes are built
+    // with; Freq and Time are secondary-control fields and deliberately keep
+    // the default (they're a rung up already — their way out is Down/Enter,
+    // see [_onExpandedKeyEvent]).
     for (final node in [_callFocus, _sentFocus, _rcvdFocus, _stateFocus, _gridFocus]) {
       node.onKeyEvent = _onPrimaryFieldKeyEvent;
     }
@@ -1518,7 +1512,14 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     }
     // Wire the imperative handle (used by the app's dev bridge) so the call
     // field / Log / Wipe can be driven from outside the widget.
-    widget.controller?.attach(setField: _devSetField, submit: _log, wipe: _wipe, isFieldsLocked: () => _fieldsLocked);
+    widget.controller?.attach(
+      setField: _devSetField,
+      submit: _log,
+      wipe: _wipe,
+      isFieldsLocked: () => _fieldsLocked,
+      focusCall: _callFocus.requestFocus,
+      focusSecondaryControls: _focusPill,
+    );
     // Show the next serial number straight away — an operator opening a WPX
     // operation needs to know where the series stands before the first QSO,
     // not after it.
@@ -1558,7 +1559,14 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     }
     if (oldWidget.controller != widget.controller) {
       oldWidget.controller?.detach();
-      widget.controller?.attach(setField: _devSetField, submit: _log, wipe: _wipe, isFieldsLocked: () => _fieldsLocked);
+      widget.controller?.attach(
+        setField: _devSetField,
+        submit: _log,
+        wipe: _wipe,
+        isFieldsLocked: () => _fieldsLocked,
+        focusCall: _callFocus.requestFocus,
+        focusSecondaryControls: _focusPill,
+      );
     }
     if (oldWidget.editingQso?.uuid != widget.editingQso?.uuid) {
       _resetEditingSessionState();
@@ -1871,6 +1879,9 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     for (final node in _controlTextFocus.values) {
       node.dispose();
     }
+    for (final node in _pillFocus.values) {
+      node.dispose();
+    }
     _callController.dispose();
     _sentController.dispose();
     _rcvdController.dispose();
@@ -2125,6 +2136,182 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     }
   }
 
+  // ── The focus ladder (APP-19) ─────────────────────────────────────────────
+  //
+  //     QSO list  ──▲──  secondary pills  ──▲──  main logging fields
+  //               ──▼──                   ──▼──
+  //
+  // Arrow Up walks outward from the fields, Arrow Down walks back in, so the
+  // whole panel is reachable without leaving the home row. Every rung hangs
+  // its handling off a FocusNode's own `onKeyEvent` rather than the panel-wide
+  // `CallbackShortcuts` in `build`: a node handler only sees keys aimed at
+  // that rung, while a panel-wide arrow binding would swallow the arrow keys
+  // for everything in the panel — including a text field's own caret movement
+  // (the same reason the options menu binds its arrows only while it's open).
+  //
+  // Crossing out of the panel is the host's business, not this widget's:
+  // `onNavigateToQsoList` hands the keyboard up, and `LoggingControlsController`
+  // hands it back.
+
+  /// One node per secondary control pill, so the keyboard can sit on a pill
+  /// the way it sits on a field. Owned here rather than inside
+  /// [SecondaryControlRow] so all of the panel's keyboard policy stays in one
+  /// place; the row just passes it to the chip. Long-lived — the chips
+  /// themselves are rebuilt constantly and animate in and out.
+  final Map<String, FocusNode> _pillFocus = {};
+
+  FocusNode _pillFocusFor(String key) => _pillFocus[key] ??= FocusNode(
+        debugLabel: 'pill:$key',
+        onKeyEvent: (node, event) => _onPillKeyEvent(key, event),
+      );
+
+  /// The pill keys on the strip, in display order — recorded by
+  /// [_buildSecondaryControls] as it assembles the specs, so the arrow keys
+  /// walk exactly what is on screen (hidden controls, an activity that
+  /// stopped applying, a reorder from the settings dialog) instead of a
+  /// second list that could drift from it.
+  List<String> _pillOrder = const [];
+
+  /// The pill the keyboard was last on, so stepping down to a field and back
+  /// up returns to where you were rather than to the start of the strip.
+  String? _lastPillKey;
+
+  /// Moves the keyboard onto the pill strip — at [key] when given, else the
+  /// pill it was last on, else the first. A no-op when there are no pills.
+  ///
+  /// The strip scrolls horizontally and can hold more pills than fit, so a
+  /// focused pill also has to be scrolled into view: focus alone doesn't move
+  /// a viewport.
+  void _focusPill([String? key]) {
+    final order = _pillOrder;
+    if (order.isEmpty) return;
+    final remembered = _lastPillKey;
+    final target = (key != null && order.contains(key))
+        ? key
+        : (remembered != null && order.contains(remembered) ? remembered : order.first);
+    _lastPillKey = target;
+    final node = _pillFocusFor(target);
+    node.requestFocus();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final context = node.context;
+      if (context == null || !mounted) return;
+      Scrollable.ensureVisible(
+        context,
+        alignment: 0.5,
+        duration: const Duration(milliseconds: 150),
+        curve: Curves.easeOut,
+      );
+    });
+  }
+
+  /// Back to the field the operator was last in, with Call as the fallback
+  /// for a remembered node whose field is gone (the contest changed, RSTs
+  /// were hidden) — such a node has no context and would swallow the request
+  /// silently.
+  void _focusLastPrimaryField() {
+    final remembered = _lastPrimaryFocus;
+    ((remembered?.context != null) ? remembered! : _callFocus).requestFocus();
+  }
+
+  /// Whether a modifier is held that makes this keystroke somebody else's.
+  ///
+  /// The ladder claims only bare keys. Cmd/Ctrl/Option combinations are
+  /// platform gestures — caret jumps, pane switches, system shortcuts — and
+  /// Shift+arrow is a text selection; taking any of them would teleport the
+  /// operator instead of doing what they asked. Same rule
+  /// [_onPrimaryFieldKeyEvent] applies inside the entry row, kept identical on
+  /// purpose so the whole panel answers modifiers the same way.
+  static bool get _modified {
+    final keyboard = HardwareKeyboard.instance;
+    return keyboard.isControlPressed ||
+        keyboard.isMetaPressed ||
+        keyboard.isAltPressed ||
+        keyboard.isShiftPressed;
+  }
+
+  KeyEventResult _onPillKeyEvent(String key, KeyEvent event) {
+    if (event is! KeyDownEvent && event is! KeyRepeatEvent) return KeyEventResult.ignored;
+    if (_modified) return KeyEventResult.ignored;
+    switch (event.logicalKey) {
+      case LogicalKeyboardKey.arrowLeft:
+      case LogicalKeyboardKey.arrowRight:
+        final order = _pillOrder;
+        final index = order.indexOf(key);
+        // Wraps at both ends: the strip is a short ring, and running off it
+        // into the fields would make Left/Right two different gestures
+        // depending on where you happened to be standing.
+        //
+        // With nowhere to go (one pill, or a key that has just left the strip)
+        // the keystroke is passed on rather than swallowed — a handler that
+        // silently eats keys it does nothing with is how a strip ends up
+        // blocking a shortcut nobody remembers binding.
+        if (index < 0 || order.length < 2) return KeyEventResult.ignored;
+        final delta = event.logicalKey == LogicalKeyboardKey.arrowRight ? 1 : -1;
+        _focusPill(order[(index + delta) % order.length]);
+        return KeyEventResult.handled;
+      case LogicalKeyboardKey.arrowUp:
+        // Off the top of the panel, into the QSO list — when the host has one.
+        // Without a host to take it, the pills are simply the top rung.
+        widget.onNavigateToQsoList?.call();
+        return KeyEventResult.handled;
+      case LogicalKeyboardKey.arrowDown:
+        _focusLastPrimaryField();
+        return KeyEventResult.handled;
+      case LogicalKeyboardKey.enter:
+      case LogicalKeyboardKey.numpadEnter:
+        // Same as a tap: opens the control and puts the cursor in whatever
+        // field it expanded into.
+        _onSelectControl(key);
+        return KeyEventResult.handled;
+      case LogicalKeyboardKey.escape:
+        // Same "out of here entirely" meaning Escape has inside an open
+        // control, from one rung further out. Handled here rather than left to
+        // `_handleEscape` because that one would read a merely-parked keyboard
+        // as a cue to wipe the form the operator hasn't touched.
+        _focusLastPrimaryField();
+        return KeyEventResult.handled;
+    }
+    return KeyEventResult.ignored;
+  }
+
+  /// Down (or Enter) inside an open secondary control closes it and puts the
+  /// keyboard back on its pill — the way out of a control Enter opened.
+  ///
+  /// This does mean Enter no longer logs the QSO from ANY expanded control's
+  /// fields. Every one of them used to log, by one of two routes: the Radio
+  /// control's own `onSubmitted`, or — for the activity reference controls and
+  /// the spot comment, which declare none — the panel's root Enter shortcut,
+  /// which this handler now intercepts below. APP-19 asks for close-first, and
+  /// Enter logs again one rung down, from any main field.
+  KeyEventResult _onExpandedKeyEvent(String key, KeyEvent event) {
+    if (event is! KeyDownEvent && event is! KeyRepeatEvent) return KeyEventResult.ignored;
+    // Cmd+Down is "caret to the end of the text" on macOS and Shift+Down
+    // extends a selection — closing the control on either would take a real
+    // editing gesture away from the field the operator is typing in.
+    if (_modified) return KeyEventResult.ignored;
+    final logicalKey = event.logicalKey;
+    if (logicalKey != LogicalKeyboardKey.arrowDown &&
+        logicalKey != LogicalKeyboardKey.enter &&
+        logicalKey != LogicalKeyboardKey.numpadEnter) {
+      return KeyEventResult.ignored;
+    }
+    _collapseToPill(key);
+    return KeyEventResult.handled;
+  }
+
+  /// Closes the open control, leaving the keyboard on its pill rather than
+  /// back in the fields (which is where [_onSelectControl]'s own collapse
+  /// hands it) — you arrived from the pill, so that's where "back" is.
+  ///
+  /// Idempotent, because Enter can arrive twice for one keypress: as a key
+  /// event, and again through a field's `onSubmitted` once the platform turns
+  /// it into a text-input action.
+  void _collapseToPill(String key) {
+    if (_selectedControlKey != key) return;
+    setState(() => _selectedControlKey = null);
+    _focusPill(key);
+  }
+
   void _onSelectControl(String? key) {
     if (key == 'more') {
       _openMoreEditor();
@@ -2146,11 +2333,8 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     }
     if (key == null) {
       // Collapsing hands the cursor back so logging continues without a tap.
-      // A remembered node whose field is gone (the contest changed, RSTs were
-      // hidden) has no context and would swallow the request silently, so
-      // Call is both the fallback and the default first time.
-      final remembered = _lastPrimaryFocus;
-      ((remembered?.context != null) ? remembered! : _callFocus).requestFocus();
+      // (Keyboard collapse goes to the pill instead — see `_collapseToPill`.)
+      _focusLastPrimaryField();
     }
   }
 
@@ -2418,8 +2602,31 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
           }
       }
     }
-    return specs;
+    // The strip's keys, for the arrow keys to walk. Recorded from the list
+    // actually handed to the row, so the two can't drift apart.
+    _pillOrder = [for (final spec in specs) spec.key];
+    return [for (final spec in specs) _withKeyboardNavigation(spec)];
   }
+
+  /// Adds this panel's keyboard policy to a control spec: a focus node for its
+  /// pill, and a non-focusable ancestor over its expanded content that watches
+  /// for the keys which close it again. Applied once, over the assembled list,
+  /// so a newly added kind of control can't arrive without it.
+  SecondaryControlSpec _withKeyboardNavigation(SecondaryControlSpec spec) => SecondaryControlSpec(
+        key: spec.key,
+        icon: spec.icon,
+        summary: spec.summary,
+        iconColor: spec.iconColor,
+        focusNode: _pillFocusFor(spec.key),
+        expandedBuilder: (context) => Focus(
+          // Not a stop on the way anywhere: it exists only to see key events
+          // on their way up from whatever inside the control has focus.
+          canRequestFocus: false,
+          skipTraversal: true,
+          onKeyEvent: (node, event) => _onExpandedKeyEvent(spec.key, event),
+          child: spec.expandedBuilder(context),
+        ),
+      );
 
   SecondaryControlSpec _timeControlSpec() => SecondaryControlSpec(
         key: 'time',
@@ -2813,7 +3020,11 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
                     _virtualSpace,
                     FilteringTextInputFormatter.allow(RegExp(r'[0-9.,]')),
                   ],
-                  onSubmitted: (_) => _log(),
+                  // Enter closes the control rather than logging (APP-19) —
+                  // the same thing `_onExpandedKeyEvent` does with the raw
+                  // key, for the platforms where the engine turns Enter into
+                  // a text-input action before the framework sees it.
+                  onSubmitted: (_) => _collapseToPill('radio'),
                 ),
               ),
               const SizedBox(width: 6),
@@ -3422,6 +3633,19 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     // teleport the operator to another field instead.
     if (keyboard.isControlPressed || keyboard.isMetaPressed || keyboard.isAltPressed) {
       return KeyEventResult.ignored;
+    }
+
+    // Arrow Up leaves the row upward, for the secondary control pills — the
+    // keyboard-only way out that the Tab loop above deliberately doesn't
+    // provide (APP-19). Inert while an options suggestion menu is open, since
+    // Up and Down belong to its highlight for as long as it is showing, and
+    // while the fields are locked: a staged-delete or deleted QSO's secondary
+    // controls are pointer-blocked and dimmed, and the keyboard shouldn't
+    // reach past that either.
+    if (key == LogicalKeyboardKey.arrowUp) {
+      if (_optionSuggestions.isNotEmpty || _fieldsLocked) return KeyEventResult.ignored;
+      _focusPill();
+      return KeyEventResult.handled;
     }
 
     if (key == LogicalKeyboardKey.tab) {
@@ -4266,19 +4490,17 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
 
   // ---- Logging ----
 
-  /// Escape wipes the compose form, but must not blank the read-only view
-  /// of a staged-delete or deleted QSO — the fields are the record's only
-  /// display and can't be repopulated without reselecting it. When editing
-  /// an existing QSO, it discards any unsaved changes and ends the editing
-  /// session entirely (ham2k/app-halo-dist#199) — via [onEscapeDeselect]
-  /// rather than [onEditCanceled] directly, so the caller can offer to undo
-  /// it (Revert only discards changes and stays in edit mode; this is the
-  /// "never mind, close it" gesture). When composing a new QSO it goes
-  /// through the wipe button's path, so the 5-second undo offer applies to
-  /// Esc too. With nothing composed and no wipe left to undo, a second
-  /// Escape asks the caller if *it* has something to undo instead — a QSO
-  /// this same gesture just deselected (issue #199 follow-up) — before
-  /// finally wiping (a no-op on an already-empty form).
+  /// Escape backs out of the innermost thing that's open, one layer per
+  /// press: an options menu, then an expanded secondary control, then the
+  /// editing session, then the composed QSO.
+  ///
+  /// It must not blank the read-only view of a staged-delete or deleted QSO —
+  /// the fields are the record's only display and can't be repopulated
+  /// without reselecting it. When editing an existing QSO it discards any
+  /// unsaved changes and ends the editing session entirely
+  /// (ham2k/app-halo-dist#199), unlike Revert, which discards changes and
+  /// stays in edit mode. When composing a new QSO it goes through the wipe
+  /// button's path, so the 5-second undo offer applies to Esc too.
   void _handleEscape() {
     if (_fieldsLocked) return;
     // An open exchange menu takes the first Escape, and takes it whether or not
@@ -4293,14 +4515,21 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
       });
       return;
     }
+    // An open secondary control takes the next one, and goes all the way back
+    // to the main fields — where Down and Enter stop at the pill, Escape is
+    // the "out of here entirely" gesture. Nothing is thrown away by closing a
+    // control (its value is already committed), so this is safe to take
+    // priority over the destructive layers below.
+    if (_selectedControlKey != null) {
+      _onSelectControl(null);
+      return;
+    }
     if (widget.editingQso != null) {
-      (widget.onEscapeDeselect ?? widget.onEditCanceled)?.call();
+      widget.onEditCanceled?.call();
     } else if (_hasComposedValues) {
       _handleWipeTap();
     } else if (_wipeUndoSlot.value != null) {
       _restoreFromUndoSlot();
-    } else if (widget.onUndoDeselect?.call() ?? false) {
-      // handled — a deselected QSO was restored by the caller
     } else {
       _wipe();
     }

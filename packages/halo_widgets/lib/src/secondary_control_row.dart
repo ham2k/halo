@@ -46,12 +46,20 @@ class SecondaryControlSpec {
   /// active extension.
   final Color? iconColor;
 
+  /// The node the caller uses to put the keyboard on this chip, and to hang
+  /// its key handling off (APP-19's focus ladder: arrows walk the strip, Up
+  /// leaves for the QSO list, Down returns to the main fields). Owned by the
+  /// caller — this row only hands it to the chip, so the whole keyboard
+  /// policy stays in one place next to the rest of the panel's.
+  final FocusNode? focusNode;
+
   const SecondaryControlSpec({
     required this.key,
     required this.icon,
     required this.summary,
     required this.expandedBuilder,
     this.iconColor,
+    this.focusNode,
   });
 }
 
@@ -729,6 +737,7 @@ class _ControlChip extends StatelessWidget {
         : theme.colorScheme.onTertiaryContainer;
 
     return ChoiceChip(
+      focusNode: control.focusNode,
       avatar: Icon(
         control.icon,
         size: 16 * MediaQuery.textScalerOf(context).scale(1.0),

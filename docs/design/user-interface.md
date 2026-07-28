@@ -83,8 +83,9 @@ split mechanics are defined in [layouts.md](layouts.md).
 
 The logging controls are the area of the Logging Panel for adding or editing
 QSOs: the main logging controls, the information area, and the secondary
-logging controls. What each part holds, and the keyboard rules that move
-focus between the main fields, are specified in
+logging controls. What each part holds, the keyboard rules that move focus
+between the main fields, and the ladder that reaches the secondary controls
+and the QSO list from them, are specified in
 [logging-fields.md](logging-fields.md).
 
 ## Interface scaling

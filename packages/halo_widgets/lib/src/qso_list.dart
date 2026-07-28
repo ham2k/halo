@@ -9,6 +9,10 @@
 // Emoji(s)/Name | References | RST.
 
 import 'package:flutter/material.dart';
+// `_revealSelected` measures the selected row against its viewport itself,
+// rather than via Scrollable.ensureVisible, whose offsets don't survive this
+// list's pinned headers — see there.
+import 'package:flutter/rendering.dart' show RenderAbstractViewport;
 
 import 'package:halo_core/halo_core.dart';
 
@@ -134,6 +138,17 @@ bool _isContestRef(Map<String, dynamic> ref, List<Map<String, dynamic>> controls
 }
 
 class QsoList extends StatefulWidget {
+  /// An ordinary QSO row's height, divider included — what a caller divides
+  /// its own viewport height by to size a Page Up/Down jump (APP-19; see
+  /// `LoggingPanel._pageRows`).
+  ///
+  /// Plain logical pixels, and deliberately so: the Font Scale setting scales
+  /// the whole interface from one root wrapper (see ui-scaling.md), so a row
+  /// is this tall at every scale. Day headers and annotation rows are taller,
+  /// which makes this an approximation for a mixed list — fine for a jump
+  /// nobody counts the rows of, and never used for layout.
+  static const double rowHeight = 29;
+
   final List<Qso> qsos;
   final String? noQsosLabel;
 
@@ -213,6 +228,25 @@ class _QsoListState extends State<QsoList> {
   bool _wasNearBottom = true;
   double? _lastMaxScrollExtent;
 
+  /// Attached to whichever row is currently selected, so a selection made
+  /// from the keyboard (APP-19 walks the list with the arrow keys) can be
+  /// scrolled into view. Only one row is ever selected, so one key is enough.
+  final _selectedRowKey = GlobalKey();
+
+  /// The uuid [_selectedRowKey] was actually attached to, recorded as the row
+  /// is built and cleared at the start of every build.
+  ///
+  /// The key alone can't be trusted: when the selected row is far enough away
+  /// not to be built, `currentContext` still resolves — to something that is
+  /// NOT that row — and measuring it scrolls to the wrong place, or to nowhere
+  /// at all. Whether this matches the current selection is the only reliable
+  /// answer to "is there a row to measure?".
+  String? _keyedRowUuid;
+
+  /// The selection [_correctRevealFor] has already run for — one measured
+  /// correction per selection, never a loop of them.
+  String? _correctedRevealFor;
+
   @override
   void initState() {
     super.initState();
@@ -233,6 +267,114 @@ class _QsoListState extends State<QsoList> {
       _wasNearBottom = true;
       WidgetsBinding.instance.addPostFrameCallback((_) => _jumpToBottom());
     }
+    if (widget.selectedUuid != oldWidget.selectedUuid && widget.selectedUuid != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => _revealSelected());
+    }
+  }
+
+  /// Brings the selected row into view, scrolling the least that does it — a
+  /// row already fully visible doesn't move at all, so selecting one with the
+  /// pointer never yanks the list out from under the operator, while walking
+  /// the log with the arrow keys (APP-19) follows it, and a page or Home/End
+  /// jump lands on it however far away it was.
+  ///
+  /// Works out where the row *is* arithmetically, from the fixed row and
+  /// header heights, rather than measuring it. Measuring can't answer this:
+  /// a row outside the viewport either isn't built, or is built with a stale
+  /// paint transform from wherever it last sat — and both read as a confident,
+  /// wrong position. (`Scrollable.ensureVisible`/`getOffsetToReveal` don't
+  /// survive these slivers either: with a pinned day header above the row,
+  /// revealing it at the trailing edge comes back one header-height short.)
+  ///
+  /// [_correctRevealFor] then fixes up whatever the arithmetic got wrong, once
+  /// the row is close enough to measure honestly.
+  void _revealSelected() {
+    if (!mounted || !_scrollController.hasClients) return;
+    final selectedUuid = widget.selectedUuid;
+    if (selectedUuid == null) return;
+    final index = widget.qsos.indexWhere((qso) => qso.uuid == selectedUuid);
+    if (index < 0) return;
+
+    final top = _estimatedTopOf(index);
+    final scroll = _scrollTo(top, top + QsoList.rowHeight);
+    if (scroll != null && _correctedRevealFor != selectedUuid) {
+      // Landing is not arriving: annotation rows are taller than the nominal
+      // height, so a long log can drift. One measured pass straightens it out
+      // — chained to the scroll's own completion, because measuring a row
+      // mid-flight reads a position it is about to leave, and only once, so a
+      // drift the correction can't close can't become a loop.
+      _correctedRevealFor = selectedUuid;
+      scroll.whenComplete(() => _correctRevealFor(selectedUuid));
+    }
+  }
+
+  /// The scroll offset at which the row for [index] begins: every entry above
+  /// it counted as an ordinary row, plus a day header at each day boundary.
+  ///
+  /// Exact for a log of plain contacts, which is the overwhelming majority of
+  /// one; annotation and event rows can be taller, and cost accuracy rather
+  /// than correctness — see [_correctRevealFor].
+  double _estimatedTopOf(int index) {
+    var offset = 0.0;
+    int? lastDay;
+    for (var i = 0; i <= index; i++) {
+      final millis = widget.qsos[i].startAtMillis ?? 0;
+      final day = millis - (millis % _dayInMillis);
+      if (day != lastDay) {
+        offset += DayHeaderRow.pinnedHeight;
+        lastDay = day;
+      }
+      if (i < index) offset += QsoList.rowHeight;
+    }
+    return offset;
+  }
+
+  /// Scrolls the least that puts the span [top]..[bottom] (in scroll offsets)
+  /// fully on screen. Returns the scroll's future, or null when the span was
+  /// already there and nothing moved.
+  ///
+  /// The leading edge is inset by a day header, because those headers are
+  /// **pinned**: a row flush against the top of the viewport sits underneath
+  /// one, which would leave the selection somewhere the operator can't see.
+  Future<void>? _scrollTo(double top, double bottom) {
+    final position = _scrollController.position;
+    final double target;
+    if (top - DayHeaderRow.pinnedHeight < position.pixels) {
+      target = top - DayHeaderRow.pinnedHeight;
+    } else if (bottom > position.pixels + position.viewportDimension) {
+      target = bottom - position.viewportDimension;
+    } else {
+      return null; // already fully visible
+    }
+    final clamped = target.clamp(position.minScrollExtent, position.maxScrollExtent);
+    if ((clamped - position.pixels).abs() < 0.5) return null;
+    return _scrollController.animateTo(
+      clamped,
+      duration: const Duration(milliseconds: 120),
+      curve: Curves.easeOut,
+    );
+  }
+
+  /// One measured pass over what [_revealSelected]'s arithmetic left behind.
+  ///
+  /// Only runs against a row the list actually built this frame — that's what
+  /// [_keyedRowUuid] answers, and the plausibility check below covers the rest:
+  /// a built-but-not-laid-out row reports a position from wherever it last sat,
+  /// which is worth ignoring rather than acting on.
+  void _correctRevealFor(String selectedUuid) {
+    if (!mounted || !_scrollController.hasClients) return;
+    if (widget.selectedUuid != selectedUuid || _keyedRowUuid != selectedUuid) return;
+    final box = _selectedRowKey.currentContext?.findRenderObject() as RenderBox?;
+    if (box == null || !box.attached) return;
+    final RenderObject? viewportObject = RenderAbstractViewport.maybeOf(box);
+    if (viewportObject is! RenderBox || !viewportObject.attached) return;
+
+    final position = _scrollController.position;
+    final top = box.localToGlobal(Offset.zero, ancestor: viewportObject).dy;
+    // A position further than a viewport outside the viewport is a stale
+    // transform, not a row waiting to be nudged.
+    if (top < -position.viewportDimension || top > position.viewportDimension * 2) return;
+    _scrollTo(position.pixels + top, position.pixels + top + box.size.height);
   }
 
   bool _isNearBottom() {
@@ -286,6 +428,10 @@ class _QsoListState extends State<QsoList> {
     final showQsoNumbers = widget.showQsoNumbers;
     final activityControls = widget.activityControls;
     final ourEntityPrefix = widget.ourEntityPrefix;
+
+    // Cleared here and set again by `buildRow` if — and only if — the selected
+    // row is among the ones layout actually builds this frame.
+    _keyedRowUuid = null;
 
     final theme = Theme.of(context);
     if (qsos.isEmpty) {
@@ -435,7 +581,7 @@ class _QsoListState extends State<QsoList> {
               section['scores'] as Map<String, dynamic>?,
     };
 
-    Widget buildRow(BuildContext context, int chronologicalIndex) {
+    Widget buildRowContent(BuildContext context, int chronologicalIndex) {
       final qso = qsos[chronologicalIndex];
 
       if (qso.isEvent) {
@@ -712,6 +858,19 @@ class _QsoListState extends State<QsoList> {
       ));
     }
 
+    /// The selected row carries [_selectedRowKey], so [_revealSelected] has
+    /// something to measure; every other row is built exactly as before.
+    ///
+    /// Rows are built lazily, during layout rather than here, so attaching the
+    /// key is also the moment we learn the row exists at all — recorded in
+    /// [_keyedRowUuid], which `build` cleared on the way past.
+    Widget buildRow(BuildContext context, int chronologicalIndex) {
+      final row = buildRowContent(context, chronologicalIndex);
+      if (qsos[chronologicalIndex].uuid != selectedUuid) return row;
+      _keyedRowUuid = selectedUuid;
+      return KeyedSubtree(key: _selectedRowKey, child: row);
+    }
+
     return ClipRect(
       // Rows lay out fixed-width columns sized from the longest value seen
       // across the whole list, not from the pane's actual width, so a narrow
@@ -789,19 +948,19 @@ class _DayHeaderDelegate extends SliverPersistentHeaderDelegate {
   // Matches an ordinary QSO row's own height (4px vertical padding either
   // side of a 14px line at its natural, un-inflated line height — see
   // `DayHeaderRow.build`'s `rowStyle`) plus a little headroom so [child]'s
-  // forced `SizedBox(height: _height)` below never clips/overflows it. The
+  // forced `SizedBox` below never clips/overflows it. The
   // border lives in `foregroundDecoration`, not `decoration`, specifically
   // so it doesn't add to this the way `Container` would otherwise
   // auto-inset for a `decoration`'s border.
-  static const double _height = 28;
+
 
   const _DayHeaderDelegate({required this.child});
 
   @override
-  double get minExtent => _height;
+  double get minExtent => DayHeaderRow.pinnedHeight;
 
   @override
-  double get maxExtent => _height;
+  double get maxExtent => DayHeaderRow.pinnedHeight;
 
   @override
   Widget build(
@@ -809,12 +968,12 @@ class _DayHeaderDelegate extends SliverPersistentHeaderDelegate {
     double shrinkOffset,
     bool overlapsContent,
   ) {
-    // Forces the child to exactly [_height] regardless of its own intrinsic
+    // Forces the child to exactly [DayHeaderRow.pinnedHeight] regardless of its own intrinsic
     // size — a pinned sliver header's declared extent must match what it
     // actually paints, or Flutter throws a "layoutExtent exceeds
     // paintExtent" assertion the instant [child]'s content (font size,
-    // padding, border width) doesn't add up to precisely [_height].
-    return SizedBox(height: _height, child: child);
+    // padding, border width) doesn't add up to precisely that.
+    return SizedBox(height: DayHeaderRow.pinnedHeight, child: child);
   }
 
   @override
@@ -827,6 +986,14 @@ class _DayHeaderDelegate extends SliverPersistentHeaderDelegate {
 /// `ScoreTally` in the extension SDK. `qsoCount` is skipped among the score
 /// badges since [count] already shows it as a label.
 class DayHeaderRow extends StatelessWidget {
+  /// The extent this header pins at — an ordinary QSO row's own height (4px
+  /// vertical padding either side of a 14px line at its natural, un-inflated
+  /// line height, see `build`'s `rowStyle`) plus a little headroom.
+  ///
+  /// Public so tests can assert that a row revealed by
+  /// `_QsoListState._revealSelected` clears the header pinned above it.
+  static const double pinnedHeight = 28;
+
   final int dayMillis;
   final int count;
   final Map<String, dynamic>? scores;

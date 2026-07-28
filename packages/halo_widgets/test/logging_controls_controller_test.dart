@@ -15,12 +15,16 @@ void main() {
     await controller.submit();
     expect(() => controller.wipe(), returnsNormally);
     expect(controller.isFieldsLocked, isFalse);
+    expect(() => controller.focusCall(), returnsNormally);
+    expect(() => controller.focusSecondaryControls(), returnsNormally);
 
     String? field;
     String? value;
     var submitted = false;
     var wiped = false;
     var locked = false;
+    var focusedCall = false;
+    var focusedPills = false;
     controller.attach(
       setField: (f, v) {
         field = f;
@@ -29,6 +33,8 @@ void main() {
       submit: () async => submitted = true,
       wipe: () => wiped = true,
       isFieldsLocked: () => locked,
+      focusCall: () => focusedCall = true,
+      focusSecondaryControls: () => focusedPills = true,
     );
 
     expect(controller.isAttached, isTrue);
@@ -41,12 +47,21 @@ void main() {
     expect(wiped, isTrue);
     locked = true;
     expect(controller.isFieldsLocked, isTrue);
+    // The focus ladder's two ends (APP-19): the QSO list hands the keyboard
+    // back to the call field, and walks off its newest row onto the pills.
+    controller.focusCall();
+    expect(focusedCall, isTrue);
+    controller.focusSecondaryControls();
+    expect(focusedPills, isTrue);
 
     controller.detach();
     expect(controller.isAttached, isFalse);
     field = null;
     controller.setField('call', 'K1ABC'); // detached → no-op, doesn't reach the widget
     expect(field, isNull);
+    focusedCall = false;
+    controller.focusCall();
+    expect(focusedCall, isFalse);
     expect(controller.isFieldsLocked, isFalse);
   });
 }

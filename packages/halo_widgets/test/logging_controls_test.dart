@@ -59,8 +59,7 @@ void main() {
     VfoStore? radioService,
     Qso? editingQso,
     VoidCallback? onEditCanceled,
-    VoidCallback? onEscapeDeselect,
-    bool Function()? onUndoDeselect,
+    VoidCallback? onNavigateToQsoList,
     Map<String, dynamic>? suggestedQso,
     SuggestSpotSources? suggestSpotSources,
     SendSpot? sendSpot,
@@ -89,8 +88,7 @@ void main() {
       radioService: radioService,
       editingQso: editingQso,
       onEditCanceled: onEditCanceled,
-      onEscapeDeselect: onEscapeDeselect,
-      onUndoDeselect: onUndoDeselect,
+      onNavigateToQsoList: onNavigateToQsoList,
       suggestedQso: suggestedQso,
       suggestSpotSources: suggestSpotSources,
       sendSpot: sendSpot,
@@ -1266,26 +1264,20 @@ void main() {
     expect(find.byIcon(resolveIconName('undo')), findsNothing);
   });
 
-  testWidgets('with nothing composed and no wipe to undo, Escape asks the caller if it has something to undo instead',
-      (tester) async {
-    var undoAttempts = 0;
-    var undone = false;
-    await tester.pumpWidget(host(onUndoDeselect: () {
-      undoAttempts++;
-      return undone;
-    }));
+  testWidgets('Escape on an already-empty form is an inert no-op', (tester) async {
+    // It used to ask the caller whether *it* had a QSO to undo-deselect, which
+    // made Escape walk back into a selection it had just left. APP-19's ladder
+    // makes Escape uniformly the way out, so the bottom of the stack is simply
+    // a wipe of an already-empty form: nothing to restore, nothing to break.
+    await tester.pumpWidget(host());
 
     await tester.sendKeyEvent(LogicalKeyboardKey.escape);
     await tester.pump();
-    expect(undoAttempts, 1);
-
-    // When the caller says there was nothing to undo, Escape still falls
-    // through to its normal (here, no-op) empty-form wipe — no exception,
-    // no dead end.
-    undone = true;
     await tester.sendKeyEvent(LogicalKeyboardKey.escape);
     await tester.pump();
-    expect(undoAttempts, 2);
+
+    expect(tester.widget<TextField>(find.widgetWithText(TextField, 'Their call')).controller!.text, isEmpty);
+    expect(find.byIcon(resolveIconName('undo')), findsNothing);
   });
 
   testWidgets('debounced lookup enriches the entry line and the logged QSO', (tester) async {
@@ -1708,6 +1700,29 @@ void main() {
       expect(logged.single.refs, [
         {'type': 'qp', 'county': 'CUY'},
       ]);
+    });
+
+    testWidgets('Arrow Up walks the open menu rather than stepping out to the pills (APP-19)', (tester) async {
+      // Up and Down belong to the suggestion menu for as long as it is
+      // showing. The focus ladder's Arrow Up (main field → pill strip) has to
+      // stand aside for it, or the menu becomes unusable from the keyboard on
+      // exactly the fields that offer one.
+      await tester.pumpWidget(host());
+      await tester.tap(find.widgetWithText(TextField, 'County'));
+      await tester.pump();
+      await tester.enterText(find.widgetWithText(TextField, 'County'), 'AS');
+      await tester.pump();
+      expect(find.textContaining('Ashland'), findsWidgets, reason: 'the menu is up');
+
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowUp);
+      await tester.pump();
+
+      // Still in the field with the menu still up — not parked on a pill.
+      expect(tester.widget<TextField>(find.widgetWithText(TextField, 'County')).focusNode?.hasFocus, isTrue);
+      expect(find.textContaining('Ashland'), findsWidgets);
+      for (final chip in tester.widgetList<ChoiceChip>(find.byType(ChoiceChip))) {
+        expect(chip.focusNode?.hasFocus ?? false, isFalse);
+      }
     });
 
     testWidgets('suggests matches for what is typed, best first', (tester) async {
@@ -4952,7 +4967,7 @@ void main() {
     expect(find.widgetWithText(MenuItemButton, '80m').hitTestable(), findsNothing);
   }, variant: TargetPlatformVariant.only(TargetPlatform.macOS));
 
-  testWidgets('Enter from a focused Band dropdown commits the band and logs the QSO', (tester) async {
+  testWidgets('Enter from a focused Band dropdown commits the band and closes the control (APP-19)', (tester) async {
     await tester.pumpWidget(host(radioService: fakeRadio, enabledBands: ['80m', '40m', '20m']));
     await openControl(tester, MdiIcons.radio);
     await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'W1AW');
@@ -4961,11 +4976,28 @@ void main() {
     await tester.pump();
     await tester.enterText(find.widgetWithText(TextField, 'Band'), '40');
     await tester.pump();
-    // Enter both commits the typed band and reaches the root log shortcut.
+    // Enter commits the typed band and then steps back out to the pill. It
+    // deliberately does NOT log any more (it used to reach the panel's root
+    // log shortcut): under APP-19's ladder Enter is what opens and closes a
+    // secondary control, and logging is one rung down, from a main field.
+    // The operator's callsign is still sitting in the form, unlogged.
     await tester.sendKeyEvent(LogicalKeyboardKey.enter);
-    final logged = await waitForQsos(tester, 1);
-    expect(logged, hasLength(1));
-    expect(logged.first.band, '40m');
+    // Same pump shape as `openControl`, for the same reason — the close
+    // slide's ticker doesn't start counting until the frame after it's
+    // asked to run, so a bare pump(250ms) would leave it at zero elapsed.
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 250));
+    await tester.pump();
+    expect(fakeRadio.vfoA.band, '40m');
+    expect(find.widgetWithText(TextField, 'Band'), findsNothing);
+    expect(await tester.runAsync(() => qsos.watchForOperation(operation.uuid).first), isEmpty);
+    // …and the keyboard is on the Radio pill, ready for the next rung.
+    expect(
+      tester.widget<ChoiceChip>(find.ancestor(of: find.byIcon(MdiIcons.radio), matching: find.byType(ChoiceChip)))
+          .focusNode
+          ?.hasFocus,
+      isTrue,
+    );
   }, variant: TargetPlatformVariant.only(TargetPlatform.macOS));
 
   testWidgets('arrow keys keep a typed filter while walking the open menu', (tester) async {
@@ -5898,6 +5930,291 @@ void main() {
       stored = (await tester.runAsync(() => qsos.watchForOperation(operation.uuid).first))!;
       expect(stored.single.deleted, isFalse);
       expect(editCanceled, isTrue);
+    });
+  });
+
+  // ── The focus ladder: main fields ↔ secondary pills (APP-19) ─────────────
+  //
+  // The QSO-list rung sits in the app (LoggingPanel owns the list and the
+  // selection), so it's exercised in app/test/logging_panel_keyboard_nav_test
+  // — these cover everything the panel can answer on its own.
+  group('keyboard navigation of the secondary controls', () {
+    /// Which pill currently holds the keyboard, by control key — read off the
+    /// chips' own focus nodes (`_pillFocusFor` labels them `pill:<key>`), so
+    /// the assertions name a control rather than a widget index.
+    String? focusedPill(WidgetTester tester) {
+      for (final chip in tester.widgetList<ChoiceChip>(find.byType(ChoiceChip))) {
+        final node = chip.focusNode;
+        if (node != null && node.hasFocus) return node.debugLabel?.replaceFirst('pill:', '');
+      }
+      return null;
+    }
+
+    testWidgets('Arrow Up steps out of the main fields and onto the pills', (tester) async {
+      await tester.pumpWidget(host());
+      await tester.pump();
+      await tester.tap(find.widgetWithText(TextField, 'Their call'));
+      await tester.pump();
+
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowUp);
+      await tester.pump();
+
+      // First time up, there's no remembered pill — the strip's first one.
+      expect(focusedPill(tester), 'time');
+      expect(tester.widget<TextField>(find.widgetWithText(TextField, 'Their call')).focusNode?.hasFocus, isFalse);
+    });
+
+    testWidgets('Left and Right walk the strip and wrap at both ends', (tester) async {
+      await tester.pumpWidget(host());
+      await tester.pump();
+      await tester.tap(find.widgetWithText(TextField, 'Their call'));
+      await tester.pump();
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowUp);
+      await tester.pump();
+      expect(focusedPill(tester), 'time');
+
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
+      await tester.pump();
+      expect(focusedPill(tester), 'radio');
+
+      // Off the right end and round to the first: the strip is a ring, so
+      // Left/Right mean the same thing wherever the operator is standing —
+      // running off into the fields would make them two different gestures.
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
+      await tester.pump();
+      expect(focusedPill(tester), 'more');
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
+      await tester.pump();
+      expect(focusedPill(tester), 'time');
+
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowLeft);
+      await tester.pump();
+      expect(focusedPill(tester), 'more');
+    });
+
+    testWidgets('Enter opens the focused pill onto its field, and Down closes it back to the pill', (tester) async {
+      await tester.pumpWidget(host(radioService: fakeRadio));
+      await tester.pump();
+      await tester.tap(find.widgetWithText(TextField, 'Their call'));
+      await tester.pump();
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowUp);
+      await tester.pump();
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
+      await tester.pump();
+      expect(focusedPill(tester), 'radio');
+
+      // Enter does what a tap does: opens the control AND puts the cursor in
+      // the field it opened for — Frequency, the one you actually type into.
+      await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 250));
+      await tester.pump();
+      expect(find.widgetWithText(TextField, 'Frequency'), findsOneWidget);
+      expect(tester.widget<TextField>(find.widgetWithText(TextField, 'Frequency')).focusNode?.hasFocus, isTrue);
+
+      // …and Down is the way back out: the control closes and the keyboard
+      // lands on the pill it came from, not back down in the main fields.
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 250));
+      await tester.pump();
+      expect(find.widgetWithText(TextField, 'Frequency'), findsNothing);
+      expect(focusedPill(tester), 'radio');
+    });
+
+    testWidgets('Tab moves along the strip too, as APP-19 asks', (tester) async {
+      // Flutter's own traversal already walks the chips in layout order, so
+      // this rides on it rather than claiming Tab — the same reasoning the
+      // entry row uses for interior Tabs. Asserted because the item names Tab
+      // explicitly: if traversal ever stops reaching the next chip (a wrapper
+      // that grabs focus, a chip that stops being focusable), that's a
+      // regression in a documented gesture, not a detail.
+      await tester.pumpWidget(host());
+      await tester.pump();
+      await tester.tap(find.widgetWithText(TextField, 'Their call'));
+      await tester.pump();
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowUp);
+      await tester.pump();
+      expect(focusedPill(tester), 'time');
+
+      await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+      await tester.pump();
+      expect(focusedPill(tester), 'radio');
+    });
+
+    testWidgets('Escape in an open control closes it and goes all the way back to the main fields', (tester) async {
+      // Where Down and Enter stop at the pill, Escape is the "out of here
+      // entirely" gesture — one press puts the operator back where they were
+      // typing. It must not reach the layers below it either: the composed
+      // callsign is still there afterwards, not wiped.
+      await tester.pumpWidget(host(radioService: fakeRadio));
+      await tester.pump();
+      await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'W1AW');
+      await tester.pump();
+      await tester.tap(find.widgetWithText(TextField, 'Sent'));
+      await tester.pump();
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowUp);
+      await tester.pump();
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
+      await tester.pump();
+      await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 250));
+      await tester.pump();
+      expect(find.widgetWithText(TextField, 'Frequency'), findsOneWidget);
+
+      await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 250));
+      await tester.pump();
+
+      expect(find.widgetWithText(TextField, 'Frequency'), findsNothing);
+      expect(tester.widget<TextField>(find.widgetWithText(TextField, 'Sent')).focusNode?.hasFocus, isTrue);
+      expect(tester.widget<TextField>(find.widgetWithText(TextField, 'Their call')).controller!.text, 'W1AW');
+    });
+
+    testWidgets('Escape on a pill returns to the main fields without wiping the form', (tester) async {
+      // Pills only became focusable with the ladder, so Escape had never had
+      // to mean anything there — and the panel-wide handler would have read a
+      // merely-parked keyboard as a cue to wipe a half-typed contact.
+      await tester.pumpWidget(host());
+      await tester.pump();
+      await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'W1AW');
+      await tester.pump();
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowUp);
+      await tester.pump();
+      expect(focusedPill(tester), isNotNull);
+
+      await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+      await tester.pump();
+
+      expect(focusedPill(tester), isNull);
+      expect(tester.widget<TextField>(find.widgetWithText(TextField, 'Their call')).controller!.text, 'W1AW');
+    });
+
+    testWidgets('Enter closes an activity ref control too, and logs nothing (APP-19)', (tester) async {
+      // Every secondary control loses Enter-to-log, not just Radio — and the
+      // ref controls got there by a different route (no `onSubmitted` of their
+      // own; their Enter reached the panel's root shortcut and logged). This
+      // is the POTA-shaped case: type a reference, press Enter, and the
+      // control closes with the QSO still unlogged in the form.
+      const potaControl = {
+        'key': 'pota/hunter',
+        'label': 'POTA',
+        'icon': 'pine-tree',
+        'input': {'kind': 'refList', 'refType': 'pota', 'pattern': r'[A-Z0-9]+-[0-9]{4,5}'},
+      };
+      await tester.pumpWidget(MaterialApp(
+        home: Scaffold(
+          body: LoggingControls(
+            operation: operation,
+            qsosRepository: qsos,
+            activityControls: const [potaControl],
+          ),
+        ),
+      ));
+      await tester.pump();
+      await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'W1AW');
+      await tester.pump();
+      await openControl(tester, resolveIconName('pine-tree'));
+      await tester.enterText(find.widgetWithText(TextField, 'POTA'), 'US-1234');
+      await tester.pump();
+
+      await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 250));
+      await tester.pump();
+
+      expect(find.widgetWithText(TextField, 'POTA'), findsNothing, reason: 'the control closed');
+      expect(
+        await tester.runAsync(() => qsos.watchForOperation(operation.uuid).first),
+        isEmpty,
+        reason: 'Enter on the way out of a control must not log the QSO',
+      );
+      expect(tester.widget<TextField>(find.widgetWithText(TextField, 'Their call')).controller!.text, 'W1AW');
+    });
+
+    testWidgets('a held modifier leaves the ladder alone', (tester) async {
+      // The ladder claims bare keys only. Cmd/Ctrl/Option combinations are
+      // platform gestures (Cmd+Down is "caret to the end of the text" on
+      // macOS) and Shift+arrow is a text selection — stealing either would
+      // teleport the operator out of the field they are typing in. Same rule
+      // the entry row's own handler applies; these two rungs must not differ.
+      await tester.pumpWidget(host(radioService: fakeRadio));
+      await tester.pump();
+      await tester.tap(find.widgetWithText(TextField, 'Their call'));
+      await tester.pump();
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowUp);
+      await tester.pump();
+      expect(focusedPill(tester), 'time');
+
+      // On a pill: Cmd+Right must not walk the strip.
+      await tester.sendKeyDownEvent(LogicalKeyboardKey.meta);
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
+      await tester.sendKeyUpEvent(LogicalKeyboardKey.meta);
+      await tester.pump();
+      expect(focusedPill(tester), 'time', reason: 'Cmd+Right belongs to the platform');
+
+      // Inside an open control: Cmd+Down must not close it.
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
+      await tester.pump();
+      await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 250));
+      await tester.pump();
+      expect(find.widgetWithText(TextField, 'Frequency'), findsOneWidget);
+
+      await tester.sendKeyDownEvent(LogicalKeyboardKey.meta);
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
+      await tester.sendKeyUpEvent(LogicalKeyboardKey.meta);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 250));
+      await tester.pump();
+      expect(find.widgetWithText(TextField, 'Frequency'), findsOneWidget,
+          reason: 'Cmd+Down is a caret gesture, not a way out of the control');
+
+      // Shift+Down is a selection gesture, and must not close it either.
+      await tester.sendKeyDownEvent(LogicalKeyboardKey.shift);
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
+      await tester.sendKeyUpEvent(LogicalKeyboardKey.shift);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 250));
+      await tester.pump();
+      expect(find.widgetWithText(TextField, 'Frequency'), findsOneWidget);
+    });
+
+    testWidgets('Arrow Down from a pill returns to the field the operator was last in', (tester) async {
+      await tester.pumpWidget(host());
+      await tester.pump();
+      // Sent, not Call — the point is that Down remembers where you left,
+      // rather than always dropping you back at the start of the row.
+      await tester.tap(find.widgetWithText(TextField, 'Sent'));
+      await tester.pump();
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowUp);
+      await tester.pump();
+      expect(focusedPill(tester), 'time');
+
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
+      await tester.pump();
+      expect(tester.widget<TextField>(find.widgetWithText(TextField, 'Sent')).focusNode?.hasFocus, isTrue);
+    });
+
+    testWidgets('Arrow Up from a pill hands the keyboard on to the QSO list', (tester) async {
+      var handedOver = 0;
+      await tester.pumpWidget(host(onNavigateToQsoList: () => handedOver++));
+      await tester.pump();
+      await tester.tap(find.widgetWithText(TextField, 'Their call'));
+      await tester.pump();
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowUp);
+      await tester.pump();
+      expect(handedOver, 0, reason: 'the first Up only reaches the pills');
+
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowUp);
+      await tester.pump();
+      expect(handedOver, 1);
+      // The panel doesn't move focus itself — the host owns the list, and
+      // decides whether there is anything up there to walk onto at all.
+      expect(focusedPill(tester), 'time');
     });
   });
 }

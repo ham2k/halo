@@ -22,6 +22,234 @@ void main() {
     await db.close();
   });
 
+  group('revealing the selected row (APP-19)', () {
+    // Keyboard navigation walks the log one row at a time, selecting each
+    // without moving focus — so the list itself has to follow the selection.
+    // These cover the three outcomes that matter: follow it as the walk
+    // leaves the viewport, hold still when it hasn't, and — the one a naive
+    // `ensureVisible` gets wrong — keep the row clear of the PINNED day
+    // header rather than tucking it underneath.
+    //
+    // Every case walks one row at a time, because that is the only motion the
+    // reveal supports: a row far outside the viewport isn't built at all, so
+    // there is nothing to scroll to. Jumping to an arbitrary row is what the
+    // "goto" search still has to solve — see docs/backlog.md.
+
+    /// [count] QSOs, all on the same UTC day (so there is exactly one day
+    /// header) unless [oncePerDay], which gives every row its own.
+    Future<List<Qso>> buildLog(Operation operation, int count, {bool oncePerDay = false}) async {
+      final list = <Qso>[];
+      for (var i = 1; i <= count; i++) {
+        list.add(await qsos.add(operation.uuid, {
+          'their': {'call': 'K${i}HAM'},
+          'band': '20m',
+          'mode': 'SSB',
+          'startAtMillis': oncePerDay ? i * 86400000 : 1000 + i * 60000,
+        }));
+      }
+      return list;
+    }
+
+    Widget hostWith(List<Qso> list, String? selectedUuid) => MaterialApp(
+          home: Scaffold(
+            body: SizedBox(
+              height: 300,
+              child: QsoList(qsos: list, selectedUuid: selectedUuid, onSelect: (_) {}),
+            ),
+          ),
+        );
+
+    double offsetOf(WidgetTester tester) =>
+        tester.widget<CustomScrollView>(find.byType(CustomScrollView)).controller!.offset;
+
+    testWidgets('follows the selection as a walk leaves the top of the viewport', (tester) async {
+      final operation = await operations.create(stationCall: 'KI2D');
+      final list = await buildLog(operation, 40);
+
+      await tester.pumpWidget(hostWith(list, null));
+      await tester.pumpAndSettle();
+
+      // Walk up from the newest, one row per press, and check the list keeps
+      // up: the moment the walk passes the top of the viewport, every further
+      // step has to scroll or the operator is selecting rows they can't see.
+      var scrolled = false;
+      for (var step = 1; step <= 15; step++) {
+        final target = list[list.length - 1 - step];
+        final before = offsetOf(tester);
+        await tester.pumpWidget(hostWith(list, target.uuid));
+        await tester.pumpAndSettle();
+        if (offsetOf(tester) < before) scrolled = true;
+        expect(
+          find.text(target.theirCall),
+          findsOneWidget,
+          reason: 'step $step of the walk left its row off screen',
+        );
+      }
+      expect(scrolled, isTrue, reason: 'a 15-row walk must have scrolled the list at some point');
+    });
+
+    testWidgets('follows the selection back down again', (tester) async {
+      // The direction the first version got wrong, and hand-testing caught:
+      // `getOffsetToReveal(box, 1.0)` comes back one header-height short with
+      // this list's pinned/grouped slivers, so every downward step scrolled
+      // one row less than it needed and the walk fell permanently one row
+      // behind — the selected row sat just under the bottom edge, invisible,
+      // for the whole way down. Walking up first is what makes room to walk
+      // back down at all.
+      final operation = await operations.create(stationCall: 'KI2D');
+      final list = await buildLog(operation, 40);
+
+      await tester.pumpWidget(hostWith(list, null));
+      await tester.pumpAndSettle();
+      for (var step = 1; step <= 15; step++) {
+        await tester.pumpWidget(hostWith(list, list[list.length - 1 - step].uuid));
+        await tester.pumpAndSettle();
+      }
+
+      for (var step = 14; step >= 0; step--) {
+        final target = list[list.length - 1 - step];
+        await tester.pumpWidget(hostWith(list, target.uuid));
+        await tester.pumpAndSettle();
+        expect(
+          find.text(target.theirCall),
+          findsOneWidget,
+          reason: 'step $step of the walk back down left its row off screen',
+        );
+      }
+    });
+
+    testWidgets('jumps to a selection nowhere near the viewport', (tester) async {
+      // Page Up/Down and Home/End (APP-19) move the selection past everything
+      // the list has rendered, so there is no row to measure — the reveal has
+      // to estimate where it is, jump, and place it once it exists. Without
+      // that the operator pages through a log that never moves.
+      final operation = await operations.create(stationCall: 'KI2D');
+      final list = await buildLog(operation, 200);
+
+      await tester.pumpWidget(hostWith(list, null));
+      await tester.pumpAndSettle();
+      expect(find.text('K1HAM'), findsNothing, reason: 'the list opens at the newest');
+
+      // Home, from the far end of a 200-QSO log.
+      await tester.pumpWidget(hostWith(list, list.first.uuid));
+      await tester.pumpAndSettle();
+      expect(find.text('K1HAM'), findsOneWidget);
+      expect(offsetOf(tester), 0, reason: 'the oldest contact is the top of the list');
+
+      // …and End, back the whole way.
+      await tester.pumpWidget(hostWith(list, list.last.uuid));
+      await tester.pumpAndSettle();
+      expect(find.text('K200HAM'), findsOneWidget);
+    });
+
+    testWidgets('a jump lands the row fully on screen, clear of the pinned header', (tester) async {
+      // The estimate gets the row built; the measured reveal is what actually
+      // places it. Same invariant the walk holds, over a distance no walk
+      // could cover.
+      final operation = await operations.create(stationCall: 'KI2D');
+      final list = await buildLog(operation, 60, oncePerDay: true);
+
+      await tester.pumpWidget(hostWith(list, null));
+      await tester.pumpAndSettle();
+
+      final viewport = tester.getRect(find.byType(CustomScrollView));
+      for (final target in [list[10], list[45], list[3], list[58]]) {
+        await tester.pumpWidget(hostWith(list, target.uuid));
+        await tester.pumpAndSettle();
+        expect(find.text(target.theirCall), findsOneWidget, reason: 'jumped to ${target.theirCall}');
+        final row = tester.getRect(find.text(target.theirCall));
+        expect(row.top, greaterThanOrEqualTo(viewport.top + DayHeaderRow.pinnedHeight));
+        expect(row.bottom, lessThanOrEqualTo(viewport.bottom));
+      }
+    });
+
+    testWidgets('still lands on the row in a log full of taller annotation rows', (tester) async {
+      // The arithmetic counts every entry as an ordinary row, so a log salted
+      // with notes drifts — that's what the measured correction pass is for.
+      // Without one, a jump over a hundred entries lands somewhere near the
+      // row rather than on it.
+      final operation = await operations.create(stationCall: 'KI2D');
+      final list = <Qso>[];
+      for (var i = 1; i <= 120; i++) {
+        list.add(await qsos.add(operation.uuid, {
+          'their': {'call': 'K${i}HAM'},
+          'band': '20m',
+          'mode': 'SSB',
+          'startAtMillis': 1000 + i * 60000,
+        }));
+        if (i % 3 == 0) {
+          list.add(await qsos.add(operation.uuid, {
+            'band': 'event',
+            'freq': 0,
+            'mode': 'note',
+            'startAtMillis': 1000 + i * 60000 + 1,
+            'our': {'call': 'EVENT'},
+            'their': {'call': 'NOTE'},
+            'event': {'event': 'note', 'note': 'A note long enough to take a row of its own'},
+          }));
+        }
+      }
+
+      await tester.pumpWidget(hostWith(list, null));
+      await tester.pumpAndSettle();
+
+      final viewport = tester.getRect(find.byType(CustomScrollView));
+      for (final target in [list.first, list[80], list[20]]) {
+        await tester.pumpWidget(hostWith(list, target.uuid));
+        await tester.pumpAndSettle();
+        expect(find.text(target.theirCall), findsOneWidget, reason: 'jumped to ${target.theirCall}');
+        final row = tester.getRect(find.text(target.theirCall));
+        expect(row.top, greaterThanOrEqualTo(viewport.top + DayHeaderRow.pinnedHeight));
+        expect(row.bottom, lessThanOrEqualTo(viewport.bottom));
+      }
+    });
+
+    testWidgets('leaves an already-visible selection alone', (tester) async {
+      final operation = await operations.create(stationCall: 'KI2D');
+      final list = await buildLog(operation, 40);
+
+      await tester.pumpWidget(hostWith(list, null));
+      await tester.pumpAndSettle();
+      final before = offsetOf(tester);
+      expect(find.text('K40HAM'), findsOneWidget, reason: 'the newest row is on screen at rest');
+
+      // Selecting it with a tap must not jerk the list out from under the
+      // pointer — only a row that ISN'T fully visible earns a scroll.
+      await tester.pumpWidget(hostWith(list, list.last.uuid));
+      await tester.pumpAndSettle();
+
+      expect(offsetOf(tester), before);
+    });
+
+    testWidgets('holds the selected row clear of the pinned day headers', (tester) async {
+      // One QSO per day, so the row being revealed always has headers pinned
+      // directly above it. `getOffsetToReveal` accounts for them, so this
+      // passes today — it is here to keep it that way: a reveal rewritten to
+      // guess an offset (`jumpTo(index * rowHeight)`, say, which is the shape
+      // the "goto" search will want) would put the selected row behind the
+      // header and this is what would notice.
+      final operation = await operations.create(stationCall: 'KI2D');
+      final list = await buildLog(operation, 20, oncePerDay: true);
+
+      await tester.pumpWidget(hostWith(list, null));
+      await tester.pumpAndSettle();
+
+      final viewport = tester.getRect(find.byType(CustomScrollView));
+      for (var step = 1; step <= 10; step++) {
+        final target = list[list.length - 1 - step];
+        await tester.pumpWidget(hostWith(list, target.uuid));
+        await tester.pumpAndSettle();
+        final row = tester.getRect(find.text(target.theirCall));
+        expect(
+          row.top,
+          greaterThanOrEqualTo(viewport.top + DayHeaderRow.pinnedHeight),
+          reason: 'step $step put the row behind a pinned header',
+        );
+        expect(row.bottom, lessThanOrEqualTo(viewport.bottom));
+      }
+    });
+  });
+
   testWidgets('each QSO row carries a stable qso.row.<call> semantics identifier (#236)', (
     tester,
   ) async {

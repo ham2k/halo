@@ -94,6 +94,17 @@ the work:
   is dropped deliberately — including by the empty-field tap-to-blur above,
   which would otherwise fight it on mobile.
 
+## The QSO list has no "goto" search
+
+APP-19 asked for Cmd/Ctrl-G — a field to jump to a QSO by number, or search by
+callsign with jump-to-next/previous. Agreed shape: an overlay bar pinned at the
+top of the QSO list.
+
+The scrolling half is already built: `_QsoListState._revealSelected` works out
+where any row is arithmetically and scrolls to it, however far outside the
+viewport it started, so a goto only has to move the selection and let the list
+follow. What's missing is the bar itself and the search over callsigns.
+
 ## Callsign lookup results are not cached
 
 app-polo caches lookup results in the `lookups` table; HaLo re-queries QRZ/
