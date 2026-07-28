@@ -11,6 +11,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:halo_core/halo_core.dart';
+import 'package:halo_widgets/halo_widgets.dart';
 
 import 'package:ham2k_logger/i18n/strings.g.dart';
 import 'package:ham2k_logger/views/operation/information_panel.dart';
@@ -52,11 +53,16 @@ Operation _operation() => Operation(
       },
     );
 
-Future<void> _pump(WidgetTester tester, Operation operation, {List<Qso> qsos = const []}) async {
+Future<void> _pump(
+  WidgetTester tester,
+  Operation operation, {
+  List<Qso> qsos = const [],
+  List<Map<String, dynamic>> activityControls = const [],
+}) async {
   await tester.pumpWidget(TranslationProvider(
     child: MaterialApp(
       home: Scaffold(
-        body: InformationPanel(operation: operation, qsos: qsos),
+        body: InformationPanel(operation: operation, qsos: qsos, activityControls: activityControls),
       ),
     ),
   ));
@@ -85,6 +91,41 @@ void main() {
     // run-on paragraph.
     expect(markdown.any((m) => m.softLineBreak == true), isTrue);
   });
+
+  testWidgets(
+    'a tally icon is tinted with its own extension\'s accent color, not the QSO rows\' neutral foreground (APP-20)',
+    (tester) async {
+      await _pump(
+        tester,
+        _operation(),
+        activityControls: [
+          {
+            'icon': 'earth',
+            'color': '#FF00FF',
+            'input': {'refType': 'cqww'},
+          },
+        ],
+      );
+
+      final finder = find.byIcon(resolveIconName('earth'));
+      final icon = tester.widget<Icon>(finder);
+      final scheme = Theme.of(tester.element(finder)).colorScheme;
+      expect(icon.color, const Color(0xFFFF00FF));
+      expect(icon.color, isNot(scheme.onSurface));
+    },
+  );
+
+  testWidgets(
+    'a tally icon falls back to plain grey when its extension declares no accent color (APP-20)',
+    (tester) async {
+      await _pump(tester, _operation());
+
+      final finder = find.byIcon(resolveIconName('earth'));
+      final icon = tester.widget<Icon>(finder);
+      final scheme = Theme.of(tester.element(finder)).colorScheme;
+      expect(icon.color, scheme.onSurfaceVariant);
+    },
+  );
 
   testWidgets('core keeps its curated lines, including the duplicate count', (tester) async {
     await _pump(tester, _operation());

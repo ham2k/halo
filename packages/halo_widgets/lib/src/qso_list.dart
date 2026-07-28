@@ -799,9 +799,9 @@ class _QsoListState extends State<QsoList> {
                           // usual themed icon (ham2k/app-halo-dist#261) —
                           // via the shared activityRefIcon, sized down for
                           // this compact inline usage; the known-type icon
-                          // stays bespoke, since it tints with the row's
-                          // own tertiary color rather than a per-control
-                          // accent.
+                          // stays bespoke, using the row's neutral
+                          // foreground rather than a per-control accent
+                          // (#354).
                           if (isUnknownRefType(activityControls, entry.key))
                             activityRefIcon(activityControls, entry.key, iconSize: 10, avatarRadius: 8)
                           else

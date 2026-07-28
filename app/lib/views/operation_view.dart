@@ -1350,6 +1350,7 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
           services: widget.services,
           callInfo: _callInfo,
           ourEntityPrefix: _ourEntityPrefix,
+          activityControls: _loggingControls,
         );
         // Built before `tabBar`/`tabView`/`_narrowTabBar` below, all of
         // which read `_tabController!` directly — the controller must

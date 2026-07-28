@@ -28,6 +28,11 @@ class InformationPanel extends StatelessWidget {
   final HaLoServices? services;
   final String? ourEntityPrefix;
 
+  /// The active extension logging controls (same list `QsoList` uses) — a
+  /// scorer summary's tally icons are tinted with its own control's accent
+  /// color, same as the QSO rows' ref icons would be if they used one.
+  final List<Map<String, dynamic>> activityControls;
+
   const InformationPanel({
     super.key,
     required this.operation,
@@ -35,6 +40,7 @@ class InformationPanel extends StatelessWidget {
     this.callInfo,
     this.services,
     this.ourEntityPrefix,
+    this.activityControls = const [],
   });
 
   @override
@@ -127,6 +133,10 @@ class InformationPanel extends StatelessWidget {
           orElse: () => null,
         );
     final heading = (ref?['shortLabel'] ?? ref?['label']) as String? ?? scorerKey;
+    // Each extension's own declared accent (same color `activityRefIcon`
+    // tints its icon with) rather than one shared tertiary for every
+    // scorer — falls back to a plain grey when the extension declares none.
+    final iconColor = colorForRefType(activityControls, ref?['type'] as String?) ?? theme.colorScheme.onSurfaceVariant;
 
     final widgets = <Widget>[const SizedBox(height: 16), Text(heading, style: theme.textTheme.titleSmall)];
 
@@ -142,7 +152,7 @@ class InformationPanel extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             if (tally['icon'] is String) ...[
-              Icon(resolveIconName(tally['icon'] as String), size: 16, color: theme.colorScheme.tertiary),
+              Icon(resolveIconName(tally['icon'] as String), size: 16, color: iconColor),
               const SizedBox(width: 6),
             ],
             Expanded(child: Text(label)),
