@@ -303,34 +303,40 @@ class _SettingsViewState extends State<SettingsView> {
             body: _buildSidebar(context, isWide: true, panels: panels, selectedKey: effectivePanel.key),
           ),
         ),
-        // The Builder gets a context under the split's PaneSafeArea: the
-        // whole right panel — title included — shifts right by the grab
-        // strip's clearance, keeping the AppBar title aligned with the
-        // panel elements below it.
-        secondary: Builder(builder: (context) {
+        // The LayoutBuilder gets a context under the split's PaneSafeArea
+        // (for `safeLeft`) and reports the pane's own true width — the
+        // whole right panel, title included, shifts right by the grab
+        // strip's clearance and its title lines up with the panel elements
+        // below it.
+        secondary: LayoutBuilder(builder: (context, constraints) {
           final safeLeft = PaneSafeArea.leftOf(context);
+          final paneWidth = constraints.maxWidth;
+          // The rows below cap at idealPaneWidth and CENTER within the pane
+          // (_buildPanelContent), then inset 24 + safeLeft into that centered
+          // box (the row-background margin plus the ambient ListTileTheme
+          // inset — see the ListTileTheme.merge below). Replicate both parts
+          // — the centering AND the inset — to get the title's left edge to
+          // the same absolute x, measured from the pane's true left edge.
+          final centeringOffset = max(0.0, (paneWidth - idealPaneWidth) / 2);
+          final targetLeft = centeringOffset + 24 + safeLeft;
+          // NavigationToolbar (which AppBar's title slot layouts through)
+          // starts the title at `titleSpacing` from the toolbar's left edge
+          // when centerTitle is false — see _ToolbarLayout.performLayout in
+          // navigation_toolbar.dart (`middleStart = leadingWidth +
+          // middleSpacing`; leadingWidth is 0, there's no leading widget
+          // here) — subtract it back out so a plain Padding (not a second,
+          // re-centered ConstrainedBox inside that already-narrower-than-
+          // the-pane slot, which drifted left by half the trailing actions'
+          // width) lands exactly on `targetLeft`.
+          final titleSpacing = Theme.of(context).appBarTheme.titleSpacing ?? NavigationToolbar.kMiddleSpacing;
           return ScaffoldMessenger(
             child: Scaffold(
             appBar: AppBar(
               flexibleSpace: windowHeaderGestureArea(),
-              // Left-aligned with the list items below, which cap at the
-              // same idealPaneWidth and start at 24 + safeLeft into it (the
-              // row-background margin plus the ambient ListTileTheme inset
-              // — see _buildPanelContent and the ListTileTheme.merge below).
-              // Replicates that same cap-and-center, rather than centering
-              // the title on its own within the whole pane.
               centerTitle: false,
-              title: Center(
-                child: ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: idealPaneWidth),
-                  child: Align(
-                    alignment: Alignment.centerLeft,
-                    child: Padding(
-                      padding: EdgeInsets.only(left: 24 + safeLeft),
-                      child: shrinkToFitText(Text(effectivePanel.effectiveScreenTitle)),
-                    ),
-                  ),
-                ),
+              title: Padding(
+                padding: EdgeInsets.only(left: targetLeft - titleSpacing),
+                child: shrinkToFitText(Text(effectivePanel.effectiveScreenTitle)),
               ),
               automaticallyImplyLeading: false,
               actions: [
