@@ -2,7 +2,10 @@
 // SPDX-License-Identifier: MPL-2.0
 //
 // Global error capture (#76): backend upload when one is injected, local
-// logging and a StatusBar notice always.
+// logging and a StatusBar notice always — as far as [ErrorPolicy] allows.
+// WHAT an error deserves is decided there and only there (see
+// services/error_policy.dart); this file is the plumbing that carries the
+// decision out to the console, the backend and the StatusBar.
 //
 // Vendor-specific reporting code (Sentry, DSN handling, …) lives entirely in
 // app_dist, behind the [ErrorReportingBackend] interface — this file only
@@ -28,10 +31,10 @@
 
 import 'dart:async';
 
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/services.dart' show Clipboard, ClipboardData;
 import 'package:flutter/widgets.dart';
 
+import 'error_policy.dart';
 import 'error_reporting_backend.dart';
 import '../views/error_tile.dart';
 import 'settings_service.dart';
@@ -79,16 +82,27 @@ class ErrorReportingService {
       // Uncaught async error with no backend (or its init broken): log +
       // notice. Reaching a zone handler means it never propagates, so a
       // stray async error can't take down a logging session mid-contact.
+      final decision = ErrorPolicy.decide(error);
+      if (!decision.disposition.uploads) {
+        ErrorPolicy.logDecision(decision, error, stackTrace: stackTrace);
+        return;
+      }
       debugPrint('[error-reporting] uncaught async error: $error\n$stackTrace');
-      notify(error, stackTrace);
+      if (decision.disposition.notifies) notify(error, stackTrace);
     });
   }
 
   /// Report a caught error explicitly (e.g. bootstrap() failures that are
-  /// already surfaced by BootErrorScreen). Uploads via the active backend;
-  /// always logs locally.
+  /// already surfaced by BootErrorScreen). Always logs locally; uploads via
+  /// the active backend unless [ErrorPolicy] classifies it as noise, so a
+  /// known-harmless error stays out of the backend however it was caught.
   static void report(Object error, StackTrace? stackTrace, {String? context}) {
     debugPrint('[error-reporting] ${context ?? 'caught'}: $error\n${stackTrace ?? ''}');
+    final decision = ErrorPolicy.decide(error);
+    if (!decision.disposition.uploads) {
+      ErrorPolicy.logDecision(decision, error);
+      return;
+    }
     _backend.captureException(error, stackTrace, context: context);
   }
 
@@ -121,27 +135,12 @@ class ErrorReportingService {
     // handler, when active, is already in this chain; preserve it.
     final previousOnError = FlutterError.onError;
     FlutterError.onError = (details) {
-      // Dropped before anything sees it: no console dump, no upload, no notice.
-      if (isKnownWebFocusTraversalNoise(details)) {
-        if (!_focusTraversalNoiseLogged) {
-          _focusTraversalNoiseLogged = true;
-          debugPrint(
-            '[error-reporting] ignoring the Flutter web focus-traversal null on '
-            'view-focus change (ham2k/app-halo-dist#271); later ones are silent',
-          );
-        }
-        return;
-      }
-      // Console-only, unlike the focus-traversal noise above: a RenderFlex
-      // overflow is a real layout bug worth seeing locally (and Flutter's
-      // debug-mode paint already marks the offending widget on-screen with
-      // its own yellow/black stripes), but it's cosmetic and debug-only —
-      // never worth a user-facing notice or an external report. Skips
-      // previousOnError entirely, unlike an ordinary error below — that's
-      // the chain a real backend's capture hooks into.
-      if (isKnownRenderFlexOverflowNoise(details)) {
-        debugPrint('[error-reporting] RenderFlex overflow (debug-only layout warning, not reported): '
-            '${details.exception}');
+      final decision = ErrorPolicy.decide(details.exception, details: details);
+      // Below the upload tier the chain stops here: no framework dump, no
+      // backend capture (previousOnError is where a real backend's hook
+      // lives), no notice — only whatever line the policy asks for.
+      if (!decision.disposition.uploads) {
+        ErrorPolicy.logDecision(decision, details.exception, stackTrace: details.stack);
         return;
       }
       if (previousOnError != null) {
@@ -149,79 +148,13 @@ class ErrorReportingService {
       } else {
         FlutterError.presentError(details);
       }
-      notify(details.exception, details.stack);
+      if (decision.disposition.notifies) notify(details.exception, details.stack);
     };
 
     // Replace Flutter's grey/red box with the compact branded tile; the
     // failed widget's slot shows the tile, the rest of the app keeps
     // working (#76 — see views/error_tile.dart).
     ErrorWidget.builder = (details) => HaLoErrorTile(details: details);
-  }
-
-  static bool _focusTraversalNoiseLogged = false;
-
-  /// Pretend we are on web, for the tests — `kIsWeb` is a compile-time false in
-  /// the VM the tests run in, so without this seam the one predicate that only
-  /// ever fires on web could not be exercised at all.
-  @visibleForTesting
-  static bool? debugTreatAsWeb;
-
-  /// Whether [details] is Flutter's own focus-traversal crash on web
-  /// (ham2k/app-halo-dist#271), which this app drops on the floor.
-  ///
-  /// `ReadingOrderTraversalPolicy._pickNext` force-unwraps a directionality that
-  /// legitimately comes back null when a transiently-defunct node is pulled into
-  /// the sort, and `View.didChangeViewFocus` sorts EVERY traversable node in the
-  /// view scope rather than just the active scope — so on web, where that fires
-  /// on every browser focus change, the unsound `!` throws out of an observer.
-  /// The framework catches it and the app carries on; the only thing it produces
-  /// is a "Something went wrong" notice about a framework bug, on a screen the
-  /// operator was only clicking into, that they can do nothing about.
-  ///
-  /// Narrow deliberately — three conditions, all of which must hold:
-  ///
-  ///  * **Web.** `handleViewFocusChanged` only reaches this path on the
-  ///    multi-view embedder, so on every other platform this is dead code.
-  ///  * **The framework's own literal context** for that dispatch
-  ///    (`widgets/binding.dart`'s `'while dispatching notifications for
-  ///    WidgetsBindingObserver.didChangeViewFocus'`), so no error raised
-  ///    anywhere else is affected.
-  ///  * **A null-check failure**, which is the specific unsound `!` in #271 and
-  ///    not, say, a range error some future observer throws in the same place.
-  ///
-  /// The STACK is deliberately not matched: it names `focus_traversal.dart` in a
-  /// debug build and is minified in a release one, so requiring it would make
-  /// this work only where the noise matters least.
-  ///
-  /// This cannot hide a bug of ours. No observer in this app implements
-  /// `didChangeViewFocus` — only Flutter's own `View` does — so nothing of ours
-  /// can throw inside that dispatch. Delete this the day Flutter's `!` is fixed;
-  /// #271 tracks the upstream side.
-  @visibleForTesting
-  static bool isKnownWebFocusTraversalNoise(FlutterErrorDetails details) {
-    if (!(debugTreatAsWeb ?? kIsWeb)) return false;
-    if (!(details.context?.toString() ?? '').contains('WidgetsBindingObserver.didChangeViewFocus')) {
-      return false;
-    }
-    final error = details.exception;
-    if (error is TypeError) return true;
-    // Belt and braces for the web runtime's own null-check type, whose identity
-    // has moved between Dart versions; the message has not.
-    final text = error.toString();
-    return text.contains('Unexpected null value') || text.contains('Null check operator used on a null value');
-  }
-
-  /// Whether [details] is Flutter's own "RenderFlex overflowed by N pixels"
-  /// layout warning — a debug-only assertion (release builds clip silently
-  /// and never throw this at all), thrown whenever a Row/Column's children
-  /// don't fit, however minor the overflow. Real layout bugs worth fixing,
-  /// but not worth a "Something went wrong" notice aimed at an operator who
-  /// can't do anything about it, or an external report for something that
-  /// literally cannot happen in the release build users run.
-  @visibleForTesting
-  static bool isKnownRenderFlexOverflowNoise(FlutterErrorDetails details) {
-    final error = details.exception;
-    return error is FlutterError && error.toString().contains('A RenderFlex overflowed by');
   }
 
   /// Queue the once-per-session StatusBar notice (if the bar is attached).
@@ -266,13 +199,14 @@ class ErrorReportingService {
     });
   }
 
-  /// Test seam: forget the attached status bar, notice throttle, and backend.
+  /// Test seam: forget the attached status bar, notice throttle, and backend
+  /// (and the policy's own once-per-session state, which rides along with a
+  /// session the same way).
   @visibleForTesting
   static void resetForTesting() {
     _statusBar = null;
     _noticeShown = false;
     _backend = const NoopErrorReportingBackend();
-    _focusTraversalNoiseLogged = false;
-    debugTreatAsWeb = null;
+    ErrorPolicy.resetForTesting();
   }
 }

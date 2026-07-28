@@ -15,6 +15,12 @@
 - [design/ui-scaling.md](design/ui-scaling.md) — how the Font Scale setting
   scales the whole UI, and the rules that keep it working. **Read before any
   scaling-, layout-, or macOS-window-related change.**
+- [design/error-reporting.md](design/error-reporting.md) — what happens to an
+  escaped exception: the four dispositions, the one place that decides between
+  them, and how to add a rule. **Read before adding any "ignore this error"
+  check.**
+- [design/telemetry.md](design/telemetry.md) — event tracking, its consent
+  gate, and the event vocabulary.
 - [design/contests.md](design/contests.md) — **RFC (draft):** the core
   infrastructure needed to port app-polo's contest extensions, and the porting
   sequence. Open questions at the end need decisions before M0 starts.

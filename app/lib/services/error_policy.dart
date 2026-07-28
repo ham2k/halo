@@ -1,0 +1,264 @@
+// Copyright ©️ 2026 Sebastian Delmont <sd@ham2k.com>
+// SPDX-License-Identifier: MPL-2.0
+//
+// The one place that decides what an exception deserves.
+//
+// Every error that reaches the app's global handling — the FlutterError
+// chain, an explicit ErrorReportingService.report(), or a backend's own
+// capture hook (app_dist's Sentry beforeSend, the only path an uncaught
+// ASYNC error takes) — is classified here, exactly once, into an
+// [ErrorDisposition]. Nothing else may hardcode a "but not this one"
+// check: if an error is not worth a notice, or not worth uploading, that
+// belongs in [ErrorPolicy.rules] with the reasoning attached, so the whole
+// policy can be read in one screen and so every path applies the same one.
+//
+// The default is deliberately the loudest tier: an error nobody has
+// classified is a bug we haven't seen yet, and it should be noisy.
+//
+// docs/design/error-reporting.md is the overview.
+
+import 'package:flutter/foundation.dart' show kIsWeb, visibleForTesting;
+import 'package:flutter/widgets.dart';
+
+/// What the app does with an error, from quietest to loudest. Each tier
+/// includes everything the ones above it do.
+enum ErrorDisposition {
+  /// Nothing at all — not even a console dump (bar one breadcrumb per
+  /// session, so a developer staring at the console isn't misled into
+  /// thinking the error never happened). For framework noise the operator
+  /// can neither cause nor act on.
+  ignore,
+
+  /// Console only. A real problem worth seeing while developing, but one
+  /// that can't reach — or can't matter in — the release build users run.
+  logOnly,
+
+  /// Console + upload to the crash backend. Worth knowing about in
+  /// aggregate; not worth interrupting the operator over.
+  report,
+
+  /// Console + upload + the once-per-session "Something went wrong"
+  /// notice. The default for anything unclassified.
+  notify;
+
+  bool get uploads => index >= ErrorDisposition.report.index;
+  bool get notifies => this == ErrorDisposition.notify;
+}
+
+/// One classification rule: a matcher plus the disposition it assigns and
+/// the reason it does, which is what gets printed to the console.
+@immutable
+class ErrorRule {
+  /// Stable identifier, used in the console line and by the tests.
+  final String id;
+
+  /// Why this error gets this disposition — one line, aimed at whoever
+  /// finds it in the console and wonders where their error went.
+  final String reason;
+
+  final ErrorDisposition disposition;
+
+  /// Whether the console line is printed once per session rather than
+  /// every time. Only sensible for [ErrorDisposition.ignore], where the
+  /// noise is by definition high-frequency.
+  final bool logOncePerSession;
+
+  final bool Function(Object error, FlutterErrorDetails? details) matches;
+
+  const ErrorRule({
+    required this.id,
+    required this.reason,
+    required this.disposition,
+    required this.matches,
+    this.logOncePerSession = false,
+  });
+}
+
+/// The rule that claimed an error, if any, and what it decided.
+@immutable
+class ErrorDecision {
+  final ErrorDisposition disposition;
+
+  /// Null when no rule matched — i.e. the default [ErrorDisposition.notify].
+  final ErrorRule? rule;
+
+  const ErrorDecision(this.disposition, this.rule);
+}
+
+class ErrorPolicy {
+  ErrorPolicy._();
+
+  /// Pretend we are on web, for the tests — `kIsWeb` is a compile-time false in
+  /// the VM the tests run in, so without this seam the one predicate that only
+  /// ever fires on web could not be exercised at all.
+  @visibleForTesting
+  static bool? debugTreatAsWeb;
+
+  /// Classify [error]. [details] is supplied only on the FlutterError path
+  /// (a rule that needs the framework's own context can only match there);
+  /// an async error or an explicit report() arrives without it.
+  static ErrorDecision decide(Object error, {FlutterErrorDetails? details}) {
+    for (final rule in rules) {
+      if (rule.matches(error, details)) return ErrorDecision(rule.disposition, rule);
+    }
+    return const ErrorDecision(ErrorDisposition.notify, null);
+  }
+
+  /// Every exemption the app makes, in order. Anything not matched here is
+  /// treated as a real, unknown error: logged, uploaded, and noticed.
+  static final List<ErrorRule> rules = [
+    ErrorRule(
+      id: 'web-focus-traversal-null',
+      reason: 'Flutter web focus-traversal null on view-focus change (ham2k/app-halo-dist#271); '
+          'later ones are silent',
+      disposition: ErrorDisposition.ignore,
+      logOncePerSession: true,
+      matches: _isWebFocusTraversalNull,
+    ),
+    ErrorRule(
+      id: 'renderflex-overflow',
+      reason: 'RenderFlex overflow: a debug-only layout warning, already marked on-screen',
+      disposition: ErrorDisposition.logOnly,
+      matches: _isRenderFlexOverflow,
+    ),
+    ErrorRule(
+      id: 'set-state-during-build',
+      reason: 'setState()/markNeedsBuild() during build: a build-ordering bug to fix locally, '
+          'harmless to the operator',
+      disposition: ErrorDisposition.logOnly,
+      matches: _isSetStateDuringBuild,
+    ),
+    ErrorRule(
+      id: 'focus-node-cannot-request-focus',
+      reason: 'a focus node was asked for focus as it was being torn down; the framework recovers',
+      disposition: ErrorDisposition.logOnly,
+      matches: _isFocusNodeCanRequestFocusAssertion,
+    ),
+  ];
+
+  /// Flutter's own focus-traversal crash on web (ham2k/app-halo-dist#271),
+  /// which this app drops on the floor.
+  ///
+  /// `ReadingOrderTraversalPolicy._pickNext` force-unwraps a directionality that
+  /// legitimately comes back null when a transiently-defunct node is pulled into
+  /// the sort, and `View.didChangeViewFocus` sorts EVERY traversable node in the
+  /// view scope rather than just the active scope — so on web, where that fires
+  /// on every browser focus change, the unsound `!` throws out of an observer.
+  /// The framework catches it and the app carries on; the only thing it produces
+  /// is a "Something went wrong" notice about a framework bug, on a screen the
+  /// operator was only clicking into, that they can do nothing about.
+  ///
+  /// Narrow deliberately — three conditions, all of which must hold:
+  ///
+  ///  * **Web.** `handleViewFocusChanged` only reaches this path on the
+  ///    multi-view embedder, so on every other platform this is dead code.
+  ///  * **The framework's own literal context** for that dispatch
+  ///    (`widgets/binding.dart`'s `'while dispatching notifications for
+  ///    WidgetsBindingObserver.didChangeViewFocus'`), so no error raised
+  ///    anywhere else is affected.
+  ///  * **A null-check failure**, which is the specific unsound `!` in #271 and
+  ///    not, say, a range error some future observer throws in the same place.
+  ///
+  /// The STACK is deliberately not matched: it names `focus_traversal.dart` in a
+  /// debug build and is minified in a release one, so requiring it would make
+  /// this work only where the noise matters least.
+  ///
+  /// This cannot hide a bug of ours. No observer in this app implements
+  /// `didChangeViewFocus` — only Flutter's own `View` does — so nothing of ours
+  /// can throw inside that dispatch. Delete this the day Flutter's `!` is fixed;
+  /// #271 tracks the upstream side.
+  static bool _isWebFocusTraversalNull(Object error, FlutterErrorDetails? details) {
+    if (!(debugTreatAsWeb ?? kIsWeb)) return false;
+    if (details == null) return false;
+    if (!(details.context?.toString() ?? '').contains('WidgetsBindingObserver.didChangeViewFocus')) {
+      return false;
+    }
+    if (error is TypeError) return true;
+    // Belt and braces for the web runtime's own null-check type, whose identity
+    // has moved between Dart versions; the message has not.
+    final text = error.toString();
+    return text.contains('Unexpected null value') || text.contains('Null check operator used on a null value');
+  }
+
+  /// Flutter's own "RenderFlex overflowed by N pixels" layout warning — a
+  /// debug-only assertion (release builds clip silently and never throw
+  /// this at all), thrown whenever a Row/Column's children don't fit,
+  /// however minor the overflow. Real layout bugs worth fixing, but not
+  /// worth a "Something went wrong" notice aimed at an operator who can't
+  /// do anything about it, or an external report for something that
+  /// literally cannot happen in the release build users run.
+  static bool _isRenderFlexOverflow(Object error, FlutterErrorDetails? details) =>
+      error is FlutterError && error.toString().contains('A RenderFlex overflowed by');
+
+  /// "setState() or markNeedsBuild() called during build." — a framework
+  /// assertion about the ORDER our own code touched a listener in, not
+  /// about anything the operator did or can see: the frame still renders,
+  /// with the stale value, and the next one is correct. Worth fixing when
+  /// it shows up on a developer's console; not worth alarming an operator
+  /// mid-contact, and not worth an upload, since the same misordering
+  /// fires on every rebuild of that screen and would drown the real
+  /// crashes in aggregate.
+  ///
+  /// Matched on the framework's own message, but only on the two types the
+  /// framework raises it as — a FlutterError in debug, a plain assertion
+  /// elsewhere. An exception of OURS that quotes the same text (a wrapper
+  /// re-throwing it, say) has to stay loud, exactly as the RenderFlex rule
+  /// above refuses a StateError carrying its message.
+  ///
+  /// The type check also has to come FIRST: `decide` runs every matcher
+  /// against every error, from inside the error handler itself, and an
+  /// arbitrary app object's toString() is not guaranteed not to throw —
+  /// a second exception raised there would lose the original entirely.
+  static bool _isSetStateDuringBuild(Object error, FlutterErrorDetails? details) {
+    if (error is! FlutterError && error is! AssertionError) return false;
+    return error.toString().contains('setState() or markNeedsBuild() called during build');
+  }
+
+  /// `'_effectiveFocusNode.canRequestFocus': is not true` — EditableText
+  /// asserting that the node it is about to focus still can be focused.
+  /// It loses that race whenever a field is disposed, disabled or replaced
+  /// in the same frame something asks it to take focus (route pops, panel
+  /// swaps, a form rebuilding under a keyboard event). The framework
+  /// recovers by simply not moving focus; nothing is lost but a caret.
+  ///
+  /// Type first, then message — same reasoning as [_isSetStateDuringBuild].
+  static bool _isFocusNodeCanRequestFocusAssertion(Object error, FlutterErrorDetails? details) {
+    if (error is! FlutterError && error is! AssertionError) return false;
+    return error.toString().contains('canRequestFocus');
+  }
+
+  static final _oncePerSessionLogged = <String>{};
+
+  /// Print the console line [decision] calls for, if any. Returns whether
+  /// anything was printed, so callers that also dump the error themselves
+  /// (report()'s own line) don't double up.
+  ///
+  /// A quiet tier is the ONLY output a classified error gets — the handler
+  /// returns before `FlutterError.presentError`, which is what would
+  /// otherwise dump the stack. So [stackTrace] is printed with it: a
+  /// logOnly rule exists because the bug is ours to fix locally, and the
+  /// framework's message names the widget that suffered, never the call
+  /// that did it. The ignore tier is the exception, deliberately: its whole
+  /// point is that there is nothing there to fix.
+  static bool logDecision(ErrorDecision decision, Object error, {StackTrace? stackTrace}) {
+    final rule = decision.rule;
+    if (rule == null) return false;
+    if (rule.logOncePerSession) {
+      if (!_oncePerSessionLogged.add(rule.id)) return true;
+      debugPrint('[error-policy] ignoring ${rule.id}: ${rule.reason}');
+      return true;
+    }
+    debugPrint('[error-policy] ${rule.id} (${rule.disposition.name}, ${rule.reason}): $error'
+        '${stackTrace == null ? '' : '\n$stackTrace'}');
+    return true;
+  }
+
+  /// Test seam: forget the once-per-session log state and the web override.
+  /// Not marked `@visibleForTesting` because ErrorReportingService's own
+  /// reset calls it — that state belongs to a session, and tests reset a
+  /// session through one door.
+  static void resetForTesting() {
+    _oncePerSessionLogged.clear();
+    debugTreatAsWeb = null;
+  }
+}

@@ -27,6 +27,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'package:ham2k_logger/services/error_policy.dart';
 import 'package:ham2k_logger/services/error_reporting_backend.dart';
 import 'package:ham2k_logger/services/error_reporting_service.dart';
 import 'package:ham2k_logger/services/settings_service.dart';
@@ -46,6 +47,13 @@ Future<void> withErrorHooks(Future<void> Function() body, {ErrorReportingBackend
     PlatformDispatcher.instance.onError = previousPlatformOnError;
   }
 }
+
+/// Whether the policy exempts [details] from the loud path — no upload and
+/// no notice. Which exact quiet tier it lands in is asserted per-rule in
+/// error_policy_test.dart; these tests are about the NARROWNESS of each
+/// exemption as it is applied by the real FlutterError hook.
+bool _isNoise(FlutterErrorDetails details) =>
+    !ErrorPolicy.decide(details.exception, details: details).disposition.uploads;
 
 class RecordedException {
   final Object error;
@@ -134,18 +142,18 @@ void main() {
 
     test('is recognized on web, and only on web', () {
       final details = focusTraversalNull();
-      ErrorReportingService.debugTreatAsWeb = false;
+      ErrorPolicy.debugTreatAsWeb = false;
       expect(
-        ErrorReportingService.isKnownWebFocusTraversalNoise(details),
+        _isNoise(details),
         isFalse,
         reason: 'didChangeViewFocus only reaches that path on the multi-view embedder',
       );
-      ErrorReportingService.debugTreatAsWeb = true;
-      expect(ErrorReportingService.isKnownWebFocusTraversalNoise(details), isTrue);
+      ErrorPolicy.debugTreatAsWeb = true;
+      expect(_isNoise(details), isTrue);
     });
 
     test('a null check in that dispatch is recognized however the runtime spells it', () {
-      ErrorReportingService.debugTreatAsWeb = true;
+      ErrorPolicy.debugTreatAsWeb = true;
       // dart2js's own null-check failure has not always been a `TypeError`, so
       // the message is matched as well as the type.
       for (final error in <Object>[
@@ -154,7 +162,7 @@ void main() {
         StateError('Null check operator used on a null value'),
       ]) {
         expect(
-          ErrorReportingService.isKnownWebFocusTraversalNoise(focusTraversalNull(error: error)),
+          _isNoise(focusTraversalNull(error: error)),
           isTrue,
           reason: '$error',
         );
@@ -162,32 +170,30 @@ void main() {
     });
 
     test('nothing else in that dispatch is swallowed', () {
-      ErrorReportingService.debugTreatAsWeb = true;
+      ErrorPolicy.debugTreatAsWeb = true;
       // Same place, a different failure. An observer of ours throwing here would
       // be a real bug, and matching the null check specifically is what keeps it
       // reportable.
       expect(
-        ErrorReportingService.isKnownWebFocusTraversalNoise(focusTraversalNull(error: RangeError('index'))),
+        _isNoise(focusTraversalNull(error: RangeError('index'))),
         isFalse,
       );
       expect(
-        ErrorReportingService.isKnownWebFocusTraversalNoise(focusTraversalNull(error: StateError('boom'))),
+        _isNoise(focusTraversalNull(error: StateError('boom'))),
         isFalse,
       );
     });
 
     test('the same null check from anywhere else is still reported', () {
-      ErrorReportingService.debugTreatAsWeb = true;
+      ErrorPolicy.debugTreatAsWeb = true;
       // A null check thrown during a build, a layout, a gesture: every other one
       // of these is a bug of ours and has to stay loud.
       expect(
-        ErrorReportingService.isKnownWebFocusTraversalNoise(
-          focusTraversalNull(context: 'while building MyWidget'),
-        ),
+        _isNoise(focusTraversalNull(context: 'while building MyWidget')),
         isFalse,
       );
       expect(
-        ErrorReportingService.isKnownWebFocusTraversalNoise(focusTraversalNull(context: null)),
+        _isNoise(focusTraversalNull(context: null)),
         isFalse,
         reason: 'no context at all is not a match either',
       );
@@ -197,7 +203,7 @@ void main() {
       await withErrorHooks(() async {
         final statusBar = StatusBarService(await SharedPreferences.getInstance());
         ErrorReportingService.attachStatusBar(statusBar);
-        ErrorReportingService.debugTreatAsWeb = true;
+        ErrorPolicy.debugTreatAsWeb = true;
 
         final chained = FlutterError.onError!;
         chained(focusTraversalNull());
@@ -238,21 +244,19 @@ void main() {
         );
 
     test('is recognized by its message, whatever widget threw it', () {
-      expect(ErrorReportingService.isKnownRenderFlexOverflowNoise(overflow()), isTrue);
+      expect(_isNoise(overflow()), isTrue);
     });
 
     test('nothing else with the same FlutterError type is swallowed', () {
       expect(
-        ErrorReportingService.isKnownRenderFlexOverflowNoise(overflow(error: FlutterError('some other message'))),
+        _isNoise(overflow(error: FlutterError('some other message'))),
         isFalse,
       );
     });
 
     test('a non-FlutterError exception is never matched, even with the same text', () {
       expect(
-        ErrorReportingService.isKnownRenderFlexOverflowNoise(
-          overflow(error: StateError('A RenderFlex overflowed by 13 pixels on the right.')),
-        ),
+        _isNoise(overflow(error: StateError('A RenderFlex overflowed by 13 pixels on the right.'))),
         isFalse,
       );
     });
@@ -289,6 +293,21 @@ void main() {
       expect(backend.exceptions.single.error, isA<StateError>());
       expect(backend.exceptions.single.context, 'test-context');
       expect(ErrorReportingService.reportingEnabled, isTrue, reason: 'a backend is attached');
+    }, backend: backend);
+  });
+
+  test('report() still honours the policy — an explicit catch cannot force noise into the backend', () async {
+    // The same error can arrive through the framework hook or through a
+    // try/catch someone added later; classification has to survive both, or
+    // the exemption is only as good as the path the error happened to take.
+    final backend = FakeErrorReportingBackend();
+    await withErrorHooks(() async {
+      ErrorReportingService.report(
+        FlutterError('setState() or markNeedsBuild() called during build.'),
+        StackTrace.current,
+        context: 'some-caller',
+      );
+      expect(backend.exceptions, isEmpty);
     }, backend: backend);
   });
 
