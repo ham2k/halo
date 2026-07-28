@@ -379,6 +379,7 @@ ThemeData buildHaLoTheme(Brightness brightness) {
           surfaceContainerHighest: Color(0xFF40484C),
           onSurfaceVariant: Color(0xFFC0C8CD),
           outline: Color(0xFF8A9296),
+          outlineVariant: Color(0xFF283034),
         )
       : const ColorScheme.light(
           primary: Color(0xFF006783),
