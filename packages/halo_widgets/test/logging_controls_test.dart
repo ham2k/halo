@@ -3010,13 +3010,13 @@ void main() {
     // while the panel is expanded (issue #187 follow-up).
     expect(iconColor(), const Color(0xFF068541));
     // A single reference gets a single check ahead of the label.
-    expect(find.text('✔️ POTA'), findsOneWidget);
+    expect(find.text('✓ POTA'), findsOneWidget);
 
     await openControl(tester, MdiIcons.pineTree); // close the panel
 
     // Closed: the accent stays.
     expect(iconColor(), const Color(0xFF068541));
-    expect(find.text('✔️ POTA'), findsOneWidget);
+    expect(find.text('✓ POTA'), findsOneWidget);
   });
 
   testWidgets('activity control chip label gets a check per reference, or a check plus count past two (issue #187 follow-up)',
@@ -3050,13 +3050,13 @@ void main() {
     // it's the common case worth spelling out rather than abbreviating.
     await tester.enterText(find.widgetWithText(TextField, 'POTA'), 'US-1234, US-5678');
     await tester.pump();
-    expect(find.text('✔️✔️ POTA'), findsOneWidget);
+    expect(find.text('✓✓ POTA'), findsOneWidget);
 
     // A third reference collapses to a single check plus the total count,
     // so the label doesn't grow one glyph per park on a bigger rove.
     await tester.enterText(find.widgetWithText(TextField, 'POTA'), 'US-1234, US-5678, US-9012');
     await tester.pump();
-    expect(find.text('✔️×3 POTA'), findsOneWidget);
+    expect(find.text('✓×3 POTA'), findsOneWidget);
   });
 
   testWidgets('activity refList control accepts a comma-separated list of references', (tester) async {

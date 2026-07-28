@@ -3055,12 +3055,14 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
       icon: resolveIconName(control['icon'] as String?),
       // A check per reference marks a park-and-summit-style "twofer"; beyond
       // two, a single check plus the count keeps the label from running long
-      // (e.g. a 5-park POTA rove would otherwise be "✔️✔️✔️✔️✔️ POTA").
+      // (e.g. a 5-park POTA rove would otherwise be "✓✓✓✓✓ POTA"). The plain
+      // check mark (U+2713) has no emoji presentation, so it always renders
+      // in the label's own text color instead of a fixed emoji color.
       summary: switch (refCount) {
         0 => label,
-        1 => '✔️ $label',
-        2 => '✔️✔️ $label',
-        _ => '✔️×$refCount $label',
+        1 => '✓ $label',
+        2 => '✓✓ $label',
+        _ => '✓×$refCount $label',
       },
       // Accent the icon (issue #187) only once the field actually holds a
       // reference — an active-but-empty control stays the default color.
