@@ -712,59 +712,68 @@ class _QsoListState extends State<QsoList> {
       ));
     }
 
-    return Container(
-      // Shows through wherever the list doesn't reach (e.g. below the
-      // newest row when there are few QSOs) — rows themselves stay opaque
-      // on the normal surface color below.
-      color: theme.colorScheme.surfaceContainerHighest,
-      child: NotificationListener<ScrollNotification>(
-        onNotification: _onScrollNotification,
-        child: NotificationListener<ScrollMetricsNotification>(
-          onNotification: _onScrollMetricsNotification,
-          child: CustomScrollView(
-            controller: _scrollController,
-            slivers: [
-              for (var g = 0; g < dayGroups.length; g++)
-                // Groups each day's header with its own rows so Flutter's sliver
-                // protocol coordinates pinning *between* groups — without this,
-                // sibling `SliverPersistentHeader`s pin independently of each
-                // other and a short day's header never gets pushed off by the
-                // next day's, so both stay stuck on screen at once instead of
-                // only the current day's header showing.
-                SliverMainAxisGroup(
-                  slivers: [
-                    SliverPersistentHeader(
-                      pinned: true,
-                      delegate: _DayHeaderDelegate(
-                        child: DayHeaderRow(
-                          dayMillis: dayKeys[g],
-                          count: dayGroups[g]
-                              .where((i) => qsos[i].isRealContact)
-                              .length,
-                          scores: scoresByDay[dayKeys[g]],
-                          labels: widget.labels,
+    return ClipRect(
+      // Rows lay out fixed-width columns sized from the longest value seen
+      // across the whole list, not from the pane's actual width, so a narrow
+      // split or a long callsign/exchange can overflow a row horizontally.
+      // The CustomScrollView's own viewport only clips when it judges itself
+      // to have vertical overflow, so a short list with room to spare lets
+      // that horizontal overflow paint straight past the pane into whatever
+      // sits next to it — this ClipRect contains it unconditionally instead.
+      child: Container(
+        // Shows through wherever the list doesn't reach (e.g. below the
+        // newest row when there are few QSOs) — rows themselves stay opaque
+        // on the normal surface color below.
+        color: theme.colorScheme.surfaceContainerHighest,
+        child: NotificationListener<ScrollNotification>(
+          onNotification: _onScrollNotification,
+          child: NotificationListener<ScrollMetricsNotification>(
+            onNotification: _onScrollMetricsNotification,
+            child: CustomScrollView(
+              controller: _scrollController,
+              slivers: [
+                for (var g = 0; g < dayGroups.length; g++)
+                  // Groups each day's header with its own rows so Flutter's sliver
+                  // protocol coordinates pinning *between* groups — without this,
+                  // sibling `SliverPersistentHeader`s pin independently of each
+                  // other and a short day's header never gets pushed off by the
+                  // next day's, so both stay stuck on screen at once instead of
+                  // only the current day's header showing.
+                  SliverMainAxisGroup(
+                    slivers: [
+                      SliverPersistentHeader(
+                        pinned: true,
+                        delegate: _DayHeaderDelegate(
+                          child: DayHeaderRow(
+                            dayMillis: dayKeys[g],
+                            count: dayGroups[g]
+                                .where((i) => qsos[i].isRealContact)
+                                .length,
+                            scores: scoresByDay[dayKeys[g]],
+                            labels: widget.labels,
+                          ),
                         ),
                       ),
-                    ),
-                    SliverList(
-                      delegate: SliverChildBuilderDelegate((context, i) {
-                        // Divider's own `height` (the space it reserves, not the
-                        // visible line) defaults to 16 regardless of the
-                        // app-wide dividerTheme's `space` unless given
-                        // explicitly — measured at 16px in practice, way more
-                        // than the issue's "one pixel divider ... no further
-                        // margins" calls for. Same odd-index-is-a-separator
-                        // trick `ListView.separated` uses internally, since
-                        // `SliverList` has no `.separated` ctor.
-                        if (i.isOdd) {
-                          return const Divider(height: 1, thickness: 1);
-                        }
-                        return buildRow(context, dayGroups[g][i ~/ 2]);
-                      }, childCount: dayGroups[g].length * 2 - 1),
-                    ),
-                  ],
-                ),
-            ],
+                      SliverList(
+                        delegate: SliverChildBuilderDelegate((context, i) {
+                          // Divider's own `height` (the space it reserves, not the
+                          // visible line) defaults to 16 regardless of the
+                          // app-wide dividerTheme's `space` unless given
+                          // explicitly — measured at 16px in practice, way more
+                          // than the issue's "one pixel divider ... no further
+                          // margins" calls for. Same odd-index-is-a-separator
+                          // trick `ListView.separated` uses internally, since
+                          // `SliverList` has no `.separated` ctor.
+                          if (i.isOdd) {
+                            return const Divider(height: 1, thickness: 1);
+                          }
+                          return buildRow(context, dayGroups[g][i ~/ 2]);
+                        }, childCount: dayGroups[g].length * 2 - 1),
+                      ),
+                    ],
+                  ),
+              ],
+            ),
           ),
         ),
       ),
