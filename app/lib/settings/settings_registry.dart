@@ -10,10 +10,19 @@
 // extensions contribute theirs through the settingsPanel hook, surfaced as
 // `extension_{panelKey}` sections by the All Settings panel.
 //
-// The Common Preferences panel shows only the fields whitelisted in
-// [commonSettingsFields]; the All Settings panel shows every group.
+// Two element-level attributes (docs/extensions/settings.md), settable by
+// any of the above — core groups and extension settingsPanels alike — drive
+// visibility instead of a central whitelist:
+//
+//  - `common: true` also shows the field on the Common Preferences panel;
+//    everything else appears only under All Settings.
+//  - `environment: 'ios,android'` (or `'-web'`, or a list of tokens) hides
+//    the field outside the named platform(s) — everywhere, not just Common
+//    Preferences. Tokens: ios, android, macos, windows, linux, web — the
+//    same vocabulary notices.dart's `_knownPlatforms` uses.
 
 import 'package:flutter/foundation.dart';
+import 'package:halo_widgets/halo_widgets.dart';
 
 /// One declared group of settings: an ordered section of FormRenderer
 /// elements plus the commit path for its fields.
@@ -37,18 +46,53 @@ abstract class SettingsGroup {
   Future<void> commit(String fieldKey, dynamic value);
 }
 
-/// `group.field` ids shown on the Common Preferences panel — everything else
-/// appears under All Settings.
-const commonSettingsFields = [
-  'general.themeMode',
-  'general.locale',
-  'general.fontScale',
-  'general.distanceUnits',
-  'privacy.consentAppData',
-  'privacy.consentOpData',
-  'privacy.privacyPolicy',
-  'privacy.termsOfService',
+/// Whether [element]'s `environment` attribute admits the current platform.
+/// Absent (or unrecognized shape) → visible everywhere. Every token
+/// unprefixed (`'ios,android'` or `['ios', 'android']`) → visible ONLY on
+/// those platforms. Every token `-`-prefixed (`'-web'`) → visible
+/// everywhere EXCEPT those. Mixing the two forms is invalid; the whole
+/// attribute is then treated as absent (fail open — see
+/// docs/extensions/settings.md).
+bool elementMatchesEnvironment(Map<String, dynamic> element) {
+  final raw = element['environment'];
+  // Lowercased so a miscased token ('iOS') still matches platformToken,
+  // which is always lowercase — rather than silently failing open/closed.
+  final tokens = switch (raw) {
+    String s => s.split(',').map((t) => t.trim().toLowerCase()).where((t) => t.isNotEmpty).toList(),
+    List l => l.whereType<String>().map((t) => t.toLowerCase()).toList(),
+    _ => const <String>[],
+  };
+  if (tokens.isEmpty) return true;
+  final excludes = tokens.where((t) => t.startsWith('-')).map((t) => t.substring(1)).toSet();
+  final includes = tokens.where((t) => !t.startsWith('-')).toSet();
+  if (excludes.isNotEmpty && includes.isNotEmpty) return true; // invalid mix — fail open
+  if (excludes.isNotEmpty) return !excludes.contains(platformToken);
+  return includes.contains(platformToken);
+}
+
+/// [elements], minus whatever [elementMatchesEnvironment] rules out for the
+/// current platform. Applied once, at load time, by every settings surface
+/// (Common Preferences, All Settings, and standalone extension panels
+/// alike) — a platform-excluded field doesn't exist on this platform's
+/// session at all, not just hidden from one view of it.
+List<Map<String, dynamic>> filterElementsForEnvironment(List<Map<String, dynamic>> elements) => [
+  for (final el in elements)
+    if (elementMatchesEnvironment(el)) el,
 ];
+
+/// Whether [element] is flagged `common: true` — shown on Common
+/// Preferences in addition to All Settings. Only meaningful for the
+/// element kinds a settings panel actually persists/acts on (field, link,
+/// action) — headers/dividers/markdown are chrome, never individually
+/// whitelisted, same restriction [FormRenderer]'s own search already
+/// applies. Unrelated to a `multiselect` option's own `common`/`uncommon`
+/// disclosure-tier flags (see docs/extensions/settings.md) — different
+/// scope, an option inside one field vs. the field itself.
+bool elementIsCommon(Map<String, dynamic> element) {
+  final type = element['type'];
+  if (type != 'field' && type != 'link' && type != 'action') return false;
+  return element['common'] == true;
+}
 
 class SettingsRegistry {
   final _groups = <SettingsGroup>[];

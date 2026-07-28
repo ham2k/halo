@@ -58,6 +58,16 @@ export interface FormField {
   // convention). Every FormElement variant below supports this, not just
   // fields — a whole section header can be dev-mode-only too.
   devMode?: boolean;
+  // Settings-panel-only (ignored in ad hoc forms) — see settings.md's
+  // "Common Preferences and environment gating". Also shows this field on
+  // the app's Common Preferences quick-access panel.
+  common?: boolean;
+  // Settings-panel-only. Restricts which platform(s) show this field at
+  // all: one or more platform tokens (`ios`, `android`, `macos`,
+  // `windows`, `linux`, `web`), comma-separated or as an array. Unprefixed
+  // tokens are a whitelist; `-`-prefixed tokens are a blacklist. See
+  // settings.md.
+  environment?: string | string[];
 }
 
 export interface FormHeader {
@@ -65,18 +75,21 @@ export interface FormHeader {
   title: string;
   subtitle?: string;
   devMode?: boolean;
+  environment?: string | string[]; // settings-panel-only; see FormField.environment (not `common` — see settings.md)
 }
 
 export interface FormSectionDivider {
   type: 'divider';
   title?: string;
   devMode?: boolean;
+  environment?: string | string[]; // settings-panel-only; see FormField.environment
 }
 
 export interface FormMarkdownBlock {
   type: 'markdown';
   text: string;
   devMode?: boolean;
+  environment?: string | string[]; // settings-panel-only; see FormField.environment
 }
 
 // A button that invokes a named hook method (e.g. 'clearCache') against the
@@ -92,6 +105,8 @@ export interface FormActionElement {
   label: string;
   method: string;
   devMode?: boolean;
+  common?: boolean;   // settings-panel-only; see FormField.common
+  environment?: string | string[]; // settings-panel-only; see FormField.environment
 }
 
 // A row that opens an external URL (icon-row-styled tile with an
@@ -105,6 +120,8 @@ export interface FormLinkElement {
   icon?: string;
   description?: string;
   devMode?: boolean;
+  common?: boolean;   // settings-panel-only; see FormField.common
+  environment?: string | string[]; // settings-panel-only; see FormField.environment
 }
 
 export type FormElement = FormField | FormHeader | FormSectionDivider | FormMarkdownBlock | FormActionElement | FormLinkElement;

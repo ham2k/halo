@@ -89,8 +89,9 @@ class _SettingsPanelEntry {
 // A function of the current translations (not a const list) so the sidebar
 // follows the app locale like the panel bodies do.
 List<_SettingsPanelEntry> _fixedCorePanels(Translations t) => [
-      // The whitelisted subset of the declarative settings registry (see
-      // settings_registry.dart); the full set lives under All Settings.
+      // The `common: true`-flagged subset of the declarative settings
+      // registry AND extension panels (see settings_registry.dart); the
+      // full set lives under All Settings.
       _SettingsPanelEntry(
           key: 'settings',
           title: t.settings.panels.commonPreferences,
@@ -577,8 +578,11 @@ class _SettingsGroupForm extends StatefulWidget {
   final HaLoServices services;
   final SettingsGroup group;
 
-  /// Element keys to keep — the Common Preferences whitelist. Null shows all.
-  final Set<String>? fieldFilter;
+  /// Common Preferences mode: keep only elements flagged `common: true`
+  /// (settings_registry.dart's [elementIsCommon]). False shows everything
+  /// the group declares (minus whatever `environment` rules out — that
+  /// filter always applies, common or not).
+  final bool commonOnly;
 
   /// All Settings' search query (lowercased); when it matches nothing in
   /// this group, the whole section — header included — renders empty.
@@ -587,7 +591,7 @@ class _SettingsGroupForm extends StatefulWidget {
   const _SettingsGroupForm({
     required this.services,
     required this.group,
-    this.fieldFilter,
+    this.commonOnly = false,
     this.searchQuery = '',
   });
 
@@ -622,14 +626,11 @@ class _SettingsGroupFormState extends State<_SettingsGroupForm> {
     try {
       do {
         _reloadPending = false;
-        var elements = await widget.services.systemLists.resolveInElements(await widget.group.buildElements());
-        final filter = widget.fieldFilter;
-        if (filter != null) {
-          elements = [
-            for (final el in elements)
-              if (filter.contains(el['key'])) el,
-          ];
-        }
+        final resolved = await widget.services.systemLists.resolveInElements(await widget.group.buildElements());
+        // Platform-excluded elements don't exist on this session at all —
+        // baked in here rather than filtered per-view, same as
+        // [_ExtensionSettingsPanel].
+        final elements = filterElementsForEnvironment(resolved);
         if (mounted) setState(() => _elements = elements);
       } while (_reloadPending && mounted);
     } finally {
@@ -650,6 +651,13 @@ class _SettingsGroupFormState extends State<_SettingsGroupForm> {
     var elements = _elements;
     if (elements == null) {
       return const Padding(padding: EdgeInsets.all(24), child: Center(child: CircularProgressIndicator()));
+    }
+    if (widget.commonOnly) {
+      elements = [
+        for (final el in elements)
+          if (elementIsCommon(el)) el,
+      ];
+      if (elements.isEmpty) return const SizedBox.shrink();
     }
     if (widget.searchQuery.isNotEmpty) {
       elements = [
@@ -694,25 +702,49 @@ bool _elementMatchesQuery(Map<String, dynamic> el, String query) {
   return has(el['key']) || has(el['label']) || has(el['description']);
 }
 
-/// The whitelisted subset of the settings registry ([commonSettingsFields])
-/// — the panel most users ever need.
-class _CommonSettingsPanel extends StatelessWidget {
+/// The `common: true` subset of every declared group — core (via
+/// [_SettingsGroupForm]'s `commonOnly`) and extension-contributed panels
+/// (via [_ExtensionSettingsPanel]'s) alike — the panel most users ever
+/// need. Each candidate section is always rendered: whether it ends up
+/// empty (nothing in that group/panel is flagged `common`, or an
+/// `environment` filter rules out everything left) is only known after its
+/// own async load, so an empty one collapses itself to nothing rather than
+/// this widget pre-filtering synchronously the way the old static whitelist
+/// could.
+class _CommonSettingsPanel extends StatefulWidget {
   final HaLoServices services;
 
   const _CommonSettingsPanel({required this.services});
 
   @override
+  State<_CommonSettingsPanel> createState() => _CommonSettingsPanelState();
+}
+
+class _CommonSettingsPanelState extends State<_CommonSettingsPanel> {
+  List<Map<String, dynamic>>? _extensionPanels;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadExtensionPanels();
+    widget.services.extensions.runtimeGeneration.addListener(_loadExtensionPanels);
+  }
+
+  @override
+  void dispose() {
+    widget.services.extensions.runtimeGeneration.removeListener(_loadExtensionPanels);
+    super.dispose();
+  }
+
+  Future<void> _loadExtensionPanels() async {
+    await widget.services.extensions.start();
+    final panels = await widget.services.extensions.getSettingsPanels();
+    if (mounted) setState(() => _extensionPanels = panels);
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final sections = <Widget>[];
-    for (final group in services.settingsRegistry.groups) {
-      final prefix = '${group.key}.';
-      final keys = {
-        for (final id in commonSettingsFields)
-          if (id.startsWith(prefix)) id.substring(prefix.length),
-      };
-      if (keys.isEmpty) continue;
-      sections.add(_SettingsGroupForm(services: services, group: group, fieldFilter: keys));
-    }
+    final extensionPanels = _extensionPanels;
     // FormRenderer rows now pick up their own content inset from the
     // ambient ListTileTheme (settings_view.dart's wide-layout wrapper), so
     // this is just the small margin between a row's background and the
@@ -721,7 +753,23 @@ class _CommonSettingsPanel extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [for (final section in sections) ...[section, const SizedBox(height: 24)]],
+        children: [
+          for (final group in widget.services.settingsRegistry.groups) ...[
+            _SettingsGroupForm(services: widget.services, group: group, commonOnly: true),
+            const SizedBox(height: 24),
+          ],
+          if (extensionPanels != null)
+            for (final descriptor in extensionPanels) ...[
+              _ExtensionSettingsPanel(
+                services: widget.services,
+                descriptor: descriptor,
+                embedded: true,
+                commonOnly: true,
+                sectionTitle: (descriptor['title'] as String?) ?? (descriptor['panelKey'] as String),
+              ),
+              const SizedBox(height: 24),
+            ],
+        ],
       ),
     );
   }
@@ -1321,12 +1369,20 @@ class _ExtensionSettingsPanel extends StatefulWidget {
   /// All Settings' search query (lowercased); empty shows everything.
   final String searchQuery;
 
+  /// Common Preferences mode: keep only elements the extension flagged
+  /// `common: true` (settings_registry.dart's [elementIsCommon]) — same
+  /// convention as [_SettingsGroupForm]'s `commonOnly`. False shows
+  /// everything the panel declares (minus whatever `environment` rules
+  /// out — that filter always applies, common or not).
+  final bool commonOnly;
+
   const _ExtensionSettingsPanel({
     required this.services,
     required this.descriptor,
     this.embedded = false,
     this.sectionTitle,
     this.searchQuery = '',
+    this.commonOnly = false,
   });
 
   @override
@@ -1408,11 +1464,14 @@ class _ExtensionSettingsPanelState extends State<_ExtensionSettingsPanel> {
         );
         // Extension-declared fields can reference system lists too.
         if (definition?['elements'] is List) {
-          definition = {
-            ...definition!,
-            'elements': await widget.services.systemLists
-                .resolveInElements((definition['elements'] as List).cast<Map<String, dynamic>>()),
-          };
+          final resolved = await widget.services.systemLists
+              .resolveInElements((definition!['elements'] as List).cast<Map<String, dynamic>>());
+          // Platform-excluded elements don't exist on this session at all —
+          // baked in here rather than filtered per-view, same as
+          // [_SettingsGroupForm]. _fieldFor/validate/commit only ever look
+          // up keys FormRenderer actually rendered, so dropping them here
+          // is safe for those paths too.
+          definition = {...definition, 'elements': filterElementsForEnvironment(resolved)};
         }
         if (mounted) {
           setState(() {
@@ -1542,6 +1601,14 @@ class _ExtensionSettingsPanelState extends State<_ExtensionSettingsPanel> {
     var definition = _definition;
     if (definition == null) {
       return Center(child: Text(context.t.settings.developer.panelLoadFailed));
+    }
+    if (widget.commonOnly) {
+      final common = [
+        for (final el in (definition['elements'] as List? ?? const []).cast<Map<String, dynamic>>())
+          if (elementIsCommon(el)) el,
+      ];
+      if (common.isEmpty) return const SizedBox.shrink();
+      definition = {...definition, 'elements': common};
     }
     if (widget.searchQuery.isNotEmpty) {
       final filtered = [

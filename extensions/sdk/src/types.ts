@@ -1281,6 +1281,23 @@ export interface FormField {
   /// discriminator away and back preserves what was already typed. Read the
   /// value you want by the discriminator, never by "whichever is non-empty".
   visibleWhen?: { field: string; equals: any }
+  /// Only meaningful within a settingsPanel (ignored in ad hoc forms) — see
+  /// docs/extensions/settings.md's "Common Preferences and environment
+  /// gating". Also shows this field on the app's Common Preferences
+  /// quick-access panel, in addition to the full settings list. Unrelated
+  /// to FormFieldOption.common/uncommon above (a multiselect option's own
+  /// disclosure tier) — different scope, an option inside one field vs.
+  /// the field itself.
+  common?: boolean
+  /// Only meaningful within a settingsPanel. Restricts which platform(s)
+  /// show this field at all — Common Preferences and the full settings
+  /// list alike, not just one view of it. One or more platform tokens
+  /// (`ios`, `android`, `macos`, `windows`, `linux`, `web`) as a
+  /// comma-separated string or array. Every token unprefixed: show ONLY on
+  /// the listed platforms. Every token `-`-prefixed: show on every
+  /// platform EXCEPT the listed ones. Mixing the two forms is invalid —
+  /// treated as if `environment` were absent. Omit for "every platform".
+  environment?: string | string[]
 }
 
 export interface FormHeader {
@@ -1294,18 +1311,27 @@ export interface FormHeader {
   /// carving its fields into named groups, not for an ad hoc form's own
   /// title.
   style?: 'default' | 'section'
+  /// Settings-panel-only; see FormField.environment. Not `common` — Common
+  /// Preferences builds its own section headers from each group/panel's
+  /// title rather than reusing a panel's own FormHeader elements, so there
+  /// is nothing for a header to opt into there.
+  environment?: string | string[]
 }
 
 export interface FormSectionDivider {
   type: 'divider'
   title?: string
   devMode?: boolean
+  /// Settings-panel-only; see FormField.environment.
+  environment?: string | string[]
 }
 
 export interface FormMarkdownBlock {
   type: 'markdown'
   text: string
   devMode?: boolean
+  /// Settings-panel-only; see FormField.environment.
+  environment?: string | string[]
 }
 
 /// A button that invokes a named hook method (e.g. 'testCredentials')
@@ -1318,6 +1344,10 @@ export interface FormActionElement {
   label: string
   method: string
   devMode?: boolean
+  /// Settings-panel-only; see FormField.common.
+  common?: boolean
+  /// Settings-panel-only; see FormField.environment.
+  environment?: string | string[]
 }
 
 /// A row that opens an external URL (rendered as an icon-row-styled tile
@@ -1333,6 +1363,10 @@ export interface FormLinkElement {
   icon?: string
   description?: string
   devMode?: boolean
+  /// Settings-panel-only; see FormField.common.
+  common?: boolean
+  /// Settings-panel-only; see FormField.environment.
+  environment?: string | string[]
 }
 
 export type FormElement = FormField | FormHeader | FormSectionDivider | FormMarkdownBlock | FormActionElement | FormLinkElement

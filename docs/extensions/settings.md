@@ -320,6 +320,53 @@ override) without it cluttering the panel for regular users:
 { type: "field", fieldType: "text", key: "apiEndpointOverride", label: "API Endpoint Override", devMode: true }
 ```
 
+## Common Preferences and environment gating
+
+The app has two settings screens: **All Settings**, listing every declared
+group and panel, and **Common Preferences**, a short list of the handful of
+settings most users ever touch. Which fields land on Common Preferences —
+and which platforms show a field at all — is declared per-element, not
+maintained as a separate list somewhere else in the app. Any field, link, or
+action (core-declared or extension-declared, Tier 1 or Tier 2 alike) can set:
+
+- **`common: true`** — also show this element on Common Preferences, in
+  addition to All Settings. Off by default. Not the same thing as
+  `FormFieldOption.common`/`uncommon` above — that's a `multiselect`
+  option's own disclosure tier (upfront vs. behind "Show more"), a
+  different scope (an option inside one field, not the field itself).
+
+  ```ts
+  { type: "field", fieldType: "select", key: "units", label: "Units", value: "metric", options: [...], common: true }
+  ```
+
+- **`environment: 'ios,android'`** (or `'-web'`, or an array either way) —
+  restrict which platform(s) show this element at all. This is a platform
+  gate, not a Common-vs-All one: an excluded field disappears from every
+  settings surface on that platform, not just Common Preferences. Every
+  token unprefixed is a whitelist (show ONLY there); every token
+  `-`-prefixed is a blacklist (show everywhere EXCEPT there); mixing the two
+  forms in one attribute is invalid and treated as if `environment` were
+  absent. Tokens: `ios`, `android`, `macos`, `windows`, `linux`, `web` — the
+  same vocabulary server notices filter on. Omit `environment` for "every
+  platform".
+
+  ```ts
+  // A field that only makes sense with an on-screen keyboard.
+  { type: "field", fieldType: "checkbox", key: "showNumbersRow", label: "Numbers Row", value: false,
+    common: true, environment: "ios,android" }
+  ```
+
+Both attributes are evaluated fresh every time the panel reloads (same as
+`devMode`), so they can vary with `getDefinition`'s own logic if a Tier 2
+panel wants to compute them — though for most panels a static value is all
+that's needed. `common` only applies to field/link/action elements — a
+header/divider/markdown block can't be individually whitelisted onto Common
+Preferences, since that screen builds its own section headers from each
+group/panel's title rather than reusing the panel's own `FormHeader`
+elements. `environment`, by contrast, applies to every element type,
+headers included — a Tier 2 panel with a platform-specific sub-section can
+gate its own header the same way it gates the fields under it.
+
 ---
 
 ## Relationship to `AccountHook`

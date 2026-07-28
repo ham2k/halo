@@ -102,6 +102,31 @@ bool get isMobilePlatform =>
 /// `LoggingControls`'s `_numbersAndPunctuationOnIOS`.
 bool get isIOSPlatform => !kIsWeb && defaultTargetPlatform == TargetPlatform.iOS;
 
+/// Lowercase platform token for data-driven platform filtering — settings'
+/// `environment` attribute (docs/extensions/settings.md) and server notices
+/// (app/lib/services/notices.dart's `_knownPlatforms`) both filter on this
+/// same vocabulary: `ios`, `android`, `macos`, `windows`, `linux`, or `web`.
+/// `kIsWeb` wins over `defaultTargetPlatform`, which reports the HOST OS on
+/// web (see oauth_browser_login.dart's platform-detection note) — a phone's
+/// mobile browser must read as `web`, not `ios`/`android`.
+String get platformToken {
+  if (kIsWeb) return 'web';
+  switch (defaultTargetPlatform) {
+    case TargetPlatform.iOS:
+      return 'ios';
+    case TargetPlatform.android:
+      return 'android';
+    case TargetPlatform.macOS:
+      return 'macos';
+    case TargetPlatform.windows:
+      return 'windows';
+    case TargetPlatform.linux:
+      return 'linux';
+    default:
+      return defaultTargetPlatform.name.toLowerCase();
+  }
+}
+
 /// True in a browser. A named getter rather than bare `kIsWeb` at each call
 /// site, because [isWindowedPlatform] deliberately lumps web in with desktop
 /// — web is desktop-*shaped* but has no filesystem, so anything about files

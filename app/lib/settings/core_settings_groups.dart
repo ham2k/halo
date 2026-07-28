@@ -36,6 +36,8 @@ Map<String, dynamic> _select({
   String? description,
   required String value,
   required List<({String label, String value})> options,
+  bool common = false,
+  String? environment,
 }) => {
   'type': 'field',
   'fieldType': 'select',
@@ -47,6 +49,8 @@ Map<String, dynamic> _select({
   'options': [
     for (final o in options) {'label': o.label, 'value': o.value},
   ],
+  if (common) 'common': true,
+  if (environment != null) 'environment': environment,
 };
 
 Map<String, dynamic> _toggle({
@@ -55,6 +59,8 @@ Map<String, dynamic> _toggle({
   required String icon,
   String? description,
   required bool value,
+  bool common = false,
+  String? environment,
 }) => {
   'type': 'field',
   'fieldType': 'checkbox',
@@ -63,6 +69,8 @@ Map<String, dynamic> _toggle({
   'icon': icon,
   if (description != null) 'description': description,
   'value': value,
+  if (common) 'common': true,
+  if (environment != null) 'environment': environment,
 };
 
 /// Theme, language, font scale, and units — the "User Interface" section.
@@ -99,6 +107,7 @@ class GeneralSettingsGroup extends SettingsGroup {
           (label: t.settings.theme.light, value: 'light'),
           (label: t.settings.theme.dark, value: 'dark'),
         ],
+        common: true,
       ),
       _select(
         key: 'locale',
@@ -111,6 +120,7 @@ class GeneralSettingsGroup extends SettingsGroup {
           (label: 'English', value: 'en'),
           (label: 'Español', value: 'es'),
         ],
+        common: true,
       ),
       _fontScaleSelect(),
       _select(
@@ -124,6 +134,7 @@ class GeneralSettingsGroup extends SettingsGroup {
           for (final unit in DistanceUnits.values)
             (label: t['settings.distanceUnitsOpts.${unit.name}'] as String, value: unit.name),
         ],
+        common: true,
       ),
     ];
   }
@@ -155,6 +166,7 @@ class GeneralSettingsGroup extends SettingsGroup {
       options: [
         for (final scale in FontScale.selectableValues) (label: labelFor(scale), value: scale.name),
       ],
+      common: true,
     );
   }
 
@@ -253,16 +265,22 @@ class LoggingSettingsGroup extends SettingsGroup {
         description: settings.jumpAfterRST ? s.jumpAfterRST.descriptionOn : s.jumpAfterRST.descriptionOff,
         value: settings.jumpAfterRST,
       ),
-      // The mobile numbers row (issue #27). Its two sub-options only make
-      // sense while the row is on, so they appear only then — buildElements
-      // re-runs on every settings change (listenable: settings), so they
-      // show/hide as the master toggle flips.
+      // The mobile numbers row (issue #27, APP-21) — irrelevant without an
+      // on-screen keyboard, hence `environment: 'ios,android'`, filtered out
+      // everywhere (not just Common Preferences) on desktop/web. Flagged
+      // `common: true` so it's reachable from Common Preferences too, not
+      // just All Settings. Its two sub-options only make sense while the
+      // row is on, so they appear only then — buildElements re-runs on
+      // every settings change (listenable: settings), so they show/hide as
+      // the master toggle flips.
       _toggle(
         key: 'showNumbersRow',
         label: s.numbersRow.title,
         icon: 'dialpad',
         description: s.numbersRow.description,
         value: settings.showNumbersRow,
+        common: true,
+        environment: 'ios,android',
       ),
       if (settings.showNumbersRow) ...[
         _toggle(
@@ -271,6 +289,8 @@ class LoggingSettingsGroup extends SettingsGroup {
           icon: 'slash-forward',
           description: s.numbersRowExtra.description,
           value: settings.showExtraInNumbersRow,
+          common: true,
+          environment: 'ios,android',
         ),
         _toggle(
           key: 'vibrateNumbersRow',
@@ -278,6 +298,8 @@ class LoggingSettingsGroup extends SettingsGroup {
           icon: 'vibrate',
           description: s.numbersRowVibrate.description,
           value: settings.vibrateNumbersRow,
+          common: true,
+          environment: 'ios,android',
         ),
       ],
       {
@@ -381,6 +403,7 @@ class PrivacySettingsGroup extends SettingsGroup {
         icon: 'cellphone-lock',
         description: settings.consentAppData ? s.shareAppData.descriptionOn : s.shareAppData.descriptionOff,
         value: settings.consentAppData,
+        common: true,
       ),
       _toggle(
         key: 'consentOpData',
@@ -388,9 +411,24 @@ class PrivacySettingsGroup extends SettingsGroup {
         icon: 'cellphone-lock',
         description: settings.consentOpData ? s.shareOpData.descriptionOn : s.shareOpData.descriptionOff,
         value: settings.consentOpData,
+        common: true,
       ),
-      {'type': 'link', 'key': 'privacyPolicy', 'label': s.privacyPolicy, 'icon': 'shield-account', 'url': privacyPolicyUrl},
-      {'type': 'link', 'key': 'termsOfService', 'label': s.termsOfService, 'icon': 'file-document', 'url': termsOfServiceUrl},
+      {
+        'type': 'link',
+        'key': 'privacyPolicy',
+        'label': s.privacyPolicy,
+        'icon': 'shield-account',
+        'url': privacyPolicyUrl,
+        'common': true,
+      },
+      {
+        'type': 'link',
+        'key': 'termsOfService',
+        'label': s.termsOfService,
+        'icon': 'file-document',
+        'url': termsOfServiceUrl,
+        'common': true,
+      },
     ];
   }
 
