@@ -222,14 +222,29 @@ class LoggingControls extends StatefulWidget {
   /// Hands a just-saved QSO to the caller's background lookup queue, so
   /// online enrichment happens after the record is on screen instead of
   /// delaying the save (no network ⇒ no stall). Fired for every newly ADDED
-  /// QSO — single calls, comma-list entries, stacked ("//") calls, and
-  /// command actions (e.g. SEED) — but never for the record being edited
-  /// (its stored data is deliberately left alone). The queue itself skips
-  /// QSOs that already carry online lookup data (e.g. a single call whose
-  /// debounced preview resolved before Enter), so handing over everything
-  /// is safe and lets a fast Enter that beat the preview still get
-  /// enriched.
+  /// QSO — single calls, comma-list entries, and stacked ("//") calls — but
+  /// never for the record being edited (its stored data is deliberately left
+  /// alone) and never for command actions (e.g. SEED), which batch through
+  /// [enqueueAllLookups] instead. The queue itself skips QSOs that already
+  /// carry online lookup data (e.g. a single call whose debounced preview
+  /// resolved before Enter), so handing over everything is safe and lets a
+  /// fast Enter that beat the preview still get enriched.
+  ///
+  /// Deliberately silent in the caller's status bar — a single Enter's own
+  /// lookup shouldn't flash a "Callsign lookups" bar for one QSO, even when
+  /// several land close together.
   final void Function(Qso qso)? enqueueLookup;
+
+  /// Hands every QSO added by a single command action (e.g. one SEED run) to
+  /// the caller's background lookup queue as one batch, fired once the
+  /// command's own offline-only pass (done extension-side, before these QSOs
+  /// reach [addQso]) has finished for all of them. Reuses the same
+  /// always-on status-bar progress as the explicit "Lookup all QSOs"
+  /// action, since a SEED batch is exactly that kind of bulk insert — but
+  /// callers are expected to pass `force: false` through to the queue's
+  /// `enqueueAll`, unlike "Lookup all QSOs": a SEED-added QSO only ever
+  /// carries its own offline guess, so there's nothing to force-refresh.
+  final void Function(Iterable<Qso> qsos)? enqueueAllLookups;
 
   /// Declarative activity control descriptors from extensions (UI catalog).
   /// v0 supports `input.kind == 'refList'`; each becomes a chip in the
@@ -468,6 +483,7 @@ class LoggingControls extends StatefulWidget {
     this.onCallListLogged,
     this.lookup,
     this.enqueueLookup,
+    this.enqueueAllLookups,
     this.activityControls = const [],
     this.refreshActivityControls,
     this.decorateQsoBeforeSave,
@@ -3349,6 +3365,10 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   }
 
   Future<void> _dispatchActions(List<dynamic> actions) async {
+    // QSOs added by this batch of actions (e.g. one SEED run) — handed to
+    // enqueueAllLookups as a single batch once every action has been
+    // dispatched, rather than queued one at a time as they're added.
+    final addedQsos = <Qso>[];
     for (final action in actions) {
       if (action is! Map) continue;
       final map = action.cast<String, dynamic>();
@@ -3395,9 +3415,10 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
         final qso = await widget.qsosRepository.add(widget.operation.uuid, await _decorated(params));
         widget.onLogged?.call(qso);
         // Command-added QSOs (e.g. SEED's batch) carry at most the fast
-        // offline guess the extension attached itself — queue each for a
-        // full online lookup in the background.
-        widget.enqueueLookup?.call(qso);
+        // offline guess the extension attached itself as part of adding
+        // them — collected here for a single trailing enqueueAllLookups
+        // call once the whole batch of actions has been dispatched.
+        addedQsos.add(qso);
       } else if (map.containsKey('updateSettings')) {
         final params = (map['updateSettings'] as Map).cast<String, dynamic>();
         if (widget.settings != null) {
@@ -3467,6 +3488,9 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
         // branch, above.
         debugPrint('[extensions] no dispatch branch for command action: ${map.keys}');
       }
+    }
+    if (addedQsos.isNotEmpty) {
+      widget.enqueueAllLookups?.call(addedQsos);
     }
   }
 

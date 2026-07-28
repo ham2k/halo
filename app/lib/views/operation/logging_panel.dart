@@ -363,6 +363,10 @@ class _LoggingPanelState extends State<LoggingPanel> {
             radioService: widget.services.radio,
             lookup: widget.services.extensions.lookupCall,
             enqueueLookup: widget.services.lookupQueue.enqueue,
+            // force: false — unlike the explicit "Lookup all QSOs" action,
+            // a SEED batch shouldn't force-refresh a QSO that (somehow)
+            // already carries real online lookup data.
+            enqueueAllLookups: (qsos) => widget.services.lookupQueue.enqueueAll(qsos, force: false),
             activityControls: widget.loggingControls,
             refreshActivityControls: (qso) => widget.services.extensions
                 .loggingControls(widget.operation.data, qso: qso),

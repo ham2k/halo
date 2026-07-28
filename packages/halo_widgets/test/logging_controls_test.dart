@@ -72,6 +72,7 @@ void main() {
     List<String>? enabledBands,
     List<String>? enabledModes,
     void Function(Qso qso)? enqueueLookup,
+    void Function(Iterable<Qso> qsos)? enqueueAllLookups,
     Widget? trailing,
   }) {
     final controls = LoggingControls(
@@ -79,6 +80,7 @@ void main() {
       qsosRepository: qsos,
       qsos: existing,
       enqueueLookup: enqueueLookup,
+      enqueueAllLookups: enqueueAllLookups,
       interpretCommand: interpretCommand,
       interpretationUpdates: interpretationUpdates,
       onCommandMessageChanged: onCommandMessageChanged,
@@ -955,10 +957,14 @@ void main() {
     expect(enqueued.map((q) => q.uuid).toList(), [logged.single.uuid]);
   });
 
-  testWidgets('command actions that add QSOs (e.g. SEED) enqueue each added QSO for background lookup', (tester) async {
+  testWidgets('command actions that add QSOs (e.g. SEED) enqueue the whole batch for background lookup at once', (tester) async {
     // The extension side only attaches fast offline guesses when seeding
     // (network lookups there would stall the whole command) — the full
     // online enrichment is the queue's job, after the QSOs are on screen.
+    // The batch goes through enqueueAllLookups (not the per-QSO
+    // enqueueLookup) so it reuses the same "Lookup all QSOs" bulk mechanism
+    // and progress reporting, fired once the whole command has finished
+    // adding QSOs rather than QSO-by-QSO.
     Future<Map<String, dynamic>?> interpret(
       String input, [
       Map<String, dynamic>? operation,
@@ -976,8 +982,13 @@ void main() {
       };
     }
 
-    final enqueued = <Qso>[];
-    await tester.pumpWidget(host(interpretCommand: interpret, enqueueLookup: enqueued.add));
+    final enqueuedSingly = <Qso>[];
+    final enqueuedBatches = <List<Qso>>[];
+    await tester.pumpWidget(host(
+      interpretCommand: interpret,
+      enqueueLookup: enqueuedSingly.add,
+      enqueueAllLookups: (qsos) => enqueuedBatches.add(qsos.toList()),
+    ));
 
     await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'SEED');
     await tester.pump();
@@ -986,8 +997,10 @@ void main() {
 
     final logged = await waitForQsos(tester, 2);
     expect(logged, hasLength(2));
-    expect(enqueued.map((q) => q.theirCall).toList(), ['W1AW', 'K1ABC']);
-    expect(enqueued.map((q) => q.uuid).toSet(), logged.map((q) => q.uuid).toSet());
+    expect(enqueuedSingly, isEmpty, reason: 'SEED batches through enqueueAllLookups, not per-QSO enqueueLookup');
+    expect(enqueuedBatches, hasLength(1), reason: 'one batch for the whole command, not one call per QSO');
+    expect(enqueuedBatches.single.map((q) => q.theirCall).toList(), ['W1AW', 'K1ABC']);
+    expect(enqueuedBatches.single.map((q) => q.uuid).toSet(), logged.map((q) => q.uuid).toSet());
   });
 
   testWidgets('a manually entered name override does not duplicate onto a newly added call, but a grid override does', (tester) async {

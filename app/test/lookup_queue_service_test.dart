@@ -255,6 +255,32 @@ void main() {
     expect((await qsos.get(qso.uuid))!.theirName, 'Refreshed');
   });
 
+  test('enqueueAll(force: false) — the SEED path — still skips already-enriched QSOs', () async {
+    final qso = await qsos.add(operation.uuid, {
+      'their': {
+        'call': 'W1AW',
+        'guess': {'name': 'ARRL HQ'},
+        'lookups': [
+          {'source': 'qrz.com', 'name': 'ARRL HQ'},
+        ],
+      },
+    });
+
+    var calls = 0;
+    final queue = service((call, {required qso, required operation, bool online = true}) async {
+      calls += 1;
+      return {'guess': {'name': 'Refreshed'}};
+    });
+
+    // Unlike the explicit "Lookup all QSOs" refresh (which forces), a SEED
+    // batch has no reason to re-fetch a QSO that already carries real
+    // lookup data — force: false keeps that skip in place while still
+    // reporting batch progress.
+    queue.enqueueAll([qso], force: false);
+    await queue.idle;
+    expect(calls, 0, reason: 'force: false must still honor the already-enriched skip');
+  });
+
   test('a deleted QSO is left alone, and a failed or empty lookup does not stall the queue', () async {
     final deleted = await qsos.add(operation.uuid, {'their': {'call': 'W1AW'}});
     final failing = await qsos.add(operation.uuid, {'their': {'call': 'K1ABC'}});
@@ -346,5 +372,69 @@ void main() {
     final item = statusBar.items.firstWhere((i) => i.key == LookupQueueService.statusKey);
     expect(item.text, '2 of 2');
     expect(item.progressValue, 1.0);
+  });
+
+  test('plain enqueue() never touches the status bar, even with several queued together', () async {
+    final a = await qsos.add(operation.uuid, {'their': {'call': 'W1AW'}});
+    final b = await qsos.add(operation.uuid, {'their': {'call': 'K1ABC'}});
+    final c = await qsos.add(operation.uuid, {'their': {'call': 'N0CALL'}});
+
+    final queue = service((call, {required qso, required operation, bool online = true}) async {
+      await Future<void>.delayed(const Duration(milliseconds: 5));
+      return {'guess': {'name': 'ARRL HQ'}};
+    });
+
+    // Ordinary background enrichment — a callsign typed into the logging
+    // field, a QSO just saved — must never surface the "Callsign lookups"
+    // bar, however many happen to land close together and look, from the
+    // queue's perspective, like a batch.
+    queue.enqueue(a);
+    queue.enqueue(b);
+    queue.enqueue(c);
+    await queue.idle;
+
+    expect(
+      statusBar.items.where((i) => i.key == LookupQueueService.statusKey),
+      isEmpty,
+      reason: 'regular lookups are silent — only "Lookup all QSOs" and SEED batches (via enqueueAll) show progress',
+    );
+  });
+
+  test('enqueueAll reports progress for the whole batch — the SEED path', () async {
+    final a = await qsos.add(operation.uuid, {'their': {'call': 'W1AW'}});
+    final b = await qsos.add(operation.uuid, {'their': {'call': 'K1ABC'}});
+
+    final queue = service((call, {required qso, required operation, bool online = true}) async {
+      await Future<void>.delayed(const Duration(milliseconds: 5));
+      return {'guess': {'name': 'ARRL HQ'}};
+    });
+
+    // Mirrors how a SEED batch reaches the queue (logging_controls.dart's
+    // addQso command handling collects the whole batch and hands it to
+    // enqueueAllLookups, wired to enqueueAll) — a bulk insert, not a single
+    // typed callsign, so it's opted into progress.
+    queue.enqueueAll([a, b]);
+    await queue.idle;
+
+    final item = statusBar.items.firstWhere((i) => i.key == LookupQueueService.statusKey);
+    expect(item.text, '2 of 2');
+    expect(item.progressValue, 1.0);
+  });
+
+  test('a silent lookup in flight alongside a progress-worthy one does not inflate its count', () async {
+    final silent = await qsos.add(operation.uuid, {'their': {'call': 'W1AW'}});
+    final tracked = await qsos.add(operation.uuid, {'their': {'call': 'K1ABC'}});
+
+    final queue = service((call, {required qso, required operation, bool online = true}) async {
+      await Future<void>.delayed(const Duration(milliseconds: 5));
+      return {'guess': {'name': 'ARRL HQ'}};
+    });
+
+    queue.enqueue(silent);
+    queue.enqueueAll([tracked]);
+    await queue.idle;
+
+    final item = statusBar.items.firstWhere((i) => i.key == LookupQueueService.statusKey);
+    expect(item.text, '1 of 1', reason: 'the silent lookup must not count toward the displayed total');
   });
 }
