@@ -197,10 +197,7 @@ class _CallInfoPanelState extends State<CallInfoPanel> {
                           : Text.rich(
                               TextSpan(
                                 children: [
-                                  TextSpan(
-                                    text: flag,
-                                    style: emojiStyle(fontSize: theme.textTheme.bodyLarge?.fontSize ?? 16),
-                                  ),
+                                  flagSpan(flag, style: theme.textTheme.bodyLarge ?? const TextStyle(fontSize: 16)),
                                   TextSpan(text: ' $country', style: theme.textTheme.bodyLarge),
                                 ],
                               ),
@@ -240,7 +237,8 @@ class _CallInfoPanelState extends State<CallInfoPanel> {
         if (notes.isNotEmpty) ...[
           _sectionTitle(theme, t.notes),
           MarkdownBody(
-            data: notes.join('\n\n'),
+            data: flagsInMarkdown(notes.join('\n\n'), fontSize: theme.textTheme.bodyMedium?.fontSize ?? 14),
+            sizedImageBuilder: flagMarkdownImageBuilder,
             styleSheet: MarkdownStyleSheet.fromTheme(theme),
           ),
         ],

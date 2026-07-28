@@ -38,6 +38,7 @@ import 'package:flutter/services.dart';
 import 'package:halo_core/halo_core.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 
+import 'flags.dart';
 import 'form_renderer.dart';
 import 'icon_resolver.dart';
 import 'keyboard_dismiss.dart';
@@ -5559,7 +5560,8 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     final message = _commandMessage;
     if (message != null) {
       return MarkdownBody(
-        data: message,
+        data: flagsInMarkdown(message, fontSize: theme.textTheme.bodyMedium?.fontSize ?? 14),
+        sizedImageBuilder: flagMarkdownImageBuilder,
         styleSheet: MarkdownStyleSheet.fromTheme(theme).copyWith(
           p: theme.textTheme.bodyMedium?.copyWith(
             // The info area sits on the panel's tertiaryContainer fill.
@@ -5805,7 +5807,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     // height whether or not a location resolved.
     final firstLine = <Widget>[
       if (flag != null && flag.isNotEmpty) ...[
-        Text(flag, style: theme.textTheme.bodyMedium?.copyWith(shadows: _glyphGlow(theme))),
+        flagGlyph(flag, fontSize: theme.textTheme.bodyMedium?.fontSize ?? 14, shadows: _glyphGlow(theme)),
         const SizedBox(width: 6),
       ],
       Expanded(
@@ -6024,7 +6026,8 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     final markdown = rest.isEmpty
         ? null
         : MarkdownBody(
-            data: rest,
+            data: flagsInMarkdown(rest, fontSize: textStyle?.fontSize ?? 14),
+            sizedImageBuilder: flagMarkdownImageBuilder,
             styleSheet: MarkdownStyleSheet.fromTheme(theme).copyWith(
               p: textStyle,
               // A link blue tuned per theme so the note's socials/URLs read
@@ -6042,7 +6045,12 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(leadMatch.group(0)!, style: textStyle?.copyWith(shadows: _glyphGlow(theme))),
+        // A flag decodes and gets the same Windows image fallback as every
+        // other flag site; any other pictographic emoji still needs
+        // emojiFontFamily (via flagGlyph's non-flag branch) instead of
+        // textStyle's Roboto, or it renders as nothing at all — same gap
+        // #451's review found and fixed at call_info_panel.dart's flag Text.
+        flagGlyph(leadMatch.group(0)!, fontSize: textStyle?.fontSize ?? 14, shadows: _glyphGlow(theme)),
         if (markdown != null) ...[
           const SizedBox(width: 4),
           Flexible(child: markdown),

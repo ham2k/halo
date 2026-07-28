@@ -17,6 +17,7 @@ import 'package:flutter/rendering.dart' show RenderAbstractViewport;
 import 'package:halo_core/halo_core.dart';
 
 import 'activity_controls.dart';
+import 'flags.dart';
 import 'format_utils.dart';
 import 'icon_resolver.dart';
 import 'resizable_split_view.dart' show PaneSafeArea;
@@ -524,7 +525,14 @@ class _QsoListState extends State<QsoList> {
     final callsignWidth = longestCall.isEmpty
         ? 0.0
         : textWidth(context, longestCall, callStyle);
-    final flagWidth = longestFlag.isEmpty ? 0.0 : textWidth(context, longestFlag, emojiStyle());
+    // On the image fallback (flagEmojiNeedsImageFallback), every flag renders
+    // at the same fixed SVG size regardless of which entity it is, so that's
+    // the width to reserve instead of measuring emoji glyph text.
+    final flagWidth = longestFlag.isEmpty
+        ? 0.0
+        : flagEmojiNeedsImageFallback
+            ? flagGlyphDefaultFontSize * 4 / 3
+            : textWidth(context, longestFlag, emojiStyle());
     final stateWidth = longestState.isEmpty ? 0.0 : textWidth(context, longestState, monoDim);
     final dxStateWidth = flagWidth > stateWidth ? flagWidth : stateWidth;
 
@@ -653,7 +661,7 @@ class _QsoListState extends State<QsoList> {
       final dxState = _dxStateContentFor(qso, ourEntityPrefix);
       Widget? dxStateField;
       if (dxState != null) {
-        dxStateField = Text(dxState.text, style: dxState.isFlag ? emojiStyle() : rowMonoDim);
+        dxStateField = dxState.isFlag ? flagGlyph(dxState.text) : Text(dxState.text, style: rowMonoDim);
         // Values coming from the callsign guess rather than an entered field
         // paint a touch fainter (80%) so guessed-but-unconfirmed reads as
         // such — the flag is an emoji, whose color the text style can't

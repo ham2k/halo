@@ -102,6 +102,11 @@ bool get isMobilePlatform =>
 /// `LoggingControls`'s `_numbersAndPunctuationOnIOS`.
 bool get isIOSPlatform => !kIsWeb && defaultTargetPlatform == TargetPlatform.iOS;
 
+/// True on Windows specifically — used by `flags.dart`'s image-based flag
+/// fallback (Flutter's Windows-desktop Skia text layout can't compose a
+/// multi-codepoint flag emoji into a single glyph, ham2k/app-halo-dist#APP-29).
+bool get isWindowsPlatform => !kIsWeb && defaultTargetPlatform == TargetPlatform.windows;
+
 /// Lowercase platform token for data-driven platform filtering — settings'
 /// `environment` attribute (docs/extensions/settings.md) and server notices
 /// (app/lib/services/notices.dart's `_knownPlatforms`) both filter on this
