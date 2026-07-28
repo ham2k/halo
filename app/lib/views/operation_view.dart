@@ -1324,13 +1324,13 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
         );
         final spotsPanel = KeyedSubtree(
           key: _spotsKey,
-          child: _KeepAlive(
+          child: _LazyTab(
             child: SpotsPanel(operation: operation, services: widget.services, onSuggestQso: _suggestQso),
           ),
         );
         final mapPanel = KeyedSubtree(
           key: _mapKey,
-          child: _KeepAlive(
+          child: _LazyTab(
             // Stretches to the split's very edge: the divider overlay's
             // near-invisible wash (see resizable_split_view.dart) is what
             // keeps the native map view from stealing drags on the strip.
@@ -1625,6 +1625,42 @@ class _KeepAliveState extends State<_KeepAlive> with AutomaticKeepAliveClientMix
   Widget build(BuildContext context) {
     super.build(context);
     return widget.child;
+  }
+}
+
+/// Like [_KeepAlive], but also defers [child]'s first build by
+/// [kTabScrollDuration] behind a placeholder — for panels (Spots, Map) whose
+/// first inflation is expensive enough to stutter if it lands on the same
+/// frames as the tab-switch animation that reveals them. Only defers once:
+/// [AutomaticKeepAliveClientMixin] keeps the real child alive afterward, so
+/// switching away and back doesn't show the placeholder again.
+class _LazyTab extends StatefulWidget {
+  final Widget child;
+
+  const _LazyTab({required this.child});
+
+  @override
+  State<_LazyTab> createState() => _LazyTabState();
+}
+
+class _LazyTabState extends State<_LazyTab> with AutomaticKeepAliveClientMixin {
+  bool _ready = false;
+
+  @override
+  void initState() {
+    super.initState();
+    Future.delayed(kTabScrollDuration, () {
+      if (mounted) setState(() => _ready = true);
+    });
+  }
+
+  @override
+  bool get wantKeepAlive => true;
+
+  @override
+  Widget build(BuildContext context) {
+    super.build(context);
+    return _ready ? widget.child : const Center(child: CircularProgressIndicator());
   }
 }
 
