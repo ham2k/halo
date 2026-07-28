@@ -102,6 +102,12 @@ bool get isMobilePlatform =>
 /// `LoggingControls`'s `_numbersAndPunctuationOnIOS`.
 bool get isIOSPlatform => !kIsWeb && defaultTargetPlatform == TargetPlatform.iOS;
 
+/// True in a browser. A named getter rather than bare `kIsWeb` at each call
+/// site, because [isWindowedPlatform] deliberately lumps web in with desktop
+/// — web is desktop-*shaped* but has no filesystem, so anything about files
+/// has to ask this instead.
+bool get isWebPlatform => kIsWeb;
+
 /// The **product name**, tailored per platform so each build reads naturally.
 /// Shown wherever the app names itself in the UI (splash, home header + right
 /// pane, About, onboarding). It stands beneath a HAM2K graphic — which already

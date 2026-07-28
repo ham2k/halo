@@ -10,7 +10,7 @@
   "nameLabel": "Name",
   "locationLabel": "Loc",
   "unconfigured": "NAQP (not set up)",
-  "adifExport": "Contest ADIF",
-  "cabrilloExport": "Cabrillo",
+  "adifExport": "ADIF for {{contest}}",
+  "cabrilloExport": "Cabrillo for {{contest}}",
   "ourExchangeSubtitle": "{{name}} in {{location}}"
 }

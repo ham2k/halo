@@ -5,8 +5,8 @@
   "ourZonePlaceholder": "ej. 5",
   "zoneLabel": "Zona",
   "unconfigured": "CQ WW (sin configurar)",
-  "adifExport": "ADIF de concurso",
-  "cabrilloExport": "Cabrillo",
+  "adifExport": "ADIF para {{contest}}",
+  "cabrilloExport": "Cabrillo para {{contest}}",
   "activityLabel": "Concursos CQ WW",
   "ourZoneSubtitle": "Zona {{zone}}"
 }

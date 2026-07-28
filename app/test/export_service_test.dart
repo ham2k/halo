@@ -69,7 +69,7 @@ void main() {
     final files = await exports.generateExports(operation, options);
     expect(files, hasLength(1));
     expect(files.single['mimeType'], 'application/json');
-    expect(files.single['filename'], '2026-07-15.N0CALL.${operation.uuid.split('-').first}.qson');
+    expect(files.single['filename'], '2026-07-15 N0CALL ${operation.uuid.split('-').first}.qson');
 
     final decoded = jsonDecode(files.single['content'] as String) as Map<String, dynamic>;
     final operationData = decoded['operation'] as Map<String, dynamic>;
@@ -79,6 +79,239 @@ void main() {
     final qsoList = decoded['qsos'] as List;
     expect(qsoList, hasLength(1));
     expect((qsoList.single as Map)['their'], {'call': 'W1AW'});
+  });
+
+  // A multi-operator station logs everything in one operation but owes each
+  // callsign its own submission, so the hooks are asked once per call against
+  // an operation cloned to carry only that one.
+  group('multiple station callsigns', () {
+    late OperationsRepository operations;
+    late QsosRepository qsos;
+
+    setUp(() {
+      operations = OperationsRepository(db);
+      qsos = QsosRepository(db);
+    });
+
+    Future<Operation> multiOp() async {
+      final created = await operations.create(stationCall: 'N0CALL, W1AW', title: 'Multi Op');
+      await qsos.add(created.uuid, {
+        'our': {'call': 'N0CALL'},
+        'their': {'call': 'DL1ABC'},
+        'band': '20m',
+        'mode': 'SSB',
+        'startAtMillis': DateTime.utc(2026, 7, 15, 12).millisecondsSinceEpoch,
+      });
+      // The two operators working each other — valid in the log, impossible
+      // in W1AW's own submission.
+      await qsos.add(created.uuid, {
+        'our': {'call': 'N0CALL'},
+        'their': {'call': 'W1AW'},
+        'band': '40m',
+        'mode': 'CW',
+        'startAtMillis': DateTime.utc(2026, 7, 15, 13).millisecondsSinceEpoch,
+      });
+      return (await operations.get(created.uuid))!;
+    }
+
+    // Claiming and filtering is a MULTI-operator rule. Applied to an ordinary
+    // single-station log it would silently drop a QSO the operator made with
+    // their own other rig — from every file, the whole-log backup included.
+    test('a single-callsign operation is passed through untouched', () async {
+      final operations = OperationsRepository(db);
+      final qsos = QsosRepository(db);
+      final created = await operations.create(stationCall: 'N0CALL', title: 'Solo');
+      await qsos.add(created.uuid, {
+        // Worked their own callsign — a second rig at the same station.
+        'our': {'call': 'OTHERCALL'},
+        'their': {'call': 'N0CALL'},
+        'band': '20m',
+        'mode': 'SSB',
+        'startAtMillis': DateTime.utc(2026, 7, 15, 12).millisecondsSinceEpoch,
+      });
+      final op = (await operations.get(created.uuid))!;
+
+      final extensions = _ExtensionsWithHost(_CapturingHost());
+      final service = ExportService(extensions: extensions, qsos: qsos, settings: settings);
+      await service.getExportOptions(op);
+
+      final sent = extensions.optionRequests.single['qsos'] as List;
+      expect(sent, hasLength(1), reason: 'nothing is dropped when there is only one callsign');
+      expect(((sent.single as Map)['our'] as Map)['call'], 'OTHERCALL',
+          reason: 'the logged operator call is left alone, not rewritten');
+    });
+
+    test('the comma-separated field parses into one call per submission', () async {
+      final op = await multiOp();
+      expect(op.stationCalls, ['N0CALL', 'W1AW']);
+    });
+
+    test('a single call — the normal case — still yields exactly one', () async {
+      expect(operation.stationCalls, ['N0CALL']);
+    });
+
+    test('a repeated call is a typo, not a request for two identical file sets', () async {
+      final created = await operations.create(stationCall: 'N0CALL, n0call ', title: 'Dupe');
+      expect((await operations.get(created.uuid))!.stationCalls, ['N0CALL']);
+    });
+
+    test('the hooks are asked once per call, each seeing only its own', () async {
+      final extensions = _ExtensionsWithHost(_CapturingHost());
+      final service = ExportService(extensions: extensions, qsos: qsos, settings: settings);
+
+      await service.getExportOptions(await multiOp());
+
+      expect(extensions.optionRequests, hasLength(2));
+      expect(
+        extensions.optionRequests.map((r) => (r['operation'] as Map)['stationCall']),
+        ['N0CALL', 'W1AW'],
+        reason: 'each hook call sees a single-station operation, so filenames and '
+            'ADIF/Cabrillo callsign fields name the right one without the hooks knowing',
+      );
+    });
+
+    test("every QSO is claimed by whichever call is exporting", () async {
+      final extensions = _ExtensionsWithHost(_CapturingHost());
+      final service = ExportService(extensions: extensions, qsos: qsos, settings: settings);
+
+      await service.getExportOptions(await multiOp());
+
+      List<String?> ourCalls(int index) => [
+            for (final qso in extensions.optionRequests[index]['qsos'] as List)
+              ((qso as Map)['our'] as Map)['call'] as String?,
+          ];
+      expect(ourCalls(0), everyElement('N0CALL'));
+      expect(ourCalls(1), everyElement('W1AW'), reason: "W1AW's log is W1AW's, not a copy of N0CALL's");
+    });
+
+    // Otherwise W1AW's file claims a QSO in which W1AW worked W1AW, which no
+    // program will accept.
+    test('the two operators working each other drops out of the second one\'s log', () async {
+      final extensions = _ExtensionsWithHost(_CapturingHost());
+      final service = ExportService(extensions: extensions, qsos: qsos, settings: settings);
+
+      await service.getExportOptions(await multiOp());
+
+      expect((extensions.optionRequests[0]['qsos'] as List), hasLength(2), reason: 'N0CALL worked both');
+      expect((extensions.optionRequests[1]['qsos'] as List), hasLength(1), reason: 'W1AW cannot have worked itself');
+    });
+
+    test('generating rebuilds the payload for the call the option was listed under', () async {
+      final host = _CapturingHost();
+      final service = ExportService(extensions: _ExtensionsWithHost(host), qsos: qsos, settings: settings);
+      final op = await multiOp();
+
+      await service.generateExports(op, [
+        {'hookKey': 'adif', 'exportType': 'adif', 'stationCall': 'W1AW'},
+      ]);
+
+      final args = host.calls.single['args'] as Map;
+      expect((args['operation'] as Map)['stationCall'], 'W1AW');
+    });
+  });
+
+  // "Use compact file names" is a setting the CORE owns but the EXTENSIONS
+  // apply — each hook builds its own name from it (`exportFilename` in the
+  // SDK). So the only thing the core can be held to is that the setting
+  // actually reaches both hook calls, and that the name the panel showed is
+  // the name the file gets.
+  group('filename form', () {
+    test('the QSON dump takes both forms, so developer mode is not an exception', () async {
+      await settings.setDeveloperMode(true);
+      expect(
+        (await exports.getExportOptions(operation)).single['filename'],
+        '2026-07-15 N0CALL ${operation.uuid.split('-').first}.qson',
+      );
+
+      await settings.setUseCompactFileNames(true);
+      expect(
+        (await exports.getExportOptions(operation)).single['filename'],
+        'N0CALL-20260715-${operation.uuid.split('-').first}.qson',
+      );
+    });
+
+    test('the setting reaches the hooks that list options AND the ones that generate', () async {
+      final qsos = QsosRepository(db);
+      final extensions = _ExtensionsWithHost(_CapturingHost());
+      final service = ExportService(extensions: extensions, qsos: qsos, settings: settings);
+
+      await settings.setUseCompactFileNames(true);
+      await service.getExportOptions(operation);
+      expect(extensions.optionRequests.single['compactFilenames'], isTrue);
+
+      await service.generateExports(operation, [
+        {'hookKey': 'adif', 'exportType': 'adif'},
+      ]);
+      final host = extensions.host as _CapturingHost;
+      expect((host.calls.single['args'] as Map)['compactFilenames'], isTrue);
+    });
+
+    // Most exports exist to be uploaded — a park's log to POTA's servers, a
+    // Cabrillo to a sponsor — and none of those want the operator's notes
+    // about who they met. The whole-log backup is the exception.
+    test('private data is withheld by default and released by the setting', () async {
+      final host = _CapturingHost();
+      final service = ExportService(extensions: _ExtensionsWithHost(host), qsos: QsosRepository(db), settings: settings);
+
+      await service.generateExports(operation, [
+        {'hookKey': 'pota', 'exportType': 'pota-adif:US-1234'},
+      ]);
+      expect((host.calls.single['args'] as Map)['includePrivateData'], isFalse);
+
+      host.calls.clear();
+      await settings.setIncludePrivateData(true);
+      await service.generateExports(operation, [
+        {'hookKey': 'pota', 'exportType': 'pota-adif:US-1234'},
+      ]);
+      expect((host.calls.single['args'] as Map)['includePrivateData'], isTrue);
+    });
+
+    test('an export declaring alwaysIncludePrivateData ignores the setting', () async {
+      final host = _CapturingHost();
+      final service = ExportService(extensions: _ExtensionsWithHost(host), qsos: QsosRepository(db), settings: settings);
+
+      // The setting is off — the full-log backup still gets everything.
+      expect(settings.includePrivateData, isFalse);
+      await service.generateExports(operation, [
+        {'hookKey': 'adif', 'exportType': 'adif', 'alwaysIncludePrivateData': true},
+      ]);
+      expect((host.calls.single['args'] as Map)['includePrivateData'], isTrue);
+    });
+
+    // The panel lists a name and then writes the file — those have to be the
+    // same string. They can diverge because `generateExport` is handed only
+    // the QSOs the option's refType covers, so a hook recomputing the name
+    // dates it from a different first QSO than the listing did.
+    test('the name the panel offered wins over the one the hook returns', () async {
+      final qsos = QsosRepository(db);
+      final service = ExportService(
+        extensions: _ExtensionsWithHost(_CapturingHost()),
+        qsos: qsos,
+        settings: settings,
+      );
+
+      final files = await service.generateExports(operation, [
+        {'hookKey': 'cqww', 'exportType': 'cabrillo', 'filename': '2026-07-15 N0CALL for CQ-WW-CW.log'},
+      ]);
+
+      // _CapturingHost answers '<key>.txt' for everything.
+      expect(files.single['filename'], '2026-07-15 N0CALL for CQ-WW-CW.log');
+    });
+
+    test('a hook that offers no name still gets the one it generates', () async {
+      final qsos = QsosRepository(db);
+      final service = ExportService(
+        extensions: _ExtensionsWithHost(_CapturingHost()),
+        qsos: qsos,
+        settings: settings,
+      );
+
+      final files = await service.generateExports(operation, [
+        {'hookKey': 'cqww', 'exportType': 'cabrillo'},
+      ]);
+
+      expect(files.single['filename'], 'cqww.txt');
+    });
   });
 
   group('an export only claims the segments its activity ran in', () {

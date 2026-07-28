@@ -11,7 +11,7 @@
   "theirPowerLabel": "Pot",
   "theirStateLabel": "Est/Prov",
   "unconfigured": "ARRL DX (sin configurar)",
-  "adifExport": "ADIF de concurso",
-  "cabrilloExport": "Cabrillo",
+  "adifExport": "ADIF para {{contest}}",
+  "cabrilloExport": "Cabrillo para {{contest}}",
   "activityLabel": "Concursos ARRL DX"
 }

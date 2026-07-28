@@ -70,7 +70,10 @@ void main() {
     ) as List).cast<Map>();
 
     expect(options.length, 2);
-    expect(options.map((o) => o['label']), ['POTA US-0001', 'POTA US-0002']);
+    // The FORMAT leads the label: a park activated on a contest weekend
+    // offers several files for the same reference, and the reference alone
+    // said nothing about which of them a row was.
+    expect(options.map((o) => o['label']), ['ADIF for POTA US-0001', 'ADIF for POTA US-0002']);
     // The exportType carries which park, since that is all the core gives back.
     expect(options.map((o) => o['exportType']), ['pota-adif:US-0001', 'pota-adif:US-0002']);
     // Distinct filenames, so two selected exports don't collide on disk.
@@ -179,5 +182,58 @@ void main() {
       ),
       throwsA(anything),
     );
+  }, timeout: const Timeout(Duration(seconds: 60)));
+
+  // The private-data setting reaches the ADIF generator only if the activity
+  // FORWARDS it across the delegation. Nothing about the option listing shows
+  // whether it did, so this is the only place a dropped forward would be
+  // caught — and dropping it would silently leak the operator's notes into
+  // every uploaded park log, or silently strip them when asked not to.
+  test('an activity export forwards the private-data flag to the ADIF it delegates to', () async {
+    if (bundlesMissing()) {
+      markTestSkipped('bundles not built');
+      return;
+    }
+    final host = await startHost();
+
+    Future<String> adifFor({required bool includePrivateData}) async {
+      final result = await host.invokeHook(
+        'export',
+        key: 'pota',
+        method: 'generateExport',
+        args: {
+          'operation': operation(['US-0001']),
+          'qsos': [
+            {
+              ...qsos.first,
+              'their': {'call': 'W0ABC', 'sent': '59', 'name': 'Alice', 'city': 'Dayton', 'grid': 'EM79'},
+              'notes': 'met at Hamvention',
+            },
+          ],
+          'exportType': 'pota-adif:US-0001',
+          'includePrivateData': includePrivateData,
+        },
+        timeout: const Duration(seconds: 20),
+      ) as Map;
+      return result['content'] as String;
+    }
+
+    final withheld = await adifFor(includePrivateData: false);
+    expect(withheld, contains('<CALL:5>W0ABC'), reason: 'the contact itself is always there');
+    for (final private in ['Alice', 'Dayton', 'EM79', 'Hamvention']) {
+      expect(withheld, isNot(contains(private)), reason: '$private is the operator\'s own note');
+    }
+
+    final released = await adifFor(includePrivateData: true);
+    for (final private in ['Alice', 'Dayton', 'EM79', 'Hamvention']) {
+      expect(released, contains(private));
+    }
+
+    // The operation's own title is the operator's words too, and it sits in
+    // the preamble rather than in a QSO record — so it needs gating in its
+    // own right, or the switch strips every field a program might read while
+    // still shipping the one line the operator wrote.
+    expect(withheld, isNot(contains('Park run')));
+    expect(released, contains('Park run'));
   }, timeout: const Timeout(Duration(seconds: 60)));
 }

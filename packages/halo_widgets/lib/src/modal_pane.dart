@@ -52,6 +52,12 @@ Future<T?> showHaloDialog<T>({
 /// Action rows are the pane's own job (every current pane's buttons depend
 /// on its State — _busy, _testing, mode — which a route-level builder can't
 /// see), so there is deliberately no `actions` parameter here.
+///
+/// [headerActions] is the exception, and a narrow one: buttons that belong to
+/// the pane as a whole rather than to its content — the Exports pane's
+/// settings gear. Unlike [trailing] they sit ALONGSIDE the close button
+/// rather than replacing it, which is what a pane needs when it wants an
+/// extra control and the usual dismissal both.
 Future<T?> showModalPane<T>(
   BuildContext context, {
   required WidgetBuilder builder,
@@ -60,6 +66,7 @@ Future<T?> showModalPane<T>(
   bool scrollable = true,
   Widget? leading,
   Widget? trailing,
+  List<Widget> headerActions = const [],
   String closeLabel = 'Close',
 }) => Navigator.of(context).push(
   ModalPaneRoute<T>(
@@ -69,6 +76,7 @@ Future<T?> showModalPane<T>(
     scrollable: scrollable,
     leading: leading,
     trailing: trailing,
+    headerActions: headerActions,
     closeLabel: closeLabel,
   ),
 );
@@ -80,6 +88,9 @@ class ModalPaneRoute<T> extends PopupRoute<T> {
   final bool _barrierDismissible;
   final Widget? leading;
   final Widget? trailing;
+
+  /// Pane-level buttons shown before the close button — see [showModalPane].
+  final List<Widget> headerActions;
 
   /// The dialog presentation's close-button accessible name (it is icon-only,
   /// and the app has no hover tooltips) — English default so the package stays
@@ -99,6 +110,7 @@ class ModalPaneRoute<T> extends PopupRoute<T> {
     this.scrollable = true,
     this.leading,
     this.trailing,
+    this.headerActions = const [],
     this.closeLabel = 'Close',
   });
 
@@ -176,6 +188,7 @@ class _ModalPaneScaffold extends StatelessWidget {
           leading: route.leading ?? macOSAwareBackButton(context),
           title: route.title == null ? null : shrinkToFitText(Text(route.title!)),
           actions: [
+            ...route.headerActions,
             if (route.trailing != null) route.trailing!,
             windowsCaptionSpacer(context),
           ],
@@ -238,10 +251,16 @@ class _ModalPaneScaffold extends StatelessWidget {
                         HaloDialogHeader(
                           leading: route.leading,
                           title: route.title == null ? null : Text(route.title!),
-                          trailing: route.trailing ?? IconButton(
-                            icon: Icon(Icons.close, semanticLabel: route.closeLabel),
-                            // maybePop — see the barrier handler above.
-                            onPressed: () => Navigator.of(context).maybePop(),
+                          trailing: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              ...route.headerActions,
+                              route.trailing ?? IconButton(
+                                icon: Icon(Icons.close, semanticLabel: route.closeLabel),
+                                // maybePop — see the barrier handler above.
+                                onPressed: () => Navigator.of(context).maybePop(),
+                              ),
+                            ],
                           ),
                         ),
                         // Surface-coloured body framed by the bands. Material,

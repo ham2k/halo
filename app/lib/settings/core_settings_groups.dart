@@ -401,6 +401,57 @@ class PrivacySettingsGroup extends SettingsGroup {
   }
 }
 
+/// Export settings — today just the filename form. Declared here as well as
+/// being reachable from the Exports panel's own gear, because a setting that
+/// exists only behind a button inside one panel can't be found by anyone who
+/// doesn't already know where it lives (settings_registry.dart).
+class ExportsSettingsGroup extends SettingsGroup {
+  final SettingsService settings;
+
+  ExportsSettingsGroup(this.settings);
+
+  @override
+  String get key => 'exports';
+
+  @override
+  String get title => t.operation.export.settingsTitle;
+
+  @override
+  int get order => 25;
+
+  @override
+  Listenable? get listenable => settings;
+
+  @override
+  Future<List<Map<String, dynamic>>> buildElements() async {
+    final names = t.operation.export.compactFileNames;
+    final private = t.operation.export.includePrivateData;
+    return [
+      _toggle(
+        key: 'useCompactFileNames',
+        label: names.title,
+        icon: 'file-code-outline',
+        description: settings.useCompactFileNames ? names.descriptionOn : names.descriptionOff,
+        value: settings.useCompactFileNames,
+      ),
+      _toggle(
+        key: 'includePrivateData',
+        label: private.title,
+        icon: 'account-lock',
+        description: '${settings.includePrivateData ? private.descriptionOn : private.descriptionOff}'
+            ' — ${private.note}',
+        value: settings.includePrivateData,
+      ),
+    ];
+  }
+
+  @override
+  Future<void> commit(String fieldKey, dynamic value) async {
+    if (value is! bool) return;
+    await settings.setSettingValue(SettingsService.exportsGroup, fieldKey, value);
+  }
+}
+
 /// Sync's declarative representation for All Settings: the enabled toggle
 /// (routed through HaLoServices so the engine starts) and a read-only
 /// account line. The dedicated Sync panel remains the full management UI.

@@ -90,7 +90,7 @@ Shipped as `extensions/sdk/src/activityExports.ts` —
 `activityExportHook(rules)`, registered by `pota` and `sota`. **It needed
 nothing from the core.** `exportType` is opaque to the core and round-trips
 verbatim into `generateExport`, and the Exports panel already keys selections
-by `hookKey:exportType` (`operation_export_screen.dart:68`) so several options
+by `hookKey:exportType` (`operation_export_panel.dart`'s `_selectionKey`) so several options
 from one hook are independently selectable — encoding the reference into the
 exportType (`pota-adif:US-0001`) is enough. `generateExport` narrows the
 operation to that one activation ref and delegates to the `adif` extension in

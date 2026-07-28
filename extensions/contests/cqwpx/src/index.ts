@@ -11,7 +11,7 @@
 // only DECLARES the sequence; the core allocates from it inside the QSO insert
 // (docs/design/contests.md §5.8), so neither failure is reachable.
 
-import { contestScorer, defineExtension } from "@ham2k/halo-extension-sdk"
+import { contestScorer, defineExtension, exportFilename, startMillisOf } from "@ham2k/halo-extension-sdk"
 import type {
   ExportOption,
   ExportOptionsRequest,
@@ -205,13 +205,52 @@ function reportFor(qso: Record<string, JSONValue>, side: 'our' | 'their'): strin
   return str(qso.mode) === 'CW' || str(qso.mode) === 'RTTY' ? '599' : '59'
 }
 
+/// The contest's own name for this operation's file — the mode is part of
+/// the identity here, since CQ WPX CW and CQ WPX SSB are separate contests
+/// with separate submissions.
+function contestTag(operation: Record<string, JSONValue>): string {
+  const mode = str(refOfType(operation, TYPE)?.mode)
+  return `CQ-WPX-${mode || 'DX'}`
+}
+
+function filenameFor(
+  operation: Record<string, JSONValue>,
+  qsos: Record<string, JSONValue>[],
+  extension: string,
+  compact?: boolean,
+): string {
+  return exportFilename({
+    stationCall: operation.stationCall,
+    activity: contestTag(operation),
+    startAtMillis: startMillisOf(operation, qsos),
+    extension,
+    compact,
+  })
+}
+
 const ExportHook = {
   async suggestExportOptions(args: ExportOptionsRequest, ctx: HookContext): Promise<ExportOption[]> {
     if (!refOfType(args.operation, TYPE)) return []
     const t = tFor(ctx)
+    const named = (extension: string) =>
+      filenameFor(args.operation, args.qsos ?? [], extension, args.compactFilenames)
     return [
-      { exportType: 'contest-adif', format: 'adif', label: t('adifExport'), selectedByDefault: true, refType: TYPE },
-      { exportType: 'cabrillo', format: 'cabrillo', label: t('cabrilloExport'), selectedByDefault: true, refType: TYPE },
+      {
+        exportType: 'contest-adif',
+        format: 'adif',
+        label: t('adifExport', { contest: manifest.shortName }),
+        filename: named('adi'),
+        selectedByDefault: true,
+        refType: TYPE,
+      },
+      {
+        exportType: 'cabrillo',
+        format: 'cabrillo',
+        label: t('cabrilloExport', { contest: manifest.shortName }),
+        filename: named('log'),
+        selectedByDefault: true,
+        refType: TYPE,
+      },
     ]
   },
 
@@ -227,7 +266,6 @@ const ExportHook = {
     const operation = args.operation
     const mode = str(refOfType(operation, TYPE)?.mode)
     const ourCall = str(operation.stationCall)
-    const stamp = `CQ-WPX-${mode || 'DX'}-${ourCall || 'log'}`.replace(/[^A-Za-z0-9_-]+/g, '-')
 
     if (args.exportType === 'cabrillo') {
       const content = qsonToCabrillo(args.qsos, {
@@ -246,7 +284,11 @@ const ExportHook = {
           serial(qso, 'theirSerial') || '0',
         ],
       })
-      return { filename: `${stamp}.log`, mimeType: 'text/plain', content }
+      return {
+        filename: filenameFor(operation, args.qsos, 'log', args.compactFilenames),
+        mimeType: 'text/plain',
+        content,
+      }
     }
 
     const { hooks } = await import("@ham2k/halo-extension-sdk")
@@ -257,10 +299,13 @@ const ExportHook = {
       operation: args.operation,
       qsos: args.qsos,
       exportType: 'adif',
+      // Forwarded, or the delegate defaults to withholding and the user's
+      // "include private info" setting silently does nothing here.
+      includePrivateData: args.includePrivateData,
     })
     const adif = entries.find((e) => e.ok)
     return {
-      filename: `${stamp}.adi`,
+      filename: filenameFor(operation, args.qsos, 'adi', args.compactFilenames),
       mimeType: 'text/plain',
       content: ((adif?.value as ExportResult | undefined)?.content) ?? '',
     }

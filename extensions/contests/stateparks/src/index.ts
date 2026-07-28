@@ -21,7 +21,7 @@
 //   * Ohio exchanges a three-letter park abbreviation, which is this milestone's
 //     `kind: 'options'` field — 76 codes, searched, Space to accept.
 
-import { contestScorer, defineExtension } from "@ham2k/halo-extension-sdk"
+import { contestScorer, defineExtension, exportFilename, startMillisOf } from "@ham2k/halo-extension-sdk"
 import type {
   ActivitySuggestion,
   ExportOption,
@@ -339,11 +339,36 @@ const AdifFieldsHook = {
   },
 }
 
+/// The contest's own name for this operation's file — the event key, since the
+/// four events are four separate submissions. Falls back to the extension's
+/// short name, so an operation whose ref names an event we don't know still
+/// gets a filename to show in the export list.
+function contestTag(operation: Record<string, JSONValue>): string {
+  return eventOn(operation)?.key ?? manifest.shortName
+}
+
+function filenameFor(
+  operation: Record<string, JSONValue>,
+  qsos: Record<string, JSONValue>[],
+  extension: string,
+  compact?: boolean,
+): string {
+  return exportFilename({
+    stationCall: operation.stationCall,
+    activity: contestTag(operation),
+    startAtMillis: startMillisOf(operation, qsos),
+    extension,
+    compact,
+  })
+}
+
 const ExportHook = {
   async suggestExportOptions(args: ExportOptionsRequest, ctx: HookContext): Promise<ExportOption[]> {
     const event = eventOn(args.operation)
     if (!event) return []
     const t = tFor(ctx)
+    const named = (extension: string) =>
+      filenameFor(args.operation, args.qsos ?? [], extension, args.compactFilenames)
 
     // A contest ADIF, on a different axis from POTA's own.
     //
@@ -363,10 +388,24 @@ const ExportHook = {
     // generator can build.
     const options: ExportOption[] = []
     if (event.exportsAdif) {
-      options.push({ exportType: 'contest-adif', format: 'adif', label: t('adifExport'), selectedByDefault: true, refType: TYPE })
+      options.push({
+        exportType: 'contest-adif',
+        format: 'adif',
+        label: t('adifExport', { contest: contestTag(args.operation) }),
+        filename: named('adi'),
+        selectedByDefault: true,
+        refType: TYPE,
+      })
     }
     if (event.exportsCabrillo) {
-      options.push({ exportType: 'cabrillo', format: 'cabrillo', label: t('cabrilloExport'), selectedByDefault: true, refType: TYPE })
+      options.push({
+        exportType: 'cabrillo',
+        format: 'cabrillo',
+        label: t('cabrilloExport', { contest: contestTag(args.operation) }),
+        filename: named('log'),
+        selectedByDefault: true,
+        refType: TYPE,
+      })
     }
     return options
   },
@@ -381,7 +420,6 @@ const ExportHook = {
     if (!event) return { filename: '', mimeType: '', content: '' }
 
     const ourCall = str(operation.stationCall)
-    const stamp = `${event.key}-${ourCall || 'log'}`.replace(/[^A-Za-z0-9_-]+/g, '-')
 
     if (args.exportType === 'cabrillo') {
       // Ohio's own layout: no signal reports, and a park column each side. The
@@ -418,7 +456,11 @@ const ExportHook = {
           theirCabrilloLocation(event, qso).padEnd(12, ' '),
         ],
       })
-      return { filename: `${stamp}.log`, mimeType: 'text/plain', content }
+      return {
+        filename: filenameFor(operation, args.qsos, 'log', args.compactFilenames),
+        mimeType: 'text/plain',
+        content,
+      }
     }
 
     const { hooks } = await import("@ham2k/halo-extension-sdk")
@@ -428,10 +470,13 @@ const ExportHook = {
       operation: args.operation,
       qsos: args.qsos,
       exportType: 'adif',
+      // Forwarded, or the delegate defaults to withholding and the user's
+      // "include private info" setting silently does nothing here.
+      includePrivateData: args.includePrivateData,
     })
     const adif = entries.find((e) => e.ok)
     return {
-      filename: `${stamp}.adi`,
+      filename: filenameFor(operation, args.qsos, 'adi', args.compactFilenames),
       mimeType: 'text/plain',
       content: ((adif?.value as ExportResult | undefined)?.content) ?? '',
     }

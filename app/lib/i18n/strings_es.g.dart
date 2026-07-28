@@ -647,7 +647,56 @@ class _Translations$operation$export$es extends Translations$operation$export$en
 	@override String get loading => 'Cargando opciones de exportación…';
 	@override String get noOptions => 'No hay formatos de exportación disponibles (¿el motor de extensiones aún está iniciando?)';
 	@override String get share => 'Compartir';
+	@override String get nothingSelected => 'Nada seleccionado';
+	@override String saveFiles({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count,
+		one: 'Guardar ${count} archivo',
+		other: 'Guardar ${count} archivos',
+	);
+	@override String shareFiles({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count,
+		one: 'Compartir ${count} archivo',
+		other: 'Compartir ${count} archivos',
+	);
+	@override String exportFiles({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count,
+		one: 'Exportar ${count} archivo',
+		other: 'Exportar ${count} archivos',
+	);
+	@override String downloadFiles({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count,
+		one: 'Descargar ${count} archivo',
+		other: 'Descargar ${count} archivos',
+	);
+	@override String saveCombined({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count,
+		one: 'Guardar ${count} archivo combinado',
+		other: 'Guardar ${count} archivos combinados',
+	);
+	@override String shareCombined({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count,
+		one: 'Compartir ${count} archivo combinado',
+		other: 'Compartir ${count} archivos combinados',
+	);
+	@override String exportCombined({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count,
+		one: 'Exportar ${count} archivo combinado',
+		other: 'Exportar ${count} archivos combinados',
+	);
+	@override String downloadCombined({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count,
+		one: 'Descargar ${count} archivo combinado',
+		other: 'Descargar ${count} archivos combinados',
+	);
+	@override String saveOne({required Object name}) => 'Guardar ${name}';
+	@override String shareOne({required Object name}) => 'Compartir ${name}';
+	@override String exportOne({required Object name}) => 'Exportar ${name}';
+	@override String downloadOne({required Object name}) => 'Descargar ${name}';
+	@override String get settingsButton => 'Ajustes de exportación';
+	@override String get settingsTitle => 'Ajustes de Exportación';
+	@override late final _Translations$operation$export$compactFileNames$es compactFileNames = _Translations$operation$export$compactFileNames$es._(_root);
+	@override late final _Translations$operation$export$includePrivateData$es includePrivateData = _Translations$operation$export$includePrivateData$es._(_root);
 	@override String saveSuccess({required Object path}) => 'Guardado en ${path}';
+	@override String shareSuccess({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count,
+		one: 'Se compartió ${count} archivo',
+		other: 'Se compartieron ${count} archivos',
+	);
+	@override String downloadSuccess({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count,
+		one: 'Se descargó ${count} archivo',
+		other: 'Se descargaron ${count} archivos',
+	);
 	@override String exportFailed({required Object error}) => 'Exportación fallida: ${error}';
 }
 
@@ -1009,6 +1058,31 @@ class _Translations$settings$panels$es extends Translations$settings$panels$en {
 	@override String get unavailableText => 'El motor de extensiones no pudo iniciarse, así que faltan los ajustes aportados por extensiones.';
 }
 
+// Path: operation.export.compactFileNames
+class _Translations$operation$export$compactFileNames$es extends Translations$operation$export$compactFileNames$en {
+	_Translations$operation$export$compactFileNames$es._(TranslationsEs root) : this._root = root, super.internal(root);
+
+	final TranslationsEs _root; // ignore: unused_field
+
+	// Translations
+	@override String get title => 'Usar nombres de archivo compactos';
+	@override String get descriptionOn => 'Nombres cortos pensados para los cargadores, como N0CALL@US-1234-20260727.adi';
+	@override String get descriptionOff => 'Nombres legibles, como 2026-07-27 N0CALL at US-1234.adi';
+}
+
+// Path: operation.export.includePrivateData
+class _Translations$operation$export$includePrivateData$es extends Translations$operation$export$includePrivateData$en {
+	_Translations$operation$export$includePrivateData$es._(TranslationsEs root) : this._root = root, super.internal(root);
+
+	final TranslationsEs _root; // ignore: unused_field
+
+	// Translations
+	@override String get title => 'Incluir información privada';
+	@override String get descriptionOn => 'Se incluyen nombres, ciudades, cuadrículas y notas';
+	@override String get descriptionOff => 'Se omiten nombres, ciudades, cuadrículas y notas';
+	@override String get note => 'La Exportación ADIF Completa siempre incluye todo';
+}
+
 // Path: operation.spots.continents
 class _Translations$operation$spots$continents$es extends Translations$operation$spots$continents$en {
 	_Translations$operation$spots$continents$es._(TranslationsEs root) : this._root = root, super.internal(root);
@@ -1264,7 +1338,31 @@ extension on TranslationsEs {
 			'operation.export.loading' => 'Cargando opciones de exportación…',
 			'operation.export.noOptions' => 'No hay formatos de exportación disponibles (¿el motor de extensiones aún está iniciando?)',
 			'operation.export.share' => 'Compartir',
+			'operation.export.nothingSelected' => 'Nada seleccionado',
+			'operation.export.saveFiles' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count, one: 'Guardar ${count} archivo', other: 'Guardar ${count} archivos', ), 
+			'operation.export.shareFiles' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count, one: 'Compartir ${count} archivo', other: 'Compartir ${count} archivos', ), 
+			'operation.export.exportFiles' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count, one: 'Exportar ${count} archivo', other: 'Exportar ${count} archivos', ), 
+			'operation.export.downloadFiles' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count, one: 'Descargar ${count} archivo', other: 'Descargar ${count} archivos', ), 
+			'operation.export.saveCombined' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count, one: 'Guardar ${count} archivo combinado', other: 'Guardar ${count} archivos combinados', ), 
+			'operation.export.shareCombined' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count, one: 'Compartir ${count} archivo combinado', other: 'Compartir ${count} archivos combinados', ), 
+			'operation.export.exportCombined' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count, one: 'Exportar ${count} archivo combinado', other: 'Exportar ${count} archivos combinados', ), 
+			'operation.export.downloadCombined' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count, one: 'Descargar ${count} archivo combinado', other: 'Descargar ${count} archivos combinados', ), 
+			'operation.export.saveOne' => ({required Object name}) => 'Guardar ${name}',
+			'operation.export.shareOne' => ({required Object name}) => 'Compartir ${name}',
+			'operation.export.exportOne' => ({required Object name}) => 'Exportar ${name}',
+			'operation.export.downloadOne' => ({required Object name}) => 'Descargar ${name}',
+			'operation.export.settingsButton' => 'Ajustes de exportación',
+			'operation.export.settingsTitle' => 'Ajustes de Exportación',
+			'operation.export.compactFileNames.title' => 'Usar nombres de archivo compactos',
+			'operation.export.compactFileNames.descriptionOn' => 'Nombres cortos pensados para los cargadores, como N0CALL@US-1234-20260727.adi',
+			'operation.export.compactFileNames.descriptionOff' => 'Nombres legibles, como 2026-07-27 N0CALL at US-1234.adi',
+			'operation.export.includePrivateData.title' => 'Incluir información privada',
+			'operation.export.includePrivateData.descriptionOn' => 'Se incluyen nombres, ciudades, cuadrículas y notas',
+			'operation.export.includePrivateData.descriptionOff' => 'Se omiten nombres, ciudades, cuadrículas y notas',
+			'operation.export.includePrivateData.note' => 'La Exportación ADIF Completa siempre incluye todo',
 			'operation.export.saveSuccess' => ({required Object path}) => 'Guardado en ${path}',
+			'operation.export.shareSuccess' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count, one: 'Se compartió ${count} archivo', other: 'Se compartieron ${count} archivos', ), 
+			'operation.export.downloadSuccess' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count, one: 'Se descargó ${count} archivo', other: 'Se descargaron ${count} archivos', ), 
 			'operation.export.exportFailed' => ({required Object error}) => 'Exportación fallida: ${error}',
 			'operation.spots.empty' => 'Ningún spot coincide con tus filtros',
 			'operation.spots.error' => ({required Object error}) => 'No se pudieron cargar los spots: ${error}',
@@ -1670,6 +1768,8 @@ extension on TranslationsEs {
 			'operationLocationScreen.gridSquare' => 'Locator de cuadrícula Maidenhead',
 			'operationLocationScreen.suggestedLocations' => 'Ubicaciones sugeridas',
 			'operationLocationScreen.deviceGps' => 'GPS del dispositivo',
+			_ => null,
+		} ?? switch (path) {
 			'operationLocationScreen.locating' => 'Localizando…',
 			'operationLocationScreen.gpsUnavailable' => 'Ubicación no disponible',
 			'operationLocationScreen.permissionDenied' => 'Permiso de ubicación denegado',
@@ -1694,8 +1794,6 @@ extension on TranslationsEs {
 			'switchAccounts.copyCode' => 'Copiar código',
 			'switchAccounts.codePrompt' => ({required Object email}) => 'Abre la app Ham2K en un dispositivo ya vinculado con ${email} e introduce este código para aprobar la solicitud:',
 			'switchAccounts.waitingForConfirmation' => 'Esperando confirmación…',
-			_ => null,
-		} ?? switch (path) {
 			'switchAccounts.sendEmailInstead' => 'Enviar un email de confirmación en su lugar',
 			'switchAccounts.emailSent' => ({required Object email}) => 'Se envió un email a ${email}. Ábrelo y confirma la solicitud para vincular este dispositivo.',
 			'switchAccounts.resendEmail' => 'Reenviar email',

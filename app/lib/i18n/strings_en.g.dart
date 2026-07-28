@@ -1235,8 +1235,92 @@ class Translations$operation$export$en {
 	/// en: 'Share'
 	String get share => 'Share';
 
+	/// en: 'Nothing selected'
+	String get nothingSelected => 'Nothing selected';
+
+	/// en: '(one) {Save ${count} file} (other) {Save ${count} files}'
+	String saveFiles({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count,
+		one: 'Save ${count} file',
+		other: 'Save ${count} files',
+	);
+
+	/// en: '(one) {Share ${count} file} (other) {Share ${count} files}'
+	String shareFiles({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count,
+		one: 'Share ${count} file',
+		other: 'Share ${count} files',
+	);
+
+	/// en: '(one) {Export ${count} file} (other) {Export ${count} files}'
+	String exportFiles({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count,
+		one: 'Export ${count} file',
+		other: 'Export ${count} files',
+	);
+
+	/// en: '(one) {Download ${count} file} (other) {Download ${count} files}'
+	String downloadFiles({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count,
+		one: 'Download ${count} file',
+		other: 'Download ${count} files',
+	);
+
+	/// en: '(one) {Save combined ${count} file} (other) {Save combined ${count} files}'
+	String saveCombined({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count,
+		one: 'Save combined ${count} file',
+		other: 'Save combined ${count} files',
+	);
+
+	/// en: '(one) {Share combined ${count} file} (other) {Share combined ${count} files}'
+	String shareCombined({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count,
+		one: 'Share combined ${count} file',
+		other: 'Share combined ${count} files',
+	);
+
+	/// en: '(one) {Export combined ${count} file} (other) {Export combined ${count} files}'
+	String exportCombined({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count,
+		one: 'Export combined ${count} file',
+		other: 'Export combined ${count} files',
+	);
+
+	/// en: '(one) {Download combined ${count} file} (other) {Download combined ${count} files}'
+	String downloadCombined({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count,
+		one: 'Download combined ${count} file',
+		other: 'Download combined ${count} files',
+	);
+
+	/// en: 'Save ${name}'
+	String saveOne({required Object name}) => 'Save ${name}';
+
+	/// en: 'Share ${name}'
+	String shareOne({required Object name}) => 'Share ${name}';
+
+	/// en: 'Export ${name}'
+	String exportOne({required Object name}) => 'Export ${name}';
+
+	/// en: 'Download ${name}'
+	String downloadOne({required Object name}) => 'Download ${name}';
+
+	/// en: 'Export settings'
+	String get settingsButton => 'Export settings';
+
+	/// en: 'Export Settings'
+	String get settingsTitle => 'Export Settings';
+
+	late final Translations$operation$export$compactFileNames$en compactFileNames = Translations$operation$export$compactFileNames$en.internal(_root);
+	late final Translations$operation$export$includePrivateData$en includePrivateData = Translations$operation$export$includePrivateData$en.internal(_root);
+
 	/// en: 'Saved to ${path}'
 	String saveSuccess({required Object path}) => 'Saved to ${path}';
+
+	/// en: '(one) {Shared ${count} file} (other) {Shared ${count} files}'
+	String shareSuccess({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count,
+		one: 'Shared ${count} file',
+		other: 'Shared ${count} files',
+	);
+
+	/// en: '(one) {Downloaded ${count} file} (other) {Downloaded ${count} files}'
+	String downloadSuccess({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count,
+		one: 'Downloaded ${count} file',
+		other: 'Downloaded ${count} files',
+	);
 
 	/// en: 'Export failed: ${error}'
 	String exportFailed({required Object error}) => 'Export failed: ${error}';
@@ -1963,6 +2047,45 @@ class Translations$settings$panels$en {
 	String get unavailableText => 'The extension runtime failed to start, so extension-contributed settings are missing.';
 }
 
+// Path: operation.export.compactFileNames
+class Translations$operation$export$compactFileNames$en {
+	Translations$operation$export$compactFileNames$en.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Use compact file names'
+	String get title => 'Use compact file names';
+
+	/// en: 'Short names built for uploaders, like N0CALL@US-1234-20260727.adi'
+	String get descriptionOn => 'Short names built for uploaders, like N0CALL@US-1234-20260727.adi';
+
+	/// en: 'Readable names, like 2026-07-27 N0CALL at US-1234.adi'
+	String get descriptionOff => 'Readable names, like 2026-07-27 N0CALL at US-1234.adi';
+}
+
+// Path: operation.export.includePrivateData
+class Translations$operation$export$includePrivateData$en {
+	Translations$operation$export$includePrivateData$en.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Include private info'
+	String get title => 'Include private info';
+
+	/// en: 'Names, towns, gridsquares and notes are included'
+	String get descriptionOn => 'Names, towns, gridsquares and notes are included';
+
+	/// en: 'Names, towns, gridsquares and notes are left out'
+	String get descriptionOff => 'Names, towns, gridsquares and notes are left out';
+
+	/// en: 'The Full ADIF Export always includes everything'
+	String get note => 'The Full ADIF Export always includes everything';
+}
+
 // Path: operation.spots.continents
 class Translations$operation$spots$continents$en {
 	Translations$operation$spots$continents$en.internal(this._root);
@@ -2314,7 +2437,31 @@ extension on Translations {
 			'operation.export.loading' => 'Loading export options…',
 			'operation.export.noOptions' => 'No export formats available (extension runtime still starting?)',
 			'operation.export.share' => 'Share',
+			'operation.export.nothingSelected' => 'Nothing selected',
+			'operation.export.saveFiles' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: 'Save ${count} file', other: 'Save ${count} files', ), 
+			'operation.export.shareFiles' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: 'Share ${count} file', other: 'Share ${count} files', ), 
+			'operation.export.exportFiles' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: 'Export ${count} file', other: 'Export ${count} files', ), 
+			'operation.export.downloadFiles' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: 'Download ${count} file', other: 'Download ${count} files', ), 
+			'operation.export.saveCombined' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: 'Save combined ${count} file', other: 'Save combined ${count} files', ), 
+			'operation.export.shareCombined' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: 'Share combined ${count} file', other: 'Share combined ${count} files', ), 
+			'operation.export.exportCombined' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: 'Export combined ${count} file', other: 'Export combined ${count} files', ), 
+			'operation.export.downloadCombined' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: 'Download combined ${count} file', other: 'Download combined ${count} files', ), 
+			'operation.export.saveOne' => ({required Object name}) => 'Save ${name}',
+			'operation.export.shareOne' => ({required Object name}) => 'Share ${name}',
+			'operation.export.exportOne' => ({required Object name}) => 'Export ${name}',
+			'operation.export.downloadOne' => ({required Object name}) => 'Download ${name}',
+			'operation.export.settingsButton' => 'Export settings',
+			'operation.export.settingsTitle' => 'Export Settings',
+			'operation.export.compactFileNames.title' => 'Use compact file names',
+			'operation.export.compactFileNames.descriptionOn' => 'Short names built for uploaders, like N0CALL@US-1234-20260727.adi',
+			'operation.export.compactFileNames.descriptionOff' => 'Readable names, like 2026-07-27 N0CALL at US-1234.adi',
+			'operation.export.includePrivateData.title' => 'Include private info',
+			'operation.export.includePrivateData.descriptionOn' => 'Names, towns, gridsquares and notes are included',
+			'operation.export.includePrivateData.descriptionOff' => 'Names, towns, gridsquares and notes are left out',
+			'operation.export.includePrivateData.note' => 'The Full ADIF Export always includes everything',
 			'operation.export.saveSuccess' => ({required Object path}) => 'Saved to ${path}',
+			'operation.export.shareSuccess' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: 'Shared ${count} file', other: 'Shared ${count} files', ), 
+			'operation.export.downloadSuccess' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: 'Downloaded ${count} file', other: 'Downloaded ${count} files', ), 
 			'operation.export.exportFailed' => ({required Object error}) => 'Export failed: ${error}',
 			'operation.spots.empty' => 'No spots match your filters',
 			'operation.spots.error' => ({required Object error}) => 'Failed to load spots: ${error}',
@@ -2720,6 +2867,8 @@ extension on Translations {
 			'operationLocationScreen.gridSquare' => 'Maidenhead Grid Square Locator',
 			'operationLocationScreen.suggestedLocations' => 'Suggested Locations',
 			'operationLocationScreen.deviceGps' => 'Device GPS',
+			_ => null,
+		} ?? switch (path) {
 			'operationLocationScreen.locating' => 'Locating…',
 			'operationLocationScreen.gpsUnavailable' => 'Location unavailable',
 			'operationLocationScreen.permissionDenied' => 'Location permission denied',
@@ -2744,8 +2893,6 @@ extension on Translations {
 			'switchAccounts.copyCode' => 'Copy code',
 			'switchAccounts.codePrompt' => ({required Object email}) => 'Open the Ham2K app on a device already linked with ${email} and enter this code to approve the request:',
 			'switchAccounts.waitingForConfirmation' => 'Waiting for confirmation…',
-			_ => null,
-		} ?? switch (path) {
 			'switchAccounts.sendEmailInstead' => 'Send a confirmation email instead',
 			'switchAccounts.emailSent' => ({required Object email}) => 'An email was sent to ${email}. Open it and confirm the request to link this device.',
 			'switchAccounts.resendEmail' => 'Resend email',

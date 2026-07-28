@@ -29,6 +29,7 @@ export * from "./location"
 export * from "./scoring"
 export * from "./activityScoring"
 export * from "./activityExports"
+export * from "./exportNames"
 export * from "./referenceActivity"
 
 interface KernelApi {

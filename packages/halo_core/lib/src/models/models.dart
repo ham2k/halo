@@ -36,6 +36,31 @@ class Operation {
   });
 
   String get stationCall => (data['stationCall'] as String?) ?? '';
+
+  /// The station callsigns this operation was run under, in the order they
+  /// were entered. Usually one; several when a multi-operator station logs
+  /// everything in a single operation and each call owes its own submission
+  /// (app-polo splits the same idea across `stationCall` +
+  /// `stationCallPlusArray`; here it is one comma-separated field).
+  ///
+  /// Always at least one entry — an operation with no callsign at all yields
+  /// `['']` rather than an empty list, so callers that fan out over this
+  /// still produce their one set of results instead of silently none.
+  List<String> get stationCalls {
+    final parts = [
+      for (final part in stationCall.split(','))
+        if (part.trim().isNotEmpty) part.trim().toUpperCase(),
+    ];
+    // Deduped, order preserved: "N0DEV, N0DEV" is a typo, not a request for
+    // two identical sets of files that would then collide on filename.
+    final seen = <String>{};
+    final unique = [
+      for (final call in parts)
+        if (seen.add(call)) call,
+    ];
+    return unique.isEmpty ? const [''] : unique;
+  }
+
   String get title => (data['title'] as String?) ?? '';
   String? get grid => data['grid'] as String?;
 

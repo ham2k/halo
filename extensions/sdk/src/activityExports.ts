@@ -32,6 +32,15 @@ import type {
   HookContext,
   JSONValue,
 } from "./types.ts"
+import { exportFilename, startMillisOf } from "./exportNames.ts"
+import { createCachedTranslator } from "./i18n.ts"
+
+import en from "./i18n/activityExports.en.json" with { type: "json" }
+import es from "./i18n/activityExports.es.json" with { type: "json" }
+
+/// Shared by every activity that registers `activityExportHook`, so POTA's and
+/// SOTA's exports are named the same way in every language.
+const tFor = createCachedTranslator({ en: { translation: en }, es: { translation: es } })
 
 export interface ActivityExportRules {
   /// The extension's key, which namespaces the exportType — 'pota'.
@@ -63,17 +72,24 @@ function activationRefsOf(operation: Record<string, JSONValue>, type: string): A
     .map((r) => ({ ref: r.ref as string, name: typeof r.name === 'string' ? r.name : undefined }))
 }
 
-function slug(text: string): string {
-  return text.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
-}
-
 /// Shared by the option listing and the generated result, which must agree —
 /// the panel shows one and the core writes the other, so two copies of this
-/// expression would eventually disagree in front of the user. Drops the station
-/// when there isn't one rather than emitting a leading dash.
-function filenameFor(stationCall: JSONValue | undefined, ref: string): string {
-  const station = slug(String(stationCall ?? ''))
-  return `${station ? `${station}-at-` : ''}${slug(ref)}.adi`
+/// expression would eventually disagree in front of the user. (The core also
+/// prefers the offered name over this one, so the promise holds even if they
+/// do; this keeps them honest for a hook invoked outside the panel.)
+function filenameFor(
+  operation: Record<string, JSONValue>,
+  qsos: Record<string, JSONValue>[],
+  ref: string,
+  compact?: boolean,
+): string {
+  return exportFilename({
+    stationCall: operation.stationCall,
+    ref,
+    startAtMillis: startMillisOf(operation, qsos),
+    extension: 'adi',
+    compact,
+  })
 }
 
 /// An `ExportHook` offering one ADIF per activated reference. Register it
@@ -86,16 +102,27 @@ export function activityExportHook(rules: ActivityExportRules) {
   const prefix = `${rules.key}-adif`
 
   return {
-    async suggestExportOptions({ operation }: ExportOptionsRequest, _ctx: HookContext): Promise<ExportOption[]> {
+    async suggestExportOptions(
+      { operation, qsos, compactFilenames }: ExportOptionsRequest,
+      ctx: HookContext,
+    ): Promise<ExportOption[]> {
       // No activation, nothing to submit. A pure hunting log is the plain ADIF
       // export's business, not ours.
       const refs = activationRefsOf(operation, rules.activationType)
+      const t = tFor(ctx)
 
       return refs.map((ref) => ({
         exportType: `${prefix}${SEPARATOR}${ref.ref}`,
         format: 'adif',
-        label: `${rules.label} ${ref.ref}`,
-        filename: filenameFor(operation.stationCall, ref.ref),
+        // The FORMAT leads: a park activated on a contest weekend offers
+        // several files for the same reference, and "POTA US-1234" alone said
+        // nothing about which of them this was.
+        label: t('adifForRef', { program: rules.label, ref: ref.ref }),
+        // The WHOLE log's first QSO dates the file, not this reference's
+        // slice: the slice isn't known until `generateExport`, and a name
+        // that changed between being shown and being written would break the
+        // panel's promise.
+        filename: filenameFor(operation, qsos ?? [], ref.ref, compactFilenames),
         icon: rules.icon,
         selectedByDefault: true,
         // Segment slicing: only the contacts made while this activity ran.
@@ -131,8 +158,16 @@ export function activityExportHook(rules: ActivityExportRules) {
       )
       const operation = { ...args.operation, refs: refs as unknown as JSONValue }
 
-      const content = await adifFor({ operation, qsos: args.qsos })
-      return { filename: filenameFor(args.operation.stationCall, wanted), mimeType: 'text/plain', content }
+      const content = await adifFor({
+        operation,
+        qsos: args.qsos,
+        includePrivateData: args.includePrivateData,
+      })
+      return {
+        filename: filenameFor(args.operation, args.qsos, wanted, args.compactFilenames),
+        mimeType: 'text/plain',
+        content,
+      }
     },
   }
 }
@@ -141,7 +176,11 @@ export function activityExportHook(rules: ActivityExportRules) {
 /// so an activity's file is byte-identical to a normal export of the same
 /// narrowed operation. `invokeOne`, not `invokeAll` — see the guard above.
 async function adifFor(
-  { operation, qsos }: { operation: Record<string, JSONValue>; qsos: Record<string, JSONValue>[] },
+  { operation, qsos, includePrivateData }: {
+    operation: Record<string, JSONValue>
+    qsos: Record<string, JSONValue>[]
+    includePrivateData?: boolean
+  },
 ): Promise<string> {
   // Imported dynamically, as simple-contest does: a static import of the SDK
   // barrel from inside the SDK is circular (the barrel re-exports this module),
@@ -152,6 +191,9 @@ async function adifFor(
     operation,
     qsos,
     exportType: 'adif',
+    // Forwarded, or the delegate defaults to withholding and the user's
+    // "include private info" setting silently does nothing here.
+    includePrivateData,
   })
   const adif = entries.find((e) => e.ok)
   return ((adif?.value as ExportResult | undefined)?.content) ?? ''

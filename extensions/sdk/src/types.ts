@@ -530,6 +530,18 @@ export interface ExportRequest {
   /// Which of this hook's suggested options to generate — required once a
   /// hook offers more than one via `suggestExportOptions`.
   exportType?: string
+  /// The user's "Use compact file names" setting. Pass it straight to
+  /// `exportFilename` rather than branching on it: see exportNames.ts.
+  compactFilenames?: boolean
+  /// Whether this file may carry the operator's private notes about the
+  /// stations they worked — names, towns, gridsquares, QSO notes. False for
+  /// almost every export: a file uploaded to a program's servers should
+  /// carry the contact, not the operator's own notes about who they met.
+  ///
+  /// A hook that DELEGATES to another (the contests and activity exports all
+  /// call the core `adif` generator) must forward this, or the delegate will
+  /// default to withholding and the user's setting will silently not apply.
+  includePrivateData?: boolean
 }
 
 export interface ExportResult {
@@ -541,6 +553,9 @@ export interface ExportResult {
 export interface ExportOptionsRequest {
   operation: Record<string, JSONValue>
   qsos: Record<string, JSONValue>[]
+  /// The user's "Use compact file names" setting, so the `filename` a hook
+  /// offers here is the one the panel shows AND the one that gets written.
+  compactFilenames?: boolean
 }
 
 /// One selectable export offered by a hook. `exportType` only needs to be
@@ -551,8 +566,25 @@ export interface ExportOption {
   /// Drives the panel's default mimeType/extension guess, e.g. 'adif'.
   format: string
   label: string
+  /// What the file will be called. The panel shows this, and the core writes
+  /// the file under it — a name offered here WINS over the one
+  /// `generateExport` returns, so the two can't disagree in front of the
+  /// user. Build it with `exportFilename` so the compact-names setting
+  /// applies. Omit it only if the name genuinely can't be known until the
+  /// content exists.
   filename?: string
   icon?: string
+  /// Accent color for the panel row's icon, as `#RRGGBB`. Omit it and an
+  /// export that names a `refType` inherits its activity's accent (POTA's
+  /// green), while one that names none gets the app's own. Set it only to say
+  /// something the activity can't — the whole-log ADIF uses a neutral grey
+  /// precisely because it belongs to no activity.
+  color?: string
+  /// Declares that this export carries EVERYTHING, including private data,
+  /// whatever the user's setting says — for the whole-log backup, whose
+  /// entire purpose is to be complete. Every other export respects the
+  /// setting.
+  alwaysIncludePrivateData?: boolean
   priority?: number
   selectedByDefault?: boolean
   /// The ref type this export is responsible for. Set it and the core hands

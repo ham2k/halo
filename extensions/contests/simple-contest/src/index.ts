@@ -17,7 +17,7 @@
 //   adifFields          — CONTEST_ID / STX_STRING / SRX_STRING
 //   export              — contest ADIF options plus a Cabrillo file
 
-import { contestScorer, defineExtension } from "@ham2k/halo-extension-sdk"
+import { contestScorer, defineExtension, exportFilename, startMillisOf } from "@ham2k/halo-extension-sdk"
 import type {
   ExportOption,
   ExportOptionsRequest,
@@ -218,13 +218,52 @@ function reportFor(qso: Record<string, JSONValue>, side: 'our' | 'their'): strin
   return mode === 'CW' || mode === 'RTTY' ? '599' : '59'
 }
 
+/// The contest's own name for this operation's file — whatever identifier the
+/// operator set at setup, since a generic contest has no fixed name of its own.
+/// Falls back to the extension's short name rather than `defaultContestId`'s
+/// "TEST", which reads as a placeholder once it's part of a filename.
+function contestTag(operation: Record<string, JSONValue>): string {
+  return str(refOfType(operation, TYPE)?.contestIdentifier) || manifest.shortName
+}
+
+function filenameFor(
+  operation: Record<string, JSONValue>,
+  qsos: Record<string, JSONValue>[],
+  extension: string,
+  compact?: boolean,
+): string {
+  return exportFilename({
+    stationCall: operation.stationCall,
+    activity: contestTag(operation),
+    startAtMillis: startMillisOf(operation, qsos),
+    extension,
+    compact,
+  })
+}
+
 const ExportHook = {
   async suggestExportOptions(args: ExportOptionsRequest, ctx: HookContext): Promise<ExportOption[]> {
     if (!refOfType(args.operation, TYPE)) return []
     const t = tFor(ctx)
+    const named = (extension: string) =>
+      filenameFor(args.operation, args.qsos ?? [], extension, args.compactFilenames)
     return [
-      { exportType: 'contest-adif', format: 'adif', label: t('adifExport'), selectedByDefault: true, refType: TYPE },
-      { exportType: 'cabrillo', format: 'cabrillo', label: t('cabrilloExport'), selectedByDefault: true, refType: TYPE },
+      {
+        exportType: 'contest-adif',
+        format: 'adif',
+        label: t('adifExport', { contest: manifest.shortName }),
+        filename: named('adi'),
+        selectedByDefault: true,
+        refType: TYPE,
+      },
+      {
+        exportType: 'cabrillo',
+        format: 'cabrillo',
+        label: t('cabrilloExport', { contest: manifest.shortName }),
+        filename: named('log'),
+        selectedByDefault: true,
+        refType: TYPE,
+      },
     ]
   },
 
@@ -241,7 +280,6 @@ const ExportHook = {
     const opRef = refOfType(operation, TYPE)
     const id = contestId(operation, ctx)
     const ourCall = str(operation.stationCall)
-    const stamp = `${id}-${ourCall || 'log'}`.replace(/[^A-Za-z0-9_-]+/g, '-')
 
     if (args.exportType === 'cabrillo') {
       const content = qsonToCabrillo(args.qsos, {
@@ -260,14 +298,22 @@ const ExportHook = {
           str(refOfType(qso, TYPE)?.exchange) || '-',
         ],
       })
-      return { filename: `${stamp}.log`, mimeType: 'text/plain', content }
+      return {
+        filename: filenameFor(operation, args.qsos, 'log', args.compactFilenames),
+        mimeType: 'text/plain',
+        content,
+      }
     }
 
     // ADIF is produced by the core `adif` extension, which composes every
     // `adifFields` contribution — including this contest's above — so there is
     // nothing contest-specific to build here beyond naming the file.
     const adif = await hooksInvokeAdif(args, ctx)
-    return { filename: `${stamp}.adi`, mimeType: 'text/plain', content: adif }
+    return {
+      filename: filenameFor(operation, args.qsos, 'adi', args.compactFilenames),
+      mimeType: 'text/plain',
+      content: adif,
+    }
   },
 }
 
@@ -283,6 +329,9 @@ async function hooksInvokeAdif(args: ExportRequest, _ctx: HookContext): Promise<
     operation: args.operation,
     qsos: args.qsos,
     exportType: 'adif',
+    // Forwarded, or the delegate defaults to withholding and the user's
+    // "include private info" setting silently does nothing here.
+    includePrivateData: args.includePrivateData,
   })
   const adif = entries.find((e) => e.ok)
   return ((adif?.value as ExportResult | undefined)?.content) ?? ''

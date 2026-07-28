@@ -99,7 +99,65 @@
       "loading": "Cargando opciones de exportación…",
       "noOptions": "No hay formatos de exportación disponibles (¿el motor de extensiones aún está iniciando?)",
       "share": "Compartir",
+      "nothingSelected": "Nada seleccionado",
+      "saveFiles": {
+        "one": "Guardar ${count} archivo",
+        "other": "Guardar ${count} archivos"
+      },
+      "shareFiles": {
+        "one": "Compartir ${count} archivo",
+        "other": "Compartir ${count} archivos"
+      },
+      "exportFiles": {
+        "one": "Exportar ${count} archivo",
+        "other": "Exportar ${count} archivos"
+      },
+      "downloadFiles": {
+        "one": "Descargar ${count} archivo",
+        "other": "Descargar ${count} archivos"
+      },
+      "saveCombined": {
+        "one": "Guardar ${count} archivo combinado",
+        "other": "Guardar ${count} archivos combinados"
+      },
+      "shareCombined": {
+        "one": "Compartir ${count} archivo combinado",
+        "other": "Compartir ${count} archivos combinados"
+      },
+      "exportCombined": {
+        "one": "Exportar ${count} archivo combinado",
+        "other": "Exportar ${count} archivos combinados"
+      },
+      "downloadCombined": {
+        "one": "Descargar ${count} archivo combinado",
+        "other": "Descargar ${count} archivos combinados"
+      },
+      "saveOne": "Guardar ${name}",
+      "shareOne": "Compartir ${name}",
+      "exportOne": "Exportar ${name}",
+      "downloadOne": "Descargar ${name}",
+      "settingsButton": "Ajustes de exportación",
+      "settingsTitle": "Ajustes de Exportación",
+      "compactFileNames": {
+        "title": "Usar nombres de archivo compactos",
+        "descriptionOn": "Nombres cortos pensados para los cargadores, como N0CALL@US-1234-20260727.adi",
+        "descriptionOff": "Nombres legibles, como 2026-07-27 N0CALL at US-1234.adi"
+      },
+      "includePrivateData": {
+        "title": "Incluir información privada",
+        "descriptionOn": "Se incluyen nombres, ciudades, cuadrículas y notas",
+        "descriptionOff": "Se omiten nombres, ciudades, cuadrículas y notas",
+        "note": "La Exportación ADIF Completa siempre incluye todo"
+      },
       "saveSuccess": "Guardado en ${path}",
+      "shareSuccess": {
+        "one": "Se compartió ${count} archivo",
+        "other": "Se compartieron ${count} archivos"
+      },
+      "downloadSuccess": {
+        "one": "Se descargó ${count} archivo",
+        "other": "Se descargaron ${count} archivos"
+      },
       "exportFailed": "Exportación fallida: ${error}"
     },
     "spots": {

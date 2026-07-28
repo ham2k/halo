@@ -10,7 +10,7 @@
   "nameLabel": "Nombre",
   "locationLabel": "Ubic",
   "unconfigured": "NAQP (sin configurar)",
-  "adifExport": "ADIF de concurso",
-  "cabrilloExport": "Cabrillo",
+  "adifExport": "ADIF para {{contest}}",
+  "cabrilloExport": "Cabrillo para {{contest}}",
   "ourExchangeSubtitle": "{{name}} en {{location}}"
 }

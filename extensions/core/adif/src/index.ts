@@ -10,8 +10,8 @@
 import { fmtADIFDate, fmtADIFTime } from "@ham2k/lib-format-tools"
 import { adifModeAndSubmodeForMode } from "@ham2k/lib-operation-data"
 
-import { defineExtension, hooks } from "@ham2k/halo-extension-sdk"
-import type { ExportOption, ExportOptionsRequest, ExportRequest, ExportResult, HookContext } from "@ham2k/halo-extension-sdk"
+import { defineExtension, exportFilename, hooks, startMillisOf } from "@ham2k/halo-extension-sdk"
+import type { ExportOption, ExportOptionsRequest, ExportRequest, ExportResult, HookContext, JSONValue } from "@ham2k/halo-extension-sdk"
 
 import manifest from "../manifest.json" with { type: "json" }
 
@@ -24,19 +24,20 @@ function field(name: string, value: unknown): string {
   return `<${name}:${text.length}>${text} `
 }
 
-function slug(text: string): string {
-  return text.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
-}
-
-function filenameFor(operation: Record<string, unknown>, qsos: Record<string, unknown>[]): string {
-  const stationCall = String(operation.stationCall ?? 'UNKNOWN')
-  const title = String(operation.title ?? '')
-  const firstMillis = qsos
-    .map((qso) => Number(qso.startAtMillis ?? 0))
-    .filter((t) => t > 0)
-    .sort((a, b) => a - b)[0]
-  const datePart = firstMillis ? fmtADIFDate(firstMillis) : fmtADIFDate(Date.now())
-  return [datePart, slug(stationCall), slug(title)].filter((x) => x).join('-') + '.adi'
+/// The whole-log export claims no single reference, so the operation's title
+/// is what distinguishes one file from the next.
+function filenameFor(
+  operation: Record<string, JSONValue>,
+  qsos: Record<string, JSONValue>[],
+  compact?: boolean,
+): string {
+  return exportFilename({
+    stationCall: operation.stationCall,
+    modifier: String(operation.title ?? ''),
+    startAtMillis: startMillisOf(operation, qsos),
+    extension: 'adi',
+    compact,
+  })
 }
 
 interface AdifField {
@@ -47,7 +48,19 @@ interface AdifField {
 /// The QSO's own fields, shared by every ADIF record it produces.
 /// `timeOffsetMillis` shifts this record's timestamp off the contact's — see
 /// the caller for why.
-function baseRowFor(qso: Record<string, unknown>, stationCall: string, timeOffsetMillis: number): string {
+///
+/// `includePrivateData` separates what the operator NOTED about the station
+/// they worked from what the contact itself was. Withheld by default: a file
+/// uploaded to a program's servers should carry the QSO, not the operator's
+/// own notes about who they met. Same set app-polo gates
+/// (`qsonToADIF.js:217-232`) — including the gridsquare, which is a location
+/// the other operator did not necessarily publish.
+function baseRowFor(
+  qso: Record<string, unknown>,
+  stationCall: string,
+  timeOffsetMillis: number,
+  includePrivateData: boolean,
+): string {
   const our = (qso.our ?? {}) as Record<string, unknown>
   const their = (qso.their ?? {}) as Record<string, unknown>
   // The merged lookup guess (Lookups feature, ham2k/app-halo-dist#8)
@@ -72,12 +85,19 @@ function baseRowFor(qso: Record<string, unknown>, stationCall: string, timeOffse
   row += field('RST_SENT', our.sent)
   row += field('RST_RCVD', their.sent)
   row += field('STATION_CALLSIGN', stationCall)
-  row += field('NAME', their.name ?? theirGuess.name)
-  row += field('QTH', their.city ?? theirGuess.city)
+  if (includePrivateData) {
+    row += field('NAME', their.name ?? theirGuess.name)
+    row += field('QTH', their.city ?? theirGuess.city)
+  }
+  // STATE and COUNTRY stay: awards are claimed on them, and both are
+  // implied by the callsign anyway. app-polo draws the line in the same
+  // place.
   row += field('STATE', their.state ?? theirGuess.state)
   row += field('COUNTRY', their.country ?? theirGuess.country)
-  row += field('GRIDSQUARE', their.grid ?? theirGuess.grid)
-  row += field('NOTES', qso.notes)
+  if (includePrivateData) {
+    row += field('GRIDSQUARE', their.grid ?? theirGuess.grid)
+    row += field('NOTES', qso.notes)
+  }
   return row
 }
 
@@ -115,25 +135,54 @@ async function fieldSetsPerHook(
 }
 
 const ExportHandler = {
-  async suggestExportOptions({ operation, qsos }: ExportOptionsRequest, _ctx: HookContext): Promise<ExportOption[]> {
+  async suggestExportOptions(
+    { operation, qsos, compactFilenames }: ExportOptionsRequest,
+    _ctx: HookContext,
+  ): Promise<ExportOption[]> {
     return [
       {
         exportType: 'adif',
         format: 'adif',
-        label: 'ADIF Export',
-        filename: filenameFor(operation, qsos),
+        // "Full", because this is the whole log — the one export that claims
+        // no activity and slices nothing. The activity and contest exports
+        // above it in the list each cover one reference.
+        label: 'Full ADIF Export',
+        filename: filenameFor(operation, qsos, compactFilenames),
         icon: 'file-export',
+        // Neutral grey, because this export belongs to no activity — the
+        // coloured rows above it each claim one, and the whole log claims
+        // none.
+        color: '#9E9E9E',
+        // The whole-log backup is complete by definition — it is the copy the
+        // operator keeps, not one they upload, so the private-data setting
+        // does not apply to it.
+        alwaysIncludePrivateData: true,
         selectedByDefault: true,
+        // Sorts BELOW every activity's and contest's own export (all
+        // priority 0), because those are the ones an operator came here to
+        // submit; the whole-log ADIF is the backup they take as well. Same
+        // value app-polo gives it. The dev-mode QSON dump stays last at -100.
+        priority: -1,
       },
     ]
   },
 
-  async generateExport({ operation, qsos }: ExportRequest, ctx: HookContext): Promise<ExportResult> {
+  async generateExport(
+    { operation, qsos, compactFilenames, includePrivateData }: ExportRequest,
+    ctx: HookContext,
+  ): Promise<ExportResult> {
     const stationCall = String(operation.stationCall ?? 'UNKNOWN')
     const title = String(operation.title ?? '')
 
     const lines: string[] = []
-    lines.push(`ADIF export for ${[stationCall, title].filter((x) => x).join(' — ')}`)
+    // The operation's TITLE is the operator's own words — "Dad's memorial
+    // activation" — so it belongs to the same private set as the per-QSO
+    // notes below, and app-polo gates it identically
+    // (`qsonToADIF.js:58`, `operation.userTitle && privateData`). Without
+    // this the switch would strip every field a program might read while
+    // still shipping the one line the operator wrote themselves.
+    const preamble = includePrivateData === true ? [stationCall, title] : [stationCall]
+    lines.push(`ADIF export for ${preamble.filter((x) => x).join(' — ')}`)
     lines.push(field('ADIF_VER', ADIF_VERSION))
     lines.push(field('PROGRAMID', ctx.appName ?? DEFAULT_PROGRAM_ID))
     lines.push(field('CREATED_TIMESTAMP', `${fmtADIFDate(Date.now())} ${fmtADIFTime(Date.now())}`))
@@ -153,7 +202,7 @@ const ExportHandler = {
         // Records split out of one contact would otherwise be identical, and a
         // log processor is entitled to read that as a duplicate. app-polo
         // shifts each by a second (`qsonToADIF.js:144`); so do we.
-        let row = baseRowFor(qso, stationCall, n * 1000)
+        let row = baseRowFor(qso, stationCall, n * 1000, includePrivateData === true)
         for (const sets of perHook) {
           // A hook with a single set describes the contact rather than one of
           // its records, so it belongs on all of them.
@@ -166,7 +215,11 @@ const ExportHandler = {
       }
     }
 
-    return { filename: filenameFor(operation, qsos), mimeType: 'application/octet-stream', content: lines.join('\n') + '\n' }
+    return {
+      filename: filenameFor(operation, qsos, compactFilenames),
+      mimeType: 'application/octet-stream',
+      content: lines.join('\n') + '\n',
+    }
   },
 }
 

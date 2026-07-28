@@ -23,7 +23,7 @@ import 'operation/call_info_panel.dart';
 import 'operation/information_panel.dart';
 import 'operation/logging_panel.dart';
 import 'operation/map_panel.dart';
-import 'operation/operation_export_screen.dart';
+import 'operation/operation_export_panel.dart';
 import 'operation/spots_panel.dart';
 import '../tools/operation_title.dart';
 import '../i18n/strings.g.dart';
@@ -885,13 +885,8 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
     if (mounted) setState(() => _ourEntityPrefix = ourGuess?['entityPrefix'] as String?);
   }
 
-  Future<void> _export(Operation operation) async {
-    await Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => OperationExportScreen(services: widget.services, operation: operation),
-      ),
-    );
-  }
+  Future<void> _export(Operation operation) =>
+      showOperationExportPanel(context, services: widget.services, operation: operation);
 
   Future<void> _handleCommandAction(String action, [Map<String, dynamic>? params]) =>
       runCommandAction(widget.services, this, action, params);

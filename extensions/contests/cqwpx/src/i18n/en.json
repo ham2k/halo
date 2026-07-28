@@ -6,6 +6,6 @@
   "ourSerialLabel": "Our #",
   "theirSerialLabel": "Their #",
   "serialSubtitle": "Serial numbers",
-  "adifExport": "Contest ADIF",
-  "cabrilloExport": "Cabrillo"
+  "adifExport": "ADIF for {{contest}}",
+  "cabrilloExport": "Cabrillo for {{contest}}"
 }

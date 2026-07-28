@@ -571,7 +571,9 @@ class HaLoServices {
   late final QsosRepository qsos =
       QsosRepository(db, onChange: () => syncEngine.notifyChanged(), sequences: sequences);
   late final LookupRepository lookups = LookupRepository(db);
-  late final ExportService exports = ExportService(extensions: extensions, qsos: qsos, settings: settings);
+  final ExportService? _exportsOverride;
+  late final ExportService exports =
+      _exportsOverride ?? ExportService(extensions: extensions, qsos: qsos, settings: settings);
   late final ScoringService scoring = ScoringService(extensions: extensions, qsos: qsos, operations: operations);
   late final OperationTitleService operationTitles = OperationTitleService(extensions: extensions, operations: operations);
   late final RadioService radio = RadioService(settings.prefs);
@@ -626,6 +628,7 @@ class HaLoServices {
     ..register(GeneralSettingsGroup(settings, extensions))
     ..register(LoggingSettingsGroup(settings))
     ..register(PrivacySettingsGroup(settings))
+    ..register(ExportsSettingsGroup(settings))
     ..register(SyncSettingsGroup(settings, onToggle: setSyncEnabled));
 
   /// Fires on DEVSPLASH (`handleCommandAction`'s `devSplash` case) —
@@ -729,6 +732,7 @@ class HaLoServices {
     UpdateCheckService? updateCheck,
     DataFileManager? dataFiles,
     LookupQueueService? lookupQueue,
+    ExportService? exports,
   })  : extensions = extensions ?? ExtensionService(),
         metrics = metrics ?? const NoopMetricsService(),
         purchases = purchases ?? const NoopPurchaseService(),
@@ -741,7 +745,11 @@ class HaLoServices {
         // update_check_service.dart).
         updateCheck = updateCheck ?? const WebFreshnessUpdateCheckService(),
         _dataFilesOverride = dataFiles,
-        _lookupQueueOverride = lookupQueue {
+        _lookupQueueOverride = lookupQueue,
+        // A widget test of the Exports panel can't use the real one: its
+        // option listing awaits a drift stream's `.first`, which never
+        // resolves under `testWidgets` (see operation_export_panel_test).
+        _exportsOverride = exports {
     this.extensions.settings = settings;
     this.extensions.lookups = lookups;
     this.extensions.statusBar = statusBar;

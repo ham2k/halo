@@ -153,9 +153,9 @@ interface ExportHook {
   suggestExportOptions?(args: ExportOptionsRequest, ctx): Promise<ExportOption[]>
   generateExport(args: ExportRequest, ctx): Promise<ExportResult>
 }
-// ExportOptionsRequest: {operation, qsos}
+// ExportOptionsRequest: {operation, qsos, compactFilenames?}
 // ExportOption: {exportType, format, label, filename?, icon?, priority?, selectedByDefault?}
-// ExportRequest: {operation, qsos, exportType?}   — full QSON, one coarse call
+// ExportRequest: {operation, qsos, exportType?, compactFilenames?}  — full QSON, one coarse call
 // ExportResult:  {filename, mimeType, content}
 ```
 
@@ -167,6 +167,29 @@ core owns file I/O and save/share; the hook only produces content.
 Exporters should compose per-QSO program fields from `adifFields` hooks (see
 below) rather than knowing about specific activities. Implemented by: `adif`
 (key `adif`, one option); Cabrillo will register here too.
+
+**Filenames.** Build them with the SDK's `exportFilename` rather than
+spelling one out, passing the request's `compactFilenames` straight through —
+that is what makes the user's "Use compact file names" setting apply to your
+export, and what keeps every extension's names consistent:
+
+```ts
+filename: exportFilename({
+  stationCall: operation.stationCall,
+  ref: 'US-1234',                            // or `activity: 'CQ-WW-CW'`, or neither
+  startAtMillis: startMillisOf(operation, qsos),
+  extension: 'adi',
+  compact: args.compactFilenames,
+})
+// normal  → "2026-07-27 N0CALL at US-1234.adi"
+// compact → "N0CALL@US-1234-20260727.adi"
+```
+
+Set `filename` on the OPTION, not just on the result: the panel shows the
+option's name, and the core writes the file under it. A name computed again
+in `generateExport` sees a different input — that call is handed only the
+QSOs the option's `refType` covers — so the two would otherwise disagree in
+front of the user.
 
 ## ✅ `ref:<type>` — reference handlers
 

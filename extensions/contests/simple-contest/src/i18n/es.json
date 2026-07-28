@@ -11,8 +11,8 @@
   "onePoint": "1 punto",
   "manyPoints": "{{formatted}} puntos",
   "noValidQsos": "Aún no hay QSOs válidos",
-  "adifExport": "ADIF de concurso",
-  "cabrilloExport": "Cabrillo",
+  "adifExport": "ADIF para {{contest}}",
+  "cabrilloExport": "Cabrillo para {{contest}}",
   "activityLabel": "Concurso Genérico",
   "setupLabel": "Configuración Concurso Genérico",
   "unconfigured": "Concurso (sin configurar)"

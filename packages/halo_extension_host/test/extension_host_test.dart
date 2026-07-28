@@ -185,9 +185,13 @@ __polo.defineExtension({
           'startAtMillis': DateTime.utc(2026, 7, 5, 18, 45).millisecondsSinceEpoch,
         },
       ],
+      // What the app passes for the whole-log export: it declares
+      // `alwaysIncludePrivateData`, so this is the complete field set. The
+      // withholding default has its own tests in activity_export_test.dart.
+      'includePrivateData': true,
     }) as Map;
 
-    expect(result['filename'], '20260705-ki2d-test-op.adi');
+    expect(result['filename'], '2026-07-05 KI2D Test Op.adi');
     final content = result['content'] as String;
     expect(content, contains('<ADIF_VER:5>3.1.5'));
     expect(content, contains('<EOH>'));
@@ -201,6 +205,56 @@ __polo.defineExtension({
     expect(content, contains('<CALL:6>EA4XYZ'));
     expect(content, contains('<MODE:2>CW'));
     expect('<EOR>'.allMatches(content).length, 2);
+  });
+
+  // The "Use compact file names" setting is core-owned but extension-applied:
+  // the core only passes `compactFilenames` down, and each hook builds its own
+  // name from it (`exportFilename` in the SDK). So the contract worth pinning
+  // end-to-end is that the flag survives the bridge and changes the answer —
+  // a bundle that ignored it would look identical from the Dart side.
+  test('compactFilenames reaches the bundle and changes the name it offers AND writes', () async {
+    final adifFile = File('../../app/assets/extensions/adif.js');
+    if (!kernelFile.existsSync() || !adifFile.existsSync()) {
+      markTestSkipped('bundles not built — run `npm run build` in extensions/ first');
+      return;
+    }
+
+    final host = await ExtensionHost.start(
+      kernelSource: kernelFile.readAsStringSync(),
+      extensions: [ExtensionBundle(key: 'adif', source: adifFile.readAsStringSync())],
+      useIsolate: false,
+    );
+    addTearDown(host.dispose);
+
+    final payload = {
+      'operation': {'uuid': 'op-1', 'stationCall': 'KI2D', 'title': 'Test Op'},
+      'qsos': [
+        {
+          'our': {'call': 'KI2D'},
+          'their': {'call': 'W1AW'},
+          'band': '20m',
+          'mode': 'SSB',
+          'startAtMillis': DateTime.utc(2026, 7, 5, 18, 30).millisecondsSinceEpoch,
+        },
+      ],
+    };
+
+    Future<String> nameFor(String method, {required bool compact}) async {
+      final result = await host.invokeHook(
+        'export',
+        key: 'adif',
+        method: method,
+        args: {...payload, 'compactFilenames': compact},
+      );
+      final value = method == 'suggestExportOptions' ? (result as List).first as Map : result as Map;
+      return value['filename'] as String;
+    }
+
+    expect(await nameFor('suggestExportOptions', compact: false), '2026-07-05 KI2D Test Op.adi');
+    expect(await nameFor('suggestExportOptions', compact: true), 'KI2D-20260705-test-op.adi');
+    // Both halves of the contract, because the panel shows one and the file
+    // is written under the other.
+    expect(await nameFor('generateExport', compact: true), 'KI2D-20260705-test-op.adi');
   });
 
   test('POTA extension composes ADIF fields into the export (in-runtime hooks)', () async {

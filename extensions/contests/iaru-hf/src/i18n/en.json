@@ -17,7 +17,7 @@
   "rulesLink": "[Official rules](https://www.arrl.org/iaru-hf-world-championship)",
   "exchangeLabel": "Zone / HQ",
   "unconfigured": "IARU HF (not set up)",
-  "adifExport": "Contest ADIF",
-  "cabrilloExport": "Cabrillo",
+  "adifExport": "ADIF for {{contest}}",
+  "cabrilloExport": "Cabrillo for {{contest}}",
   "ourExchangeSubtitle": "Sending {{exchange}}"
 }

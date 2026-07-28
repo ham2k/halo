@@ -160,6 +160,7 @@ class SettingsService extends ChangeNotifier implements SyncSettings {
   static const generalGroup = 'general';
   static const loggingGroup = 'logging';
   static const privacyGroup = 'privacy';
+  static const exportsGroup = 'exports';
 
   String _groupPrefsKey(String group) => 'settings.$group';
 
@@ -543,6 +544,31 @@ class SettingsService extends ChangeNotifier implements SyncSettings {
   }
 
   bool _loggingBool(String key, bool fallback) => (settingValue(loggingGroup, key) as bool?) ?? fallback;
+
+  /// Exports panel's settings. Handed to the export hooks, which build their
+  /// filenames from it (`exportFilename` in the extension SDK) — so it takes
+  /// effect on the names the panel LISTS, not just the files it writes.
+  ///
+  /// Off by default: the readable form is the better first impression, and
+  /// operators who want terse names for an uploader go looking for the
+  /// setting. Same default as app-polo's `useCompactFileNames`.
+  bool get useCompactFileNames => (settingValue(exportsGroup, 'useCompactFileNames') as bool?) ?? false;
+
+  Future<void> setUseCompactFileNames(bool value) =>
+      setSettingValue(exportsGroup, 'useCompactFileNames', value);
+
+  /// Whether exports may carry the operator's private notes about the stations
+  /// they worked — names, towns, gridsquares, QSO notes.
+  ///
+  /// Off by default, because most exports exist to be UPLOADED: a park's log
+  /// goes to POTA's servers, a Cabrillo to a contest sponsor, and neither has
+  /// any business with the operator's notes about who they met. The whole-log
+  /// ADIF backup is exempt — it declares `alwaysIncludePrivateData`, since
+  /// being complete is the whole point of it.
+  bool get includePrivateData => (settingValue(exportsGroup, 'includePrivateData') as bool?) ?? false;
+
+  Future<void> setIncludePrivateData(bool value) =>
+      setSettingValue(exportsGroup, 'includePrivateData', value);
 
   /// Logging view "..." menu toggles (ham2k/app-halo-dist#1).
   bool get showRSTFields => _loggingBool(_showRSTFieldsKey, true);

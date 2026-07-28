@@ -276,7 +276,10 @@ void main() {
     ) as Map?;
 
     expect(result, isNotNull);
-    expect(result!['filename'], 'OHSP-N0DEV.log');
+    // The shared scheme (`exportFilename`), dated from the log's first QSO —
+    // not the event key alone, which said nothing about which activation of
+    // it this was.
+    expect(result!['filename'], '2026-09-12 N0DEV for OHSP.log');
     final lines = (result['content'] as String).trim().split('\n');
 
     expect(lines.first, 'START-OF-LOG: 3.0');

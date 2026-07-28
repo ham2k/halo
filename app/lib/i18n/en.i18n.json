@@ -99,7 +99,65 @@
       "loading": "Loading export options…",
       "noOptions": "No export formats available (extension runtime still starting?)",
       "share": "Share",
+      "nothingSelected": "Nothing selected",
+      "saveFiles": {
+        "one": "Save ${count} file",
+        "other": "Save ${count} files"
+      },
+      "shareFiles": {
+        "one": "Share ${count} file",
+        "other": "Share ${count} files"
+      },
+      "exportFiles": {
+        "one": "Export ${count} file",
+        "other": "Export ${count} files"
+      },
+      "downloadFiles": {
+        "one": "Download ${count} file",
+        "other": "Download ${count} files"
+      },
+      "saveCombined": {
+        "one": "Save combined ${count} file",
+        "other": "Save combined ${count} files"
+      },
+      "shareCombined": {
+        "one": "Share combined ${count} file",
+        "other": "Share combined ${count} files"
+      },
+      "exportCombined": {
+        "one": "Export combined ${count} file",
+        "other": "Export combined ${count} files"
+      },
+      "downloadCombined": {
+        "one": "Download combined ${count} file",
+        "other": "Download combined ${count} files"
+      },
+      "saveOne": "Save ${name}",
+      "shareOne": "Share ${name}",
+      "exportOne": "Export ${name}",
+      "downloadOne": "Download ${name}",
+      "settingsButton": "Export settings",
+      "settingsTitle": "Export Settings",
+      "compactFileNames": {
+        "title": "Use compact file names",
+        "descriptionOn": "Short names built for uploaders, like N0CALL@US-1234-20260727.adi",
+        "descriptionOff": "Readable names, like 2026-07-27 N0CALL at US-1234.adi"
+      },
+      "includePrivateData": {
+        "title": "Include private info",
+        "descriptionOn": "Names, towns, gridsquares and notes are included",
+        "descriptionOff": "Names, towns, gridsquares and notes are left out",
+        "note": "The Full ADIF Export always includes everything"
+      },
       "saveSuccess": "Saved to ${path}",
+      "shareSuccess": {
+        "one": "Shared ${count} file",
+        "other": "Shared ${count} files"
+      },
+      "downloadSuccess": {
+        "one": "Downloaded ${count} file",
+        "other": "Downloaded ${count} files"
+      },
       "exportFailed": "Export failed: ${error}"
     },
     "spots": {
