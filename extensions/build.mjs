@@ -133,6 +133,8 @@ const bundles = [
   { key: 'iaru-hf', entry: 'contests/iaru-hf/src/index.ts', kind: 'extension' },
   { key: 'naqp', entry: 'contests/naqp/src/index.ts', kind: 'extension' },
   { key: 'stateparks', entry: 'contests/stateparks/src/index.ts', kind: 'extension' },
+  { key: 'fd', entry: 'contests/fd/src/index.ts', kind: 'extension' },
+  { key: 'wfd', entry: 'contests/wfd/src/index.ts', kind: 'extension' },
   { key: 'ham2k-lofi', entry: 'sync/ham2k-lofi/src/index.ts', kind: 'extension' },
 ]
 

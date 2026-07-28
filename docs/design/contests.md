@@ -1422,6 +1422,97 @@ until M7 — so the label design is only proven against the flat case so far.
 
 ---
 
+### 5.9 Field ops: `fd`, `wfd`, `colonies`
+
+Reassigned here from the activities port (docs/design/activities.md §5) because
+all three want contest machinery — Cabrillo headers, typed exchange fields, and
+in two cases an ARRL section table — and none of them activate a reference.
+app-polo files them under `category: 'fieldOps'`, not as awards.
+
+2005 lines across the three, but they are not three separate problems: FD and
+WFD are the same contest twice.
+
+#### What they are
+
+| | `fd` | `wfd` | `colonies` |
+|---|---|---|---|
+| Exchange | class + section (`1H` `ENY`) | same, class `^[1-9]+[HIMO]$` | none — the callsign IS the exchange |
+| Points | phone 1, CW/data 2 | same | 1 per colony |
+| Dupes | per band **and** mode | same | same |
+| Multiplier | power: 5W+battery ×5, 5W ×2, 100W ×2, else ×1 | its own | none |
+| Bonus | operator-entered | its own | none |
+| Cabrillo | yes | yes | no |
+| Sections | 71 ARRL + 14 RAC + `MX`/`DX`, tallied separately | its own copy of the same table | no |
+
+`colonies` is not a contest at all: thirteen fixed callsigns (`K2A`–`K2M`) plus
+special stations, and the score is how many of them you have worked. Its point
+is the CHECKLIST — which colonies are still missing — not the total.
+
+#### What HaLo already covers
+
+Everything the two Field Days need for logging and export:
+
+- **The exchange.** Class is a `text` control with a pattern; section is exactly
+  what `kind: 'options'` was built for (§5.3) — a known set of ~85 codes with
+  names, searchable, Space to accept.
+- **Setup.** Power class and bonus points are a `form` with `select` and numeric
+  fields, the same shape `stateparks` uses for `ourPower`/`ourCategory` (§5.4).
+- **Scoring.** `ContestScorer` folds it: per-band-and-mode dupes, a points table
+  by super-mode, a multiplier applied at summary time. The invalid-band rule
+  (60/30/17/12m score 0 with an alert) is an ordinary verdict.
+- **Cabrillo.** The writer is already shared out of `simple-contest/src/cabrillo.ts`.
+- **ADIF.** `CONTEST_ID`/`CLASS`/`ARRL_SECT`. app-polo emits these even when FD is
+  not the main handler; HaLo fans `adifFields` out to every hook anyway, so this
+  is the default rather than a special case.
+
+#### The two real gaps
+
+**1. There is no ARRL section table in HaLo.** app-polo's `FDSections.js` is 308
+lines — `ARRL_SECTIONS`, `RAC_SECTIONS`, `ABBREVIATED_SECTION_NAMES` and a
+`PREFIX_TO_LOCATION` guess table — and `wfd` imports it from `fd`. Two
+extensions needing one table is the case `extensions/shared/` already exists for
+(`gmaSpots.ts`), and it must be inline data rather than a cross-extension call:
+scorers are SYNCHRONOUS and host calls are not (§5.3's `operation-data` note).
+
+Not a blocker — just the largest single piece of work here, and worth checking
+against the current ARRL list rather than copied blind.
+
+**Built, and DUPLICATED into each extension (2026-07-27).** Each of `fd` and
+`wfd` carries its own `sections.ts` and its own `scorer.ts`, near-identical by
+choice: an extension that can be read, moved and distributed without reaching
+into a sibling is worth more than not repeating a table. Note the bundles were
+already independent — `build.mjs` inlines shared imports into each single-file
+IIFE — so this buys SOURCE separation, not runtime separation.
+
+The cost lands on the tests, and is paid there: `field_day_test.dart` asserts
+every rule the two are supposed to SHARE against both of them, so a change to
+one that should have been made to both fails rather than drifting quietly.
+
+The one thing still shared is the Cabrillo writer, imported from
+`simple-contest` the way all seven contests import it. Forking that per contest
+is a separate decision from separating these two.
+
+**2. `colonies` reads QSOs from OTHER operations.** Its checklist calls
+`findQSOsInOtherOps`, because the thirteen are worked across a week and nobody
+runs one operation for it. HaLo has no such host call — an extension sees the
+operation it is scoring and nothing else, by design.
+
+| | Cost | Gives up |
+|---|---|---|
+| **A. Ship `colonies` scoped to one operation** | none | the checklist's whole point across operations |
+| **B. Add a host call for a cross-operation callsign search** | a core addition: a new read method, and a decision about what an extension may see | nothing |
+| **C. Defer `colonies`, ship `fd` + `wfd`** | none | `colonies` |
+
+B is what the feature actually needs, and the host call is narrow — "which of
+these calls appear in my log, when" — but it is the first time an extension
+reads outside the operation it was handed, which is a boundary worth deciding
+deliberately rather than in passing.
+
+**C was chosen (2026-07-27).** `fd` and `wfd` ship as M11 and need no core
+change; `colonies` is deferred to M12 with the boundary question still open. It
+is NOT dropped — the analysis above stands and the extension is small once the
+host call exists.
+
 ## 6. First increment — port `simple-contest` end-to-end
 
 The smallest slice that exercises the whole pipeline (setup → typed exchange →
@@ -1486,6 +1577,8 @@ log** to settle checkpoint granularity (§5.2).
 | **M8** | REG1TEST/EDI export writer | `r1-vhf-tests`, `rsgb-vhf-tests` |
 | **M9** | Cross-extension POTA ref synthesis | `georgia-pota` |
 | **M10** | Stateful rolling-location scoring, county-line N×M, bonuses | full `qp` rules |
+| **M11** | ARRL/RAC section table duplicated into each extension; power multiplier + bonus in setup (§5.9) | `fd`, `wfd` |
+| **M12** | Cross-operation callsign search, if §5.9's option B is chosen | `colonies` |
 
 Per §5.6, `qp` and `stateparks` each stay a **single extension** whose individual
 events are offered through the activity `suggest` search, so #149's discovery

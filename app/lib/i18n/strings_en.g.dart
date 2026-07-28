@@ -1457,6 +1457,9 @@ class Translations$loggingControls$info$en {
 	/// en: 'New Park'
 	String get noticeNewPark => 'New Park';
 
+	/// en: 'New Section'
+	String get noticeNewSection => 'New Section';
+
 	/// en: 'Bonus Station!'
 	String get noticeBonusStation => 'Bonus Station!';
 
@@ -2581,6 +2584,7 @@ extension on Translations {
 			'loggingControls.info.noticeInvalidCategory' => 'Not Workable',
 			'loggingControls.info.noticeWorkedBefore' => 'Worked Before',
 			'loggingControls.info.noticeNewPark' => 'New Park',
+			'loggingControls.info.noticeNewSection' => 'New Section',
 			'loggingControls.info.noticeBonusStation' => 'Bonus Station!',
 			'loggingControls.info.noticeMissingExchange' => 'No Exchange',
 			'loggingControls.info.noticeInvalidExchange' => 'Bad Exchange',
@@ -2866,9 +2870,9 @@ extension on Translations {
 			'operationLocationScreen.selectedLocation' => 'Selected Location',
 			'operationLocationScreen.gridSquare' => 'Maidenhead Grid Square Locator',
 			'operationLocationScreen.suggestedLocations' => 'Suggested Locations',
-			'operationLocationScreen.deviceGps' => 'Device GPS',
 			_ => null,
 		} ?? switch (path) {
+			'operationLocationScreen.deviceGps' => 'Device GPS',
 			'operationLocationScreen.locating' => 'Locating…',
 			'operationLocationScreen.gpsUnavailable' => 'Location unavailable',
 			'operationLocationScreen.permissionDenied' => 'Location permission denied',

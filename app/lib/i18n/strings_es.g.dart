@@ -757,6 +757,7 @@ class _Translations$loggingControls$info$es extends Translations$loggingControls
 	@override String get noticeInvalidCategory => 'No Contactable';
 	@override String get noticeWorkedBefore => 'Ya Trabajado';
 	@override String get noticeNewPark => 'Parque Nuevo';
+	@override String get noticeNewSection => 'Nueva Sección';
 	@override String get noticeBonusStation => '¡Estación Bonus!';
 	@override String get noticeMissingExchange => 'Sin Intercambio';
 	@override String get noticeInvalidExchange => 'Intercambio Inválido';
@@ -1482,6 +1483,7 @@ extension on TranslationsEs {
 			'loggingControls.info.noticeInvalidCategory' => 'No Contactable',
 			'loggingControls.info.noticeWorkedBefore' => 'Ya Trabajado',
 			'loggingControls.info.noticeNewPark' => 'Parque Nuevo',
+			'loggingControls.info.noticeNewSection' => 'Nueva Sección',
 			'loggingControls.info.noticeBonusStation' => '¡Estación Bonus!',
 			'loggingControls.info.noticeMissingExchange' => 'Sin Intercambio',
 			'loggingControls.info.noticeInvalidExchange' => 'Intercambio Inválido',
@@ -1767,9 +1769,9 @@ extension on TranslationsEs {
 			'operationLocationScreen.selectedLocation' => 'Ubicación seleccionada',
 			'operationLocationScreen.gridSquare' => 'Locator de cuadrícula Maidenhead',
 			'operationLocationScreen.suggestedLocations' => 'Ubicaciones sugeridas',
-			'operationLocationScreen.deviceGps' => 'GPS del dispositivo',
 			_ => null,
 		} ?? switch (path) {
+			'operationLocationScreen.deviceGps' => 'GPS del dispositivo',
 			'operationLocationScreen.locating' => 'Localizando…',
 			'operationLocationScreen.gpsUnavailable' => 'Ubicación no disponible',
 			'operationLocationScreen.permissionDenied' => 'Permiso de ubicación denegado',

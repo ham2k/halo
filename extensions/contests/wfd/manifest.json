@@ -1,0 +1,19 @@
+{
+  "key": "wfd",
+  "name": "Winter Field Day",
+  "shortName": "WFD",
+  "version": "0.0.1",
+  "description": "The January field event — class and section exchange, with a multiplier earned from objectives",
+  "category": "contest",
+  "enabledByDefault": false,
+  "icon": "snowflake",
+  "accentColor": "#0277BD",
+  "keywords": ["winter field day", "wfd", "contest"],
+  "hooks": ["activity", "adifFields", "export", "ref:wfd", "scoring"],
+  "translations": {
+    "es": {
+      "description": "El evento de campo de enero — intercambio de clase y sección, con multiplicador por objetivos",
+      "keywords": ["winter field day", "wfd", "concurso"]
+    }
+  }
+}

@@ -25,6 +25,7 @@ String scoreNoticeLabel(BuildContext context, String key) {
     'newRef' => t.noticeNewRef,
     // Contest scorers (docs/design/contests.md M2 onward).
     'newMult' => t.noticeNewMult,
+    'newSection' => t.noticeNewSection,
     'newZone' => t.noticeNewZone,
     'workedBefore' => t.noticeWorkedBefore,
     // A park new to the log (M5's state-park events), and a station the event

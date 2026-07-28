@@ -1,0 +1,19 @@
+{
+  "key": "fd",
+  "name": "ARRL Field Day",
+  "shortName": "FD",
+  "version": "0.0.1",
+  "description": "The ARRL's June operating event — class and section exchange, power multiplier and bonuses",
+  "category": "contest",
+  "enabledByDefault": false,
+  "icon": "weather-sunny",
+  "accentColor": "#E65100",
+  "keywords": ["field day", "arrl", "fd", "contest"],
+  "hooks": ["activity", "adifFields", "export", "ref:fd", "scoring"],
+  "translations": {
+    "es": {
+      "description": "El evento de junio de la ARRL — intercambio de clase y sección, multiplicador de potencia y bonificaciones",
+      "keywords": ["field day", "arrl", "fd", "concurso"]
+    }
+  }
+}

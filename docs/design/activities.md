@@ -467,9 +467,9 @@ others. `Score` = implements `scoringForQSO` in app-polo.
 | `tota` | H+A | API + key | F S O | ✓ | A3 | **blocked** on §3.4 |
 | `custom` | H+A | – | – | – | A4 | user-supplied SIG/SIG_INFO; §3.6 |
 | `satellites` | one type | JSON | – | – | A5 | **blocked** on §3.5 |
-| `fd` | one type | – | – | ✓ | — | → contests.md |
-| `wfd` | one type | – | – | ✓ | — | → contests.md |
-| `colonies` | one type | – | – | ✓ | — | → contests.md |
+| `fd` | one type | – | – | ✓ | — | → contests.md §5.9 |
+| `wfd` | one type | – | – | ✓ | — | → contests.md §5.9 |
+| `colonies` | one type | – | – | ✓ | — | → contests.md §5.9 |
 
 Rows describe **app-polo's** structure. "own scorer" means the extension
 hand-writes `scoringForQSO` rather than calling
