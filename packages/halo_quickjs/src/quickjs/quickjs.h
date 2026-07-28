@@ -59,7 +59,28 @@ extern "C" {
  * If building qjs, the BUILDING_QJS_SHARED macro must be defined for libqjs
  * (and only for it) to properly export symbols.
  */
-#ifdef QUICKJS_NG_PLAT_WIN32
+/*
+ * HALO LOCAL PATCH (the only modification to the vendored quickjs-ng sources).
+ *
+ * With HALO_QJS_HIDE_INTERNALS defined, JS_EXTERN expands to nothing so the
+ * ~248 JS_* functions are NOT force-exported. Without it, the attribute below
+ * overrides any -fvisibility=hidden or CMake C_VISIBILITY_PRESET: an explicit
+ * visibility("default") on a declaration beats the flag, which is why
+ * src/CMakeLists.txt has set C_VISIBILITY_PRESET hidden all along and the built
+ * library still exported 248 JS_* symbols. Measured, before and after.
+ *
+ * We want exactly ten exports - the flat halo_qjs_* C ABI in halo_qjs.h, which
+ * carries its own visibility("default"). That boundary is the whole design:
+ * no JSValue may cross it, because JSValue is a NaN-boxed uint64_t on 32-bit
+ * targets and a struct on 64-bit ones (see tool/verify_targets.sh). Exporting
+ * the raw engine API lets anything in-process drive the runtime directly and
+ * bypass the shim's eval budget, depth tracking and rejection reporting.
+ *
+ * Keep this block when updating quickjs-ng; upstream has no equivalent opt-out.
+ */
+#if defined(HALO_QJS_HIDE_INTERNALS)
+# define JS_EXTERN /* hidden; only halo_qjs_* is exported */
+#elif defined(QUICKJS_NG_PLAT_WIN32)
 # if defined(BUILDING_QJS_SHARED)
 #  define JS_EXTERN __declspec(dllexport)
 # elif defined(USING_QJS_SHARED)

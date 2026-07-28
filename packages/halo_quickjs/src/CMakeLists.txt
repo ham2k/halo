@@ -60,6 +60,12 @@ endif()
 
 # Release builds only; a debug-assert build of quickjs is far slower and we
 # never want it in a shipped app.
+# Makes C_VISIBILITY_PRESET above actually bite: quickjs marks its whole API
+# visibility("default"), which overrides the preset, so without this the library
+# exported 248 JS_* symbols despite asking for hidden. See the HALO LOCAL PATCH
+# in src/quickjs/quickjs.h.
+target_compile_definitions(halo_quickjs PRIVATE HALO_QJS_HIDE_INTERNALS)
+
 target_compile_definitions(halo_quickjs PRIVATE NDEBUG)
 
 if (ANDROID)

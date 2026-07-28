@@ -26,5 +26,11 @@ if [[ -f "$OUT" ]]; then
 fi
 
 echo "halo_quickjs: building host lib -> $OUT"
-cc -shared -fPIC -O2 -DNDEBUG -D_GNU_SOURCE -Isrc -Isrc/quickjs -w "${SRCS[@]}" -lm -o "$OUT"
+# -fvisibility=hidden + HALO_QJS_HIDE_INTERNALS: export the ten halo_qjs_*
+# entry points and nothing else, matching what every shipped build does. Worth
+# matching precisely because this is the library `flutter test` loads - a host
+# lib that exported more than the real one would let a test pass against a
+# surface production does not have.
+cc -shared -fPIC -O2 -DNDEBUG -D_GNU_SOURCE -DHALO_QJS_HIDE_INTERNALS \
+  -fvisibility=hidden -Isrc -Isrc/quickjs -w "${SRCS[@]}" -lm -o "$OUT"
 echo "halo_quickjs: ok ($(du -h "$OUT" | cut -f1))"

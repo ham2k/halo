@@ -25,8 +25,15 @@ let package = Package(
             cSettings: [
                 .define("NDEBUG", to: "1"),
                 .define("_GNU_SOURCE", to: "1"),
+                // Export ONLY the halo_qjs_* ABI. quickjs marks its whole API
+                // visibility("default"), which beats -fvisibility=hidden, so the
+                // define below (a local patch in quickjs.h) is what actually
+                // hides it; the flag hides everything else. halo_qjs.h keeps its
+                // own visibility("default") plus `used`, so the ten survive both
+                // this and the app's dead-stripping.
+                .define("HALO_QJS_HIDE_INTERNALS", to: "1"),
                 // quickjs is third-party C; its warnings are not ours to fix.
-                .unsafeFlags(["-Wno-everything"])
+                .unsafeFlags(["-Wno-everything", "-fvisibility=hidden"])
             ]
         )
     ]
