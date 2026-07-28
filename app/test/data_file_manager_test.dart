@@ -11,6 +11,32 @@ import 'package:ham2k_logger/services/data_file_manager.dart';
 import 'package:ham2k_logger/services/extension_service.dart';
 import 'package:ham2k_logger/services/status_bar_service.dart';
 
+/// Mirrors the zip the real kernel performs (`extensions/sdk/src/kernel.ts`).
+///
+/// The host sends CSV rows POSITIONALLY plus one `headers` list per chunk, and
+/// the kernel rebuilds the `Record<string,string>` that `csvToLookupEntry`
+/// actually sees — that split is what keeps ~61% of the payload (a repeat of
+/// every column name on every row) off the boundary (APP-16). The mocks below
+/// stand in for the kernel, so they have to zip the same way; a mock that read
+/// `rows` as maps would pass while the real extensions received lists.
+List<Map<String, dynamic>> zipCsvRows(dynamic args) {
+  final headers = (args['headers'] as List?)?.cast<String>();
+  if (headers == null) {
+    // `hasHeaders: false` — the kernel hands the mapper the positional row
+    // untouched. Mirrored here so this helper stays a faithful stand-in rather
+    // than throwing an opaque cast error the day a fixture needs that path.
+    return [
+      for (final row in (args['rows'] as List)) {for (var j = 0; j < (row as List).length; j++) '$j': row[j]}
+    ];
+  }
+  return [
+    for (final row in (args['rows'] as List))
+      {
+        for (var j = 0; j < headers.length && j < (row as List).length; j++) headers[j]: row[j],
+      }
+  ];
+}
+
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
@@ -198,9 +224,7 @@ void main() {
         }
       ],
       'dataFile:test-csv-file:mapCsvBatch': (args) {
-        final rows = args['rows'] as List;
-        return rows.map((r) {
-          final row = r as Map;
+        return zipCsvRows(args).map((row) {
           return {
             'key': row['id'],
             'name': row['title'],
@@ -250,6 +274,42 @@ REF-002,Summit Two,45.56,-122.78
     final row2 = await lookups.getLookup('test_category', 'REF-002');
     expect(row2, isNotNull);
     expect(row2!.name, 'Summit Two');
+  });
+
+  test('DataFileManager: a mapper that returns a non-list fails the file instead of emptying it', () async {
+    // Regression guard for the worst shape of the old silent skip (APP-16).
+    // A chunk whose response was not a List used to be passed over, so a
+    // broken or absent mapper imported nothing — and then `deleteCategoryStale`
+    // at the end of the run swept every row this run had not stamped, wiping
+    // the whole category. Failing loudly is what keeps the last good copy of a
+    // 181k-row list on disk when an extension update breaks its mapper.
+    await lookups.insertLookupBatch([
+      LookupRow(category: 'fragile_category', key: 'KEEP-1', name: 'Previously imported', updated: 1),
+    ]);
+
+    final host = MockExtensionHost({
+      'dataFile:fragile-csv:mapCsvBatch': (args) => {'error': 'mapper blew up'}, // a Map, not a List
+    });
+    final m = TestDataFileManager(lookups: lookups, extensions: MockExtensionService(host), prefs: prefs)
+      ..mockDownloadBody = 'ref,name\nR-1,Fresh\n';
+
+    await expectLater(
+      m.processDataFile('fragile-csv', {
+        'key': 'fragile-csv',
+        'fetchType': 'csv',
+        'category': 'fragile_category',
+        'url': 'https://example.com/fragile.csv',
+        'csvOptions': {'hasHeaders': true, 'delimiter': ','},
+      }),
+      throwsA(isA<ExtensionHostException>()),
+      reason: 'the caller has to learn the file failed — settings_view surfaces it, syncAllDataFiles reports it',
+    );
+
+    expect(
+      await lookups.getLookup('fragile_category', 'KEEP-1'),
+      isNotNull,
+      reason: 'bailing out must skip the stale sweep, leaving the previous import intact',
+    );
   });
 
   test('DataFileManager: JSON parsing and Drift batch write integration', () async {
@@ -335,9 +395,7 @@ REF-002,Summit Two,45.56,-122.78
         },
       ],
       'dataFile:good-csv-file:mapCsvBatch': (args) {
-        final rows = args['rows'] as List;
-        return rows.map((r) {
-          final row = r as Map;
+        return zipCsvRows(args).map((row) {
           return {'key': row['id'], 'name': row['title'], 'flags': 1};
         }).toList();
       },
@@ -412,7 +470,7 @@ REF-002,Summit Two,45.56,-122.78
         },
       ],
       'dataFile:refresh-csv:mapCsvBatch': (args) => [
-            for (final r in (args['rows'] as List)) {'key': (r as Map)['ref'], 'name': r['name']},
+            for (final r in zipCsvRows(args)) {'key': r['ref'], 'name': r['name']},
           ],
     });
     final m = TestDataFileManager(lookups: lookups, extensions: MockExtensionService(host), prefs: prefs)
@@ -455,7 +513,7 @@ REF-002,Summit Two,45.56,-122.78
           },
         ],
         'dataFile:pota-all-parks:mapCsvBatch': (args) => [
-              for (final r in (args['rows'] as List)) {'key': (r as Map)['ref'], 'name': r['name']},
+              for (final r in zipCsvRows(args)) {'key': r['ref'], 'name': r['name']},
             ],
       });
       final m = TestDataFileManager(

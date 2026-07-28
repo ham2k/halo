@@ -686,6 +686,30 @@ row/entry→`LookupRow` transform. See `DataFileManager`
 (`fetchType: 'raw'` — the parsed Hams of Note index is cached as JSON and
 replayed through `onLoadRawData` at startup, issue #17).
 
+### How CSV rows reach `csvToLookupEntry`
+
+An extension writes a **per-row** mapper; the kernel synthesizes the batch
+method around it. What crosses the boundary is **not** what the mapper sees:
+the host sends rows **positionally** plus the header row **once per chunk**,
+and `registerHook` zips them back into the `Record<string, string>` the mapper
+is declared to take. Building those maps host-side instead meant every column
+name was repeated for every row — 61% of the bytes on SOTA's 181k-row file
+(APP-16).
+
+Consequences worth knowing:
+
+- A file with `hasHeaders: false` sends no headers, and the mapper receives the
+  positional `string[]` — the other half of the declared
+  `string[] | Record<string, string>` signature.
+- A short row leaves its trailing keys **absent**, not `undefined`-valued, so
+  `!row.SummitCode` still works as the emptiness test.
+- The zipped row has a **null prototype**: column names come from a
+  third-party file and must never reach `Object.prototype`.
+- An extension that defines `mapCsvBatch` **itself** bypasses all of the above
+  and receives the raw `{ rows, headers? }` — it has to zip on its own. Nothing
+  does this today, and `DataFileDefinition` doesn't declare the method, so the
+  type checker will not remind you.
+
 ---
 
 ## 🔜 Planned categories

@@ -321,9 +321,38 @@ function activateExtension(def: ExtensionDefinition) {
         const hookObj = params.hook as Record<string, unknown>
         if (category === 'dataFile') {
           if (typeof hookObj.csvToLookupEntry === 'function' && typeof hookObj.mapCsvBatch !== 'function') {
-            hookObj.mapCsvBatch = async (args: { rows: unknown[][] }) => {
+            // `headers` arrives once per chunk rather than once per row: the
+            // host sends positional rows and the zip happens here, because
+            // repeating every column name in the JSON for every row was 61% of
+            // the bytes crossing the boundary on SOTA's 181k-row file (APP-16).
+            // Without headers (a `hasHeaders: false` file) the row is passed
+            // through positionally, which is the other half of the declared
+            // `string[] | Record<string, string>` mapper signature.
+            hookObj.mapCsvBatch = async (args: { rows: unknown[][]; headers?: string[] }) => {
               const mapper = hookObj.csvToLookupEntry as (row: unknown) => unknown
-              return args.rows.map(row => mapper(row)).filter(x => x !== null && x !== undefined)
+              const headers = args.headers
+              if (!headers) {
+                return args.rows.map(row => mapper(row)).filter(x => x !== null && x !== undefined)
+              }
+              const out: unknown[] = []
+              for (const row of args.rows) {
+                const cells = row as string[]
+                // Short rows leave the trailing keys ABSENT rather than
+                // undefined-valued — mappers test `!r.SummitCode`, and a ragged
+                // CSV line must behave the same as it did when the host built
+                // this object.
+                const limit = headers.length < cells.length ? headers.length : cells.length
+                // Null-prototype so a column NAME out of a third-party file is
+                // only ever data. On a plain `{}`, `obj['__proto__'] = str`
+                // hits Object.prototype's setter and is silently discarded —
+                // where the host's Dart map round-tripped through JSON.parse
+                // would have made it a readable own property.
+                const obj: Record<string, string> = Object.create(null)
+                for (let j = 0; j < limit; j++) obj[headers[j]] = cells[j]
+                const mapped = mapper(obj)
+                if (mapped !== null && mapped !== undefined) out.push(mapped)
+              }
+              return out
             }
           }
           if (typeof hookObj.jsonToLookupEntry === 'function' && typeof hookObj.mapJsonBatch !== 'function') {

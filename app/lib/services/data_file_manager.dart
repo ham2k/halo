@@ -5,6 +5,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:halo_core/halo_core.dart';
+import 'package:halo_extension_host/halo_extension_host.dart';
 import 'package:http/http.dart' as http;
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
@@ -358,6 +359,15 @@ class DataFileManager {
     final delimiter = csvOpts['delimiter'] as String? ?? ',';
 
     // Parse lines
+    //
+    // Rows stay as positional lists and the header row is sent ONCE per chunk,
+    // for the kernel to zip back into the `Record<string,string>` that
+    // `csvToLookupEntry` expects (extensions/sdk/src/kernel.ts). Building the
+    // maps here instead meant every column name was repeated in the JSON for
+    // every row: measured on SOTA's 181,604-row file that was ~241 of the ~395
+    // bytes per row — 61% of everything crossing the boundary was the same 17
+    // strings over and over, paid four times (encode, escape into the eval
+    // source, tokenize, JSON.parse). See APP-16.
     final lines = const LineSplitter().convert(body);
     final parsedRows = <dynamic>[];
     List<String>? headers;
@@ -368,22 +378,15 @@ class DataFileManager {
       if (line.isEmpty) continue;
 
       final parsed = parseCsvRow(line, delimiter);
-      if (hasHeaders) {
-        if (headers == null) {
-          headers = parsed;
-        } else {
-          final rowMap = <String, String>{};
-          for (var j = 0; j < headers.length && j < parsed.length; j++) {
-            rowMap[headers[j]] = parsed[j];
-          }
-          parsedRows.add(rowMap);
-        }
-      } else {
-        parsedRows.add(parsed);
+      if (hasHeaders && headers == null) {
+        headers = parsed;
+        continue;
       }
+      parsedRows.add(parsed);
     }
 
-    await _batchWriteToDatabase(key, category, _labelFor(key, def), 'mapCsvBatch', 'rows', parsedRows);
+    await _batchWriteToDatabase(key, category, _labelFor(key, def), 'mapCsvBatch', 'rows', parsedRows,
+        extraArgs: headers == null ? null : {'headers': headers});
   }
 
   Future<void> _processJson(String key, Map<String, dynamic> def, String body) async {
@@ -631,8 +634,9 @@ class DataFileManager {
     String label,
     String mappingMethod,
     String mappingArgKey,
-    List<dynamic> items,
-  ) async {
+    List<dynamic> items, {
+    Map<String, dynamic>? extraArgs,
+  }) async {
     final host = extensions.host;
     if (host == null) return;
 
@@ -653,37 +657,66 @@ class DataFileManager {
       );
 
       // Invoke chunk mapper in QuickJS
+      //
+      // The timeout is explicit because the default 10s is a per-CALL budget
+      // that a 5000-row chunk shares with every other data file being synced
+      // at the same time — `syncAllDataFiles` starts ~20 of them at once and
+      // they all queue through the one single-threaded engine. A chunk that
+      // overran used to be dropped without a trace (the `is List` check below
+      // just skipped it), i.e. 5000 summits silently missing until the next
+      // refresh. See APP-16.
+      //
+      // TODO: 60s is cover for that contention, not a considered per-chunk
+      // budget. If syncAllDataFiles moves to parallel downloads + serial
+      // processing (APP-16), this should come back down.
       final dynamic response = await host.invokeHook(
         'dataFile',
         key: key,
         method: mappingMethod,
-        args: {mappingArgKey: chunk},
+        args: {mappingArgKey: chunk, ...?extraArgs},
+        timeout: const Duration(seconds: 60),
       );
 
-      if (response is List) {
-        final lookupRows = <LookupRow>[];
-        for (final item in response) {
-          if (item is Map) {
-            final entryKey = item['key'] as String?;
-            if (entryKey != null) {
-              lookupRows.add(LookupRow(
-                category: category,
-                subCategory: item['subCategory'] as String?,
-                key: entryKey,
-                name: item['name'] as String?,
-                lat: (item['lat'] as num?)?.toDouble(),
-                lon: (item['lon'] as num?)?.toDouble(),
-                flags: item['flags'] as int?,
-                data: item['data'] != null ? jsonEncode(item['data']) : null,
-                updated: updatedFlag,
-              ));
-            }
+      if (response is! List) {
+        // Loud, not silent: losing a whole chunk is a data-integrity problem,
+        // and the caller already treats a failed data file as a failed sync.
+        //
+        // Throwing here also protects what is already in the table. Skipping
+        // instead let the loop run to the `deleteCategoryStale` below with
+        // nothing imported, which sweeps every row that this run did not
+        // stamp — so a mapper that returned nothing WIPED the whole category.
+        // Bailing out leaves the partial import in place (same primary key,
+        // insertOrReplace, so no duplicates), skips the sweep, and leaves
+        // `data_file_updated_$key` unstamped, so the next sync redoes the file
+        // in full and sweeps then.
+        throw ExtensionHostException(
+          'dataFile $key: $mappingMethod returned ${response.runtimeType}, not a list — '
+          'dropping rows $start..$end of ${items.length}',
+        );
+      }
+
+      final lookupRows = <LookupRow>[];
+      for (final item in response) {
+        if (item is Map) {
+          final entryKey = item['key'] as String?;
+          if (entryKey != null) {
+            lookupRows.add(LookupRow(
+              category: category,
+              subCategory: item['subCategory'] as String?,
+              key: entryKey,
+              name: item['name'] as String?,
+              lat: (item['lat'] as num?)?.toDouble(),
+              lon: (item['lon'] as num?)?.toDouble(),
+              flags: item['flags'] as int?,
+              data: item['data'] != null ? jsonEncode(item['data']) : null,
+              updated: updatedFlag,
+            ));
           }
         }
-        if (lookupRows.isNotEmpty) {
-          await lookups.insertLookupBatch(lookupRows);
-          imported += lookupRows.length;
-        }
+      }
+      if (lookupRows.isNotEmpty) {
+        await lookups.insertLookupBatch(lookupRows);
+        imported += lookupRows.length;
       }
     }
 
