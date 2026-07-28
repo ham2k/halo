@@ -154,7 +154,8 @@ static void my_application_activate(GApplication* application) {
 
   // Ties every window to the themed icon named after APPLICATION_ID — the
   // per-edition icon the CMake install lays down as
-  // hicolor/512x512/apps/<APPLICATION_ID>.png (docs/releases.md §2.6).
+  // hicolor/512x512/apps/<APPLICATION_ID>.png (docs/releases.md §2.6). Findable
+  // because startup() registered the bundle's own share/icons as a search path.
   gtk_window_set_default_icon_name(APPLICATION_ID);
 
   gtk_window_set_default_size(window, 1280, 720);
@@ -211,11 +212,29 @@ static gboolean my_application_local_command_line(GApplication* application,
   return TRUE;
 }
 
+// The bundle is self-contained and relocatable (linux/CMakeLists.txt installs
+// the app icon under its own share/icons/hicolor/…, not into a system icon
+// theme dir), so gtk_window_set_default_icon_name below can't find it by name
+// unless the icon theme is told where to look. Without this, a portable run
+// or an AppImage launches with no window/taskbar icon at all — the theme
+// lookup just fails silently.
+static void my_application_register_bundled_icon_theme() {
+  g_autofree gchar* exe_path = g_file_read_link("/proc/self/exe", nullptr);
+  if (exe_path == nullptr) {
+    return;
+  }
+  g_autofree gchar* exe_dir = g_path_get_dirname(exe_path);
+  g_autofree gchar* icon_dir =
+      g_build_filename(exe_dir, "share", "icons", nullptr);
+  gtk_icon_theme_append_search_path(gtk_icon_theme_get_default(), icon_dir);
+}
+
 // Implements GApplication::startup.
 static void my_application_startup(GApplication* application) {
   // MyApplication* self = MY_APPLICATION(object);
 
   // Perform any actions required at application startup.
+  my_application_register_bundled_icon_theme();
 
   G_APPLICATION_CLASS(my_application_parent_class)->startup(application);
 }
