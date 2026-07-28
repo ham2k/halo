@@ -1176,7 +1176,7 @@ void main() {
     );
 
     testWidgets(
-      'shows score badges from the matching daySections entry, skipping qsoCount',
+      'shows score badges from the matching daySections entry, skipping qsoCount and tallies with no summary',
       (tester) async {
         final operation = await operations.create(stationCall: 'KI2D');
         final qso = await qsos.add(operation.uuid, {
@@ -1201,6 +1201,11 @@ void main() {
                     'scores': {
                       'core.qsoCount': {'key': 'qsoCount', 'icon': 'radio', 'summary': '1'},
                       'core.dxcc': {'key': 'dxcc', 'icon': 'earth', 'summary': '5'},
+                      // A tally with no `summary` (e.g. activityScoring's
+                      // hunting tally, which folds its count into `label`
+                      // instead) opts itself out of this compact badge row —
+                      // the render site doesn't special-case any scorer key.
+                      'pota.hunting': {'key': 'hunting', 'icon': 'pine-tree'},
                     },
                   },
                 ],
@@ -1211,6 +1216,7 @@ void main() {
 
         expect(find.byIcon(resolveIconName('earth')), findsOneWidget);
         expect(find.byIcon(resolveIconName('radio')), findsNothing);
+        expect(find.byIcon(resolveIconName('pine-tree')), findsNothing);
         expect(find.text('5'), findsOneWidget);
       },
     );

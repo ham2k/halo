@@ -448,6 +448,11 @@ function summarizeActivation(
 /// The hunter's tally. Counts REFERENCES, not contacts: one contact with a
 /// station in three parks is three references hunted, which is what the award
 /// programs count.
+///
+/// No `summary`: the count is already spelled out in `label` ("3 POTA
+/// References Hunted"), and hunted refs are shown individually as ref icons
+/// on each QSO row — a `summary` would make this tally show up as its own
+/// badge in the day-header's compact summary, duplicating both.
 function summarizeHunting(
   huntedRefs: Record<string, number>,
   qsos: number,
@@ -467,6 +472,5 @@ function summarizeHunting(
       count === 1
         ? t('huntedOne', { program: rules.label })
         : t('huntedMany', { program: rules.label, formatted: fmtInteger(count) }),
-    summary: fmtInteger(count),
   }
 }

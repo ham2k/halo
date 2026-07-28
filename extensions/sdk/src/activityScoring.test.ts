@@ -163,6 +163,18 @@ test("the two-park contact also earns two hunted references", async () => {
   assert.deepEqual(hunting.huntedRefs, { 'US-9001': 1, 'US-9002': 1 })
 })
 
+test("the hunting tally has no `summary` — its count lives in `label` instead", async () => {
+  // A `summary` would make the QSO list's compact day-header badge row show
+  // it as its own badge, duplicating the per-QSO ref icons that already
+  // show hunted references individually. `label` ("2 POTA References
+  // Hunted") is what the full-detail operation info panel renders instead.
+  const operation = operationActivating('potaActivation', 'US-0001')
+  const result = await score(POTA, operation, [qso('W1AW', { hunting: ['US-9001', 'US-9002'] })])
+  const hunting = tally(result.operationSummary, 'hunting')!
+  assert.equal(hunting.summary, undefined)
+  assert.match(hunting.label!, /2 .*Hunted/)
+})
+
 test("without allowsMultipleReferences only the first hunted ref counts", async () => {
   // SOTA has no n-fers: a QSO carrying two summit refs still credits one.
   const operation = operationActivating('sotaActivation', 'W1/AM-001')
