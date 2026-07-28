@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: MPL-2.0
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:halo_widgets/halo_widgets.dart';
@@ -128,6 +129,62 @@ void main() {
       expect(find.text('License Field'), findsOneWidget);
       expect(find.text('Pref Field'), findsOneWidget);
       expect(find.text('Agree Field'), findsOneWidget);
+    });
+
+    testWidgets('arrow keys cycle a focused select field through its options', (tester) async {
+      Map<String, dynamic>? changedTo;
+      await tester.pumpWidget(MaterialApp(
+        home: Scaffold(
+          body: SingleChildScrollView(
+            child: FormRenderer(
+              formDefinition: formDefinition,
+              initialState: const {'license': 'tech'},
+              onChange: (key, value, state) async {
+                if (key == 'license') changedTo = {'value': value};
+                return null;
+              },
+              onSubmit: (_) {},
+              onCancel: () {},
+            ),
+          ),
+        ),
+      ));
+
+      // DropdownButtonFormField doesn't expose its FocusNode as a public
+      // getter, so reach the `Focus` it wraps itself in and focus that
+      // directly — requesting focus this way, rather than tapping the field,
+      // also avoids ever opening the popup menu, which is the whole point:
+      // this cycling only needs to work while the menu is closed.
+      final dropdownFocusNode = find
+          .descendant(
+            of: find.byType(DropdownButtonFormField<dynamic>),
+            matching: find.byType(Focus),
+          )
+          .evaluate()
+          .map((e) => (e.widget as Focus).focusNode)
+          .firstWhere((node) => node != null);
+      dropdownFocusNode!.requestFocus();
+      await tester.pump();
+
+      // Down from 'tech' (index 0) lands on 'general' (index 1) — the menu
+      // never opens, so this must come from the field's own key handling,
+      // not DropdownButtonFormField's built-in open-menu arrow navigation.
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
+      await tester.pump();
+      expect(find.text('General'), findsOneWidget);
+      expect(changedTo, {'value': 'general'});
+
+      // Down again wraps back to 'tech', the first option.
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
+      await tester.pump();
+      expect(find.text('Tech'), findsOneWidget);
+      expect(changedTo, {'value': 'tech'});
+
+      // Up from 'tech' wraps the other way, to the last option.
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowUp);
+      await tester.pump();
+      expect(find.text('General'), findsOneWidget);
+      expect(changedTo, {'value': 'general'});
     });
 
     testWidgets('link elements hand their URL to onOpenLink', (tester) async {

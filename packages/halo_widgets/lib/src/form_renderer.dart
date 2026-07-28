@@ -416,7 +416,38 @@ class FormRendererState extends State<FormRenderer> {
           _handleFieldBlurOrInteraction(key, _values[key]);
         }
       });
+    } else if (fieldType == 'select') {
+      focusNode.onKeyEvent = (node, event) => _handleSelectKeyEvent(key, event);
     }
+  }
+
+  /// Up/Down cycle a focused-but-closed `select` field through its options,
+  /// wrapping at either end — `DropdownButtonFormField`'s own arrow-key
+  /// handling only kicks in once its popup menu is open, so a field that is
+  /// merely focused otherwise ignores the keys entirely.
+  KeyEventResult _handleSelectKeyEvent(String key, KeyEvent event) {
+    if (event is! KeyDownEvent && event is! KeyRepeatEvent) return KeyEventResult.ignored;
+    final logicalKey = event.logicalKey;
+    if (logicalKey != LogicalKeyboardKey.arrowDown && logicalKey != LogicalKeyboardKey.arrowUp) {
+      return KeyEventResult.ignored;
+    }
+    if (_isSubmitting) return KeyEventResult.ignored;
+    final field = _fields.firstWhere((f) => f['key'] == key, orElse: () => const {});
+    final options = (field['options'] as List?)?.cast<Map<String, dynamic>>() ?? const <Map<String, dynamic>>[];
+    if (options.isEmpty) return KeyEventResult.ignored;
+
+    final delta = logicalKey == LogicalKeyboardKey.arrowDown ? 1 : -1;
+    final currentIndex = options.indexWhere((opt) => opt['value'] == _values[key]);
+    final nextIndex =
+        currentIndex < 0 ? (delta > 0 ? 0 : options.length - 1) : (currentIndex + delta) % options.length;
+    final nextValue = options[nextIndex]['value'];
+
+    setState(() {
+      _values[key] = nextValue;
+      _errors.remove(key);
+    });
+    _handleFieldBlurOrInteraction(key, nextValue);
+    return KeyEventResult.handled;
   }
 
   @override
