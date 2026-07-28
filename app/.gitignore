@@ -48,6 +48,11 @@ app.*.map.json
 # client ids. See lib/config/secrets.dart.example for the template.
 /lib/config/secrets.dart
 
+# Dead since #411 (superseded by lib/config/secrets.dart), but older
+# worktrees/checkouts can still have one on disk from before that PR. Ignore
+# it so a stray file doesn't get swept into a commit by `git add -A` (#417).
+/lib/config/mapbox_token.dart
+
 # Cloudflare Wrangler local cache/config
 .wrangler/
 
