@@ -11,6 +11,7 @@ import 'package:flutter_markdown/flutter_markdown.dart';
 
 import '../config/dev_bridge.dart';
 import '../config/dev_flags.dart';
+import '../config/version.dart';
 import '../config/web_preview_label.dart';
 import '../main.dart';
 import '../services/settings_service.dart';
@@ -307,21 +308,11 @@ class _HomeViewState extends State<HomeView> with WidgetsBindingObserver {
               const SizedBox(width: 10),
               Flexible(
                 child: shrinkToFit(
-                  Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Edition badge (Regular has no badge).
-                      if (ham2kEditionBadgeAsset != null)
-                        Padding(
-                          padding: const EdgeInsets.only(bottom: 2),
-                          // Zero-offset shadows read as a glow: black for Next, white for Dev.
-                          child: Ham2kEditionBadge(height: 15, shadows: ham2kHeaderEditionBadgeShadows),
-                        ),
-                      // A free-form dev label (DEV_LABEL) — marks which dev build/session is running;
-                      // absent in release builds.
-                      if (_devLabel.isNotEmpty)
-                        Text(
+                  // A free-form dev label (DEV_LABEL) — marks which dev build/session
+                  // is running — takes the edition badge's place when present, rather
+                  // than stacking with it; absent in release builds.
+                  _devLabel.isNotEmpty
+                      ? Text(
                           _devLabel,
                           style: TextStyle(
                             fontSize: 13,
@@ -329,9 +320,9 @@ class _HomeViewState extends State<HomeView> with WidgetsBindingObserver {
                             color: (theme.appBarTheme.foregroundColor ?? theme.colorScheme.onPrimary)
                                 .withValues(alpha: 0.8),
                           ),
-                        ),
-                    ],
-                  ),
+                        )
+                      // Zero-offset shadows read as a glow: black for Next, white for Dev.
+                      : Ham2kEditionBadge(height: 15, shadows: ham2kHeaderEditionBadgeShadows),
                 ),
               ),
             ],
@@ -633,6 +624,20 @@ class _BrandingPane extends StatelessWidget {
             const SizedBox(height: 8),
             SvgPicture.asset(ham2kEditionBadgeAsset!, width: 130),
           ],
+          // A free-form dev label (DEV_LABEL) — marks which dev build/session is
+          // running; absent in release builds. Unlike the header (where it takes the
+          // badge's place), here it's shown alongside it, between the badge and the
+          // version name.
+          if (_devLabel.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            Text(
+              _devLabel,
+              style: theme.textTheme.bodyMedium?.copyWith(
+                fontStyle: FontStyle.italic,
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+          ],
           const SizedBox(height: 16),
           // Just the release name, without the edition qualifier (the edition
           // is already shown by the badge SVG above) and without the build
@@ -641,6 +646,13 @@ class _BrandingPane extends StatelessWidget {
             nameOnly: true,
             style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant),
           ),
+          // Build number + git SHA (APP-24), dev builds only — lets a
+          // developer confirm exactly which build/commit is running.
+          if (!kReleaseMode)
+            Text(
+              '(build $kBuildNumber${kGitSha.isEmpty ? '' : ' - $kGitSha'})',
+              style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+            ),
         ],
         ),
       ),
