@@ -11,6 +11,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:halo_core/halo_core.dart';
+import 'package:halo_widgets/halo_widgets.dart';
 import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -186,7 +187,24 @@ class _CallInfoPanelState extends State<CallInfoPanel> {
                   if (country != null)
                     Padding(
                       padding: const EdgeInsets.only(top: 4),
-                      child: Text([if (flag != null) flag, country].join(' '), style: theme.textTheme.bodyLarge),
+                      // The flag needs its own span in emojiStyle()'s font —
+                      // a plain Text in bodyLarge (Roboto) never renders it
+                      // at all, since Flutter doesn't fall back to the OS's
+                      // color-emoji font (see theme.dart's emojiFontFamily
+                      // doc comment).
+                      child: flag == null
+                          ? Text(country, style: theme.textTheme.bodyLarge)
+                          : Text.rich(
+                              TextSpan(
+                                children: [
+                                  TextSpan(
+                                    text: flag,
+                                    style: emojiStyle(fontSize: theme.textTheme.bodyLarge?.fontSize ?? 16),
+                                  ),
+                                  TextSpan(text: ' $country', style: theme.textTheme.bodyLarge),
+                                ],
+                              ),
+                            ),
                     ),
                 ],
               ),

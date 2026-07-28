@@ -105,6 +105,21 @@ void _mainBody({
   UpdateCheckService? updateCheck,
 }) {
   WidgetsFlutterBinding.ensureInitialized();
+  // Native only: on web, the engine's own bootstrap (ui_web.bootstrapEngine
+  // → _downloadAssetFonts) already eagerly downloads and registers every
+  // FontManifest-declared font, including this one, before main() ever
+  // runs — preloading again here would just double the fetch. On native,
+  // pubspec-declared fonts genuinely do load lazily on first use, which is
+  // what this fixes: without it, whichever screen paints the first emoji
+  // (often a lookup result's DXCC flag) shows a placeholder for a beat
+  // before the real glyph swaps in. Deferred to the first post-frame
+  // callback rather than fired here, so it doesn't compete with
+  // bootstrap()/runApp() for CPU/IO at the most latency-sensitive moment —
+  // it only needs to beat whichever screen shows the first emoji, not the
+  // splash, which never shows one.
+  if (!kIsWeb) {
+    WidgetsBinding.instance.addPostFrameCallback((_) => unawaited(_preloadEmojiFont()));
+  }
   // Turn on structured dev logging ([qso], [lookup], …) for all non-release
   // builds — console output + a buffer window.__halo.recentLog() can query.
   // Off in release, so nothing is emitted or buffered there (#237).
@@ -190,6 +205,24 @@ void _mainBody({
     // unrelated unhandled-rejection for the openFirstOp dev nicety above.
     debugPrint('[boot] bootstrap() failed: $error');
   });
+}
+
+/// Forces the bundled color-emoji font's glyph data to load now, instead of
+/// on whichever `Text` widget happens to need it first (see [_mainBody]'s
+/// call site). Never throws — a failed/slow load just means emoji keep
+/// falling back to their placeholder a little longer, exactly like today
+/// without this at all; not worth surfacing as a boot error over.
+Future<void> _preloadEmojiFont() async {
+  try {
+    // FontLoader needs the family name to register under (matching what
+    // emojiStyle() requests) and the asset bytes to register it with,
+    // independently — both come from halo_widgets/theme.dart.
+    final data = await rootBundle.load(emojiFontAssetPath);
+    await (FontLoader(emojiFontFamily)..addFont(Future.value(data))).load();
+  } catch (error, stackTrace) {
+    debugPrint('[boot] emoji font preload failed: $error\n$stackTrace');
+    ErrorReportingService.report(error, stackTrace, context: 'boot:emoji-font-preload');
+  }
 }
 
 /// Resets the app to a known fixture for agent/dev verification (#238): back up

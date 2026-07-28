@@ -227,6 +227,11 @@ double textWidth(BuildContext context, String text, TextStyle style) {
 /// unimplemented) doesn't have to rediscover this requirement from scratch.
 const String emojiFontFamily = 'NotoColorEmoji';
 
+/// The pubspec-declared asset path backing [emojiFontFamily], shared so
+/// callers that need to load it explicitly (e.g. a boot-time preload)
+/// don't duplicate the literal.
+const String emojiFontAssetPath = 'assets/fonts/NotoColorEmoji.ttf';
+
 /// A `TextStyle` for rendering a single emoji glyph (e.g. a DXCC entity's
 /// flag) at [fontSize] — proportional, not `haloMonoStyle`'s monospace, per
 /// the issue's "emoji and name...use a proportional font".
