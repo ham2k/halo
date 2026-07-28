@@ -31,7 +31,7 @@ void main() {
     final settings = SettingsService(await SharedPreferences.getInstance());
     final db = HaLoDatabase(NativeDatabase.memory());
     services = HaLoServices(db, settings);
-    operation = await services.operations.create(stationCall: 'N0CALL', title: 'Test Op');
+    operation = await services.operations.create(stationCall: 'N0CALL', userTitle: 'Test Op');
     // Pretend the web bridge is installed (dev/preview build) so the panel
     // registers its handlers. Start from a clean slate.
     DevBridge.instance.installed = true;

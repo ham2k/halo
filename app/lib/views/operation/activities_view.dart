@@ -34,6 +34,7 @@ import 'operation_location_screen.dart';
 import '../operation_dialogs.dart';
 import '../extensions_panel.dart';
 import '../../i18n/strings.g.dart';
+import '../../tools/operation_title.dart';
 
 
 /// An icon, circled in [color] at 60% opacity when the control declares an
@@ -344,7 +345,7 @@ class OperationSheetState extends State<OperationSheet> {
   bool _hasUpdates(Operation current, Operation initial) {
     if (current.grid != initial.grid) return true;
     if (current.stationCall != initial.stationCall) return true;
-    if (current.title != initial.title) return true;
+    if (current.userTitle != initial.userTitle) return true;
     if (((current.data['operatorCall'] as String?) ?? '') != ((initial.data['operatorCall'] as String?) ?? '')) return true;
     if (((current.data['notes'] as String?) ?? '') != ((initial.data['notes'] as String?) ?? '')) return true;
     return !_areRefsEqual(current.refs, initial.refs);
@@ -887,8 +888,38 @@ class OperationSheetState extends State<OperationSheet> {
     return ListView(children: inkedRows);
   }
 
+  /// Persists [_operation], refreshing `data['title']` from a FRESH
+  /// suggestion first — the sheet's own live-preview title (driven by
+  /// OperationView's `_draftTitleFragments`) never lands in `_operation`
+  /// itself, only in the header's ephemeral preview, so without this an
+  /// explicit save could commit a stale generated title for refs edited
+  /// just now. Left untouched when the extension runtime isn't up
+  /// (suggestFragments returns null) — same "degrade silently" rule as
+  /// OperationTitleService's own live retitles, so a host hiccup at save
+  /// time doesn't wipe out a previously generated title.
+  ///
+  /// The save itself must run regardless of `mounted` — this widget can be
+  /// disposed while `suggestFragments` is still awaiting the extension host
+  /// (up to its own 10s-per-ref timeout), and skipping the write in that case
+  /// would silently drop the whole edit (refs, notes, callsign, everything),
+  /// not just the title. Uses the module-level `t`, not `context.t`, so the
+  /// title can still be assembled after unmount; only the navigation pop is
+  /// gated on `mounted`.
   Future<void> saveAndClose() async {
-    await widget.services.operations.saveData(_operation);
+    final fragments = await widget.services.operationTitles.suggestFragments(_operation);
+    final data = fragments == null
+        ? _operation.data
+        : {..._operation.data, 'title': buildGeneratedTitle(t, fragments)};
+    await widget.services.operations.saveData(
+      Operation(
+        uuid: _operation.uuid,
+        data: data,
+        qsoCount: _operation.qsoCount,
+        startAtMillisMin: _operation.startAtMillisMin,
+        startAtMillisMax: _operation.startAtMillisMax,
+        localData: _operation.localData,
+      ),
+    );
     if (mounted) Navigator.of(context).pop();
   }
 

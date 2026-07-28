@@ -35,7 +35,7 @@ void main() {
     final db = HaLoDatabase(NativeDatabase.memory());
     final extensions = ExtensionServiceWithMockHost(MockExtensionHost(const {}))..settings = settings;
     final services = HaLoServices(db, settings, extensions: extensions);
-    final operation = await services.operations.create(stationCall: 'N0CALL', title: 'Test Op');
+    final operation = await services.operations.create(stationCall: 'N0CALL', userTitle: 'Test Op');
 
     await tester.pumpWidget(TranslationProvider(
       child: MaterialApp(
@@ -124,7 +124,7 @@ void main() {
     final extensions = ExtensionServiceWithMockHost(MockExtensionHost(const {}))..settings = settings;
     final services = HaLoServices(db, settings, extensions: extensions);
     const longTitle = 'A Very Long Operation Title That Would Have Been Ellipsized Before';
-    final operation = await services.operations.create(stationCall: 'KI2D', title: longTitle);
+    final operation = await services.operations.create(stationCall: 'KI2D', userTitle: longTitle);
 
     await tester.pumpWidget(TranslationProvider(
       child: MaterialApp(
@@ -157,7 +157,7 @@ void main() {
     final db = HaLoDatabase(NativeDatabase.memory());
     final extensions = ExtensionServiceWithMockHost(MockExtensionHost(const {}))..settings = settings;
     final services = HaLoServices(db, settings, extensions: extensions);
-    final operation = await services.operations.create(stationCall: 'N0CALL', title: 'Test Op');
+    final operation = await services.operations.create(stationCall: 'N0CALL', userTitle: 'Test Op');
 
     await tester.pumpWidget(TranslationProvider(
       child: MaterialApp(
@@ -199,7 +199,7 @@ void main() {
     final db = HaLoDatabase(NativeDatabase.memory());
     final extensions = ExtensionServiceWithMockHost(MockExtensionHost(const {}))..settings = settings;
     final services = HaLoServices(db, settings, extensions: extensions);
-    final operation = await services.operations.create(stationCall: 'N0CALL', title: 'Test Op');
+    final operation = await services.operations.create(stationCall: 'N0CALL', userTitle: 'Test Op');
 
     await tester.pumpWidget(TranslationProvider(
       child: MaterialApp(
@@ -234,7 +234,7 @@ void main() {
     addTearDown(db.close);
     final extensions = ExtensionServiceWithMockHost(MockExtensionHost(const {}))..settings = settings;
     final services = HaLoServices(db, settings, extensions: extensions);
-    final operation = await services.operations.create(stationCall: 'N0CALL', title: 'Test Op');
+    final operation = await services.operations.create(stationCall: 'N0CALL', userTitle: 'Test Op');
 
     await tester.pumpWidget(TranslationProvider(
       child: MaterialApp(
@@ -271,7 +271,7 @@ void main() {
     final db = HaLoDatabase(NativeDatabase.memory());
     final extensions = ExtensionServiceWithMockHost(MockExtensionHost(const {}))..settings = settings;
     final services = HaLoServices(db, settings, extensions: extensions);
-    final operation = await services.operations.create(stationCall: 'N0CALL', title: 'Test Op');
+    final operation = await services.operations.create(stationCall: 'N0CALL', userTitle: 'Test Op');
 
     await tester.pumpWidget(TranslationProvider(
       child: MaterialApp(
@@ -331,7 +331,7 @@ void main() {
     addTearDown(db.close);
     final extensions = ExtensionServiceWithMockHost(MockExtensionHost(const {}))..settings = settings;
     final services = HaLoServices(db, settings, extensions: extensions);
-    final operation = await services.operations.create(stationCall: 'N0CALL', title: 'Test Op');
+    final operation = await services.operations.create(stationCall: 'N0CALL', userTitle: 'Test Op');
 
     await tester.pumpWidget(TranslationProvider(
       child: MaterialApp(
@@ -374,6 +374,66 @@ void main() {
     await tester.pump(const Duration(seconds: 5));
   });
 
+  testWidgets('closing the sheet persists the ref-generated title into data[title]', (tester) async {
+    tester.view.physicalSize = const Size(1000, 800);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+
+    SharedPreferences.setMockInitialValues({});
+    final settings = SettingsService(await SharedPreferences.getInstance());
+    await settings.recordOnboardingShown(OnboardingFlows.operationSheet);
+    final db = HaLoDatabase(NativeDatabase.memory());
+    addTearDown(db.close);
+    // Answers the ref's suggestOperationTitle hook (OperationTitleService's
+    // fan-out key: 'ref:<type>:<key>:<method>', key null here since the hook
+    // call passes none) with an "at" fragment — the same shape a real
+    // activity extension (e.g. POTA) returns.
+    final extensions = ExtensionServiceWithMockHost(const MockExtensionHost({
+      'ref:pota/activation:null:suggestOperationTitle': {'at': 'K-1234'},
+    }))
+      ..settings = settings;
+    final services = HaLoServices(db, settings, extensions: extensions);
+    final created = await services.operations.create(stationCall: 'N0CALL');
+    await services.operations.saveData(Operation(
+      uuid: created.uuid,
+      data: {
+        ...created.data,
+        'refs': [
+          {'type': 'pota/activation', 'ref': 'K-1234'},
+        ],
+      },
+    ));
+    final operation = (await services.operations.get(created.uuid))!;
+
+    await tester.pumpWidget(TranslationProvider(
+      child: MaterialApp(
+        home: OperationView(services: services, operationUuid: operation.uuid),
+      ),
+    ));
+    await tester.pumpAndSettle();
+
+    // The ref-generated suggestion has already been cached (retitleOperation
+    // ran on load) and shows in the header — no user title was ever set.
+    expect(find.text('N0CALL at K-1234'), findsOneWidget);
+
+    await tester.tap(find.text('N0CALL at K-1234'));
+    await tester.pumpAndSettle();
+    expect(find.byType(OperationSheet), findsOneWidget, reason: 'first tap opens the sheet');
+
+    // Second tap triggers saveAndClose(), which must persist the CURRENT
+    // generated title into data['title'] — not just cache it in localData —
+    // so it survives as part of the operation's own synced record.
+    await tester.tap(find.text('N0CALL at K-1234'));
+    await tester.pumpAndSettle();
+    expect(find.byType(OperationSheet), findsNothing, reason: 'second tap closes and saves');
+
+    final saved = await services.operations.get(operation.uuid);
+    expect(saved!.title, 'at K-1234');
+
+    await tester.pumpWidget(const SizedBox());
+    await tester.pump(const Duration(seconds: 5));
+  });
+
   testWidgets('the fixed wide split gains a logging-pane title bar holding the settings menu', (tester) async {
     tester.view.physicalSize = const Size(1000, 800);
     tester.view.devicePixelRatio = 1.0;
@@ -385,7 +445,7 @@ void main() {
     final db = HaLoDatabase(NativeDatabase.memory());
     final extensions = ExtensionServiceWithMockHost(MockExtensionHost(const {}))..settings = settings;
     final services = HaLoServices(db, settings, extensions: extensions);
-    final operation = await services.operations.create(stationCall: 'N0CALL', title: 'Test Op');
+    final operation = await services.operations.create(stationCall: 'N0CALL', userTitle: 'Test Op');
 
     await tester.pumpWidget(TranslationProvider(
       child: MaterialApp(

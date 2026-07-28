@@ -86,13 +86,13 @@ class OperationsRepository {
 
   OperationsRepository(this.db, {this.onChange});
 
-  Future<Operation> create({required String stationCall, String title = ''}) async {
+  Future<Operation> create({required String stationCall, String userTitle = ''}) async {
     final now = _nowMillis();
     final operation = Operation(
       uuid: _uuidGenerator.v4(),
       data: {
         'stationCall': stationCall.toUpperCase(),
-        'title': title,
+        'userTitle': userTitle,
         'createdAtMillis': now,
         'updatedAtMillis': now,
       },

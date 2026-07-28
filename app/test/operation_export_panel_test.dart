@@ -84,7 +84,7 @@ void main() {
       settings = await SettingsService.load();
       exports = _FakeExportService(settings);
       services = HaLoServices(db, settings, extensions: ExtensionService(), exports: exports);
-      operation = await OperationsRepository(db).create(stationCall: 'N0CALL', title: 'Test Op');
+      operation = await OperationsRepository(db).create(stationCall: 'N0CALL', userTitle: 'Test Op');
     });
 
     tearDown(() async => db.close());
@@ -376,7 +376,7 @@ void main() {
       settings = await SettingsService.load();
       exports = _MultiCallExportService(settings);
       services = HaLoServices(db, settings, extensions: ExtensionService(), exports: exports);
-      operation = await OperationsRepository(db).create(stationCall: 'N0CALL, W1AW', title: 'Multi');
+      operation = await OperationsRepository(db).create(stationCall: 'N0CALL, W1AW', userTitle: 'Multi');
     });
 
     tearDown(() async => db.close());

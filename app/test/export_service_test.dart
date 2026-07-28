@@ -35,7 +35,7 @@ void main() {
     // options are empty and any option we see comes from the core.
     exports = ExportService(extensions: ExtensionService(), qsos: qsos, settings: settings);
 
-    final created = await operations.create(stationCall: 'N0CALL', title: 'Test Op');
+    final created = await operations.create(stationCall: 'N0CALL', userTitle: 'Test Op');
     await qsos.add(created.uuid, {
       'their': {'call': 'W1AW'},
       'band': '20m',
@@ -75,7 +75,7 @@ void main() {
     final operationData = decoded['operation'] as Map<String, dynamic>;
     expect(operationData['uuid'], operation.uuid);
     expect(operationData['stationCall'], 'N0CALL');
-    expect(operationData['title'], 'Test Op');
+    expect(operationData['userTitle'], 'Test Op');
     final qsoList = decoded['qsos'] as List;
     expect(qsoList, hasLength(1));
     expect((qsoList.single as Map)['their'], {'call': 'W1AW'});
@@ -94,7 +94,7 @@ void main() {
     });
 
     Future<Operation> multiOp() async {
-      final created = await operations.create(stationCall: 'N0CALL, W1AW', title: 'Multi Op');
+      final created = await operations.create(stationCall: 'N0CALL, W1AW', userTitle: 'Multi Op');
       await qsos.add(created.uuid, {
         'our': {'call': 'N0CALL'},
         'their': {'call': 'DL1ABC'},
@@ -120,7 +120,7 @@ void main() {
     test('a single-callsign operation is passed through untouched', () async {
       final operations = OperationsRepository(db);
       final qsos = QsosRepository(db);
-      final created = await operations.create(stationCall: 'N0CALL', title: 'Solo');
+      final created = await operations.create(stationCall: 'N0CALL', userTitle: 'Solo');
       await qsos.add(created.uuid, {
         // Worked their own callsign — a second rig at the same station.
         'our': {'call': 'OTHERCALL'},
@@ -151,7 +151,7 @@ void main() {
     });
 
     test('a repeated call is a typo, not a request for two identical file sets', () async {
-      final created = await operations.create(stationCall: 'N0CALL, n0call ', title: 'Dupe');
+      final created = await operations.create(stationCall: 'N0CALL, n0call ', userTitle: 'Dupe');
       expect((await operations.get(created.uuid))!.stationCalls, ['N0CALL']);
     });
 

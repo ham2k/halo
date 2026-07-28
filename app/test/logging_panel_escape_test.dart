@@ -53,7 +53,7 @@ void main() {
         runtimeWaitBudget: Duration.zero,
       ),
     );
-    operation = await services.operations.create(stationCall: 'N0CALL', title: 'Test Op');
+    operation = await services.operations.create(stationCall: 'N0CALL', userTitle: 'Test Op');
     qso = await services.qsos.add(operation.uuid, {
       'their': {'call': 'W1AW', 'sent': '59'},
       'mode': 'SSB',

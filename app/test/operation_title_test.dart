@@ -13,9 +13,9 @@ import 'package:ham2k_logger/i18n/strings.g.dart';
 import 'package:ham2k_logger/tools/operation_title.dart';
 
 void main() {
-  Operation operation({String title = '', Map<String, dynamic>? titleSuggestion}) => Operation(
+  Operation operation({String userTitle = '', Map<String, dynamic>? titleSuggestion}) => Operation(
         uuid: 'u',
-        data: {'title': title},
+        data: {'userTitle': userTitle},
         localData: titleSuggestion == null ? const {} : {'titleSuggestion': titleSuggestion},
       );
 
@@ -33,14 +33,14 @@ void main() {
   testWidgets("the user's own title leads, with the generated title appended after it", (tester) async {
     final title = await titleFor(
       tester,
-      operation(title: 'My Custom Title', titleSuggestion: {'at': 'K-1234', 'for': '', 'title': '', 'subtitle': ''}),
+      operation(userTitle: 'My Custom Title', titleSuggestion: {'at': 'K-1234', 'for': '', 'title': '', 'subtitle': ''}),
     );
     expect(title, 'My Custom Title at K-1234');
   });
 
   testWidgets("the user's own title alone, with no trailing space, when there's no suggestion to append",
       (tester) async {
-    final title = await titleFor(tester, operation(title: 'My Custom Title'));
+    final title = await titleFor(tester, operation(userTitle: 'My Custom Title'));
     expect(title, 'My Custom Title');
   });
 
@@ -74,7 +74,7 @@ void main() {
   });
 
   test('the subtitle is always the ref-derived one, independent of the user title', () {
-    final withUserTitle = operation(title: 'My Title', titleSuggestion: {'subtitle': 'Some Park'});
+    final withUserTitle = operation(userTitle: 'My Title', titleSuggestion: {'subtitle': 'Some Park'});
     expect(displaySubtitleFor(withUserTitle), 'Some Park');
   });
 

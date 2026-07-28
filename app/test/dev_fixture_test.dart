@@ -42,7 +42,7 @@ void main() {
     final services = HaLoServices(db, settings);
 
     // Pre-existing clutter + non-default UI state the reset must clear.
-    final stale = await services.operations.create(stationCall: 'OLD', title: 'Stale');
+    final stale = await services.operations.create(stationCall: 'OLD', userTitle: 'Stale');
     await services.qsos.add(stale.uuid, {
       'their': {'call': 'ZZ9ZZ'},
       'startAtMillis': 1,

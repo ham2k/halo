@@ -646,7 +646,7 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
           builder: (context, draft, _) {
             final stationCall = draft.stationCall;
             final operatorCall = draft.data['operatorCall'] as String?;
-            final operationTitle = draft.title;
+            final operationTitle = draft.userTitle;
             final notes = (draft.data['notes'] as String?) ?? '';
 
             final theme = Theme.of(context);

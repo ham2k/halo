@@ -105,7 +105,7 @@ Future<Operation?> editOperationDetails(
     builder: (context) => _OperationDetailsDialog(
       stationCall: operation.stationCall,
       operatorCall: (operation.data['operatorCall'] as String?) ?? '',
-      title: operation.title,
+      userTitle: operation.userTitle,
       notes: (operation.data['notes'] as String?) ?? '',
     ),
   );
@@ -117,7 +117,7 @@ Future<Operation?> editOperationDetails(
       ...operation.data,
       'stationCall': result.$1.trim().toUpperCase(),
       'operatorCall': result.$2.trim().toUpperCase(),
-      'title': result.$3.trim(),
+      'userTitle': result.$3.trim(),
       'notes': result.$4.trim(),
     },
     qsoCount: operation.qsoCount,
@@ -407,13 +407,13 @@ class _TwoFieldDialogState extends State<_TwoFieldDialog> {
 class _OperationDetailsDialog extends StatefulWidget {
   final String stationCall;
   final String operatorCall;
-  final String title;
+  final String userTitle;
   final String notes;
 
   const _OperationDetailsDialog({
     required this.stationCall,
     required this.operatorCall,
-    required this.title,
+    required this.userTitle,
     required this.notes,
   });
 
@@ -424,7 +424,7 @@ class _OperationDetailsDialog extends StatefulWidget {
 class _OperationDetailsDialogState extends State<_OperationDetailsDialog> {
   late final _stationCallController = TextEditingController(text: widget.stationCall);
   late final _operatorCallController = TextEditingController(text: widget.operatorCall);
-  late final _titleController = TextEditingController(text: widget.title);
+  late final _titleController = TextEditingController(text: widget.userTitle);
   late final _notesController = TextEditingController(text: widget.notes);
 
   @override

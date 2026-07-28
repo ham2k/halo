@@ -21,12 +21,12 @@ void main() {
   });
 
   test('create and watch operations', () async {
-    final op = await operations.create(stationCall: 'ki2d', title: 'Test op');
+    final op = await operations.create(stationCall: 'ki2d', userTitle: 'Test op');
     expect(op.stationCall, 'KI2D');
 
     final all = await operations.watchAll().first;
     expect(all, hasLength(1));
-    expect(all.first.title, 'Test op');
+    expect(all.first.userTitle, 'Test op');
     expect(all.first.qsoCount, 0);
   });
 
@@ -100,7 +100,7 @@ void main() {
   });
 
   test('watchOperation emits counter refreshes and localData updates', () async {
-    final op = await operations.create(stationCall: 'KI2D', title: 'Reactive');
+    final op = await operations.create(stationCall: 'KI2D', userTitle: 'Reactive');
     final emissions = <Operation?>[];
     final sub = operations.watchOperation(op.uuid).listen(emissions.add);
     await pumpEventQueue();
@@ -115,7 +115,7 @@ void main() {
     await operations.updateLocalData(op.uuid, {'scoring': {'operationSummary': {'dupe': 0}}});
     await pumpEventQueue();
 
-    expect(emissions.first?.title, 'Reactive');
+    expect(emissions.first?.userTitle, 'Reactive');
     expect(emissions.map((o) => o?.qsoCount), containsAllInOrder([0, 1]));
     expect(emissions.last?.localData['scoring'], isNotNull);
     await sub.cancel();
@@ -134,29 +134,29 @@ void main() {
   });
 
   test('a brand-new operation with no QSOs sorts to the top, not the bottom', () async {
-    final active = await operations.create(stationCall: 'KI2D', title: 'Active op');
+    final active = await operations.create(stationCall: 'KI2D', userTitle: 'Active op');
     await qsos.add(active.uuid, {'their': {'call': 'W1AW'}, 'startAtMillis': 1000});
 
     // New operation has a NULL startAtMillisMax; SQLite sorts NULLs last in
     // DESC by default, which would otherwise bury it at the end.
-    final fresh = await operations.create(stationCall: 'KI2D', title: 'Fresh op');
+    final fresh = await operations.create(stationCall: 'KI2D', userTitle: 'Fresh op');
 
     final all = await operations.watchAll().first;
-    expect(all.map((o) => o.title), [fresh.title, active.title]);
+    expect(all.map((o) => o.userTitle), [fresh.userTitle, active.userTitle]);
   });
 
   test('multiple operations with no QSOs sort by createdAtMillis descending', () async {
-    final op1 = await operations.create(stationCall: 'KI2D', title: 'First created');
+    final op1 = await operations.create(stationCall: 'KI2D', userTitle: 'First created');
     await Future<void>.delayed(const Duration(milliseconds: 10));
-    final op2 = await operations.create(stationCall: 'KI2D', title: 'Second created');
+    final op2 = await operations.create(stationCall: 'KI2D', userTitle: 'Second created');
     await Future<void>.delayed(const Duration(milliseconds: 10));
-    final op3 = await operations.create(stationCall: 'KI2D', title: 'Third created');
+    final op3 = await operations.create(stationCall: 'KI2D', userTitle: 'Third created');
 
     final all = await operations.watchAll().first;
-    expect(all.map((o) => o.title).take(3), [
-      op3.title,
-      op2.title,
-      op1.title,
+    expect(all.map((o) => o.userTitle).take(3), [
+      op3.userTitle,
+      op2.userTitle,
+      op1.userTitle,
     ]);
   });
 
@@ -236,18 +236,18 @@ void main() {
     });
 
     test('mergeFromSync (operations) applies the same staleness rule', () async {
-      final op = await operations.create(stationCall: 'KI2D', title: 'Local title');
+      final op = await operations.create(stationCall: 'KI2D', userTitle: 'Local title');
 
       await operations.mergeFromSync([
         {
           'uuid': op.uuid,
           'stationCall': 'KI2D',
-          'title': 'Stale server title',
+          'userTitle': 'Stale server title',
           'updatedAtMillis': op.updatedAtMillis! - 1000,
           'syncedAtMillis': 1,
         },
       ]);
-      expect((await operations.byUuids([op.uuid])).single.title, 'Local title');
+      expect((await operations.byUuids([op.uuid])).single.userTitle, 'Local title');
       expect(await operations.hasUnsynced(), isTrue);
     });
 

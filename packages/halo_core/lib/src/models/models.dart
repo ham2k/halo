@@ -61,6 +61,15 @@ class Operation {
     return unique.isEmpty ? const [''] : unique;
   }
 
+  /// The user's own title, entered via the operation details dialog —
+  /// distinct from [title], which holds the ref-generated one. Empty when
+  /// the user hasn't set one.
+  String get userTitle => (data['userTitle'] as String?) ?? '';
+
+  /// The generated title, built from the operation's refs (activity/contest
+  /// info) and persisted on save (`ActivitiesView.saveAndClose`,
+  /// `app/lib/tools/operation_title.dart`). Empty until the first save after
+  /// refs produce a suggestion.
   String get title => (data['title'] as String?) ?? '';
   String? get grid => data['grid'] as String?;
 
@@ -71,8 +80,8 @@ class Operation {
   /// under `localData['titleSuggestion']` (ham2k/app-halo-dist#174) — device-
   /// local like `scoring`, since it's cheaply regenerable from `refs`. A UI
   /// layer localizes the "for"/"at" prepositions and assembles the final
-  /// sentence (this model has no BuildContext to do that itself); `title`
-  /// falls back to this only when the user hasn't set one of their own.
+  /// sentence (this model has no BuildContext to do that itself) — that
+  /// assembled result is what gets persisted into [title] on save.
   OperationTitleFragments get titleFragments {
     final cached = localData['titleSuggestion'];
     if (cached is! Map) return const OperationTitleFragments();
