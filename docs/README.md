@@ -12,6 +12,10 @@
   runtime, data layer, UI modules, risks. Start here.
 - [design/user-interface.md](design/user-interface.md) — UI concepts, views,
   panels, logging controls, branding.
+- [design/logging-fields.md](design/logging-fields.md) — the logging controls'
+  three parts, and the focus and keyboard-navigation rules for the main
+  logging fields. **Read before changing anything about focus in the logging
+  panel.**
 - [design/ui-scaling.md](design/ui-scaling.md) — how the Font Scale setting
   scales the whole UI, and the rules that keep it working. **Read before any
   scaling-, layout-, or macOS-window-related change.**

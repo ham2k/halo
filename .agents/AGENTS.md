@@ -9,6 +9,8 @@ This is a multi-platform app for Amateur Radio Logging, called "Ham2K Logger" (o
 
 - User interface conventions and branding are documented in [user-interface.md](file:///Users/sd/Work/ham2k/app-halo/docs/design/user-interface.md).
 
+- The logging controls' parts, and the focus and keyboard-navigation rules for the main logging fields, are specified in [logging-fields.md](file:///Users/sd/Work/ham2k/app-halo/docs/design/logging-fields.md). Read it before changing anything about focus in the logging panel — the rules are a contract, not defaults.
+
 - The Font Scale setting scales the **whole** UI from one root wrapper ([ui-scaling.md](file:///Users/sd/Work/ham2k/app-halo/docs/design/ui-scaling.md)). Write all dimensions in plain logical pixels and **never multiply a size, padding, or font size by the font scale** — that double-scales it. Read ui-scaling.md before any scaling-, layout-, or macOS-window-related change.
 
 - What an escaped exception deserves — a user notice, a silent upload, the console, or nothing — is decided in ONE place, `ErrorPolicy` ([error-reporting.md](file:///Users/sd/Work/ham2k/app-halo/docs/design/error-reporting.md)). Never add an ad-hoc "ignore this error" check at a handler or catch site; add a rule there instead.

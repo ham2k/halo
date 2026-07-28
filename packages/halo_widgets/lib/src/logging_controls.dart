@@ -739,6 +739,14 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   /// types), so it stays in effect while "NOTE Hello…" keeps being typed.
   bool get _commandMixedCase => _retainedInterpretation?['mixedCase'] == true;
 
+  /// Whether the call field is currently taking spaces as literal characters
+  /// rather than as "next field". The single source of truth for that question:
+  /// the field's `inputFormatters` pick the space-accepting interceptor on
+  /// exactly this condition, and `_handleSpace` decides the double-space exit
+  /// on it, so the two can't drift into disagreeing about which mode the field
+  /// is in.
+  bool get _fieldAcceptsSpaces => _commandMixedCase || _commandExpectsParams;
+
   /// Matches text the callsign-mode formatters would pass through except
   /// for case — see [_retainInterpretation].
   static final _callsignModeSafeText = RegExp(r'^[a-zA-Z0-9/.,]*$');
@@ -1121,6 +1129,16 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
         onKeyEvent: _onExchangeKeyEvent,
       )..addListener(() {
         _notePrimaryFocus(_controlTextFocus[key]!);
+        // Same cursor-at-end-on-focus rule the fixed primary fields get in
+        // initState — an exchange field is a main logging field too, and
+        // `selectAllOnFocus: false` alone only stops the select-all; it leaves
+        // the caret wherever it happened to be last.
+        if (_controlTextFocus[key]!.hasFocus) {
+          final controller = _textControllerFor(key);
+          controller.selection = TextSelection.collapsed(
+            offset: _takePendingCaretOffset(_controlTextFocus[key]!, controller) ?? controller.text.length,
+          );
+        }
         // A dismissal and a highlight both belong to the field that had focus
         // when they were made, so leaving or entering a field clears them.
         if (mounted) {
@@ -1139,11 +1157,13 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   /// behind, it is stepping away from a field the operator may be about to
   /// return to.
   ///
-  /// On the node itself rather than as a panel-wide shortcut, and always
-  /// `ignored`: binding Tab in `CallbackShortcuts` would take it away from
-  /// Flutter's traversal for the whole panel, which would then have to be
-  /// reimplemented here. This only ADDS the accept and lets the traversal that
-  /// follows be the ordinary one.
+  /// On the node itself rather than as a panel-wide shortcut: binding Tab in
+  /// `CallbackShortcuts` would take it away from Flutter's traversal for the
+  /// whole panel, which would then have to be reimplemented here. This only
+  /// ADDS the accept, then hands the event to [_onPrimaryFieldKeyEvent] — an
+  /// exchange is a main logging field, so it gets the same edge-wrap and arrow
+  /// traversal as the rest, and everything those two decline stays with the
+  /// ordinary traversal.
   KeyEventResult _onExchangeKeyEvent(FocusNode node, KeyEvent event) {
     if (event is KeyDownEvent &&
         event.logicalKey == LogicalKeyboardKey.tab &&
@@ -1152,7 +1172,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
       // app guessing, and stays held to the prefix rule.
       if (_acceptOptionSuggestion(explicit: _optionSelection != null)) setState(() {});
     }
-    return KeyEventResult.ignored;
+    return _onPrimaryFieldKeyEvent(node, event);
   }
 
   void _clearTextControls() {
@@ -1331,6 +1351,32 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   /// only closes over the stable [_handleSpace] tear-off.
   late final _VirtualSpaceFormatter _virtualSpace = _VirtualSpaceFormatter(_handleSpace);
 
+  /// The call field's variant for command free-text mode, where a space is a
+  /// parameter character rather than "next field". Without it that mode has no
+  /// on-screen-keyboard exit at all: the hardware Space shortcut never fires
+  /// for a virtual keyboard, so the double-space would just type a second
+  /// literal space and the operator would be stuck in the field.
+  late final _VirtualSpaceFormatter _commandVirtualSpace = _VirtualSpaceFormatter(
+    _handleSpace,
+    shouldIntercept: (old) =>
+        old.text.endsWith(' ') && old.selection.isCollapsed && old.selection.baseOffset == old.text.length,
+    onPeriodShortcut: _exitOnPeriodShortcut,
+  );
+
+  /// The exit when iOS turned the operator's second space into a period. Puts
+  /// the field back to [baseText] — the value before the gesture began —
+  /// rather than editing whatever is there now: iOS applies BOTH halves of the
+  /// shortcut before this runs, so "strip the trailing space" would leave the
+  /// period sitting on the end of the value.
+  void _exitOnPeriodShortcut(String baseText) {
+    _callController.value = TextEditingValue(
+      text: baseText,
+      selection: TextSelection.collapsed(offset: baseText.length),
+      composing: TextRange.empty,
+    );
+    _advancePrimaryFocus();
+  }
+
   /// Keyboard for the numeric-leaning primary fields (RST, frequency) on iOS.
   /// `numberWithOptions(signed: true)` selects iOS's NumbersAndPunctuation
   /// keyboard: numbers up front, but WITH a space bar (so Space still rotates
@@ -1435,7 +1481,9 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
       focus.addListener(() {
         if (focus.hasFocus) {
           _notePrimaryFocus(focus);
-          controller.selection = TextSelection.collapsed(offset: controller.text.length);
+          controller.selection = TextSelection.collapsed(
+            offset: _takePendingCaretOffset(focus, controller) ?? controller.text.length,
+          );
         } else if (identical(focus, _freqFocus)) {
           // Flush a pending debounced push immediately on blur, rather than
           // making the user wait out the rest of the 5s window. Never fires
@@ -1448,6 +1496,13 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
         // Keep the mobile numbers row in sync with which field has focus.
         _rebuildForNumbersRow();
       });
+    }
+    // Tab's edge-wrap and the arrow keys' end-of-value traversal, on the fixed
+    // primary fields. The exchange fields get the same handler through
+    // [_onExchangeKeyEvent], which their nodes are built with; Freq and Time
+    // are secondary-control fields and deliberately keep the default.
+    for (final node in [_callFocus, _sentFocus, _rcvdFocus, _stateFocus, _gridFocus]) {
+      node.onKeyEvent = _onPrimaryFieldKeyEvent;
     }
     _refreshSpotSources();
     // Constructed already editing a QSO (rather than transitioning into it via
@@ -3155,6 +3210,22 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
 
   Future<void> _handleSpace() async {
     if (_callFocus.hasFocus) {
+      // A field that accepts literal spaces stays escapable by the
+      // double-space, and the test is the SAME one that decides the field
+      // accepts them at all (see the call field's inputFormatters) — not the
+      // interpretation's flags. There is a third way into free-text mode:
+      // _commandExpectsParams' second arm, text that already holds a space.
+      // A complete command reached that way ("EXP LA") carries neither
+      // `expectsParams` nor `mixedCase`, so keying the exit to those flags
+      // advanced focus while leaving the trailing space in the value.
+      //
+      // Ahead of the interpret round-trip below because the answer never
+      // depended on it, and leaving a field shouldn't wait on a bridge call.
+      if (_fieldAcceptsSpaces && _atTrailingSpace(_callController)) {
+        _removeTrailingSpace(_callController);
+        _advancePrimaryFocus();
+        return;
+      }
       final call = _call;
       // An empty call can't be a command — nothing to interpret, just
       // advance like every other field does when it's empty.
@@ -3192,6 +3263,8 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
           // A complete mixedCase command (e.g. "NOTE Hello") also keeps
           // space literal — its free-prose parameter is still being typed.
           if (result != null && (result['expectsParams'] == true || result['mixedCase'] == true)) {
+            // The exit gesture was already handled above; anywhere else in the
+            // value a space is a literal parameter character.
             _insertAtCursor(_callController, ' ');
             return;
           }
@@ -3232,28 +3305,39 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   /// exchanges, then State/Grid (when their "..." menu toggles are on).
   ///
   /// The single source of truth for what "a primary field" means to the
-  /// keyboard: [_advancePrimaryFocus] walks it, and `_handleSpace` asks it
-  /// whether Space should advance. Any new kind of primary field is in both the
-  /// moment it appears here — an exchange field that cycled on Tab but sat inert
-  /// on Space (because only Space's caller had a hardcoded list) is exactly the
-  /// drift this prevents.
+  /// keyboard: [_advancePrimaryFocus] walks it, `_handleSpace` asks it whether
+  /// Space should advance, and [_onPrimaryFieldKeyEvent] reads it for Tab's
+  /// edge-wrap and the arrow keys' end-of-value traversal. Any new kind of
+  /// primary field is in all of them the moment it appears here — an exchange
+  /// field that cycled on Tab but sat inert on Space (because only Space's
+  /// caller had a hardcoded list) is exactly the drift this prevents.
+  ///
+  /// Paired with each field's controller, since Tab and the arrows have to read
+  /// the caret and the value, not just move focus.
   ///
   /// Rebuilt on every call: `showRSTFields`/`showStateField`/`showGridField`
   /// change at runtime, and so does the set of contest controls.
-  List<FocusNode> get _primaryFocusOrder => [
-        _callFocus,
-        if (widget.showRSTFields) _sentFocus,
-        if (widget.showRSTFields) _rcvdFocus,
+  List<(FocusNode, TextEditingController)> get _primaryFields => [
+        (_callFocus, _callController),
+        if (widget.showRSTFields) (_sentFocus, _sentController),
+        if (widget.showRSTFields) (_rcvdFocus, _rcvdController),
         // Only nodes already attached to a built field: creating one here for a
         // control whose widget hasn't been built leaves an orphan with no
         // context, which Flutter's focus traversal null-checks while sorting —
         // taking down the whole frame rather than just misordering focus.
         for (final control in _textControls)
           if (_controlTextFocus[control['key'] as String]?.context != null)
-            _controlTextFocus[control['key'] as String]!,
-        if (widget.showStateField) _stateFocus,
-        if (widget.showGridField) _gridFocus,
+            (
+              _controlTextFocus[control['key'] as String]!,
+              _textControllerFor(control['key'] as String),
+            ),
+        if (widget.showStateField) (_stateFocus, _stateController),
+        if (widget.showGridField) (_gridFocus, _gridController),
       ];
+
+  /// Just the nodes of [_primaryFields], for the callers that only move focus
+  /// and never read a value.
+  List<FocusNode> get _primaryFocusOrder => [for (final (node, _) in _primaryFields) node];
 
   /// Moves focus to the next primary field, wrapping back to Call after the
   /// last one.
@@ -3262,6 +3346,135 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     final current = order.indexWhere((f) => f.hasFocus);
     final next = order[(current + 1) % order.length];
     next.requestFocus();
+  }
+
+  /// Where the next primary field to gain focus should put its caret, and the
+  /// node that instruction belongs to.
+  ///
+  /// Set ONLY for a rightward arrow move — the single path that wants anything
+  /// other than the end-of-value default the focus listeners already apply. A
+  /// leftward move and both Tab wraps want the end, so they set nothing; an
+  /// earlier version wrote `text.length` for them too, which meant Tab onto an
+  /// already-focused node (a row with one primary field) left an instruction
+  /// nobody collected, and the next field to focus — Frequency, say — took it
+  /// and put its caret at 0.
+  ///
+  /// Keyed to the node because `requestFocus` does NOT deliver focus
+  /// synchronously: `FocusManager` applies it on a microtask, so another node
+  /// can reach the listeners first.
+  ({FocusNode node, int offset})? _pendingCaret;
+
+  /// The pending caret offset for [node], if it is the node the instruction was
+  /// meant for.
+  ///
+  /// Only a PRIMARY field resolves an instruction: Freq and Time share these
+  /// focus listeners but are secondary-control fields, so they must neither
+  /// consume one nor discard one in passing. Any other primary field arriving
+  /// first DOES clear it — by then it is stale, and leaving it set would
+  /// misplace the caret the next time its target happened to take focus.
+  int? _takePendingCaretOffset(FocusNode node, TextEditingController controller) {
+    final pending = _pendingCaret;
+    if (pending == null) return null;
+    if (!_primaryFocusOrder.any((f) => identical(f, node))) return null;
+    _pendingCaret = null;
+    return identical(pending.node, node) ? pending.offset.clamp(0, controller.text.length) : null;
+  }
+
+  /// Moves focus to [index] in [_primaryFields] (wrapping at either end) and
+  /// says where the caret should land — the start of the value for a rightward
+  /// move, the end for a leftward one, so the caret keeps travelling in the
+  /// direction the arrow key was pushing it.
+  void _movePrimaryFocus(int index, {required bool caretAtStart}) {
+    final fields = _primaryFields;
+    final (node, _) = fields[(index + fields.length) % fields.length];
+    // Assigning null on the end-of-value path also clears any instruction left
+    // over from a move whose target never arrived.
+    _pendingCaret = caretAtStart ? (node: node, offset: 0) : null;
+    node.requestFocus();
+  }
+
+  /// Tab and the arrow keys inside a main logging field.
+  ///
+  /// Only the EDGES are intercepted. Tab in the middle of the row, and an arrow
+  /// key anywhere but the end of a value, stay with Flutter's own traversal and
+  /// caret handling — the entry row is laid out left-to-right in
+  /// [_primaryFields]' order, so the default already agrees with us there and
+  /// reimplementing it would only be a way to disagree later. What the default
+  /// gets wrong is only the two ends: Tab off the last field walks on into the
+  /// chips and the Log button, and Shift-Tab off the callsign walks backwards
+  /// out of the row entirely. The entry row is a loop, not a waypoint.
+  KeyEventResult _onPrimaryFieldKeyEvent(FocusNode node, KeyEvent event) {
+    if (event is! KeyDownEvent && event is! KeyRepeatEvent) return KeyEventResult.ignored;
+    final fields = _primaryFields;
+    final index = fields.indexWhere((f) => identical(f.$1, node));
+    // A node that isn't currently a primary field (its control stopped being
+    // rendered, say) keeps whatever the platform would do.
+    if (index < 0) return KeyEventResult.ignored;
+    final key = event.logicalKey;
+    final keyboard = HardwareKeyboard.instance;
+    final shift = keyboard.isShiftPressed;
+    // Shift is the only modifier that means anything to us (it reverses Tab).
+    // Everything else belongs to the platform or the field: Cmd/Option+arrow
+    // are line- and word-wise caret moves, and Ctrl+Tab is a pane switch on
+    // every desktop — claiming them would take real editing gestures away and
+    // teleport the operator to another field instead.
+    if (keyboard.isControlPressed || keyboard.isMetaPressed || keyboard.isAltPressed) {
+      return KeyEventResult.ignored;
+    }
+
+    if (key == LogicalKeyboardKey.tab) {
+      if (!shift && index == fields.length - 1) {
+        _movePrimaryFocus(0, caretAtStart: false);
+        return KeyEventResult.handled;
+      }
+      if (shift && index == 0) {
+        _movePrimaryFocus(fields.length - 1, caretAtStart: false);
+        return KeyEventResult.handled;
+      }
+      return KeyEventResult.ignored;
+    }
+
+    if (key != LogicalKeyboardKey.arrowRight && key != LogicalKeyboardKey.arrowLeft) {
+      return KeyEventResult.ignored;
+    }
+    // Shift-arrow is selecting text, and a non-collapsed selection means the
+    // arrow collapses it rather than leaving the field. Only a bare caret
+    // sitting against an edge is asking to travel.
+    if (shift || fields.length < 2) return KeyEventResult.ignored;
+    final controller = fields[index].$2;
+    final selection = controller.selection;
+    if (!selection.isCollapsed || selection.baseOffset < 0) return KeyEventResult.ignored;
+
+    if (key == LogicalKeyboardKey.arrowRight && selection.baseOffset >= controller.text.length) {
+      _movePrimaryFocus(index + 1, caretAtStart: true);
+      return KeyEventResult.handled;
+    }
+    if (key == LogicalKeyboardKey.arrowLeft && selection.baseOffset == 0) {
+      _movePrimaryFocus(index - 1, caretAtStart: false);
+      return KeyEventResult.handled;
+    }
+    return KeyEventResult.ignored;
+  }
+
+  /// Whether the caret sits at the end of a value that already ends in a space
+  /// — the double-space that exits a field which otherwise accepts spaces (see
+  /// `_handleSpace`'s free-text branch and [_VirtualSpaceFormatter]).
+  static bool _atTrailingSpace(TextEditingController controller) {
+    final selection = controller.selection;
+    return controller.text.endsWith(' ') &&
+        selection.isCollapsed &&
+        selection.baseOffset == controller.text.length;
+  }
+
+  /// Drops the space [_atTrailingSpace] found, so the value the operator leaves
+  /// behind carries neither it nor the one they just typed to get out.
+  static void _removeTrailingSpace(TextEditingController controller) {
+    final text = controller.text.substring(0, controller.text.length - 1);
+    controller.value = controller.value.copyWith(
+      text: text,
+      selection: TextSelection.collapsed(offset: text.length),
+      composing: TextRange.empty,
+    );
   }
 
   /// Synthesizes typing [text] at the cursor — used for the literal space in
@@ -4818,23 +5031,25 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
                               textCapitalization: _commandMixedCase
                                   ? TextCapitalization.sentences
                                   : TextCapitalization.characters,
-                              // In command free-text modes (mixedCase /
-                              // expectsParams) a space is a literal parameter
-                              // character, so the interceptor is deliberately
-                              // absent there — only normal callsign mode routes
-                              // Space to focus/command handling.
-                              inputFormatters: _commandMixedCase
-                                  ? null
-                                  : _commandExpectsParams
-                                      ? const [UpperCaseTextFormatter()]
-                                      : [
-                                          _virtualSpace,
-                                          FilteringTextInputFormatter.allow(
-                                            RegExp(r'[a-zA-Z0-9/.,]'),
-                                          ),
-                                          if (isMobilePlatform) MobileDotToSlashFormatter(),
-                                          const UpperCaseTextFormatter(),
-                                        ],
+                              // In command free-text modes a space is a literal
+                              // parameter character, so those modes take the
+                              // narrower interceptor: it stands aside for every
+                              // space but the double-space that leaves the
+                              // field. Normal callsign mode routes every space
+                              // to focus/command handling. Asked via
+                              // [_fieldAcceptsSpaces], the same getter
+                              // `_handleSpace` uses to decide the exit — the two
+                              // must never disagree about the field's mode.
+                              inputFormatters: !_fieldAcceptsSpaces
+                                  ? [
+                                      _virtualSpace,
+                                      FilteringTextInputFormatter.allow(RegExp(r'[a-zA-Z0-9/.,]')),
+                                      if (isMobilePlatform) MobileDotToSlashFormatter(),
+                                      const UpperCaseTextFormatter(),
+                                    ]
+                                  : _commandMixedCase
+                                      ? [_commandVirtualSpace]
+                                      : [_commandVirtualSpace, const UpperCaseTextFormatter()],
                               style: _primaryFieldStyle(context, fontWeight: FontWeight.w500),
                               decoration: _primaryFieldDecoration(context, widget.theirCallLabel ?? 'Their call'),
                               onSubmitted: (_) => _log(),
@@ -5664,10 +5879,80 @@ class MobileDotToSlashFormatter extends TextInputFormatter {
 class _VirtualSpaceFormatter extends TextInputFormatter {
   final VoidCallback onSpace;
 
-  const _VirtualSpaceFormatter(this.onSpace);
+  /// When set, decides whether a given edit's space is ours to take. A field
+  /// that accepts literal spaces passes this in so only the double-space that
+  /// EXITS the field is intercepted; every other space is typed as normal.
+  /// Absent means every lone space is ours — the plain callsign/RST/State/Grid
+  /// case, where a space has no meaning other than "next field".
+  final bool Function(TextEditingValue oldValue)? shouldIntercept;
+
+  /// Called instead of [onSpace] when iOS's "." shortcut is recognized, with
+  /// the text as it stood BEFORE the whole gesture (the value minus its
+  /// trailing space). The exit can't be expressed as "strip what's there now":
+  /// by the time this runs iOS's second edit has already re-added the space
+  /// after the period, so the only reliable target is the text we saw going in.
+  final void Function(String baseText)? onPeriodShortcut;
+
+  const _VirtualSpaceFormatter(this.onSpace, {this.shouldIntercept, this.onPeriodShortcut});
+
+  /// iOS's "." shortcut, which fires exactly where our exit gesture does: with
+  /// a space already in the text, a second space-bar press is turned into a
+  /// period. It never arrives as a space insertion, so the check below can't
+  /// see it and a period lands in the field instead.
+  ///
+  /// It arrives as TWO edits, and this matches the first: the trailing space is
+  /// REPLACED BY A PERIOD, same length, caret still at the end — the space that
+  /// iOS then re-adds is a separate edit. Both were traced landing in the SAME
+  /// event-loop turn, which the exit depends on: [onPeriodShortcut] runs on a
+  /// microtask, so it sees the finished text and restores the pre-gesture value
+  /// over it. Were iOS ever to send the second edit a turn later, it would
+  /// arrive after the restore and put the period back — the symptom to look for
+  /// if this regresses on a future iOS is "focus moves but '.' is left behind".
+  /// Traced on an iPhone 17 Pro simulator, iOS 26.5:
+  ///
+  ///     old="NOTE HI " sel=8,8  ->  new="NOTE HI."  sel=8,8   <- this
+  ///     old="NOTE HI." sel=8,8  ->  new="NOTE HI. " sel=9,9
+  ///
+  /// Only reachable in a space-accepting field: everywhere else the first space
+  /// is consumed before it enters the text, leaving iOS nothing to convert.
+  /// A human can't produce this edit — typing "." with the caret at the end of
+  /// "NOTE HI " gives "NOTE HI ." (longer, space intact), never "NOTE HI." — so
+  /// matching it can't swallow a period somebody meant. The cost is that the
+  /// shortcut is unavailable in these fields: to get a period, type one.
+  ///
+  /// The traits are NOT the lever here, tempting as it looks: this was traced
+  /// with `autocorrect: false` live on the field and the shortcut still fired.
+  /// It follows the system-wide "." Shortcut setting, which an app cannot turn
+  /// off — recognizing the edit is the only option.
+  static bool _isIOSPeriodShortcut(TextEditingValue oldValue, TextEditingValue newValue) {
+    // iOS only. The shape is generic enough that an Android IME doing its own
+    // smart punctuation could produce it, and there a deliberately typed "."
+    // would be swallowed as the exit gesture — a silent edit to the operator's
+    // text. Android's own double-space-period is a Gboard setting nobody has
+    // traced here, so it stays out until someone does.
+    if (!isIOSPlatform) return false;
+    if (!oldValue.text.endsWith(' ')) return false;
+    final replaced = '${oldValue.text.substring(0, oldValue.text.length - 1)}.';
+    return newValue.text == replaced && newValue.selection.end == replaced.length;
+  }
 
   @override
   TextEditingValue formatEditUpdate(TextEditingValue oldValue, TextEditingValue newValue) {
+    // The exit gesture, arriving disguised as punctuation. Gated on the same
+    // predicate as a real space, so it stays confined to the fields that opted
+    // into space-accepting behavior.
+    if (shouldIntercept != null &&
+        onPeriodShortcut != null &&
+        _isIOSPeriodShortcut(oldValue, newValue) &&
+        shouldIntercept!(oldValue)) {
+      // The text as it was before the gesture — see [onPeriodShortcut]. Both of
+      // iOS's edits are applied synchronously before any microtask runs, so a
+      // handler that looked at the controller instead would find "NOTE HI. "
+      // and strip only the space, leaving the period behind.
+      final base = oldValue.text.substring(0, oldValue.text.length - 1);
+      scheduleMicrotask(() => onPeriodShortcut!(base));
+      return oldValue;
+    }
     // Only a genuine single-space insertion at the cursor — not a paste that
     // merely contains a space, and not a selection replacement.
     if (newValue.text.length == oldValue.text.length + 1) {
@@ -5675,7 +5960,8 @@ class _VirtualSpaceFormatter extends TextInputFormatter {
       if (caret > 0 &&
           caret <= newValue.text.length &&
           newValue.text[caret - 1] == ' ' &&
-          newValue.text.substring(0, caret - 1) + newValue.text.substring(caret) == oldValue.text) {
+          newValue.text.substring(0, caret - 1) + newValue.text.substring(caret) == oldValue.text &&
+          (shouldIntercept?.call(oldValue) ?? true)) {
         // Deferred: mutating focus or a controller synchronously from inside a
         // formatter (mid-text-input) is unsafe. The microtask runs right after
         // this edit applies and before the next frame.

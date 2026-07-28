@@ -3322,9 +3322,10 @@ void main() {
     // soft-keyboard space must land in the field, not consume-and-advance. The
     // hardware test above uses sendKeyEvent, which bypasses formatters, so this
     // is the only coverage for the input-connection path here. (The interceptor
-    // is deliberately absent from the expectsParams/mixedCase formatter
-    // branches, and even if it weren't, _handleSpace re-inserts the literal
-    // space for those modes — a safety net this test also exercises end to end.)
+    // branches use the NARROWER interceptor, which stands aside for every space
+    // but the double-space that exits the field — and even if it didn't,
+    // _handleSpace re-inserts the literal space for those modes, a safety net
+    // this test also exercises end to end. The exit itself is covered below.)
     Future<Map<String, dynamic>?> fakeReloadPrefix(
       String input, [
       Map<String, dynamic>? operation,
@@ -3348,6 +3349,422 @@ void main() {
 
     expect(field('Their call').controller!.text, 'RELOAD ', reason: 'the space is a literal parameter character here');
     expect(field('Their call').focusNode!.hasFocus, isTrue, reason: 'focus must not advance mid-command');
+  });
+
+  group('the entry row is a loop, not a waypoint', () {
+    // Tab used to fall through to Flutter's own traversal at both ends of the
+    // row, which walks on into the secondary-control chips and the Log button.
+    // An operator running a pileup tabs by feel: landing on a button (where the
+    // next keystroke does nothing, or worse, logs) costs a QSO. The rules here
+    // are specified in docs/design/logging-fields.md.
+    TextField field(WidgetTester tester, String label) =>
+        tester.widget<TextField>(find.widgetWithText(TextField, label));
+
+    testWidgets('Tab off the last main field returns to the call field', (tester) async {
+      await tester.pumpWidget(host());
+
+      field(tester, 'Rcvd').focusNode!.requestFocus();
+      await tester.pump();
+      await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+      await tester.pump();
+
+      expect(field(tester, 'Their call').focusNode!.hasFocus, isTrue,
+          reason: 'Tab past the last field wraps to Call rather than leaving the row');
+    });
+
+    testWidgets('Shift-Tab off the call field goes to the last main field', (tester) async {
+      await tester.pumpWidget(host());
+
+      field(tester, 'Their call').focusNode!.requestFocus();
+      await tester.pump();
+      await tester.sendKeyDownEvent(LogicalKeyboardKey.shiftLeft);
+      await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+      await tester.sendKeyUpEvent(LogicalKeyboardKey.shiftLeft);
+      await tester.pump();
+
+      expect(field(tester, 'Rcvd').focusNode!.hasFocus, isTrue,
+          reason: 'Shift-Tab wraps backwards to the last field, not out of the row');
+    });
+
+    testWidgets('Tab in the MIDDLE of the row is left to the ordinary traversal', (tester) async {
+      // The edges are the only thing worth intercepting. If this ever fails it
+      // means the handler started claiming interior Tabs, at which point the
+      // row's order lives in two places (here and Flutter's geometry sort) and
+      // they will disagree the first time the layout changes.
+      await tester.pumpWidget(host());
+
+      field(tester, 'Their call').focusNode!.requestFocus();
+      await tester.pump();
+      await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+      await tester.pump();
+
+      expect(field(tester, 'Sent').focusNode!.hasFocus, isTrue);
+    });
+  });
+
+  group('arrow keys travel between fields at the value edges', () {
+    // Reading back a logged exchange means walking the row with the arrows; the
+    // caret stopping dead at a field boundary forces a reach for the mouse.
+    TextField field(WidgetTester tester, String label) =>
+        tester.widget<TextField>(find.widgetWithText(TextField, label));
+
+    testWidgets('right arrow at the end of a value moves to the START of the next field', (tester) async {
+      await tester.pumpWidget(host());
+
+      await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'W1AW');
+      await tester.pump();
+      // enterText leaves the caret at the end — the edge the rule is about.
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
+      await tester.pump();
+
+      expect(field(tester, 'Sent').focusNode!.hasFocus, isTrue);
+      // Position 0, NOT the usual cursor-at-end: the caret keeps travelling in
+      // the direction it was pushed. This is the one path that overrides the
+      // end-of-value default every other kind of focus change wants.
+      expect(field(tester, 'Sent').controller!.selection.baseOffset, 0);
+    });
+
+    testWidgets('left arrow at position 0 moves to the END of the previous field', (tester) async {
+      await tester.pumpWidget(host());
+
+      await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'W1AW');
+      await tester.pump();
+      field(tester, 'Sent').focusNode!.requestFocus();
+      await tester.pump();
+      final sent = field(tester, 'Sent').controller!;
+      sent.selection = const TextSelection.collapsed(offset: 0);
+      await tester.pump();
+
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowLeft);
+      await tester.pump();
+
+      expect(field(tester, 'Their call').focusNode!.hasFocus, isTrue);
+      expect(field(tester, 'Their call').controller!.selection.baseOffset, 4, reason: 'lands at the end of "W1AW"');
+    });
+
+    testWidgets('the traversal wraps at both ends of the row', (tester) async {
+      await tester.pumpWidget(host());
+
+      field(tester, 'Rcvd').focusNode!.requestFocus();
+      await tester.pump();
+      field(tester, 'Rcvd').controller!.selection =
+          TextSelection.collapsed(offset: field(tester, 'Rcvd').controller!.text.length);
+      await tester.pump();
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
+      await tester.pump();
+
+      expect(field(tester, 'Their call').focusNode!.hasFocus, isTrue);
+    });
+
+    testWidgets('a modified arrow key is left to the platform', (tester) async {
+      // Cmd/Option+arrow are line- and word-wise caret moves. Claiming them
+      // would take a real editing gesture away and teleport the operator into
+      // another field instead. Shift is the only modifier that means anything
+      // here, and only because it reverses Tab.
+      await tester.pumpWidget(host());
+
+      await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'W1AW');
+      await tester.pump();
+
+      await tester.sendKeyDownEvent(LogicalKeyboardKey.metaLeft);
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
+      await tester.sendKeyUpEvent(LogicalKeyboardKey.metaLeft);
+      await tester.pump();
+
+      expect(field(tester, 'Their call').focusNode!.hasFocus, isTrue,
+          reason: 'Cmd+Right is a caret move, not a field change');
+      expect(field(tester, 'Sent').focusNode!.hasFocus, isFalse);
+    });
+
+    testWidgets('a Tab that goes nowhere leaves no caret instruction behind', (tester) async {
+      // With the call field the ONLY primary field, Tab wraps onto the node
+      // that already has focus, so no focus listener runs. A caret instruction
+      // written unconditionally by the move would sit there uncollected, and
+      // the next field to focus — Frequency, which is not even a primary field
+      // — would take it and put its caret at 0 instead of the end of "14285".
+      await tester.pumpWidget(MaterialApp(
+        home: Scaffold(
+          body: LoggingControls(operation: operation, qsosRepository: qsos, showRSTFields: false),
+        ),
+      ));
+      await tester.pump();
+
+      // Give Frequency a value FIRST — it is the give-away field (it shares the
+      // same focus listener but is a secondary-control field, so it must never
+      // resolve one of these), and an empty one would swallow the stale
+      // instruction harmlessly before the assertion could see it.
+      await openControl(tester, MdiIcons.radio);
+      await tester.enterText(find.widgetWithText(TextField, 'Frequency'), '14285');
+      await tester.pump();
+      await openControl(tester, MdiIcons.radio); // collapse — focus returns to Call
+
+      await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'W1AW');
+      await tester.pump();
+      // The no-op wrap: Call is the only primary field, so this lands on the
+      // node that already has focus and no listener runs.
+      await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+      await tester.pump();
+
+      await openControl(tester, MdiIcons.radio);
+      final freq = tester.widget<TextField>(find.widgetWithText(TextField, 'Frequency'));
+
+      expect(freq.controller!.selection.baseOffset, 5,
+          reason: 'Frequency keeps cursor-at-end; it must not inherit a stale instruction');
+    });
+
+    testWidgets('an arrow key INSIDE a value still just moves the caret', (tester) async {
+      // The whole point is that this stays ordinary text editing. A handler that
+      // grabbed every arrow key would make the fields unnavigable.
+      await tester.pumpWidget(host());
+
+      await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'W1AW');
+      await tester.pump();
+      final call = field(tester, 'Their call').controller!;
+      call.selection = const TextSelection.collapsed(offset: 2);
+      await tester.pump();
+
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
+      await tester.pump();
+
+      expect(field(tester, 'Their call').focusNode!.hasFocus, isTrue, reason: 'focus must not leave mid-value');
+    });
+  });
+
+  group('double space exits a field that accepts spaces', () {
+    // A command awaiting parameters turns the call field into free text, where
+    // a space is a character rather than "next field". Without an exit gesture
+    // the field is a keyboard dead end — the operator has to reach for the
+    // mouse, mid-QSO, which is exactly what the entry row exists to avoid.
+    Future<Map<String, dynamic>?> reloadPrefix(
+      String input, [
+      Map<String, dynamic>? operation,
+      Map<String, dynamic>? qso,
+      bool execute = false,
+    ]) async {
+      if (input.trim().toUpperCase() == 'RELOAD') return {'expectsParams': true};
+      return null;
+    }
+
+    TextField field(WidgetTester tester, String label) =>
+        tester.widget<TextField>(find.widgetWithText(TextField, label));
+
+    testWidgets('a second hardware space removes both and advances', (tester) async {
+      await tester.pumpWidget(host(interpretCommand: reloadPrefix));
+
+      await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'RELOAD');
+      await tester.pump(const Duration(milliseconds: 200)); // debounced interpret() switches modes
+
+      await tester.sendKeyEvent(LogicalKeyboardKey.space);
+      await tester.pump();
+      expect(field(tester, 'Their call').controller!.text, 'RELOAD ',
+          reason: 'the first space is a literal parameter character');
+      expect(field(tester, 'Their call').focusNode!.hasFocus, isTrue);
+
+      await tester.sendKeyEvent(LogicalKeyboardKey.space);
+      await tester.pump();
+      expect(field(tester, 'Their call').controller!.text, 'RELOAD',
+          reason: 'both spaces come off — the value left behind carries neither');
+      expect(field(tester, 'Sent').focusNode!.hasFocus, isTrue);
+    });
+
+    testWidgets('a second soft-keyboard space does the same', (tester) async {
+      // The path that actually matters on a phone: there IS no hardware Space
+      // there, and the command modes used to drop the interceptor entirely, so
+      // the field had no keyboard exit at all.
+      await tester.pumpWidget(host(interpretCommand: reloadPrefix));
+
+      await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'RELOAD');
+      await tester.pump(const Duration(milliseconds: 200));
+      await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'RELOAD ');
+      await tester.pump();
+      expect(field(tester, 'Their call').controller!.text, 'RELOAD ');
+
+      await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'RELOAD  ');
+      await tester.pump(); // let the interceptor's deferred handler run
+
+      expect(field(tester, 'Their call').controller!.text, 'RELOAD');
+      expect(field(tester, 'Sent').focusNode!.hasFocus, isTrue);
+    });
+
+    testWidgets("iOS's \".\" shortcut is the exit gesture in disguise, not punctuation", (tester) async {
+      // Found on the simulator: with a space already in the text, iOS turns the
+      // second space-bar press into ONE edit replacing that space with ". ", so
+      // it never looks like a space insertion and a period landed in the field.
+      // It can only happen in a space-accepting field — everywhere else the
+      // first space is consumed before it reaches the text, leaving iOS nothing
+      // to convert.
+      // The matcher is iOS-gated (an Android IME's smart punctuation could
+      // produce the same shape and would swallow a deliberately typed "."), so
+      // the platform has to be iOS or this passes for the wrong reason.
+      // Restored in a finally: the framework's invariant check runs before any
+      // tearDown.
+      debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
+      try {
+        await tester.pumpWidget(host(interpretCommand: reloadPrefix));
+
+        await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'RELOAD');
+        await tester.pump(const Duration(milliseconds: 200));
+        await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'RELOAD ');
+        await tester.pump();
+
+        // Exactly what iOS sends, traced on an iPhone 17 Pro simulator: TWO
+      // edits, the first REPLACING the trailing space with a period at the
+      // same length, the second re-adding the space.
+      //
+      // Sent back to back with NO pump between them, which is the whole point:
+      // on the device both edits are applied synchronously before any
+      // microtask runs. Pumping in between drains our deferred handler early
+      // and the test then passes against code that leaves the period behind on
+      // a real phone — which is exactly what happened.
+      //
+      // `updateEditingValue` rather than `enterText` so each edit goes to
+      // whatever client is attached at the time, as the real ones do.
+      tester.testTextInput.updateEditingValue(const TextEditingValue(
+        text: 'RELOAD.',
+        selection: TextSelection.collapsed(offset: 7),
+      ));
+      tester.testTextInput.updateEditingValue(const TextEditingValue(
+        text: 'RELOAD. ',
+        selection: TextSelection.collapsed(offset: 8),
+      ));
+      await tester.pump();
+
+      expect(field(tester, 'Their call').controller!.text, 'RELOAD',
+          reason: 'the whole gesture comes off — no period, no spaces');
+      expect(field(tester, 'Sent').focusNode!.hasFocus, isTrue);
+        expect(field(tester, 'Rcvd').focusNode!.hasFocus, isFalse,
+            reason: 'one gesture advances one field, not two');
+      } finally {
+        debugDefaultTargetPlatformOverride = null;
+      }
+    });
+
+    testWidgets('off iOS the same edit is left alone — a typed period survives', (tester) async {
+      // The gate's reason for existing: the shape is generic enough that
+      // another platform's IME could produce it, and there swallowing it would
+      // silently eat a period the operator typed.
+      await tester.pumpWidget(host(interpretCommand: reloadPrefix));
+
+      await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'RELOAD');
+      await tester.pump(const Duration(milliseconds: 200));
+      await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'RELOAD ');
+      await tester.pump();
+      tester.testTextInput.updateEditingValue(const TextEditingValue(
+        text: 'RELOAD.',
+        selection: TextSelection.collapsed(offset: 7),
+      ));
+      await tester.pump();
+
+      expect(field(tester, 'Their call').controller!.text, 'RELOAD.');
+      expect(field(tester, 'Their call').focusNode!.hasFocus, isTrue);
+    });
+
+    testWidgets('a COMPLETE command exits too — the flags are not what makes a field space-accepting',
+        (tester) async {
+      // Third way into free-text mode, and the one the flags miss: once the
+      // text holds a space, `_commandExpectsParams` latches on regardless of
+      // what the interpretation says (see `_callsignModeSafeText`). A complete
+      // command reached that way carries neither `expectsParams` nor
+      // `mixedCase`, so keying the exit to those flags advanced focus while
+      // leaving the trailing space sitting in the value.
+      Future<Map<String, dynamic>?> completeAfterParam(
+        String input, [
+        Map<String, dynamic>? operation,
+        Map<String, dynamic>? qso,
+        bool execute = false,
+      ]) async {
+        final text = input.trim().toUpperCase();
+        if (text == 'EXP') return {'expectsParams': true};
+        if (text.startsWith('EXP ')) return {'describe': 'toggle experiment'}; // complete, no flags
+        return null;
+      }
+
+      await tester.pumpWidget(host(interpretCommand: completeAfterParam));
+
+      await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'EXP');
+      await tester.pump(const Duration(milliseconds: 200));
+      await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'EXP LA');
+      await tester.pump(const Duration(milliseconds: 200));
+      await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'EXP LA ');
+      await tester.pump(const Duration(milliseconds: 200));
+      expect(field(tester, 'Their call').controller!.text, 'EXP LA ',
+          reason: 'test setup: space is literal here');
+
+      await tester.sendKeyEvent(LogicalKeyboardKey.space);
+      await tester.pump();
+
+      expect(field(tester, 'Their call').controller!.text, 'EXP LA',
+          reason: 'the trailing space comes off, whichever route put the field in free-text mode');
+      expect(field(tester, 'Sent').focusNode!.hasFocus, isTrue);
+    });
+
+    testWidgets('a period typed deliberately is left alone', (tester) async {
+      // The guard on the rule above: only the exact space→". " replacement is
+      // claimed. A period typed by hand never follows a trailing space (it
+      // lands after it, "RELOAD ." not "RELOAD. "), so it can't be mistaken
+      // for the shortcut.
+      await tester.pumpWidget(host(interpretCommand: reloadPrefix));
+
+      await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'RELOAD');
+      await tester.pump(const Duration(milliseconds: 200));
+      await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'RELOAD A');
+      await tester.pump();
+      await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'RELOAD A.');
+      await tester.pump();
+
+      expect(field(tester, 'Their call').controller!.text, 'RELOAD A.');
+      expect(field(tester, 'Their call').focusNode!.hasFocus, isTrue);
+    });
+
+    testWidgets('a space in the MIDDLE of the parameter is still literal', (tester) async {
+      await tester.pumpWidget(host(interpretCommand: reloadPrefix));
+
+      await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'RELOAD');
+      await tester.pump(const Duration(milliseconds: 200));
+      await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'RELOAD A B');
+      await tester.pump();
+
+      expect(field(tester, 'Their call').controller!.text, 'RELOAD A B',
+          reason: 'only a space landing after an existing trailing space is an exit');
+      expect(field(tester, 'Their call').focusNode!.hasFocus, isTrue);
+    });
+  });
+
+  testWidgets('a contest exchange also gets the cursor at the end on focus', (tester) async {
+    // The fixed primary fields have done this since they were written; the
+    // exchange fields only ever got `selectAllOnFocus: false`, which stops the
+    // select-all but leaves the caret wherever it last sat. Tabbing back into a
+    // filled exchange then put the caret mid-value, so the next digit typed
+    // landed in the middle of the number.
+    const controls = [
+      {
+        'key': 'c/exchange',
+        'label': 'Exch',
+        'icon': 'flag-checkered',
+        'input': {'kind': 'text', 'refType': 'c', 'field': 'exchange'},
+      },
+    ];
+
+    await tester.pumpWidget(MaterialApp(
+      home: Scaffold(
+        body: LoggingControls(operation: running(['c']), qsosRepository: qsos, activityControls: controls),
+      ),
+    ));
+    await tester.pump();
+
+    TextField field(String label) => tester.widget<TextField>(find.widgetWithText(TextField, label));
+
+    await tester.enterText(find.widgetWithText(TextField, 'Exch'), '1234');
+    await tester.pump();
+    // Leave the caret somewhere in the middle, then come back to the field.
+    field('Exch').controller!.selection = const TextSelection.collapsed(offset: 1);
+    field('Their call').focusNode!.requestFocus();
+    await tester.pump();
+    field('Exch').focusNode!.requestFocus();
+    await tester.pump();
+
+    expect(field('Exch').controller!.selection.isCollapsed, isTrue, reason: 'never select the whole value');
+    expect(field('Exch').controller!.selection.baseOffset, 4, reason: 'caret at the end, ready for the next digit');
   });
 
   testWidgets('a soft-keyboard space advances through State and Grid too, not only Call and Sent', (tester) async {

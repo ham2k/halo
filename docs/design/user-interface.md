@@ -82,32 +82,10 @@ split mechanics are defined in [layouts.md](layouts.md).
 ### Logging controls
 
 The logging controls are the area of the Logging Panel for adding or editing
-QSOs. They have three parts: the main logging controls, the information
-area, and the secondary logging controls.
-
-**Main controls.** Always start with the callsign input (also used for
-commands), followed by the exchange inputs (unless disabled), then controls
-defined by active extensions and operation references, and finally
-user-enabled ones like state or grid. This list is deliberately short,
-focused on information exchanged over the air on every contact; most other
-details belong in the secondary controls.
-
-Pressing Tab or Space rotates focus between main controls. If an input
-allows spaces, one press enters a space; two presses in a row delete that
-space and move focus to the next control.
-
-**Secondary controls.** Pills that show the current state of QSO attributes
-— built-ins like time and radio, plus extension-defined ones. Selecting a
-pill opens its editable controls in a strip above the pill row; the pills
-act as mutually exclusive tabs. The strip scrolls horizontally, and can be
-expanded to show all controls in multiple rows or collapsed back to a single
-scrolling row to save screen space.
-
-**Information area.** Presents information to the user: details for the
-current callsign, or a summary of operation statistics when no callsign is
-entered. Content usually comes from extensions as markdown and can link to
-external resources or internal navigation. Tapping the area can open a
-screen or pane with more detail.
+QSOs: the main logging controls, the information area, and the secondary
+logging controls. What each part holds, and the keyboard rules that move
+focus between the main fields, are specified in
+[logging-fields.md](logging-fields.md).
 
 ## Interface scaling
 
