@@ -882,6 +882,11 @@ export interface CommandInterpretation {
   describe?: string
   confirm?: string
   commands?: CommandAction[]
+  /// True when every `addQso` in `commands` already carries all the lookup
+  /// data it's going to get (e.g. SEED's own offline-only pass) and should
+  /// NOT be handed to the background online lookup queue after being added.
+  /// Ignored when `commands` has no `addQso` entries.
+  skipOnlineLookup?: boolean
 }
 
 /// Registered under category `command`. `interpret` does its own matching

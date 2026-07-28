@@ -91,6 +91,9 @@ void main() {
       // command stays extendable to "SEED 15 3H" while already executable.
       expect(result!['mixedCase'], true);
       expect(result['expectsParams'], isNot(true));
+      // SEED's calls are fabricated, so its own offline guess is all they'll
+      // ever get — the host must not queue them for a real online lookup.
+      expect(result['skipOnlineLookup'], true);
 
       final seeded = addQsosOf(result);
       expect(seeded.length, 10);

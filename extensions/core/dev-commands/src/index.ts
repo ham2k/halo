@@ -289,6 +289,11 @@ const SeedCommand = {
       describe: `Seed the log with ${count} random QSOs${where}?`,
       confirm: `Seeding ${count} QSOs${where}…`,
       commands,
+      // Seeded QSOs only ever carry the offline guess from lookupGuessFor
+      // above — never real online lookup data, and SEED is for fabricating
+      // test data quickly, not for accurate lookups, so there's no reason to
+      // burn network lookups on made-up calls once they're on screen.
+      skipOnlineLookup: true,
     }
   },
 }

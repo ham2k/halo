@@ -955,14 +955,54 @@ void main() {
     expect(enqueued.map((q) => q.uuid).toList(), [logged.single.uuid]);
   });
 
-  testWidgets('command actions that add QSOs (e.g. SEED) enqueue the whole batch for background lookup at once', (tester) async {
-    // The extension side only attaches fast offline guesses when seeding
-    // (network lookups there would stall the whole command) — the full
-    // online enrichment is the queue's job, after the QSOs are on screen.
-    // The batch goes through enqueueAllLookups (not the per-QSO
-    // enqueueLookup) so it reuses the same "Lookup all QSOs" bulk mechanism
-    // and progress reporting, fired once the whole command has finished
-    // adding QSOs rather than QSO-by-QSO.
+  testWidgets('command actions that add QSOs enqueue the whole batch for background lookup at once', (tester) async {
+    // A command whose interpretation does not set `skipOnlineLookup` (e.g.
+    // annotation-commands' WX/SOLAR event rows) gets its added QSOs batched
+    // through enqueueAllLookups (not the per-QSO enqueueLookup), reusing the
+    // same "Lookup all QSOs" bulk mechanism and progress reporting, fired
+    // once the whole command has finished adding QSOs rather than QSO-by-QSO.
+    Future<Map<String, dynamic>?> interpret(
+      String input, [
+      Map<String, dynamic>? operation,
+      Map<String, dynamic>? qso,
+      bool execute = false,
+    ]) async {
+      if (input != 'ADDCMD') return null;
+      return {
+        'describe': 'Add QSOs?',
+        'confirm': 'Added',
+        'commands': [
+          {'addQso': {'their': {'call': 'W1AW'}, 'startAtMillis': 1000000}},
+          {'addQso': {'their': {'call': 'K1ABC'}, 'startAtMillis': 2000000}},
+        ],
+      };
+    }
+
+    final enqueuedSingly = <Qso>[];
+    final enqueuedBatches = <List<Qso>>[];
+    await tester.pumpWidget(host(
+      interpretCommand: interpret,
+      enqueueLookup: enqueuedSingly.add,
+      enqueueAllLookups: (qsos) => enqueuedBatches.add(qsos.toList()),
+    ));
+
+    await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'ADDCMD');
+    await tester.pump();
+    await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+    await tester.pump(const Duration(milliseconds: 200));
+
+    final logged = await waitForQsos(tester, 2);
+    expect(logged, hasLength(2));
+    expect(enqueuedSingly, isEmpty, reason: 'batches through enqueueAllLookups, not per-QSO enqueueLookup');
+    expect(enqueuedBatches, hasLength(1), reason: 'one batch for the whole command, not one call per QSO');
+    expect(enqueuedBatches.single.map((q) => q.theirCall).toList(), ['W1AW', 'K1ABC']);
+    expect(enqueuedBatches.single.map((q) => q.uuid).toSet(), logged.map((q) => q.uuid).toSet());
+  });
+
+  testWidgets('a command interpretation with skipOnlineLookup (e.g. SEED) never enqueues its added QSOs for online lookup', (tester) async {
+    // SEED's fabricated calls only ever carry the offline guess the
+    // extension attached itself — there's no real online data to fetch, so
+    // SEED sets `skipOnlineLookup` and the batch never reaches the queue.
     Future<Map<String, dynamic>?> interpret(
       String input, [
       Map<String, dynamic>? operation,
@@ -977,6 +1017,7 @@ void main() {
           {'addQso': {'their': {'call': 'W1AW'}, 'startAtMillis': 1000000}},
           {'addQso': {'their': {'call': 'K1ABC'}, 'startAtMillis': 2000000}},
         ],
+        'skipOnlineLookup': true,
       };
     }
 
@@ -995,10 +1036,8 @@ void main() {
 
     final logged = await waitForQsos(tester, 2);
     expect(logged, hasLength(2));
-    expect(enqueuedSingly, isEmpty, reason: 'SEED batches through enqueueAllLookups, not per-QSO enqueueLookup');
-    expect(enqueuedBatches, hasLength(1), reason: 'one batch for the whole command, not one call per QSO');
-    expect(enqueuedBatches.single.map((q) => q.theirCall).toList(), ['W1AW', 'K1ABC']);
-    expect(enqueuedBatches.single.map((q) => q.uuid).toSet(), logged.map((q) => q.uuid).toSet());
+    expect(enqueuedSingly, isEmpty);
+    expect(enqueuedBatches, isEmpty, reason: 'skipOnlineLookup must suppress the background lookup queue entirely');
   });
 
   testWidgets('a manually entered name override does not duplicate onto a newly added call, but a grid override does', (tester) async {

@@ -235,15 +235,14 @@ class LoggingControls extends StatefulWidget {
   /// several land close together.
   final void Function(Qso qso)? enqueueLookup;
 
-  /// Hands every QSO added by a single command action (e.g. one SEED run) to
-  /// the caller's background lookup queue as one batch, fired once the
-  /// command's own offline-only pass (done extension-side, before these QSOs
-  /// reach [addQso]) has finished for all of them. Reuses the same
-  /// always-on status-bar progress as the explicit "Lookup all QSOs"
-  /// action, since a SEED batch is exactly that kind of bulk insert — but
-  /// callers are expected to pass `force: false` through to the queue's
-  /// `enqueueAll`, unlike "Lookup all QSOs": a SEED-added QSO only ever
-  /// carries its own offline guess, so there's nothing to force-refresh.
+  /// Hands every QSO added by a single command action to the caller's
+  /// background lookup queue as one batch, fired once all of a command's
+  /// `addQso` actions have been dispatched. Reuses the same always-on
+  /// status-bar progress as the explicit "Lookup all QSOs" action, since a
+  /// command batch is exactly that kind of bulk insert. Skipped entirely
+  /// when the command's interpretation set `skipOnlineLookup` — SEED does,
+  /// since its QSOs are fabricated test data and only ever carry the
+  /// offline-only guess `lookupGuessFor` already attached extension-side.
   final void Function(Iterable<Qso> qsos)? enqueueAllLookups;
 
   /// Declarative activity control descriptors from extensions (UI catalog).
@@ -3803,10 +3802,11 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     }
   }
 
-  Future<void> _dispatchActions(List<dynamic> actions) async {
+  Future<void> _dispatchActions(List<dynamic> actions, {bool skipOnlineLookup = false}) async {
     // QSOs added by this batch of actions (e.g. one SEED run) — handed to
     // enqueueAllLookups as a single batch once every action has been
-    // dispatched, rather than queued one at a time as they're added.
+    // dispatched, rather than queued one at a time as they're added. Skipped
+    // entirely when [skipOnlineLookup] is set (SEED).
     final addedQsos = <Qso>[];
     for (final action in actions) {
       if (action is! Map) continue;
@@ -3928,7 +3928,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
         debugPrint('[extensions] no dispatch branch for command action: ${map.keys}');
       }
     }
-    if (addedQsos.isNotEmpty) {
+    if (addedQsos.isNotEmpty && !skipOnlineLookup) {
       widget.enqueueAllLookups?.call(addedQsos);
     }
   }
@@ -4836,7 +4836,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
 
           final commands = executable['commands'];
           if (commands is List) {
-            await _dispatchActions(commands);
+            await _dispatchActions(commands, skipOnlineLookup: executable['skipOnlineLookup'] == true);
           }
         } finally {
           _isLogging = false;

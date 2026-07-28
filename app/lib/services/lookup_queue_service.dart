@@ -124,12 +124,14 @@ class LookupQueueService {
 
   /// Batch lookup with status-bar progress: the explicit "Lookup all QSOs"
   /// action (default [force]: true, refreshes even already-enriched QSOs)
-  /// and SEED-command inserts (`logging_controls.dart`'s `addQso` handling,
-  /// [force]: false — a seeded QSO only ever carries its own offline guess,
-  /// so there's nothing to preserve by skipping, but it shouldn't silently
-  /// start forcing refreshes if that ever changes). One progress update for
-  /// the whole batch — an enqueue-time update per QSO would rebuild the
-  /// status bar N times in a single synchronous burst.
+  /// and other command-added QSO batches (`logging_controls.dart`'s
+  /// `addQso` handling, [force]: false — those never carry real online data
+  /// yet, so there's nothing to preserve by skipping, but it shouldn't
+  /// silently start forcing refreshes if that ever changes). SEED skips this
+  /// path entirely (`skipOnlineLookup` on its interpretation) since its QSOs
+  /// are fabricated test data. One progress update for the whole batch — an
+  /// enqueue-time update per QSO would rebuild the status bar N times in a
+  /// single synchronous burst.
   void enqueueAll(Iterable<Qso> qsos, {bool force = true}) {
     _suppressProgress = true;
     _trackingBatch = true;
