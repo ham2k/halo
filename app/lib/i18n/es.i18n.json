@@ -527,6 +527,39 @@
       "noKeyringInline": "Las cuentas no se pueden guardar: no se puede acceder al llavero de esta computadora. Instala y arranca gnome-keyring, KWallet o KeePassXC, o desbloquea el que ya tengas.",
       "noSecureStorageInline": "Las cuentas no se pueden guardar: no se puede acceder al almacenamiento seguro de esta computadora."
     },
+    "station": {
+      "title": "Configuración de Estación",
+      "none": "No hay equipo configurado",
+      "add": "Agregar equipo",
+      "addTitle": "Agregar equipo",
+      "searching": "Buscando radios en tu red…",
+      "found": "Encontradas",
+      "addManually": "Agregar por dirección",
+      "discoveryUnavailable": "No se puede buscar radios: ${error}",
+      "edit": "Editar equipo",
+      "name": "Nombre",
+      "nameDescription": "Cómo lo llamas — «Radio Izquierda». Opcional.",
+      "host": "Dirección",
+      "hostDescription": "El nombre de host o la dirección IP de la radio en tu red.",
+      "port": "Puerto",
+      "hostRequired": "Se requiere una dirección",
+      "portInvalid": "El puerto debe estar entre 1 y 65535",
+      "connect": "Conectar",
+      "disconnect": "Desconectar",
+      "remove": "Eliminar",
+      "removeTitle": "¿Eliminar ${name}?",
+      "removeMessage": "Esto solo lo elimina de la aplicación. Nada cambia en el equipo.",
+      "statusDisconnected": "Sin conexión",
+      "statusConnecting": "Conectando…",
+      "statusConnected": "Conectado",
+      "unknownType": "Tipo de equipo no reconocido «${typeKey}»",
+      "unverified": "No probado con este hardware",
+      "mainVfo": "VFO principal",
+      "useAsMainVfo": "Usar como VFO principal",
+      "types": {
+        "flexRadioTcp": "FlexRadio (SmartSDR) — Red"
+      }
+    },
     "offlineData": {
       "title": "Datos sin conexión",
       "noFiles": "No hay archivos de datos",
@@ -599,7 +632,9 @@
       "about": "Acerca de",
       "aboutDescription": "Versión, créditos e información legal",
       "unavailableTitle": "Algunos ajustes no están disponibles",
-      "unavailableText": "El motor de extensiones no pudo iniciarse, así que faltan los ajustes aportados por extensiones."
+      "unavailableText": "El motor de extensiones no pudo iniciarse, así que faltan los ajustes aportados por extensiones.",
+      "station": "Configuración de Estación",
+      "stationDescription": "Radios y otros equipos"
     }
   },
   "commands": {

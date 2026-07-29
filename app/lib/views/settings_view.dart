@@ -36,6 +36,7 @@ import 'header_profile_label.dart';
 import '../settings/settings_registry.dart';
 import 'experiments_pane.dart';
 import 'extensions_panel.dart';
+import 'station_panel.dart';
 import 'ham2k_logo.dart';
 import 'notice_history_view.dart';
 import 'oauth_browser_login.dart';
@@ -129,6 +130,8 @@ List<_SettingsPanelEntry> _fixedCorePanels(Translations t) => [
 // Internally "profiles"; until multi-profile features are enabled it
 // presents itself as just "Callsign".
 const _profilesPanelOrder = -10;
+// Between Callsign and Common Preferences (0) — see the entry itself.
+const _stationPanelOrder = -5;
 const _developerPanelOrder = 90;
 const _aboutPanelOrder = 100;
 const _extensionPanelDefaultOrder = 50;
@@ -214,6 +217,18 @@ class _SettingsViewState extends State<SettingsView> {
         icon: resolveIconName('account'),
         order: _profilesPanelOrder,
       ),
+      // Station equipment and CAT control (docs/design/gato.md). Between
+      // Callsign (-10) and Common Preferences (0) — who you are, then what
+      // you're operating with, then how the app behaves. Hidden on web,
+      // which has no sockets, so the section could never do anything there.
+      if (settings.experimentEnabled('gato') && !kIsWeb)
+        _SettingsPanelEntry(
+          key: 'station',
+          title: t.settings.panels.station,
+          icon: MdiIcons.radio,
+          order: _stationPanelOrder,
+          description: t.settings.panels.stationDescription,
+        ),
       ..._fixedCorePanels(t),
       // After the extension-contributed panels (default order 50): data
       // files are contributed by extensions too, so they sit alongside
@@ -487,6 +502,8 @@ Widget _buildPanelContent(_SettingsPanelEntry panel, HaLoServices services) {
   switch (panel.key) {
     case 'profiles':
       content = _ProfilesPanel(services: services);
+    case 'station':
+      content = StationPanel(services: services);
     case 'settings':
       content = _CommonSettingsPanel(services: services);
     case 'extensions':

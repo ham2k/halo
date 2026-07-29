@@ -507,6 +507,10 @@ class _LoggingPanelState extends State<LoggingPanel> {
             enabledBands: _enabledBands,
             enabledModes: _enabledModes,
             radioService: widget.services.radio,
+            // Same object, as a Listenable — so the Radio control follows a
+            // connected rig (GATO) instead of only reading the VFO when it
+            // seeds. See LoggingControls.radioUpdates.
+            radioUpdates: widget.services.radio,
             lookup: widget.services.extensions.lookupCall,
             enqueueLookup: widget.services.lookupQueue.enqueue,
             // force: false — unlike the explicit "Lookup all QSOs" action,

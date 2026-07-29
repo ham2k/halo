@@ -86,6 +86,9 @@ void main() {
       onCommandAction: onCommandAction,
       onCallInfoChanged: onCallInfoChanged,
       radioService: radioService,
+      // The app passes the same object twice — RadioService is both the
+      // store and the Listenable. See LoggingControls.radioUpdates.
+      radioUpdates: radioService is Listenable ? radioService as Listenable : null,
       editingQso: editingQso,
       onEditCanceled: onEditCanceled,
       onNavigateToQsoList: onNavigateToQsoList,
@@ -4819,6 +4822,240 @@ void main() {
     expect(find.text('20m'), findsWidgets);
   });
 
+  // ---- Live follow: a connected radio (GATO) moving the VFO underneath us.
+  // The panel only ever read vfoA when it seeded, so a CAT push was
+  // invisible; these cover following it without ever overwriting the
+  // operator. See docs/design/gato.md.
+
+  testWidgets('follows the VFO when a connected radio is tuned', (tester) async {
+    fakeRadio.setVfo('vfoA', freq: 14285, mode: 'SSB');
+    await tester.pumpWidget(host(radioService: fakeRadio));
+    await openControl(tester, MdiIcons.radio);
+    expect(tester.widget<TextField>(find.widgetWithText(TextField, 'Frequency')).controller!.text, '14285');
+
+    // The operator turns the knob on the radio.
+    fakeRadio.setVfo('vfoA', freq: 7123.45, mode: 'LSB');
+    await tester.pumpAndSettle();
+
+    expect(tester.widget<TextField>(find.widgetWithText(TextField, 'Frequency')).controller!.text, '7123.45');
+    expect(find.text('40m'), findsWidgets, reason: 'the band follows the frequency');
+  });
+
+  testWidgets('a radio update does not overwrite a frequency the operator is part-way through typing',
+      (tester) async {
+    fakeRadio.setVfo('vfoA', freq: 14285, mode: 'SSB');
+    await tester.pumpWidget(host(radioService: fakeRadio));
+    await openControl(tester, MdiIcons.radio);
+
+    // Two digits: too short to arm the push debounce, so the debounce alone
+    // is not what protects this — the dirty flag is.
+    await tester.enterText(find.widgetWithText(TextField, 'Frequency'), '71');
+    await tester.pump();
+
+    fakeRadio.setVfo('vfoA', freq: 21000, mode: 'CW');
+    await tester.pumpAndSettle();
+
+    expect(tester.widget<TextField>(find.widgetWithText(TextField, 'Frequency')).controller!.text, '71',
+        reason: 'the operator was mid-entry — their intent is newer than the radio');
+  });
+
+  testWidgets('following resumes once the operator edit has reached the VFO', (tester) async {
+    fakeRadio.setVfo('vfoA', freq: 14285, mode: 'SSB');
+    await tester.pumpWidget(host(radioService: fakeRadio));
+    await openControl(tester, MdiIcons.radio);
+
+    await tester.enterText(find.widgetWithText(TextField, 'Frequency'), '7100');
+    await tester.pump();
+    // The 5s debounce fires and the edit reaches the VFO.
+    await tester.pump(const Duration(seconds: 6));
+    expect(fakeRadio.vfoA.freq, 7100);
+
+    // Now the panel and the VFO agree again, so a radio move is followed.
+    fakeRadio.setVfo('vfoA', freq: 21050, mode: 'CW');
+    await tester.pumpAndSettle();
+    expect(tester.widget<TextField>(find.widgetWithText(TextField, 'Frequency')).controller!.text, '21050');
+  });
+
+  testWidgets('a pending frequency edit holds off the frequency, not the mode', (tester) async {
+    fakeRadio.setVfo('vfoA', freq: 14285, mode: 'SSB');
+    await tester.pumpWidget(host(radioService: fakeRadio));
+    await openControl(tester, MdiIcons.radio);
+
+    // Mid-entry: the operator's frequency is newer than the radio's.
+    await tester.enterText(find.widgetWithText(TextField, 'Frequency'), '71');
+    await tester.pump();
+
+    // The rig is switched to CW at its own front panel meanwhile.
+    fakeRadio.setVfo('vfoA', freq: 14030, mode: 'CW');
+    await tester.pumpAndSettle();
+
+    expect(tester.widget<TextField>(find.widgetWithText(TextField, 'Frequency')).controller!.text, '71',
+        reason: 'their entry is newer');
+    // The whole seed used to be suppressed, so the mode was dropped — and
+    // the pending push then sent the panel's stale SSB back at the rig,
+    // taking it out of CW and logging the QSO as USB at 59.
+    expect(tester.widget<TextField>(find.widgetWithText(TextField, 'Mode')).controller!.text, 'CW');
+    expect(tester.widget<TextField>(find.widgetWithText(TextField, 'Sent')).controller!.text, '599');
+
+    await tester.pump(const Duration(seconds: 6));
+    expect(fakeRadio.vfoA.mode, 'CW', reason: 'the push must not undo the mode change');
+  });
+
+  testWidgets('a live radio band change rescores the dupe and New Band pills', (tester) async {
+    fakeRadio.setVfo('vfoA', freq: 14285, mode: 'SSB');
+    final scoredBands = <String?>[];
+    await tester.pumpWidget(MaterialApp(
+      home: Scaffold(
+        body: LoggingControls(
+          operation: operation,
+          qsosRepository: qsos,
+          radioService: fakeRadio,
+          radioUpdates: fakeRadio,
+          scoreQso: ({required operation, required qso, excludeUuid, segments}) async {
+            scoredBands.add(qso['band'] as String?);
+            return {'notices': <String>[], 'alerts': <String>[]};
+          },
+          scoreNoticeLabel: (key) => key,
+        ),
+      ),
+    ));
+
+    await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'W1AW');
+    await tester.pump(const Duration(milliseconds: 500));
+    expect(scoredBands, ['20m']);
+
+    // The rig moves to another band on its own. The pills are scored
+    // against band and mode, and the seed runs under `_populating` — which
+    // suppressed the rescore, leaving them describing a band the operator
+    // has left.
+    fakeRadio.setVfo('vfoA', freq: 7040, mode: 'CW');
+    await tester.pump(const Duration(milliseconds: 500));
+    expect(scoredBands.last, '40m');
+  });
+
+  testWidgets('a partial frequency entry does not switch live follow off for good', (tester) async {
+    fakeRadio.setVfo('vfoA', freq: 14285, mode: 'SSB');
+    await tester.pumpWidget(host(radioService: fakeRadio));
+    await openControl(tester, MdiIcons.radio);
+
+    // Three characters or fewer arms no debounce, so nothing ever cleared
+    // the pending-edit flag: the Radio control stopped following the rig
+    // for the rest of the session, and every QSO after it logged the stale
+    // frequency.
+    await tester.enterText(find.widgetWithText(TextField, 'Frequency'), '145');
+    await tester.pump();
+
+    await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'W1AW');
+    await tester.pump();
+    await tester.testTextInput.receiveAction(TextInputAction.done);
+    await tester.pumpAndSettle();
+
+    // The wipe collapses the Radio control along with everything else.
+    await openControl(tester, MdiIcons.radio);
+    fakeRadio.setVfo('vfoA', freq: 21050, mode: 'CW');
+    await tester.pumpAndSettle();
+    expect(tester.widget<TextField>(find.widgetWithText(TextField, 'Frequency')).controller!.text, '21050');
+  });
+
+  testWidgets('the VFO notifier can be swapped while a QSO is being edited', (tester) async {
+    // `radioService` (the store the fields are seeded FROM) and
+    // `radioUpdates` (the Listenable that says when) are separate, so a
+    // second store stands in as the notifier here.
+    final notifierA = _FakeVfoStore();
+    final notifierB = _FakeVfoStore();
+    final existingQso = Qso(
+      uuid: 'existing-uuid',
+      operationUuid: operation.uuid,
+      data: {
+        'their': {'call': 'W1AW'},
+        'freq': 7040,
+        'mode': 'CW',
+      },
+    );
+
+    Widget hostWith({required Listenable updates, Qso? editing}) => MaterialApp(
+          home: Scaffold(
+            body: LoggingControls(
+              operation: operation,
+              qsosRepository: qsos,
+              radioService: fakeRadio,
+              radioUpdates: updates,
+              editingQso: editing,
+            ),
+          ),
+        );
+
+    await tester.pumpWidget(hostWith(updates: notifierA, editing: existingQso));
+    await tester.pumpAndSettle();
+
+    // The swap lands mid-edit. Re-subscribing used to sit below
+    // `didUpdateWidget`'s editingQso guards, so it simply never ran here:
+    // the listener stayed on A, `dispose` then removed it from B, and A
+    // kept this State alive with nothing following it.
+    await tester.pumpWidget(hostWith(updates: notifierB, editing: existingQso));
+    await tester.pumpAndSettle();
+
+    await tester.pumpWidget(hostWith(updates: notifierB));
+    await tester.pumpAndSettle();
+    await openControl(tester, MdiIcons.radio);
+
+    fakeRadio.setVfo('vfoA', freq: 21050, mode: 'CW');
+    notifierB.setVfo('vfoA', freq: 21050, mode: 'CW');
+    await tester.pumpAndSettle();
+
+    expect(tester.widget<TextField>(find.widgetWithText(TextField, 'Frequency')).controller!.text, '21050');
+  });
+
+  testWidgets('a radio update never touches the fields while editing an existing QSO', (tester) async {
+    final existingQso = Qso(
+      uuid: 'existing-uuid',
+      operationUuid: operation.uuid,
+      data: {
+        'their': {'call': 'W1AW'},
+        'freq': 7040,
+        'mode': 'CW',
+      },
+    );
+    await tester.pumpWidget(host(radioService: fakeRadio, editingQso: existingQso));
+    await openControl(tester, MdiIcons.radio);
+    expect(tester.widget<TextField>(find.widgetWithText(TextField, 'Frequency')).controller!.text, '7040');
+
+    fakeRadio.setVfo('vfoA', freq: 14285, mode: 'SSB');
+    await tester.pumpAndSettle();
+
+    // A logged QSO records where it actually happened; ambient radio state
+    // must not rewrite it.
+    expect(tester.widget<TextField>(find.widgetWithText(TextField, 'Frequency')).controller!.text, '7040');
+  });
+
+  testWidgets('a radio mode change refreshes the untouched default RSTs', (tester) async {
+    fakeRadio.setVfo('vfoA', freq: 14285, mode: 'SSB');
+    await tester.pumpWidget(host(radioService: fakeRadio));
+    await openControl(tester, MdiIcons.radio);
+    expect(tester.widget<TextField>(find.widgetWithText(TextField, 'Sent')).controller!.text, '59');
+
+    fakeRadio.setVfo('vfoA', freq: 14030, mode: 'CW');
+    await tester.pumpAndSettle();
+
+    // Seeding used to set the mode without re-deriving the RSTs, so a CW
+    // radio left 59 sitting in the report fields.
+    expect(tester.widget<TextField>(find.widgetWithText(TextField, 'Sent')).controller!.text, '599');
+  });
+
+  testWidgets('a radio mode change leaves an RST the operator edited alone', (tester) async {
+    fakeRadio.setVfo('vfoA', freq: 14285, mode: 'SSB');
+    await tester.pumpWidget(host(radioService: fakeRadio));
+    await openControl(tester, MdiIcons.radio);
+
+    await tester.enterText(find.widgetWithText(TextField, 'Sent'), '57');
+    await tester.pump();
+
+    fakeRadio.setVfo('vfoA', freq: 14030, mode: 'CW');
+    await tester.pumpAndSettle();
+
+    expect(tester.widget<TextField>(find.widgetWithText(TextField, 'Sent')).controller!.text, '57');
+  });
+
   testWidgets('a brand new operation sees the same vfoA as any other — it is not per-operation', (tester) async {
     fakeRadio.setVfo('vfoA', freq: 14285, mode: 'CW');
     final freshOperation = await operations.create(stationCall: 'KI2D');
@@ -5130,6 +5367,140 @@ void main() {
     await openControl(tester, MdiIcons.radio);
     expect(tester.widget<TextField>(find.widgetWithText(TextField, 'Frequency')).controller!.text, '14074');
     expect(find.text('20m'), findsWidgets);
+  });
+
+  testWidgets('a suggestedQso moves the VFO, so a connected radio follows the spot', (tester) async {
+    fakeRadio.setVfo('vfoA', freq: 7200, mode: 'SSB');
+    await tester.pumpWidget(host(radioService: fakeRadio, suggestedQso: {
+      'their': {'call': 'W1AW'},
+      'freq': 14074.0,
+      'mode': 'FT8',
+    }));
+    await tester.pump();
+
+    // Tapping a spot is specific intent — "work THIS station" — so it takes
+    // the radio there, rather than only filling in the form.
+    expect(fakeRadio.vfoA.freq, 14074.0);
+    expect(fakeRadio.vfoA.mode, 'FT8');
+    expect(fakeRadio.vfoA.band, '20m');
+  });
+
+  testWidgets('tapping a second spot moves the VFO again', (tester) async {
+    await tester.pumpWidget(host(radioService: fakeRadio, suggestedQso: {
+      'their': {'call': 'W1AW'},
+      'freq': 14074.0,
+      'mode': 'FT8',
+    }));
+    await tester.pump();
+    expect(fakeRadio.vfoA.freq, 14074.0);
+
+    await tester.pumpWidget(host(radioService: fakeRadio, suggestedQso: {
+      'their': {'call': 'K1ABC'},
+      'freq': 7035.0,
+      'mode': 'CW',
+    }));
+    await tester.pump();
+
+    expect(fakeRadio.vfoA.freq, 7035.0);
+    expect(fakeRadio.vfoA.mode, 'CW');
+  });
+
+  testWidgets('clicking into the frequency field after a spot does not switch live follow off', (tester) async {
+    await tester.pumpWidget(host(radioService: fakeRadio, suggestedQso: {
+      'their': {'call': 'W1AW'},
+      'freq': 14074.0,
+      'mode': 'FT8',
+    }));
+    await tester.pump();
+    await openControl(tester, MdiIcons.radio);
+
+    // The suggestion wrote the field under `_populating`. If that write
+    // didn't move the edit baseline, this bare cursor placement reads as an
+    // edit and live follow silently stops.
+    await tester.tap(find.widgetWithText(TextField, 'Frequency'));
+    await tester.pumpAndSettle();
+
+    fakeRadio.setVfo('vfoA', freq: 21050, mode: 'CW');
+    await tester.pumpAndSettle();
+
+    expect(tester.widget<TextField>(find.widgetWithText(TextField, 'Frequency')).controller!.text, '21050');
+  });
+
+  testWidgets('the suggestion push does not notify listeners during the build phase', (tester) async {
+    // Reproduces what the real app hit: SpotsPanel listens to the VFO and
+    // calls setState when it changes. `_applySuggestedQso` runs from
+    // initState and didUpdateWidget — both inside the build phase — so
+    // pushing synchronously made that setState land mid-build, which
+    // Flutter refuses. It surfaced only in the log, because ErrorPolicy
+    // classes it logOnly.
+    Widget tree(Map<String, dynamic> suggestion) => MaterialApp(
+          home: Scaffold(
+            body: Column(children: [
+              _VfoWatcher(store: fakeRadio),
+              Expanded(
+                child: LoggingControls(
+                  operation: operation,
+                  qsosRepository: qsos,
+                  radioService: fakeRadio,
+                  radioUpdates: fakeRadio,
+                  suggestedQso: suggestion,
+                ),
+              ),
+            ]),
+          ),
+        );
+
+    await tester.pumpWidget(tree({
+      'their': {'call': 'W1AW'},
+      'freq': 14074.0,
+      'mode': 'FT8',
+    }));
+    await tester.pumpAndSettle();
+
+    // A second spot, which is what drives didUpdateWidget.
+    await tester.pumpWidget(tree({
+      'their': {'call': 'K1ABC'},
+      'freq': 7035.0,
+      'mode': 'CW',
+    }));
+    await tester.pumpAndSettle();
+
+    expect(tester.takeException(), isNull);
+    expect(fakeRadio.vfoA.freq, 7035.0, reason: 'deferred, but it still lands');
+  });
+
+  testWidgets('a suggestion carrying no radio state leaves the VFO alone', (tester) async {
+    fakeRadio.setVfo('vfoA', freq: 14285, mode: 'SSB');
+    await tester.pumpWidget(host(radioService: fakeRadio, suggestedQso: {
+      'their': {'call': 'W1AW'},
+    }));
+    await tester.pump();
+
+    // A bare callsign — a deeplink, say — says nothing about where to tune,
+    // and must not retune a connected radio to nowhere.
+    expect(fakeRadio.vfoA.freq, 14285);
+    expect(fakeRadio.vfoA.mode, 'SSB');
+  });
+
+  testWidgets('a suggestion while editing an existing QSO does not move the VFO', (tester) async {
+    fakeRadio.setVfo('vfoA', freq: 14285, mode: 'SSB');
+    final existingQso = Qso(
+      uuid: 'existing-uuid',
+      operationUuid: operation.uuid,
+      data: {
+        'their': {'call': 'W1AW'},
+        'freq': 7100,
+      },
+    );
+
+    await tester.pumpWidget(host(radioService: fakeRadio, editingQso: existingQso, suggestedQso: {
+      'their': {'call': 'K1ABC'},
+      'freq': 21000.0,
+      'mode': 'CW',
+    }));
+    await tester.pump();
+
+    expect(fakeRadio.vfoA.freq, 14285, reason: 'the suggestion was ignored, so the VFO is too');
   });
 
   testWidgets('a suggestedQso is ignored while editingQso is set — it never clobbers an in-progress edit', (tester) async {
@@ -6262,7 +6633,7 @@ void main() {
 /// this package, in the Flutter app rather than halo_widgets) — just
 /// enough of `VfoStore` to verify LoggingControls seeds from and writes
 /// back to it, without a real SharedPreferences-backed store.
-class _FakeVfoStore implements VfoStore {
+class _FakeVfoStore extends ChangeNotifier implements VfoStore {
   Vfo _vfoA = const Vfo();
 
   @override
@@ -6278,5 +6649,40 @@ class _FakeVfoStore implements VfoStore {
     } else {
       _vfoA = Vfo(freq: _vfoA.freq, band: _vfoA.band, mode: mode ?? _vfoA.mode);
     }
+    // The real RadioService is a ChangeNotifier; without this the panel's
+    // live-follow listener never fires and its tests pass vacuously.
+    notifyListeners();
   }
+}
+
+/// Stands in for SpotsPanel: something else in the tree that listens to the
+/// VFO and rebuilds when it changes.
+class _VfoWatcher extends StatefulWidget {
+  final Listenable store;
+
+  const _VfoWatcher({required this.store});
+
+  @override
+  State<_VfoWatcher> createState() => _VfoWatcherState();
+}
+
+class _VfoWatcherState extends State<_VfoWatcher> {
+  int _changes = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    widget.store.addListener(_onChanged);
+  }
+
+  @override
+  void dispose() {
+    widget.store.removeListener(_onChanged);
+    super.dispose();
+  }
+
+  void _onChanged() => setState(() => _changes++);
+
+  @override
+  Widget build(BuildContext context) => Text('vfo changes: $_changes');
 }

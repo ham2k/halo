@@ -407,6 +407,7 @@ class _Translations$settings$es extends Translations$settings$en {
 	@override String get developerMode => 'Modo Desarrollador';
 	@override late final _Translations$settings$syncPanel$es syncPanel = _Translations$settings$syncPanel$es._(_root);
 	@override late final _Translations$settings$accounts$es accounts = _Translations$settings$accounts$es._(_root);
+	@override late final _Translations$settings$station$es station = _Translations$settings$station$es._(_root);
 	@override late final _Translations$settings$offlineData$es offlineData = _Translations$settings$offlineData$es._(_root);
 	@override late final _Translations$settings$profiles$es profiles = _Translations$settings$profiles$es._(_root);
 	@override late final _Translations$settings$search$es search = _Translations$settings$search$es._(_root);
@@ -943,6 +944,44 @@ class _Translations$settings$accounts$es extends Translations$settings$accounts$
 	@override String get noSecureStorageInline => 'Las cuentas no se pueden guardar: no se puede acceder al almacenamiento seguro de esta computadora.';
 }
 
+// Path: settings.station
+class _Translations$settings$station$es extends Translations$settings$station$en {
+	_Translations$settings$station$es._(TranslationsEs root) : this._root = root, super.internal(root);
+
+	final TranslationsEs _root; // ignore: unused_field
+
+	// Translations
+	@override String get title => 'Configuración de Estación';
+	@override String get none => 'No hay equipo configurado';
+	@override String get add => 'Agregar equipo';
+	@override String get addTitle => 'Agregar equipo';
+	@override String get searching => 'Buscando radios en tu red…';
+	@override String get found => 'Encontradas';
+	@override String get addManually => 'Agregar por dirección';
+	@override String discoveryUnavailable({required Object error}) => 'No se puede buscar radios: ${error}';
+	@override String get edit => 'Editar equipo';
+	@override String get name => 'Nombre';
+	@override String get nameDescription => 'Cómo lo llamas — «Radio Izquierda». Opcional.';
+	@override String get host => 'Dirección';
+	@override String get hostDescription => 'El nombre de host o la dirección IP de la radio en tu red.';
+	@override String get port => 'Puerto';
+	@override String get hostRequired => 'Se requiere una dirección';
+	@override String get portInvalid => 'El puerto debe estar entre 1 y 65535';
+	@override String get connect => 'Conectar';
+	@override String get disconnect => 'Desconectar';
+	@override String get remove => 'Eliminar';
+	@override String removeTitle({required Object name}) => '¿Eliminar ${name}?';
+	@override String get removeMessage => 'Esto solo lo elimina de la aplicación. Nada cambia en el equipo.';
+	@override String get statusDisconnected => 'Sin conexión';
+	@override String get statusConnecting => 'Conectando…';
+	@override String get statusConnected => 'Conectado';
+	@override String unknownType({required Object typeKey}) => 'Tipo de equipo no reconocido «${typeKey}»';
+	@override String get unverified => 'No probado con este hardware';
+	@override String get mainVfo => 'VFO principal';
+	@override String get useAsMainVfo => 'Usar como VFO principal';
+	@override late final _Translations$settings$station$types$es types = _Translations$settings$station$types$es._(_root);
+}
+
 // Path: settings.offlineData
 class _Translations$settings$offlineData$es extends Translations$settings$offlineData$en {
 	_Translations$settings$offlineData$es._(TranslationsEs root) : this._root = root, super.internal(root);
@@ -1057,6 +1096,8 @@ class _Translations$settings$panels$es extends Translations$settings$panels$en {
 	@override String get aboutDescription => 'Versión, créditos e información legal';
 	@override String get unavailableTitle => 'Algunos ajustes no están disponibles';
 	@override String get unavailableText => 'El motor de extensiones no pudo iniciarse, así que faltan los ajustes aportados por extensiones.';
+	@override String get station => 'Configuración de Estación';
+	@override String get stationDescription => 'Radios y otros equipos';
 }
 
 // Path: operation.export.compactFileNames
@@ -1247,6 +1288,16 @@ class _Translations$settings$privacy$shareOpData$es extends Translations$setting
 	@override String get title => 'Compartir datos de operaciones';
 	@override String get descriptionOn => 'Compartir algunos datos de operaciones públicamente y con otros usuarios';
 	@override String get descriptionOff => 'Mantener privados los datos de operaciones';
+}
+
+// Path: settings.station.types
+class _Translations$settings$station$types$es extends Translations$settings$station$types$en {
+	_Translations$settings$station$types$es._(TranslationsEs root) : this._root = root, super.internal(root);
+
+	final TranslationsEs _root; // ignore: unused_field
+
+	// Translations
+	@override String get flexRadioTcp => 'FlexRadio (SmartSDR) — Red';
 }
 
 /// The flat map containing all translations for locale <es>.
@@ -1657,6 +1708,35 @@ extension on TranslationsEs {
 			'settings.accounts.noKeyringText' => 'Ham2K Logger no puede acceder a un servicio de llavero en esta computadora, así que no puede guardar ni leer las cuentas — conectar una cuenta fallará hasta que lo resuelvas. Instala y arranca **gnome-keyring**, **KWallet** o **KeePassXC**, o desbloquea el llavero que ya tengas, y reinicia. El registro, las exportaciones y los archivos de datos no se ven afectados; la sincronización queda desactivada mientras tanto.',
 			'settings.accounts.noKeyringInline' => 'Las cuentas no se pueden guardar: no se puede acceder al llavero de esta computadora. Instala y arranca gnome-keyring, KWallet o KeePassXC, o desbloquea el que ya tengas.',
 			'settings.accounts.noSecureStorageInline' => 'Las cuentas no se pueden guardar: no se puede acceder al almacenamiento seguro de esta computadora.',
+			'settings.station.title' => 'Configuración de Estación',
+			'settings.station.none' => 'No hay equipo configurado',
+			'settings.station.add' => 'Agregar equipo',
+			'settings.station.addTitle' => 'Agregar equipo',
+			'settings.station.searching' => 'Buscando radios en tu red…',
+			'settings.station.found' => 'Encontradas',
+			'settings.station.addManually' => 'Agregar por dirección',
+			'settings.station.discoveryUnavailable' => ({required Object error}) => 'No se puede buscar radios: ${error}',
+			'settings.station.edit' => 'Editar equipo',
+			'settings.station.name' => 'Nombre',
+			'settings.station.nameDescription' => 'Cómo lo llamas — «Radio Izquierda». Opcional.',
+			'settings.station.host' => 'Dirección',
+			'settings.station.hostDescription' => 'El nombre de host o la dirección IP de la radio en tu red.',
+			'settings.station.port' => 'Puerto',
+			'settings.station.hostRequired' => 'Se requiere una dirección',
+			'settings.station.portInvalid' => 'El puerto debe estar entre 1 y 65535',
+			'settings.station.connect' => 'Conectar',
+			'settings.station.disconnect' => 'Desconectar',
+			'settings.station.remove' => 'Eliminar',
+			'settings.station.removeTitle' => ({required Object name}) => '¿Eliminar ${name}?',
+			'settings.station.removeMessage' => 'Esto solo lo elimina de la aplicación. Nada cambia en el equipo.',
+			'settings.station.statusDisconnected' => 'Sin conexión',
+			'settings.station.statusConnecting' => 'Conectando…',
+			'settings.station.statusConnected' => 'Conectado',
+			'settings.station.unknownType' => ({required Object typeKey}) => 'Tipo de equipo no reconocido «${typeKey}»',
+			'settings.station.unverified' => 'No probado con este hardware',
+			'settings.station.mainVfo' => 'VFO principal',
+			'settings.station.useAsMainVfo' => 'Usar como VFO principal',
+			'settings.station.types.flexRadioTcp' => 'FlexRadio (SmartSDR) — Red',
 			'settings.offlineData.title' => 'Datos sin conexión',
 			'settings.offlineData.noFiles' => 'No hay archivos de datos',
 			'settings.offlineData.noFilesDescription' => 'Habilita extensiones de actividades o búsquedas para descargar aquí sus datos sin conexión.',
@@ -1716,6 +1796,8 @@ extension on TranslationsEs {
 			'settings.panels.aboutDescription' => 'Versión, créditos e información legal',
 			'settings.panels.unavailableTitle' => 'Algunos ajustes no están disponibles',
 			'settings.panels.unavailableText' => 'El motor de extensiones no pudo iniciarse, así que faltan los ajustes aportados por extensiones.',
+			'settings.panels.station' => 'Configuración de Estación',
+			'settings.panels.stationDescription' => 'Radios y otros equipos',
 			'commands.enableSyncFirst' => 'Primero habilita la sincronización en la Configuración.',
 			'commands.fullResyncStarted' => 'Resincronización completa iniciada — los datos locales se respaldaron primero.',
 			'commands.noDataFilesMatched' => ({required Object target}) => 'Ningún archivo de datos coincide con «${target}».',
@@ -1738,6 +1820,8 @@ extension on TranslationsEs {
 			'spotting.spotFailed' => ({required Object source, required Object message}) => '${source} falló: ${message}',
 			'spotting.unknownError' => 'error desconocido',
 			'spotting.notSent' => 'Spot no enviado.',
+			_ => null,
+		} ?? switch (path) {
 			'dataFiles.downloading' => 'Descargando…',
 			'dataFiles.importedRecords' => ({required num count, required Object label}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count, one: 'Se importó ${count} registro de ${label}.', other: 'Se importaron ${count} registros de ${label}.', ), 
 			'dataFiles.importedData' => ({required Object label}) => 'Se importaron datos de ${label}.',
@@ -1769,8 +1853,6 @@ extension on TranslationsEs {
 			'operationLocationScreen.selectedLocation' => 'Ubicación seleccionada',
 			'operationLocationScreen.gridSquare' => 'Locator de cuadrícula Maidenhead',
 			'operationLocationScreen.suggestedLocations' => 'Ubicaciones sugeridas',
-			_ => null,
-		} ?? switch (path) {
 			'operationLocationScreen.deviceGps' => 'GPS del dispositivo',
 			'operationLocationScreen.locating' => 'Localizando…',
 			'operationLocationScreen.gpsUnavailable' => 'Ubicación no disponible',

@@ -527,6 +527,39 @@
       "noKeyringInline": "Logins can’t be saved: this computer’s keyring can’t be reached. Install and start gnome-keyring, KWallet or KeePassXC, or unlock the one you have.",
       "noSecureStorageInline": "Logins can’t be saved: this computer’s secure storage can’t be reached."
     },
+    "station": {
+      "title": "Station Configuration",
+      "none": "No equipment configured",
+      "add": "Add equipment",
+      "addTitle": "Add equipment",
+      "searching": "Looking for radios on your network…",
+      "found": "Found",
+      "addManually": "Add by address",
+      "discoveryUnavailable": "Can't listen for radios: ${error}",
+      "edit": "Edit equipment",
+      "name": "Name",
+      "nameDescription": "What you call it — \"Left Radio\". Optional.",
+      "host": "Address",
+      "hostDescription": "The radio's hostname or IP address on your network.",
+      "port": "Port",
+      "hostRequired": "An address is required",
+      "portInvalid": "Port must be between 1 and 65535",
+      "connect": "Connect",
+      "disconnect": "Disconnect",
+      "remove": "Remove",
+      "removeTitle": "Remove ${name}?",
+      "removeMessage": "This only removes it from the app. Nothing on the equipment changes.",
+      "statusDisconnected": "Not connected",
+      "statusConnecting": "Connecting…",
+      "statusConnected": "Connected",
+      "unknownType": "Unrecognized equipment type \"${typeKey}\"",
+      "unverified": "Not tested against this hardware",
+      "mainVfo": "Main VFO",
+      "useAsMainVfo": "Use as Main VFO",
+      "types": {
+        "flexRadioTcp": "FlexRadio (SmartSDR) — Network"
+      }
+    },
     "offlineData": {
       "title": "Offline Data",
       "noFiles": "No data files",
@@ -599,7 +632,9 @@
       "about": "About",
       "aboutDescription": "Version, credits, and legal information",
       "unavailableTitle": "Some settings are unavailable",
-      "unavailableText": "The extension runtime failed to start, so extension-contributed settings are missing."
+      "unavailableText": "The extension runtime failed to start, so extension-contributed settings are missing.",
+      "station": "Station Configuration",
+      "stationDescription": "Radios and other equipment"
     }
   },
   "commands": {

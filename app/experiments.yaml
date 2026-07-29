@@ -28,4 +28,11 @@ experiments:
     name: Customizable Layouts
     description: Rearrange the logging view's panes by dragging their tabs into splits and groups.
     aliases: [layout, dock, docking]
+  # Station equipment and CAT control (docs/design/gato.md). Reveals the
+  # Station Configuration settings section. Does nothing on web, which has
+  # no sockets — the section stays hidden there even with this on.
+  - key: gato
+    name: Station Configuration
+    description: Connect and control radios and other station equipment.
+    aliases: [cat, rig]
 

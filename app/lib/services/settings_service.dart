@@ -51,6 +51,7 @@ class SettingsService extends ChangeNotifier implements SyncSettings {
   static const _showQsoNumbersKey = 'showQsoNumbers';
   static const _distanceUnitsKey = 'distanceUnits';
   static const _spottingFiltersKey = 'spottingFilters';
+  static const _stationEquipmentKey = 'stationEquipment';
   static const _experimentsKey = 'experiments';
   static const _onboardingKey = 'onboarding';
   static const _layoutKey = 'layout';
@@ -337,6 +338,22 @@ class SettingsService extends ChangeNotifier implements SyncSettings {
 
   Future<void> setSpottingFilters(Map<String, dynamic> filters) async {
     await _prefs.setString(_spottingFiltersKey, jsonEncode(filters));
+    notifyListeners();
+  }
+
+  /// The station's configured equipment — radios today, eventually antenna
+  /// switches and rotators (docs/design/data-model.md § Stations). Shaped
+  /// `{version: 1, nodes: {uuid: {...}}}`; see [GatoService], which owns the
+  /// reading and writing of it.
+  ///
+  /// Device-local and never synced, like [syncState] and `radioVfoState`:
+  /// physical equipment is per-shack. Only what the user configured is
+  /// stored — nothing about a live connection, so a stale "connected" can't
+  /// survive a restart and lie about the radio.
+  Map<String, dynamic> get stationEquipment => _jsonMapPref(_stationEquipmentKey);
+
+  Future<void> setStationEquipment(Map<String, dynamic> equipment) async {
+    await _prefs.setString(_stationEquipmentKey, jsonEncode(equipment));
     notifyListeners();
   }
 

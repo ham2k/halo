@@ -784,6 +784,7 @@ class Translations$settings$en {
 
 	late final Translations$settings$syncPanel$en syncPanel = Translations$settings$syncPanel$en.internal(_root);
 	late final Translations$settings$accounts$en accounts = Translations$settings$accounts$en.internal(_root);
+	late final Translations$settings$station$en station = Translations$settings$station$en.internal(_root);
 	late final Translations$settings$offlineData$en offlineData = Translations$settings$offlineData$en.internal(_root);
 	late final Translations$settings$profiles$en profiles = Translations$settings$profiles$en.internal(_root);
 	late final Translations$settings$search$en search = Translations$settings$search$en.internal(_root);
@@ -1816,6 +1817,101 @@ class Translations$settings$accounts$en {
 	String get noSecureStorageInline => 'Logins can’t be saved: this computer’s secure storage can’t be reached.';
 }
 
+// Path: settings.station
+class Translations$settings$station$en {
+	Translations$settings$station$en.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Station Configuration'
+	String get title => 'Station Configuration';
+
+	/// en: 'No equipment configured'
+	String get none => 'No equipment configured';
+
+	/// en: 'Add equipment'
+	String get add => 'Add equipment';
+
+	/// en: 'Add equipment'
+	String get addTitle => 'Add equipment';
+
+	/// en: 'Looking for radios on your network…'
+	String get searching => 'Looking for radios on your network…';
+
+	/// en: 'Found'
+	String get found => 'Found';
+
+	/// en: 'Add by address'
+	String get addManually => 'Add by address';
+
+	/// en: 'Can't listen for radios: ${error}'
+	String discoveryUnavailable({required Object error}) => 'Can\'t listen for radios: ${error}';
+
+	/// en: 'Edit equipment'
+	String get edit => 'Edit equipment';
+
+	/// en: 'Name'
+	String get name => 'Name';
+
+	/// en: 'What you call it — "Left Radio". Optional.'
+	String get nameDescription => 'What you call it — "Left Radio". Optional.';
+
+	/// en: 'Address'
+	String get host => 'Address';
+
+	/// en: 'The radio's hostname or IP address on your network.'
+	String get hostDescription => 'The radio\'s hostname or IP address on your network.';
+
+	/// en: 'Port'
+	String get port => 'Port';
+
+	/// en: 'An address is required'
+	String get hostRequired => 'An address is required';
+
+	/// en: 'Port must be between 1 and 65535'
+	String get portInvalid => 'Port must be between 1 and 65535';
+
+	/// en: 'Connect'
+	String get connect => 'Connect';
+
+	/// en: 'Disconnect'
+	String get disconnect => 'Disconnect';
+
+	/// en: 'Remove'
+	String get remove => 'Remove';
+
+	/// en: 'Remove ${name}?'
+	String removeTitle({required Object name}) => 'Remove ${name}?';
+
+	/// en: 'This only removes it from the app. Nothing on the equipment changes.'
+	String get removeMessage => 'This only removes it from the app. Nothing on the equipment changes.';
+
+	/// en: 'Not connected'
+	String get statusDisconnected => 'Not connected';
+
+	/// en: 'Connecting…'
+	String get statusConnecting => 'Connecting…';
+
+	/// en: 'Connected'
+	String get statusConnected => 'Connected';
+
+	/// en: 'Unrecognized equipment type "${typeKey}"'
+	String unknownType({required Object typeKey}) => 'Unrecognized equipment type "${typeKey}"';
+
+	/// en: 'Not tested against this hardware'
+	String get unverified => 'Not tested against this hardware';
+
+	/// en: 'Main VFO'
+	String get mainVfo => 'Main VFO';
+
+	/// en: 'Use as Main VFO'
+	String get useAsMainVfo => 'Use as Main VFO';
+
+	late final Translations$settings$station$types$en types = Translations$settings$station$types$en.internal(_root);
+}
+
 // Path: settings.offlineData
 class Translations$settings$offlineData$en {
 	Translations$settings$offlineData$en.internal(this._root);
@@ -2048,6 +2144,12 @@ class Translations$settings$panels$en {
 
 	/// en: 'The extension runtime failed to start, so extension-contributed settings are missing.'
 	String get unavailableText => 'The extension runtime failed to start, so extension-contributed settings are missing.';
+
+	/// en: 'Station Configuration'
+	String get station => 'Station Configuration';
+
+	/// en: 'Radios and other equipment'
+	String get stationDescription => 'Radios and other equipment';
 }
 
 // Path: operation.export.compactFileNames
@@ -2348,6 +2450,18 @@ class Translations$settings$privacy$shareOpData$en {
 
 	/// en: 'Keep operation data private'
 	String get descriptionOff => 'Keep operation data private';
+}
+
+// Path: settings.station.types
+class Translations$settings$station$types$en {
+	Translations$settings$station$types$en.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'FlexRadio (SmartSDR) — Network'
+	String get flexRadioTcp => 'FlexRadio (SmartSDR) — Network';
 }
 
 /// The flat map containing all translations for locale <en>.
@@ -2758,6 +2872,35 @@ extension on Translations {
 			'settings.accounts.noKeyringText' => 'Ham2K Logger can’t reach a keyring service on this computer, so account logins can’t be stored or read — connecting an account will fail until this is sorted. Install and start **gnome-keyring**, **KWallet** or **KeePassXC**, or unlock the keyring you already have, then restart. Logging, exports and data files are unaffected; log sync stays off while this lasts.',
 			'settings.accounts.noKeyringInline' => 'Logins can’t be saved: this computer’s keyring can’t be reached. Install and start gnome-keyring, KWallet or KeePassXC, or unlock the one you have.',
 			'settings.accounts.noSecureStorageInline' => 'Logins can’t be saved: this computer’s secure storage can’t be reached.',
+			'settings.station.title' => 'Station Configuration',
+			'settings.station.none' => 'No equipment configured',
+			'settings.station.add' => 'Add equipment',
+			'settings.station.addTitle' => 'Add equipment',
+			'settings.station.searching' => 'Looking for radios on your network…',
+			'settings.station.found' => 'Found',
+			'settings.station.addManually' => 'Add by address',
+			'settings.station.discoveryUnavailable' => ({required Object error}) => 'Can\'t listen for radios: ${error}',
+			'settings.station.edit' => 'Edit equipment',
+			'settings.station.name' => 'Name',
+			'settings.station.nameDescription' => 'What you call it — "Left Radio". Optional.',
+			'settings.station.host' => 'Address',
+			'settings.station.hostDescription' => 'The radio\'s hostname or IP address on your network.',
+			'settings.station.port' => 'Port',
+			'settings.station.hostRequired' => 'An address is required',
+			'settings.station.portInvalid' => 'Port must be between 1 and 65535',
+			'settings.station.connect' => 'Connect',
+			'settings.station.disconnect' => 'Disconnect',
+			'settings.station.remove' => 'Remove',
+			'settings.station.removeTitle' => ({required Object name}) => 'Remove ${name}?',
+			'settings.station.removeMessage' => 'This only removes it from the app. Nothing on the equipment changes.',
+			'settings.station.statusDisconnected' => 'Not connected',
+			'settings.station.statusConnecting' => 'Connecting…',
+			'settings.station.statusConnected' => 'Connected',
+			'settings.station.unknownType' => ({required Object typeKey}) => 'Unrecognized equipment type "${typeKey}"',
+			'settings.station.unverified' => 'Not tested against this hardware',
+			'settings.station.mainVfo' => 'Main VFO',
+			'settings.station.useAsMainVfo' => 'Use as Main VFO',
+			'settings.station.types.flexRadioTcp' => 'FlexRadio (SmartSDR) — Network',
 			'settings.offlineData.title' => 'Offline Data',
 			'settings.offlineData.noFiles' => 'No data files',
 			'settings.offlineData.noFilesDescription' => 'Enable activity or lookup extensions to download their offline data here.',
@@ -2817,6 +2960,8 @@ extension on Translations {
 			'settings.panels.aboutDescription' => 'Version, credits, and legal information',
 			'settings.panels.unavailableTitle' => 'Some settings are unavailable',
 			'settings.panels.unavailableText' => 'The extension runtime failed to start, so extension-contributed settings are missing.',
+			'settings.panels.station' => 'Station Configuration',
+			'settings.panels.stationDescription' => 'Radios and other equipment',
 			'commands.enableSyncFirst' => 'Enable sync in Settings first.',
 			'commands.fullResyncStarted' => 'Full resync started — local data was backed up first.',
 			'commands.noDataFilesMatched' => ({required Object target}) => 'No data files matched "${target}".',
@@ -2839,6 +2984,8 @@ extension on Translations {
 			'spotting.spotFailed' => ({required Object source, required Object message}) => '${source} failed: ${message}',
 			'spotting.unknownError' => 'unknown error',
 			'spotting.notSent' => 'Spot not sent.',
+			_ => null,
+		} ?? switch (path) {
 			'dataFiles.downloading' => 'Downloading…',
 			'dataFiles.importedRecords' => ({required num count, required Object label}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: 'Imported ${count} record for ${label}.', other: 'Imported ${count} records for ${label}.', ), 
 			'dataFiles.importedData' => ({required Object label}) => 'Imported data for ${label}.',
@@ -2870,8 +3017,6 @@ extension on Translations {
 			'operationLocationScreen.selectedLocation' => 'Selected Location',
 			'operationLocationScreen.gridSquare' => 'Maidenhead Grid Square Locator',
 			'operationLocationScreen.suggestedLocations' => 'Suggested Locations',
-			_ => null,
-		} ?? switch (path) {
 			'operationLocationScreen.deviceGps' => 'Device GPS',
 			'operationLocationScreen.locating' => 'Locating…',
 			'operationLocationScreen.gpsUnavailable' => 'Location unavailable',

@@ -268,6 +268,20 @@ class Vfo {
         if (band != null) 'band': band,
         if (mode != null) 'mode': mode,
       };
+
+  /// Value equality so a store can tell a real change from a restatement.
+  /// A CAT-connected radio re-reports its state constantly — every status
+  /// push, every periodic resync — and without this each one looks like a
+  /// change worth notifying every listener and rewriting the prefs for.
+  @override
+  bool operator ==(Object other) =>
+      other is Vfo && other.freq == freq && other.band == band && other.mode == mode;
+
+  @override
+  int get hashCode => Object.hash(freq, band, mode);
+
+  @override
+  String toString() => 'Vfo(freq: $freq, band: $band, mode: $mode)';
 }
 
 /// What `LoggingControls` (halo_widgets) needs for reading and writing the

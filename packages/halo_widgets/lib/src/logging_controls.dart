@@ -337,6 +337,16 @@ class LoggingControls extends StatefulWidget {
   /// did before this state existed — purely local to this widget.
   final VfoStore? radioService;
 
+  /// Fires when [radioService]'s state changes — so the Radio control can
+  /// follow a connected rig (GATO), or any other writer, live.
+  ///
+  /// Separate from [radioService] rather than folded into it because
+  /// `VfoStore` lives in pure-Dart halo_core, which has no Flutter
+  /// dependency and therefore no `Listenable`. In the app both are the same
+  /// object (`RadioService`); when null the control behaves as it always
+  /// did, reading the VFO only when it seeds.
+  final Listenable? radioUpdates;
+
   /// The user's preferred order for the secondary control chips, by key
   /// (`'time'`, `'radio'`, an activity control's own key, `'more'`). Keys
   /// this doesn't mention are appended in their default order; keys it
@@ -491,6 +501,7 @@ class LoggingControls extends StatefulWidget {
     this.onNavigateToQsoList,
     this.settings,
     this.radioService,
+    this.radioUpdates,
     this.controlOrder = const [],
     this.hiddenControlKeys = const {},
     this.onControlsSettingsChanged,
@@ -605,6 +616,22 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   /// clearing the frequency field keeps that band ([_onFreqChanged]) rather
   /// than dropping to no band.
   String? _lastBandFromFreq;
+
+  /// The operator has typed a frequency the VFO hasn't been told about
+  /// yet, so their intent is newer than anything the VFO reports. Set on a
+  /// real edit, cleared whenever the field and the VFO are back in sync
+  /// (pushed to it, or seeded from it).
+  ///
+  /// Deliberately not a focus check: `_onSelectControl` focuses the
+  /// frequency field when the Radio control is expanded, so refusing to
+  /// follow while focused would refuse exactly when the operator is
+  /// watching the radio.
+  bool _freqTouched = false;
+
+  /// The frequency text as of the last notification — the baseline that
+  /// tells a real edit from a bare cursor move. Same idiom, and the same
+  /// reason, as `_lastTimeDateText`.
+  String _lastFreqText = '';
   bool _rstsTouched = false;
 
   /// Which secondary control (if any) currently has its input expanded.
@@ -1437,10 +1464,17 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     _freqController.addListener(_onFreqChanged);
     _timeController.addListener(_onTimeOrDateFieldChanged);
     _dateController.addListener(_onTimeOrDateFieldChanged);
+    // After the seed above, so the initial state doesn't arrive twice.
+    widget.radioUpdates?.addListener(_onRadioVfoChanged);
     // Start in sync with whatever the fields already hold: an initial seed
     // that ran before these listeners existed notified nobody, and an
     // out-of-date baseline reads the first cursor move as an edit.
+    //
+    // The frequency needs this most: a `suggestedQso` applied above (a spot
+    // deeplinked into a cold start) writes the field before this listener
+    // exists, so `_onFreqChanged` never fires to move the baseline itself.
     _recordTimeDateText();
+    _recordFreqText();
     // Sent/Rcvd don't otherwise need a rebuild on every keystroke, but the
     // info row's second button (_buildWipeOrEditButton) re-evaluates
     // _qsoDataChanged() on every build, which reads these controllers —
@@ -1568,6 +1602,20 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
         focusSecondaryControls: _focusPill,
       );
     }
+    // The VFO notifier can be swapped with the widget (a different
+    // HaLoServices in a harness, a future per-profile RadioService). Without
+    // this the listener stays on the OLD notifier and `dispose` removes it
+    // from the new one, so following dies and the old notifier keeps this
+    // State alive.
+    //
+    // Above the editingQso guards below, alongside `controller` and for the
+    // same reason: re-subscribing is bookkeeping about which notifier this
+    // State is attached to, not something a QSO being edited gets a say in.
+    // Below them it simply never ran while an edit was open.
+    if (!identical(oldWidget.radioUpdates, widget.radioUpdates)) {
+      oldWidget.radioUpdates?.removeListener(_onRadioVfoChanged);
+      widget.radioUpdates?.addListener(_onRadioVfoChanged);
+    }
     if (oldWidget.editingQso?.uuid != widget.editingQso?.uuid) {
       _resetEditingSessionState();
       if (widget.editingQso != null) {
@@ -1689,6 +1737,30 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
       _scheduleLookup();
       _scheduleScore();
     }
+    // A suggestion is specific operator intent — "work THIS station" — so
+    // unlike the ambient VFO seed it overrides, it moves the VFO, and with
+    // a radio connected (GATO) that retunes the radio itself. Tapping a
+    // spot is the main way this happens.
+    //
+    // Only when the suggestion actually carried radio state: a bare
+    // callsign (a deeplink, say) must not retune anything. And the push is
+    // immediate rather than debounced — the operator picked a specific
+    // station, there is nothing more to wait for.
+    if (widget.editingQso == null &&
+        (data['freq'] != null || data['band'] != null || data['mode'] != null)) {
+      _vfoDebounce?.cancel();
+      // AFTER the frame, not now. Both callers — initState and
+      // didUpdateWidget — run inside the build phase, and `setVfo` notifies
+      // its listeners synchronously; SpotsPanel listens and calls setState,
+      // which Flutter refuses mid-build ("cannot be marked as needing to
+      // build because the framework is already in the process of building
+      // widgets"). ErrorPolicy classes that as logOnly, so it costs the
+      // operator nothing visible and would have gone unnoticed — but the
+      // panel can silently miss its rebuild for that frame.
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _pushVfoToRadioService();
+      });
+    }
   }
 
   /// Shared by `_populateFromEditingQso` (loading an existing record for
@@ -1799,18 +1871,93 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   /// QSO — the operation's last-known radio state, rather than a hardcoded
   /// default. Never called while editing an existing QSO, whose own
   /// recorded freq/band/mode always takes priority (`_applyFieldsFromData`).
-  void _seedFromRadioService() {
+  /// [skipFrequency] leaves the frequency field (and its band) alone while
+  /// taking the mode: a pending edit is the operator's and newer, but only
+  /// as far as the field they are actually typing in.
+  void _seedFromRadioService({bool skipFrequency = false}) {
     final vfo = widget.radioService?.vfoA;
     if (vfo == null) return;
-    final freq = vfo.freq;
-    _freqController.text = freq != null ? fmtFreqInput(freq) : '';
-    _manualBand = freq == null ? vfo.band : null;
-    if (vfo.mode != null) _mode = vfo.mode!;
+    if (!skipFrequency) {
+      final freq = vfo.freq;
+      final text = freq != null ? fmtFreqInput(freq) : '';
+      // Only when it differs: assigning `text` collapses the selection, so an
+      // unconditional write would move the caret every time a connected radio
+      // restated the frequency it is already on.
+      if (_freqController.text != text) _freqController.text = text;
+      _recordFreqText();
+      _manualBand = freq == null ? vfo.band : null;
+      _freqTouched = false;
+    }
+    if (vfo.mode != null && vfo.mode != _mode) {
+      _mode = vfo.mode!;
+      // What `_setMode` and the setVfo command both do. Seeding skipped it,
+      // so a CW radio left the default RSTs at 59 — invisible until a
+      // connected rig started changing the mode on its own.
+      if (!_rstsTouched) _applyDefaultRSTs();
+    }
+  }
+
+  /// The VFO moved underneath us — a connected radio was tuned, or
+  /// something else in the app wrote to it. Mirror it into the Radio
+  /// control, but never over the operator.
+  void _onRadioVfoChanged() {
+    if (!mounted) return;
+    // An existing QSO's own recorded freq/band/mode always wins; ambient
+    // radio state must not rewrite something already logged.
+    if (widget.editingQso != null) return;
+    final previousBand = _band;
+    final previousMode = _mode;
+    setState(() {
+      // Suppresses `_onFreqChanged`'s push-back. Without it, seeding a
+      // value the radio just reported arms the 5s debounce and sends it
+      // straight back at the radio, forever.
+      final wasPopulating = _populating;
+      _populating = true;
+      // A pending frequency edit used to suppress the whole seed. That
+      // dropped a mode the rig reported meanwhile, and the pending push
+      // then sent the panel's stale mode back — taking a rig the operator
+      // had just put into CW back out of it, and logging USB at 59.
+      _seedFromRadioService(skipFrequency: _freqTouched);
+      _populating = wasPopulating;
+    });
+    // `_populating` above suppressed `_onFreqChanged`'s own rescore, and the
+    // mode never had one. The dupe / New Band / New Mode pills are scored
+    // against band and mode, so without this a rig retuned at its own front
+    // panel left them describing the band the operator has left. Debounced
+    // and gated on a plausible callsign, so a spun VFO knob costs nothing.
+    if (_band != previousBand || _mode != previousMode) _scheduleScore();
+  }
+
+  /// Ends a pending frequency edit at a QSO boundary — logging, wiping, or
+  /// an editing session closing.
+  ///
+  /// `_freqTouched` switches live radio follow off, and nothing else ever
+  /// reset it: a partial entry of three characters or fewer arms no
+  /// debounce, so the Radio control stopped following the rig for the rest
+  /// of the session. A push that is still pending is flushed rather than
+  /// dropped — the operator typed it, and the field still shows it.
+  ///
+  /// [flush] is false on the one caller that runs inside `didUpdateWidget`:
+  /// `setVfo` notifies, and a listener calling `setState` during the build
+  /// phase is exactly the error class the earlier review turned up. That
+  /// caller is discarding the composing form anyway.
+  void _settlePendingFreqEdit({bool flush = true}) {
+    if (flush && (_vfoDebounce?.isActive ?? false)) {
+      _vfoDebounce!.cancel();
+      _pushVfoToRadioService();
+      return;
+    }
+    _freqTouched = false;
+    _recordFreqText();
   }
 
   /// Pushes the current freq/band/mode to `widget.radioService` as `vfoA`.
   void _pushVfoToRadioService() {
     widget.radioService?.setVfo('vfoA', freq: _freq, band: _band, mode: _mode);
+    // The field and the VFO agree again: not a pending edit, and the
+    // baseline moves with it.
+    _freqTouched = false;
+    _recordFreqText();
   }
 
   /// Clears local fields when an editing session ends (mirrors the
@@ -1828,6 +1975,9 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     _gridTouched = false;
     _stateTouched = false;
     _lookupDebounce?.cancel();
+    // `_freqTouched` outlives this reset otherwise, and live radio follow
+    // stays switched off for the rest of the session.
+    _settlePendingFreqEdit(flush: false);
     _vfoDebounce?.cancel();
     _commandDescribeDebounce?.cancel();
     _executeMessageTimer?.cancel();
@@ -1858,6 +2008,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   @override
   void dispose() {
     widget.controller?.detach();
+    widget.radioUpdates?.removeListener(_onRadioVfoChanged);
     WidgetsBinding.instance.removeObserver(this);
     _clockTicker?.cancel();
     _lookupDebounce?.cancel();
@@ -2051,7 +2202,27 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     if (!_populating) _scheduleScore();
     // Editing an existing QSO applies changes to the QSO, never the VFO —
     // only a new (composing) QSO's Radio control mirrors/edits the VFO.
+    // A TextEditingController notifies on SELECTION changes too, and
+    // expanding the Radio control focuses this field (`_expandedFocusFor`),
+    // which moves the cursor. Without this guard merely opening the control
+    // would look like an edit: live follow would switch itself off, and a
+    // pointless push to the radio would be armed. Same trap, and the same
+    // fix, as `_onTimeOrDateFieldChanged`.
+    //
+    // The baseline moves BEFORE the guards below — exactly as
+    // `_onTimeOrDateFieldChanged` does it, and for the same reason. A
+    // programmatic write (a suggestion, an editing session ending) runs
+    // under `_populating`; if the baseline didn't move with it, the next
+    // bare cursor click would compare against a stale value, read as an
+    // edit, and silently switch live follow off.
+    final text = _freqController.text;
+    final changed = text != _lastFreqText;
+    _lastFreqText = text;
     if (_populating || widget.editingQso != null) return;
+    if (!changed) return;
+    // The operator's own edit — newer than whatever the VFO says, so live
+    // follow must leave it alone until it's been pushed.
+    _freqTouched = true;
     // Only push once there's enough digits to plausibly be a real
     // frequency (mirrors the frequency command's own `length < 3` reject),
     // debounced so we're not writing to the operation on every keystroke.
@@ -2063,6 +2234,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
       // debouncing, so dependents reading radioService.vfoA (e.g. the
       // Spotting control) drop the stale frequency right away.
       widget.radioService?.setVfo('vfoA', clearFreq: true, band: _manualBand, mode: _mode);
+      _freqTouched = false;
     }
   }
 
@@ -2448,6 +2620,11 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   /// assignment of the SAME text notifies nothing at all — and a seed that
   /// happens before the listeners are attached notifies nobody either.
   void _recordTimeDateText() => _lastTimeDateText = '${_timeController.text} ${_dateController.text}';
+
+  /// Re-baselines the frequency edit detector. Call wherever the field is
+  /// written by something other than the operator, or the next bare cursor
+  /// move is misread as an edit and live follow switches itself off.
+  void _recordFreqText() => _lastFreqText = _freqController.text;
 
   void _onTimeOrDateFieldChanged() {
     // A TextEditingController notifies on SELECTION changes too, not just
@@ -4537,6 +4714,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   }
 
   void _wipe() {
+    _settlePendingFreqEdit();
     _callController.clear();
     _applyDefaultRSTs();
     _gridController.clear();

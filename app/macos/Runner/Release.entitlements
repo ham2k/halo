@@ -15,6 +15,19 @@
 	<true/>
 	<key>com.apple.security.network.client</key>
 	<true/>
+	<!-- GATO equipment discovery binds a UDP port to receive the broadcasts
+	     radios make about themselves (FlexRadio announces on 4992). Binding
+	     a listening socket needs network.server, NOT just network.client.
+	     This had been in DebugProfile.entitlements only, which meant
+	     discovery would have worked in every development build and failed
+	     silently in the shipped, signed app. Like network.client and the
+	     temporary-exception keys below, this is a SANDBOX relaxation, not
+	     one of the AMFI-restricted entitlements warned about at the bottom
+	     of this file — it needs no provisioning profile and does not affect
+	     spawning. Still: verify discovery on a SIGNED Release build, since
+	     Debug will pass regardless. -->
+	<key>com.apple.security.network.server</key>
+	<true/>
 	<key>com.apple.security.personal-information.location</key>
 	<true/>
 	<!-- Sparkle installs updates from OUTSIDE the sandbox via its Installer
