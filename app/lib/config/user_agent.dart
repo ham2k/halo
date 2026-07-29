@@ -29,19 +29,37 @@ String _platformName() {
   }
 }
 
-Future<String>? _cached;
+/// The resolved UA, memoized for the process life. The resolved *String*,
+/// deliberately not the Future: a memoized Future is shared by every caller,
+/// and dart:async will not deliver an error across an error-zone boundary —
+/// it hands it to the zone that CREATED the future instead (future_impl.dart
+/// `_propagateToListeners`, "Don't cross zone boundaries with errors"), and
+/// the caller that joined never hears back at all. Under `flutter test` every
+/// test is its own error zone and background work outlives the test that
+/// started it, so a shared pending Future that fails reddens whichever test
+/// created it — usually one that has already finished.
+String? _cached;
 
 /// The canonical `User-Agent`, e.g. `Ham2K Logger/26.8.0 (macos next 1)`.
 ///
 /// Shaped as `Ham2K Logger/{publicVersion} ({platform} {flavor} {build})`,
 /// where the build number is the native build (via package_info_plus) and is
-/// omitted when unavailable. Resolved once and cached for the process life —
-/// the Future itself is memoized, so concurrent first callers share one
-/// package_info_plus lookup.
+/// omitted when unavailable. Resolved once and cached for the process life; a
+/// failure caches nothing, so the next call retries instead of re-throwing
+/// forever. Throws when the platform channel can't answer — see
+/// [ham2kUserAgentOrFallback] for callers that must not fail on that.
+///
+/// Concurrent first callers each make their own package_info_plus call rather
+/// than sharing one Future (see [_cached]); package_info_plus caches the
+/// resolved value itself, so that costs at most one extra platform call.
 ///
 /// Note: on web `User-Agent` is a forbidden request header, so the browser
 /// drops it — see docs/design/network.md.
-Future<String> ham2kUserAgent() => _cached ??= _build();
+Future<String> ham2kUserAgent() async {
+  final cached = _cached;
+  if (cached != null) return cached;
+  return _cached = _format((await PackageInfo.fromPlatform()).buildNumber);
+}
 
 /// The canonical `User-Agent` MINUS the native build number, e.g.
 /// `Ham2K Logger/26.8.0 (macos next)`. Resolvable synchronously and without
@@ -70,17 +88,4 @@ Future<String> ham2kUserAgentOrFallback() async {
 String _format(String? build) {
   final parts = [_platformName(), kAppFlavor, if (build != null && build.isNotEmpty) build];
   return 'Ham2K Logger/$kPublicVersion (${parts.join(' ')})';
-}
-
-Future<String> _build() async {
-  try {
-    final build = (await PackageInfo.fromPlatform()).buildNumber;
-    return _format(build);
-  } catch (_) {
-    // A first-call failure (e.g. the platform channel isn't ready yet) must
-    // not be memoized for the process life — drop the cache so the next call
-    // retries instead of re-throwing forever.
-    _cached = null;
-    rethrow;
-  }
 }
