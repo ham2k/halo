@@ -1044,7 +1044,6 @@ class _SpotsFilterPill extends StatelessWidget {
                       if (!isMobilePlatform) ...[
                         _FilterInfoPill(
                           icon: 'refresh',
-                          color: Colors.black,
                           loading: refreshing,
                           onTap: refreshing ? null : onRefresh,
                         ),
@@ -1058,7 +1057,7 @@ class _SpotsFilterPill extends StatelessWidget {
                         _FilterInfoPill(icon: 'clock', label: '${ageMinutes}m', onTap: onTap),
                       ],
                       const SizedBox(width: 6),
-                      _FilterInfoPill(icon: 'tune', color: Colors.black, onTap: onTap),
+                      _FilterInfoPill(icon: 'tune', onTap: onTap),
                     ],
                   ),
                 ),
@@ -1094,20 +1093,19 @@ class _SpotsFilterPill extends StatelessWidget {
 class _FilterInfoPill extends StatelessWidget {
   final String icon;
   final String? label;
-  final Color? color;
   final VoidCallback? onTap;
 
   /// Swaps the icon for a spinner (same footprint) — used by the refresh
   /// button while a fetch is in flight.
   final bool loading;
 
-  const _FilterInfoPill({required this.icon, this.label, this.color, this.onTap, this.loading = false});
+  const _FilterInfoPill({required this.icon, this.label, this.onTap, this.loading = false});
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final poloColors = HaLoColors.of(context);
-    final effectiveColor = color ?? theme.colorScheme.onTertiaryContainer;
+    final effectiveColor = theme.colorScheme.onTertiaryContainer;
 
     final pill = Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
