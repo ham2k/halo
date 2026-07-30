@@ -143,32 +143,92 @@ class HaLoDatabase extends _$HaLoDatabase {
   HaLoDatabase(super.executor);
 
   @override
-  int get schemaVersion => 5;
+  int get schemaVersion => 6;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
         onCreate: (m) => m.createAll(),
         onUpgrade: (Migrator m, int from, int to) async {
-          if (from < 2) {
-            await m.createTable(operationsBackup);
-            await m.createTable(qsosBackup);
+          // A file written by a NEWER build must not be quietly accepted.
+          // drift routes a downgrade through here too — every `from < N`
+          // guard no-ops and drift then stamps the file back down to `to`,
+          // keeping whatever the newer version added. Reinstalling the newer
+          // build afterwards re-runs its steps against a schema that already
+          // has them, and `addColumn` is a one-way door (see below). Refusing
+          // is the only outcome that keeps the log openable.
+          if (from > to) {
+            throw StateError(
+              'This log was written by a newer version of Ham2K Logger '
+              '(storage v$from; this build understands v$to). '
+              'Update the app instead of opening it with this build.',
+            );
           }
-          if (from < 3) {
-            await m.createTable(lookups);
-          }
-          if (from < 4) {
-            // Left null for pre-existing rows: their data blobs carry no
-            // updatedAtMillis either, and sync treats null as "no revision
-            // information" on both sides of the comparison.
-            await m.addColumn(operations, operations.updatedAtMillis);
-            await m.addColumn(qsos, qsos.updatedAtMillis);
-          }
-          if (from < 5) {
-            // No backfill: the counter is derived, so an operation that
-            // already has serials on its QSOs rebuilds its high-water mark
-            // from the log the first time it allocates.
-            await m.createTable(sequences);
-          }
+
+          // The whole upgrade is one transaction. `addColumn` is not
+          // idempotent and drift only writes `user_version` once this
+          // returns, so a step that failed partway used to leave the earlier
+          // steps applied with the version unchanged — and the next open
+          // re-ran them, hitting `duplicate column name` for reads too,
+          // permanently.
+          await m.database.transaction(() async {
+            if (from < 2) {
+              await m.createTable(operationsBackup);
+              await m.createTable(qsosBackup);
+            }
+            if (from < 3) {
+              await m.createTable(lookups);
+            }
+            if (from < 4) {
+              await m.addColumn(operations, operations.updatedAtMillis);
+              await m.addColumn(qsos, qsos.updatedAtMillis);
+            }
+            if (from < 5) {
+              // No backfill: the counter is derived, so an operation that
+              // already has serials on its QSOs rebuilds its high-water mark
+              // from the log the first time it allocates.
+              await m.createTable(sequences);
+            }
+            if (from < 6) {
+              await _backfillRevisionStamps(m);
+            }
+          });
         },
       );
+
+  /// Copies the revision stamp out of each row's `data` blob into the mirrored
+  /// column, wherever the column is null and the blob has one.
+  ///
+  /// The v4 step added the column and left it null for every existing row, on
+  /// the reasoning that those rows carried no stamp either. That holds for
+  /// rows this app wrote — but NOT for rows that arrived by sync: v3-era
+  /// `mergeFromSync` stored the inbound record verbatim, so anything imported
+  /// from app-polo landed with `updatedAtMillis` (or the older
+  /// `updatedOnMillis`) inside its blob.
+  ///
+  /// `Operation.updatedAtMillis` reads that blob while `markSynced` matches on
+  /// the column, so those rows came out of the upgrade with a stamp on one
+  /// side and null on the other — exactly the divergence
+  /// `QsosRepository._restamped` warns about, which makes `markSynced` match
+  /// zero rows and re-push the record on every sync round, forever. This runs
+  /// as its own version because installs that already took the v4 step will
+  /// never run that one again.
+  static Future<void> _backfillRevisionStamps(Migrator m) async {
+    // `json_valid` guards the blob: a malformed one would make `json_extract`
+    // throw and take the whole upgrade down with it.
+    await m.database.customStatement('''
+      UPDATE operations SET updated_at_millis = CAST(
+        COALESCE(json_extract(data, '\$.updatedAtMillis'),
+                 json_extract(data, '\$.updatedOnMillis')) AS INTEGER)
+      WHERE updated_at_millis IS NULL AND json_valid(data)
+        AND COALESCE(json_extract(data, '\$.updatedAtMillis'),
+                     json_extract(data, '\$.updatedOnMillis')) IS NOT NULL
+    ''');
+    // Qso reads only the current spelling, so the column must mirror only it.
+    await m.database.customStatement('''
+      UPDATE qsos SET updated_at_millis =
+        CAST(json_extract(data, '\$.updatedAtMillis') AS INTEGER)
+      WHERE updated_at_millis IS NULL AND json_valid(data)
+        AND json_extract(data, '\$.updatedAtMillis') IS NOT NULL
+    ''');
+  }
 }

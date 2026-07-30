@@ -14,5 +14,8 @@ dependencies:
 dev_dependencies:
   build_runner: ^2.4.0
   drift_dev: ^2.28.0
+  # Raw file inspection in migration_test.dart, where a half-migrated
+  # database must be examined WITHOUT drift running the migration again.
+  sqlite3: ^2.4.0
   lints: ^6.0.0
   test: ^1.25.6
