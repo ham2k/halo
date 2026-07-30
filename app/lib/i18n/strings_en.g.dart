@@ -1931,15 +1931,6 @@ class Translations$settings$station$en {
 	/// en: 'This only removes it from the app. Nothing on the equipment changes.'
 	String get removeMessage => 'This only removes it from the app. Nothing on the equipment changes.';
 
-	/// en: 'Not connected'
-	String get statusDisconnected => 'Not connected';
-
-	/// en: 'Connecting…'
-	String get statusConnecting => 'Connecting…';
-
-	/// en: 'Connected'
-	String get statusConnected => 'Connected';
-
 	/// en: 'Unrecognized equipment type "${typeKey}"'
 	String unknownType({required Object typeKey}) => 'Unrecognized equipment type "${typeKey}"';
 
@@ -1952,7 +1943,46 @@ class Translations$settings$station$en {
 	/// en: 'Use as Main VFO'
 	String get useAsMainVfo => 'Use as Main VFO';
 
+	/// en: 'Serial port'
+	String get serialPort => 'Serial port';
+
+	/// en: 'The port the radio's CAT interface appears on.'
+	String get serialPortDescription => 'The port the radio\'s CAT interface appears on.';
+
+	/// en: 'No serial ports found'
+	String get serialPortNone => 'No serial ports found';
+
+	/// en: 'Choose a serial port'
+	String get serialPortRequired => 'Choose a serial port';
+
+	/// en: 'Speed (baud)'
+	String get baudRate => 'Speed (baud)';
+
+	/// en: 'Must match the radio's own CAT menu — a mismatch answers with garbage and no error.'
+	String get baudRateDescription => 'Must match the radio\'s own CAT menu — a mismatch answers with garbage and no error.';
+
 	late final Translations$settings$station$types$en types = Translations$settings$station$types$en.internal(_root);
+
+	/// en: 'If the radio connects but shows no frequency'
+	String get troubleshootingTitle => 'If the radio connects but shows no frequency';
+
+	/// en: 'The radio is receiving commands but answering nothing. Almost always one of: - **CAT RTS must be OFF at the radio** (FT-891 menu **05-08**). With it on, the radio waits for a handshake line the app deliberately never raises — on a Digirig, SignaLink or most home-brew cables that same line is PTT, so raising it would key your transmitter. - **Speed must match** the radio's CAT RATE (menu **05-06**). A mismatch answers with garbage, or nothing, and never with an error. - **Another app may hold the port** — WSJT-X, fldigi and rigctld all keep it open.'
+	String get ft891Troubleshooting => 'The radio is receiving commands but answering nothing. Almost always one of:\n\n- **CAT RTS must be OFF at the radio** (FT-891 menu **05-08**). With it on, the radio waits for a handshake line the app deliberately never raises — on a Digirig, SignaLink or most home-brew cables that same line is PTT, so raising it would key your transmitter.\n- **Speed must match** the radio\'s CAT RATE (menu **05-06**). A mismatch answers with garbage, or nothing, and never with an error.\n- **Another app may hold the port** — WSJT-X, fldigi and rigctld all keep it open.';
+
+	/// en: 'Connected'
+	String get statusConnected => 'Connected';
+
+	/// en: 'Current Configuration'
+	String get currentConfiguration => 'Current Configuration';
+
+	/// en: 'Transceiver for Main VFO'
+	String get transceiverForMainVfo => 'Transceiver for Main VFO';
+
+	/// en: 'Equipment Inventory'
+	String get equipmentInventory => 'Equipment Inventory';
+
+	/// en: 'None'
+	String get noTransceiver => 'None';
 }
 
 // Path: settings.offlineData
@@ -2505,6 +2535,9 @@ class Translations$settings$station$types$en {
 
 	/// en: 'FlexRadio (SmartSDR) — Network'
 	String get flexRadioTcp => 'FlexRadio (SmartSDR) — Network';
+
+	/// en: 'Yaesu FT-891 — USB serial'
+	String get ft891Serial => 'Yaesu FT-891 — USB serial';
 }
 
 /// The flat map containing all translations for locale <en>.
@@ -2936,14 +2969,25 @@ extension on Translations {
 			'settings.station.remove' => 'Remove',
 			'settings.station.removeTitle' => ({required Object name}) => 'Remove ${name}?',
 			'settings.station.removeMessage' => 'This only removes it from the app. Nothing on the equipment changes.',
-			'settings.station.statusDisconnected' => 'Not connected',
-			'settings.station.statusConnecting' => 'Connecting…',
-			'settings.station.statusConnected' => 'Connected',
 			'settings.station.unknownType' => ({required Object typeKey}) => 'Unrecognized equipment type "${typeKey}"',
 			'settings.station.unverified' => 'Not tested against this hardware',
 			'settings.station.mainVfo' => 'Main VFO',
 			'settings.station.useAsMainVfo' => 'Use as Main VFO',
+			'settings.station.serialPort' => 'Serial port',
+			'settings.station.serialPortDescription' => 'The port the radio\'s CAT interface appears on.',
+			'settings.station.serialPortNone' => 'No serial ports found',
+			'settings.station.serialPortRequired' => 'Choose a serial port',
+			'settings.station.baudRate' => 'Speed (baud)',
+			'settings.station.baudRateDescription' => 'Must match the radio\'s own CAT menu — a mismatch answers with garbage and no error.',
 			'settings.station.types.flexRadioTcp' => 'FlexRadio (SmartSDR) — Network',
+			'settings.station.types.ft891Serial' => 'Yaesu FT-891 — USB serial',
+			'settings.station.troubleshootingTitle' => 'If the radio connects but shows no frequency',
+			'settings.station.ft891Troubleshooting' => 'The radio is receiving commands but answering nothing. Almost always one of:\n\n- **CAT RTS must be OFF at the radio** (FT-891 menu **05-08**). With it on, the radio waits for a handshake line the app deliberately never raises — on a Digirig, SignaLink or most home-brew cables that same line is PTT, so raising it would key your transmitter.\n- **Speed must match** the radio\'s CAT RATE (menu **05-06**). A mismatch answers with garbage, or nothing, and never with an error.\n- **Another app may hold the port** — WSJT-X, fldigi and rigctld all keep it open.',
+			'settings.station.statusConnected' => 'Connected',
+			'settings.station.currentConfiguration' => 'Current Configuration',
+			'settings.station.transceiverForMainVfo' => 'Transceiver for Main VFO',
+			'settings.station.equipmentInventory' => 'Equipment Inventory',
+			'settings.station.noTransceiver' => 'None',
 			'settings.offlineData.title' => 'Offline Data',
 			'settings.offlineData.noFiles' => 'No data files',
 			'settings.offlineData.noFilesDescription' => 'Enable activity or lookup extensions to download their offline data here.',
@@ -3016,6 +3060,8 @@ extension on Translations {
 			'commands.experimentDisabled' => ({required Object name}) => '${name} disabled',
 			'commands.sentryTestSent' => 'Test error report sent to Sentry',
 			'commands.sentryTestLocalOnly' => 'Sentry is disabled in this build — test error logged locally only',
+			_ => null,
+		} ?? switch (path) {
 			'commandDialog.hint' => 'Search callsigns or type a command',
 			'commandDialog.noResults' => ({required Object text}) => 'Nothing matches “${text}”',
 			'commandDialog.sectionCommands' => 'Commands',
@@ -3027,8 +3073,6 @@ extension on Translations {
 			'commandDialog.runTyped' => ({required Object text}) => 'Run “${text}”',
 			'commandDialog.sectionSuggestions' => 'Try',
 			'commandDialog.lookingUp' => 'Looking up callsign…',
-			_ => null,
-		} ?? switch (path) {
 			'expiredBuild.title' => 'This build has expired',
 			'expiredBuild.body' => 'Please visit ham2k.com and get a newer version.',
 			'expiredBuild.visit' => 'Visit ham2k.com',

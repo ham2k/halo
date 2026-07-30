@@ -158,6 +158,34 @@ None of that tests what a radio actually emits. Polo shipped **one** hardware-ve
 deleted the one it could not make reliable. `EquipmentDriver.hardwareVerified` records which is
 which, and the type picker shows it, rather than presenting every driver as equally trustworthy.
 
+## Serial, and what it costs
+
+The FT-891 is the first driver on a second transport, and it is what proves the split: Yaesu CAT is
+ASCII terminated by `;` over a serial port, FlexRadio is a different text protocol over a socket, and
+neither driver nor transport had to learn anything about the other.
+
+Serial is `flutter_libserialport` (FFI, the same shape as the existing `halo_quickjs` plugin), behind
+the same conditional-export barrel as TCP. Desktop only: Android's USB host stack needs a different
+package and a runtime permission flow, and iOS has no USB host API at all without MFi.
+
+**Baud is the operator's to set.** app-polo hardcoded 4800 with no UI, which its own notes call out
+as a silent-failure mode — a radio whose CAT menu says 38400 answers with garbage and no error, and
+nothing on screen suggests why.
+
+**Enumeration must not throw.** The port list comes through `dart:ffi`, so it fails outright when the
+native library is missing — a Linux box without libudev at runtime, or any test process. It degrades
+to an empty list, because the port picker saying "no serial ports found" is far better than the
+equipment editor failing to open.
+
+Platform cost, none of it optional:
+
+- `com.apple.security.device.serial` in **both** macOS entitlement files. A sandbox relaxation, not
+  one of the AMFI-restricted entitlements that break spawning — but verify against a real port on a
+  **signed Release build**, since Debug passes regardless.
+- `libudev-dev` in the Linux CI dependency list, and `libudev-dev:arm64` in the arm64 cross build.
+  libserialport configures through udev; without it the build fails with a CMake error in a
+  transitive dependency that never mentions serial.
+
 ## Platforms
 
 GATO does nothing on web — no sockets, no serial, no BLE. The transport layer sits behind the

@@ -26,7 +26,10 @@ runtime — so **the extensions must be built before the app will run**.
 - **Node.js** — for building the extensions. Not pinned by mise; CI uses
   **Node 22**, so match that locally.
 - **Platform toolchains** for whatever targets you build:
-  - macOS/iOS → Xcode
+  - macOS/iOS → Xcode, plus `brew install automake libtool` — CocoaPods
+    builds libserialport (GATO's serial CAT transport) from source, and
+    without autotools `pod install` fails with "Please run `brew install
+    automake libtool`" and the app won't build at all
   - Android → Android SDK/NDK (see the Windows/README notes for a full list)
   - Windows → Visual Studio 2026 with "C++ Desktop development" (see
     [README.md](README.md#windows))

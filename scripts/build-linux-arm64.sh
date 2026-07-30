@@ -301,7 +301,8 @@ sudo apt-get "${APT_WAIT[@]}" install -y -qq -o Dpkg::Options::=--force-overwrit
   crossbuild-essential-arm64 \
   libgtk-3-dev:arm64 libglib2.0-dev:arm64 \
   libsecret-1-dev:arm64 libjsoncpp-dev:arm64 \
-  libcurl4-openssl-dev:arm64 libsqlite3-dev:arm64
+  libcurl4-openssl-dev:arm64 libsqlite3-dev:arm64 \
+  libudev-dev:arm64
 
 # Flutter reads CMAKE_CXX_COMPILER from our cache and then requires a sibling
 # named `clang` (native_assets.dart:89). Prove BOTH exist in the same directory

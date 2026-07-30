@@ -36,6 +36,21 @@ void main() {
     tester.view.devicePixelRatio = 1.0;
   }
 
+  /// The card the dialog presentation draws — the Material holding the header.
+  Finder card() =>
+      find.ancestor(of: find.byType(HaloDialogHeader), matching: find.byType(Material)).first;
+
+  double maxPaneHeightOf(WidgetTester tester) =>
+      haloDialogConstraints(tester.element(find.byType(HaloDialogHeader))).maxHeight;
+
+  Map<String, dynamic> formOf(int fields) => {
+        'title': 'Edit',
+        'elements': [
+          for (var i = 0; i < fields; i++)
+            {'type': 'field', 'key': 'f$i', 'fieldType': 'text', 'label': 'Field $i'},
+        ],
+      };
+
   testWidgets('presents as a dialog on L, full screen on S', (tester) async {
     setWidth(tester, 900);
     addTearDown(tester.view.reset);
@@ -211,6 +226,10 @@ void main() {
     await tester.pumpAndSettle();
     expect(tester.takeException(), isNull);
     expect(find.text('filling section'), findsOneWidget);
+    // Bounded is not enough — the mode exists so a body with Expanded
+    // sections gets the pane's FULL height to divide. Nothing else stops a
+    // filling body from silently shrink-wrapping now that the card may.
+    expect(tester.getSize(card()).height, maxPaneHeightOf(tester));
 
     // Same body, full-screen presentation.
     setWidth(tester, 400);
@@ -312,5 +331,50 @@ void main() {
       expect(field('Exchange').controller!.text, 'BR FROM FL');
       expect(field('Notes').controller!.text, 'mixed Case stays');
     });
+  });
+
+  testWidgets('a short form pane fits its content, and still pins Save to the bottom full screen',
+      (tester) async {
+    // Two halves of one contract, together because they pull against each
+    // other: a four-field form must not reserve a full-height card (it left
+    // ~300px of dead space between the fields and the footer), while the
+    // full-screen presentation must still fill the screen — layouts.md
+    // promises actions pinned at the bottom there, and a body free to
+    // shrink-wrap would float them up under the last field.
+    setWidth(tester, 900);
+    addTearDown(tester.view.reset);
+    final context = await pumpHost(tester);
+
+    showFormPane(context, formDefinition: formOf(4), initialState: const {});
+    await tester.pumpAndSettle();
+
+    expect(tester.getSize(card()).height, lessThan(maxPaneHeightOf(tester) * 0.75));
+    // ...and the footer sits just under the fields, not a card away.
+    expect(tester.getRect(find.widgetWithText(FilledButton, 'Save')).bottom,
+        closeTo(tester.getRect(card()).bottom, 24));
+
+    // The same open route at phone width: the pane IS the screen, so Save
+    // belongs on the bottom edge however short the form is.
+    setWidth(tester, 400);
+    await tester.pumpAndSettle();
+    expect(tester.getRect(find.widgetWithText(FilledButton, 'Save')).bottom, closeTo(800, 24));
+  });
+
+  testWidgets('a form taller than the pane stops at the max and keeps Save pinned', (tester) async {
+    // The other direction: shrink-wrapping must not cost the form its pinned
+    // footer — the reason showFormPane builds its own action row instead of
+    // FormRenderer's, which would scroll out of reach.
+    setWidth(tester, 900);
+    addTearDown(tester.view.reset);
+    final context = await pumpHost(tester);
+
+    showFormPane(context, formDefinition: formOf(20), initialState: const {});
+    await tester.pumpAndSettle();
+
+    expect(tester.getSize(card()).height, maxPaneHeightOf(tester));
+    expect(tester.getRect(find.widgetWithText(FilledButton, 'Save')).bottom,
+        lessThanOrEqualTo(tester.getRect(card()).bottom));
+    // The fields scroll under it — the last one is off the bottom of the card.
+    expect(tester.getRect(find.text('Field 19')).top, greaterThan(tester.getRect(card()).bottom));
   });
 }

@@ -14,8 +14,10 @@ import '../../i18n/strings.g.dart';
 import 'discovery.dart';
 import 'driver.dart';
 import 'drivers/flexradio_driver.dart';
+import 'drivers/ft891_driver.dart';
 import 'equipment.dart';
 import 'transport.dart';
+import 'transports/serial_transport.dart';
 import 'transports/tcp_transport.dart';
 import 'transports/udp_broadcast.dart';
 
@@ -157,6 +159,106 @@ class FlexRadioTcpType implements EquipmentType, EquipmentDiscoverer {
   }
 }
 
+/// Yaesu FT-891 over its built-in USB-to-serial CAT bridge.
+///
+/// The port is picked from a live enumeration; a USB adapter can appear or
+/// vanish between one look and the next, so the list is never cached.
+///
+/// Baud is the operator's to set, deliberately. app-polo hardcoded 4800 with
+/// no UI, which its own notes call out as a silent-failure mode: a radio
+/// whose CAT menu says 38400 answers with garbage and no error at all.
+class Ft891SerialType implements EquipmentType {
+  const Ft891SerialType();
+
+  static const _driver = Ft891Driver();
+
+  @override
+  String get key => 'ft891-serial';
+
+  @override
+  String get category => kCategoryTransceiver;
+
+  @override
+  String get name => t.settings.station.types.ft891Serial;
+
+  @override
+  String get transportKey => SerialTransport.transportKey;
+
+  @override
+  EquipmentDriver get driver => _driver;
+
+  @override
+  Map<String, dynamic> get defaultConfig => {'baudRate': Ft891Driver.defaultBaudRate};
+
+  @override
+  List<Map<String, dynamic>> configElements() {
+    final ports = availableSerialPorts();
+    return [
+      {
+        'type': 'field',
+        'fieldType': 'select',
+        'key': 'port',
+        'label': t.settings.station.serialPort,
+        'description': t.settings.station.serialPortDescription,
+        'options': [
+          for (final port in ports)
+            {
+              'value': port.name,
+              // The raw device name rarely identifies anything, and a dual
+              // -port bridge presents two that differ only in a trailing
+              // digit — see SerialPortOption.label.
+              'label': port.label,
+            },
+        ],
+      },
+      {
+        'type': 'field',
+        'fieldType': 'select',
+        'key': 'baudRate',
+        'label': t.settings.station.baudRate,
+        'description': t.settings.station.baudRateDescription,
+        'options': [
+          for (final rate in supportedBaudRates) {'value': rate, 'label': '$rate'},
+        ],
+      },
+      // A silent radio is the failure this driver actually produces: the
+      // commands go out, nothing comes back, and nothing anywhere reports an
+      // error. Every cause is a setting the operator has to change on the
+      // radio or elsewhere on the machine, so the editor is where it is worth
+      // saying — by the time the row says "Connected" with no frequency, this
+      // form is exactly where they will come looking.
+      {'type': 'divider', 'title': t.settings.station.troubleshootingTitle},
+      {'type': 'markdown', 'text': t.settings.station.ft891Troubleshooting},
+    ];
+  }
+
+  @override
+  Map<String, dynamic> targetFor(Map<String, dynamic> config) => {
+        'port': _port(config),
+        'baudRate': _baudRate(config),
+      };
+
+  @override
+  String describeTarget(Map<String, dynamic> config) => '${_port(config)} @ ${_baudRate(config)}';
+
+  @override
+  String? validate(Map<String, dynamic> config) => validateField('port', config['port'], config);
+
+  @override
+  String? validateField(String key, dynamic value, Map<String, dynamic> config) {
+    if (key != 'port') return null;
+    return (value as String? ?? '').isEmpty ? t.settings.station.serialPortRequired : null;
+  }
+
+  static String _port(Map<String, dynamic> config) => (config['port'] as String? ?? '').trim();
+
+  static int _baudRate(Map<String, dynamic> config) {
+    final raw = config['baudRate'];
+    if (raw is num) return raw.toInt();
+    return int.tryParse('$raw') ?? Ft891Driver.defaultBaudRate;
+  }
+}
+
 /// What the app can talk to, and how it gets there.
 ///
 /// A plain Dart list today. When extensions can contribute rig definitions
@@ -167,8 +269,12 @@ class EquipmentRegistry {
   final Map<String, EquipmentTransport> transports;
 
   EquipmentRegistry({List<EquipmentType>? types, Map<String, EquipmentTransport>? transports})
-      : types = types ?? const [FlexRadioTcpType()],
-        transports = transports ?? {TcpTransport.transportKey: const TcpTransport()};
+      : types = types ?? const [FlexRadioTcpType(), Ft891SerialType()],
+        transports = transports ??
+            {
+              TcpTransport.transportKey: const TcpTransport(),
+              SerialTransport.transportKey: const SerialTransport(),
+            };
 
   EquipmentType? typeFor(String? key) {
     for (final type in types) {

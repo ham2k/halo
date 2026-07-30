@@ -97,11 +97,16 @@ void main() {
     await tester.tap(find.text('Station Configuration'));
     await tester.pumpAndSettle();
 
-    expect(find.text('Left Radio'), findsOneWidget);
+    // Twice, and both are meant: once as the chosen Main VFO in Current
+    // Configuration, once as its own row in Equipment Inventory.
+    expect(find.text('Left Radio'), findsNWidgets(2));
     // Where it is, and that nothing is pretending to be connected on load.
     expect(find.textContaining('flex.local:4992'), findsOneWidget);
-    expect(find.textContaining('Not connected'), findsOneWidget);
-    expect(find.text('Connect'), findsOneWidget);
+    // No status word at all now — state and control are one icon: an unplugged plug, which connects when
+    // pressed. No localized word, so nothing here can grow and squeeze the
+    // live frequency out of the row.
+    expect(find.byIcon(MdiIcons.powerPlugOff), findsOneWidget);
+    expect(find.byIcon(MdiIcons.powerPlug), findsNothing);
     // The sole transceiver is auto-designated radio1, so it wears the pill —
     // a one-radio shack never has to choose.
     expect(find.text('Main VFO'), findsOneWidget);
@@ -123,9 +128,10 @@ void main() {
     // forward broadcasts — configurable at all.
     expect(find.text('Add by address'), findsOneWidget);
     expect(find.text('FlexRadio (SmartSDR) — Network'), findsOneWidget);
-    // The one driver here HAS been run against real hardware (a FLEX-6600),
-    // so it carries no caveat. The caption exists so the ones that haven't
-    // are not presented as equally trustworthy.
+    expect(find.text('Yaesu FT-891 — USB serial'), findsOneWidget);
+    // Both drivers have now met their hardware — the Flex a FLEX-6600, the
+    // FT-891 a real FT-891 over its own USB bridge — so neither carries the
+    // caveat. It stays in the UI for the drivers that come next.
     expect(find.text('Not tested against this hardware'), findsNothing);
 
     await tester.tap(find.text('FlexRadio (SmartSDR) — Network'));
@@ -143,7 +149,9 @@ void main() {
     expect(find.text('Cancel'), findsWidgets);
   });
 
-  testWidgets('the Main VFO pill moves with the designation', (tester) async {
+  testWidgets('the Main VFO transceiver is chosen from a dropdown of every known radio', (tester) async {
+    // Configuration, not link state: the dropdown offers every transceiver
+    // the station knows about, whether or not it happens to be connected.
     final services = await pumpSettings(tester, gatoEnabled: true, equipment: {
       'version': 1,
       'radio1': 'radio-1',
@@ -164,27 +172,18 @@ void main() {
     await tester.tap(find.text('Station Configuration'));
     await tester.pumpAndSettle();
 
-    // The pill rides in the subtitle, so it sits just below its own tile's
-    // title and above the next tile's — which row it belongs to is the
-    // claim, not how far down it is.
-    double rowY(String label) => tester.getTopLeft(find.text(label)).dy;
-    expect(find.text('Main VFO'), findsOneWidget);
-    expect(rowY('Main VFO'), greaterThan(rowY('Left Radio')));
-    expect(rowY('Main VFO'), lessThan(rowY('Right Radio')), reason: 'on the designated row');
+    expect(find.text('Current Configuration'), findsOneWidget);
+    expect(find.text('Equipment Inventory'), findsOneWidget);
+    expect(find.text('Transceiver for Main VFO'), findsOneWidget);
 
-    // The choice is only offered on the row that isn't already driving the
-    // panel, so the second tile's menu is the one that has it.
-    await tester.tap(find.byType(PopupMenuButton<String>).last);
+    await tester.tap(find.byType(DropdownButtonFormField<String?>));
     await tester.pumpAndSettle();
-    expect(find.text('Use as Main VFO'), findsOneWidget);
+    // Neither radio is connected, and both are offered anyway.
+    expect(find.text('Right Radio'), findsWidgets);
 
-    await tester.tap(find.text('Use as Main VFO'));
+    await tester.tap(find.text('Right Radio').last);
     await tester.pumpAndSettle();
-
-    // The designation actually moved — not just the label rendering.
     expect(services.gato.radio1, 'radio-2');
-    expect(find.text('Main VFO'), findsOneWidget);
-    expect(rowY('Main VFO'), greaterThan(rowY('Right Radio')), reason: 'and so did the pill');
   });
 
   testWidgets('a node whose type no longer exists says so instead of vanishing', (tester) async {

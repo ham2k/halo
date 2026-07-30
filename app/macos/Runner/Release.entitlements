@@ -30,6 +30,14 @@
 	<true/>
 	<key>com.apple.security.personal-information.location</key>
 	<true/>
+	<!-- GATO opens a serial port for CAT (the FT-891's built-in USB-to-serial
+	     bridge, and most other rigs). Like network.client above this is a
+	     SANDBOX relaxation, not one of the AMFI-restricted entitlements
+	     warned about below — no provisioning profile, no effect on spawning.
+	     Still: verify against a real port on a SIGNED Release build, since
+	     Debug passes regardless. -->
+	<key>com.apple.security.device.serial</key>
+	<true/>
 	<!-- Sparkle installs updates from OUTSIDE the sandbox via its Installer
 	     Launcher XPC service (enabled by SUEnableInstallerLauncherService in
 	     Info.plist). App Sandbox blocks global Mach-service lookup by default, so

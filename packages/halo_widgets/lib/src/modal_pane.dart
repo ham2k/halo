@@ -43,11 +43,15 @@ Future<T?> showHaloDialog<T>({
 /// Shows [builder]'s content as a Modal Pane and completes with the value
 /// passed to `Navigator.pop`. Call it like `showDialog`.
 ///
-/// With `scrollable: false` the body is NOT wrapped in a scroll view:
-/// it gets the pane's full bounded height (edge to edge, no padding) and
-/// manages its own layout — for content built around Expanded sections or
-/// its own scrollables (e.g. the Activities pane's accordion), which would
-/// otherwise sit in unbounded height and fail to lay out.
+/// With `scrollable: false` the body is NOT wrapped in a scroll view: it
+/// gets a BOUNDED height (edge to edge, no padding) and manages its own
+/// layout — for content built around Expanded sections or its own
+/// scrollables (e.g. the Activities pane's accordion), which would otherwise
+/// sit in unbounded height and fail to lay out. The dialog presentation
+/// OFFERS that height rather than imposing it: a body that fills it (a flex
+/// Column, a ListView) still gets the pane's full height, while one that
+/// asks for less ([showFormPane]'s short forms) gets a card that fits it.
+/// Full screen the pane IS the screen, so the height is the screen's either way.
 ///
 /// Action rows are the pane's own job (every current pane's buttons depend
 /// on its State — _busy, _testing, mode — which a route-level builder can't
@@ -194,7 +198,13 @@ class _ModalPaneScaffold extends StatelessWidget {
           ],
         ),
         body: SafeArea(
-          child: route.scrollable ? SingleChildScrollView(padding: const EdgeInsets.all(24), child: _body()) : _body(),
+          child: route.scrollable
+              ? SingleChildScrollView(padding: const EdgeInsets.all(24), child: _body())
+              // Tight height, because here the pane IS the screen: the
+              // Scaffold's body slot is LOOSE, and a body that shrink-wraps
+              // given the chance would float its pinned actions up under the
+              // last field instead of leaving them on the bottom edge.
+              : SizedBox(height: double.infinity, child: _body()),
         ),
       ),
     );
@@ -206,7 +216,6 @@ class _ModalPaneScaffold extends StatelessWidget {
     // family (haloDialogConstraints also guards the height against going
     // negative on a window shorter than the header clearance).
     final dialogConstraints = haloDialogConstraints(context);
-    final maxPaneHeight = dialogConstraints.maxHeight;
     // The transparent full-screen Scaffold exists so the route-scoped
     // ScaffoldMessenger has somewhere to show SnackBars ABOVE the barrier
     // (and it absorbs the keyboard inset like any Scaffold). It covers the
@@ -231,10 +240,13 @@ class _ModalPaneScaffold extends StatelessWidget {
                 // barrier handler above.
                 onTap: () {},
                 child: ConstrainedBox(
-                  // A non-scrollable body needs a DETERMINATE height for
-                  // its own Expanded sections to divide, so the card
-                  // commits to full height instead of shrink-wrapping.
-                  constraints: dialogConstraints.copyWith(minHeight: route.scrollable ? 0 : maxPaneHeight),
+                  // Bounded, never floored: the card is as tall as its body
+                  // asks for, up to the shared max. A body built around
+                  // Expanded sections still fills this box on its own — that
+                  // is what a flex Column does with a bounded height — so it
+                  // gets the determinate height it needs without forcing a
+                  // body that wants less (a short form) into a full-height card.
+                  constraints: dialogConstraints,
                   child: Material(
                     color: theme.dialogTheme.backgroundColor ?? haloDialogBandColor(context),
                     elevation: 6,
@@ -280,9 +292,12 @@ class _ModalPaneScaffold extends StatelessWidget {
                             ),
                           )
                         else
-                          Expanded(
+                          Flexible(
                             // Edge to edge, no padding — a non-scrollable body
                             // manages its own layout (see showModalPane's doc).
+                            // Flexible, not Expanded: it OFFERS the remaining
+                            // height rather than forcing it, so a body that
+                            // wants less gets a card that fits it.
                             child: Material(color: theme.colorScheme.surface, child: _body()),
                           ),
                       ],

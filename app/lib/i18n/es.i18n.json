@@ -549,16 +549,27 @@
       "remove": "Eliminar",
       "removeTitle": "¿Eliminar ${name}?",
       "removeMessage": "Esto solo lo elimina de la aplicación. Nada cambia en el equipo.",
-      "statusDisconnected": "Sin conexión",
-      "statusConnecting": "Conectando…",
-      "statusConnected": "Conectado",
       "unknownType": "Tipo de equipo no reconocido «${typeKey}»",
       "unverified": "No probado con este hardware",
       "mainVfo": "VFO principal",
       "useAsMainVfo": "Usar como VFO principal",
+      "serialPort": "Puerto serie",
+      "serialPortDescription": "El puerto donde aparece la interfaz CAT de la radio.",
+      "serialPortNone": "No se encontraron puertos serie",
+      "serialPortRequired": "Elige un puerto serie",
+      "baudRate": "Velocidad (baudios)",
+      "baudRateDescription": "Debe coincidir con el menú CAT de la radio — si no, responde con datos ilegibles y sin error.",
       "types": {
-        "flexRadioTcp": "FlexRadio (SmartSDR) — Red"
-      }
+        "flexRadioTcp": "FlexRadio (SmartSDR) — Red",
+        "ft891Serial": "Yaesu FT-891 — USB serie"
+      },
+      "troubleshootingTitle": "Si la radio conecta pero no muestra frecuencia",
+      "ft891Troubleshooting": "La radio recibe los comandos pero no responde. Casi siempre es una de estas:\n\n- **CAT RTS debe estar en OFF en la radio** (FT-891 menú **05-08**). Si está activado, la radio espera una línea de control que la app nunca activa a propósito: en un Digirig, SignaLink o la mayoría de cables caseros esa misma línea es el PTT, así que activarla pondría tu equipo en transmisión.\n- **La velocidad debe coincidir** con el CAT RATE de la radio (menú **05-06**). Si no coincide, responde con datos ilegibles, o con nada, y nunca con un error.\n- **Otra aplicación puede tener el puerto** — WSJT-X, fldigi y rigctld lo mantienen abierto.",
+      "statusConnected": "Conectado",
+      "currentConfiguration": "Configuración actual",
+      "transceiverForMainVfo": "Transceptor para el VFO principal",
+      "equipmentInventory": "Inventario de equipos",
+      "noTransceiver": "Ninguno"
     },
     "offlineData": {
       "title": "Datos sin conexión",

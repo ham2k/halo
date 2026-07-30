@@ -549,16 +549,27 @@
       "remove": "Remove",
       "removeTitle": "Remove ${name}?",
       "removeMessage": "This only removes it from the app. Nothing on the equipment changes.",
-      "statusDisconnected": "Not connected",
-      "statusConnecting": "Connecting…",
-      "statusConnected": "Connected",
       "unknownType": "Unrecognized equipment type \"${typeKey}\"",
       "unverified": "Not tested against this hardware",
       "mainVfo": "Main VFO",
       "useAsMainVfo": "Use as Main VFO",
+      "serialPort": "Serial port",
+      "serialPortDescription": "The port the radio's CAT interface appears on.",
+      "serialPortNone": "No serial ports found",
+      "serialPortRequired": "Choose a serial port",
+      "baudRate": "Speed (baud)",
+      "baudRateDescription": "Must match the radio's own CAT menu — a mismatch answers with garbage and no error.",
       "types": {
-        "flexRadioTcp": "FlexRadio (SmartSDR) — Network"
-      }
+        "flexRadioTcp": "FlexRadio (SmartSDR) — Network",
+        "ft891Serial": "Yaesu FT-891 — USB serial"
+      },
+      "troubleshootingTitle": "If the radio connects but shows no frequency",
+      "ft891Troubleshooting": "The radio is receiving commands but answering nothing. Almost always one of:\n\n- **CAT RTS must be OFF at the radio** (FT-891 menu **05-08**). With it on, the radio waits for a handshake line the app deliberately never raises — on a Digirig, SignaLink or most home-brew cables that same line is PTT, so raising it would key your transmitter.\n- **Speed must match** the radio's CAT RATE (menu **05-06**). A mismatch answers with garbage, or nothing, and never with an error.\n- **Another app may hold the port** — WSJT-X, fldigi and rigctld all keep it open.",
+      "statusConnected": "Connected",
+      "currentConfiguration": "Current Configuration",
+      "transceiverForMainVfo": "Transceiver for Main VFO",
+      "equipmentInventory": "Equipment Inventory",
+      "noTransceiver": "None"
     },
     "offlineData": {
       "title": "Offline Data",

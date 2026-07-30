@@ -10,6 +10,8 @@
 // path: `showFormPane` over the equipment type's own `configElements`, so a
 // new type contributes its settings without touching this file.
 
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:halo_core/halo_core.dart';
 import 'package:halo_widgets/halo_widgets.dart';
@@ -129,18 +131,23 @@ class StationPanel extends StatelessWidget {
     final type = _gato.typeFor(node);
     if (type == null) return;
 
-    final values = await _editValues(context, type: type, name: node.name, config: node.config);
+    final values = await _editValues(context, type: type, name: node.name, config: node.config, node: node);
+    // Null also means the editor removed the node, or was cancelled — either
+    // way there is nothing left to write back.
     if (values == null) return;
 
     await _gato.updateNode(node.copyWith(name: values.name, config: values.config));
   }
 
   /// The name field plus whatever the type asks for, in one form.
+  /// [node] is null when adding: the actions below act on equipment that
+  /// already exists, so they only appear once it does.
   Future<({String name, Map<String, dynamic> config})?> _editValues(
     BuildContext context, {
     required EquipmentType type,
     required String name,
     required Map<String, dynamic> config,
+    EquipmentNode? node,
   }) async {
     final st = context.t.settings.station;
     final elements = [
@@ -161,6 +168,20 @@ class StationPanel extends StatelessWidget {
       // Runs per field on submit, so a bad address blocks the save and says
       // so on the address field rather than failing later at connect time.
       validator: (key, value, values) async => type.validateField(key, value, values),
+      // Only when the equipment already exists — there is nothing to delete
+      // from the Add flow. Closes the editor before confirming: the question
+      // is about the equipment, not about this form's unsaved edits, and
+      // leaving the pane behind it would offer to Save a node about to be
+      // gone.
+      destructiveAction: node == null
+          ? null
+          : (
+              label: st.remove,
+              color: Theme.of(context).colorScheme.error,
+              // showFormPane closes the pane before calling this, so all
+              // that is left here is the confirmation.
+              onPressed: () => unawaited(_removeEquipment(context, node)),
+            ),
       // Cancel/Save/Close and the rest of the pane's chrome. Without this
       // the form's own fields are translated and the buttons around them
       // are not.
@@ -214,11 +235,51 @@ class StationPanel extends StatelessWidget {
       builder: (context, _) {
         final safeLeft = PaneSafeArea.leftOf(context);
         final nodes = _gato.nodes;
+        // Every transceiver the station knows about, connected or not —
+        // this is the station's configuration, not its current link state.
+        final transceivers = [
+          for (final node in nodes)
+            if (_gato.typeFor(node)?.category == kCategoryTransceiver) node,
+        ];
 
         return ListView(
           padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 8),
           children: [
-            Padding(padding: EdgeInsets.only(left: safeLeft), child: SectionHeader(st.title)),
+            // What the station IS right now: the choices that decide how the
+            // rest of the app behaves. Today that is one question.
+            Padding(
+              padding: EdgeInsets.only(left: safeLeft),
+              child: SectionHeader(st.currentConfiguration),
+            ),
+            Padding(
+              padding: EdgeInsets.fromLTRB(safeLeft + 16, 8, 16, 8),
+              child: DropdownButtonFormField<String?>(
+                // FormFieldState reads `initialValue` once and never again
+                // (its didUpdateWidget only handles forceErrorText), so
+                // without a key that changes with the value this dropdown
+                // shows whatever radio1 was on first build. GatoService
+                // reassigns it behind this panel's back — auto-designating
+                // the first transceiver added, and re-designating when the
+                // current one is removed — and neither would have appeared.
+                key: ValueKey(_gato.radio1),
+                initialValue: transceivers.any((n) => n.uuid == _gato.radio1) ? _gato.radio1 : null,
+                decoration: poloFieldDecoration(context, st.transceiverForMainVfo),
+                menuMaxHeight: dropdownMenuMaxHeight(context),
+                items: [
+                  DropdownMenuItem<String?>(value: null, child: Text(st.noTransceiver)),
+                  for (final radio in transceivers)
+                    DropdownMenuItem<String?>(value: radio.uuid, child: Text(_displayName(radio))),
+                ],
+                onChanged: (uuid) => unawaited(_gato.setRadio1(uuid)),
+              ),
+            ),
+
+            // What the station is made OF. Every piece of equipment, whatever
+            // its category and whether or not it is in use.
+            Padding(
+              padding: EdgeInsets.only(left: safeLeft),
+              child: SectionHeader(st.equipmentInventory),
+            ),
             if (nodes.isEmpty) ListTile(title: Text(st.none)),
             for (final node in nodes)
               _EquipmentTile(
@@ -227,12 +288,8 @@ class StationPanel extends StatelessWidget {
                 state: _gato.stateFor(node.uuid),
                 displayName: _displayName(node),
                 isMainVfo: _gato.isRadio1(node.uuid),
-                // Only worth offering once there's something to choose
-                // between — a one-radio shack never has to think about it.
-                canChooseRadio1: nodes.length > 1 && !_gato.isRadio1(node.uuid),
-                onUseAsMainVfo: () => _gato.setRadio1(node.uuid),
                 onEdit: () => _editEquipment(context, node),
-                onRemove: () => _removeEquipment(context, node),
+                onRemoveUnknown: () => _removeEquipment(context, node),
                 onConnect: () => _gato.connect(node.uuid),
                 onDisconnect: () => _gato.disconnect(node.uuid),
               ),
@@ -282,10 +339,11 @@ class _EquipmentTile extends StatelessWidget {
   /// This is `radio1` — the node whose VFO is the logging panel's, shown
   /// to the operator as "Main VFO".
   final bool isMainVfo;
-  final bool canChooseRadio1;
-  final VoidCallback onUseAsMainVfo;
   final VoidCallback onEdit;
-  final VoidCallback onRemove;
+
+  /// Only reachable for a record whose type isn't in the catalogue — every
+  /// other row removes from inside the editor.
+  final VoidCallback onRemoveUnknown;
   final VoidCallback onConnect;
   final VoidCallback onDisconnect;
 
@@ -295,10 +353,8 @@ class _EquipmentTile extends StatelessWidget {
     required this.state,
     required this.displayName,
     required this.isMainVfo,
-    required this.canChooseRadio1,
-    required this.onUseAsMainVfo,
     required this.onEdit,
-    required this.onRemove,
+    required this.onRemoveUnknown,
     required this.onConnect,
     required this.onDisconnect,
   });
@@ -317,125 +373,196 @@ class _EquipmentTile extends StatelessWidget {
         leading: Icon(Icons.help_outline, color: theme.colorScheme.error),
         title: Text(displayName),
         subtitle: Text(st.unknownType(typeKey: node.typeKey)),
+        // An unrecognized type has no editor to put Remove inside, so this
+        // row keeps its own — it is the only way to get rid of the record.
         trailing: IconButton(
           icon: Icon(Icons.delete_outline, semanticLabel: st.remove),
-          onPressed: onRemove,
+          onPressed: onRemoveUnknown,
         ),
       );
     }
 
     final busy = state.status == EquipmentStatus.connecting;
+    final vfo = state.vfo;
+    final reading = [
+      if (vfo.freqKHz != null) fmtFreq(vfo.freqKHz!),
+      if (vfo.mode != null) vfo.mode!,
+    ].join('  ');
     final connected = state.status == EquipmentStatus.connected;
 
+    // Two lines, each split left/right:
+    //   1. what it is          ...  where it is
+    //   2. what it is hearing  ...  how it is doing
+    //
+    // Both rows use spaceBetween rather than a Spacer or a trailing
+    // Expanded. A flex child that uses LESS than its share leaves the slack
+    // at the END of the row, so the right-hand item stops short of the edge
+    // — which is exactly how the address and the Connected pill ended up
+    // not quite right-aligned. spaceBetween puts that slack between the two
+    // groups instead, which is where it belongs.
     return ListTile(
       leading: Icon(_iconForCategory(resolvedType.category)),
-      title: Text(displayName),
-      subtitle: Text.rich(TextSpan(children: [
-        // Which radio the logging panel is actually following. Inline in the
-        // subtitle rather than a box beside the title: the trailing row
-        // already claims up to 190px, and a fixed-width pill next to the
-        // name would squeeze the name out again on a narrow pane. First in
-        // the line, so a wrap can't strand it below the fold.
-        if (isMainVfo) ...[
-          WidgetSpan(alignment: PlaceholderAlignment.middle, child: _MainVfoPill(label: st.mainVfo)),
-          const TextSpan(text: '  '),
-        ],
-        TextSpan(text: resolvedType.describeTarget(node.config)),
-        const TextSpan(text: '  ·  '),
-        TextSpan(
-          text: _statusLabel(context, state),
-          style: TextStyle(color: _statusColor(theme, state.status)),
-        ),
-      ])),
-      onTap: onEdit,
-      mouseCursor: SystemMouseCursors.click,
-      // ListTile hands `trailing` unbounded width and gives the title
-      // whatever is left, so a long translation of "Disconnect" ("Desconectar")
-      // squeezes the equipment's own name out of a narrow pane. Capped in
-      // plain logical pixels — the Font Scale setting scales the whole UI
-      // from one root wrapper (docs/design/ui-scaling.md), so this must not
-      // be multiplied by it.
-      trailing: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 190),
-        child: Row(
-        mainAxisSize: MainAxisSize.min,
+      title: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
+          Flexible(child: Text(displayName, overflow: TextOverflow.ellipsis)),
           Flexible(
-            child: TextButton(
-              onPressed: busy ? null : (connected ? onDisconnect : onConnect),
-              child: Text(connected ? st.disconnect : st.connect, overflow: TextOverflow.ellipsis),
+            child: Padding(
+              // A minimum gap, as a pad rather than a sibling SizedBox —
+              // spaceBetween would treat a third child as another gap.
+              padding: const EdgeInsets.only(left: 12),
+              child: Text(
+                resolvedType.describeTarget(node.config),
+                textAlign: TextAlign.right,
+                overflow: TextOverflow.ellipsis,
+                style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+              ),
             ),
           ),
-          PopupMenuButton<String>(
-            onSelected: (choice) => switch (choice) {
-              'remove' => onRemove(),
-              'radio1' => onUseAsMainVfo(),
-              _ => onEdit(),
-            },
-            itemBuilder: (context) => [
-              PopupMenuItem(value: 'edit', child: Text(st.edit)),
-              if (canChooseRadio1) PopupMenuItem(value: 'radio1', child: Text(st.useAsMainVfo)),
-              PopupMenuItem(value: 'remove', child: Text(st.remove)),
-            ],
-          ),
-          ],
-        ),
+        ],
       ),
+      subtitle: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          // Left: what the radio is doing, and whether it drives the panel.
+          Flexible(
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (reading.isNotEmpty)
+                  Flexible(
+                    child: Text(
+                      reading,
+                      overflow: TextOverflow.ellipsis,
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: theme.colorScheme.primary,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                if (isMainVfo) ...[
+                  if (reading.isNotEmpty) const SizedBox(width: 8),
+                  _Pill(
+                    label: st.mainVfo,
+                    background: theme.colorScheme.secondaryContainer,
+                    foreground: theme.colorScheme.onSecondaryContainer,
+                  ),
+                ],
+              ],
+            ),
+          ),
+          // Right: status. An error explains itself; otherwise the green
+          // pill is the whole message.
+          Flexible(
+            child: Padding(
+              padding: const EdgeInsets.only(left: 12),
+              child: Align(
+                alignment: Alignment.centerRight,
+                child: state.status == EquipmentStatus.error && state.error != null
+                    ? Text(
+                        state.error!,
+                        textAlign: TextAlign.right,
+                        overflow: TextOverflow.ellipsis,
+                        style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.error),
+                      )
+                    : connected
+                        ? _Pill(
+                            label: st.statusConnected,
+                            background: _connectedGreen(theme),
+                            foreground: Colors.white,
+                          )
+                        : const SizedBox.shrink(),
+              ),
+            ),
+          ),
+        ],
+      ),
+      trailing: _ConnectionToggle(
+        busy: busy,
+        connected: connected,
+        onConnect: onConnect,
+        onDisconnect: onDisconnect,
+      ),
+      onTap: onEdit,
+      mouseCursor: SystemMouseCursors.click,
     );
   }
-
-  /// Connected radios show what they're reporting; that live frequency is
-  /// the only proof the whole chain works end to end.
-  String _statusLabel(BuildContext context, EquipmentState state) {
-    final st = context.t.settings.station;
-    switch (state.status) {
-      case EquipmentStatus.disconnected:
-        return st.statusDisconnected;
-      case EquipmentStatus.connecting:
-        return st.statusConnecting;
-      case EquipmentStatus.error:
-        return state.error ?? st.statusDisconnected;
-      case EquipmentStatus.connected:
-        final vfo = state.vfo;
-        if (vfo.freqKHz == null && vfo.mode == null) return st.statusConnected;
-        return [
-          if (vfo.freqKHz != null) fmtFreq(vfo.freqKHz!),
-          if (vfo.mode != null) vfo.mode!,
-        ].join('  ');
-    }
-  }
-
-  Color? _statusColor(ThemeData theme, EquipmentStatus status) => switch (status) {
-        EquipmentStatus.error => theme.colorScheme.error,
-        EquipmentStatus.connected => theme.colorScheme.primary,
-        _ => null,
-      };
 }
 
-/// Marks the node whose VFO is the logging panel's — `radio1` in the data
-/// model (docs/design/gato.md). Shaped like activities_view's
-/// `_AlreadySelectedChip`: nothing pill-like is exported from halo_widgets,
-/// and that chip says the same kind of thing — "this row is the designated
-/// one". Plain logical pixels, since the Font Scale setting scales the whole
-/// UI from one root wrapper (docs/design/ui-scaling.md).
-class _MainVfoPill extends StatelessWidget {
-  final String label;
+/// One green that reads on both a light and a dark surface. Spelled out
+/// because the scheme has no semantic "success" colour, and `primary` is the
+/// app's accent — it says nothing about being connected.
+Color _connectedGreen(ThemeData theme) =>
+    theme.brightness == Brightness.dark ? Colors.green.shade600 : Colors.green.shade700;
 
-  const _MainVfoPill({required this.label});
+/// A small rounded label. Same shape as activities_view's
+/// `_AlreadySelectedChip` — nothing pill-like is exported from halo_widgets,
+/// and that chip says the same kind of thing about a row. Plain logical
+/// pixels: the Font Scale setting scales the whole UI from one root wrapper
+/// (docs/design/ui-scaling.md).
+class _Pill extends StatelessWidget {
+  final String label;
+  final Color background;
+  final Color foreground;
+
+  const _Pill({required this.label, required this.background, required this.foreground});
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-      decoration: BoxDecoration(
-        color: theme.colorScheme.secondaryContainer,
-        borderRadius: BorderRadius.circular(10),
-      ),
+      decoration: BoxDecoration(color: background, borderRadius: BorderRadius.circular(10)),
       child: Text(
         label,
-        style: theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.onSecondaryContainer),
+        style: Theme.of(context).textTheme.labelSmall?.copyWith(color: foreground),
       ),
+    );
+  }
+}
+
+/// The plug: pulled out (grey) or pushed in (green). Pressing it does the
+/// other thing. This replaced a "Not connected" label plus a Connect button
+/// — two localized words' worth of row width to say what one glyph says,
+/// on a row whose whole point is to show a live frequency.
+class _ConnectionToggle extends StatelessWidget {
+  final bool busy;
+  final bool connected;
+  final VoidCallback onConnect;
+  final VoidCallback onDisconnect;
+
+  const _ConnectionToggle({
+    required this.busy,
+    required this.connected,
+    required this.onConnect,
+    required this.onDisconnect,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final st = context.t.settings.station;
+    final theme = Theme.of(context);
+
+    if (busy) {
+      return const SizedBox(
+        width: 48,
+        height: 48,
+        child: Padding(padding: EdgeInsets.all(14), child: CircularProgressIndicator(strokeWidth: 2)),
+      );
+    }
+
+    // No semantic "success" colour in the scheme, so it is spelled out here
+    // rather than borrowed from `primary` (which is the app's accent and
+    // says nothing about being connected). Two shades because one green
+    // cannot carry both a light and a dark surface.
+    return IconButton(
+      icon: Icon(
+        connected ? MdiIcons.powerPlug : MdiIcons.powerPlugOff,
+        // The app has no hover tooltips, so the accessible name is the only
+        // place this control is named.
+        semanticLabel: connected ? st.disconnect : st.connect,
+        color: connected ? _connectedGreen(theme) : theme.colorScheme.onSurfaceVariant,
+      ),
+      onPressed: connected ? onDisconnect : onConnect,
     );
   }
 }

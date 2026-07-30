@@ -29,6 +29,8 @@ class MdiIcons {
   static const IconData plus = IconData(0xf0415, fontFamily: 'MaterialDesignIcons');
   static const IconData accountSearch = IconData(0xf0016, fontFamily: 'MaterialDesignIcons');
   static const IconData radioTower = IconData(0xf043b, fontFamily: 'MaterialDesignIcons');
+  static const IconData powerPlug = IconData(0xf06a5, fontFamily: 'MaterialDesignIcons');
+  static const IconData powerPlugOff = IconData(0xf06a6, fontFamily: 'MaterialDesignIcons');
   static const IconData bookOutline = IconData(0xf0b64, fontFamily: 'MaterialDesignIcons');
   static const IconData delete = IconData(0xf01b4, fontFamily: 'MaterialDesignIcons');
   static const IconData cog = IconData(0xf0493, fontFamily: 'MaterialDesignIcons');

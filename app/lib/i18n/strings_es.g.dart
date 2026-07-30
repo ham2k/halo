@@ -993,14 +993,24 @@ class _Translations$settings$station$es extends Translations$settings$station$en
 	@override String get remove => 'Eliminar';
 	@override String removeTitle({required Object name}) => '¿Eliminar ${name}?';
 	@override String get removeMessage => 'Esto solo lo elimina de la aplicación. Nada cambia en el equipo.';
-	@override String get statusDisconnected => 'Sin conexión';
-	@override String get statusConnecting => 'Conectando…';
-	@override String get statusConnected => 'Conectado';
 	@override String unknownType({required Object typeKey}) => 'Tipo de equipo no reconocido «${typeKey}»';
 	@override String get unverified => 'No probado con este hardware';
 	@override String get mainVfo => 'VFO principal';
 	@override String get useAsMainVfo => 'Usar como VFO principal';
+	@override String get serialPort => 'Puerto serie';
+	@override String get serialPortDescription => 'El puerto donde aparece la interfaz CAT de la radio.';
+	@override String get serialPortNone => 'No se encontraron puertos serie';
+	@override String get serialPortRequired => 'Elige un puerto serie';
+	@override String get baudRate => 'Velocidad (baudios)';
+	@override String get baudRateDescription => 'Debe coincidir con el menú CAT de la radio — si no, responde con datos ilegibles y sin error.';
 	@override late final _Translations$settings$station$types$es types = _Translations$settings$station$types$es._(_root);
+	@override String get troubleshootingTitle => 'Si la radio conecta pero no muestra frecuencia';
+	@override String get ft891Troubleshooting => 'La radio recibe los comandos pero no responde. Casi siempre es una de estas:\n\n- **CAT RTS debe estar en OFF en la radio** (FT-891 menú **05-08**). Si está activado, la radio espera una línea de control que la app nunca activa a propósito: en un Digirig, SignaLink o la mayoría de cables caseros esa misma línea es el PTT, así que activarla pondría tu equipo en transmisión.\n- **La velocidad debe coincidir** con el CAT RATE de la radio (menú **05-06**). Si no coincide, responde con datos ilegibles, o con nada, y nunca con un error.\n- **Otra aplicación puede tener el puerto** — WSJT-X, fldigi y rigctld lo mantienen abierto.';
+	@override String get statusConnected => 'Conectado';
+	@override String get currentConfiguration => 'Configuración actual';
+	@override String get transceiverForMainVfo => 'Transceptor para el VFO principal';
+	@override String get equipmentInventory => 'Inventario de equipos';
+	@override String get noTransceiver => 'Ninguno';
 }
 
 // Path: settings.offlineData
@@ -1319,6 +1329,7 @@ class _Translations$settings$station$types$es extends Translations$settings$stat
 
 	// Translations
 	@override String get flexRadioTcp => 'FlexRadio (SmartSDR) — Red';
+	@override String get ft891Serial => 'Yaesu FT-891 — USB serie';
 }
 
 /// The flat map containing all translations for locale <es>.
@@ -1750,14 +1761,25 @@ extension on TranslationsEs {
 			'settings.station.remove' => 'Eliminar',
 			'settings.station.removeTitle' => ({required Object name}) => '¿Eliminar ${name}?',
 			'settings.station.removeMessage' => 'Esto solo lo elimina de la aplicación. Nada cambia en el equipo.',
-			'settings.station.statusDisconnected' => 'Sin conexión',
-			'settings.station.statusConnecting' => 'Conectando…',
-			'settings.station.statusConnected' => 'Conectado',
 			'settings.station.unknownType' => ({required Object typeKey}) => 'Tipo de equipo no reconocido «${typeKey}»',
 			'settings.station.unverified' => 'No probado con este hardware',
 			'settings.station.mainVfo' => 'VFO principal',
 			'settings.station.useAsMainVfo' => 'Usar como VFO principal',
+			'settings.station.serialPort' => 'Puerto serie',
+			'settings.station.serialPortDescription' => 'El puerto donde aparece la interfaz CAT de la radio.',
+			'settings.station.serialPortNone' => 'No se encontraron puertos serie',
+			'settings.station.serialPortRequired' => 'Elige un puerto serie',
+			'settings.station.baudRate' => 'Velocidad (baudios)',
+			'settings.station.baudRateDescription' => 'Debe coincidir con el menú CAT de la radio — si no, responde con datos ilegibles y sin error.',
 			'settings.station.types.flexRadioTcp' => 'FlexRadio (SmartSDR) — Red',
+			'settings.station.types.ft891Serial' => 'Yaesu FT-891 — USB serie',
+			'settings.station.troubleshootingTitle' => 'Si la radio conecta pero no muestra frecuencia',
+			'settings.station.ft891Troubleshooting' => 'La radio recibe los comandos pero no responde. Casi siempre es una de estas:\n\n- **CAT RTS debe estar en OFF en la radio** (FT-891 menú **05-08**). Si está activado, la radio espera una línea de control que la app nunca activa a propósito: en un Digirig, SignaLink o la mayoría de cables caseros esa misma línea es el PTT, así que activarla pondría tu equipo en transmisión.\n- **La velocidad debe coincidir** con el CAT RATE de la radio (menú **05-06**). Si no coincide, responde con datos ilegibles, o con nada, y nunca con un error.\n- **Otra aplicación puede tener el puerto** — WSJT-X, fldigi y rigctld lo mantienen abierto.',
+			'settings.station.statusConnected' => 'Conectado',
+			'settings.station.currentConfiguration' => 'Configuración actual',
+			'settings.station.transceiverForMainVfo' => 'Transceptor para el VFO principal',
+			'settings.station.equipmentInventory' => 'Inventario de equipos',
+			'settings.station.noTransceiver' => 'Ninguno',
 			'settings.offlineData.title' => 'Datos sin conexión',
 			'settings.offlineData.noFiles' => 'No hay archivos de datos',
 			'settings.offlineData.noFilesDescription' => 'Habilita extensiones de actividades o búsquedas para descargar aquí sus datos sin conexión.',
@@ -1830,6 +1852,8 @@ extension on TranslationsEs {
 			'commands.experimentDisabled' => ({required Object name}) => '${name} deshabilitado',
 			'commands.sentryTestSent' => 'Reporte de error de prueba enviado a Sentry',
 			'commands.sentryTestLocalOnly' => 'Sentry está deshabilitado en esta compilación — el error de prueba solo se registró localmente',
+			_ => null,
+		} ?? switch (path) {
 			'commandDialog.hint' => 'Busca indicativos o escribe un comando',
 			'commandDialog.noResults' => ({required Object text}) => 'Nada coincide con «${text}»',
 			'commandDialog.sectionCommands' => 'Comandos',
@@ -1841,8 +1865,6 @@ extension on TranslationsEs {
 			'commandDialog.runTyped' => ({required Object text}) => 'Ejecutar «${text}»',
 			'commandDialog.sectionSuggestions' => 'Prueba',
 			'commandDialog.lookingUp' => 'Buscando indicativo…',
-			_ => null,
-		} ?? switch (path) {
 			'expiredBuild.title' => 'Esta versión ha expirado',
 			'expiredBuild.body' => 'Por favor visita ham2k.com para obtener una versión más reciente.',
 			'expiredBuild.visit' => 'Visitar ham2k.com',

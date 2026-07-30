@@ -142,6 +142,7 @@ Widget _formActionsRow({
   required VoidCallback? onCancel,
   required VoidCallback? onSave,
   required FormRendererLabels labels,
+  ({String label, VoidCallback onPressed, Color color})? destructive,
 }) {
   return Row(
     children: [
@@ -149,6 +150,22 @@ Widget _formActionsRow({
         onPressed: isSubmitting ? null : onCancel,
         child: Text(labels.cancel),
       ),
+      // Destructive actions belong in the footer with the other verbs, not
+      // in the body among the settings — and in the error colour, at the
+      // leading edge, well away from Save.
+      if (destructive != null) ...[
+        const SizedBox(width: 8),
+        TextButton(
+          // The colour travels WITH the action rather than as a second
+          // optional beside it: the point of this button is that a
+          // destructive verb reads as destructive, and a caller that
+          // supplied one and forgot the other used to get a Remove button
+          // indistinguishable from Cancel.
+          style: TextButton.styleFrom(foregroundColor: destructive.color),
+          onPressed: isSubmitting ? null : destructive.onPressed,
+          child: Text(destructive.label),
+        ),
+      ],
       // A minimum gap even on a narrow row — Expanded alone only keeps Save
       // from overlapping Cancel, not from sitting flush against it.
       const SizedBox(width: 12),
@@ -1768,6 +1785,14 @@ Future<Map<String, dynamic>?> showFormPane(
   FormOpenLink? onOpenLink,
   bool developerMode = false,
   FormRendererLabels labels = FormRendererLabels.english,
+  /// A destructive action for the footer, beside Cancel and in its own
+  /// colour. The PANE CLOSES FIRST and then the callback runs, so the
+  /// callback owns only the confirmation. A caller cannot pop it itself
+  /// safely: it holds the context it opened the pane from, and popping
+  /// through that removes whatever route is topmost — a menu overlay from
+  /// one of the form's own select fields, say — leaving the editor open
+  /// over equipment that is being deleted underneath it.
+  ({String label, VoidCallback onPressed, Color color})? destructiveAction,
 }) {
   final formKey = GlobalKey<FormRendererState>();
   final submittingNotifier = ValueNotifier<bool>(false);
@@ -1791,10 +1816,18 @@ Future<Map<String, dynamic>?> showFormPane(
       // below (Save's onSubmit, the footer's Cancel) call pop() directly
       // and are unaffected.
       builder: (context, isSubmitting, child) => PopScope(canPop: !isSubmitting, child: child!),
+      // min + Flexible, not max + Expanded: the Column asks for only the
+      // height the form needs, so the dialog card shrink-wraps a short form
+      // instead of stranding the footer at the bottom of a full-height card.
+      // spaceBetween is what keeps the footer pinned when the box is taller
+      // than the form anyway (the full-screen presentation, which IS the
+      // screen): the slack falls between the fields and the footer.
       child: Column(
+        mainAxisSize: MainAxisSize.min,
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Expanded(
+          Flexible(
             child: SingleChildScrollView(
               padding: const EdgeInsets.fromLTRB(24, 12, 24, 12),
               child: FormRenderer(
@@ -1827,6 +1860,19 @@ Future<Map<String, dynamic>?> showFormPane(
                 onCancel: () => Navigator.of(context).pop(null),
                 onSave: () => formKey.currentState?.submit(),
                 labels: labels,
+                destructive: destructiveAction == null
+                    ? null
+                    : (
+                        label: destructiveAction.label,
+                        color: destructiveAction.color,
+                        // This context is INSIDE the pane, so the pop is
+                        // the pane's own, not whatever happens to be on top
+                        // of the caller's navigator.
+                        onPressed: () {
+                          Navigator.of(context).pop(null);
+                          destructiveAction.onPressed();
+                        },
+                      ),
               ),
             ),
           ),

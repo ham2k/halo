@@ -66,6 +66,7 @@ dependencies:
   #
   # That broke every platform in 26.8.1-alpha1+98 (#385 moved it out of here).
   sentry_flutter: ^9.0.0
+  flutter_libserialport: ^0.6.0
 
 dev_dependencies:
   flutter_test:
