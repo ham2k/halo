@@ -9,6 +9,7 @@ import 'dart:convert';
 
 import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:halo_core/halo_core.dart';
 import 'package:halo_widgets/halo_widgets.dart';
@@ -19,12 +20,14 @@ import 'package:ham2k_logger/main.dart';
 import 'package:ham2k_logger/services/settings_service.dart';
 import 'package:ham2k_logger/views/settings_view.dart';
 
+import 'fake_secure_storage.dart';
 import 'operation_view_layout_test.dart' show MockExtensionHost, ExtensionServiceWithMockHost;
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  Future<HaLoServices> pumpSettings(WidgetTester tester, {required bool gatoEnabled, Object? equipment}) async {
+  Future<HaLoServices> pumpSettings(WidgetTester tester,
+      {required bool gatoEnabled, Object? equipment, FlutterSecureStorage? secureStorage}) async {
     tester.view.physicalSize = const Size(1000, 1400);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.resetPhysicalSize);
@@ -37,7 +40,7 @@ void main() {
         }),
       if (equipment != null) 'stationEquipment': jsonEncode(equipment),
     });
-    final settings = SettingsService(await SharedPreferences.getInstance());
+    final settings = SettingsService(await SharedPreferences.getInstance(), secureStorage: secureStorage);
     final db = HaLoDatabase(NativeDatabase.memory());
     addTearDown(db.close);
     final extensions = ExtensionServiceWithMockHost(const MockExtensionHost({}))..settings = settings;
@@ -129,10 +132,13 @@ void main() {
     expect(find.text('Add by address'), findsOneWidget);
     expect(find.text('FlexRadio (SmartSDR) — Network'), findsOneWidget);
     expect(find.text('Yaesu FT-891 — USB serial'), findsOneWidget);
-    // Both drivers have now met their hardware — the Flex a FLEX-6600, the
-    // FT-891 a real FT-891 over its own USB bridge — so neither carries the
-    // caveat. It stays in the UI for the drivers that come next.
-    expect(find.text('Not tested against this hardware'), findsNothing);
+    // The caveat marks the DISTINCTION, and with four types there is now one
+    // to make: the Flex (a FLEX-6600) and the FT-891 (over its own USB
+    // bridge) have both met their hardware; the two Icom drivers have not.
+    // The CI-V protocol itself was proven against a real IC-705 at the bench
+    // — but through a standalone spike tool, not through this driver, which
+    // is the thing the caption is about.
+    expect(find.text('Not tested against this hardware'), findsNWidgets(2));
 
     await tester.tap(find.text('FlexRadio (SmartSDR) — Network'));
     await tester.pump();
@@ -147,6 +153,50 @@ void main() {
     // The pane's chrome comes from the app's translations, not the form
     // renderer's English fallbacks.
     expect(find.text('Cancel'), findsWidgets);
+  });
+
+  testWidgets('a stored password shows as a hint in the editor, never as a value', (tester) async {
+    // This covers the gap a service-level test cannot: that station_panel puts
+    // the bullets under the 'placeholder' key and not 'value'. With 'value',
+    // FormRenderer seeds them into the field, an untouched Save writes eight
+    // bullets over the real keychain password, the radio stops connecting, and
+    // the show/hide eye "reveals" them. Every service test still passes,
+    // because none of them goes through this widget.
+    final services = await pumpSettings(
+      tester,
+      gatoEnabled: true,
+      secureStorage: FakeSecureStorage(),
+      equipment: {
+        'version': 1,
+        'nodes': {
+          'radio-1': {
+            'typeKey': 'ic705-network',
+            'name': 'The 705',
+            'config': {'host': '10.0.0.9', 'username': 'op'},
+          },
+        },
+      },
+    );
+    // Seeded after the pump, the way it really arrives: the config blob never
+    // carries the password, so the panel has to ask the keychain.
+    await services.settings.setEquipmentSecret('radio-1', 'password', 'hunter2');
+
+    await tester.tap(find.text('Station Configuration'));
+    await tester.pumpAndSettle();
+
+    // The row, not the Main VFO dropdown above it — the name appears in both.
+    await tester.tap(find.text('The 705').last);
+    await tester.pumpAndSettle();
+
+    final field = tester.widget<TextField>(find.widgetWithText(TextField, 'Radio password'));
+
+    // Visible, so a saved password does not look like no password at all.
+    expect(field.decoration?.hintText, '••••••••');
+    // And a HINT: the field is genuinely empty, which is what GatoService
+    // reads as "keep what is stored".
+    expect(field.controller?.text, isEmpty);
+    // The real secret never entered the form.
+    expect(field.controller?.text, isNot(contains('hunter2')));
   });
 
   testWidgets('the Main VFO transceiver is chosen from a dropdown of every known radio', (tester) async {

@@ -428,6 +428,48 @@ void main() {
       expect(field.obscureText, isTrue);
     });
 
+    testWidgets('a secret field shows its placeholder as a hint and still submits empty', (tester) async {
+      // The station editor renders a placeholder on a secret whose value is
+      // already in the keychain, so the operator can see something is stored
+      // without the app ever loading it into the form. Two things have to hold
+      // for that to be safe, and both are pinned here.
+      Map<String, dynamic>? submitted;
+      await tester.pumpWidget(MaterialApp(
+        home: Scaffold(
+          body: FormRenderer(
+            formDefinition: const {
+              'elements': [
+                {
+                  'type': 'field',
+                  'fieldType': 'secret',
+                  'key': 'password',
+                  'label': 'Password',
+                  'placeholder': '••••••••',
+                },
+              ],
+            },
+            initialState: const {},
+            onSubmit: (values) => submitted = values,
+            onCancel: () {},
+          ),
+        ),
+      ));
+
+      // 1. It is visible — otherwise a stored password looks like no password.
+      final field = tester.widget<TextField>(find.widgetWithText(TextField, 'Password'));
+      expect(field.decoration?.hintText, '••••••••');
+
+      // 2. It is a HINT, not the value. If it were the value, saving an
+      //    untouched form would overwrite the real password with bullets, and
+      //    the show/hide eye would "reveal" them.
+      expect(field.controller?.text, isEmpty);
+
+      await tester.tap(find.text('Save'));
+      await tester.pumpAndSettle();
+      expect(submitted?['password'], isEmpty,
+          reason: 'an untouched hinted field must submit empty, which means "unchanged"');
+    });
+
     testWidgets('list field adds, edits, and deletes items via the nested item dialog', (tester) async {
       Map<String, dynamic>? submittedValues;
       final listFormDefinition = {

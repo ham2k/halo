@@ -1961,6 +1961,27 @@ class Translations$settings$station$en {
 	/// en: 'Must match the radio's own CAT menu — a mismatch answers with garbage and no error.'
 	String get baudRateDescription => 'Must match the radio\'s own CAT menu — a mismatch answers with garbage and no error.';
 
+	/// en: 'Radio CI-V address'
+	String get civAddress => 'Radio CI-V address';
+
+	/// en: 'Hex, as shown in the radio's CI-V menu. The IC-705 ships as A4.'
+	String get civAddressDescription => 'Hex, as shown in the radio\'s CI-V menu. The IC-705 ships as A4.';
+
+	/// en: 'A CI-V address is two hex digits, 01 to FF'
+	String get civAddressInvalid => 'A CI-V address is two hex digits, 01 to FF';
+
+	/// en: 'Radio username'
+	String get radioUser => 'Radio username';
+
+	/// en: 'Radio password'
+	String get radioPass => 'Radio password';
+
+	/// en: 'The radio's own Network → Remote login, not your WiFi password.'
+	String get radioLoginDescription => 'The radio\'s own Network → Remote login, not your WiFi password.';
+
+	/// en: 'The radio's remote-control username is required'
+	String get radioUserRequired => 'The radio\'s remote-control username is required';
+
 	late final Translations$settings$station$types$en types = Translations$settings$station$types$en.internal(_root);
 
 	/// en: 'If the radio connects but shows no frequency'
@@ -1983,6 +2004,15 @@ class Translations$settings$station$en {
 
 	/// en: 'None'
 	String get noTransceiver => 'None';
+
+	/// en: 'If the radio never answers'
+	String get ic705TroubleshootingTitle => 'If the radio never answers';
+
+	/// en: 'The radio has a **single** remote-control session. When the login is ignored, something else is almost always using it. - **Close any other client.** wfview or RS-BA1 connected to the same radio holds that one session, and the login here is simply ignored while it does. - **Check the radio's network settings** — that WLAN is on, it is on the same network, and its remote-control (Network) function is enabled. - **Power-cycle the radio's WLAN** if it stays stuck. That reliably clears a session the radio is genuinely holding. A **wrong password is refused explicitly**, not met with silence — so if you got here rather than a "rejected" message, the password is not the problem.'
+	String get ic705Troubleshooting => 'The radio has a **single** remote-control session. When the login is ignored, something else is almost always using it.\n\n- **Close any other client.** wfview or RS-BA1 connected to the same radio holds that one session, and the login here is simply ignored while it does.\n- **Check the radio\'s network settings** — that WLAN is on, it is on the same network, and its remote-control (Network) function is enabled.\n- **Power-cycle the radio\'s WLAN** if it stays stuck. That reliably clears a session the radio is genuinely holding.\n\nA **wrong password is refused explicitly**, not met with silence — so if you got here rather than a "rejected" message, the password is not the problem.';
+
+	/// en: 'Not responding'
+	String get statusStale => 'Not responding';
 }
 
 // Path: settings.offlineData
@@ -2538,6 +2568,12 @@ class Translations$settings$station$types$en {
 
 	/// en: 'Yaesu FT-891 — USB serial'
 	String get ft891Serial => 'Yaesu FT-891 — USB serial';
+
+	/// en: 'Icom (CI-V) — USB serial'
+	String get icomCivSerial => 'Icom (CI-V) — USB serial';
+
+	/// en: 'Icom IC-705 — WiFi'
+	String get ic705Network => 'Icom IC-705 — WiFi';
 }
 
 /// The flat map containing all translations for locale <en>.
@@ -2979,8 +3015,17 @@ extension on Translations {
 			'settings.station.serialPortRequired' => 'Choose a serial port',
 			'settings.station.baudRate' => 'Speed (baud)',
 			'settings.station.baudRateDescription' => 'Must match the radio\'s own CAT menu — a mismatch answers with garbage and no error.',
+			'settings.station.civAddress' => 'Radio CI-V address',
+			'settings.station.civAddressDescription' => 'Hex, as shown in the radio\'s CI-V menu. The IC-705 ships as A4.',
+			'settings.station.civAddressInvalid' => 'A CI-V address is two hex digits, 01 to FF',
+			'settings.station.radioUser' => 'Radio username',
+			'settings.station.radioPass' => 'Radio password',
+			'settings.station.radioLoginDescription' => 'The radio\'s own Network → Remote login, not your WiFi password.',
+			'settings.station.radioUserRequired' => 'The radio\'s remote-control username is required',
 			'settings.station.types.flexRadioTcp' => 'FlexRadio (SmartSDR) — Network',
 			'settings.station.types.ft891Serial' => 'Yaesu FT-891 — USB serial',
+			'settings.station.types.icomCivSerial' => 'Icom (CI-V) — USB serial',
+			'settings.station.types.ic705Network' => 'Icom IC-705 — WiFi',
 			'settings.station.troubleshootingTitle' => 'If the radio connects but shows no frequency',
 			'settings.station.ft891Troubleshooting' => 'The radio is receiving commands but answering nothing. Almost always one of:\n\n- **CAT RTS must be OFF at the radio** (FT-891 menu **05-08**). With it on, the radio waits for a handshake line the app deliberately never raises — on a Digirig, SignaLink or most home-brew cables that same line is PTT, so raising it would key your transmitter.\n- **Speed must match** the radio\'s CAT RATE (menu **05-06**). A mismatch answers with garbage, or nothing, and never with an error.\n- **Another app may hold the port** — WSJT-X, fldigi and rigctld all keep it open.',
 			'settings.station.statusConnected' => 'Connected',
@@ -2988,6 +3033,9 @@ extension on Translations {
 			'settings.station.transceiverForMainVfo' => 'Transceiver for Main VFO',
 			'settings.station.equipmentInventory' => 'Equipment Inventory',
 			'settings.station.noTransceiver' => 'None',
+			'settings.station.ic705TroubleshootingTitle' => 'If the radio never answers',
+			'settings.station.ic705Troubleshooting' => 'The radio has a **single** remote-control session. When the login is ignored, something else is almost always using it.\n\n- **Close any other client.** wfview or RS-BA1 connected to the same radio holds that one session, and the login here is simply ignored while it does.\n- **Check the radio\'s network settings** — that WLAN is on, it is on the same network, and its remote-control (Network) function is enabled.\n- **Power-cycle the radio\'s WLAN** if it stays stuck. That reliably clears a session the radio is genuinely holding.\n\nA **wrong password is refused explicitly**, not met with silence — so if you got here rather than a "rejected" message, the password is not the problem.',
+			'settings.station.statusStale' => 'Not responding',
 			'settings.offlineData.title' => 'Offline Data',
 			'settings.offlineData.noFiles' => 'No data files',
 			'settings.offlineData.noFilesDescription' => 'Enable activity or lookup extensions to download their offline data here.',
@@ -3048,6 +3096,8 @@ extension on Translations {
 			'settings.panels.unavailableTitle' => 'Some settings are unavailable',
 			'settings.panels.unavailableText' => 'The extension runtime failed to start, so extension-contributed settings are missing.',
 			'settings.panels.station' => 'Station Configuration',
+			_ => null,
+		} ?? switch (path) {
 			'settings.panels.stationDescription' => 'Radios and other equipment',
 			'commands.enableSyncFirst' => 'Enable sync in Settings first.',
 			'commands.fullResyncStarted' => 'Full resync started — local data was backed up first.',
@@ -3060,8 +3110,6 @@ extension on Translations {
 			'commands.experimentDisabled' => ({required Object name}) => '${name} disabled',
 			'commands.sentryTestSent' => 'Test error report sent to Sentry',
 			'commands.sentryTestLocalOnly' => 'Sentry is disabled in this build — test error logged locally only',
-			_ => null,
-		} ?? switch (path) {
 			'commandDialog.hint' => 'Search callsigns or type a command',
 			'commandDialog.noResults' => ({required Object text}) => 'Nothing matches “${text}”',
 			'commandDialog.sectionCommands' => 'Commands',

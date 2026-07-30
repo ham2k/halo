@@ -45,7 +45,8 @@ class FlexRadioDriver implements EquipmentDriver {
   bool get hardwareVerified => true;
 
   @override
-  EquipmentSession createSession(EquipmentSink sink) => FlexRadioSession(sink);
+  EquipmentSession createSession(EquipmentSink sink, Map<String, dynamic> config) =>
+      FlexRadioSession(sink);
 }
 
 /// What a FlexRadio says about itself when it announces on the network.

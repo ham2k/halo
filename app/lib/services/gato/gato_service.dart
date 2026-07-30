@@ -37,6 +37,16 @@ const _storageVersion = 1;
 /// international agreement despite being below 10 MHz.
 const _lsbBands = {'160m', '80m', '40m'};
 
+/// How long a connected radio may say NOTHING before the row stops
+/// presenting its last reading as current.
+///
+/// Every driver here either streams (FlexRadio) or polls at a few seconds
+/// (CI-V at 5s, the FT-891 adaptively) — so half a minute of total silence
+/// from a live connection is not a slow radio, it is a stream that is not
+/// carrying anything. Generous enough that a busy rig or a lost datagram
+/// never trips it.
+const _staleAfter = Duration(seconds: 30);
+
 /// How hard launch tries before leaving it to the user.
 const _reconnectRetries = 2;
 const _defaultReconnectDelay = Duration(seconds: 3);
@@ -180,22 +190,94 @@ class GatoService extends ChangeNotifier {
       name: name,
       config: config,
     );
-    _nodes[node.uuid] = node;
+    final stored = await _stashSecrets(node);
+    _nodes[stored.uuid] = stored;
     _ensureRadio1();
     await _save();
     notifyListeners();
-    return node;
+    return stored;
   }
 
   Future<void> updateNode(EquipmentNode node) async {
     if (!_nodes.containsKey(node.uuid)) return;
-    _nodes[node.uuid] = node;
+    _nodes[node.uuid] = await _stashSecrets(node);
     await _save();
     notifyListeners();
   }
 
+  /// Moves a type's secret fields out of the config and into the platform
+  /// keychain. The stored config is a plain SharedPreferences JSON blob —
+  /// the right home for a hostname, the wrong one for a radio password.
+  Future<EquipmentNode> _stashSecrets(EquipmentNode node) async {
+    final secretKeys = _secretFieldsFor(node.typeKey);
+    if (secretKeys.isEmpty) return node;
+
+    final cleaned = <String, dynamic>{};
+    for (final entry in node.config.entries) {
+      if (secretKeys.contains(entry.key)) {
+        // An empty value means "unchanged" — the editor shows secrets
+        // blank, so saving a form without retyping must not wipe them.
+        final value = entry.value as String? ?? '';
+        if (value.isNotEmpty) {
+          final stored = await _settings.setEquipmentSecret(node.uuid, entry.key, value);
+          // The keychain refused it — a locked keyring, a headless box.
+          // Neither silent option is acceptable: dropping the value loses
+          // the password entirely behind a save that looked like it worked,
+          // and keeping it in `cleaned` writes a password into the plain
+          // prefs blob the user has every reason to think it is NOT in.
+          // So fail the save out loud instead.
+          if (!stored) throw const EquipmentSecretNotStored();
+        }
+      } else {
+        cleaned[entry.key] = entry.value;
+      }
+    }
+    return node.copyWith(config: cleaned);
+  }
+
+  /// Asks the TYPE, rather than testing for one. A manager that named a
+  /// concrete type here would quietly write the next type's password into
+  /// the plain prefs blob, and nothing would say so.
+  Set<String> _secretFieldsFor(String typeKey) => registry.typeFor(typeKey)?.secretFields ?? const {};
+
+  /// Which of a node's secret fields have something stored — the field KEYS,
+  /// never the values.
+  ///
+  /// The editor needs to show that a password exists without ever loading it
+  /// into a form: a form's values get written back on save, and the whole
+  /// point of [_stashSecrets] is that a secret never travels in the config
+  /// blob. So the editor asks which fields are populated and renders a
+  /// placeholder, and an untouched field still submits empty — which
+  /// [_stashSecrets] reads as "unchanged".
+  Future<Set<String>> storedSecretFields(String uuid) async {
+    final node = _nodes[uuid];
+    if (node == null) return const {};
+    final stored = <String>{};
+    for (final field in _secretFieldsFor(node.typeKey)) {
+      final value = await _settings.equipmentSecret(uuid, field);
+      if (value != null && value.isNotEmpty) stored.add(field);
+    }
+    return stored;
+  }
+
+  /// The node's config with its secrets read back in — only ever built at
+  /// connect time, never stored.
+  Future<Map<String, dynamic>> _configWithSecrets(EquipmentNode node) async {
+    final secretKeys = _secretFieldsFor(node.typeKey);
+    if (secretKeys.isEmpty) return node.config;
+    final merged = <String, dynamic>{...node.config};
+    for (final field in secretKeys) {
+      merged[field] = await _settings.equipmentSecret(node.uuid, field) ?? '';
+    }
+    return merged;
+  }
+
   Future<void> removeNode(String uuid) async {
     await disconnect(uuid);
+    // The keychain entry outlives the prefs blob unless we say otherwise.
+    for (final field in _secretFieldsFor(_nodes[uuid]?.typeKey ?? '')) {
+      await _settings.setEquipmentSecret(uuid, field, null);
+    }
     _nodes.remove(uuid);
     _runtimes.remove(uuid);
     // Removing the designated radio hands the job to another transceiver
@@ -311,7 +393,9 @@ class GatoService extends ChangeNotifier {
       return _ConnectOutcome.failed;
     }
 
-    final invalid = type.validate(node.config);
+    final config = await _configWithSecrets(node);
+
+    final invalid = type.validate(config);
     if (invalid != null) {
       _setState(uuid, EquipmentState(status: EquipmentStatus.error, error: invalid));
       return _ConnectOutcome.failed;
@@ -332,7 +416,7 @@ class GatoService extends ChangeNotifier {
 
     final EquipmentConnection connection;
     try {
-      connection = await transport.connect(type.targetFor(node.config), cancel: cancel);
+      connection = await transport.connect(type.targetFor(config), cancel: cancel);
     } on CatCancelledException {
       // A newer connect (or a disconnect) owns this node now — not a
       // failure, and not ours to report.
@@ -352,14 +436,18 @@ class GatoService extends ChangeNotifier {
       return _ConnectOutcome.superseded;
     }
 
-    final session = type.driver.createSession(_NodeSink(
+    final sink = _NodeSink(
       connection: connection,
       onReading: (reading) {
         // A session from a superseded connection must not write state.
         if (runtime.connection != connection) return;
         _applyReading(uuid, reading);
       },
-    ));
+    );
+    // driverConfig, not config: a type may know something about its
+    // protocol that is not a setting anyone should be asked for — the
+    // IC-705's network controller address, for one.
+    final session = type.driver.createSession(sink, type.driverConfig(config));
 
     runtime.connection = connection;
     runtime.session = session;
@@ -384,6 +472,7 @@ class GatoService extends ChangeNotifier {
     }));
 
     _setState(uuid, const EquipmentState(status: EquipmentStatus.connected));
+    _armStaleWatch(uuid, runtime);
 
     // Start updates on connect rather than when a UI subscriber shows up:
     // polo gated this on a refcount, so connecting with no screen mounted
@@ -434,12 +523,33 @@ class GatoService extends ChangeNotifier {
     runtime.cancel = null;
     // Bump the sequence so an attempt still in flight knows it lost.
     runtime.attemptSeq += 1;
+    // Said before the teardown, not after: the Icom network goodbye alone is
+    // most of a second of deliberately spaced datagrams, and a row that
+    // still claims to be connected through all of it reads as a hang.
+    _setState(uuid, const EquipmentState(status: EquipmentStatus.disconnecting));
     await _teardown(runtime);
     _setState(uuid, const EquipmentState(status: EquipmentStatus.disconnected));
   }
 
+  /// Restarts the silence watch. Any reading at all counts, including one
+  /// that repeats the last: a radio answering "still 14074" is a radio that
+  /// is answering.
+  void _armStaleWatch(String uuid, _NodeRuntime runtime) {
+    runtime.staleTimer?.cancel();
+    runtime.staleTimer = Timer(_staleAfter, () {
+      if (_disposed) return;
+      final current = _runtimes[uuid];
+      if (current == null || current.state.status != EquipmentStatus.connected) return;
+      if (current.state.stale) return;
+      _setState(uuid, current.state.copyWith(stale: true));
+    });
+  }
+
   void _applyReading(String uuid, VfoReading reading) {
     final runtime = _runtimeFor(uuid);
+    // The radio said something, so it is not silent — whatever it said.
+    _armStaleWatch(uuid, runtime);
+    if (runtime.state.stale) _setState(uuid, runtime.state.copyWith(stale: false));
     final merged = VfoReading(
       freqKHz: reading.freqKHz ?? runtime.state.vfo.freqKHz,
       mode: reading.mode ?? runtime.state.vfo.mode,
@@ -522,6 +632,8 @@ class GatoService extends ChangeNotifier {
     runtime.session = null;
     runtime.connection = null;
     runtime.subscription = null;
+    runtime.staleTimer?.cancel();
+    runtime.staleTimer = null;
     // The echo guard describes what THIS session was told. Carrying it into
     // the next connection would suppress the first tune to a frequency the
     // previous session happened to be on, leaving the app and a
@@ -569,6 +681,18 @@ class GatoService extends ChangeNotifier {
   }
 }
 
+/// A credential could not reach the platform keychain, so the save was
+/// abandoned rather than completed in a way that either loses the password
+/// or writes it in plaintext.
+class EquipmentSecretNotStored implements Exception {
+  const EquipmentSecretNotStored();
+
+  @override
+  String toString() =>
+      "Could not save the radio's password to the system keychain. It may be "
+      'locked, or unavailable on this machine.';
+}
+
 class _NodeRuntime {
   EquipmentState state = const EquipmentState();
   EquipmentConnection? connection;
@@ -584,6 +708,10 @@ class _NodeRuntime {
   /// Per-node, deliberately: two overlapping connects to the SAME node race
   /// to own it, and the loser must not install its connection.
   int attemptSeq = 0;
+
+  /// Watches for a connection that is up but saying nothing — see
+  /// [EquipmentState.stale].
+  Timer? staleTimer;
 }
 
 class _NodeSink implements EquipmentSink {

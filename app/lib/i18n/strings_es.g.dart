@@ -1003,6 +1003,13 @@ class _Translations$settings$station$es extends Translations$settings$station$en
 	@override String get serialPortRequired => 'Elige un puerto serie';
 	@override String get baudRate => 'Velocidad (baudios)';
 	@override String get baudRateDescription => 'Debe coincidir con el menú CAT de la radio — si no, responde con datos ilegibles y sin error.';
+	@override String get civAddress => 'Dirección CI-V de la radio';
+	@override String get civAddressDescription => 'Hexadecimal, como aparece en el menú CI-V de la radio. El IC-705 viene con A4.';
+	@override String get civAddressInvalid => 'Una dirección CI-V son dos dígitos hexadecimales, de 01 a FF';
+	@override String get radioUser => 'Usuario de la radio';
+	@override String get radioPass => 'Contraseña de la radio';
+	@override String get radioLoginDescription => 'El inicio de sesión Red → Remoto de la radio, no la contraseña del WiFi.';
+	@override String get radioUserRequired => 'Se requiere el usuario de control remoto de la radio';
 	@override late final _Translations$settings$station$types$es types = _Translations$settings$station$types$es._(_root);
 	@override String get troubleshootingTitle => 'Si la radio conecta pero no muestra frecuencia';
 	@override String get ft891Troubleshooting => 'La radio recibe los comandos pero no responde. Casi siempre es una de estas:\n\n- **CAT RTS debe estar en OFF en la radio** (FT-891 menú **05-08**). Si está activado, la radio espera una línea de control que la app nunca activa a propósito: en un Digirig, SignaLink o la mayoría de cables caseros esa misma línea es el PTT, así que activarla pondría tu equipo en transmisión.\n- **La velocidad debe coincidir** con el CAT RATE de la radio (menú **05-06**). Si no coincide, responde con datos ilegibles, o con nada, y nunca con un error.\n- **Otra aplicación puede tener el puerto** — WSJT-X, fldigi y rigctld lo mantienen abierto.';
@@ -1011,6 +1018,9 @@ class _Translations$settings$station$es extends Translations$settings$station$en
 	@override String get transceiverForMainVfo => 'Transceptor para el VFO principal';
 	@override String get equipmentInventory => 'Inventario de equipos';
 	@override String get noTransceiver => 'Ninguno';
+	@override String get ic705TroubleshootingTitle => 'Si la radio nunca responde';
+	@override String get ic705Troubleshooting => 'La radio tiene una **única** sesión de control remoto. Cuando el inicio de sesión se ignora, casi siempre hay algo más usándola.\n\n- **Cierra cualquier otro cliente.** wfview o RS-BA1 conectado a la misma radio ocupa esa única sesión, y mientras tanto el inicio de sesión aquí simplemente se ignora.\n- **Revisa la configuración de red de la radio** — que la WLAN esté encendida, que esté en la misma red y que su función de control remoto (Network) esté activada.\n- **Reinicia la WLAN de la radio** si sigue atascada. Eso libera de forma fiable una sesión que la radio realmente esté reteniendo.\n\nUna **contraseña incorrecta se rechaza explícitamente**, no con silencio — así que si llegaste aquí en lugar de ver un mensaje de "rechazada", la contraseña no es el problema.';
+	@override String get statusStale => 'Sin respuesta';
 }
 
 // Path: settings.offlineData
@@ -1330,6 +1340,8 @@ class _Translations$settings$station$types$es extends Translations$settings$stat
 	// Translations
 	@override String get flexRadioTcp => 'FlexRadio (SmartSDR) — Red';
 	@override String get ft891Serial => 'Yaesu FT-891 — USB serie';
+	@override String get icomCivSerial => 'Icom (CI-V) — USB serie';
+	@override String get ic705Network => 'Icom IC-705 — WiFi';
 }
 
 /// The flat map containing all translations for locale <es>.
@@ -1771,8 +1783,17 @@ extension on TranslationsEs {
 			'settings.station.serialPortRequired' => 'Elige un puerto serie',
 			'settings.station.baudRate' => 'Velocidad (baudios)',
 			'settings.station.baudRateDescription' => 'Debe coincidir con el menú CAT de la radio — si no, responde con datos ilegibles y sin error.',
+			'settings.station.civAddress' => 'Dirección CI-V de la radio',
+			'settings.station.civAddressDescription' => 'Hexadecimal, como aparece en el menú CI-V de la radio. El IC-705 viene con A4.',
+			'settings.station.civAddressInvalid' => 'Una dirección CI-V son dos dígitos hexadecimales, de 01 a FF',
+			'settings.station.radioUser' => 'Usuario de la radio',
+			'settings.station.radioPass' => 'Contraseña de la radio',
+			'settings.station.radioLoginDescription' => 'El inicio de sesión Red → Remoto de la radio, no la contraseña del WiFi.',
+			'settings.station.radioUserRequired' => 'Se requiere el usuario de control remoto de la radio',
 			'settings.station.types.flexRadioTcp' => 'FlexRadio (SmartSDR) — Red',
 			'settings.station.types.ft891Serial' => 'Yaesu FT-891 — USB serie',
+			'settings.station.types.icomCivSerial' => 'Icom (CI-V) — USB serie',
+			'settings.station.types.ic705Network' => 'Icom IC-705 — WiFi',
 			'settings.station.troubleshootingTitle' => 'Si la radio conecta pero no muestra frecuencia',
 			'settings.station.ft891Troubleshooting' => 'La radio recibe los comandos pero no responde. Casi siempre es una de estas:\n\n- **CAT RTS debe estar en OFF en la radio** (FT-891 menú **05-08**). Si está activado, la radio espera una línea de control que la app nunca activa a propósito: en un Digirig, SignaLink o la mayoría de cables caseros esa misma línea es el PTT, así que activarla pondría tu equipo en transmisión.\n- **La velocidad debe coincidir** con el CAT RATE de la radio (menú **05-06**). Si no coincide, responde con datos ilegibles, o con nada, y nunca con un error.\n- **Otra aplicación puede tener el puerto** — WSJT-X, fldigi y rigctld lo mantienen abierto.',
 			'settings.station.statusConnected' => 'Conectado',
@@ -1780,6 +1801,9 @@ extension on TranslationsEs {
 			'settings.station.transceiverForMainVfo' => 'Transceptor para el VFO principal',
 			'settings.station.equipmentInventory' => 'Inventario de equipos',
 			'settings.station.noTransceiver' => 'Ninguno',
+			'settings.station.ic705TroubleshootingTitle' => 'Si la radio nunca responde',
+			'settings.station.ic705Troubleshooting' => 'La radio tiene una **única** sesión de control remoto. Cuando el inicio de sesión se ignora, casi siempre hay algo más usándola.\n\n- **Cierra cualquier otro cliente.** wfview o RS-BA1 conectado a la misma radio ocupa esa única sesión, y mientras tanto el inicio de sesión aquí simplemente se ignora.\n- **Revisa la configuración de red de la radio** — que la WLAN esté encendida, que esté en la misma red y que su función de control remoto (Network) esté activada.\n- **Reinicia la WLAN de la radio** si sigue atascada. Eso libera de forma fiable una sesión que la radio realmente esté reteniendo.\n\nUna **contraseña incorrecta se rechaza explícitamente**, no con silencio — así que si llegaste aquí en lugar de ver un mensaje de "rechazada", la contraseña no es el problema.',
+			'settings.station.statusStale' => 'Sin respuesta',
 			'settings.offlineData.title' => 'Datos sin conexión',
 			'settings.offlineData.noFiles' => 'No hay archivos de datos',
 			'settings.offlineData.noFilesDescription' => 'Habilita extensiones de actividades o búsquedas para descargar aquí sus datos sin conexión.',
@@ -1840,6 +1864,8 @@ extension on TranslationsEs {
 			'settings.panels.unavailableTitle' => 'Algunos ajustes no están disponibles',
 			'settings.panels.unavailableText' => 'El motor de extensiones no pudo iniciarse, así que faltan los ajustes aportados por extensiones.',
 			'settings.panels.station' => 'Configuración de Estación',
+			_ => null,
+		} ?? switch (path) {
 			'settings.panels.stationDescription' => 'Radios y otros equipos',
 			'commands.enableSyncFirst' => 'Primero habilita la sincronización en la Configuración.',
 			'commands.fullResyncStarted' => 'Resincronización completa iniciada — los datos locales se respaldaron primero.',
@@ -1852,8 +1878,6 @@ extension on TranslationsEs {
 			'commands.experimentDisabled' => ({required Object name}) => '${name} deshabilitado',
 			'commands.sentryTestSent' => 'Reporte de error de prueba enviado a Sentry',
 			'commands.sentryTestLocalOnly' => 'Sentry está deshabilitado en esta compilación — el error de prueba solo se registró localmente',
-			_ => null,
-		} ?? switch (path) {
 			'commandDialog.hint' => 'Busca indicativos o escribe un comando',
 			'commandDialog.noResults' => ({required Object text}) => 'Nada coincide con «${text}»',
 			'commandDialog.sectionCommands' => 'Comandos',

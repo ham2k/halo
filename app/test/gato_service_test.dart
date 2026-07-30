@@ -163,14 +163,14 @@ class _FakeDriver implements EquipmentDriver {
   bool get hardwareVerified => false;
 
   @override
-  EquipmentSession createSession(EquipmentSink sink) {
+  EquipmentSession createSession(EquipmentSink sink, Map<String, dynamic> config) {
     final session = _FakeSession(sink, log)..teardownThrows = teardownThrows;
     sessions.add(session);
     return session;
   }
 }
 
-class _FakeType implements EquipmentType {
+class _FakeType extends EquipmentType {
   @override
   final EquipmentDriver driver;
 

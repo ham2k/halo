@@ -559,9 +559,18 @@
       "serialPortRequired": "Choose a serial port",
       "baudRate": "Speed (baud)",
       "baudRateDescription": "Must match the radio's own CAT menu — a mismatch answers with garbage and no error.",
+      "civAddress": "Radio CI-V address",
+      "civAddressDescription": "Hex, as shown in the radio's CI-V menu. The IC-705 ships as A4.",
+      "civAddressInvalid": "A CI-V address is two hex digits, 01 to FF",
+      "radioUser": "Radio username",
+      "radioPass": "Radio password",
+      "radioLoginDescription": "The radio's own Network → Remote login, not your WiFi password.",
+      "radioUserRequired": "The radio's remote-control username is required",
       "types": {
         "flexRadioTcp": "FlexRadio (SmartSDR) — Network",
-        "ft891Serial": "Yaesu FT-891 — USB serial"
+        "ft891Serial": "Yaesu FT-891 — USB serial",
+        "icomCivSerial": "Icom (CI-V) — USB serial",
+        "ic705Network": "Icom IC-705 — WiFi"
       },
       "troubleshootingTitle": "If the radio connects but shows no frequency",
       "ft891Troubleshooting": "The radio is receiving commands but answering nothing. Almost always one of:\n\n- **CAT RTS must be OFF at the radio** (FT-891 menu **05-08**). With it on, the radio waits for a handshake line the app deliberately never raises — on a Digirig, SignaLink or most home-brew cables that same line is PTT, so raising it would key your transmitter.\n- **Speed must match** the radio's CAT RATE (menu **05-06**). A mismatch answers with garbage, or nothing, and never with an error.\n- **Another app may hold the port** — WSJT-X, fldigi and rigctld all keep it open.",
@@ -569,7 +578,10 @@
       "currentConfiguration": "Current Configuration",
       "transceiverForMainVfo": "Transceiver for Main VFO",
       "equipmentInventory": "Equipment Inventory",
-      "noTransceiver": "None"
+      "noTransceiver": "None",
+      "ic705TroubleshootingTitle": "If the radio never answers",
+      "ic705Troubleshooting": "The radio has a **single** remote-control session. When the login is ignored, something else is almost always using it.\n\n- **Close any other client.** wfview or RS-BA1 connected to the same radio holds that one session, and the login here is simply ignored while it does.\n- **Check the radio's network settings** — that WLAN is on, it is on the same network, and its remote-control (Network) function is enabled.\n- **Power-cycle the radio's WLAN** if it stays stuck. That reliably clears a session the radio is genuinely holding.\n\nA **wrong password is refused explicitly**, not met with silence — so if you got here rather than a \"rejected\" message, the password is not the problem.",
+      "statusStale": "Not responding"
     },
     "offlineData": {
       "title": "Offline Data",

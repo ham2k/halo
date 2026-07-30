@@ -72,7 +72,12 @@ class EquipmentNode {
 }
 
 /// How a node's connection is doing right now. In-memory only.
-enum EquipmentStatus { disconnected, connecting, connected, error }
+/// [disconnecting] is its own state because saying goodbye takes real time
+/// on some transports — the Icom network teardown sends a logout, closes the
+/// serial stream and disconnects two sessions, deliberately spaced so the
+/// datagrams are not lost. Without it the row sits looking connected through
+/// all of that and then blinks, which reads as a hang.
+enum EquipmentStatus { disconnected, connecting, connected, disconnecting, error }
 
 /// A VFO reading pushed up by a session.
 ///
@@ -111,17 +116,32 @@ class EquipmentState {
 
   final VfoReading vfo;
 
+  /// Connected, but the radio has stopped saying anything.
+  ///
+  /// NOT the same as disconnected, and that distinction is the point: a
+  /// session can be alive at the protocol level — keepalives flowing, the
+  /// socket healthy — while the stream that carries actual readings is
+  /// dead. Observed on an IC-705 reconnect: full handshake, stream request
+  /// accepted, and then no CI-V at all, with the row showing a confident
+  /// green and a frequency from several minutes earlier.
+  ///
+  /// Liveness that counts datagrams cannot see this. Only the readings can.
+  final bool stale;
+
   const EquipmentState({
     this.status = EquipmentStatus.disconnected,
     this.error,
     this.vfo = const VfoReading(),
+    this.stale = false,
   });
 
-  EquipmentState copyWith({EquipmentStatus? status, String? error, VfoReading? vfo}) => EquipmentState(
+  EquipmentState copyWith({EquipmentStatus? status, String? error, VfoReading? vfo, bool? stale}) =>
+      EquipmentState(
         status: status ?? this.status,
         // An explicit null clears it: any transition out of `error` should
         // drop the stale message rather than carry it into the next state.
         error: status == null || status == EquipmentStatus.error ? (error ?? this.error) : null,
         vfo: vfo ?? this.vfo,
+        stale: stale ?? this.stale,
       );
 }

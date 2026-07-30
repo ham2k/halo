@@ -278,7 +278,7 @@ void main() {
 
 /// A type that announces itself on a stream the test controls, so the
 /// service's dedupe and filtering can be exercised without a socket.
-class _FakeDiscoverableType implements EquipmentType, EquipmentDiscoverer {
+class _FakeDiscoverableType extends EquipmentType implements EquipmentDiscoverer {
   final Stream<DiscoveredEquipment> announcements;
 
   _FakeDiscoverableType(this.announcements);

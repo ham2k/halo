@@ -304,6 +304,49 @@ class SettingsService extends ChangeNotifier implements SyncSettings {
     }
   }
 
+  /// Reads a per-equipment secret from the platform keychain.
+  ///
+  /// Equipment configuration lives in a plain SharedPreferences JSON blob
+  /// ([stationEquipment]), which is the right home for a hostname and the
+  /// wrong one for a password. The IC-705's network login is the first
+  /// credential GATO needs, so it goes here instead, keyed by node uuid.
+  ///
+  /// Returns null when secure storage is locked or absent (a headless Linux
+  /// box, a locked GNOME keyring) rather than throwing — the caller reports
+  /// "no credentials" and the radio simply doesn't connect.
+  Future<String?> equipmentSecret(String uuid, String field) async {
+    try {
+      return await _secureStorage.read(key: 'gato.$uuid.$field');
+    } catch (e, st) {
+      debugPrint('[settings] could not read equipment secret: $e');
+      ErrorReportingService.report(e, st, context: 'settings:equipment-secret-read');
+      return null;
+    }
+  }
+
+  /// Writes (or, with a null value, clears) a per-equipment secret.
+  ///
+  /// Returns whether it landed. The caller has to know: [GatoService]
+  /// strips the secret out of the stored config once it believes the
+  /// keychain has it, so a swallowed failure meant the password existed in
+  /// NEITHER place — a locked keyring turned a successful-looking save into
+  /// a credential the user had to retype but was never told about.
+  Future<bool> setEquipmentSecret(String uuid, String field, String? value) async {
+    try {
+      final key = 'gato.$uuid.$field';
+      if (value == null || value.isEmpty) {
+        await _secureStorage.delete(key: key);
+      } else {
+        await _secureStorage.write(key: key, value: value);
+      }
+      return true;
+    } catch (e, st) {
+      debugPrint('[settings] could not write equipment secret: $e');
+      ErrorReportingService.report(e, st, context: 'settings:equipment-secret-write');
+      return false;
+    }
+  }
+
   /// The already-loaded device key, or null before [ensureSyncDeviceKey] has
   /// run — for display only (e.g. Settings → System Information).
   String? get syncDeviceKey => _cachedDeviceKey;

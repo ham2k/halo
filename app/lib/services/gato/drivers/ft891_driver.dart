@@ -73,7 +73,7 @@ class Ft891Driver implements EquipmentDriver {
       vendorId == cp2105VendorId && productId == cp2105ProductId;
 
   @override
-  EquipmentSession createSession(EquipmentSink sink) => Ft891Session(sink);
+  EquipmentSession createSession(EquipmentSink sink, Map<String, dynamic> config) => Ft891Session(sink);
 }
 
 class Ft891Session implements EquipmentSession {

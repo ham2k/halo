@@ -24,6 +24,14 @@ import '../services/gato/equipment_registry.dart';
 import '../services/gato/gato_service.dart';
 import '../tools/form_chrome_labels.dart';
 
+/// Shown as the HINT of a secret field whose value is already in the keychain,
+/// never as its value: a hint cannot be submitted, cannot be revealed by the
+/// field's show/hide eye, and leaves the field genuinely empty — which is what
+/// GatoService reads as "keep what is stored".
+///
+/// A fixed count, deliberately. Matching the real length would leak it.
+const _storedSecretPlaceholder = '••••••••';
+
 class StationPanel extends StatelessWidget {
   final HaLoServices services;
 
@@ -150,6 +158,18 @@ class StationPanel extends StatelessWidget {
     EquipmentNode? node,
   }) async {
     final st = context.t.settings.station;
+
+    // Which secrets already exist — the keys only; the values stay in the
+    // keychain and never enter this form. A stored password otherwise renders
+    // as an empty box that looks like nothing was ever saved, and the obvious
+    // fix (prefill it) is the one thing we must not do: the form's values are
+    // written back on save, and a revealed secret field would show it.
+    // A placeholder says "something is here" and costs nothing, because an
+    // untouched field still submits empty, which GatoService reads as
+    // "unchanged".
+    final storedSecrets = node == null ? const <String>{} : await _gato.storedSecretFields(node.uuid);
+    if (!context.mounted) return null;
+
     final elements = [
       {
         'type': 'field',
@@ -158,7 +178,8 @@ class StationPanel extends StatelessWidget {
         'label': st.name,
         'description': st.nameDescription,
       },
-      ...type.configElements(),
+      for (final element in type.configElements())
+        if (storedSecrets.contains(element['key'])) {...element, 'placeholder': _storedSecretPlaceholder} else element,
     ];
 
     final result = await showFormPane(
@@ -382,7 +403,11 @@ class _EquipmentTile extends StatelessWidget {
       );
     }
 
-    final busy = state.status == EquipmentStatus.connecting;
+    // Both directions take time and both deserve the spinner: connecting
+    // negotiates a handshake, disconnecting sends a goodbye that must not be
+    // rushed.
+    final busy = state.status == EquipmentStatus.connecting ||
+        state.status == EquipmentStatus.disconnecting;
     final vfo = state.vfo;
     final reading = [
       if (vfo.freqKHz != null) fmtFreq(vfo.freqKHz!),
@@ -390,26 +415,53 @@ class _EquipmentTile extends StatelessWidget {
     ].join('  ');
     final connected = state.status == EquipmentStatus.connected;
 
-    // Two lines, each split left/right:
-    //   1. what it is          ...  where it is
-    //   2. what it is hearing  ...  how it is doing
+    final failed = state.status == EquipmentStatus.error && state.error != null;
+
+    // Two lines. The top one is identity — what it is, then where it is.
+    // The bottom is what it is doing, EXCEPT when something went wrong, in
+    // which case the reason takes the whole row: an explanation squeezed
+    // into half a line and ellipsized is not an explanation.
     //
-    // Both rows use spaceBetween rather than a Spacer or a trailing
-    // Expanded. A flex child that uses LESS than its share leaves the slack
-    // at the END of the row, so the right-hand item stops short of the edge
-    // — which is exactly how the address and the Connected pill ended up
-    // not quite right-aligned. spaceBetween puts that slack between the two
-    // groups instead, which is where it belongs.
+    // Both rows split with spaceBetween rather than a Spacer or a trailing
+    // Expanded: a flex child that uses LESS than its share leaves the slack
+    // at the END of the row, which is what kept the right-hand items from
+    // reaching the edge.
     return ListTile(
       leading: Icon(_iconForCategory(resolvedType.category)),
       title: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Flexible(child: Text(displayName, overflow: TextOverflow.ellipsis)),
+          // 3:2 — identity earns more of the row than the address does, and
+          // a pill is a fixed-width thing competing with a name that can
+          // ellipsize, so the split has to favour this side.
           Flexible(
+            flex: 3,
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Flexible(child: Text(displayName, overflow: TextOverflow.ellipsis)),
+                // Beside the name: which radio drives the logging panel is
+                // part of what this equipment IS, not what it is doing.
+                if (isMainVfo) ...[
+                  const SizedBox(width: 8),
+                  // Flexible, because the pill has an intrinsic width and a
+                  // non-flex child in a bounded Row overflows rather than
+                  // shrinking — the name collapses to nothing and the row
+                  // still blows past the edge by whatever the pill needed.
+                  Flexible(
+                    child: _Pill(
+                      label: st.mainVfo,
+                      background: theme.colorScheme.secondaryContainer,
+                      foreground: theme.colorScheme.onSecondaryContainer,
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+          Flexible(
+            flex: 2,
             child: Padding(
-              // A minimum gap, as a pad rather than a sibling SizedBox —
-              // spaceBetween would treat a third child as another gap.
               padding: const EdgeInsets.only(left: 12),
               child: Text(
                 resolvedType.describeTarget(node.config),
@@ -421,62 +473,48 @@ class _EquipmentTile extends StatelessWidget {
           ),
         ],
       ),
-      subtitle: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          // Left: what the radio is doing, and whether it drives the panel.
-          Flexible(
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
+      subtitle: failed
+          ? Text(
+              state.error!,
+              // Two lines' worth: these say what to do about it, and the
+              // useful part is rarely in the first forty characters.
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.error),
+            )
+          : Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                if (reading.isNotEmpty)
-                  Flexible(
-                    child: Text(
-                      reading,
-                      overflow: TextOverflow.ellipsis,
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                        color: theme.colorScheme.primary,
-                        fontWeight: FontWeight.w600,
-                      ),
+                Flexible(
+                  child: Text(
+                    reading,
+                    overflow: TextOverflow.ellipsis,
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      // Dimmed once it is no longer being confirmed. The
+                      // number is the last thing the radio actually said,
+                      // and how old it is matters as much as what it is.
+                      color: state.stale
+                          ? theme.colorScheme.onSurfaceVariant
+                          : theme.colorScheme.primary,
+                      fontWeight: FontWeight.w600,
                     ),
                   ),
-                if (isMainVfo) ...[
-                  if (reading.isNotEmpty) const SizedBox(width: 8),
-                  _Pill(
-                    label: st.mainVfo,
-                    background: theme.colorScheme.secondaryContainer,
-                    foreground: theme.colorScheme.onSecondaryContainer,
+                ),
+                if (connected)
+                  Padding(
+                    padding: const EdgeInsets.only(left: 12),
+                    child: _Pill(
+                      // A link that is up but silent must not wear the same
+                      // confident green as one that is working: the row was
+                      // showing a frequency from minutes earlier as though
+                      // it were current.
+                      label: state.stale ? st.statusStale : st.statusConnected,
+                      background: state.stale ? theme.colorScheme.error : _connectedGreen(theme),
+                      foreground: Colors.white,
+                    ),
                   ),
-                ],
               ],
             ),
-          ),
-          // Right: status. An error explains itself; otherwise the green
-          // pill is the whole message.
-          Flexible(
-            child: Padding(
-              padding: const EdgeInsets.only(left: 12),
-              child: Align(
-                alignment: Alignment.centerRight,
-                child: state.status == EquipmentStatus.error && state.error != null
-                    ? Text(
-                        state.error!,
-                        textAlign: TextAlign.right,
-                        overflow: TextOverflow.ellipsis,
-                        style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.error),
-                      )
-                    : connected
-                        ? _Pill(
-                            label: st.statusConnected,
-                            background: _connectedGreen(theme),
-                            foreground: Colors.white,
-                          )
-                        : const SizedBox.shrink(),
-              ),
-            ),
-          ),
-        ],
-      ),
       trailing: _ConnectionToggle(
         busy: busy,
         connected: connected,
@@ -514,6 +552,9 @@ class _Pill extends StatelessWidget {
       decoration: BoxDecoration(color: background, borderRadius: BorderRadius.circular(10)),
       child: Text(
         label,
+        maxLines: 1,
+        softWrap: false,
+        overflow: TextOverflow.ellipsis,
         style: Theme.of(context).textTheme.labelSmall?.copyWith(color: foreground),
       ),
     );

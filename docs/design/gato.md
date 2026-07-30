@@ -186,6 +186,72 @@ Platform cost, none of it optional:
   libserialport configures through udev; without it the build fails with a CMake error in a
   transitive dependency that never mentions serial.
 
+### The IC-705's held session, and why a retry cannot break it
+
+Observed on hardware, not inferred. With the radio holding a session, a
+connect attempt still completes the whole UDP handshake — pkt3 -> pkt4 ->
+pkt6 all succeed, and the radio then sends its own idle keepalives at us
+continuously (2,936 of them across ten attempts). What never arrives is the
+`0x60` login answer. So the transport is healthy and the login is simply
+ignored: from the app, a busy radio and a refused one are indistinguishable,
+which is why `IcomLoginTimeout` says what it says instead of reporting a
+bare timeout.
+
+Two things follow, and both matter:
+
+- **A wrong credential is probably NOT this, but that is inherited, not
+  observed.** The `0xffff...fe` rejection check exists in both the transport
+  and the spike, and neither has ever been run against a radio with a bad
+  password — it comes from the wfview/kappanhang lineage. If this radio
+  IGNORES a bad login rather than refusing it, a stale credential and a held
+  session are indistinguishable from here. So retyping the password is the
+  cheapest first test, not the one to rule out. Confirming it needs one
+  deliberate wrong-password attempt against a known-good radio, which would
+  settle it permanently.
+- **A failed attempt cannot release anything.** `logout()` returns early
+  when `_authId` is null, and after a login timeout it always is — so the
+  only cleanup is the UDP-level disconnect. If the radio counts the login
+  ATTEMPT as holding the session, we have no way to say otherwise, which
+  would explain why retrying tends to prolong the state rather than clear
+  it. Worth testing a logout with a zeroed or echoed auth id, but that needs
+  the radio in a known-good state to try, not more retries against a wedged
+  one.
+
+Sockets are not the problem: ten failed attempts left three UDP sockets
+open, which is one in-flight attempt. Teardown works.
+
+**Retrying makes it worse, and it is worth knowing why that is surprising.**
+Riding out a transient state by retrying inside the transport is the obvious
+move — the operator can do nothing with "try again shortly" that the app
+cannot do for them. Measured on the radio, it is wrong:
+
+| attempts per Connect | pkt4/pkt6 handshake timeouts |
+|---|---|
+| 1 | **0** across ~10 attempts |
+| 3 | **2** |
+
+Each attempt opens a session the radio has to track, so retrying moves it
+from "completes the handshake, ignores the login" to "ignores the handshake
+too". Fifteen seconds of retries was never going to be the time it needs; it
+was only ever enough to add three more sessions. `connect` makes ONE attempt,
+and the comment above it carries this table so the idea is not re-derived.
+
+**Two things left to try, both needing the radio in a known-good state**
+rather than a wedged one:
+
+1. **Wait for the logout to be acknowledged.** The logout is fire-and-forget
+   over UDP; a wfview capture reportedly shows the radio acking it, but the
+   capture committed here is from a FAILED run and contains no successful
+   logout to derive the packet shape from. Guessing a matcher risks
+   rejecting a good ack, which would be worse than not checking.
+2. **Keep the session id stable across reconnects.** `localSid` is derived
+   from an ephemeral local port, so every reconnect looks to the radio like a
+   DIFFERENT client — while it is still holding the previous one. If it keys
+   held sessions by SID, binding a stable port would let a reconnect replace
+   our own session instead of queueing behind it. That is a plausible root
+   cause for the whole limitation, and it is a guess about protocol
+   semantics until it is tried.
+
 ## Platforms
 
 GATO does nothing on web — no sockets, no serial, no BLE. The transport layer sits behind the
@@ -353,6 +419,55 @@ Next, in order:
 
 Deliberately *not* on that ladder until something needs them: boot auto-reconnect (the source of
 every one of polo's connection races), BLE, Bluetooth Classic, and iOS.
+
+### IC-705 over WiFi: SOLVED, with one robustness gap
+
+Bench session 2026-07-29 with a real IC-705, `app/tool/ic705_spike.dart`. **A complete CI-V exchange
+over WiFi now works** — connect, login, auth, stream request, serial open, read frequency, decode —
+in **292 ms**, returning the radio's true frequency. app-polo never reached this and deleted its
+attempt; the protocol is no longer the unknown.
+
+The breakthrough came from capturing wfview's traffic. To be precise about the boundary: **the wire
+protocol is a fact about the radio, not wfview's copyrightable expression**, so observing packets is
+clean-room. wfview's *source* was not read, and must not be — it is GPLv3 and this codebase is
+MPL-2.0.
+
+**Five bugs, four of which app-polo also had:**
+
+1. **The `0x90` stream request must name OUR OWN local ports**, not 50002/50003. polo sent the
+   radio's own port numbers back at it, which told the radio to send CI-V to itself. This is the
+   whole of the "serial stream alive, no payload" symptom, in both implementations.
+2. **The audio fields cannot be zeroed.** A real bound audio port and a real sample rate (48000) are
+   required or the radio rejects the request — it answers `0x50` with `ffff` at offset 56 instead of
+   echoing its ports. The socket is bound and never read; nothing says we have to listen.
+3. **The answer to our request is an `0x50`, not a `0x90`.** The radio also sends a `0x90`, but
+   afterwards and unprompted. Waiting for the `0x90` times out on a request that was already
+   accepted.
+4. **The CI-V controller address is `0xE1`**, not the `0xE0` a PC conventionally uses on a wire.
+   polo's removal commit credits a wrong controller address as a bug it found on hardware and lost.
+5. **The serial-open magic byte is `0x04`**, not `0x05` — polo's other lost fix.
+
+Plus two of our own: **the local session ID derives from the local PORT alone**, little-endian in the
+top half (control port `0xFCC2` → SID `c2fc0000`), not from the IP; and **idle packets must share the
+outer sequence counter** rather than all sending zero.
+
+**Session release — the "inconsistent run to run" mystery, solved.** wfview sends a `0x40` auth
+packet with **magic `0x01` — a logout — immediately before the control disconnect**, and the radio
+acknowledges it. Without that the radio keeps the login alive and refuses every later login. That is
+the entire symptom that killed polo's attempt, and polo never diagnosed it: its transport built a
+disconnect packet it never called, and never had a logout at all.
+
+**The remaining gap:** the gate is 10 consecutive cold starts and we reach **1/10**. A single
+connection is fast and correct; back-to-back reconnects still fail at login roughly nine times in
+ten. The logout is sent and acknowledged, so the radio needs either more settling time than the
+spike's one-second gap, or something further in the teardown. This is a robustness problem with a
+known mechanism, not an unknown protocol — a very different position from where polo stopped.
+
+**Also established:** the radio IS discoverable. polo's transport says there is no known beacon and
+callers should offer manual entry — but a **unicast `pkt3` sweep of the subnet** finds it instantly
+and it answers with a valid `pkt4`.
+
+`ic705-spike-capture.log` holds an annotated exchange.
 
 ### Known, not fixed here
 

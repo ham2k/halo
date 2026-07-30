@@ -74,5 +74,10 @@ abstract class EquipmentDriver {
   /// trustworthy.
   bool get hardwareVerified;
 
-  EquipmentSession createSession(EquipmentSink sink);
+  /// [config] is the node's stored configuration — the same map the type's
+  /// `configElements` collected. Most drivers ignore it; a CI-V driver needs
+  /// it, because the radio's bus address is per-radio and settable on the
+  /// radio itself, and app-polo's IC-705 attempt is on record as having lost
+  /// bench time to a wrong address it had no way to change.
+  EquipmentSession createSession(EquipmentSink sink, Map<String, dynamic> config);
 }

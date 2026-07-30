@@ -13,6 +13,7 @@ import 'dart:async';
 import 'dart:io';
 import 'dart:typed_data';
 
+import 'package:fake_async/fake_async.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ham2k_logger/services/gato/driver.dart';
 import 'package:ham2k_logger/services/gato/equipment.dart';
@@ -22,6 +23,8 @@ import 'package:ham2k_logger/services/gato/transport.dart';
 import 'package:ham2k_logger/services/radio_service.dart';
 import 'package:ham2k_logger/services/settings_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
+import 'fake_secure_storage.dart';
 
 class _FakeConnection implements EquipmentConnection {
   final _data = StreamController<Uint8List>();
@@ -136,15 +139,19 @@ class _FakeDriver implements EquipmentDriver {
   String get name => 'Fake Radio';
   @override
   bool get hardwareVerified => false;
+  /// What the manager actually handed the driver — not what the user typed.
+  final configs = <Map<String, dynamic>>[];
+
   @override
-  EquipmentSession createSession(EquipmentSink sink) {
+  EquipmentSession createSession(EquipmentSink sink, Map<String, dynamic> config) {
+    configs.add(config);
     final session = _FakeSession(sink);
     sessions.add(session);
     return session;
   }
 }
 
-class _FakeType implements EquipmentType {
+class _FakeType extends EquipmentType {
   @override
   final EquipmentDriver driver;
 
@@ -158,6 +165,13 @@ class _FakeType implements EquipmentType {
   String get name => 'Fake Radio';
   @override
   String get transportKey => 'fake';
+
+  @override
+  Set<String> get secretFields => const {'apiKey'};
+
+  @override
+  Map<String, dynamic> driverConfig(Map<String, dynamic> config) =>
+      {...config, 'injectedByType': 'yes'};
   @override
   Map<String, dynamic> get defaultConfig => const {};
   @override
@@ -176,6 +190,7 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   late RadioService radio;
+  late SettingsService settings;
   late _FakeDriver driver;
   late _FakeTransport transport;
   late GatoService gato;
@@ -186,8 +201,9 @@ void main() {
     radio = RadioService(prefs, writeDelay: Duration.zero);
     driver = _FakeDriver();
     transport = _FakeTransport();
+    settings = SettingsService(prefs, secureStorage: FakeSecureStorage());
     gato = GatoService(
-      SettingsService(prefs),
+      settings,
       radio: radio,
       registry: EquipmentRegistry(
         types: [_FakeType(driver)],
@@ -332,6 +348,102 @@ void main() {
   });
 
   group('regressions from the code review', () {
+    test('a connection that never says anything at all is caught too', () {
+      // THE case that was reported: connect succeeds, the row goes green,
+      // and no CI-V ever arrives — so there is no first reading to start
+      // watching from. Arming only when a reading lands would miss exactly
+      // the connection that never produces one.
+      fakeAsync((async) {
+        late EquipmentNode node;
+        gato.addNode(typeKey: 'fake-type', config: {'host': 'radio.local'}).then((n) => node = n);
+        async.flushMicrotasks();
+        gato.connect(node.uuid);
+        async.flushMicrotasks();
+        expect(gato.stateFor(node.uuid).status, EquipmentStatus.connected);
+
+        async.elapse(const Duration(seconds: 31));
+        expect(gato.stateFor(node.uuid).stale, isTrue,
+            reason: 'green with nothing behind it is the failure, not the success');
+      });
+    });
+
+    test('a connection that goes silent stops presenting its last reading as current', () {
+      // Observed on an IC-705 reconnect: full handshake, stream request
+      // accepted, and then no CI-V at all — while the row showed a
+      // confident green and a frequency from minutes earlier. Liveness that
+      // counts datagrams cannot see this; the session's keepalives were
+      // flowing the whole time. Only the readings can.
+      fakeAsync((async) {
+        late EquipmentNode node;
+        gato.addNode(typeKey: 'fake-type', config: {'host': 'radio.local'}).then((n) => node = n);
+        async.flushMicrotasks();
+        gato.connect(node.uuid);
+        async.flushMicrotasks();
+
+        session().radioReports(freqKHz: 14074, mode: 'USB');
+        async.flushMicrotasks();
+        expect(gato.stateFor(node.uuid).stale, isFalse);
+
+        // Still connected, still keepalive-healthy, saying nothing.
+        async.elapse(const Duration(seconds: 31));
+        expect(gato.stateFor(node.uuid).status, EquipmentStatus.connected,
+            reason: 'silent is not the same as disconnected');
+        expect(gato.stateFor(node.uuid).stale, isTrue);
+
+        // And one word from the radio clears it — including a repeat, since
+        // a radio answering "still 14074" is a radio that is answering.
+        session().radioReports(freqKHz: 14074, mode: 'USB');
+        async.flushMicrotasks();
+        expect(gato.stateFor(node.uuid).stale, isFalse);
+      });
+    });
+
+    test('a disconnect says so while it is happening, not only once it is done', () async {
+      // Saying goodbye takes real time on some transports — the Icom
+      // network teardown is most of a second of deliberately spaced
+      // datagrams. A row that still claims to be connected throughout, then
+      // blinks, reads as a hang.
+      final node = await connectedRadio();
+      expect(gato.stateFor(node.uuid).status, EquipmentStatus.connected);
+
+      final statuses = <EquipmentStatus>[];
+      gato.addListener(() => statuses.add(gato.stateFor(node.uuid).status));
+
+      await gato.disconnect(node.uuid);
+
+      expect(statuses, contains(EquipmentStatus.disconnecting));
+      expect(statuses.last, EquipmentStatus.disconnected);
+      expect(statuses.indexOf(EquipmentStatus.disconnecting),
+          lessThan(statuses.lastIndexOf(EquipmentStatus.disconnected)),
+          reason: 'and in that order');
+    });
+
+    test('the driver is handed the config the TYPE supplies, not the raw one', () async {
+      // A type may know something about its protocol that is no user's
+      // setting — the IC-705's 0xE1 network controller address is one, and
+      // getting it wrong is SILENT. The manager must route through
+      // driverConfig rather than passing the stored config straight down.
+      final node = await gato.addNode(typeKey: 'fake-type', config: {'host': 'radio.local'});
+      await gato.connect(node.uuid);
+
+      expect(driver.configs.single['injectedByType'], 'yes');
+      expect(driver.configs.single['host'], 'radio.local', reason: 'and the real config survives');
+    });
+
+    test('secret fields come from the type, not from the manager naming one', () async {
+      // A manager that asked "is this the IC-705 type?" would write THIS
+      // type's secret into the plain prefs blob, silently — which is the
+      // whole failure mode, and no IC-705 test can catch it.
+      final node = await gato.addNode(
+        typeKey: 'fake-type',
+        config: {'host': 'radio.local', 'apiKey': 'super-secret'},
+      );
+
+      expect(gato.nodes.single.config.containsKey('apiKey'), isFalse);
+      expect(settings.stationEquipment.toString(), isNot(contains('super-secret')));
+      expect(await settings.equipmentSecret(node.uuid, 'apiKey'), 'super-secret');
+    });
+
     test('a band pick does not deafen the app to the radio for good', () async {
       await connectedRadio();
       session().radioReports(freqKHz: 14074, mode: 'USB');
