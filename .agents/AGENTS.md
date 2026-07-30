@@ -22,6 +22,8 @@ This is a multi-platform app for Amateur Radio Logging, called "Ham2K Logger" (o
 
 ## Development Process
 
+- **Tasks, bugs and ideas live in [CaBo](https://cabo.ham2k.com/halo), not GitHub Issues.** Cards are referenced as `HALO-24` and deep-link as `https://cabo.ham2k.com/halo/c/24`. Read and write them through the `cabo` MCP server — `list_projects`, `search_cards`, `get_board`, `get_card`, `create_card`, `update_card`, `move_card`, `add_comment`, `get_activity`. Leave a comment on the card whenever the state a human would want to see changes: the PR link once the branch exists, findings that redefine the task, and the merge. GitHub still owns **pull requests**, code review and CI — only issue tracking moved.
+
 - Agents should always work on a worktree, with a branch off of the `dist` branch on the `app-halo-dist` origin (that branch is usually available as `dist` locally too, tracking `app-halo-dist/dist`). As new tasks come in, use new branches and rename the worktree to keep the name relevant.
 
 - **`app-halo-dist/dist` is the only base.** Never `main` or `main-public`: both are stale local-only branches, absent from every remote, and every commit on them is already in `dist` under a different SHA. Do not trust the branch a session hands you — a worktree created for you may already be on the wrong base, and nothing about it looks unusual. Check before editing:
@@ -33,8 +35,8 @@ This is a multi-platform app for Amateur Radio Logging, called "Ham2K Logger" (o
 - The `/next` skill (`.claude/skills/next/SKILL.md`) runs the start-of-task
   steps below — refreshing `dist`, naming the branch and worktree, bootstrapping
   a fresh worktree, opening a draft PR with the plan, then a first pass and
-  updating that PR. Invoke it as `/next <issue URL or description>`; keep it in
-  step with this section.
+  updating that PR. Invoke it as `/next <card ref, PR number, or description>`;
+  keep it in step with this section.
 
 - The `/iterate` skill (`.claude/skills/iterate/SKILL.md`) covers the
   "iterate with the developer" step: it keeps a build running and refreshed and
@@ -69,9 +71,9 @@ This is a multi-platform app for Amateur Radio Logging, called "Ham2K Logger" (o
 
 - New branches should be pushed to the `app-halo-dist` origin, never to regular `origin`.
 
-- Branches for Issues should be named using the convention `<issue-number>-<short-description>` and should be based off the `dist` branch of the `app-halo-dist` repository (available as `dist` locally too).
+- Branches for CaBo cards should be named `halo-<number>-<short-description>` (e.g. `halo-24-cabo-tracker` for `HALO-24`) and should be based off the `dist` branch of the `app-halo-dist` repository (available as `dist` locally too). Keep the `halo-` prefix: CaBo numbers restart at 1, so a bare `24-…` is ambiguous against the older branches named after GitHub Issue numbers.
 
-- PRs should mention relevant Issues if possible, with the keyword "closes", "fixes" or "resolves" as appropriate.
+- PRs should cite the CaBo card ref and link to it. GitHub's "closes"/"fixes"/"resolves" keywords do **not** reach CaBo, so nothing auto-closes a card — `/merge` comments on it and moves it to the board's done column instead.
 
 - Agents should name their sessions with "[HaLo]" as a prefix, followed by a very short description of the work at hand. It's ok to update the name of the session as we go along.
 
@@ -92,6 +94,8 @@ This is a multi-platform app for Amateur Radio Logging, called "Ham2K Logger" (o
 - When adding commits, identify yourself as "Sebastian Delmont <sd@ham2k.com>"
 
 - When interacting with Github, use `export GH_TOKEN="$(security find-generic-password -a claude-code -s gh-bot-token -w)"` in the session to authenticate API requests as ham2k-bot.
+
+- CaBo authenticates over OAuth through its MCP server — there is no shell token and no CLI, so it can only be reached via the `cabo` tools. It's registered at user scope in `~/.claude.json`, so every worktree gets it, but MCP servers only load at session start: if the tools are missing, the fix is a session restart, not a config change.
 
 ---
 
