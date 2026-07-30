@@ -1520,14 +1520,28 @@ class _PulsingGpsPin extends StatefulWidget {
 }
 
 class _PulsingGpsPinState extends State<_PulsingGpsPin> with SingleTickerProviderStateMixin {
+  // A repeating controller repaints the scene at the display's refresh rate
+  // for as long as the pin is mounted — on the web, where a GPS fix can stay
+  // pending indefinitely (unanswered permission prompt), that pegged a CPU
+  // core. So the pulse winds down in phases: smooth for a few full cycles,
+  // then a brief dim blip every couple of seconds (frames are only drawn
+  // during the blip), then a static icon.
+  static const _pulsePeriod = Duration(milliseconds: 1000);
+  static const _smoothPhase = Duration(seconds: 6); // 3 full out-and-back pulses
+  static const _blipInterval = Duration(seconds: 2);
+  static const _blipFade = Duration(milliseconds: 250);
+  static const _animationCutoff = Duration(seconds: 30);
+
   late final AnimationController _controller;
   late final Animation<double> _animation;
+  Timer? _phaseTimer;
+  Timer? _blipTimer;
 
   @override
   void initState() {
     super.initState();
     _controller = AnimationController(
-      duration: const Duration(milliseconds: 1000),
+      duration: _pulsePeriod,
       vsync: this,
     );
     _animation = CurvedAnimation(parent: _controller, curve: Curves.easeInOut);
@@ -1535,13 +1549,42 @@ class _PulsingGpsPinState extends State<_PulsingGpsPin> with SingleTickerProvide
     final isTest = !kIsWeb && io.Platform.environment.containsKey('FLUTTER_TEST');
     if (!isTest) {
       _controller.repeat(reverse: true);
+      _phaseTimer = Timer(_smoothPhase, _startBlipPhase);
     } else {
       _controller.value = 1.0;
     }
   }
 
+  void _startBlipPhase() {
+    _controller.stop();
+    _controller.animateTo(1.0, duration: _blipFade);
+    _blipTimer = Timer.periodic(_blipInterval, (_) => _blip());
+    _phaseTimer = Timer(_animationCutoff - _smoothPhase, _settle);
+  }
+
+  void _blip() {
+    _controller.animateTo(0.35, duration: _blipFade).whenCompleteOrCancel(() {
+      if (!mounted || _blipTimer == null) return;
+      _controller.animateTo(1.0, duration: _blipFade);
+    });
+  }
+
+  void _settle() {
+    _blipTimer?.cancel();
+    _blipTimer = null;
+    _controller.stop();
+    _controller.value = 1.0;
+  }
+
   @override
   void dispose() {
+    _phaseTimer?.cancel();
+    // Null (not just cancel) before disposing the controller: disposal
+    // cancels an in-flight blip, which fires its whenCompleteOrCancel
+    // callback synchronously while mounted is still true — the null check
+    // in _blip is what stops it from touching the disposed controller.
+    _blipTimer?.cancel();
+    _blipTimer = null;
     _controller.dispose();
     super.dispose();
   }
