@@ -1060,6 +1060,14 @@ void main() {
       final titleBottom = tester.getBottomLeft(find.text('Station Name')).dy;
       final fieldTop = tester.getTopLeft(find.byType(TextField)).dy;
       expect(fieldTop, greaterThan(titleBottom));
+
+      // And it spans the row above it. Stacking alone doesn't say that: the
+      // layout this replaced put the input in a fixed 140px box, which would
+      // still sit below the title and still pass the check above.
+      expect(
+        tester.getSize(find.byType(TextField)).width,
+        closeTo(tester.getSize(find.byType(ListTile)).width, 1),
+      );
     });
 
     testWidgets('a toggle (checkbox) field stays trailing even on a narrow panel', (tester) async {

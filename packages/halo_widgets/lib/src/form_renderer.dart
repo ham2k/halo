@@ -744,10 +744,10 @@ class FormRendererState extends State<FormRenderer> {
 
   static const _iconRowSupportedTypes = {'text', 'multiline', 'email', 'callsign', 'number', 'secret', 'select', 'checkbox'};
 
-  /// Field types whose compact trailing control this can build. 'list',
-  /// 'radio', and 'account' fall back to their normal full-width rendering
-  /// even when `icon` is set — a multi-option or multi-row control doesn't
-  /// have an obvious single-line compact form.
+  /// Field types that can take the icon-row shape (see [_buildIconRowField]).
+  /// 'list', 'radio', and 'account' fall back to their normal full-width
+  /// rendering even when `icon` is set — a multi-option or multi-row control
+  /// has no single control to hang off a labeled row.
   Widget _buildField(Map<String, dynamic> el, ThemeData theme) {
     final fieldType = el['fieldType'] as String?;
     if (el['icon'] != null && _iconRowSupportedTypes.contains(fieldType)) {
@@ -945,7 +945,7 @@ class FormRendererState extends State<FormRenderer> {
         leading: leading,
         title: title,
         subtitle: subtitle,
-        trailing: _buildCompactControl(el, fieldType, devModeColor, expanded: false),
+        trailing: _buildCompactControl(el, fieldType, devModeColor),
       );
     }
 
@@ -962,7 +962,7 @@ class FormRendererState extends State<FormRenderer> {
             title: title,
             subtitle: subtitle,
           ),
-          _buildCompactControl(el, fieldType, devModeColor, expanded: true),
+          _buildCompactControl(el, fieldType, devModeColor),
         ],
       ),
     );
@@ -1098,12 +1098,10 @@ class FormRendererState extends State<FormRenderer> {
         _ => _isUppercase(fieldType, el) ? const [UpperCaseTextFormatter()] : null,
       };
 
-  /// The input a text-like icon-row field renders full-width, stacked
-  /// beneath its title/description (the caller passes `expanded: true`,
-  /// selecting start-aligned full-width text), or the trailing Switch for a
-  /// 'checkbox' (which ignores `expanded`).
-  Widget _buildCompactControl(Map<String, dynamic> el, String fieldType, Color? devModeColor,
-      {required bool expanded}) {
+  /// The control an icon-row field renders: the trailing Switch for a
+  /// 'checkbox', or — for every text-like type — the input the row stacks
+  /// full-width beneath its title/description.
+  Widget _buildCompactControl(Map<String, dynamic> el, String fieldType, Color? devModeColor) {
     final key = el['key'] as String;
 
     switch (fieldType) {
@@ -1142,11 +1140,10 @@ class FormRendererState extends State<FormRenderer> {
         // Secret fields get the show/hide toggle (SecretTextField owns the
         // obscuring + the password autofill hint); every other type keeps the
         // plain field with its per-type capitalization/formatters.
-        final Widget field = fieldType == 'secret'
+        return fieldType == 'secret'
             ? SecretTextField(
                 controller: _controllers[key],
                 focusNode: _focusNodes[key],
-                textAlign: expanded ? TextAlign.start : TextAlign.end,
                 keyboardType: _keyboardTypeFor(fieldType),
                 textInputAction: TextInputAction.done,
                 onSubmitted: (_) => submit(),
@@ -1156,7 +1153,6 @@ class FormRendererState extends State<FormRenderer> {
                 selectAllOnFocus: false,
                 controller: _controllers[key],
                 focusNode: _focusNodes[key],
-                textAlign: expanded ? TextAlign.start : TextAlign.end,
                 maxLines: fieldType == 'multiline' ? null : 1,
                 minLines: fieldType == 'multiline' ? 3 : null,
                 textCapitalization: _capitalizationFor(fieldType, el),
@@ -1167,9 +1163,6 @@ class FormRendererState extends State<FormRenderer> {
                 onSubmitted: (_) => submit(),
                 decoration: decoration,
               );
-        // Stacked (expanded) fields fill the available width; an unexpanded
-        // field keeps the legacy 140px compact width.
-        return expanded ? field : SizedBox(width: 140, child: field);
     }
   }
 
