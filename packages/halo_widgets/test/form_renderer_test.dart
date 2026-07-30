@@ -1053,6 +1053,70 @@ void main() {
       // Still on the same row as the title, not pushed below it.
       expect((switchTop - titleTop).abs(), lessThan(20));
     });
+
+    // The icon-row input carries no label of its own — the label is the row's
+    // title above it — so `placeholder` is the only hint this layout can show.
+    // The full-width layout has always honored it (via poloFieldDecoration),
+    // so without this the same element rendered its hint or silently dropped
+    // it depending only on whether it also carried an `icon`.
+    testWidgets('an icon-row field shows its placeholder as a hint, secret fields included', (tester) async {
+      await tester.pumpWidget(MaterialApp(
+        home: Scaffold(
+          body: FormRenderer(
+            formDefinition: const {
+              'elements': [
+                {
+                  'type': 'field',
+                  'fieldType': 'text',
+                  'key': 'stationCall',
+                  'label': 'Station Call',
+                  'icon': 'account',
+                  'placeholder': 'Same as the operator',
+                },
+                {
+                  'type': 'field',
+                  'fieldType': 'secret',
+                  'key': 'apiKey',
+                  'label': 'API Key',
+                  'icon': 'shield-account',
+                  'placeholder': 'Already stored',
+                },
+              ],
+            },
+            initialState: const {},
+            onSubmit: (_) {},
+            onCancel: () {},
+          ),
+        ),
+      ));
+
+      // Both fields took the icon-row path — a ListTile holding the label,
+      // with the input stacked beneath and no label of its own. That's what
+      // makes the hints below the compact decoration's, not
+      // poloFieldDecoration's.
+      expect(find.byType(ListTile), findsNWidgets(2));
+      final fields = tester.widgetList<TextField>(find.byType(TextField)).toList();
+      expect(fields, hasLength(2));
+      for (final field in fields) {
+        expect(field.decoration?.labelText, isNull);
+      }
+
+      expect(find.text('Same as the operator'), findsOneWidget);
+      // The secret's placeholder is the case that motivates this: a panel
+      // showing that a password is already in the keychain without loading it
+      // into the form. It has to render as a hint, never as the value.
+      expect(find.text('Already stored'), findsOneWidget);
+      expect(tester.widget<TextField>(find.byType(TextField).last).controller?.text, isEmpty);
+
+      // And it has to *read* as a hint. Material's default renders a hint at
+      // full strength, which beside an empty field is indistinguishable from
+      // a real value — so a "password already saved" placeholder would look
+      // like the password itself. The full-width layout dims to 0.38 for the
+      // same reason; both hints here must be equally faint.
+      for (final hint in ['Same as the operator', 'Already stored']) {
+        expect(tester.widget<Text>(find.text(hint)).style?.color?.a, lessThan(0.5), reason: '$hint renders value-weight');
+      }
+    });
   });
 
   group('FormRenderer header style', () {

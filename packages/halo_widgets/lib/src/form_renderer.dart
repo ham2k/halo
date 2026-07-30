@@ -1121,7 +1121,24 @@ class FormRendererState extends State<FormRenderer> {
                 },
         );
       default: // text, multiline, email, callsign, number, secret
-        const decoration = InputDecoration(border: InputBorder.none, isDense: true, contentPadding: EdgeInsets.zero);
+        // The label lives in the row above, so `placeholder` is the only hint
+        // this layout can show — and the full-width layout already honors it
+        // (via poloFieldDecoration). Dropping it here made the same element
+        // render differently depending on whether it carried an `icon`.
+        //
+        // The hint needs dimming to the same 0.38 poloFieldDecoration uses,
+        // and for the same reason: Material's default renders it at full
+        // strength, which is indistinguishable from an actual value sitting
+        // in the field. Only the color, not a font size — this field inherits
+        // its size and has no scale factor to apply (ui-scaling.md).
+        final hintColor = devModeColor ?? Theme.of(context).colorScheme.onSurfaceVariant;
+        final decoration = InputDecoration(
+          border: InputBorder.none,
+          isDense: true,
+          contentPadding: EdgeInsets.zero,
+          hintText: el['placeholder'] as String?,
+          hintStyle: TextStyle(color: hintColor.withValues(alpha: 0.38)),
+        );
         // Secret fields get the show/hide toggle (SecretTextField owns the
         // obscuring + the password autofill hint); every other type keeps the
         // plain field with its per-type capitalization/formatters.
