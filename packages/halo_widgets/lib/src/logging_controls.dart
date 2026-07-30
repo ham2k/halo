@@ -54,6 +54,7 @@ import 'secondary_control_row.dart';
 import 'text_formatters.dart';
 import 'theme.dart';
 import 'timed_undo_slot.dart';
+import 'wall_clock.dart';
 
 /// Async callsign enrichment (name, location, grid…) from lookup sources —
 /// the hardcoded callsign-annotation pre-step plus every registered
@@ -668,11 +669,6 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   /// Overrides the QSO's timestamp when set via the Time control; null
   /// means "use the current time at the moment of logging."
   int? _manualStartAtMillis;
-
-  /// Ticks once a second so the Time chip shows a live clock while nothing
-  /// overrides it — only runs while it's actually needed (see
-  /// _updateClockTicker), not for the whole panel's lifetime.
-  Timer? _clockTicker;
 
   Timer? _lookupDebounce;
   String? _lookupFor;
@@ -1479,7 +1475,6 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
       if (widget.suggestedQso != null) _applySuggestedQso(widget.suggestedQso!);
     }
     _seedTimeFields();
-    _updateClockTicker();
     _callController.addListener(_onCallChanged);
     _interpretationUpdatesSub = widget.interpretationUpdates?.listen(_onInterpretationUpdate);
     _freqController.addListener(_onFreqChanged);
@@ -1644,7 +1639,6 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
       } else {
         _resetLocalFields();
       }
-      _updateClockTicker();
       // Self- vs other-spot eligibility can differ per extension (e.g. only
       // self-spotting an operation with an activation ref) — re-fetch
       // whenever what's being spotted changes.
@@ -1673,7 +1667,6 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     if (widget.suggestedQso != null && !identical(oldWidget.suggestedQso, widget.suggestedQso)) {
       _resetEditingSessionState();
       _applySuggestedQso(widget.suggestedQso!);
-      _updateClockTicker();
       _spotSources = const [];
       _spotStatus.clear();
       _refreshSpotSources();
@@ -2032,7 +2025,6 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     widget.controller?.detach();
     widget.radioUpdates?.removeListener(_onRadioVfoChanged);
     WidgetsBinding.instance.removeObserver(this);
-    _clockTicker?.cancel();
     _lookupDebounce?.cancel();
     _scoreDebounce?.cancel();
     _vfoDebounce?.cancel();
@@ -2672,7 +2664,6 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     }
     setState(() {
       _manualStartAtMillis = DateTime.utc(year, month, day, hour, minute).millisecondsSinceEpoch;
-      _updateClockTicker();
     });
   }
 
@@ -2680,21 +2671,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     setState(() {
       _manualStartAtMillis = null;
       _seedTimeFields();
-      _updateClockTicker();
     });
-  }
-
-  /// Starts or stops the live-clock ticker to match whether the Time chip
-  /// currently needs one — only while nothing overrides the timestamp and
-  /// we're not editing an existing (necessarily historical) QSO.
-  void _updateClockTicker() {
-    final needsTicking = _effectiveStartAtMillis == null;
-    if (needsTicking && _clockTicker == null) {
-      _clockTicker = Timer.periodic(const Duration(seconds: 1), (_) => setState(() {}));
-    } else if (!needsTicking && _clockTicker != null) {
-      _clockTicker!.cancel();
-      _clockTicker = null;
-    }
   }
 
   String get _timeSummary {
@@ -2815,6 +2792,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
         key: spec.key,
         icon: spec.icon,
         summary: spec.summary,
+        liveSummary: spec.liveSummary,
         iconColor: spec.iconColor,
         focusNode: _pillFocusFor(spec.key),
         expandedBuilder: (context) => Focus(
@@ -2831,6 +2809,12 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
         key: 'time',
         icon: MdiIcons.clockOutline,
         summary: _timeSummary,
+        // Live clock only while nothing overrides the timestamp (a manually
+        // set time, or editing an existing — necessarily historical — QSO);
+        // the chip re-reads this once per second without rebuilding the
+        // panel (the old approach — a panel-level ticker calling setState on
+        // all of _LoggingControlsState — cost a full panel rebuild per tick).
+        liveSummary: _effectiveStartAtMillis == null ? () => _timeSummary : null,
         expandedBuilder: (context) => Row(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -4343,7 +4327,6 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
       }
 
       _seedTimeFields();
-      _updateClockTicker();
     });
     _populating = false;
     if (widget.editingQso == null) _pushVfoToRadioService();
@@ -4763,7 +4746,6 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
       _commandMessage = null;
       _currentInterpretation = null;
       _retainedInterpretation = null;
-      _updateClockTicker();
     });
     _notifyCommandMessage(null);
   }
@@ -4803,7 +4785,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     _populating = true;
     _applyFieldsFromData(data);
     _manualStartAtMillis = data['startAtMillis'] as int?;
-    setState(() => _updateClockTicker());
+    setState(() {});
     _populating = false;
     // _populating suppressed _onCallChanged's own _scheduleLookup()/
     // _scheduleScore() calls above (population isn't the user typing) —
@@ -5965,9 +5947,10 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   }
 
   /// Default state: operation statistics (QSO count, rates) from the app
-  /// layer's `operationStatsLines`, behind a timer icon. Refreshes live via
-  /// the panel's 1 Hz clock ticker while composing (see `_updateClockTicker`).
-  Widget _buildOperationStats(ThemeData theme) {
+  /// layer's `operationStatsLines`, behind a timer icon. The rate lines are
+  /// time-relative, so they re-derive once per second — scoped to this row
+  /// via [OncePerSecond] rather than ticking the whole panel.
+  Widget _buildOperationStats(ThemeData theme) => OncePerSecond(builder: (context, _) {
     final lines = widget.operationStatsLines?.call(widget.qsos) ?? const <String>[];
     if (lines.isEmpty) return const SizedBox.shrink();
     return _iconRows(
@@ -5986,7 +5969,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
           ),
       ],
     );
-  }
+  });
 
   /// Call-info state: line 1 flag + location, line 2 note/name, line 3 scoring
   /// notices — all in a column aligned past the leading person icon.

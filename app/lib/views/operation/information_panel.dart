@@ -87,7 +87,15 @@ class InformationPanel extends StatelessWidget {
       padding: EdgeInsets.all(16).add(PaneSafeArea.paddingOf(context)),
       children: [
         Text(context.t.loggingPanel.stats, style: theme.textTheme.titleSmall),
-        for (final line in operationStatsLines(context, qsos)) Text(line, style: theme.textTheme.bodyMedium),
+        // The stats' "since last" segment is now-relative — re-derive once a
+        // second (scoped to these lines) so it doesn't sit stale between QSO
+        // stream updates.
+        OncePerSecond(builder: (context, _) => Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            for (final line in operationStatsLines(context, qsos)) Text(line, style: theme.textTheme.bodyMedium),
+          ],
+        )),
         if (operationSummary != null) ...[
           const SizedBox(height: 16),
           Text(

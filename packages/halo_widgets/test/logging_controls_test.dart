@@ -6005,7 +6005,17 @@ void main() {
     testWidgets('Time chip shows a live clock, not a static "now" label', (tester) async {
       await tester.pumpWidget(host());
 
-      String summary() => (timeChip(tester).label as Text).data!;
+      // A live label is wrapped in OncePerSecond (the shared wall-clock
+      // heartbeat) instead of being a plain static Text — that wrapper is
+      // what makes it a clock rather than a snapshot.
+      expect(timeChip(tester).label, isA<OncePerSecond>());
+
+      String summary() => tester
+          .widget<Text>(find.descendant(
+            of: find.byWidget(timeChip(tester).label),
+            matching: find.byType(Text),
+          ))
+          .data!;
 
       // HH:MM:SSz — a real clock, matching app-polo's "17:06:49z" reference.
       // (Not asserting the value changes across a pump: DateTime.now() reads

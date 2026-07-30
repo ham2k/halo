@@ -31,6 +31,7 @@ export 'src/text_formatters.dart';
 export 'src/theme.dart';
 export 'src/timed_undo_slot.dart';
 export 'src/ui_scale.dart';
+export 'src/wall_clock.dart';
 export 'src/form_renderer.dart';
 export 'src/format_utils.dart';
 

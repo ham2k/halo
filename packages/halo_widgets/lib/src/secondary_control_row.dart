@@ -27,6 +27,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart' show OverflowBoxFit;
 
 import 'theme.dart';
+import 'wall_clock.dart';
 
 /// One control the row can show. Built by the screen/panel that owns the
 /// relevant state — some specs wrap a built-in Dart widget (Time, Radio),
@@ -39,6 +40,12 @@ class SecondaryControlSpec {
   final IconData icon;
   final String summary;
   final WidgetBuilder expandedBuilder;
+
+  /// For a summary that shows live wall-clock time (the Time chip): when
+  /// set, the chip re-evaluates this once per second via [OncePerSecond] and
+  /// shows its result instead of [summary] — the per-second rebuild stays
+  /// scoped to the chip's label instead of whatever State owns the spec.
+  final ValueGetter<String>? liveSummary;
 
   /// The control's accent color for its icon (issue #187), or null for the
   /// default theme color. Callers only set this once the field actually
@@ -58,6 +65,7 @@ class SecondaryControlSpec {
     required this.icon,
     required this.summary,
     required this.expandedBuilder,
+    this.liveSummary,
     this.iconColor,
     this.focusNode,
   });
@@ -750,7 +758,9 @@ class _ControlChip extends StatelessWidget {
         // extension to pick a color that works — same as the unselected case.
         color: control.iconColor ?? foreground,
       ),
-      label: Text(control.summary, style: TextStyle(color: foreground)),
+      label: control.liveSummary != null
+          ? OncePerSecond(builder: (_, _) => Text(control.liveSummary!(), style: TextStyle(color: foreground)))
+          : Text(control.summary, style: TextStyle(color: foreground)),
       selected: selected,
       showCheckmark: false,
       visualDensity: VisualDensity.compact,
