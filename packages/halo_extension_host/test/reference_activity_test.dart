@@ -11,16 +11,13 @@
 // no per-reference API, so every name and grid they show comes from the local
 // list, and a test with no list would exercise only the "unknown" path.
 
-import 'dart:io';
-
 import 'package:flutter_test/flutter_test.dart';
 import 'package:halo_extension_host/halo_extension_host.dart';
 
-void main() {
-  final assets = Directory('../../app/assets/extensions');
-  File bundle(String key) => File('${assets.path}/$key.js');
+import 'support/bundles.dart';
 
-  bool bundlesMissing() => !bundle('kernel').existsSync() || !bundle('wca').existsSync();
+void main() {
+  requireBundles();
 
   // Two Belgian castles a few km apart, plus one far away, so distance ranking
   // has something to get wrong.
@@ -51,11 +48,12 @@ void main() {
     },
   };
 
-  Future<ExtensionHost> startHost() async {
-    final host = await ExtensionHost.start(
-      kernelSource: bundle('kernel').readAsStringSync(),
-      extensions: [ExtensionBundle(key: 'wca', source: bundle('wca').readAsStringSync())],
-      onHostCall: (method, params) async {
+  // Hoisted, not written inline at the call site: `sharedHost` keys on the
+  // handler's identity, so a closure rebuilt per call would boot a host per
+  // call and defeat the sharing. The table it answers from is `const`, so one
+  // host serves every test here.
+  final Future<dynamic> Function(String, Map<String, dynamic>) castleLookups =
+      (method, params) async {
         switch (method) {
           case 'dbLookupSelectOne':
             return castles[params['key']];
@@ -73,18 +71,12 @@ void main() {
           default:
             return null;
         }
-      },
-    );
-    addTearDown(host.dispose);
-    return host;
-  }
+      };
+
+  Future<ExtensionHost> startHost() => sharedHost(['wca'], onHostCall: castleLookups);
 
   group('reference handling', () {
     test('a well-formed reference validates and is upper-cased', () async {
-      if (bundlesMissing()) {
-        markTestSkipped('bundles not built — run `npm run build` in extensions/ first');
-        return;
-      }
       final host = await startHost();
       final result = await host.invokeHook('ref:wcaActivation',
           method: 'validateRef', args: {'ref': {'type': 'wcaActivation', 'ref': 'on-00558'}});
@@ -93,10 +85,6 @@ void main() {
     }, timeout: const Timeout(Duration(seconds: 60)));
 
     test('a malformed reference is rejected', () async {
-      if (bundlesMissing()) {
-        markTestSkipped('bundles not built');
-        return;
-      }
       final host = await startHost();
       // WCA references are prefix-NNNNN; four digits is not enough.
       final result = await host.invokeHook('ref:wcaActivation',
@@ -105,10 +93,6 @@ void main() {
     }, timeout: const Timeout(Duration(seconds: 60)));
 
     test('a known reference is decorated from the local list', () async {
-      if (bundlesMissing()) {
-        markTestSkipped('bundles not built');
-        return;
-      }
       final host = await startHost();
       final ref = await host.invokeHook('ref:wcaActivation',
           method: 'decorateRef', args: {'ref': {'type': 'wcaActivation', 'ref': 'on-00558'}});
@@ -121,10 +105,6 @@ void main() {
     }, timeout: const Timeout(Duration(seconds: 60)));
 
     test('a well-formed reference the list has never heard of says so', () async {
-      if (bundlesMissing()) {
-        markTestSkipped('bundles not built');
-        return;
-      }
       final host = await startHost();
       final ref = await host.invokeHook('ref:wcaActivation',
           method: 'decorateRef', args: {'ref': {'type': 'wcaActivation', 'ref': 'ON-99999'}});
@@ -134,10 +114,6 @@ void main() {
     }, timeout: const Timeout(Duration(seconds: 60)));
 
     test('English and Belgian castle references resolve through WCA too', () async {
-      if (bundlesMissing()) {
-        markTestSkipped('bundles not built');
-        return;
-      }
       final host = await startHost();
       // ECA/BCA references ARE WCA references; WCA answers for them so one
       // typed while those extensions are disabled still resolves.
@@ -149,10 +125,6 @@ void main() {
     }, timeout: const Timeout(Duration(seconds: 60)));
 
     test('...and get an operation title, not just a decoration', () async {
-      if (bundlesMissing()) {
-        markTestSkipped('bundles not built');
-        return;
-      }
       final host = await startHost();
       // Title dispatch resolves to a SINGLE hook and WCA wins it by
       // registration order, so a handler that titled only its own
@@ -171,10 +143,6 @@ void main() {
 
   group('suggestions', () {
     test('nearby results are ranked by real distance, not query order', () async {
-      if (bundlesMissing()) {
-        markTestSkipped('bundles not built');
-        return;
-      }
       final host = await startHost();
       final suggestions = (await host.invokeHook('activity', key: 'wca', method: 'suggest', args: {
         'operation': {'uuid': 'op'},
@@ -188,10 +156,6 @@ void main() {
     }, timeout: const Timeout(Duration(seconds: 60)));
 
     test('a name search finds a castle and labels it', () async {
-      if (bundlesMissing()) {
-        markTestSkipped('bundles not built');
-        return;
-      }
       final host = await startHost();
       final suggestions = (await host.invokeHook('activity', key: 'wca', method: 'suggest', args: {
         'operation': {'uuid': 'op'},
@@ -205,10 +169,6 @@ void main() {
   });
 
   test('the operation control is keyed so `wca:` search scoping works', () async {
-    if (bundlesMissing()) {
-      markTestSkipped('bundles not built');
-      return;
-    }
     final host = await startHost();
     final controls = (await host.invokeHook('activity', key: 'wca', method: 'operationControls', args: {
       'operation': {'uuid': 'op'},
@@ -223,10 +183,6 @@ void main() {
   }, timeout: const Timeout(Duration(seconds: 60)));
 
   test('an activation contributes MY_SIG/MY_SIG_INFO and nothing else', () async {
-    if (bundlesMissing()) {
-      markTestSkipped('bundles not built');
-      return;
-    }
     final host = await startHost();
     final fields = (await host.invokeHook('adifFields', key: 'wca', method: 'fieldsForOneQSO', args: {
       'qso': {'their': {'call': 'W1AW'}},
@@ -238,10 +194,6 @@ void main() {
   }, timeout: const Timeout(Duration(seconds: 60)));
 
   test('fifty contacts activate a castle', () async {
-    if (bundlesMissing()) {
-      markTestSkipped('bundles not built');
-      return;
-    }
     final host = await startHost();
     final result = await host.invokeHook('scoring', key: 'wca', method: 'scoreQsos', args: {
       'operation': {

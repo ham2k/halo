@@ -17,10 +17,10 @@
 // It asserts only generous ceilings — the point is the printed table, not a
 // pass/fail gate, so this stays useful without becoming a flaky perf test.
 
-import 'dart:io';
-
 import 'package:flutter_test/flutter_test.dart';
 import 'package:halo_extension_host/halo_extension_host.dart';
+
+import 'support/bundles.dart';
 
 /// A contest-shaped log: many distinct calls, a realistic sprinkling of dupes,
 /// spread across bands and modes so every core rule does real work.
@@ -46,18 +46,14 @@ List<Map<String, dynamic>> buildLog(int count, {required DateTime start}) {
 }
 
 void main() {
-  final kernelFile = File('../../app/assets/extensions/kernel.js');
-  final scoringFile = File('../../app/assets/extensions/scoring.js');
+  requireBundles();
 
   test('benchmark: scoring cost by log size, full pass vs resumed append', () async {
-    if (!kernelFile.existsSync() || !scoringFile.existsSync()) {
-      markTestSkipped('bundles not built — run `npm run build` in extensions/ first');
-      return;
-    }
-
+    // Not `sharedHost`: this one measures the engine, so it wants an isolate-free
+    // host of its very own, unwarmed by anything another test did.
     final host = await ExtensionHost.start(
-      kernelSource: kernelFile.readAsStringSync(),
-      extensions: [ExtensionBundle(key: 'scoring', source: scoringFile.readAsStringSync())],
+      kernelSource: bundleSource('kernel'),
+      extensions: [ExtensionBundle(key: 'scoring', source: bundleSource('scoring'))],
       useIsolate: false,
     );
     addTearDown(host.dispose);

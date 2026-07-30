@@ -9,14 +9,12 @@
 // and the summary strings the operator actually reads are built inside the
 // runtime.
 
-import 'dart:io';
-
 import 'package:flutter_test/flutter_test.dart';
-import 'package:halo_extension_host/halo_extension_host.dart';
+
+import 'support/bundles.dart';
 
 void main() {
-  final assets = Directory('../../app/assets/extensions');
-  File bundle(String key) => File('${assets.path}/$key.js');
+  requireBundles();
 
   /// Distinct callsigns, one minute apart, so nothing here trips the duplicate
   /// rules by accident.
@@ -42,11 +40,7 @@ void main() {
     Map<String, dynamic> operation,
     List<Map<String, dynamic>> qsos,
   ) async {
-    final host = await ExtensionHost.start(
-      kernelSource: bundle('kernel').readAsStringSync(),
-      extensions: [ExtensionBundle(key: 'pota', source: bundle('pota').readAsStringSync())],
-    );
-    addTearDown(host.dispose);
+    final host = await sharedHost(['pota']);
     final result = await host.invokeHook(
       'scoring',
       key: 'pota',
@@ -61,13 +55,7 @@ void main() {
     return result?.cast<String, dynamic>();
   }
 
-  bool bundlesMissing() => !bundle('kernel').existsSync() || !bundle('pota').existsSync();
-
   test('an activation short of ten contacts reports the gap', () async {
-    if (bundlesMissing()) {
-      markTestSkipped('bundles not built — run `npm run build` in extensions/ first');
-      return;
-    }
     final result = await score(activating(['US-0001']), contacts(7));
     final activation = ((result!['operationSummary'] as Map)['activation'] as Map);
     expect(activation['summary'], '7/10');
@@ -76,10 +64,6 @@ void main() {
   }, timeout: const Timeout(Duration(seconds: 60)));
 
   test('ten contacts activate the park', () async {
-    if (bundlesMissing()) {
-      markTestSkipped('bundles not built');
-      return;
-    }
     final result = await score(activating(['US-0001']), contacts(10));
     final activation = ((result!['operationSummary'] as Map)['activation'] as Map);
     expect(activation['summary'], '10 ✓');
@@ -87,10 +71,6 @@ void main() {
   }, timeout: const Timeout(Duration(seconds: 60)));
 
   test('a two-park n-fer credits both parks and needs both to clear', () async {
-    if (bundlesMissing()) {
-      markTestSkipped('bundles not built');
-      return;
-    }
     final result = await score(activating(['US-0001', 'US-0002']), contacts(10));
     final activation = ((result!['operationSummary'] as Map)['activation'] as Map);
     expect(activation['activatedRefs'], {'US-0001': 10, 'US-0002': 10});
@@ -98,10 +78,6 @@ void main() {
   }, timeout: const Timeout(Duration(seconds: 60)));
 
   test('a repeat contact on the same band and day is a duplicate that does not count', () async {
-    if (bundlesMissing()) {
-      markTestSkipped('bundles not built');
-      return;
-    }
     final qsos = contacts(3);
     // A fourth contact with the same station as the first, same band and day.
     qsos.add({...contacts(1)[0], 'uuid': 'dupe', 'startAtMillis': DateTime.utc(2026, 7, 1, 13).millisecondsSinceEpoch});
@@ -114,10 +90,6 @@ void main() {
   }, timeout: const Timeout(Duration(seconds: 60)));
 
   test('the next UTC day starts the park over, and says so', () async {
-    if (bundlesMissing()) {
-      markTestSkipped('bundles not built');
-      return;
-    }
     final qsos = [...contacts(2, day: 1), ...contacts(1, day: 2)];
     final result = await score(activating(['US-0001']), qsos);
 
@@ -132,10 +104,6 @@ void main() {
   }, timeout: const Timeout(Duration(seconds: 60)));
 
   test('hunting a park while activating another credits both sides', () async {
-    if (bundlesMissing()) {
-      markTestSkipped('bundles not built');
-      return;
-    }
     final qsos = contacts(1);
     qsos[0]['refs'] = [
       {'type': 'pota', 'ref': 'US-9001'},

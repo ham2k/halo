@@ -18,10 +18,10 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:halo_extension_host/halo_extension_host.dart';
 
+import 'support/bundles.dart';
+
 void main() {
-  final assets = Directory('../../app/assets/extensions');
-  File bundle(String key) => File('${assets.path}/$key.js');
-  bool missing() => !bundle('kernel').existsSync() || !bundle('satellites').existsSync();
+  requireBundles();
 
   /// Verbatim from the feed.
   const soFifty = {
@@ -52,10 +52,15 @@ void main() {
 
   /// The lookup rows the data file would have produced, answered straight from
   /// `onHostCall` — this is the bird table the extension reads.
+  // Keyed by the fixture, not by the handler: the handler closes over `birds`
+  // and is rebuilt per call, so identity would boot a host per call. Sharing
+  // WITHIN a fixture is sound; sharing across fixtures would not be, because
+  // the extension caches its transponder table after the first load
+  // (activities/satellites/src/index.ts) — hence the fixture in the key.
   Future<ExtensionHost> hostWithBirds(List<Map<String, dynamic>> birds) async {
-    final host = await ExtensionHost.start(
-      kernelSource: bundle('kernel').readAsStringSync(),
-      extensions: [ExtensionBundle(key: 'satellites', source: bundle('satellites').readAsStringSync())],
+    final host = await sharedHost(
+      ['satellites'],
+      cacheKey: 'birds:${birds.map((b) => b['name']).join(',')}',
       onHostCall: (method, params) async {
         if (method == 'dbLookupSelectAll' && params['category'] == 'satellites') {
           return [
@@ -71,7 +76,6 @@ void main() {
         return null;
       },
     );
-    addTearDown(host.dispose);
     return host;
   }
 
@@ -93,10 +97,6 @@ void main() {
 
   group('what an award reads', () {
     test('a satellite QSO carries PROP_MODE, SAT_NAME and the downlink band', () async {
-      if (missing()) {
-        markTestSkipped('bundles not built — run `npm run build` in extensions/ first');
-        return;
-      }
       final host = await hostWithBirds([soFifty]);
       // The picker has to have been opened once for the bird table to be
       // loaded, which is what the export path then reads.
@@ -112,10 +112,6 @@ void main() {
     }, timeout: const Timeout(Duration(seconds: 60)));
 
     test("AO-7's two transponders report DIFFERENT downlink bands", () async {
-      if (missing()) {
-        markTestSkipped('bundles not built');
-        return;
-      }
       // The reason the reference names a transponder at all. Same bird, same
       // SAT_NAME, different BAND_RX — a reference that named only "AO-7" could
       // not express this, and would be wrong half the time.
@@ -128,19 +124,11 @@ void main() {
     }, timeout: const Timeout(Duration(seconds: 60)));
 
     test('a QSO with no satellite gets no satellite fields', () async {
-      if (missing()) {
-        markTestSkipped('bundles not built');
-        return;
-      }
       final host = await hostWithBirds([soFifty]);
       expect(await adifFor(host, null), isEmpty);
     }, timeout: const Timeout(Duration(seconds: 60)));
 
     test('an unknown bird still logs the name, just without a band', () async {
-      if (missing()) {
-        markTestSkipped('bundles not built');
-        return;
-      }
       // A reference from a log recorded before this bird was retired from the
       // feed. PROP_MODE and SAT_NAME are what the reference itself says, so
       // they are always right; only BAND_RX needs the table.
@@ -157,10 +145,6 @@ void main() {
     // what went wrong three times earlier in this port, so this one was read
     // first and is pinned here.
     test('maps the real feed into one row per bird', () async {
-      if (missing()) {
-        markTestSkipped('bundles not built');
-        return;
-      }
       final feed = jsonDecode(File('test/fixtures/satellites.json').readAsStringSync()) as List;
       final host = await hostWithBirds(const []);
       final rows = (await host.invokeHook('dataFile',
@@ -181,10 +165,6 @@ void main() {
     }, timeout: const Timeout(Duration(seconds: 60)));
 
     test('every bird in the feed yields a usable transponder', () async {
-      if (missing()) {
-        markTestSkipped('bundles not built');
-        return;
-      }
       // End to end on real data: feed → rows → picker options. A bird that
       // produced a malformed code would be unselectable and would export a
       // wrong SAT_NAME.
@@ -212,10 +192,6 @@ void main() {
 
   group('the pickers', () {
     test('the per-QSO control offers one option per transponder', () async {
-      if (missing()) {
-        markTestSkipped('bundles not built');
-        return;
-      }
       final host = await hostWithBirds([soFifty, aoSeven]);
       final controls = await host.invokeHook('activity',
           key: 'satellites',
@@ -242,10 +218,6 @@ void main() {
     }, timeout: const Timeout(Duration(seconds: 60)));
 
     test("the operation's bird becomes each QSO's suggested value", () async {
-      if (missing()) {
-        markTestSkipped('bundles not built');
-        return;
-      }
       // app-polo's `operation.satellite` without a second place to store it: a
       // pass is one choice, not one per contact.
       final host = await hostWithBirds([soFifty]);
@@ -265,10 +237,6 @@ void main() {
     }, timeout: const Timeout(Duration(seconds: 60)));
 
     test('the operation control is a form, which is all operationControls renders', () async {
-      if (missing()) {
-        markTestSkipped('bundles not built');
-        return;
-      }
       // `operationControls` handles `refList` and `form` only — an `options`
       // control there would silently never appear.
       final host = await hostWithBirds([soFifty, aoSeven]);
@@ -297,10 +265,6 @@ void main() {
             timeout: const Duration(seconds: 10)) as Map?;
 
     test('names the bird AND tunes the radio, which a control cannot', () async {
-      if (missing()) {
-        markTestSkipped('bundles not built');
-        return;
-      }
       // The whole reason the command exists: a `loggingControls` selection
       // writes its value and cannot ask for anything else to happen.
       final host = await hostWithBirds([soFifty]);
@@ -314,10 +278,6 @@ void main() {
     }, timeout: const Timeout(Duration(seconds: 60)));
 
     test('a linear transponder is tuned but not moded', () async {
-      if (missing()) {
-        markTestSkipped('bundles not built');
-        return;
-      }
       // Only FM says anything about the mode. On a linear transponder the
       // operator chooses, and overwriting that would be worse than leaving it.
       final host = await hostWithBirds([aoSeven]);
@@ -328,10 +288,6 @@ void main() {
     }, timeout: const Timeout(Duration(seconds: 60)));
 
     test('it keeps the other activities on the QSO', () async {
-      if (missing()) {
-        markTestSkipped('bundles not built');
-        return;
-      }
       // `updateQso` writes whole fields, so a bare refs list would drop the
       // park this contact is also for — a silent loss of the operator's log.
       final host = await hostWithBirds([soFifty]);
@@ -350,10 +306,6 @@ void main() {
     }, timeout: const Timeout(Duration(seconds: 60)));
 
     test('a bare SAT asks for the bird rather than guessing one', () async {
-      if (missing()) {
-        markTestSkipped('bundles not built');
-        return;
-      }
       final host = await hostWithBirds([soFifty]);
       final result = await interpret(host, 'SAT');
       expect(result!['expectsParams'], isTrue);
@@ -361,10 +313,6 @@ void main() {
     }, timeout: const Timeout(Duration(seconds: 60)));
 
     test('an unknown bird is an error, not a silent no-op', () async {
-      if (missing()) {
-        markTestSkipped('bundles not built');
-        return;
-      }
       final host = await hostWithBirds([soFifty]);
       final result = await interpret(host, 'SAT NOTABIRD');
       expect(result!['error'], contains('NOTABIRD'));
@@ -372,10 +320,6 @@ void main() {
     }, timeout: const Timeout(Duration(seconds: 60)));
 
     test('anything that is not SAT is left to other commands', () async {
-      if (missing()) {
-        markTestSkipped('bundles not built');
-        return;
-      }
       // `interpret` fans out to every command hook; returning non-null for
       // something else would hijack it.
       final host = await hostWithBirds([soFifty]);

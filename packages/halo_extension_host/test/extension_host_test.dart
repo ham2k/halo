@@ -7,10 +7,10 @@
 // activation, invoke/invokeAll, per-extension KV namespacing, and error
 // isolation without any network.
 
-import 'dart:io';
-
 import 'package:flutter_test/flutter_test.dart';
 import 'package:halo_extension_host/halo_extension_host.dart';
+
+import 'support/bundles.dart';
 
 // Plain JS (no bundler): registers two lookup hooks, one of which fails,
 // and a KV round-trip hook. Declared hooks come AFTER defineExtension to prove
@@ -53,16 +53,11 @@ var kvHook = {
 ''';
 
 void main() {
-  final kernelFile = File('../../app/assets/extensions/kernel.js');
+  requireBundles();
 
   test('kernel + extension end to end: activation, invoke, invokeAll, KV', () async {
-    if (!kernelFile.existsSync()) {
-      markTestSkipped('kernel.js not built — run `npm run build` in extensions/ first');
-      return;
-    }
-
     final host = await ExtensionHost.start(
-      kernelSource: kernelFile.readAsStringSync(),
+      kernelSource: bundleSource('kernel'),
       extensions: const [ExtensionBundle(key: 'test-extension', source: _testPluginSource)],
       useIsolate: false,
     );
@@ -102,13 +97,8 @@ void main() {
   });
 
   test('kernel passes settings (locale) to hook context', () async {
-    if (!kernelFile.existsSync()) {
-      markTestSkipped('kernel.js not built — run `npm run build` in extensions/ first');
-      return;
-    }
-
     final host = await ExtensionHost.start(
-      kernelSource: kernelFile.readAsStringSync(),
+      kernelSource: bundleSource('kernel'),
       extensions: const [
         ExtensionBundle(
           key: 'locale-test-extension',
@@ -152,15 +142,9 @@ __polo.defineExtension({
   });
 
   test('ADIF export extension generates a valid file from QSON', () async {
-    final adifFile = File('../../app/assets/extensions/adif.js');
-    if (!kernelFile.existsSync() || !adifFile.existsSync()) {
-      markTestSkipped('bundles not built — run `npm run build` in extensions/ first');
-      return;
-    }
-
     final host = await ExtensionHost.start(
-      kernelSource: kernelFile.readAsStringSync(),
-      extensions: [ExtensionBundle(key: 'adif', source: adifFile.readAsStringSync())],
+      kernelSource: bundleSource('kernel'),
+      extensions: [ExtensionBundle(key: 'adif', source: bundleSource('adif'))],
       useIsolate: false,
     );
     addTearDown(host.dispose);
@@ -213,15 +197,9 @@ __polo.defineExtension({
   // end-to-end is that the flag survives the bridge and changes the answer —
   // a bundle that ignored it would look identical from the Dart side.
   test('compactFilenames reaches the bundle and changes the name it offers AND writes', () async {
-    final adifFile = File('../../app/assets/extensions/adif.js');
-    if (!kernelFile.existsSync() || !adifFile.existsSync()) {
-      markTestSkipped('bundles not built — run `npm run build` in extensions/ first');
-      return;
-    }
-
     final host = await ExtensionHost.start(
-      kernelSource: kernelFile.readAsStringSync(),
-      extensions: [ExtensionBundle(key: 'adif', source: adifFile.readAsStringSync())],
+      kernelSource: bundleSource('kernel'),
+      extensions: [ExtensionBundle(key: 'adif', source: bundleSource('adif'))],
       useIsolate: false,
     );
     addTearDown(host.dispose);
@@ -258,18 +236,11 @@ __polo.defineExtension({
   });
 
   test('POTA extension composes ADIF fields into the export (in-runtime hooks)', () async {
-    final adifFile = File('../../app/assets/extensions/adif.js');
-    final potaFile = File('../../app/assets/extensions/pota.js');
-    if (!kernelFile.existsSync() || !adifFile.existsSync() || !potaFile.existsSync()) {
-      markTestSkipped('bundles not built — run `npm run build` in extensions/ first');
-      return;
-    }
-
     final host = await ExtensionHost.start(
-      kernelSource: kernelFile.readAsStringSync(),
+      kernelSource: bundleSource('kernel'),
       extensions: [
-        ExtensionBundle(key: 'adif', source: adifFile.readAsStringSync()),
-        ExtensionBundle(key: 'pota', source: potaFile.readAsStringSync()),
+        ExtensionBundle(key: 'adif', source: bundleSource('adif')),
+        ExtensionBundle(key: 'pota', source: bundleSource('pota')),
       ],
       useIsolate: false,
     );
@@ -316,13 +287,8 @@ __polo.defineExtension({
   });
 
   test('samples list is capped instead of growing without bound', () async {
-    if (!kernelFile.existsSync()) {
-      markTestSkipped('kernel.js not built — run `npm run build` in extensions/ first');
-      return;
-    }
-
     final host = await ExtensionHost.start(
-      kernelSource: kernelFile.readAsStringSync(),
+      kernelSource: bundleSource('kernel'),
       extensions: const [],
       useIsolate: false,
     );
@@ -338,15 +304,9 @@ __polo.defineExtension({
   });
 
   test('radio-commands extension: band, frequency and mode via invokeHookAll', () async {
-    final radioCommandsFile = File('../../app/assets/extensions/radio-commands.js');
-    if (!kernelFile.existsSync() || !radioCommandsFile.existsSync()) {
-      markTestSkipped('bundles not built — run `npm run build` in extensions/ first');
-      return;
-    }
-
     final host = await ExtensionHost.start(
-      kernelSource: kernelFile.readAsStringSync(),
-      extensions: [ExtensionBundle(key: 'radio-commands', source: radioCommandsFile.readAsStringSync())],
+      kernelSource: bundleSource('kernel'),
+      extensions: [ExtensionBundle(key: 'radio-commands', source: bundleSource('radio-commands'))],
       useIsolate: false,
     );
     addTearDown(host.dispose);
@@ -421,18 +381,11 @@ __polo.defineExtension({
   });
 
   test('call-notes extension: raw dataFile round-trip, lookup notes, and //KEY expansion', () async {
-    final lookupsFile = File('../../app/assets/extensions/lookups.js');
-    final callNotesFile = File('../../app/assets/extensions/call-notes.js');
-    if (!kernelFile.existsSync() || !lookupsFile.existsSync() || !callNotesFile.existsSync()) {
-      markTestSkipped('bundles not built — run `npm run build` in extensions/ first');
-      return;
-    }
-
     final host = await ExtensionHost.start(
-      kernelSource: kernelFile.readAsStringSync(),
+      kernelSource: bundleSource('kernel'),
       extensions: [
-        ExtensionBundle(key: 'lookups', source: lookupsFile.readAsStringSync()),
-        ExtensionBundle(key: 'call-notes', source: callNotesFile.readAsStringSync()),
+        ExtensionBundle(key: 'lookups', source: bundleSource('lookups')),
+        ExtensionBundle(key: 'call-notes', source: bundleSource('call-notes')),
       ],
       useIsolate: false,
     );
@@ -487,18 +440,11 @@ __polo.defineExtension({
   });
 
   test('SOTA extension composes ADIF fields into the export (in-runtime hooks)', () async {
-    final adifFile = File('../../app/assets/extensions/adif.js');
-    final sotaFile = File('../../app/assets/extensions/sota.js');
-    if (!kernelFile.existsSync() || !adifFile.existsSync() || !sotaFile.existsSync()) {
-      markTestSkipped('bundles not built — run `npm run build` in extensions/ first');
-      return;
-    }
-
     final host = await ExtensionHost.start(
-      kernelSource: kernelFile.readAsStringSync(),
+      kernelSource: bundleSource('kernel'),
       extensions: [
-        ExtensionBundle(key: 'adif', source: adifFile.readAsStringSync()),
-        ExtensionBundle(key: 'sota', source: sotaFile.readAsStringSync()),
+        ExtensionBundle(key: 'adif', source: bundleSource('adif')),
+        ExtensionBundle(key: 'sota', source: bundleSource('sota')),
       ],
       useIsolate: false,
     );
@@ -538,15 +484,9 @@ __polo.defineExtension({
   });
 
   test('Scoring extension detects dupes and tallies DXCC/bands/modes in one batched call', () async {
-    final scoringFile = File('../../app/assets/extensions/scoring.js');
-    if (!kernelFile.existsSync() || !scoringFile.existsSync()) {
-      markTestSkipped('bundles not built — run `npm run build` in extensions/ first');
-      return;
-    }
-
     final host = await ExtensionHost.start(
-      kernelSource: kernelFile.readAsStringSync(),
-      extensions: [ExtensionBundle(key: 'scoring', source: scoringFile.readAsStringSync())],
+      kernelSource: bundleSource('kernel'),
+      extensions: [ExtensionBundle(key: 'scoring', source: bundleSource('scoring'))],
       useIsolate: false,
     );
     addTearDown(host.dispose);
@@ -650,14 +590,9 @@ __polo.defineExtension({
   });
 
   test('form hooks: getDefinition, validateField, transformField, and dynamic showForm', () async {
-    if (!kernelFile.existsSync()) {
-      markTestSkipped('kernel.js not built — run `npm run build` in extensions/ first');
-      return;
-    }
-
     ExtensionHost? host;
     host = await ExtensionHost.start(
-      kernelSource: kernelFile.readAsStringSync(),
+      kernelSource: bundleSource('kernel'),
       extensions: const [
         ExtensionBundle(
           key: 'form-test-extension',
@@ -813,13 +748,8 @@ __polo.defineExtension({
   });
 
   test('invokeHookAll reports an unserializable aggregate as an error, not a timeout', () async {
-    if (!kernelFile.existsSync()) {
-      markTestSkipped('kernel.js not built — run `npm run build` in extensions/ first');
-      return;
-    }
-
     final host = await ExtensionHost.start(
-      kernelSource: kernelFile.readAsStringSync(),
+      kernelSource: bundleSource('kernel'),
       extensions: const [
         ExtensionBundle(
           key: 'circular-extension',
@@ -859,13 +789,8 @@ __polo.defineExtension({
   });
 
   test('a host call whose handler returns an unencodable value fails the hook instead of wedging it', () async {
-    if (!kernelFile.existsSync()) {
-      markTestSkipped('kernel.js not built — run `npm run build` in extensions/ first');
-      return;
-    }
-
     final host = await ExtensionHost.start(
-      kernelSource: kernelFile.readAsStringSync(),
+      kernelSource: bundleSource('kernel'),
       extensions: const [
         ExtensionBundle(
           key: 'weird-extension',
@@ -906,13 +831,8 @@ __polo.defineExtension({
   });
 
   test('a never-settling hook times out without poisoning later calls', () async {
-    if (!kernelFile.existsSync()) {
-      markTestSkipped('kernel.js not built — run `npm run build` in extensions/ first');
-      return;
-    }
-
     final host = await ExtensionHost.start(
-      kernelSource: kernelFile.readAsStringSync(),
+      kernelSource: bundleSource('kernel'),
       extensions: const [
         ExtensionBundle(
           key: 'stuck-extension',
@@ -948,13 +868,8 @@ __polo.defineExtension({
   });
 
   test('an extension cannot read another extension KV namespace by spoofing ns', () async {
-    if (!kernelFile.existsSync()) {
-      markTestSkipped('kernel.js not built — run `npm run build` in extensions/ first');
-      return;
-    }
-
     final host = await ExtensionHost.start(
-      kernelSource: kernelFile.readAsStringSync(),
+      kernelSource: bundleSource('kernel'),
       extensions: const [
         ExtensionBundle(
           key: 'attacker',
@@ -997,13 +912,8 @@ var boundHostCall = null
   });
 
   test('a bundle cannot define an extension key it was not loaded under', () async {
-    if (!kernelFile.existsSync()) {
-      markTestSkipped('kernel.js not built — run `npm run build` in extensions/ first');
-      return;
-    }
-
     final host = await ExtensionHost.start(
-      kernelSource: kernelFile.readAsStringSync(),
+      kernelSource: bundleSource('kernel'),
       extensions: const [
         ExtensionBundle(
           // The host loads this bundle as 'honest', but its source tries to
@@ -1031,13 +941,8 @@ __polo.defineExtension({ key: 'victim', name: 'Impersonator', version: '0.0.1', 
   });
 
   test('host.fetch is refused for a domain the extension did not declare', () async {
-    if (!kernelFile.existsSync()) {
-      markTestSkipped('kernel.js not built — run `npm run build` in extensions/ first');
-      return;
-    }
-
     final host = await ExtensionHost.start(
-      kernelSource: kernelFile.readAsStringSync(),
+      kernelSource: bundleSource('kernel'),
       extensions: const [
         ExtensionBundle(
           key: 'fetcher',
@@ -1122,14 +1027,9 @@ var boundFetch = null
   });
 
   test('hook context (settings) is cached across an invokeAll fan-out and drops on invalidation', () async {
-    if (!kernelFile.existsSync()) {
-      markTestSkipped('kernel.js not built — run `npm run build` in extensions/ first');
-      return;
-    }
-
     var getSettingsCalls = 0;
     final host = await ExtensionHost.start(
-      kernelSource: kernelFile.readAsStringSync(),
+      kernelSource: bundleSource('kernel'),
       extensions: const [
         ExtensionBundle(
           key: 'ctx-extension',
@@ -1174,13 +1074,8 @@ __polo.defineExtension({
   });
 
   test('a command hook can push a later interpretation via host.updateInterpretation (issue #189)', () async {
-    if (!kernelFile.existsSync()) {
-      markTestSkipped('kernel.js not built — run `npm run build` in extensions/ first');
-      return;
-    }
-
     final host = await ExtensionHost.start(
-      kernelSource: kernelFile.readAsStringSync(),
+      kernelSource: bundleSource('kernel'),
       extensions: const [ExtensionBundle(key: 'test-extension', source: _asyncInterpretationSource)],
       useIsolate: false,
     );

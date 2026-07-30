@@ -8,17 +8,15 @@
 // needs the key, so a keyless build has no towers at all, while WWFF and LLOTA
 // keep their references and lose only spots.
 
-import 'dart:io';
-
 import 'package:flutter_test/flutter_test.dart';
 import 'package:halo_extension_host/halo_extension_host.dart';
+
+import 'support/bundles.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 
 void main() {
-  final assets = Directory('../../app/assets/extensions');
-  File bundle(String key) => File('${assets.path}/$key.js');
-  bool missing(String key) => !bundle('kernel').existsSync() || !bundle(key).existsSync();
+  requireBundles();
 
   ({List<http.Request> sent, MockClient client}) recorder(String body, {int status = 200}) {
     final sent = <http.Request>[];
@@ -34,12 +32,12 @@ void main() {
   Future<ExtensionHost> hostFor(String key,
       {String? apiKey, http.Client? client, List<String> domains = const []}) async {
     final host = await ExtensionHost.start(
-      kernelSource: bundle('kernel').readAsStringSync(),
-      extensions: [ExtensionBundle(key: key, source: bundle(key).readAsStringSync())],
+      kernelSource: bundleSource('kernel'),
+      extensions: [ExtensionBundle(key: key, source: bundleSource(key))],
       secrets: apiKey == null ? const {} : {key: {'${key.toUpperCase()}_API_KEY': apiKey}},
       fetchAllowlists: {key: domains},
       httpClient: client,
-      onHostCall: (method, params) async => null,
+      onHostCall: nullHostCall,
     );
     addTearDown(host.dispose);
     return host;
@@ -47,10 +45,6 @@ void main() {
 
   group('keys and degradation', () {
     test('WWFF keeps its references but offers no spots without a key', () async {
-      if (missing('wwff')) {
-        markTestSkipped('bundles not built — run `npm run build` in extensions/ first');
-        return;
-      }
       // The directory is public; only the feed is gated. A keyless build — a
       // fresh checkout, a fork — must still resolve park references.
       final rec = recorder('[]');
@@ -69,10 +63,6 @@ void main() {
     }, timeout: const Timeout(Duration(seconds: 60)));
 
     test('WWFF sends the key as a header once it has one', () async {
-      if (missing('wwff')) {
-        markTestSkipped('bundles not built');
-        return;
-      }
       final rec = recorder('[]');
       final host = await hostFor('wwff',
           apiKey: 'wwff-secret', client: rec.client, domains: ['wwff.co', 'spots.wwff.co']);
@@ -86,10 +76,6 @@ void main() {
     }, timeout: const Timeout(Duration(seconds: 60)));
 
     test('TOTA puts its key in the list URL, and says so plainly when it has none', () async {
-      if (missing('tota')) {
-        markTestSkipped('bundles not built');
-        return;
-      }
       // TOTA's LIST is gated, not just its spots — the one award in the port
       // that a keyless build cannot use at all.
       final withKey = await hostFor('tota', apiKey: 'tota-secret');
@@ -130,10 +116,6 @@ void main() {
     }
 
     test('wwff keeps active parks and resolves the DXCC entity prefix', () async {
-      if (missing('wwff')) {
-        markTestSkipped('bundles not built');
-        return;
-      }
       final entries = await mapRows('wwff', 'wwff-all-parks', 'mapCsvBatch', 'rows', [
         {'reference': 'KFF-0001', 'name': 'Acadia', 'status': 'active', 'latitude': '44.35',
          'longitude': '-68.21', 'iaruLocator': 'FN54VH', 'dxccEnum': '291'},
@@ -149,10 +131,6 @@ void main() {
     }, timeout: const Timeout(Duration(seconds: 60)));
 
     test('llota reads reference_code and scopes by its country part', () async {
-      if (missing('llota')) {
-        markTestSkipped('bundles not built');
-        return;
-      }
       final entries = await mapRows('llota', 'llota-all-references', 'mapJsonBatch', 'entries', [
         {'reference_code': 'LLUS-0001', 'name': 'Lake Placid', 'latitude': 44.28, 'longitude': -73.98},
       ]);
@@ -164,10 +142,6 @@ void main() {
     }, timeout: const Timeout(Duration(seconds: 60)));
 
     test('tota keeps the award fields it publishes', () async {
-      if (missing('tota')) {
-        markTestSkipped('bundles not built');
-        return;
-      }
       final entries = await mapRows('tota', 'tota-all-towers', 'mapJsonBatch', 'entries', [
         {'ref': 'OKR-0001', 'name': 'Ještěd', 'lat': 50.73, 'lon': 15.00, 'height': 94},
       ]);
@@ -182,10 +156,6 @@ void main() {
 
   group('feeds', () {
     test('wwff reads spot times in SECONDS', () async {
-      if (missing('wwff')) {
-        markTestSkipped('bundles not built');
-        return;
-      }
       // The only feed in the port publishing epoch seconds; treated as millis
       // every spot would land in January 1970.
       final rec = recorder('[{"activator":"w1aw","reference":"KFF-0001","frequency_khz":14285,'
@@ -202,10 +172,6 @@ void main() {
     }, timeout: const Timeout(Duration(seconds: 60)));
 
     test('llota drops spots whose comments say QRT', () async {
-      if (missing('llota')) {
-        markTestSkipped('bundles not built');
-        return;
-      }
       // Showing an operator who has packed up is worse than showing nothing.
       final rec = recorder('['
           '{"id":1,"callsign":"W1AW","reference":"LLUS-0001","reference_name":"Placid",'
@@ -225,10 +191,6 @@ void main() {
   });
 
   test('llota splits a multi-lake contact and names each in LLOTA_REF', () async {
-    if (missing('llota')) {
-      markTestSkipped('bundles not built');
-      return;
-    }
     // LLOTA is POTA-shaped: one record per hunted lake, and the award's own
     // field names the single lake that record is for.
     final host = await hostFor('llota');
@@ -253,10 +215,6 @@ void main() {
   }, timeout: const Timeout(Duration(seconds: 60)));
 
   test('wwff joins its hunted parks into one record', () async {
-    if (missing('wwff')) {
-      markTestSkipped('bundles not built');
-      return;
-    }
     // Unlike LLOTA — app-polo registers no combinations for WWFF at all.
     final host = await hostFor('wwff');
     expect(

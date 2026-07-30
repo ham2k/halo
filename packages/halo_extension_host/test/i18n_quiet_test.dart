@@ -9,28 +9,29 @@
 // real failure and is not. createTranslator now declares compatibilityJSON v3.
 
 import 'dart:convert';
-import 'dart:io';
-
 import 'package:flutter_test/flutter_test.dart';
 import 'package:halo_extension_host/halo_extension_host.dart';
 
+import 'support/bundles.dart';
+
 void main() {
-  final assets = Directory('../../app/assets/extensions');
-  File bundle(String key) => File('${assets.path}/$key.js');
+  requireBundles();
 
   test('building a translator logs no Intl-compatibility error', () async {
-    if (!bundle('kernel').existsSync() || !bundle('scoring').existsSync()) {
-      markTestSkipped('bundles not built — run `npm run build` in extensions/ first');
-      return;
-    }
+    // Its OWN host, deliberately not `sharedHost`. This asserts on the host's
+    // whole log stream, so a shared host would fold in every other test's
+    // output — and the translator is built once per host
+    // (extensions/sdk/src/i18n.ts caches it), so on a reused host the very log
+    // line this looks for would already have been emitted before the test ran,
+    // making the assertion vacuous rather than merely noisy.
     final host = await ExtensionHost.start(
-      kernelSource: bundle('kernel').readAsStringSync(),
-      extensions: [ExtensionBundle(key: 'scoring', source: bundle('scoring').readAsStringSync())],
+      kernelSource: bundleSource('kernel'),
+      extensions: [ExtensionBundle(key: 'scoring', source: bundleSource('scoring'))],
     );
     addTearDown(host.dispose);
-
     final logs = <String>[];
-    host.logs.listen(logs.add);
+    final subscription = host.logs.listen(logs.add);
+    addTearDown(subscription.cancel);
 
     // scoreQsos renders tally labels, which is what builds a translator.
     final result = await host.invokeHook('scoring', key: 'core', method: 'scoreQsos', args: {

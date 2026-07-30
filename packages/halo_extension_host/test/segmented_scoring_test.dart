@@ -10,14 +10,13 @@
 // on the operation's station call, so a segment that changes either shows up in
 // the score rather than only in an argument.
 
-import 'dart:io';
-
 import 'package:flutter_test/flutter_test.dart';
 import 'package:halo_extension_host/halo_extension_host.dart';
 
+import 'support/bundles.dart';
+
 void main() {
-  final assets = Directory('../../app/assets/extensions');
-  File bundle(String key) => File('${assets.path}/$key.js');
+  requireBundles();
 
   Map<String, dynamic> qso(int i, String call, {String band = '20m', int day = 28}) => {
         'uuid': 'q$i',
@@ -38,11 +37,7 @@ void main() {
   const park = {'type': 'pota', 'ref': 'US-0001'};
 
   Future<Map<String, dynamic>?> score(Map<String, dynamic> args) async {
-    final host = await ExtensionHost.start(
-      kernelSource: bundle('kernel').readAsStringSync(),
-      extensions: [ExtensionBundle(key: 'cqww', source: bundle('cqww').readAsStringSync())],
-    );
-    addTearDown(host.dispose);
+    final host = await sharedHost(['cqww']);
     final result = await host.invokeHook(
       'scoring',
       key: 'cqww',
@@ -54,10 +49,6 @@ void main() {
   }
 
   test('without segments the harness behaves exactly as before', () async {
-    if (!bundle('kernel').existsSync() || !bundle('cqww').existsSync()) {
-      markTestSkipped('bundles not built — run `npm run build` in extensions/ first');
-      return;
-    }
     final result = await score({
       'operation': {
         'uuid': 'op',
@@ -75,10 +66,6 @@ void main() {
   }, timeout: const Timeout(Duration(seconds: 60)));
 
   test('a segment that changes the contest mode changes what scores', () async {
-    if (!bundle('kernel').existsSync() || !bundle('cqww').existsSync()) {
-      markTestSkipped('bundles not built — run `npm run build` in extensions/ first');
-      return;
-    }
     // Two QSOs, both CW. The operation starts as a CW contest and a break
     // switches it to SSB — so the second QSO is now in the wrong mode and must
     // stop counting. If the harness ignored segments, both would score.
@@ -129,10 +116,6 @@ void main() {
   }, timeout: const Timeout(Duration(seconds: 60)));
 
   test('a scorer sees the ref its own segment restates, not the selection ref', () async {
-    if (!bundle('kernel').existsSync() || !bundle('cqww').existsSync()) {
-      markTestSkipped('bundles not built — run `npm run build` in extensions/ first');
-      return;
-    }
     // Same shape, inverted: selection happened on the CW ref, but every QSO
     // falls inside an SSB segment. All of them are SSB, so all must count —
     // which only holds if the harness re-resolved the ref per segment rather
@@ -172,10 +155,6 @@ void main() {
   }, timeout: const Timeout(Duration(seconds: 60)));
 
   test('a contest that starts at a break does not claim the log before it', () async {
-    if (!bundle('kernel').existsSync() || !bundle('cqww').existsSync()) {
-      markTestSkipped('bundles not built — run `npm run build` in extensions/ first');
-      return;
-    }
     // Scorer selection spans every segment, so a contest confined to the back
     // half of a log gets invoked over the WHOLE log. Nothing else stops it from
     // counting the casual QSOs that came first — the harness has to, by seeing
@@ -211,10 +190,6 @@ void main() {
   }, timeout: const Timeout(Duration(seconds: 60)));
 
   test('a contest that ends at a break stops scoring there', () async {
-    if (!bundle('kernel').existsSync() || !bundle('cqww').existsSync()) {
-      markTestSkipped('bundles not built — run `npm run build` in extensions/ first');
-      return;
-    }
     // The mirror case, and the one an operator actually produces: contest all
     // Saturday, park activation on Sunday. Sunday's QSOs are not contest QSOs
     // and must not reach the day summary either — a Cabrillo built from this
@@ -246,20 +221,11 @@ void main() {
   }, timeout: const Timeout(Duration(seconds: 60)));
 
   test('an always-scoped scorer is untouched by the gate', () async {
-    if (!bundle('kernel').existsSync() || !bundle('scoring').existsSync()) {
-      markTestSkipped('bundles not built — run `npm run build` in extensions/ first');
-      return;
-    }
     // The gate keys on the scorer's own refTypes. Core scoring is scoped
     // 'always', so it has none, is handed no ref to begin with, and must keep
     // seeing every QSO however the segments are drawn — otherwise segmenting a
     // log would silently switch off the scoring every operation depends on.
-    final host = await ExtensionHost.start(
-      kernelSource: bundle('kernel').readAsStringSync(),
-      extensions: [ExtensionBundle(key: 'scoring', source: bundle('scoring').readAsStringSync())],
-    );
-    addTearDown(host.dispose);
-
+    final host = await sharedHost(['scoring']);
     final result = await host.invokeHook(
       'scoring',
       key: 'core',
@@ -314,11 +280,7 @@ void main() {
         ];
 
     Future<Map<String, dynamic>?> scoreStateparks(Map<String, dynamic> args) async {
-      final host = await ExtensionHost.start(
-        kernelSource: bundle('kernel').readAsStringSync(),
-        extensions: [ExtensionBundle(key: 'stateparks', source: bundle('stateparks').readAsStringSync())],
-      );
-      addTearDown(host.dispose);
+      final host = await sharedHost(['stateparks']);
       final result = await host.invokeHook(
         'scoring',
         key: 'stateparks',
@@ -330,10 +292,6 @@ void main() {
     }
 
     test('the park it credits is the one the segment was activating', () async {
-      if (!bundle('kernel').existsSync() || !bundle('stateparks').existsSync()) {
-        markTestSkipped('bundles not built — run `npm run build` in extensions/ first');
-        return;
-      }
       final atAda = tenQsos(0);
       final atHoc = tenQsos(10);
       final movedAt = atHoc.first['startAtMillis'] as int;
@@ -366,10 +324,6 @@ void main() {
     }, timeout: const Timeout(Duration(seconds: 60)));
 
     test('a park worked too little to activate still does not count', () async {
-      if (!bundle('kernel').existsSync() || !bundle('stateparks').existsSync()) {
-        markTestSkipped('bundles not built — run `npm run build` in extensions/ first');
-        return;
-      }
       // The same move, but the operator only made three QSOs at the second park
       // before the weather turned. POTA's threshold is ten, so that park is not
       // activated and cannot be claimed as a multiplier — the per-QSO points are
@@ -399,10 +353,6 @@ void main() {
     }, timeout: const Timeout(Duration(seconds: 60)));
 
     test('a stretch the event was not running is not scored at all', () async {
-      if (!bundle('kernel').existsSync() || !bundle('stateparks').existsSync()) {
-        markTestSkipped('bundles not built — run `npm run build` in extensions/ first');
-        return;
-      }
       // The case worth pinning for THIS scorer specifically: a break that keeps
       // the park but drops the event — the operator carried on activating after
       // the event's 8-hour window closed. Those contacts are POTA's and not the
@@ -452,8 +402,8 @@ void main() {
 
     Future<Map<String, dynamic>?> live({List<Map<String, dynamic>>? segments}) async {
       final host = await ExtensionHost.start(
-        kernelSource: bundle('kernel').readAsStringSync(),
-        extensions: [ExtensionBundle(key: 'cqww', source: bundle('cqww').readAsStringSync())],
+        kernelSource: bundleSource('kernel'),
+        extensions: [ExtensionBundle(key: 'cqww', source: bundleSource('cqww'))],
         onHostCall: (method, params) async => method == 'getQsos' ? log : null,
       );
       addTearDown(host.dispose);
@@ -478,10 +428,6 @@ void main() {
     }
 
     test('does not call a pre-contest contact a duplicate', () async {
-      if (!bundle('kernel').existsSync() || !bundle('cqww').existsSync()) {
-        markTestSkipped('bundles not built — run `npm run build` in extensions/ first');
-        return;
-      }
       final result = await live(segments: [
         segment(dawnOfTime, [park]),
         segment(breakAt, [cqwwCW]),
@@ -494,10 +440,6 @@ void main() {
     }, timeout: const Timeout(Duration(seconds: 60)));
 
     test('still sees a duplicate made inside the contest', () async {
-      if (!bundle('kernel').existsSync() || !bundle('cqww').existsSync()) {
-        markTestSkipped('bundles not built — run `npm run build` in extensions/ first');
-        return;
-      }
       // The same log with the contest running throughout: now the earlier
       // W1AW IS a contest QSO and the candidate is a dupe. Without this the
       // test above would pass on a scorer that had simply stopped working.
@@ -509,10 +451,6 @@ void main() {
     }, timeout: const Timeout(Duration(seconds: 60)));
 
     test('an unsegmented operation is unaffected', () async {
-      if (!bundle('kernel').existsSync() || !bundle('cqww').existsSync()) {
-        markTestSkipped('bundles not built — run `npm run build` in extensions/ first');
-        return;
-      }
       final result = await live();
       expect((result!['alerts'] as List), contains('duplicate'));
     }, timeout: const Timeout(Duration(seconds: 60)));

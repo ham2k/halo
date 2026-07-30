@@ -12,17 +12,13 @@
 // delegating back to the `adif` extension inside the same kernel — a stub would
 // prove neither.
 
-import 'dart:io';
-
 import 'package:flutter_test/flutter_test.dart';
 import 'package:halo_extension_host/halo_extension_host.dart';
 
-void main() {
-  final assets = Directory('../../app/assets/extensions');
-  File bundle(String key) => File('${assets.path}/$key.js');
+import 'support/bundles.dart';
 
-  bool bundlesMissing() =>
-      !bundle('kernel').existsSync() || !bundle('adif').existsSync() || !bundle('pota').existsSync();
+void main() {
+  requireBundles();
 
   Map<String, dynamic> operation(List<String> parks) => {
         'uuid': 'op',
@@ -43,23 +39,9 @@ void main() {
       },
   ];
 
-  Future<ExtensionHost> startHost() async {
-    final host = await ExtensionHost.start(
-      kernelSource: bundle('kernel').readAsStringSync(),
-      extensions: [
-        ExtensionBundle(key: 'adif', source: bundle('adif').readAsStringSync()),
-        ExtensionBundle(key: 'pota', source: bundle('pota').readAsStringSync()),
-      ],
-    );
-    addTearDown(host.dispose);
-    return host;
-  }
+  Future<ExtensionHost> startHost() => sharedHost(['adif', 'pota']);
 
   test('activating two parks offers one export per park', () async {
-    if (bundlesMissing()) {
-      markTestSkipped('bundles not built — run `npm run build` in extensions/ first');
-      return;
-    }
     final host = await startHost();
     final options = (await host.invokeHook(
       'export',
@@ -83,10 +65,6 @@ void main() {
   }, timeout: const Timeout(Duration(seconds: 60)));
 
   test('each file claims only its own park', () async {
-    if (bundlesMissing()) {
-      markTestSkipped('bundles not built');
-      return;
-    }
     final host = await startHost();
 
     Future<String> generate(String exportType) async {
@@ -121,10 +99,6 @@ void main() {
   }, timeout: const Timeout(Duration(seconds: 60)));
 
   test('an operation activating nothing offers no activity export', () async {
-    if (bundlesMissing()) {
-      markTestSkipped('bundles not built');
-      return;
-    }
     final host = await startHost();
     final options = await host.invokeHook(
       'export',
@@ -139,10 +113,6 @@ void main() {
   }, timeout: const Timeout(Duration(seconds: 60)));
 
   test('a park removed since the panel listed it is refused, not exported empty', () async {
-    if (bundlesMissing()) {
-      markTestSkipped('bundles not built');
-      return;
-    }
     final host = await startHost();
     // The option list and the export run are read at different moments. Without
     // a guard this filters every activation ref away and produces a valid ADIF
@@ -164,10 +134,6 @@ void main() {
   }, timeout: const Timeout(Duration(seconds: 60)));
 
   test('an exportType it never offered is refused, not delegated', () async {
-    if (bundlesMissing()) {
-      markTestSkipped('bundles not built');
-      return;
-    }
     final host = await startHost();
     // The delegation to `adif` fans back through the export category; a hook
     // that answered for 'adif' here would delegate to itself and hang the
@@ -190,10 +156,6 @@ void main() {
   // caught — and dropping it would silently leak the operator's notes into
   // every uploaded park log, or silently strip them when asked not to.
   test('an activity export forwards the private-data flag to the ADIF it delegates to', () async {
-    if (bundlesMissing()) {
-      markTestSkipped('bundles not built');
-      return;
-    }
     final host = await startHost();
 
     Future<String> adifFor({required bool includePrivateData}) async {

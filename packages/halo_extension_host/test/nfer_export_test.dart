@@ -8,17 +8,12 @@
 // and `pota` bundles through the real runtime — the record-splitting only
 // exists once the exporter can see POTA's `fieldCombinationsForOneQSO`.
 
-import 'dart:io';
-
 import 'package:flutter_test/flutter_test.dart';
-import 'package:halo_extension_host/halo_extension_host.dart';
+
+import 'support/bundles.dart';
 
 void main() {
-  final assets = Directory('../../app/assets/extensions');
-  File bundle(String key) => File('${assets.path}/$key.js');
-
-  bool bundlesMissing() =>
-      !bundle('kernel').existsSync() || !bundle('adif').existsSync() || !bundle('pota').existsSync();
+  requireBundles();
 
   final contactAt = DateTime.utc(2026, 7, 1, 14, 30, 15);
 
@@ -33,14 +28,7 @@ void main() {
       };
 
   Future<String> exportAdif(List<String> activating, Map<String, dynamic> qso) async {
-    final host = await ExtensionHost.start(
-      kernelSource: bundle('kernel').readAsStringSync(),
-      extensions: [
-        ExtensionBundle(key: 'adif', source: bundle('adif').readAsStringSync()),
-        ExtensionBundle(key: 'pota', source: bundle('pota').readAsStringSync()),
-      ],
-    );
-    addTearDown(host.dispose);
+    final host = await sharedHost(['adif', 'pota']);
     final result = await host.invokeHook(
       'export',
       key: 'adif',
@@ -64,10 +52,6 @@ void main() {
       adif.split('<EOR>').where((part) => part.contains('<CALL:')).toList();
 
   test('a two-park P2P is written as two records, one per park', () async {
-    if (bundlesMissing()) {
-      markTestSkipped('bundles not built — run `npm run build` in extensions/ first');
-      return;
-    }
     final adif = await exportAdif(['US-0001'], qsoHunting(['US-9001', 'US-9002']));
     final records = recordsIn(adif);
 
@@ -86,10 +70,6 @@ void main() {
   }, timeout: const Timeout(Duration(seconds: 60)));
 
   test('the second record is shifted a second so it is not read as a duplicate', () async {
-    if (bundlesMissing()) {
-      markTestSkipped('bundles not built');
-      return;
-    }
     final adif = await exportAdif(['US-0001'], qsoHunting(['US-9001', 'US-9002']));
     final records = recordsIn(adif);
 
@@ -102,10 +82,6 @@ void main() {
   }, timeout: const Timeout(Duration(seconds: 60)));
 
   test('a contact at a single park is still one record, unshifted', () async {
-    if (bundlesMissing()) {
-      markTestSkipped('bundles not built');
-      return;
-    }
     final adif = await exportAdif(['US-0001'], qsoHunting(['US-9001']));
     final records = recordsIn(adif);
 
@@ -114,10 +90,6 @@ void main() {
   }, timeout: const Timeout(Duration(seconds: 60)));
 
   test('an ordinary hunter, at no park, is one record', () async {
-    if (bundlesMissing()) {
-      markTestSkipped('bundles not built');
-      return;
-    }
     final adif = await exportAdif(['US-0001'], qsoHunting([]));
     final records = recordsIn(adif);
 
@@ -128,10 +100,6 @@ void main() {
   }, timeout: const Timeout(Duration(seconds: 60)));
 
   test('POTA declaring both hook methods does not write its fields twice', () async {
-    if (bundlesMissing()) {
-      markTestSkipped('bundles not built');
-      return;
-    }
     final adif = await exportAdif(['US-0001'], qsoHunting(['US-9001']));
     // `fieldsForOneQSO` and `fieldCombinationsForOneQSO` both answer for POTA;
     // the exporter must take only the combinations.

@@ -17,17 +17,15 @@
 // posts to one.
 
 import 'dart:convert';
-import 'dart:io';
-
 import 'package:flutter_test/flutter_test.dart';
 import 'package:halo_extension_host/halo_extension_host.dart';
+
+import 'support/bundles.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 
 void main() {
-  final assets = Directory('../../app/assets/extensions');
-  File bundle(String key) => File('${assets.path}/$key.js');
-  bool bundlesMissing() => !bundle('kernel').existsSync() || !bundle('pota').existsSync();
+  requireBundles();
 
   ({List<http.Request> sent, MockClient client}) recorder(String body, {int status = 200}) {
     final sent = <http.Request>[];
@@ -42,22 +40,18 @@ void main() {
 
   Future<ExtensionHost> hostWith(http.Client client, {List<String> domains = const ['api.pota.app', 'pota.app']}) async {
     final host = await ExtensionHost.start(
-      kernelSource: bundle('kernel').readAsStringSync(),
-      extensions: [ExtensionBundle(key: 'pota', source: bundle('pota').readAsStringSync())],
+      kernelSource: bundleSource('kernel'),
+      extensions: [ExtensionBundle(key: 'pota', source: bundleSource('pota'))],
       fetchAllowlists: {'pota': domains},
       httpClient: client,
       userAgent: 'Ham2K-Test/1.0',
-      onHostCall: (method, params) async => null,
+      onHostCall: nullHostCall,
     );
     addTearDown(host.dispose);
     return host;
   }
 
   test('a stubbed client answers what an extension fetches', () async {
-    if (bundlesMissing()) {
-      markTestSkipped('bundles not built — run `npm run build` in extensions/ first');
-      return;
-    }
     final rec = recorder('[{"spotId":1,"activator":"W1AW","frequency":"14285","mode":"SSB",'
         '"reference":"US-0001","name":"Acadia","locationDesc":"US-ME",'
         '"spotTime":"2026-07-01T12:00:00","spotter":"K2ABC","comments":"","source":"Web","count":1}]');
@@ -72,10 +66,6 @@ void main() {
   }, timeout: const Timeout(Duration(seconds: 60)));
 
   test('the request is observable, so a POST body can be asserted', () async {
-    if (bundlesMissing()) {
-      markTestSkipped('bundles not built');
-      return;
-    }
     // This is the capability that matters: a wrong payload is otherwise
     // invisible until somebody notices spots not appearing.
     final rec = recorder('{}');
@@ -94,10 +84,6 @@ void main() {
   }, timeout: const Timeout(Duration(seconds: 60)));
 
   test('the canonical User-Agent is still stamped', () async {
-    if (bundlesMissing()) {
-      markTestSkipped('bundles not built');
-      return;
-    }
     // Proof the seam is below the host's own behaviour rather than replacing
     // it: an extension cannot become anonymous by being tested.
     final rec = recorder('[]');
@@ -109,10 +95,6 @@ void main() {
   }, timeout: const Timeout(Duration(seconds: 60)));
 
   test('the manifest allowlist still blocks, stub or no stub', () async {
-    if (bundlesMissing()) {
-      markTestSkipped('bundles not built');
-      return;
-    }
     final rec = recorder('[]');
     final host = await hostWith(rec.client, domains: const []);
 

@@ -10,14 +10,12 @@
 // Exercised through the REAL runtime rather than a stub, because the value of
 // this hook is that four separately-written extensions agree on the projection.
 
-import 'dart:io';
-
 import 'package:flutter_test/flutter_test.dart';
-import 'package:halo_extension_host/halo_extension_host.dart';
+
+import 'support/bundles.dart';
 
 void main() {
-  final assets = Directory('../../app/assets/extensions');
-  File bundle(String key) => File('${assets.path}/$key.js');
+  requireBundles();
 
   /// Each contest, the ref field it stores the received exchange in, what
   /// should end up in `their.exchange`, and whether it also writes back to its
@@ -48,16 +46,7 @@ void main() {
 
   for (final c in cases) {
     test('${c.key}: the received exchange reaches their.exchange', () async {
-      if (!bundle('kernel').existsSync() || !bundle(c.key).existsSync()) {
-        markTestSkipped('bundles not built — run `npm run build` in extensions/ first');
-        return;
-      }
-      final host = await ExtensionHost.start(
-        kernelSource: bundle('kernel').readAsStringSync(),
-        extensions: [ExtensionBundle(key: c.key, source: bundle(c.key).readAsStringSync())],
-      );
-      addTearDown(host.dispose);
-
+      final host = await sharedHost([c.key]);
       final entries = await host.invokeHookAll(
         'activity',
         method: 'processQsoBeforeSave',
@@ -97,16 +86,7 @@ void main() {
   }
 
   test('an operation not running the contest is left alone', () async {
-    if (!bundle('kernel').existsSync() || !bundle('cqww').existsSync()) {
-      markTestSkipped('bundles not built — run `npm run build` in extensions/ first');
-      return;
-    }
-    final host = await ExtensionHost.start(
-      kernelSource: bundle('kernel').readAsStringSync(),
-      extensions: [ExtensionBundle(key: 'cqww', source: bundle('cqww').readAsStringSync())],
-    );
-    addTearDown(host.dispose);
-
+    final host = await sharedHost(['cqww']);
     final entries = await host.invokeHookAll(
       'activity',
       method: 'processQsoBeforeSave',
@@ -127,6 +107,10 @@ void main() {
       },
     );
 
+    // Without this the test passes when the fan-out returns NOTHING, which is
+    // indistinguishable from the pass condition it is checking: a renamed hook
+    // or category would go green here while every other test in the file fails.
+    expect(entries, isNotEmpty, reason: 'the fan-out must have reached the hook at all');
     for (final entry in entries) {
       expect(entry['value'], isNull, reason: 'no contest running, nothing to project');
     }
@@ -138,11 +122,7 @@ void main() {
     // multiplier while Cabrillo printed a dash for it. Stamping the ref at save
     // makes the log, the score and the submission the same claim.
     Future<Map?> patchFor(Map<String, dynamic> qso) async {
-      final host = await ExtensionHost.start(
-        kernelSource: bundle('kernel').readAsStringSync(),
-        extensions: [ExtensionBundle(key: 'cqww', source: bundle('cqww').readAsStringSync())],
-      );
-      addTearDown(host.dispose);
+      final host = await sharedHost(['cqww']);
       final entries = await host.invokeHookAll(
         'activity',
         method: 'processQsoBeforeSave',
@@ -161,10 +141,6 @@ void main() {
     }
 
     test('is filled from the country file and recorded on the ref', () async {
-      if (!bundle('kernel').existsSync() || !bundle('cqww').existsSync()) {
-        markTestSkipped('bundles not built — run `npm run build` in extensions/ first');
-        return;
-      }
       // W1AW is CQ zone 5, and the operator typed nothing.
       final patch = await patchFor({
         'band': '20m',
@@ -177,10 +153,6 @@ void main() {
     });
 
     test('never overwrites what the operator did type', () async {
-      if (!bundle('kernel').existsSync() || !bundle('cqww').existsSync()) {
-        markTestSkipped('bundles not built — run `npm run build` in extensions/ first');
-        return;
-      }
       // A station operating away from its callsign's zone is exactly why the
       // field is editable; the guess must never win over it.
       final patch = await patchFor({
@@ -197,19 +169,11 @@ void main() {
     });
 
     test('a call the country file cannot place is left empty, not invented', () async {
-      if (!bundle('kernel').existsSync() || !bundle('cqww').existsSync()) {
-        markTestSkipped('bundles not built — run `npm run build` in extensions/ first');
-        return;
-      }
       final patch = await patchFor({'band': '20m', 'mode': 'CW', 'their': {'call': ''}});
       expect(patch, isNull, reason: 'nothing typed and nothing to guess');
     });
 
     test('an exchange the operator deliberately emptied stays empty', () async {
-      if (!bundle('kernel').existsSync() || !bundle('cqww').existsSync()) {
-        markTestSkipped('bundles not built — run `npm run build` in extensions/ first');
-        return;
-      }
       // The core writes `theirZone: ''` for a field the operator cleared, and
       // drops the key entirely for one never filled in. That difference is the
       // only thing distinguishing "nothing was received" from "nothing was
@@ -248,16 +212,7 @@ void main() {
 
     for (final c in cases) {
       test('${c.key} does not put the guess back', () async {
-        if (!bundle('kernel').existsSync() || !bundle(c.key).existsSync()) {
-          markTestSkipped('bundles not built — run `npm run build` in extensions/ first');
-          return;
-        }
-        final host = await ExtensionHost.start(
-          kernelSource: bundle('kernel').readAsStringSync(),
-          extensions: [ExtensionBundle(key: c.key, source: bundle(c.key).readAsStringSync())],
-        );
-        addTearDown(host.dispose);
-
+        final host = await sharedHost([c.key]);
         final entries = await host.invokeHookAll(
           'activity',
           method: 'processQsoBeforeSave',
@@ -288,10 +243,6 @@ void main() {
     }
 
     test('naqp does not stamp a blank on the half it simply could not guess', () async {
-      if (!bundle('kernel').existsSync() || !bundle('naqp').existsSync()) {
-        markTestSkipped('bundles not built — run `npm run build` in extensions/ first');
-        return;
-      }
       // The trap in writing a ref as an object literal: it puts BOTH keys on
       // every save, so a location that just wasn't known yet gets stamped ''
       // and is read back forever as "the operator emptied this" — the guess
@@ -299,12 +250,7 @@ void main() {
       //
       // Offline, nothing resolves a US station's state, so this is the ordinary
       // case rather than a corner.
-      final host = await ExtensionHost.start(
-        kernelSource: bundle('kernel').readAsStringSync(),
-        extensions: [ExtensionBundle(key: 'naqp', source: bundle('naqp').readAsStringSync())],
-      );
-      addTearDown(host.dispose);
-
+      final host = await sharedHost(['naqp']);
       Future<Map> patchFor(Map<String, dynamic> their) async {
         final entries = await host.invokeHookAll(
           'activity',
@@ -347,21 +293,12 @@ void main() {
     });
 
     test('stateparks does not put a park back from the POTA ref the QSO carries', () async {
-      if (!bundle('kernel').existsSync() || !bundle('stateparks').existsSync()) {
-        markTestSkipped('bundles not built — run `npm run build` in extensions/ first');
-        return;
-      }
       // The stateparks-shaped version of the same trap, and the one a hunted
       // reference makes easy to get wrong: the operator clears the park field
       // BECAUSE the station wasn't in a park this time, while the hunter chip
       // from the previous QSO is still on the row. Deriving over a cleared field
       // would submit a park they explicitly said no to.
-      final host = await ExtensionHost.start(
-        kernelSource: bundle('kernel').readAsStringSync(),
-        extensions: [ExtensionBundle(key: 'stateparks', source: bundle('stateparks').readAsStringSync())],
-      );
-      addTearDown(host.dispose);
-
+      final host = await sharedHost(['stateparks']);
       Future<Map?> patchFor(List<Map<String, Object>> refs) async {
         final entries = await host.invokeHookAll(
           'activity',
@@ -397,18 +334,9 @@ void main() {
     });
 
     test('naqp decides its two halves independently', () async {
-      if (!bundle('kernel').existsSync() || !bundle('naqp').existsSync()) {
-        markTestSkipped('bundles not built — run `npm run build` in extensions/ first');
-        return;
-      }
       // Clearing the name must not also throw away a location that was never
       // touched — that one still gets its guess.
-      final host = await ExtensionHost.start(
-        kernelSource: bundle('kernel').readAsStringSync(),
-        extensions: [ExtensionBundle(key: 'naqp', source: bundle('naqp').readAsStringSync())],
-      );
-      addTearDown(host.dispose);
-
+      final host = await sharedHost(['naqp']);
       final entries = await host.invokeHookAll(
         'activity',
         method: 'processQsoBeforeSave',

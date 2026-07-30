@@ -15,14 +15,13 @@
 // probe bundles rather than real extensions, because what is under test is the
 // binding, not any award's code.
 
-import 'dart:io';
-
 import 'package:flutter_test/flutter_test.dart';
 import 'package:halo_extension_host/halo_extension_host.dart';
 
+import 'support/bundles.dart';
+
 void main() {
-  final assets = Directory('../../app/assets/extensions');
-  File kernel() => File('${assets.path}/kernel.js');
+  requireBundles();
 
   /// A bundle that hands back whatever `host.secret` gives it, including when
   /// it tries to name somebody else's identity explicitly.
@@ -48,13 +47,13 @@ void main() {
 
   Future<ExtensionHost> startWith(Map<String, Map<String, String>> secrets) async {
     final host = await ExtensionHost.start(
-      kernelSource: kernel().readAsStringSync(),
+      kernelSource: bundleSource('kernel'),
       extensions: [
         ExtensionBundle(key: 'alpha', source: probe('alpha')),
         ExtensionBundle(key: 'other', source: probe('other')),
       ],
       secrets: secrets,
-      onHostCall: (method, params) async => null,
+      onHostCall: nullHostCall,
     );
     addTearDown(host.dispose);
     return host;
@@ -65,10 +64,6 @@ void main() {
           args: {'name': name}, timeout: const Duration(seconds: 10));
 
   test('an extension reads the values resolved for it', () async {
-    if (!kernel().existsSync()) {
-      markTestSkipped('bundles not built — run `npm run build` in extensions/ first');
-      return;
-    }
     // Several names per extension, because one is not the shape: SOTA has a
     // client id and a redirect for each build edition.
     final host = await startWith(const {
@@ -82,10 +77,6 @@ void main() {
   }, timeout: const Timeout(Duration(seconds: 60)));
 
   test('a name outside its own set is not readable', () async {
-    if (!kernel().existsSync()) {
-      markTestSkipped('bundles not built');
-      return;
-    }
     // The host only ever holds what the policy resolved, so asking for
     // somebody else's name reaches nothing even though the build has it.
     final host = await startWith(const {
@@ -97,10 +88,6 @@ void main() {
   }, timeout: const Timeout(Duration(seconds: 60)));
 
   test('naming another extension in the call does not reach its values', () async {
-    if (!kernel().existsSync()) {
-      markTestSkipped('bundles not built');
-      return;
-    }
     // `alpha` asks as `other`. The kernel overwrites the identity, so the
     // lookup still happens in alpha's own set — and finds nothing.
     final host = await startWith(const {
@@ -113,10 +100,6 @@ void main() {
   }, timeout: const Timeout(Duration(seconds: 60)));
 
   test('a build with nothing configured hands back null, not an error', () async {
-    if (!kernel().existsSync()) {
-      markTestSkipped('bundles not built');
-      return;
-    }
     // A fresh checkout, a fork and every CI build without the values are all
     // this case. Consumers degrade — no spots, no Mapbox basemap — rather than
     // failing.

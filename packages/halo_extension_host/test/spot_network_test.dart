@@ -14,17 +14,15 @@
 // exercises the real path and not a mock of it.
 
 import 'dart:convert';
-import 'dart:io';
-
 import 'package:flutter_test/flutter_test.dart';
 import 'package:halo_extension_host/halo_extension_host.dart';
+
+import 'support/bundles.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 
 void main() {
-  final assets = Directory('../../app/assets/extensions');
-  File bundle(String key) => File('${assets.path}/$key.js');
-  bool missing(String key) => !bundle('kernel').existsSync() || !bundle(key).existsSync();
+  requireBundles();
 
   /// Captures every request and answers each with [body].
   ({List<http.Request> sent, MockClient client}) recorder(String body, {int status = 200}) {
@@ -40,12 +38,12 @@ void main() {
 
   Future<ExtensionHost> hostWith(String key, List<String> domains, http.Client client) async {
     final host = await ExtensionHost.start(
-      kernelSource: bundle('kernel').readAsStringSync(),
-      extensions: [ExtensionBundle(key: key, source: bundle(key).readAsStringSync())],
+      kernelSource: bundleSource('kernel'),
+      extensions: [ExtensionBundle(key: key, source: bundleSource(key))],
       fetchAllowlists: {key: domains},
       httpClient: client,
       userAgent: 'Ham2K-Test/1.0',
-      onHostCall: (method, params) async => null,
+      onHostCall: nullHostCall,
     );
     addTearDown(host.dispose);
     return host;
@@ -53,10 +51,6 @@ void main() {
 
   group('wwbota feed', () {
     test('converts MHz to kHz and types the references', () async {
-      if (missing('wwbota')) {
-        markTestSkipped('bundles not built — run `npm run build` in extensions/ first');
-        return;
-      }
       // The only feed in this batch publishing MHz; the rest of HaLo works in
       // kHz, so a missed conversion puts every spot on the wrong band.
       final rec = recorder('[{"call":"g1abc","freq":14.285,"mode":"ssb",'
@@ -76,10 +70,6 @@ void main() {
     }, timeout: const Timeout(Duration(seconds: 60)));
 
     test('the canonical User-Agent is stamped on the request', () async {
-      if (missing('wwbota')) {
-        markTestSkipped('bundles not built');
-        return;
-      }
       // Proof the seam is below the host's own behaviour rather than replacing
       // it: an extension cannot quietly become anonymous by being tested.
       final rec = recorder('[]');
@@ -103,10 +93,6 @@ void main() {
     }
 
     test('references go in the COMMENT, grouped by scheme', () async {
-      if (missing('wwbota')) {
-        markTestSkipped('bundles not built');
-        return;
-      }
       // This is the bug that got here uncaught: the endpoint takes ONE FLAT
       // RECORD. A `references` array posts a spot carrying no bunker at all.
       final body = await postedBodyFor({
@@ -133,10 +119,6 @@ void main() {
     }, timeout: const Timeout(Duration(seconds: 60)));
 
     test('QRT is read out of the comment, and an unknown mode stays null', () async {
-      if (missing('wwbota')) {
-        markTestSkipped('bundles not built');
-        return;
-      }
       final body = await postedBodyFor({
         'operation': {'stationCall': 'G1ABC', 'refs': [{'type': 'wwbotaActivation', 'ref': 'B/G-0001'}]},
         'freq': 14285,
@@ -149,10 +131,6 @@ void main() {
     }, timeout: const Timeout(Duration(seconds: 60)));
 
     test('spotting somebody else names them, and us as the spotter', () async {
-      if (missing('wwbota')) {
-        markTestSkipped('bundles not built');
-        return;
-      }
       final body = await postedBodyFor({
         'qso': {
           'their': {'call': 'M0XYZ'},
@@ -170,10 +148,6 @@ void main() {
     }, timeout: const Timeout(Duration(seconds: 60)));
 
     test('an in-progress QSO with no callsign of our own omits the spotter', () async {
-      if (missing('wwbota')) {
-        markTestSkipped('bundles not built');
-        return;
-      }
       // Rather than naming the SPOTTED station as its own spotter, which would
       // be a plain lie.
       final body = await postedBodyFor({
@@ -188,10 +162,6 @@ void main() {
     }, timeout: const Timeout(Duration(seconds: 60)));
 
     test('an EMPTY callsign of our own still falls back to the spotter', () async {
-      if (missing('wwbota')) {
-        markTestSkipped('bundles not built');
-        return;
-      }
       // The case a `??` chain misses: absent falls back, `''` does not, and the
       // operator's own callsign is silently dropped instead of used.
       final body = await postedBodyFor({
@@ -209,10 +179,6 @@ void main() {
   });
 
   test('zlota folds one row per reference back into one spot', () async {
-    if (missing('zlota')) {
-      markTestSkipped('bundles not built');
-      return;
-    }
     // The feed emits a ROW PER REFERENCE, so a station at two places arrives as
     // two rows sharing an id. Left unfolded they show as two spots for the same
     // station on the same frequency.
@@ -236,10 +202,6 @@ void main() {
 
   group('the cqgma family', () {
     test('posts a form body — QuickJS has no URLSearchParams', () async {
-      if (missing('gma')) {
-        markTestSkipped('bundles not built');
-        return;
-      }
       // This threw `URLSearchParams is not defined` at the first real spot, and
       // shipped that way through two steps of the port because nothing could
       // reach the request. Six awards post through this one endpoint.
@@ -265,10 +227,6 @@ void main() {
     }, timeout: const Timeout(Duration(seconds: 60)));
 
     test('spots the first reference and names the rest in the comment', () async {
-      if (missing('gma')) {
-        markTestSkipped('bundles not built');
-        return;
-      }
       // The endpoint takes ONE reference; app-polo puts the others in the
       // comment rather than dropping them.
       final rec = recorder('OK');
@@ -290,10 +248,6 @@ void main() {
     }, timeout: const Timeout(Duration(seconds: 60)));
 
     test('an EMPTY callsign of our own still falls back to the spotter', () async {
-      if (missing('gma')) {
-        markTestSkipped('bundles not built');
-        return;
-      }
       // The case `??` misses. An absent `our.call` fell back correctly and was
       // tested; an empty STRING did not, and posted `yspotter=` — a spot that
       // reads on the cluster as one nobody sent. `models.dart`'s `ourCall`
@@ -324,10 +278,6 @@ void main() {
     }, timeout: const Timeout(Duration(seconds: 60)));
 
     test('a QSO with no callsign is refused rather than spotted blank', () async {
-      if (missing('gma')) {
-        markTestSkipped('bundles not built');
-        return;
-      }
       // Guarded like the frequency already was, and for the same reason: an
       // empty `ycall` reaches everybody watching the cluster.
       final rec = recorder('OK');
@@ -354,14 +304,10 @@ void main() {
     // and TOTA both read and wrote field names the API has never used.
 
     test('wwff posts the fields the award names', () async {
-      if (missing('wwff')) {
-        markTestSkipped('bundles not built');
-        return;
-      }
       final rec = recorder('{}', status: 201);
       final host = await ExtensionHost.start(
-        kernelSource: bundle('kernel').readAsStringSync(),
-        extensions: [ExtensionBundle(key: 'wwff', source: bundle('wwff').readAsStringSync())],
+        kernelSource: bundleSource('kernel'),
+        extensions: [ExtensionBundle(key: 'wwff', source: bundleSource('wwff'))],
         secrets: const {'wwff': {'WWFF_API_KEY': 'k'}},
         fetchAllowlists: const {'wwff': ['wwff.co', 'spots.wwff.co']},
         httpClient: rec.client,
@@ -386,14 +332,10 @@ void main() {
     }, timeout: const Timeout(Duration(seconds: 60)));
 
     test('llota posts to spots/spot with operator_callsign, not the feed collection', () async {
-      if (missing('llota')) {
-        markTestSkipped('bundles not built');
-        return;
-      }
       final rec = recorder('{}', status: 201);
       final host = await ExtensionHost.start(
-        kernelSource: bundle('kernel').readAsStringSync(),
-        extensions: [ExtensionBundle(key: 'llota', source: bundle('llota').readAsStringSync())],
+        kernelSource: bundleSource('kernel'),
+        extensions: [ExtensionBundle(key: 'llota', source: bundleSource('llota'))],
         secrets: const {'llota': {'LLOTA_API_KEY': 'k'}},
         fetchAllowlists: const {'llota': ['llota.app']},
         httpClient: rec.client,
@@ -425,17 +367,13 @@ void main() {
     }, timeout: const Timeout(Duration(seconds: 60)));
 
     test('tota reads callsign/frequency/tower_ref/time_utc from its feed', () async {
-      if (missing('tota')) {
-        markTestSkipped('bundles not built');
-        return;
-      }
       // Read `call`/`freq`/`ref`/`time` instead and every spot comes back
       // blank — which is exactly what happened.
       final rec = recorder('[{"callsign":"ok1abc","frequency":14285,"mode":"ssb",'
           '"tower_ref":"OKR-0001","time_utc":"2026-07-01T12:00:00Z","comment":"hi"}]');
       final host = await ExtensionHost.start(
-        kernelSource: bundle('kernel').readAsStringSync(),
-        extensions: [ExtensionBundle(key: 'tota', source: bundle('tota').readAsStringSync())],
+        kernelSource: bundleSource('kernel'),
+        extensions: [ExtensionBundle(key: 'tota', source: bundleSource('tota'))],
         secrets: const {'tota': {'TOTA_API_KEY': 'k'}},
         fetchAllowlists: const {'tota': ['rozhledny.eu', 'www.rozhledny.eu']},
         httpClient: rec.client,
@@ -453,14 +391,10 @@ void main() {
     }, timeout: const Timeout(Duration(seconds: 60)));
 
     test('tota self-spots with a POST body, one per tower', () async {
-      if (missing('tota')) {
-        markTestSkipped('bundles not built');
-        return;
-      }
       final rec = recorder('{}');
       final host = await ExtensionHost.start(
-        kernelSource: bundle('kernel').readAsStringSync(),
-        extensions: [ExtensionBundle(key: 'tota', source: bundle('tota').readAsStringSync())],
+        kernelSource: bundleSource('kernel'),
+        extensions: [ExtensionBundle(key: 'tota', source: bundleSource('tota'))],
         secrets: const {'tota': {'TOTA_API_KEY': 'tota-secret'}},
         fetchAllowlists: const {'tota': ['rozhledny.eu', 'www.rozhledny.eu']},
         httpClient: rec.client,
@@ -502,8 +436,8 @@ void main() {
 
     Future<ExtensionHost> keyed(String key, List<String> domains, http.Client client) async {
       final host = await ExtensionHost.start(
-        kernelSource: bundle('kernel').readAsStringSync(),
-        extensions: [ExtensionBundle(key: key, source: bundle(key).readAsStringSync())],
+        kernelSource: bundleSource('kernel'),
+        extensions: [ExtensionBundle(key: key, source: bundleSource(key))],
         secrets: {key: {'${key.toUpperCase()}_API_KEY': 'k'}},
         fetchAllowlists: {key: domains},
         httpClient: client,
@@ -514,10 +448,6 @@ void main() {
     }
 
     test('an unset mode is sent as null, not guessed as SSB', () async {
-      if (missing('wwff') || missing('tota')) {
-        markTestSkipped('bundles not built');
-        return;
-      }
       // app-polo passes `vfo.mode` straight through for both of these. Telling
       // the cluster SSB when the activator is on CW sends hunters to the wrong
       // mode. (LLOTA is the exception and keeps its default — polo's own
@@ -540,10 +470,6 @@ void main() {
     }, timeout: const Timeout(Duration(seconds: 90)));
 
     test('a duplicate spot is a success, not an error', () async {
-      if (missing('wwff') || missing('tota')) {
-        markTestSkipped('bundles not built');
-        return;
-      }
       // Re-spotting is routine — a new comment, back after a break. app-polo
       // matches these messages by name and swallows them; reporting them paints
       // a red failure over a spot that is fine, and invites a pointless retry.
@@ -574,10 +500,6 @@ void main() {
     }, timeout: const Timeout(Duration(seconds: 120)));
 
     test('every tower is attempted even when one fails, and the failure is named', () async {
-      if (missing('tota')) {
-        markTestSkipped('bundles not built');
-        return;
-      }
       // The one that compounds: TOTA posts one request per tower, and returning
       // early left a tower the operator IS activating unspotted, with nothing
       // saying which. Tower 2 fails here; tower 3 must still go out.
@@ -625,8 +547,8 @@ void main() {
 
     Future<ExtensionHost> keyed(String key, List<String> domains, http.Client client) async {
       final host = await ExtensionHost.start(
-        kernelSource: bundle('kernel').readAsStringSync(),
-        extensions: [ExtensionBundle(key: key, source: bundle(key).readAsStringSync())],
+        kernelSource: bundleSource('kernel'),
+        extensions: [ExtensionBundle(key: key, source: bundleSource(key))],
         secrets: {key: {'${key.toUpperCase()}_API_KEY': 'k'}},
         fetchAllowlists: {key: domains},
         httpClient: client,
@@ -637,10 +559,6 @@ void main() {
     }
 
     test('wwff falls back to the spotter rather than dropping it', () async {
-      if (missing('wwff')) {
-        markTestSkipped('bundles not built');
-        return;
-      }
       final rec = recorder('{}');
       final host = await keyed('wwff', ['wwff.co', 'spots.wwff.co'], rec.client);
 
@@ -658,10 +576,6 @@ void main() {
     }, timeout: const Timeout(Duration(seconds: 60)));
 
     test('llota falls back to the spotter rather than dropping it', () async {
-      if (missing('llota')) {
-        markTestSkipped('bundles not built');
-        return;
-      }
       final rec = recorder('{}', status: 201);
       final host = await keyed('llota', ['llota.app'], rec.client);
 
@@ -679,10 +593,6 @@ void main() {
     }, timeout: const Timeout(Duration(seconds: 60)));
 
     test('none of them post a spot naming no station', () async {
-      if (missing('wwff') || missing('llota') || missing('tota')) {
-        markTestSkipped('bundles not built');
-        return;
-      }
       // TOTA has no spotter field of its own, so the empty CALLSIGN is the
       // whole exposure there — and it is the one that reaches the cluster.
       for (final (key, domains, hunting) in [
@@ -709,10 +619,6 @@ void main() {
   });
 
   test('a feed the manifest never declared is still blocked', () async {
-    if (missing('zlota')) {
-      markTestSkipped('bundles not built');
-      return;
-    }
     // The allowlist runs above the transport, so a stub does not become a way
     // around it.
     final rec = recorder('[]');

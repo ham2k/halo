@@ -14,14 +14,12 @@
 // formatter is correct; only this proves it is actually INSTALLED, ahead of
 // the code that calls it, in the engine that ships.
 
-import 'dart:io';
-
 import 'package:flutter_test/flutter_test.dart';
-import 'package:halo_extension_host/halo_extension_host.dart';
+
+import 'support/bundles.dart';
 
 void main() {
-  final assets = Directory('../../app/assets/extensions');
-  File bundle(String key) => File('${assets.path}/$key.js');
+  requireBundles();
 
   // Enough QSOs to cross the grouping threshold — the whole point is the comma.
   List<Map<String, dynamic>> qsos(int count) => [
@@ -37,16 +35,7 @@ void main() {
       ];
 
   test('a four-figure tally is rendered with thousands separators', () async {
-    if (!bundle('kernel').existsSync() || !bundle('scoring').existsSync()) {
-      markTestSkipped('bundles not built — run `npm run build` in extensions/ first');
-      return;
-    }
-    final host = await ExtensionHost.start(
-      kernelSource: bundle('kernel').readAsStringSync(),
-      extensions: [ExtensionBundle(key: 'scoring', source: bundle('scoring').readAsStringSync())],
-    );
-    addTearDown(host.dispose);
-
+    final host = await sharedHost(['scoring']);
     final result = await host.invokeHook(
       'scoring',
       key: 'core',

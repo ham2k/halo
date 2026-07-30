@@ -15,14 +15,12 @@
 // loaded, because the recursion only exists once `adif` and a contest are
 // registered in the same category of the same kernel.
 
-import 'dart:io';
-
 import 'package:flutter_test/flutter_test.dart';
-import 'package:halo_extension_host/halo_extension_host.dart';
+
+import 'support/bundles.dart';
 
 void main() {
-  final assets = Directory('../../app/assets/extensions');
-  File bundle(String key) => File('${assets.path}/$key.js');
+  requireBundles();
 
   // Every contest ships the same delegation, so every contest can recurse. The
   // list had drifted — iaru-hf and naqp shipped without being added, and this is
@@ -71,20 +69,7 @@ void main() {
 
   for (final key in contests) {
     test('$key: contest-adif export terminates and produces ADIF', () async {
-      if (!bundle('kernel').existsSync() || !bundle(key).existsSync() || !bundle('adif').existsSync()) {
-        markTestSkipped('bundles not built — run `npm run build` in extensions/ first');
-        return;
-      }
-
-      final host = await ExtensionHost.start(
-        kernelSource: bundle('kernel').readAsStringSync(),
-        extensions: [
-          ExtensionBundle(key: 'adif', source: bundle('adif').readAsStringSync()),
-          ExtensionBundle(key: key, source: bundle(key).readAsStringSync()),
-        ],
-      );
-      addTearDown(host.dispose);
-
+      final host = await sharedHost(['adif', key]);
       // A generous ceiling: the point is that it RETURNS, not how fast. Before
       // the fix this hung until the host's own timeout.
       final result = await host.invokeHook(
@@ -111,20 +96,10 @@ void main() {
   }
 
   test('a contest declines an exportType it never offered, rather than delegating', () async {
-    if (!bundle('kernel').existsSync() || !bundle('cqwpx').existsSync() || !bundle('adif').existsSync()) {
-      markTestSkipped('bundles not built — run `npm run build` in extensions/ first');
-      return;
-    }
-
-    final host = await ExtensionHost.start(
-      kernelSource: bundle('kernel').readAsStringSync(),
-      extensions: [
-        ExtensionBundle(key: 'adif', source: bundle('adif').readAsStringSync()),
-        ExtensionBundle(key: 'cqwpx', source: bundle('cqwpx').readAsStringSync()),
-      ],
-    );
-    addTearDown(host.dispose);
-
+    // Its own host, not the loop's 'adif,cqwpx' one: both this and the loop
+    // guard against a delegation recursion that HANGS, and a hung runtime
+    // must not be inherited by whichever test runs next.
+    final host = await sharedHost(['adif', 'cqwpx'], cacheKey: 'declines-unoffered');
     // 'adif' is what the core exporter answers for — the contest must not treat
     // it as "anything that isn't cabrillo" and delegate, which is the branch
     // the recursion lived in.
@@ -145,21 +120,12 @@ void main() {
   }, timeout: const Timeout(Duration(seconds: 60)));
 
   test('the state park setup form asks each event only what its sponsor uses', () async {
-    if (!bundle('kernel').existsSync() || !bundle('stateparks').existsSync()) {
-      markTestSkipped('bundles not built — run `npm run build` in extensions/ first');
-      return;
-    }
     // The fields are the operator-facing half of the same rules reading as the
     // export options above: a power class where it changes a score or a header,
     // an entry category only where the sponsor publishes one. Asserted through
     // the real runtime because the form is data the extension returns, and a
     // field that never renders is indistinguishable from one never asked for.
-    final host = await ExtensionHost.start(
-      kernelSource: bundle('kernel').readAsStringSync(),
-      extensions: [ExtensionBundle(key: 'stateparks', source: bundle('stateparks').readAsStringSync())],
-    );
-    addTearDown(host.dispose);
-
+    final host = await sharedHost(['stateparks']);
     Future<List<String>> fieldsFor(String event) async {
       final controls = (await host.invokeHook(
         'activity',
@@ -186,20 +152,11 @@ void main() {
   }, timeout: const Timeout(Duration(seconds: 60)));
 
   test('a state park event offers only the formats its own sponsor will read', () async {
-    if (!bundle('kernel').existsSync() || !bundle('stateparks').existsSync()) {
-      markTestSkipped('bundles not built — run `npm run build` in extensions/ first');
-      return;
-    }
     // Ohio refuses an ADIF in as many words — "No ADIF, no CSV, no Text files -
     // send in a standard Cabrillo file only" — so offering one is offering a file
     // that gets the log rejected. Texas requires the opposite (§8.2, upload an
     // ADIF), and takes no Cabrillo. polo offers a contest ADIF for all four.
-    final host = await ExtensionHost.start(
-      kernelSource: bundle('kernel').readAsStringSync(),
-      extensions: [ExtensionBundle(key: 'stateparks', source: bundle('stateparks').readAsStringSync())],
-    );
-    addTearDown(host.dispose);
-
+    final host = await sharedHost(['stateparks']);
     Future<List<String>> typesFor(String event) async {
       final options = await host.invokeHook(
         'export',
@@ -218,20 +175,11 @@ void main() {
   }, timeout: const Timeout(Duration(seconds: 60)));
 
   test('the Ohio State Parks Cabrillo is written the way the sponsor reads it', () async {
-    if (!bundle('kernel').existsSync() || !bundle('stateparks').existsSync()) {
-      markTestSkipped('bundles not built — run `npm run build` in extensions/ first');
-      return;
-    }
     // The only contest here whose Cabrillo has its own row layout — no signal
     // reports, a park column each side — and nothing executed it. A format the
     // sponsor's checker rejects is not a failure any unit test can see, so the
     // header block and one QSO line are pinned verbatim.
-    final host = await ExtensionHost.start(
-      kernelSource: bundle('kernel').readAsStringSync(),
-      extensions: [ExtensionBundle(key: 'stateparks', source: bundle('stateparks').readAsStringSync())],
-    );
-    addTearDown(host.dispose);
-
+    final host = await sharedHost(['stateparks']);
     final result = await host.invokeHook(
       'export',
       key: 'stateparks',

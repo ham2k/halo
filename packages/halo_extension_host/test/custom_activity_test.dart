@@ -15,27 +15,15 @@
 //   - the hunting control only exists while activating, because of the first
 //     rule.
 
-import 'dart:io';
-
 import 'package:flutter_test/flutter_test.dart';
 import 'package:halo_extension_host/halo_extension_host.dart';
 
-void main() {
-  final assets = Directory('../../app/assets/extensions');
-  File bundle(String key) => File('${assets.path}/$key.js');
-  bool missing() => !bundle('kernel').existsSync() || !bundle('custom').existsSync();
+import 'support/bundles.dart';
 
-  Future<ExtensionHost> start() async {
-    final host = await ExtensionHost.start(
-      kernelSource: bundle('kernel').readAsStringSync(),
-      extensions: [
-        ExtensionBundle(key: 'custom', source: bundle('custom').readAsStringSync()),
-      ],
-      onHostCall: (method, params) async => null,
-    );
-    addTearDown(host.dispose);
-    return host;
-  }
+void main() {
+  requireBundles();
+
+  Future<ExtensionHost> start() => sharedHost(['custom'], onHostCall: nullHostCall);
 
   Map<String, dynamic> activation({String? program = 'COTA', String reference = 'XY-1234', String name = ''}) => {
         'refs': [
@@ -73,10 +61,6 @@ void main() {
 
   group('what the log checker reads', () {
     test('an activation with no contacts to a reference is one record', () async {
-      if (missing()) {
-        markTestSkipped('bundles not built — run `npm run build` in extensions/ first');
-        return;
-      }
       final host = await start();
       final records = await adif(host, operation: activation());
 
@@ -85,10 +69,6 @@ void main() {
     });
 
     test('a contact to one of their references adds SIG from OUR program', () async {
-      if (missing()) {
-        markTestSkipped('bundles not built');
-        return;
-      }
       // The rule most easily got wrong: SIG names the PROGRAM, and the only
       // place a program is written down is our own activation. Taking it from
       // the hunted reference would leave SIG empty on every record.
@@ -105,10 +85,6 @@ void main() {
     });
 
     test('a contact crediting two of their references is submitted twice', () async {
-      if (missing()) {
-        markTestSkipped('bundles not built');
-        return;
-      }
       // Same contact, one record per reference — the n-fer rule the other
       // programs follow. Both records still name our own activation.
       final host = await start();
@@ -121,10 +97,6 @@ void main() {
     });
 
     test('an unnamed program writes no SIG rather than an empty one', () async {
-      if (missing()) {
-        markTestSkipped('bundles not built');
-        return;
-      }
       // The program field is optional. An empty MY_SIG in a submitted file is
       // worse than an absent one: it reads as a claim about a program named "".
       final host = await start();
@@ -137,10 +109,6 @@ void main() {
     });
 
     test('no activation means this extension claims nothing', () async {
-      if (missing()) {
-        markTestSkipped('bundles not built');
-        return;
-      }
       // An operation that isn't a custom activation must not have custom fields
       // written into it just because the extension is enabled.
       final host = await start();
@@ -150,10 +118,6 @@ void main() {
 
   group('the controls', () {
     test('the hunting control appears only while activating', () async {
-      if (missing()) {
-        markTestSkipped('bundles not built');
-        return;
-      }
       // Directly load-bearing rather than cosmetic: SIG is taken from the
       // activation, so a hunted reference recorded without one would export a
       // SIG_INFO with no SIG to name the program it belongs to.
@@ -176,10 +140,6 @@ void main() {
     });
 
     test('the operation control is a three-field form on the activation ref', () async {
-      if (missing()) {
-        markTestSkipped('bundles not built');
-        return;
-      }
       // The whole point of choosing `kind: 'form'`: the operator gets the three
       // labelled fields app-polo has, saved onto the ref by the core.
       final host = await start();
@@ -199,10 +159,6 @@ void main() {
 
   group('how a reference reads', () {
     test('the program and reference become one addressable string', () async {
-      if (missing()) {
-        markTestSkipped('bundles not built');
-        return;
-      }
       final host = await start();
       final ref = await host.invokeHook('ref:customActivation',
           key: 'custom',
@@ -218,10 +174,6 @@ void main() {
     });
 
     test('re-saving does not compound the program onto the reference', () async {
-      if (missing()) {
-        markTestSkipped('bundles not built');
-        return;
-      }
       // decorateRef runs on EVERY save, not just the first, and the edit path
       // hands back `{...existing, ...formResult}` — so the already-joined `ref`
       // comes back in. Reading it as a fallback for the activation's reference
@@ -251,10 +203,6 @@ void main() {
     }, timeout: const Timeout(Duration(seconds: 60)));
 
     test('a hunted reference keeps reading its own ref, however often it is saved', () async {
-      if (missing()) {
-        markTestSkipped('bundles not built');
-        return;
-      }
       // The other half of the same rule: a hunted ref is typed as a single
       // string, so `ref` IS its reference and must keep round-tripping.
       final host = await start();
@@ -272,10 +220,6 @@ void main() {
     }, timeout: const Timeout(Duration(seconds: 60)));
 
     test('a hunted reference never retitles the operation', () async {
-      if (missing()) {
-        markTestSkipped('bundles not built');
-        return;
-      }
       // It describes where the OTHER station was. Titling the operation with it
       // would claim their activation as ours.
       final host = await start();
@@ -300,10 +244,6 @@ void main() {
     });
 
     test('an empty reference is the only thing that fails validation', () async {
-      if (missing()) {
-        markTestSkipped('bundles not built');
-        return;
-      }
       // Deliberately permissive: this activity exists for the programs whose
       // reference shapes HaLo does not know, so a pattern here would reject the
       // very references it was added to carry.

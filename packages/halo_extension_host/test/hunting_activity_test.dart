@@ -12,35 +12,18 @@
 // disagree, it is not cosmetic — it decides how many contacts the award sees —
 // and GMA is a joiner.
 
-import 'dart:io';
-
 import 'package:flutter_test/flutter_test.dart';
 import 'package:halo_extension_host/halo_extension_host.dart';
 
+import 'support/bundles.dart';
+
 void main() {
-  final assets = Directory('../../app/assets/extensions');
-  File bundle(String key) => File('${assets.path}/$key.js');
+  requireBundles();
 
-  bool bundlesMissing() => !bundle('kernel').existsSync() || !bundle('gma').existsSync();
-
-  Future<ExtensionHost> startHost({List<String> extra = const []}) async {
-    final host = await ExtensionHost.start(
-      kernelSource: bundle('kernel').readAsStringSync(),
-      extensions: [
-        for (final key in ['gma', ...extra])
-          ExtensionBundle(key: key, source: bundle(key).readAsStringSync()),
-      ],
-      onHostCall: (method, params) async => null,
-    );
-    addTearDown(host.dispose);
-    return host;
-  }
+  Future<ExtensionHost> startHost({List<String> extra = const []}) async =>
+      sharedHost(['gma', ...extra], onHostCall: nullHostCall);
 
   test('a hunting program offers a per-QSO control, keyed for search scoping', () async {
-    if (bundlesMissing()) {
-      markTestSkipped('bundles not built — run `npm run build` in extensions/ first');
-      return;
-    }
     final host = await startHost();
     final controls = (await host.invokeHook('activity', key: 'gma', method: 'loggingControls',
         args: {'operation': {'uuid': 'op'}}) as List).cast<Map>();
@@ -53,10 +36,6 @@ void main() {
   }, timeout: const Timeout(Duration(seconds: 60)));
 
   test('an activation-only award offers no logging control at all', () async {
-    if (bundlesMissing() || !bundle('wca').existsSync()) {
-      markTestSkipped('bundles not built');
-      return;
-    }
     final host = await startHost(extra: ['wca']);
     // WCA has no hunting side, so there is nothing to record per QSO — the
     // factory must not invent a control for it. The method is simply absent,
@@ -68,10 +47,6 @@ void main() {
   }, timeout: const Timeout(Duration(seconds: 60)));
 
   test('hunted summits reach the export as SIG/SIG_INFO', () async {
-    if (bundlesMissing()) {
-      markTestSkipped('bundles not built');
-      return;
-    }
     final host = await startHost();
     final fields = (await host.invokeHook('adifFields', key: 'gma', method: 'fieldsForOneQSO', args: {
       'qso': {'their': {'call': 'W1AW'}, 'refs': [{'type': 'gma', 'ref': 'DL/AL-001'}]},
@@ -83,10 +58,6 @@ void main() {
   }, timeout: const Timeout(Duration(seconds: 60)));
 
   test('GMA joins several hunted summits into one record rather than splitting', () async {
-    if (bundlesMissing()) {
-      markTestSkipped('bundles not built');
-      return;
-    }
     final host = await startHost();
     // POTA and MOTA submit one record per reference; GMA, SiOTA, WWBOTA and
     // ZLOTA name them all in one. Declaring combinations here would silently
@@ -112,10 +83,6 @@ void main() {
   }, timeout: const Timeout(Duration(seconds: 60)));
 
   test('other-spotting is offered for a QSO carrying a summit, not otherwise', () async {
-    if (bundlesMissing()) {
-      markTestSkipped('bundles not built');
-      return;
-    }
     final host = await startHost();
 
     final withRef = await host.invokeHook('spots', key: 'gma', method: 'isOtherSpotEnabled',
@@ -136,10 +103,6 @@ void main() {
     }
 
     test('keeps live summits and lower-cases the locator tail', () async {
-      if (bundlesMissing()) {
-        markTestSkipped('bundles not built');
-        return;
-      }
       final entries = await mapRows([
         {
           'Reference': 'DL/AL-001',
@@ -163,10 +126,6 @@ void main() {
     }, timeout: const Timeout(Duration(seconds: 60)));
 
     test('drops summits the list has retired', () async {
-      if (bundlesMissing()) {
-        markTestSkipped('bundles not built');
-        return;
-      }
       final entries = await mapRows([
         {'Reference': 'DL/AL-001', 'Name': 'Live', 'Latitude': '47.4', 'Longitude': '10.9', 'deleted': '0'},
         {'Reference': 'DL/AL-002', 'Name': 'Retired', 'Latitude': '47.4', 'Longitude': '10.9', 'deleted': '1'},
@@ -175,10 +134,6 @@ void main() {
     }, timeout: const Timeout(Duration(seconds: 60)));
 
     test('derives a grid when the list publishes none', () async {
-      if (bundlesMissing()) {
-        markTestSkipped('bundles not built');
-        return;
-      }
       final entries = await mapRows([
         {
           'Reference': 'UNM-SH001',

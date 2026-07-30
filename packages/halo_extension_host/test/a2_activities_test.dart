@@ -8,25 +8,15 @@
 // depends on WHICH reference is being activated. Anything that fetches is in
 // spot_network_test.dart.
 
-import 'dart:io';
-
 import 'package:flutter_test/flutter_test.dart';
 import 'package:halo_extension_host/halo_extension_host.dart';
 
-void main() {
-  final assets = Directory('../../app/assets/extensions');
-  File bundle(String key) => File('${assets.path}/$key.js');
-  bool missing(String key) => !bundle('kernel').existsSync() || !bundle(key).existsSync();
+import 'support/bundles.dart';
 
-  Future<ExtensionHost> hostFor(String key) async {
-    final host = await ExtensionHost.start(
-      kernelSource: bundle('kernel').readAsStringSync(),
-      extensions: [ExtensionBundle(key: key, source: bundle(key).readAsStringSync())],
-      onHostCall: (method, params) async => null,
-    );
-    addTearDown(host.dispose);
-    return host;
-  }
+void main() {
+  requireBundles();
+
+  Future<ExtensionHost> hostFor(String key) => sharedHost([key], onHostCall: nullHostCall);
 
   Future<List<Map<String, dynamic>>> mapCsv(String ext, String dfKey, List<dynamic> rows) async {
     final host = await hostFor(ext);
@@ -38,10 +28,6 @@ void main() {
   // --- data files -----------------------------------------------------------
 
   test('mota keeps mills with an open validity window and drops retired ones', () async {
-    if (missing('mota')) {
-      markTestSkipped('bundles not built — run `npm run build` in extensions/ first');
-      return;
-    }
     // `21991231` is the list's way of saying "no end date"; anything else has
     // been retired, so a mapper that ignored the column would resurrect mills.
     final entries = await mapCsv('mota', 'mota-all-mills', [
@@ -58,10 +44,6 @@ void main() {
   }, timeout: const Timeout(Duration(seconds: 60)));
 
   test('siota reads its own column names and keeps the published locator', () async {
-    if (missing('siota')) {
-      markTestSkipped('bundles not built');
-      return;
-    }
     final entries = await mapCsv('siota', 'siota-all-silos', [
       {'SILO_CODE': 'VK-ABC123', 'NAME': 'Wallup', 'LOCALITY': 'Wallup', 'STATE': 'VIC',
        'LOCATOR': 'QF12ab', 'LAT': '-36.4', 'LNG': '142.3'},
@@ -76,10 +58,6 @@ void main() {
   }, timeout: const Timeout(Duration(seconds: 60)));
 
   test('wwbota falls back to the reference country when the list omits DXCC', () async {
-    if (missing('wwbota')) {
-      markTestSkipped('bundles not built');
-      return;
-    }
     final entries = await mapCsv('wwbota', 'wwbota-all-bunkers', [
       {'Reference': 'B/G-0001', 'Name': 'With DXCC', 'Type': 'Pillbox',
        'Lat': '51.5', 'Long': '-0.1', 'Maidenhead': 'IO91WM', 'DXCC': '223'},
@@ -98,10 +76,6 @@ void main() {
   }, timeout: const Timeout(Duration(seconds: 60)));
 
   test('zlota reads x as longitude and y as latitude', () async {
-    if (missing('zlota')) {
-      markTestSkipped('bundles not built');
-      return;
-    }
     // The list is drawn from a map layer, so the coordinates are named for
     // screen axes — swapping them would put every reference in the wrong ocean.
     final host = await hostFor('zlota');
@@ -142,19 +116,11 @@ void main() {
   }
 
   test('wwbota asks 10 contacts in Slovenia and 25 elsewhere', () async {
-    if (missing('wwbota')) {
-      markTestSkipped('bundles not built');
-      return;
-    }
     expect((await scoreFor('wwbota', 'wwbotaActivation', 'B/S5-0001', 3))['summary'], '3/10');
     expect((await scoreFor('wwbota', 'wwbotaActivation', 'B/G-0001', 3))['summary'], '3/25');
   }, timeout: const Timeout(Duration(seconds: 120)));
 
   test('zlota asks one contact for a hut and four for a lighthouse', () async {
-    if (missing('zlota')) {
-      markTestSkipped('bundles not built');
-      return;
-    }
     // The kind of place is the THIRD character of the reference.
     final hut = await scoreFor('zlota', 'zlotaActivation', 'ZLH/AA-001', 1);
     expect(hut['activated'], true);
@@ -165,10 +131,6 @@ void main() {
   }, timeout: const Timeout(Duration(seconds: 120)));
 
   test('mota reports no activation tally at all', () async {
-    if (missing('mota')) {
-      markTestSkipped('bundles not built');
-      return;
-    }
     // app-polo's MOTA has duplicate rules but no accumulator — mills are never
     // counted toward anything, and inventing a threshold would be worse than
     // showing none.

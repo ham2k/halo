@@ -10,16 +10,12 @@
 // the shape its real source uses (transcribed from app-polo's loaders) and
 // check what comes out.
 
-import 'dart:io';
-
 import 'package:flutter_test/flutter_test.dart';
-import 'package:halo_extension_host/halo_extension_host.dart';
+
+import 'support/bundles.dart';
 
 void main() {
-  final assets = Directory('../../app/assets/extensions');
-  File bundle(String key) => File('${assets.path}/$key.js');
-
-  bool missing(String key) => !bundle('kernel').existsSync() || !bundle(key).existsSync();
+  requireBundles();
 
   /// Runs rows through an extension's registered mapper, the way
   /// DataFileManager does.
@@ -30,11 +26,7 @@ void main() {
     String argName,
     List<dynamic> rows,
   ) async {
-    final host = await ExtensionHost.start(
-      kernelSource: bundle('kernel').readAsStringSync(),
-      extensions: [ExtensionBundle(key: extension, source: bundle(extension).readAsStringSync())],
-    );
-    addTearDown(host.dispose);
+    final host = await sharedHost([extension]);
     final result = await host.invokeHook(
       'dataFile',
       key: dataFileKey,
@@ -59,10 +51,6 @@ void main() {
 
   group('bca', () {
     test('reads GeoJSON coordinates as [lon, lat], not [lat, lon]', () async {
-      if (missing('bca')) {
-        markTestSkipped('bundles not built — run `npm run build` in extensions/ first');
-        return;
-      }
       // Beersel: 50.766 N, 4.307 E. Swapped, this lands in the Indian Ocean.
       final entries = await mapJson('bca', 'bca-all-castles', [
         feature('ON-00558', ' Kasteel van Beersel ', 4.307, 50.766),
@@ -80,10 +68,6 @@ void main() {
     }, timeout: const Timeout(Duration(seconds: 60)));
 
     test('an unforeseen reference shape is stored, not silently dropped', () async {
-      if (missing('bca')) {
-        markTestSkipped('bundles not built');
-        return;
-      }
       // app-polo stores whatever the list publishes. Filtering here on the
       // reference pattern would turn a stray space or an unexpected prefix into
       // a castle that simply does not exist, with nothing to show for it —
@@ -96,10 +80,6 @@ void main() {
     }, timeout: const Timeout(Duration(seconds: 60)));
 
     test('a reference with no code at all is dropped', () async {
-      if (missing('bca')) {
-        markTestSkipped('bundles not built');
-        return;
-      }
       final entries = await mapJson('bca', 'bca-all-castles', [
         feature('', 'Nameless', 4.0, 50.0),
         feature('  ', 'Blank', 4.0, 50.0),
@@ -110,10 +90,6 @@ void main() {
   });
 
   test('blha keeps the space INSIDE a `BEL 001` reference while trimming the ends', () async {
-    if (missing('blha')) {
-      markTestSkipped('bundles not built');
-      return;
-    }
     // The inner space is part of the reference; only the ends are trimmed.
     final entries = await mapJson('blha', 'blha-all-lighthouses', [
       feature(' BEL 001 ', 'Oostende', 2.93, 51.23),
@@ -122,10 +98,6 @@ void main() {
   }, timeout: const Timeout(Duration(seconds: 60)));
 
   test('eca reads the reference from WCA, not from a column named ECA', () async {
-    if (missing('eca')) {
-      markTestSkipped('bundles not built');
-      return;
-    }
     // English castles are catalogued by their WCA code; there is no ECA column.
     final entries = await mapJson('eca', 'eca-all-castles', [
       {
@@ -147,10 +119,6 @@ void main() {
   }, timeout: const Timeout(Duration(seconds: 60)));
 
   test('eca keeps the three references published with a trailing space', () async {
-    if (missing('eca')) {
-      markTestSkipped('bundles not built');
-      return;
-    }
     // Not hypothetical: 'G-01516 ', 'G-02048 ' and 'G-03350 ' are in the live
     // list exactly like this, and an untrimmed pattern check dropped all three.
     final entries = await mapJson('eca', 'eca-all-castles', [
@@ -161,10 +129,6 @@ void main() {
   }, timeout: const Timeout(Duration(seconds: 60)));
 
   test('eca tolerates a row with unparseable coordinates', () async {
-    if (missing('eca')) {
-      markTestSkipped('bundles not built');
-      return;
-    }
     final entries = await mapJson('eca', 'eca-all-castles', [
       {'WCA': 'G-00002', 'NAME_OF_CASTLE': 'No coords', 'LOCATION': 'Kent', 'LATITUDE': '', 'LONGITUDE': ''},
     ]);
@@ -175,10 +139,6 @@ void main() {
   }, timeout: const Timeout(Duration(seconds: 60)));
 
   test('ela reads the space-separated `NAME OF LIGHTHOUSE` column', () async {
-    if (missing('ela')) {
-      markTestSkipped('bundles not built');
-      return;
-    }
     // ECA underscores its name column and ELA does not — copying one loader to
     // the other silently yields nameless references.
     final entries = await mapJson('ela', 'ela-all-lighthouses', [
@@ -198,10 +158,6 @@ void main() {
 
   group('pga', () {
     test('keeps active gminas and their published grid', () async {
-      if (missing('pga')) {
-        markTestSkipped('bundles not built');
-        return;
-      }
       final entries = await mapCsv('pga', 'pga-gminas', [
         {
           'PGA REF.': 'ZP01',
@@ -226,10 +182,6 @@ void main() {
     }, timeout: const Timeout(Duration(seconds: 60)));
 
     test('drops retired gminas rather than storing them inactive', () async {
-      if (missing('pga')) {
-        markTestSkipped('bundles not built');
-        return;
-      }
       final entries = await mapCsv('pga', 'pga-gminas', [
         {'PGA REF.': 'ZP01', 'GMINA': 'Active one', 'ACTIVE': 'YES', 'LAT': '53.4', 'LONG': '14.5'},
         {'PGA REF.': 'ZP02', 'GMINA': 'Retired one', 'ACTIVE': 'NO', 'LAT': '53.4', 'LONG': '14.5'},
@@ -239,19 +191,10 @@ void main() {
   });
 
   test('pga registers no scoring hook, because the award counts nothing', () async {
-    if (missing('pga')) {
-      markTestSkipped('bundles not built');
-      return;
-    }
     // app-polo's PGA has no scoringForQSO at all: a gmina is recorded and
     // exported, never measured against a threshold. Registering the shared
     // scorer "for consistency" would invent a rule the award does not have.
-    final host = await ExtensionHost.start(
-      kernelSource: bundle('kernel').readAsStringSync(),
-      extensions: [ExtensionBundle(key: 'pga', source: bundle('pga').readAsStringSync())],
-    );
-    addTearDown(host.dispose);
-
+    final host = await sharedHost(['pga']);
     await expectLater(
       host.invokeHook('scoring', key: 'pga', method: 'scoreQsos',
           args: {'operation': {'uuid': 'op', 'refs': []}, 'qsos': []},
@@ -261,10 +204,6 @@ void main() {
   }, timeout: const Timeout(Duration(seconds: 60)));
 
   test('wca splits the single COORDINATES column into lat and lon', () async {
-    if (missing('wca')) {
-      markTestSkipped('bundles not built');
-      return;
-    }
     // WCA publishes one column holding "lat,lon" — the only list here that does.
     final entries = await mapCsv('wca', 'wca-all-castles', [
       {

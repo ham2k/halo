@@ -22,16 +22,12 @@
 // by the comment at the zip, not by an assertion here. Verified by mutation:
 // forcing `limit = headers.length` leaves this whole file green.
 
-import 'dart:io';
-
 import 'package:flutter_test/flutter_test.dart';
-import 'package:halo_extension_host/halo_extension_host.dart';
+
+import 'support/bundles.dart';
 
 void main() {
-  final assets = Directory('../../app/assets/extensions');
-  File bundle(String key) => File('${assets.path}/$key.js');
-  final unbuilt = !bundle('kernel').existsSync() || !bundle('sota').existsSync();
-  final skip = unbuilt ? 'extension bundles not built — run extensions/npm run build' : null;
+  requireBundles();
 
   // summitslist.csv's real column order.
   const headers = [
@@ -49,11 +45,7 @@ void main() {
   ];
 
   Future<List<Map<String, dynamic>>> mapCsv(Map<String, Object?> args) async {
-    final host = await ExtensionHost.start(
-      kernelSource: bundle('kernel').readAsStringSync(),
-      extensions: [ExtensionBundle(key: 'sota', source: bundle('sota').readAsStringSync())],
-    );
-    addTearDown(host.dispose);
+    final host = await sharedHost(['sota']);
     final result = await host.invokeHook(
       'dataFile',
       key: 'sota-all-summits',
@@ -76,7 +68,7 @@ void main() {
       expect(out.first['name'], 'Test Peak', reason: 'SummitName must land on the right column');
       expect(out.first['lat'], closeTo(37.5, 0.001));
       expect(out.first['lon'], closeTo(-122.1, 0.001));
-    }, skip: skip);
+    });
 
     test('every row in a chunk is zipped against the one shared header list', () async {
       // The headers cross ONCE per chunk and are reused for all 5000 rows. A
@@ -96,7 +88,7 @@ void main() {
       expect(out.map((e) => e['key']), containsAll(['W6/CT-001', 'W6/CT-002']));
       expect(out.firstWhere((e) => e['key'] == 'W6/CT-002')['name'], 'Second Peak');
       expect(out.firstWhere((e) => e['key'] == 'W6/CT-002')['lat'], closeTo(38.5, 0.001));
-    }, skip: skip);
+    });
 
     test('ragged lines are tolerated and do not shift the row after them', () async {
       // Published lists are full of these. A zip that rejected a length
@@ -118,7 +110,7 @@ void main() {
       expect(out[1]['name'], 'Third Peak', reason: 'surplus cells must not shift the mapping');
       expect(out[2]['name'], 'Test Peak', reason: 'a ragged row must not corrupt the row after it');
       expect(out[2]['lat'], closeTo(37.5, 0.001));
-    }, skip: skip);
+    });
 
     test('a row whose ValidTo has passed is still dropped through the zip', () async {
       // The filter has to survive the new path — this is what keeps ~10k
@@ -132,7 +124,7 @@ void main() {
       });
 
       expect(out, isEmpty);
-    }, skip: skip);
+    });
 
     test('with no headers the row is passed through positionally', () async {
       // `hasHeaders: false` sends no headers at all, and the mapper receives
@@ -145,6 +137,6 @@ void main() {
       });
 
       expect(out, isEmpty);
-    }, skip: skip);
+    });
   });
 }
