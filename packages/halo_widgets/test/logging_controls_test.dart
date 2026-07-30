@@ -23,6 +23,7 @@ void main() {
   late Operation operation;
   late _FakeVfoStore fakeRadio;
   late KeyboardAccessoryController keyboardAccessory;
+  late _FakeVfoStore tunedRadio;
 
   setUp(() async {
     db = HaLoDatabase(NativeDatabase.memory());
@@ -31,6 +32,10 @@ void main() {
     operation = await operations.create(stationCall: 'KI2D');
     fakeRadio = _FakeVfoStore();
     keyboardAccessory = KeyboardAccessoryController();
+    // A mode as well as a frequency: a station on the air has both, and an
+    // unset mode is one of the things that pops the Radio control open on
+    // mount (see `_vfoIsUnset`), which would steal focus in every test here.
+    tunedRadio = _FakeVfoStore()..setVfo('vfoA', freq: 14285, mode: 'SSB');
   });
 
   tearDown(() async {
@@ -76,7 +81,9 @@ void main() {
     void Function(Qso qso)? enqueueLookup,
     void Function(Iterable<Qso> qsos)? enqueueAllLookups,
     Widget? trailing,
+    String? bandOrFreqRequiredLabel,
   }) {
+    final resolvedRadio = radioService ?? tunedRadio;
     final controls = LoggingControls(
       operation: operation,
       qsosRepository: qsos,
@@ -90,10 +97,16 @@ void main() {
       onCommandMessageChanged: onCommandMessageChanged,
       onCommandAction: onCommandAction,
       onCallInfoChanged: onCallInfoChanged,
-      radioService: radioService,
+      // Defaults to a radio already tuned to a band, because that is the
+      // ordinary state of a station on the air — and because logging refuses
+      // a contact carrying neither band nor frequency (HALO-24), so a test
+      // that logs anything needs one. Tests about the untuned, fresh-install
+      // state pass `fakeRadio` (or their own store) explicitly.
+      bandOrFreqRequiredLabel: bandOrFreqRequiredLabel,
+      radioService: resolvedRadio,
       // The app passes the same object twice — RadioService is both the
       // store and the Listenable. See LoggingControls.radioUpdates.
-      radioUpdates: radioService is Listenable ? radioService as Listenable : null,
+      radioUpdates: resolvedRadio is Listenable ? resolvedRadio as Listenable : null,
       editingQso: editingQso,
       onEditCanceled: onEditCanceled,
       onNavigateToQsoList: onNavigateToQsoList,
@@ -726,7 +739,7 @@ void main() {
     }
 
     await tester.pumpWidget(MaterialApp(
-      home: Scaffold(body: LoggingControls(operation: operation, qsosRepository: qsos, lookup: lookup)),
+      home: Scaffold(body: LoggingControls(radioService: tunedRadio, operation: operation, qsosRepository: qsos, lookup: lookup)),
     ));
 
     // Cursor ends up at the end (last segment, "W1AW") after enterText.
@@ -749,6 +762,7 @@ void main() {
       await tester.pumpWidget(MaterialApp(
         home: Scaffold(
           body: LoggingControls(
+            radioService: tunedRadio,
             operation: operation,
             qsosRepository: qsos,
             operationStatsLines: (_) => ['12 QSOs in 1h 5m', '48 Q/h for last 10'],
@@ -765,6 +779,7 @@ void main() {
       await tester.pumpWidget(MaterialApp(
         home: Scaffold(
           body: LoggingControls(
+            radioService: tunedRadio,
             operation: operation,
             qsosRepository: qsos,
             lookup: guessLookup({'flag': '🇮🇹', 'name': 'Marco', 'entityPrefix': 'I', 'country': 'Italy'}),
@@ -790,6 +805,7 @@ void main() {
       await tester.pumpWidget(MaterialApp(
         home: Scaffold(
           body: LoggingControls(
+            radioService: tunedRadio,
             operation: operation,
             qsosRepository: qsos,
             lookup: guessLookup({'name': 'Marco', 'note': 'Old friend, always on 20m'}),
@@ -812,6 +828,7 @@ void main() {
       await tester.pumpWidget(MaterialApp(
         home: Scaffold(
           body: LoggingControls(
+            radioService: tunedRadio,
             operation: operation,
             qsosRepository: qsos,
             onOpenLink: opened.add,
@@ -854,6 +871,7 @@ void main() {
               // State, whose guess is already cached for this callsign, and
               // the note never changes.
               child: LoggingControls(
+                radioService: tunedRadio,
                 key: ValueKey(note),
                 operation: operation,
                 qsosRepository: qsos,
@@ -898,6 +916,7 @@ void main() {
       await tester.pumpWidget(MaterialApp(
         home: Scaffold(
           body: LoggingControls(
+            radioService: tunedRadio,
             key: const ValueKey('image-note'),
             operation: operation,
             qsosRepository: qsos,
@@ -919,6 +938,7 @@ void main() {
       await tester.pumpWidget(MaterialApp(
         home: Scaffold(
           body: LoggingControls(
+            radioService: tunedRadio,
             operation: operation,
             qsosRepository: qsos,
             lookup: guessLookup({'name': 'Marco'}),
@@ -943,6 +963,7 @@ void main() {
       await tester.pumpWidget(MaterialApp(
         home: Scaffold(
           body: LoggingControls(
+            radioService: tunedRadio,
             operation: operation,
             qsosRepository: qsos,
             scoreQso: ({required operation, required qso, excludeUuid, segments}) async =>
@@ -966,6 +987,7 @@ void main() {
       await tester.pumpWidget(MaterialApp(
         home: Scaffold(
           body: LoggingControls(
+            radioService: tunedRadio,
             operation: operation,
             qsosRepository: qsos,
             scoreQso: ({required operation, required qso, excludeUuid, segments}) async {
@@ -1008,6 +1030,7 @@ void main() {
     await tester.pumpWidget(MaterialApp(
       home: Scaffold(
         body: LoggingControls(
+          radioService: tunedRadio,
           operation: operation,
           qsosRepository: qsos,
           lookup: lookup,
@@ -1039,12 +1062,17 @@ void main() {
     final existingQso = (await tester.runAsync(() => qsos.add(operation.uuid, {
           'their': {'call': 'W1AW', 'name': 'Stale Cached Name', 'grid': 'FN31pr'},
           'startAtMillis': 1000000,
+          // A real logged contact carries a frequency; editing one that has
+          // neither band nor frequency is refused (HALO-24), which would stop
+          // this test's save before it reached what it's actually about.
+          'freq': 14285.0,
         })))!;
 
     final enqueued = <Qso>[];
     await tester.pumpWidget(MaterialApp(
       home: Scaffold(
         body: LoggingControls(
+          radioService: tunedRadio,
           operation: operation,
           qsosRepository: qsos,
           editingQso: existingQso,
@@ -1126,6 +1154,7 @@ void main() {
     await tester.pumpWidget(MaterialApp(
       home: Scaffold(
         body: LoggingControls(
+          radioService: tunedRadio,
           operation: operation,
           qsosRepository: qsos,
           lookup: lookup,
@@ -1236,11 +1265,15 @@ void main() {
   testWidgets('a manually entered name override does not duplicate onto a newly added call, but a grid override does', (tester) async {
     final existingQso = (await tester.runAsync(() => qsos.add(operation.uuid, {
           'their': {'call': 'W1AW'},
+          // See the note on the same fixture above: saving an edit is refused
+          // when the contact would carry neither band nor frequency.
+          'freq': 14285.0,
         })))!;
 
     await tester.pumpWidget(MaterialApp(
       home: Scaffold(
         body: LoggingControls(
+          radioService: tunedRadio,
           operation: operation,
           qsosRepository: qsos,
           editingQso: existingQso,
@@ -1364,6 +1397,7 @@ void main() {
     await tester.pumpWidget(MaterialApp(
       home: Scaffold(
         body: LoggingControls(
+          radioService: tunedRadio,
           operation: operation,
           qsosRepository: qsos,
           onCallListLogged: () => callListLoggedCount++,
@@ -1425,6 +1459,7 @@ void main() {
     await tester.pumpWidget(MaterialApp(
       home: Scaffold(
         body: LoggingControls(
+          radioService: tunedRadio,
           operation: operation,
           qsosRepository: qsos,
           lookup: lookup,
@@ -1530,6 +1565,7 @@ void main() {
     await tester.pumpWidget(MaterialApp(
       home: Scaffold(
         body: LoggingControls(
+          radioService: tunedRadio,
           operation: operation,
           qsosRepository: qsos,
           lookup: lookup,
@@ -1582,6 +1618,7 @@ void main() {
     await tester.pumpWidget(MaterialApp(
       home: Scaffold(
         body: LoggingControls(
+          radioService: tunedRadio,
           operation: operation,
           qsosRepository: qsos,
           lookup: lookup,
@@ -1621,6 +1658,7 @@ void main() {
     await tester.pumpWidget(MaterialApp(
       home: Scaffold(
         body: LoggingControls(
+          radioService: tunedRadio,
           operation: operation,
           qsosRepository: qsos,
           scoreQso: ({required operation, required qso, excludeUuid, segments}) async =>
@@ -1684,7 +1722,7 @@ void main() {
 
     Widget hostFor(Operation op, List<Map<String, dynamic>> controls, {QsosRepository? repo}) => MaterialApp(
           home: Scaffold(
-            body: LoggingControls(operation: op, qsosRepository: repo ?? qsos, activityControls: controls),
+            body: LoggingControls(radioService: tunedRadio, operation: op, qsosRepository: repo ?? qsos, activityControls: controls),
           ),
         );
 
@@ -1747,6 +1785,7 @@ void main() {
       await tester.pumpWidget(MaterialApp(
         home: Scaffold(
           body: LoggingControls(
+            radioService: tunedRadio,
             operation: operation,
             qsosRepository: qsos,
             activityControls: const [exchange],
@@ -1779,6 +1818,7 @@ void main() {
         MaterialApp(
           home: Scaffold(
             body: LoggingControls(
+              radioService: tunedRadio,
               operation: operation,
               qsosRepository: qsos,
               decorateQsoBeforeSave: decorate,
@@ -1834,7 +1874,7 @@ void main() {
     testWidgets('a QSO still saves when no decorator is wired', (tester) async {
       // Every test and tooling path leaves it null; saving must not depend on it.
       await tester.pumpWidget(MaterialApp(
-        home: Scaffold(body: LoggingControls(operation: operation, qsosRepository: qsos)),
+        home: Scaffold(body: LoggingControls(radioService: tunedRadio, operation: operation, qsosRepository: qsos)),
       ));
       await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'W1AW');
       await tester.pump();
@@ -1861,7 +1901,7 @@ void main() {
 
     await tester.pumpWidget(MaterialApp(
       home: Scaffold(
-        body: LoggingControls(operation: running(['simple-contest']), qsosRepository: qsos, activityControls: controls),
+        body: LoggingControls(radioService: tunedRadio, operation: running(['simple-contest']), qsosRepository: qsos, activityControls: controls),
       ),
     ));
 
@@ -1913,6 +1953,7 @@ void main() {
     Widget host({Map<String, dynamic> extra = const {}}) => MaterialApp(
           home: Scaffold(
             body: LoggingControls(
+              radioService: tunedRadio,
               operation: running(['qp']),
               qsosRepository: qsos,
               activityControls: controlsWith(extra),
@@ -2437,6 +2478,7 @@ void main() {
       await tester.pumpWidget(MaterialApp(
         home: Scaffold(
           body: LoggingControls(
+            radioService: tunedRadio,
             operation: running(['qp']),
             qsosRepository: qsos,
             activityControls: controlsWith(const {}),
@@ -2475,6 +2517,7 @@ void main() {
     Widget clearingHost({Qso? editing}) => MaterialApp(
           home: Scaffold(
             body: LoggingControls(
+              radioService: tunedRadio,
               operation: running(['c']),
               qsosRepository: qsos,
               activityControls: clearingControls,
@@ -2555,7 +2598,7 @@ void main() {
 
     Widget hostWith(QsosRepository repo) => MaterialApp(
           home: Scaffold(
-            body: LoggingControls(operation: running(['cqwpx']), qsosRepository: repo, activityControls: controls),
+            body: LoggingControls(radioService: tunedRadio, operation: running(['cqwpx']), qsosRepository: repo, activityControls: controls),
           ),
         );
 
@@ -2698,6 +2741,7 @@ void main() {
       await tester.pumpWidget(MaterialApp(
         home: Scaffold(
           body: LoggingControls(
+            radioService: tunedRadio,
             operation: running(['cqwpx']),
             qsosRepository: repo,
             activityControls: controls,
@@ -2738,6 +2782,7 @@ void main() {
       await tester.pumpWidget(MaterialApp(
         home: Scaffold(
           body: LoggingControls(
+            radioService: tunedRadio,
             operation: running(['cqwpx']),
             qsosRepository: repo,
             activityControls: controls,
@@ -2800,6 +2845,7 @@ void main() {
       await tester.pumpWidget(MaterialApp(
         home: Scaffold(
           body: LoggingControls(
+            radioService: tunedRadio,
             operation: running(['cqwpx']),
             qsosRepository: repo,
             activityControls: both,
@@ -2831,7 +2877,7 @@ void main() {
       final repo = allocating();
       Widget hostControls(List<Map<String, dynamic>> active) => MaterialApp(
             home: Scaffold(
-              body: LoggingControls(operation: running(['cqwpx']), qsosRepository: repo, activityControls: active),
+              body: LoggingControls(radioService: tunedRadio, operation: running(['cqwpx']), qsosRepository: repo, activityControls: active),
             ),
           );
 
@@ -2849,7 +2895,7 @@ void main() {
       // Showing "1" there would be a number that never reaches the log.
       await tester.pumpWidget(MaterialApp(
         home: Scaffold(
-          body: LoggingControls(operation: running(['cqwpx']), qsosRepository: qsos, activityControls: controls),
+          body: LoggingControls(radioService: tunedRadio, operation: running(['cqwpx']), qsosRepository: qsos, activityControls: controls),
         ),
       ));
       await tester.pump();
@@ -2877,7 +2923,7 @@ void main() {
     ];
 
     await tester.pumpWidget(MaterialApp(
-      home: Scaffold(body: LoggingControls(operation: running(['c']), qsosRepository: qsos, activityControls: controls)),
+      home: Scaffold(body: LoggingControls(radioService: tunedRadio, operation: running(['c']), qsosRepository: qsos, activityControls: controls)),
     ));
 
     await tester.enterText(find.widgetWithText(TextField, 'St'), 'ma');
@@ -2926,6 +2972,7 @@ void main() {
     await tester.pumpWidget(MaterialApp(
       home: Scaffold(
         body: LoggingControls(
+          radioService: tunedRadio,
           operation: running(['c']),
           qsosRepository: qsos,
           activityControls: controls,
@@ -2969,7 +3016,7 @@ void main() {
 
     await tester.pumpWidget(MaterialApp(
       home: Scaffold(
-        body: LoggingControls(operation: running(['simple-contest']), qsosRepository: qsos, activityControls: controls),
+        body: LoggingControls(radioService: tunedRadio, operation: running(['simple-contest']), qsosRepository: qsos, activityControls: controls),
       ),
     ));
 
@@ -3002,6 +3049,7 @@ void main() {
     await tester.pumpWidget(MaterialApp(
       home: Scaffold(
         body: LoggingControls(
+          radioService: tunedRadio,
           operation: operation,
           qsosRepository: qsos,
           activityControls: controls,
@@ -3043,6 +3091,7 @@ void main() {
     Widget hostWithPota() => MaterialApp(
           home: Scaffold(
             body: LoggingControls(
+              radioService: tunedRadio,
               operation: operation,
               qsosRepository: qsos,
               activityControls: const [potaControl],
@@ -3170,7 +3219,7 @@ void main() {
       ];
       await tester.pumpWidget(MaterialApp(
         home: Scaffold(
-          body: LoggingControls(operation: operation, qsosRepository: qsos, activityControls: controls),
+          body: LoggingControls(radioService: tunedRadio, operation: operation, qsosRepository: qsos, activityControls: controls),
         ),
       ));
 
@@ -3232,6 +3281,7 @@ void main() {
     await tester.pumpWidget(MaterialApp(
       home: Scaffold(
         body: LoggingControls(
+          radioService: tunedRadio,
           operation: operation,
           qsosRepository: qsos,
           activityControls: controls,
@@ -3281,6 +3331,7 @@ void main() {
     await tester.pumpWidget(MaterialApp(
       home: Scaffold(
         body: LoggingControls(
+          radioService: tunedRadio,
           operation: operation,
           qsosRepository: qsos,
           activityControls: controls,
@@ -3319,6 +3370,7 @@ void main() {
     await tester.pumpWidget(MaterialApp(
       home: Scaffold(
         body: LoggingControls(
+          radioService: tunedRadio,
           operation: operation,
           qsosRepository: qsos,
           activityControls: controls,
@@ -3399,6 +3451,7 @@ void main() {
     await tester.pumpWidget(MaterialApp(
       home: Scaffold(
         body: LoggingControls(
+          radioService: tunedRadio,
           operation: running(['cqwpx']),
           qsosRepository: qsos,
           activityControls: controls,
@@ -3449,7 +3502,7 @@ void main() {
 
     await tester.pumpWidget(MaterialApp(
       home: Scaffold(
-        body: LoggingControls(operation: running(['c']), qsosRepository: qsos, activityControls: controls),
+        body: LoggingControls(radioService: tunedRadio, operation: running(['c']), qsosRepository: qsos, activityControls: controls),
       ),
     ));
     await tester.pump();
@@ -3518,6 +3571,7 @@ void main() {
     await tester.pumpWidget(MaterialApp(
       home: Scaffold(
         body: LoggingControls(
+          radioService: tunedRadio,
           operation: running(['cqwpx']),
           qsosRepository: qsos,
           activityControls: controls,
@@ -3731,7 +3785,7 @@ void main() {
       // — would take it and put its caret at 0 instead of the end of "14285".
       await tester.pumpWidget(MaterialApp(
         home: Scaffold(
-          body: LoggingControls(operation: operation, qsosRepository: qsos, showRSTFields: false),
+          body: LoggingControls(radioService: tunedRadio, operation: operation, qsosRepository: qsos, showRSTFields: false),
         ),
       ));
       await tester.pump();
@@ -3994,7 +4048,7 @@ void main() {
 
     await tester.pumpWidget(MaterialApp(
       home: Scaffold(
-        body: LoggingControls(operation: running(['c']), qsosRepository: qsos, activityControls: controls),
+        body: LoggingControls(radioService: tunedRadio, operation: running(['c']), qsosRepository: qsos, activityControls: controls),
       ),
     ));
     await tester.pump();
@@ -4338,6 +4392,7 @@ void main() {
       await tester.pumpWidget(MaterialApp(
         home: Scaffold(
           body: LoggingControls(
+            radioService: tunedRadio,
             operation: running(['cqwpx']),
             qsosRepository: qsos,
             activityControls: const [theirSerial],
@@ -5274,6 +5329,7 @@ void main() {
     await tester.pumpWidget(MaterialApp(
       home: Scaffold(
         body: LoggingControls(
+          radioService: tunedRadio,
           operation: operation,
           qsosRepository: qsos,
           lookup: lookup,
@@ -5303,6 +5359,195 @@ void main() {
     final freqField = tester.widget<TextField>(find.widgetWithText(TextField, 'Frequency'));
     expect(freqField.controller!.text, '14285');
     expect(find.text('20m'), findsWidgets);
+  });
+
+  // ---- A contact needs a band or a frequency (HALO-24).
+  //
+  // On a fresh install nothing has ever set either, so the stored VFO is
+  // empty — `fakeRadio` here, as opposed to the `tunedRadio` the rest of this
+  // file gets by default. Submitting then used to write a QSO with both null,
+  // which the ADIF exporter emits carrying neither BAND nor FREQ, and LoTW,
+  // QRZ and POTA all reject.
+  //
+  // Each of these asserts the QSO count, not just the message: an assertion
+  // on the message alone passes against the bug, because the bug is that the
+  // contact gets *written*.
+  group('logging requires a band or a frequency', () {
+    /// Types [call] and submits it through the path the engine actually uses
+    /// (see the "real submit path" group — `sendKeyEvent` bypasses the
+    /// editing session, and here that difference doesn't matter, but staying
+    /// on the real path keeps these honest).
+    Future<void> submit(WidgetTester tester, String call) async {
+      await tester.enterText(find.widgetWithText(TextField, 'Their call'), call);
+      await tester.pump(const Duration(milliseconds: 200));
+      await tester.testTextInput.receiveAction(TextInputAction.done);
+      await tester.pump(const Duration(milliseconds: 400));
+    }
+
+    /// An unset VFO pops the Radio control open on mount (asserted below), and
+    /// Enter inside an open control closes it instead of logging. So every
+    /// test of the *log-time* guard has to collapse it first — otherwise the
+    /// submit is swallowed by the control, no contact is written for a reason
+    /// that has nothing to do with the guard, and the test passes against
+    /// code with the guard removed.
+    Future<void> dismissRadioControl(WidgetTester tester) async {
+      // The auto-open runs in a post-frame callback, so it takes one more
+      // frame than `pumpWidget` alone gives it.
+      await tester.pump();
+      expect(find.widgetWithText(TextField, 'Frequency'), findsOneWidget,
+          reason: 'an unset VFO should have opened the Radio control on mount');
+      await openControl(tester, MdiIcons.radio); // same chip again — collapse
+      expect(find.widgetWithText(TextField, 'Frequency'), findsNothing);
+    }
+
+    // The proactive half: the operator is shown the fields that need
+    // answering, rather than finding out at log time.
+    testWidgets('an unset VFO opens the Radio control on its own, without being asked', (tester) async {
+      await tester.pumpWidget(host(radioService: fakeRadio));
+      await tester.pump();
+
+      expect(find.widgetWithText(TextField, 'Frequency'), findsOneWidget);
+    });
+
+    testWidgets('a VFO that already has a band and mode is left alone', (tester) async {
+      fakeRadio.setVfo('vfoA', freq: 14285, mode: 'SSB');
+      await tester.pumpWidget(host(radioService: fakeRadio));
+      await tester.pump();
+
+      expect(find.widgetWithText(TextField, 'Frequency'), findsNothing,
+          reason: 'nothing is missing, so nothing should pop open');
+    });
+
+    testWidgets('refuses the contact, says so, and opens the Radio control to ask', (tester) async {
+      final messages = <String?>[];
+      await tester.pumpWidget(host(
+        radioService: fakeRadio,
+        onCommandMessageChanged: messages.add,
+        bandOrFreqRequiredLabel: 'Set a frequency or band before logging',
+      ));
+      await dismissRadioControl(tester);
+
+      await submit(tester, 'W1AW');
+
+      expect(await waitForQsos(tester, 1), isEmpty, reason: 'the contact must not be written');
+      expect(messages.last, 'Set a frequency or band before logging');
+      // …and it is actually on screen, in the information area where a
+      // command's error goes — not merely handed to a callback nobody has to
+      // wire up (nothing in the app passes `onCommandMessageChanged` today).
+      expect(find.textContaining('Set a frequency or band before logging'), findsOneWidget);
+      // The Radio control is open on its frequency field — the operator can
+      // answer the question without reaching for the pointer.
+      expect(find.widgetWithText(TextField, 'Frequency'), findsOneWidget);
+      expect(
+        tester.widget<TextField>(find.widgetWithText(TextField, 'Frequency')).focusNode?.hasFocus,
+        isTrue,
+      );
+      // The typed callsign survives, so answering and logging is one step.
+      expect(tester.widget<TextField>(find.widgetWithText(TextField, 'Their call')).controller!.text, 'W1AW');
+    });
+
+    testWidgets('a frequency lets the same contact through', (tester) async {
+      fakeRadio.setVfo('vfoA', freq: 14285, mode: 'SSB');
+      await tester.pumpWidget(host(radioService: fakeRadio));
+
+      await submit(tester, 'W1AW');
+
+      final logged = await waitForQsos(tester, 1);
+      expect(logged, hasLength(1));
+      expect(logged.single.freq, 14285);
+      expect(logged.single.band, '20m');
+    });
+
+    // Band-OR-frequency, not frequency-only: a band picked by hand (or by a
+    // "40M" command, which clears the frequency) is a complete answer.
+    testWidgets('a band with no frequency lets it through too', (tester) async {
+      fakeRadio.setVfo('vfoA', band: '40m', mode: 'SSB');
+      await tester.pumpWidget(host(radioService: fakeRadio));
+
+      await submit(tester, 'W1AW');
+
+      final logged = await waitForQsos(tester, 1);
+      expect(logged, hasLength(1));
+      expect(logged.single.band, '40m');
+      expect(logged.single.freq, isNull);
+    });
+
+    // The guard sits above the stacked-call branch, which commits a QSO of
+    // its own without ever reaching the ordinary path below it.
+    testWidgets('call stacking is covered too, not just the ordinary path', (tester) async {
+      await tester.pumpWidget(host(radioService: fakeRadio));
+      await dismissRadioControl(tester);
+
+      await submit(tester, 'K1ABC//W1AW');
+
+      expect(await waitForQsos(tester, 1), isEmpty);
+      expect(find.widgetWithText(TextField, 'Frequency'), findsOneWidget);
+    });
+
+    // …and a comma-separated list, which commits several at once.
+    testWidgets('a comma-separated list is covered too', (tester) async {
+      await tester.pumpWidget(host(radioService: fakeRadio));
+      await dismissRadioControl(tester);
+
+      await submit(tester, 'K1ABC, W1AW');
+
+      expect(await waitForQsos(tester, 1), isEmpty);
+    });
+
+    testWidgets('saving an edit of a bandless contact is refused as well', (tester) async {
+      final existingQso = (await tester.runAsync(() => qsos.add(operation.uuid, {
+            'their': {'call': 'W1AW'},
+            'startAtMillis': 1000000,
+          })))!;
+      await tester.pumpWidget(host(radioService: fakeRadio, editingQso: existingQso));
+      await tester.pump();
+
+      await submit(tester, 'W1AWX');
+
+      final logged = await waitForQsos(tester, 1);
+      expect(logged, hasLength(1), reason: 'still just the original record');
+      expect(
+        logged.single.theirCall,
+        'W1AW',
+        reason: 'the edit must not be saved while the contact has neither band nor frequency',
+      );
+      expect(find.widgetWithText(TextField, 'Frequency'), findsOneWidget);
+    });
+
+    // Being asked for a band must not trap a contact that the operator is
+    // trying to get rid of — the guard sits below the delete branch.
+    testWidgets('a bandless contact can still be deleted without first being repaired', (tester) async {
+      // Shaped like the records the wipe/delete group uses: the second button
+      // only offers *delete* while the loaded QSO still matches the fields, so
+      // the fixture has to carry what the controls populate from it.
+      final existingQso = (await tester.runAsync(() => qsos.add(operation.uuid, {
+            'their': {'call': 'W1AW', 'sent': ''},
+            'our': {'call': 'KI2D', 'sent': '59'},
+            'mode': 'SSB',
+            'startAtMillis': 1000000,
+          })))!;
+      await tester.pumpWidget(host(
+        radioService: fakeRadio,
+        editingQso: existingQso,
+        onEditCanceled: () {},
+      ));
+      await tester.pump();
+
+      // Stage the delete (the second button becomes "delete" for an
+      // unmodified QSO), then confirm it with the submit button, which turns
+      // into a solid trash can while a delete is staged. The button rather
+      // than Enter: tapping the staging button took the text field's input
+      // connection with it, and this test is about the guard's placement.
+      await tester.tap(find.byIcon(resolveIconName('trash-can-outline')));
+      await tester.pump();
+      expect(find.textContaining('will be deleted'), findsOneWidget, reason: 'the delete is staged');
+      await tester.tap(find.byIcon(resolveIconName('trash-can')));
+      await tester.pump(const Duration(milliseconds: 400));
+
+      // `watchForOperation` excludes soft-deleted records, so an empty list is
+      // the delete having gone through rather than the guard blocking it.
+      expect(await waitForQsos(tester, 1), isEmpty, reason: 'the delete went through');
+    });
   });
 
   // ---- Live follow: a connected radio (GATO) moving the VFO underneath us.
@@ -6040,6 +6285,7 @@ void main() {
     Widget build({Map<String, dynamic>? suggestedQso}) => MaterialApp(
           home: Scaffold(
             body: LoggingControls(
+              radioService: tunedRadio,
               operation: operation,
               qsosRepository: qsos,
               lookup: lookup,
@@ -6263,6 +6509,7 @@ void main() {
     await tester.pumpWidget(MaterialApp(
       home: Scaffold(
         body: LoggingControls(
+          radioService: tunedRadio,
           operation: operation,
           qsosRepository: qsos,
           qsos: [existingQso],
@@ -6323,6 +6570,7 @@ void main() {
       await tester.pumpWidget(MaterialApp(
         home: Scaffold(
           body: LoggingControls(
+            radioService: tunedRadio,
             operation: running(['pota']),
             qsosRepository: qsos,
             qsos: log,
@@ -6535,7 +6783,7 @@ void main() {
 
       await tester.pumpWidget(MaterialApp(
         home: Scaffold(
-          body: LoggingControls(operation: operation, qsosRepository: qsos, editingQso: existingQso),
+          body: LoggingControls(radioService: tunedRadio, operation: operation, qsosRepository: qsos, editingQso: existingQso),
         ),
       ));
 
@@ -6568,7 +6816,7 @@ void main() {
       ];
       await tester.pumpWidget(MaterialApp(
         home: Scaffold(
-          body: LoggingControls(operation: operation, qsosRepository: qsos, activityControls: controls),
+          body: LoggingControls(radioService: tunedRadio, operation: operation, qsosRepository: qsos, activityControls: controls),
         ),
       ));
 
@@ -6590,7 +6838,7 @@ void main() {
       await tester.pumpWidget(MaterialApp(
         theme: buildHaLoTheme(Brightness.light),
         home: Scaffold(
-          body: LoggingControls(operation: operation, qsosRepository: qsos),
+          body: LoggingControls(radioService: tunedRadio, operation: operation, qsosRepository: qsos),
         ),
       ));
 
@@ -6693,7 +6941,7 @@ void main() {
 
       await tester.pumpWidget(MaterialApp(
         home: Scaffold(
-          body: LoggingControls(operation: operation, qsosRepository: qsos, editingQso: existingQso),
+          body: LoggingControls(radioService: tunedRadio, operation: operation, qsosRepository: qsos, editingQso: existingQso),
         ),
       ));
 
@@ -6727,7 +6975,7 @@ void main() {
 
       await tester.pumpWidget(MaterialApp(
         home: Scaffold(
-          body: LoggingControls(operation: operation, qsosRepository: qsos, editingQso: existingQso),
+          body: LoggingControls(radioService: tunedRadio, operation: operation, qsosRepository: qsos, editingQso: existingQso),
         ),
       ));
 
@@ -6759,6 +7007,7 @@ void main() {
       await tester.pumpWidget(MaterialApp(
         home: Scaffold(
           body: LoggingControls(
+            radioService: tunedRadio,
             operation: operation,
             qsosRepository: qsos,
             editingQso: existingQso,
@@ -6798,6 +7047,7 @@ void main() {
       await tester.pumpWidget(MaterialApp(
         home: Scaffold(
           body: LoggingControls(
+            radioService: tunedRadio,
             operation: operation,
             qsosRepository: qsos,
             editingQso: deletedQso,
@@ -7010,6 +7260,7 @@ void main() {
       await tester.pumpWidget(MaterialApp(
         home: Scaffold(
           body: LoggingControls(
+            radioService: tunedRadio,
             operation: operation,
             qsosRepository: qsos,
             activityControls: const [potaControl],

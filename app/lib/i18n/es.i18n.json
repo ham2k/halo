@@ -269,6 +269,7 @@
     "spotTooLate": "Demasiado tarde para spotear a ${call}",
     "spotNoFreq": "Primero define una frecuencia para spotear",
     "spotComment": "Comentario",
+    "bandOrFreqRequired": "Define una frecuencia o banda antes de registrar",
     "info": {
       "noQsos": "Aún no hay QSOs... ¡a la carga!",
       "qsoCountOne": "1 QSO",
@@ -333,7 +334,7 @@
     "notes": "Notas"
   },
   "qsoList": {
-    "empty": "Aún no hay QSOs — ¡haz un contacto!",
+    "empty": "Verifica que tu banda y modo sean correctos",
     "editEventTime": "Editar hora",
     "today": "Hoy",
     "yesterday": "Ayer",

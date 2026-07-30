@@ -440,9 +440,16 @@ class _QsoListState extends State<QsoList> {
         color: theme.colorScheme.surfaceContainerHighest,
         child: Center(
           child: Text(
-            widget.noQsosLabel ?? 'No QSOs yet — work someone!',
+            widget.noQsosLabel ?? 'Please make sure your band and mode are correct',
+            // Red, unlike the app's other empty-list messages (spots,
+            // activities, search), which stay in the dimmed `outline`. This
+            // one isn't "nothing here" — it's a warning to check the radio
+            // before the first contact, because a contact logged on the wrong
+            // band is only discovered long after the station is gone
+            // (HALO-24). `colorScheme.error` is what every other warning in
+            // the app uses, so it tracks the theme in both light and dark.
             style: theme.textTheme.bodyLarge?.copyWith(
-              color: theme.colorScheme.outline,
+              color: theme.colorScheme.error,
             ),
           ),
         ),

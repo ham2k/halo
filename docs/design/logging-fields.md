@@ -177,6 +177,57 @@ Two consequences worth knowing:
   broken code. Use `receiveAction(TextInputAction.done)`, which is what the
   engine actually sends.
 
+## A contact needs a band or a frequency
+
+**Enter logs — except when the contact would carry neither a band nor a
+frequency.** Then it asks instead: the message takes the information area,
+the same place a command's error appears, and the Radio control opens on its
+frequency field, so the answer is one number away. Nothing is written until
+one of the two is set.
+
+Either value satisfies it. A band picked by hand — or by a `40M` command,
+which deliberately clears the frequency — is a complete answer.
+
+This exists because on a fresh install nothing has ever set either one: the
+stored VFO is empty, and every other gate looks only at the callsign. The
+resulting record is not merely incomplete — the ADIF exporter emits `BAND`
+only when there is one and `FREQ` only when it's non-zero, so the contact
+leaves carrying neither, and LoTW, QRZ and POTA all reject it. The operator
+finds out long after the station is gone.
+
+It applies while editing an existing contact too, since an edit is the moment
+to repair one of those records. It does **not** block deleting one: the check
+sits below the delete branch, so a contact you want gone doesn't have to be
+fixed first.
+
+**Asked up front, not only at log time.** When the stored VFO holds nothing —
+no band *and* no frequency, or no mode — the Radio control opens by itself
+once, on mount, so the operator is looking at the fields that need answering
+instead of discovering the problem on their first Enter. Mode counts even
+though the mode field always shows a value: it falls back to a hardcoded
+`SSB` nobody chose, and a null `vfoA.mode` is what tells "defaulted" from
+"confirmed". The VFO is persisted device-wide, so this happens once per
+install, not once per operation.
+
+Only while composing, and only once per mount — an operator who closes the
+control isn't fought by the next rebuild. It's also skipped when a
+`suggestedQso` supplied the radio state (tapping a spot, or a deeplinked cold
+start): the condition is evaluated in a post-frame callback, after the
+suggestion's own push to the VFO, so the control doesn't pop open over a
+frequency the operator was just handed.
+
+The log-time refusal above remains the backstop for the operator who closes
+the control without answering. Note the two interact: while the control is
+open, Enter closes it rather than logging, per the ladder below.
+
+The QSO list's empty state carries the same reminder — "Please make sure your
+band and mode are correct" — since an empty log is exactly when it's worth
+checking.
+
+Seeding a default band at onboarding was considered and rejected — a guessed
+band means contacts logged on the *wrong* band, which is worse than being
+asked once.
+
 ## Focus and the secondary controls
 
 Opening a secondary control moves focus to whichever field in the expanded

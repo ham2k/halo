@@ -269,6 +269,7 @@
     "spotTooLate": "Too late to spot ${call}",
     "spotNoFreq": "First set a frequency to spot",
     "spotComment": "Comment",
+    "bandOrFreqRequired": "Set a frequency or band before logging",
     "info": {
       "noQsos": "No QSOs yet... let's get on the air!",
       "qsoCountOne": "1 QSO",
@@ -333,7 +334,7 @@
     "notes": "Notes"
   },
   "qsoList": {
-    "empty": "No QSOs yet — work someone!",
+    "empty": "Please make sure your band and mode are correct",
     "editEventTime": "Edit time",
     "today": "Today",
     "yesterday": "Yesterday",

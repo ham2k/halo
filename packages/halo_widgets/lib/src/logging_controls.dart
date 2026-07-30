@@ -539,6 +539,10 @@ class LoggingControls extends StatefulWidget {
   final String? spotNoFreqLabel;
   final String? spotCommentHint;
 
+  /// Shown in the status bar when a submit is refused because the contact
+  /// would carry neither a band nor a frequency (HALO-24) — see [_log].
+  final String? bandOrFreqRequiredLabel;
+
   /// Logging view "..." menu toggles (ham2k/app-halo-dist#1) — gate the
   /// Sent/Rcvd RST fields and add optional inline State/Grid fields. The
   /// underlying data (State/Grid) is always editable via the "More" pane
@@ -653,6 +657,7 @@ class LoggingControls extends StatefulWidget {
     this.spotOtherLabel,
     this.spotTooLateLabel,
     this.spotNoFreqLabel,
+    this.bandOrFreqRequiredLabel,
     this.spotCommentHint,
     this.showRSTFields = true,
     this.showStateField = false,
@@ -1663,6 +1668,36 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     // operation needs to know where the series stands before the first QSO,
     // not after it.
     unawaited(_refreshSerialPreviews());
+    // A station that has never been set up has nothing in its VFO. Open the
+    // Radio control so the operator is looking at the fields that need
+    // answering, instead of finding out at log time that the contact can't be
+    // written (HALO-24). Only while composing — an existing QSO carries its
+    // own recorded band and mode — and only once per mount, so an operator who
+    // closes it isn't fought by the next rebuild. Post-frame because
+    // `_onSelectControl` calls setState, which initState cannot.
+    if (widget.editingQso == null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        // `_vfoIsUnset` is read here rather than above, because a
+        // `suggestedQso` (a spot deeplinked into a cold start) pushes its own
+        // freq/mode to the store from its own post-frame callback, registered
+        // just before this one. Popping the control open over a frequency the
+        // operator was handed a moment ago would be pure noise.
+        if (mounted && _selectedControlKey == null && _vfoIsUnset) _onSelectControl('radio');
+      });
+    }
+  }
+
+  /// Nothing has ever been stored in the VFO: no band *and* no frequency, or
+  /// no mode. This is the fresh-install state — `RadioService` persists the
+  /// VFO device-wide, so once the operator answers it is false forever after.
+  ///
+  /// Mode counts even though [_mode] itself always has a value: it falls back
+  /// to a hardcoded 'SSB' the operator never chose, and `vfoA.mode` being null
+  /// is what distinguishes "defaulted" from "confirmed".
+  bool get _vfoIsUnset {
+    final vfo = widget.radioService?.vfoA;
+    if (vfo == null) return false; // no radio state at all to be missing
+    return (vfo.freq == null && vfo.band == null) || vfo.mode == null;
   }
 
   /// Sets a primary field as if typed — the controller listeners fire, so the
@@ -5477,6 +5512,42 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
       } finally {
         _isLogging = false;
       }
+      return;
+    }
+
+    // A contact needs a band or a frequency (HALO-24). On a fresh install
+    // nothing has ever set either — `RadioService` has no stored VFO, so
+    // `vfoA` is empty — and every gate below looks only at the callsign, so
+    // the QSO would be written with both null. That is worse than an
+    // incomplete record: the ADIF exporter emits BAND only when there is one
+    // and FREQ only when it's non-zero, so the contact leaves carrying
+    // neither, and LoTW, QRZ and POTA all reject it — which the operator
+    // discovers long after the station is gone. The `Band???` pill summary is
+    // the only existing signal, and it's passive.
+    //
+    // So refuse, say so, and open the Radio control, which focuses its
+    // frequency field (`_expandedFocusFor`) — the answer is one number away,
+    // and the focus ladder is unchanged. The message rides the same
+    // `_commandMessage` channel a command's error does, so it renders in the
+    // information area right above the fields (`_buildInfoArea`), never as a
+    // toast over the logging UI (docs/design/user-interface.md).
+    //
+    // Placed here deliberately: below the delete branches, so a QSO already
+    // logged without a band can still be deleted without first being
+    // repaired; above the stacked-call branch, so that path is covered too;
+    // and gated on `_canLog` so it only speaks up when there was actually
+    // something to log rather than shouting at an empty or half-typed field.
+    // Editing an existing QSO is covered on purpose — an edit is exactly the
+    // moment to repair one of the bandless records this bug already created.
+    if (_canLog && _freq == null && _band == null) {
+      // A confirm-clear timer from an earlier command would wipe this moments
+      // after it appears — same reasoning as the command error branches.
+      _executeMessageTimer?.cancel();
+      setState(() {
+        _commandMessage = widget.bandOrFreqRequiredLabel ?? 'Set a frequency or band before logging';
+      });
+      _notifyCommandMessage(_commandMessage);
+      _onSelectControl('radio');
       return;
     }
 

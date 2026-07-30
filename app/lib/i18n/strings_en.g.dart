@@ -544,6 +544,9 @@ class Translations$loggingControls$en {
 	/// en: 'Comment'
 	String get spotComment => 'Comment';
 
+	/// en: 'Set a frequency or band before logging'
+	String get bandOrFreqRequired => 'Set a frequency or band before logging';
+
 	late final Translations$loggingControls$info$en info = Translations$loggingControls$info$en.internal(_root);
 }
 
@@ -654,8 +657,8 @@ class Translations$qsoList$en {
 
 	// Translations
 
-	/// en: 'No QSOs yet — work someone!'
-	String get empty => 'No QSOs yet — work someone!';
+	/// en: 'Please make sure your band and mode are correct'
+	String get empty => 'Please make sure your band and mode are correct';
 
 	/// en: 'Edit time'
 	String get editEventTime => 'Edit time';
@@ -2786,6 +2789,7 @@ extension on Translations {
 			'loggingControls.spotTooLate' => ({required Object call}) => 'Too late to spot ${call}',
 			'loggingControls.spotNoFreq' => 'First set a frequency to spot',
 			'loggingControls.spotComment' => 'Comment',
+			'loggingControls.bandOrFreqRequired' => 'Set a frequency or band before logging',
 			'loggingControls.info.noQsos' => 'No QSOs yet... let\'s get on the air!',
 			'loggingControls.info.qsoCountOne' => '1 QSO',
 			'loggingControls.info.qsoCountOther' => ({required Object count}) => '${count} QSOs',
@@ -2842,7 +2846,7 @@ extension on Translations {
 			'qsoEditForm.theirState' => 'State',
 			'qsoEditForm.band' => 'Band',
 			'qsoEditForm.notes' => 'Notes',
-			'qsoList.empty' => 'No QSOs yet — work someone!',
+			'qsoList.empty' => 'Please make sure your band and mode are correct',
 			'qsoList.editEventTime' => 'Edit time',
 			'qsoList.today' => 'Today',
 			'qsoList.yesterday' => 'Yesterday',
@@ -3095,9 +3099,9 @@ extension on Translations {
 			'settings.panels.aboutDescription' => 'Version, credits, and legal information',
 			'settings.panels.unavailableTitle' => 'Some settings are unavailable',
 			'settings.panels.unavailableText' => 'The extension runtime failed to start, so extension-contributed settings are missing.',
-			'settings.panels.station' => 'Station Configuration',
 			_ => null,
 		} ?? switch (path) {
+			'settings.panels.station' => 'Station Configuration',
 			'settings.panels.stationDescription' => 'Radios and other equipment',
 			'commands.enableSyncFirst' => 'Enable sync in Settings first.',
 			'commands.fullResyncStarted' => 'Full resync started — local data was backed up first.',

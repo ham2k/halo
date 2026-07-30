@@ -22,6 +22,53 @@ void main() {
     await db.close();
   });
 
+  // An empty log is exactly when it's worth checking the radio is set the way
+  // you think it is — a contact logged on the wrong band is only discovered
+  // long after the station is gone (HALO-24). So the empty state carries that
+  // reminder rather than an encouragement to go work someone.
+  group('the empty state', () {
+    testWidgets('reminds the operator to check band and mode', (tester) async {
+      await tester.pumpWidget(MaterialApp(
+        home: Scaffold(body: SizedBox(height: 300, child: QsoList(qsos: const [], onSelect: (_) {}))),
+      ));
+
+      expect(find.text('Please make sure your band and mode are correct'), findsOneWidget);
+      expect(find.textContaining('work someone'), findsNothing);
+    });
+
+    // The app's other empty-list messages (spots, activities, search) stay in
+    // the dimmed `outline` — they mean "nothing here". This one is a warning
+    // to check the radio before the first contact, so it takes the same red
+    // every other warning in the app uses.
+    testWidgets('is styled as a warning, not as dimmed "nothing here" text', (tester) async {
+      await tester.pumpWidget(MaterialApp(
+        home: Scaffold(body: SizedBox(height: 300, child: QsoList(qsos: const [], onSelect: (_) {}))),
+      ));
+
+      final scheme = Theme.of(tester.element(find.byType(QsoList))).colorScheme;
+      final text = tester.widget<Text>(find.text('Please make sure your band and mode are correct'));
+      expect(text.style?.color, scheme.error);
+      expect(text.style?.color, isNot(scheme.outline));
+    });
+
+    testWidgets('uses the supplied label when the app passes a translated one', (tester) async {
+      await tester.pumpWidget(MaterialApp(
+        home: Scaffold(
+          body: SizedBox(
+            height: 300,
+            child: QsoList(
+              qsos: const [],
+              onSelect: (_) {},
+              noQsosLabel: 'Verifica que tu banda y modo sean correctos',
+            ),
+          ),
+        ),
+      ));
+
+      expect(find.text('Verifica que tu banda y modo sean correctos'), findsOneWidget);
+    });
+  });
+
   group('revealing the selected row (APP-19)', () {
     // Keyboard navigation walks the log one row at a time, selecting each
     // without moving focus — so the list itself has to follow the selection.

@@ -287,6 +287,7 @@ class _Translations$loggingControls$es extends Translations$loggingControls$en {
 	@override String spotTooLate({required Object call}) => 'Demasiado tarde para spotear a ${call}';
 	@override String get spotNoFreq => 'Primero define una frecuencia para spotear';
 	@override String get spotComment => 'Comentario';
+	@override String get bandOrFreqRequired => 'Define una frecuencia o banda antes de registrar';
 	@override late final _Translations$loggingControls$info$es info = _Translations$loggingControls$info$es._(_root);
 }
 
@@ -342,7 +343,7 @@ class _Translations$qsoList$es extends Translations$qsoList$en {
 	final TranslationsEs _root; // ignore: unused_field
 
 	// Translations
-	@override String get empty => 'Aún no hay QSOs — ¡haz un contacto!';
+	@override String get empty => 'Verifica que tu banda y modo sean correctos';
 	@override String get editEventTime => 'Editar hora';
 	@override String get today => 'Hoy';
 	@override String get yesterday => 'Ayer';
@@ -1554,6 +1555,7 @@ extension on TranslationsEs {
 			'loggingControls.spotTooLate' => ({required Object call}) => 'Demasiado tarde para spotear a ${call}',
 			'loggingControls.spotNoFreq' => 'Primero define una frecuencia para spotear',
 			'loggingControls.spotComment' => 'Comentario',
+			'loggingControls.bandOrFreqRequired' => 'Define una frecuencia o banda antes de registrar',
 			'loggingControls.info.noQsos' => 'Aún no hay QSOs... ¡a la carga!',
 			'loggingControls.info.qsoCountOne' => '1 QSO',
 			'loggingControls.info.qsoCountOther' => ({required Object count}) => '${count} QSOs',
@@ -1610,7 +1612,7 @@ extension on TranslationsEs {
 			'qsoEditForm.theirState' => 'Estado/Provincia',
 			'qsoEditForm.band' => 'Banda',
 			'qsoEditForm.notes' => 'Notas',
-			'qsoList.empty' => 'Aún no hay QSOs — ¡haz un contacto!',
+			'qsoList.empty' => 'Verifica que tu banda y modo sean correctos',
 			'qsoList.editEventTime' => 'Editar hora',
 			'qsoList.today' => 'Hoy',
 			'qsoList.yesterday' => 'Ayer',
@@ -1863,9 +1865,9 @@ extension on TranslationsEs {
 			'settings.panels.aboutDescription' => 'Versión, créditos e información legal',
 			'settings.panels.unavailableTitle' => 'Algunos ajustes no están disponibles',
 			'settings.panels.unavailableText' => 'El motor de extensiones no pudo iniciarse, así que faltan los ajustes aportados por extensiones.',
-			'settings.panels.station' => 'Configuración de Estación',
 			_ => null,
 		} ?? switch (path) {
+			'settings.panels.station' => 'Configuración de Estación',
 			'settings.panels.stationDescription' => 'Radios y otros equipos',
 			'commands.enableSyncFirst' => 'Primero habilita la sincronización en la Configuración.',
 			'commands.fullResyncStarted' => 'Resincronización completa iniciada — los datos locales se respaldaron primero.',

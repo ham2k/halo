@@ -547,6 +547,7 @@ class _LoggingPanelState extends State<LoggingPanel> {
             spotTooLateLabel: (call) => context.t.loggingControls.spotTooLate(call: call),
             spotNoFreqLabel: context.t.loggingControls.spotNoFreq,
             spotCommentHint: context.t.loggingControls.spotComment,
+            bandOrFreqRequiredLabel: context.t.loggingControls.bandOrFreqRequired,
             editingQso: _selectedQso,
             suggestedQso: widget.suggestedQso,
             onEditCanceled: () => setState(() => _selectedQso = null),
