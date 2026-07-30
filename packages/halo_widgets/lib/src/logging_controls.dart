@@ -90,6 +90,17 @@ typedef CommandInterpreter = Future<Map<String, dynamic>?> Function(
 /// came with that action (e.g. `devNotice`'s icon/title/text).
 typedef CommandActionHandler = Future<void> Function(String action, [Map<String, dynamic>? params]);
 
+/// Applies a command's `CommandAction`s. This widget's own dispatcher is the
+/// only one that can service the QSO-scoped fields — `setVfo`, `addQso`,
+/// `updateQso`, `setCallField`, `sendSpots` all need the live in-progress QSO
+/// and controllers — so it hands this out via
+/// [LoggingControls.onDispatcherChanged] for callers outside the logging
+/// panel (the ⌘K command dialog) to route through instead of reimplementing.
+typedef CommandActionsDispatcher = Future<void> Function(
+  List<dynamic> actions, {
+  bool skipOnlineLookup,
+});
+
 /// Which `spots` hooks currently offer self- or other-spotting — `qso: null`
 /// asks about self-spotting the operation, `qso` set asks about spotting
 /// that QSO's station. Mirrors `ExtensionService.suggestSpotSources`.
@@ -294,6 +305,12 @@ class LoggingControls extends StatefulWidget {
   /// returns one instead of a field change. When null, actions are ignored.
   final CommandActionHandler? onCommandAction;
 
+  /// Called with this widget's action dispatcher when it mounts, and with
+  /// null when it goes away, so a command typed somewhere else (the ⌘K
+  /// dialog) can be applied to the live logging panel exactly as if it had
+  /// been typed into the call field. See [CommandActionsDispatcher].
+  final void Function(CommandActionsDispatcher?)? onDispatcherChanged;
+
   /// When set, the controls are editing this already-logged QSO rather than
   /// composing a new one — fields are populated from it, saving calls
   /// `qsosRepository.update` instead of `.add`, and Delete/Revert become
@@ -495,6 +512,7 @@ class LoggingControls extends StatefulWidget {
     this.interpretationUpdates,
     this.onCommandMessageChanged,
     this.onCommandAction,
+    this.onDispatcherChanged,
     this.editingQso,
     this.suggestedQso,
     this.onEditCanceled,
@@ -1425,6 +1443,9 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   @override
   void initState() {
     super.initState();
+    // Publish the dispatcher while this panel is live, so a command run from
+    // the ⌘K dialog lands on THIS logging panel's state.
+    widget.onDispatcherChanged?.call(_dispatchActions);
     // Observe metrics so the numbers row appears/disappears with the on-screen
     // keyboard — MediaQuery can't tell us (Scaffold strips the inset, see
     // `virtualKeyboardIsUp`), so `didChangeMetrics` is the rebuild trigger.
@@ -2007,6 +2028,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
 
   @override
   void dispose() {
+    widget.onDispatcherChanged?.call(null);
     widget.controller?.detach();
     widget.radioUpdates?.removeListener(_onRadioVfoChanged);
     WidgetsBinding.instance.removeObserver(this);

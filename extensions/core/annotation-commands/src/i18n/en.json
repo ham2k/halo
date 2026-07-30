@@ -8,5 +8,11 @@
   "solarError": "Error fetching solar conditions",
   "fetchingWeather": "Fetching current weather…",
   "weatherError": "Error fetching weather",
-  "weatherNeedsLocation": "WEATHER needs a location — set the operation’s grid square"
+  "weatherNeedsLocation": "WEATHER needs a location — set the operation’s grid square",
+  "catalogCategory": "Log annotations",
+  "catalogNote": "Add a note to the log",
+  "catalogTodo": "Add a to-do to the log",
+  "catalogSolar": "Log the current solar conditions",
+  "catalogWeather": "Log the current weather",
+  "catalogNoteParams": "<text>"
 }

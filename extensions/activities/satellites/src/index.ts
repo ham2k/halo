@@ -26,7 +26,7 @@ import {
   host,
 } from "@ham2k/halo-extension-sdk"
 import type {
-  CommandInterpretation,
+  CommandCatalogEntry, CommandInterpretation,
   DataFileDefinition,
   HookContext,
   JSONValue,
@@ -301,6 +301,17 @@ const SatCommand = {
       confirm: t('commandConfirm', { name: hit.satName }),
       commands: commands as unknown as CommandInterpretation['commands'],
     }
+  },
+
+  async catalog(ctx: HookContext): Promise<CommandCatalogEntry[]> {
+    const t = tFor(ctx)
+    return [{
+      command: 'SAT',
+      params: t('catalogSatParams'),
+      describe: t('catalogSat'),
+      category: t('catalogCategory'),
+      expectsParams: true,
+    }]
   },
 }
 

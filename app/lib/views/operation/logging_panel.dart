@@ -527,6 +527,12 @@ class _LoggingPanelState extends State<LoggingPanel> {
             interpretationUpdates: widget.services.extensions.commandInterpretationUpdates,
             onCommandMessageChanged: (message) => widget.onCommandMessageChanged?.call(message),
             onCommandAction: widget.onCommandAction,
+            // Lets the ⌘K dialog apply a command to this panel — see
+            // HaLoServices.currentCommandDispatch. Attached to this
+            // operation's own stack entry, so a disposing panel can't detach a
+            // still-live one's dispatcher.
+            onDispatcherChanged: (dispatch) =>
+                widget.services.setCommandDispatchFor(widget.operation.uuid, dispatch),
             suggestSpotSources: widget.services.extensions.suggestSpotSources,
             sendSpot: widget.services.extensions.sendSpot,
             spottingControlLabel: context.t.loggingControls.spottingControl,

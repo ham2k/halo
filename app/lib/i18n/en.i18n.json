@@ -650,6 +650,19 @@
     "sentryTestSent": "Test error report sent to Sentry",
     "sentryTestLocalOnly": "Sentry is disabled in this build — test error logged locally only"
   },
+  "commandDialog": {
+    "hint": "Search callsigns or type a command",
+    "noResults": "Nothing matches “${text}”",
+    "sectionCommands": "Commands",
+    "sectionGoTo": "Go to",
+    "sectionOperations": "Operations",
+    "goHome": "Home",
+    "goSettings": "Settings",
+    "goNewOperation": "New operation",
+    "runTyped": "Run “${text}”",
+    "sectionSuggestions": "Try",
+    "lookingUp": "Looking up callsign…"
+  },
   "expiredBuild": {
     "title": "This build has expired",
     "body": "Please visit ham2k.com and get a newer version.",

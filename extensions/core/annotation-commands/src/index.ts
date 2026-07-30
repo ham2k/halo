@@ -19,7 +19,7 @@
 // event, so pressing Enter doesn't trigger a second fetch.
 
 import { defineExtension, host } from "@ham2k/halo-extension-sdk"
-import type { CommandInterpretation, HookContext, JSONValue } from "@ham2k/halo-extension-sdk"
+import type { CommandCatalogEntry, CommandInterpretation, HookContext, JSONValue } from "@ham2k/halo-extension-sdk"
 import { gridToLocation } from "@ham2k/lib-geo-tools"
 
 import { parseSolarXml, solarMessage, weatherMessage } from "./annotations.ts"
@@ -50,13 +50,14 @@ function eventQso(kind: string, event: Record<string, JSONValue>): Record<string
 
 /// NOTE/TODO share everything but their words and icons: free-prose
 /// parameter (mixedCase), operation-scoped, and an event row via addQso.
-function noteLikeCommand({ pattern, kind, name, icon, describe, confirm, extra }: {
+function noteLikeCommand({ pattern, kind, name, icon, describe, confirm, catalogKey, extra }: {
   pattern: RegExp
   kind: string
   name: string
   icon: string
   describe: (t: Translator, text: string) => string
   confirm: (t: Translator) => string
+  catalogKey: string
   extra?: Record<string, JSONValue>
 }) {
   return {
@@ -85,6 +86,21 @@ function noteLikeCommand({ pattern, kind, name, icon, describe, confirm, extra }
         }],
       }
     },
+
+    // Both are operation-scoped and useless without their prose parameter,
+    // so the palette greys them out with no operation open and leaves the
+    // field open for typing when one is chosen.
+    async catalog(ctx: HookContext): Promise<CommandCatalogEntry[]> {
+      const t = tFor(ctx)
+      return [{
+        command: name,
+        params: t('catalogNoteParams'),
+        describe: t(catalogKey),
+        category: t('catalogCategory'),
+        needsOperation: true,
+        expectsParams: true,
+      }]
+    },
   }
 }
 
@@ -95,6 +111,7 @@ const NoteCommand = noteLikeCommand({
   icon: 'sticker-text-outline',
   describe: (t, text) => t('addNote', { text }),
   confirm: (t) => t('noteAdded'),
+  catalogKey: 'catalogNote',
 })
 
 const TodoCommand = noteLikeCommand({
@@ -104,6 +121,7 @@ const TodoCommand = noteLikeCommand({
   icon: 'sticker-outline',
   describe: (t, text) => t('addTodo', { text }),
   confirm: (t) => t('todoAdded'),
+  catalogKey: 'catalogTodo',
   extra: { data: { done: false } },
 })
 
@@ -170,6 +188,16 @@ const SolarCommand = {
         }),
       }],
     }
+  },
+
+  async catalog(ctx: HookContext): Promise<CommandCatalogEntry[]> {
+    const t = tFor(ctx)
+    return [{
+      command: 'SOLAR',
+      describe: t('catalogSolar'),
+      category: t('catalogCategory'),
+      needsOperation: true,
+    }]
   },
 }
 
@@ -248,6 +276,16 @@ const WeatherCommand = {
         }),
       }],
     }
+  },
+
+  async catalog(ctx: HookContext): Promise<CommandCatalogEntry[]> {
+    const t = tFor(ctx)
+    return [{
+      command: 'WEATHER',
+      describe: t('catalogWeather'),
+      category: t('catalogCategory'),
+      needsOperation: true,
+    }]
   },
 }
 

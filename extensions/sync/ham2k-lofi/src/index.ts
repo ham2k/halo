@@ -17,7 +17,7 @@
 // matching app-polo's memory-only `GLOBAL.syncLoFiToken`.
 
 import { defineExtension, host } from "@ham2k/halo-extension-sdk"
-import type { CommandInterpretation, HookContext, JSONValue, SyncPayload, SyncResponse } from "@ham2k/halo-extension-sdk"
+import type { CommandCatalogEntry, CommandInterpretation, HookContext, JSONValue, SyncPayload, SyncResponse } from "@ham2k/halo-extension-sdk"
 
 import { tFor } from "./i18n.ts"
 
@@ -32,7 +32,7 @@ defineExtension({
   ...manifest,
   onActivation({ registerHook }) {
     registerHook('syncTransport', { hook: { sync, getAccountData, linkClient, linkClientWithEmail } })
-    registerHook('command', { key: 'ham2k-lofi-syncall', hook: { interpret: syncAllCommand } })
+    registerHook('command', { key: 'ham2k-lofi-syncall', hook: { interpret: syncAllCommand, catalog: syncAllCatalog } })
   },
 })
 
@@ -48,6 +48,15 @@ async function syncAllCommand({ input }: { input: string }, ctx: HookContext): P
     confirm: t('syncAllConfirm'),
     commands: [{ syncAll: {} }],
   }
+}
+
+async function syncAllCatalog(ctx: HookContext): Promise<CommandCatalogEntry[]> {
+  const t = tFor(ctx)
+  return [{
+    command: 'SYNCALL',
+    describe: t('catalogSyncAll'),
+    category: t('catalogCategory'),
+  }]
 }
 
 // Cached in module state for the life of the runtime; persisted back to

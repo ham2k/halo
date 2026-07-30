@@ -57,6 +57,7 @@ class Translations with BaseTranslations<AppLocale, Translations> {
 	late final Translations$callInfo$en callInfo = Translations$callInfo$en.internal(_root);
 	late final Translations$settings$en settings = Translations$settings$en.internal(_root);
 	late final Translations$commands$en commands = Translations$commands$en.internal(_root);
+	late final Translations$commandDialog$en commandDialog = Translations$commandDialog$en.internal(_root);
 	late final Translations$expiredBuild$en expiredBuild = Translations$expiredBuild$en.internal(_root);
 	late final Translations$spotting$en spotting = Translations$spotting$en.internal(_root);
 	late final Translations$dataFiles$en dataFiles = Translations$dataFiles$en.internal(_root);
@@ -833,6 +834,48 @@ class Translations$commands$en {
 
 	/// en: 'Sentry is disabled in this build — test error logged locally only'
 	String get sentryTestLocalOnly => 'Sentry is disabled in this build — test error logged locally only';
+}
+
+// Path: commandDialog
+class Translations$commandDialog$en {
+	Translations$commandDialog$en.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Search callsigns or type a command'
+	String get hint => 'Search callsigns or type a command';
+
+	/// en: 'Nothing matches “${text}”'
+	String noResults({required Object text}) => 'Nothing matches “${text}”';
+
+	/// en: 'Commands'
+	String get sectionCommands => 'Commands';
+
+	/// en: 'Go to'
+	String get sectionGoTo => 'Go to';
+
+	/// en: 'Operations'
+	String get sectionOperations => 'Operations';
+
+	/// en: 'Home'
+	String get goHome => 'Home';
+
+	/// en: 'Settings'
+	String get goSettings => 'Settings';
+
+	/// en: 'New operation'
+	String get goNewOperation => 'New operation';
+
+	/// en: 'Run “${text}”'
+	String runTyped({required Object text}) => 'Run “${text}”';
+
+	/// en: 'Try'
+	String get sectionSuggestions => 'Try';
+
+	/// en: 'Looking up callsign…'
+	String get lookingUp => 'Looking up callsign…';
 }
 
 // Path: expiredBuild
@@ -2973,6 +3016,19 @@ extension on Translations {
 			'commands.experimentDisabled' => ({required Object name}) => '${name} disabled',
 			'commands.sentryTestSent' => 'Test error report sent to Sentry',
 			'commands.sentryTestLocalOnly' => 'Sentry is disabled in this build — test error logged locally only',
+			'commandDialog.hint' => 'Search callsigns or type a command',
+			'commandDialog.noResults' => ({required Object text}) => 'Nothing matches “${text}”',
+			'commandDialog.sectionCommands' => 'Commands',
+			'commandDialog.sectionGoTo' => 'Go to',
+			'commandDialog.sectionOperations' => 'Operations',
+			'commandDialog.goHome' => 'Home',
+			'commandDialog.goSettings' => 'Settings',
+			'commandDialog.goNewOperation' => 'New operation',
+			'commandDialog.runTyped' => ({required Object text}) => 'Run “${text}”',
+			'commandDialog.sectionSuggestions' => 'Try',
+			'commandDialog.lookingUp' => 'Looking up callsign…',
+			_ => null,
+		} ?? switch (path) {
 			'expiredBuild.title' => 'This build has expired',
 			'expiredBuild.body' => 'Please visit ham2k.com and get a newer version.',
 			'expiredBuild.visit' => 'Visit ham2k.com',
@@ -2984,8 +3040,6 @@ extension on Translations {
 			'spotting.spotFailed' => ({required Object source, required Object message}) => '${source} failed: ${message}',
 			'spotting.unknownError' => 'unknown error',
 			'spotting.notSent' => 'Spot not sent.',
-			_ => null,
-		} ?? switch (path) {
 			'dataFiles.downloading' => 'Downloading…',
 			'dataFiles.importedRecords' => ({required num count, required Object label}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: 'Imported ${count} record for ${label}.', other: 'Imported ${count} records for ${label}.', ), 
 			'dataFiles.importedData' => ({required Object label}) => 'Imported data for ${label}.',

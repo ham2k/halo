@@ -761,4 +761,10 @@ abstract final class OnboardingFlows {
   /// Not an overlay: counts new operations opened, so the home FAB's nudge
   /// (see `_NewOperationNudge`) knows when to stop.
   static const newOperation = 'new-operation';
+
+  /// Not an overlay either: counts ⌘K command-dialog opens, so the dialog
+  /// knows when to stop offering sample commands on an empty field (see
+  /// `CommandDialog._suggestionsThreshold`). Someone who has opened it a
+  /// dozen times knows what's in there.
+  static const commandDialog = 'command-dialog';
 }

@@ -33,6 +33,16 @@ void installDevBridge() {
   // Buffered structured events ([qso], [lookup], …) — query recent history
   // instead of only streaming the console. #237.
   bridge['recentLog'] = (() => DevBridge.instance.recentLog().jsify()).toJS;
+  // Command dialog (#55) — see DevBridge's own note on why the shortcut
+  // can't be driven from outside.
+  // A Promise: the dialog's route mounts a frame later, so callers must be
+  // able to `await` it before typing into the dialog.
+  bridge['openCommandBar'] = (() => DevBridge.instance.openCommandBar().toJS).toJS;
+  bridge['closeCommandBar'] = (() => DevBridge.instance.closeCommandBar()).toJS;
+  bridge['setCommandText'] = ((JSString text) => DevBridge.instance.setCommandText(text.toDart)).toJS;
+  bridge['commandSubmit'] = (() => DevBridge.instance.commandSubmit()).toJS;
+  bridge['commandMove'] = ((JSNumber delta) => DevBridge.instance.commandMove(delta.toDartInt)).toJS;
+  bridge['commandBarState'] = (() => DevBridge.instance.commandBarState().jsify()).toJS;
   // Reset to a known fixture (wipe + seed + known settings), returning a
   // Promise of the summary. #238.
   bridge['resetFixture'] = (() => DevBridge.instance.resetFixture().then((r) => r.jsify()).toJS).toJS;

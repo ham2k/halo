@@ -8,5 +8,8 @@
   "commandExpects": "Satellite…",
   "commandDescribe": "Satellite {{label}}",
   "commandConfirm": "Satellite {{name}}",
-  "commandUnknown": "No active satellite matching \"{{name}}\""
+  "commandUnknown": "No active satellite matching \"{{name}}\"",
+  "catalogCategory": "Satellites",
+  "catalogSat": "Set the satellite for this QSO",
+  "catalogSatParams": "<name>"
 }

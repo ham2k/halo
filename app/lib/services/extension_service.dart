@@ -479,7 +479,13 @@ class ExtensionService {
   /// Drops the kernel's cached HookContext so the next hook call sees fresh
   /// core state — call after mutating anything a HookContext carries
   /// (locale, theme, developer mode). No-op before the runtime is up.
-  void invalidateHookContext() => _host?.invalidateHookContext();
+  void invalidateHookContext() {
+    // The command catalog's `describe` strings are localized by the hook
+    // against that same context, so a stale cache would keep the palette in
+    // the previous language after a locale switch (⌘⇧L).
+    _commandCatalog = null;
+    _host?.invalidateHookContext();
+  }
 
   /// Every panel across every extension's `settingsPanel` registration, one
   /// entry per PANEL (not per registration — a Tier 2 hook's `getPanels()`
@@ -1015,6 +1021,10 @@ class ExtensionService {
       final old = _host;
       _host = null;
       _starting = null;
+      // The new runtime may carry a different set of extensions (this is the
+      // path an enable/disable toggle takes), so their advertised commands
+      // have to be re-read rather than served from the old set's cache.
+      _commandCatalog = null;
       await old?.dispose();
       await start();
       if (_host != null) {
@@ -1659,6 +1669,54 @@ class ExtensionService {
     }
     return null;
   }
+
+  /// Every command advertised by a `command` hook's optional `catalog()`, for
+  /// the command dialog's browsable list — `{command, describe, params?,
+  /// category?, needsOperation?, expectsParams?}` per entry (see
+  /// `CommandCatalogEntry`, extensions/sdk/src/types.ts).
+  ///
+  /// Cached, deliberately: unlike [interpretCommand] this is NOT per
+  /// keystroke — the palette matches the typed text against these entries
+  /// host-side, on plain strings. The cache is dropped whenever the runtime is
+  /// replaced (extension enable/disable) or the hook context is invalidated
+  /// (locale change), which are the only things that change the answer.
+  ///
+  /// Entries keep hook priority order, so a higher-priority extension's
+  /// commands list first, matching which one would actually win `interpret`.
+  Future<List<Map<String, dynamic>>> getCommandCatalog() async {
+    final cached = _commandCatalog;
+    if (cached != null) return cached;
+
+    final host = this.host;
+    if (host == null) return const [];
+    try {
+      final entries = await host.invokeHookAll('command', method: 'catalog', timeout: const Duration(seconds: 2));
+      final catalog = <Map<String, dynamic>>[];
+      for (final entry in entries) {
+        // `catalog` is optional on CommandHook, so a hook that doesn't
+        // implement it reports not-ok here — that's expected, not a failure.
+        if (entry['ok'] != true || entry['value'] is! List) continue;
+        for (final item in entry['value'] as List) {
+          if (item is! Map) continue;
+          final map = item.cast<String, dynamic>();
+          // A malformed entry would render as a blank, unselectable row.
+          if (map['command'] is! String || (map['command'] as String).isEmpty) continue;
+          catalog.add(map);
+        }
+      }
+      _commandCatalog = List.unmodifiable(catalog);
+      return _commandCatalog!;
+    } catch (e) {
+      debugPrint('[extensions] getCommandCatalog failed: $e');
+      // Not cached — a transient runtime failure shouldn't leave the palette
+      // permanently empty for the rest of the session.
+      return const [];
+    }
+  }
+
+  /// [getCommandCatalog]'s cache. Null means "not read yet"; an empty list is
+  /// a real answer (no hook advertises anything).
+  List<Map<String, dynamic>>? _commandCatalog;
 
   /// Descriptors for controls activities want on the logging panel. `qso` is
   /// the in-progress QSO (including any `their.guess` from the callsign

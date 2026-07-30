@@ -889,6 +889,36 @@ export interface CommandInterpretation {
   skipOnlineLookup?: boolean
 }
 
+/// One command a hook advertises to the command dialog (⌘K), so the palette
+/// can list what's available before the user knows the exact syntax. Purely
+/// descriptive: selecting an entry types its [command] into the field, and
+/// it's `interpret` — never this — that decides what the text actually does.
+export interface CommandCatalogEntry {
+  /// The command as the user would type it, uppercase, without parameters:
+  /// "SEED", "NOTE", "RELOAD", "20M". This is both what's matched against
+  /// the typed text and what's inserted when the entry is chosen, so it must
+  /// be something `interpret` recognizes.
+  command: string
+  /// One line describing what the command does, shown beside it. Already
+  /// localized — build it with the hook context's `t`, same as `describe`.
+  describe: string
+  /// Optional parameter syntax shown after [command], e.g. "<text>" for NOTE
+  /// or "[count]" for SEED. Display only; never matched or inserted.
+  params?: string
+  /// Groups entries under a heading in the palette. Defaults to the
+  /// extension's own name when omitted.
+  category?: string
+  /// True when the command needs an open operation (SEED, NOTE, SPOT). The
+  /// palette still lists it with no operation open, but greys it out rather
+  /// than letting the user pick it and get `interpret`'s `error` back.
+  needsOperation?: boolean
+  /// True when choosing the entry should leave the field open for typing
+  /// instead of running the command straight away — the catalog counterpart
+  /// of [CommandInterpretation.expectsParams], for commands whose bare form
+  /// isn't useful on its own (NOTE, EXP).
+  expectsParams?: boolean
+}
+
 /// Registered under category `command`. `interpret` does its own matching
 /// (returns null for no match) so the core can fan out to every registered
 /// command via invokeHookAll and apply the first non-null result in
@@ -921,6 +951,20 @@ export interface CommandHook {
     },
     ctx: HookContext,
   ): Promise<CommandInterpretation | null>
+
+  /// Every command this hook offers, for the command dialog's browsable
+  /// list. Optional — a hook without it simply contributes nothing to the
+  /// palette's suggestions, and its commands still work when typed in full.
+  ///
+  /// Called once and cached by the host (re-read when extensions are
+  /// enabled/disabled or the locale changes), NOT per keystroke: matching the
+  /// typed text against the returned entries happens host-side, on plain
+  /// strings, so the host never compiles extension-supplied regex — the same
+  /// rule `interpret`'s own matching follows.
+  ///
+  /// Return the commands themselves, not their variants: "20M" and "40M" are
+  /// one BAND entry, not fifteen band entries.
+  catalog?(ctx: HookContext): Promise<CommandCatalogEntry[]>
 }
 
 /// A batch of dirty records the core wants pushed to the sync server, plus

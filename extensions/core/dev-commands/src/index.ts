@@ -18,7 +18,13 @@
 // see docs/extensions/hooks.md.
 
 import { defineExtension, hooks } from "@ham2k/halo-extension-sdk"
-import type { CommandAction, CommandInterpretation, HookContext, JSONValue } from "@ham2k/halo-extension-sdk"
+import type {
+  CommandAction,
+  CommandCatalogEntry,
+  CommandInterpretation,
+  HookContext,
+  JSONValue,
+} from "@ham2k/halo-extension-sdk"
 
 import {
   FALLBACK_CALLS,
@@ -33,6 +39,33 @@ import type { ExistingQsoStats } from "./seed.ts"
 
 import manifest from "../manifest.json" with { type: "json" }
 
+/// Builds a `catalog` for one dev command. These stay OUT of the command
+/// dialog unless developer mode is on (`always` opts a genuinely user-facing
+/// one back in, e.g. RELOAD) — the palette is a discovery surface, and a
+/// normal operator has no business finding SEED there. Every command still
+/// runs when typed in full, developer mode or not; this only governs what the
+/// palette lists.
+///
+/// Strings here are plain English, like the rest of this extension's
+/// describe/confirm lines — dev-commands carries no i18n catalog.
+function devCatalog(
+  command: string,
+  describe: string,
+  opts: { always?: boolean; params?: string; needsOperation?: boolean; expectsParams?: boolean } = {},
+) {
+  return async (ctx: HookContext): Promise<CommandCatalogEntry[]> => {
+    if (!opts.always && !ctx.developerMode) return []
+    return [{
+      command,
+      describe,
+      category: opts.always ? 'Data files' : 'Developer',
+      ...(opts.params ? { params: opts.params } : {}),
+      ...(opts.needsOperation ? { needsOperation: true } : {}),
+      ...(opts.expectsParams ? { expectsParams: true } : {}),
+    }]
+  }
+}
+
 const DevModeCommand = {
   async interpret({ input }: { input: string }, ctx: HookContext): Promise<CommandInterpretation | null> {
     const trimmed = input.trim().toUpperCase()
@@ -46,6 +79,8 @@ const DevModeCommand = {
       commands: [{ updateSettings: { developerMode: nextDevMode } }],
     }
   },
+
+  catalog: devCatalog('DEVMODE', 'Toggle developer mode'),
 }
 
 // Excludes whatever index was picked last time (tracked per-list, at module
@@ -78,6 +113,8 @@ const DevNoticeCommand = {
       commands: [{ devNotice: { key, ...notice } }],
     }
   },
+
+  catalog: devCatalog('DEVNOTICE', 'Post a sample notice to the status bar'),
 }
 
 const DEV_STATUSES = [
@@ -101,6 +138,8 @@ const DevStatusCommand = {
       commands: [{ devStatus: { key, ...status } }],
     }
   },
+
+  catalog: devCatalog('DEVSTATUS', 'Post a sample status message'),
 }
 
 // "DEVPROGRESS" alone -> indeterminate; "DEVPROGRESS 10" -> 10%.
@@ -117,6 +156,8 @@ const DevProgressCommand = {
       commands: [{ devProgress: { icon: 'progress-clock', title: 'Dev progress', percent } }],
     }
   },
+
+  catalog: devCatalog('DEVPROGRESS', 'Post a sample progress bar', { params: '[percent]' }),
 }
 
 const DevSplashCommand = {
@@ -128,6 +169,8 @@ const DevSplashCommand = {
       commands: [{ devSplash: {} }],
     }
   },
+
+  catalog: devCatalog('DEVSPLASH', 'Re-show the release-notes overlay'),
 }
 
 // DEVSPLASH's sibling for the first-run onboarding overlay (Issue #43):
@@ -143,6 +186,8 @@ const DevOnboardCommand = {
       commands: [{ devOnboard: {} }],
     }
   },
+
+  catalog: devCatalog('DEVONBOARD', 'Re-show the onboarding overlay'),
 }
 
 // "DEVSENTRY" / "DEVSENTRY custom message" -> push a synthetic error through
@@ -164,6 +209,8 @@ const DevSentryCommand = {
       commands: [{ devSentry: message ? { message } : {} }],
     }
   },
+
+  catalog: devCatalog('DEVSENTRY', 'Send a test error report', { params: '[message]' }),
 }
 
 // "RELOAD POTA" / "RELOAD SOTA" -> reload data files whose category matches
@@ -189,6 +236,8 @@ const ReloadCommand = {
       commands: [{ reloadDataFiles: { target } }],
     }
   },
+
+  catalog: devCatalog('RELOAD', 'Re-sync data files', { always: true, params: '<POTA|SOTA|ALL>', expectsParams: true }),
 }
 
 // "SEED" -> 10 QSOs; "SEED 20" -> 20; "SEED 15 3H" -> 15 spread over 3
@@ -296,6 +345,8 @@ const SeedCommand = {
       skipOnlineLookup: true,
     }
   },
+
+  catalog: devCatalog('SEED', 'Fill the log with generated QSOs', { params: '[count] [hours]', needsOperation: true }),
 }
 
 /// Every key in the Callsign Notes index, via call-notes' `callNotes` hook —
@@ -358,6 +409,8 @@ const ExpCommand = {
       commands: [{ toggleExperiment: { token } }],
     }
   },
+
+  catalog: devCatalog('EXP', 'Toggle an experimental feature', { params: '<name>', expectsParams: true }),
 }
 
 function shuffled(list: string[]): string[] {

@@ -22,6 +22,7 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:halo_core/halo_core.dart';
 import 'package:halo_widgets/halo_widgets.dart';
 
+import 'views/command_dialog.dart';
 import 'views/operation_view.dart';
 import 'views/home_view.dart';
 import 'views/settings_view.dart';
@@ -565,6 +566,20 @@ void maybeShowNoKeyringNotice(HaLoServices services) {
 }
 
 /// The core services bundle passed down to screens.
+/// One open Operation View's contribution to the ⌘K dialog's context — see
+/// [HaLoServices.openOperationContext].
+class OperationCommandContext {
+  OperationCommandContext(this.uuid);
+
+  final String uuid;
+
+  /// The operation QSON with `uuid` folded in, once it has loaded.
+  Map<String, dynamic>? operation;
+
+  /// This operation's logging panel dispatcher, while one is mounted.
+  CommandActionsDispatcher? dispatch;
+}
+
 class HaLoServices {
   final HaLoDatabase db;
   final SettingsService settings;
@@ -643,6 +658,72 @@ class HaLoServices {
     ..register(PrivacySettingsGroup(settings))
     ..register(ExportsSettingsGroup(settings))
     ..register(SyncSettingsGroup(settings, onToggle: setSyncEnabled));
+
+  /// One open Operation View's command context, for the ⌘K dialog: the
+  /// operation as command hooks expect it, plus the logging panel's action
+  /// dispatcher while one is mounted.
+  ///
+  /// These live on a STACK rather than in a single slot, because open
+  /// operations nest — the palette can open operation B from inside operation
+  /// A. A slot cleared on dispose leaves A silently context-less after B pops,
+  /// even though A's logging panel is still mounted and visible; a stack
+  /// simply reveals A's entry again. Entries are removed by identity, so the
+  /// same operation opened twice is two independent entries.
+  final List<OperationCommandContext> _operationStack = [];
+
+  /// The front-most open operation, as the `{...operation.data, 'uuid': …}`
+  /// map command hooks expect (the uuid is what lets them reach
+  /// `ctx.getOperation` / `ctx.getQsos`; see `logging_controls.dart`'s
+  /// `_operationDataForCommands`). Null wherever no operation is open: Home,
+  /// Settings.
+  ///
+  /// The ⌘K command dialog reads this so operation-scoped commands (SEED,
+  /// NOTE, SPOT) run against the open operation instead of coming back with
+  /// their "needs an open operation" error. It exists because the operation is
+  /// otherwise route-local state inside `OperationView`, which a global
+  /// keyboard shortcut has no path to. When the app grows real multi-window
+  /// support (docs/design/user-interface.md, "Future directions"), this
+  /// becomes per-window rather than app-wide.
+  Map<String, dynamic>? get currentOperationContext =>
+      _operationStack.isEmpty ? null : _operationStack.last.operation;
+
+  /// The front-most logging panel's `CommandAction` dispatcher, or null when
+  /// no operation is open.
+  ///
+  /// The QSO-scoped actions — `setVfo`, `addQso`, `updateQso`,
+  /// `setCallField`, `sendSpots` — can only be applied by the widget that owns
+  /// the in-progress QSO and its controllers. Without this a "20M" run from
+  /// the ⌘K dialog interprets fine, returns `setVfo`, and then silently does
+  /// nothing. Routing the whole batch through here instead makes a command
+  /// from the palette behave exactly as if it had been typed into the call
+  /// field — `LoggingControls`' dispatcher handles the app-scoped actions too.
+  CommandActionsDispatcher? get currentCommandDispatch =>
+      _operationStack.isEmpty ? null : _operationStack.last.dispatch;
+
+  /// Registers a newly opened Operation View and returns its entry, which the
+  /// caller fills in as its operation loads and must pass back to
+  /// [closeOperationContext] on dispose.
+  OperationCommandContext openOperationContext(String uuid) {
+    final entry = OperationCommandContext(uuid);
+    _operationStack.add(entry);
+    return entry;
+  }
+
+  /// Removes [entry] by identity, so a disposing view can never take a
+  /// still-live one's place with it.
+  void closeOperationContext(OperationCommandContext entry) => _operationStack.remove(entry);
+
+  /// Attaches (or detaches) a logging panel's dispatcher to the innermost open
+  /// entry for [uuid]. Looked up rather than passed down so the logging panel
+  /// needs nothing new beyond the services and operation it already has.
+  void setCommandDispatchFor(String uuid, CommandActionsDispatcher? dispatch) {
+    for (final entry in _operationStack.reversed) {
+      if (entry.uuid == uuid) {
+        entry.dispatch = dispatch;
+        return;
+      }
+    }
+  }
 
   /// Fires on DEVSPLASH (`handleCommandAction`'s `devSplash` case) —
   /// `_ReleaseOverlayGateState` listens for this to force-show the release
@@ -1014,16 +1095,44 @@ class _HaLoAppState extends State<HaLoApp> {
   // mask. See navigatorObservers below.
   final _modalBarrierObserver = ModalBarrierRouteObserver();
 
+  /// Whether the ⌘K command dialog is currently up, so a second ⌘K closes it
+  /// instead of opening another one over it.
+  bool _commandDialogOpen = false;
+
   @override
   void initState() {
     super.initState();
     HardwareKeyboard.instance.addHandler(_handleKeyEvent);
+    if (DevBridge.instance.installed) {
+      DevBridge.instance.openCommandBarHandler = _openCommandDialog;
+      DevBridge.instance.closeCommandBarHandler = _closeCommandDialog;
+    }
   }
 
   @override
   void dispose() {
     HardwareKeyboard.instance.removeHandler(_handleKeyEvent);
+    if (DevBridge.instance.openCommandBarHandler == _openCommandDialog) {
+      DevBridge.instance.openCommandBarHandler = null;
+      DevBridge.instance.closeCommandBarHandler = null;
+    }
     super.dispose();
+  }
+
+  /// Opens the ⌘K dialog, unless it's already up. Shared by the shortcut and
+  /// the dev bridge (which exists because synthetic modifier combos can't
+  /// reach the Flutter canvas — see DevBridge).
+  void _openCommandDialog() {
+    if (_commandDialogOpen) return;
+    final context = navigatorKey.currentContext;
+    if (context == null) return;
+    _commandDialogOpen = true;
+    unawaited(showCommandDialog(context, widget.services).whenComplete(() => _commandDialogOpen = false));
+  }
+
+  void _closeCommandDialog() {
+    if (!_commandDialogOpen) return;
+    navigatorKey.currentState?.pop();
   }
 
   bool _handleKeyEvent(KeyEvent event) {
@@ -1037,6 +1146,18 @@ class _HaLoAppState extends State<HaLoApp> {
 
     final key = event.logicalKey;
     final settings = widget.services.settings;
+
+    if (key == LogicalKeyboardKey.keyK && !HardwareKeyboard.instance.isShiftPressed) {
+      // ⌘K (⌃K on Windows/Linux): the command dialog (issue #55). Toggles —
+      // a second ⌘K while it's open closes it rather than stacking a second
+      // copy on top of the first.
+      if (_commandDialogOpen) {
+        _closeCommandDialog();
+      } else {
+        _openCommandDialog();
+      }
+      return true;
+    }
 
     if (HardwareKeyboard.instance.isShiftPressed && key == LogicalKeyboardKey.keyD) {
       // ⌘⇧D (⌃⇧D on non-Mac): flip between light and dark themes.

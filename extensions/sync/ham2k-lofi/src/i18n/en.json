@@ -1,4 +1,6 @@
 {
   "syncAllDescribe": "Force full resync from server?",
-  "syncAllConfirm": "Starting full resync..."
+  "syncAllConfirm": "Starting full resync...",
+  "catalogCategory": "Sync",
+  "catalogSyncAll": "Sync all operations now"
 }

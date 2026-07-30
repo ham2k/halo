@@ -4,5 +4,9 @@
   "freqDescribe": "Change frequency to **{{freq}} MHz**?",
   "freqConfirm": "Frequency set to **{{freq}} MHz**",
   "modeDescribe": "Change mode to **{{mode}}**?",
-  "modeConfirm": "Mode set to **{{mode}}**"
+  "modeConfirm": "Mode set to **{{mode}}**",
+  "catalogBand": "Set the band",
+  "catalogFreq": "Set the frequency",
+  "catalogMode": "Set the mode",
+  "catalogCategory": "Radio"
 }

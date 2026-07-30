@@ -1,4 +1,7 @@
 {
   "expandTo": "¿Expandir a {{value}}?",
-  "dataFileDescription": "Una verdadera muestra de quién es quién y quién no en el mundo de la radio"
+  "dataFileDescription": "Una verdadera muestra de quién es quién y quién no en el mundo de la radio",
+  "catalogCategory": "Notas de indicativos",
+  "catalogExpand": "Expandir una entrada de notas de indicativos",
+  "catalogExpandParams": "<clave>"
 }

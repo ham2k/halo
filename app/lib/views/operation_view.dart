@@ -313,7 +313,15 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
     // actually installed (dev/preview build on web), so nothing runs in
     // production or on native.
     if (DevBridge.instance.installed) DevBridge.instance.stateProvider = _devBridgeState;
+    // Claims this view's slot on the ⌘K command-context stack. Held by
+    // identity so popping back from a nested operation reveals this one again
+    // rather than leaving the palette context-less — see
+    // HaLoServices.openOperationContext.
+    _commandContext = widget.services.openOperationContext(widget.operationUuid);
   }
+
+  /// This view's entry on the command-context stack.
+  late final OperationCommandContext _commandContext;
 
   /// The snapshot `window.__halo.getState()` returns while an operation is open:
   /// the operation, the callsign being composed/edited and its lookup guess,
@@ -344,7 +352,17 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
     _rescoreSub?.cancel();
     _rescoreDebounce?.cancel();
     _tabController?.dispose();
+    widget.services.closeOperationContext(_commandContext);
     super.dispose();
+  }
+
+  /// Publishes this view's operation into its stack entry, so the ⌘K dialog's
+  /// operation-scoped commands (SEED, NOTE, SPOT) have something to run
+  /// against. Same map shape `logging_controls.dart` passes its own
+  /// `interpretCommand` calls.
+  void _setCommandContext(Operation? operation) {
+    _commandContext.operation =
+        operation == null ? null : {...operation.data, 'uuid': operation.uuid};
   }
 
   void _onOperationChanged(Operation? operation) {
@@ -362,6 +380,7 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
       }
     }
     setState(() => _operation = patched);
+    _setCommandContext(patched);
     if (operation == null) return;
 
     // With no profile callsign yet (fresh install — no onboarding flow

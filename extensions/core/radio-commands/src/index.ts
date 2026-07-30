@@ -18,7 +18,7 @@ import { parseFreq, fmtFreq } from "@ham2k/lib-format-tools"
 import { bandForFrequency } from "@ham2k/lib-operation-data"
 
 import { defineExtension } from "@ham2k/halo-extension-sdk"
-import type { CommandInterpretation, HookContext } from "@ham2k/halo-extension-sdk"
+import type { CommandCatalogEntry, CommandInterpretation, HookContext } from "@ham2k/halo-extension-sdk"
 import { tFor } from "./i18n.ts"
 
 import manifest from "../manifest.json" with { type: "json" }
@@ -38,6 +38,21 @@ const BandCommand = {
       confirm: t('bandConfirm', { band }),
       commands: [{ setVfo: { band } }],
     }
+  },
+
+  // One BAND entry, not fifteen band entries — the palette lists the
+  // command, and `interpret` above is what recognizes each actual band.
+  async catalog(ctx: HookContext): Promise<CommandCatalogEntry[]> {
+    const t = tFor(ctx)
+    return [
+      {
+        command: '20M',
+        params: '(80M, 40M, 20M…)',
+        describe: t('catalogBand'),
+        category: t('catalogCategory'),
+        expectsParams: true,
+      },
+    ]
   },
 }
 
@@ -78,6 +93,19 @@ const FrequencyCommand = {
       commands: [{ setVfo: { freq } }],
     }
   },
+
+  async catalog(ctx: HookContext): Promise<CommandCatalogEntry[]> {
+    const t = tFor(ctx)
+    return [
+      {
+        command: '14.285',
+        params: '(14285, 14.285…)',
+        describe: t('catalogFreq'),
+        category: t('catalogCategory'),
+        expectsParams: true,
+      },
+    ]
+  },
 }
 
 const ModeCommand = {
@@ -91,6 +119,19 @@ const ModeCommand = {
       confirm: t('modeConfirm', { mode }),
       commands: [{ setVfo: { mode } }],
     }
+  },
+
+  async catalog(ctx: HookContext): Promise<CommandCatalogEntry[]> {
+    const t = tFor(ctx)
+    return [
+      {
+        command: 'CW',
+        params: '(CW, SSB, FT8…)',
+        describe: t('catalogMode'),
+        category: t('catalogCategory'),
+        expectsParams: true,
+      },
+    ]
   },
 }
 

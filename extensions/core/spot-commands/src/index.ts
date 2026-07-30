@@ -18,7 +18,7 @@
 // globals `defineExtension` depends on.
 
 import { defineExtension } from "@ham2k/halo-extension-sdk"
-import type { CommandInterpretation, HookContext, JSONValue } from "@ham2k/halo-extension-sdk"
+import type { CommandCatalogEntry, CommandInterpretation, HookContext, JSONValue } from "@ham2k/halo-extension-sdk"
 import { parseSelfSpotCommand, isLastSpotCommand } from "./spotCommandParsing.ts"
 import { tFor } from "./i18n.ts"
 
@@ -49,6 +49,17 @@ const SelfSpotCommand = {
       commands: [{ sendSpots: { comment: comment || undefined, target: 'self' } }],
     }
   },
+
+  async catalog(ctx: HookContext): Promise<CommandCatalogEntry[]> {
+    const t = tFor(ctx)
+    return [{
+      command: 'SPOT',
+      params: '[comment]',
+      describe: t('catalogSelfSpot'),
+      category: t('catalogCategory'),
+      needsOperation: true,
+    }]
+  },
 }
 
 const LastSpotCommand = {
@@ -64,6 +75,16 @@ const LastSpotCommand = {
       confirm: t('spottingLast'),
       commands: [{ sendSpots: { target: 'last' } }],
     }
+  },
+
+  async catalog(ctx: HookContext): Promise<CommandCatalogEntry[]> {
+    const t = tFor(ctx)
+    return [{
+      command: 'SPOTLAST',
+      describe: t('catalogSpotLast'),
+      category: t('catalogCategory'),
+      needsOperation: true,
+    }]
   },
 }
 

@@ -46,6 +46,11 @@ class CallInfoPanel extends StatefulWidget {
   /// only for DX (never our own).
   final String? ourEntityPrefix;
 
+  /// Sizes the panel to its content instead of filling the space it's given.
+  /// The Call Info pane wants the default (fill); the ⌘K dialog's card wants
+  /// this, so a short lookup doesn't stretch the card down the window.
+  final bool shrinkWrap;
+
   const CallInfoPanel({
     super.key,
     required this.operation,
@@ -56,6 +61,7 @@ class CallInfoPanel extends StatefulWidget {
     this.alertKeys = const [],
     this.noticeKeys = const [],
     this.ourEntityPrefix,
+    this.shrinkWrap = false,
   });
 
   @override
@@ -163,6 +169,7 @@ class _CallInfoPanelState extends State<CallInfoPanel> {
     final otherOps = [for (final q in history) if (q.operationUuid != widget.operation.uuid) q];
 
     return ListView(
+      shrinkWrap: widget.shrinkWrap,
       padding: const EdgeInsets.all(16),
       children: [
         // Header: identity on the left, QSL image + QRZ on the right.

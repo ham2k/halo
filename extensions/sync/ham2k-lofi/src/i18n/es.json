@@ -1,4 +1,6 @@
 {
   "syncAllDescribe": "¿Forzar una resincronización completa desde el servidor?",
-  "syncAllConfirm": "Iniciando resincronización completa..."
+  "syncAllConfirm": "Iniciando resincronización completa...",
+  "catalogCategory": "Sincronización",
+  "catalogSyncAll": "Sincronizar todas las operaciones ahora"
 }

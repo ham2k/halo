@@ -56,6 +56,7 @@ class TranslationsEs extends Translations with BaseTranslations<AppLocale, Trans
 	@override late final _Translations$callInfo$es callInfo = _Translations$callInfo$es._(_root);
 	@override late final _Translations$settings$es settings = _Translations$settings$es._(_root);
 	@override late final _Translations$commands$es commands = _Translations$commands$es._(_root);
+	@override late final _Translations$commandDialog$es commandDialog = _Translations$commandDialog$es._(_root);
 	@override late final _Translations$expiredBuild$es expiredBuild = _Translations$expiredBuild$es._(_root);
 	@override late final _Translations$spotting$es spotting = _Translations$spotting$es._(_root);
 	@override late final _Translations$dataFiles$es dataFiles = _Translations$dataFiles$es._(_root);
@@ -434,6 +435,26 @@ class _Translations$commands$es extends Translations$commands$en {
 	@override String experimentDisabled({required Object name}) => '${name} deshabilitado';
 	@override String get sentryTestSent => 'Reporte de error de prueba enviado a Sentry';
 	@override String get sentryTestLocalOnly => 'Sentry está deshabilitado en esta compilación — el error de prueba solo se registró localmente';
+}
+
+// Path: commandDialog
+class _Translations$commandDialog$es extends Translations$commandDialog$en {
+	_Translations$commandDialog$es._(TranslationsEs root) : this._root = root, super.internal(root);
+
+	final TranslationsEs _root; // ignore: unused_field
+
+	// Translations
+	@override String get hint => 'Busca indicativos o escribe un comando';
+	@override String noResults({required Object text}) => 'Nada coincide con «${text}»';
+	@override String get sectionCommands => 'Comandos';
+	@override String get sectionGoTo => 'Ir a';
+	@override String get sectionOperations => 'Operaciones';
+	@override String get goHome => 'Inicio';
+	@override String get goSettings => 'Ajustes';
+	@override String get goNewOperation => 'Nueva operación';
+	@override String runTyped({required Object text}) => 'Ejecutar «${text}»';
+	@override String get sectionSuggestions => 'Prueba';
+	@override String get lookingUp => 'Buscando indicativo…';
 }
 
 // Path: expiredBuild
@@ -1809,6 +1830,19 @@ extension on TranslationsEs {
 			'commands.experimentDisabled' => ({required Object name}) => '${name} deshabilitado',
 			'commands.sentryTestSent' => 'Reporte de error de prueba enviado a Sentry',
 			'commands.sentryTestLocalOnly' => 'Sentry está deshabilitado en esta compilación — el error de prueba solo se registró localmente',
+			'commandDialog.hint' => 'Busca indicativos o escribe un comando',
+			'commandDialog.noResults' => ({required Object text}) => 'Nada coincide con «${text}»',
+			'commandDialog.sectionCommands' => 'Comandos',
+			'commandDialog.sectionGoTo' => 'Ir a',
+			'commandDialog.sectionOperations' => 'Operaciones',
+			'commandDialog.goHome' => 'Inicio',
+			'commandDialog.goSettings' => 'Ajustes',
+			'commandDialog.goNewOperation' => 'Nueva operación',
+			'commandDialog.runTyped' => ({required Object text}) => 'Ejecutar «${text}»',
+			'commandDialog.sectionSuggestions' => 'Prueba',
+			'commandDialog.lookingUp' => 'Buscando indicativo…',
+			_ => null,
+		} ?? switch (path) {
 			'expiredBuild.title' => 'Esta versión ha expirado',
 			'expiredBuild.body' => 'Por favor visita ham2k.com para obtener una versión más reciente.',
 			'expiredBuild.visit' => 'Visitar ham2k.com',
@@ -1820,8 +1854,6 @@ extension on TranslationsEs {
 			'spotting.spotFailed' => ({required Object source, required Object message}) => '${source} falló: ${message}',
 			'spotting.unknownError' => 'error desconocido',
 			'spotting.notSent' => 'Spot no enviado.',
-			_ => null,
-		} ?? switch (path) {
 			'dataFiles.downloading' => 'Descargando…',
 			'dataFiles.importedRecords' => ({required num count, required Object label}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count, one: 'Se importó ${count} registro de ${label}.', other: 'Se importaron ${count} registros de ${label}.', ), 
 			'dataFiles.importedData' => ({required Object label}) => 'Se importaron datos de ${label}.',

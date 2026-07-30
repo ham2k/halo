@@ -408,8 +408,10 @@ interface CommandHook {
     args: { input: string; operation?; qso?; execute? },
     ctx,
   ): Promise<CommandInterpretation | null>
+  catalog?(ctx): Promise<CommandCatalogEntry[]>
 }
 // CommandInterpretation: {expectsParams?, mixedCase?, error?, describe?, confirm?, commands?: CommandAction[]}
+// CommandCatalogEntry: {command, describe, params?, category?, needsOperation?, expectsParams?}
 // CommandAction (closed set): {setVfo?, updateQso?, addQso?, sendSpots?,
 //   syncAll?, updateSettings?, setCallField?, reloadDataFiles?, devNotice?,
 //   devStatus?, devProgress?, toggleExperiment?}
@@ -515,6 +517,49 @@ into the call field via `setCallField` — issue #17; leading "//" never
 parses as call stacking, whose first segment would be empty, so the two
 syntaxes coexist). Future command hooks (spotting, operator change…)
 register in the same category and compete on priority with these.
+
+### `catalog` — advertising commands to the ⌘K dialog
+
+`interpret` answers *"what does this exact text mean?"* — one answer, for
+text the user has already typed. The command dialog (⌘K, issue #55) needs the
+other direction: *"what commands exist?"*, so it can list them before the
+user knows the syntax. That's the optional `catalog(ctx)`, returning one
+entry per command:
+
+```ts
+{ command: 'NOTE', params: '<text>', describe: 'Add a note to the log',
+  category: 'Log annotations', needsOperation: true, expectsParams: true }
+```
+
+`command` is both what the palette matches against and what it types into the
+field when the entry is chosen, so it has to be something `interpret`
+recognizes. `params` is display-only. `describe` may use inline markdown
+(`**bold**`, `*italic*`, `` `code` ``), the same as `interpret`'s own
+`describe`/`confirm` — the dialog renders it as one ellipsized line rather
+than as blocks, so keep it to a single sentence. `needsOperation` greys the row out when
+no operation is open, instead of letting the user pick it and get
+`interpret`'s `error` back. `expectsParams` leaves the field open for typing
+rather than running the command immediately — the catalog counterpart of
+`CommandInterpretation.expectsParams`, and the reason picking NOTE doesn't
+log an empty note.
+
+Three things differ from `interpret`, all deliberate:
+
+- **Called once and cached**, not per keystroke — dropped when the runtime is
+  replaced (an extension enabled/disabled) or the hook context is
+  invalidated (locale change, since `describe` is localized by the hook).
+- **Matching is host-side**, plain case-insensitive substring against
+  `command` and `describe`. Same rule `interpret`'s own matching follows: the
+  host never compiles extension-supplied patterns.
+- **List commands, not variants.** `radio-commands` advertises one BAND
+  entry, not fifteen; `call-notes` advertises `//`, not every key the user
+  has defined.
+
+A hook without `catalog` contributes nothing to the palette's suggestions and
+still works fine when its commands are typed in full — that's why it's
+optional. `dev-commands` uses `ctx.developerMode` to keep DEVMODE, SEED and
+friends out of the list unless developer mode is on (RELOAD, being genuinely
+user-facing, is always listed); the commands themselves still run either way.
 
 A command that recognizes its own prefix but needs more typed input before
 it can run (e.g. bare "RELOAD", before its target word) returns

@@ -650,6 +650,19 @@
     "sentryTestSent": "Reporte de error de prueba enviado a Sentry",
     "sentryTestLocalOnly": "Sentry está deshabilitado en esta compilación — el error de prueba solo se registró localmente"
   },
+  "commandDialog": {
+    "hint": "Busca indicativos o escribe un comando",
+    "noResults": "Nada coincide con «${text}»",
+    "sectionCommands": "Comandos",
+    "sectionGoTo": "Ir a",
+    "sectionOperations": "Operaciones",
+    "goHome": "Inicio",
+    "goSettings": "Ajustes",
+    "goNewOperation": "Nueva operación",
+    "runTyped": "Ejecutar «${text}»",
+    "sectionSuggestions": "Prueba",
+    "lookingUp": "Buscando indicativo…"
+  },
   "expiredBuild": {
     "title": "Esta versión ha expirado",
     "body": "Por favor visita ham2k.com para obtener una versión más reciente.",

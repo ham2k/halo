@@ -160,6 +160,87 @@ listed first among right-packed buttons (`HaloDialog`'s `cancel` parameter).
 Pane-sized dialogs — "Modal Panes" — additionally present as full screens on
 phone-sized windows; see [layouts.md](layouts.md).
 
+### Command dialog
+
+⌘K (⌃K on Windows/Linux) opens the **command dialog** from anywhere in the
+app: a search field near the top-middle of the window — rounded, with a thick
+teal border — and, **attached directly beneath it**, a card carrying the
+results. The card's top edge butts against the bar (square top corners,
+rounded bottom, and the bar's shadow doesn't fall on it), and its sides line
+up with the bar's search icon, so the two read as one object. The bar's
+height is fixed, so it doesn't resize when the placeholder gives way to typed
+text. Escape, a click outside, or a second ⌘K dismisses it.
+
+The field's placeholder is set in the regular face — it's prose — while what
+the user types is monospaced, since it's a callsign or a command.
+
+One field, four kinds of result:
+
+- **Commands** extensions advertise through their `catalog` hook
+  ([hooks.md](../extensions/hooks.md#catalog--advertising-commands-to-the-k-dialog)),
+  narrowed by substring as the user types and **ranked name-first**: every
+  match on a command's name outranks every match on its description, so
+  typing "SET" offers SETUP before a band command merely described as "Set
+  the band". Picking one with parameters types it into the field; picking one
+  without runs it. The declaring extension's category shows as a trailing
+  label rather than a grouping heading, since rows are ranked across
+  categories.
+- **What's typed**, when a `command` hook recognizes it — listed first, since
+  running it is usually what Enter should do.
+- **Navigation** — Home, Settings, a new operation, or any existing operation
+  matched by title.
+- **The callsign lookup**, when the text looks like a callsign. It says
+  "Looking up callsign…" the moment the text reads as one, fills in from the
+  offline data files (country, often a name) as soon as they answer, then
+  replaces that with the full online result. It renders through the very same
+  `CallInfoPanel` the Call Info pane uses — notes, emoji, flag, distance and
+  bearing, QSO history — rather than a summary line of its own, so a lookup
+  here reads exactly as it does there. It sits below the selectable rows and
+  is never the selection, so Enter keeps meaning "run the command".
+
+↑/↓ move the selection, Enter activates it, and rows are tappable. Enter on
+text that matches no command leaves it alone — on a callsign the lookup below
+IS the result, and clearing the field would throw it away and drop the
+palette back to its suggestions. (The Home bar keeps its own "Enter clears
+the search" behaviour; the shared engine takes a flag for it.) An
+operation-scoped command (SEED, NOTE, SPOT) is simply **not offered** when no
+operation is open — listing something unpickable is noise, and picking it
+would only produce the hook's error.
+
+The sheet shows at most five rows and scrolls beyond that. An **empty field is
+not a browse-everything list**: for the first ten opens it offers two random
+sample commands so the feature is discoverable, and after that it stays quiet
+until the user types. The open count rides on the same per-flow counter the
+onboarding nudges use (`OnboardingFlows.commandDialog`).
+
+**Driving it from outside.** The shortcut is a modifier combo, and those
+don't reach the Flutter canvas — a synthetic `ctrl+k` no-ops, as does the
+pre-existing ⌘⇧D — so on web the dev bridge (`window.__halo`, dev/preview
+builds only) exposes `openCommandBar()`, `closeCommandBar()`,
+`setCommandText()`, `commandSubmit()`, `commandMove()` and
+`commandBarState()`. Without them the dialog can't be opened, driven, or even
+looked at by a script or agent. `openCommandBar()` returns a **promise**:
+the route mounts a frame after the call, and typing before that silently does
+nothing — which looks exactly like the dialog having closed itself.
+
+The typing behavior — debounced interpretation, the space rules for commands
+mid-parameter, execution — is **not** the dialog's own: it lives in
+`CommandEngine`, shared with the Home view's Quick Lookup bar so the two
+can't drift apart. The dialog runs commands against the front-most Operation
+View's operation via `HaLoServices.currentOperationContext`.
+
+**Where a command's actions land.** Most `CommandAction`s are QSO-scoped —
+`setVfo`, `addQso`, `updateQso`, `setCallField`, `sendSpots` — and only the
+logging panel can apply them, since they need the in-progress QSO and its
+controllers. So while a logging panel is mounted it publishes its dispatcher
+as `HaLoServices.currentCommandDispatch`, and the dialog hands it the whole
+action batch: a command run from the palette behaves exactly as if it had
+been typed into the call field. The batch is never split — a command can
+return several actions at once (satellites' SAT returns `setVfo` plus
+`updateQso`), and their order matters. With no panel live (the Home bar, or
+the dialog with nothing open) only the app-scoped actions can apply, and
+`CommandEngine` handles those itself.
+
 ## Forms
 
 Forms use a clear, consistent layout, with labels and fields aligned

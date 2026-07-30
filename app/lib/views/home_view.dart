@@ -16,6 +16,7 @@ import '../config/web_preview_label.dart';
 import '../main.dart';
 import '../services/settings_service.dart';
 import '../tools/operation_title.dart';
+import 'command_engine.dart';
 import 'header_profile_label.dart';
 import 'operation_dialogs.dart';
 import 'operation_view.dart';
@@ -673,78 +674,43 @@ class _HomeQuickLookupState extends State<HomeQuickLookup> {
   final _controller = TextEditingController();
   final _focusNode = FocusNode();
 
-  String? _commandMessage;
-  bool _isConfirmation = false;
-
-  /// True while `_commandMessage` is a CommandInterpretation `error` — a
-  /// recognized command that can't run here (e.g. SEED with no open
-  /// operation). Rendered with an alert icon, and Enter keeps the typed
-  /// input instead of executing or clearing.
-  bool _isError = false;
-  Map<String, dynamic>? _currentInterpretation;
-  Timer? _commandDescribeDebounce;
-  Timer? _executeMessageTimer;
-  Timer? _lookupDebounce;
-
-  String? _lookupFor;
-  Map<String, dynamic>? _lookupResult;
-
-  /// The last interpret() result retained for the field's space-restriction
-  /// — deliberately separate from [_currentInterpretation], which resets
-  /// synchronously on every keystroke (for the describe-message UI): the
-  /// field's formatter must not snap back to denying spaces mid-command
-  /// (ham2k/app-halo-dist#190). Same "retained interpretation" pattern as
-  /// `logging_controls.dart`'s call field, scoped down to just spaces since
-  /// this field otherwise accepts any character.
-  Map<String, dynamic>? _retainedInterpretation;
-
-  /// Matches text the space-denying formatter would leave untouched — see
-  /// [_retainInterpretation].
-  static final _noSpaceSafeText = RegExp(r'^\S*$');
-
-  /// Folds a fresh interpret() result into [_retainedInterpretation]. A
-  /// non-null result always replaces the previous one. A null result only
-  /// clears it when the current text has no space the formatter would
-  /// otherwise strip on the next keystroke — mirrors
-  /// `logging_controls.dart`'s `_retainInterpretation`.
-  void _retainInterpretation(Map<String, dynamic>? result) {
-    if (result != null) {
-      _retainedInterpretation = result;
-    } else if (_noSpaceSafeText.hasMatch(_controller.text)) {
-      _retainedInterpretation = null;
-    }
-  }
-
-  /// Whether the field is mid-command free-text entry — spaces stay
-  /// allowed. Two ways in, both requiring a retained command: it's still
-  /// awaiting its parameters (`expectsParams`), or the text already holds a
-  /// space the formatter would otherwise delete on the next keystroke.
-  bool get _commandExpectsParams =>
-      _retainedInterpretation != null &&
-      (_retainedInterpretation!['expectsParams'] == true || !_noSpaceSafeText.hasMatch(_controller.text));
-
-  /// Whether the retained command declared `mixedCase: true` (e.g. NOTE,
-  /// whose parameter is free prose) — also keeps spaces allowed.
-  bool get _commandMixedCase => _retainedInterpretation?['mixedCase'] == true;
+  /// Lookup, command interpretation and execution all live in the shared
+  /// engine — the ⌘K command dialog runs on the same one, so the debounce,
+  /// space-retention (ham2k/app-halo-dist#190) and execute rules can't drift
+  /// between the two. This widget only renders it.
+  late final CommandEngine _engine;
 
   @override
   void initState() {
     super.initState();
-    _controller.addListener(_onTextChanged);
-    // The mobile numbers row shows only while this field has focus, so rebuild
-    // as focus comes and goes (issue #27).
+    _engine = CommandEngine(
+      services: widget.services,
+      // The home screen has no open operation, so operation-scoped commands
+      // (SEED, NOTE, SPOT) answer with their own error here.
+      operationContext: () => null,
+      runAction: (action, params) => runCommandAction(widget.services, this, action, params),
+    )..attach(_controller);
+    _engine.addListener(_onEngineChanged);
+    // The clear button and the numbers row's contextual key both key off the
+    // text, and the numbers row shows only while this field has focus, so
+    // rebuild for both (issue #27).
+    _controller.addListener(_onEngineChanged);
     _focusNode.addListener(_onFocusChanged);
   }
 
   @override
   void dispose() {
     _focusNode.removeListener(_onFocusChanged);
+    _controller.removeListener(_onEngineChanged);
+    _engine.removeListener(_onEngineChanged);
+    _engine.dispose();
     _controller.dispose();
     _focusNode.dispose();
-    _commandDescribeDebounce?.cancel();
-    _executeMessageTimer?.cancel();
-    _lookupDebounce?.cancel();
     super.dispose();
+  }
+
+  void _onEngineChanged() {
+    if (mounted) setState(() {});
   }
 
   void _onFocusChanged() {
@@ -791,229 +757,13 @@ class _HomeQuickLookupState extends State<HomeQuickLookup> {
     );
   }
 
-  void _onTextChanged() {
-    final text = _controller.text.trim();
-
-    _lookupDebounce?.cancel();
-    _commandDescribeDebounce?.cancel();
-    _executeMessageTimer?.cancel();
-    _isConfirmation = false;
-    _currentInterpretation = null;
-
-    if (text.isEmpty) {
-      setState(() {
-        _lookupFor = null;
-        _lookupResult = null;
-        _commandMessage = null;
-        _isError = false;
-        _retainedInterpretation = null;
-      });
-      return;
-    }
-
-    setState(() {
-      _commandMessage = null;
-      _isError = false;
-    });
-
-    if (widget.services.extensions.ready) {
-      _commandDescribeDebounce = Timer(const Duration(milliseconds: 150), () async {
-        final result = await widget.services.extensions.interpretCommand(text);
-        if (!mounted || _controller.text.trim() != text) return;
-        setState(() {
-          _currentInterpretation = result;
-          _retainInterpretation(result);
-          _isConfirmation = false;
-          if (result != null && result['error'] is String) {
-            _commandMessage = result['error'] as String;
-            _isError = true;
-          } else if (result != null && result['describe'] is String) {
-            _commandMessage = result['describe'] as String;
-            _isError = false;
-          } else {
-            _commandMessage = null;
-            _isError = false;
-          }
-        });
-      });
-    }
-
-    if (!looksLikeCallsign(text)) {
-      setState(() {
-        _lookupFor = null;
-        _lookupResult = null;
-      });
-      return;
-    }
-
-    _lookupDebounce = Timer(const Duration(milliseconds: 300), () async {
-      // No in-progress QSO/operation context on this quick-log/command bar
-      // — QSO-scoped lookup hooks (e.g. POTA) simply find nothing to do.
-      final result = await widget.services.extensions.lookupCall(text, qso: const {}, operation: const {});
-      if (!mounted || _controller.text.trim() != text) return;
-      setState(() {
-        _lookupFor = text;
-        _lookupResult = result;
-      });
-    });
-  }
-
-  Future<void> _submit() async {
-    final text = _controller.text.trim();
-    if (text.isEmpty) return;
-
-    var interpretation = _currentInterpretation;
-    if (interpretation == null) {
-      interpretation = await widget.services.extensions.interpretCommand(text);
-      if (!mounted || _controller.text.trim() != text) return; // stale — the field changed while awaiting
-    }
-
-    // A recognized command that can't run in this context (e.g. SEED with
-    // no open operation) — present its error and keep the typed input for
-    // editing; there's nothing to execute.
-    if (interpretation != null && interpretation['error'] is String) {
-      setState(() {
-        _commandMessage = interpretation!['error'] as String;
-        _isError = true;
-        _isConfirmation = false;
-      });
-      return;
-    }
-
-    // A command still awaiting parameters (expectsParams) isn't complete —
-    // leave the field as-is so the user can keep typing, rather than
-    // treating it as executable (mirrors logging_controls.dart's _log()).
-    if (interpretation != null && interpretation['expectsParams'] != true) {
-      // The interpretation above may just be the debounce-time preview,
-      // whose `commands` a hook like SEED deliberately left cheap/empty
-      // (see CommandHook.interpret's `execute` doc) — re-interpret with
-      // execute:true now that we're actually about to run it, so those
-      // hooks generate the real commands instead of a stale preview's.
-      final executable = await widget.services.extensions.interpretCommand(text, null, null, true);
-      if (!mounted || _controller.text.trim() != text) return; // stale — the field changed while awaiting
-      if (executable == null) return;
-
-      // A command can also fail at execute time (mirrors _log() in
-      // logging_controls.dart) — show the message and keep the typed input
-      // instead of clearing the field as if it had succeeded.
-      if (executable['error'] is String) {
-        _executeMessageTimer?.cancel();
-        setState(() {
-          _commandMessage = executable['error'] as String;
-          _isError = true;
-          _isConfirmation = false;
-        });
-        return;
-      }
-
-      _controller.clear();
-      _commandDescribeDebounce?.cancel();
-      _executeMessageTimer?.cancel();
-
-      final confirm = executable['confirm'];
-      setState(() {
-        _currentInterpretation = null;
-        _retainedInterpretation = null;
-        _isConfirmation = true;
-        _isError = false;
-        if (confirm is String) {
-          _commandMessage = confirm;
-          _executeMessageTimer = Timer(const Duration(seconds: 5), () {
-            if (mounted) {
-              setState(() {
-                _commandMessage = null;
-                _isConfirmation = false;
-              });
-            }
-          });
-        } else {
-          _commandMessage = null;
-          _isConfirmation = false;
-        }
-      });
-
-      final commands = executable['commands'];
-      if (commands is List) {
-        await _dispatchActions(commands);
-      }
-    } else if (interpretation == null) {
-      // Just clear search
-      _controller.clear();
-      setState(() {
-        _lookupFor = null;
-        _lookupResult = null;
-        _commandMessage = null;
-        _isError = false;
-        _retainedInterpretation = null;
-      });
-    }
-  }
-
-  Future<void> _runCommandAction(String action, [Map<String, dynamic>? params]) =>
-      runCommandAction(widget.services, this, action, params);
-
-  Future<void> _dispatchActions(List<dynamic> actions) async {
-    for (final action in actions) {
-      if (action is! Map) continue;
-      final map = action.cast<String, dynamic>();
-      if (map.containsKey('updateSettings')) {
-        final params = (map['updateSettings'] as Map).cast<String, dynamic>();
-        if (params.containsKey('developerMode')) {
-          await widget.services.settings.setDeveloperMode(params['developerMode'] as bool);
-        }
-      } else if (map.containsKey('syncAll')) {
-        await _runCommandAction('syncAll');
-      } else if (map['devNotice'] is Map) {
-        await _runCommandAction('devNotice', (map['devNotice'] as Map).cast<String, dynamic>());
-      } else if (map['devStatus'] is Map) {
-        await _runCommandAction('devStatus', (map['devStatus'] as Map).cast<String, dynamic>());
-      } else if (map['devProgress'] is Map) {
-        await _runCommandAction('devProgress', (map['devProgress'] as Map).cast<String, dynamic>());
-      } else if (map['devSplash'] is Map) {
-        await _runCommandAction('devSplash');
-      } else if (map['devOnboard'] is Map) {
-        await _runCommandAction('devOnboard');
-      } else if (map['reloadDataFiles'] is Map) {
-        await _runCommandAction('reloadDataFiles', (map['reloadDataFiles'] as Map).cast<String, dynamic>());
-      } else if (map['toggleExperiment'] is Map) {
-        await _runCommandAction('toggleExperiment', (map['toggleExperiment'] as Map).cast<String, dynamic>());
-      } else {
-        // Nothing above recognized this action's key(s) — most likely a
-        // command that's scoped to the logging panel (addQso, updateQso,
-        // sendSpots, setCallField) matched here on the home screen's
-        // operation-less quick search, or a new CommandAction field with no
-        // matching branch here yet. Either way this must not fail silently:
-        // see logging_controls.dart's own _dispatchActions and its
-        // regression test for `reloadDataFiles` shipping without this
-        // branch.
-        debugPrint('[extensions] no dispatch branch for command action: ${map.keys}');
-      }
-    }
-  }
-
-  String? get _lookupLine {
-    final result = _lookupResult;
-    if (result == null || _lookupFor != _controller.text.trim()) return null;
-    final guess = result['guess'] as Map<String, dynamic>? ?? const {};
-    // A callsign note (issue #17) takes the name's slot outright rather
-    // than joining it — same rule as the logging panel's _lookupLine
-    // (packages/halo_widgets/lib/src/logging_controls.dart).
-    final note = guess['note'] as String?;
-    final parts = [
-      (note != null && note.isNotEmpty) ? note : guess['name'],
-      guess['location'],
-      guess['country'],
-      guess['grid'],
-    ].whereType<String>().where((s) => s.isNotEmpty).toList();
-    return parts.isEmpty ? null : parts.join(' • ');
-  }
-
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final lookupLine = _lookupLine;
+    final lookupLine = _engine.lookupLine;
 
-    final hasContent = _commandMessage != null || lookupLine != null;
+    final commandMessage = _engine.message;
+    final hasContent = commandMessage != null || lookupLine != null;
 
     // The Home Scaffold no longer resizes for the keyboard, and the status
     // footer below now collapses to nothing, so this bar reserves the space
@@ -1039,19 +789,19 @@ class _HomeQuickLookupState extends State<HomeQuickLookup> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  if (_commandMessage != null)
+                  if (commandMessage != null)
                     Row(
                       children: [
-                        if (_isError) ...[
+                        if (_engine.isError) ...[
                           Icon(resolveIconName('alert-circle'), size: 16, color: theme.colorScheme.onPrimary),
                           const SizedBox(width: 8),
                         ],
                         Expanded(
                           child: MarkdownBody(
-                            data: _commandMessage!,
+                            data: commandMessage,
                             styleSheet: MarkdownStyleSheet.fromTheme(theme).copyWith(
                               p: theme.textTheme.bodyLarge?.copyWith(
-                                color: _isConfirmation
+                                color: _engine.isConfirmation
                                     ? theme.colorScheme.onPrimary
                                     : theme.colorScheme.onPrimary.withValues(alpha: 0.85),
                                 fontWeight: FontWeight.w600,
@@ -1061,7 +811,7 @@ class _HomeQuickLookupState extends State<HomeQuickLookup> {
                         ),
                       ],
                     ),
-                  if (_commandMessage == null && lookupLine != null)
+                  if (commandMessage == null && lookupLine != null)
                     Row(
                       children: [
                         Icon(MdiIcons.accountSearch, size: 16, color: theme.colorScheme.onPrimary),
@@ -1094,7 +844,8 @@ class _HomeQuickLookupState extends State<HomeQuickLookup> {
                 // text parameters, e.g. "NOTE hello") — otherwise they'd
                 // just corrupt a callsign/command being typed
                 // (ham2k/app-halo-dist#190).
-                if (!_commandExpectsParams && !_commandMixedCase) FilteringTextInputFormatter.deny(RegExp(r'\s')),
+                if (!_engine.commandExpectsParams && !_engine.commandMixedCase)
+                  FilteringTextInputFormatter.deny(RegExp(r'\s')),
                 TextInputFormatter.withFunction(
                   (oldValue, newValue) => newValue.copyWith(text: newValue.text.toUpperCase()),
                 ),
@@ -1119,7 +870,7 @@ class _HomeQuickLookupState extends State<HomeQuickLookup> {
               // unfocuses (closing the keyboard) before onSubmitted even
               // runs. onEditingComplete replaces that default entirely, so
               // the field keeps focus for the next command.
-              onEditingComplete: () => _submit(),
+              onEditingComplete: () => _engine.submit(),
             ),
           ),
           // The mobile numbers row (issue #27), same setting as the logging

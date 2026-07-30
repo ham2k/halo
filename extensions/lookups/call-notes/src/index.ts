@@ -21,7 +21,7 @@ import { defineExtension } from "@ham2k/halo-extension-sdk"
 import type {
   AnnotatedCallInfo,
   CallInfoLookup,
-  CommandInterpretation,
+  CommandCatalogEntry, CommandInterpretation,
   DataFileDefinition,
   HookContext,
   JSONValue,
@@ -107,6 +107,19 @@ const ExpandCommand = {
       describe: tFor(ctx)('expandTo', { value }),
       commands: [{ setCallField: { text: value } }],
     }
+  },
+
+  async catalog(ctx: HookContext): Promise<CommandCatalogEntry[]> {
+    const t = tFor(ctx)
+    // The "//" prefix itself, not every key the user has defined — those are
+    // their own data, and listing them all would swamp the palette.
+    return [{
+      command: '//',
+      params: t('catalogExpandParams'),
+      describe: t('catalogExpand'),
+      category: t('catalogCategory'),
+      expectsParams: true,
+    }]
   },
 }
 
