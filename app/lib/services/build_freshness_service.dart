@@ -102,6 +102,11 @@ class BuildFreshnessService with WidgetsBindingObserver {
       title: t.updates.updateAvailable,
       text: t.updates.reloadToUpdate,
       actions: [StatusBarAction(label: t.updates.reloadNow, onTap: reloadPage)],
+      // Its whole point is the "Reload now" action, which can't survive the
+      // very reload it triggers (a VoidCallback isn't serializable) —
+      // persisting it just leaves a dead, button-less copy sitting in the
+      // footer after every reload, looking exactly like it never worked.
+      persist: false,
     );
     return BuildCheckResult.updateAvailable;
   }

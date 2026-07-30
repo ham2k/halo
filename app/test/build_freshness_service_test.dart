@@ -82,6 +82,21 @@ void main() {
     expect(statusBar.activeNotices.where((n) => n.key == BuildFreshnessService.noticeKey), hasLength(1));
   });
 
+  test('the reload notice does not survive the reload it triggers', () async {
+    SharedPreferences.setMockInitialValues({});
+    final prefs = await SharedPreferences.getInstance();
+    final statusBar = StatusBarService(prefs);
+    final service = makeService(statusBar: statusBar, deployedSha: 'bbb2222', currentSha: 'aaa1111');
+
+    await service.check();
+    // "Reload now" reloads the page, which for a real browser tears down
+    // this whole process — simulate that by reading history back from the
+    // same SharedPreferences-backed store into a fresh instance.
+    final afterReload = StatusBarService(prefs);
+
+    expect(afterReload.activeNotices.where((n) => n.key == BuildFreshnessService.noticeKey), isEmpty);
+  });
+
   test('a network failure is swallowed, not thrown', () async {
     final statusBar = await makeStatusBar();
     final service = BuildFreshnessService(
