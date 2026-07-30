@@ -15,7 +15,7 @@ import 'package:intl/intl.dart';
 
 import 'package:drift_flutter/drift_flutter.dart';
 import 'package:flutter/foundation.dart'
-    show defaultTargetPlatform, kIsWeb, kReleaseMode, visibleForTesting, TargetPlatform;
+    show defaultTargetPlatform, kDebugMode, kIsWeb, kReleaseMode, visibleForTesting, TargetPlatform;
 import 'package:flutter/material.dart';
 import 'package:flutter/semantics.dart' show SemanticsBinding;
 import 'package:flutter/services.dart';
@@ -470,7 +470,10 @@ Future<HaLoServices> bootstrap({
     purchases: purchases,
     // The running app checks Shorebird for a Dart patch on the selected track
     // (§4.3); no-ops in any build without the engine. Overridable for tests.
-    updates: updates ?? ShorebirdUpdateService(settings),
+    // Web and debug builds never have the engine, and constructing
+    // ShorebirdUpdater() there prints the package's "Updater is unavailable"
+    // notice on every boot — skip it and go straight to the no-op.
+    updates: updates ?? (kIsWeb || kDebugMode ? const NoopUpdateService() : ShorebirdUpdateService(settings)),
     updateCheck: updateCheck,
   );
   // A locked/absent keyring yields a null device key (ensureSyncDeviceKey no
