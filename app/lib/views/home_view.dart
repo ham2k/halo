@@ -182,14 +182,54 @@ class HomeView extends StatefulWidget {
 /// nudge (see [_NewOperationNudge]) stops — issue #348.
 const _newOperationNudgeThreshold = 2;
 
+/// How long the screen sits still before the nudge fires. Someone who is
+/// already doing something doesn't need to be pointed at the button, and
+/// someone still taking the screen in hasn't reached the point of needing it
+/// either — so the nudge waits, and any touch in the meantime cancels it.
+const _newOperationNudgeDelay = Duration(seconds: 5);
+
 /// A vivid cyan-leaning version of colorScheme.primary (#006783, same hue,
 /// lightness pushed up), used only for the FAB so it stands out against the
 /// operation list rather than blending in like a regular primary-colored
 /// control.
 const _fabColor = Color(0xFF00B4E6);
 
+/// How long the FAB's extend/collapse takes, and how long after the last
+/// change we wait before forcing it to its resting state (see
+/// [_HomeViewState._setFabExtended]). The slack is deliberate: the transition
+/// starts on the frame *after* the flip, not at the instant of it, so a
+/// healthy one must never be cut short by its own deadline.
+const _fabTransitionDuration = Duration(milliseconds: 300);
+const _fabSettleSlack = Duration(milliseconds: 100);
+
 class _HomeViewState extends State<HomeView> with WidgetsBindingObserver {
   bool _isFabExtended = true;
+
+  /// Bumped once a transition's deadline passes, and used as the animated
+  /// FAB subtree's key — see [_setFabExtended].
+  int _fabSettleEpoch = 0;
+  Timer? _fabSettleTimer;
+
+  /// Identifies the FAB's button proper — everything a finger can be resting
+  /// on — so it is MOVED rather than rebuilt whenever the wrapper above it is
+  /// replaced: by [_fabSettleEpoch] here, and by the nudge settling in
+  /// [_NewOperationNudgeState.build]. Both replace an ancestor mid-gesture,
+  /// and re-inflating the subtree would dispose the InkWell's recognizers
+  /// under the user's finger — the tap would simply never fire, and the FAB
+  /// would look dead. Reparenting keeps the element, its State, its render
+  /// object and its focus, so a press in flight survives.
+  ///
+  /// Per-instance, not a file-level final: two HomeViews alive at once (a
+  /// route transition between them) would otherwise collide on one key.
+  late final GlobalKey _fabButtonKey = GlobalKey();
+
+  /// Whether the FAB's onboarding nudge has waited out
+  /// [_newOperationNudgeDelay] without the user touching anything. Only the
+  /// wait is cancellable: once the burst is under way it runs itself out,
+  /// since yanking the rotation mid-swing would snap the button upright,
+  /// which reads worse than letting it finish.
+  bool _nudgeArmed = false;
+  Timer? _nudgeTimer;
 
   /// Memoized: build now depends on MediaQuery.sizeOf (ShirtSize.of), so it
   /// reruns on every window-resize frame — watchAll() returns a NEW drift
@@ -245,35 +285,84 @@ class _HomeViewState extends State<HomeView> with WidgetsBindingObserver {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    _nudgeTimer = Timer(_newOperationNudgeDelay, () {
+      if (mounted) setState(() => _nudgeArmed = true);
+    });
   }
 
   @override
   void dispose() {
+    _fabSettleTimer?.cancel();
+    _nudgeTimer?.cancel();
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }
 
-  // The FAB's extend/collapse (an AnimatedSize/AnimatedOpacity pair) has been
-  // seen stuck mid-transition, at least on web. AnimatedSize's own render
-  // object is built to resume a stopped-mid-animation controller once
-  // reattached (see RenderAnimatedSize.attach/_layoutStable in the Flutter
-  // SDK) — this isn't a broken state machine we need to replace. The more
-  // likely cause is a web tab backgrounding mid-transition and the browser's
-  // own frame pump not resuming on its own once the tab is visible again, so
-  // whatever frame the animation was mid-paint on just never gets redrawn.
-  // AppLifecycleState.resumed fires for both app-foregrounding (mobile) and
-  // tab-visibility-regained (web, via the PlatformDispatcher) — forcing a
-  // rebuild here asks Flutter for a fresh frame either way, which is enough
-  // for the animation to either finish or repaint at its actual (correct)
-  // current state instead of a stale one.
+  /// Flips the FAB between extended and collapsed, and puts a hard deadline on
+  /// the transition that follows.
+  ///
+  /// Implicit animations can be left half-applied. `RenderAnimatedSize` only
+  /// resumes a controller that stopped mid-flight — a muted ticker, a
+  /// detached render object, a browser tab that stopped delivering frames —
+  /// when layout runs again, and a plain rebuild doesn't necessarily mark it
+  /// for layout, so a controller stranded at 0.5 keeps reporting a half width
+  /// indefinitely. That's the FAB stuck at a partial width with its label
+  /// half-faded, with nothing on the way to fix it.
+  ///
+  /// Rather than trying to detect that state, we make the resting state a
+  /// matter of wall-clock time: one transition's worth after the last flip,
+  /// the animated subtree is rebuilt under a new key. A fresh
+  /// AnimatedSize/AnimatedOpacity lays out at its target *without* animating
+  /// (neither animates on its first build), so whatever the old render object
+  /// was stuck on is discarded. Re-arming on each flip means a healthy
+  /// transition is never truncated, and when nothing was stuck the rebuild is
+  /// invisible.
+  void _setFabExtended(bool extended) {
+    if (_isFabExtended == extended) return;
+    setState(() => _isFabExtended = extended);
+    _fabSettleTimer?.cancel();
+    _fabSettleTimer = Timer(_fabTransitionDuration + _fabSettleSlack, () {
+      if (mounted) setState(() => _fabSettleEpoch++);
+    });
+  }
+
+  // The FAB's extend/collapse has been seen stuck mid-transition, at least on
+  // web, where a backgrounded tab's frame pump doesn't necessarily resume on
+  // its own once the tab is visible again — whatever frame the animation was
+  // mid-paint on then never gets redrawn. AppLifecycleState.resumed fires for
+  // both app-foregrounding (mobile) and tab-visibility-regained (web, via the
+  // PlatformDispatcher), so asking for a fresh frame here lets a merely
+  // stalled animation pick up where it left off, promptly and smoothly.
+  //
+  // That makes this the fast path, not the guarantee — a rebuild can't unstick
+  // a stopped RenderAnimatedSize on its own (it resumes on layout, which a
+  // rebuild needn't trigger). _setFabExtended's deadline is what actually
+  // guarantees the FAB ends up at rest.
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed && mounted) setState(() {});
   }
 
+  /// A touch anywhere on the screen means the user is engaged on their own,
+  /// so a nudge still waiting its turn is dropped for this visit. No rebuild
+  /// needed: [_nudgeArmed] stays false, so it simply never gets inserted.
+  void _cancelPendingNudge() {
+    _nudgeTimer?.cancel();
+    _nudgeTimer = null;
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    // Wraps the whole Scaffold, app bar included, so that anything the user
+    // reaches for counts — not just the parts below it.
+    return Listener(
+      onPointerDown: (_) => _cancelPendingNudge(),
+      child: _buildScaffold(context, theme),
+    );
+  }
+
+  Widget _buildScaffold(BuildContext context, ThemeData theme) {
     return Scaffold(
       // Full height behind the on-screen keyboard so each pane paints its own
       // bottom — the Quick Lookup bar's teal on the left, the branding on the
@@ -367,16 +456,7 @@ class _HomeViewState extends State<HomeView> with WidgetsBindingObserver {
               Expanded(
                 child: NotificationListener<ScrollNotification>(
                   onNotification: (ScrollNotification notification) {
-                    final pixels = notification.metrics.pixels;
-                    if (pixels > 10 && _isFabExtended) {
-                      setState(() {
-                        _isFabExtended = false;
-                      });
-                    } else if (pixels <= 10 && !_isFabExtended) {
-                      setState(() {
-                        _isFabExtended = true;
-                      });
-                    }
+                    _setFabExtended(notification.metrics.pixels <= 10);
                     return false;
                   },
                   child: Stack(
@@ -433,9 +513,14 @@ class _HomeViewState extends State<HomeView> with WidgetsBindingObserver {
                             listenable: widget.services.settings,
                             builder: (context, _) {
                               final fab = AnimatedSize(
-                                duration: const Duration(milliseconds: 300),
+                                // Changing this key is what forces the FAB
+                                // back to its resting state once a transition's
+                                // deadline has passed (see _setFabExtended).
+                                key: ValueKey(_fabSettleEpoch),
+                                duration: _fabTransitionDuration,
                                 curve: Curves.easeInOut,
                                 child: Container(
+                                  key: _fabButtonKey,
                                   height: 56,
                                   width: _isFabExtended ? null : 56,
                                   decoration: BoxDecoration(
@@ -461,12 +546,12 @@ class _HomeViewState extends State<HomeView> with WidgetsBindingObserver {
                                           children: [
                                             Icon(MdiIcons.plus, color: theme.colorScheme.onPrimary),
                                             AnimatedSize(
-                                              duration: const Duration(milliseconds: 300),
+                                              duration: _fabTransitionDuration,
                                               curve: Curves.easeInOut,
                                               child: SizedBox(
                                                 width: _isFabExtended ? null : 0,
                                                 child: AnimatedOpacity(
-                                                  duration: const Duration(milliseconds: 300),
+                                                  duration: _fabTransitionDuration,
                                                   curve: Curves.easeInOut,
                                                   opacity: _isFabExtended ? 1.0 : 0.0,
                                                   child: Padding(
@@ -491,9 +576,10 @@ class _HomeViewState extends State<HomeView> with WidgetsBindingObserver {
                                   ),
                                 ),
                               );
-                              final needsNudge = widget.services.settings
-                                      .onboardingShownCount(OnboardingFlows.newOperation) <
-                                  _newOperationNudgeThreshold;
+                              final newOperationsOpened = widget.services.settings
+                                  .onboardingShownCount(OnboardingFlows.newOperation);
+                              final needsNudge =
+                                  _nudgeArmed && newOperationsOpened < _newOperationNudgeThreshold;
                               return needsNudge ? _NewOperationNudge(child: fab) : fab;
                             },
                           ),
@@ -516,11 +602,12 @@ class _HomeViewState extends State<HomeView> with WidgetsBindingObserver {
 
 /// Wraps the FAB with a repeating wiggle to draw a first-time user's eye
 /// (issue #348), for as long as [_newOperationNudgeThreshold] new operations
-/// haven't been opened yet. The caller decides WHETHER to include this
-/// widget (by reading the onboarding count) rather than this widget deciding
-/// whether to animate — so once the threshold is reached, it's simply
-/// dropped from the tree instead of needing to smoothly stop a mid-cycle
-/// rotation.
+/// haven't been opened yet. The caller decides both WHETHER to include this
+/// widget (by reading the onboarding count) and WHEN (after
+/// [_newOperationNudgeDelay] of an untouched screen), rather than this widget
+/// deciding whether to animate — so it's simply absent from the tree until
+/// its moment, and dropped afterwards, instead of needing to smoothly start
+/// or stop a mid-cycle rotation. It bursts as soon as it is mounted.
 class _NewOperationNudge extends StatefulWidget {
   final Widget child;
 
@@ -532,12 +619,40 @@ class _NewOperationNudge extends StatefulWidget {
 
 class _NewOperationNudgeState extends State<_NewOperationNudge> with SingleTickerProviderStateMixin {
   static const _cycle = Duration(milliseconds: 1200);
+  static const _bursts = 3;
+
+  /// Quiet time between one burst and the next. Long enough that the FAB
+  /// reads as catching the eye now and then rather than demanding attention.
+  static const _gap = Duration(seconds: 3);
+
+  /// How long the whole nudge lasts, from mount to the last burst's end.
+  /// Derived rather than written out, so it can't drift from the schedule
+  /// [_runBurst] actually keeps.
+  static final _sequence = _cycle * _bursts + _gap * (_bursts - 1);
 
   late final AnimationController _controller = AnimationController(vsync: this, duration: _cycle);
+
+  /// Set once the bursts' wall-clock time is up, after which this widget stops
+  /// rotating its child at all.
+  ///
+  /// The controller runs once per mount, so if its ticker stops mid-burst — a
+  /// muted route, a backgrounded tab — nothing would ever bring the rotation
+  /// back to 0 and the FAB would sit there visibly tilted. Dropping the
+  /// [Transform] outright is upright by construction, whatever value the
+  /// controller froze at.
+  bool _settled = false;
+  Timer? _settleTimer;
+  Timer? _gapTimer;
+  int _burstsRun = 0;
 
   @override
   void initState() {
     super.initState();
+    // Armed unconditionally, including under test: the guarantee is that the
+    // FAB is upright once the nudge's time is up, no matter what ran.
+    _settleTimer = Timer(_sequence + _fabSettleSlack, () {
+      if (mounted) setState(() => _settled = true);
+    });
     // An endlessly-repeating controller never lets pumpAndSettle finish
     // (same trap as _PulsingGpsPin in activities_view.dart) — settle at rest
     // under test instead of animating.
@@ -545,11 +660,23 @@ class _NewOperationNudgeState extends State<_NewOperationNudge> with SingleTicke
     if (isTest) {
       _controller.value = 0;
     } else {
-      // Three bursts per mount, then hold still at rest (the sequence's last
-      // segment is already a 0.0 pause) rather than fluttering the whole
-      // time the FAB is below the nudge threshold.
-      _controller.repeat(count: 3);
+      _runBurst();
     }
+  }
+
+  /// One flutter, then quiet, [_bursts] times — rather than fluttering the
+  /// whole time the FAB is below the nudge threshold.
+  ///
+  /// Spacing the bursts by hand instead of with `repeat(count:)` is what keeps
+  /// [_gap] independent of the tween's own weights: those proportions are what
+  /// make the flutter read as a tremble, and stretching the cycle to hold a
+  /// five-second pause inside it would slow every swing by the same factor.
+  void _runBurst() {
+    _controller.forward(from: 0);
+    _burstsRun++;
+    // Measured from the start of this burst, so the quiet time between one
+    // cycle ending and the next beginning is exactly [_gap].
+    if (_burstsRun < _bursts) _gapTimer = Timer(_cycle + _gap, _runBurst);
   }
 
   /// A rapid, small-angle flutter burst, then a pause at rest — reads as an
@@ -573,12 +700,15 @@ class _NewOperationNudgeState extends State<_NewOperationNudge> with SingleTicke
 
   @override
   void dispose() {
+    _settleTimer?.cancel();
+    _gapTimer?.cancel();
     _controller.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
+    if (_settled) return widget.child;
     return AnimatedBuilder(
       animation: _angle,
       builder: (context, child) => Transform.rotate(angle: _angle.value, child: child),

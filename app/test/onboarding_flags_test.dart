@@ -182,11 +182,18 @@ void main() {
     // guard), so presence/absence of the wrapper is what's actually testable.
     Finder wiggleWrapper() => find.ancestor(of: find.byIcon(MdiIcons.plus), matching: find.byType(Transform));
 
+    /// The nudge only appears after the screen has sat untouched for
+    /// `_newOperationNudgeDelay` (see home_fab_settle_test.dart for the delay
+    /// and its cancellation); these tests are about WHETHER it appears at a
+    /// given onboarding count, so they wait that out first.
+    const nudgeDelay = Duration(seconds: 5);
+
     testWidgets('wiggles below the threshold', (tester) async {
       final services = await servicesWithNewOperationCount(0);
       addTearDown(services.db.close);
       await tester.pumpWidget(TranslationProvider(child: MaterialApp(home: HomeView(services: services))));
       await tester.pumpAndSettle();
+      await tester.pump(nudgeDelay);
 
       expect(wiggleWrapper(), findsOneWidget);
 
@@ -199,6 +206,7 @@ void main() {
       addTearDown(services.db.close);
       await tester.pumpWidget(TranslationProvider(child: MaterialApp(home: HomeView(services: services))));
       await tester.pumpAndSettle();
+      await tester.pump(nudgeDelay);
 
       expect(wiggleWrapper(), findsOneWidget);
 
@@ -211,6 +219,7 @@ void main() {
       addTearDown(services.db.close);
       await tester.pumpWidget(TranslationProvider(child: MaterialApp(home: HomeView(services: services))));
       await tester.pumpAndSettle();
+      await tester.pump(nudgeDelay);
 
       expect(wiggleWrapper(), findsNothing);
 
@@ -223,6 +232,7 @@ void main() {
       addTearDown(services.db.close);
       await tester.pumpWidget(TranslationProvider(child: MaterialApp(home: HomeView(services: services))));
       await tester.pumpAndSettle();
+      await tester.pump(nudgeDelay);
 
       expect(wiggleWrapper(), findsOneWidget);
 
