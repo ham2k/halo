@@ -14,6 +14,7 @@ import '../../config/dev_bridge.dart';
 import '../../main.dart';
 import '../operation_dialogs.dart';
 import '../../i18n/strings.g.dart';
+import '../../services/link_opener.dart';
 import '../../services/settings_service.dart';
 import '../../tools/distance_format.dart';
 import '../../tools/form_chrome_labels.dart';
@@ -500,6 +501,9 @@ class _LoggingPanelState extends State<LoggingPanel> {
           ),
           LoggingControls(
             controller: _loggingController,
+            // Call notes carry socials and URLs; the panel has always styled
+            // them as links, this makes them open.
+            onOpenLink: openExternalUrl,
             operation: widget.operation,
             qsosRepository: widget.services.qsos,
             qsos: widget.qsos,

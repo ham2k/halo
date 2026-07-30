@@ -16,15 +16,13 @@
 // those buttons still render and dismiss the notice but otherwise no-op —
 // logged, not silently swallowed. Wire real handling here as those flows land.
 
-import 'dart:async';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:halo_widgets/halo_widgets.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 import '../i18n/strings.g.dart';
 import '../main.dart' show navigatorKey;
+import '../services/link_opener.dart';
 
 void handleNoticeAction(String noticeKey, Map<String, dynamic> action) {
   final type = action['action'] as String?;
@@ -33,7 +31,7 @@ void handleNoticeAction(String noticeKey, Map<String, dynamic> action) {
   final url = _urlFrom(args);
   if (type == 'link' || (url != null && type != 'dialog')) {
     if (url != null) {
-      _openUrl(url);
+      openExternalUrl(url);
       return;
     }
   }
@@ -58,11 +56,6 @@ String? _urlFrom(dynamic args) {
   return null;
 }
 
-void _openUrl(String url) {
-  final uri = Uri.tryParse(url);
-  if (uri == null) return;
-  unawaited(launchUrl(uri, mode: LaunchMode.externalApplication));
-}
 
 void _showNoticeDialog(Map<String, dynamic> args) {
   final context = navigatorKey.currentContext;

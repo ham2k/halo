@@ -547,37 +547,8 @@ void main() {
     await _unmount(tester);
   });
 
-  group('inline markdown in command text', () {
-    // Command hooks write markdown in their describe/confirm lines — the real
-    // radio-commands hook says "Change band to **20m**?" — and a result row
-    // rendered that as a literal asterisk soup before this.
-    test('renders bold, italic and code, leaving everything else literal', () {
-      List<String?> textsOf(String input) =>
-          inlineMarkdownSpans(input).map((s) => (s as TextSpan).text).toList();
-
-      expect(textsOf('Change band to **20m**?'), ['Change band to ', '20m', '?']);
-      final bold = inlineMarkdownSpans('a **b** c')[1] as TextSpan;
-      expect(bold.style?.fontWeight, FontWeight.w700);
-
-      final italic = inlineMarkdownSpans('a *b* c')[1] as TextSpan;
-      expect(italic.style?.fontStyle, FontStyle.italic);
-      expect(textsOf('a _b_ c'), ['a ', 'b', ' c']);
-
-      final code = inlineMarkdownSpans('run `SEED`', codeStyle: const TextStyle(fontFamily: 'Mono'))[1] as TextSpan;
-      expect(code.style?.fontFamily, 'Mono');
-    });
-
-    test('leaves a lone asterisk alone — punctuation is likelier than broken markup', () {
-      expect(inlineMarkdownSpans('2 * 3 = 6').map((s) => (s as TextSpan).text).toList(), ['2 * 3 = 6']);
-    });
-
-    test('reads ** as bold, not as an empty italic wrapping another', () {
-      final spans = inlineMarkdownSpans('**x**');
-      expect(spans, hasLength(1));
-      expect((spans.single as TextSpan).text, 'x');
-      expect((spans.single as TextSpan).style?.fontWeight, FontWeight.w700);
-    });
-  });
+  // The inline-markdown parsing these rows rely on is InlineMarkdownText's now
+  // — see packages/halo_widgets/test/inline_markdown_test.dart.
 
   testWidgets('a row shows a description\'s markdown as formatting, not as asterisks', (tester) async {
     final services = await _services(tester);

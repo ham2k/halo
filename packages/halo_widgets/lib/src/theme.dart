@@ -207,14 +207,53 @@ TextStyle haloMonoStyle(
 /// and scaled by the current `textScaler`. Sizing a fixed column to this keeps
 /// it matching what paints — and not clipping under OS/accessibility text
 /// scaling. Shared by the QSO list and the spots panel so the two can't drift.
-double textWidth(BuildContext context, String text, TextStyle style) {
+double textWidth(BuildContext context, String text, TextStyle style) =>
+    spansWidth(context, [TextSpan(text: text)], style);
+
+/// [textWidth] for a span tree — same ambient-style and text-scaler folding, so
+/// a measurement of formatted text can't drift from the plain-text one.
+///
+/// Returns the intrinsic width: the widest line, as [textWidth] has always
+/// measured. [placeholders] must give one entry per `WidgetSpan` in [spans], in
+/// tree order — `TextPainter` asserts deep in the framework without them, so
+/// the count is checked here where the message can name the caller's mistake.
+double spansWidth(
+  BuildContext context,
+  List<InlineSpan> spans,
+  TextStyle? style, {
+  List<PlaceholderDimensions> placeholders = const [],
+}) {
+  assert(() {
+    var count = 0;
+    void countPlaceholders(InlineSpan span) {
+      if (span is PlaceholderSpan) count++;
+      span.visitDirectChildren((child) {
+        countPlaceholders(child);
+        return true;
+      });
+    }
+
+    for (final span in spans) {
+      countPlaceholders(span);
+    }
+    return count == placeholders.length;
+  }(), 'spansWidth needs one PlaceholderDimensions per WidgetSpan, in tree order');
+
   final merged = DefaultTextStyle.of(context).style.merge(style);
   final painter = TextPainter(
-    text: TextSpan(text: text, style: merged),
+    text: TextSpan(children: spans, style: merged),
     textDirection: TextDirection.ltr,
     textScaler: MediaQuery.textScalerOf(context),
-  )..layout();
-  return painter.width;
+  );
+  if (placeholders.isNotEmpty) painter.setPlaceholderDimensions(placeholders);
+  try {
+    painter.layout();
+    return painter.width;
+  } finally {
+    // Frees the native paragraph rather than leaving it to a GC finalizer —
+    // this runs a few times per build of the logging panel.
+    painter.dispose();
+  }
 }
 
 /// Google's Noto Color Emoji, bundled as an app asset (app/pubspec.yaml,

@@ -18,7 +18,6 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:halo_build_tools/halo_build_tools.dart' show kEdition;
 import 'package:halo_extension_host/halo_extension_host.dart';
 import 'package:halo_core/halo_core.dart';
-import 'package:url_launcher/url_launcher.dart';
 import 'error_reporting_service.dart';
 import 'settings_service.dart';
 import 'status_bar_service.dart';
@@ -28,8 +27,11 @@ import '../config/secrets.dart';
 import '../config/dev_flags.dart';
 import '../config/dev_fixture.dart';
 import '../config/user_agent.dart';
+import 'package:url_launcher/url_launcher.dart' show LaunchMode;
+
 import '../i18n/strings.g.dart';
 import '../main.dart';
+import 'link_opener.dart';
 import '../tools/form_chrome_labels.dart';
 import '../tools/activity_suggestions.dart';
 import '../tools/qso_patch.dart';
@@ -1363,7 +1365,10 @@ class ExtensionService {
       case 'link':
         final url = map['url'] as String?;
         if (url == null) return null;
-        return () => launchUrl(Uri.parse(url));
+        // platformDefault, not the shared default: an http(s) link from a
+        // notice action has always opened in an in-app browser (Custom Tab /
+        // SFSafariViewController) rather than backgrounding the logger.
+        return () => openExternalUrl(url, mode: LaunchMode.platformDefault);
       case 'dialog':
         final text = map['text'] as String? ?? '';
         final title = map['title'] as String?;

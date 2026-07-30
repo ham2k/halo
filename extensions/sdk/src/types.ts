@@ -1402,6 +1402,9 @@ export interface FormActionElement {
 /// A row that opens an external URL (rendered as an icon-row-styled tile
 /// with an open-in-new icon button). How the URL opens is app policy — the
 /// element only declares the destination.
+///
+/// Only `http:`, `https:` and `mailto:` are opened; any other scheme is
+/// ignored. Ask if you need one that isn't on that list.
 export interface FormLinkElement {
   type: 'link'
   /// Identifies the element (e.g. to search); not a field — links carry no
@@ -1511,6 +1514,9 @@ export type SettingsPanelHook = SimpleSettingsPanel | DynamicSettingsPanel
 /// the core renders and handles these itself (`link` opens a URL, `dialog`
 /// shows a markdown dialog), matching the same "extensions describe UI as
 /// data" convention as `ActivityHook`.
+///
+/// A `link` opens only `http:`, `https:` or `mailto:`; any other scheme is
+/// ignored. Ask if you need one that isn't on that list.
 export type NoticeAction =
   | { label: string; type: 'link'; url: string }
   | { label: string; type: 'dialog'; title?: string; text: string }

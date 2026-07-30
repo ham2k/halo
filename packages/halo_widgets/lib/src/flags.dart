@@ -106,8 +106,9 @@ final RegExp _flagEmojiPattern = RegExp(
 /// [flagMarkdownImageBuilder] renders, sized to [fontSize] — only when
 /// [flagEmojiNeedsImageFallback], so every other platform gets [markdown]
 /// back unchanged (flag emoji already render fine there today). Pair with
-/// `MarkdownBody(sizedImageBuilder: flagMarkdownImageBuilder)` at any site
-/// that renders call-note or scoring-summary text.
+/// [flagMarkdownImageBuilder] at any site that renders call-note or
+/// scoring-summary text — as `MarkdownBody(sizedImageBuilder: …)` for block
+/// text, or `InlineMarkdownText(imageBuilder: …)` for a single line.
 String flagsInMarkdown(String markdown, {double fontSize = flagGlyphDefaultFontSize}) {
   if (!flagEmojiNeedsImageFallback) return markdown;
   final w = (fontSize * 4 / 3).round();
@@ -118,10 +119,11 @@ String flagsInMarkdown(String markdown, {double fontSize = flagGlyphDefaultFontS
   });
 }
 
-/// `MarkdownBody.sizedImageBuilder` counterpart to [flagsInMarkdown] — every
-/// `MarkdownBody` rendering call-note or scoring-summary text should pass
-/// this, even where the surrounding platform never triggers the rewrite (it
-/// only ever sees a `flag:` uri when [flagsInMarkdown] produced one).
+/// Image-builder counterpart to [flagsInMarkdown] — every renderer of
+/// call-note or scoring-summary text should pass this (as
+/// `MarkdownBody.sizedImageBuilder` or `InlineMarkdownText.imageBuilder`), even
+/// where the surrounding platform never triggers the rewrite (it only ever sees
+/// a `flag:` uri when [flagsInMarkdown] produced one).
 Widget flagMarkdownImageBuilder(MarkdownImageConfig config) {
   if (config.uri.scheme != 'flag') return const SizedBox.shrink();
   return SvgPicture.asset(flagAssetPath(config.uri.path), width: config.width, height: config.height);

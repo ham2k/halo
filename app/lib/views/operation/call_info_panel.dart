@@ -17,6 +17,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../../i18n/strings.g.dart';
 import '../../main.dart';
+import '../../services/link_opener.dart';
 import '../../services/settings_service.dart';
 import '../../tools/distance_format.dart';
 import '../../tools/scoring_labels.dart';
@@ -247,6 +248,12 @@ class _CallInfoPanelState extends State<CallInfoPanel> {
             data: flagsInMarkdown(notes.join('\n\n'), fontSize: theme.textTheme.bodyMedium?.fontSize ?? 14),
             sizedImageBuilder: flagMarkdownImageBuilder,
             styleSheet: MarkdownStyleSheet.fromTheme(theme),
+            // Stays a MarkdownBody — notes are joined with blank lines, so this
+            // is genuinely a block. It only lacked a tap handler, which left the
+            // same note's links dead here while they opened on the logging line.
+            onTapLink: (_, href, _) {
+              if (href != null) openExternalUrl(href);
+            },
           ),
         ],
 

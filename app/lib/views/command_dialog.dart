@@ -58,40 +58,6 @@ Future<void> showCommandDialog(BuildContext context, HaLoServices services) {
   );
 }
 
-/// The inline markdown a command hook puts in its `describe` text — "Change
-/// band to **20m**?" — rendered as spans.
-///
-/// `MarkdownBody` (what the message line below uses, and what the Home bar
-/// uses) is a BLOCK renderer: it builds a Column and supports neither
-/// `maxLines` nor `overflow`, so in a fixed-height result row a long
-/// description wraps and gets clipped mid-line instead of ellipsizing. These
-/// rows need one tidy line, hence spans.
-///
-/// Handles the inline subset that actually turns up: `**bold**`, `*italic*` /
-/// `_italic_`, and `` `code` ``. Anything else stays literal — an unmatched
-/// asterisk is far likelier to be punctuation than broken markup.
-@visibleForTesting
-List<InlineSpan> inlineMarkdownSpans(String text, {TextStyle? codeStyle}) {
-  final spans = <InlineSpan>[];
-  var index = 0;
-  for (final match in _inlineMarkdown.allMatches(text)) {
-    if (match.start > index) spans.add(TextSpan(text: text.substring(index, match.start)));
-    if (match[1] != null) {
-      spans.add(TextSpan(text: match[1], style: const TextStyle(fontWeight: FontWeight.w700)));
-    } else if (match[2] != null || match[3] != null) {
-      spans.add(TextSpan(text: match[2] ?? match[3], style: const TextStyle(fontStyle: FontStyle.italic)));
-    } else if (match[4] != null) {
-      spans.add(TextSpan(text: match[4], style: codeStyle));
-    }
-    index = match.end;
-  }
-  if (index < text.length) spans.add(TextSpan(text: text.substring(index)));
-  return spans;
-}
-
-/// Bold before italic, so `**x**` isn't read as an empty italic wrapping `*x*`.
-final _inlineMarkdown = RegExp(r'\*\*(.+?)\*\*|\*(.+?)\*|_(.+?)_|`([^`]+)`');
-
 /// One row in the results sheet.
 sealed class _Result {
   const _Result();
@@ -1005,18 +971,25 @@ class _CommandDialogState extends State<CommandDialog> {
                       ?.copyWith(color: foreground, fontWeight: FontWeight.w600),
                 ),
                 if (subtitle != null && subtitle.isNotEmpty)
-                  Text.rich(
-                    TextSpan(
-                      children: markdownSubtitle
-                          ? inlineMarkdownSpans(subtitle, codeStyle: haloMonoStyle(context, fontSize: 12))
-                          : [TextSpan(text: subtitle)],
+                  if (markdownSubtitle)
+                    // No `onOpenLink`: picking the row runs the command, so a
+                    // link must not be a second target. With no handler the
+                    // widget builds no recognizer at all, which is what keeps
+                    // the tap reaching the row (see its own test) — a link in
+                    // `describe` text just reads as one.
+                    InlineMarkdownText(
+                      subtitle,
+                      codeStyle: haloMonoStyle(context, fontSize: 12),
+                      maxLines: 1,
+                      style: _subtitleStyle(theme, foreground),
+                    )
+                  else
+                    Text(
+                      subtitle,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: _subtitleStyle(theme, foreground),
                     ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: foreground.withValues(alpha: 0.75),
-                    ),
-                  ),
               ],
             ),
           ),
@@ -1044,6 +1017,11 @@ class _CommandDialogState extends State<CommandDialog> {
       child: row,
     );
   }
+
+  /// Shared by both subtitle branches, so the markdown and plain renderings of
+  /// a row measure and read identically.
+  TextStyle? _subtitleStyle(ThemeData theme, Color foreground) =>
+      theme.textTheme.bodySmall?.copyWith(color: foreground.withValues(alpha: 0.75));
 
   Widget _emptyState(ThemeData theme, Translations t) => Padding(
         padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),

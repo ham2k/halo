@@ -41,6 +41,7 @@ import 'package:flutter_markdown/flutter_markdown.dart';
 import 'flags.dart';
 import 'form_renderer.dart';
 import 'icon_resolver.dart';
+import 'inline_markdown.dart';
 import 'keyboard_dismiss.dart';
 import 'logging_controls_controller.dart';
 import 'mdi_icons.dart';
@@ -492,11 +493,17 @@ class LoggingControls extends StatefulWidget {
   /// call, log, wipe) — used by the app's dev bridge. Attached on mount.
   final LoggingControlsController? controller;
 
+  /// Opens a link tapped in a call note. Null leaves the note's links styled
+  /// but inert; the controls stay free of any url_launcher dependency either
+  /// way — the app decides how links open.
+  final InlineMarkdownOpenLink? onOpenLink;
+
   const LoggingControls({
     super.key,
     required this.operation,
     required this.qsosRepository,
     this.controller,
+    this.onOpenLink,
     this.qsos = const [],
     this.onLogged,
     this.onQsoDeleted,
@@ -6175,18 +6182,23 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     if (notices.isEmpty) return note ?? const SizedBox.shrink();
     if (note == null) return Row(children: pillsRow);
 
+    // Measured outside the LayoutBuilder: none of it reads `constraints`, and
+    // leaving it inside re-parsed the note's markdown on every frame of a
+    // window resize or pane-divider drag.
+    final pillStyle = theme.textTheme.labelSmall?.copyWith(fontWeight: FontWeight.w600);
+    final noteStyle = theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600);
+    var pillsWidth = 0.0;
+    for (var i = 0; i < notices.length; i++) {
+      pillsWidth += _measureTextWidth(notices[i].label, pillStyle) + 12; // 6px h-padding each side
+      if (i > 0) pillsWidth += 4; // inter-pill gap
+    }
+    final noteWidth = nameInfo!.isNote
+        ? _measureNoteWidth(theme, nameInfo.text, noteStyle)
+        : _measureTextWidth(nameInfo.text, noteStyle);
+    const gap = 8.0;
+
     return LayoutBuilder(
       builder: (context, constraints) {
-        final pillStyle = theme.textTheme.labelSmall?.copyWith(fontWeight: FontWeight.w600);
-        final noteStyle = theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600);
-        var pillsWidth = 0.0;
-        for (var i = 0; i < notices.length; i++) {
-          pillsWidth += _measureTextWidth(notices[i].label, pillStyle) + 12; // 6px h-padding each side
-          if (i > 0) pillsWidth += 4; // inter-pill gap
-        }
-        final noteWidth = _measureTextWidth(_stripMarkdownForWidth(nameInfo!.text), noteStyle);
-        const gap = 8.0;
-
         if (pillsWidth + gap + noteWidth <= constraints.maxWidth) {
           // Fits: pills lead, note trails.
           return Row(
@@ -6204,20 +6216,66 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     );
   }
 
-  double _measureTextWidth(String text, TextStyle? style) {
-    final painter = TextPainter(
-      text: TextSpan(text: text, style: style),
-      textDirection: TextDirection.ltr,
-      maxLines: 1,
-    )..layout();
-    return painter.width;
+  double _measureTextWidth(String text, TextStyle? style) =>
+      spansWidth(context, [TextSpan(text: text)], style);
+
+  /// The note's width, built from exactly what [_buildNoteOrName] paints: the
+  /// same [_noteParts] split, the same styles, and each flag image measured at
+  /// the size its builder will use.
+  ///
+  /// The leading glyph is the one approximation left — it paints as an SVG or an
+  /// emoji-font glyph, and is measured here as text at the same size.
+  double _measureNoteWidth(ThemeData theme, String text, TextStyle? noteStyle) {
+    final parts = _noteParts(theme, text);
+    final imageSizes = <Size>[];
+    final fontSize = noteStyle?.fontSize ?? flagGlyphDefaultFontSize;
+    final spans = inlineMarkdownSpans(
+      parts.markdown,
+      linkStyle: _noteLinkStyle(theme),
+      codeStyle: _noteCodeStyle(fontSize),
+      imageBuilder: (config) {
+        // Mirrors flagMarkdownImageBuilder, which paints a SizedBox.shrink for
+        // any scheme that isn't `flag:` — reserving a glyph box for those would
+        // over-measure by a glyph each.
+        final isFlag = config.uri.scheme == 'flag';
+        imageSizes.add(isFlag
+            ? Size(config.width ?? fontSize * 4 / 3, config.height ?? fontSize)
+            : Size.zero);
+        return const SizedBox.shrink();
+      },
+    );
+    var width = spansWidth(
+      context,
+      spans,
+      noteStyle,
+      placeholders: [
+        for (final size in imageSizes) PlaceholderDimensions(size: size, alignment: PlaceholderAlignment.middle),
+      ],
+    );
+    if (parts.lead != null) width += _measureTextWidth(parts.lead!, noteStyle) + 4; // the SizedBox beside the glyph
+    return width;
   }
 
-  /// Rough plain-text of markdown for width estimation — unwraps `[text](url)`
-  /// links and drops emphasis markers so the estimate matches the rendered text.
-  static String _stripMarkdownForWidth(String s) => s
-      .replaceAllMapped(RegExp(r'\[([^\]]*)\]\([^)]*\)'), (m) => m[1] ?? '')
-      .replaceAll(RegExp(r'[*_`~]'), '');
+  /// The note split the way it paints: the leading emoji cluster, which gets its
+  /// own glowed glyph, and the markdown for everything after it.
+  ({String? lead, String markdown}) _noteParts(ThemeData theme, String text) {
+    final leadMatch = _leadingEmoji.firstMatch(text);
+    final rest = leadMatch == null ? text : text.substring(leadMatch.end).trimLeft();
+    final fontSize = theme.textTheme.bodyMedium?.fontSize ?? flagGlyphDefaultFontSize;
+    return (lead: leadMatch?.group(0), markdown: flagsInMarkdown(rest, fontSize: fontSize));
+  }
+
+  /// `code` in a note, matching what MarkdownStyleSheet.fromTheme used to give
+  /// it — without this, backticks vanish and the run reads as ordinary prose.
+  TextStyle _noteCodeStyle(double fontSize) => haloMonoStyle(context, fontSize: fontSize * 0.85);
+
+  /// A link blue tuned per theme so the note's socials/URLs read clearly on the
+  /// panel's fill — darker on light, lighter on dark. Shared with
+  /// [_measureNoteWidth], so the measurement styles links the way they paint.
+  TextStyle _noteLinkStyle(ThemeData theme) => TextStyle(
+        color: theme.brightness == Brightness.dark ? Colors.blue.shade200 : Colors.blue.shade800,
+        fontWeight: FontWeight.w600,
+      );
 
   /// A soft halo behind small glyphs (the call-info flag/note emoji, the
   /// spotting control's source-status icons) so they stay legible against a
@@ -6248,25 +6306,23 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
       return Text(info.text, maxLines: 1, overflow: TextOverflow.ellipsis, style: textStyle);
     }
 
-    final leadMatch = _leadingEmoji.firstMatch(info.text);
-    final rest = leadMatch == null ? info.text : info.text.substring(leadMatch.end).trimLeft();
-    final markdown = rest.isEmpty
+    final parts = _noteParts(theme, info.text);
+    final markdown = parts.markdown.isEmpty
         ? null
-        : MarkdownBody(
-            data: flagsInMarkdown(rest, fontSize: textStyle?.fontSize ?? 14),
-            sizedImageBuilder: flagMarkdownImageBuilder,
-            styleSheet: MarkdownStyleSheet.fromTheme(theme).copyWith(
-              p: textStyle,
-              // A link blue tuned per theme so the note's socials/URLs read
-              // clearly on the panel's fill — darker on light, lighter on dark.
-              a: TextStyle(
-                color: theme.brightness == Brightness.dark ? Colors.blue.shade200 : Colors.blue.shade800,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
+        : InlineMarkdownText(
+            parts.markdown,
+            style: textStyle,
+            linkStyle: _noteLinkStyle(theme),
+            codeStyle: _noteCodeStyle(textStyle?.fontSize ?? flagGlyphDefaultFontSize),
+            imageBuilder: flagMarkdownImageBuilder,
+            onOpenLink: widget.onOpenLink,
+            // Deliberately no maxLines: a long note still wraps onto a third
+            // panel line, which this area has always allowed. Spans buy the
+            // note tappable links, not an ellipsis.
+            overflow: TextOverflow.clip,
           );
 
-    if (leadMatch == null) return markdown ?? const SizedBox.shrink();
+    if (parts.lead == null) return markdown ?? const SizedBox.shrink();
 
     // Leading emoji (glowed) + the rest of the note (markdown, no glow).
     return Row(
@@ -6277,7 +6333,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
         // emojiFontFamily (via flagGlyph's non-flag branch) instead of
         // textStyle's Roboto, or it renders as nothing at all — same gap
         // #451's review found and fixed at call_info_panel.dart's flag Text.
-        flagGlyph(leadMatch.group(0)!, fontSize: textStyle?.fontSize ?? 14, shadows: _glyphGlow(theme)),
+        flagGlyph(parts.lead!, fontSize: textStyle?.fontSize ?? 14, shadows: _glyphGlow(theme)),
         if (markdown != null) ...[
           const SizedBox(width: 4),
           Flexible(child: markdown),

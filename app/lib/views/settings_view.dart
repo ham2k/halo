@@ -30,6 +30,7 @@ import '../main.dart';
 import '../services/data_file_manager.dart';
 import '../services/deep_link_service.dart';
 import '../services/extension_service.dart';
+import '../services/link_opener.dart';
 import '../services/settings_service.dart';
 import '../tools/form_chrome_labels.dart';
 import 'header_profile_label.dart';
@@ -702,15 +703,11 @@ class _SettingsGroupFormState extends State<_SettingsGroupForm> {
       developerMode: widget.services.settings.developerMode,
       labels: formRendererLabelsFor(context.t),
       onChange: _autosave,
-      onOpenLink: _openLink,
+      onOpenLink: openExternalUrl,
       onSubmit: (_) {},
       onCancel: () {},
     );
   }
-}
-
-void _openLink(String url) {
-  unawaited(launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication));
 }
 
 /// The All Settings search predicate: does this element's key, label
@@ -1660,7 +1657,7 @@ class _ExtensionSettingsPanelState extends State<_ExtensionSettingsPanel> {
         state: state,
       ),
       onManageAccount: _manageAccount,
-      onOpenLink: _openLink,
+      onOpenLink: openExternalUrl,
       onSubmit: (_) {},
       onCancel: () {},
     );

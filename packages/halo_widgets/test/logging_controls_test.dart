@@ -727,6 +727,117 @@ void main() {
       expect(find.text('Marco'), findsNothing);
     });
 
+    // The panel has always styled a note's links in its own tuned blue, but
+    // MarkdownBody left them inert — the operator could read a note's QRZ or
+    // socials link and not follow it.
+    testWidgets('a link in a note opens through onOpenLink', (tester) async {
+      final opened = <String>[];
+      await tester.pumpWidget(MaterialApp(
+        home: Scaffold(
+          body: LoggingControls(
+            operation: operation,
+            qsosRepository: qsos,
+            onOpenLink: opened.add,
+            lookup: guessLookup({'note': 'QSL via [the club](https://example.org/qsl)'}),
+          ),
+        ),
+      ));
+
+      await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'IK1ABC');
+      await tester.pump(const Duration(milliseconds: 500));
+
+      // The url itself never renders — only the label.
+      expect(find.textContaining('https://example.org/qsl'), findsNothing);
+
+      await tester.tapOnText(find.textRange.ofSubstring('the club'));
+      await tester.pump();
+
+      expect(opened, ['https://example.org/qsl']);
+    });
+
+    // The note-width measurement decides ONE thing: whether the note shares
+    // line 2 with the pills or takes its own line above them. Asserting that
+    // choice is the only way this test can fail if the measurement breaks —
+    // an earlier version asserted only "no exception", which both branches
+    // satisfy.
+    testWidgets('the measured note shares line 2 when it fits, and takes its own line when it does not',
+        (tester) async {
+      Future<({Offset pill, Offset note})> layout(String note) async {
+        await tester.pumpWidget(MaterialApp(
+          home: Scaffold(
+            // 700px wide on purpose. The note below measures 342 as spans and
+            // 627 as raw markdown, and the fit test is
+            // `pills(92.5) + gap(8) + note <= maxWidth`, so at this width the
+            // span measurement fits and the raw one does not. At the default
+            // 800 there is ~400px of slack and BOTH fit, which is why an
+            // earlier version of this test could not fail.
+            body: SizedBox(
+              width: 700,
+              // Keyed per note: without it the second pump reuses the same
+              // State, whose guess is already cached for this callsign, and
+              // the note never changes.
+              child: LoggingControls(
+                key: ValueKey(note),
+                operation: operation,
+                qsosRepository: qsos,
+                lookup: guessLookup({'note': note}),
+                scoreQso: ({required operation, required qso, excludeUuid, segments}) async =>
+                    {'notices': ['newDXCC'], 'alerts': <String>[]},
+              ),
+            ),
+          ),
+        ));
+        await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'IK1ABC');
+        await tester.pump(const Duration(milliseconds: 500));
+        expect(tester.takeException(), isNull);
+
+        return (
+          pill: tester.getTopLeft(find.text('newDXCC')),
+          note: tester.getTopLeft(find.byType(InlineMarkdownText)),
+        );
+      }
+
+      // Heavily marked up on purpose: 342 as spans, 627 as raw markdown. Only
+      // a measurement that parses the note fits it beside the pills here.
+      final fits = await layout('**Great** **op** **and** **good** **friend**');
+      expect(fits.note.dx, greaterThan(fits.pill.dx), reason: 'a short note should sit beside the pills');
+
+      // Long: note takes line 2 on its own and the pills stack below it, so the
+      // note starts at the column's left edge rather than trailing the pills.
+      final wraps = await layout('Very long note about this operator ' * 8);
+      // The note starts at the column's left edge; the pill's label is inset by
+      // its own 6px padding, so the note is very slightly left of it.
+      expect(wraps.note.dx, lessThan(wraps.pill.dx),
+          reason: 'a note too wide for the row should start where the pills do, not trail them');
+      expect(wraps.note.dy, lessThan(wraps.pill.dy), reason: 'and sit above them');
+    });
+
+    // The imageSizes/placeholders pairing in _measureNoteWidth is unreachable
+    // on CI through flagsInMarkdown — it is a no-op unless the platform needs
+    // the flag fallback — so this note carries the image markup explicitly. A
+    // placeholder count that disagrees with the WidgetSpan count asserts inside
+    // TextPainter, and that assert is in the logging panel's build path.
+    testWidgets('a note carrying an image measures without a placeholder assert', (tester) async {
+      await tester.pumpWidget(MaterialApp(
+        home: Scaffold(
+          body: LoggingControls(
+            key: const ValueKey('image-note'),
+            operation: operation,
+            qsosRepository: qsos,
+            lookup: guessLookup({'note': 'from ![flag](flag:us#19x14) with **love**'}),
+            scoreQso: ({required operation, required qso, excludeUuid, segments}) async =>
+                {'notices': ['newDXCC'], 'alerts': <String>[]},
+          ),
+        ),
+      ));
+
+      await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'IK1ABC');
+      await tester.pump(const Duration(milliseconds: 500));
+
+      expect(tester.takeException(), isNull);
+      expect(find.textContaining('love', findRichText: true), findsOneWidget);
+    });
+
     testWidgets('scoreQso notices render as line-3 pills', (tester) async {
       await tester.pumpWidget(MaterialApp(
         home: Scaffold(
