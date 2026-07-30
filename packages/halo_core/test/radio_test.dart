@@ -180,11 +180,70 @@ void main() {
       expect(looksLikeCallsign('9A1A'), isTrue);
     });
 
+    // The shapes `@ham2k/lib-callsigns` recognizes, since that library is what
+    // will parse these calls once they're logged. Anything here that stopped
+    // matching would stop being loggable, so they're worth naming one by one.
+    test('accepts every prefix form real callsigns come in', () {
+      expect(looksLikeCallsign('K1A'), isTrue, reason: 'shortest US call');
+      expect(looksLikeCallsign('N0CALL'), isTrue);
+      expect(looksLikeCallsign('KD2ABC'), isTrue, reason: 'two-letter prefix');
+      expect(looksLikeCallsign('2E0ABC'), isTrue, reason: 'digit-letter-digit prefix');
+      expect(looksLikeCallsign('3D2AG'), isTrue, reason: 'three-character prefix');
+      expect(looksLikeCallsign('4U1UN'), isTrue, reason: '4U carries no separating digit');
+      expect(looksLikeCallsign('5UA99WS'), isTrue, reason: 'nor does 5U');
+      expect(looksLikeCallsign('V67C'), isTrue, reason: 'prefix ending in a digit');
+      expect(looksLikeCallsign('GB100RSGB'), isTrue, reason: 'special event call');
+    });
+
+    test('accepts pre- and postindicators, including stacked ones', () {
+      expect(looksLikeCallsign('W1AW/P'), isTrue);
+      expect(looksLikeCallsign('N0CALL/QRP'), isTrue);
+      expect(looksLikeCallsign('N0CALL/1'), isTrue, reason: 'digit-only indicator');
+      expect(looksLikeCallsign('N0CALL/1/QRP/P'), isTrue, reason: 'several at once');
+      expect(looksLikeCallsign('MM/N0CALL'), isTrue, reason: 'preindicator without a digit');
+      expect(looksLikeCallsign('VP2V/AA7V'), isTrue);
+      expect(looksLikeCallsign('V67C/9'), isTrue);
+    });
+
     test('rejects fragments', () {
       expect(looksLikeCallsign(''), isFalse);
       expect(looksLikeCallsign('W'), isFalse);
       expect(looksLikeCallsign('123'), isFalse);
       expect(looksLikeCallsign('QRZ'), isFalse);
+      expect(looksLikeCallsign('EA4'), isFalse, reason: 'a bare prefix is not a call');
+    });
+
+    // Everything the `radio-commands` extension interprets when typed into the
+    // call field. A match here is not cosmetic: it fires an offline+online
+    // lookup for a station that does not exist. "20M" used to do exactly that.
+    //
+    // Both lists are transcribed from that extension's own BAND_MATCH and
+    // MODE_MATCH (extensions/core/radio-commands/src/index.ts) — Dart can't
+    // read those, so a new band or mode has to be added here by hand.
+    test('rejects band commands', () {
+      for (final band in ['2200', '630', '160', '80', '60', '40', '30', '20', '17', '15', '12', '10', '6', '4', '2']) {
+        expect(looksLikeCallsign('${band}M'), isFalse, reason: '${band}M is a band command');
+        expect(looksLikeCallsign(band), isFalse, reason: '$band is a band command');
+      }
+    });
+
+    test('rejects mode commands', () {
+      for (final mode in ['CW', 'SSB', 'USB', 'LSB', 'FM', 'AM', 'FT8', 'FT4', 'FT2', 'RTTY']) {
+        expect(looksLikeCallsign(mode), isFalse, reason: '$mode is a mode command');
+      }
+    });
+
+    // Call stacking (issue #7) separates calls with "//", and the call-notes
+    // extension reads a leading "//" as an expansion command. Neither is a
+    // single callsign, whatever the segments around it look like.
+    test('rejects "//" stacks and expansions', () {
+      expect(looksLikeCallsign('K1ABC//W1AW'), isFalse);
+      expect(looksLikeCallsign('//JOE'), isFalse);
+      expect(looksLikeCallsign('W1AW//'), isFalse);
+    });
+
+    test('rejects comma-separated call lists as a single call', () {
+      expect(looksLikeCallsign('K1ABC,N2XYZ'), isFalse);
     });
   });
 }

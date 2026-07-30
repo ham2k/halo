@@ -237,11 +237,38 @@ String fmtFreqInput(double khz) {
   return s;
 }
 
-final RegExp _callsignRegex = RegExp(r'^([A-Z0-9]{1,4}/)?[A-Z0-9]{1,3}[0-9][A-Z0-9]*[A-Z](/[A-Z0-9]{1,4})?$');
+// `CALLSIGN_REGEXP` from `@ham2k/lib-callsigns`' `parseCallsign` — the same
+// parser the extensions (and app-polo) use — so this gate agrees with what
+// actually parses as a callsign downstream:
+//
+//   ([A-Z0-9]+/)?  an optional preindicator, e.g. the "EA4/" of "EA4/KI2D"
+//   then a prefix, one of:
+//     [45]U[A-Z]*             4U/5U, whose prefixes carry no separating digit
+//     [0-9][A-Z]{1,2}[0-9]    digit-letters-digit, e.g. the "9A1" of "9A1A"
+//     [ACDEHJLOPQSTUVXYZ][0-9]
+//     [A-Z]{1,2}[0-9]         the usual letters-digit, e.g. "W1", "KI2"
+//   [A-Z0-9]+      the suffix, at least one character
+//   (/[A-Z0-9]+)*  any number of postindicators, e.g. "/P", "/1/QRP/P"
+//
+// The hand-rolled regex this replaces only demanded *some* digit with a
+// letter after it, so band commands matched: "20M" parsed as prefix "2",
+// digit "0", suffix "M", and typing it fired a full offline+online lookup
+// for a station called 20M. Every prefix form here needs a letter before
+// the separating digit, so no band token can reach it.
+//
+// One deliberate departure from the library's `(\/[A-Z0-9/]+){0,1}` tail:
+// each postindicator must be non-empty, so halo's call-stack separator
+// ("K1ABC//W1AW", issue #7) isn't read as one callsign. The library's
+// SSID handling (`N0CALL-1`) is left out too — halo has no notion of one,
+// and the old gate rejected hyphens as well.
+final RegExp _callsignRegex = RegExp(r'^([A-Z0-9]+/)?'
+    r'([45]U[A-Z]*|[0-9][A-Z]{1,2}[0-9]|[ACDEHJLOPQSTUVXYZ][0-9]|[A-Z]{1,2}[0-9])'
+    r'[A-Z0-9]+'
+    r'(/[A-Z0-9]+)*$');
 
 /// Cheap plausibility check to enable the Log action — real callsign
 /// parsing (prefixes, DXCC, modifiers) is plugin territory.
-bool looksLikeCallsign(String text) => _callsignRegex.hasMatch(text.toUpperCase());
+bool looksLikeCallsign(String text) => _callsignRegex.hasMatch(text.trim().toUpperCase());
 
 /// A radio's tuned state — `freq`/`mode`/`band` for one of up to 4 VFOs
 /// (`vfoA`..`vfoD`, see `RadioService`). Device-global, not tied to any
