@@ -208,6 +208,74 @@ const _secondaryPanelHorizontalInset = 12.0;
 /// selection handles, so "the follower" is ambiguous without it.
 const exchangeSuggestionsKey = ValueKey('exchange.suggestions');
 
+/// What a main logging field asks for when the row has the room: an RST, a
+/// state or a grid at [_fixedFieldMinWidth]; a contest exchange a little
+/// wider, since it can be a zone, a serial or a section name.
+///
+/// **Minimums, not fixed sizes.** When the enabled fields don't all fit, they
+/// render narrower than this — see `_resolveMainFieldLayout`.
+const _fixedFieldMinWidth = 64.0;
+const _exchangeFieldMinWidth = 76.0;
+
+/// The gap that precedes a main field: [_mainFieldGap] between two of a kind
+/// (the two RSTs, consecutive exchanges), [_mainFieldGroupGap] where a new
+/// kind starts, and [_logButtonGap] before the log button itself.
+const _mainFieldGap = 8.0;
+const _mainFieldGroupGap = 10.0;
+const _logButtonGap = 12.0;
+
+/// The left+right `contentPadding` `poloFieldDecoration` (theme.dart) gives a
+/// main field, before the text scaler is applied to it.
+const _mainFieldContentPadding = 8.0;
+
+/// The left+right padding Material adds to every `filled` field **on top of**
+/// `contentPadding`, of its own accord: `input_decorator.dart`'s
+/// `_kInputExtraPadding`, 4 a side, not text-scaled and not exposed by any
+/// `InputDecoration` field.
+///
+/// The row can still have it back. A **negative** content padding cancels it
+/// exactly — nothing in `InputDecorator` requires a positive one — which is
+/// what lets a fully squeezed field run its value right to its own edge
+/// instead of stopping 8pt short with no way to say otherwise.
+const _materialFilledInputGap = 8.0;
+
+/// The strip `RenderEditable` keeps clear for the caret — its 1pt gap plus
+/// the 2pt cursor. Without it a value that exactly fills its field has its
+/// last character scrolled out from under the cursor.
+const _caretAllowance = 3.0;
+
+/// The callsign field's floor, in characters of its own value: a full call
+/// with a portable suffix (`W1AW/4`).
+const _callFieldMinChars = 6;
+
+/// Every other main field's floor. Two characters is enough to tell a filled
+/// field from an empty one and to aim a click at it — and focusing it brings
+/// it straight back to the width it asked for, so this is only ever what a
+/// field the operator isn't in looks like.
+const _mainFieldMinChars = 2;
+
+/// How long a main field takes to reach a new width. Deliberately brief: once
+/// the row is squeezed it reflows on every focus move, and anything slower
+/// reads as the layout lagging behind the keyboard rather than following it.
+const _fieldWidthDuration = Duration(milliseconds: 100);
+
+/// One of the main logging fields that follow the callsign, as the row needs
+/// it: the gap before it, the width it asks for, the node whose focus exempts
+/// it from being squeezed, and how to build it at whatever width and inner
+/// padding it ends up with.
+typedef _MainField = ({
+  double gapBefore,
+  double minWidth,
+  FocusNode focusNode,
+  Widget Function(double width, double padding, Duration duration) build,
+});
+
+/// What [_LoggingControlsState._resolveMainFieldLayout] settles on for the
+/// row: a width for each trailing field, and — once even the floors don't fit
+/// — how much of the declared gaps survives and how much horizontal padding is
+/// left inside every field, callsign included.
+typedef _MainFieldLayout = ({List<double> widths, double gapScale, double fieldPadding});
+
 class LoggingControls extends StatefulWidget {
   final Operation operation;
   final QsosRepository qsosRepository;
@@ -1542,6 +1610,13 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
             _pushVfoToRadioService();
           }
         }
+        // A squeezed row hands the focused field its full width back
+        // (`_resolveMainFieldLayout`), which can only happen if a focus change
+        // rebuilds. Off a squeezed row it would be a rebuild that changes
+        // nothing, so it's gated on that — focus alone rebuilds nothing here
+        // otherwise (see [_textFocusFor], where the exchange fields' own
+        // listener has always had to setState for the same reason).
+        if (_mainFieldsSqueezed) _rebuildBetweenFrames();
         // Keep the mobile numbers row in sync with which field has focus.
         _rebuildForNumbersRow();
       });
@@ -2548,35 +2623,201 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
         borderSide: BorderSide(color: Theme.of(context).colorScheme.error, width: width),
       );
 
-  InputDecoration _primaryFieldDecoration(BuildContext context, String label, {String? hintText}) =>
-      poloFieldDecoration(
-        context,
-        label,
-        labelColor: Theme.of(context).colorScheme.onTertiaryContainer,
-        hintText: hintText,
-      );
+  /// [horizontalPadding] is the field's **total** effective left+right inset,
+  /// the last thing the row gives up when the fields won't fit at their floors
+  /// (see [_resolveMainFieldLayout]). Effective, so [_materialFilledInputGap]
+  /// comes out of it here: at full padding that leaves exactly the content
+  /// padding the theme asks for, and at zero it leaves a negative one that
+  /// cancels Material's own.
+  ///
+  /// The vertical padding is left alone: it sets the row's height, and
+  /// squeezing that would move every control and the submit button as the
+  /// panel narrowed.
+  InputDecoration _primaryFieldDecoration(
+    BuildContext context,
+    String label, {
+    String? hintText,
+    required double horizontalPadding,
+  }) {
+    final base = poloFieldDecoration(
+      context,
+      label,
+      labelColor: Theme.of(context).colorScheme.onTertiaryContainer,
+      hintText: hintText,
+      // A squeezed field is narrower than its own label ("Their call" over 6
+      // characters, "State" over 2), and a label left to wrap makes the
+      // decorator taller — which through the row's IntrinsicHeight widens the
+      // submit button, taking back more room than the squeeze just found.
+      labelMaxLines: 1,
+    );
+    final side = (horizontalPadding - _materialFilledInputGap) / 2;
+    final padding = base.contentPadding! as EdgeInsets;
+    return base.copyWith(contentPadding: padding.copyWith(left: side, right: side));
+  }
 
-  /// One of the fixed-width (64px) secondary logging fields — Sent, Rcvd,
-  /// State, Grid — which share everything but their controller/label and a
-  /// couple of input-shaping knobs. Amateur-radio codes, not prose: stop the
+  /// The width [chars] characters of a main field's monospace value paint at,
+  /// plus the caret's reserved strip — everything a field needs EXCEPT its own
+  /// horizontal padding, which the caller adds because the row can take that
+  /// padding away again.
+  ///
+  /// Every width this row states in characters goes through here, so they all
+  /// track OS/accessibility text scaling together — a 6-character minimum
+  /// measured at one scale and hardcoded would be five characters at the next.
+  double _valueWidthForChars(BuildContext context, int chars) =>
+      textWidth(context, 'W' * chars, _primaryFieldStyle(context, fontWeight: FontWeight.w500)) +
+      _caretAllowance;
+
+  /// Whether the last layout couldn't give every main field its declared
+  /// minimum. Read by the focus listeners: the focused field renders at full
+  /// width, which only happens if a focus change rebuilds — and off a squeezed
+  /// row it would be a rebuild that changes nothing.
+  bool _mainFieldsSqueezed = false;
+
+  /// The geometry the row was last laid out against, so a change in the space
+  /// available can be told apart from a change in what wants it — see
+  /// [_mainFieldWidthDuration].
+  (double, double)? _lastRowGeometry;
+
+  /// How long the fields take to reach a new width: [_fieldWidthDuration] when
+  /// the space available hasn't changed, and **instantly** when it has.
+  ///
+  /// Animating a resize would be worse, not better. The callsign is `Expanded`
+  /// and so is never animated — it takes whatever the others leave, the moment
+  /// they leave it. Animate the others through a window drag and the callsign
+  /// spends the whole gesture absorbing their lag, jittering while every field
+  /// beside it glides. A focus change is the opposite case: nothing else about
+  /// the row is moving, so the one field that is should be followed rather than
+  /// snapped at.
+  ///
+  /// [buttonWidth] counts as much as [rowWidth]: it is measured off the
+  /// rendered row, so the first frame of a freshly opened panel always resolves
+  /// against the fallback and the second against the real thing. Left out, that
+  /// correction would animate — the whole row visibly gliding a few pixels
+  /// every time the panel appears.
+  Duration _mainFieldWidthDuration(double rowWidth, double buttonWidth) {
+    final geometry = (rowWidth, buttonWidth);
+    final changed = _lastRowGeometry != geometry;
+    _lastRowGeometry = geometry;
+    return changed ? Duration.zero : _fieldWidthDuration;
+  }
+
+  /// Resolves how the main logging row fills [maxWidth].
+  ///
+  /// Concessions, in the order the row makes them:
+  ///
+  /// 1. **Everything fits.** Each of [fields] renders at its declared minimum
+  ///    and the callsign takes whatever is left.
+  /// 2. **They don't.** The shortfall is split **evenly** across them — the
+  ///    same number of pixels off each, not the same share of each — down to
+  ///    [_mainFieldMinChars] characters, with whatever a floored field can't
+  ///    give up re-spread over the ones that still have room. The **focused
+  ///    field is left out of the split entirely**: it renders at its full
+  ///    declared minimum and its neighbours carry its share, which is what
+  ///    keeps a squeezed row usable to type in.
+  /// 3. **Not even at their floors.** The gaps between the fields and the
+  ///    padding inside them go next, together and *gradually* — a single
+  ///    fraction of both, falling with the width rather than snapping off at
+  ///    some breakpoint. Note this shrinks the floors too: two characters
+  ///    without padding is narrower than two with.
+  /// 4. **Still not.** The callsign gives up its own [_callFieldMinChars] — it
+  ///    is the last thing left to give, and a callsign field too narrow reads
+  ///    better than a row of overflow stripes.
+  ///
+  /// The callsign is never in [fields]: it is `Expanded` over what they leave,
+  /// and this arithmetic only reserves its minimum before dividing up the rest.
+  _MainFieldLayout _resolveMainFieldLayout(
+    BuildContext context,
+    List<_MainField> fields,
+    double maxWidth,
+    double buttonWidth,
+  ) {
+    // Everything between a field's edge and its value: the theme's own content
+    // padding, which scales with OS text size, plus Material's fixed extra,
+    // which doesn't. Both are the row's to give away.
+    final fullPadding = _mainFieldContentPadding * MediaQuery.textScalerOf(context).scale(1.0) +
+        _materialFilledInputGap;
+    var fullGaps = _logButtonGap;
+    for (final field in fields) {
+      fullGaps += field.gapBefore;
+    }
+
+    // Concession 3, solved rather than iterated: the narrowest this row can be
+    // is linear in how much gap and padding it keeps, so the largest fraction
+    // that still fits is one division. 1 — nothing given up — whenever
+    // squeezing the fields alone is enough, which is almost always.
+    final callValue = _valueWidthForChars(context, _callFieldMinChars);
+    final fieldValue = _valueWidthForChars(context, _mainFieldMinChars);
+    final incompressible = buttonWidth + callValue + fields.length * fieldValue;
+    final compressible = fullGaps + (fields.length + 1) * fullPadding;
+    final scale = compressible <= 0 ? 1.0 : ((maxWidth - incompressible) / compressible).clamp(0.0, 1.0);
+
+    final padding = fullPadding * scale;
+    final widths = [for (final field in fields) field.minWidth];
+    final reserved = buttonWidth + fullGaps * scale + callValue + padding;
+    var deficit = widths.fold(0.0, (sum, w) => sum + w) - (maxWidth - reserved);
+    _mainFieldsSqueezed = deficit > 0;
+    if (deficit <= 0) return (widths: widths, gapScale: scale, fieldPadding: padding);
+
+    final floor = fieldValue + padding;
+    final open = {
+      for (var i = 0; i < fields.length; i++)
+        if (!fields[i].focusNode.hasFocus) i,
+    };
+    // Water-filling: an even share each pass, and anything a field that hit
+    // its floor couldn't absorb goes back into the pot for the next one.
+    // Terminates because every pass either clears the deficit or drops a field
+    // out of `open`. A sub-pixel remainder isn't worth another pass.
+    while (deficit > 0.5 && open.isNotEmpty) {
+      final share = deficit / open.length;
+      deficit = 0;
+      for (final i in open.toList()) {
+        // Never above what the field asked for: at a large enough OS text
+        // scale two characters are wider than the declared minimum, and a
+        // "floor" over the ceiling would quietly widen the field instead.
+        final limit = floor < fields[i].minWidth ? floor : fields[i].minWidth;
+        final shrunk = widths[i] - share;
+        if (shrunk <= limit) {
+          deficit += limit - shrunk;
+          widths[i] = limit;
+          open.remove(i);
+        } else {
+          widths[i] = shrunk;
+        }
+      }
+    }
+    return (widths: widths, gapScale: scale, fieldPadding: padding);
+  }
+
+  /// One of the narrow secondary logging fields — Sent, Rcvd, State, Grid —
+  /// which share everything but their controller/label and a couple of
+  /// input-shaping knobs. Amateur-radio codes, not prose: stop the
   /// soft keyboard from autocorrecting, spell-checking, suggesting, or
   /// smart-punctuating the value into garbage (autocorrect:false also turns
   /// off iOS spell check; the smart types stop "-" → "–"). Uppercased like
   /// all logging input, and Enter logs.
+  ///
+  /// [width] and [padding] are resolved by [_resolveMainFieldLayout], not
+  /// chosen here: [_fixedFieldMinWidth] whenever the row has room, and less
+  /// when it doesn't.
   Widget _fixedField(
     BuildContext context, {
     required TextEditingController controller,
     required FocusNode focusNode,
     required bool enabled,
     required String label,
+    required double width,
+    required double padding,
+    required Duration duration,
     TextInputType? keyboardType,
     TextCapitalization textCapitalization = TextCapitalization.none,
     TextInputFormatter? filter,
     String? hintText,
     required ValueChanged<String> onChanged,
   }) {
-    return SizedBox(
-      width: 64,
+    return AnimatedContainer(
+      duration: duration,
+      curve: Curves.easeOut,
+      width: width,
       child: TextField(
         controller: controller,
         focusNode: focusNode,
@@ -2590,7 +2831,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
         smartDashesType: SmartDashesType.disabled,
         smartQuotesType: SmartQuotesType.disabled,
         inputFormatters: [_virtualSpace, ?filter, const UpperCaseTextFormatter()],
-        decoration: _primaryFieldDecoration(context, label, hintText: hintText),
+        decoration: _primaryFieldDecoration(context, label, hintText: hintText, horizontalPadding: padding),
         onChanged: onChanged,
         onEditingComplete: () => _finishEditingWithoutBlur(controller),
         onSubmitted: (_) => _log(),
@@ -3533,7 +3774,14 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   /// A `pattern` mismatch tints the field but never blocks the keystroke:
   /// contest rules don't always anticipate what the other station actually
   /// sends, and refusing input mid-QSO is worse than accepting an oddity.
-  Widget _exchangeField(BuildContext context, Map<String, dynamic> control, {required bool enabled}) {
+  Widget _exchangeField(
+    BuildContext context,
+    Map<String, dynamic> control, {
+    required bool enabled,
+    required double width,
+    required double padding,
+    required Duration duration,
+  }) {
     final key = control['key'] as String;
     final input = control['input'] as Map;
     final label = (control['label'] as String?) ?? key;
@@ -3563,10 +3811,14 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
         RefTransform.fromMap((t as Map).cast<String, dynamic>()),
     ];
 
-    return SizedBox(
+    return AnimatedContainer(
+      duration: duration,
+      curve: Curves.easeOut,
       // Wider than an RST, narrower than the callsign: an exchange is usually
-      // a zone, a serial or a state abbreviation.
-      width: 76,
+      // a zone, a serial or a state abbreviation. Resolved by
+      // [_resolveMainFieldLayout] — [_exchangeFieldMinWidth] when the row has
+      // room, and less when it doesn't.
+      width: width,
       // Linked so the `options` suggestion pills can hang off this field's own
       // top-right corner — they are right-aligned to the field, wherever the
       // row happens to put it (RSTs on or off, a state field, several
@@ -3602,7 +3854,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
         // every primary control and the submit button DOWN as the operator
         // typed. A contest exchange is invalid for most of the keystrokes it
         // takes to type it, so that was a jump per QSO.
-        decoration: _primaryFieldDecoration(context, label).copyWith(
+        decoration: _primaryFieldDecoration(context, label, horizontalPadding: padding).copyWith(
           hintText: input['placeholder'] as String?,
           enabledBorder: isInvalid ? _invalidUnderline(context, width: 1) : null,
           focusedBorder: isInvalid ? _invalidUnderline(context, width: 2) : null,
@@ -3627,6 +3879,113 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
       ),
     );
   }
+
+  /// The main logging fields that follow the callsign, in row order.
+  ///
+  /// The single source of truth for both [_resolveMainFieldLayout] and the row
+  /// that renders them in [build], so a field can never be in the layout
+  /// arithmetic and missing from the row (or the reverse) — the same drift
+  /// [_primaryFields] exists to prevent for the keyboard, and the same order.
+  ///
+  /// The callsign is deliberately not here: it is `Expanded` over whatever
+  /// these leave it, and it is never squeezed.
+  List<_MainField> _trailingMainFields(BuildContext context, {required bool enabled}) => [
+        if (widget.showRSTFields) ...[
+          (
+            gapBefore: _mainFieldGroupGap,
+            minWidth: _fixedFieldMinWidth,
+            focusNode: _sentFocus,
+            build: (width, padding, duration) => _fixedField(
+              context,
+              controller: _sentController,
+              focusNode: _sentFocus,
+              enabled: enabled,
+              label: widget.sentLabel ?? 'Sent',
+              width: width,
+              padding: padding,
+              duration: duration,
+              // Letters are legitimate in RSTs (CW's "5NN" shorthand, aurora
+              // "59A") and the Edit QSO pane accepts them — a digits-only
+              // filter here would silently strip a pane-saved letter on the
+              // next keystroke, since filtering formatters re-run over the
+              // whole text.
+              keyboardType: _numbersAndPunctuationOnIOS,
+              filter: FilteringTextInputFormatter.allow(RegExp(r'[0-9a-zA-Z+\-]')),
+              onChanged: (_) => _rstsTouched = true,
+            ),
+          ),
+          (
+            gapBefore: _mainFieldGap,
+            minWidth: _fixedFieldMinWidth,
+            focusNode: _rcvdFocus,
+            build: (width, padding, duration) => _fixedField(
+              context,
+              controller: _rcvdController,
+              focusNode: _rcvdFocus,
+              enabled: enabled,
+              label: widget.rcvdLabel ?? 'Rcvd',
+              width: width,
+              padding: padding,
+              duration: duration,
+              // Same letter-friendly rule as Sent above.
+              keyboardType: _numbersAndPunctuationOnIOS,
+              filter: FilteringTextInputFormatter.allow(RegExp(r'[0-9a-zA-Z+\-]')),
+              onChanged: (_) => _rstsTouched = true,
+            ),
+          ),
+        ],
+        // Contest exchanges, inline right after the RSTs — see `_textControls`
+        // for why these are primary.
+        for (final control in _textControls)
+          (
+            gapBefore: _mainFieldGap,
+            minWidth: _exchangeFieldMinWidth,
+            focusNode: _textFocusFor(control['key'] as String),
+            build: (width, padding, duration) => _exchangeField(context, control,
+                enabled: enabled, width: width, padding: padding, duration: duration),
+          ),
+        if (widget.showStateField)
+          (
+            gapBefore: _mainFieldGroupGap,
+            minWidth: _fixedFieldMinWidth,
+            focusNode: _stateFocus,
+            build: (width, padding, duration) => _fixedField(
+              context,
+              controller: _stateController,
+              focusNode: _stateFocus,
+              enabled: enabled,
+              label: widget.theirStateLabel ?? 'State',
+              width: width,
+              padding: padding,
+              duration: duration,
+              textCapitalization: TextCapitalization.characters,
+              // The guessed state (e.g. from a callsign lookup) shows as a
+              // faint placeholder while the field is empty — never pre-filled
+              // as a real value.
+              hintText: _currentGuess?['state'] as String?,
+              onChanged: (_) => _stateTouched = true,
+            ),
+          ),
+        if (widget.showGridField)
+          (
+            gapBefore: _mainFieldGroupGap,
+            minWidth: _fixedFieldMinWidth,
+            focusNode: _gridFocus,
+            build: (width, padding, duration) => _fixedField(
+              context,
+              controller: _gridController,
+              focusNode: _gridFocus,
+              enabled: enabled,
+              label: widget.theirGridLabel ?? 'Grid',
+              width: width,
+              padding: padding,
+              duration: duration,
+              textCapitalization: TextCapitalization.characters,
+              hintText: _currentGuess?['grid'] as String?,
+              onChanged: (_) => _gridTouched = true,
+            ),
+          ),
+      ];
 
   SecondaryControlSpec _moreControlSpec() => SecondaryControlSpec(
         key: 'more',
@@ -4010,13 +4369,18 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   }
 
   /// Rebuilds so the bar's visibility and contextual "/"→"." key track the
-  /// focused field. Focus notifications can arrive mid-build (autofocus on
-  /// the first frame), so a rebuild is only requested synchronously when
-  /// we're safely between frames; otherwise it's deferred to the frame in
-  /// progress. Only runs while the feature is on, so it costs nothing
+  /// focused field. Only runs while the feature is on, so it costs nothing
   /// otherwise.
   void _rebuildForNumbersRow() {
-    if (!widget.showNumbersRow || !mounted) return;
+    if (!widget.showNumbersRow) return;
+    _rebuildBetweenFrames();
+  }
+
+  /// A rebuild requested from a focus notification, which can arrive mid-build
+  /// (autofocus on the first frame): synchronous only when we're safely
+  /// between frames, otherwise deferred to the end of the frame in progress.
+  void _rebuildBetweenFrames() {
+    if (!mounted) return;
     final phase = WidgetsBinding.instance.schedulerPhase;
     if (phase == SchedulerPhase.idle || phase == SchedulerPhase.postFrameCallbacks) {
       setState(() {});
@@ -5458,13 +5822,32 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
                       Stack(
                         clipBehavior: Clip.none,
                         children: [
+                      // OUTSIDE the IntrinsicHeight below, never within it: a
+                      // LayoutBuilder cannot answer an intrinsic-dimension
+                      // query, and IntrinsicHeight asks its whole subtree one.
+                      // Out here it sees exactly the width the Row will get,
+                      // which is all `_resolveMainFieldLayout` needs.
+                      LayoutBuilder(builder: (context, constraints) {
+                      final trailingFields = _trailingMainFields(context, enabled: !fieldsLocked);
+                      // The log button is a circle as tall as the row, so the
+                      // height already measured for it is also its width. The
+                      // 44 fallback (first frame, before that measurement
+                      // lands) matches the info area's own above. Read ONCE
+                      // and handed to both: the row is reserved against it and
+                      // a change in it counts as a re-layout, and those two
+                      // must never disagree about which frame's value they saw.
+                      final buttonWidth = _editButtonDiameter ?? 44;
+                      final fieldLayout = _resolveMainFieldLayout(
+                          context, trailingFields, constraints.maxWidth, buttonWidth);
+                      final widthDuration =
+                          _mainFieldWidthDuration(constraints.maxWidth, buttonWidth);
                       // IntrinsicHeight + stretch, rather than a guessed
                       // pixel height, so the submit button (an AspectRatio
                       // circle) is guaranteed to exactly match whatever
                       // height the text fields actually render at — not an
                       // eyeballed constant that drifts if their font size,
                       // padding, or text scale ever changes.
-                      IntrinsicHeight(
+                      return IntrinsicHeight(
                         child: Row(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
@@ -5515,79 +5898,27 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
                                       ? [_commandVirtualSpace]
                                       : [_commandVirtualSpace, const UpperCaseTextFormatter()],
                               style: _primaryFieldStyle(context, fontWeight: FontWeight.w500),
-                              decoration: _primaryFieldDecoration(context, widget.theirCallLabel ?? 'Their call'),
+                              decoration: _primaryFieldDecoration(
+                                context,
+                                widget.theirCallLabel ?? 'Their call',
+                                horizontalPadding: fieldLayout.fieldPadding,
+                              ),
                               onEditingComplete: () => _finishEditingWithoutBlur(_callController),
                               onSubmitted: (_) => _log(),
                             )),
                           ),
-                          if (widget.showRSTFields) ...[
-                            const SizedBox(width: 10),
-                            _fixedField(
-                              context,
-                              controller: _sentController,
-                              focusNode: _sentFocus,
-                              enabled: !fieldsLocked,
-                              label: widget.sentLabel ?? 'Sent',
-                              // Letters are legitimate in RSTs (CW's "5NN"
-                              // shorthand, aurora "59A") and the Edit QSO
-                              // pane accepts them — a digits-only filter
-                              // here would silently strip a pane-saved
-                              // letter on the next keystroke, since
-                              // filtering formatters re-run over the whole
-                              // text.
-                              keyboardType: _numbersAndPunctuationOnIOS,
-                              filter: FilteringTextInputFormatter.allow(RegExp(r'[0-9a-zA-Z+\-]')),
-                              onChanged: (_) => _rstsTouched = true,
-                            ),
-                            const SizedBox(width: 8),
-                            _fixedField(
-                              context,
-                              controller: _rcvdController,
-                              focusNode: _rcvdFocus,
-                              enabled: !fieldsLocked,
-                              label: widget.rcvdLabel ?? 'Rcvd',
-                              // Same letter-friendly rule as Sent above.
-                              keyboardType: _numbersAndPunctuationOnIOS,
-                              filter: FilteringTextInputFormatter.allow(RegExp(r'[0-9a-zA-Z+\-]')),
-                              onChanged: (_) => _rstsTouched = true,
-                            ),
+                          // Declared and sized in `_trailingMainFields` /
+                          // `_resolveMainFieldLayout` above, so the row and the
+                          // width arithmetic can't disagree about which fields
+                          // are on and how much room they take. The gaps carry
+                          // the same scale as the padding inside the fields —
+                          // they are given up together, as one concession.
+                          for (var i = 0; i < trailingFields.length; i++) ...[
+                            SizedBox(width: trailingFields[i].gapBefore * fieldLayout.gapScale),
+                            trailingFields[i]
+                                .build(fieldLayout.widths[i], fieldLayout.fieldPadding, widthDuration),
                           ],
-                          // Contest exchanges, inline right after the RSTs —
-                          // see `_textControls` for why these are primary.
-                          for (final control in _textControls) ...[
-                            const SizedBox(width: 8),
-                            _exchangeField(context, control, enabled: !fieldsLocked),
-                          ],
-                          if (widget.showStateField) ...[
-                            const SizedBox(width: 10),
-                            _fixedField(
-                              context,
-                              controller: _stateController,
-                              focusNode: _stateFocus,
-                              enabled: !fieldsLocked,
-                              label: widget.theirStateLabel ?? 'State',
-                              textCapitalization: TextCapitalization.characters,
-                              // The guessed state (e.g. from a callsign lookup)
-                              // shows as a faint placeholder while the field is
-                              // empty — never pre-filled as a real value.
-                              hintText: _currentGuess?['state'] as String?,
-                              onChanged: (_) => _stateTouched = true,
-                            ),
-                          ],
-                          if (widget.showGridField) ...[
-                            const SizedBox(width: 10),
-                            _fixedField(
-                              context,
-                              controller: _gridController,
-                              focusNode: _gridFocus,
-                              enabled: !fieldsLocked,
-                              label: widget.theirGridLabel ?? 'Grid',
-                              textCapitalization: TextCapitalization.characters,
-                              hintText: _currentGuess?['grid'] as String?,
-                              onChanged: (_) => _gridTouched = true,
-                            ),
-                          ],
-                          const SizedBox(width: 12),
+                          SizedBox(width: _logButtonGap * fieldLayout.gapScale),
                           // HaLo's big light-blue log button — a circle as
                           // tall as the text fields beside it. (A
                           // LayoutBuilder here to size the icon off the
@@ -5632,7 +5963,8 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
                           )),
                         ],
                         ),
-                      ),
+                      );
+                      }),
                           if (_buildOptionSuggestionMenu(accentTheme) case final menu?) menu,
                         ],
                       ),

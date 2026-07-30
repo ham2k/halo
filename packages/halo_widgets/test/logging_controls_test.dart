@@ -7043,6 +7043,243 @@ void main() {
       expect(focusedPill(tester), 'time');
     });
   });
+
+  group('main field widths', () {
+    /// The rendered width of one of the main logging fields, by its label.
+    double widthOf(WidgetTester tester, String label) =>
+        tester.getSize(find.widgetWithText(TextField, label)).width;
+
+    /// The width [text] actually paints at in [label]'s own field, read off
+    /// the `EditableText` in the tree rather than re-derived from the style
+    /// constants the widget uses — a test that recomputed those couldn't fail
+    /// when they change.
+    double paintedWidth(WidgetTester tester, String label, String text) {
+      final editable = tester.widget<EditableText>(
+        find.descendant(of: find.widgetWithText(TextField, label), matching: find.byType(EditableText)),
+      );
+      return (TextPainter(
+        text: TextSpan(text: text, style: editable.style),
+        textDirection: TextDirection.ltr,
+      )..layout())
+          .width;
+    }
+
+    /// The bare gap between two adjacent fields, and the padding between a
+    /// field's own left edge and where its value starts — the two things the
+    /// row gives up once the fields are at their floors.
+    double gapBetween(WidgetTester tester, String left, String right) =>
+        tester.getTopLeft(find.widgetWithText(TextField, right)).dx -
+        tester.getTopRight(find.widgetWithText(TextField, left)).dx;
+
+    double innerPadding(WidgetTester tester, String label) =>
+        tester
+            .getTopLeft(
+              find.descendant(of: find.widgetWithText(TextField, label), matching: find.byType(EditableText)),
+            )
+            .dx -
+        tester.getTopLeft(find.widgetWithText(TextField, label)).dx;
+
+    /// Pins the panel to [width] logical pixels. 600 tall throughout: only the
+    /// horizontal budget is under test.
+    ///
+    /// Three frames because the row reserves the log button's MEASURED width:
+    /// the first resolves against the fallback, the second against the real
+    /// thing once that measurement lands. (A change of available width is not
+    /// animated — see `_mainFieldWidthDuration` — so no settling is needed on
+    /// top of that.)
+    Future<void> pumpAt(WidgetTester tester, double width, {Widget? at}) async {
+      await tester.binding.setSurfaceSize(Size(width, 600));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+      await tester.pumpWidget(at!);
+      await tester.pump();
+      await tester.pump();
+    }
+
+    /// Long enough for a field to finish animating to a new width. The first
+    /// pump is the one that rebuilds with the new target (the focus listener
+    /// defers its `setState` to the end of the frame in progress); the second
+    /// runs the animation out. Not `pumpAndSettle`: the panel carries a 1Hz
+    /// clock that never settles.
+    Future<void> settleWidths(WidgetTester tester) async {
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+    }
+
+    // Every field the panel can put in the row at once: the two RSTs, a
+    // contest exchange, State and Grid. The exchange is the one that asks for
+    // a DIFFERENT width than the rest (76 against 64), which is what makes
+    // "evenly" below distinguishable from "in proportion".
+    Widget crowded() => MaterialApp(
+          home: Scaffold(
+            body: Column(children: [
+              const Expanded(child: SizedBox.shrink()),
+              LoggingControls(
+                operation: running(['contest']),
+                qsosRepository: qsos,
+                activityControls: const [
+                  {
+                    'key': 'contest/exchange',
+                    'label': 'Exch',
+                    'icon': 'flag-checkered',
+                    'input': {'kind': 'text', 'refType': 'contest', 'field': 'exchange'},
+                  }
+                ],
+                showStateField: true,
+                showGridField: true,
+              ),
+            ]),
+          ),
+        );
+
+    const fixedLabels = ['Sent', 'Rcvd', 'State', 'Grid'];
+
+    // The widths below are in TEST-font units, where every glyph is a square
+    // of the font size — roughly 1.7x the real face's advance, so the panel
+    // runs out of room sooner here than on screen. 900 is roomy for all five
+    // fields, 540 squeezes them without reaching their floors, 400 is well
+    // past those floors, and 330 is where there is nothing left to give.
+
+    testWidgets('the callsign field always fits at least 6 characters', (tester) async {
+      // Narrow enough that the other fields alone would have eaten the row:
+      // Sent, Rcvd, Exch, State and Grid at their declared widths, plus the
+      // gaps and the log button, is most of this.
+      await pumpAt(tester, 540, at: crowded());
+
+      // 6 characters is a full call with a portable suffix. Measured as the
+      // field itself would paint it, so this fails if the minimum silently
+      // stops covering the field's own padding or font.
+      expect(
+        widthOf(tester, 'Their call'),
+        greaterThanOrEqualTo(paintedWidth(tester, 'Their call', 'W1AW/4')),
+        reason: 'the callsign field is the one field always present — it never squeezes to nothing',
+      );
+    });
+
+    testWidgets('with room to spare, every field keeps its declared width', (tester) async {
+      await pumpAt(tester, 900, at: crowded());
+
+      // The squeeze is not always on: a wide panel renders the fields at the
+      // widths they ask for, and the callsign takes everything left over.
+      for (final label in fixedLabels) {
+        expect(widthOf(tester, label), 64, reason: '$label at its declared minimum');
+      }
+      expect(widthOf(tester, 'Exch'), 76, reason: 'an exchange asks for more than an RST');
+      expect(widthOf(tester, 'Their call'), greaterThan(200));
+    });
+
+    testWidgets('when they do not all fit, the fields give up width evenly', (tester) async {
+      await pumpAt(tester, 540, at: crowded());
+
+      // Evenly means each field gives up the same NUMBER OF PIXELS, not the
+      // same share of what it asked for — so the exchange, which is wider to
+      // begin with, stays wider by exactly as much as it started. A
+      // proportional split would have taken more from it.
+      final givenUp = [
+        for (final label in fixedLabels) 64 - widthOf(tester, label),
+        76 - widthOf(tester, 'Exch'),
+      ];
+      expect(givenUp.first, greaterThan(1), reason: 'the row is genuinely short of space here');
+      for (final amount in givenUp) {
+        expect(amount, closeTo(givenUp.first, 0.5));
+      }
+    });
+
+    testWidgets('the focused field takes its full width back, and its neighbours pay', (tester) async {
+      await pumpAt(tester, 540, at: crowded());
+      final unfocused = widthOf(tester, 'Rcvd');
+      expect(unfocused, lessThan(64), reason: 'the row starts out squeezed');
+
+      await tester.tap(find.widgetWithText(TextField, 'Sent'));
+      await settleWidths(tester);
+
+      // The field you are typing in is worth reading, whatever the row's
+      // budget — the ones you are not carry its share.
+      expect(widthOf(tester, 'Sent'), 64);
+      expect(widthOf(tester, 'Rcvd'), lessThan(unfocused));
+
+      // And it gives the width back on the way out.
+      await tester.tap(find.widgetWithText(TextField, 'Exch'));
+      await settleWidths(tester);
+      expect(widthOf(tester, 'Exch'), 76);
+      expect(widthOf(tester, 'Sent'), lessThan(64));
+    });
+
+    testWidgets('a field animates to a new width rather than jumping there', (tester) async {
+      await pumpAt(tester, 540, at: crowded());
+      final before = widthOf(tester, 'Sent');
+
+      await tester.tap(find.widgetWithText(TextField, 'Sent'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 30));
+
+      // Caught in flight: past where it started, not yet where it's going.
+      // Widths change on every focus move once the row is squeezed, so the
+      // row has to follow the keyboard rather than snap at it.
+      final midway = widthOf(tester, 'Sent');
+      expect(midway, greaterThan(before), reason: 'it has started moving');
+      expect(midway, lessThan(64), reason: 'it has not arrived in one frame');
+
+      await settleWidths(tester);
+      expect(widthOf(tester, 'Sent'), 64, reason: 'and it does arrive');
+    });
+
+    testWidgets('no field is squeezed past two characters of its own value', (tester) async {
+      // Narrower than the fields can honestly fit in, even at their floors.
+      await pumpAt(tester, 400, at: crowded());
+
+      final widths = [for (final label in [...fixedLabels, 'Exch']) widthOf(tester, label)];
+      for (final (i, label) in [...fixedLabels, 'Exch'].indexed) {
+        expect(
+          widths[i],
+          greaterThanOrEqualTo(paintedWidth(tester, label, 'WW')),
+          reason: '$label still shows two characters',
+        );
+        // Two characters is two characters: the floor is the same for every
+        // field, so down here the exchange — which asked for 76 against an
+        // RST's 64 — is exactly as wide as one. Left to the even split alone
+        // it would still be 12pt wider, having simply given up the same
+        // amount from a bigger start.
+        expect(widths[i], closeTo(widths.first, 0.5), reason: '$label is at the same floor as the rest');
+      }
+    });
+
+    testWidgets('past the floors, the gaps and the fields\' own padding go next', (tester) async {
+      await pumpAt(tester, 500, at: crowded());
+      final roomyGap = gapBetween(tester, 'Sent', 'Rcvd');
+      final roomyPadding = innerPadding(tester, 'Sent');
+      expect(roomyGap, greaterThan(0));
+      expect(roomyPadding, greaterThan(0));
+
+      // Below the point where every field is already at two characters, the
+      // only room left is between and inside them — and it goes gradually,
+      // both together, rather than snapping off at a breakpoint.
+      await pumpAt(tester, 440, at: crowded());
+      final tightGap = gapBetween(tester, 'Sent', 'Rcvd');
+      final tightPadding = innerPadding(tester, 'Sent');
+      expect(tightGap, lessThan(roomyGap));
+      expect(tightPadding, lessThan(roomyPadding));
+
+      await pumpAt(tester, 400, at: crowded());
+      expect(gapBetween(tester, 'Sent', 'Rcvd'), lessThan(tightGap), reason: 'gradually, not in one step');
+      expect(innerPadding(tester, 'Sent'), lessThan(tightPadding));
+
+      // The callsign is still holding its own six characters — it is the LAST
+      // thing the row gives up, after the gaps and the padding.
+      expect(
+        widthOf(tester, 'Their call'),
+        greaterThanOrEqualTo(paintedWidth(tester, 'Their call', 'W1AW/4')),
+      );
+
+      // And they go all the way to nothing, not to some residue. Material adds
+      // 4pt a side to every `filled` field that no InputDecoration field
+      // exposes (`_kInputExtraPadding`), so a value would otherwise stop 8pt
+      // short of its own edge with no way to say otherwise; the row cancels it
+      // with a negative content padding once it needs to.
+      await pumpAt(tester, 330, at: crowded());
+      expect(gapBetween(tester, 'Sent', 'Rcvd'), 0);
+      expect(innerPadding(tester, 'Sent'), 0);
+    });
+  });
 }
 
 /// In-memory stand-in for the app's `RadioService` (which lives outside

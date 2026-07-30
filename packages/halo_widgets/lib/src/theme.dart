@@ -333,18 +333,32 @@ BoxConstraints haloDialogConstraints(BuildContext context) {
 /// setting floatingLabelStyle at all replaces the ambient
 /// InputDecorationTheme's rather than merging with it, so the color has to
 /// come along with the rest of the style rather than being left to inherit.
+/// [labelMaxLines] caps the label at that many lines, ellipsizing the rest.
+/// Worth setting for any field that can be laid out narrower than its own
+/// label: `labelText` renders through a `Text` with **no `maxLines`**, which
+/// wraps rather than ellipsizes, and a label on three lines makes the whole
+/// decorator that much taller — which for a field in a row means every control
+/// beside it moves too. Off by default, so fields with room keep Material's
+/// behavior exactly.
 InputDecoration poloFieldDecoration(
   BuildContext context,
   String label, {
   Color? labelColor,
   String? hintText,
   String? errorText,
+  int? labelMaxLines,
 }) {
   final theme = Theme.of(context);
   final color = labelColor ?? theme.colorScheme.onSurfaceVariant;
   final double scale = MediaQuery.textScalerOf(context).scale(1.0);
   return InputDecoration(
-    labelText: label,
+    // Exactly one of these two: InputDecoration asserts on both being set.
+    // The style comes from the decorator's own AnimatedDefaultTextStyle either
+    // way, so the widget form looks identical to the plain text one.
+    labelText: labelMaxLines == null ? label : null,
+    label: labelMaxLines == null
+        ? null
+        : Text(label, maxLines: labelMaxLines, overflow: TextOverflow.ellipsis),
     hintText: hintText,
     // Much lighter than the label/value — a hint (e.g. a POTA "US-...")
     // must read as a faint format cue, not as if it were an actual value

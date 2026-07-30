@@ -34,6 +34,60 @@ entered. Content usually comes from extensions as markdown and can link to
 external resources or internal navigation. Tapping the area can open a
 screen or pane with more detail.
 
+## How wide each main field is
+
+Every main field states a **minimum width** — the width it renders at whenever
+the row has the room, not a fixed size. The callsign field states none at all:
+it takes whatever the others leave, down to a floor of **six characters** (a
+full call with a portable suffix, `W1AW/4`), which it holds however many other
+fields are enabled.
+
+When the enabled fields don't all fit, the row makes its concessions in this
+order, and never reaches for the next one until the last is spent:
+
+1. **The fields shrink, evenly** — the same number of pixels off each, not the
+   same share of each, so a field that asked for more stays wider by exactly as
+   much as it started.
+2. **They stop at two characters.** Enough to tell a filled field from an empty
+   one and to aim a click at it. Every field floors at the same two characters,
+   so down here the wider ones are no longer wider.
+3. **The gaps between the fields and the padding inside them go next**, both
+   together and *gradually* — a single fraction of each, falling with the width
+   rather than snapping off at a breakpoint, and all the way to nothing. This
+   shrinks the floors above with them: two characters without padding is
+   narrower than two with.
+4. **The callsign gives up its six characters.** It is the last thing left, and
+   a narrow callsign field reads better than a row of overflow stripes.
+
+**The focused field is exempt from all of it.** It renders at its full minimum
+width for as long as it has focus, and its neighbours carry its share — the
+field the operator is typing in is the one worth reading. This is the one place
+in the panel where moving focus changes the layout, so the change is
+**animated**, briefly (100ms). A change in the space *available* is not: the
+callsign is `Expanded` and never animates, so animating the others through a
+window drag would leave it absorbing their lag for the whole gesture.
+
+Two consequences worth knowing before changing any of this:
+
+- **A field's label must never wrap.** It is laid out above the value, so a
+  label on two lines makes the whole field taller — and through the row's
+  `IntrinsicHeight` that widens the log button, taking back more room than the
+  squeeze just found. `poloFieldDecoration`'s `labelMaxLines` is what pins it;
+  Material's own `labelText` has no line limit.
+- **A field's real inset is more than its `contentPadding`.** Material adds 4pt
+  a side to every `filled` field of its own accord (`_kInputExtraPadding`),
+  which no `InputDecoration` field exposes. Step 3 counts it as part of what
+  there is to give and cancels it with a *negative* content padding, which is
+  the only way to get it back; the arithmetic would otherwise be 8pt per field
+  short of what the row actually spends.
+- **What never compresses**: the panel's own 12pt edge inset (shared with the
+  pill strip and the info area above, so the fields row can't give it up
+  alone), the log button's diameter, and the fields' vertical padding.
+- All of it is written in plain logical pixels and characters and scales with
+  the interface ([ui-scaling.md](ui-scaling.md)); the character-derived widths
+  are measured against the fields' own font, so OS text scaling widens them
+  rather than eating into them.
+
 ## Which field has focus
 
 The callsign field is the default: if no other field is focused, focus
