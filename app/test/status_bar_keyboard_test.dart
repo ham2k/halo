@@ -231,8 +231,12 @@ void main() {
         services.statusBar.setMessage(key: 'm$i', text: 'Item $i');
       }
       await settle(tester);
+      // pumpAndSettle, not `settle`: the two frames that suffice for the
+      // footer's own grow animation do not carry the InkWell's tap through,
+      // and a tap that silently does nothing makes this whole test vacuous —
+      // hence the guard below.
       await tester.tap(find.byType(StatusBarFooter));
-      await settle(tester);
+      await tester.pumpAndSettle();
 
       services.statusBar.showNotice(
         key: 'n',
@@ -253,6 +257,240 @@ void main() {
         reason: 'the expanded footer must cap against the space above the keyboard, not the window',
       );
     });
+  });
+
+  // Everything that shares the bottom, at once, in the tightest geometry the
+  // app can actually reach. Each piece used to size itself against the whole
+  // window independently, so their sum could exceed the strip they share.
+  //
+  // The reachable tight case is a LANDSCAPE phone at a large font scale, not a
+  // small window on its own: `UiScale` implements the Font Scale setting by
+  // dividing the window and the insets it passes down, while the numbers row's
+  // 52 and the collapsed footer's 28 stay fixed — so the fixed chrome grows
+  // from 42% of the space above the keyboard to 80% of it. This sets up the
+  // divided geometry directly, which is exactly what the overlay is handed.
+  //
+  // Portrait never reaches this; it is not worth a case of its own here.
+  //
+  // The last two rows are the ones that matter most: they are not the roundest
+  // numbers but the geometries that CAUGHT the band bug, and they bracket it
+  // from both sides. 390/200 at 1.90 leaves the notice stack exactly its own
+  // band height, so it sat precisely at break-even and passed while the code
+  // was wrong; a hair tighter in either direction — a taller keyboard, a
+  // shorter phone — and the stack overran the window by 3-5pt.
+  for (final (device, keyboard, scale, appKeepsRoom) in const [
+    (390.0, 200.0, 1.00, true),
+    (390.0, 200.0, 1.40, true),
+    (390.0, 200.0, 1.90, true),
+    (390.0, 210.0, 1.90, true), // overran by 5.27pt
+    (375.0, 215.0, 1.65, true), // iPhone SE on its side: overran by 3.03pt
+  ]) {
+    testWidgets('the whole bottom chrome fits in landscape, $device/$keyboard at font scale $scale', (tester) async {
+      await on(TargetPlatform.iOS, () async {
+        const bodyKey = Key('route-body');
+        // A phone on its side, as UiScale divides it.
+        final dpr = tester.view.devicePixelRatio;
+        tester.view.physicalSize = Size(844 / scale * dpr, device / scale * dpr);
+        tester.view.viewInsets = FakeViewPadding(bottom: keyboard / scale * dpr);
+        addTearDown(tester.view.resetPhysicalSize);
+        addTearDown(tester.view.resetViewInsets);
+
+        await pumpOverlay(tester, child: const Scaffold(resizeToAvoidBottomInset: false, body: SizedBox.expand(key: bodyKey)));
+
+        // A numbers row, as a focused logging field publishes one.
+        services.keyboardAccessory.publish(
+          Object(),
+          const KeyboardAccessorySpec(
+            onKey: _noop,
+            vibrate: false,
+            backgroundColor: 0xFF102030,
+            foregroundColor: 0xFFFFFFFF,
+            extraKey: '/',
+          ),
+        );
+        for (var i = 0; i < 6; i++) {
+          services.statusBar.setMessage(key: 'm$i', text: 'Item $i');
+        }
+        await settle(tester);
+        services.statusBar.showNotice(
+          key: 'n',
+          icon: 'bug',
+          title: 'Heads up',
+          text: 'A notice long enough to want more room than the space above the keyboard can give it, '
+              'so its own cap is what decides how tall it ends up being.',
+        );
+        await settle(tester);
+
+        expect(tester.takeException(), isNull, reason: 'the Column must not overflow');
+        expect(find.byType(NumberKeys), findsOneWidget);
+        expect(find.byType(NoticeStack), findsOneWidget, reason: 'the notice is clipped when short of room, never dropped');
+
+        // `takeException` is necessary but not sufficient: an overflow is only
+        // reported on the frame it is laid out, and anything that consumed it
+        // earlier leaves this green over a broken layout (which is exactly how
+        // the band bug survived its first verification). Measure the boxes.
+        final window = tester.getSize(find.byType(StatusBarOverlay)).height;
+        final chrome = tester.getSize(find.byType(NoticeStack)).height +
+            tester.getSize(find.byType(StatusBarFooter)).height +
+            tester.getSize(find.byType(NumberKeys)).height +
+            keyboard / scale;
+        expect(
+          chrome,
+          lessThanOrEqualTo(window + 0.01),
+          reason: 'the chrome below the app must fit the window without it',
+        );
+
+        // The app keeps a real share at every reachable scale — not merely a
+        // non-negative height, which a box can never fail.
+        expect(
+          tester.getSize(find.byKey(bodyKey)).height,
+          appKeepsRoom ? greaterThan(0) : greaterThanOrEqualTo(0),
+          reason: 'the chrome below the app must not overrun it',
+        );
+        expect(
+          tester.getSize(find.byKey(bodyKey)).height,
+          moreOrLessEquals(window - chrome, epsilon: 0.01),
+          reason: 'the app gets exactly what the chrome left, no more and no less',
+        );
+      });
+    });
+  }
+
+  // The expanded footer, which is the whole point of `footerMax` and the one
+  // state the geometry cases above never enter. Without this, deleting
+  // `collapsedFooter +` from the budget changes nothing any test can see: the
+  // footer is 28 either way while collapsed.
+  testWidgets('expanding the footer does not push the chrome past the window', (tester) async {
+    await on(TargetPlatform.iOS, () async {
+      const bodyKey = Key('route-body');
+      final dpr = tester.view.devicePixelRatio;
+      tester.view.physicalSize = Size(844 / 1.4 * dpr, 390 / 1.4 * dpr);
+      tester.view.viewInsets = FakeViewPadding(bottom: 200 / 1.4 * dpr);
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetViewInsets);
+
+      await pumpOverlay(tester, child: const Scaffold(resizeToAvoidBottomInset: false, body: SizedBox.expand(key: bodyKey)));
+      services.keyboardAccessory.publish(
+        Object(),
+        const KeyboardAccessorySpec(
+          onKey: _noop,
+          vibrate: false,
+          backgroundColor: 0xFF102030,
+          foregroundColor: 0xFFFFFFFF,
+          extraKey: '/',
+        ),
+      );
+      // Far more rows than the budget can seat, so the cap is what decides.
+      for (var i = 0; i < 20; i++) {
+        services.statusBar.setMessage(key: 'm$i', text: 'Item $i');
+      }
+      await settle(tester);
+
+      final collapsed = tester.getSize(find.byType(StatusBarFooter)).height;
+      // pumpAndSettle, not `settle`: the two frames that suffice for the
+      // footer's own grow animation do not carry the InkWell's tap through,
+      // and a tap that silently does nothing makes this whole test vacuous —
+      // hence the guard below.
+      await tester.tap(find.byType(StatusBarFooter));
+      await tester.pumpAndSettle();
+      final expanded = tester.getSize(find.byType(StatusBarFooter)).height;
+      expect(expanded, greaterThan(collapsed), reason: 'the tap must actually expand it, or this asserts nothing');
+
+      expect(tester.takeException(), isNull, reason: 'expanding must not overflow the Column');
+      final window = tester.getSize(find.byType(StatusBarOverlay)).height;
+      expect(
+        expanded + tester.getSize(find.byType(NumberKeys)).height + 200 / 1.4,
+        lessThanOrEqualTo(window + 0.01),
+        reason: 'the expanded footer plus the row and keyboard must still fit',
+      );
+      expect(tester.getSize(find.byKey(bodyKey)).height, greaterThanOrEqualTo(0));
+
+      // Not just "it fits" — it has to be exactly what the budget allowed.
+      // With 20 items the content dwarfs the cap, so the cap is the only thing
+      // deciding this height, which makes it a direct read-back of `footerMax`.
+      // Merely asserting it fits leaves the budget free to hand over any
+      // smaller number without a single test noticing.
+      final budget = BottomChromeBudget.of(
+        windowHeight: window,
+        keyboardInset: 200 / 1.4,
+        hasNumbersRow: true,
+        hasStatusItems: true,
+      );
+      // Epsilon covers PixelGrid snapping, which rounds the rendered height
+      // to the device pixel grid — the budget deals in raw logical pixels and
+      // the widget lands on the nearest grid line.
+      expect(
+        expanded,
+        moreOrLessEquals(budget.footerMax, epsilon: 0.5),
+        reason: 'the expanded footer must land on its budget, collapsed height included',
+      );
+    });
+  });
+
+  // The arithmetic on its own. The geometry cases above can only catch a bad
+  // budget where a widget happens to render at its cap; this pins the contract
+  // directly, across the whole reachable range, and is where the band bug was
+  // cheapest to find.
+  test('BottomChromeBudget never promises more than the window holds', () {
+    // Landscape phones get landscape keyboards and portrait gets portrait
+    // ones; a 300pt keyboard in a 390pt window is not a configuration iOS
+    // produces, and asserting against it only measures the impossible.
+    for (final (device, keyboards) in const [
+      (390.0, [0.0, 150.0, 200.0, 215.0]),
+      (375.0, [0.0, 150.0, 200.0, 215.0]),
+      (844.0, [0.0, 250.0, 300.0, 340.0]),
+    ]) {
+      for (final keyboard in keyboards) {
+        for (final scale in [0.7, 1.0, 1.4, 1.65, 1.9]) {
+          for (final hasRow in [true, false]) {
+            for (final hasItems in [true, false]) {
+              final window = device / scale;
+              final inset = keyboard / scale;
+              final budget = BottomChromeBudget.of(
+                windowHeight: window,
+                keyboardInset: inset,
+                hasNumbersRow: hasRow,
+                hasStatusItems: hasItems,
+              );
+              final where = '$device/$keyboard @$scale row=$hasRow items=$hasItems';
+
+              expect(budget.noticeMax, greaterThanOrEqualTo(0), reason: 'negative cap at $where');
+              expect(budget.footerMax, greaterThanOrEqualTo(0), reason: 'negative cap at $where');
+
+              // Both caps are TOTALS for their widget, so everything at its
+              // limit at once is the worst case the Column can be asked to
+              // lay out. It has to fit what is left of the window.
+              final worstCase = budget.noticeMax + budget.footerMax + (hasRow ? NumberKeys.height : 0.0) + inset;
+              expect(
+                worstCase,
+                lessThanOrEqualTo(window + 0.01),
+                reason: 'chrome at full cap overruns the window at $where',
+              );
+
+              // Space is only charged for what is actually drawn. Without
+              // items the footer is a zero-height box, so charging its
+              // collapsed height anyway would quietly shrink the notice for a
+              // widget that is not there.
+              if (hasItems) {
+                final withoutItems = BottomChromeBudget.of(
+                  windowHeight: window,
+                  keyboardInset: inset,
+                  hasNumbersRow: hasRow,
+                  hasStatusItems: false,
+                );
+                if (budget.noticeMax > 0) {
+                  expect(
+                    withoutItems.noticeMax,
+                    greaterThan(budget.noticeMax),
+                    reason: 'an absent footer must free up room at $where',
+                  );
+                }
+              }
+            }
+          }
+        }
+      }
+    }
   });
 
   // The strip is painted, and painted in the app-bar colour. Both halves
@@ -293,3 +531,5 @@ void main() {
     });
   });
 }
+
+void _noop(String _) {}

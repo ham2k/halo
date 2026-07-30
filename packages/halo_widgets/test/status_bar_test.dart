@@ -132,12 +132,15 @@ void main() {
       await tester.pumpWidget(noticeHost(List.filled(200, 'A long line of notice text.').join('\n\n')));
       await tester.pumpAndSettle();
 
-      // The card's scroll viewport is clamped to 40% of the screen, so the
-      // overflowing body is reachable by scrolling rather than blowing the
-      // layout.
+      // The overflowing body stays reachable by scrolling rather than blowing
+      // the layout. The 40% bounds the whole STACK — the band around the card
+      // included — so the card's own viewport is that much shorter. It used to
+      // bound the card, which left the stack 20pt over whatever it was given
+      // and overran a tight budget by exactly that.
+      const bandHeight = 12.0 + 8.0;
       final viewport = find.byType(SingleChildScrollView).first;
       final screenHeight = MediaQuery.of(tester.element(viewport)).size.height;
-      expect(tester.getSize(viewport).height, closeTo(screenHeight * 0.4, 1));
+      expect(tester.getSize(viewport).height, closeTo(screenHeight * 0.4 - bandHeight, 1));
     },
   );
 

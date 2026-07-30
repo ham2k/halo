@@ -8,6 +8,8 @@
 // handed, so they stay usable from both the live footer and the read-only
 // Recent Notices history screen.
 
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 
@@ -65,8 +67,21 @@ class StatusBarNoticeData {
   });
 }
 
+/// The share of the window either of these may take when no caller supplies a
+/// budget. Only honest when the widget owns the screen; the app always passes
+/// a budget instead, because down there it is sharing the window with the
+/// numbers row and the keyboard — see the `maxHeight` parameters.
+const _windowFraction = 0.4;
+
 const _collapsedHeight = 28.0;
 const _expandedRowHeight = 36.0;
+
+/// The band `NoticeStack` paints around the card. Vertical chrome the stack
+/// costs on top of the card — so when the whole stack is held to a budget
+/// smaller than this, the band is what has to give (see `_bandFor`).
+const _noticeBandTop = 12.0;
+const _noticeBandBottom = 8.0;
+const _noticeBandHeight = _noticeBandTop + _noticeBandBottom;
 
 /// A progress item splits its row evenly: the title takes the left half and
 /// the bar the right half, so the bar never spans more than half the message.
@@ -75,9 +90,15 @@ const _progressTitleFlex = 1;
 
 /// The collapsed/expandable status bar. Shows the most-recently-updated
 /// [items] entry collapsed; tap to expand into a scrollable list, capped at
-/// 40% of the screen height. Collapses to zero height on every platform when
-/// [items] is empty.
+/// [maxExpandedHeight] — or 40% of the screen when no caller sets one.
+/// Collapses to zero height on every platform when [items] is empty.
 class StatusBarFooter extends StatefulWidget {
+  /// The footer's height with its list collapsed — what it takes whenever
+  /// there is anything to show at all. Public for the same reason as
+  /// [NumberKeys.height]: it is fixed chrome, so whatever divides up the
+  /// bottom of the window has to spend it before splitting the remainder.
+  static const double collapsedHeight = _collapsedHeight;
+
   final List<StatusBarItemData> items;
   final void Function(String key) onDismiss;
 
@@ -87,10 +108,16 @@ class StatusBarFooter extends StatefulWidget {
   /// value.
   final String dismissLabel;
 
+  /// How tall the EXPANDED list may grow before it scrolls. Same contract as
+  /// [NoticeStack.maxHeight]: null means a fraction of the window, which only
+  /// holds when nothing else is competing for the bottom of it.
+  final double? maxExpandedHeight;
+
   const StatusBarFooter({
     super.key,
     required this.items,
     required this.onDismiss,
+    this.maxExpandedHeight,
     this.dismissLabel = 'Dismiss',
   });
 
@@ -262,10 +289,14 @@ class _StatusBarFooterState extends State<StatusBarFooter> {
 
   Widget _buildExpanded(BuildContext context, Color foregroundColor) {
     final list = widget.items.reversed.toList();
-    // Only as tall as the actual item count needs, but never more than 40% of
-    // the screen (scrollable beyond that) — floored at one row so a single
-    // item still shows.
-    final maxHeight = MediaQuery.sizeOf(context).height * 0.4;
+    // Only as tall as the actual item count needs, but never more than the
+    // caller's cap (or 40% of the screen absent one), scrollable beyond that.
+    //
+    // The floor below is a real exception to that cap: one row, so a single
+    // item still shows. A caller whose budget is tighter than a row gets a
+    // footer taller than it allowed — the alternative is an expanded list with
+    // nothing legible in it.
+    final maxHeight = widget.maxExpandedHeight ?? MediaQuery.sizeOf(context).height * _windowFraction;
     final contentHeight = _expandedRowHeight * list.length;
     final cap = maxHeight < _expandedRowHeight ? _expandedRowHeight : maxHeight;
     return SizedBox(
@@ -467,10 +498,24 @@ class NoticeStack extends StatefulWidget {
   /// [StatusBarFooter.dismissLabel]).
   final String dismissLabel;
 
+  /// How tall the **whole stack** may grow — band included — before the card
+  /// inside it scrolls. Null falls back to a fraction of the window, which is
+  /// right when this owns the screen and wrong when it is sharing the bottom
+  /// strip with the footer, the numbers row and the keyboard; there the caller
+  /// has a budget and this is how it says so.
+  ///
+  /// Deliberately the total, not the card. The band is chrome this widget adds
+  /// on its own account, so a caller dividing up a fixed strip cannot pay for
+  /// it without knowing these internals — and when it tried, the stack quietly
+  /// overran a tight budget by the whole band. Below [_noticeBandHeight] the
+  /// band itself gives way, so this is a bound the widget cannot exceed.
+  final double? maxHeight;
+
   const NoticeStack({
     super.key,
     required this.notices,
     required this.onDismiss,
+    this.maxHeight,
     this.dismissLabel = 'Dismiss',
   });
 
@@ -494,13 +539,31 @@ class _NoticeStackState extends State<NoticeStack> {
     });
   }
 
-  /// Caps a notice card at 40% of the screen height, scrolling its content
-  /// when it would grow past that. Applied to every card — including the ghost
-  /// that sizes the stack — so the whole stack stays within the limit.
-  Widget _capHeight(BuildContext context, Widget card) => ConstrainedBox(
-        constraints: BoxConstraints(maxHeight: MediaQuery.sizeOf(context).height * 0.4),
-        child: SingleChildScrollView(child: card),
-      );
+  /// The budget for the whole stack: what the caller allowed, or 40% of the
+  /// window when it did not say.
+  double _stackCap(BuildContext context) =>
+      widget.maxHeight ?? MediaQuery.sizeOf(context).height * _windowFraction;
+
+  /// The band actually painted. Normally the full [_noticeBandHeight]; when
+  /// the stack's whole budget is smaller than that, the band shrinks with it
+  /// rather than pushing the stack past what it was given. Keeping the top and
+  /// bottom in proportion means it reads as a tighter band, not a broken one.
+  EdgeInsets _bandFor(double cap) {
+    final scale = (cap / _noticeBandHeight).clamp(0.0, 1.0);
+    return EdgeInsets.fromLTRB(12, _noticeBandTop * scale, 12, _noticeBandBottom * scale);
+  }
+
+  /// Caps a notice card so the card PLUS the band fits the stack's budget,
+  /// scrolling its content when it would grow past that. Applied to every card
+  /// — including the ghost that sizes the stack — so the whole stack stays
+  /// within the limit, which is the property the caller is relying on.
+  Widget _capHeight(BuildContext context, Widget card) {
+    final cap = _stackCap(context);
+    return ConstrainedBox(
+      constraints: BoxConstraints(maxHeight: math.max(0.0, cap - _bandFor(cap).vertical)),
+      child: SingleChildScrollView(child: card),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -538,7 +601,7 @@ class _NoticeStackState extends State<NoticeStack> {
                   key: const ValueKey('notice_active'),
                   width: double.infinity,
                   color: footerColor,
-                  padding: const EdgeInsets.fromLTRB(12, 12, 12, 8),
+                  padding: _bandFor(_stackCap(context)),
                   // Hold the notice card to the ideal pane width, centered, rather than
                   // letting it stretch across a wide window (the full-width band behind it
                   // stays, matching the footer).

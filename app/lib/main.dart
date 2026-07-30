@@ -1602,14 +1602,80 @@ class DevOverlayTrigger extends ChangeNotifier {
   void trigger() => notifyListeners();
 }
 
-/// Wraps the whole app (every route, since `MaterialApp.builder` wraps the
-/// Navigator as a single instance) with the global footer + notice stack —
-/// one integration point instead of touching every view's `Scaffold`.
+/// How much room each growable piece of the bottom chrome may take.
 ///
-/// Visible for testing because it owns a layout relationship between three of
-/// its own children — where the footer sits relative to the on-screen keyboard
-/// — that only holds if the real Column is the one measured. A copy of it in a
-/// test would keep passing whatever this did.
+/// The bottom of the window is shared four ways: the notice stack and the
+/// status footer can both grow, the numbers row is a fixed height whenever a
+/// focused field publishes one, and the keyboard strip takes whatever the
+/// keyboard is using. The app gets what is left — and must not be squeezed to
+/// nothing, which is what happened when each of these sized itself against the
+/// whole window on its own and their sum quietly exceeded the strip they share.
+///
+/// So the sum is bounded here, once, rather than each piece guessing.
+///
+/// Two of the four pieces do not negotiate: the numbers row is a fixed
+/// [NumberKeys.height] whenever a field publishes one, and the footer takes
+/// [StatusBarFooter.collapsedHeight] whenever it has anything to say. Those
+/// come off the top; what remains is split between the growable chrome and
+/// the app, so the app keeps `1 - _chromeShare` of it no matter what.
+///
+/// "No matter what" only holds if every cap here is one the consumer cannot
+/// exceed, so both are TOTALS — the whole stack including its band, the whole
+/// expanded footer including its collapsed height. An earlier version handed
+/// [NoticeStack] a cap for the card alone and paid for the band here; the
+/// stack then overran a tight budget by the whole band, measured at 3pt on a
+/// 375pt landscape phone at Largest+ and 5pt at Largest++ with a 210pt
+/// keyboard. Chrome a widget adds on its own account has to be that widget's
+/// arithmetic.
+///
+/// Getting this wrong is not hypothetical, and it is not visible in portrait:
+/// `UiScale` implements the Font Scale setting by dividing the window AND the
+/// insets it hands down (docs/design/ui-scaling.md), while the fixed 52 and 28
+/// above stay put. On a landscape phone with the keyboard up, that fixed 80
+/// grows from 42% of the space above the keyboard at Normal to all of it at
+/// Largest++ — which is how the sum used to run past the window and drive the
+/// app to zero height.
+@visibleForTesting
+class BottomChromeBudget {
+  /// The cap for the whole notice stack, its band included — the total, which
+  /// is what [NoticeStack.maxHeight] means.
+  final double noticeMax;
+
+  /// The cap for the whole expanded footer, collapsed height included.
+  final double footerMax;
+
+  const BottomChromeBudget({required this.noticeMax, required this.footerMax});
+
+  /// The most of the negotiable space the growable chrome may take between
+  /// them, so the app always keeps the rest.
+  static const double _chromeShare = 0.6;
+
+  /// How that share splits. The notice carries prose and wants the larger part;
+  /// the footer's rows are short and it scrolls past its cap anyway. The
+  /// footer's part stays reserved while it is collapsed — it can be expanded
+  /// by a tap at any time, and a budget that only holds until the user touches
+  /// something is not a budget.
+  static const double _noticeShare = 0.7;
+
+  factory BottomChromeBudget.of({
+    required double windowHeight,
+    required double keyboardInset,
+    required bool hasNumbersRow,
+    required bool hasStatusItems,
+  }) {
+    // Only what is actually on screen is charged: the footer collapses to
+    // nothing without items, exactly as the row is absent without a spec.
+    final collapsedFooter = hasStatusItems ? StatusBarFooter.collapsedHeight : 0.0;
+    final fixed = (hasNumbersRow ? NumberKeys.height : 0.0) + collapsedFooter;
+    final negotiable = math.max(0.0, windowHeight - keyboardInset - fixed);
+    final chrome = negotiable * _chromeShare;
+    return BottomChromeBudget(
+      noticeMax: chrome * _noticeShare,
+      footerMax: collapsedFooter + chrome * (1 - _noticeShare),
+    );
+  }
+}
+
 @visibleForTesting
 class StatusBarOverlay extends StatelessWidget {
   final HaLoServices services;
@@ -1620,7 +1686,10 @@ class StatusBarOverlay extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ListenableBuilder(
-      listenable: services.statusBar,
+      // Both, because the budget below has to see the numbers row: whether one
+      // is published changes how much room the notice and the footer get, and
+      // listening only to the status bar would leave that stale.
+      listenable: Listenable.merge([services.statusBar, services.keyboardAccessory]),
       builder: (context, _) {
         final statusBar = services.statusBar;
         final items = [
@@ -1685,52 +1754,41 @@ class StatusBarOverlay extends StatelessWidget {
         // like a keyboard does, just less of it.
         final keyboardInset = MediaQuery.viewInsetsOf(context).bottom;
 
+        // How much of the window the chrome below the app may take, divided
+        // between the two pieces that can grow. Everything down here used to
+        // size itself against the WHOLE window independently — the notice at
+        // 40% of it, the expanded footer at another 40%, the numbers row at
+        // whatever it is — so their sum could exceed the strip they share and
+        // the Column overflowed, crushing the app to nothing. Three separate
+        // fixes each capped one piece and moved the overflow to the next; the
+        // sum is the thing that has to be bounded, so it is worked out once,
+        // here, by the only widget that can see all of them.
+        final accessory = services.keyboardAccessory.value;
+        final bottom = BottomChromeBudget.of(
+          windowHeight: MediaQuery.sizeOf(context).height,
+          keyboardInset: keyboardInset,
+          hasNumbersRow: accessory != null,
+          hasStatusItems: items.isNotEmpty,
+        );
+
         return MediaQuery.removeViewInsets(
           context: context,
           removeBottom: true,
           child: Column(
             children: [
               Expanded(child: child),
-              // The notice stack and the footer both size themselves against a
-              // fraction of the window height and scroll past it — and both
-              // stopped fitting once the keyboard strip claimed the bottom,
-              // because the window is no longer the space they have. Telling
-              // them the window is shorter by the keyboard makes their own caps
-              // mean what they say. Wrapped together because they cap the same
-              // way: capping only one leaves the other overflowing this Column
-              // (measured: an expanded footer took 40% of the FULL window,
-              // squeezing the app to zero and overflowing by 62px).
-              //
-              // Deliberately not `Flexible`, and not an outer `maxHeight`.
-              // Flexible would make them compete with the `Expanded` above for
-              // the free space and take an equal share, so any visible notice
-              // halved the whole app (measured: a 600pt body dropped to 300pt).
-              // A bare outer maximum is no better — the notice card's
-              // `SingleChildScrollView` fills a bounded height, so it would
-              // always be exactly the cap instead of as tall as its text.
-              MediaQuery(
-                data: MediaQuery.of(context).copyWith(
-                  size: Size(
-                    MediaQuery.sizeOf(context).width,
-                    math.max(0, MediaQuery.sizeOf(context).height - keyboardInset),
-                  ),
+              if (notices.isNotEmpty)
+                NoticeStack(
+                  notices: notices,
+                  onDismiss: statusBar.dismissNotice,
+                  maxHeight: bottom.noticeMax,
+                  dismissLabel: context.t.common.dismiss,
                 ),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    if (notices.isNotEmpty)
-                      NoticeStack(
-                        notices: notices,
-                        onDismiss: statusBar.dismissNotice,
-                        dismissLabel: context.t.common.dismiss,
-                      ),
-                    StatusBarFooter(
-                      items: items,
-                      onDismiss: statusBar.clear,
-                      dismissLabel: context.t.common.dismiss,
-                    ),
-                  ],
-                ),
+              StatusBarFooter(
+                items: items,
+                onDismiss: statusBar.clear,
+                maxExpandedHeight: bottom.footerMax,
+                dismissLabel: context.t.common.dismiss,
               ),
               // The mobile numbers row, published by whichever field has focus
               // (KeyboardAccessoryController). Drawn HERE, below the footer and
@@ -1738,18 +1796,20 @@ class StatusBarOverlay extends StatelessWidget {
               // keyboard, so nothing may come between the two — and the footer
               // is status, which belongs above both. A route cannot achieve
               // that order itself, since the footer is one level up from it.
-              ValueListenableBuilder<KeyboardAccessorySpec?>(
-                valueListenable: services.keyboardAccessory,
-                builder: (context, spec, _) => spec == null
-                    ? const SizedBox.shrink()
-                    : NumberKeys(
-                        onKey: spec.onKey,
-                        extraKey: spec.extraKey,
-                        vibrate: spec.vibrate,
-                        backgroundColor: Color(spec.backgroundColor),
-                        foregroundColor: Color(spec.foregroundColor),
-                      ),
-              ),
+              //
+              // Read straight off the controller rather than through a nested
+              // builder: this whole subtree already rebuilds when it changes
+              // (see the merged listenable above), and the budget must be
+              // computed from the SAME value this renders — a nested builder
+              // could show a row the budget above had not accounted for.
+              if (accessory != null)
+                NumberKeys(
+                  onKey: accessory.onKey,
+                  extraKey: accessory.extraKey,
+                  vibrate: accessory.vibrate,
+                  backgroundColor: Color(accessory.backgroundColor),
+                  foregroundColor: Color(accessory.foregroundColor),
+                ),
               if (keyboardInset > 0)
                 SizedBox(
                   width: double.infinity,

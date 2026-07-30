@@ -19,6 +19,15 @@ import 'package:flutter/services.dart';
 /// by `UiScale` (docs/design/ui-scaling.md), so nothing here multiplies by
 /// the font scale.
 class NumberKeys extends StatelessWidget {
+  static const double _keyHeight = 44;
+  static const double _verticalPadding = 4;
+
+  /// The row's laid-out height. Public because whatever draws the bottom of the
+  /// window has to budget the space this will take BEFORE building it — see
+  /// `StatusBarOverlay`, which divides what is left between the notice stack
+  /// and the status footer.
+  static const double height = _keyHeight + _verticalPadding * 2;
+
   /// Fired with the tapped character: '0'–'9', or [extraKey].
   final ValueChanged<String> onKey;
 
@@ -59,7 +68,7 @@ class NumberKeys extends StatelessWidget {
     return Material(
       color: backgroundColor,
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: _verticalPadding),
         child: Row(
           children: [
             for (final key in keys)
@@ -69,7 +78,7 @@ class NumberKeys extends StatelessWidget {
                   canRequestFocus: false,
                   onTap: () => _handle(key),
                   child: SizedBox(
-                    height: 44,
+                    height: _keyHeight,
                     child: Center(
                       child: Text(
                         key,
