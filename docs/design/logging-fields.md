@@ -94,6 +94,35 @@ platforms select-all by default, and an operator who tabbed into a field to
 check it shouldn't be one keystroke away from destroying it. This applies to
 the main logging fields only.
 
+## Enter and focus
+
+**Enter never blurs.** It means "log", not "done editing", so the field that
+submitted keeps focus and the operator can keep typing — whether the Enter
+logged a contact, ran a command, saved an edit, or was rejected as none of
+those. Only something downstream deliberately moves focus after it: `_wipe`
+sends it back to the callsign field once a contact is logged, so a QSO
+submitted from an exchange field still leaves the operator on callsign, ready
+for the next one.
+
+This has to be asserted, not assumed. A single-line `TextField` unfocuses
+itself *before* calling `onSubmitted` — Flutter's default end-of-editing
+behavior — so every main logging field supplies `onEditingComplete` to
+suppress that (`_finishEditingWithoutBlur`). Without it the entry row only
+*looks* intact, because the two commonest paths happen to re-focus afterwards
+and the rest silently leave nothing focused at all.
+
+Two consequences worth knowing:
+
+- **On mobile the on-screen keyboard stays up** after Enter, including on the
+  paths that keep the typed input (a rejected command). The only dismissal
+  gesture, tap-to-dismiss, needs the field to be *empty* — see the mobile
+  carve-out above.
+- **A test that drives Enter with `sendKeyEvent` is not testing this.** That
+  route reaches the logging code through the panel's shortcut bindings without
+  ever finalizing the editing session, so it never blurs and passes against
+  broken code. Use `receiveAction(TextInputAction.done)`, which is what the
+  engine actually sends.
+
 ## Focus and the secondary controls
 
 Opening a secondary control moves focus to whichever field in the expanded
@@ -194,6 +223,9 @@ Implemented except for:
   keyboard is attached, and making "nothing focused → the callsign field" a
   standing invariant rather than something re-asserted after each action. Both
   are blocked on a decision, not on the work; see [backlog.md](../backlog.md).
+  Enter is no longer one of the actions needing that re-assertion — it doesn't
+  drop focus in the first place (§ "Enter and focus") — which narrows the
+  second rule without settling it.
 - The serial fields' `focus: 'skip'` opt-out noted above, which does not exist
   yet.
 - The Log button, which the focus ladder doesn't reach: Tab loops within the

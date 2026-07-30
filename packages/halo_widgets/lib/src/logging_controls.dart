@@ -2585,10 +2585,43 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
         inputFormatters: [_virtualSpace, ?filter, const UpperCaseTextFormatter()],
         decoration: _primaryFieldDecoration(context, label, hintText: hintText),
         onChanged: onChanged,
+        onEditingComplete: () => _finishEditingWithoutBlur(controller),
         onSubmitted: (_) => _log(),
       ),
     );
   }
+
+  /// What every main logging field does instead of `EditableText`'s default
+  /// end-of-editing behavior.
+  ///
+  /// That default **unfocuses the field before it calls `onSubmitted`** — so
+  /// left alone, every Enter blurs the field that submitted it, and the entry
+  /// row only looked like it kept focus because the ordinary logging paths
+  /// happen to re-focus afterwards (`_wipe` after a logged QSO, the `!_canLog`
+  /// guard otherwise). Any path that didn't — running a command, saving an
+  /// edit, a second Enter while one is still in flight — left the operator
+  /// with nothing focused at all.
+  ///
+  /// Here Enter means "log", never "done editing": the entry row is a loop the
+  /// keyboard stays inside (docs/design/logging-fields.md § "Enter and focus"),
+  /// so the field that submitted keeps focus unless something downstream
+  /// deliberately moves it. Suppressing the blur at the three build sites fixes
+  /// every submit path at once, rather than making each new branch of [_log]
+  /// remember to put focus back.
+  ///
+  /// Supplying `onEditingComplete` replaces the branch that did BOTH of those,
+  /// so the composing-region cleanup is reinstated here by hand. It does not
+  /// replace everything: `_finalizeEditing`'s trailing
+  /// `if (shouldUnfocus) _scheduleRestartConnection()` still runs, and now
+  /// actually restarts the platform input connection rather than finding it
+  /// already closed — measured as one fewer call than before (the `hide` is
+  /// gone), so the keyboard no longer blinks per QSO.
+  ///
+  /// Secondary controls are deliberately not covered — they keep their widget
+  /// defaults (docs/design/logging-fields.md § "The three parts"), and the
+  /// radio control's field moves focus to its pill itself on submit.
+  ///
+  void _finishEditingWithoutBlur(TextEditingController controller) => controller.clearComposing();
 
   String _fmtTime(DateTime dt) =>
       '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
@@ -3581,6 +3614,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
             _optionSelection = null;
           });
         },
+        onEditingComplete: () => _finishEditingWithoutBlur(_textControllerFor(key)),
         onSubmitted: (_) => _handleEnter(),
       ),
       ),
@@ -4943,7 +4977,16 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
           _operationDataForCommands,
           qsoData,
         );
-        if (!mounted || _call != call) return; // stale — the call changed while awaiting
+        // Stale — the call changed while awaiting. `_isLogging` is re-checked
+        // for a different reason: the entry guard above ran BEFORE this await,
+        // and the flag isn't set until one of the branches below commits to
+        // logging, so a second Enter arriving inside this window passed that
+        // guard too and is now racing us to the same QSO. This is the ordinary
+        // path, not an edge case — a plain callsign interprets to null, so
+        // nothing is ever cached and every logging Enter awaits here. The
+        // window is real: `interpretCommand` and `_decorated` are both JS
+        // runtime round-trips, and key auto-repeat fires well inside them.
+        if (!mounted || _call != call || _isLogging) return;
       }
       // A recognized command that can't run in this context (its `error`
       // field is set — see CommandInterpretation) — surface the message,
@@ -5466,6 +5509,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
                                       : [_commandVirtualSpace, const UpperCaseTextFormatter()],
                               style: _primaryFieldStyle(context, fontWeight: FontWeight.w500),
                               decoration: _primaryFieldDecoration(context, widget.theirCallLabel ?? 'Their call'),
+                              onEditingComplete: () => _finishEditingWithoutBlur(_callController),
                               onSubmitted: (_) => _log(),
                             )),
                           ),

@@ -52,6 +52,7 @@ void main() {
   Widget host({
     List<Qso> existing = const [],
     CommandInterpreter? interpretCommand,
+    Future<Map<String, dynamic>> Function(Map<String, dynamic>)? decorateQsoBeforeSave,
     Stream<Map<String, dynamic>>? interpretationUpdates,
     void Function(String? message)? onCommandMessageChanged,
     CommandActionHandler? onCommandAction,
@@ -80,6 +81,7 @@ void main() {
       qsos: existing,
       enqueueLookup: enqueueLookup,
       enqueueAllLookups: enqueueAllLookups,
+      decorateQsoBeforeSave: decorateQsoBeforeSave,
       interpretCommand: interpretCommand,
       interpretationUpdates: interpretationUpdates,
       onCommandMessageChanged: onCommandMessageChanged,
@@ -3968,6 +3970,11 @@ void main() {
     // Frequency command fills the freq field and derives the band.
     await command('14285');
     expect(field('Their call').controller!.text, isEmpty);
+    // NOT the focus-after-submit guard — `command()` uses sendKeyEvent, which
+    // never finalizes the editing session, so this passes even when Enter blurs
+    // the field. That case belongs to the "Enter keeps focus in the field that
+    // submitted (real submit path)" group below; this only pins that a command
+    // doesn't wander off with the focus while the shortcut path runs.
     expect(field('Their call').focusNode!.hasFocus, isTrue);
     expect(field('Frequency').controller!.text, '14285');
     expect(find.text('20m'), findsWidgets);
@@ -3989,6 +3996,294 @@ void main() {
     expect(logged.single.band, '40m');
     expect(logged.single.freq, isNull);
     expect(logged.single.mode, 'CW');
+  });
+
+  // Enter must never cost the operator the field they were typing in. The
+  // entry row is a loop the keyboard stays inside (docs/design/logging-fields.md
+  // § "Moving between the main fields"), so Enter means "log", not "done
+  // editing" — but `EditableText`'s default finalization unfocuses the field
+  // BEFORE it calls `onSubmitted`, which made every Enter blur. The entry row
+  // only looked intact because the two ordinary paths re-focus afterwards
+  // (`_wipe` after a logged QSO, the `!_canLog` guard otherwise); every path
+  // that didn't — running a command, saving an edit, a second Enter while one
+  // was in flight — left nothing focused. `_finishEditingWithoutBlur` suppresses
+  // the blur at the field, so all of them are covered at once.
+  //
+  // These drive the submit the way the ENGINE does, via
+  // `receiveAction(TextInputAction.done)`. That distinction is the whole point:
+  // `sendKeyEvent(enter)` reaches `_log` through the panel's CallbackShortcuts
+  // without ever finalizing the editing session, so it never blurs the field
+  // and a test written that way passes against the broken code. Anything here
+  // that switches back to sendKeyEvent stops testing this.
+  //
+  // The last three cases are the ones a re-focus inside `_log` could not pass,
+  // and they are why the fix lives at the field: they submit from somewhere
+  // other than the call field, or never reach the command branch at all.
+  group('Enter keeps focus in the field that submitted (real submit path)', () {
+    Future<void> submit(WidgetTester tester, Finder field, String input) async {
+      await tester.enterText(field, input);
+      await tester.pump(const Duration(milliseconds: 200)); // past the describe debounce
+      await tester.testTextInput.receiveAction(TextInputAction.done);
+      await tester.pump(const Duration(milliseconds: 400)); // command execution + dispatch
+    }
+
+    Finder callField() => find.widgetWithText(TextField, 'Their call');
+    bool hasFocus(WidgetTester tester, Finder field) =>
+        tester.widget<TextField>(field).focusNode!.hasFocus;
+
+    testWidgets('after an everyday frequency command', (tester) async {
+      await tester.pumpWidget(host(interpretCommand: fakeInterpretCommand));
+      await submit(tester, callField(), '14285');
+      expect(hasFocus(tester, callField()), isTrue);
+      // …and the command really did run, so this isn't passing on a no-op.
+      expect(tester.widget<TextField>(callField()).controller!.text, isEmpty);
+    });
+
+    // DEVPROGRESS was the reported case and DEVNOTICE the follow-up, but at this
+    // layer they are one path — `_log` never inspects the action name, it just
+    // hands it to `onCommandAction`. One case covers both; what actually differs
+    // between them is downstream, in the status bar.
+    testWidgets('after a command that only posts to the status bar', (tester) async {
+      final dispatched = <String>[];
+      Future<Map<String, dynamic>?> interpretDevProgress(String input,
+          [Map<String, dynamic>? operation, Map<String, dynamic>? qso, bool execute = false]) async {
+        if (input.trim().toUpperCase() != 'DEVPROGRESS') return null;
+        return {
+          'describe': 'Show an indeterminate dev progress bar?',
+          'confirm': 'Added an indeterminate progress bar',
+          'commands': [
+            {'devProgress': {'icon': 'progress-clock', 'title': 'Dev progress'}}
+          ],
+        };
+      }
+
+      await tester.pumpWidget(host(
+        interpretCommand: interpretDevProgress,
+        onCommandAction: (a, [params]) async => dispatched.add(a),
+      ));
+      await submit(tester, callField(), 'DEVPROGRESS');
+      expect(hasFocus(tester, callField()), isTrue);
+      expect(dispatched, ['devProgress']);
+    });
+
+    testWidgets('and a plain QSO still does too, so the fix did not trade one for the other', (tester) async {
+      await tester.pumpWidget(host(interpretCommand: fakeInterpretCommand));
+      await submit(tester, callField(), 'W1AW');
+      expect(hasFocus(tester, callField()), isTrue);
+      // Anchored: this case passes under every mutation of the fix (by design —
+      // `_wipe` re-focuses either way), so without pinning that a contact was
+      // actually logged it would also survive Enter becoming a no-op, where
+      // focus simply never moves.
+      expect((await waitForQsos(tester, 1)).single.theirCall, 'W1AW');
+    });
+
+    // The other half of `_finishEditingWithoutBlur`. Supplying `onEditingComplete`
+    // replaces the branch that ALSO cleared the composing region, so the helper
+    // reinstates it — and that half is invisible to every other test here,
+    // because `enterText` never produces a composing range. `updateEditingValue`
+    // does, which is what makes this checkable at all.
+    testWidgets('submitting clears the composing region the default would have', (tester) async {
+      await tester.pumpWidget(host());
+      final node = tester.widget<TextField>(callField()).focusNode!;
+      node.requestFocus();
+      await tester.pump();
+
+      final state = tester.state<EditableTextState>(find.descendant(
+        of: callField(),
+        matching: find.byType(EditableText),
+      ));
+      state.updateEditingValue(const TextEditingValue(
+        text: 'W1A',
+        selection: TextSelection.collapsed(offset: 3),
+        composing: TextRange(start: 0, end: 3),
+      ));
+      await tester.pump();
+      expect(state.textEditingValue.composing.isValid, isTrue, reason: 'the IME state must be set up first');
+
+      // Assert immediately — do NOT pump first. `_finalizeEditing`'s trailing
+      // `_scheduleRestartConnection()` re-attaches the input connection a frame
+      // later and clears the composing run on its own, so a settle pump here
+      // makes this pass even with the helper emptied out. Verified: with a
+      // pump, the no-op mutant survives; without one, it fails.
+      await tester.testTextInput.receiveAction(TextInputAction.done);
+
+      expect(state.textEditingValue.composing.isValid, isFalse,
+          reason: 'a live composing run must not survive the submit');
+    });
+
+    // Submitting from a field other than the callsign must leave focus THERE.
+    // Re-focusing the call field inside `_log` looks equivalent until you try
+    // this: it yanks the caret out of the field mid-entry, and rewrites
+    // `_lastPrimaryFocus` with it, so collapsing a secondary control later
+    // returns to the wrong field.
+    //
+    // `Sent` is an RST field, built by `_fixedField` — one of the three build
+    // sites, and NOT the exchange-field builder, which the next test covers.
+    testWidgets('a command submitted from an RST field leaves focus in that field', (tester) async {
+      await tester.pumpWidget(host(interpretCommand: fakeInterpretCommand));
+      final sent = find.widgetWithText(TextField, 'Sent');
+
+      await tester.enterText(callField(), '14285');
+      await tester.pump(const Duration(milliseconds: 200));
+      tester.widget<TextField>(sent).focusNode!.requestFocus();
+      await tester.pump();
+
+      await tester.testTextInput.receiveAction(TextInputAction.done);
+      await tester.pump(const Duration(milliseconds: 400));
+
+      expect(hasFocus(tester, sent), isTrue, reason: 'Enter from Sent must not move the caret to the call field');
+      expect(hasFocus(tester, callField()), isFalse);
+    });
+
+    // The exchange-field builder is the third site, and the only one whose
+    // `onSubmitted` is `_handleEnter()` rather than `_log()` — so it owns a
+    // branch (accept a highlighted suggestion, then return without logging)
+    // that neither other site has. Without this, deleting its
+    // `onEditingComplete` passed all 245 tests.
+    testWidgets('a command submitted from a contest exchange field leaves focus in that field', (tester) async {
+      const theirSerial = {
+        'key': 'cqwpx/theirSerial',
+        'label': 'Their #',
+        'icon': 'flag-checkered',
+        'input': {'kind': 'text', 'refType': 'cqwpx', 'field': 'theirSerial', 'numeric': true},
+      };
+      await tester.pumpWidget(MaterialApp(
+        home: Scaffold(
+          body: LoggingControls(
+            operation: running(['cqwpx']),
+            qsosRepository: qsos,
+            activityControls: const [theirSerial],
+            interpretCommand: fakeInterpretCommand,
+          ),
+        ),
+      ));
+      await tester.pump(const Duration(milliseconds: 100));
+
+      final exchange = find.widgetWithText(TextField, 'Their #');
+      expect(exchange, findsOneWidget, reason: 'the contest exchange field must actually be on screen');
+
+      await tester.enterText(callField(), '14285');
+      await tester.pump(const Duration(milliseconds: 200));
+      tester.widget<TextField>(exchange).focusNode!.requestFocus();
+      await tester.pump();
+
+      await tester.testTextInput.receiveAction(TextInputAction.done);
+      await tester.pump(const Duration(milliseconds: 400));
+
+      expect(hasFocus(tester, exchange), isTrue,
+          reason: 'Enter from a contest exchange must not move the caret to the call field');
+      expect(hasFocus(tester, callField()), isFalse);
+    });
+
+    // Saving an edit returns through `onEditCanceled`, which never touched
+    // focus — a path no amount of re-focusing inside the command branch reaches.
+    testWidgets('saving an edited QSO with Enter keeps focus', (tester) async {
+      final existingQso = (await tester.runAsync(() => qsos.add(operation.uuid, {
+            'their': {'call': 'W1AW'},
+            'startAtMillis': 1000000,
+            'freq': 7100,
+            'mode': 'SSB',
+          })))!;
+      var canceled = false;
+      await tester.pumpWidget(host(editingQso: existingQso, onEditCanceled: () => canceled = true));
+
+      await submit(tester, callField(), 'W1AWX');
+      expect(canceled, isTrue, reason: 'the edit should have been saved, not ignored');
+      expect(hasFocus(tester, callField()), isTrue);
+    });
+
+    // A second Enter while the first command is still in flight. This one
+    // reaches `_log`'s `_isLogging` guard and returns there — but only because
+    // `SLOW` is a RECOGNIZED command, so the describe debounce has already
+    // cached an interpretation and the await below it is skipped. A plain
+    // callsign never caches one, which is the case the next test covers; do not
+    // read this one as proving the guard holds generally.
+    testWidgets('a second Enter while a slow command is in flight keeps focus', (tester) async {
+      final release = Completer<void>();
+      Future<Map<String, dynamic>?> slowCommand(String input,
+          [Map<String, dynamic>? operation, Map<String, dynamic>? qso, bool execute = false]) async {
+        if (input.trim().toUpperCase() != 'SLOW') return null;
+        if (execute) await release.future;
+        return {
+          'describe': 'Run the slow one?',
+          'confirm': 'Ran it',
+          'commands': [
+            {'devStatus': {'text': 'done'}}
+          ],
+        };
+      }
+
+      await tester.pumpWidget(host(interpretCommand: slowCommand, onCommandAction: (a, [p]) async {}));
+      await tester.enterText(callField(), 'SLOW');
+      await tester.pump(const Duration(milliseconds: 200));
+
+      await tester.testTextInput.receiveAction(TextInputAction.done); // starts executing, awaits release
+      await tester.pump();
+      await tester.testTextInput.receiveAction(TextInputAction.done); // returns at the _isLogging guard
+      await tester.pump();
+
+      release.complete();
+      await tester.pump(const Duration(milliseconds: 400));
+      expect(hasFocus(tester, callField()), isTrue);
+    });
+
+    // The same QSO must never be logged twice. `_log`'s `_isLogging` guard runs
+    // at entry, but the flag isn't set until a branch commits to logging — and
+    // in between sits an `await interpretCommand(...)`. A plain callsign
+    // interprets to null, so nothing is ever cached and EVERY logging Enter
+    // goes through that await: a second Enter arriving inside it passed the
+    // entry guard too, and both go on to write the contact.
+    //
+    // Keeping focus is what makes this reachable from the on-screen keyboard,
+    // so it belongs to this group — but the window is not specific to a
+    // command, and the case above cannot catch it (it types a recognized
+    // command, which caches an interpretation and skips the await, and it
+    // asserts focus rather than how many QSOs exist).
+    //
+    // The latency here stands in for the real thing: `interpretCommand` and the
+    // decorate-before-save hook are both JS-runtime round-trips, and key
+    // auto-repeat (~33-90ms on macOS) fires well inside them.
+    testWidgets('a second Enter during the interpret round-trip does not log the QSO twice', (tester) async {
+      var interpretCalls = 0;
+      Future<Map<String, dynamic>?> slowNullInterpret(String input,
+          [Map<String, dynamic>? operation, Map<String, dynamic>? qso, bool execute = false]) async {
+        interpretCalls++;
+        await Future<void>.delayed(const Duration(milliseconds: 50));
+        return null; // a callsign is not a command — the ordinary logging path
+      }
+
+      // Latency on the save path too, and this half is essential: without it
+      // the first Enter finishes and `_wipe`s the field before the second
+      // resumes, so the `_call != call` staleness check catches the duplicate
+      // by accident and the test passes against the bug.
+      await tester.pumpWidget(host(
+        interpretCommand: slowNullInterpret,
+        decorateQsoBeforeSave: (data) async {
+          await Future<void>.delayed(const Duration(milliseconds: 60));
+          return data;
+        },
+      ));
+      await tester.enterText(callField(), 'W1AW');
+      await tester.pump(const Duration(milliseconds: 200));
+
+      await tester.testTextInput.receiveAction(TextInputAction.done);
+      await tester.pump(const Duration(milliseconds: 30)); // inside the 50ms await
+      await tester.testTextInput.receiveAction(TextInputAction.done);
+
+      // Read the SETTLED state, not the first sighting: `waitForQsos` stops as
+      // soon as it sees one, which would miss a duplicate written moments later
+      // — the very thing under test.
+      for (var i = 0; i < 40; i++) {
+        await tester.pump(const Duration(milliseconds: 20));
+      }
+      final logged = (await tester.runAsync(() => qsos.watchForOperation(operation.uuid).first))!;
+      expect(logged, hasLength(1), reason: 'the second Enter must not log a duplicate contact');
+      // One call from the describe debounce during the pump above, then one per
+      // Enter — so this pins that BOTH Enters really entered `_log` and reached
+      // the await. Without it the test could pass on a second Enter that never
+      // arrived, which proves nothing.
+      expect(interpretCalls, 3, reason: 'both Enters must reach _log for this to be testing anything');
+    });
   });
 
   testWidgets('an async interpretation push updates the message but never dispatches commands (issue #189)', (tester) async {
