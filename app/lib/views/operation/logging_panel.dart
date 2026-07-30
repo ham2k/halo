@@ -587,6 +587,7 @@ class _LoggingPanelState extends State<LoggingPanel> {
             showRSTFields: widget.showRSTFields,
             showStateField: widget.showStateField,
             showGridField: widget.showGridField,
+            keyboardAccessory: widget.services.keyboardAccessory,
             showNumbersRow: _showNumbersRow,
             showExtraInNumbersRow: _showExtraInNumbersRow,
             vibrateNumbersRow: _vibrateNumbersRow,

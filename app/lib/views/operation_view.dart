@@ -1387,7 +1387,22 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
           Tab(text: context.t.operation.tabs.map),
         ];
         final List<Widget> tabChildren = [
-          if (!isTwoPane) _KeepAlive(child: loggingPanel),
+          // The logging panel is kept alive behind the other tabs, so tabbing
+          // away leaves it built AND still holding focus. That is fine for the
+          // panel itself, but its mobile numbers row is drawn by the app's
+          // status-bar overlay, outside this tab view — so it has to be told
+          // when it is no longer the visible pane, or the row hangs over
+          // whatever tab replaced it and types into the hidden call field.
+          // ListenableBuilder because nothing else here rebuilds on tab change.
+          if (!isTwoPane)
+            ListenableBuilder(
+              listenable: _tabController!,
+              builder: (context, child) => KeyboardAccessoryVisibility(
+                visible: _tabController!.index == 0,
+                child: child!,
+              ),
+              child: _KeepAlive(child: loggingPanel),
+            ),
           if (isTwoPane) infoPanel,
           spotsPanel,
           mapPanel,

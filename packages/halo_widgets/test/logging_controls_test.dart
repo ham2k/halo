@@ -22,6 +22,7 @@ void main() {
   late QsosRepository qsos;
   late Operation operation;
   late _FakeVfoStore fakeRadio;
+  late KeyboardAccessoryController keyboardAccessory;
 
   setUp(() async {
     db = HaLoDatabase(NativeDatabase.memory());
@@ -29,6 +30,7 @@ void main() {
     qsos = QsosRepository(db);
     operation = await operations.create(stationCall: 'KI2D');
     fakeRadio = _FakeVfoStore();
+    keyboardAccessory = KeyboardAccessoryController();
   });
 
   tearDown(() async {
@@ -78,6 +80,7 @@ void main() {
     final controls = LoggingControls(
       operation: operation,
       qsosRepository: qsos,
+      keyboardAccessory: keyboardAccessory,
       qsos: existing,
       enqueueLookup: enqueueLookup,
       enqueueAllLookups: enqueueAllLookups,
@@ -130,6 +133,23 @@ void main() {
             const Expanded(child: SizedBox.shrink()),
             controls,
             if (trailing != null) trailing,
+            // The panel no longer draws the numbers row — it publishes it, and
+            // the app's StatusBarOverlay draws it below the status footer and
+            // directly on the keyboard. This stands in for that, so the tests
+            // still exercise the row end to end (publish → render → tap)
+            // rather than asserting on the spec and calling it covered.
+            ValueListenableBuilder<KeyboardAccessorySpec?>(
+              valueListenable: keyboardAccessory,
+              builder: (context, spec, _) => spec == null
+                  ? const SizedBox.shrink()
+                  : NumberKeys(
+                      onKey: spec.onKey,
+                      extraKey: spec.extraKey,
+                      vibrate: spec.vibrate,
+                      backgroundColor: Color(spec.backgroundColor),
+                      foregroundColor: Color(spec.foregroundColor),
+                    ),
+            ),
           ],
         ),
       ),
@@ -290,6 +310,53 @@ void main() {
     expect(logged, isEmpty);
   });
 
+  // The panel reserves the home indicator below its fields, but NOT while the
+  // on-screen keyboard is up — the keyboard covers the indicator, and
+  // StatusBarOverlay is already holding back that whole strip so the status
+  // footer can ride above the keyboard. Reserving it here as well put a dead
+  // gap between the numbers row and the footer (caught on a simulator, not by
+  // the tests, which is why this one exists).
+  //
+  // Measured as the space below the fields rather than by reading the private
+  // getter, so it stays a statement about what the operator sees.
+  group('the panel does not reserve the home indicator under the keyboard', () {
+    double gapBelowFields(WidgetTester tester) =>
+        tester.getBottomLeft(find.byType(LoggingControls)).dy -
+        tester.getBottomLeft(find.widgetWithText(TextField, 'Their call')).dy;
+
+    Future<double> gapWith(WidgetTester tester, {required bool keyboardUp}) async {
+      final dpr = tester.view.devicePixelRatio;
+      tester.view.viewPadding = FakeViewPadding(bottom: 34 * dpr); // a home indicator
+      // Set BOTH branches, never just one: leaving `viewInsets` alone on the
+      // keyboard-down call made the result depend on which order the two calls
+      // happened to run in — reversing them measured "keyboard down" under a
+      // raised keyboard and reported a difference of 0.
+      tester.view.viewInsets = keyboardUp ? FakeViewPadding(bottom: 300 * dpr) : FakeViewPadding.zero;
+      addTearDown(() {
+        tester.view.resetViewPadding();
+        tester.view.resetViewInsets();
+      });
+      await tester.pumpWidget(host());
+      await tester.pump(const Duration(milliseconds: 100));
+      return gapBelowFields(tester);
+    }
+
+    testWidgets('reserves it with the keyboard down, and nothing with it up', (tester) async {
+      debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
+      try {
+        // Keyboard UP first, deliberately: taken in the other order this passed
+        // even when `gapWith` never cleared the inset, because the down case
+        // happened to run before anything set it.
+        final up = await gapWith(tester, keyboardUp: true);
+        final down = await gapWith(tester, keyboardUp: false);
+        // The indicator's 34pt is held back only when it is actually exposed.
+        expect(down - up, moreOrLessEquals(34, epsilon: 1.0));
+      } finally {
+        debugDefaultTargetPlatformOverride = null;
+      }
+    });
+  });
+
   group('mobile "." to "/" autocorrect', () {
     // debugDefaultTargetPlatformOverride must be back to null before the
     // test body returns — the test framework's invariant check runs right
@@ -360,16 +427,26 @@ void main() {
     }
   });
 
+  // The panel publishes this row rather than drawing it (the app draws it below
+  // the status footer, on top of the keyboard — see KeyboardAccessoryController),
+  // and publishing lands after the frame so it cannot notify a listening
+  // ancestor mid-build. So the row appears ONE FRAME after whatever changed it:
+  // [pumpRow] is that frame, and any assertion about the row's contents needs it.
   group('mobile numbers row (issue #27)', () {
     Finder keyInRow(String glyph) =>
         find.descendant(of: find.byType(NumberKeys), matching: find.text(glyph));
+
+    Future<void> pumpRow(WidgetTester tester) async {
+      await tester.pump(); // runs the publish
+      await tester.pump(); // renders what it published
+    }
 
     testWidgets('shows above the keyboard on mobile when enabled and a field has focus', (tester) async {
       debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
       try {
         raiseKeyboard(tester);
         await tester.pumpWidget(host(showNumbersRow: true));
-        await tester.pump();
+        await pumpRow(tester);
         expect(find.byType(NumberKeys), findsOneWidget);
         // The full digit set is there…
         for (final d in ['0', '1', '5', '9']) {
@@ -439,7 +516,7 @@ void main() {
       try {
         raiseKeyboard(tester);
         await tester.pumpWidget(host(showNumbersRow: true));
-        await tester.pump(); // let the call field autofocus
+        await pumpRow(tester); // let the call field autofocus and the row publish
 
         await tester.tap(keyInRow('5'));
         await tester.pump();
@@ -461,7 +538,7 @@ void main() {
 
         // A partial callsign in the (focused) call field → "/".
         await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'W1AW');
-        await tester.pump();
+        await pumpRow(tester);
         expect(keyInRow('/'), findsOneWidget);
         expect(keyInRow('.'), findsNothing);
 
@@ -473,7 +550,7 @@ void main() {
 
         // Moving focus to the numeric Sent field flips the extra key to ".".
         await tester.enterText(find.widgetWithText(TextField, 'Sent'), '59');
-        await tester.pump();
+        await pumpRow(tester);
         expect(keyInRow('.'), findsOneWidget);
         expect(keyInRow('/'), findsNothing);
       } finally {
@@ -486,7 +563,7 @@ void main() {
       try {
         raiseKeyboard(tester);
         await tester.pumpWidget(host(showNumbersRow: true, showExtraInNumbersRow: false));
-        await tester.pump();
+        await pumpRow(tester);
         expect(find.byType(NumberKeys), findsOneWidget);
         expect(keyInRow('.'), findsNothing);
         expect(keyInRow('/'), findsNothing);

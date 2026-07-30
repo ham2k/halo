@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'dart:io' as io;
-import 'dart:math' as math;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -729,10 +728,11 @@ class _BrandingPane extends StatelessWidget {
     return Container(
       color: theme.colorScheme.surfaceContainerHighest,
       alignment: Alignment.center,
-      // Centre the branding in the space above the keyboard (the pane extends
-      // full height behind it, so the grey fills the gap); the padding is
-      // inside the coloured Container, so the fill still reaches the bottom.
-      padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(context).bottom),
+      // No keyboard padding here: `StatusBarOverlay` holds the keyboard's
+      // height back for the whole app and consumes the inset, so this pane is
+      // already only as tall as the space above the keyboard. Padding by
+      // `viewInsets.bottom` as well used to shrink the branding to a sliver
+      // pinned near the top on iPad landscape.
       // Scale the branding down rather than overflow when the pane is short —
       // e.g. landscape two-pane with the keyboard up shrinks it well below
       // the logo+text's natural height. No effect at full height.
@@ -800,7 +800,7 @@ class HomeQuickLookup extends StatefulWidget {
   State<HomeQuickLookup> createState() => _HomeQuickLookupState();
 }
 
-class _HomeQuickLookupState extends State<HomeQuickLookup> {
+class _HomeQuickLookupState extends State<HomeQuickLookup> with WidgetsBindingObserver {
   final _controller = TextEditingController();
   final _focusNode = FocusNode();
 
@@ -826,10 +826,25 @@ class _HomeQuickLookupState extends State<HomeQuickLookup> {
     // rebuild for both (issue #27).
     _controller.addListener(_onEngineChanged);
     _focusNode.addListener(_onFocusChanged);
+    // The numbers row and the bottom reserve both ask the raw FlutterView
+    // whether the keyboard is up, because StatusBarOverlay consumes the inset
+    // from MediaQuery — and the raw view carries no rebuild dependency, so
+    // this is what notices the keyboard opening and closing.
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void didChangeMetrics() {
+    if (isMobilePlatform && mounted) setState(() {});
   }
 
   @override
   void dispose() {
+    // A published row would otherwise outlive this field, floating over
+    // whatever replaces it with a dead key handler. The controller defers the
+    // write while the tree is locked, which it is here.
+    widget.services.keyboardAccessory.clearIfOwner(this);
+    WidgetsBinding.instance.removeObserver(this);
     _focusNode.removeListener(_onFocusChanged);
     _controller.removeListener(_onEngineChanged);
     _engine.removeListener(_onEngineChanged);
@@ -849,16 +864,44 @@ class _HomeQuickLookupState extends State<HomeQuickLookup> {
 
   /// Whether to float the mobile numbers row above the keyboard right now: the
   /// setting is on, we're on a phone/tablet, this field has focus, and a real
-  /// on-screen keyboard is up. The >100px check ignores iOS's thin
-  /// hardware-keyboard accessory bar (~45–55px) — matches LoggingControls'
-  /// `_minKeyboardInset`. MediaQuery works here (the Home Scaffold doesn't
-  /// resize, so it doesn't strip the inset), so this rebuilds on its own as
-  /// the keyboard opens/closes.
-  bool _shouldShowNumbersRow(MediaQueryData mq) =>
+  /// on-screen keyboard is up (`virtualKeyboardIsUp`'s >100px threshold ignores
+  /// iOS's thin hardware-keyboard accessory bar, ~45–55px).
+  ///
+  /// Reads the raw `FlutterView`, not MediaQuery: `StatusBarOverlay` now
+  /// consumes the bottom inset for everything below it, so MediaQuery reports 0
+  /// here even with the keyboard up. That is deliberate — it stops every route
+  /// reserving the keyboard a second time — but it means "is the keyboard up?"
+  /// has to be asked of the view. The raw view has no rebuild dependency, hence
+  /// `didChangeMetrics` below.
+  bool _shouldShowNumbersRow(BuildContext context) =>
       isMobilePlatform &&
       widget.services.settings.showNumbersRow &&
       _focusNode.hasFocus &&
-      mq.viewInsets.bottom > 100;
+      virtualKeyboardIsUp(context);
+
+  /// Publishes (or withdraws) this field's numbers row. Written after the
+  /// frame, never during build: the overlay that draws it is an ancestor, and
+  /// notifying it mid-build would rebuild a widget already being built.
+  void _syncNumbersRow(BuildContext context, ThemeData theme) {
+    final accessory = widget.services.keyboardAccessory;
+    final spec = _shouldShowNumbersRow(context)
+        ? KeyboardAccessorySpec(
+            onKey: _handleNumberKey,
+            extraKey: _numbersRowExtraKey,
+            vibrate: widget.services.settings.vibrateNumbersRow,
+            backgroundColor: (theme.appBarTheme.backgroundColor ?? theme.colorScheme.primary).toARGB32(),
+            foregroundColor: (theme.appBarTheme.foregroundColor ?? theme.colorScheme.onPrimary).toARGB32(),
+          )
+        : null;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      if (spec == null) {
+        accessory.clearIfOwner(this);
+      } else {
+        accessory.publish(this, spec);
+      }
+    });
+  }
 
   /// The contextual extra key: "/" once a callsign (letters, not just digits)
   /// is being composed — for portable calls like W1AW/P — otherwise ".". Same
@@ -895,16 +938,25 @@ class _HomeQuickLookupState extends State<HomeQuickLookup> {
     final commandMessage = _engine.message;
     final hasContent = commandMessage != null || lookupLine != null;
 
-    // The Home Scaffold no longer resizes for the keyboard, and the status
-    // footer below now collapses to nothing, so this bar reserves the space
-    // itself below the field (and the numbers row, when shown): the larger of
-    // the keyboard inset and the bottom safe area. A MAX (not a sum) because
-    // the keyboard, when up, already covers the home indicator. The bar's
-    // Material fills that strip, so its teal both shows behind the keyboard and
-    // forms the home-indicator strip when the keyboard is down.
+    // The Home Scaffold no longer resizes for the keyboard, so this bar
+    // reserves the bottom safe area itself below the field (and the numbers
+    // row, when shown), and its Material fills that strip so the teal forms the
+    // home-indicator strip. NOT the keyboard: `StatusBarOverlay` reserves that
+    // for the whole app so the status footer rides above it instead of hiding,
+    // which means the space this bar is given already ends above the keyboard.
+    // And nothing at all while the keyboard is up, since it covers the home
+    // indicator: the strip the overlay is already holding back IS that space.
+    //
+    // The keyboard question goes to the raw view, not MediaQuery — the overlay
+    // consumes that inset on the way down precisely so no route reserves it
+    // twice, which also means MediaQuery reports 0 here in both states and
+    // could not tell them apart. `viewPadding`, not `padding`, for the safe
+    // area, since the latter zeroes out under the keyboard.
     final mq = MediaQuery.of(context);
-    final bottomReserve = math.max(mq.viewInsets.bottom, mq.viewPadding.bottom);
-    final showNumbersRow = _shouldShowNumbersRow(mq);
+    final view = View.of(context);
+    final keyboardUp = view.viewInsets.bottom > 0;
+    final bottomReserve = keyboardUp ? 0.0 : mq.viewPadding.bottom;
+    _syncNumbersRow(context, theme);
 
     return Material(
       elevation: 8,
@@ -1003,18 +1055,11 @@ class _HomeQuickLookupState extends State<HomeQuickLookup> {
               onEditingComplete: () => _engine.submit(),
             ),
           ),
-          // The mobile numbers row (issue #27), same setting as the logging
-          // panel — digits (plus one contextual "/"/".") a tap away while the
-          // lookup field has focus. Sits just above the keyboard, which the
-          // spacer below reserves.
-          if (showNumbersRow)
-            NumberKeys(
-              onKey: _handleNumberKey,
-              extraKey: _numbersRowExtraKey,
-              vibrate: widget.services.settings.vibrateNumbersRow,
-              backgroundColor: theme.appBarTheme.backgroundColor ?? theme.colorScheme.primary,
-              foregroundColor: theme.appBarTheme.foregroundColor ?? theme.colorScheme.onPrimary,
-            ),
+          // The numbers row is not drawn here — it is published to
+          // `StatusBarOverlay`, which draws it below the status footer and
+          // directly on the keyboard (see `_syncNumbersRow`). Same reason as
+          // the logging panel: the footer is one level up, so no route can put
+          // itself under it.
           if (bottomReserve > 0) SizedBox(width: double.infinity, height: bottomReserve),
         ],
       ),

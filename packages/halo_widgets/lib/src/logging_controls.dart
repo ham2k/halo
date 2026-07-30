@@ -42,10 +42,10 @@ import 'flags.dart';
 import 'form_renderer.dart';
 import 'icon_resolver.dart';
 import 'inline_markdown.dart';
+import 'keyboard_accessory.dart';
 import 'keyboard_dismiss.dart';
 import 'logging_controls_controller.dart';
 import 'mdi_icons.dart';
-import 'number_keys.dart';
 import 'option_matching.dart';
 import 'platform_chrome.dart';
 import 'resizable_split_view.dart' show PaneSafeArea;
@@ -557,6 +557,12 @@ class LoggingControls extends StatefulWidget {
   final bool showExtraInNumbersRow;
   final bool vibrateNumbersRow;
 
+  /// Where the numbers row is published for drawing. The row has to be painted
+  /// below the status footer and directly on the keyboard, which is one level
+  /// up from here — see [KeyboardAccessoryController]. Null (tests, and any
+  /// host that doesn't draw one) simply means no row appears.
+  final KeyboardAccessoryController? keyboardAccessory;
+
   /// Optional imperative handle for driving the controls from outside (set the
   /// call, log, wipe) — used by the app's dev bridge. Attached on mount.
   final LoggingControlsController? controller;
@@ -651,6 +657,7 @@ class LoggingControls extends StatefulWidget {
     this.showRSTFields = true,
     this.showStateField = false,
     this.showGridField = false,
+    this.keyboardAccessory,
     this.showNumbersRow = false,
     this.showExtraInNumbersRow = true,
     this.vibrateNumbersRow = true,
@@ -1677,6 +1684,12 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   @override
   void didUpdateWidget(LoggingControls oldWidget) {
     super.didUpdateWidget(oldWidget);
+    // Withdraw from the controller we actually published to. `deactivate` only
+    // ever sees the CURRENT one, so without this a swapped controller keeps a
+    // row nothing can ever take back.
+    if (!identical(oldWidget.keyboardAccessory, widget.keyboardAccessory)) {
+      oldWidget.keyboardAccessory?.clearIfOwner(this);
+    }
     // The controls a contest contributes arrive asynchronously, after this
     // widget first builds — so a serial field is typically declared here
     // rather than in initState, and this is where its first preview comes
@@ -2102,7 +2115,14 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   }
 
   @override
+  @override
   void dispose() {
+    // A published row would otherwise outlive this panel, hanging over
+    // whatever replaced it with a handler that types into nothing. The
+    // controller defers the write when the tree is locked, which it is here
+    // (dispose runs inside `finalizeTree`) — and `deactivate` is no better,
+    // since that runs during build.
+    widget.keyboardAccessory?.clearIfOwner(this);
     widget.onDispatcherChanged?.call(null);
     widget.controller?.detach();
     widget.radioUpdates?.removeListener(_onRadioVfoChanged);
@@ -5635,6 +5655,8 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
           )
         : theme;
 
+    _syncNumbersRow(context, accentTheme);
+
     // Bump a monotonic generation whenever the info area's displayed content
     // changes, and key the AnimatedSwitcher by it below. A content-derived key
     // that can repeat (stats→call→stats) would collide with a still-fading
@@ -5972,29 +5994,26 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
                   ),
                 ),
               ),
-              // The numbers row, when a field has focus and the keyboard is
-              // up (mobile only). See `_shouldShowNumbersRow`.
-              if (_shouldShowNumbersRow(context))
-                _buildNumberKeys(accentTheme),
-              // Reserve space at the bottom so the fields (and numbers row)
-              // clear whatever is down there — the Scaffold no longer resizes
-              // for the keyboard, it extends full height so each pane fills
-              // behind it, and the status footer no longer reserves the home
-              // indicator globally. That's the larger of the keyboard inset and
-              // the bottom safe area (a MAX — the keyboard covers the indicator
-              // when up). The spacer takes the numbers row's colour when it's
-              // showing (so the row reads as continuing behind the keyboard);
-              // otherwise it's the panel's own background (Material above), so
-              // the home-indicator strip matches the panel.
+              // The numbers row is NOT drawn here. It has to sit under the
+              // status footer and directly on the keyboard, and the footer
+              // lives one level up in the app's status-bar overlay — so this
+              // publishes the row and the overlay draws it in that one spot.
+              // See `_syncNumbersRow` / KeyboardAccessoryController.
+              // Reserve the home indicator at the bottom so the fields (and
+              // numbers row) clear it — the Scaffold no longer resizes, it
+              // extends full height so each pane fills behind it, and the
+              // status footer no longer reserves the indicator globally. The
+              // keyboard is NOT reserved here: `_StatusBarOverlay` does that
+              // for the whole app so the footer can ride above it, so the space
+              // this panel is handed already ends above the keyboard. The
+              // spacer takes the numbers row's colour when it's showing (so the
+              // row reads as continuing into the strip); otherwise it's the
+              // panel's own background (Material above), so the home-indicator
+              // strip matches the panel.
               if (_bottomReserve > 0)
                 SizedBox(
                   width: double.infinity,
                   height: _bottomReserve,
-                  child: _shouldShowNumbersRow(context)
-                      ? ColoredBox(
-                          color: accentTheme.appBarTheme.backgroundColor ?? accentTheme.colorScheme.primary,
-                        )
-                      : null,
                 ),
             ],
           ),
@@ -6010,41 +6029,39 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     return FocusScope(child: panel);
   }
 
-  /// Rebuilds when the on-screen keyboard opens or closes. The operation
-  /// Scaffold no longer resizes for the keyboard (it extends full height so
-  /// each pane paints its own bottom) — this panel keeps its own fields above
-  /// it with a bottom spacer (see build), whose height tracks the keyboard.
-  /// `didChangeMetrics` is the trigger: the raw view inset ([_keyboardInset])
-  /// has no MediaQuery dependency to rebuild on.
+  /// Rebuilds when the on-screen keyboard opens or closes — the numbers row
+  /// appears and disappears with it, and `virtualKeyboardIsUp` reads the raw
+  /// view inset, which has no MediaQuery dependency to rebuild on.
+  ///
+  /// The panel no longer sizes anything to the keyboard itself: `_StatusBarOverlay`
+  /// reserves the keyboard's height below the status footer for the whole app,
+  /// so the space this panel is given already ends above the keyboard.
   @override
   void didChangeMetrics() {
     if (isMobilePlatform && mounted) setState(() {});
   }
 
-  /// The on-screen keyboard's height in logical pixels, or 0 off mobile /
-  /// keyboard down. Read from the raw `FlutterView` (see [virtualKeyboardIsUp]).
-  /// The panel reserves this much at its bottom so the fields and numbers row
-  /// stay above the keyboard.
-  double get _keyboardInset {
+  /// How much to reserve below the fields: the bottom safe area (home
+  /// indicator), or 0 off mobile / on a device without one (see the spacer in
+  /// build).
+  ///
+  /// Deliberately NOT the keyboard: reserving that is [StatusBarOverlay]'s job,
+  /// so the status footer can ride above the keyboard instead of hiding behind
+  /// it. Reserving it here too would hold the same strip back twice and leave
+  /// the fields floating in the gap.
+  ///
+  /// And nothing at all while the keyboard is up — the keyboard covers the home
+  /// indicator, so the strip the overlay is already holding back IS that space.
+  /// (This is what the old `max(keyboardInset, safeInset)` expressed when this
+  /// getter still owned both.) `viewPadding`, not `MediaQuery.padding`, because
+  /// the latter zeroes out under the keyboard and would make the two branches
+  /// indistinguishable.
+  double get _bottomReserve {
     if (!isMobilePlatform) return 0;
     final view = View.of(context);
-    return view.viewInsets.bottom / view.devicePixelRatio;
-  }
-
-  /// The bottom safe area (home indicator) in logical pixels, or 0 off mobile
-  /// / on a device without one. Read from the raw `FlutterView` like
-  /// [_keyboardInset]; `viewPadding` (unlike `MediaQuery.padding`) keeps the
-  /// indicator's height even while the keyboard is up, which is why the two
-  /// combine as a MAX.
-  double get _bottomSafeInset {
-    if (!isMobilePlatform) return 0;
-    final view = View.of(context);
+    if (view.viewInsets.bottom > 0) return 0;
     return view.viewPadding.bottom / view.devicePixelRatio;
   }
-
-  /// How much to reserve below the fields: the keyboard when it's up, the home
-  /// indicator when it's down (see the spacer in build).
-  double get _bottomReserve => math.max(_keyboardInset, _bottomSafeInset);
 
   /// Whether to show the mobile numbers row right now — the setting is on,
   /// we're on a phone/tablet, the QSO isn't a read-only (staged/already
@@ -6054,22 +6071,45 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     return widget.showNumbersRow &&
         isMobilePlatform &&
         !_fieldsLocked &&
+        // Focus is not enough: this panel keeps focus when it is tabbed away
+        // from behind a keep-alive, and the row is now drawn outside the tab
+        // view, so it would hang over whatever replaced it.
+        KeyboardAccessoryVisibility.of(context) &&
         virtualKeyboardIsUp(context) &&
         _focusedNumberField != null;
   }
 
-  Widget _buildNumberKeys(ThemeData theme) {
-    return NumberKeys(
-      onKey: _handleNumberKey,
-      extraKey: _numbersRowExtraKey,
-      vibrate: widget.vibrateNumbersRow,
-      // The AppBar/footer colour — the app's chrome — deliberately NOT the
-      // editing-swappable tertiary/secondary accent, so the row reads as
-      // chrome in every mode. (appBarTheme isn't remapped by the editing
-      // accent, so `theme` here being the accent theme is fine.)
-      backgroundColor: theme.appBarTheme.backgroundColor ?? theme.colorScheme.primary,
-      foregroundColor: theme.appBarTheme.foregroundColor ?? theme.colorScheme.onPrimary,
-    );
+  /// Publishes (or withdraws) the numbers row for this build. Called from
+  /// `build` but never mutates during it — the notifier is only written after
+  /// the frame, since the overlay that listens sits above this widget and
+  /// rebuilding it mid-build would throw.
+  void _syncNumbersRow(BuildContext context, ThemeData theme) {
+    final accessory = widget.keyboardAccessory;
+    if (accessory == null) return;
+    final spec = _shouldShowNumbersRow(context)
+        ? KeyboardAccessorySpec(
+            onKey: _handleNumberKey,
+            extraKey: _numbersRowExtraKey,
+            vibrate: widget.vibrateNumbersRow,
+            // The AppBar/footer colour — the app's chrome — deliberately NOT
+            // the editing-swappable tertiary/secondary accent, so the row
+            // reads as chrome in every mode. (appBarTheme isn't remapped by
+            // the editing accent, so `theme` here being the accent theme is
+            // fine.)
+            backgroundColor:
+                (theme.appBarTheme.backgroundColor ?? theme.colorScheme.primary).toARGB32(),
+            foregroundColor:
+                (theme.appBarTheme.foregroundColor ?? theme.colorScheme.onPrimary).toARGB32(),
+          )
+        : null;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      if (spec == null) {
+        accessory.clearIfOwner(this);
+      } else {
+        accessory.publish(this, spec);
+      }
+    });
   }
 
   /// The lookup `guess` for the call about to be logged. Prefers a live lookup

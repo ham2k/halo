@@ -140,7 +140,9 @@ subtitle are left-aligned; on narrow windows they are centered.
 
 ### Footer & User Feedback
 
-A footer at the bottom of the window can show progress bars and status messages (`StatusBarService`). On mobile devices it hides while the keyboard is open. It includes padding so rounded screen corners don't cover it.
+A footer at the bottom of the window can show progress bars and status messages (`StatusBarService`). It includes padding so rounded screen corners don't cover it.
+
+**It stays visible while the on-screen keyboard is up**, riding directly above it — a sync's progress or a command's output is most relevant exactly while the operator is typing, and it used to be hidden outright at that moment. This is why `_StatusBarOverlay` reserves the keyboard's height for the whole app: the routes below it run full height behind the keyboard (both mobile Scaffolds set `resizeToAvoidBottomInset: false`), so the panes reserve only the bottom safe area and let the overlay hold back the keyboard. Reserving the keyboard inside a pane as well would hold the same strip back twice and leave its fields floating in the gap.
 
 The app follows a selective user feedback policy:
 - **Immediate interactive actions** (e.g. copying text to the clipboard) display a floating Flutter `SnackBar` toast.

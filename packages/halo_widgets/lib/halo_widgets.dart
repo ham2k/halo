@@ -16,6 +16,7 @@ export 'src/logging_controls_controller.dart';
 export 'src/mdi_icons.dart';
 export 'src/modal_pane.dart';
 export 'src/pane_divider.dart';
+export 'src/keyboard_accessory.dart';
 export 'src/number_keys.dart';
 export 'src/option_matching.dart';
 export 'src/platform_chrome.dart';

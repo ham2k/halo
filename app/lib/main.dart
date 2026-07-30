@@ -8,6 +8,7 @@
 
 import 'dart:async';
 import 'dart:io' show Platform;
+import 'dart:math' as math;
 
 import 'package:intl/intl.dart';
 
@@ -616,6 +617,11 @@ class HaLoServices {
         statusBar: statusBar,
       );
   late final StatusBarService statusBar = StatusBarService(settings.prefs);
+
+  /// Where a focused field publishes the mobile numbers row, so
+  /// `StatusBarOverlay` can draw it below the status footer and directly on
+  /// the keyboard — an order no single route can produce for itself.
+  final KeyboardAccessoryController keyboardAccessory = KeyboardAccessoryController();
   final LookupQueueService? _lookupQueueOverride;
   late final LookupQueueService lookupQueue = _lookupQueueOverride ??
       LookupQueueService(
@@ -1304,7 +1310,7 @@ class _HaLoAppState extends State<HaLoApp> {
                         services: widget.services,
                         child: _ReleaseOverlayGate(
                           services: widget.services,
-                          child: _StatusBarOverlay(services: widget.services, child: content),
+                          child: StatusBarOverlay(services: widget.services, child: content),
                         ),
                       ),
                     ),
@@ -1493,7 +1499,7 @@ class _OnboardingGateState extends State<_OnboardingGate> {
 }
 
 /// Shows `ReleaseOverlayView` once per new `kPublicVersion`, on top of the
-/// whole app (same one-integration-point wrapping as `_StatusBarOverlay`
+/// whole app (same one-integration-point wrapping as `StatusBarOverlay`
 /// below, which it wraps). Gated on `SettingsService.lastSeenReleaseVersion`
 /// (release_notes.dart, settings_service.dart) — dismissing it persists
 /// `kPublicVersion` there, so it won't show again until the next release.
@@ -1599,11 +1605,17 @@ class DevOverlayTrigger extends ChangeNotifier {
 /// Wraps the whole app (every route, since `MaterialApp.builder` wraps the
 /// Navigator as a single instance) with the global footer + notice stack —
 /// one integration point instead of touching every view's `Scaffold`.
-class _StatusBarOverlay extends StatelessWidget {
+///
+/// Visible for testing because it owns a layout relationship between three of
+/// its own children — where the footer sits relative to the on-screen keyboard
+/// — that only holds if the real Column is the one measured. A copy of it in a
+/// test would keep passing whatever this did.
+@visibleForTesting
+class StatusBarOverlay extends StatelessWidget {
   final HaLoServices services;
   final Widget child;
 
-  const _StatusBarOverlay({required this.services, required this.child});
+  const StatusBarOverlay({super.key, required this.services, required this.child});
 
   @override
   Widget build(BuildContext context) {
@@ -1637,23 +1649,117 @@ class _StatusBarOverlay extends StatelessWidget {
             ),
         ];
 
-        // Mobile-only: the footer is hidden entirely while the keyboard is
-        // open (user-interface.md's footer spec), not just left empty.
-        final keyboardOpen = MediaQuery.viewInsetsOf(context).bottom > 0;
-        final hideFooter = keyboardOpen && !isWindowedPlatform;
+        // This widget owns the bottom of the window while the on-screen
+        // keyboard is up — it both RESERVES the keyboard's height and CONSUMES
+        // the inset, and the two have to go together.
+        //
+        // Reserving: the footer used to be hidden outright whenever the
+        // keyboard was open, because this Column's bottom edge is the WINDOW's
+        // bottom edge and anything placed there is behind the keyboard. It is
+        // chrome the operator needs precisely while typing (a sync's progress,
+        // a command's output), so instead the keyboard's height is held back
+        // below the footer and the footer rides above it. The strip is painted
+        // in the app-bar colour — the one the footer and the mobile numbers row
+        // already use — so the chrome reads as continuing behind the keyboard
+        // instead of flashing a gap during its animation.
+        //
+        // Consuming: everything below this point must NOT reserve the keyboard
+        // again. `removeViewInsets` is what makes that true by construction
+        // rather than by asking each descendant to remember. Without it the
+        // inset is still in the MediaQuery the routes read, so every stock
+        // `Scaffold` (only Home and Operation opt out of resizing) shrinks its
+        // own body a second time, and anything padding by `viewInsets.bottom`
+        // double-pads — measured as a form squeezed to a third of its height
+        // with a keyboard-tall blank band above the keyboard.
+        //
+        // The two consumers that legitimately still need to know the keyboard
+        // is up read the raw `FlutterView` instead (`virtualKeyboardIsUp`,
+        // `LoggingControls._bottomReserve`), which this cannot and should not
+        // hide from them.
+        //
+        // Not gated on platform: a desktop window simply reports no bottom
+        // inset, while mobile WEB does report one (and the Home Scaffold opts
+        // out of resizing there too, so nothing else would hold it back). An
+        // iPad's hardware-keyboard accessory bar reports a small one, and
+        // reserving for that is right as well — it obscures the bottom exactly
+        // like a keyboard does, just less of it.
+        final keyboardInset = MediaQuery.viewInsetsOf(context).bottom;
 
-        return Column(
-          children: [
-            Expanded(child: child),
-            if (notices.isNotEmpty && !hideFooter)
-              NoticeStack(
-                notices: notices,
-                onDismiss: statusBar.dismissNotice,
-                dismissLabel: context.t.common.dismiss,
+        return MediaQuery.removeViewInsets(
+          context: context,
+          removeBottom: true,
+          child: Column(
+            children: [
+              Expanded(child: child),
+              // The notice stack and the footer both size themselves against a
+              // fraction of the window height and scroll past it — and both
+              // stopped fitting once the keyboard strip claimed the bottom,
+              // because the window is no longer the space they have. Telling
+              // them the window is shorter by the keyboard makes their own caps
+              // mean what they say. Wrapped together because they cap the same
+              // way: capping only one leaves the other overflowing this Column
+              // (measured: an expanded footer took 40% of the FULL window,
+              // squeezing the app to zero and overflowing by 62px).
+              //
+              // Deliberately not `Flexible`, and not an outer `maxHeight`.
+              // Flexible would make them compete with the `Expanded` above for
+              // the free space and take an equal share, so any visible notice
+              // halved the whole app (measured: a 600pt body dropped to 300pt).
+              // A bare outer maximum is no better — the notice card's
+              // `SingleChildScrollView` fills a bounded height, so it would
+              // always be exactly the cap instead of as tall as its text.
+              MediaQuery(
+                data: MediaQuery.of(context).copyWith(
+                  size: Size(
+                    MediaQuery.sizeOf(context).width,
+                    math.max(0, MediaQuery.sizeOf(context).height - keyboardInset),
+                  ),
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (notices.isNotEmpty)
+                      NoticeStack(
+                        notices: notices,
+                        onDismiss: statusBar.dismissNotice,
+                        dismissLabel: context.t.common.dismiss,
+                      ),
+                    StatusBarFooter(
+                      items: items,
+                      onDismiss: statusBar.clear,
+                      dismissLabel: context.t.common.dismiss,
+                    ),
+                  ],
+                ),
               ),
-            if (!hideFooter)
-              StatusBarFooter(items: items, onDismiss: statusBar.clear, dismissLabel: context.t.common.dismiss),
-          ],
+              // The mobile numbers row, published by whichever field has focus
+              // (KeyboardAccessoryController). Drawn HERE, below the footer and
+              // directly on the keyboard: it reads as an extension of the
+              // keyboard, so nothing may come between the two — and the footer
+              // is status, which belongs above both. A route cannot achieve
+              // that order itself, since the footer is one level up from it.
+              ValueListenableBuilder<KeyboardAccessorySpec?>(
+                valueListenable: services.keyboardAccessory,
+                builder: (context, spec, _) => spec == null
+                    ? const SizedBox.shrink()
+                    : NumberKeys(
+                        onKey: spec.onKey,
+                        extraKey: spec.extraKey,
+                        vibrate: spec.vibrate,
+                        backgroundColor: Color(spec.backgroundColor),
+                        foregroundColor: Color(spec.foregroundColor),
+                      ),
+              ),
+              if (keyboardInset > 0)
+                SizedBox(
+                  width: double.infinity,
+                  height: keyboardInset,
+                  child: ColoredBox(
+                    color: Theme.of(context).appBarTheme.backgroundColor ?? Theme.of(context).colorScheme.primary,
+                  ),
+                ),
+            ],
+          ),
         );
       },
     );

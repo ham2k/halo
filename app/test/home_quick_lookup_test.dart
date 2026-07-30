@@ -224,16 +224,46 @@ void main() {
       addTearDown(tester.view.resetDevicePixelRatio);
     }
 
+    /// The field publishes its numbers row rather than drawing it — the app's
+    /// `StatusBarOverlay` draws it below the status footer and directly on the
+    /// keyboard. The `ValueListenableBuilder` here stands in for the overlay so
+    /// these tests still exercise the row end to end (publish → render → tap).
     Future<void> pumpHome(WidgetTester tester, HaLoServices services) => tester.pumpWidget(
           TranslationProvider(
             child: MaterialApp(
               // Matches the real Home Scaffold, so MediaQuery keeps the inset.
-              home: Scaffold(resizeToAvoidBottomInset: false, body: HomeQuickLookup(services: services)),
+              home: Scaffold(
+                resizeToAvoidBottomInset: false,
+                body: Column(
+                  children: [
+                    Expanded(child: HomeQuickLookup(services: services)),
+                    ValueListenableBuilder<KeyboardAccessorySpec?>(
+                      valueListenable: services.keyboardAccessory,
+                      builder: (context, spec, _) => spec == null
+                          ? const SizedBox.shrink()
+                          : NumberKeys(
+                              onKey: spec.onKey,
+                              extraKey: spec.extraKey,
+                              vibrate: spec.vibrate,
+                              backgroundColor: Color(spec.backgroundColor),
+                              foregroundColor: Color(spec.foregroundColor),
+                            ),
+                    ),
+                  ],
+                ),
+              ),
             ),
           ),
         );
 
     Finder keyInRow(String glyph) => find.descendant(of: find.byType(NumberKeys), matching: find.text(glyph));
+
+    /// Publishing lands after the frame, so the row appears one frame after
+    /// whatever changed it.
+    Future<void> pumpRow(WidgetTester tester) async {
+      await tester.pump();
+      await tester.pump();
+    }
 
     testWidgets('appears above the keyboard only once the lookup field has focus', (tester) async {
       debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
@@ -245,7 +275,7 @@ void main() {
         expect(find.byType(NumberKeys), findsNothing);
 
         await tester.tap(find.byType(TextField));
-        await tester.pump();
+        await pumpRow(tester);
 
         expect(find.byType(NumberKeys), findsOneWidget);
         for (final d in ['0', '1', '9']) {
@@ -278,7 +308,7 @@ void main() {
         raiseKeyboard(tester);
         await pumpHome(tester, await makeServices(showNumbersRow: true));
         await tester.tap(find.byType(TextField));
-        await tester.pump();
+        await pumpRow(tester);
 
         await tester.tap(keyInRow('7'));
         await tester.pump();
@@ -286,7 +316,7 @@ void main() {
 
         // A partial callsign (letters, not just digits) flips the extra key.
         await tester.enterText(find.byType(TextField), 'W1AW');
-        await tester.pump();
+        await pumpRow(tester);
         expect(keyInRow('/'), findsOneWidget);
         expect(keyInRow('.'), findsNothing);
 
