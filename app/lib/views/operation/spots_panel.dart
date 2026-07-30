@@ -878,11 +878,13 @@ class _SpotTile extends StatelessWidget {
     final refIcon = iconForRefType(activityControls, refType) ?? _iconOf(spot) ?? 'radio-tower';
 
     // Age sits at the top-right of the row, right-aligned, bold when it's the
-    // sort key.
-    final ageField = Text(
+    // sort key. Re-derived once a second (scoped to this label via the shared
+    // wall-clock heartbeat) so ages don't sit stale between spot refetches —
+    // every visible row's label updates in the same frame.
+    final ageField = OncePerSecond(builder: (_, _) => Text(
       _timeAgo(_timeOf(spot)),
       style: proportional?.copyWith(fontWeight: sortByAge ? FontWeight.w700 : null),
-    );
+    ));
 
     // One row line: the fixed-width left column (right-aligned, sized by the
     // panel to the widest freq/mode on screen) beside the expanded right
