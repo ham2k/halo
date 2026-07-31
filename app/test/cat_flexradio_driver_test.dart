@@ -15,9 +15,9 @@ import 'dart:typed_data';
 
 import 'package:fake_async/fake_async.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:ham2k_logger/services/gato/driver.dart';
-import 'package:ham2k_logger/services/gato/drivers/flexradio_driver.dart';
-import 'package:ham2k_logger/services/gato/equipment.dart';
+import 'package:ham2k_logger/services/cat/driver.dart';
+import 'package:ham2k_logger/services/cat/drivers/flexradio_driver.dart';
+import 'package:ham2k_logger/services/cat/equipment.dart';
 
 const _handshakeLines = ['V1.4.0.0', 'H5AC2F980'];
 const _radioStatusLine =

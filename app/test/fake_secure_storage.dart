@@ -31,7 +31,7 @@ class FakeSecureStorage implements FlutterSecureStorage {
       return Future<void>.value();
     }
     if (invocation.memberName == #delete) {
-      // Needed by anything that CLEARS a credential — GATO deletes an
+      // Needed by anything that CLEARS a credential — CAT deletes an
       // equipment node's password when the node is removed. Without this
       // the call threw, the caller swallowed it, and a test asserting the
       // secret was gone passed with it still there.

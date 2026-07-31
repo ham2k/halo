@@ -51,7 +51,7 @@ void _quietLibserialport() {
         void Function(ffi.Pointer<ffi.Void>)>('sp_set_debug_handler');
     setHandler(ffi.nullptr);
   } catch (e) {
-    debugPrint('[gato] could not quiet libserialport debug logging: $e');
+    debugPrint('[cat] could not quiet libserialport debug logging: $e');
   }
 }
 
@@ -164,7 +164,7 @@ class _SerialConnection implements EquipmentConnection {
       _port.dispose();
     } catch (e) {
       // Already gone — an unplugged adapter takes the handle with it.
-      debugPrint('[gato] serial port teardown: $e');
+      debugPrint('[cat] serial port teardown: $e');
     }
   }
 
@@ -182,7 +182,7 @@ class _SerialConnection implements EquipmentConnection {
     try {
       _port.write(Uint8List.fromList(bytes), timeout: 0);
     } catch (e) {
-      debugPrint('[gato] serial write failed: $e');
+      debugPrint('[cat] serial write failed: $e');
     }
   }
 
@@ -205,7 +205,7 @@ List<SerialPortOption> availableSerialPorts() {
     // runtime, a bundle built without it, or any test process. The port
     // picker must be able to say "no serial ports found" rather than take
     // the equipment editor down with it.
-    debugPrint('[gato] serial port enumeration unavailable: $e');
+    debugPrint('[cat] serial port enumeration unavailable: $e');
     return const [];
   }
 
@@ -220,7 +220,7 @@ List<SerialPortOption> availableSerialPorts() {
       try {
         return read();
       } catch (e) {
-        debugPrint('[gato] port $name: no $field ($e)');
+        debugPrint('[cat] port $name: no $field ($e)');
         return null;
       }
     }

@@ -3,7 +3,7 @@
 //
 // The whole chain with nothing faked but the radio: the real
 // EquipmentRegistry, the real TCP transport over a real loopback socket,
-// and the real FlexRadio driver, driven by GatoService the way the Station
+// and the real FlexRadio driver, driven by CatService the way the Station
 // Configuration panel drives it.
 //
 // The unit tests each prove one layer; this is the only tier that proves
@@ -16,8 +16,8 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:ham2k_logger/services/gato/equipment.dart';
-import 'package:ham2k_logger/services/gato/gato_service.dart';
+import 'package:ham2k_logger/services/cat/equipment.dart';
+import 'package:ham2k_logger/services/cat/cat_service.dart';
 import 'package:ham2k_logger/services/settings_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -86,44 +86,44 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   late _FakeFlex flex;
-  late GatoService gato;
+  late CatService cat;
 
   setUp(() async {
     flex = await _FakeFlex.start();
     SharedPreferences.setMockInitialValues({});
     // The real registry — FlexRadioTcpType over the real TcpTransport.
-    gato = GatoService(SettingsService(await SharedPreferences.getInstance()));
+    cat = CatService(SettingsService(await SharedPreferences.getInstance()));
   });
 
   tearDown(() async {
-    gato.dispose();
+    cat.dispose();
     await flex.stop();
   });
 
   test('connects to a FlexRadio over TCP and follows it', () async {
-    final node = await gato.addNode(
+    final node = await cat.addNode(
       typeKey: 'flexradio-tcp',
       name: 'Left Radio',
       config: {'host': flex.host, 'port': flex.port},
     );
 
-    await gato.connect(node.uuid);
-    expect(gato.stateFor(node.uuid).status, EquipmentStatus.connected);
+    await cat.connect(node.uuid);
+    expect(cat.stateFor(node.uuid).status, EquipmentStatus.connected);
 
     // The driver waits for the H line before subscribing, then Flex answers
     // with a full status refresh — which is what the panel shows.
-    await _settleUntil(() => gato.stateFor(node.uuid).vfo.freqKHz != null);
-    expect(gato.stateFor(node.uuid).vfo, const VfoReading(freqKHz: 14074, mode: 'DIGU'));
+    await _settleUntil(() => cat.stateFor(node.uuid).vfo.freqKHz != null);
+    expect(cat.stateFor(node.uuid).vfo, const VfoReading(freqKHz: 14074, mode: 'DIGU'));
     expect(flex.commands.any((c) => c.contains('sub slice all')), isTrue);
 
     // The operator turns the knob.
     flex.pushStatus(mhz: '7.123450', mode: 'LSB');
-    await _settleUntil(() => gato.stateFor(node.uuid).vfo.freqKHz != 14074);
-    expect(gato.stateFor(node.uuid).vfo, const VfoReading(freqKHz: 7123.45, mode: 'LSB'));
+    await _settleUntil(() => cat.stateFor(node.uuid).vfo.freqKHz != 14074);
+    expect(cat.stateFor(node.uuid).vfo, const VfoReading(freqKHz: 7123.45, mode: 'LSB'));
 
     // Disconnecting says goodbye over the still-open socket before closing.
-    await gato.disconnect(node.uuid);
-    expect(gato.stateFor(node.uuid).status, EquipmentStatus.disconnected);
+    await cat.disconnect(node.uuid);
+    expect(cat.stateFor(node.uuid).status, EquipmentStatus.disconnected);
     await _settleUntil(() => flex.commands.any((c) => c.contains('unsub slice all')));
     expect(flex.commands.any((c) => c.contains('unsub slice all')), isTrue);
   });
@@ -134,13 +134,13 @@ void main() {
     final port = vacant.port;
     await vacant.close();
 
-    final node = await gato.addNode(
+    final node = await cat.addNode(
       typeKey: 'flexradio-tcp',
       config: {'host': InternetAddress.loopbackIPv4.address, 'port': port},
     );
 
-    await gato.connect(node.uuid);
-    expect(gato.stateFor(node.uuid).status, EquipmentStatus.error);
-    expect(gato.stateFor(node.uuid).error, isNotNull);
+    await cat.connect(node.uuid);
+    expect(cat.stateFor(node.uuid).status, EquipmentStatus.error);
+    expect(cat.stateFor(node.uuid).error, isNotNull);
   });
 }

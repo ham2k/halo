@@ -21,7 +21,7 @@ void main() {
     final definitions = parseExperimentsYaml(File('experiments.yaml').readAsStringSync());
     expect(findExperiment(definitions, 'EXPERIMENTS')?.key, 'experiments');
     expect(findExperiment(definitions, 'EXP')?.key, 'experiments');
-    // GATO gates the Station Configuration section (docs/design/gato.md);
+    // CAT gates the Station Configuration section (docs/design/cat.md);
     // losing the entry would leave no way to turn the section on at all.
     expect(findExperiment(definitions, 'GATO')?.key, 'gato');
     expect(findExperiment(definitions, 'CAT')?.key, 'gato');

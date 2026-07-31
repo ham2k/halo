@@ -10,7 +10,7 @@
 // held in a field. app-polo's connection layer was module-level singletons
 // (`activeConnection`, `connectAttemptSeq`, `vfoSubscriberCount`), which is
 // what blocked ever connecting a second device — doing it per-node costs
-// nothing now and is a rewrite later. See docs/design/gato.md.
+// nothing now and is a rewrite later. See docs/design/cat.md.
 
 import 'dart:async';
 
@@ -72,11 +72,11 @@ String? resolveSideband(String? mode, double? freqKHz, {String? band}) {
   return _lsbBands.contains(resolved) ? 'LSB' : 'USB';
 }
 
-class GatoService extends ChangeNotifier {
+class CatService extends ChangeNotifier {
   final SettingsService _settings;
   final EquipmentRegistry registry;
 
-  /// The app's VFO state. GATO is its only CAT-origin writer, and it
+  /// The app's VFO state. [CatService] is its only CAT-origin writer, and it
   /// listens for everyone else's writes so it can retune the radio.
   /// Optional so tests that only exercise equipment config can omit it.
   final RadioService? _radio;
@@ -95,7 +95,7 @@ class GatoService extends ChangeNotifier {
   /// [Duration.zero] rather than sleeping through it for real.
   final Duration reconnectDelay;
 
-  GatoService(this._settings,
+  CatService(this._settings,
       {EquipmentRegistry? registry, RadioService? radio, this.reconnectDelay = _defaultReconnectDelay})
       : registry = registry ?? EquipmentRegistry(),
         _radio = radio {
@@ -334,7 +334,7 @@ class GatoService extends ChangeNotifier {
           notifyListeners();
         },
         onError: (Object e, StackTrace st) {
-          ErrorReportingService.report(e, st, context: 'gato:discovery:${type.key}');
+          ErrorReportingService.report(e, st, context: 'cat:discovery:${type.key}');
           _discoveryError = '$e';
           notifyListeners();
         },
@@ -423,7 +423,7 @@ class GatoService extends ChangeNotifier {
       return _ConnectOutcome.superseded;
     } catch (e, st) {
       if (attempt != runtime.attemptSeq) return _ConnectOutcome.superseded;
-      ErrorReportingService.report(e, st, context: 'gato:connect');
+      ErrorReportingService.report(e, st, context: 'cat:connect');
       _setState(uuid, EquipmentState(status: EquipmentStatus.error, error: '$e'));
       return _ConnectOutcome.failed;
     }
@@ -456,7 +456,7 @@ class GatoService extends ChangeNotifier {
         session.handleData(chunk);
       } catch (e, st) {
         // One malformed frame must not kill the connection.
-        ErrorReportingService.report(e, st, context: 'gato:handle-data:${type.driver.key}');
+        ErrorReportingService.report(e, st, context: 'cat:handle-data:${type.driver.key}');
       }
     });
 
@@ -480,7 +480,7 @@ class GatoService extends ChangeNotifier {
     try {
       session.startUpdates();
     } catch (e, st) {
-      ErrorReportingService.report(e, st, context: 'gato:start-updates:${type.driver.key}');
+      ErrorReportingService.report(e, st, context: 'cat:start-updates:${type.driver.key}');
     }
     return _ConnectOutcome.connected;
   }
@@ -614,7 +614,7 @@ class GatoService extends ChangeNotifier {
       // radio already has is harmless by comparison.
       runtime.lastSent = wanted;
     } catch (e, st) {
-      ErrorReportingService.report(e, st, context: 'gato:set-vfo-on-radio');
+      ErrorReportingService.report(e, st, context: 'cat:set-vfo-on-radio');
     }
   }
 
@@ -646,7 +646,7 @@ class GatoService extends ChangeNotifier {
       try {
         session.teardown();
       } catch (e, st) {
-        ErrorReportingService.report(e, st, context: 'gato:teardown-session');
+        ErrorReportingService.report(e, st, context: 'cat:teardown-session');
       }
     }
   }
@@ -662,7 +662,7 @@ class GatoService extends ChangeNotifier {
       try {
         await connection.close();
       } catch (e, st) {
-        ErrorReportingService.report(e, st, context: 'gato:close-connection');
+        ErrorReportingService.report(e, st, context: 'cat:close-connection');
       }
     }
   }

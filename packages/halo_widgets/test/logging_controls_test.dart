@@ -5550,10 +5550,10 @@ void main() {
     });
   });
 
-  // ---- Live follow: a connected radio (GATO) moving the VFO underneath us.
+  // ---- Live follow: a connected radio (CAT) moving the VFO underneath us.
   // The panel only ever read vfoA when it seeded, so a CAT push was
   // invisible; these cover following it without ever overwriting the
-  // operator. See docs/design/gato.md.
+  // operator. See docs/design/cat.md.
 
   testWidgets('follows the VFO when a connected radio is tuned', (tester) async {
     fakeRadio.setVfo('vfoA', freq: 14285, mode: 'SSB');

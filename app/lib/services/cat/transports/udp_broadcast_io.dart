@@ -76,7 +76,7 @@ Future<RawDatagramSocket> _bind(int port) async {
     return await RawDatagramSocket.bind(InternetAddress.anyIPv4, port,
         reuseAddress: true, reusePort: true);
   } catch (e) {
-    debugPrint('[gato] SO_REUSEPORT unavailable ($e), binding $port without it');
+    debugPrint('[cat] SO_REUSEPORT unavailable ($e), binding $port without it');
     return RawDatagramSocket.bind(InternetAddress.anyIPv4, port, reuseAddress: true);
   }
 }

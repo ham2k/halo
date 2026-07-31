@@ -135,7 +135,7 @@ void main() {
     radio.setVfo('vfoA', freq: 14285);
     expect(seen, VfoOrigin.user, reason: 'every existing caller means user');
 
-    // GATO writes what the radio reported, then has to recognise its own
+    // CAT writes what the radio reported, then has to recognise its own
     // echo when the notification comes back around — otherwise it re-tunes
     // the radio to the value the radio just gave it.
     radio.setVfo('vfoA', freq: 7100, origin: VfoOrigin.radio);

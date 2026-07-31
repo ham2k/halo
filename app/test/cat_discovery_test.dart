@@ -11,13 +11,13 @@ import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:ham2k_logger/services/gato/discovery.dart';
-import 'package:ham2k_logger/services/gato/driver.dart';
-import 'package:ham2k_logger/services/gato/drivers/flexradio_driver.dart';
-import 'package:ham2k_logger/services/gato/equipment.dart';
-import 'package:ham2k_logger/services/gato/equipment_registry.dart';
-import 'package:ham2k_logger/services/gato/gato_service.dart';
-import 'package:ham2k_logger/services/gato/transports/udp_broadcast.dart';
+import 'package:ham2k_logger/services/cat/discovery.dart';
+import 'package:ham2k_logger/services/cat/driver.dart';
+import 'package:ham2k_logger/services/cat/drivers/flexradio_driver.dart';
+import 'package:ham2k_logger/services/cat/equipment.dart';
+import 'package:ham2k_logger/services/cat/equipment_registry.dart';
+import 'package:ham2k_logger/services/cat/cat_service.dart';
+import 'package:ham2k_logger/services/cat/transports/udp_broadcast.dart';
 import 'package:ham2k_logger/services/settings_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -159,12 +159,12 @@ void main() {
 
   group('service bookkeeping', () {
     late StreamController<DiscoveredEquipment> announcements;
-    late GatoService gato;
+    late CatService cat;
 
     setUp(() async {
       SharedPreferences.setMockInitialValues({});
       announcements = StreamController<DiscoveredEquipment>.broadcast();
-      gato = GatoService(
+      cat = CatService(
         SettingsService(await SharedPreferences.getInstance()),
         registry: EquipmentRegistry(
           types: [_FakeDiscoverableType(announcements.stream)],
@@ -174,7 +174,7 @@ void main() {
     });
 
     tearDown(() async {
-      gato.dispose();
+      cat.dispose();
       await announcements.close();
     });
 
@@ -190,88 +190,88 @@ void main() {
     }
 
     test('nothing has been found before discovery runs', () {
-      expect(gato.discovered, isEmpty);
-      expect(gato.isDiscovering, isFalse);
+      expect(cat.discovered, isEmpty);
+      expect(cat.isDiscovering, isFalse);
     });
 
     test('start/stop is idempotent and releases the listener', () {
-      gato.startDiscovery();
-      expect(gato.isDiscovering, isTrue);
-      gato.startDiscovery();
-      expect(gato.isDiscovering, isTrue);
+      cat.startDiscovery();
+      expect(cat.isDiscovering, isTrue);
+      cat.startDiscovery();
+      expect(cat.isDiscovering, isTrue);
 
-      gato.stopDiscovery();
-      expect(gato.isDiscovering, isFalse);
+      cat.stopDiscovery();
+      expect(cat.isDiscovering, isFalse);
       // Discovery holds a bound UDP port in real use, so a second stop must
       // not throw.
-      gato.stopDiscovery();
-      expect(gato.isDiscovering, isFalse);
+      cat.stopDiscovery();
+      expect(cat.isDiscovering, isFalse);
     });
 
     test('a radio announcing repeatedly appears once', () async {
-      gato.startDiscovery();
+      cat.startDiscovery();
       await announce(id: 'serial-1', host: '192.168.1.50');
       await announce(id: 'serial-1', host: '192.168.1.50');
       await announce(id: 'serial-1', host: '192.168.1.50');
 
       // A Flex re-announces every few seconds; without dedupe the Add
       // dialog fills up with the same radio.
-      expect(gato.discovered, hasLength(1));
-      expect(gato.discovered.single.name, 'RadioRoom');
+      expect(cat.discovered, hasLength(1));
+      expect(cat.discovered.single.name, 'RadioRoom');
     });
 
     test('a radio that moved updates in place rather than appearing twice', () async {
-      gato.startDiscovery();
+      cat.startDiscovery();
       await announce(id: 'serial-1', host: '192.168.1.50');
       await announce(id: 'serial-1', host: '192.168.1.77');
 
-      expect(gato.discovered, hasLength(1));
-      expect(gato.discovered.single.config['host'], '192.168.1.77');
+      expect(cat.discovered, hasLength(1));
+      expect(cat.discovered.single.config['host'], '192.168.1.77');
     });
 
     test('two different radios both show', () async {
-      gato.startDiscovery();
+      cat.startDiscovery();
       await announce(id: 'serial-1', host: '192.168.1.50', name: 'RadioRoom');
       await announce(id: 'serial-2', host: '192.168.1.51', name: 'ShackFlex');
 
-      expect(gato.discovered.map((d) => d.name), unorderedEquals(['RadioRoom', 'ShackFlex']));
+      expect(cat.discovered.map((d) => d.name), unorderedEquals(['RadioRoom', 'ShackFlex']));
     });
 
     test('a radio already configured drops off the found list', () async {
-      gato.startDiscovery();
+      cat.startDiscovery();
       await announce(id: 'serial-1', host: '192.168.1.50');
-      expect(gato.discovered, hasLength(1));
+      expect(cat.discovered, hasLength(1));
 
-      await gato.addDiscovered(gato.discovered.single);
+      await cat.addDiscovered(cat.discovered.single);
 
       // It keeps announcing itself every few seconds; offering to add it
       // again each time is how you end up with six copies of one radio.
-      expect(gato.nodes.single.name, 'RadioRoom');
-      expect(gato.nodes.single.config, {'host': '192.168.1.50', 'port': 4992});
-      expect(gato.discovered, isEmpty);
+      expect(cat.nodes.single.name, 'RadioRoom');
+      expect(cat.nodes.single.config, {'host': '192.168.1.50', 'port': 4992});
+      expect(cat.discovered, isEmpty);
 
       await announce(id: 'serial-1', host: '192.168.1.50');
-      expect(gato.discovered, isEmpty);
+      expect(cat.discovered, isEmpty);
     });
 
     test('findings survive closing the Add dialog', () async {
-      gato.startDiscovery();
+      cat.startDiscovery();
       await announce(id: 'serial-1', host: '192.168.1.50');
-      gato.stopDiscovery();
+      cat.stopDiscovery();
 
       // Reopening shouldn't show an empty list while waiting on the next
       // announcement — for a Flex that's several seconds of looking broken.
-      expect(gato.discovered, hasLength(1));
+      expect(cat.discovered, hasLength(1));
     });
 
     test('a discovery that cannot start reports why instead of staying silent', () async {
-      gato.startDiscovery();
+      cat.startDiscovery();
       announcements.addError(StateError('Failed to bind port 4992'));
       await pumpEventQueue();
 
       // "Nothing found" and "we never got to look" are indistinguishable to
       // a user staring at an empty list.
-      expect(gato.discoveryError, contains('Failed to bind'));
+      expect(cat.discoveryError, contains('Failed to bind'));
     });
   });
 }

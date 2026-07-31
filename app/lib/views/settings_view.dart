@@ -218,11 +218,11 @@ class _SettingsViewState extends State<SettingsView> {
         icon: resolveIconName('account'),
         order: _profilesPanelOrder,
       ),
-      // Station equipment and CAT control (docs/design/gato.md). Between
+      // Station equipment and CAT control (docs/design/cat.md). Between
       // Callsign (-10) and Common Preferences (0) — who you are, then what
       // you're operating with, then how the app behaves. Hidden on web,
       // which has no sockets, so the section could never do anything there.
-      if (settings.experimentEnabled('gato') && !kIsWeb)
+      if (settings.experimentEnabled('gato') /* stored key, see experiments.yaml */ && !kIsWeb)
         _SettingsPanelEntry(
           key: 'station',
           title: t.settings.panels.station,

@@ -15,11 +15,11 @@ import 'dart:typed_data';
 
 import 'package:fake_async/fake_async.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:ham2k_logger/services/gato/adaptive_poller.dart';
-import 'package:ham2k_logger/services/gato/driver.dart';
-import 'package:ham2k_logger/services/gato/drivers/ft891_driver.dart';
-import 'package:ham2k_logger/services/gato/drivers/yaesu_cat_codec.dart';
-import 'package:ham2k_logger/services/gato/equipment.dart';
+import 'package:ham2k_logger/services/cat/adaptive_poller.dart';
+import 'package:ham2k_logger/services/cat/driver.dart';
+import 'package:ham2k_logger/services/cat/drivers/ft891_driver.dart';
+import 'package:ham2k_logger/services/cat/drivers/yaesu_cat_codec.dart';
+import 'package:ham2k_logger/services/cat/equipment.dart';
 
 class _FakeSink implements EquipmentSink {
   final sent = <String>[];
@@ -62,7 +62,7 @@ void main() {
       expect(parseModeParams('01'), 'LSB');
       expect(parseModeParams('0C'), 'DATA-USB');
 
-      // 'SSB' never reaches a driver — GatoService resolves it to a real
+      // 'SSB' never reaches a driver — CatService resolves it to a real
       // sideband first — and the radio has no code for it either way.
       expect(buildSetModeCommand('SSB'), isNull);
       expect(buildSetModeCommand(null), isNull);
@@ -229,7 +229,7 @@ void main() {
     // FT-891 at 4800 baud over the radio's own CP2105 bridge, in BOTH
     // directions: reading (including the IF packets transceive pushes) and
     // writing (a spot click in the app retuned the rig, exercising the
-    // whole suggestion -> RadioService -> GatoService -> driver chain).
+    // whole suggestion -> RadioService -> CatService -> driver chain).
     expect(const Ft891Driver().hardwareVerified, isTrue);
   });
 

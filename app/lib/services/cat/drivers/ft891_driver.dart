@@ -14,8 +14,8 @@
 // the `IF` status packets transceive pushes, whose layout was derived from
 // that radio. Writing by clicking a spot in the app and watching the rig
 // retune — which exercises the whole chain the design is built around:
-// suggestion -> RadioService.setVfo -> GatoService._onVfoChanged ->
-// setFrequency -> radio (docs/design/gato.md, "A suggestion moves the
+// suggestion -> RadioService.setVfo -> CatService._onVfoChanged ->
+// setFrequency -> radio (docs/design/cat.md, "A suggestion moves the
 // radio").
 //
 // Not exercised: the mode-only write path on a rig whose mode CAT code we

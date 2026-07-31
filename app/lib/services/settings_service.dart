@@ -309,13 +309,20 @@ class SettingsService extends ChangeNotifier implements SyncSettings {
   /// Equipment configuration lives in a plain SharedPreferences JSON blob
   /// ([stationEquipment]), which is the right home for a hostname and the
   /// wrong one for a password. The IC-705's network login is the first
-  /// credential GATO needs, so it goes here instead, keyed by node uuid.
+  /// credential CAT needs, so it goes here instead, keyed by node uuid.
   ///
   /// Returns null when secure storage is locked or absent (a headless Linux
   /// box, a locked GNOME keyring) rather than throwing — the caller reports
   /// "no credentials" and the radio simply doesn't connect.
   Future<String?> equipmentSecret(String uuid, String field) async {
     try {
+      // DO NOT rename this 'gato.' prefix to 'cat.' — it is the live keychain
+      // key. The GATO codename was retired from the code, deliberately not
+      // from persisted keys: changing this orphans every stored radio password
+      // on every machine that has one, and the symptom is a radio that stops
+      // connecting with no error worth reading. A rename would need a
+      // read-old/write-new migration, and that migration would have to live
+      // here forever to serve a string no user ever sees.
       return await _secureStorage.read(key: 'gato.$uuid.$field');
     } catch (e, st) {
       debugPrint('[settings] could not read equipment secret: $e');
@@ -326,13 +333,15 @@ class SettingsService extends ChangeNotifier implements SyncSettings {
 
   /// Writes (or, with a null value, clears) a per-equipment secret.
   ///
-  /// Returns whether it landed. The caller has to know: [GatoService]
+  /// Returns whether it landed. The caller has to know: [CatService]
   /// strips the secret out of the stored config once it believes the
   /// keychain has it, so a swallowed failure meant the password existed in
   /// NEITHER place — a locked keyring turned a successful-looking save into
   /// a credential the user had to retype but was never told about.
   Future<bool> setEquipmentSecret(String uuid, String field, String? value) async {
     try {
+      // 'gato.', deliberately — see the note in [equipmentSecret]. Both sites
+      // must agree, and both must stay as they are.
       final key = 'gato.$uuid.$field';
       if (value == null || value.isEmpty) {
         await _secureStorage.delete(key: key);
@@ -386,7 +395,7 @@ class SettingsService extends ChangeNotifier implements SyncSettings {
 
   /// The station's configured equipment — radios today, eventually antenna
   /// switches and rotators (docs/design/data-model.md § Stations). Shaped
-  /// `{version: 1, nodes: {uuid: {...}}}`; see [GatoService], which owns the
+  /// `{version: 1, nodes: {uuid: {...}}}`; see [CatService], which owns the
   /// reading and writing of it.
   ///
   /// Device-local and never synced, like [syncState] and `radioVfoState`:

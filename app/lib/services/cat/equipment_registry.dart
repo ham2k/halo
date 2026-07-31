@@ -8,7 +8,7 @@
 // network", "Yaesu FT-891 over USB serial" — because that pair is what
 // decides the connection settings the user has to fill in. The protocol
 // itself is NOT duplicated per transport: the type points at one shared
-// [EquipmentDriver] per protocol family. See docs/design/gato.md.
+// [EquipmentDriver] per protocol family. See docs/design/cat.md.
 
 import '../../i18n/strings.g.dart';
 import 'discovery.dart';
@@ -69,7 +69,7 @@ abstract class EquipmentType {
 
   /// Config keys whose values are credentials: kept in the platform
   /// keychain instead of the SharedPreferences blob the rest of the config
-  /// lives in ([GatoService] moves them on save).
+  /// lives in ([CatService] moves them on save).
   ///
   /// Declared per type, deliberately. A manager that asked "is this the
   /// IC-705 type?" would silently write the NEXT type's password in
@@ -80,7 +80,7 @@ abstract class EquipmentType {
   String describeTarget(Map<String, dynamic> config);
 
   /// Null when the whole configuration is usable, otherwise why it isn't —
-  /// the check [GatoService] runs before it bothers opening a socket.
+  /// the check [CatService] runs before it bothers opening a socket.
   String? validate(Map<String, dynamic> config);
 
   /// Per-field version, for the editor: FormRenderer validates one field at
@@ -420,7 +420,7 @@ class IcomCivSerialType extends EquipmentType {
 /// The password is NOT in [EquipmentNode.config] — that is a plain
 /// SharedPreferences blob. It lives in the platform keychain via
 /// `SettingsService.equipmentSecret`, keyed by node uuid, and
-/// [GatoService] merges it in only at connect time.
+/// [CatService] merges it in only at connect time.
 class Ic705NetworkType extends EquipmentType {
   const Ic705NetworkType();
 
@@ -465,7 +465,7 @@ class Ic705NetworkType extends EquipmentType {
           'description': t.settings.station.radioLoginDescription,
         },
         {
-          // 'secret' is the app's obscured field type; GatoService routes
+          // 'secret' is the app's obscured field type; CatService routes
           // this one to the keychain.
           'type': 'field',
           'fieldType': 'secret',

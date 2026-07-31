@@ -5,7 +5,7 @@
 // all while the radio is telling us things on its own.
 //
 // The measurements this is built on, from a live FT-891 at 4800 baud (see
-// docs/design/gato.md):
+// docs/design/cat.md):
 //   - a poll cycle (`FA;` `MD0;` and the answers) is 24 bytes = 50 ms of
 //     wire, so 200 ms polling is a 25% duty cycle;
 //   - one Auto-Information `IF` frame is 28 bytes = 58 ms, MORE than a whole
@@ -143,9 +143,9 @@ class AdaptivePoller {
       // Caught, not just guarded against: a driver throwing here must not
       // end polling for the life of the connection — `Timer.periodic`,
       // which this replaced, would have fired again next interval — and it
-      // must not escape into the zone either, which is how GatoService
+      // must not escape into the zone either, which is how CatService
       // already treats every other call into a driver.
-      debugPrint('[gato] poll failed, continuing: $e');
+      debugPrint('[cat] poll failed, continuing: $e');
     }
     // After the callback, so a poll that provokes an immediate answer
     // (calling noteData) wins over this.

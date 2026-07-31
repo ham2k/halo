@@ -425,7 +425,7 @@ class LoggingControls extends StatefulWidget {
   final VfoStore? radioService;
 
   /// Fires when [radioService]'s state changes — so the Radio control can
-  /// follow a connected rig (GATO), or any other writer, live.
+  /// follow a connected rig (CAT), or any other writer, live.
   ///
   /// Separate from [radioService] rather than folded into it because
   /// `VfoStore` lives in pure-Dart halo_core, which has no Flutter
@@ -1883,7 +1883,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     }
     // A suggestion is specific operator intent — "work THIS station" — so
     // unlike the ambient VFO seed it overrides, it moves the VFO, and with
-    // a radio connected (GATO) that retunes the radio itself. Tapping a
+    // a radio connected (CAT) that retunes the radio itself. Tapping a
     // spot is the main way this happens.
     //
     // Only when the suggestion actually carried radio state: a bare

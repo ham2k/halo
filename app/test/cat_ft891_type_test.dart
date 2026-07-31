@@ -13,12 +13,12 @@ import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:ham2k_logger/services/gato/driver.dart';
-import 'package:ham2k_logger/services/gato/drivers/ft891_driver.dart';
-import 'package:ham2k_logger/services/gato/drivers/yaesu_cat_codec.dart';
-import 'package:ham2k_logger/services/gato/equipment.dart';
-import 'package:ham2k_logger/services/gato/equipment_registry.dart';
-import 'package:ham2k_logger/services/gato/transports/serial_transport.dart';
+import 'package:ham2k_logger/services/cat/driver.dart';
+import 'package:ham2k_logger/services/cat/drivers/ft891_driver.dart';
+import 'package:ham2k_logger/services/cat/drivers/yaesu_cat_codec.dart';
+import 'package:ham2k_logger/services/cat/equipment.dart';
+import 'package:ham2k_logger/services/cat/equipment_registry.dart';
+import 'package:ham2k_logger/services/cat/transports/serial_transport.dart';
 
 void main() {
   const type = Ft891SerialType();

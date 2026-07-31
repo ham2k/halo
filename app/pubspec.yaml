@@ -74,7 +74,7 @@ dev_dependencies:
   flutter_lints: ^6.0.0
   slang: ^4.0.0
   # Driving a driver's own poll/resync timers without waiting for them —
-  # see gato_flexradio_driver_test.dart. Comes in transitively with
+  # see cat_flexradio_driver_test.dart. Comes in transitively with
   # flutter_test, but importing it directly means declaring it directly.
   fake_async: ^1.3.0
   # Faking the url_launcher platform to fence openExternalUrl's scheme

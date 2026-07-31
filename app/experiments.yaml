@@ -28,9 +28,14 @@ experiments:
     name: Customizable Layouts
     description: Rearrange the logging view's panes by dragging their tabs into splits and groups.
     aliases: [layout, dock, docking]
-  # Station equipment and CAT control (docs/design/gato.md). Reveals the
+  # Station equipment and CAT control (docs/design/cat.md). Reveals the
   # Station Configuration settings section. Does nothing on web, which has
   # no sockets — the section stays hidden there even with this on.
+  # The key stays 'gato' on purpose. It is what is written into stored
+  # settings, so renaming it silently turns the experiment off for
+  # everyone who has it on. The codename is retired from the code; the
+  # persisted key is not worth a migration, because 'cat' is already an
+  # alias and `EXP CAT` is what anyone actually types.
   - key: gato
     name: Station Configuration
     description: Connect and control radios and other station equipment.

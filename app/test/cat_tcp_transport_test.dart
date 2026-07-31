@@ -9,7 +9,7 @@
 // Cancellation is covered here only for the deterministic case (a token
 // already cancelled). Cancelling a connect mid-flight has no reliable
 // timing over loopback, so that path is tested at the service level in
-// gato_service_test.dart, where the transport is a fake and the timing is
+// cat_service_test.dart, where the transport is a fake and the timing is
 // controlled.
 
 import 'dart:async';
@@ -17,8 +17,8 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:ham2k_logger/services/gato/transport.dart';
-import 'package:ham2k_logger/services/gato/transports/tcp_transport.dart';
+import 'package:ham2k_logger/services/cat/transport.dart';
+import 'package:ham2k_logger/services/cat/transports/tcp_transport.dart';
 
 void main() {
   late ServerSocket server;

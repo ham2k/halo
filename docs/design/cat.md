@@ -1,7 +1,7 @@
-# GATO — station equipment and CAT control
+# CAT — station equipment and radio control
 
 Controlling radios — and eventually antenna switches, rotators and relay boards — from the app.
-Everything here is behind the `gato` experiment (`EXP GATO` in the call field) until it is ready.
+Everything here is behind the Station Configuration experiment (`EXP CAT` in the call field; its stored key is still `gato`, see experiments.yaml) until it is ready.
 
 This document records the shape of the layer and, more importantly, *why* it is that shape. The
 model it serves is in [data-model.md](data-model.md) § Stations.
@@ -39,7 +39,7 @@ Dart and lets the extension supply one stateless call:
 | Data files | `DataFileManager`'s scheduling, download, cache | `dataFile` — a URL and a row mapper |
 | Spots | `SpotsPanel`'s `Timer.periodic` | `spots.fetchSpots` — one fetch |
 
-**GATO follows the same rule: Dart owns transports, sessions, timers, framing and state.**
+**CAT follows the same rule: Dart owns transports, sessions, timers, framing and state.**
 Handlers are Dart classes in a registry. There is no `equipment` hook category, and adding one for
 a capability with no author waiting on it would be speculative surface.
 
@@ -54,7 +54,7 @@ Dart — not executable JS.
 ```
 Settings → Station Configuration      app/lib/views/station_panel.dart
    │ reads/writes
-GatoService (ChangeNotifier)          app/lib/services/gato/gato_service.dart
+CatService (ChangeNotifier)          app/lib/services/cat/cat_service.dart
    ├── EquipmentRegistry              equipment_registry.dart   — the type catalogue
    ├── transports                     transports/tcp_transport.dart (conditional export)
    └── per-node _NodeRuntime          connection + session + status, keyed by node uuid
@@ -91,7 +91,7 @@ directly, which works for exactly one radio and couples every driver to the app'
 Reporting readings to the manager instead is what makes a driver testable with a plain fake sink,
 and what makes a second device a map lookup rather than a rewrite.
 
-`GatoService` is the only writer of CAT-sourced state.
+`CatService` is the only writer of CAT-sourced state.
 
 ## Cancellation, and the races it prevents
 
@@ -151,7 +151,7 @@ what the user configured; everything about a connection is rebuilt at runtime.
    captured from a live FLEX-6600 (SmartSDR v4.2.20.41343), carried over from polo's spec.
 2. **Session timing** — `fakeAsync` for the resync interval. Keep these out of `testWidgets`.
 3. **Loopback** — a real `ServerSocket` on 127.0.0.1 playing a scripted dialogue against
-   `GatoService`. This is the only tier that catches framing across chunk boundaries, cancellation,
+   `CatService`. This is the only tier that catches framing across chunk boundaries, cancellation,
    and the ordering races above.
 
 None of that tests what a radio actually emits. Polo shipped **one** hardware-verified driver and
@@ -254,7 +254,7 @@ rather than a wedged one:
 
 ## Platforms
 
-GATO does nothing on web — no sockets, no serial, no BLE. The transport layer sits behind the
+CAT does nothing on web — no sockets, no serial, no BLE. The transport layer sits behind the
 codebase's conditional-export barrel (`export 'x_stub.dart' if (dart.library.io) 'x_io.dart';`) and
 the stub **throws**, per the convention `web_download_stub.dart` states: a silent no-op is the
 failure mode to avoid. The settings section itself is hidden on web.
@@ -324,16 +324,16 @@ The two directions have to not chase each other, and three things make that work
 
 - **An origin tag.** `RadioService.setVfo` takes a `VfoOrigin` (`user` or `radio`) as an extra
   optional parameter beyond `VfoStore`'s signature — which Dart lets an override add, so every
-  existing caller keeps meaning `user` and only GATO says otherwise. GATO ignores notifications it
+  existing caller keeps meaning `user` and only CAT says otherwise. CAT ignores notifications it
   caused: forwarding one would tell the radio to go where it already is, and the radio's
   confirmation of that would arrive as another notification.
 - **A per-node record of what was last exchanged**, compared per field. Without it, a mode-only
   change re-sends the frequency to a radio that hasn't confirmed the previous one.
 - **Dropping no-op writes at the store.** `Vfo` gained value equality, so a radio restating what it
   already reported — every status push, every 60 s resync — is not a change and notifies nobody.
-  This has to live *at the store*, and only there. `GatoService` deduping against its own cache as
+  This has to live *at the store*, and only there. `CatService` deduping against its own cache as
   well looks like the same saving and is not: clear `vfoA.freq` (pick a band, empty the frequency
-  field) and the radio has not moved, so every later report matches GATO's cache and is swallowed —
+  field) and the radio has not moved, so every later report matches CAT's cache and is swallowed —
   permanently, until the operator turns the knob.
 
 `SSB` is resolved to `USB`/`LSB` at the manager boundary, before any driver sees it. No CAT protocol
@@ -479,7 +479,7 @@ and it answers with a valid `pkt4`.
 - **`spots_panel`'s recompute is NOT unconditional** — an earlier draft of this document said it
   was, and that was wrong. It already returns early when band and mode are both unchanged. What is
   true is that the merge pipeline behind it is uncached and roughly quadratic, so it is expensive
-  whenever it *does* run. That is independent of GATO.
-- **`RadioService` and `GatoService` are never disposed** — both are `late final` on `HaLoServices`,
+  whenever it *does* run. That is independent of CAT.
+- **`RadioService` and `CatService` are never disposed** — both are `late final` on `HaLoServices`,
   which has no `dispose()`. Their timers and listeners live for the process. Harmless for
   process-lifetime services, but it means neither can own anything that must be torn down.

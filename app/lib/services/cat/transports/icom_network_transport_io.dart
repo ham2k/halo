@@ -8,7 +8,7 @@
 // Verified against a real IC-705: a complete CI-V exchange in ~290 ms, and a
 // held connection answering 30 of 30 polls over a minute. See
 // icom_network_protocol.dart for the five byte-level corrections this needed
-// over app-polo's attempt, and docs/design/gato.md for the story.
+// over app-polo's attempt, and docs/design/cat.md for the story.
 //
 // RESOLVED, and worth reading before blaming this radio for anything again.
 // Reconnecting immediately after a disconnect used to fail most of the time,
@@ -313,7 +313,7 @@ class _IcomSession {
     try {
       _socket.send(bytes, _address, _port);
     } catch (e) {
-      debugPrint('[gato] icom $_label send failed: $e');
+      debugPrint('[cat] icom $_label send failed: $e');
     }
   }
 
@@ -486,7 +486,7 @@ class _IcomSession {
     } on TimeoutException {
       // Worth saying out loud: this is the state in which the next connect
       // is likely to be refused, and it is otherwise invisible.
-      debugPrint('[gato] icom: no logout acknowledgement — the radio may still hold the login');
+      debugPrint('[cat] icom: no logout acknowledgement — the radio may still hold the login');
     }
   }
 
@@ -542,13 +542,13 @@ class _IcomConnection implements EquipmentConnection {
     serial.onLost = _markLost;
   }
 
-  /// The radio stopped answering. Completes `closed` so GatoService sees a
+  /// The radio stopped answering. Completes `closed` so CatService sees a
   /// disconnect and the row stops claiming a live frequency — the thing UDP
   /// gives us no FIN for.
   void _markLost() {
     if (!_open) return;
     _open = false;
-    debugPrint('[gato] icom: radio stopped answering, treating as disconnected');
+    debugPrint('[cat] icom: radio stopped answering, treating as disconnected');
     if (!_closedCompleter.isCompleted) _closedCompleter.complete();
     unawaited(_dataController.close());
     // Best-effort: the radio is very likely gone, but if it is merely
@@ -589,7 +589,7 @@ class _IcomConnection implements EquipmentConnection {
       try {
         await run();
       } catch (e) {
-        debugPrint('[gato] icom teardown ($what): $e');
+        debugPrint('[cat] icom teardown ($what): $e');
       }
     }
 

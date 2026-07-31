@@ -9,7 +9,7 @@
 
 import 'package:fake_async/fake_async.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:ham2k_logger/services/gato/adaptive_poller.dart';
+import 'package:ham2k_logger/services/cat/adaptive_poller.dart';
 
 void main() {
   test('a radio nobody is touching is polled at the slow rate', () {

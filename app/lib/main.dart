@@ -46,7 +46,7 @@ import 'services/build_freshness_service.dart';
 import 'services/error_reporting_backend.dart';
 import 'services/error_reporting_service.dart';
 import 'services/extension_service.dart';
-import 'services/gato/gato_service.dart';
+import 'services/cat/cat_service.dart';
 import 'services/location_service.dart';
 import 'services/lookup_queue_service.dart';
 import 'services/metrics_service.dart';
@@ -491,11 +491,11 @@ Future<HaLoServices> bootstrap({
   // instead of to one caller's control flow.
   if (settings.secureStorageUnavailable) maybeShowNoKeyringNotice(services);
 
-  // Reconnect the designated radio (docs/design/gato.md). Not awaited: the
+  // Reconnect the designated radio (docs/design/cat.md). Not awaited: the
   // radio may be off, and boot must not wait on a socket timeout. Gated on
-  // the experiment so nothing opens a connection unless GATO is on.
-  if (settings.experimentEnabled('gato') && !kIsWeb) {
-    unawaited(services.gato.reconnectDesignatedRadio());
+  // the experiment so nothing opens a connection unless CAT is on.
+  if (settings.experimentEnabled('gato') /* stored key, see experiments.yaml */ && !kIsWeb) {
+    unawaited(services.cat.reconnectDesignatedRadio());
   }
 
   // macOS app-menu actions (see WindowChromeService and macos/Runner): "About"
@@ -604,11 +604,11 @@ class HaLoServices {
   late final ScoringService scoring = ScoringService(extensions: extensions, qsos: qsos, operations: operations);
   late final OperationTitleService operationTitles = OperationTitleService(extensions: extensions, operations: operations);
   late final RadioService radio = RadioService(settings.prefs);
-  // Station equipment and CAT control, behind the `gato` experiment
-  // (docs/design/gato.md). Lazy: nothing connects until the user asks it to
+  // Station equipment and CAT control, behind the `cat` experiment
+  // (docs/design/cat.md). Lazy: nothing connects until the user asks it to
   // from Settings → Station Configuration, so this costs nothing while the
   // experiment is off.
-  late final GatoService gato = GatoService(settings, radio: radio);
+  late final CatService cat = CatService(settings, radio: radio);
   final LocationService location = LocationService();
   final DeepLinkService deepLinks = DeepLinkService();
   final DataFileManager? _dataFilesOverride;

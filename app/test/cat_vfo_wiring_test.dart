@@ -1,7 +1,7 @@
 // Copyright ©️ 2026 Sebastian Delmont <sd@ham2k.com>
 // SPDX-License-Identifier: MPL-2.0
 //
-// GATO driving the app's VFO, and being driven by it.
+// CAT driving the app's VFO, and being driven by it.
 //
 // The whole point of this layer is that the two directions don't fight.
 // An app→radio tune produces a confirmation from the radio; a radio→app
@@ -15,11 +15,11 @@ import 'dart:typed_data';
 
 import 'package:fake_async/fake_async.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:ham2k_logger/services/gato/driver.dart';
-import 'package:ham2k_logger/services/gato/equipment.dart';
-import 'package:ham2k_logger/services/gato/equipment_registry.dart';
-import 'package:ham2k_logger/services/gato/gato_service.dart';
-import 'package:ham2k_logger/services/gato/transport.dart';
+import 'package:ham2k_logger/services/cat/driver.dart';
+import 'package:ham2k_logger/services/cat/equipment.dart';
+import 'package:ham2k_logger/services/cat/equipment_registry.dart';
+import 'package:ham2k_logger/services/cat/cat_service.dart';
+import 'package:ham2k_logger/services/cat/transport.dart';
 import 'package:ham2k_logger/services/radio_service.dart';
 import 'package:ham2k_logger/services/settings_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -193,7 +193,7 @@ void main() {
   late SettingsService settings;
   late _FakeDriver driver;
   late _FakeTransport transport;
-  late GatoService gato;
+  late CatService cat;
 
   setUp(() async {
     SharedPreferences.setMockInitialValues({});
@@ -202,7 +202,7 @@ void main() {
     driver = _FakeDriver();
     transport = _FakeTransport();
     settings = SettingsService(prefs, secureStorage: FakeSecureStorage());
-    gato = GatoService(
+    cat = CatService(
       settings,
       radio: radio,
       registry: EquipmentRegistry(
@@ -213,13 +213,13 @@ void main() {
   });
 
   tearDown(() {
-    gato.dispose();
+    cat.dispose();
     radio.dispose();
   });
 
   Future<EquipmentNode> connectedRadio() async {
-    final node = await gato.addNode(typeKey: 'fake-type', config: {'host': 'radio.local'});
-    await gato.connect(node.uuid);
+    final node = await cat.addNode(typeKey: 'fake-type', config: {'host': 'radio.local'});
+    await cat.connect(node.uuid);
     return node;
   }
 
@@ -228,40 +228,40 @@ void main() {
 
   group('radio1', () {
     test('the first transceiver added drives the logging panel', () async {
-      final node = await gato.addNode(typeKey: 'fake-type', config: {'host': 'a'});
-      expect(gato.radio1, node.uuid);
-      expect(gato.isRadio1(node.uuid), isTrue);
+      final node = await cat.addNode(typeKey: 'fake-type', config: {'host': 'a'});
+      expect(cat.radio1, node.uuid);
+      expect(cat.isRadio1(node.uuid), isTrue);
     });
 
     test('a second radio does not take over, but can be handed the job', () async {
-      final first = await gato.addNode(typeKey: 'fake-type', config: {'host': 'a'});
-      final second = await gato.addNode(typeKey: 'fake-type', config: {'host': 'b'});
-      expect(gato.radio1, first.uuid);
+      final first = await cat.addNode(typeKey: 'fake-type', config: {'host': 'a'});
+      final second = await cat.addNode(typeKey: 'fake-type', config: {'host': 'b'});
+      expect(cat.radio1, first.uuid);
 
-      await gato.setRadio1(second.uuid);
-      expect(gato.radio1, second.uuid);
+      await cat.setRadio1(second.uuid);
+      expect(cat.radio1, second.uuid);
     });
 
     test('removing the designated radio hands the job to another', () async {
-      final first = await gato.addNode(typeKey: 'fake-type', config: {'host': 'a'});
-      final second = await gato.addNode(typeKey: 'fake-type', config: {'host': 'b'});
-      expect(gato.radio1, first.uuid);
+      final first = await cat.addNode(typeKey: 'fake-type', config: {'host': 'a'});
+      final second = await cat.addNode(typeKey: 'fake-type', config: {'host': 'b'});
+      expect(cat.radio1, first.uuid);
 
-      await gato.removeNode(first.uuid);
+      await cat.removeNode(first.uuid);
       // Otherwise the logging panel is left with nothing driving it and no
       // indication of why.
-      expect(gato.radio1, second.uuid);
+      expect(cat.radio1, second.uuid);
 
-      await gato.removeNode(second.uuid);
-      expect(gato.radio1, isNull);
+      await cat.removeNode(second.uuid);
+      expect(cat.radio1, isNull);
     });
 
     test('the designation survives a restart', () async {
-      await gato.addNode(typeKey: 'fake-type', config: {'host': 'a'});
-      final second = await gato.addNode(typeKey: 'fake-type', config: {'host': 'b'});
-      await gato.setRadio1(second.uuid);
+      await cat.addNode(typeKey: 'fake-type', config: {'host': 'a'});
+      final second = await cat.addNode(typeKey: 'fake-type', config: {'host': 'b'});
+      await cat.setRadio1(second.uuid);
 
-      final reloaded = GatoService(SettingsService(await SharedPreferences.getInstance()));
+      final reloaded = CatService(SettingsService(await SharedPreferences.getInstance()));
       expect(reloaded.radio1, second.uuid);
     });
   });
@@ -289,8 +289,8 @@ void main() {
 
     test('a radio that is not radio1 does not touch the app VFO', () async {
       await connectedRadio();
-      final other = await gato.addNode(typeKey: 'fake-type', config: {'host': 'b'});
-      await gato.connect(other.uuid);
+      final other = await cat.addNode(typeKey: 'fake-type', config: {'host': 'b'});
+      await cat.connect(other.uuid);
 
       // The second radio's session, reporting while the first is radio1.
       driver.sessions.last.radioReports(freqKHz: 21000, mode: 'CW');
@@ -334,14 +334,14 @@ void main() {
     });
 
     test('a configured but disconnected radio is written to when it connects, not before', () async {
-      final node = await gato.addNode(typeKey: 'fake-type', config: {'host': 'a'});
+      final node = await cat.addNode(typeKey: 'fake-type', config: {'host': 'a'});
       radio.setVfo('vfoA', freq: 14074, mode: 'USB');
       await pumpEventQueue();
       expect(driver.sessions, isEmpty, reason: 'nothing to send to');
 
       // And the move made while it was disconnected is not replayed at it:
       // the radio reports where it actually is, and that is what wins.
-      await gato.connect(node.uuid);
+      await cat.connect(node.uuid);
       await pumpEventQueue();
       expect(session().commands, isEmpty);
     });
@@ -355,14 +355,14 @@ void main() {
       // the connection that never produces one.
       fakeAsync((async) {
         late EquipmentNode node;
-        gato.addNode(typeKey: 'fake-type', config: {'host': 'radio.local'}).then((n) => node = n);
+        cat.addNode(typeKey: 'fake-type', config: {'host': 'radio.local'}).then((n) => node = n);
         async.flushMicrotasks();
-        gato.connect(node.uuid);
+        cat.connect(node.uuid);
         async.flushMicrotasks();
-        expect(gato.stateFor(node.uuid).status, EquipmentStatus.connected);
+        expect(cat.stateFor(node.uuid).status, EquipmentStatus.connected);
 
         async.elapse(const Duration(seconds: 31));
-        expect(gato.stateFor(node.uuid).stale, isTrue,
+        expect(cat.stateFor(node.uuid).stale, isTrue,
             reason: 'green with nothing behind it is the failure, not the success');
       });
     });
@@ -375,26 +375,26 @@ void main() {
       // flowing the whole time. Only the readings can.
       fakeAsync((async) {
         late EquipmentNode node;
-        gato.addNode(typeKey: 'fake-type', config: {'host': 'radio.local'}).then((n) => node = n);
+        cat.addNode(typeKey: 'fake-type', config: {'host': 'radio.local'}).then((n) => node = n);
         async.flushMicrotasks();
-        gato.connect(node.uuid);
+        cat.connect(node.uuid);
         async.flushMicrotasks();
 
         session().radioReports(freqKHz: 14074, mode: 'USB');
         async.flushMicrotasks();
-        expect(gato.stateFor(node.uuid).stale, isFalse);
+        expect(cat.stateFor(node.uuid).stale, isFalse);
 
         // Still connected, still keepalive-healthy, saying nothing.
         async.elapse(const Duration(seconds: 31));
-        expect(gato.stateFor(node.uuid).status, EquipmentStatus.connected,
+        expect(cat.stateFor(node.uuid).status, EquipmentStatus.connected,
             reason: 'silent is not the same as disconnected');
-        expect(gato.stateFor(node.uuid).stale, isTrue);
+        expect(cat.stateFor(node.uuid).stale, isTrue);
 
         // And one word from the radio clears it — including a repeat, since
         // a radio answering "still 14074" is a radio that is answering.
         session().radioReports(freqKHz: 14074, mode: 'USB');
         async.flushMicrotasks();
-        expect(gato.stateFor(node.uuid).stale, isFalse);
+        expect(cat.stateFor(node.uuid).stale, isFalse);
       });
     });
 
@@ -404,12 +404,12 @@ void main() {
       // datagrams. A row that still claims to be connected throughout, then
       // blinks, reads as a hang.
       final node = await connectedRadio();
-      expect(gato.stateFor(node.uuid).status, EquipmentStatus.connected);
+      expect(cat.stateFor(node.uuid).status, EquipmentStatus.connected);
 
       final statuses = <EquipmentStatus>[];
-      gato.addListener(() => statuses.add(gato.stateFor(node.uuid).status));
+      cat.addListener(() => statuses.add(cat.stateFor(node.uuid).status));
 
-      await gato.disconnect(node.uuid);
+      await cat.disconnect(node.uuid);
 
       expect(statuses, contains(EquipmentStatus.disconnecting));
       expect(statuses.last, EquipmentStatus.disconnected);
@@ -423,8 +423,8 @@ void main() {
       // setting — the IC-705's 0xE1 network controller address is one, and
       // getting it wrong is SILENT. The manager must route through
       // driverConfig rather than passing the stored config straight down.
-      final node = await gato.addNode(typeKey: 'fake-type', config: {'host': 'radio.local'});
-      await gato.connect(node.uuid);
+      final node = await cat.addNode(typeKey: 'fake-type', config: {'host': 'radio.local'});
+      await cat.connect(node.uuid);
 
       expect(driver.configs.single['injectedByType'], 'yes');
       expect(driver.configs.single['host'], 'radio.local', reason: 'and the real config survives');
@@ -434,12 +434,12 @@ void main() {
       // A manager that asked "is this the IC-705 type?" would write THIS
       // type's secret into the plain prefs blob, silently — which is the
       // whole failure mode, and no IC-705 test can catch it.
-      final node = await gato.addNode(
+      final node = await cat.addNode(
         typeKey: 'fake-type',
         config: {'host': 'radio.local', 'apiKey': 'super-secret'},
       );
 
-      expect(gato.nodes.single.config.containsKey('apiKey'), isFalse);
+      expect(cat.nodes.single.config.containsKey('apiKey'), isFalse);
       expect(settings.stationEquipment.toString(), isNot(contains('super-secret')));
       expect(await settings.equipmentSecret(node.uuid, 'apiKey'), 'super-secret');
     });
@@ -452,7 +452,7 @@ void main() {
 
       // The operator picks a band by hand, which clears vfoA's frequency.
       // The radio has not moved, so everything it says from here on is a
-      // restatement of 14074 — and deduping those against GATO's own cache
+      // restatement of 14074 — and deduping those against CAT's own cache
       // swallowed every one of them. The panel then showed 40m with no
       // frequency, and logged QSOs with it, until the knob was turned.
       radio.setVfo('vfoA', band: '40m');
@@ -496,12 +496,12 @@ void main() {
 
     test('handing radio1 away and back does not carry a stale echo guard', () async {
       final a = await connectedRadio();
-      final b = await gato.addNode(typeKey: 'fake-type', config: {'host': 'b'});
-      await gato.connect(b.uuid);
+      final b = await cat.addNode(typeKey: 'fake-type', config: {'host': 'b'});
+      await cat.connect(b.uuid);
       final sessionB = driver.sessions.last;
 
       // B drives the panel and is tuned to 14074 — recorded as sent to it.
-      await gato.setRadio1(b.uuid);
+      await cat.setRadio1(b.uuid);
       radio.setVfo('vfoA', freq: 14074, mode: 'USB');
       await pumpEventQueue();
       expect(sessionB.commands, contains('freq:14074.0'));
@@ -509,14 +509,14 @@ void main() {
       // The operator switches to A and works there. Nothing reaches B now,
       // and nothing B does is heard — including the operator retuning it at
       // its own front panel, which is the point.
-      await gato.setRadio1(a.uuid);
+      await cat.setRadio1(a.uuid);
       radio.setVfo('vfoA', freq: 21000, mode: 'CW');
       await pumpEventQueue();
 
       // Back to B. What it was last SENT no longer says anything about
       // where it is, so a guard left over from its previous turn as radio1
       // suppresses this tune — permanently, since it never expires.
-      await gato.setRadio1(b.uuid);
+      await cat.setRadio1(b.uuid);
       sessionB.commands.clear();
       radio.setVfo('vfoA', freq: 14074, mode: 'USB');
       await pumpEventQueue();
@@ -537,7 +537,7 @@ void main() {
       await pumpEventQueue();
 
       expect(torn.tornDown, isTrue);
-      expect(gato.stateFor(node.uuid).status, EquipmentStatus.disconnected);
+      expect(cat.stateFor(node.uuid).status, EquipmentStatus.disconnected);
     });
 
     test('a reconnect does not inherit the previous session echo guard', () async {
@@ -548,11 +548,11 @@ void main() {
 
       // The radio goes away — powered off, or the network dropped — and the
       // operator carries on working the app.
-      await gato.disconnect(node.uuid);
+      await cat.disconnect(node.uuid);
       radio.setVfo('vfoA', freq: 7100, mode: 'CW');
       await pumpEventQueue();
 
-      await gato.connect(node.uuid);
+      await cat.connect(node.uuid);
       final fresh = driver.sessions.last;
       expect(fresh, isNot(same(driver.sessions.first)));
 
@@ -592,7 +592,7 @@ void main() {
 
     test('disposing mid-reconnect does not notify a dead notifier', () async {
       final gated = _GatedTransport();
-      final service = GatoService(
+      final service = CatService(
         SettingsService(await SharedPreferences.getInstance()),
         radio: radio,
         registry: EquipmentRegistry(types: [_FakeType(driver)], transports: {'fake': gated}),
@@ -623,7 +623,7 @@ void main() {
       session().radioReports(freqKHz: 14074, mode: 'USB');
       await pumpEventQueue();
 
-      // GATO wrote what the radio said, heard its own write back through
+      // CAT wrote what the radio said, heard its own write back through
       // RadioService, and must recognise it. Forwarding would tell the
       // radio to go exactly where it already is — and its confirmation
       // would come back around again.
@@ -674,15 +674,15 @@ void main() {
 
   group('reconnect on launch', () {
     test('reconnects the designated radio', () async {
-      final node = await gato.addNode(typeKey: 'fake-type', config: {'host': 'radio.local'});
-      expect(gato.stateFor(node.uuid).status, EquipmentStatus.disconnected);
+      final node = await cat.addNode(typeKey: 'fake-type', config: {'host': 'radio.local'});
+      expect(cat.stateFor(node.uuid).status, EquipmentStatus.disconnected);
 
-      await gato.reconnectDesignatedRadio();
-      expect(gato.stateFor(node.uuid).status, EquipmentStatus.connected);
+      await cat.reconnectDesignatedRadio();
+      expect(cat.stateFor(node.uuid).status, EquipmentStatus.connected);
     });
 
     test('does nothing when there is no equipment', () async {
-      await gato.reconnectDesignatedRadio();
+      await cat.reconnectDesignatedRadio();
       expect(driver.sessions, isEmpty);
     });
 
@@ -690,16 +690,16 @@ void main() {
       final node = await connectedRadio();
       expect(driver.sessions, hasLength(1));
 
-      await gato.reconnectDesignatedRadio();
+      await cat.reconnectDesignatedRadio();
       // A second connect would tear down a perfectly good session and open
       // another socket at the radio.
       expect(driver.sessions, hasLength(1));
-      expect(gato.stateFor(node.uuid).status, EquipmentStatus.connected);
+      expect(cat.stateFor(node.uuid).status, EquipmentStatus.connected);
     });
 
     test('a manual Connect while a retry is in flight wins, and the retry stands down', () async {
       final gated = _GatedTransport();
-      final service = GatoService(
+      final service = CatService(
         SettingsService(await SharedPreferences.getInstance()),
         radio: radio,
         registry: EquipmentRegistry(types: [_FakeType(driver)], transports: {'fake': gated}),
@@ -737,7 +737,7 @@ void main() {
 
     test('a Connect that lands between retries stops the loop', () async {
       final gated = _GatedTransport();
-      final service = GatoService(
+      final service = CatService(
         SettingsService(await SharedPreferences.getInstance()),
         radio: radio,
         registry: EquipmentRegistry(types: [_FakeType(driver)], transports: {'fake': gated}),
@@ -766,7 +766,7 @@ void main() {
     });
 
     test('gives up after its retries rather than nagging forever', () async {
-      final failing = GatoService(
+      final failing = CatService(
         SettingsService(await SharedPreferences.getInstance()),
         radio: radio,
         registry: EquipmentRegistry(

@@ -8,8 +8,8 @@
 // global state (shared across every operation), persisted to
 // SharedPreferences like `StatusBarService`'s notice history — not synced
 // between devices. This is the state CAT control reads from and writes to
-// in both directions: GATO writes what the radio reports, and forwards
-// everyone else's writes to the radio (docs/design/gato.md).
+// in both directions: CAT writes what the radio reports, and forwards
+// everyone else's writes to the radio (docs/design/cat.md).
 
 import 'dart:async';
 import 'dart:convert';
@@ -29,10 +29,10 @@ const _persistDebounce = Duration(seconds: 2);
 
 /// Who moved the VFO.
 ///
-/// GATO needs this to tell the radio's own echo from a real operator
+/// CAT needs this to tell the radio's own echo from a real operator
 /// action: it writes what the radio reports, hears its own write back
 /// through [RadioService]'s notification, and must not then re-tune the
-/// radio to the value the radio just gave it. See docs/design/gato.md.
+/// radio to the value the radio just gave it. See docs/design/cat.md.
 ///
 /// Deliberately two values, not three: a command action and a keystroke
 /// both mean "the operator wants the radio here", and nothing treats them
@@ -74,7 +74,7 @@ class RadioService extends ChangeNotifier implements VfoStore {
   /// [origin] says who moved it — see [VfoOrigin]. It's an extra optional
   /// parameter beyond [VfoStore.setVfo]'s signature (which Dart allows an
   /// override to add), so every existing caller keeps meaning `user` and
-  /// only GATO has to say otherwise.
+  /// only CAT has to say otherwise.
   @override
   void setVfo(String key,
       {double? freq,

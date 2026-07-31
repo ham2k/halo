@@ -1,11 +1,11 @@
 // Copyright ©️ 2026 Sebastian Delmont <sd@ham2k.com>
 // SPDX-License-Identifier: MPL-2.0
 //
-// GatoService's contract, with a fake transport and a fake driver so none
+// CatService's contract, with a fake transport and a fake driver so none
 // of it needs a socket or a radio.
 //
 // Most of what's asserted here is race handling, and each case is a bug
-// app-polo actually shipped and then had to fix (docs/design/gato.md): a
+// app-polo actually shipped and then had to fix (docs/design/cat.md): a
 // superseded connect leaking its socket, a stale close clobbering a live
 // connection, a throwing teardown skipping the close, a connection that
 // never asks the radio for anything. None of them are hypothetical, and
@@ -16,11 +16,11 @@ import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:ham2k_logger/services/gato/driver.dart';
-import 'package:ham2k_logger/services/gato/equipment.dart';
-import 'package:ham2k_logger/services/gato/equipment_registry.dart';
-import 'package:ham2k_logger/services/gato/gato_service.dart';
-import 'package:ham2k_logger/services/gato/transport.dart';
+import 'package:ham2k_logger/services/cat/driver.dart';
+import 'package:ham2k_logger/services/cat/equipment.dart';
+import 'package:ham2k_logger/services/cat/equipment_registry.dart';
+import 'package:ham2k_logger/services/cat/cat_service.dart';
+import 'package:ham2k_logger/services/cat/transport.dart';
 import 'package:ham2k_logger/services/settings_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -220,14 +220,14 @@ void main() {
   late _FakeTransport transport;
   late _FakeDriver driver;
   late List<String> log;
-  late GatoService gato;
+  late CatService cat;
 
-  Future<GatoService> makeService() async {
+  Future<CatService> makeService() async {
     settings = SettingsService(await SharedPreferences.getInstance());
     log = [];
     transport = _FakeTransport();
     driver = _FakeDriver(log);
-    return GatoService(
+    return CatService(
       settings,
       registry: EquipmentRegistry(
         types: [_FakeType(driver)],
@@ -238,15 +238,15 @@ void main() {
 
   setUp(() async {
     SharedPreferences.setMockInitialValues({});
-    gato = await makeService();
+    cat = await makeService();
   });
 
   Future<EquipmentNode> addRadio({String host = 'radio.local'}) =>
-      gato.addNode(typeKey: 'fake-type', name: 'Left Radio', config: {'host': host});
+      cat.addNode(typeKey: 'fake-type', name: 'Left Radio', config: {'host': host});
 
   /// Connects and lands the connection, returning it.
   Future<_FakeConnection> connectAndLand(EquipmentNode node) async {
-    final connecting = gato.connect(node.uuid);
+    final connecting = cat.connect(node.uuid);
     await pumpEventQueue();
     final connection = _FakeConnection('c${transport.attempts.length}', log);
     transport.attempts.last.completer.complete(connection);
@@ -260,7 +260,7 @@ void main() {
     test('equipment round-trips through prefs, and live status is not stored', () async {
       final node = await addRadio();
       await connectAndLand(node);
-      expect(gato.stateFor(node.uuid).status, EquipmentStatus.connected);
+      expect(cat.stateFor(node.uuid).status, EquipmentStatus.connected);
 
       // A fresh service reading the same prefs is what a relaunch does.
       final reloaded = await makeService();
@@ -274,13 +274,13 @@ void main() {
 
     test('editing and removing persist', () async {
       final node = await addRadio();
-      await gato.updateNode(node.copyWith(name: 'Right Radio', config: {'host': '10.0.0.9'}));
+      await cat.updateNode(node.copyWith(name: 'Right Radio', config: {'host': '10.0.0.9'}));
 
       var reloaded = await makeService();
       expect(reloaded.nodes.single.name, 'Right Radio');
       expect(reloaded.nodes.single.config['host'], '10.0.0.9');
 
-      await gato.removeNode(node.uuid);
+      await cat.removeNode(node.uuid);
       reloaded = await makeService();
       expect(reloaded.nodes, isEmpty);
     });
@@ -322,15 +322,15 @@ void main() {
   group('connect', () {
     test('reports connecting, then connected, and starts updates on connect', () async {
       final node = await addRadio();
-      final connecting = gato.connect(node.uuid);
+      final connecting = cat.connect(node.uuid);
       await pumpEventQueue();
-      expect(gato.stateFor(node.uuid).status, EquipmentStatus.connecting);
+      expect(cat.stateFor(node.uuid).status, EquipmentStatus.connecting);
 
       final connection = _FakeConnection('c1', log);
       transport.attempts.single.completer.complete(connection);
       await connecting;
 
-      expect(gato.stateFor(node.uuid).status, EquipmentStatus.connected);
+      expect(cat.stateFor(node.uuid).status, EquipmentStatus.connected);
       // polo gated this on a UI subscriber refcount, so connecting with no
       // screen mounted produced a green status and a frozen frequency.
       expect(driver.sessions.single.updatesStarted, isTrue);
@@ -339,7 +339,7 @@ void main() {
 
     test('the target comes from the type, not the raw config', () async {
       final node = await addRadio(host: 'flex.local');
-      unawaited(gato.connect(node.uuid));
+      unawaited(cat.connect(node.uuid));
       await pumpEventQueue();
       expect(transport.attempts.single.target, {'host': 'flex.local'});
     });
@@ -349,17 +349,17 @@ void main() {
       final connection = await connectAndLand(node);
 
       var notifications = 0;
-      gato.addListener(() => notifications++);
+      cat.addListener(() => notifications++);
 
       connection.push('14074 USB\n');
       await pumpEventQueue();
-      expect(gato.stateFor(node.uuid).vfo, const VfoReading(freqKHz: 14074, mode: 'USB'));
+      expect(cat.stateFor(node.uuid).vfo, const VfoReading(freqKHz: 14074, mode: 'USB'));
       expect(notifications, 1);
 
       // A frequency-only reading keeps the mode.
       connection.push('14075\n');
       await pumpEventQueue();
-      expect(gato.stateFor(node.uuid).vfo, const VfoReading(freqKHz: 14075, mode: 'USB'));
+      expect(cat.stateFor(node.uuid).vfo, const VfoReading(freqKHz: 14075, mode: 'USB'));
 
       // A radio re-reporting what it already said must not churn listeners —
       // once this drives RadioService, every one of these would be a
@@ -376,37 +376,37 @@ void main() {
 
       connection.push('BOOM\n');
       await pumpEventQueue();
-      expect(gato.stateFor(node.uuid).status, EquipmentStatus.connected);
+      expect(cat.stateFor(node.uuid).status, EquipmentStatus.connected);
 
       connection.push('14074 USB\n');
       await pumpEventQueue();
-      expect(gato.stateFor(node.uuid).vfo.freqKHz, 14074);
+      expect(cat.stateFor(node.uuid).vfo.freqKHz, 14074);
     });
 
     test('a failed connect reports the error', () async {
       final node = await addRadio();
-      final connecting = gato.connect(node.uuid);
+      final connecting = cat.connect(node.uuid);
       await pumpEventQueue();
       transport.attempts.single.completer.completeError(StateError('Connection refused'));
       await connecting;
 
-      expect(gato.stateFor(node.uuid).status, EquipmentStatus.error);
-      expect(gato.stateFor(node.uuid).error, contains('Connection refused'));
+      expect(cat.stateFor(node.uuid).status, EquipmentStatus.error);
+      expect(cat.stateFor(node.uuid).error, contains('Connection refused'));
     });
 
     test('an unusable configuration is refused before any socket is opened', () async {
-      final node = await gato.addNode(typeKey: 'fake-type', config: {'host': ''});
-      await gato.connect(node.uuid);
+      final node = await cat.addNode(typeKey: 'fake-type', config: {'host': ''});
+      await cat.connect(node.uuid);
 
-      expect(gato.stateFor(node.uuid).status, EquipmentStatus.error);
-      expect(gato.stateFor(node.uuid).error, 'An address is required');
+      expect(cat.stateFor(node.uuid).status, EquipmentStatus.error);
+      expect(cat.stateFor(node.uuid).error, 'An address is required');
       expect(transport.attempts, isEmpty);
     });
 
     test('an unknown type reports an error rather than throwing', () async {
-      final node = await gato.addNode(typeKey: 'nope', config: {'host': 'x'});
-      await gato.connect(node.uuid);
-      expect(gato.stateFor(node.uuid).status, EquipmentStatus.error);
+      final node = await cat.addNode(typeKey: 'nope', config: {'host': 'x'});
+      await cat.connect(node.uuid);
+      expect(cat.stateFor(node.uuid).status, EquipmentStatus.error);
       expect(transport.attempts, isEmpty);
     });
 
@@ -416,7 +416,7 @@ void main() {
 
       connection.dropRemotely();
       await pumpEventQueue();
-      expect(gato.stateFor(node.uuid).status, EquipmentStatus.disconnected);
+      expect(cat.stateFor(node.uuid).status, EquipmentStatus.disconnected);
     });
   });
 
@@ -425,10 +425,10 @@ void main() {
   group('races', () {
     test('a second connect cancels the first attempt instead of racing it', () async {
       final node = await addRadio();
-      final first = gato.connect(node.uuid);
+      final first = cat.connect(node.uuid);
       await pumpEventQueue();
 
-      final second = gato.connect(node.uuid);
+      final second = cat.connect(node.uuid);
       await pumpEventQueue();
 
       // Some radios refuse a second session while the first handshake is
@@ -438,7 +438,7 @@ void main() {
 
       transport.attempts.last.completer.complete(_FakeConnection('c2', log));
       await second;
-      expect(gato.stateFor(node.uuid).status, EquipmentStatus.connected);
+      expect(cat.stateFor(node.uuid).status, EquipmentStatus.connected);
     });
 
     test('a superseded attempt that lands anyway is closed, not installed', () async {
@@ -449,11 +449,11 @@ void main() {
       transport.honorsCancellation = false;
       final node = await addRadio();
 
-      final first = gato.connect(node.uuid);
+      final first = cat.connect(node.uuid);
       await pumpEventQueue();
       final firstAttempt = transport.attempts.single;
 
-      final second = gato.connect(node.uuid);
+      final second = cat.connect(node.uuid);
       await pumpEventQueue();
 
       final orphan = _FakeConnection('orphan', log);
@@ -466,7 +466,7 @@ void main() {
       await pumpEventQueue();
 
       expect(orphan.closeCalled, isTrue, reason: 'the superseded connection must not leak');
-      expect(gato.stateFor(node.uuid).status, EquipmentStatus.connected);
+      expect(cat.stateFor(node.uuid).status, EquipmentStatus.connected);
       expect(winner.closeCalled, isFalse);
     });
 
@@ -479,12 +479,12 @@ void main() {
       stale.dropRemotely();
       await pumpEventQueue();
 
-      expect(gato.stateFor(node.uuid).status, EquipmentStatus.connected,
+      expect(cat.stateFor(node.uuid).status, EquipmentStatus.connected,
           reason: 'the live connection is still up');
 
       live.dropRemotely();
       await pumpEventQueue();
-      expect(gato.stateFor(node.uuid).status, EquipmentStatus.disconnected);
+      expect(cat.stateFor(node.uuid).status, EquipmentStatus.disconnected);
     });
 
     test('a stale session cannot write state', () async {
@@ -496,19 +496,19 @@ void main() {
       // The old session's poll timer fires once more before it's collected.
       staleSession.reportFromItsOwnTimer(const VfoReading(freqKHz: 7123, mode: 'LSB'));
       await pumpEventQueue();
-      expect(gato.stateFor(node.uuid).vfo, const VfoReading(),
+      expect(cat.stateFor(node.uuid).vfo, const VfoReading(),
           reason: 'a superseded session must not report readings');
     });
 
     test('disconnect cancels an attempt still in flight', () async {
       final node = await addRadio();
-      final connecting = gato.connect(node.uuid);
+      final connecting = cat.connect(node.uuid);
       await pumpEventQueue();
 
-      await gato.disconnect(node.uuid);
+      await cat.disconnect(node.uuid);
       expect(transport.attempts.single.cancel.isCancelled, isTrue);
       await connecting;
-      expect(gato.stateFor(node.uuid).status, EquipmentStatus.disconnected);
+      expect(cat.stateFor(node.uuid).status, EquipmentStatus.disconnected);
     });
 
     test('two nodes connect independently', () async {
@@ -518,15 +518,15 @@ void main() {
       final firstConnection = await connectAndLand(first);
       await connectAndLand(second);
 
-      expect(gato.stateFor(first.uuid).status, EquipmentStatus.connected);
-      expect(gato.stateFor(second.uuid).status, EquipmentStatus.connected);
+      expect(cat.stateFor(first.uuid).status, EquipmentStatus.connected);
+      expect(cat.stateFor(second.uuid).status, EquipmentStatus.connected);
 
       // Per-node runtime state, not polo's module-level singletons: one
       // node going away must leave the other alone.
       firstConnection.dropRemotely();
       await pumpEventQueue();
-      expect(gato.stateFor(first.uuid).status, EquipmentStatus.disconnected);
-      expect(gato.stateFor(second.uuid).status, EquipmentStatus.connected);
+      expect(cat.stateFor(first.uuid).status, EquipmentStatus.disconnected);
+      expect(cat.stateFor(second.uuid).status, EquipmentStatus.connected);
     });
   });
 
@@ -538,7 +538,7 @@ void main() {
       await connectAndLand(node);
       log.clear();
 
-      await gato.disconnect(node.uuid);
+      await cat.disconnect(node.uuid);
 
       // Order matters: polo found abandoned sessions accumulating on a
       // radio until it refused new connections, surviving a power cycle.
@@ -550,18 +550,18 @@ void main() {
       final node = await addRadio();
       final connection = await connectAndLand(node);
 
-      await gato.disconnect(node.uuid);
+      await cat.disconnect(node.uuid);
       expect(connection.closeCalled, isTrue);
-      expect(gato.stateFor(node.uuid).status, EquipmentStatus.disconnected);
+      expect(cat.stateFor(node.uuid).status, EquipmentStatus.disconnected);
     });
 
     test('removing a connected node disconnects it first', () async {
       final node = await addRadio();
       final connection = await connectAndLand(node);
 
-      await gato.removeNode(node.uuid);
+      await cat.removeNode(node.uuid);
       expect(connection.closeCalled, isTrue);
-      expect(gato.nodes, isEmpty);
+      expect(cat.nodes, isEmpty);
     });
   });
 }

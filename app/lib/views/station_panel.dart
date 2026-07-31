@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: MPL-2.0
 //
 // The Station Configuration panel: the equipment the station is made of,
-// and whether the app can currently talk to it (docs/design/gato.md).
+// and whether the app can currently talk to it (docs/design/cat.md).
 //
 // Hand-built rather than a declarative `fieldType: 'list'` — that field's
 // `itemFields` is a static declaration and can't express a Connect button
@@ -18,16 +18,16 @@ import 'package:halo_widgets/halo_widgets.dart';
 
 import '../i18n/strings.g.dart';
 import '../main.dart';
-import '../services/gato/discovery.dart';
-import '../services/gato/equipment.dart';
-import '../services/gato/equipment_registry.dart';
-import '../services/gato/gato_service.dart';
+import '../services/cat/discovery.dart';
+import '../services/cat/equipment.dart';
+import '../services/cat/equipment_registry.dart';
+import '../services/cat/cat_service.dart';
 import '../tools/form_chrome_labels.dart';
 
 /// Shown as the HINT of a secret field whose value is already in the keychain,
 /// never as its value: a hint cannot be submitted, cannot be revealed by the
 /// field's show/hide eye, and leaves the field genuinely empty — which is what
-/// GatoService reads as "keep what is stored".
+/// CatService reads as "keep what is stored".
 ///
 /// A fixed count, deliberately. Matching the real length would leak it.
 const _storedSecretPlaceholder = '••••••••';
@@ -37,25 +37,25 @@ class StationPanel extends StatelessWidget {
 
   const StationPanel({super.key, required this.services});
 
-  GatoService get _gato => services.gato;
+  CatService get _cat => services.cat;
 
   Future<void> _addEquipment(BuildContext context) async {
     // Discovery holds a bound UDP socket, so it runs only while the dialog
     // that shows its results is open — and the socket has to be released
     // even if the dialog throws, or `isDiscovering` stays true and every
     // later Add silently reuses an orphaned subscription.
-    _gato.startDiscovery();
+    _cat.startDiscovery();
     final _AddChoice? choice;
     try {
       choice = await _showAddDialog(context);
     } finally {
-      _gato.stopDiscovery();
+      _cat.stopDiscovery();
     }
     if (choice == null || !context.mounted) return;
 
     if (choice.discovered != null) {
       // Already has everything it needs — no form to fill in.
-      await _gato.addDiscovered(choice.discovered!);
+      await _cat.addDiscovered(choice.discovered!);
       return;
     }
 
@@ -63,18 +63,18 @@ class StationPanel extends StatelessWidget {
     final values = await _editValues(context, type: type, name: '', config: type.defaultConfig);
     if (values == null) return;
 
-    await _gato.addNode(typeKey: type.key, name: values.name, config: values.config);
+    await _cat.addNode(typeKey: type.key, name: values.name, config: values.config);
   }
 
   Future<_AddChoice?> _showAddDialog(BuildContext context) {
     return showHaloDialog<_AddChoice>(
       context: context,
       builder: (context) => ListenableBuilder(
-        listenable: _gato,
+        listenable: _cat,
         builder: (context, _) {
           final st = context.t.settings.station;
-          final found = _gato.discovered;
-          final error = _gato.discoveryError;
+          final found = _cat.discovered;
+          final error = _cat.discoveryError;
 
           return HaloDialog(
             title: Text(st.addTitle),
@@ -101,7 +101,7 @@ class StationPanel extends StatelessWidget {
                   SectionHeader(st.found),
                   for (final device in found)
                     ListTile(
-                      leading: Icon(_iconForCategory(_gato.registry.typeFor(device.typeKey)?.category)),
+                      leading: Icon(_iconForCategory(_cat.registry.typeFor(device.typeKey)?.category)),
                       title: Text(device.name),
                       subtitle: device.detail == null ? null : Text(device.detail!),
                       onTap: () => Navigator.of(context).pop(_AddChoice.discovered(device)),
@@ -113,7 +113,7 @@ class StationPanel extends StatelessWidget {
                 // forward broadcasts, never announces. Neither app-polo
                 // branch had this path, and both were unusable without it.
                 SectionHeader(st.addManually),
-                for (final type in _gato.registry.types)
+                for (final type in _cat.registry.types)
                   ListTile(
                     leading: Icon(_iconForCategory(type.category)),
                     title: Text(type.name),
@@ -136,7 +136,7 @@ class StationPanel extends StatelessWidget {
   }
 
   Future<void> _editEquipment(BuildContext context, EquipmentNode node) async {
-    final type = _gato.typeFor(node);
+    final type = _cat.typeFor(node);
     if (type == null) return;
 
     final values = await _editValues(context, type: type, name: node.name, config: node.config, node: node);
@@ -144,7 +144,7 @@ class StationPanel extends StatelessWidget {
     // way there is nothing left to write back.
     if (values == null) return;
 
-    await _gato.updateNode(node.copyWith(name: values.name, config: values.config));
+    await _cat.updateNode(node.copyWith(name: values.name, config: values.config));
   }
 
   /// The name field plus whatever the type asks for, in one form.
@@ -165,9 +165,9 @@ class StationPanel extends StatelessWidget {
     // fix (prefill it) is the one thing we must not do: the form's values are
     // written back on save, and a revealed secret field would show it.
     // A placeholder says "something is here" and costs nothing, because an
-    // untouched field still submits empty, which GatoService reads as
+    // untouched field still submits empty, which CatService reads as
     // "unchanged".
-    final storedSecrets = node == null ? const <String>{} : await _gato.storedSecretFields(node.uuid);
+    final storedSecrets = node == null ? const <String>{} : await _cat.storedSecretFields(node.uuid);
     if (!context.mounted) return null;
 
     final elements = [
@@ -239,12 +239,12 @@ class StationPanel extends StatelessWidget {
       ),
     );
     if (confirmed != true) return;
-    await _gato.removeNode(node.uuid);
+    await _cat.removeNode(node.uuid);
   }
 
   String _displayName(EquipmentNode node) {
     if (node.name.isNotEmpty) return node.name;
-    return _gato.typeFor(node)?.name ?? node.typeKey;
+    return _cat.typeFor(node)?.name ?? node.typeKey;
   }
 
   @override
@@ -252,15 +252,15 @@ class StationPanel extends StatelessWidget {
     final st = context.t.settings.station;
 
     return ListenableBuilder(
-      listenable: _gato,
+      listenable: _cat,
       builder: (context, _) {
         final safeLeft = PaneSafeArea.leftOf(context);
-        final nodes = _gato.nodes;
+        final nodes = _cat.nodes;
         // Every transceiver the station knows about, connected or not —
         // this is the station's configuration, not its current link state.
         final transceivers = [
           for (final node in nodes)
-            if (_gato.typeFor(node)?.category == kCategoryTransceiver) node,
+            if (_cat.typeFor(node)?.category == kCategoryTransceiver) node,
         ];
 
         return ListView(
@@ -278,12 +278,12 @@ class StationPanel extends StatelessWidget {
                 // FormFieldState reads `initialValue` once and never again
                 // (its didUpdateWidget only handles forceErrorText), so
                 // without a key that changes with the value this dropdown
-                // shows whatever radio1 was on first build. GatoService
+                // shows whatever radio1 was on first build. CatService
                 // reassigns it behind this panel's back — auto-designating
                 // the first transceiver added, and re-designating when the
                 // current one is removed — and neither would have appeared.
-                key: ValueKey(_gato.radio1),
-                initialValue: transceivers.any((n) => n.uuid == _gato.radio1) ? _gato.radio1 : null,
+                key: ValueKey(_cat.radio1),
+                initialValue: transceivers.any((n) => n.uuid == _cat.radio1) ? _cat.radio1 : null,
                 decoration: poloFieldDecoration(context, st.transceiverForMainVfo),
                 menuMaxHeight: dropdownMenuMaxHeight(context),
                 items: [
@@ -291,7 +291,7 @@ class StationPanel extends StatelessWidget {
                   for (final radio in transceivers)
                     DropdownMenuItem<String?>(value: radio.uuid, child: Text(_displayName(radio))),
                 ],
-                onChanged: (uuid) => unawaited(_gato.setRadio1(uuid)),
+                onChanged: (uuid) => unawaited(_cat.setRadio1(uuid)),
               ),
             ),
 
@@ -305,14 +305,14 @@ class StationPanel extends StatelessWidget {
             for (final node in nodes)
               _EquipmentTile(
                 node: node,
-                type: _gato.typeFor(node),
-                state: _gato.stateFor(node.uuid),
+                type: _cat.typeFor(node),
+                state: _cat.stateFor(node.uuid),
                 displayName: _displayName(node),
-                isMainVfo: _gato.isRadio1(node.uuid),
+                isMainVfo: _cat.isRadio1(node.uuid),
                 onEdit: () => _editEquipment(context, node),
                 onRemoveUnknown: () => _removeEquipment(context, node),
-                onConnect: () => _gato.connect(node.uuid),
-                onDisconnect: () => _gato.disconnect(node.uuid),
+                onConnect: () => _cat.connect(node.uuid),
+                onDisconnect: () => _cat.disconnect(node.uuid),
               ),
             ListTile(
               leading: const Icon(Icons.add),

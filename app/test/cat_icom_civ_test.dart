@@ -12,12 +12,12 @@ import 'dart:typed_data';
 
 import 'package:fake_async/fake_async.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:ham2k_logger/services/gato/driver.dart';
-import 'package:ham2k_logger/services/gato/drivers/civ_codec.dart';
-import 'package:ham2k_logger/services/gato/drivers/icom_civ_driver.dart';
-import 'package:ham2k_logger/services/gato/equipment.dart';
-import 'package:ham2k_logger/services/gato/equipment_registry.dart';
-import 'package:ham2k_logger/services/gato/transports/serial_transport.dart';
+import 'package:ham2k_logger/services/cat/driver.dart';
+import 'package:ham2k_logger/services/cat/drivers/civ_codec.dart';
+import 'package:ham2k_logger/services/cat/drivers/icom_civ_driver.dart';
+import 'package:ham2k_logger/services/cat/equipment.dart';
+import 'package:ham2k_logger/services/cat/equipment_registry.dart';
+import 'package:ham2k_logger/services/cat/transports/serial_transport.dart';
 
 class _FakeSink implements EquipmentSink {
   final sent = <List<int>>[];

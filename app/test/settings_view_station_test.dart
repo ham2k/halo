@@ -1,7 +1,7 @@
 // Copyright ©️ 2026 Sebastian Delmont <sd@ham2k.com>
 // SPDX-License-Identifier: MPL-2.0
 //
-// The Station Configuration section: that it's gated on the GATO
+// The Station Configuration section: that it's gated on the CAT
 // experiment, that it sits between Callsign and Common Preferences, and
 // that it lists configured equipment with its live status.
 
@@ -27,14 +27,14 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   Future<HaLoServices> pumpSettings(WidgetTester tester,
-      {required bool gatoEnabled, Object? equipment, FlutterSecureStorage? secureStorage}) async {
+      {required bool catEnabled, Object? equipment, FlutterSecureStorage? secureStorage}) async {
     tester.view.physicalSize = const Size(1000, 1400);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
 
     SharedPreferences.setMockInitialValues({
-      if (gatoEnabled)
+      if (catEnabled)
         'experiments': jsonEncode({
           'gato': {'enabled': true},
         }),
@@ -51,13 +51,13 @@ void main() {
     return services;
   }
 
-  testWidgets('the section is hidden until the GATO experiment is on', (tester) async {
-    await pumpSettings(tester, gatoEnabled: false);
+  testWidgets('the section is hidden until the CAT experiment is on', (tester) async {
+    await pumpSettings(tester, catEnabled: false);
     expect(find.text('Station Configuration'), findsNothing);
   });
 
-  testWidgets('with GATO on, the section sits between Callsign and Common Preferences', (tester) async {
-    await pumpSettings(tester, gatoEnabled: true);
+  testWidgets('with CAT on, the section sits between Callsign and Common Preferences', (tester) async {
+    await pumpSettings(tester, catEnabled: true);
 
     expect(find.text('Station Configuration'), findsOneWidget);
     // The same glyph the logging panel's Radio control uses.
@@ -76,7 +76,7 @@ void main() {
   });
 
   testWidgets('the panel starts empty and offers to add equipment', (tester) async {
-    await pumpSettings(tester, gatoEnabled: true);
+    await pumpSettings(tester, catEnabled: true);
 
     await tester.tap(find.text('Station Configuration'));
     await tester.pumpAndSettle();
@@ -86,7 +86,7 @@ void main() {
   });
 
   testWidgets('configured equipment lists with its address and status', (tester) async {
-    await pumpSettings(tester, gatoEnabled: true, equipment: {
+    await pumpSettings(tester, catEnabled: true, equipment: {
       'version': 1,
       'nodes': {
         'radio-1': {
@@ -116,7 +116,7 @@ void main() {
   });
 
   testWidgets('adding by hand goes through the type list into that type\'s own form', (tester) async {
-    await pumpSettings(tester, gatoEnabled: true);
+    await pumpSettings(tester, catEnabled: true);
     await tester.tap(find.text('Station Configuration'));
     await tester.pumpAndSettle();
 
@@ -164,7 +164,7 @@ void main() {
     // because none of them goes through this widget.
     final services = await pumpSettings(
       tester,
-      gatoEnabled: true,
+      catEnabled: true,
       secureStorage: FakeSecureStorage(),
       equipment: {
         'version': 1,
@@ -192,7 +192,7 @@ void main() {
 
     // Visible, so a saved password does not look like no password at all.
     expect(field.decoration?.hintText, '••••••••');
-    // And a HINT: the field is genuinely empty, which is what GatoService
+    // And a HINT: the field is genuinely empty, which is what CatService
     // reads as "keep what is stored".
     expect(field.controller?.text, isEmpty);
     // The real secret never entered the form.
@@ -202,7 +202,7 @@ void main() {
   testWidgets('the Main VFO transceiver is chosen from a dropdown of every known radio', (tester) async {
     // Configuration, not link state: the dropdown offers every transceiver
     // the station knows about, whether or not it happens to be connected.
-    final services = await pumpSettings(tester, gatoEnabled: true, equipment: {
+    final services = await pumpSettings(tester, catEnabled: true, equipment: {
       'version': 1,
       'radio1': 'radio-1',
       'nodes': {
@@ -233,11 +233,11 @@ void main() {
 
     await tester.tap(find.text('Right Radio').last);
     await tester.pumpAndSettle();
-    expect(services.gato.radio1, 'radio-2');
+    expect(services.cat.radio1, 'radio-2');
   });
 
   testWidgets('a node whose type no longer exists says so instead of vanishing', (tester) async {
-    await pumpSettings(tester, gatoEnabled: true, equipment: {
+    await pumpSettings(tester, catEnabled: true, equipment: {
       'version': 1,
       'nodes': {
         'orphan': {'typeKey': 'a-driver-we-removed', 'name': 'Old Rig'},

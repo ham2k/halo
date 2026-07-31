@@ -9,7 +9,7 @@
 // Pure: it builds and parses strings and knows nothing about sockets,
 // serial ports or timers. Ported from app-polo's YaesuCatProtocol.js, which
 // was the highest-confidence code on that branch precisely because it had
-// no I/O in it. See docs/design/gato.md on why the codec is shared while
+// no I/O in it. See docs/design/cat.md on why the codec is shared while
 // the glue around it is not.
 
 /// P2 mode digit, per the FT-891 CAT manual's MD/MR tables. 'A' is

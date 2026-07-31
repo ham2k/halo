@@ -12,14 +12,14 @@
 // reach the SharedPreferences blob that equipment config lives in.
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:ham2k_logger/services/gato/driver.dart';
-import 'package:ham2k_logger/services/gato/drivers/icom_civ_driver.dart';
-import 'package:ham2k_logger/services/gato/equipment.dart';
-import 'package:ham2k_logger/services/gato/equipment_registry.dart';
-import 'package:ham2k_logger/services/gato/gato_service.dart';
-import 'package:ham2k_logger/services/gato/transports/icom_network_protocol.dart';
-import 'package:ham2k_logger/services/gato/transports/icom_network_transport.dart';
-import 'package:ham2k_logger/services/gato/transports/icom_network_transport_io.dart'
+import 'package:ham2k_logger/services/cat/driver.dart';
+import 'package:ham2k_logger/services/cat/drivers/icom_civ_driver.dart';
+import 'package:ham2k_logger/services/cat/equipment.dart';
+import 'package:ham2k_logger/services/cat/equipment_registry.dart';
+import 'package:ham2k_logger/services/cat/cat_service.dart';
+import 'package:ham2k_logger/services/cat/transports/icom_network_protocol.dart';
+import 'package:ham2k_logger/services/cat/transports/icom_network_transport.dart';
+import 'package:ham2k_logger/services/cat/transports/icom_network_transport_io.dart'
     show IcomLoginTimeout, IcomLoginRejected, IcomCredentialsMissing;
 import 'package:ham2k_logger/services/settings_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -247,27 +247,27 @@ void main() {
 
   group('the radio password never reaches the prefs blob', () {
     late SettingsService settings;
-    late GatoService gato;
+    late CatService cat;
 
     setUp(() async {
       SharedPreferences.setMockInitialValues({});
       final prefs = await SharedPreferences.getInstance();
       settings = SettingsService(prefs, secureStorage: FakeSecureStorage());
-      gato = GatoService(settings);
+      cat = CatService(settings);
     });
 
-    tearDown(() => gato.dispose());
+    tearDown(() => cat.dispose());
 
     test('the password goes to the keychain and out of the stored config', () async {
-      final node = await gato.addNode(typeKey: 'ic705-network', config: {
+      final node = await cat.addNode(typeKey: 'ic705-network', config: {
         'host': '10.0.0.9',
         'username': 'op',
         'password': 'hunter2',
       });
 
       // What the editor collected minus the secret.
-      expect(gato.nodes.single.config['host'], '10.0.0.9');
-      expect(gato.nodes.single.config.containsKey('password'), isFalse);
+      expect(cat.nodes.single.config['host'], '10.0.0.9');
+      expect(cat.nodes.single.config.containsKey('password'), isFalse);
 
       // And nothing resembling it in the JSON that actually gets persisted.
       expect(settings.stationEquipment.toString(), isNot(contains('hunter2')));
@@ -275,7 +275,7 @@ void main() {
     });
 
     test('the editor can tell a password exists without being given it', () async {
-      final node = await gato.addNode(typeKey: 'ic705-network', config: {
+      final node = await cat.addNode(typeKey: 'ic705-network', config: {
         'host': '10.0.0.9',
         'username': 'op',
         'password': 'hunter2',
@@ -286,24 +286,24 @@ void main() {
       // a caller that only wanted a boolean — would put the secret into a
       // form whose values are written back on save, and the field's show/hide
       // eye would then reveal it.
-      final stored = await gato.storedSecretFields(node.uuid);
+      final stored = await cat.storedSecretFields(node.uuid);
       expect(stored, {'password'});
       expect(stored.toString(), isNot(contains('hunter2')));
 
       // A node with no secret stored reports nothing, so the Add flow and a
       // never-configured radio show a plain empty field.
-      final bare = await gato.addNode(typeKey: 'ic705-network', config: {
+      final bare = await cat.addNode(typeKey: 'ic705-network', config: {
         'host': '10.0.0.11',
         'username': 'op',
       });
-      expect(await gato.storedSecretFields(bare.uuid), isEmpty);
+      expect(await cat.storedSecretFields(bare.uuid), isEmpty);
 
       // And a type with no secrets at all never reports one.
-      final serial = await gato.addNode(typeKey: 'ft891-serial', config: {'port': '/dev/null'});
-      expect(await gato.storedSecretFields(serial.uuid), isEmpty);
+      final serial = await cat.addNode(typeKey: 'ft891-serial', config: {'port': '/dev/null'});
+      expect(await cat.storedSecretFields(serial.uuid), isEmpty);
 
       // An unknown uuid must not throw — the editor may outlive a removal.
-      expect(await gato.storedSecretFields('no-such-node'), isEmpty);
+      expect(await cat.storedSecretFields('no-such-node'), isEmpty);
     });
 
     // NOTE: the "placeholder must never become the value" contract is pinned
@@ -317,7 +317,7 @@ void main() {
     // bullets. It was removed rather than left as false assurance.
 
     test('saving the editor without retyping the password keeps it', () async {
-      final node = await gato.addNode(typeKey: 'ic705-network', config: {
+      final node = await cat.addNode(typeKey: 'ic705-network', config: {
         'host': '10.0.0.9',
         'username': 'op',
         'password': 'hunter2',
@@ -326,32 +326,32 @@ void main() {
       // The editor shows secrets blank; an empty value means "unchanged",
       // not "clear it" — otherwise every unrelated edit silently unpairs
       // the radio.
-      await gato.updateNode(gato.nodes.single.copyWith(config: {
+      await cat.updateNode(cat.nodes.single.copyWith(config: {
         'host': '10.0.0.10',
         'username': 'op',
         'password': '',
       }));
 
-      expect(gato.nodes.single.config['host'], '10.0.0.10');
+      expect(cat.nodes.single.config['host'], '10.0.0.10');
       expect(await settings.equipmentSecret(node.uuid, 'password'), 'hunter2');
     });
 
     test('removing the node takes its password with it', () async {
-      final node = await gato.addNode(typeKey: 'ic705-network', config: {
+      final node = await cat.addNode(typeKey: 'ic705-network', config: {
         'host': '10.0.0.9',
         'username': 'op',
         'password': 'hunter2',
       });
-      await gato.removeNode(node.uuid);
+      await cat.removeNode(node.uuid);
 
       // The keychain entry outlives the prefs blob unless it is deleted.
       expect(await settings.equipmentSecret(node.uuid, 'password'), isNull);
     });
 
     test('a node with no credentials is refused before a socket opens', () async {
-      final node = await gato.addNode(typeKey: 'ic705-network', config: {'host': '10.0.0.9'});
-      await gato.connect(node.uuid);
-      expect(gato.stateFor(node.uuid).status, EquipmentStatus.error);
+      final node = await cat.addNode(typeKey: 'ic705-network', config: {'host': '10.0.0.9'});
+      await cat.connect(node.uuid);
+      expect(cat.stateFor(node.uuid).status, EquipmentStatus.error);
     });
   });
 
@@ -363,11 +363,11 @@ void main() {
     SharedPreferences.setMockInitialValues({});
     final prefs = await SharedPreferences.getInstance();
     final settings = SettingsService(prefs, secureStorage: FakeSecureStorage(failWrites: true));
-    final gato = GatoService(settings);
-    addTearDown(gato.dispose);
+    final cat = CatService(settings);
+    addTearDown(cat.dispose);
 
     await expectLater(
-      gato.addNode(typeKey: 'ic705-network', config: {
+      cat.addNode(typeKey: 'ic705-network', config: {
         'host': '10.0.0.9',
         'username': 'op',
         'password': 'hunter2',

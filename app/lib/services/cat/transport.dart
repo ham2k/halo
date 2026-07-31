@@ -3,7 +3,7 @@
 //
 // Transports open connections and move bytes. They know nothing about what
 // those bytes mean — that's a driver's job (see driver.dart, and the
-// transport/driver split in docs/design/gato.md).
+// transport/driver split in docs/design/cat.md).
 
 import 'dart:async';
 import 'dart:typed_data';

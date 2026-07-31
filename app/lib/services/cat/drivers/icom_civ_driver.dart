@@ -103,7 +103,7 @@ class IcomCivSession implements EquipmentSession {
       // The radio refused the command. polo ignored this entirely, so a
       // refusal was indistinguishable from silence and the app went on
       // believing the radio had moved.
-      debugPrint('[gato] CI-V: radio rejected the last command');
+      debugPrint('[cat] CI-V: radio rejected the last command');
       return;
     }
     if (frame.isAck) return;

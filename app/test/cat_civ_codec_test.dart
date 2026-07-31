@@ -12,7 +12,7 @@
 // wrong frequency rather than failing loudly.
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:ham2k_logger/services/gato/drivers/civ_codec.dart';
+import 'package:ham2k_logger/services/cat/drivers/civ_codec.dart';
 
 void main() {
   group('BCD frequency', () {
@@ -77,7 +77,7 @@ void main() {
     });
 
     test('an unknown mode builds nothing rather than a malformed frame', () {
-      // 'SSB' never reaches a driver — GatoService resolves it first — and
+      // 'SSB' never reaches a driver — CatService resolves it first — and
       // CI-V has no code for it either way.
       expect(buildSetModeFrame(to: 0xA4, mode: 'SSB'), isNull);
       expect(buildSetModeFrame(to: 0xA4, mode: null), isNull);
