@@ -1719,4 +1719,168 @@ void main() {
       },
     );
   });
+
+  group('columns in a pane too narrow for them', () {
+    // Column widths are list-wide and content-derived, so nothing about them
+    // shrinks when the pane does: in a narrow split the fixed columns used to
+    // outgrow the row and simply overflow. In debug that is a yellow-striped
+    // RenderFlex warning; in RELEASE it is a silent clip, which is the part
+    // that matters — logged data disappears off the edge of a row with no
+    // indication to the operator that it is there. So a column that doesn't
+    // fit has to be dropped, not painted out of bounds.
+
+    Future<List<Qso>> mixedModeLog(Operation operation) async {
+      final list = <Qso>[];
+      for (var i = 1; i <= 4; i++) {
+        list.add(await qsos.add(operation.uuid, {
+          'their': {'call': 'K${i}HAM'},
+          'band': '20m',
+          // Mixed modes, so the Mode column earns its place on content.
+          'mode': i.isEven ? 'SSB' : 'CW',
+          'startAtMillis': 1000 + i * 60000,
+        }));
+      }
+      return list;
+    }
+
+    Widget hostAtWidth(List<Qso> list, double width) => MaterialApp(
+          home: Scaffold(
+            body: SizedBox(
+              width: width,
+              height: 300,
+              child: QsoList(qsos: list, onSelect: (_) {}),
+            ),
+          ),
+        );
+
+    testWidgets('a wide pane shows the optional columns', (tester) async {
+      final operation = await operations.create(stationCall: 'N0CALL');
+      final list = await mixedModeLog(operation);
+
+      await tester.pumpWidget(hostAtWidth(list, 900));
+      await tester.pumpAndSettle();
+
+      // The control for the narrow case below: Mode is present on content
+      // alone, so its absence there is about FIT and nothing else.
+      expect(find.text('CW'), findsWidgets);
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('a narrow pane drops columns instead of overflowing', (tester) async {
+      final operation = await operations.create(stationCall: 'N0CALL');
+      final list = await mixedModeLog(operation);
+
+      // Narrow enough that the optional columns can't all fit, wide enough to
+      // still hold time + freq + callsign — the regime a real split pane
+      // lives in.
+      await tester.pumpWidget(hostAtWidth(list, 320));
+      await tester.pumpAndSettle();
+
+      // Nothing overflowed: no RenderFlex warning was raised at all. This is
+      // the assertion that fails if the fit budget is ever dropped.
+      expect(tester.takeException(), isNull);
+
+      // Mode gave way — it is the first of the columns present here that the
+      // budget is willing to lose.
+      expect(find.text('CW'), findsNothing);
+
+      // ...and the callsign did NOT: "the callsign never truncates" is the
+      // rule the squeeze has to respect, so it survives a pane this narrow
+      // whole rather than being ellipsized to make room.
+      expect(find.text('K1HAM'), findsOneWidget);
+    });
+
+    testWidgets('a pane below the minimum stops shrinking rather than overflowing', (tester) async {
+      final operation = await operations.create(stationCall: 'N0CALL');
+      final list = await mixedModeLog(operation);
+
+      // Narrower than time + freq + callsign can possibly fit. There is
+      // nothing left to drop, so the list holds its minimum width and the
+      // ClipRect trims the right edge — rows stay internally consistent
+      // instead of laying their columns on top of each other. Dropping the
+      // minimum brings the RenderFlex overflow straight back.
+      await tester.pumpWidget(hostAtWidth(list, 120));
+      await tester.pumpAndSettle();
+
+      expect(tester.takeException(), isNull);
+
+      // The mandatory columns are all still laid out, whether or not the
+      // pane is wide enough to reveal them.
+      expect(find.text('K1HAM'), findsOneWidget);
+    });
+
+    // A log carrying every optional column at once, so the budget has
+    // something to drop in each of its six slots rather than only Mode.
+    Future<List<Qso>> richLog(Operation operation) async {
+      final list = <Qso>[];
+      for (var i = 1; i <= 4; i++) {
+        list.add(await qsos.add(operation.uuid, {
+          'their': {
+            'call': 'K${i}HAM',
+            'grid': 'FN31pr',
+            'state': 'NY',
+            'exchange': 'EXCH$i',
+            'sent': '59',
+            'received': '57',
+          },
+          'band': '20m',
+          'mode': i.isEven ? 'SSB' : 'CW',
+          'startAtMillis': 1000 + i * 60000,
+          'refs': [
+            {'type': 'pota', 'ref': 'K-000$i'},
+            {'type': 'pota', 'ref': 'K-100$i'},
+          ],
+        }));
+      }
+      return list;
+    }
+
+    testWidgets('drops the lowest-priority column first, keeping the rest', (tester) async {
+      final operation = await operations.create(stationCall: 'N0CALL');
+      final list = await richLog(operation);
+
+      // Wide: everything earns its place, including the exchange — the last
+      // column in the priority order and so the first to go.
+      await tester.pumpWidget(hostAtWidth(list, 1200));
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
+      expect(find.text('EXCH1'), findsOneWidget, reason: 'the control: exchange fits at 1200');
+
+      // Squeezed just enough that not everything fits. Whatever else the
+      // budget decides, it must give up the exchange BEFORE the QSO number
+      // at the head of the row — that ordering is the whole point of the
+      // priority list, and nothing else in this suite pins it.
+      await tester.pumpWidget(hostAtWidth(list, 470));
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
+      expect(find.text('EXCH1'), findsNothing);
+      expect(find.text('1'), findsOneWidget, reason: 'QSO number outranks the exchange');
+    });
+
+    testWidgets('event and annotation rows survive the minimum too', (tester) async {
+      final operation = await operations.create(stationCall: 'N0CALL');
+      final list = await richLog(operation);
+      // The other two row types share the list's width but have their own
+      // fixed leading/time columns — DayHeaderRow already proved a sibling
+      // row can overflow at a minimum derived from the QSO row alone.
+      // `isEvent` is `band == 'event'` and the kind lives in a nested map —
+      // get either wrong and these render as ordinary QSO rows, testing
+      // nothing.
+      list.add(await qsos.add(operation.uuid, {
+        'band': 'event',
+        'startAtMillis': 500,
+        'event': {'event': 'start'},
+      }));
+      list.add(await qsos.add(operation.uuid, {
+        'band': 'event',
+        'startAtMillis': 600,
+        'event': {'event': 'note', 'note': 'A note long enough to need the width it does not have'},
+      }));
+
+      await tester.pumpWidget(hostAtWidth(list, 120));
+      await tester.pumpAndSettle();
+
+      expect(tester.takeException(), isNull);
+    });
+  });
 }

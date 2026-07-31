@@ -112,7 +112,7 @@ class _OsmMapViewState extends State<OsmMapView> {
               ),
             ),
           ]),
-        const SimpleAttributionWidget(source: Text('OpenStreetMap contributors')),
+        const _OsmAttribution(),
       ],
     );
   }
@@ -148,4 +148,38 @@ class _OsmMapViewState extends State<OsmMapView> {
             ),
           ),
       ]);
+}
+
+/// The OSM credit the tile usage policy requires, in the map's bottom-right.
+///
+/// Ours rather than flutter_map's [SimpleAttributionWidget], which lays its
+/// prefix and source out in an unconstrained `Row(mainAxisSize: min)` and so
+/// overflows — visibly striped in debug, silently clipped in release — on any
+/// map pane narrower than the credit's natural width. The Map tab in the split
+/// layout is routinely that narrow. A lone [Text] has no flex to overflow: it
+/// ellipsizes into whatever width it is given.
+class _OsmAttribution extends StatelessWidget {
+  const _OsmAttribution();
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return SafeArea(
+      child: Align(
+        alignment: Alignment.bottomRight,
+        child: ColoredBox(
+          color: theme.colorScheme.surface,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 3),
+            child: Text(
+              '© OpenStreetMap contributors',
+              style: theme.textTheme.bodySmall,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 }
