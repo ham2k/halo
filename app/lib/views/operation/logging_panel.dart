@@ -126,6 +126,7 @@ class _LoggingPanelState extends State<LoggingPanel> {
   late bool _showExtraInNumbersRow =
       widget.services.settings.showExtraInNumbersRow;
   late bool _vibrateNumbersRow = widget.services.settings.vibrateNumbersRow;
+  late bool _leftieMode = widget.services.settings.leftieMode;
 
   // Whether the QSO list's empty state should warn to check the radio
   // (HALO-24) — mirrors LoggingControls' own `_vfoIsUnset`: no band *and* no
@@ -364,11 +365,13 @@ class _LoggingPanelState extends State<LoggingPanel> {
     final s = widget.services.settings;
     if (s.showNumbersRow != _showNumbersRow ||
         s.showExtraInNumbersRow != _showExtraInNumbersRow ||
-        s.vibrateNumbersRow != _vibrateNumbersRow) {
+        s.vibrateNumbersRow != _vibrateNumbersRow ||
+        s.leftieMode != _leftieMode) {
       setState(() {
         _showNumbersRow = s.showNumbersRow;
         _showExtraInNumbersRow = s.showExtraInNumbersRow;
         _vibrateNumbersRow = s.vibrateNumbersRow;
+        _leftieMode = s.leftieMode;
       });
     }
   }
@@ -538,6 +541,7 @@ class _LoggingPanelState extends State<LoggingPanel> {
             qsosRepository: widget.services.qsos,
             qsos: widget.qsos,
             settings: widget.services.settings,
+            leftieMode: _leftieMode,
             enabledBands: _enabledBands,
             enabledModes: _enabledModes,
             radioService: widget.services.radio,

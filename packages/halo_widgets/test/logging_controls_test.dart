@@ -76,6 +76,7 @@ void main() {
     bool showNumbersRow = false,
     bool showExtraInNumbersRow = true,
     bool vibrateNumbersRow = true,
+    bool leftieMode = false,
     List<String>? enabledBands,
     List<String>? enabledModes,
     void Function(Qso qso)? enqueueLookup,
@@ -118,6 +119,7 @@ void main() {
       showNumbersRow: showNumbersRow,
       showExtraInNumbersRow: showExtraInNumbersRow,
       vibrateNumbersRow: vibrateNumbersRow,
+      leftieMode: leftieMode,
       enabledBands: enabledBands,
       enabledModes: enabledModes,
       spottingControlLabel: 'Spotting',
@@ -285,6 +287,28 @@ void main() {
     expect(find.bySemanticsIdentifier('action.log'), findsOneWidget);
     expect(find.bySemanticsIdentifier('action.wipe'), findsOneWidget);
     handle.dispose();
+  });
+
+  testWidgets('leftieMode renders the submit button and wipe button on the left of the main logging fields', (tester) async {
+    await tester.pumpWidget(host(leftieMode: false));
+    await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'W1AW');
+    await tester.pump();
+
+    final logBtnXRight = tester.getTopLeft(find.bySemanticsIdentifier('action.log')).dx;
+    final wipeBtnXRight = tester.getTopLeft(find.bySemanticsIdentifier('action.wipe')).dx;
+    final callFieldXRight = tester.getTopLeft(find.bySemanticsIdentifier('field.call')).dx;
+    expect(logBtnXRight, greaterThan(callFieldXRight));
+    expect(wipeBtnXRight, greaterThan(callFieldXRight));
+
+    await tester.pumpWidget(host(leftieMode: true));
+    await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'W1AW');
+    await tester.pump();
+
+    final logBtnXLeft = tester.getTopLeft(find.bySemanticsIdentifier('action.log')).dx;
+    final wipeBtnXLeft = tester.getTopLeft(find.bySemanticsIdentifier('action.wipe')).dx;
+    final callFieldXLeft = tester.getTopLeft(find.bySemanticsIdentifier('field.call')).dx;
+    expect(logBtnXLeft, lessThan(callFieldXLeft));
+    expect(wipeBtnXLeft, lessThan(callFieldXLeft));
   });
 
   testWidgets('Enter logs a QSO with mode, band and default RSTs', (tester) async {

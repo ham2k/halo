@@ -561,6 +561,10 @@ class LoggingControls extends StatefulWidget {
   final bool showExtraInNumbersRow;
   final bool vibrateNumbersRow;
 
+  /// When true, the submit button is rendered on the left of the main logging
+  /// controls row and the text fields on the right.
+  final bool leftieMode;
+
   /// Where the numbers row is published for drawing. The row has to be painted
   /// below the status footer and directly on the keyboard, which is one level
   /// up from here — see [KeyboardAccessoryController]. Null (tests, and any
@@ -606,6 +610,7 @@ class LoggingControls extends StatefulWidget {
     this.settings,
     this.radioService,
     this.radioUpdates,
+    this.leftieMode = false,
     this.controlOrder = const [],
     this.hiddenControlKeys = const {},
     this.onControlsSettingsChanged,
@@ -5913,7 +5918,9 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
                               // top of this box (below), so text truncates
                               // before it rather than rendering underneath.
                               child: Padding(
-                              padding: EdgeInsets.only(right: (_editButtonDiameter ?? 44) + 8),
+                                padding: widget.leftieMode
+                                    ? EdgeInsets.only(left: (_editButtonDiameter ?? 44) + 8)
+                                    : EdgeInsets.only(right: (_editButtonDiameter ?? 44) + 8),
                               // Top-aligned, with the height animating as the
                               // content grows/shrinks and content swaps
                               // cross-fading (issue #40). AnimatedSize drives the
@@ -5953,7 +5960,8 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
                             ),
                           ),
                           Positioned(
-                            right: 0,
+                            left: widget.leftieMode ? 0 : null,
+                            right: widget.leftieMode ? null : 0,
                             bottom: 0,
                             child: _buildWipeOrEditButton(accentTheme),
                           ),
@@ -5988,6 +5996,53 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
                           context, trailingFields, constraints.maxWidth, buttonWidth);
                       final widthDuration =
                           _mainFieldWidthDuration(constraints.maxWidth, buttonWidth);
+                      final logButtonGap = SizedBox(width: _logButtonGap * fieldLayout.gapScale);
+                      // HaLo's big light-blue log button — a circle as
+                      // tall as the text fields beside it. (A
+                      // LayoutBuilder here to size the icon off the
+                      // button's resolved constraints would seem
+                      // natural, but IntrinsicHeight above needs to
+                      // query this subtree's intrinsic dimensions, which
+                      // LayoutBuilder explicitly doesn't support — so
+                      // the icon just uses a fixed, comfortable size.)
+                      // #236: stable id for agent/browser tooling.
+                      final submitButtonWidget = semanticId(
+                        'action.log',
+                        AspectRatio(
+                          key: _submitButtonKey,
+                          aspectRatio: 1,
+                          child: MouseRegion(
+                            cursor: SystemMouseCursors.click,
+                            child: FilledButton(
+                              // Disabled while viewing a deleted QSO —
+                              // there's nothing to save; restore first.
+                              // `_hasExecutableCommand` lets the button
+                              // accept a command too, matching Enter (a
+                              // command isn't a callsign, so `_canLog` alone
+                              // would leave it disabled — see that getter).
+                              onPressed: (!deletedQso && (_pendingDelete || _canLog || _hasExecutableCommand))
+                                  ? _log
+                                  : null,
+                              style: FilledButton.styleFrom(
+                                backgroundColor:
+                                    accentTheme.colorScheme.tertiary,
+                                foregroundColor:
+                                    accentTheme.colorScheme.onTertiary,
+                                minimumSize: Size.zero,
+                                padding: EdgeInsets.zero,
+                                shape: const CircleBorder(),
+                              ),
+                              child: Icon(
+                                _pendingDelete
+                                    ? resolveIconName('trash-can')
+                                    : (editing ? resolveIconName('content-save') : Icons.upload),
+                                size: 24 * 1.2 * MediaQuery.textScalerOf(context).scale(1.0),
+                              ),
+                            ),
+                          ),
+                        ),
+                      );
+
                       // IntrinsicHeight + stretch, rather than a guessed
                       // pixel height, so the submit button (an AspectRatio
                       // circle) is guaranteed to exactly match whatever
@@ -5998,6 +6053,10 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
                         child: Row(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
+                          if (widget.leftieMode) ...[
+                            submitButtonWidget,
+                            logButtonGap,
+                          ],
                           Expanded(
                             // #236: stable id for agent/browser tooling.
                             child: semanticId('field.call', TextField(
@@ -6065,49 +6124,10 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
                             trailingFields[i]
                                 .build(fieldLayout.widths[i], fieldLayout.fieldPadding, widthDuration),
                           ],
-                          SizedBox(width: _logButtonGap * fieldLayout.gapScale),
-                          // HaLo's big light-blue log button — a circle as
-                          // tall as the text fields beside it. (A
-                          // LayoutBuilder here to size the icon off the
-                          // button's resolved constraints would seem
-                          // natural, but IntrinsicHeight above needs to
-                          // query this subtree's intrinsic dimensions, which
-                          // LayoutBuilder explicitly doesn't support — so
-                          // the icon just uses a fixed, comfortable size.)
-                          // #236: stable id for agent/browser tooling.
-                          semanticId('action.log', AspectRatio(
-                            key: _submitButtonKey,
-                            aspectRatio: 1,
-                            child: MouseRegion(
-                              cursor: SystemMouseCursors.click,
-                              child: FilledButton(
-                                // Disabled while viewing a deleted QSO —
-                                // there's nothing to save; restore first.
-                                // `_hasExecutableCommand` lets the button
-                                // accept a command too, matching Enter (a
-                                // command isn't a callsign, so `_canLog` alone
-                                // would leave it disabled — see that getter).
-                                onPressed: (!deletedQso && (_pendingDelete || _canLog || _hasExecutableCommand))
-                                    ? _log
-                                    : null,
-                                style: FilledButton.styleFrom(
-                                  backgroundColor:
-                                      accentTheme.colorScheme.tertiary,
-                                  foregroundColor:
-                                      accentTheme.colorScheme.onTertiary,
-                                  minimumSize: Size.zero,
-                                  padding: EdgeInsets.zero,
-                                  shape: const CircleBorder(),
-                                ),
-                                child: Icon(
-                                  _pendingDelete
-                                      ? resolveIconName('trash-can')
-                                      : (editing ? resolveIconName('content-save') : Icons.upload),
-                                  size: 24 * 1.2 * MediaQuery.textScalerOf(context).scale(1.0),
-                                ),
-                              ),
-                            ),
-                          )),
+                          if (!widget.leftieMode) ...[
+                            logButtonGap,
+                            submitButtonWidget,
+                          ],
                         ],
                         ),
                       );
