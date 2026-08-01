@@ -228,6 +228,16 @@ class QsoList extends StatefulWidget {
   final List<Qso> qsos;
   final String? noQsosLabel;
 
+  /// Whether the empty-state message should read as a warning to check the
+  /// radio (HALO-24) rather than the ordinary "nothing here" text — the
+  /// caller decides this from the device VFO, mirroring the same condition
+  /// that opens the Radio control on mount: no band *and* no frequency, or
+  /// no mode.
+  final bool needsBandOrMode;
+
+  /// Shown instead of [noQsosLabel] when [needsBandOrMode] is true.
+  final String? bandOrModeWarningLabel;
+
   /// The uuid of the QSO currently loaded for editing in the logging panel,
   /// if any — that row gets the secondary-colored selected treatment.
   final String? selectedUuid;
@@ -286,6 +296,8 @@ class QsoList extends StatefulWidget {
     this.onSelectEvent,
     this.selectedUuid,
     this.noQsosLabel,
+    this.needsBandOrMode = false,
+    this.bandOrModeWarningLabel,
     this.showRSTFields = true,
     this.showQsoNumbers = true,
     this.activityControls = const [],
@@ -511,20 +523,24 @@ class _QsoListState extends State<QsoList> {
 
     final theme = Theme.of(context);
     if (qsos.isEmpty) {
+      // The warning only fires while the VFO actually needs attention (the
+      // same signal that opens the Radio control on mount) — a band picked
+      // by hand with no frequency, or a frequency with no band, already
+      // satisfies HALO-24, so it isn't something to warn about here either.
+      // Red, unlike the app's other empty-list messages (spots, activities,
+      // search), which stay in the dimmed `outline`: this one means "check
+      // the radio before you start", because a contact logged on the wrong
+      // band is only discovered long after the station is gone.
+      final warn = widget.needsBandOrMode;
       return Container(
         color: theme.colorScheme.surfaceContainerHighest,
         child: Center(
           child: Text(
-            widget.noQsosLabel ?? 'Please make sure your band and mode are correct',
-            // Red, unlike the app's other empty-list messages (spots,
-            // activities, search), which stay in the dimmed `outline`. This
-            // one isn't "nothing here" — it's a warning to check the radio
-            // before the first contact, because a contact logged on the wrong
-            // band is only discovered long after the station is gone
-            // (HALO-24). `colorScheme.error` is what every other warning in
-            // the app uses, so it tracks the theme in both light and dark.
+            warn
+                ? (widget.bandOrModeWarningLabel ?? 'Please make sure your band and mode are correct')
+                : (widget.noQsosLabel ?? 'No QSOs yet — work someone!'),
             style: theme.textTheme.bodyLarge?.copyWith(
-              color: theme.colorScheme.error,
+              color: warn ? theme.colorScheme.error : theme.colorScheme.outline,
             ),
           ),
         ),

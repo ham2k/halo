@@ -22,14 +22,29 @@ void main() {
     await db.close();
   });
 
-  // An empty log is exactly when it's worth checking the radio is set the way
-  // you think it is — a contact logged on the wrong band is only discovered
-  // long after the station is gone (HALO-24). So the empty state carries that
-  // reminder rather than an encouragement to go work someone.
+  // An empty log only warrants a warning when the VFO actually needs
+  // attention — the same signal that opens the Radio control on mount
+  // (HALO-24). A band picked by hand (no frequency) or a frequency with no
+  // band already satisfies that check, so an operator who has answered it
+  // shouldn't be told to double-check something that's already correct.
   group('the empty state', () {
-    testWidgets('reminds the operator to check band and mode', (tester) async {
+    testWidgets('reads as an ordinary empty log by default', (tester) async {
       await tester.pumpWidget(MaterialApp(
         home: Scaffold(body: SizedBox(height: 300, child: QsoList(qsos: const [], onSelect: (_) {}))),
+      ));
+
+      expect(find.text('No QSOs yet — work someone!'), findsOneWidget);
+      expect(find.textContaining('band and mode'), findsNothing);
+    });
+
+    testWidgets('warns to check band and mode when needsBandOrMode is set', (tester) async {
+      await tester.pumpWidget(MaterialApp(
+        home: Scaffold(
+          body: SizedBox(
+            height: 300,
+            child: QsoList(qsos: const [], onSelect: (_) {}, needsBandOrMode: true),
+          ),
+        ),
       ));
 
       expect(find.text('Please make sure your band and mode are correct'), findsOneWidget);
@@ -37,21 +52,30 @@ void main() {
     });
 
     // The app's other empty-list messages (spots, activities, search) stay in
-    // the dimmed `outline` — they mean "nothing here". This one is a warning
-    // to check the radio before the first contact, so it takes the same red
-    // every other warning in the app uses.
-    testWidgets('is styled as a warning, not as dimmed "nothing here" text', (tester) async {
+    // the dimmed `outline` — they mean "nothing here". The warning is a
+    // check-the-radio message, so it takes the same red every other warning
+    // in the app uses; the ordinary text stays dimmed like its siblings.
+    testWidgets('only the warning is styled red, not the ordinary empty text', (tester) async {
       await tester.pumpWidget(MaterialApp(
         home: Scaffold(body: SizedBox(height: 300, child: QsoList(qsos: const [], onSelect: (_) {}))),
       ));
-
       final scheme = Theme.of(tester.element(find.byType(QsoList))).colorScheme;
-      final text = tester.widget<Text>(find.text('Please make sure your band and mode are correct'));
-      expect(text.style?.color, scheme.error);
-      expect(text.style?.color, isNot(scheme.outline));
+      final dimmed = tester.widget<Text>(find.text('No QSOs yet — work someone!'));
+      expect(dimmed.style?.color, scheme.outline);
+
+      await tester.pumpWidget(MaterialApp(
+        home: Scaffold(
+          body: SizedBox(
+            height: 300,
+            child: QsoList(qsos: const [], onSelect: (_) {}, needsBandOrMode: true),
+          ),
+        ),
+      ));
+      final warning = tester.widget<Text>(find.text('Please make sure your band and mode are correct'));
+      expect(warning.style?.color, scheme.error);
     });
 
-    testWidgets('uses the supplied label when the app passes a translated one', (tester) async {
+    testWidgets('uses the supplied labels when the app passes translated ones', (tester) async {
       await tester.pumpWidget(MaterialApp(
         home: Scaffold(
           body: SizedBox(
@@ -59,7 +83,9 @@ void main() {
             child: QsoList(
               qsos: const [],
               onSelect: (_) {},
-              noQsosLabel: 'Verifica que tu banda y modo sean correctos',
+              needsBandOrMode: true,
+              noQsosLabel: 'Aún no hay QSOs — ¡haz un contacto!',
+              bandOrModeWarningLabel: 'Verifica que tu banda y modo sean correctos',
             ),
           ),
         ),

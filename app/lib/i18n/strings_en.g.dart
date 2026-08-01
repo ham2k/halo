@@ -657,8 +657,11 @@ class Translations$qsoList$en {
 
 	// Translations
 
+	/// en: 'No QSOs yet — work someone!'
+	String get empty => 'No QSOs yet — work someone!';
+
 	/// en: 'Please make sure your band and mode are correct'
-	String get empty => 'Please make sure your band and mode are correct';
+	String get bandOrModeWarning => 'Please make sure your band and mode are correct';
 
 	/// en: 'Edit time'
 	String get editEventTime => 'Edit time';
@@ -2846,7 +2849,8 @@ extension on Translations {
 			'qsoEditForm.theirState' => 'State',
 			'qsoEditForm.band' => 'Band',
 			'qsoEditForm.notes' => 'Notes',
-			'qsoList.empty' => 'Please make sure your band and mode are correct',
+			'qsoList.empty' => 'No QSOs yet — work someone!',
+			'qsoList.bandOrModeWarning' => 'Please make sure your band and mode are correct',
 			'qsoList.editEventTime' => 'Edit time',
 			'qsoList.today' => 'Today',
 			'qsoList.yesterday' => 'Yesterday',
@@ -3098,9 +3102,9 @@ extension on Translations {
 			'settings.panels.about' => 'About',
 			'settings.panels.aboutDescription' => 'Version, credits, and legal information',
 			'settings.panels.unavailableTitle' => 'Some settings are unavailable',
-			'settings.panels.unavailableText' => 'The extension runtime failed to start, so extension-contributed settings are missing.',
 			_ => null,
 		} ?? switch (path) {
+			'settings.panels.unavailableText' => 'The extension runtime failed to start, so extension-contributed settings are missing.',
 			'settings.panels.station' => 'Station Configuration',
 			'settings.panels.stationDescription' => 'Radios and other equipment',
 			'commands.enableSyncFirst' => 'Enable sync in Settings first.',

@@ -343,7 +343,8 @@ class _Translations$qsoList$es extends Translations$qsoList$en {
 	final TranslationsEs _root; // ignore: unused_field
 
 	// Translations
-	@override String get empty => 'Verifica que tu banda y modo sean correctos';
+	@override String get empty => 'Aún no hay QSOs — ¡haz un contacto!';
+	@override String get bandOrModeWarning => 'Verifica que tu banda y modo sean correctos';
 	@override String get editEventTime => 'Editar hora';
 	@override String get today => 'Hoy';
 	@override String get yesterday => 'Ayer';
@@ -1612,7 +1613,8 @@ extension on TranslationsEs {
 			'qsoEditForm.theirState' => 'Estado/Provincia',
 			'qsoEditForm.band' => 'Banda',
 			'qsoEditForm.notes' => 'Notas',
-			'qsoList.empty' => 'Verifica que tu banda y modo sean correctos',
+			'qsoList.empty' => 'Aún no hay QSOs — ¡haz un contacto!',
+			'qsoList.bandOrModeWarning' => 'Verifica que tu banda y modo sean correctos',
 			'qsoList.editEventTime' => 'Editar hora',
 			'qsoList.today' => 'Hoy',
 			'qsoList.yesterday' => 'Ayer',
@@ -1864,9 +1866,9 @@ extension on TranslationsEs {
 			'settings.panels.about' => 'Acerca de',
 			'settings.panels.aboutDescription' => 'Versión, créditos e información legal',
 			'settings.panels.unavailableTitle' => 'Algunos ajustes no están disponibles',
-			'settings.panels.unavailableText' => 'El motor de extensiones no pudo iniciarse, así que faltan los ajustes aportados por extensiones.',
 			_ => null,
 		} ?? switch (path) {
+			'settings.panels.unavailableText' => 'El motor de extensiones no pudo iniciarse, así que faltan los ajustes aportados por extensiones.',
 			'settings.panels.station' => 'Configuración de Estación',
 			'settings.panels.stationDescription' => 'Radios y otros equipos',
 			'commands.enableSyncFirst' => 'Primero habilita la sincronización en la Configuración.',

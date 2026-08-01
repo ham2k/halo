@@ -334,7 +334,8 @@
     "notes": "Notes"
   },
   "qsoList": {
-    "empty": "Please make sure your band and mode are correct",
+    "empty": "No QSOs yet — work someone!",
+    "bandOrModeWarning": "Please make sure your band and mode are correct",
     "editEventTime": "Edit time",
     "today": "Today",
     "yesterday": "Yesterday",

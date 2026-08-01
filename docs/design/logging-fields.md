@@ -221,8 +221,14 @@ the control without answering. Note the two interact: while the control is
 open, Enter closes it rather than logging, per the ladder below.
 
 The QSO list's empty state carries the same reminder — "Please make sure your
-band and mode are correct" — since an empty log is exactly when it's worth
-checking.
+band and mode are correct" — but only while the VFO actually needs it, using
+the same condition as the auto-open above. A band picked by hand (no
+frequency) or a frequency with no band already satisfies HALO-24, so once the
+operator has answered, an empty log goes back to the ordinary "No QSOs yet —
+work someone!" text. `LoggingPanel` recomputes this on every VFO change (a
+listener on `RadioService`, diffed like the numbers-row settings) so the
+warning clears the moment the Radio control is answered, not on the next
+unrelated rebuild.
 
 Seeding a default band at onboarding was considered and rejected — a guessed
 band means contacts logged on the *wrong* band, which is worse than being

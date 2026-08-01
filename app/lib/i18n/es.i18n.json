@@ -334,7 +334,8 @@
     "notes": "Notas"
   },
   "qsoList": {
-    "empty": "Verifica que tu banda y modo sean correctos",
+    "empty": "Aún no hay QSOs — ¡haz un contacto!",
+    "bandOrModeWarning": "Verifica que tu banda y modo sean correctos",
     "editEventTime": "Editar hora",
     "today": "Hoy",
     "yesterday": "Ayer",

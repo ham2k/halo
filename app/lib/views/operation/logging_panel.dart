@@ -127,10 +127,27 @@ class _LoggingPanelState extends State<LoggingPanel> {
       widget.services.settings.showExtraInNumbersRow;
   late bool _vibrateNumbersRow = widget.services.settings.vibrateNumbersRow;
 
+  // Whether the QSO list's empty state should warn to check the radio
+  // (HALO-24) — mirrors LoggingControls' own `_vfoIsUnset`: no band *and* no
+  // frequency, or no mode. Cached and diffed in `_onRadioChanged` for the
+  // same reason as the numbers-row settings above — this panel's QsoList is
+  // expensive to rebuild, and most VFO changes (e.g. tuning within the same
+  // band) don't flip this boolean.
+  late bool _needsBandOrMode = _computeNeedsBandOrMode();
+
+  bool _computeNeedsBandOrMode() {
+    final vfo = widget.services.radio.vfoA;
+    return (vfo.freq == null && vfo.band == null) || vfo.mode == null;
+  }
+
   @override
   void initState() {
     super.initState();
     widget.services.settings.addListener(_onSettingsChanged);
+    // The QSO list's empty state warns when the VFO needs attention
+    // (HALO-24) — rebuild so it clears the moment the operator answers via
+    // the Radio control, without waiting for an unrelated rebuild.
+    widget.services.radio.addListener(_onRadioChanged);
     // Route the dev bridge's actions to this panel's LoggingControls — only
     // when the bridge is installed (dev/preview web), so nothing runs in
     // production or on native.
@@ -152,6 +169,7 @@ class _LoggingPanelState extends State<LoggingPanel> {
   @override
   void dispose() {
     widget.services.settings.removeListener(_onSettingsChanged);
+    widget.services.radio.removeListener(_onRadioChanged);
     // Only clear if still ours — a newer logging panel may have taken over.
     if (DevBridge.instance.actionHandler == _devAction) {
       DevBridge.instance.setFieldHandler = null;
@@ -355,6 +373,16 @@ class _LoggingPanelState extends State<LoggingPanel> {
     }
   }
 
+  /// Rebuilds the QSO list's empty-state warning the moment the operator
+  /// answers it via the Radio control, rather than waiting for an unrelated
+  /// rebuild to catch up.
+  void _onRadioChanged() {
+    final needs = _computeNeedsBandOrMode();
+    if (needs != _needsBandOrMode) {
+      setState(() => _needsBandOrMode = needs);
+    }
+  }
+
   void _handleSelectQso(Qso qso) {
     setState(() {
       _selectedQso = _selectedQso?.uuid == qso.uuid ? null : qso;
@@ -467,6 +495,8 @@ class _LoggingPanelState extends State<LoggingPanel> {
     final list = QsoList(
       qsos: widget.qsos,
       noQsosLabel: context.t.qsoList.empty,
+      needsBandOrMode: _needsBandOrMode,
+      bandOrModeWarningLabel: context.t.qsoList.bandOrModeWarning,
       selectedUuid: _selectedQso?.uuid,
       onSelect: _handleSelectQso,
       onSelectEvent: _handleSelectEvent,
