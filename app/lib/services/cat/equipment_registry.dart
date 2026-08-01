@@ -67,6 +67,18 @@ abstract class EquipmentType {
   /// Default is the config unchanged.
   Map<String, dynamic> driverConfig(Map<String, dynamic> config) => config;
 
+  /// Whether THIS pairing — this driver over this transport — has been
+  /// exercised against real hardware.
+  ///
+  /// Defaults to the driver's own answer, which is right for a type whose
+  /// driver has only ever had one transport. It is overridable because the
+  /// driver alone is the wrong granularity for the question the operator is
+  /// actually asking: the Icom CI-V driver is proven over the network after a
+  /// ten-minute IC-705 session, and that says nothing about the same driver
+  /// over a USB serial port, which has never met a radio. Flipping the driver
+  /// flag alone would have silently dropped the caveat from that second type.
+  bool get hardwareVerified => driver.hardwareVerified;
+
   /// Config keys whose values are credentials: kept in the platform
   /// keychain instead of the SharedPreferences blob the rest of the config
   /// lives in ([CatService] moves them on save).
@@ -297,6 +309,14 @@ class IcomCivSerialType extends EquipmentType {
   const IcomCivSerialType();
 
   static const _driver = IcomCivDriver();
+
+  /// The DRIVER is verified (a ten-minute IC-705 session over WiFi), but this
+  /// type pairs it with the serial transport, and that pairing has never been
+  /// pointed at a radio. The serial transport itself is proven by the FT-891,
+  /// so this is likely fine — "likely fine" being exactly what the caveat is
+  /// for.
+  @override
+  bool get hardwareVerified => false;
 
   @override
   String get key => 'icom-civ-serial';

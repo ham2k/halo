@@ -215,15 +215,84 @@ List<int> buildCivData(int local, int remote, int innerSeq, List<int> civ) => [
 bool isCivData(List<int> b) => b.length >= 22 && b[16] == 0xc1 && ((b[0] - 0x15) & 0xFF) == b[17];
 List<int> unwrapCiv(List<int> b) => b.sublist(21);
 
-/// The radio refusing to open the streams we asked for.
+/// Stamps a packet with the outer sequence number and returns the key a
+/// retransmit request will quote back, produced together on purpose.
 ///
-/// The 0x50 answer echoes the two stream ports at offsets 66 and 70 — an
-/// accepted answer reads 0xc352 (50002) and 0xc353 (50003) there. Offsets
-/// 56..57, which this used to read, are constant zero in an accepted answer,
-/// so the old guard could never fire and a refusal passed as success.
-bool isStreamRefused(List<int> b) =>
-    b.length >= 72 &&
-    ((b[66] == 0xff && b[67] == 0xff) || (b[70] == 0xff && b[71] == 0xff));
+/// They used to be computed in two places: the wire got `counter & 0xFFFF`
+/// while the retransmit map was keyed on the raw `counter`. Past 65535 the
+/// wire wrapped and the key did not, so every retransmit lookup missed —
+/// permanently, and silently, about 1h49m into a session at ten idles a
+/// second. Returning both from one function is what stops that recurring.
+({int key, List<int> packet}) icomStampSequence(List<int> bytes, int counter) {
+  if (bytes.length < 8) throw ArgumentError('a packet with a sequence field is at least 8 bytes');
+  final seq = counter & 0xFFFF;
+  final stamped = [...bytes];
+  stamped[6] = seq & 0xFF;
+  stamped[7] = (seq >> 8) & 0xFF;
+  return (key: seq, packet: stamped);
+}
+
+/// The outer sequence number as the radio quotes it back at us.
+///
+/// Guarded, like [readStreamAnswer] below. This parses attacker-adjacent
+/// network input: every caller today checks the length first, but a truncated
+/// or spoofed datagram reaching a future call site should be ignored rather
+/// than crash the receive handler. -1 is not a valid 16-bit sequence number,
+/// so it can never collide with a real one in the retransmit map.
+int icomReadSequence(List<int> b) => b.length < 8 ? -1 : b[6] | (b[7] << 8);
+
+/// How the radio answered our stream request.
+///
+/// Read as a POSITIVE test. This used to hunt for 0xffff — first at offsets
+/// 56..57 (constant zero in an accepted answer, so it could never fire), then
+/// at the port echo at 66/70. Both were wrong in the same way: they looked for
+/// a refusal encoding that **no capture has ever shown**, and treated
+/// "0xffff not found" as success. An auth failure carries zeros at 66..71 and
+/// so sailed straight through — the same false-success the offset-56 fix was
+/// written to eliminate, re-entered by a different door.
+///
+/// The discriminator is bytes 48..50 plus byte 64, from kappanhang
+/// (github.com/nonoo/kappanhang, MIT, © 2020 Norbert Varga HA2NON and Akos
+/// Marton ES1AKOS — this project's cited protocol provenance; NOT wfview,
+/// which is GPLv3 and must not be read). Verified against our own capture:
+/// all three accepted answers carry 48..50 = 00 00 00 and byte 64 = 0x00.
+enum IcomStreamAnswer {
+  /// Streams are open. 48..50 all zero and byte 64 zero.
+  accepted,
+
+  /// The radio rejected the credentials or the token. 48..50 = ff ff ff.
+  authFailed,
+
+  /// The radio is dropping us — it has already released its side, so a
+  /// reconnect can be immediate rather than backing off.
+  radioDisconnected,
+
+  /// Well-formed but none of the above. Treated as a failure, deliberately:
+  /// an unrecognised answer must never be read as success.
+  unknown,
+}
+
+IcomStreamAnswer readStreamAnswer(List<int> b) {
+  if (b.length < 72) return IcomStreamAnswer.unknown;
+  if (b[48] == 0xff && b[49] == 0xff && b[50] == 0xff) return IcomStreamAnswer.authFailed;
+  if (b[48] == 0x00 && b[49] == 0x00 && b[50] == 0x00) {
+    if (b[64] == 0x01) return IcomStreamAnswer.radioDisconnected;
+    if (b[64] == 0x00) {
+      // The port echo is corroboration, not the primary test. Replacing the
+      // old 0xffff hunt with the 48..50 discriminator was right, but it threw
+      // the echo away entirely — and every accepted answer we have captured
+      // carries the radio's serial port there. A zero or 0xffff echo on a
+      // header that otherwise says "accepted" is not something we understand,
+      // and the one thing this function must never do is round an answer it
+      // cannot read up to success: that is what produced a connected row that
+      // never reads, twice.
+      final serialEcho = (b[66] << 8) | b[67];
+      if (serialEcho == 0x0000 || serialEcho == 0xffff) return IcomStreamAnswer.unknown;
+      return IcomStreamAnswer.accepted;
+    }
+  }
+  return IcomStreamAnswer.unknown;
+}
 
 /// The radio's answer to our login.
 ///

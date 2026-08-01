@@ -256,6 +256,69 @@ void main() {
 
   // ------------------------------------------------------------ storage
 
+  // ------------------------------------------------------- app shutdown
+
+  group('saying goodbye before the app exits', () {
+    // A session the radio is never told to end is one it keeps holding. The
+    // IC-705 has a single remote-control slot, so quitting without a
+    // disconnect is what makes the NEXT connect fail.
+    //
+    // These comments used to cite an audio flood instead. It was measured
+    // false on hardware — the radio sends us no audio at all, because we never
+    // open a session on its audio port. The tests below are unchanged; only
+    // the reason they exist was wrong.
+    test('shutdown closes every live connection', () async {
+      final a = await addRadio(host: 'a.local');
+      final b = await cat.addNode(typeKey: 'fake-type', name: 'Right Radio', config: {'host': 'b.local'});
+      final ca = await connectAndLand(a);
+      final cb = await connectAndLand(b);
+      expect(cat.stateFor(a.uuid).status, EquipmentStatus.connected);
+      expect(cat.stateFor(b.uuid).status, EquipmentStatus.connected);
+
+      await cat.shutdown();
+
+      expect(ca.closeCalled, isTrue, reason: 'the first radio was never told to stop');
+      expect(cb.closeCalled, isTrue, reason: 'the second radio was never told to stop');
+      expect(cat.stateFor(a.uuid).status, EquipmentStatus.disconnected);
+      expect(cat.stateFor(b.uuid).status, EquipmentStatus.disconnected);
+    });
+
+    test('shutdown AWAITS the goodbye, rather than firing and returning', () async {
+      // The distinction that matters at exit: dispose() leaves the teardown
+      // unawaited, so the process can die before the disconnect datagrams are
+      // even sent. If this future completes while a close is still pending,
+      // the fix is decorative.
+      final node = await addRadio();
+      final connection = await connectAndLand(node);
+
+      await cat.shutdown();
+
+      expect(connection.closeCalled, isTrue);
+      expect(log, contains('close:c1'), reason: 'the close must have run, not merely been scheduled');
+    });
+
+    test('one radio that refuses to let go does not strand the others', () async {
+      // Every connected radio is streaming at us, so a single stuck teardown
+      // must not leave the rest of them doing it.
+      final a = await addRadio(host: 'a.local');
+      final b = await cat.addNode(typeKey: 'fake-type', name: 'Right Radio', config: {'host': 'b.local'});
+      await connectAndLand(a);
+      final cb = await connectAndLand(b);
+      driver.sessions.first.teardownThrows = true;
+
+      await cat.shutdown();
+
+      expect(cb.closeCalled, isTrue, reason: 'the second radio still had to be released');
+      expect(cat.stateFor(b.uuid).status, EquipmentStatus.disconnected);
+    });
+
+    test('shutdown with nothing connected is harmless', () async {
+      await addRadio();
+      await cat.shutdown();
+      expect(log, isEmpty);
+    });
+  });
+
   group('storage', () {
     test('equipment round-trips through prefs, and live status is not stored', () async {
       final node = await addRadio();

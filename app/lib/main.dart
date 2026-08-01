@@ -16,6 +16,8 @@ import 'package:intl/intl.dart';
 import 'package:drift_flutter/drift_flutter.dart';
 import 'package:flutter/foundation.dart'
     show defaultTargetPlatform, kDebugMode, kIsWeb, kReleaseMode, visibleForTesting, TargetPlatform;
+import 'dart:ui' show AppExitResponse;
+
 import 'package:flutter/material.dart';
 import 'package:flutter/semantics.dart' show SemanticsBinding;
 import 'package:flutter/services.dart';
@@ -498,6 +500,13 @@ Future<HaLoServices> bootstrap({
     unawaited(services.cat.reconnectDesignatedRadio());
   }
 
+  // OUTSIDE the experiment gate, deliberately. This used to sit inside it, so
+  // turning CAT on in Settings mid-session and then connecting a radio left no
+  // listener at all — the fix bypassed for exactly the people who had just
+  // enabled the feature. shutdown() is a no-op when nothing is connected, so
+  // installing it always costs nothing.
+  if (!kIsWeb) _catShutdownOnExit(services);
+
   // macOS app-menu actions (see WindowChromeService and macos/Runner): "About"
   // shows the release overlay, "Preferences…" (⌘,) opens the Settings view.
   WindowChromeService.onShowReleaseOverlay = services.devSplashTrigger.trigger;
@@ -582,6 +591,54 @@ class OperationCommandContext {
 
   /// This operation's logging panel dispatcher, while one is mounted.
   CommandActionsDispatcher? dispatch;
+}
+
+/// Kept alive for the process lifetime — an [AppLifecycleListener] stops
+/// observing when it is garbage collected.
+AppLifecycleListener? _catLifecycle;
+
+/// Say goodbye to connected equipment before the app stops existing.
+///
+/// A session the radio is never told to end is one it keeps holding. The
+/// IC-705 has a single remote-control slot and holds the login until it times
+/// out on its own, so quitting without a disconnect is what makes the NEXT
+/// connect fail — the "radio did not answer the login" that this transport
+/// spent weeks being blamed for.
+///
+/// This comment used to claim something else: that the radio streams ~95
+/// packets/second at us and an ungraceful exit leaves that flood pointed at a
+/// dead port. That was measured FALSE on hardware (see the CAT commit "the
+/// IC-705 sends us no audio") — the radio only streams audio to a client that
+/// has completed a session handshake on port 50003, which we never do. The
+/// reason above is the real one.
+///
+/// `onExitRequested` is the desktop hook that can actually *await* cleanup
+/// before the process goes. `detached` is BEST EFFORT ONLY: onStateChange is
+/// synchronous, so the work cannot be awaited, and on a dying isolate a
+/// disconnect needing a 600ms ack will usually not complete. Deliberately NOT
+/// `paused`: on Android that fires every time the operator switches away to
+/// look something up. So an Android kill from the background still escapes
+/// this — see docs/design/cat.md.
+void _catShutdownOnExit(HaLoServices services) {
+  _catLifecycle ??= AppLifecycleListener(
+    onExitRequested: () async {
+      try {
+        // Bounded. shutdown() awaits each node in turn, and while the Icom
+        // path is bounded (600ms ack + 20ms), a serial port wedged mid-write
+        // has no such guarantee. Without a ceiling one stuck radio hangs
+        // Cmd-Q with no window and no feedback, and the force-quit that
+        // follows skips the very disconnect this exists to send.
+        await services.cat.shutdown().timeout(const Duration(seconds: 5));
+      } catch (e, st) {
+        // Never block the user's quit on a radio that will not let go.
+        ErrorReportingService.report(e, st, context: 'cat:shutdown-on-exit');
+      }
+      return AppExitResponse.exit;
+    },
+    onStateChange: (state) {
+      if (state == AppLifecycleState.detached) unawaited(services.cat.shutdown());
+    },
+  );
 }
 
 class HaLoServices {

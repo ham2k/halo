@@ -531,6 +531,39 @@ class CatService extends ChangeNotifier {
     _setState(uuid, const EquipmentState(status: EquipmentStatus.disconnected));
   }
 
+  /// Closes every live session and **waits for it**, for use when the app is
+  /// about to stop existing.
+  ///
+  /// This is not tidiness. A session the radio is never told to end is one it
+  /// keeps holding: the IC-705 has a single remote-control slot and holds the
+  /// login until it times out on its own, so quitting without a disconnect is
+  /// what makes the NEXT connect fail.
+  ///
+  /// This doc used to justify itself with an audio flood — ~95 packets/second
+  /// left pointed at a dead port, ICMP-rejected, swamping the radio's WiFi.
+  /// That was measured FALSE on hardware (see the CAT commit "the IC-705 sends
+  /// us no audio"): the radio only streams audio to a client that completes a
+  /// session handshake on port 50003, which we never do. Corrected here rather
+  /// than left standing, because a comment asserting a disproved mechanism is
+  /// how the next person picks the wrong thing to fix.
+  ///
+  /// [dispose] cannot serve this purpose: it is synchronous and leaves the
+  /// teardown unawaited, so the process can exit before the datagrams are
+  /// even sent.
+  Future<void> shutdown() async {
+    // A copy: disconnect mutates state the iteration would otherwise be
+    // walking, and a node may remove itself on the way down.
+    for (final uuid in _runtimes.keys.toList()) {
+      try {
+        await disconnect(uuid);
+      } catch (e, st) {
+        // Never let one stuck radio keep the others connected — every one of
+        // them is streaming at us.
+        ErrorReportingService.report(e, st, context: 'cat:shutdown:$uuid');
+      }
+    }
+  }
+
   /// Restarts the silence watch. Any reading at all counts, including one
   /// that repeats the last: a radio answering "still 14074" is a radio that
   /// is answering.

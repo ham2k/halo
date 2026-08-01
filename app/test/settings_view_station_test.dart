@@ -132,13 +132,16 @@ void main() {
     expect(find.text('Add by address'), findsOneWidget);
     expect(find.text('FlexRadio (SmartSDR) — Network'), findsOneWidget);
     expect(find.text('Yaesu FT-891 — USB serial'), findsOneWidget);
-    // The caveat marks the DISTINCTION, and with four types there is now one
-    // to make: the Flex (a FLEX-6600) and the FT-891 (over its own USB
-    // bridge) have both met their hardware; the two Icom drivers have not.
-    // The CI-V protocol itself was proven against a real IC-705 at the bench
-    // — but through a standalone spike tool, not through this driver, which
-    // is the thing the caption is about.
-    expect(find.text('Not tested against this hardware'), findsNWidgets(2));
+    // The caveat marks the DISTINCTION, and it is now down to one. The Flex
+    // (a FLEX-6600), the FT-891 over its own USB bridge, and — as of
+    // 2026-08-01 — the IC-705 over WiFi have all met their hardware, the last
+    // held for ten minutes through the app itself rather than a bench tool.
+    //
+    // What still carries it is Icom CI-V over USB SERIAL: same driver, but
+    // that pairing has never been pointed at a radio. The flag lives on the
+    // TYPE for exactly this reason — marking the driver verified would have
+    // dropped the caveat from a combination nobody has tested.
+    expect(find.text('Not tested against this hardware'), findsOneWidget);
 
     await tester.tap(find.text('FlexRadio (SmartSDR) — Network'));
     await tester.pump();

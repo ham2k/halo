@@ -119,7 +119,7 @@ class StationPanel extends StatelessWidget {
                     title: Text(type.name),
                     // Which drivers have actually been run against the real
                     // hardware, rather than presenting them all as equal.
-                    subtitle: type.driver.hardwareVerified ? null : Text(st.unverified),
+                    subtitle: type.hardwareVerified ? null : Text(st.unverified),
                     onTap: () => Navigator.of(context).pop(_AddChoice.type(type)),
                     mouseCursor: SystemMouseCursors.click,
                   ),

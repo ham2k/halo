@@ -66,31 +66,92 @@ void main() {
       expect(icomAudioSampleRate, 48000);
     });
 
-    test('a refused stream request is read at the offsets that carry the port echo', () {
-      // The 0x50 answer echoes the two stream ports at 66 and 70. From the
-      // reference capture, an ACCEPTED answer reads 0xc352 (50002, serial) and
-      // 0xc353 (50003, audio) there, and offsets 56..57 are constant zero.
-      // We used to test 56..57 for 0xffff, so the guard could never fire and a
-      // refusal passed as success — a connected row that never reads.
-      List<int> answer({int s0 = 0xc3, int s1 = 0x52, int a0 = 0xc3, int a1 = 0x53}) {
+    test('the retransmit key survives the 16-bit sequence wrap', () {
+      // The wire sequence number is 16 bits and a retransmit request quotes it
+      // back as 16 bits, so the map key must be the SAME value. These were
+      // computed in two places and drifted: the wire got `counter & 0xFFFF`
+      // while the map was keyed on the raw counter. Past 65535 every lookup
+      // missed — permanently and silently, about 1h49m into a session at ten
+      // idles a second, which is inside one activation.
+      //
+      // Round-tripping through the real stamper and the real reader is the
+      // point: a test that recomputed the mask would pass against the bug.
+      for (final counter in [0, 1, 255, 256, 65534, 65535, 65536, 65537, 131071, 131072]) {
+        final stamped = icomStampSequence(List<int>.filled(16, 0), counter);
+        expect(icomReadSequence(stamped.packet), stamped.key,
+            reason: 'counter $counter: the key must equal what the radio quotes back');
+        expect(stamped.key, lessThanOrEqualTo(0xFFFF));
+      }
+
+      // The specific failure: 65536 wraps to 0 on the wire, and the key must
+      // follow it there rather than staying at 65536.
+      final wrapped = icomStampSequence(List<int>.filled(16, 0), 65536);
+      expect(wrapped.key, 0);
+      expect(wrapped.packet[6], 0);
+      expect(wrapped.packet[7], 0);
+
+      // Short input is rejected rather than throwing a RangeError out of a
+      // UDP receive handler: these are public helpers parsing network input.
+      expect(icomReadSequence(List<int>.filled(4, 0)), -1,
+          reason: 'a truncated datagram must be ignorable, not fatal');
+      expect(() => icomStampSequence(List<int>.filled(4, 0), 1), throwsArgumentError);
+
+      // And it still stamps the bytes the radio actually reads.
+      final ordinary = icomStampSequence(List<int>.filled(16, 0), 0x1234);
+      expect(ordinary.packet[6], 0x34, reason: 'low byte first');
+      expect(ordinary.packet[7], 0x12);
+      expect(ordinary.key, 0x1234);
+    });
+
+    test('the stream answer is read as a positive test, not a hunt for 0xffff', () {
+      // Two earlier versions of this guard looked for 0xffff — first at
+      // offsets 56..57, then at the port echo at 66/70 — and treated "not
+      // found" as success. Both were wrong the same way: no radio has ever
+      // been observed sending 0xffff, while an AUTH FAILURE carries zeros at
+      // 66..71 and sailed through as accepted. We would then send the
+      // serial-open into a stream the radio never opened.
+      //
+      // The discriminator is bytes 48..50 plus byte 64 (kappanhang, MIT).
+      List<int> answer({int m = 0x00, int b64 = 0x00}) {
         final b = List<int>.filled(80, 0);
         b[0] = 0x50;
         b[20] = 0x02;
-        b[66] = s0; b[67] = s1;
-        b[70] = a0; b[71] = a1;
+        b[48] = b[49] = b[50] = m;
+        b[64] = b64;
+        b[66] = 0xc3; b[67] = 0x52; // the radio's serial port echo, 50002
+        b[70] = 0xc3; b[71] = 0x53; // and audio, 50003
         return b;
       }
 
-      expect(isStreamRefused(answer()), isFalse, reason: 'the real accepted layout');
-      expect(isStreamRefused(answer(s0: 0xff, s1: 0xff)), isTrue, reason: 'serial port refused');
-      expect(isStreamRefused(answer(a0: 0xff, a1: 0xff)), isTrue, reason: 'audio port refused');
+      // Exactly what all three accepted answers in the reference capture look like.
+      expect(readStreamAnswer(answer()), IcomStreamAnswer.accepted);
+      expect(readStreamAnswer(answer(m: 0xff)), IcomStreamAnswer.authFailed);
+      expect(readStreamAnswer(answer(b64: 0x01)), IcomStreamAnswer.radioDisconnected);
 
-      // The bug: 0xffff at the OLD offsets must not be what we key on, and an
-      // accepted answer must stay accepted no matter what sits at 56..57.
-      final withOldOffsetSet = answer()..[56] = 0xff..[57] = 0xff;
-      expect(isStreamRefused(withOldOffsetSet), isFalse,
-          reason: '56..57 is not the port echo; keying on it is the bug being fixed');
+      // THE BUG: an auth failure has zeros at the port echo, so any guard
+      // keyed on 0xffff there reports success. This must not.
+      final authFail = answer(m: 0xff)..[66] = 0..[67] = 0..[70] = 0..[71] = 0;
+      expect(readStreamAnswer(authFail), isNot(IcomStreamAnswer.accepted),
+          reason: 'zeros at the port echo must not read as acceptance');
+
+      // An answer we do not recognise is a failure, never optimism.
+      expect(readStreamAnswer(answer(m: 0x7f)), IcomStreamAnswer.unknown);
+      expect(readStreamAnswer(answer(b64: 0x99)), IcomStreamAnswer.unknown);
+      expect(readStreamAnswer(List<int>.filled(40, 0)), IcomStreamAnswer.unknown,
+          reason: 'a short packet must not crash or be accepted');
+
+      // The port echo is corroboration: a header that says "accepted" while
+      // the serial echo is zero or 0xffff is not something we understand, and
+      // must not be rounded up to success. Replacing the old 0xffff hunt with
+      // the 48..50 discriminator briefly dropped this check entirely.
+      final noEcho = answer()..[66] = 0..[67] = 0;
+      expect(readStreamAnswer(noEcho), IcomStreamAnswer.unknown,
+          reason: 'accepted-looking header with no serial port echoed back');
+      final refusedEcho = answer()..[66] = 0xff..[67] = 0xff;
+      expect(readStreamAnswer(refusedEcho), IcomStreamAnswer.unknown,
+          reason: '0xffff in the serial echo is not an acceptance');
     });
+
 
     test('CI-V datagram and payload lengths use their full width', () {
       // The datagram length is LE32 and the CI-V length LE16; both were written

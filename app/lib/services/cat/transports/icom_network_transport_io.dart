@@ -6,7 +6,13 @@
 // read, because the stream request must name a real port.
 //
 // Verified against a real IC-705: a complete CI-V exchange in ~290 ms, and a
-// held connection answering 30 of 30 polls over a minute. See
+// held connection answering 149 of 150 polls over five minutes.
+//
+// That figure used to read "30 of 30 polls over a minute", and the minute was
+// the problem: the radio stops answering CI-V at about two minutes unless we
+// re-authenticate, so the evidence stopped exactly where the bug started. See
+// [_reauthInterval]. Any future claim about this transport staying up should
+// come with the duration it was measured over. See
 // icom_network_protocol.dart for the five byte-level corrections this needed
 // over app-polo's attempt, and docs/design/cat.md for the story.
 //
@@ -42,9 +48,39 @@ const _handshakeTimeout = Duration(seconds: 3);
 const _logoutAckTimeout = Duration(milliseconds: 600);
 
 /// kappanhang's cadences. app-polo ran neither, which is why its sessions
-/// died; ours stay up indefinitely.
+/// died.
+///
+/// "Ours stay up indefinitely" is what this comment used to say. It was false
+/// for the life of the file: keepalives alone hold the SOCKET open while the
+/// radio quietly stops answering CI-V after about two minutes. See
+/// [_reauthInterval] for the measurement. The claim survived because every
+/// test ever run against this transport was shorter than the failure.
 const _idleInterval = Duration(milliseconds: 100);
 const _pingInterval = Duration(seconds: 3);
+
+/// Re-authenticate this often, or the radio stops answering CI-V while the
+/// UDP session stays perfectly healthy.
+///
+/// MEASURED on a real IC-705. Three 300s holds, 150 polls at 2s, one variable,
+/// counting CI-V replies per 30s of the run:
+///
+///   no re-auth   45/150   22 24 22 23  0  0  0  0  0  0   dead from ~117s
+///   every 60s   126/150   32 32 30 16  6 14 30 32 30 32   dips, then recovers
+///   every 30s   149/150   30 30 30 30 30 30 30 30 30 30   flat
+///
+/// 30s, because 60s only *recovers* a session that has already started
+/// degrading — the dip in the middle row is ~45 seconds of a frozen frequency
+/// in front of an operator. The single miss at 30s is 0.7%, ordinary WiFi loss.
+///
+/// Without any re-auth the failure is invisible from the outside: keepalives
+/// keep flowing, the socket is fine, `onLost` never fires because inbound
+/// traffic keeps resetting it, and the operator sees a connected radio with a
+/// frozen frequency. That is exactly the "green but no frequency displayed"
+/// report, and what the 30s stale flag was built to paper over.
+///
+/// This is why the transport used to claim sessions "stay up indefinitely" —
+/// every test ever run against it was shorter than the failure.
+const _reauthInterval = Duration(seconds: 30);
 
 class IcomNetworkTransport implements EquipmentTransport {
   const IcomNetworkTransport();
@@ -201,6 +237,7 @@ class _IcomSession {
   final _listeners = <void Function(List<int>)>[];
   Timer? _idleTimer;
   Timer? _pingTimer;
+  Timer? _reauthTimer;
   var _closed = false;
 
   /// Pings sent since the radio last said anything at all. UDP has no FIN,
@@ -293,13 +330,13 @@ class _IcomSession {
 
     // The radio pings us; not answering gets the session dropped.
     if (bytes.length == 21 && bytes[4] == 0x07 && bytes[16] == 0x00) {
-      final seq = bytes[6] | (bytes[7] << 8);
+      final seq = icomReadSequence(bytes);
       _send(buildPingReply(localSid, remoteSid, seq, bytes.sublist(17, 21)));
       return;
     }
     // And asks for packets it missed.
     if (bytes.length >= 16 && icomPrefixIs(bytes, [0x10, 0, 0, 0, 0x01, 0])) {
-      final packet = _sent[bytes[6] | (bytes[7] << 8)];
+      final packet = _sent[icomReadSequence(bytes)];
       if (packet != null) _send(packet);
       return;
     }
@@ -318,13 +355,13 @@ class _IcomSession {
   }
 
   void sendTracked(List<int> bytes) {
-    final seq = _seq++;
-    final stamped = [...bytes];
-    stamped[6] = seq & 0xFF;
-    stamped[7] = (seq >> 8) & 0xFF;
-    _sent[seq] = stamped;
+    // The key and the wire value come from one function, deliberately: they
+    // used to be computed separately and drifted apart past 65535, which
+    // silently killed every retransmit answer about 1h49m into a session.
+    final (:key, :packet) = icomStampSequence(bytes, _seq++);
+    _sent[key] = packet;
     if (_sent.length > 32) _sent.remove(_sent.keys.first);
-    _send(stamped);
+    _send(packet);
   }
 
   void Function() onMessage(void Function(List<int>) callback) {
@@ -400,6 +437,17 @@ class _IcomSession {
 
     sendTracked(buildAuth(
         local: localSid, remote: remoteSid, innerSeq: _innerSeq++, magic: 0x02, authId: authId));
+
+    // Started HERE, not in _startKeepalives, because only a session that has
+    // logged in has anything to re-authenticate. _startKeepalives runs for the
+    // serial session too, where this timer could only ever no-op against a
+    // null authId — a periodic timer whose correctness depended on a null
+    // check in another method. See [_reauthInterval] for why it exists.
+    _reauthTimer = Timer.periodic(_reauthInterval, (_) {
+      if (_closed) return;
+      sendTracked(buildAuth(
+          local: localSid, remote: remoteSid, innerSeq: _innerSeq++, magic: 0x05, authId: authId));
+    });
     return authId;
   }
 
@@ -441,25 +489,29 @@ class _IcomSession {
       txBufferMs: icomTxBufferMs,
     ));
 
-    // The answer is an 0x50, not the 0x90 the radio also sends. An accepted
-    // one echoes the radio's ports at offset 56; a rejection carries 0xffff.
+    // The answer is an 0x50, not the 0x90 the radio also sends unprompted.
     final answer = await _expect('stream answer',
         (b) => b.length == 80 && icomPrefixIs(b, [0x50, 0, 0, 0, 0, 0]) && b[20] == 0x02);
-    // Offsets 66 and 70, NOT 56. The 0x50 answer echoes the two stream ports
-    // there — in an accepted answer they read 0xc352 (50002, serial) and
-    // 0xc353 (50003, audio), while offsets 56..57 are constant zero. So the
-    // guard we had could never fire, and a refused stream request sailed
-    // through as success: we would send the serial-open into a stream the
-    // radio never opened, and the operator got a connected row that never
-    // produces a reading.
-    //
-    // The 0xffff refusal encoding itself is inherited from the bench work
-    // (see icom_network_protocol.dart on the audio fields) and has NOT been
-    // observed against a radio here — no refusal was ever captured. What IS
-    // confirmed from the capture is where the fields live, which is the part
-    // that was wrong.
-    if (isStreamRefused(answer)) {
-      throw StateError('the radio refused to open its serial stream');
+
+    // A POSITIVE test. Two previous versions of this guard hunted for 0xffff
+    // — first at offsets 56..57, then at the port echo at 66/70 — and treated
+    // "not found" as success. Both were wrong the same way: the 0xffff
+    // encoding has never been observed from a radio, while an AUTH FAILURE
+    // carries zeros at 66..71 and so passed straight through. We would then
+    // send the serial-open into a stream the radio never opened and give the
+    // operator a connected row that never reads.
+    switch (readStreamAnswer(answer)) {
+      case IcomStreamAnswer.accepted:
+        break;
+      case IcomStreamAnswer.authFailed:
+        // Distinct from IcomLoginRejected: the credentials got us this far, so
+        // this is the radio refusing the streams, not the login.
+        throw StateError('the radio rejected the stream request (authentication)');
+      case IcomStreamAnswer.radioDisconnected:
+        throw StateError('the radio dropped the session while opening its streams');
+      case IcomStreamAnswer.unknown:
+        // Deliberately fatal. An answer we cannot read must not be optimism.
+        throw StateError('the radio sent a stream answer we do not understand');
     }
   }
 
@@ -476,6 +528,14 @@ class _IcomSession {
   Future<void> logout() async {
     final authId = _authId;
     if (authId == null || _closed) return;
+    // FIRST. _shutdown runs logout() before close(), and only close() sets
+    // _closed — so without this the 30s re-auth timer is still armed for the
+    // whole ~600ms we spend awaiting the ack, and a tick landing in that
+    // window sends a magic-0x05 auth AFTER our magic-0x01 logout. The radio
+    // keeps the login and the next connect is refused by silence: the exact
+    // failure this branch exists to fix, reintroduced at roughly 1-in-50
+    // disconnects, which is the hardest rate there is to diagnose.
+    _reauthTimer?.cancel();
     // Listen before sending: the ack came back in 71ms on the capture, but
     // nothing says it cannot beat our own next line.
     final ack = _expect('logout acknowledgement', isLogoutAck, timeout: _logoutAckTimeout);
@@ -495,6 +555,7 @@ class _IcomSession {
     _closed = true;
     _idleTimer?.cancel();
     _pingTimer?.cancel();
+    _reauthTimer?.cancel();
     if (serialStream) {
       // sendTracked, not _send: it stamps the outer sequence number, which a
       // working client fills in here and we used to leave at zero.

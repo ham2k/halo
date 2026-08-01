@@ -35,8 +35,20 @@ class IcomCivDriver implements EquipmentDriver {
   @override
   String get name => 'Icom (CI-V)';
 
+  /// Exercised against a real IC-705 on 2026-08-01: connected through the app,
+  /// held for ten minutes, frequency tracking the VFO throughout. Ten minutes
+  /// deliberately — this driver's sessions used to go silent at about two (see
+  /// `_reauthInterval` in icom_network_transport_io.dart), so any shorter run
+  /// would have looked perfect and proved nothing.
+  ///
+  /// PRECISELY WHAT THAT COVERS: this driver over the **network** transport.
+  /// The same driver also backs Icom CI-V over USB serial, and that
+  /// combination has never met a radio. The driver itself is what this flag
+  /// documents, and the serial transport is separately proven by the FT-891 —
+  /// but if someone reports an IC-7300 on USB behaving oddly, that pairing is
+  /// untested and this comment is the reason not to be surprised.
   @override
-  bool get hardwareVerified => false;
+  bool get hardwareVerified => true;
 
   @override
   EquipmentSession createSession(EquipmentSink sink, Map<String, dynamic> config) => IcomCivSession(
