@@ -5,4 +5,9 @@
          for the dark counterpart; the launch screen follows system
          light/dark the same as the Flutter splash it hands off to. -->
     <color name="launch_background">#DCE4E9</color>
+
+    <!-- Adaptive icon background; matches the flat teal every edition's
+         launcher artwork is drawn on (see mipmap-anydpi-v26/ic_launcher.xml
+         and each flavor's mipmap-*/ic_launcher_foreground.png). -->
+    <color name="ic_launcher_background">#006783</color>
 </resources>

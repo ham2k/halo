@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Adaptive icon (API 26+): without this, launchers that expect one
+     synthesize their own from the legacy mipmap/ic_launcher — shrinking it
+     and padding it inside a plain white circle. Each flavor overrides
+     ic_launcher_foreground with its own edition artwork; the background
+     color is shared, see values/colors.xml. -->
+<adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
+    <background android:drawable="@color/ic_launcher_background"/>
+    <foreground android:drawable="@mipmap/ic_launcher_foreground"/>
+</adaptive-icon>
