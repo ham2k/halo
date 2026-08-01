@@ -228,7 +228,6 @@
     "allOptions": "Activity Types",
     "determiningLocation": "Determining current location…\nWaiting for GPS fix to find nearby references",
     "noNearbySuggestions": "Location data not available\nSo we cannot determine nearby references",
-    "distanceKm": "${distance} km",
     "emptySheet": "Use suggestions & search below to add one",
     "exports": "Exports",
     "options": "Options",

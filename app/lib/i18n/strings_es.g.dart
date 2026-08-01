@@ -239,7 +239,6 @@ class _Translations$activitiesView$es extends Translations$activitiesView$en {
 	@override String get allOptions => 'Tipos de actividad';
 	@override String get determiningLocation => 'Determinando ubicación actual…\nEsperando señal de GPS para encontrar referencias cercanas';
 	@override String get noNearbySuggestions => 'Datos de ubicación no disponibles\nPor lo tanto, no podemos determinar referencias cercanas';
-	@override String distanceKm({required Object distance}) => '${distance} km';
 	@override String get emptySheet => 'Usa las sugerencias y la búsqueda abajo para añadir una';
 	@override String get exports => 'Exportar';
 	@override String get options => 'Opciones';
@@ -1517,7 +1516,6 @@ extension on TranslationsEs {
 			'activitiesView.allOptions' => 'Tipos de actividad',
 			'activitiesView.determiningLocation' => 'Determinando ubicación actual…\nEsperando señal de GPS para encontrar referencias cercanas',
 			'activitiesView.noNearbySuggestions' => 'Datos de ubicación no disponibles\nPor lo tanto, no podemos determinar referencias cercanas',
-			'activitiesView.distanceKm' => ({required Object distance}) => '${distance} km',
 			'activitiesView.emptySheet' => 'Usa las sugerencias y la búsqueda abajo para añadir una',
 			'activitiesView.exports' => 'Exportar',
 			'activitiesView.options' => 'Opciones',
@@ -1866,9 +1864,9 @@ extension on TranslationsEs {
 			'settings.panels.about' => 'Acerca de',
 			'settings.panels.aboutDescription' => 'Versión, créditos e información legal',
 			'settings.panels.unavailableTitle' => 'Algunos ajustes no están disponibles',
+			'settings.panels.unavailableText' => 'El motor de extensiones no pudo iniciarse, así que faltan los ajustes aportados por extensiones.',
 			_ => null,
 		} ?? switch (path) {
-			'settings.panels.unavailableText' => 'El motor de extensiones no pudo iniciarse, así que faltan los ajustes aportados por extensiones.',
 			'settings.panels.station' => 'Configuración de Estación',
 			'settings.panels.stationDescription' => 'Radios y otros equipos',
 			'commands.enableSyncFirst' => 'Primero habilita la sincronización en la Configuración.',

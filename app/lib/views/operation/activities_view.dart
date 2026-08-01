@@ -30,10 +30,12 @@ import '../../main.dart';
 import '../../services/error_reporting_service.dart';
 import '../../services/location_service.dart';
 import '../../services/extension_service.dart';
+import '../../services/settings_service.dart';
 import 'operation_location_screen.dart';
 import '../operation_dialogs.dart';
 import '../extensions_panel.dart';
 import '../../i18n/strings.g.dart';
+import '../../tools/distance_format.dart';
 import '../../tools/operation_title.dart';
 
 
@@ -1237,7 +1239,10 @@ class OperationSheetState extends State<OperationSheet> {
                                 const Spacer(),
                                 if (suggestion['distance'] is num)
                                   Text(
-                                    t.distanceKm(distance: formatNumber((suggestion['distance'] as num).round())),
+                                    fmtDistance(
+                                      (suggestion['distance'] as num).toDouble(),
+                                      miles: widget.services.settings.distanceUnits == DistanceUnits.miles,
+                                    ),
                                     style: theme.textTheme.bodyMedium?.copyWith(
                                       color: theme.colorScheme.onSurfaceVariant,
                                     ),

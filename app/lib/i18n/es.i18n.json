@@ -228,7 +228,6 @@
     "allOptions": "Tipos de actividad",
     "determiningLocation": "Determinando ubicación actual…\nEsperando señal de GPS para encontrar referencias cercanas",
     "noNearbySuggestions": "Datos de ubicación no disponibles\nPor lo tanto, no podemos determinar referencias cercanas",
-    "distanceKm": "${distance} km",
     "emptySheet": "Usa las sugerencias y la búsqueda abajo para añadir una",
     "exports": "Exportar",
     "options": "Opciones",

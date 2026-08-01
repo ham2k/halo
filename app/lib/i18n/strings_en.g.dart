@@ -418,9 +418,6 @@ class Translations$activitiesView$en {
 	/// en: 'Location data not available So we cannot determine nearby references'
 	String get noNearbySuggestions => 'Location data not available\nSo we cannot determine nearby references';
 
-	/// en: '${distance} km'
-	String distanceKm({required Object distance}) => '${distance} km';
-
 	/// en: 'Use suggestions & search below to add one'
 	String get emptySheet => 'Use suggestions & search below to add one';
 
@@ -2753,7 +2750,6 @@ extension on Translations {
 			'activitiesView.allOptions' => 'Activity Types',
 			'activitiesView.determiningLocation' => 'Determining current location…\nWaiting for GPS fix to find nearby references',
 			'activitiesView.noNearbySuggestions' => 'Location data not available\nSo we cannot determine nearby references',
-			'activitiesView.distanceKm' => ({required Object distance}) => '${distance} km',
 			'activitiesView.emptySheet' => 'Use suggestions & search below to add one',
 			'activitiesView.exports' => 'Exports',
 			'activitiesView.options' => 'Options',
@@ -3102,9 +3098,9 @@ extension on Translations {
 			'settings.panels.about' => 'About',
 			'settings.panels.aboutDescription' => 'Version, credits, and legal information',
 			'settings.panels.unavailableTitle' => 'Some settings are unavailable',
+			'settings.panels.unavailableText' => 'The extension runtime failed to start, so extension-contributed settings are missing.',
 			_ => null,
 		} ?? switch (path) {
-			'settings.panels.unavailableText' => 'The extension runtime failed to start, so extension-contributed settings are missing.',
 			'settings.panels.station' => 'Station Configuration',
 			'settings.panels.stationDescription' => 'Radios and other equipment',
 			'commands.enableSyncFirst' => 'Enable sync in Settings first.',
