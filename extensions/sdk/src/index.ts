@@ -9,6 +9,7 @@
 // to pass their own key around.
 
 import type {
+  DeviceLocation,
   FetchOptions,
   FetchResponse,
   JSONValue,
@@ -135,6 +136,14 @@ export const host = {
 
   async kvGet(key: string): Promise<JSONValue | null> {
     return (await hostCallFn()('kvGet', { ns: currentExtensionKey, key })) as JSONValue | null
+  },
+
+  /// The device's current GPS position, or null when location is
+  /// unavailable, denied, or off — for a command (e.g. WEATHER) that needs a
+  /// location fix and has no operation grid to fall back to. May prompt the
+  /// user for location permission the first time it's called.
+  async getLocation(): Promise<DeviceLocation | null> {
+    return (await hostCallFn()('getLocation', {})) as DeviceLocation | null
   },
 
   /// The app's settings, read-only: resolved core values (theme, locale,

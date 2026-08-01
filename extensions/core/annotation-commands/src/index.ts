@@ -17,6 +17,13 @@
 // shows in the UI before the user ever presses Enter. The one in-flight
 // fetch is cached and reused by the execute call that actually logs the
 // event, so pressing Enter doesn't trigger a second fetch.
+//
+// Unlike NOTE/TODO/CHAT, SOLAR/WEATHER report externally-sourced conditions
+// that are meaningful with no operation open (APP-34) — only their `addQso`
+// logging step needs one, since there's no log to add the event row to
+// otherwise. WEATHER's location comes from the operation's grid when it has
+// one, else the device's GPS fix via `host.getLocation()` (same fallback
+// app-polo's WEATHER uses).
 
 import { defineExtension, host } from "@ham2k/halo-extension-sdk"
 import type { CommandCatalogEntry, CommandInterpretation, HookContext, JSONValue } from "@ham2k/halo-extension-sdk"
@@ -157,8 +164,11 @@ const SolarCommand = {
     if (input.trim().toUpperCase() !== 'SOLAR') return null
 
     const t = tFor(ctx)
-    if (!operation) return { error: t('needsOperation', { name: 'SOLAR' }) }
 
+    // Solar conditions are global — SOLAR fetches and describes them with or
+    // without an open operation. Only the `addQso` logging step below
+    // (issue APP-34) needs one, since there's no log to add the event row
+    // to otherwise.
     if (!solarFetch) {
       solarFetch = fetchSolarData()
       solarFetch.then((result) => {
@@ -179,35 +189,54 @@ const SolarCommand = {
     return {
       describe: result.message,
       confirm: result.message,
-      commands: [{
+      commands: operation ? [{
         addQso: eventQso('solar', {
           command: 'SOLAR',
           icon: 'sun-wireless',
           description: result.message,
           data: result.solarData,
         }),
-      }],
+      }] : undefined,
     }
   },
 
+  // Unlike NOTE/TODO, SOLAR works with no operation open (APP-34) — the
+  // palette shouldn't grey it out.
   async catalog(ctx: HookContext): Promise<CommandCatalogEntry[]> {
     const t = tFor(ctx)
     return [{
       command: 'SOLAR',
       describe: t('catalogSolar'),
       category: t('catalogCategory'),
-      needsOperation: true,
     }]
   },
 }
 
-type WeatherResult = { weatherData: Record<string, JSONValue>; message: string } | null
+type WeatherOutcome =
+  | { ok: true; weatherData: Record<string, JSONValue>; message: string }
+  | { ok: false; reason: 'no-location' | 'fetch-error' }
 
-async function fetchWeatherData(grid: string, distanceUnits: string | undefined): Promise<WeatherResult> {
+async function fetchWeatherData(
+  operation: Operation | undefined,
+  distanceUnits: string | undefined,
+): Promise<WeatherOutcome> {
+  // The operation's own grid if it has one; otherwise the device's GPS fix
+  // (same fallback app-polo's WEATHER uses) — so the command still works
+  // with no operation open, or one whose grid isn't set yet.
+  let latitude: number
+  let longitude: number
+  const grid = operation?.grid
+  if (typeof grid === 'string' && grid) {
+    ;[latitude, longitude] = gridToLocation(grid)
+  } else {
+    const deviceLocation = await host.getLocation()
+    if (!deviceLocation) return { ok: false, reason: 'no-location' }
+    ;({ latitude, longitude } = deviceLocation)
+  }
+
   // Parsed loosely — the raw response is stored whole in the event's `data`;
   // WeatherData just gives weatherMessage a typed view of the fields it reads.
   try {
-    const [latitude, longitude] = gridToLocation(grid)
     // Fahrenheit for miles users, Celsius otherwise — the same units
     // preference the map's distances follow, via HookContext.
     const params: Record<string, string> = {
@@ -224,14 +253,23 @@ async function fetchWeatherData(grid: string, distanceUnits: string | undefined)
     if (response.status !== 200) throw new Error(`status ${response.status}`)
     const weatherData = JSON.parse(response.body) as Record<string, JSONValue>
     if (!weatherData?.current) throw new Error('no weather data in response')
-    return { weatherData, message: weatherMessage(weatherData as unknown as WeatherData) }
+    return { ok: true, weatherData, message: weatherMessage(weatherData as unknown as WeatherData) }
   } catch {
-    return null
+    return { ok: false, reason: 'fetch-error' }
   }
 }
 
-// Same one-fetch-shared-until-executed cache as SOLAR's.
-let weatherFetch: Promise<WeatherResult> | null = null
+// Same one-fetch-shared-until-executed cache as SOLAR's, but keyed by WHERE
+// it's fetching for: the app has exactly one command-interpretation pipeline,
+// so a describe-preview started on the home screen's device-location fetch
+// must not be reused by an execute call from an open operation with its own
+// grid (or vice versa) — each location context gets its own fetch.
+let weatherFetch: { key: string; promise: Promise<WeatherOutcome> } | null = null
+
+function weatherLocationKey(operation: Operation | undefined): string {
+  const grid = operation?.grid
+  return typeof grid === 'string' && grid ? `grid:${grid}` : 'device'
+}
 
 const WeatherCommand = {
   async interpret(
@@ -241,50 +279,47 @@ const WeatherCommand = {
     if (input.trim().toUpperCase() !== 'WEATHER') return null
 
     const t = tFor(ctx)
-    if (!operation) return { error: t('needsOperation', { name: 'WEATHER' }) }
-    // app-polo falls back to device geolocation here; the extension runtime
-    // has no location host call (yet), so the operation's own grid is the
-    // one source of position.
-    const grid = operation.grid
-    if (typeof grid !== 'string' || !grid) {
-      return { error: t('weatherNeedsLocation') }
-    }
 
-    if (!weatherFetch) {
-      weatherFetch = fetchWeatherData(grid, ctx.distanceUnits)
-      weatherFetch.then((result) => {
-        host.updateInterpretation(input, result ? { describe: result.message } : { describe: t('weatherError') })
+    const key = weatherLocationKey(operation)
+    if (!weatherFetch || weatherFetch.key !== key) {
+      const promise = fetchWeatherData(operation, ctx.distanceUnits)
+      weatherFetch = { key, promise }
+      promise.then((result) => {
+        host.updateInterpretation(input, {
+          describe: result.ok ? result.message : t(result.reason === 'no-location' ? 'weatherNeedsLocation' : 'weatherError'),
+        })
       })
     }
 
     if (!execute) return { describe: t('fetchingWeather') }
 
-    const promise = weatherFetch
+    const promise = weatherFetch.promise
     weatherFetch = null // next WEATHER (a later QSO) starts its own fresh fetch
     const result = await promise
-    if (!result) return { error: t('weatherError') }
+    if (!result.ok) return { error: t(result.reason === 'no-location' ? 'weatherNeedsLocation' : 'weatherError') }
 
     return {
       describe: result.message,
       confirm: result.message,
-      commands: [{
+      commands: operation ? [{
         addQso: eventQso('weather', {
           command: 'WEATHER',
           icon: 'weather-sunny',
           description: result.message,
           data: result.weatherData,
         }),
-      }],
+      }] : undefined,
     }
   },
 
+  // Unlike NOTE/TODO, WEATHER works with no operation open (APP-34,
+  // falling back to device location) — the palette shouldn't grey it out.
   async catalog(ctx: HookContext): Promise<CommandCatalogEntry[]> {
     const t = tFor(ctx)
     return [{
       command: 'WEATHER',
       describe: t('catalogWeather'),
       category: t('catalogCategory'),
-      needsOperation: true,
     }]
   },
 }

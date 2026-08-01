@@ -15,5 +15,6 @@
   "domains": [
     "www.hamqsl.com",
     "api.open-meteo.com"
-  ]
+  ],
+  "requiresLocation": true
 }

@@ -19,6 +19,7 @@ import 'package:halo_build_tools/halo_build_tools.dart' show kEdition;
 import 'package:halo_extension_host/halo_extension_host.dart';
 import 'package:halo_core/halo_core.dart';
 import 'error_reporting_service.dart';
+import 'location_service.dart';
 import 'settings_service.dart';
 import 'status_bar_service.dart';
 import 'package:halo_widgets/halo_widgets.dart';
@@ -199,6 +200,25 @@ class ExtensionService {
   /// with null/empty instead of failing.
   OperationsRepository? operations;
   QsosRepository? qsos;
+
+  /// Backs the `getLocation` host call (SDK's `host.getLocation()`) — a
+  /// one-shot device GPS fix for a command with no operation grid to fall
+  /// back to. Optional like the other service references above.
+  LocationService? location;
+
+  /// Extension keys allowed to call `getLocation` (manifest.json
+  /// `requiresLocation`, APP-34) — same allowlist shape as [_fetchAllowlists]
+  /// below, resolved once at load time in [_start].
+  Set<String> _locationAllowlist = const {};
+
+  /// Whether [extensionKey] (or its bundle, for a sub-extension like
+  /// `pota-all-parks`) may call `getLocation` — mirrors the prefix rule
+  /// `ExtensionHost._fetchAllowlistFor` applies to `domains`.
+  bool _locationAllowed(String? extensionKey) {
+    if (extensionKey == null) return false;
+    if (_locationAllowlist.contains(extensionKey)) return true;
+    return _locationAllowlist.any((key) => extensionKey.startsWith('$key-') || extensionKey.startsWith('${key}_'));
+  }
 
   bool get ready => _host != null;
   ExtensionHost? get host => _host;
@@ -804,6 +824,7 @@ class ExtensionService {
       final fetchAllowlists = <String, List<String>>{};
       final extensionSecrets = <String, Map<String, String>>{};
       final userAgentOverrides = <String>{};
+      final locationAllowlist = <String>{};
       final loaded = <String>{};
       for (final info in available) {
         // Disabled extensions are simply never loaded — their hooks,
@@ -819,6 +840,9 @@ class ExtensionService {
         // and `allowUserAgentOverride`).
         fetchAllowlists[info.key] = info.domains;
         if (info.allowUserAgentOverride) userAgentOverrides.add(info.key);
+        // The manifest's declared `getLocation` capability (build.mjs
+        // `requiresLocation`, APP-34).
+        if (info.requiresLocation) locationAllowlist.add(info.key);
         // Resolve what this extension is allowed to see, once, at load time —
         // the host then holds only that subset and needs no policy of its own.
         // A build without a value configured simply has none, and every
@@ -830,6 +854,7 @@ class ExtensionService {
         };
         if (visible.isNotEmpty) extensionSecrets[info.key] = visible;
       }
+      _locationAllowlist = locationAllowlist;
       _host = await ExtensionHost.start(
         kernelSource: kernelSource,
         extensions: bundles,
@@ -1210,6 +1235,20 @@ class ExtensionService {
                   'flags': row.flags,
                 })
             .toList();
+      case 'getLocation':
+        // One-shot device GPS fix (SDK's `host.getLocation()`) — e.g. WEATHER
+        // falling back to device location when there's no operation grid.
+        // May prompt for location permission; null on any denial/failure.
+        // Gated by the manifest's `requiresLocation` capability (APP-34),
+        // same allowlist shape as host.fetch's `domains`.
+        final extensionKey = params['extensionKey'] as String?;
+        if (!_locationAllowed(extensionKey)) {
+          throw ExtensionHostException(
+            "getLocation blocked: extension '${extensionKey ?? 'unknown'}' does not declare requiresLocation",
+          );
+        }
+        final position = await location?.getCurrentPosition();
+        return position == null ? null : {'latitude': position.latitude, 'longitude': position.longitude};
       case 'showForm':
         final formId = params['formId'] as String;
         final formDef = (params['form'] as Map).cast<String, dynamic>();
@@ -1983,6 +2022,11 @@ class ExtensionInfo {
   /// HaLo's canonical UA — see docs/design/network.md.
   final bool allowUserAgentOverride;
 
+  /// Whether this extension may call the `getLocation` host call (build.mjs
+  /// `requiresLocation`, APP-34) — the device's raw GPS fix. Off by default,
+  /// same allowlist shape as [domains].
+  final bool requiresLocation;
+
   final bool core;
   final String name;
   final String? shortName;
@@ -2019,6 +2063,7 @@ class ExtensionInfo {
     required this.file,
     this.domains = const [],
     this.allowUserAgentOverride = false,
+    this.requiresLocation = false,
     required this.core,
     required this.name,
     this.shortName,
@@ -2065,6 +2110,7 @@ class ExtensionInfo {
         file: json['file'] as String? ?? '${json['key']}.js',
         domains: ((json['domains'] as List?) ?? const []).cast<String>(),
         allowUserAgentOverride: json['allowUserAgentOverride'] as bool? ?? false,
+        requiresLocation: json['requiresLocation'] as bool? ?? false,
         // A stale index without metadata degrades to "everything core" —
         // the fail-safe: nothing gets silently disabled.
         core: json['core'] as bool? ?? true,

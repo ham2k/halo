@@ -8,7 +8,7 @@
   "solarError": "Error al obtener las condiciones solares",
   "fetchingWeather": "Obteniendo el clima actual…",
   "weatherError": "Error al obtener el clima",
-  "weatherNeedsLocation": "WEATHER necesita una ubicación — define el locador de la operación",
+  "weatherNeedsLocation": "WEATHER necesita una ubicación — define el locador de la operación, o activa los servicios de ubicación",
   "catalogCategory": "Anotaciones del registro",
   "catalogNote": "Añadir una nota al registro",
   "catalogTodo": "Añadir una tarea al registro",

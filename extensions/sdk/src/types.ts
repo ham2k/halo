@@ -1137,6 +1137,11 @@ export interface ExtensionManifest {
   /// host.fetch allowlist for this extension's bundle.
   domains?: string[]
   allowUserAgentOverride?: boolean
+  /// Declares this extension's bundle may call `host.getLocation()` — the
+  /// device's raw GPS coordinates. Off by default, same allowlist shape as
+  /// `domains`: the host refuses the call for any extension that doesn't
+  /// set this.
+  requiresLocation?: boolean
   /// Per-locale overrides for name/description plus extra localized search
   /// keywords, keyed by language code. Localized keywords ADD to the base
   /// `keywords` (both are searchable), they don't replace them.
@@ -1162,6 +1167,12 @@ export interface FetchOptions {
 export interface FetchResponse {
   status: number
   body: string
+}
+
+/// The device's current GPS fix, as returned by `host.getLocation()`.
+export interface DeviceLocation {
+  latitude: number
+  longitude: number
 }
 
 export interface LookupRow {

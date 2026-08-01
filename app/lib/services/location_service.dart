@@ -28,6 +28,29 @@ class LocationService extends ChangeNotifier {
   Position? get position => _position;
   String? get grid => _position == null ? null : locationToGrid6(_position!.latitude, _position!.longitude);
 
+  // [start] and [getCurrentPosition] can both ask for permission at once (the
+  // Activities view starting the live stream while a WEATHER command with no
+  // operation grid does a one-shot fetch) — `geolocator` throws
+  // PermissionRequestInProgressException if `requestPermission()` is called
+  // again while one is already awaiting the OS prompt. Sharing the in-flight
+  // request here means the second caller just awaits the first's result
+  // instead of triggering that.
+  Future<LocationPermission>? _permissionRequest;
+
+  Future<LocationPermission> _resolvePermission() {
+    return _permissionRequest ??= () async {
+      try {
+        var permission = await Geolocator.checkPermission();
+        if (permission == LocationPermission.denied) {
+          permission = await Geolocator.requestPermission();
+        }
+        return permission;
+      } finally {
+        _permissionRequest = null;
+      }
+    }();
+  }
+
   Future<void> start() async {
     _listenerCount++;
     // Skip only when a fix is already streaming — a listener count above 1
@@ -40,10 +63,7 @@ class LocationService extends ChangeNotifier {
     notifyListeners();
 
     try {
-      var permission = await Geolocator.checkPermission();
-      if (permission == LocationPermission.denied) {
-        permission = await Geolocator.requestPermission();
-      }
+      final permission = await _resolvePermission();
       // Every caller may have stopped while the checks above were in
       // flight — don't start a stream nothing will ever cancel.
       if (_listenerCount == 0) return;
@@ -90,6 +110,27 @@ class LocationService extends ChangeNotifier {
     if (_listenerCount == 0) {
       unawaited(_sub?.cancel());
       _sub = null;
+    }
+  }
+
+  /// One-shot fix for a caller that doesn't want to open the continuous
+  /// stream (the `getLocation` host call, e.g. WEATHER with no operation
+  /// grid to fall back to). Always takes a fresh reading rather than
+  /// returning [_position] — that field can be long stale (never cleared by
+  /// [stop] or a stream [onError]), and reusing it would also skip the
+  /// permission/service-enabled checks below. Returns null on any
+  /// denial/failure.
+  Future<Position?> getCurrentPosition() async {
+    try {
+      final permission = await _resolvePermission();
+      if (permission == LocationPermission.denied || permission == LocationPermission.deniedForever) return null;
+      if (!await Geolocator.isLocationServiceEnabled()) return null;
+      return await Geolocator.getCurrentPosition(
+        locationSettings: const LocationSettings(accuracy: LocationAccuracy.reduced, timeLimit: Duration(seconds: 5)),
+      );
+    } catch (e) {
+      debugPrint('[location] getCurrentPosition failed: $e');
+      return null;
     }
   }
 }

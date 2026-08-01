@@ -858,6 +858,7 @@ class HaLoServices {
     this.extensions.statusBar = statusBar;
     this.extensions.operations = operations;
     this.extensions.qsos = qsos;
+    this.extensions.location = location;
     this.extensions.onOpenAccount =
         (key, {subkey}) => unawaited(showAccountDialogByKey(this, key, subkey: subkey));
   }

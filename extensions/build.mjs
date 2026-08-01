@@ -86,6 +86,10 @@ function sharedLibsPlugin(extensionDependencies = {}) {
 // overrides any the extension set, but a whitelisted extension keeps its own
 // (see docs/design/network.md). Omit it (the default) unless a third-party
 // service demands a specific UA — consistency is the goal.
+// `requiresLocation: true` is a third capability, unrelated to networking:
+// it allows the bundle to call host.getLocation() (the device's raw GPS
+// fix, APP-34). Omit it (the default) — the host refuses the call for any
+// extension key that doesn't declare it.
 // Each extension's USER-FACING metadata (name, category, icon, keywords,
 // translations, fetch-domain allowlist, …) lives in the package's own
 // manifest.json — the single source both this build and the bundle itself
@@ -205,6 +209,7 @@ await writeFile(
           file: `${key}.js`,
           domains: m.domains ?? [],
           ...(m.allowUserAgentOverride ? { allowUserAgentOverride: true } : {}),
+          ...(m.requiresLocation ? { requiresLocation: true } : {}),
           core: !m.category,
           ...(m.category
             ? {

@@ -162,6 +162,7 @@ function hooksFor(category: string, key: string | null): HookRecord[] {
 // any other's keychain credentials, KV state, or clear its status items.
 const IDENTITY_HOST_METHODS = new Set([
   'fetch',
+  'getLocation',
   'secret',
   'kvGet',
   'kvSet',
