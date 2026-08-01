@@ -110,6 +110,53 @@ void main() {
     expect(find.text('Updated just now'), findsOneWidget, reason: 'patched from the refresh return value');
     expect(fake.listCalls, 1, reason: 'no second listDataFiles round-trip after refresh');
   });
+
+  testWidgets('tapping Update All forces a full sync and reloads the list once it settles', (tester) async {
+    tester.view.physicalSize = const Size(1000, 1400);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    SharedPreferences.setMockInitialValues({});
+    final settings = SettingsService(await SharedPreferences.getInstance());
+    final db = HaLoDatabase(NativeDatabase.memory());
+    addTearDown(db.close);
+    final extensions = ExtensionServiceWithMockHost(const MockExtensionHost({}))..settings = settings;
+
+    final fake = _FakeDataFiles(
+      lookups: LookupRepository(db),
+      extensions: extensions,
+      prefs: await SharedPreferences.getInstance(),
+    )..files = [DataFileStatus(key: 'alpha', name: 'Alpha Data'), DataFileStatus(key: 'zeta', name: 'Zeta Data')];
+
+    final services = HaLoServices(db, settings, extensions: extensions, dataFiles: fake);
+
+    await tester.pumpWidget(TranslationProvider(child: MaterialApp(home: SettingsView(services: services))));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Data Files'));
+    await tester.pumpAndSettle();
+
+    expect(fake.listCalls, 1, reason: 'listed once on load');
+    expect(find.bySemanticsLabel('Refresh'), findsNWidgets(2));
+
+    // Tap Update All — the sync future stays pending on the gate.
+    await tester.tap(find.text('Update All'));
+    await tester.pump();
+    expect(find.text('Updating all data files…'), findsOneWidget, reason: 'summary row shows an in-progress state');
+    expect(fake.syncAllForce, true, reason: 'forces a fresh fetch, same as an individual refresh');
+    // Every row switches to its own live progress too, same as an individual
+    // Refresh — not just the summary row above the list.
+    expect(find.bySemanticsLabel('Refresh'), findsNothing, reason: 'per-row refresh buttons become progress rows');
+    expect(find.text('Refreshing…'), findsNWidgets(2), reason: 'each file shows its own in-progress row');
+
+    // Let the sync complete; the panel re-lists to pick up every row's new time.
+    fake.completeSyncAll();
+    await tester.pumpAndSettle();
+
+    expect(fake.listCalls, 2, reason: 'reloads after the bulk sync settles');
+    expect(find.text('Updating all data files…'), findsNothing);
+    expect(find.bySemanticsLabel('Refresh'), findsNWidgets(2), reason: 'rows return to their normal state');
+  });
 }
 
 /// A [DataFileManager] whose list/refresh are stubbed so the panel's
@@ -123,8 +170,11 @@ class _FakeDataFiles extends DataFileManager {
   int listCalls = 0;
   final List<String> refreshed = [];
   final Completer<void> _gate = Completer<void>();
+  bool? syncAllForce;
+  final Completer<void> _syncGate = Completer<void>();
 
   void completeRefresh() => _gate.complete();
+  void completeSyncAll() => _syncGate.complete();
 
   @override
   Future<List<DataFileStatus>> listDataFiles() async {
@@ -137,5 +187,12 @@ class _FakeDataFiles extends DataFileManager {
     refreshed.add(key);
     await _gate.future;
     return files.any((f) => f.key == key) ? DateTime.now() : null;
+  }
+
+  @override
+  Future<int> syncAllDataFiles({bool force = false, String? categoryFilter}) async {
+    syncAllForce = force;
+    await _syncGate.future;
+    return files.length;
   }
 }

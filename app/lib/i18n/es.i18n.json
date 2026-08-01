@@ -591,6 +591,8 @@
       "refresh": "Actualizar",
       "refreshing": "Actualizando…",
       "refreshFailed": "No se pudo actualizar ${name}: ${error}",
+      "updateAll": "Actualizar todo",
+      "updatingAll": "Actualizando todos los archivos de datos…",
       "neverDownloaded": "Nunca descargado",
       "updatedJustNow": "Actualizado hace un momento",
       "updatedDaysAgo": "Actualizado hace ${days}d",

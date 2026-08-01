@@ -2044,6 +2044,12 @@ class Translations$settings$offlineData$en {
 	/// en: 'Could not refresh ${name}: ${error}'
 	String refreshFailed({required Object name, required Object error}) => 'Could not refresh ${name}: ${error}';
 
+	/// en: 'Update All'
+	String get updateAll => 'Update All';
+
+	/// en: 'Updating all data files…'
+	String get updatingAll => 'Updating all data files…';
+
 	/// en: 'Never downloaded'
 	String get neverDownloaded => 'Never downloaded';
 
@@ -3046,6 +3052,8 @@ extension on Translations {
 			'settings.offlineData.refresh' => 'Refresh',
 			'settings.offlineData.refreshing' => 'Refreshing…',
 			'settings.offlineData.refreshFailed' => ({required Object name, required Object error}) => 'Could not refresh ${name}: ${error}',
+			'settings.offlineData.updateAll' => 'Update All',
+			'settings.offlineData.updatingAll' => 'Updating all data files…',
 			'settings.offlineData.neverDownloaded' => 'Never downloaded',
 			'settings.offlineData.updatedJustNow' => 'Updated just now',
 			'settings.offlineData.updatedDaysAgo' => ({required Object days}) => 'Updated ${days}d ago',
@@ -3097,10 +3105,10 @@ extension on Translations {
 			'settings.panels.developerSettingsDescription' => 'Debugging and development tools',
 			'settings.panels.about' => 'About',
 			'settings.panels.aboutDescription' => 'Version, credits, and legal information',
-			'settings.panels.unavailableTitle' => 'Some settings are unavailable',
-			'settings.panels.unavailableText' => 'The extension runtime failed to start, so extension-contributed settings are missing.',
 			_ => null,
 		} ?? switch (path) {
+			'settings.panels.unavailableTitle' => 'Some settings are unavailable',
+			'settings.panels.unavailableText' => 'The extension runtime failed to start, so extension-contributed settings are missing.',
 			'settings.panels.station' => 'Station Configuration',
 			'settings.panels.stationDescription' => 'Radios and other equipment',
 			'commands.enableSyncFirst' => 'Enable sync in Settings first.',

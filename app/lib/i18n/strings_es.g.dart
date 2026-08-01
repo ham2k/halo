@@ -1037,6 +1037,8 @@ class _Translations$settings$offlineData$es extends Translations$settings$offlin
 	@override String get refresh => 'Actualizar';
 	@override String get refreshing => 'Actualizando…';
 	@override String refreshFailed({required Object name, required Object error}) => 'No se pudo actualizar ${name}: ${error}';
+	@override String get updateAll => 'Actualizar todo';
+	@override String get updatingAll => 'Actualizando todos los archivos de datos…';
 	@override String get neverDownloaded => 'Nunca descargado';
 	@override String get updatedJustNow => 'Actualizado hace un momento';
 	@override String updatedDaysAgo({required Object days}) => 'Actualizado hace ${days}d';
@@ -1812,6 +1814,8 @@ extension on TranslationsEs {
 			'settings.offlineData.refresh' => 'Actualizar',
 			'settings.offlineData.refreshing' => 'Actualizando…',
 			'settings.offlineData.refreshFailed' => ({required Object name, required Object error}) => 'No se pudo actualizar ${name}: ${error}',
+			'settings.offlineData.updateAll' => 'Actualizar todo',
+			'settings.offlineData.updatingAll' => 'Actualizando todos los archivos de datos…',
 			'settings.offlineData.neverDownloaded' => 'Nunca descargado',
 			'settings.offlineData.updatedJustNow' => 'Actualizado hace un momento',
 			'settings.offlineData.updatedDaysAgo' => ({required Object days}) => 'Actualizado hace ${days}d',
@@ -1863,10 +1867,10 @@ extension on TranslationsEs {
 			'settings.panels.developerSettingsDescription' => 'Herramientas de depuración y desarrollo',
 			'settings.panels.about' => 'Acerca de',
 			'settings.panels.aboutDescription' => 'Versión, créditos e información legal',
-			'settings.panels.unavailableTitle' => 'Algunos ajustes no están disponibles',
-			'settings.panels.unavailableText' => 'El motor de extensiones no pudo iniciarse, así que faltan los ajustes aportados por extensiones.',
 			_ => null,
 		} ?? switch (path) {
+			'settings.panels.unavailableTitle' => 'Algunos ajustes no están disponibles',
+			'settings.panels.unavailableText' => 'El motor de extensiones no pudo iniciarse, así que faltan los ajustes aportados por extensiones.',
 			'settings.panels.station' => 'Configuración de Estación',
 			'settings.panels.stationDescription' => 'Radios y otros equipos',
 			'commands.enableSyncFirst' => 'Primero habilita la sincronización en la Configuración.',

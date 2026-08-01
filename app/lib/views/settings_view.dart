@@ -1228,6 +1228,7 @@ class _DataFilesPanel extends StatefulWidget {
 class _DataFilesPanelState extends State<_DataFilesPanel> {
   List<DataFileStatus>? _files;
   final Set<String> _refreshing = {};
+  bool _updatingAll = false;
 
   @override
   void initState() {
@@ -1267,6 +1268,29 @@ class _DataFilesPanelState extends State<_DataFilesPanel> {
     }
   }
 
+  // syncAllDataFiles catches and reports its own per-file failures (see
+  // DataFileManager), so there's nothing left to surface here beyond
+  // reloading the rows once it settles. Every row is marked as refreshing
+  // too, so each shows its own live status-bar progress — the same view
+  // an individual Refresh gives — instead of just the summary row above.
+  Future<void> _updateAll() async {
+    setState(() {
+      _updatingAll = true;
+      _refreshing.addAll(_files?.map((f) => f.key) ?? const []);
+    });
+    try {
+      await widget.services.dataFiles.syncAllDataFiles(force: true);
+      if (mounted) await _load();
+    } finally {
+      if (mounted) {
+        setState(() {
+          _updatingAll = false;
+          _refreshing.clear();
+        });
+      }
+    }
+  }
+
   void _applyUpdatedAt(String key, DateTime updatedAt) {
     final files = _files;
     if (files == null) return;
@@ -1291,9 +1315,33 @@ class _DataFilesPanelState extends State<_DataFilesPanel> {
             title: Text(context.t.settings.offlineData.noFiles),
             subtitle: Text(context.t.settings.offlineData.noFilesDescription),
           )
-        else
+        else ...[
+          _buildUpdateAllRow(context),
           for (final file in files) _buildRow(context, file),
+        ],
       ],
+    );
+  }
+
+  Widget _buildUpdateAllRow(BuildContext context) {
+    if (_updatingAll) {
+      return ListTile(
+        leading: Icon(resolveIconName('refresh')),
+        title: Text(context.t.settings.offlineData.updateAll),
+        subtitle: Text(context.t.settings.offlineData.updatingAll),
+        trailing: const SizedBox(
+          width: 24,
+          height: 24,
+          child: Padding(padding: EdgeInsets.all(2), child: CircularProgressIndicator(strokeWidth: 2)),
+        ),
+      );
+    }
+
+    return ListTile(
+      leading: Icon(resolveIconName('refresh')),
+      title: Text(context.t.settings.offlineData.updateAll),
+      onTap: _updateAll,
+      mouseCursor: SystemMouseCursors.click,
     );
   }
 
