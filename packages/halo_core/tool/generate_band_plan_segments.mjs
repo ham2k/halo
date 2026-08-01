@@ -61,10 +61,27 @@ for (const [band, info] of Object.entries(bandPlans.bands)) {
       console.warn(`⚠ ${band} "${segment.name}": mhz [${lo}, ${hi}] has hi < lo — dead, never matches a frequency`)
       warned++
     }
+    if (segment.entities) {
+      // Silently carrying this through as unscoped (regions/countries both
+      // empty) would be a real correctness regression, not just missing
+      // data: modeForFrequency would treat the segment as applying to every
+      // operator, including ones it doesn't restrict to. Fail loudly instead
+      // of shipping that — the source data has never used `entities` so far
+      // (checked at HALO-52 time), so this is a real "come update the
+      // generator" signal, not busywork.
+      throw new Error(
+        `${band} "${segment.name}": scoped by "entities" (${JSON.stringify(segment.entities)}), which this generator does not carry through. ` +
+          'Silently treating it as unscoped would misapply the segment to every operator — extend the generator (and radio.dart\'s ' +
+          '_BandPlanSegment/modeForFrequency) to carry an `entities` list through before regenerating.',
+      )
+    }
     const mode = typeof segment.mode === 'string' ? `'${segment.mode}'` : 'null'
     const priority = segment.priority ?? 0
-    const scoped = Boolean(segment.regions || segment.countries || segment.entities)
-    lines.push(`  (loKHz: ${fmt(lo)}, hiKHz: ${fmt(hi)}, mode: ${mode}, priority: ${priority}, scoped: ${scoped}),`)
+    const regions = (segment.regions ?? []).join(', ')
+    const countries = (segment.countries ?? []).map((c) => `'${c}'`).join(', ')
+    lines.push(
+      `  (loKHz: ${fmt(lo)}, hiKHz: ${fmt(hi)}, mode: ${mode}, priority: ${priority}, regions: [${regions}], countries: [${countries}]),`,
+    )
     total++
   }
 }
@@ -78,19 +95,20 @@ const out = `// Copyright ©️ 2026 Sebastian Delmont <sd@ham2k.com>
 // the package's public API — parsed out of its bundle, see the generator).
 //
 // One entry per band-plan segment, read by modeForFrequency (radio.dart).
-// \`scoped\` collapses the source's \`regions\`/\`countries\`/\`entities\`
-// restrictions into a single flag — HaLo has no ituRegion/countryCode for
-// the operator (see NoticeContext in app/lib/services/notices.dart, which
-// hits the same gap for server notices), so modeForFrequency can't evaluate
-// them; it only uses the flag to prefer an unscoped segment when one covers
-// the frequency. See radio.dart's modeForFrequency doc comment for why.
+// \`regions\`/\`countries\` carry the source's own restriction lists through
+// as-is (HALO-52) — empty on both means the segment applies everywhere. The
+// source's \`entities\` restriction (DXCC-entity-code scoped, distinct from
+// \`countries\`' ISO codes) isn't carried through — the generator refuses to
+// run (rather than silently treating it as unscoped) if a future data update
+// ever adds one; see its \`segment.entities\` check.
 //
 // The source data is treated as authoritative and carried through as-is,
 // including known issues — e.g. 12m's FT4 segment ships as mhz: [24919,
 // 23922] (hi < lo, so it never matches any frequency). Re-run the generator
 // above to see the current list of these.
 
-const List<({double loKHz, double hiKHz, String? mode, int priority, bool scoped})> bandPlanModeSegments = [
+const List<({double loKHz, double hiKHz, String? mode, int priority, List<int> regions, List<String> countries})>
+    bandPlanModeSegments = [
 ${lines.join('\n')}
 ];
 `

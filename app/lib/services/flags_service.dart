@@ -52,8 +52,9 @@ const _maxRequestTime = Duration(seconds: 5);
 typedef FlagsFetcher = Future<Map<String, dynamic>?> Function(String location);
 
 /// Annotates a callsign, returning the lookup `guess` (with `baseCall`,
-/// `entityPrefix`, `continent`…), or null if the runtime can't answer.
-/// Wired to `ExtensionService.lookupCall(..., online: false)` in the app.
+/// `entityPrefix`, `continent`, `countryCode`, `ituRegion`…), or null if the
+/// runtime can't answer. Wired to `ExtensionService.lookupCall(...,
+/// online: false)` in the app.
 typedef CallAnnotator = Future<Map<String, dynamic>?> Function(String call);
 
 /// Invoked when the user taps a notice action button. [action] is the raw
@@ -156,6 +157,8 @@ class FlagsService extends ChangeNotifier {
       final baseCall = (guess?['baseCall'] as String?)?.toUpperCase() ?? normalizedCall;
       final entityPrefix = guess?['entityPrefix'] as String?;
       final continent = guess?['continent'] as String?;
+      final countryCode = guess?['countryCode'] as String?;
+      final ituRegion = (guess?['ituRegion'] as num?)?.toInt();
 
       final merged = await _fetchAndMerge(normalizedCall, baseCall: baseCall, entityPrefix: entityPrefix);
 
@@ -178,6 +181,8 @@ class FlagsService extends ChangeNotifier {
         baseCall: baseCall,
         entityPrefix: entityPrefix,
         continent: continent,
+        countryCode: countryCode,
+        ituRegion: ituRegion,
       );
     } catch (e) {
       debugPrint('[flags] refresh failed: $e');
@@ -268,6 +273,8 @@ class FlagsService extends ChangeNotifier {
     required String baseCall,
     String? entityPrefix,
     String? continent,
+    String? countryCode,
+    int? ituRegion,
   }) async {
     final env = await _environmentProvider();
     final dismissedKeys = {
@@ -301,6 +308,8 @@ class FlagsService extends ChangeNotifier {
         call: call,
         entityPrefix: entityPrefix,
         continent: continent,
+        countryCode: countryCode,
+        ituRegion: ituRegion,
         appVersion: env.appVersion,
         appVersionName: env.appVersionName,
         appBuild: env.appBuild,

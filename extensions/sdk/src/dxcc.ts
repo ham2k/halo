@@ -39,3 +39,16 @@ export function entityPrefixForCall(call: string | undefined): string | undefine
 export function flagForDxccCode(dxccCode: number | undefined): string | undefined {
   return dxccCode == null ? undefined : DXCC_BY_CODE[dxccCode]?.flag
 }
+
+/// That entity's ITU region (1/2/3) and lowercase ISO country code, via
+/// `@ham2k/lib-dxcc-data` (HALO-52) — the same table `flagForDxccCode` reads.
+/// `countryCode` matches band_plan_segments.dart's `countries` values
+/// exactly (both come from this same upstream data), so the two can be
+/// compared directly with no further normalization.
+export function regionAndCountryForDxccCode(
+  dxccCode: number | undefined,
+): { ituRegion?: number; countryCode?: string } {
+  if (dxccCode == null) return {}
+  const entity = DXCC_BY_CODE[dxccCode]
+  return { ituRegion: entity?.ituRegion, countryCode: entity?.countryCode }
+}

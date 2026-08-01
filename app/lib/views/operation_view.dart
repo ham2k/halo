@@ -93,6 +93,14 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
   /// needs — see extensions/core/lookups/src/annotate.ts.
   String? _ourEntityPrefix;
 
+  /// The station's own ITU region (1/2/3) and lowercase ISO country code
+  /// (HALO-52) — resolved alongside [_ourEntityPrefix], from the same guess,
+  /// and fed to LoggingControls' band-plan mode guess so it can prefer/
+  /// exclude region- or country-scoped segments for where the operator
+  /// actually is instead of guessing blind.
+  int? _ourItuRegion;
+  String? _ourCountryCode;
+
   /// Cached QSO stream. Recreating `watchForOperation` inside `build` made a
   /// fresh drift query on every rebuild — a menu toggle, a `_loggingControls`
   /// arrival, an entity-prefix resolve, a rescore refresh — each tearing
@@ -901,7 +909,13 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
       online: false,
     );
     final ourGuess = ourInfo?['guess'] as Map<String, dynamic>?;
-    if (mounted) setState(() => _ourEntityPrefix = ourGuess?['entityPrefix'] as String?);
+    if (mounted) {
+      setState(() {
+        _ourEntityPrefix = ourGuess?['entityPrefix'] as String?;
+        _ourItuRegion = (ourGuess?['ituRegion'] as num?)?.toInt();
+        _ourCountryCode = ourGuess?['countryCode'] as String?;
+      });
+    }
   }
 
   Future<void> _export(Operation operation) =>
@@ -1336,6 +1350,8 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
             showGridField: _showGridField,
             showQsoNumbers: _showQsoNumbers,
             ourEntityPrefix: _ourEntityPrefix,
+            ourItuRegion: _ourItuRegion,
+            ourCountryCode: _ourCountryCode,
             suggestedQso: _suggestedQso,
             onCallInfoChanged: (info) => setState(() => _callInfo = info),
             onCallInfoTap: () => _handleCallInfoTap(operation),

@@ -83,6 +83,8 @@ void main() {
     void Function(Iterable<Qso> qsos)? enqueueAllLookups,
     Widget? trailing,
     String? bandOrFreqRequiredLabel,
+    int? ourItuRegion,
+    String? ourCountryCode,
   }) {
     final resolvedRadio = radioService ?? tunedRadio;
     final controls = LoggingControls(
@@ -122,6 +124,8 @@ void main() {
       leftieMode: leftieMode,
       enabledBands: enabledBands,
       enabledModes: enabledModes,
+      ourItuRegion: ourItuRegion,
+      ourCountryCode: ourCountryCode,
       spottingControlLabel: 'Spotting',
       spottingLabel: 'Spotting',
       spottingSelfLabel: 'Self-spotting',
@@ -4712,6 +4716,30 @@ void main() {
     // FT8 guess, which would otherwise survive purely because it happened
     // to be the last edit that DID match something.
     await tester.enterText(find.widgetWithText(TextField, 'Frequency'), '5332');
+    await tester.pump();
+    expect(tester.widget<TextField>(find.widgetWithText(TextField, 'Mode')).controller!.text, 'SSB');
+  });
+
+  testWidgets('HALO-52: knowing the operator\'s country scopes the band-plan mode guess', (tester) async {
+    // 7100 kHz is US-only Data/RTTY territory (7080-7125 kHz), narrower than
+    // but overlapping the generic, unscoped 40m Phone/SSB segment
+    // (7060-7300 kHz) that wins when the operator's country isn't known —
+    // see the un-scoped assertion below, which pins that as the pre-existing
+    // (if not quite right for a US station) default.
+    await tester.pumpWidget(host(ourCountryCode: 'us')); // tunedRadio seeds Mode as SSB
+    await openControl(tester, MdiIcons.radio);
+    expect(tester.widget<TextField>(find.widgetWithText(TextField, 'Mode')).controller!.text, 'SSB');
+
+    await tester.enterText(find.widgetWithText(TextField, 'Frequency'), '7100');
+    await tester.pump();
+    expect(tester.widget<TextField>(find.widgetWithText(TextField, 'Mode')).controller!.text, 'RTTY');
+  });
+
+  testWidgets('HALO-52: without a country, the same frequency falls back to the generic unscoped segment', (tester) async {
+    await tester.pumpWidget(host()); // tunedRadio seeds Mode as SSB
+    await openControl(tester, MdiIcons.radio);
+
+    await tester.enterText(find.widgetWithText(TextField, 'Frequency'), '7100');
     await tester.pump();
     expect(tester.widget<TextField>(find.widgetWithText(TextField, 'Mode')).controller!.text, 'SSB');
   });

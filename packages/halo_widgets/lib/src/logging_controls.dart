@@ -434,6 +434,18 @@ class LoggingControls extends StatefulWidget {
   /// did, reading the VFO only when it seeds.
   final Listenable? radioUpdates;
 
+  /// The operator's own ITU region (1/2/3) and lowercase ISO country code
+  /// (HALO-52), from the callsign-annotation guess — see
+  /// `operation_view.dart`'s `_resolveOurEntityPrefix`, which resolves both
+  /// the same way it already resolves `ourEntityPrefix`. Passed straight
+  /// through to [modeForFrequency] so a typed/commanded frequency gets a
+  /// mode guess scoped to where the operator actually is, not just whatever
+  /// generic segment happens to cover the frequency. Null (the default)
+  /// leaves the guess exactly as it was before HALO-52 — see that
+  /// function's doc comment.
+  final int? ourItuRegion;
+  final String? ourCountryCode;
+
   /// The user's preferred order for the secondary control chips, by key
   /// (`'time'`, `'radio'`, an activity control's own key, `'more'`). Keys
   /// this doesn't mention are appended in their default order; keys it
@@ -611,6 +623,8 @@ class LoggingControls extends StatefulWidget {
     this.radioService,
     this.radioUpdates,
     this.leftieMode = false,
+    this.ourItuRegion,
+    this.ourCountryCode,
     this.controlOrder = const [],
     this.hiddenControlKeys = const {},
     this.onControlsSettingsChanged,
@@ -2405,7 +2419,8 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     // doesn't (e.g. "1800", a real match, mid-typing "18001", a real gap
     // between 160m and 17m).
     if (freq != null) {
-      final guess = modeForFrequency(freq) ?? _modeBeforeFreqEdit;
+      final guess = modeForFrequency(freq, ituRegion: widget.ourItuRegion, countryCode: widget.ourCountryCode) ??
+          _modeBeforeFreqEdit;
       if (guess != null && guess != _mode) setState(() => _applyModeGuess(guess));
     }
     // Only push once there's enough digits to plausibly be a real
@@ -4535,7 +4550,11 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
             // Unlike that field, this fires once per dispatched command with
             // a final, already-complete frequency — no mid-typing prefix to
             // guard against — so a null guess simply leaves `_mode` alone.
-            final guess = modeForFrequency(freq.toDouble());
+            final guess = modeForFrequency(
+              freq.toDouble(),
+              ituRegion: widget.ourItuRegion,
+              countryCode: widget.ourCountryCode,
+            );
             if (guess != null) _applyModeGuess(guess);
           }
         });

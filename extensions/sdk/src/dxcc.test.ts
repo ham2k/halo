@@ -4,7 +4,7 @@
 import { test } from "node:test"
 import assert from "node:assert/strict"
 
-import { annotateCallAgainstCountryFile, entityPrefixForCall, flagForDxccCode } from "./dxcc.ts"
+import { annotateCallAgainstCountryFile, entityPrefixForCall, flagForDxccCode, regionAndCountryForDxccCode } from "./dxcc.ts"
 
 test("entityPrefixForCall resolves a plain callsign's DXCC entity prefix", () => {
   assert.equal(entityPrefixForCall("W1AW"), "K")
@@ -31,4 +31,18 @@ test("flagForDxccCode resolves a known entity's flag", () => {
 
 test("flagForDxccCode returns undefined for an unresolved code", () => {
   assert.equal(flagForDxccCode(undefined), undefined)
+})
+
+test("regionAndCountryForDxccCode resolves a known entity's ITU region and country code", () => {
+  const info = annotateCallAgainstCountryFile("W1AW")
+  assert.deepEqual(regionAndCountryForDxccCode(info.dxccCode), { ituRegion: 2, countryCode: "us" })
+})
+
+test("regionAndCountryForDxccCode resolves a Region 3 entity", () => {
+  const info = annotateCallAgainstCountryFile("VK2ABC")
+  assert.deepEqual(regionAndCountryForDxccCode(info.dxccCode), { ituRegion: 3, countryCode: "au" })
+})
+
+test("regionAndCountryForDxccCode returns an empty object for an unresolved code", () => {
+  assert.deepEqual(regionAndCountryForDxccCode(undefined), {})
 })

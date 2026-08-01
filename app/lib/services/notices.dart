@@ -13,17 +13,19 @@
 // Kept as a pure, UI-free, runtime-free function so it can be unit-tested
 // without a JS runtime, a network, or a widget tree — FlagsService calls it
 // after each merge and pushes the survivors to the StatusBarService notice
-// surface. Rules that need data HaLo can't derive from the bundled country
-// file (`countries` → ISO country code, `ituRegions`, `notes` → the
-// call-notes extension) are intentionally treated as non-matching: a notice
-// gated on one of them simply never shows, the same safe direction as a user
-// whose value isn't in the list.
+// surface. `notes` needs the call-notes extension, which this module has no
+// access to, so a rule gated on it is intentionally treated as non-matching
+// — a notice gated on it simply never shows, the same safe direction as a
+// user whose value isn't in the list. `countries`/`ituRegions` used to be in
+// that same boat (HaLo had no ISO country code / ITU region for the
+// operator) but HALO-52 closed that gap — see [countryCode]/[ituRegion]
+// below — so both now match for real.
 
 /// The operator + app facts the notice rules are evaluated against. Mirrors
 /// app-polo's `templateData.operator`/`app` plus the callsign-derived filter
 /// inputs. Geo fields come from the callsign-annotation guess (bundled
-/// country file); [countryCode] and [ituRegion] are unavailable in HaLo and
-/// left null on purpose (see the file header).
+/// country file plus, for [countryCode]/[ituRegion], the DXCC entity table —
+/// see `regionAndCountryForDxccCode` in extensions/sdk/src/dxcc.ts).
 class NoticeContext {
   /// The operator's base callsign, uppercased (e.g. `KI2D`), or empty.
   final String baseCall;
@@ -36,6 +38,14 @@ class NoticeContext {
 
   /// Continent code from the country-file annotation (e.g. `NA`).
   final String? continent;
+
+  /// Lowercase ISO country code (e.g. `us`) — matched against the notice's
+  /// `countries` filter. HALO-52.
+  final String? countryCode;
+
+  /// ITU region (1/2/3) — matched against the notice's `ituRegions` filter.
+  /// HALO-52.
+  final int? ituRegion;
 
   /// The app's public version string (e.g. `26.8.0`) — matched against
   /// `versions`/`exceptVersions` with `startsWith`, as app-polo does.
@@ -65,6 +75,8 @@ class NoticeContext {
     required this.call,
     this.entityPrefix,
     this.continent,
+    this.countryCode,
+    this.ituRegion,
     required this.appVersion,
     required this.appVersionName,
     required this.appBuild,
@@ -207,12 +219,14 @@ bool _passes(
 
   final entities = _stringList(notice['entities']);
   if (entities.isNotEmpty && !entities.any((d) => d.toUpperCase() == ctx.entityPrefix)) return false;
-  // `countries` needs an ISO country code HaLo doesn't derive → non-matching.
-  if (_hasItems(notice['countries'])) return false;
+  final countries = _stringList(notice['countries']);
+  if (countries.isNotEmpty && !countries.any((c) => c.toLowerCase() == ctx.countryCode)) return false;
   final continents = _stringList(notice['continents']);
   if (continents.isNotEmpty && !continents.any((c) => c.toUpperCase() == ctx.continent)) return false;
-  // `ituRegions` (numeric) unavailable in HaLo → non-matching.
-  if (_hasItems(notice['ituRegions'])) return false;
+  final ituRegions = notice['ituRegions'];
+  if (ituRegions is List && ituRegions.isNotEmpty && !ituRegions.any((r) => (r as num?)?.toInt() == ctx.ituRegion)) {
+    return false;
+  }
 
   final unique = notice['unique'];
   if (unique is String) {
@@ -313,6 +327,8 @@ Map<String, dynamic> _templateData(NoticeContext ctx) => {
         'call': ctx.call,
         'entityPrefix': ctx.entityPrefix,
         'continent': ctx.continent,
+        'countryCode': ctx.countryCode,
+        'ituRegion': ctx.ituRegion,
       },
       'app': {
         'version': ctx.appVersion,
@@ -330,7 +346,5 @@ Object? _deepCopy(Object? node) {
 }
 
 List<String> _stringList(dynamic value) => value is List ? value.whereType<String>().toList() : const [];
-
-bool _hasItems(dynamic value) => value is List && value.isNotEmpty;
 
 DateTime? _parseDate(dynamic value) => value is String ? DateTime.tryParse(value) : null;

@@ -92,6 +92,61 @@ void main() {
     });
   });
 
+  group('modeForFrequency with the operator\'s ITU region/country (HALO-52)', () {
+    test('excludes a segment scoped to a different region, even at higher priority', () {
+      // 80m 3568-3571 kHz is a Region 3 FT8 window (priority 100). A Region
+      // 1 operator never gets it — 3570 kHz falls back to the (unscoped-
+      // vs-Region-1 tie won by Region 1, see the next test) CW segment.
+      expect(modeForFrequency(3570, ituRegion: 1), 'CW');
+      // A Region 3 operator gets the FT8 window, same as the unknown-region
+      // default (verified above in the un-scoped group).
+      expect(modeForFrequency(3570, ituRegion: 3), 'FT8');
+    });
+
+    test('a segment scoped to the operator\'s own region wins a same-priority tie over a NARROWER unscoped one', () {
+      // 20m 14130 kHz sits inside both the unscoped 14000-14150 CW segment
+      // (width 150, narrower) and the Region-1/2-scoped 14112-14350 Phone
+      // segment (width 238, wider). Without knowing the operator's region,
+      // the unscoped one wins regardless of width (see the default-behavior
+      // assertion below) — but once the operator is confirmed to actually
+      // be in Region 2, the matching-scope segment wins even though it's
+      // wider, proving scope-match is checked before narrowest-wins, not
+      // just riding along with it.
+      expect(modeForFrequency(14130, ituRegion: 2), 'SSB');
+      expect(modeForFrequency(14130), 'CW');
+    });
+
+    test('a country match beats a same-priority unscoped segment (the reported bug: SSB guessed for US data-only spectrum)', () {
+      // 40m 7080-7125 kHz is US-only Data (RTTY, in this table's mode
+      // vocabulary) — narrower than both the unscoped 7060-7300 Phone/SSB
+      // segment and the US-scoped 7000-7125 CW segment it sits inside, so
+      // it wins outright once both are still candidates (country match kept
+      // in, Phone/SSB not excluded but out-ranked).
+      expect(modeForFrequency(7100, countryCode: 'us'), 'RTTY');
+      // Without knowing the operator's country, this same frequency still
+      // guesses the (wrong, for a US station) unscoped Phone/SSB segment —
+      // documenting the bug HALO-52 fixes, not a new assertion about it.
+      expect(modeForFrequency(7100), 'SSB');
+    });
+
+    test('a country-scoped "no restriction" marker resolves to null once it actually matches, not SSB', () {
+      // 160m 1850 kHz: for an unknown operator this returns SSB (see the
+      // un-scoped group above) because the Australia-only "no restriction"
+      // segment can't be trusted to apply. For an actual Australian
+      // operator it now wins outright (country match), correctly returning
+      // null — the band plan doesn't dictate a mode there.
+      expect(modeForFrequency(1850, countryCode: 'au'), isNull);
+    });
+
+    test('a scoped segment for a different country is still excluded even when the operator\'s region is known', () {
+      // 160m 1850 kHz for a Region 3 operator who isn't in Australia: the
+      // Australia-only marker doesn't match (region alone doesn't satisfy a
+      // countries-only scope), so the unscoped SSB segment wins, same as
+      // the unknown-operator default.
+      expect(modeForFrequency(1850, ituRegion: 3), 'SSB');
+    });
+  });
+
   group('parseFreq', () {
     test('parses kHz input', () {
       expect(parseFreq('14285'), 14285);

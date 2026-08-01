@@ -27,3 +27,15 @@ test("annotateCallsign leaves flag unset for an unresolvable callsign", () => {
   const result = annotateCallsign("XX") as { flag?: string }
   assert.equal(result.flag, undefined)
 })
+
+test("annotateCallsign resolves the operator's ITU region and country code (HALO-52)", () => {
+  const result = annotateCallsign("W1AW") as { ituRegion?: number; countryCode?: string }
+  assert.equal(result.ituRegion, 2)
+  assert.equal(result.countryCode, "us")
+})
+
+test("annotateCallsign leaves ituRegion/countryCode unset for an unresolvable callsign", () => {
+  const result = annotateCallsign("XX") as { ituRegion?: number; countryCode?: string }
+  assert.equal(result.ituRegion, undefined)
+  assert.equal(result.countryCode, undefined)
+})

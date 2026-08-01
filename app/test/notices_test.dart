@@ -3,10 +3,11 @@
 //
 // The notice rule engine decides who sees a server notice. These tests pin
 // the rules that matter — a notice targeted at the wrong version/platform/
-// callsign/entity must NOT show, a `testCalls` whitelist must override the
-// segment gate, dismissed notices stay gone, geo rules HaLo can't evaluate
-// (countries/ituRegions/notes) fail closed, and the adjust pass resolves
-// platform-specific keys and templates. Pure logic, no runtime/network.
+// callsign/entity/country/region must NOT show, a `testCalls` whitelist must
+// override the segment gate, dismissed notices stay gone, `notes` (which
+// needs the call-notes extension this module has no access to) fails closed,
+// and the adjust pass resolves platform-specific keys and templates. Pure
+// logic, no runtime/network.
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ham2k_logger/services/notices.dart';
@@ -17,6 +18,8 @@ void main() {
     String call = 'KI2D',
     String? entityPrefix = 'K',
     String? continent = 'NA',
+    String? countryCode = 'us',
+    int? ituRegion = 2,
     String appVersion = '26.8.0',
     String appBuild = '1234',
     String platform = 'macos',
@@ -28,6 +31,8 @@ void main() {
         call: call,
         entityPrefix: entityPrefix,
         continent: continent,
+        countryCode: countryCode,
+        ituRegion: ituRegion,
         appVersion: appVersion,
         appVersionName: "August '26",
         appBuild: appBuild,
@@ -146,10 +151,33 @@ void main() {
       expect(keys(evaluateNotices(notices, ctx(continent: 'NA'))), ['a']);
     });
 
-    test('countries/ituRegions/notes fail closed (unsupported in HaLo)', () {
+    test('countries match by lowercase ISO code (HALO-52)', () {
+      final notices = [
+        {'key': 'a', 'text': 'x', 'countries': ['us']},
+        {'key': 'b', 'text': 'x', 'countries': ['au']},
+      ];
+      expect(keys(evaluateNotices(notices, ctx(countryCode: 'us'))), ['a']);
+    });
+
+    test('ituRegions match by number (HALO-52)', () {
+      final notices = [
+        {'key': 'a', 'text': 'x', 'ituRegions': [2]},
+        {'key': 'b', 'text': 'x', 'ituRegions': [1, 3]},
+      ];
+      expect(keys(evaluateNotices(notices, ctx(ituRegion: 2))), ['a']);
+    });
+
+    test('countries/ituRegions fail closed when the operator\'s own value is unknown', () {
       final notices = [
         {'key': 'c', 'text': 'x', 'countries': ['us']},
         {'key': 'i', 'text': 'x', 'ituRegions': [2]},
+        {'key': 'ok', 'text': 'x'},
+      ];
+      expect(keys(evaluateNotices(notices, ctx(countryCode: null, ituRegion: null))), ['ok']);
+    });
+
+    test('notes fails closed (unsupported in HaLo — needs the call-notes extension)', () {
+      final notices = [
         {'key': 'n', 'text': 'x', 'notes': true},
         {'key': 'ok', 'text': 'x'},
       ];

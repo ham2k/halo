@@ -52,6 +52,15 @@ String? bandForFrequency(double khz) {
   return null;
 }
 
+typedef _BandPlanSegment = ({
+  double loKHz,
+  double hiKHz,
+  String? mode,
+  int priority,
+  List<int> regions,
+  List<String> countries,
+});
+
 /// Guesses the mode for [khz] from the amateur radio band plan (HALO-32) —
 /// the generous, worldwide segments (CW/Phone/Data sub-bands) where a
 /// specific mode is conventionally used, not a regulatory boundary (that's
@@ -59,45 +68,93 @@ String? bandForFrequency(double khz) {
 /// on one mode for [khz] (e.g. a repeater/beacon segment, or no segment
 /// covers it at all) — callers should fall back to the current/default mode.
 ///
+/// [ituRegion]/[countryCode] (HALO-52) are the operator's own — from the
+/// callsign-annotation guess, e.g. `guess['ituRegion']`/`guess['countryCode']`
+/// — when the caller has them. Only [bandPlanModeSegments] entries scoped to
+/// a *different* region/country are affected: with both null (the default,
+/// and every caller that hasn't been updated yet), scope can't be checked at
+/// all and every segment stays a candidate, exactly as before HALO-52.
+///
 /// Priority always wins first, matching the source library: a narrowband
 /// digital carve-out (FT8/FT4, priority 100) beats the wider CW/Phone/Data
 /// segment it sits inside even when the carve-out is region/country-scoped
-/// (e.g. 80m's Region-3-only FT8 window at 3568-3571 kHz). Only among
-/// same-priority candidates does scope break the tie: prefer an unscoped
-/// segment ([bandPlanModeSegments]' `scoped`, see band_plan_segments.dart)
-/// over a scoped one, since without the operator's ITU region or country
-/// there's no way to tell whether a scoped one actually applies — and
-/// letting it win anyway risks e.g. a blanket "unrestricted" marker scoped
-/// to one specific country winning a narrowest-segment tie-break and
-/// returning a null guess for a frequency that's plainly SSB everywhere
-/// else. A final tie among same-priority, same-scope candidates goes to the
-/// narrowest segment, and then — deliberately, not by accident — to
+/// to somewhere else (e.g. a US operator still gets FT8 at 80m's globally
+/// unscoped 3573-3576 kHz window, not the Region-3-only one at 3568-3571).
+/// Only among same-priority candidates does scope break the tie:
+///
+///  - Operator region/country unknown: prefer an unscoped segment over a
+///    scoped one, since there's no way to tell whether a scoped one actually
+///    applies — letting it win anyway risks e.g. a blanket "unrestricted"
+///    marker scoped to one specific country winning a narrowest-segment
+///    tie-break and returning a null guess for a frequency that's plainly
+///    SSB everywhere else.
+///  - Operator region/country known: a segment scoped to somewhere else is
+///    excluded outright, before priority is even compared — it plainly
+///    doesn't apply. Among what's left, a segment scoped to the operator's
+///    own region/country wins over a same-priority unscoped one (it's the
+///    more specific, actually-applicable rule) — the opposite preference
+///    from the unknown case above, now that "scoped" here only ever means
+///    "scoped to the operator".
+///
+/// A final tie among same-priority, same-scope-preference candidates goes to
+/// the narrowest segment, and then — deliberately, not by accident — to
 /// whichever [bandPlanModeSegments] lists first: this is a single forward
 /// pass keeping the first candidate that isn't strictly beaten, not a sort,
 /// so an exact tie has one well-defined, reproducible answer instead of
 /// depending on `List.sort`'s documented-unstable ordering for equal
 /// elements.
-String? modeForFrequency(double khz) {
-  ({double loKHz, double hiKHz, String? mode, int priority, bool scoped})? best;
+String? modeForFrequency(double khz, {int? ituRegion, String? countryCode}) {
+  final knowsOperatorScope = ituRegion != null || countryCode != null;
+  _BandPlanSegment? best;
   for (final segment in bandPlanModeSegments) {
     if (segment.loKHz > khz || segment.hiKHz < khz) continue;
-    if (best == null || _isBetterModeMatch(segment, best)) best = segment;
+    if (_isScopedElsewhere(segment, ituRegion, countryCode)) continue;
+    if (best == null || _isBetterModeMatch(segment, best, preferScopedOnTie: knowsOperatorScope)) {
+      best = segment;
+    }
   }
   return best?.mode;
 }
 
+/// Whether [segment] restricts to at least one region or country — the
+/// single definition [_isScopedElsewhere] and [_isBetterModeMatch] both
+/// build on, so there's one place to update if a third scope dimension
+/// (e.g. `entities`, see generate_band_plan_segments.mjs) is ever added.
+bool _isScoped(_BandPlanSegment segment) => segment.regions.isNotEmpty || segment.countries.isNotEmpty;
+
+/// Whether [segment] is scoped to somewhere other than the operator's own
+/// [ituRegion]/[countryCode] — an unscoped segment is never "elsewhere", and
+/// neither is a segment scoped to the operator's actual region or country
+/// (either list matching is enough; the source data never sets both on the
+/// same segment, but nothing here depends on that). Self-contained: unlike
+/// [modeForFrequency]'s own `knowsOperatorScope` check, this returns `false`
+/// outright when both [ituRegion] and [countryCode] are null, so a caller
+/// can never mistake "operator's scope unknown" for "excluded" by forgetting
+/// to gate the call — the precondition lives here, not in the caller.
+bool _isScopedElsewhere(_BandPlanSegment segment, int? ituRegion, String? countryCode) {
+  if (ituRegion == null && countryCode == null) return false;
+  if (!_isScoped(segment)) return false;
+  if (ituRegion != null && segment.regions.contains(ituRegion)) return false;
+  if (countryCode != null && segment.countries.contains(countryCode)) return false;
+  return true;
+}
+
 /// Whether [candidate] should replace [current] as the best match in
 /// [modeForFrequency]'s scan — see that function's doc comment for the
-/// tie-break order. Strict comparisons throughout (`<`, not `<=`) so an
-/// exact tie leaves [current] in place, making the scan's result depend
-/// only on [bandPlanModeSegments]' fixed order, never on comparator
-/// left/right argument order the way a sort comparator would.
-bool _isBetterModeMatch(
-  ({double loKHz, double hiKHz, String? mode, int priority, bool scoped}) candidate,
-  ({double loKHz, double hiKHz, String? mode, int priority, bool scoped}) current,
-) {
+/// tie-break order. [preferScopedOnTie] flips which side of a same-priority
+/// scope tie wins: false (operator region/country unknown) prefers the
+/// unscoped side, true (known — [modeForFrequency] has already excluded any
+/// non-matching-scope candidate via [_isScopedElsewhere], so "scoped" here
+/// only ever means "scoped to the operator") prefers the scoped side. Strict
+/// comparisons throughout (`<`, not `<=`) so an exact tie leaves [current] in
+/// place, making the scan's result depend only on [bandPlanModeSegments]'
+/// fixed order, never on comparator left/right argument order the way a sort
+/// comparator would.
+bool _isBetterModeMatch(_BandPlanSegment candidate, _BandPlanSegment current, {required bool preferScopedOnTie}) {
   if (candidate.priority != current.priority) return candidate.priority > current.priority;
-  if (candidate.scoped != current.scoped) return !candidate.scoped;
+  final candidateScoped = _isScoped(candidate);
+  final currentScoped = _isScoped(current);
+  if (candidateScoped != currentScoped) return candidateScoped == preferScopedOnTie;
   final candidateWidth = candidate.hiKHz - candidate.loKHz;
   final currentWidth = current.hiKHz - current.loKHz;
   return candidateWidth < currentWidth;

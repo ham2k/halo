@@ -57,6 +57,15 @@ class LoggingPanel extends StatefulWidget {
   final bool showGridField;
   final bool showQsoNumbers;
   final String? ourEntityPrefix;
+
+  /// The operator's own ITU region (1/2/3) and lowercase ISO country code
+  /// (HALO-52) — resolved by `operation_view.dart` alongside
+  /// [ourEntityPrefix], and passed straight through to LoggingControls so a
+  /// typed/commanded frequency gets a band-plan mode guess scoped to where
+  /// the operator actually is.
+  final int? ourItuRegion;
+  final String? ourCountryCode;
+
   final Map<String, dynamic>? suggestedQso;
 
   /// Forwards LoggingControls' command output up to the operation view,
@@ -85,6 +94,8 @@ class LoggingPanel extends StatefulWidget {
     this.showGridField = false,
     this.showQsoNumbers = true,
     this.ourEntityPrefix,
+    this.ourItuRegion,
+    this.ourCountryCode,
     this.suggestedQso,
     this.onCommandMessageChanged,
     this.onCallInfoChanged,
@@ -549,6 +560,8 @@ class _LoggingPanelState extends State<LoggingPanel> {
             // connected rig (CAT) instead of only reading the VFO when it
             // seeds. See LoggingControls.radioUpdates.
             radioUpdates: widget.services.radio,
+            ourItuRegion: widget.ourItuRegion,
+            ourCountryCode: widget.ourCountryCode,
             lookup: widget.services.extensions.lookupCall,
             enqueueLookup: widget.services.lookupQueue.enqueue,
             // force: false — unlike the explicit "Lookup all QSOs" action,

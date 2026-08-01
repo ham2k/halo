@@ -13,7 +13,7 @@
 // header comment for the same constraint). `dxcc.ts` only imports real npm
 // packages itself, so the relative import stays resolvable.
 
-import { annotateCallAgainstCountryFile, flagForDxccCode } from "../../../sdk/src/dxcc.ts"
+import { annotateCallAgainstCountryFile, flagForDxccCode, regionAndCountryForDxccCode } from "../../../sdk/src/dxcc.ts"
 import type { CallInfo, CallInfoLookup } from "@ham2k/halo-extension-sdk"
 
 // Well-known postindicators that denote a temporary/traveling location —
@@ -22,17 +22,19 @@ import type { CallInfo, CallInfoLookup } from "@ham2k/halo-extension-sdk"
 // alternate), 'MM' (maritime mobile).
 const PORTABLE_INDICATORS = new Set(['P', 'M', 'AM', 'MM'])
 
-// `flag` rides along as an extra field CallInfo/CallInfoLookup's fixed shape
-// (from lib-qson-tools, matching app-polo's QSON schema) doesn't declare —
-// the same way every hook result already crosses the Dart/JS bridge as a
-// plain untyped map, and `mergeLookupIntoGuess` merges any field
-// generically, not just the ones CallInfo declares. Used by the QSO row's
-// DX/domestic column (ham2k/app-halo-dist#2) to show a flag for a DX
-// contact without porting lib-dxcc-data's entity table into Dart. Widening
-// only this one field, rather than casting the whole return value to
-// `CallInfoLookup`, keeps every other field still checked against its real
-// declared type.
-type CallInfoLookupWithFlag = CallInfoLookup & { flag?: string }
+// `flag`/`ituRegion`/`countryCode` ride along as extra fields CallInfo/
+// CallInfoLookup's fixed shape (from lib-qson-tools, matching app-polo's
+// QSON schema) doesn't declare — the same way every hook result already
+// crosses the Dart/JS bridge as a plain untyped map, and
+// `mergeLookupIntoGuess` merges any field generically, not just the ones
+// CallInfo declares. `flag` is used by the QSO row's DX/domestic column
+// (ham2k/app-halo-dist#2); `ituRegion`/`countryCode` (HALO-52) let
+// `modeForFrequency` prefer/exclude region- or country-scoped band-plan
+// segments for the operator's own entity, without porting
+// lib-dxcc-data's entity table into Dart. Widening only these fields,
+// rather than casting the whole return value to `CallInfoLookup`, keeps
+// every other field still checked against its real declared type.
+type CallInfoLookupWithFlag = CallInfoLookup & { flag?: string; ituRegion?: number; countryCode?: string }
 
 export function annotateCallsign(call: string): CallInfoLookupWithFlag {
   const annotated = annotateCallAgainstCountryFile(call) as CallInfo
@@ -51,6 +53,7 @@ export function annotateCallsign(call: string): CallInfoLookupWithFlag {
     call,
     locationScope,
     flag: flagForDxccCode(annotated.dxccCode),
+    ...regionAndCountryForDxccCode(annotated.dxccCode),
     // The country-file entity's centroid isn't real QTH data — suppressing
     // it here keeps a later "already have a grid" skip-check from being
     // satisfied by a coarse DXCC-entity-level location. `locSource` (which

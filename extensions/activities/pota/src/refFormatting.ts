@@ -10,8 +10,7 @@
 // importing it by relative path keeps this file resolvable the same way.
 
 import { useBuiltinCountryFile } from "@ham2k/lib-country-files"
-import { DXCC_BY_CODE } from "@ham2k/lib-dxcc-data"
-import { annotateCallAgainstCountryFile, entityPrefixForCall } from "../../../sdk/src/dxcc.ts"
+import { annotateCallAgainstCountryFile, entityPrefixForCall, regionAndCountryForDxccCode } from "../../../sdk/src/dxcc.ts"
 
 export { entityPrefixForCall }
 
@@ -58,7 +57,7 @@ useBuiltinCountryFile()
 export function potaCountryPrefixForCall(call: string | undefined): string | undefined {
   if (!call) return undefined
   const annotated = annotateCallAgainstCountryFile(call)
-  const countryCode = annotated.dxccCode != null ? DXCC_BY_CODE[annotated.dxccCode]?.countryCode : undefined
+  const { countryCode } = regionAndCountryForDxccCode(annotated.dxccCode)
   return countryCode ? countryCode.toUpperCase() : annotated.entityPrefix
 }
 
