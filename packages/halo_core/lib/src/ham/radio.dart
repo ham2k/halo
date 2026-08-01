@@ -7,6 +7,8 @@
 // runtime per DESIGN.md §2 — only what the core UI needs per keystroke gets
 // a Dart port. Frequencies are in kHz throughout, matching QSON.
 
+import 'band_plan_segments.dart';
+
 class BandInfo {
   final String name;
   final double minKHz;
@@ -48,6 +50,57 @@ String? bandForFrequency(double khz) {
     if (khz >= band.minKHz && khz <= band.maxKHz) return band.name;
   }
   return null;
+}
+
+/// Guesses the mode for [khz] from the amateur radio band plan (HALO-32) —
+/// the generous, worldwide segments (CW/Phone/Data sub-bands) where a
+/// specific mode is conventionally used, not a regulatory boundary (that's
+/// [bandForFrequency]'s job). Returns null where the band plan doesn't settle
+/// on one mode for [khz] (e.g. a repeater/beacon segment, or no segment
+/// covers it at all) — callers should fall back to the current/default mode.
+///
+/// Priority always wins first, matching the source library: a narrowband
+/// digital carve-out (FT8/FT4, priority 100) beats the wider CW/Phone/Data
+/// segment it sits inside even when the carve-out is region/country-scoped
+/// (e.g. 80m's Region-3-only FT8 window at 3568-3571 kHz). Only among
+/// same-priority candidates does scope break the tie: prefer an unscoped
+/// segment ([bandPlanModeSegments]' `scoped`, see band_plan_segments.dart)
+/// over a scoped one, since without the operator's ITU region or country
+/// there's no way to tell whether a scoped one actually applies — and
+/// letting it win anyway risks e.g. a blanket "unrestricted" marker scoped
+/// to one specific country winning a narrowest-segment tie-break and
+/// returning a null guess for a frequency that's plainly SSB everywhere
+/// else. A final tie among same-priority, same-scope candidates goes to the
+/// narrowest segment, and then — deliberately, not by accident — to
+/// whichever [bandPlanModeSegments] lists first: this is a single forward
+/// pass keeping the first candidate that isn't strictly beaten, not a sort,
+/// so an exact tie has one well-defined, reproducible answer instead of
+/// depending on `List.sort`'s documented-unstable ordering for equal
+/// elements.
+String? modeForFrequency(double khz) {
+  ({double loKHz, double hiKHz, String? mode, int priority, bool scoped})? best;
+  for (final segment in bandPlanModeSegments) {
+    if (segment.loKHz > khz || segment.hiKHz < khz) continue;
+    if (best == null || _isBetterModeMatch(segment, best)) best = segment;
+  }
+  return best?.mode;
+}
+
+/// Whether [candidate] should replace [current] as the best match in
+/// [modeForFrequency]'s scan — see that function's doc comment for the
+/// tie-break order. Strict comparisons throughout (`<`, not `<=`) so an
+/// exact tie leaves [current] in place, making the scan's result depend
+/// only on [bandPlanModeSegments]' fixed order, never on comparator
+/// left/right argument order the way a sort comparator would.
+bool _isBetterModeMatch(
+  ({double loKHz, double hiKHz, String? mode, int priority, bool scoped}) candidate,
+  ({double loKHz, double hiKHz, String? mode, int priority, bool scoped}) current,
+) {
+  if (candidate.priority != current.priority) return candidate.priority > current.priority;
+  if (candidate.scoped != current.scoped) return !candidate.scoped;
+  final candidateWidth = candidate.hiKHz - candidate.loKHz;
+  final currentWidth = current.hiKHz - current.loKHz;
+  return candidateWidth < currentWidth;
 }
 
 /// MHz/kHz/Hz split for QSO-row display (issue ham2k/app-halo-dist#2): MHz

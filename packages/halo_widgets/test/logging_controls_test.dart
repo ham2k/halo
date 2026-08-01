@@ -4240,6 +4240,25 @@ void main() {
     expect(logged.single.mode, 'CW');
   });
 
+  testWidgets('HALO-32: a frequency command with no mode of its own guesses one from the band plan',
+      (tester) async {
+    await tester.pumpWidget(host(interpretCommand: fakeInterpretCommand));
+    await openControl(tester, MdiIcons.radio);
+
+    // The fake frequency command mirrors the real radio-commands extension:
+    // {setVfo: {freq}}, no mode — same as typing straight into the
+    // Frequency field, this must fall back to guessing one from the band
+    // plan (14074 kHz is FT8 territory) rather than leaving the prior mode.
+    await tester.enterText(find.widgetWithText(TextField, 'Their call'), '14074');
+    await tester.pump();
+    await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+    await tester.pump(const Duration(milliseconds: 200));
+
+    expect(tester.widget<TextField>(find.widgetWithText(TextField, 'Frequency')).controller!.text, '14074');
+    expect(tester.widget<TextField>(find.widgetWithText(TextField, 'Mode')).controller!.text, 'FT8');
+    expect(tester.widget<TextField>(find.widgetWithText(TextField, 'Sent')).controller!.text, '599');
+  });
+
   // Enter must never cost the operator the field they were typing in. The
   // entry row is a loop the keyboard stays inside (docs/design/logging-fields.md
   // § "Moving between the main fields"), so Enter means "log", not "done
@@ -4619,6 +4638,78 @@ void main() {
     expect(logged, hasLength(1));
     expect(logged.single.band, '20m');
     expect(logged.single.freq, isNull);
+  });
+
+  testWidgets('HALO-32: a repeated mode guess does not reset the Sent/Rcvd cursor', (tester) async {
+    // Regression test: the guess used to reapply unconditionally whenever
+    // it was non-null, even when it equaled the current mode — and
+    // TextEditingController.text's setter always collapses the selection,
+    // so it force-moved the cursor in Sent/Rcvd on every such keystroke.
+    await tester.pumpWidget(host());
+    await openControl(tester, MdiIcons.radio);
+
+    // Land on FT8 first (14074 kHz).
+    await tester.enterText(find.widgetWithText(TextField, 'Frequency'), '14074');
+    await tester.pump();
+    expect(tester.widget<TextField>(find.widgetWithText(TextField, 'Mode')).controller!.text, 'FT8');
+
+    // Operator repositions the cursor in Sent without typing (so _rstsTouched
+    // stays false) — e.g. clicking partway into the default RST.
+    final sent = tester.widget<TextField>(find.widgetWithText(TextField, 'Sent')).controller!;
+    sent.selection = const TextSelection.collapsed(offset: 0);
+
+    // Another keystroke whose frequency is still inside the same FT8
+    // segment (14074-14077) — the guess is unchanged.
+    await tester.enterText(find.widgetWithText(TextField, 'Frequency'), '14075');
+    await tester.pump();
+
+    expect(tester.widget<TextField>(find.widgetWithText(TextField, 'Mode')).controller!.text, 'FT8');
+    expect(sent.selection, const TextSelection.collapsed(offset: 0),
+        reason: 'the guess did not change, so the RSTs must not have been rewritten out from under the cursor');
+  });
+
+  testWidgets('HALO-32: typing a frequency guesses its mode from the band plan', (tester) async {
+    await tester.pumpWidget(host()); // tunedRadio seeds Mode as SSB
+    await openControl(tester, MdiIcons.radio);
+    expect(tester.widget<TextField>(find.widgetWithText(TextField, 'Mode')).controller!.text, 'SSB');
+
+    // 14074 kHz is FT8 territory in the band plan.
+    await tester.enterText(find.widgetWithText(TextField, 'Frequency'), '14074');
+    await tester.pump();
+    expect(tester.widget<TextField>(find.widgetWithText(TextField, 'Mode')).controller!.text, 'FT8');
+    expect(tester.widget<TextField>(find.widgetWithText(TextField, 'Sent')).controller!.text, '599',
+        reason: 'the mode guess refreshes the untouched default RST too');
+
+    // 5332 kHz (a 60m channel) is a frequency the band plan has no single
+    // mode for. Both edits happen inside the same continuous session (the
+    // field never settles/blurs between them), so a null guess here falls
+    // back to `_modeBeforeFreqEdit` — the mode as it stood before this
+    // session started (SSB) — rather than leaving it stuck on the earlier
+    // FT8 guess, which would otherwise survive purely because it happened
+    // to be the last edit that DID match something.
+    await tester.enterText(find.widgetWithText(TextField, 'Frequency'), '5332');
+    await tester.pump();
+    expect(tester.widget<TextField>(find.widgetWithText(TextField, 'Mode')).controller!.text, 'SSB');
+  });
+
+  testWidgets('HALO-32: a transient mid-typing match does not strand the mode when the finished frequency has none',
+      (tester) async {
+    // Typing "18001" character by character passes through "1800" (a real
+    // 160m match, guesses RTTY) before landing on "18001" itself, which
+    // falls in the real gap between 160m (ends 2000) and 17m (starts
+    // 18068) — modeForFrequency returns null there. The transient RTTY
+    // guess must not survive; the mode must end back where it started.
+    await tester.pumpWidget(host()); // tunedRadio seeds Mode as SSB
+    await openControl(tester, MdiIcons.radio);
+    expect(tester.widget<TextField>(find.widgetWithText(TextField, 'Mode')).controller!.text, 'SSB');
+
+    for (final prefix in ['1', '18', '180', '1800', '18001']) {
+      await tester.enterText(find.widgetWithText(TextField, 'Frequency'), prefix);
+      await tester.pump();
+    }
+
+    expect(tester.widget<TextField>(find.widgetWithText(TextField, 'Frequency')).controller!.text, '18001');
+    expect(tester.widget<TextField>(find.widgetWithText(TextField, 'Mode')).controller!.text, 'SSB');
   });
 
   testWidgets('call-field command awaiting params (expectsParams) allows space but stays uppercase, and Enter does not execute it', (tester) async {
@@ -5569,6 +5660,46 @@ void main() {
     expect(find.text('40m'), findsWidgets, reason: 'the band follows the frequency');
   });
 
+  testWidgets('HALO-32: a radio-driven frequency change never runs the band-plan mode guess', (tester) async {
+    fakeRadio.setVfo('vfoA', freq: 7100, mode: 'CW');
+    await tester.pumpWidget(host(radioService: fakeRadio));
+    await openControl(tester, MdiIcons.radio);
+    expect(tester.widget<TextField>(find.widgetWithText(TextField, 'Mode')).controller!.text, 'CW');
+
+    // The operator retunes to 14074 kHz (FT8 territory per the band plan)
+    // but leaves the rig on CW — its own reported mode must win, never a
+    // band-plan re-guess from the new frequency.
+    fakeRadio.setVfo('vfoA', freq: 14074, mode: 'CW');
+    await tester.pumpAndSettle();
+
+    expect(tester.widget<TextField>(find.widgetWithText(TextField, 'Frequency')).controller!.text, '14074');
+    expect(tester.widget<TextField>(find.widgetWithText(TextField, 'Mode')).controller!.text, 'CW');
+  });
+
+  testWidgets(
+      'HALO-32: a radio-driven frequency-only update (no mode of its own) never runs the band-plan mode guess',
+      (tester) async {
+    // The test above can't actually tell a broken `_populating` guard from a
+    // working one: _seedFromRadioService's own `if (vfo.mode != null) _mode
+    // = vfo.mode!` unconditionally overwrites any stray guess right after,
+    // as long as the radio reports SOME mode. Here `fakeRadio` never has a
+    // mode set (`_FakeVfoStore`'s Vfo starts with mode: null, and this test
+    // never passes one), so that overwrite never fires — a stray guess, if
+    // the guard were broken, would go unmasked. This is the actually
+    // guard-sensitive version.
+    await tester.pumpWidget(host(radioService: fakeRadio));
+    await openControl(tester, MdiIcons.radio);
+    expect(tester.widget<TextField>(find.widgetWithText(TextField, 'Mode')).controller!.text, 'SSB');
+
+    // The radio reports a frequency-only change — 14074 kHz is FT8
+    // territory per the band plan, but nothing here should guess it.
+    fakeRadio.setVfo('vfoA', freq: 14074);
+    await tester.pumpAndSettle();
+
+    expect(tester.widget<TextField>(find.widgetWithText(TextField, 'Frequency')).controller!.text, '14074');
+    expect(tester.widget<TextField>(find.widgetWithText(TextField, 'Mode')).controller!.text, 'SSB');
+  });
+
   testWidgets('a radio update does not overwrite a frequency the operator is part-way through typing',
       (tester) async {
     fakeRadio.setVfo('vfoA', freq: 14285, mode: 'SSB');
@@ -6095,6 +6226,51 @@ void main() {
     await openControl(tester, MdiIcons.radio);
     expect(tester.widget<TextField>(find.widgetWithText(TextField, 'Frequency')).controller!.text, '14074');
     expect(find.text('20m'), findsWidgets);
+  });
+
+  testWidgets('HALO-32: applying a suggestedQso with no mode of its own never runs the band-plan guess',
+      (tester) async {
+    // tunedRadio (host()'s default) seeds Mode as SSB; 14074 kHz is FT8
+    // territory per the band plan, but this suggestion carries no mode of
+    // its own — applying it must leave the mode exactly as-is, not guess
+    // FT8 from the frequency. This is the cold-start (initState) path,
+    // where `_applySuggestedQso` runs before `_onFreqChanged`'s listener is
+    // even attached — so on its own this only proves the guess doesn't fire
+    // when it structurally can't. The next test below covers the path where
+    // it structurally could.
+    await tester.pumpWidget(host(suggestedQso: {
+      'their': {'call': 'W1AW'},
+      'freq': 14074.0,
+    }));
+    await tester.pump();
+
+    await openControl(tester, MdiIcons.radio);
+    expect(tester.widget<TextField>(find.widgetWithText(TextField, 'Frequency')).controller!.text, '14074');
+    expect(tester.widget<TextField>(find.widgetWithText(TextField, 'Mode')).controller!.text, 'SSB');
+  });
+
+  testWidgets(
+      'HALO-32: a second suggestedQso (didUpdateWidget, listener already attached) still never guesses the mode',
+      (tester) async {
+    // Unlike the cold-start case above, a suggestedQso arriving via
+    // didUpdateWidget (a second spot tapped on an already-mounted widget,
+    // line ~1807) runs AFTER `_onFreqChanged`'s listener is attached — the
+    // one path where a broken `_populating` guard would actually let a
+    // stray band-plan guess through. Build with no suggestion first so the
+    // widget is fully mounted (Mode defaults to SSB, per tunedRadio), then
+    // apply a suggestion with a frequency but no mode.
+    await tester.pumpWidget(host());
+    await openControl(tester, MdiIcons.radio);
+    expect(tester.widget<TextField>(find.widgetWithText(TextField, 'Mode')).controller!.text, 'SSB');
+
+    await tester.pumpWidget(host(suggestedQso: {
+      'their': {'call': 'W1AW'},
+      'freq': 14074.0, // FT8 territory per the band plan
+    }));
+    await tester.pump();
+
+    expect(tester.widget<TextField>(find.widgetWithText(TextField, 'Frequency')).controller!.text, '14074');
+    expect(tester.widget<TextField>(find.widgetWithText(TextField, 'Mode')).controller!.text, 'SSB');
   });
 
   testWidgets('a suggestedQso moves the VFO, so a connected radio follows the spot', (tester) async {

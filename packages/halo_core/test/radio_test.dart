@@ -19,6 +19,79 @@ void main() {
     });
   });
 
+  group('modeForFrequency', () {
+    test('narrowband digital carve-outs win over the wider CW/Data segment', () {
+      expect(modeForFrequency(14074), 'FT8');
+      expect(modeForFrequency(7047.5), 'FT4');
+    });
+
+    test('priority beats scope: a region-scoped carve-out still wins over the wider unscoped segment', () {
+      // 80m 3568-3571 kHz is a real, in-use Region 3 FT8 window (priority
+      // 100), scoped to that region. It must still win over the wider
+      // unscoped CW/Data segments it sits inside — priority is compared
+      // before scope, matching the source library, which lets a
+      // high-priority segment win regardless of scope.
+      expect(modeForFrequency(3570), 'FT8');
+    });
+
+    test('a known upstream data bug (12m FT4 has hi < lo) is carried through, not silently fixed', () {
+      // band_plan_segments.dart is generated straight from the npm package,
+      // which is authoritative — including this segment, which never
+      // matches anything. 24920 kHz falls back to the next-narrowest
+      // unscoped segment instead (the Data/RTTY one), not FT4.
+      expect(modeForFrequency(24920), 'RTTY');
+    });
+
+    test('maps CW/Data/Phone sub-bands', () {
+      expect(modeForFrequency(7030), 'CW');
+      expect(modeForFrequency(3600), 'RTTY');
+      expect(modeForFrequency(28400), 'SSB');
+      expect(modeForFrequency(146520), 'FM');
+    });
+
+    test('an exact tie at a shared segment boundary resolves to the first-listed segment, every time', () {
+      // 2m 144100 kHz sits exactly on the boundary between the unscoped CW
+      // segment (144000-144100) and the unscoped RTTY segment
+      // (144100-144200) — same priority, same scope, same 100kHz width.
+      // Asserting the specific value (not just that repeated calls agree
+      // with EACH OTHER) matters: a pure function called with the same
+      // input is self-consistent within one process regardless of which
+      // algorithm computes it — even the old, since-replaced List.sort
+      // comparator this test guards against would pass a self-consistency
+      // check. What actually distinguishes the fix is that the result is
+      // CW, matching CW's earlier position in bandPlanModeSegments — not an
+      // artifact of whichever way `List.sort` happens to order equal
+      // elements.
+      final results = List.generate(20, (_) => modeForFrequency(144100));
+      expect(results.toSet(), {'CW'});
+    });
+
+    test('falls back to a region/country-scoped segment when no unscoped one matches', () {
+      // 20m Phone above 14150 kHz has no globally-unscoped segment in the
+      // source band plan (only a Region 1/2 one and a US one) — the
+      // scoped fallback must still resolve it to SSB, not null.
+      expect(modeForFrequency(14200), 'SSB');
+      expect(modeForFrequency(14300), 'SSB');
+    });
+
+    test('at equal priority, an unscoped segment wins over a wider scoped "no restriction" marker', () {
+      // 160m 1850 kHz: a same-priority (0) unscoped Phone/SSB segment
+      // (1843-2000) and a narrower, scoped, mode-less "Australia: no
+      // restriction" segment (1800-1875) both cover it. A pure
+      // priority-then-width sort with no scope preference would pick the
+      // narrower Australia segment and return a null guess for a frequency
+      // that's plainly SSB everywhere else — the unscoped one must win
+      // instead, precisely because nothing here outranks it on priority.
+      expect(modeForFrequency(1850), 'SSB');
+      expect(modeForFrequency(1860), 'SSB');
+    });
+
+    test('returns null where the band plan does not settle on one mode', () {
+      expect(modeForFrequency(5332), isNull); // 60m Channel 1 (a fixed USB channel, modeled as null upstream)
+      expect(modeForFrequency(10160), isNull); // no segment at all (above 30m)
+    });
+  });
+
   group('parseFreq', () {
     test('parses kHz input', () {
       expect(parseFreq('14285'), 14285);

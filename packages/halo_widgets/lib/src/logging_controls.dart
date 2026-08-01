@@ -734,6 +734,16 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   /// watching the radio.
   bool _freqTouched = false;
 
+  /// `_mode` as it stood before the current frequency-typing session
+  /// started, snapshotted once on the session's first keystroke ([_freqTouched]
+  /// transitioning false→true) — the band-plan guess in [_onFreqChanged]
+  /// falls back to this when the fully-typed frequency has no guess of its
+  /// own (HALO-32). Without it, a transient mid-typing prefix that DOES
+  /// match a segment (e.g. "1800" while typing "18001", a real gap between
+  /// 160m and 17m) would leave `_mode` stuck on that guess instead of
+  /// restoring what the operator had before they started editing.
+  String? _modeBeforeFreqEdit;
+
   /// The frequency text as of the last notification — the baseline that
   /// tells a real edit from a bare cursor move. Same idiom, and the same
   /// reason, as `_lastTimeDateText`.
@@ -2371,9 +2381,28 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     _lastFreqText = text;
     if (_populating || widget.editingQso != null) return;
     if (!changed) return;
+    // The session's first keystroke: snapshot the mode as it stood before
+    // this edit, for the band-plan guess below to fall back to. Guarded on
+    // `!_freqTouched` so it captures once per session, not on every
+    // keystroke — otherwise it would just track whatever the guess itself
+    // last set `_mode` to.
+    if (!_freqTouched) _modeBeforeFreqEdit = _mode;
     // The operator's own edit — newer than whatever the VFO says, so live
     // follow must leave it alone until it's been pushed.
     _freqTouched = true;
+    // HALO-32: a frequency the operator typed themselves — guess its mode
+    // from the band plan, same as a radio-driven change (_seedFromRadioService)
+    // or a suggested QSO (_applySuggestedQso) already set `_mode` from their
+    // own source. Falls back to `_modeBeforeFreqEdit` (not left at whatever
+    // the previous keystroke's guess happened to be) when this keystroke's
+    // frequency has no band-plan opinion — typing digit by digit can pass
+    // through a prefix that does match before landing on a final value that
+    // doesn't (e.g. "1800", a real match, mid-typing "18001", a real gap
+    // between 160m and 17m).
+    if (freq != null) {
+      final guess = modeForFrequency(freq) ?? _modeBeforeFreqEdit;
+      if (guess != null && guess != _mode) setState(() => _applyModeGuess(guess));
+    }
     // Only push once there's enough digits to plausibly be a real
     // frequency (mirrors the frequency command's own `length < 3` reject),
     // debounced so we're not writing to the operation on every keystroke.
@@ -2395,6 +2424,22 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     _sentController.text = defaultRSTFor(_mode);
     _rcvdController.text = defaultRSTFor(_mode);
     _rstsTouched = false;
+  }
+
+  /// Sets `_mode` to a band-plan guess (HALO-32) and refreshes the untouched
+  /// default RSTs — shared by [_onFreqChanged] and the frequency-command
+  /// branch of [_dispatchActions], both of which need exactly this and
+  /// nothing more: unlike [_setMode], no immediate radio push (the caller's
+  /// own debounce, or its own batched push alongside freq/band, handles
+  /// that) and no rescore (the caller already schedules one for the
+  /// frequency/band change this guess rides along with). Callers must wrap
+  /// this in their own `setState` (or already be inside one). A no-op when
+  /// [mode] already matches `_mode`, so callers can call it unconditionally
+  /// once they have a non-null guess.
+  void _applyModeGuess(String mode) {
+    if (mode == _mode) return;
+    _mode = mode;
+    if (!_rstsTouched) _applyDefaultRSTs();
   }
 
   void _setMode(String mode) {
@@ -4478,6 +4523,15 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
           if (mode is String) {
             _mode = mode;
             if (!_rstsTouched) _applyDefaultRSTs();
+          } else if (freq is num) {
+            // HALO-32: the frequency command (typing "14285 " into the call
+            // field) doesn't carry a mode of its own — guess it from the
+            // band plan, same as typing directly into the Frequency field.
+            // Unlike that field, this fires once per dispatched command with
+            // a final, already-complete frequency — no mid-typing prefix to
+            // guard against — so a null guess simply leaves `_mode` alone.
+            final guess = modeForFrequency(freq.toDouble());
+            if (guess != null) _applyModeGuess(guess);
           }
         });
         _populating = false;
