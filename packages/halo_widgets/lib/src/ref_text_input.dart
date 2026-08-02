@@ -165,6 +165,13 @@ class RefTextInput extends StatefulWidget {
   /// deliberately not disposed here.
   final FocusNode? focusNode;
 
+  /// A caller-owned text controller, for a caller that needs to read the
+  /// caret position — the panel's cursor-key field-hopping checks whether
+  /// it sits at an edge before crossing to a neighbouring control. Same
+  /// ownership rule as [focusNode]: left null, the field owns (and disposes)
+  /// its own.
+  final TextEditingController? controller;
+
   const RefTextInput({
     super.key,
     required this.refType,
@@ -177,6 +184,7 @@ class RefTextInput extends StatefulWidget {
     this.decorate,
     this.labelColor,
     this.focusNode,
+    this.controller,
   });
 
   @override
@@ -184,7 +192,12 @@ class RefTextInput extends StatefulWidget {
 }
 
 class _RefTextInputState extends State<RefTextInput> {
-  late final _controller = TextEditingController(text: _joined(widget.refs));
+  /// Only set when no [RefTextInput.controller] was supplied — the field's
+  /// own controller, and the only one it may dispose.
+  TextEditingController? _ownController;
+
+  TextEditingController get _controller =>
+      widget.controller ?? (_ownController ??= TextEditingController(text: _joined(widget.refs)));
 
   /// Only set when no [RefTextInput.focusNode] was supplied — the field's own
   /// node, and the only one it may dispose.
@@ -208,6 +221,12 @@ class _RefTextInputState extends State<RefTextInput> {
     for (final ref in widget.refs) {
       final code = ref['ref'] as String?;
       if (code != null) _decorations[code] = ref;
+    }
+    // A caller-supplied controller (unlike the lazily-created own one) isn't
+    // constructed with the refs' text baked in, so seed it here — the same
+    // text `didUpdateWidget` below keeps it in sync with afterwards.
+    if (widget.controller != null && widget.controller!.text != _joined(widget.refs)) {
+      widget.controller!.text = _joined(widget.refs);
     }
     _focus.addListener(_onFocusChange);
   }
@@ -243,10 +262,9 @@ class _RefTextInputState extends State<RefTextInput> {
 
   @override
   void dispose() {
-    _controller.dispose();
-    // A caller-supplied node outlives this widget (it is reused across
-    // expand/collapse cycles), so only remove what we added to it. Our own
-    // node goes with the widget, listener and all.
+    // A caller-supplied controller outlives this widget, same as a
+    // caller-supplied focus node — only what we own gets disposed here.
+    _ownController?.dispose();
     _focus.removeListener(_onFocusChange);
     _ownFocus?.dispose();
     super.dispose();

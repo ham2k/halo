@@ -410,9 +410,12 @@ class LoggingControls extends StatefulWidget {
 
   /// Arrow Up on a secondary control pill walks off the top of this panel —
   /// the caller (which owns the QSO list and its selection) takes the
-  /// keyboard from there. Unset means the panel is the top of the ladder and
-  /// Up simply stops at the pills. See APP-19.
-  final VoidCallback? onNavigateToQsoList;
+  /// keyboard from there. Returns whether it actually did (false when the
+  /// list has nothing navigable — an empty operation, or one holding only
+  /// event markers) so a caller that already gave up its own focus can fall
+  /// back instead of leaving the keyboard stranded. Unset means the panel is
+  /// the top of the ladder and Up simply stops at the pills. See APP-19.
+  final bool Function()? onNavigateToQsoList;
 
   /// Settings engine interface.
   final SyncSettings? settings;
@@ -729,6 +732,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   final _rcvdFocus = FocusNode();
   final _freqFocus = FocusNode();
   final _timeFocus = FocusNode();
+  final _dateFocus = FocusNode();
   final _gridFocus = FocusNode();
   final _stateFocus = FocusNode();
 
@@ -1483,6 +1487,14 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   /// meaningful while composing a new QSO (`editingQso == null`).
   final _wipeUndoSlot = TimedUndoSlot<Map<String, dynamic>>();
 
+  /// The new QSO being composed, captured the instant the operator steps
+  /// away to browse/edit an earlier one (`editingQso` going null → non-null)
+  /// — restored in `didUpdateWidget` when they come back (non-null → null),
+  /// whether that's Escape, Down off the list, or saving the edit. Unlike
+  /// [_wipeUndoSlot] this never expires: it's not a "did you mean to lose
+  /// this" offer, it's the draft's own state while attention is elsewhere.
+  Map<String, dynamic>? _composingSnapshot;
+
   /// Guards against double-logging: Enter is bound both as a keyboard
   /// shortcut and as every field's onSubmitted, and can also auto-repeat.
   bool _isLogging = false;
@@ -1633,6 +1645,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
       (_rcvdFocus, _rcvdController),
       (_freqFocus, _freqController),
       (_timeFocus, _timeController),
+      (_dateFocus, _dateController),
       (_gridFocus, _gridController),
       (_stateFocus, _stateController),
     ]) {
@@ -1691,7 +1704,8 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
       wipe: _wipe,
       isFieldsLocked: () => _fieldsLocked,
       focusCall: _callFocus.requestFocus,
-      focusSecondaryControls: _focusPill,
+      focusSecondaryControls: _focusPillAndOpen,
+      focusLastPrimaryField: _focusLastPrimaryField,
     );
     // Show the next serial number straight away — an operator opening a WPX
     // operation needs to know where the series stands before the first QSO,
@@ -1774,7 +1788,8 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
         wipe: _wipe,
         isFieldsLocked: () => _fieldsLocked,
         focusCall: _callFocus.requestFocus,
-        focusSecondaryControls: _focusPill,
+        focusSecondaryControls: _focusPillAndOpen,
+        focusLastPrimaryField: _focusLastPrimaryField,
       );
     }
     // The VFO notifier can be swapped with the widget (a different
@@ -1792,11 +1807,46 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
       widget.radioUpdates?.addListener(_onRadioVfoChanged);
     }
     if (oldWidget.editingQso?.uuid != widget.editingQso?.uuid) {
+      // Captured before _resetEditingSessionState() below, which clears
+      // _theirNameOverride — a snapshot taken after that would silently drop
+      // a name entered via the More pane.
+      if (oldWidget.editingQso == null && widget.editingQso != null) {
+        _composingSnapshot = _getCurrentQsoData(composing: true);
+      }
       _resetEditingSessionState();
       if (widget.editingQso != null) {
         _populateFromEditingQso(widget.editingQso!);
       } else {
+        final composingSnapshot = _composingSnapshot;
+        _composingSnapshot = null;
         _resetLocalFields();
+        if (composingSnapshot != null) {
+          // Same restore idiom as _restoreFromUndoSlot: overlay the draft
+          // back on top of the blank fields _resetLocalFields just seeded.
+          _populating = true;
+          _applyFieldsFromData(composingSnapshot);
+          _manualStartAtMillis = composingSnapshot['startAtMillis'] as int?;
+          // _applyFieldsFromData only sets the controllers' text — it never
+          // touches these, and _resetLocalFields just cleared them. A
+          // grid/state the operator had typed (present in the snapshot only
+          // because it was touched — see _getCurrentQsoData's `composing`
+          // branch) would otherwise show on screen but silently drop out of
+          // the saved record, since _getCurrentQsoData gates their.grid/
+          // their.state on the flag, not on the controller text.
+          final theirSnapshot = composingSnapshot['their'] as Map<String, dynamic>?;
+          _gridTouched = theirSnapshot?.containsKey('grid') ?? false;
+          _stateTouched = theirSnapshot?.containsKey('state') ?? false;
+          setState(() {});
+          _populating = false;
+          // Same reasoning as _restoreFromUndoSlot: _populating suppressed
+          // _onCallChanged's own _scheduleLookup()/_scheduleScore(), and
+          // _resetLocalFields already cleared the lookup cache and score
+          // notices — without this the restored callsign sits unenriched,
+          // without its dupe/New-* pills, until the operator edits the call
+          // field again.
+          _scheduleLookup();
+          _scheduleScore();
+        }
       }
       // Self- vs other-spot eligibility can differ per extension (e.g. only
       // self-spotting an operation with an activation ref) — re-fetch
@@ -2207,6 +2257,9 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     for (final node in _controlRefFocus.values) {
       node.dispose();
     }
+    for (final controller in _controlRefController.values) {
+      controller.dispose();
+    }
     for (final node in _controlTextFocus.values) {
       node.dispose();
     }
@@ -2232,6 +2285,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     _gridFocus.dispose();
     _stateFocus.dispose();
     _timeFocus.dispose();
+    _dateFocus.dispose();
     super.dispose();
   }
 
@@ -2499,6 +2553,13 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   FocusNode _refFocusFor(String key) =>
       _controlRefFocus[key] ??= FocusNode(debugLabel: 'ref:$key');
 
+  /// One text controller per activity ref control, same reasoning as
+  /// [_controlRefFocus] — owned here so cursor-key field-hopping can read the
+  /// caret position without reaching into [RefTextInput]'s own State.
+  final Map<String, TextEditingController> _controlRefController = {};
+
+  TextEditingController _refControllerFor(String key) => _controlRefController[key] ??= TextEditingController();
+
   /// The field a control expands *into* — what the operator opened it to type
   /// in. Null for a control with nothing to type (Spotting with its comment
   /// hidden is just a button; `more` opens a pane instead of expanding), which
@@ -2521,6 +2582,36 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
             .where((c) => c['key'] == key && (c['input'] as Map?)?['kind'] == 'refList')
             .firstOrNull;
         return control == null ? null : _refFocusFor(key);
+    }
+  }
+
+  /// Every focusable field inside [key]'s expanded content that Tab/Shift-Tab
+  /// step through before moving on to a neighbouring control, in the same
+  /// left-to-right order they're laid out on screen. Distinct from
+  /// [_expandedFocusFor]: that one is the SINGLE field opening the control
+  /// focuses (Radio's is Frequency, not first here — landing there on the
+  /// way in from Tab would skip Band entirely).
+  ///
+  /// Cursor keys do NOT walk this list field by field — see
+  /// [_crossToNextControl] — so Band and Mode being here only matters for
+  /// Tab/Shift-Tab, which do still visit them.
+  List<(FocusNode, TextEditingController)> _expandedFieldOrderFor(String key) {
+    switch (key) {
+      case 'time':
+        return [(_timeFocus, _timeController), (_dateFocus, _dateController)];
+      case 'radio':
+        return [
+          (_bandDropdownFocus, _bandDropdownController),
+          (_freqFocus, _freqController),
+          (_modeDropdownFocus, _modeDropdownController),
+        ];
+      case 'spotting':
+        return _spotState.showComment ? [(_spotCommentFocus, _spotCommentController)] : const [];
+      default:
+        final control = _effectiveActivityControls
+            .where((c) => c['key'] == key && (c['input'] as Map?)?['kind'] == 'refList')
+            .firstOrNull;
+        return control == null ? const [] : [(_refFocusFor(key), _refControllerFor(key))];
     }
   }
 
@@ -2566,13 +2657,15 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
 
   /// Moves the keyboard onto the pill strip — at [key] when given, else the
   /// pill it was last on, else the first. A no-op when there are no pills.
+  /// Returns the pill it landed on (null when there were none), so callers
+  /// that also need to open it don't have to re-derive the same target.
   ///
   /// The strip scrolls horizontally and can hold more pills than fit, so a
   /// focused pill also has to be scrolled into view: focus alone doesn't move
   /// a viewport.
-  void _focusPill([String? key]) {
+  String? _focusPill([String? key]) {
     final order = _pillOrder;
-    if (order.isEmpty) return;
+    if (order.isEmpty) return null;
     final remembered = _lastPillKey;
     final target = (key != null && order.contains(key))
         ? key
@@ -2590,6 +2683,118 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
         curve: Curves.easeOut,
       );
     });
+    return target;
+  }
+
+  /// [_focusPill], then opens whatever it landed on — the single motion that
+  /// replaces the old separate "land on the pill, then Enter to open" steps.
+  /// Skips `more`: it pops a dialog rather than expanding inline, and arriving
+  /// by keyboard shouldn't trigger that on its own (Enter still does, same as
+  /// a tap).
+  void _focusPillAndOpen([String? key]) {
+    final target = _focusPill(key);
+    if (target == null) return;
+    if (target == 'more') {
+      // more never opens, but whatever WAS open (a control left visibly
+      // expanded from before this Up, e.g. a mouse click into a main field)
+      // still needs to close.
+      if (_selectedControlKey != null) setState(() => _selectedControlKey = null);
+      return;
+    }
+    _onSelectControl(target);
+  }
+
+  /// Crosses onto [key]'s pill for Tab/Shift-Tab — opens its control (unless
+  /// `more`, which pops a dialog rather than expanding) and lands on its own
+  /// first (`fromStart: true`) or last field, NOT the one field it opens into
+  /// on a tap or on arrival via Up (`_focusPillAndOpen`'s target — Radio's
+  /// Frequency, the field the operator actually types into). Landing there
+  /// from a Tab crossing in from Time would skip Band entirely. A fieldless
+  /// control just leaves the keyboard on its own chip, same as
+  /// `_focusPillAndOpen`.
+  ///
+  /// Left/Right go through [_crossToNextControl] instead, which always lands
+  /// on the canonical field regardless of direction — see its own doc for why.
+  void _crossToPill(String key, {required bool fromStart}) {
+    _focusPill(key);
+    if (key == 'more') {
+      // more never opens, but whatever WAS open (crossed in from) still
+      // needs to close — otherwise its panel is left rendered under a
+      // keyboard that already moved on.
+      if (_selectedControlKey != null) setState(() => _selectedControlKey = null);
+      return;
+    }
+    setState(() {
+      if (key == 'time' && _selectedControlKey != 'time') _seedTimeFields();
+      _selectedControlKey = key;
+    });
+    final fields = _expandedFieldOrderFor(key);
+    if (fields.isEmpty) return;
+    final target = fromStart ? fields.first.$1 : fields.last.$1;
+    _requestFocusOnceBuilt(key, target);
+  }
+
+  /// Requests focus for [target], a field belonging to [key]'s control,
+  /// retrying one extra frame later if it can't take focus yet.
+  ///
+  /// A DropdownMenu field (Band/Mode) re-entered after being closed needs a
+  /// frame of its own beyond the rebuild that reopens it: closing disables
+  /// the supplied FocusNode's `canRequestFocus` as part of tearing the
+  /// internal widget down, and DropdownMenu restores it (our own
+  /// `expandedBuilder` sets it back to `typeable`) only once ITS rebuild has
+  /// run — which can land one frame after ours. A single post-frame
+  /// callback can lose that race and silently do nothing (`requestFocus()`
+  /// on a non-requestable node is a no-op), so this retries once rather than
+  /// leaving the keyboard nowhere.
+  void _requestFocusOnceBuilt(String key, FocusNode target) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || _selectedControlKey != key) return;
+      if (target.canRequestFocus) {
+        target.requestFocus();
+        return;
+      }
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && _selectedControlKey == key) target.requestFocus();
+      });
+    });
+  }
+
+  /// Moves from field [currentIndex] of [key]'s own field list (`-1` when it
+  /// can't be determined) to the next (`forward`) or previous one, or — once
+  /// [key]'s own fields are exhausted — across to the neighbouring pill via
+  /// [_crossToPill], wrapping at both ends of the strip. Tab and Shift-Tab's
+  /// own move — a control with several fields (Time's Date, Radio's Band and
+  /// Mode) is walked in full before the strip moves on. Cursor keys use
+  /// [_crossToNextControl] instead: they treat a whole control as one stop,
+  /// same as they treat one main field.
+  void _stepSecondaryField(String key, int currentIndex, {required bool forward}) {
+    final fields = _expandedFieldOrderFor(key);
+    final next = forward ? currentIndex + 1 : currentIndex - 1;
+    if (next >= 0 && next < fields.length) {
+      fields[next].$1.requestFocus();
+      return;
+    }
+    final order = _pillOrder;
+    final pillIndex = order.indexOf(key);
+    if (pillIndex < 0 || order.isEmpty) return;
+    _crossToPill(order[(pillIndex + (forward ? 1 : -1)) % order.length], fromStart: forward);
+  }
+
+  /// Crosses straight to the next (`forward`) or previous pill, wrapping at
+  /// both ends of the strip, and lands on ITS `_expandedFocusFor` target —
+  /// the one field a tap or arriving via Up focuses (Radio's Frequency) —
+  /// rather than a first-or-last pick from [_expandedFieldOrderFor]. Unlike
+  /// [_stepSecondaryField] (Tab's own move), this never stops at a sibling
+  /// field within [key]'s own control first, and unlike [_crossToPill] it
+  /// doesn't care which direction it arrived from either: Left/Right treat
+  /// the whole neighbouring control as one stop with one entry point, the
+  /// way they treat one main field, rather than a first-field-forward /
+  /// last-field-backward pair that would put Left on Mode and Right on Band.
+  void _crossToNextControl(String key, {required bool forward}) {
+    final order = _pillOrder;
+    final pillIndex = order.indexOf(key);
+    if (pillIndex < 0 || order.isEmpty) return;
+    _focusPillAndOpen(order[(pillIndex + (forward ? 1 : -1)) % order.length]);
   }
 
   /// Back to the field the operator was last in, with Call as the fallback
@@ -2601,25 +2806,31 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     ((remembered?.context != null) ? remembered! : _callFocus).requestFocus();
   }
 
-  /// Whether a modifier is held that makes this keystroke somebody else's.
-  ///
-  /// The ladder claims only bare keys. Cmd/Ctrl/Option combinations are
-  /// platform gestures — caret jumps, pane switches, system shortcuts — and
-  /// Shift+arrow is a text selection; taking any of them would teleport the
-  /// operator instead of doing what they asked. Same rule
-  /// [_onPrimaryFieldKeyEvent] applies inside the entry row, kept identical on
-  /// purpose so the whole panel answers modifiers the same way.
-  static bool get _modified {
-    final keyboard = HardwareKeyboard.instance;
-    return keyboard.isControlPressed ||
-        keyboard.isMetaPressed ||
-        keyboard.isAltPressed ||
-        keyboard.isShiftPressed;
-  }
-
   KeyEventResult _onPillKeyEvent(String key, KeyEvent event) {
     if (event is! KeyDownEvent && event is! KeyRepeatEvent) return KeyEventResult.ignored;
-    if (_modified) return KeyEventResult.ignored;
+    final keyboard = HardwareKeyboard.instance;
+    final shift = keyboard.isShiftPressed;
+    // Ctrl/Meta/Alt are always someone else's (platform gestures). Shift is
+    // checked per key below instead of folded in here, because Tab needs it
+    // for its own reversal — the same split [_onExpandedKeyEvent] and
+    // [_onPrimaryFieldKeyEvent] make.
+    if (keyboard.isControlPressed || keyboard.isMetaPressed || keyboard.isAltPressed) {
+      return KeyEventResult.ignored;
+    }
+    // Tab/Shift-Tab walk the same strip Left/Right do, chip to chip, opening
+    // whatever they land on — but not quite the same landing: Tab picks a
+    // first-or-last FIELD ([_crossToPill]'s `fromStart`), Left/Right always
+    // land on the control's one canonical field ([_crossToNextControl]).
+    // Checked first since nothing past this point answers Shift.
+    if (event.logicalKey == LogicalKeyboardKey.tab) {
+      final order = _pillOrder;
+      final index = order.indexOf(key);
+      if (index < 0 || order.length < 2) return KeyEventResult.ignored;
+      final forward = !shift;
+      _crossToPill(order[(index + (forward ? 1 : -1)) % order.length], fromStart: forward);
+      return KeyEventResult.handled;
+    }
+    if (shift) return KeyEventResult.ignored;
     switch (event.logicalKey) {
       case LogicalKeyboardKey.arrowLeft:
       case LogicalKeyboardKey.arrowRight:
@@ -2634,8 +2845,12 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
         // silently eats keys it does nothing with is how a strip ends up
         // blocking a shortcut nobody remembers binding.
         if (index < 0 || order.length < 2) return KeyEventResult.ignored;
-        final delta = event.logicalKey == LogicalKeyboardKey.arrowRight ? 1 : -1;
-        _focusPill(order[(index + delta) % order.length]);
+        // Opens the pill it steps to, same as Tab — a chip is never a
+        // resting stop of its own now, it's just what a fieldless control
+        // (More, Spotting without a comment) leaves the keyboard on. Goes
+        // through _crossToNextControl, not _crossToPill directly, so the
+        // landing field matches [_onExpandedKeyEvent]'s cursor-key move.
+        _crossToNextControl(key, forward: event.logicalKey == LogicalKeyboardKey.arrowRight);
         return KeyEventResult.handled;
       case LogicalKeyboardKey.arrowUp:
         // Off the top of the panel, into the QSO list — when the host has one.
@@ -2643,27 +2858,55 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
         widget.onNavigateToQsoList?.call();
         return KeyEventResult.handled;
       case LogicalKeyboardKey.arrowDown:
-        _focusLastPrimaryField();
+        // Closes whatever this pill has open (a fieldless control — one with
+        // a field parked the keyboard inside it instead, on `_onExpandedKeyEvent`'s
+        // turf) on the way back to the main field, same as Escape below.
+        _onSelectControl(null);
         return KeyEventResult.handled;
       case LogicalKeyboardKey.enter:
       case LogicalKeyboardKey.numpadEnter:
-        // Same as a tap: opens the control and puts the cursor in whatever
-        // field it expanded into.
-        _onSelectControl(key);
+        // A pill's control opens the moment the keyboard lands on it, so by
+        // the time Enter is pressed here it's normally already open — Enter
+        // then closes it, same as it does from inside the field. `more` never
+        // auto-opens (see `_focusPillAndOpen`/`_crossToPill`), so this still
+        // opens it fresh, same as a tap.
+        _onSelectControl(_selectedControlKey == key ? null : key);
         return KeyEventResult.handled;
       case LogicalKeyboardKey.escape:
         // Same "out of here entirely" meaning Escape has inside an open
         // control, from one rung further out. Handled here rather than left to
         // `_handleEscape` because that one would read a merely-parked keyboard
         // as a cue to wipe the form the operator hasn't touched.
-        _focusLastPrimaryField();
+        _onSelectControl(null);
         return KeyEventResult.handled;
     }
     return KeyEventResult.ignored;
   }
 
-  /// Down (or Enter) inside an open secondary control closes it and puts the
-  /// keyboard back on its pill — the way out of a control Enter opened.
+  /// Down or Enter inside an open secondary control's field closes it and
+  /// puts the keyboard straight back on the main field the operator was in —
+  /// the control opened itself on arrival (`_focusPillAndOpen`), so there's no
+  /// pill stop to return to on the way out either.
+  ///
+  /// Up closes it too, but keeps going one rung further, the way Up already
+  /// does from a bare pill — straight on to the QSO list rather than
+  /// stopping at the main fields.
+  ///
+  /// Escape does the Down/Enter thing too, via the panel-wide shortcut
+  /// (`_handleEscape`) rather than here — it needs to fire even when nothing
+  /// in the control has focus to bubble an event up from.
+  ///
+  /// Tab/Shift-Tab move within this control's own fields, then across to the
+  /// next/previous pill once they're exhausted (`_stepSecondaryField`) — a
+  /// control with several fields (Time's Date, Radio's Band and Mode) is
+  /// walked in full before the strip moves on. An edge-of-value cursor key
+  /// skips straight to the next/previous pill instead (`_crossToNextControl`)
+  /// — Left/Right treat a whole control as one stop, the way they treat one
+  /// main field.
+  ///
+  /// A dropdown's own arrow handling (the Band/Mode fields, or an open
+  /// suggestion menu) already claims and consumes Up/Down before it gets
+  /// here, so this only ever sees the ones meant for us.
   ///
   /// This does mean Enter no longer logs the QSO from ANY expanded control's
   /// fields. Every one of them used to log, by one of two routes: the Radio
@@ -2673,31 +2916,93 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   /// Enter logs again one rung down, from any main field.
   KeyEventResult _onExpandedKeyEvent(String key, KeyEvent event) {
     if (event is! KeyDownEvent && event is! KeyRepeatEvent) return KeyEventResult.ignored;
-    // Cmd+Down is "caret to the end of the text" on macOS and Shift+Down
-    // extends a selection — closing the control on either would take a real
-    // editing gesture away from the field the operator is typing in.
-    if (_modified) return KeyEventResult.ignored;
     final logicalKey = event.logicalKey;
-    if (logicalKey != LogicalKeyboardKey.arrowDown &&
-        logicalKey != LogicalKeyboardKey.enter &&
-        logicalKey != LogicalKeyboardKey.numpadEnter) {
+    final keyboard = HardwareKeyboard.instance;
+    final shift = keyboard.isShiftPressed;
+    // Ctrl/Meta/Alt are always someone else's (platform gestures) — Cmd+Down
+    // is "caret to the end of the text" on macOS, for instance. Shift is
+    // checked per key below instead, since Tab needs it for its own
+    // reversal while the others treat it as "text selection, leave it alone"
+    // (same split [_onPillKeyEvent] and [_onPrimaryFieldKeyEvent] make).
+    if (keyboard.isControlPressed || keyboard.isMetaPressed || keyboard.isAltPressed) {
       return KeyEventResult.ignored;
     }
-    _collapseToPill(key);
-    return KeyEventResult.handled;
+
+    if (logicalKey == LogicalKeyboardKey.tab) {
+      final fields = _expandedFieldOrderFor(key);
+      final currentIndex = fields.indexWhere((f) => f.$1.hasFocus);
+      _stepSecondaryField(key, currentIndex, forward: !shift);
+      return KeyEventResult.handled;
+    }
+
+    if (logicalKey == LogicalKeyboardKey.arrowLeft || logicalKey == LogicalKeyboardKey.arrowRight) {
+      // Shift-arrow is selecting text, and a non-collapsed selection means
+      // the arrow collapses it rather than leaving the field — only a bare
+      // caret sitting against an edge is asking to travel. Same rule the
+      // main fields' own Left/Right apply.
+      if (shift) return KeyEventResult.ignored;
+      final fields = _expandedFieldOrderFor(key);
+      final currentIndex = fields.indexWhere((f) => f.$1.hasFocus);
+      if (currentIndex < 0) return KeyEventResult.ignored;
+      final selection = fields[currentIndex].$2.selection;
+      if (!selection.isCollapsed || selection.baseOffset < 0) return KeyEventResult.ignored;
+      final forward = logicalKey == LogicalKeyboardKey.arrowRight;
+      final atEdge = forward ? selection.baseOffset >= fields[currentIndex].$2.text.length : selection.baseOffset == 0;
+      if (!atEdge) return KeyEventResult.ignored;
+      _crossToNextControl(key, forward: forward);
+      return KeyEventResult.handled;
+    }
+
+    if (shift) return KeyEventResult.ignored;
+    if (logicalKey == LogicalKeyboardKey.arrowUp) {
+      _closeExpandedControlToQsoList(key);
+      return KeyEventResult.handled;
+    }
+    if (logicalKey == LogicalKeyboardKey.arrowDown ||
+        logicalKey == LogicalKeyboardKey.enter ||
+        logicalKey == LogicalKeyboardKey.numpadEnter) {
+      // Spotting's Send button has no FocusNode of its own — Tab never
+      // reaches it, the same accepted gap the main Log button has (see
+      // logging-fields.md). Enter from its comment field is the substitute,
+      // same as Enter from any main field reaches Log.
+      if (key == 'spotting' &&
+          (logicalKey == LogicalKeyboardKey.enter || logicalKey == LogicalKeyboardKey.numpadEnter) &&
+          _spotCommentFocus.hasFocus &&
+          _spotState.enabled &&
+          !_spotSending) {
+        unawaited(_sendSpot());
+      }
+      _closeExpandedControl(key);
+      return KeyEventResult.handled;
+    }
+    return KeyEventResult.ignored;
   }
 
-  /// Closes the open control, leaving the keyboard on its pill rather than
-  /// back in the fields (which is where [_onSelectControl]'s own collapse
-  /// hands it) — you arrived from the pill, so that's where "back" is.
-  ///
-  /// Idempotent, because Enter can arrive twice for one keypress: as a key
-  /// event, and again through a field's `onSubmitted` once the platform turns
-  /// it into a text-input action.
-  void _collapseToPill(String key) {
+  /// Closes [key]'s control and returns the keyboard to the main field the
+  /// operator was in before, but only if that control is still the one open —
+  /// idempotent, because Enter can arrive twice for one keypress: once as a
+  /// raw key event here, and again through a field's `onSubmitted` once the
+  /// platform turns it into a text-input action (see the Frequency field's
+  /// own `onSubmitted`, which calls this directly for that second route).
+  void _closeExpandedControl(String key) {
     if (_selectedControlKey != key) return;
     setState(() => _selectedControlKey = null);
-    _focusPill(key);
+    _focusLastPrimaryField();
+  }
+
+  /// Closes [key]'s control and hands the keyboard on to the QSO list —
+  /// Up's own close, one rung further out than Down/Enter/Escape's: leaving
+  /// a control by Up keeps walking outward past the main fields, the same
+  /// direction Up already takes from a bare pill, rather than stopping at
+  /// them.
+  void _closeExpandedControlToQsoList(String key) {
+    if (_selectedControlKey != key) return;
+    setState(() => _selectedControlKey = null);
+    // Nothing navigable (an empty operation, or one holding only event
+    // markers) leaves the callback with nowhere to put the keyboard — this
+    // control just collapsed, so without a fallback focus would be left on
+    // no field at all rather than merely stuck where it started.
+    if (widget.onNavigateToQsoList?.call() != true) _focusLastPrimaryField();
   }
 
   void _onSelectControl(String? key) {
@@ -2721,7 +3026,6 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     }
     if (key == null) {
       // Collapsing hands the cursor back so logging continues without a tap.
-      // (Keyboard collapse goes to the pill instead — see `_collapseToPill`.)
       _focusLastPrimaryField();
     }
   }
@@ -3248,6 +3552,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
               width: 120,
               child: TextField(
                 controller: _dateController,
+                focusNode: _dateFocus,
                 style: haloMonoStyle(
                   context,
                   fontSize: 15,
@@ -3608,7 +3913,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
                   // the same thing `_onExpandedKeyEvent` does with the raw
                   // key, for the platforms where the engine turns Enter into
                   // a text-input action before the framework sees it.
-                  onSubmitted: (_) => _collapseToPill('radio'),
+                  onSubmitted: (_) => _closeExpandedControl('radio'),
                 ),
               ),
               const SizedBox(width: 6),
@@ -3866,6 +4171,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
         width: 160,
         child: RefTextInput(
           focusNode: _refFocusFor(control['key'] as String),
+          controller: _refControllerFor(control['key'] as String),
           refType: (control['input'] as Map)['refType'] as String,
           label: (control['label'] as String?) ?? '',
           placeholder: (control['input'] as Map)['placeholder'] as String?,
@@ -4340,14 +4646,15 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
 
     // Arrow Up leaves the row upward, for the secondary control pills — the
     // keyboard-only way out that the Tab loop above deliberately doesn't
-    // provide (APP-19). Inert while an options suggestion menu is open, since
-    // Up and Down belong to its highlight for as long as it is showing, and
-    // while the fields are locked: a staged-delete or deleted QSO's secondary
-    // controls are pointer-blocked and dimmed, and the keyboard shouldn't
-    // reach past that either.
+    // provide (APP-19), opening the pill it lands on immediately rather than
+    // waiting for a separate Enter. Inert while an options suggestion menu is
+    // open, since Up and Down belong to its highlight for as long as it is
+    // showing, and while the fields are locked: a staged-delete or deleted
+    // QSO's secondary controls are pointer-blocked and dimmed, and the
+    // keyboard shouldn't reach past that either.
     if (key == LogicalKeyboardKey.arrowUp) {
       if (_optionSuggestions.isNotEmpty || _fieldsLocked) return KeyEventResult.ignored;
-      _focusPill();
+      _focusPillAndOpen();
       return KeyEventResult.handled;
     }
 
@@ -4658,9 +4965,17 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   /// [callOverride] lets call stacking (_pickStackedCall) supply the one
   /// segment it picked out of the "//"-separated field, instead of the raw
   /// (still-stacked) field text.
-  Map<String, dynamic> _getCurrentQsoData({String? callOverride}) {
-    final base = widget.editingQso?.data ?? const <String, dynamic>{};
+  ///
+  /// [composing] describes the new-QSO draft regardless of what
+  /// `widget.editingQso` currently is — needed to snapshot it for
+  /// [_composingSnapshot] from inside `didUpdateWidget`, where `widget`
+  /// already reflects the QSO about to be edited by the time this runs, and
+  /// `base`/`_effectiveStartAtMillis` would otherwise pull from THAT record
+  /// instead of from the still-blank-base draft being stepped away from.
+  Map<String, dynamic> _getCurrentQsoData({String? callOverride, bool composing = false}) {
+    final base = composing ? const <String, dynamic>{} : (widget.editingQso?.data ?? const <String, dynamic>{});
     final call = callOverride ?? _call;
+    final startAtMillis = composing ? _manualStartAtMillis : _effectiveStartAtMillis;
     final refs = _refsWithTextValues([
       for (final list in _controlRefs.values) ...list,
       ..._unmatchedRefs,
@@ -4708,7 +5023,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
       'freq': _freq,
       'band': _band,
       'mode': _mode,
-      if (_effectiveStartAtMillis != null) 'startAtMillis': _effectiveStartAtMillis,
+      if (startAtMillis != null) 'startAtMillis': startAtMillis,
       ..._currentQsoExtra,
     };
   }

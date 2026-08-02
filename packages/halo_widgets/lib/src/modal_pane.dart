@@ -89,7 +89,22 @@ class ModalPaneRoute<T> extends PopupRoute<T> {
   final WidgetBuilder builder;
   final String? title;
   final bool scrollable;
-  final bool _barrierDismissible;
+
+  /// The constructor's `barrierDismissible` — despite the name, this only
+  /// gates OUR OWN tap-outside `GestureDetector` in [_ModalPaneScaffold]
+  /// (`_buildDialog`'s `onTap:`, below). It is deliberately NOT what the
+  /// [barrierDismissible] getter returns: that one is read by Flutter's
+  /// own `_DismissModalAction` to decide whether Escape does anything at
+  /// all (`ModalRoute`'s `barrierDismissible` is the single flag the SDK
+  /// overloads for both "tap the barrier" and "press Escape"), and a caller
+  /// asking to block a stray tap outside — the only reason any caller here
+  /// passes `false` — was silently losing Escape too as a side effect.
+  /// [barrierDismissible] always returns true instead; a dismissal it lets
+  /// through still goes via `Navigator.maybePop()` (both here and in
+  /// Flutter's own action), so a pane's `PopScope` (e.g. `showFormPane`'s,
+  /// guarding an in-flight submit) is exactly as effective against Escape
+  /// as it already is against the close button and the tap-outside handler.
+  final bool _tapOutsideDismissible;
   final Widget? leading;
   final Widget? trailing;
 
@@ -110,20 +125,25 @@ class ModalPaneRoute<T> extends PopupRoute<T> {
   ModalPaneRoute({
     required this.builder,
     this.title,
-    this._barrierDismissible = true,
+    bool barrierDismissible = true,
     this.scrollable = true,
     this.leading,
     this.trailing,
     this.headerActions = const [],
     this.closeLabel = 'Close',
-  });
+  }) : _tapOutsideDismissible = barrierDismissible;
 
   @override
   Color? get barrierColor => Colors.black54;
 
-  /// Also enables Escape-to-dismiss (ModalRoute handles DismissIntent).
+  /// Always true — see [_tapOutsideDismissible]'s doc for why this is
+  /// deliberately not the constructor's `barrierDismissible` value. Escape
+  /// is a keyboard user's only way to back out of a pane that hides its
+  /// close button off the visible viewport (a narrow window, a large font
+  /// scale) — it must not be silently disabled by the same flag that keeps
+  /// a stray tap outside from discarding in-progress edits.
   @override
-  bool get barrierDismissible => _barrierDismissible;
+  bool get barrierDismissible => true;
 
   @override
   String? get barrierLabel => 'Dismiss';
@@ -232,7 +252,7 @@ class _ModalPaneScaffold extends StatelessWidget {
           // pane's own content — e.g. showFormPane blocks dismissal while a
           // submit is in flight. Deliberate pops (a pane's own Save/Cancel)
           // still call Navigator.pop directly.
-          onTap: route.barrierDismissible ? () => Navigator.of(context).maybePop() : null,
+          onTap: route._tapOutsideDismissible ? () => Navigator.of(context).maybePop() : null,
           child: SafeArea(
             child: Center(
               child: GestureDetector(
@@ -357,7 +377,14 @@ class TopModalPaneRoute<T> extends PopupRoute<T> {
   final WidgetBuilder builder;
   final Widget? title;
   final bool scrollable;
-  final bool _barrierDismissible;
+
+  /// Same split as [ModalPaneRoute._tapOutsideDismissible] — despite the
+  /// constructor param's name, this only gates the tap-outside
+  /// `GestureDetector`s below. [barrierDismissible] itself always returns
+  /// true, so Escape (Flutter's own `_DismissModalAction`, which reads
+  /// `ModalRoute.barrierDismissible`) isn't silently disabled by a caller
+  /// asking only to block a stray tap outside.
+  final bool _tapOutsideDismissible;
   final Widget? leading;
   final Widget? trailing;
 
@@ -375,20 +402,21 @@ class TopModalPaneRoute<T> extends PopupRoute<T> {
   TopModalPaneRoute({
     required this.builder,
     this.title,
-    this._barrierDismissible = true,
+    bool barrierDismissible = true,
     this.scrollable = true,
     this.leading,
     this.trailing,
     this.closeLabel = 'Close',
     this.leftInset,
     this.onDismiss,
-  });
+  }) : _tapOutsideDismissible = barrierDismissible;
 
   @override
   Color? get barrierColor => Colors.transparent;
 
+  /// Always true — see [_tapOutsideDismissible]'s doc.
   @override
-  bool get barrierDismissible => _barrierDismissible;
+  bool get barrierDismissible => true;
 
   @override
   String? get barrierLabel => 'Dismiss';
@@ -485,7 +513,7 @@ class _TopModalPaneScaffold extends StatelessWidget {
               bottom: 0,
               child: GestureDetector(
                 behavior: HitTestBehavior.opaque,
-                onTap: route.barrierDismissible
+                onTap: route._tapOutsideDismissible
                     ? () {
                         if (route.onDismiss != null) {
                           route.onDismiss!();
@@ -505,7 +533,7 @@ class _TopModalPaneScaffold extends StatelessWidget {
               height: topOffset,
               child: GestureDetector(
                 behavior: HitTestBehavior.translucent,
-                onTap: route.barrierDismissible
+                onTap: route._tapOutsideDismissible
                     ? () {
                         if (route.onDismiss != null) {
                           route.onDismiss!();

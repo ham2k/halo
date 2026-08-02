@@ -128,7 +128,9 @@ void main() {
     await drainLookupQueueTimer(tester);
   });
 
-  testWidgets('Up and Down walk the log; Down past the newest row hands the keyboard back to the pills',
+  testWidgets(
+      'Up and Down walk the log; Down past the newest row hands the keyboard back to the pills, opening the '
+      'remembered one, and deselects back to the new QSO being composed',
       (tester) async {
     await pumpPanel(tester, [older, newer]);
     await enterList(tester);
@@ -149,11 +151,70 @@ void main() {
     expect(loadedCall(tester), 'K1ABC');
 
     // Down off the newest row leaves the list entirely, mirroring the Up that
-    // got here — the selection stays as it was.
+    // got here — but unlike a mid-list step, it undoes the selection too: the
+    // walk started from a new QSO being composed, so leaving the list the
+    // same way it was entered returns to that, not to whatever row the walk
+    // happened to end on. It also opens the pill it lands on (Time — the one
+    // `enterList`'s own Up remembered), the same way arriving via Up from a
+    // main field does, rather than merely parking the keyboard on its chip.
     await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
     await tester.pump();
-    expect(focusedPill(tester), isNotNull);
+    await tester.pump(const Duration(milliseconds: 250));
+    await tester.pump();
+    expect(find.widgetWithText(TextField, 'Time (UTC)'), findsOneWidget);
+    expect(tester.widget<TextField>(find.widgetWithText(TextField, 'Time (UTC)')).focusNode?.hasFocus, isTrue);
+    expect(loadedCall(tester), isEmpty);
+    await drainLookupQueueTimer(tester);
+  });
+
+  testWidgets(
+      'a second Down landing before the deferred hand-off fires does not steal focus back to the pills',
+      (tester) async {
+    await pumpPanel(tester, [older, newer]);
+    await enterList(tester);
     expect(loadedCall(tester), 'K1ABC');
+
+    // Two Downs back-to-back with no pump in between — key-repeat can
+    // deliver these faster than a frame. The first deselects and queues a
+    // deferred hand-off to the pills; the second, seeing the selection
+    // already cleared, re-selects the newest row before that hand-off ever
+    // runs.
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 250));
+    await tester.pump();
+
+    // The list re-selected the newest row — the keyboard must stay there,
+    // not jump to the pills (or a pill's own opened field) on the first
+    // Down's now-stale callback.
+    expect(loadedCall(tester), 'K1ABC');
+    expect(focusedPill(tester), isNull);
+    expect(find.widgetWithText(TextField, 'Time (UTC)'), findsNothing,
+        reason: 'the stale callback must not have opened the remembered pill either');
+    await drainLookupQueueTimer(tester);
+  });
+
+  testWidgets(
+      'Down past the newest row restores the callsign typed before arrowing up, not a blank form',
+      (tester) async {
+    await pumpPanel(tester, [older, newer]);
+    await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'N0DRAFT');
+    await tester.pump();
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowUp);
+    await tester.pump();
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowUp);
+    await tester.pump();
+    expect(loadedCall(tester), 'K1ABC');
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 250));
+    await tester.pump();
+
+    expect(loadedCall(tester), 'N0DRAFT',
+        reason: 'the draft the operator was composing must come back, not a blank form');
     await drainLookupQueueTimer(tester);
   });
 
@@ -321,6 +382,35 @@ void main() {
       '59',
       reason: 'the selected QSO is loaded, not just its callsign',
     );
+    await drainLookupQueueTimer(tester);
+  });
+
+  testWidgets('Enter on a row restores the field the operator was in before arrowing up, not always Call',
+      (tester) async {
+    // enterList always starts from Call, which happens to be Enter's own
+    // fallback too — coincidentally passing even a hardcoded "always Call"
+    // implementation. This starts from a different main field to actually
+    // exercise the "resume where I left off" behavior.
+    await pumpPanel(tester, [older, newer]);
+    await tester.tap(find.widgetWithText(TextField, 'Sent'));
+    await tester.pump();
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowUp);
+    await tester.pump();
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowUp);
+    await tester.pump();
+    expect(loadedCall(tester), 'K1ABC');
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowUp);
+    await tester.pump();
+    expect(loadedCall(tester), 'W1AW');
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+    await tester.pump();
+
+    expect(tester.widget<TextField>(find.widgetWithText(TextField, 'Sent')).focusNode?.hasFocus, isTrue,
+        reason: 'Enter is "resume editing where I left off", not "start fresh" — that\'s Escape\'s job');
+    expect(callField(tester).focusNode?.hasFocus, isFalse);
+    expect(loadedCall(tester), 'W1AW');
     await drainLookupQueueTimer(tester);
   });
 

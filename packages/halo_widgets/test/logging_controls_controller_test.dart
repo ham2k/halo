@@ -17,6 +17,7 @@ void main() {
     expect(controller.isFieldsLocked, isFalse);
     expect(() => controller.focusCall(), returnsNormally);
     expect(() => controller.focusSecondaryControls(), returnsNormally);
+    expect(() => controller.focusLastPrimaryField(), returnsNormally);
 
     String? field;
     String? value;
@@ -25,6 +26,7 @@ void main() {
     var locked = false;
     var focusedCall = false;
     var focusedPills = false;
+    var focusedLastField = false;
     controller.attach(
       setField: (f, v) {
         field = f;
@@ -35,6 +37,7 @@ void main() {
       isFieldsLocked: () => locked,
       focusCall: () => focusedCall = true,
       focusSecondaryControls: () => focusedPills = true,
+      focusLastPrimaryField: () => focusedLastField = true,
     );
 
     expect(controller.isAttached, isTrue);
@@ -47,12 +50,16 @@ void main() {
     expect(wiped, isTrue);
     locked = true;
     expect(controller.isFieldsLocked, isTrue);
-    // The focus ladder's two ends (APP-19): the QSO list hands the keyboard
-    // back to the call field, and walks off its newest row onto the pills.
+    // The focus ladder's two ends (APP-19): Escape from the list hands the
+    // keyboard back to the call field, Enter on a row back to whichever main
+    // field the operator was last in, and walking off the newest row onto
+    // the pills.
     controller.focusCall();
     expect(focusedCall, isTrue);
     controller.focusSecondaryControls();
     expect(focusedPills, isTrue);
+    controller.focusLastPrimaryField();
+    expect(focusedLastField, isTrue);
 
     controller.detach();
     expect(controller.isAttached, isFalse);

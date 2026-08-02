@@ -310,6 +310,41 @@ void main() {
     expect(results, [true]);
   });
 
+  testWidgets('Escape cannot abandon an active QR poll, but the Cancel button still can', (tester) async {
+    final results = <bool?>[];
+    await pumpDialog(
+      tester,
+      results: results,
+      fetchAccountData: () async => accountData(),
+      linkClient: (email) async => {
+        'permission': {
+          'status': 'pending',
+          'client': 'client-uuid-1',
+          'challenge_token': 'FFEE99',
+          'challenge_expires_at': DateTime.now().add(const Duration(minutes: 10)).toUtc().toIso8601String(),
+        },
+      },
+    );
+
+    await tester.tap(find.text('Link with a QR code'));
+    await tester.pumpAndSettle();
+    expect(find.byType(QrImageView), findsOneWidget);
+
+    // Escape must not abandon an active poll any more than a stray tap
+    // outside could — the pane opened with barrierDismissible: false
+    // specifically to prevent that.
+    await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+    await tester.pumpAndSettle();
+    expect(results, isEmpty, reason: 'Escape must not abandon an active poll');
+    expect(find.byType(QrImageView), findsOneWidget, reason: 'the pane must still be open');
+
+    // The explicit Cancel button is a deliberate action and still works —
+    // it pops directly rather than through the canPop-gated path.
+    await tester.tap(find.text('Cancel'));
+    await tester.pumpAndSettle();
+    expect(results, [false]);
+  });
+
   testWidgets('server unreachable: linking reports it and never fakes success', (tester) async {
     final results = <bool?>[];
     await pumpDialog(

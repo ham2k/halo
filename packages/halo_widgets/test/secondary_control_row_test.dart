@@ -1,6 +1,8 @@
 // Copyright ©️ 2026 Sebastian Delmont <sd@ham2k.com>
 // SPDX-License-Identifier: MPL-2.0
 
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:halo_widgets/halo_widgets.dart';
@@ -205,6 +207,56 @@ void main() {
 
     expect(tester.takeException(), isNull);
     expect(find.text('expanded-a'), findsOneWidget);
+  });
+
+  testWidgets('re-measures the expanded panel\'s alignment when the strip scrolls without a widget rebuild',
+      (tester) async {
+    // Reproduces the real bug: LoggingControls._focusPill scrolls the newly
+    // focused chip toward the strip's centre via `Scrollable.ensureVisible`,
+    // a 150ms animation that runs entirely inside the Scrollable's own
+    // position — it never touches this widget's `build`/`didUpdateWidget`.
+    // Without a scroll listener re-triggering `_measure`, the panel would
+    // stay pinned to wherever the chip sat the one post-frame moment
+    // `_measure` last ran (its pre-scroll position), not where it visibly
+    // ends up.
+    // 'target' sits in the middle of a long strip — off-screen right at rest
+    // (scroll offset 0), but away from either edge once scrolled into view,
+    // so its panel alignment is a freely-centered value on both sides of the
+    // scroll rather than an edge clamp both times could coincidentally share.
+    final controls = [
+      for (var i = 0; i < 10; i++) spec('before$i'),
+      spec('target'),
+      for (var i = 0; i < 10; i++) spec('after$i'),
+    ];
+    await tester.pumpWidget(host(controls: controls, selectedKey: 'target'));
+    await tester.pumpAndSettle();
+
+    final chipFinder = find.widgetWithText(ChoiceChip, 'target');
+    final panelFinder = find.text('expanded-target');
+    final beforeChipCenter = tester.getCenter(chipFinder).dx;
+    final beforePanelCenter = tester.getCenter(panelFinder).dx;
+    // Precondition: 'target' starts off-screen (ten chips ahead of it in an
+    // 800px-wide row) — the panel is edge-clamped, not freely centered on it.
+    expect((beforePanelCenter - beforeChipCenter).abs(), greaterThan(50));
+
+    // The exact call `LoggingControls._focusPill` makes, driving the SAME
+    // Scrollable this widget owns, without going through a widget rebuild
+    // (`didUpdateWidget` never runs for this).
+    unawaited(Scrollable.ensureVisible(
+      tester.element(chipFinder),
+      alignment: 0.5,
+      duration: const Duration(milliseconds: 150),
+    ));
+    await tester.pumpAndSettle();
+
+    final afterChipCenter = tester.getCenter(chipFinder).dx;
+    final afterPanelCenter = tester.getCenter(panelFinder).dx;
+
+    expect(afterChipCenter, isNot(closeTo(beforeChipCenter, 1)), reason: 'the scroll actually moved the chip');
+    expect(afterPanelCenter, isNot(closeTo(beforePanelCenter, 1)),
+        reason: 'the panel must move too — a frozen alignment is exactly the bug this guards against');
+    expect(afterPanelCenter, closeTo(afterChipCenter, 5),
+        reason: 'the panel re-measured to the chip\'s NEW, now-centered position, not the stale pre-scroll one');
   });
 
   testWidgets('chips are left-aligned on wider layouts and do not shift to the right when they fit completely', (tester) async {

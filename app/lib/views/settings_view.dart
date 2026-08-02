@@ -2774,6 +2774,11 @@ class _AccountPaneState extends State<_AccountPane> {
         return;
       }
 
+      // The pane (an Escape-dismissible ModalPaneRoute) can have been closed
+      // while the webview/system-browser login above was in progress —
+      // nothing left to update, and no Save button left to hold
+      // `_pendingCredentials` for.
+      if (!mounted) return;
       setState(() => _testing = true);
 
       final tokenResponse = await http.post(
@@ -2798,6 +2803,9 @@ class _AccountPaneState extends State<_AccountPane> {
       if (tokens['refresh_token'] != null) credentials['refreshToken'] = tokens['refresh_token'] as String;
       if (tokens['id_token'] != null) credentials['idToken'] = tokens['id_token'] as String;
 
+      // Same reason as above — the pane may have closed during the token
+      // exchange itself.
+      if (!mounted) return;
       // Held until the user presses Save — nothing is persisted yet.
       setState(() {
         _pendingCredentials = credentials;

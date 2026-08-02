@@ -9,6 +9,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:halo_widgets/halo_widgets.dart';
 
@@ -258,6 +259,67 @@ void main() {
     expect(find.text('pane body'), findsOneWidget);
   });
 
+  testWidgets('Escape still dismisses even with barrierDismissible: false', (tester) async {
+    // barrierDismissible: false exists to stop a STRAY TAP outside from
+    // discarding in-progress edits — it must not also take Escape with it.
+    // Flutter's own DismissIntent action reads ModalRoute.barrierDismissible
+    // as the single flag for both, so ModalPaneRoute has to decouple them:
+    // that getter always returns true now, and the tap-outside handler is
+    // gated by its own separate field instead.
+    setWidth(tester, 900);
+    addTearDown(tester.view.reset);
+    final context = await pumpHost(tester);
+
+    showModalPane<void>(context, barrierDismissible: false, builder: (context) => const Text('pane body'));
+    await tester.pumpAndSettle();
+    expect(find.text('pane body'), findsOneWidget);
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+    await tester.pumpAndSettle();
+    expect(find.text('pane body'), findsNothing);
+  });
+
+  group('showTopModalPane', () {
+    // Same barrierDismissible/Escape split as ModalPaneRoute above —
+    // TopModalPaneRoute is a separate class with no shared base, so the fix
+    // had to be applied here independently rather than inherited.
+    testWidgets('barrier tap dismisses unless disabled', (tester) async {
+      final context = await pumpHost(tester);
+
+      unawaited(showTopModalPane<void>(context, builder: (context) => const Text('top pane body')));
+      await tester.pumpAndSettle();
+      await tester.tapAt(const Offset(10, 400));
+      await tester.pumpAndSettle();
+      expect(find.text('top pane body'), findsNothing);
+
+      unawaited(showTopModalPane<void>(
+        context,
+        barrierDismissible: false,
+        builder: (context) => const Text('top pane body'),
+      ));
+      await tester.pumpAndSettle();
+      await tester.tapAt(const Offset(10, 400));
+      await tester.pumpAndSettle();
+      expect(find.text('top pane body'), findsOneWidget);
+    });
+
+    testWidgets('Escape still dismisses even with barrierDismissible: false', (tester) async {
+      final context = await pumpHost(tester);
+
+      unawaited(showTopModalPane<void>(
+        context,
+        barrierDismissible: false,
+        builder: (context) => const Text('top pane body'),
+      ));
+      await tester.pumpAndSettle();
+      expect(find.text('top pane body'), findsOneWidget);
+
+      await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+      await tester.pumpAndSettle();
+      expect(find.text('top pane body'), findsNothing);
+    });
+  });
+
   group('showFormPane', () {
     testWidgets('close button cannot dismiss the pane while a submit is in flight', (tester) async {
       // The old showFormDialog guaranteed a form could never be dismissed
@@ -295,6 +357,64 @@ void main() {
       expect(find.text('Edit QSO'), findsOneWidget);
 
       // Validator resolves clean → the submit completes with the values.
+      validatorGate.complete(null);
+      await tester.pumpAndSettle();
+      expect(find.text('Edit QSO'), findsNothing);
+      expect((await result)?['theirName'], 'Hiram');
+    });
+
+    testWidgets('Escape closes the pane, same as the close button', (tester) async {
+      setWidth(tester, 900);
+      addTearDown(tester.view.reset);
+      final context = await pumpHost(tester);
+
+      final result = showFormPane(
+        context,
+        formDefinition: {
+          'title': 'Edit QSO',
+          'elements': [
+            {'type': 'field', 'key': 'theirName', 'fieldType': 'text', 'label': 'Name'},
+          ],
+        },
+        initialState: {'theirName': 'Hiram'},
+      );
+      await tester.pumpAndSettle();
+
+      await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+      await tester.pumpAndSettle();
+      expect(find.text('Edit QSO'), findsNothing);
+      expect(await result, isNull, reason: 'Escape cancels, same as the close button — it does not save');
+    });
+
+    testWidgets('Escape cannot dismiss the pane while a submit is in flight', (tester) async {
+      // Same guarantee as the close button above, for the same reason —
+      // Escape goes through the identical Navigator.maybePop path.
+      setWidth(tester, 900);
+      addTearDown(tester.view.reset);
+      final context = await pumpHost(tester);
+
+      final validatorGate = Completer<String?>();
+      final result = showFormPane(
+        context,
+        formDefinition: {
+          'title': 'Edit QSO',
+          'elements': [
+            {'type': 'field', 'key': 'theirName', 'fieldType': 'text', 'label': 'Name'},
+          ],
+        },
+        initialState: {'theirName': 'Hiram'},
+        validator: (key, value, state) => validatorGate.future,
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.widgetWithText(FilledButton, 'Save'));
+      await tester.pump();
+
+      await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+      await tester.pump(const Duration(milliseconds: 300));
+      await tester.pump(const Duration(milliseconds: 300));
+      expect(find.text('Edit QSO'), findsOneWidget);
+
       validatorGate.complete(null);
       await tester.pumpAndSettle();
       expect(find.text('Edit QSO'), findsNothing);

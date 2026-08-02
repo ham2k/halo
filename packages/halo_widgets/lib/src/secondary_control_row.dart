@@ -22,6 +22,8 @@
 // list it's given, plus a settings button the caller wires up to open
 // that management UI.
 
+import 'dart:async';
+
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart' show OverflowBoxFit;
@@ -161,6 +163,20 @@ class _SecondaryControlRowState extends State<SecondaryControlRow> with SingleTi
   /// pill. Defaults to left until the first post-frame measurement lands.
   Alignment _expandedAlignment = Alignment.centerLeft;
 
+  /// The one-line strip's own scroll position — explicit (rather than the
+  /// `SingleChildScrollView`'s implicit one) purely so [_measure] can listen
+  /// to it. A focus change scrolls the newly-selected pill toward the
+  /// centre of the strip (`LoggingControls._focusPill`'s own
+  /// `Scrollable.ensureVisible`, found via the nearest ancestor `Scrollable`
+  /// — it doesn't need this controller to work), and that scroll runs as a
+  /// 150ms animation entirely inside the `Scrollable`'s own position: it
+  /// never touches this widget's `build`, so without this listener
+  /// `_expandedAlignment` would stay pinned to wherever the pill sat the one
+  /// post-frame moment `_measure` last ran (typically its PRE-scroll
+  /// position), leaving the panel visibly anchored to the wrong spot once
+  /// the pill finishes sliding to centre.
+  final _stripScrollController = ScrollController();
+
   GlobalKey _chipKeyFor(String key) => _chipKeys.putIfAbsent(key, GlobalKey.new);
 
   // A GlobalKey per control (rather than one shared key) since the panel's
@@ -213,6 +229,15 @@ class _SecondaryControlRowState extends State<SecondaryControlRow> with SingleTi
     if (widget.selectedKey != null) _panelController.value = 1;
     _scheduleMeasure();
     _reconcileControls();
+    // Re-measures once the strip's own scroll settles (a drag, or the
+    // ensureVisible animation a focus change starts) — see
+    // `_stripScrollController`'s doc for why this can't just run once up
+    // front. Debounced rather than wired straight to `_scheduleMeasure`: a
+    // single 150ms scroll animation notifies on nearly every frame, and
+    // re-measuring (plus the rebuild a changed alignment triggers) on each
+    // one is wasted work an operator crossing between controls with the
+    // keyboard would otherwise pay on every keystroke.
+    _stripScrollController.addListener(_scheduleMeasureAfterScrollSettles);
   }
 
   /// Whether the panel should currently be out: a control is selected AND
@@ -301,10 +326,28 @@ class _SecondaryControlRowState extends State<SecondaryControlRow> with SingleTi
     WidgetsBinding.instance.addPostFrameCallback((_) => _measure());
   }
 
+  Timer? _scrollMeasureDebounce;
+
+  /// [_scheduleMeasure], coalesced across the burst of notifications one
+  /// scroll (drag or animation) produces — only the last one within this
+  /// window actually schedules a measurement. 32ms is short enough that the
+  /// panel still catches up right after the scroll stops, not perceptibly
+  /// later, but long enough to collapse a ~150ms animation's every-frame
+  /// notifications down to the one that matters.
+  void _scheduleMeasureAfterScrollSettles() {
+    _scrollMeasureDebounce?.cancel();
+    _scrollMeasureDebounce = Timer(const Duration(milliseconds: 32), () {
+      _scrollMeasureDebounce = null;
+      if (mounted) _scheduleMeasure();
+    });
+  }
+
   @override
   void dispose() {
+    _scrollMeasureDebounce?.cancel();
     _panelReveal.dispose();
     _panelController.dispose();
+    _stripScrollController.dispose();
     super.dispose();
   }
 
@@ -563,6 +606,7 @@ class _SecondaryControlRowState extends State<SecondaryControlRow> with SingleTi
                                 child: ScrollConfiguration(
                                   behavior: _DragScrollBehavior(),
                                   child: SingleChildScrollView(
+                                    controller: _stripScrollController,
                                     scrollDirection: Axis.horizontal,
                                     child: Row(
                                       mainAxisSize: MainAxisSize.min,

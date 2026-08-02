@@ -400,23 +400,32 @@ class _SwitchAccountsPaneState extends State<SwitchAccountsPane> {
     // The Modal Pane route provides the chrome (title, scrolling, width);
     // the action row lives here because it depends on this State (_mode,
     // _busy) — the same coupling AlertDialog had.
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        _buildContent(context),
-        const SizedBox(height: 24),
-        OverflowBar(
-          alignment: MainAxisAlignment.end,
-          spacing: 8,
-          children: [
-            if (_mode != _Mode.menu) TextButton(onPressed: _busy ? null : _backToMenu, child: Text(context.t.onboarding.back)),
-            if (_mode == _Mode.email)
-              FilledButton(onPressed: _busy ? null : _submitEmail, child: Text(context.t.switchAccounts.linkAccount)),
-            TextButton(onPressed: _doCancel, child: Text(widget.cancelLabel ?? context.t.common.cancel)),
-          ],
-        ),
-      ],
+    return PopScope(
+      // While a challenge is being polled for (QR/code/emailSent), Escape
+      // and the system back gesture must not be able to abandon it any more
+      // accidentally than a stray tap outside could — the whole reason this
+      // pane opens with barrierDismissible: false. The explicit Cancel
+      // button below still works: it pops directly rather than through the
+      // canPop-gated path PopScope intercepts.
+      canPop: _pollTimer == null,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _buildContent(context),
+          const SizedBox(height: 24),
+          OverflowBar(
+            alignment: MainAxisAlignment.end,
+            spacing: 8,
+            children: [
+              if (_mode != _Mode.menu) TextButton(onPressed: _busy ? null : _backToMenu, child: Text(context.t.onboarding.back)),
+              if (_mode == _Mode.email)
+                FilledButton(onPressed: _busy ? null : _submitEmail, child: Text(context.t.switchAccounts.linkAccount)),
+              TextButton(onPressed: _doCancel, child: Text(widget.cancelLabel ?? context.t.common.cancel)),
+            ],
+          ),
+        ],
+      ),
     );
   }
 

@@ -236,18 +236,35 @@ asked once.
 
 ## Focus and the secondary controls
 
-Opening a secondary control moves focus to whichever field in the expanded
-strip the operator opened it to type in (the time control's time field, the
-radio control's frequency field, a reference control's input). A control
-with nothing to type into leaves focus alone rather than yanking it
-somewhere useless.
+**Landing on a pill opens it.** Arriving via Up from a main field, Down from
+the QSO list, or a Tab/cursor-key crossing between pills all auto-open the
+control the keyboard lands on and focus whichever field it's opened to type
+in (the time control's time field, the radio control's frequency field, a
+reference control's input) — there is no separate "select the pill, then
+Enter to open it" step anymore. `more` is the one exception: it has no
+fields of its own, so it stays chip-focused and pops its dialog on Enter or
+a tap instead. A control with nothing to type into (e.g. spotting with its
+comment hidden) leaves focus on the chip rather than yanking it somewhere
+useless.
+
+**Tab and the cursor keys move between controls differently.** Tab and
+Shift-Tab step through a multi-field control's own fields first — Radio's
+Band, Frequency, then Mode; Time's Time, then Date — in the order they're
+laid out, only crossing to the neighbouring pill once those are exhausted,
+and landing on its first (Tab) or last (Shift-Tab) field. Left and Right, by
+contrast, treat a whole control as one stop the same way they treat one main
+field: at the edge of the focused field's value they cross straight to the
+neighbouring pill's own canonical field (Radio's Frequency, not Band or
+Mode), skipping any other fields the control might have. Both wrap at the
+ends of the strip.
 
 The main field that had focus before is remembered, and gets it back when
-the control is collapsed — falling back to the callsign field if there was
-none, or if that field is no longer on screen. Selecting a *different*
-secondary control while one is already open moves focus straight to the new
-control's field and keeps the remembered main field, so closing the strip
-still returns to where the operator left off.
+the control is collapsed via Down or Enter (not the pill — see the ladder
+below) — falling back to the callsign field if there was none, or if that
+field is no longer on screen. Selecting a *different* secondary control
+while one is already open moves focus straight to the new control's field
+and keeps the remembered main field, so closing the strip still returns to
+where the operator left off.
 
 ## Leaving the entry row: the focus ladder
 
@@ -261,21 +278,37 @@ QSO list  ──▲──  secondary pills  ──▲──  main logging fields
           ──▼──                   ──▼──
 ```
 
-- **From a main field**, Up moves to the secondary pill strip. An open
-  `options` suggestion menu keeps Up and Down for its own highlight.
-- **On the pills**, Left and Right move along the strip, wrapping at both
-  ends. Enter opens the pill's controls, placing focus by the rules above.
-  Down returns to the remembered main field.
-- **In an open control**, Down or Enter closes it and returns to its pill.
-  Enter there does *not* log, in any secondary control — logging is one rung
-  down, from a main field. (It used to log from all of them: the radio
-  control by its own submit handler, the reference controls and the spot
-  comment by falling through to the panel's Enter shortcut.)
+- **From a main field**, Up moves to the secondary pill strip, opening
+  whichever pill the keyboard was last on (or the first) and focusing its
+  field — see above. An open `options` suggestion menu keeps Up and Down for
+  its own highlight.
+- **On the pills**, Left and Right cross straight to the next/previous pill
+  and open it, wrapping at both ends; Tab and Shift-Tab step within a
+  multi-field control first. Down returns to the remembered main field.
+  Enter, landing on a pill that's already open (the ordinary case, since
+  arrival auto-opens), closes it the same way it does from inside a field,
+  below — it is no longer the way to open one, except for `more`, the one
+  pill that stays chip-focused and pops its own dialog on Enter or a tap.
+- **In an open control**, Down or Enter closes it and returns to the main
+  field the operator was in before — not the pill. Up closes it too, but
+  keeps going the same direction Up already takes from a bare pill: onward
+  into the QSO list. Enter does *not* log, in any secondary control —
+  logging is one rung down, from a main field. (It used to log from all of
+  them: the radio control by its own submit handler, the reference controls
+  and the spot comment by falling through to the panel's Enter shortcut. The
+  spot comment is a partial exception again now — see the Status section's
+  note on the Send button.)
 - **In the QSO list**, Up and Down walk the log, loading each contact into
   the editor **without moving focus**, so the next arrow keeps walking.
   Event and annotation rows are skipped, since they aren't editable
-  contacts. Enter moves the cursor to the callsign field with that contact
-  still loaded; Down past the newest contact leaves for the pills.
+  contacts. Enter restores whichever main field the operator was last in
+  before arrowing up (the callsign field if none is remembered) with that
+  contact still loaded — this is "resume editing where I left off," not
+  "start fresh," which is what Escape below is for. Down past the newest
+  contact deselects back to the QSO that was being composed and leaves for
+  the pills, opening the remembered one the same way Up from a main field
+  does — see "The composing draft" below for what "deselects back to"
+  actually restores.
 
   The list also takes the jumps every list is expected to: **Home** and
   **End** go to the oldest and newest contact, **Page Up** and **Page Down**
@@ -286,10 +319,25 @@ QSO list  ──▲──  secondary pills  ──▲──  main logging fields
   Page Down meaning "and then leave".
 
 **Escape** is the way *out*, at every rung, one layer per press: an open
-suggestion menu, then an open control — all the way back to the main fields,
-where Down and Enter stop at the pill — then the editing session, then the
-composed QSO. It never walks back *in*: in particular a second Escape does
-not re-select the QSO the first one deselected, which it used to do.
+suggestion menu, then an open control (back to the main fields, the same
+destination Down/Enter reach above) — then the editing session, back
+specifically to the callsign field, a "start a fresh QSO" gesture unlike
+Enter/Down-past-the-newest's "resume where I left off" — then the composed
+QSO. It never walks back *in*: in particular a second Escape does not
+re-select the QSO the first one deselected, which it used to do.
+
+### The composing draft
+
+Stepping away from a QSO being composed — Up into the list, or a click on an
+earlier row — to look at or edit an earlier contact does not lose what was
+typed. The draft (every field, including ones like grid/state that only
+round-trip when explicitly touched) is snapshotted the instant the detour
+starts and restored exactly when it ends, whichever way that happens:
+Escape, Enter/save, or Down off the newest row. Switching directly between
+two earlier contacts (arrowing further, or another click) keeps the
+*original* snapshot — only the trip back to composing restores it, so a
+detour through several contacts doesn't silently keep the last one's data
+instead of the first's.
 
 **Every rung claims bare keys only.** A held Cmd, Ctrl or Option makes the
 keystroke a platform gesture (Cmd+Down is "caret to the end of the text" on
@@ -343,3 +391,8 @@ Implemented except for:
   entry row and Arrow Up leaves it for the pills, so pressing Log still takes a
   pointer. Enter from any main field logs, so this is a gap in reaching the
   *button*, not in logging.
+- The spotting control's Send button, same gap: Tab within an open control
+  only steps through its own fields (see "Focus and the secondary controls"),
+  never reaching a button. Enter from the comment field sends the spot before
+  closing the control, the same substitute the Log button has, so this too is
+  a gap in reaching the *button*, not in sending.

@@ -15,6 +15,7 @@ class LoggingControlsController {
   bool Function()? _isFieldsLocked;
   void Function()? _focusCall;
   void Function()? _focusSecondaryControls;
+  void Function()? _focusLastPrimaryField;
 
   /// Wired by [LoggingControls] on mount/unmount — not meant for callers.
   void attach({
@@ -24,6 +25,7 @@ class LoggingControlsController {
     required bool Function() isFieldsLocked,
     required void Function() focusCall,
     required void Function() focusSecondaryControls,
+    required void Function() focusLastPrimaryField,
   }) {
     _setField = setField;
     _submit = submit;
@@ -31,6 +33,7 @@ class LoggingControlsController {
     _isFieldsLocked = isFieldsLocked;
     _focusCall = focusCall;
     _focusSecondaryControls = focusSecondaryControls;
+    _focusLastPrimaryField = focusLastPrimaryField;
   }
 
   /// Wired by [LoggingControls] on unmount — not meant for callers.
@@ -41,6 +44,7 @@ class LoggingControlsController {
     _isFieldsLocked = null;
     _focusCall = null;
     _focusSecondaryControls = null;
+    _focusLastPrimaryField = null;
   }
 
   /// Whether a LoggingControls is currently attached.
@@ -64,12 +68,21 @@ class LoggingControlsController {
   bool get isFieldsLocked => _isFieldsLocked?.call() ?? false;
 
   /// Puts the keyboard back on the callsign field — the bottom rung of
-  /// APP-19's focus ladder, used when the QSO list hands focus back (Enter on
-  /// a row, or Escape ending the edit).
+  /// APP-19's focus ladder, used when Escape ends an edit from the list: a
+  /// fresh start for composing the next contact, not a return to wherever
+  /// the operator happened to be before arrowing up into the list.
   void focusCall() => _focusCall?.call();
 
-  /// Puts the keyboard on the secondary control strip, on the pill the
-  /// operator last used (or the first one). The rung between the main fields
-  /// and the QSO list; the list calls this when Down walks off its newest row.
+  /// Puts the keyboard on the secondary control strip, opening the pill the
+  /// operator last used (or the first one) — same as arriving there via Up
+  /// from a main field. The rung between the main fields and the QSO list;
+  /// the list calls this when Down walks off its newest row.
   void focusSecondaryControls() => _focusSecondaryControls?.call();
+
+  /// Puts the keyboard back on the main field the operator was last typing
+  /// in before they arrowed up into the QSO list (Call, if none is
+  /// remembered) — used when Enter selects a row: the operator is picking up
+  /// an edit, not starting a fresh QSO, so the field they left keeps making
+  /// more sense than always landing on Call.
+  void focusLastPrimaryField() => _focusLastPrimaryField?.call();
 }

@@ -230,20 +230,25 @@ class _LoggingPanelState extends State<LoggingPanel> {
 
   /// Arrow Up walked off the top of the logging controls. Takes the keyboard
   /// into the list, on the row already being edited or — much more often —
-  /// the newest one. Nothing navigable (an empty operation, or one holding
-  /// only event markers) leaves focus where it was.
-  void _handleNavigateToQsoList() {
+  /// the newest one. Returns whether it did — nothing navigable (an empty
+  /// operation, or one holding only event markers) leaves focus where it
+  /// was and returns false, so a caller that already gave up its own focus
+  /// (a closing secondary control) knows to fall back instead.
+  bool _handleNavigateToQsoList() {
     final (:indices, :slot) = _navigable;
-    if (indices.isEmpty) return;
+    if (indices.isEmpty) return false;
     if (slot < 0) _selectQsoAt(indices.last);
     _listFocus.requestFocus();
+    return true;
   }
 
   /// Moves the selection [delta] rows through [_navigable].
   ///
   /// Walking a single row past the newest QSO leaves the list entirely and
   /// hands the keyboard back to the pill strip, mirroring the Up that got
-  /// here. A [jump] — a page or an end key — clamps at that edge instead:
+  /// here. It also deselects, back to the new QSO being composed — the state
+  /// this walk started from, up through the pills, before Up ever touched the
+  /// list. A [jump] — a page or an end key — clamps at that edge instead:
   /// nobody presses Page Down meaning "and then leave the list".
   void _moveListSelection(int delta, {bool jump = false}) {
     final (:indices, :slot) = _navigable;
@@ -256,7 +261,17 @@ class _LoggingPanelState extends State<LoggingPanel> {
     }
     final next = slot + delta;
     if (next >= indices.length && !jump) {
-      _loggingController.focusSecondaryControls();
+      setState(() => _selectedQso = null);
+      // Deferred a frame: LoggingControls' own didUpdateWidget reacts to the
+      // deselection above by resetting which pill is open, so opening one
+      // before that reset lands would just have it closed again.
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        // A second Down — including OS key-repeat — can land before this
+        // frame and re-select the newest row via the `slot < 0` branch
+        // above. When that happens the keyboard belongs back in the list,
+        // not on the pills this now-stale callback was queued for.
+        if (mounted && _selectedQso == null) _loggingController.focusSecondaryControls();
+      });
       return;
     }
     final target = next.clamp(0, indices.length - 1);
@@ -334,7 +349,11 @@ class _LoggingPanelState extends State<LoggingPanel> {
       case LogicalKeyboardKey.numpadEnter:
         // The row stays selected — this is "now let me edit it", not "open
         // it": the editor has been loaded with it since the arrow key landed.
-        _loggingController.focusCall();
+        // The field the operator was last in before arrowing up into the
+        // list (Call, if none is remembered) — not always Call, since Enter
+        // here is "resume editing where I left off", not "start a fresh QSO"
+        // (that's what Escape from the list is for).
+        _loggingController.focusLastPrimaryField();
         return KeyEventResult.handled;
       case LogicalKeyboardKey.escape:
         // The same deselect Escape makes anywhere else in the panel, plus the
