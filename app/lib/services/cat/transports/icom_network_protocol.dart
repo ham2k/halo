@@ -85,6 +85,37 @@ List<int> zeros(int n) => List<int>.filled(n, 0);
 
 /// Whether [bytes] begins with [prefix] — how every packet type is
 /// recognised, since the type lives in the first few header bytes.
+/// The sequence numbers a `0x18` retransmit request is asking us to resend.
+///
+/// The request carries (start, end) pairs of 16-bit little-endian numbers from
+/// offset 16, inclusive at both ends. A radio that lost a burst asks this way.
+///
+/// [limit] caps the TOTAL, and it is a safety bound rather than tidiness: the
+/// work here is otherwise proportional to the length of a datagram we did not
+/// choose. A single 1500-byte packet carries 371 pairs, so answering every one
+/// would put tens of thousands of packets on the wire in reply to one inbound
+/// packet — roughly a 30,000x amplification, driven synchronously inside a
+/// socket callback. Bounding each pair separately (the first version of this)
+/// does not help, because it is the pair COUNT that is unbounded. Nothing
+/// legitimate can ask for more than the send buffer holds, since anything
+/// older than that is gone.
+List<int> icomRetransmitRange(List<int> bytes, {required int limit}) {
+  final wanted = <int>[];
+  for (var at = 16; at + 4 <= bytes.length && wanted.length < limit; at += 4) {
+    final from = bytes[at] | (bytes[at + 1] << 8);
+    final to = bytes[at + 2] | (bytes[at + 3] << 8);
+    // A reversed pair needs no guard of its own: `seq <= to` is false from the
+    // start, so it contributes nothing. An `if (to < from) continue;` stood
+    // here claiming to stop a count running past 65535, and mutation testing
+    // showed deleting it changed no outcome — the loop condition, not the
+    // guard, is what makes it safe. The test pins that.
+    for (var seq = from; seq <= to && wanted.length < limit; seq++) {
+      wanted.add(seq);
+    }
+  }
+  return wanted;
+}
+
 bool icomPrefixIs(List<int> bytes, List<int> prefix) {
   if (bytes.length < prefix.length) return false;
   for (var i = 0; i < prefix.length; i++) {

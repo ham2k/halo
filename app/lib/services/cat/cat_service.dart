@@ -51,6 +51,32 @@ const _staleAfter = Duration(seconds: 30);
 const _reconnectRetries = 2;
 const _defaultReconnectDelay = Duration(seconds: 3);
 
+/// The floor between automatic reconnect bursts after an unexpected drop.
+///
+/// Not tuning for its own sake: this radio is on record as getting WORSE when
+/// reconnected at speed, so being too eager has a measured cost and being too
+/// slow costs one Connect press.
+const _autoReconnectCooldown = Duration(seconds: 60);
+
+/// The idle retry: how long to wait before trying the designated radio again
+/// while it sits disconnected, and how far to back off when it keeps failing.
+///
+/// A drop buys one burst (see [_autoReconnectAfterDrop]), and when that burst
+/// fails nothing else ever tries — verified on hardware 2026-08-02 by cutting
+/// power to an IC-705 and restoring it: the radio came back and stayed up for
+/// two solid minutes while the app sat disconnected, having spent its burst
+/// while the radio was still booting. That is the gap this closes.
+///
+/// It BACKS OFF, because the cost of being eager here is measured. This
+/// transport's own notes record that repeated connects make this radio worse —
+/// each attempt opens a session it has to track, and three attempts per
+/// Connect turned "ignores the login" into "ignores the handshake". A radio
+/// that is merely switched off costs nothing to poke; one that is present and
+/// refusing is exactly the case that degrades, so the interval doubles until
+/// it is only a few attempts an hour.
+const _idleRetryFirst = Duration(seconds: 30);
+const _idleRetryMax = Duration(minutes: 8);
+
 enum _ConnectOutcome {
   connected,
   failed,
@@ -95,9 +121,28 @@ class CatService extends ChangeNotifier {
   /// [Duration.zero] rather than sleeping through it for real.
   final Duration reconnectDelay;
 
+  /// When [_autoReconnectAfterDrop] last let a burst through, so a flapping
+  /// radio cannot become a reconnect storm.
+  DateTime? _lastAutoReconnect;
+
+  /// The slow retry that runs while the designated radio is disconnected, and
+  /// its current backoff. See [_scheduleIdleRetry].
+  ///
+  /// [idleRetryFirst] is injectable for the same reason [reconnectDelay] is —
+  /// a test asserting the loop's DECISIONS should not sit through half a
+  /// minute to watch one. It must never be zero: the backoff doubles it, and
+  /// zero doubled is still zero, which is a tight loop rather than a retry.
+  final Duration idleRetryFirst;
+  Timer? _idleRetryTimer;
+  late Duration _idleRetryDelay = idleRetryFirst;
+
   CatService(this._settings,
-      {EquipmentRegistry? registry, RadioService? radio, this.reconnectDelay = _defaultReconnectDelay})
-      : registry = registry ?? EquipmentRegistry(),
+      {EquipmentRegistry? registry,
+      RadioService? radio,
+      this.reconnectDelay = _defaultReconnectDelay,
+      this.idleRetryFirst = _idleRetryFirst})
+      : assert(idleRetryFirst > Duration.zero, 'a zero first delay makes the backoff a tight loop'),
+        registry = registry ?? EquipmentRegistry(),
         _radio = radio {
     _load();
     _radio?.addListener(_onVfoChanged);
@@ -394,7 +439,17 @@ class CatService extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> connect(String uuid) => _connect(uuid);
+  Future<void> connect(String uuid) {
+    // Asking for it back cancels a previous Disconnect, so the idle retry may
+    // resume looking after this node.
+    _runtimeFor(uuid).userDisconnected = false;
+    // The backoff belongs to the designated radio's loop, so only that radio's
+    // Connect may reset it. Unconditionally, connecting a SECOND rig dragged
+    // radio1's wait from eight minutes back to thirty seconds — an unrelated
+    // action re-entering the eager-poking regime the backoff exists to avoid.
+    if (isRadio1(uuid)) _idleRetryDelay = idleRetryFirst;
+    return _connect(uuid);
+  }
 
   /// The outcome matters only to [reconnectDesignatedRadio]: a retry loop
   /// must keep trying after a *failure* but stop dead when something else
@@ -481,12 +536,30 @@ class CatService extends ChangeNotifier {
     unawaited(connection.closed.then((_) {
       // A stale connection's close must not clobber a live one's status.
       if (runtime.connection != connection) return;
+      // NOTE on deliberate disconnects: there is no guard for them here, and
+      // none is needed. _teardown calls _closeSession FIRST, which sets
+      // runtime.connection = null, and only then closes the connection — so a
+      // disconnect the operator asked for exits at the guard above and never
+      // reaches this line. A `status == disconnecting` check was written here
+      // and removed as dead code once a mutation test showed it could not
+      // change any outcome. If teardown's ordering ever changes, the test
+      // 'a DELIBERATE disconnect is never undone' is what will catch it.
       // The driver keeps its own timers (FlexRadio resyncs every 60s, the
       // CI-V drivers poll every 5s). Dropping the session without tearing
       // it down leaves them ticking for the life of the process — once per
       // drop — each one retaining its sink and this dead connection.
       unawaited(_closeSession(runtime));
       _setState(uuid, const EquipmentState(status: EquipmentStatus.disconnected));
+      _autoReconnectAfterDrop(uuid);
+      // And keep trying slowly afterwards, in case that burst is spent before
+      // the radio is back.
+      //
+      // Unconditional on purpose. An `isRadio1(uuid)` guard here was written
+      // and removed: [_scheduleIdleRetry] reads _radio1 itself and stops on
+      // the first tick if that radio is connected or absent, so the guard
+      // could not change any outcome — mutation testing confirmed removing it
+      // failed nothing. One place decides, and it is the loop.
+      _scheduleIdleRetry();
     }));
 
     _setState(uuid, const EquipmentState(status: EquipmentStatus.connected));
@@ -513,6 +586,121 @@ class CatService extends ChangeNotifier {
   /// owns the node — a manual Connect, a Disconnect, or a connection that
   /// is already up — which is the failure mode that made polo's
   /// auto-reconnect the source of all four of its connection races.
+  /// Keeps trying the designated radio, slowly, while it sits disconnected.
+  ///
+  /// [_autoReconnectAfterDrop] handles the moment a live session dies. This
+  /// handles everything after: a radio that was switched off, or was still
+  /// booting when that burst was spent, or that refused because another client
+  /// held it. Verified as a real gap on hardware — power to an IC-705 was cut
+  /// and restored, and the app sat disconnected for two minutes with the radio
+  /// up and stable, because the drop trigger had already fired and nothing
+  /// else ever tries.
+  ///
+  /// Three things keep it from becoming the bug it is meant to fix:
+  ///
+  ///  * it never touches a node the operator switched off — [disconnect]
+  ///    records that, and only [connect] clears it;
+  ///  * it only ever looks at the designated radio, so a station full of
+  ///    equipment does not generate traffic nobody asked for. With no radio
+  ///    designated (HALO-50's None) it does nothing at all;
+  ///  * it backs off to [_idleRetryMax]. This radio measurably degrades when
+  ///    reconnected at speed, so a rig that is present and refusing must not
+  ///    be poked on a fixed short cycle.
+  void _scheduleIdleRetry() {
+    if (_disposed) return;
+    _idleRetryTimer?.cancel();
+    _idleRetryTimer = Timer(_idleRetryDelay, () {
+      if (_disposed) return;
+      final uuid = _radio1;
+      final runtime = uuid == null ? null : _runtimes[uuid];
+      final status = uuid == null ? null : stateFor(uuid).status;
+
+      // STOP only for a reason that will not resolve itself: there is nothing
+      // designated, the node is gone, the operator switched it off, or it is
+      // already connected. connect/disconnect and a dropped session restart it.
+      final settled = uuid == null ||
+          !_nodes.containsKey(uuid) ||
+          (runtime?.userDisconnected ?? false) ||
+          status == EquipmentStatus.connected;
+      if (settled) {
+        _idleRetryTimer = null;
+        return;
+      }
+
+      // WAIT, without counting it as an attempt, while something else is
+      // mid-flight. Only these two mean "in progress"; `error` is a FAILED
+      // attempt and is exactly what we are here to retry.
+      //
+      // Two versions of this got it wrong, both caught by tests rather than by
+      // reading. The first treated `connecting` as nothing-to-do and STOPPED,
+      // so the drop burst still being in flight on the first tick shut the
+      // loop down permanently — reintroducing the gap this exists to close.
+      // The second waited on anything that was not `disconnected`, which
+      // includes `error`, so after the first failure it waited for ever and
+      // never retried at all.
+      if (status == EquipmentStatus.connecting || status == EquipmentStatus.disconnecting) {
+        _scheduleIdleRetry();
+        return;
+      }
+
+      // Double first, so a failure that arrives after this fire still leaves
+      // the next wait longer than this one.
+      _idleRetryDelay = _idleRetryDelay * 2 > _idleRetryMax ? _idleRetryMax : _idleRetryDelay * 2;
+      unawaited(_connect(uuid).then((outcome) {
+        if (outcome == _ConnectOutcome.connected) {
+          _idleRetryDelay = idleRetryFirst;
+          // CANCEL, not just forget. There is an async gap above while the
+          // connect runs, and _scheduleIdleRetry may have been called during
+          // it — a drop on any node calls it. Nulling alone would leave that
+          // timer pending and unreachable: dispose() could no longer stop it,
+          // and if the radio drops again before it fires it runs a second
+          // retry chain alongside the real one, doubling the connect rate
+          // against the radio whose backoff exists to prevent exactly that.
+          _idleRetryTimer?.cancel();
+          _idleRetryTimer = null;
+          return;
+        }
+        _scheduleIdleRetry();
+      }));
+    });
+  }
+
+  /// When the designated radio's connection dies on its own, try to get it
+  /// back — once, and then leave it alone.
+  ///
+  /// The radio can end a session without us doing anything wrong: it says so
+  /// with an 0x50 (see the Icom transport, which now listens for that), or it
+  /// simply stops answering. Before this, the row went disconnected and stayed
+  /// there until the operator noticed and pressed Connect — a poor answer from
+  /// a logger whose job is to follow the VFO.
+  ///
+  /// DELIBERATELY TIMID, for a reason recorded in hardware terms.
+  /// IcomNetworkTransport.connect documents that retrying a refused login
+  /// makes this radio WORSE: every attempt opens a session it must track, and
+  /// measured on hardware, three attempts per Connect turned "ignores the
+  /// login" into "ignores the handshake". app-polo's auto-reconnect also ended
+  /// up fighting the user's own Connect (see [_ConnectOutcome]). So:
+  ///
+  ///  * only the designated radio, the one the logging panel depends on;
+  ///  * never after a deliberate Disconnect;
+  ///  * at most one burst per [_autoReconnectCooldown], so a flapping radio —
+  ///    or a second client holding its only session slot — gets a few attempts
+  ///    a minute rather than a storm.
+  ///
+  /// [reconnectDesignatedRadio] supplies the retry policy; this only decides
+  /// whether it may run at all.
+  void _autoReconnectAfterDrop(String uuid) {
+    if (_disposed || !isRadio1(uuid)) return;
+    final last = _lastAutoReconnect;
+    final now = DateTime.now();
+    if (last != null && now.difference(last) < _autoReconnectCooldown) {
+      debugPrint('[cat] auto-reconnect suppressed: last was ${now.difference(last).inSeconds}s ago');
+      return;
+    }
+    _lastAutoReconnect = now;
+    unawaited(reconnectDesignatedRadio());
+  }
+
   Future<void> reconnectDesignatedRadio() async {
     final uuid = _radio1;
     if (uuid == null || !_nodes.containsKey(uuid)) return;
@@ -529,14 +717,29 @@ class CatService extends ChangeNotifier {
       final outcome = await _connect(uuid);
       if (outcome != _ConnectOutcome.failed) return;
 
-      if (attempt == _reconnectRetries) return;
+      if (attempt == _reconnectRetries) break;
       await Future<void>.delayed(reconnectDelay);
     }
+
+    // The burst is spent and the radio still is not there, so hand over to the
+    // slow loop. Without this, main.dart's boot call meant three attempts in a
+    // few seconds and then silence for the rest of the session: the loop was
+    // only ever started by a drop, and at boot nothing has dropped. That is the
+    // same gap the loop exists to close, on the one path most likely to hit it
+    // — the operator switches the rig on after the app, not before.
+    //
+    // Only reached when the burst EXHAUSTED. Connected, superseded and disposed
+    // all return above, because in each of those cases something else is
+    // already driving this node.
+    _scheduleIdleRetry();
   }
 
   Future<void> disconnect(String uuid) async {
     final runtime = _runtimes[uuid];
     if (runtime == null) return;
+    // Recorded BEFORE the teardown, because the retry loop reads it later and
+    // has no other way to tell this from a radio that vanished.
+    runtime.userDisconnected = true;
     runtime.cancel?.cancel();
     runtime.cancel = null;
     // Bump the sequence so an attempt still in flight knows it lost.
@@ -639,7 +842,38 @@ class CatService extends ChangeNotifier {
     if (uuid == null) return;
     final runtime = _runtimes[uuid];
     final session = runtime?.session;
-    if (session == null) return;
+    if (session == null) {
+      // The operator is working the controls of a radio that is not there.
+      // That is the clearest signal we get that they want it back, so pull the
+      // idle retry down off its ceiling — otherwise someone actively using the
+      // app can sit up to [_idleRetryMax] with nothing visibly trying.
+      //
+      // Deliberately NOT a connect attempt. The tune would be lost either
+      // way — connecting is async and this call is long gone by the time a
+      // session exists — and then `startUpdates` polls the radio, so the
+      // radio's own frequency would overwrite what was just typed: the app
+      // visibly undoing the operator. It would also put a connect behind every
+      // keystroke, and repeated connects are what this radio degrades on.
+      //
+      // The condition is load-bearing twice over, and is deliberately the ONLY
+      // one. Tuning faster than the retry interval would otherwise re-arm the
+      // timer on every keystroke and the loop would never fire at all — and at
+      // rest the delay sits at its floor, so tuning cannot start dialling a
+      // radio nobody has switched on.
+      //
+      // An `_idleRetryTimer != null` guard stood here and was removed as dead,
+      // the third of this shape in this feature (see the drop handler's own
+      // note, and [_scheduleIdleRetry]). Reaching a null timer with a
+      // backed-off delay means the loop settled, and every reason it settles —
+      // node gone, nothing designated, switched off by hand, or connected —
+      // either returns above or settles the new loop again before it can
+      // attempt anything. Mutation testing confirmed it changed no outcome.
+      if (_idleRetryDelay != idleRetryFirst) {
+        _idleRetryDelay = idleRetryFirst;
+        _scheduleIdleRetry();
+      }
+      return;
+    }
 
     final vfo = radio.vfoA;
     final wanted = VfoReading(freqKHz: vfo.freq, mode: resolveSideband(vfo.mode, vfo.freq, band: vfo.band));
@@ -722,6 +956,11 @@ class CatService extends ChangeNotifier {
   void dispose() {
     _disposed = true;
     _radio?.removeListener(_onVfoChanged);
+    // Cancelled, not merely guarded: the callback checks _disposed, but a
+    // pending timer can still sit scheduled for minutes, and a test harness
+    // will rightly complain about one outliving its service.
+    _idleRetryTimer?.cancel();
+    _idleRetryTimer = null;
     stopDiscovery();
     for (final runtime in _runtimes.values) {
       runtime.cancel?.cancel();
@@ -763,6 +1002,14 @@ class _NodeRuntime {
   /// Watches for a connection that is up but saying nothing — see
   /// [EquipmentState.stale].
   Timer? staleTimer;
+
+  /// The operator pressed Disconnect. Distinct from every other route to
+  /// `disconnected`, and the distinction is the whole safety of the idle
+  /// retry: without it, "off because I said so" and "off because the radio
+  /// vanished" are the same state, and a retry loop would keep switching the
+  /// radio back on under the operator. app-polo's auto-reconnect did exactly
+  /// that. Cleared by [connect], so asking for it again resumes retrying.
+  bool userDisconnected = false;
 }
 
 class _NodeSink implements EquipmentSink {

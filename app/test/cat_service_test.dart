@@ -16,6 +16,7 @@ import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:ham2k_logger/services/radio_service.dart';
 import 'package:ham2k_logger/services/cat/driver.dart';
 import 'package:ham2k_logger/services/cat/equipment.dart';
 import 'package:ham2k_logger/services/cat/equipment_registry.dart';
@@ -221,18 +222,27 @@ void main() {
   late _FakeDriver driver;
   late List<String> log;
   late CatService cat;
+  late RadioService radio;
 
   Future<CatService> makeService() async {
     settings = SettingsService(await SharedPreferences.getInstance());
     log = [];
     transport = _FakeTransport();
     driver = _FakeDriver(log);
+    radio = RadioService(await SharedPreferences.getInstance(), writeDelay: Duration.zero);
+    addTearDown(radio.dispose);
     return CatService(
       settings,
+      radio: radio,
       registry: EquipmentRegistry(
         types: [_FakeType(driver)],
         transports: {'fake': transport},
       ),
+      reconnectDelay: Duration.zero,
+      // Short, not zero: the backoff doubles it, and zero doubled is a tight
+      // loop. Long enough that a test which does NOT want a retry can pump the
+      // queue without tripping one.
+      idleRetryFirst: const Duration(milliseconds: 20),
     );
   }
 
@@ -255,6 +265,443 @@ void main() {
   }
 
   // ------------------------------------------------------------ storage
+
+  // ------------------------------------------------------- idle retry
+
+  group('the designated radio keeps being retried while it is off', () {
+    // Verified as a real gap on hardware 2026-08-02: power to an IC-705 was
+    // cut and restored, and the app sat disconnected for two solid minutes
+    // with the radio up and stable — the drop burst had been spent while the
+    // radio was still booting, and nothing else ever tried.
+    /// Runs the clock while FAILING every attempt, which is what a radio that
+    /// is switched off actually does. The fake transport leaves an attempt
+    /// pending forever otherwise, so the node would sit in `connecting` and
+    /// nothing would ever be learned about the retry.
+    Future<void> pumpWithRadioOff() async {
+      for (var i = 0; i < 40; i++) {
+        for (final a in transport.attempts) {
+          if (!a.completer.isCompleted) a.completer.completeError(StateError('radio is off'));
+        }
+        await Future<void>.delayed(const Duration(milliseconds: 10));
+        await pumpEventQueue();
+      }
+    }
+
+    test('a radio that is off keeps being tried', () async {
+      final node = await addRadio();
+      final connection = await connectAndLand(node);
+      connection.dropRemotely();
+      await pumpEventQueue();
+      final afterDrop = transport.attempts.length;
+
+      // The drop burst fails (nothing lands these attempts), and the retry
+      // has to pick it up from there.
+      await pumpWithRadioOff();
+
+      expect(transport.attempts.length, greaterThan(afterDrop),
+          reason: 'nothing tried again once the drop burst was spent');
+    });
+
+    /// How long the next connect attempt actually takes to show up.
+    ///
+    /// MEASURED, not assumed. Two earlier versions of the tests below picked a
+    /// fixed window out of arithmetic on the constants, and both times the real
+    /// interval was nothing like the guess — one window was wide enough to
+    /// catch the backed-off retry it was supposed to rule out, so the test
+    /// passed with the feature removed.
+    Future<Duration> timeToNextAttempt({Duration limit = const Duration(seconds: 5)}) async {
+      final start = DateTime.now();
+      final seen = transport.attempts.length;
+      while (transport.attempts.length == seen && DateTime.now().difference(start) < limit) {
+        await Future<void>.delayed(const Duration(milliseconds: 5));
+        await pumpEventQueue();
+      }
+      return DateTime.now().difference(start);
+    }
+
+    Future<void> failEveryPendingAttempt() async {
+      for (final a in transport.attempts) {
+        if (!a.completer.isCompleted) a.completer.completeError(StateError('radio is off'));
+      }
+      await pumpEventQueue();
+    }
+
+    /// Fails retries until the interval has doubled clear of its floor.
+    ///
+    /// More rounds than the doubling alone needs, because the first few are
+    /// eaten by the drop burst's own attempts rather than by idle-retry ticks —
+    /// with three rounds the interval reached only 45ms against a 20ms floor,
+    /// and the ceiling test below flaked about one run in three on a margin
+    /// that thin.
+    Future<void> backOffUntilLong() async {
+      for (var round = 0; round < 6; round++) {
+        await failEveryPendingAttempt();
+        await timeToNextAttempt();
+      }
+    }
+
+    test('working the VFO of an absent radio pulls the retry off its ceiling', () async {
+      // The operator is in the app, tuning, and the radio is not there. Without
+      // this they wait out whatever the backoff has grown to — on real
+      // constants, up to eight minutes with nothing visibly trying.
+      final node = await addRadio();
+      final connection = await connectAndLand(node);
+      connection.dropRemotely();
+      await pumpEventQueue();
+      await backOffUntilLong();
+
+      // Time one full backed-off wait, so the assertion below is against what
+      // this machine actually did rather than against the constants.
+      await failEveryPendingAttempt();
+      final backedOff = await timeToNextAttempt();
+
+      // Arm the next wait — longer still, since that attempt just failed.
+      await failEveryPendingAttempt();
+      // The operator types a frequency.
+      radio.setVfo('vfoA', freq: 14074.0, mode: 'USB', origin: VfoOrigin.user);
+      await pumpEventQueue();
+      final afterTuning = await timeToNextAttempt();
+
+      expect(afterTuning * 2, lessThan(backedOff),
+          reason: 'tuning an absent radio left the operator waiting out the backoff '
+              '(${afterTuning.inMilliseconds}ms vs ${backedOff.inMilliseconds}ms)');
+    });
+
+    test('tuning continuously does not starve the retry it just shortened', () async {
+      // The failure mode of the shortcut above: re-arming the timer on every
+      // keystroke means a fast operator resets the wait before it ever expires
+      // and the radio is never dialled at all. Working a pileup with the rig
+      // off is exactly when someone types that fast.
+      final node = await addRadio();
+      final connection = await connectAndLand(node);
+      connection.dropRemotely();
+      await pumpEventQueue();
+      await backOffUntilLong();
+      await failEveryPendingAttempt();
+      final seen = transport.attempts.length;
+
+      // Tune far faster than the floor interval, for well over it.
+      for (var i = 0; i < 40; i++) {
+        radio.setVfo('vfoA', freq: 14074.0 + i, mode: 'USB', origin: VfoOrigin.user);
+        await Future<void>.delayed(const Duration(milliseconds: 5));
+        await pumpEventQueue();
+      }
+
+      expect(transport.attempts.length, greaterThan(seen),
+          reason: 'continuous tuning pushed the retry out for ever; the radio was never tried');
+    });
+
+    test('a startup burst that finds the radio off hands over to the loop', () async {
+      // main.dart calls reconnectDesignatedRadio() at boot (gated on the CAT
+      // experiment). The operator switches the rig on AFTER the app far more
+      // often than before it, so this is the likeliest path of all to need the
+      // slow retry — and it was the one path that never started it: the loop
+      // was only ever armed by a drop, and at boot nothing has dropped.
+      await addRadio();
+
+      final burst = cat.reconnectDesignatedRadio();
+      for (var i = 0; i < 10; i++) {
+        for (final a in transport.attempts) {
+          if (!a.completer.isCompleted) a.completer.completeError(StateError('radio is off'));
+        }
+        await pumpEventQueue();
+      }
+      await burst;
+      final afterBurst = transport.attempts.length;
+      expect(afterBurst, greaterThan(1), reason: 'the boot burst itself never ran');
+
+      await pumpWithRadioOff();
+
+      expect(transport.attempts.length, greaterThan(afterBurst),
+          reason: 'the app started with the radio off and then gave up for the whole session');
+    });
+
+    test('connecting a DIFFERENT rig does not reset the designated radio\'s backoff', () async {
+      // The backoff belongs to radio1's loop. Connecting a second rig is an
+      // unrelated action, and letting it drag the wait back to the floor puts
+      // radio1 straight back into the eager-poking the backoff exists to stop.
+      await addRadio(host: 'other.local'); // added first, so NOT radio1
+      final other = cat.nodes.first;
+      final designated = await addRadio(host: 'main.local'); // newest wins
+      expect(cat.isRadio1(designated.uuid), isTrue);
+
+      final connection = await connectAndLand(designated);
+      connection.dropRemotely();
+      await pumpEventQueue();
+      await backOffUntilLong();
+
+      // Time one backed-off wait for comparison.
+      await failEveryPendingAttempt();
+      final backedOff = await timeToNextAttempt();
+
+      // Connect the OTHER rig, then let one more retry tick go by. The tick
+      // matters: connect() only changes the stored interval, so a reset does
+      // not show up until the next reschedule — measuring the wait already
+      // armed would compare the old interval against itself and pass either
+      // way, which is exactly how the first version of this test missed it.
+      await failEveryPendingAttempt();
+      await connectAndLand(other);
+      await timeToNextAttempt();
+      await failEveryPendingAttempt();
+      final afterOther = await timeToNextAttempt();
+
+      expect(afterOther * 2, greaterThan(backedOff),
+          reason: 'connecting an unrelated rig collapsed radio1\'s backoff '
+              '(${afterOther.inMilliseconds}ms vs ${backedOff.inMilliseconds}ms)');
+    });
+
+    test('tuning does not start connecting a radio nobody has switched on', () async {
+      // Nothing has connected, dropped, or been disconnected here, so no retry
+      // loop is running — and tuning must not be what starts one. This is the
+      // case the `_idleRetryTimer != null` half of the guard exists for: a
+      // connect attempt behind a keystroke, on a station whose rig has simply
+      // never been switched on. (It is NOT what keeps a hand-disconnected radio
+      // off — the loop's own userDisconnected check does that, a tick later.)
+      await addRadio();
+      final before = transport.attempts.length;
+
+      radio.setVfo('vfoA', freq: 14074.0, mode: 'USB', origin: VfoOrigin.user);
+      await pumpWithRadioOff();
+
+      expect(transport.attempts.length, before,
+          reason: 'typing a frequency started dialling a radio that was never connected');
+    });
+
+    test('tuning does NOT start a retry for a radio switched off by hand', () async {
+      // The mirror of the above, and the reason it only ever shortens a loop
+      // that is already running: Disconnect has to stay disconnected even while
+      // the operator keeps using the app.
+      final node = await addRadio();
+      await connectAndLand(node);
+      await cat.disconnect(node.uuid);
+      final afterDisconnect = transport.attempts.length;
+
+      radio.setVfo('vfoA', freq: 14074.0, mode: 'USB', origin: VfoOrigin.user);
+      await pumpWithRadioOff();
+
+      expect(transport.attempts.length, afterDisconnect,
+          reason: 'tuning switched a deliberately disconnected radio back on');
+    });
+
+    test('a DELIBERATE disconnect is never undone by the retry', () async {
+      // The failure this feature could become, and the one app-polo shipped.
+      final node = await addRadio();
+      await connectAndLand(node);
+
+      await cat.disconnect(node.uuid);
+      final afterDisconnect = transport.attempts.length;
+      await pumpWithRadioOff();
+
+      expect(transport.attempts.length, afterDisconnect,
+          reason: 'Disconnect must stay disconnected');
+      expect(cat.stateFor(node.uuid).status, EquipmentStatus.disconnected);
+    });
+
+    test('Disconnect STOPS a retry loop that is already running', () async {
+      // The case the test above cannot reach, and the only one where the
+      // userDisconnected flag actually decides anything. A deliberate
+      // Disconnect never STARTS the loop — _teardown clears runtime.connection
+      // before closing, so the closed-handler returns early. The flag matters
+      // when the loop is ALREADY running because the radio vanished, and the
+      // operator then says "stop": without it the loop keeps switching the
+      // radio back on underneath them.
+      final node = await addRadio();
+      final connection = await connectAndLand(node);
+      connection.dropRemotely();
+      await pumpEventQueue();
+      await pumpWithRadioOff();
+      final whileRetrying = transport.attempts.length;
+      expect(whileRetrying, greaterThan(1), reason: 'the loop should be running');
+
+      await cat.disconnect(node.uuid);
+      final atDisconnect = transport.attempts.length;
+      await pumpWithRadioOff();
+
+      expect(transport.attempts.length, atDisconnect,
+          reason: 'the running loop ignored the operator');
+    });
+
+    test('a manual Connect that succeeds ends the loop', () async {
+      // The other path the stop-when-connected check guards: the loop is
+      // waiting on a dead radio and the operator connects it by hand.
+      final node = await addRadio();
+      final connection = await connectAndLand(node);
+      connection.dropRemotely();
+      await pumpEventQueue();
+      await pumpWithRadioOff();
+      expect(transport.attempts.length, greaterThan(1));
+
+      // Connect by hand and land it.
+      final connecting = cat.connect(node.uuid);
+      await pumpEventQueue();
+      transport.attempts.last.completer.complete(_FakeConnection('c-manual', log));
+      await connecting;
+      await pumpEventQueue();
+      expect(cat.stateFor(node.uuid).status, EquipmentStatus.connected);
+
+      final afterManual = transport.attempts.length;
+      await pumpWithRadioOff();
+      expect(transport.attempts.length, afterManual,
+          reason: 'the loop kept trying a radio that is already connected');
+    });
+
+    test('a drop on a node that is NOT designated starts nothing', () async {
+      // Unplugging a second rig must not generate connect traffic for the one
+      // the logging panel uses.
+      final other = await addRadio(host: 'a.local');
+      final designated = await cat.addNode(typeKey: 'fake-type', name: 'Right', config: {'host': 'b.local'});
+      expect(cat.isRadio1(designated.uuid), isTrue, reason: 'newest wins');
+      final co = await connectAndLand(other);
+      await connectAndLand(designated);
+      final before = transport.attempts.length;
+
+      co.dropRemotely();
+      await pumpEventQueue();
+      await pumpWithRadioOff();
+
+      expect(transport.attempts.length, before,
+          reason: 'a non-designated drop pulled the designated radio into a retry');
+    });
+
+    test('asking to connect again resumes retrying', () async {
+      // Disconnect is not permanent: pressing Connect clears the intent, so a
+      // radio that then drops is looked after again.
+      final node = await addRadio();
+      await connectAndLand(node);
+      await cat.disconnect(node.uuid);
+
+      final reconnected = await connectAndLand(node);
+      reconnected.dropRemotely();
+      await pumpEventQueue();
+      final afterDrop = transport.attempts.length;
+      await pumpWithRadioOff();
+
+      expect(transport.attempts.length, greaterThan(afterDrop));
+    });
+
+    test('a station with no designated radio is left completely alone', () async {
+      // HALO-50: None is a real choice, and this loop must not quietly undo it
+      // by connecting something.
+      final node = await addRadio();
+      final connection = await connectAndLand(node);
+      await cat.setRadio1(null);
+      connection.dropRemotely();
+      await pumpEventQueue();
+      final afterDrop = transport.attempts.length;
+
+      await pumpWithRadioOff();
+
+      expect(transport.attempts.length, afterDrop, reason: 'None must mean none');
+    });
+
+    test('the retry stops once the radio is back', () async {
+      final node = await addRadio();
+      final connection = await connectAndLand(node);
+      connection.dropRemotely();
+      await pumpEventQueue();
+
+      // Fail a few attempts as an absent radio would, then let the NEXT one
+      // land — the radio coming back. pumpWithRadioOff completes everything it
+      // sees, so this has to wait for a fresh attempt rather than reusing the
+      // last, which is already failed.
+      await pumpWithRadioOff();
+      final before = transport.attempts.length;
+      for (var i = 0; i < 200 && transport.attempts.length == before; i++) {
+        await Future<void>.delayed(const Duration(milliseconds: 10));
+        await pumpEventQueue();
+      }
+      expect(transport.attempts.length, greaterThan(before), reason: 'the retry stopped trying');
+      transport.attempts.last.completer.complete(_FakeConnection('c-recovered', log));
+      await pumpEventQueue();
+      expect(cat.stateFor(node.uuid).status, EquipmentStatus.connected);
+
+      final afterRecovery = transport.attempts.length;
+      await pumpWithRadioOff();
+      expect(transport.attempts.length, afterRecovery,
+          reason: 'a connected radio must not keep being reconnected');
+    });
+  });
+
+  // -------------------------------------------------- reconnect on drop
+
+  group('the designated radio comes back after an unexpected drop', () {
+    test('a remote drop triggers a reconnect attempt', () async {
+      final node = await addRadio();
+      final connection = await connectAndLand(node);
+      expect(cat.isRadio1(node.uuid), isTrue, reason: 'the sole transceiver is radio1');
+      final attemptsBefore = transport.attempts.length;
+
+      // The radio going away on its own — powered off, WiFi dropped, or the
+      // 0x50 the Icom transport now listens for.
+      connection.dropRemotely();
+      await pumpEventQueue();
+
+      expect(transport.attempts.length, greaterThan(attemptsBefore),
+          reason: 'nothing tried to get the radio back');
+    });
+
+    test('a DELIBERATE disconnect is never undone', () async {
+      // An OUTCOME test, deliberately: it does not care how the invariant is
+      // enforced, only that pressing Disconnect leaves the radio disconnected.
+      //
+      // Today what enforces it is teardown ordering — _teardown clears
+      // runtime.connection before closing, so the closed handler exits at its
+      // first guard. A `status == disconnecting` check was also written, and
+      // mutation testing showed removing it changed nothing, so it went. This
+      // test is what stands between a future reordering of teardown and an
+      // auto-reconnect that fights the operator, which is exactly what
+      // app-polo's did.
+      final node = await addRadio();
+      await connectAndLand(node);
+      final attemptsBefore = transport.attempts.length;
+
+      await cat.disconnect(node.uuid);
+      await pumpEventQueue();
+
+      expect(transport.attempts.length, attemptsBefore,
+          reason: 'Disconnect must stay disconnected');
+      expect(cat.stateFor(node.uuid).status, EquipmentStatus.disconnected);
+    });
+
+    test('a second drop inside the cooldown does not start another burst', () async {
+      // This radio is on record as getting WORSE when reconnected at speed,
+      // so a flapping link must not turn into a storm of sessions it has to
+      // track.
+      final node = await addRadio();
+      final first = await connectAndLand(node);
+      first.dropRemotely();
+      await pumpEventQueue();
+      final afterFirst = transport.attempts.length;
+
+      // Land the reconnect, then drop it again straight away.
+      final second = _FakeConnection('c-retry', log);
+      transport.attempts.last.completer.complete(second);
+      await pumpEventQueue();
+      second.dropRemotely();
+      await pumpEventQueue();
+
+      expect(transport.attempts.length, afterFirst,
+          reason: 'the cooldown must suppress a second burst');
+    });
+
+    test('a node that is not radio1 is left alone', () async {
+      // Only the radio the logging panel depends on is worth reconnecting;
+      // anything else is the operator's business.
+      // Newest added takes radio1 (HALO-50), so `a` is the one nobody should
+      // reconnect on our behalf.
+      final a = await addRadio(host: 'a.local');
+      final b = await cat.addNode(typeKey: 'fake-type', name: 'Right Radio', config: {'host': 'b.local'});
+      final ca = await connectAndLand(a);
+      await connectAndLand(b);
+      expect(cat.isRadio1(a.uuid), isFalse, reason: '${b.uuid} is the designated one');
+      final attemptsBefore = transport.attempts.length;
+
+      ca.dropRemotely();
+      await pumpEventQueue();
+
+      expect(transport.attempts.length, attemptsBefore);
+    });
+  });
 
   // ------------------------------------------------------- app shutdown
 
@@ -565,12 +1012,21 @@ void main() {
     });
 
     test('a dropped connection reports disconnected', () async {
-      final node = await addRadio();
-      final connection = await connectAndLand(node);
+      // Uses a NON-designated node on purpose. Dropping radio1 now starts a
+      // reconnect (see 'the designated radio comes back after an unexpected
+      // drop'), so this — the plain drop-to-disconnected path, which is still
+      // what every other piece of equipment does — needs a node that is not
+      // the one the logging panel depends on.
+      // The NEWEST transceiver added takes radio1 (HALO-50), so the
+      // non-designated one is the first.
+      final other = await addRadio(host: 'a.local');
+      await cat.addNode(typeKey: 'fake-type', name: 'Right Radio', config: {'host': 'b.local'});
+      expect(cat.isRadio1(other.uuid), isFalse, reason: 'the SECOND radio took radio1');
+      final connection = await connectAndLand(other);
 
       connection.dropRemotely();
       await pumpEventQueue();
-      expect(cat.stateFor(node.uuid).status, EquipmentStatus.disconnected);
+      expect(cat.stateFor(other.uuid).status, EquipmentStatus.disconnected);
     });
   });
 
@@ -636,9 +1092,14 @@ void main() {
       expect(cat.stateFor(node.uuid).status, EquipmentStatus.connected,
           reason: 'the live connection is still up');
 
+      // Dropping the live one now starts a reconnect, because this node is
+      // radio1 — so it does NOT settle on `disconnected`. What this test is
+      // for is the assertion above: a late close from a superseded socket
+      // must not clobber the connection that replaced it.
       live.dropRemotely();
       await pumpEventQueue();
-      expect(cat.stateFor(node.uuid).status, EquipmentStatus.disconnected);
+      expect(cat.stateFor(node.uuid).status, isNot(EquipmentStatus.connected),
+          reason: 'the live connection really did go away');
     });
 
     test('a stale session cannot write state', () async {
@@ -679,7 +1140,11 @@ void main() {
       // node going away must leave the other alone.
       firstConnection.dropRemotely();
       await pumpEventQueue();
-      expect(cat.stateFor(first.uuid).status, EquipmentStatus.disconnected);
+      // `first` is radio1, so its drop now starts a reconnect and it lands on
+      // `connecting` rather than `disconnected`. The invariant this test
+      // exists for is the line below it: per-node runtime state, so one node
+      // going away — or coming back — must leave the other untouched.
+      expect(cat.stateFor(first.uuid).status, isNot(EquipmentStatus.connected));
       expect(cat.stateFor(second.uuid).status, EquipmentStatus.connected);
     });
   });

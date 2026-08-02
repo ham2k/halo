@@ -557,7 +557,19 @@ void main() {
       await pumpEventQueue();
 
       expect(torn.tornDown, isTrue);
-      expect(cat.stateFor(node.uuid).status, EquipmentStatus.disconnected);
+      // NOT `disconnected` any more, and that is the point of the change: this
+      // node is radio1, so an unexpected drop now starts one reconnect burst.
+      // What this test protects is the TEARDOWN above — the driver's timers
+      // must stop either way, or every drop leaks another set of them holding
+      // a dead connection. Reconnecting on top of a session that was never
+      // torn down would be strictly worse than not reconnecting at all.
+      // The specific status, not `isNot(disconnected)`: that was satisfied by
+      // `error` and by a permanently stuck `connecting` too, so it stayed green
+      // in precisely the cases where radio1 ends up abandoned anyway. This
+      // transport lands the reconnect, so the burst has actually brought the
+      // radio back by here — which is the outcome worth pinning.
+      expect(cat.stateFor(node.uuid).status, EquipmentStatus.connected,
+          reason: 'radio1 must not be left abandoned after a drop');
     });
 
     test('a reconnect does not inherit the previous session echo guard', () async {

@@ -103,6 +103,104 @@ void main() {
       expect(ordinary.key, 0x1234);
     });
 
+    group('the 0x18 range retransmit request', () {
+      List<int> request(List<List<int>> pairs) {
+        final b = List<int>.filled(16, 0, growable: true);
+        b[0] = 0x18;
+        b[4] = 0x01;
+        for (final p in pairs) {
+          b.addAll([p[0] & 0xFF, p[0] >> 8, p[1] & 0xFF, p[1] >> 8]);
+        }
+        return b;
+      }
+
+      test('a pair is inclusive at both ends', () {
+        expect(icomRetransmitRange(request([
+          [7, 10]
+        ]), limit: 128), [7, 8, 9, 10]);
+      });
+
+      test('several pairs are all asked for', () {
+        expect(
+            icomRetransmitRange(request([
+              [1, 2],
+              [9, 9]
+            ]), limit: 128),
+            [1, 2, 9]);
+      });
+
+      test('a reversed pair contributes nothing', () {
+        // Not because anything checks for it — `seq <= to` is simply false from
+        // the start. Worth pinning anyway: rewriting the loop with `!=` or a
+        // computed count would turn (5, 3) into a run past 65535.
+        expect(
+            icomRetransmitRange(request([
+              [5, 3],
+              [4, 4]
+            ]), limit: 128),
+            [4]);
+      });
+
+      test('a trailing partial pair is ignored, not read past the end', () {
+        final b = request([
+          [1, 1]
+        ])..addAll([0x02, 0x00]); // two bytes: half a pair
+        expect(icomRetransmitRange(b, limit: 128), [1]);
+      });
+
+      test('ONE oversized datagram cannot make us flood the network', () {
+        // The finding this bound exists for. A 1500-byte packet carries 371
+        // pairs; before the limit was applied to the TOTAL rather than to each
+        // pair, answering it meant up to ~47,800 packets emitted synchronously
+        // inside a socket callback — a ~30,000x amplification off a single
+        // inbound datagram, from any host that could reach our port.
+        final flood = request(List.generate(371, (i) => [0, 0xFFFF]));
+        expect(flood.length, greaterThan(1400), reason: 'not actually an oversized packet');
+
+        final asked = icomRetransmitRange(flood, limit: 128);
+
+        expect(asked.length, 128, reason: 'a single datagram got past the bound');
+      });
+
+      test('the bound counts across pairs, not within each one', () {
+        // Two pairs of 100 each are 200 sequence numbers; a per-pair bound
+        // would wave both through.
+        final asked = icomRetransmitRange(request([
+          [0, 99],
+          [200, 299]
+        ]), limit: 128);
+        expect(asked.length, 128);
+      });
+    });
+
+    test('a mid-session 0x50 is decoded as the radio ending the session', () {
+      // The same readStreamAnswer the handshake uses, now also read by a
+      // STANDING listener — because every handshake listener removes itself on
+      // first match, so after connect() nothing consumed an 0x50 at all and
+      // the radio's "I dropped you" went in the bin. `onLost` could not cover
+      // it either: any inbound datagram resets it and the radio keeps pinging
+      // at ~100ms, so the only thing that ever noticed was the 30-second stale
+      // flag. Half a minute of a connected row with a frozen frequency.
+      List<int> notice({required int m, required int b64}) {
+        final b = List<int>.filled(80, 0);
+        b[0] = 0x50;
+        b[20] = 0x02;
+        b[48] = b[49] = b[50] = m;
+        b[64] = b64;
+        b[66] = 0xc3; b[67] = 0x52;
+        b[70] = 0xc3; b[71] = 0x53;
+        return b;
+      }
+
+      // The two the standing branch acts on.
+      expect(readStreamAnswer(notice(m: 0xff, b64: 0x00)), IcomStreamAnswer.authFailed);
+      expect(readStreamAnswer(notice(m: 0x00, b64: 0x01)), IcomStreamAnswer.radioDisconnected);
+
+      // And the one it must NOT act on: a healthy accepted answer arriving
+      // mid-session must not tear the connection down.
+      expect(readStreamAnswer(notice(m: 0x00, b64: 0x00)), IcomStreamAnswer.accepted);
+    });
+
     test('the stream answer is read as a positive test, not a hunt for 0xffff', () {
       // Two earlier versions of this guard looked for 0xffff — first at
       // offsets 56..57, then at the port echo at 66/70 — and treated "not

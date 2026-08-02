@@ -82,6 +82,15 @@ const _pingInterval = Duration(seconds: 3);
 /// every test ever run against it was shorter than the failure.
 const _reauthInterval = Duration(seconds: 30);
 
+/// How many sent packets we keep so the radio can ask for one again.
+///
+/// 32 was fine while only handshake packets were tracked — a handful, held
+/// forever. Now that idles are tracked too the buffer turns over at ten a
+/// second, and 32 would mean a retransmit request older than ~3 seconds always
+/// missed, evicting the CI-V frames most worth resending. 128 covers ~12s,
+/// which is far longer than the radio waits before giving up on a packet.
+const _sentBufferSize = 128;
+
 class IcomNetworkTransport implements EquipmentTransport {
   const IcomNetworkTransport();
 
@@ -302,7 +311,15 @@ class _IcomSession {
 
   void _startKeepalives() {
     _idleTimer = Timer.periodic(_idleInterval, (_) {
-      if (!_closed) _send(buildIdle(localSid, remoteSid, _seq++));
+      // sendTracked, not _send. Idles consume sequence numbers either way, but
+      // _send never recorded them — and after the first minute idles are ~100%
+      // of what the control session emits (sendTracked ran four times during
+      // the handshake and then never again). So when the radio asked us to
+      // resend, we almost always could not, and answered with nothing.
+      //
+      // The seq argument is 0 because sendTracked stamps the real one; passing
+      // _seq++ here would burn two numbers per idle.
+      if (!_closed) sendTracked(buildIdle(localSid, remoteSid, 0));
     });
     _pingTimer = Timer.periodic(_pingInterval, (_) {
       if (_closed) return;
@@ -322,6 +339,12 @@ class _IcomSession {
     if (event != RawSocketEvent.read) return;
     final datagram = _socket.receive();
     if (datagram == null) return;
+    // Only the radio we dialled. Nothing below authenticates a datagram — the
+    // session ids are never checked against ours — so without this every
+    // branch here is reachable by anything that can reach our ephemeral port,
+    // and two of those branches answer with traffic. Compared as text because
+    // that is stable across the IPv4/IPv6 forms InternetAddress can take.
+    if (datagram.address.address != _address.address) return;
     final bytes = datagram.data.toList();
 
     // Anything at all proves the radio is still there.
@@ -334,11 +357,53 @@ class _IcomSession {
       _send(buildPingReply(localSid, remoteSid, seq, bytes.sublist(17, 21)));
       return;
     }
-    // And asks for packets it missed.
+    // And asks for packets it missed — one sequence number...
     if (bytes.length >= 16 && icomPrefixIs(bytes, [0x10, 0, 0, 0, 0x01, 0])) {
       final packet = _sent[icomReadSequence(bytes)];
       if (packet != null) _send(packet);
       return;
+    }
+    // ...or a RANGE, which we used to ignore entirely. The 0x18 form carries
+    // (start, end) pairs as 4 bytes each from offset 16, little-endian and
+    // inclusive. A radio that lost a burst asks this way, so ignoring it meant
+    // the one request that matters after a bad moment on the link went
+    // unanswered.
+    if (bytes.length >= 20 && icomPrefixIs(bytes, [0x18, 0, 0, 0, 0x01, 0])) {
+      // Bounded in ONE place, by total rather than per pair — see
+      // icomRetransmitRange for why the per-pair form was not a bound at all.
+      for (final seq in icomRetransmitRange(bytes, limit: _sentBufferSize)) {
+        final packet = _sent[seq];
+        if (packet != null) _send(packet);
+      }
+      return;
+    }
+    // The radio telling us the session is over. A STANDING branch, not an
+    // _expect: every listener installed during the handshake removes itself on
+    // first match, so once connect() returns nothing on the control session
+    // consumes an 0x50 at all and these notices were simply dropped.
+    //
+    // Losing them was expensive. `onLost` cannot cover it — it is reset by ANY
+    // inbound datagram (see the top of this method) and the radio keeps
+    // pinging us at ~100ms — so the only thing that eventually noticed was the
+    // 30s stale flag: half a minute of a connected row showing a frozen
+    // frequency, and no reason to give the operator. The bytes were already
+    // decodable by readStreamAnswer; nobody was listening to them.
+    //
+    // Gated on `onLost`, which is only set once _IcomConnection exists — i.e.
+    // once the handshake is DONE. That is what keeps this from stealing the
+    // handshake's own 0x50: during requestStreams the field is still null, so
+    // an auth-failure answer reaches the _expect that reports it precisely,
+    // instead of being swallowed here and surfacing three seconds later as a
+    // bare timeout.
+    if (onLost != null && bytes.length == 80 && icomPrefixIs(bytes, [0x50, 0, 0, 0, 0, 0])) {
+      final answer = readStreamAnswer(bytes);
+      if (answer == IcomStreamAnswer.authFailed || answer == IcomStreamAnswer.radioDisconnected) {
+        debugPrint('[cat] icom $_label: the radio ended the session (${answer.name})');
+        final lost = onLost;
+        onLost = null;
+        lost?.call();
+        return;
+      }
     }
     for (final listener in [..._listeners]) {
       listener(bytes);
@@ -360,7 +425,7 @@ class _IcomSession {
     // silently killed every retransmit answer about 1h49m into a session.
     final (:key, :packet) = icomStampSequence(bytes, _seq++);
     _sent[key] = packet;
-    if (_sent.length > 32) _sent.remove(_sent.keys.first);
+    if (_sent.length > _sentBufferSize) _sent.remove(_sent.keys.first);
     _send(packet);
   }
 
@@ -550,7 +615,7 @@ class _IcomSession {
     }
   }
 
-  Future<void> close({bool serialStream = false}) async {
+  Future<void> close({bool serialStream = false, int? serialCloseInnerSeq}) async {
     if (_closed) return;
     _closed = true;
     _idleTimer?.cancel();
@@ -559,7 +624,14 @@ class _IcomSession {
     if (serialStream) {
       // sendTracked, not _send: it stamps the outer sequence number, which a
       // working client fills in here and we used to leave at zero.
-      sendTracked(buildSerialOpen(localSid, remoteSid, _innerSeq++, magic: 0x00));
+      // The inner sequence CONTINUES the CI-V stream's counter, which is why
+      // the caller passes it in. This used to use the session's own _innerSeq,
+      // which nothing else on the serial session advances — so the close went
+      // out carrying a number the radio processed long ago. If it dedupes on
+      // that counter (the only reason the counter exists) the close is dropped
+      // as a stale duplicate and the stream stays registered on the radio.
+      // The reference client's close continues the CI-V numbering.
+      sendTracked(buildSerialOpen(localSid, remoteSid, serialCloseInnerSeq ?? _innerSeq++, magic: 0x00));
     }
     // Once. A working client sends exactly one disconnect per channel and the
     // radio releases the session; the previous three-with-delays spread this
@@ -662,7 +734,7 @@ class _IcomConnection implements EquipmentConnection {
     // to release the login *first* and then spend the better part of a second
     // closing streams the radio no longer had a logged-in owner for.
     await step('audio', () async => audio.close());
-    await step('serial', () => serial.close(serialStream: true));
+    await step('serial', () => serial.close(serialStream: true, serialCloseInnerSeq: _civSeq++));
     await step('logout', control.logout);
     await step('control', control.close);
   }
