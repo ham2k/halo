@@ -86,7 +86,10 @@
       "showGridField": "Mostrar campo Locador",
       "showDeletedQsos": "Mostrar QSOs eliminados",
       "showQsoNumbers": "Mostrar números de QSO",
-      "lookupAllQsos": "Buscar datos de todos los QSOs"
+      "lookupAllQsos": "Buscar datos de todos los QSOs",
+      "loggingSettingsTitle": "Configuración de Registro",
+      "actionsSection": "Acciones",
+      "relevantSettingsSection": "Ajustes Relevantes"
     },
     "export": {
       "title": "Exportar",
@@ -661,7 +664,8 @@
       "unavailableText": "El motor de extensiones no pudo iniciarse, así que faltan los ajustes aportados por extensiones.",
       "station": "Configuración de Estación",
       "stationDescription": "Radios y otros equipos"
-    }
+    },
+    "showMoreSettings": "Mostrar más ajustes"
   },
   "commands": {
     "enableSyncFirst": "Primero habilita la sincronización en la Configuración.",

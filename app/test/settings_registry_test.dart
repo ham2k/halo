@@ -57,6 +57,29 @@ void main() {
     });
   });
 
+  group('elementMatchesTarget', () {
+    test('no target attribute matches nothing (no fail-open, unlike environment)', () {
+      expect(elementMatchesTarget({'type': 'field'}, 'logging'), isFalse);
+    });
+
+    test('a single-string target matches only that exact target', () {
+      expect(elementMatchesTarget({'type': 'field', 'target': 'logging'}, 'logging'), isTrue);
+      expect(elementMatchesTarget({'type': 'field', 'target': 'logging'}, 'logging-extended'), isFalse);
+    });
+
+    test('a list of targets matches any member', () {
+      expect(elementMatchesTarget({'type': 'field', 'target': ['logging', 'data-files']}, 'data-files'), isTrue);
+      expect(elementMatchesTarget({'type': 'field', 'target': ['logging', 'data-files']}, 'common'), isFalse);
+    });
+
+    test('the "-extended" bucket is just another target string, not special-cased here', () {
+      // The disclosure behavior (hidden until "show more") lives in the
+      // dialog that consumes this, not in the matcher itself.
+      expect(elementMatchesTarget({'type': 'field', 'target': 'logging-extended'}, 'logging-extended'), isTrue);
+      expect(elementMatchesTarget({'type': 'field', 'target': 'logging-extended'}, 'logging'), isFalse);
+    });
+  });
+
   group('elementIsCommon', () {
     test('field/link/action flagged common: true are common', () {
       expect(elementIsCommon({'type': 'field', 'common': true}), isTrue);

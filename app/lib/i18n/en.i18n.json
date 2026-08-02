@@ -86,7 +86,10 @@
       "showGridField": "Show Grid field",
       "showDeletedQsos": "Show deleted QSOs",
       "showQsoNumbers": "Show QSO Numbers",
-      "lookupAllQsos": "Lookup all QSOs"
+      "lookupAllQsos": "Lookup all QSOs",
+      "loggingSettingsTitle": "Logging Settings",
+      "actionsSection": "Actions",
+      "relevantSettingsSection": "Relevant Settings"
     },
     "export": {
       "title": "Export",
@@ -661,7 +664,8 @@
       "unavailableText": "The extension runtime failed to start, so extension-contributed settings are missing.",
       "station": "Station Configuration",
       "stationDescription": "Radios and other equipment"
-    }
+    },
+    "showMoreSettings": "Show more settings"
   },
   "commands": {
     "enableSyncFirst": "Enable sync in Settings first.",

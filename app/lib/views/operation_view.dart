@@ -17,6 +17,7 @@ import 'package:halo_widgets/halo_widgets.dart';
 import '../config/dev_bridge.dart';
 import '../main.dart';
 import '../services/settings_service.dart';
+import '../settings/settings_target_dialog.dart';
 import 'operation_dialogs.dart';
 import 'operation/activities_view.dart';
 import 'operation/call_info_panel.dart';
@@ -302,8 +303,28 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
   }
 
   void _onSettingsChanged() {
-    final enabled = widget.services.settings.experimentEnabled('layouts');
-    if (enabled != _customLayout && mounted) setState(() => _customLayout = enabled);
+    final s = widget.services.settings;
+    final enabled = s.experimentEnabled('layouts');
+    // Local mirrors of the logging panel's own toggles (see
+    // _buildLoggingSettingsButton) — now flipped from the settings dialog
+    // rather than by the popup menu's own apply/persist pair, so this is
+    // the only place they follow SettingsService again.
+    final changed = enabled != _customLayout ||
+        s.showRSTFields != _showRSTFields ||
+        s.showStateField != _showStateField ||
+        s.showGridField != _showGridField ||
+        s.showDeletedQSOs != _showDeletedQSOs ||
+        s.showQsoNumbers != _showQsoNumbers;
+    if (changed && mounted) {
+      setState(() {
+        _customLayout = enabled;
+        _showRSTFields = s.showRSTFields;
+        _showStateField = s.showStateField;
+        _showGridField = s.showGridField;
+        _showDeletedQSOs = s.showDeletedQSOs;
+        _showQsoNumbers = s.showQsoNumbers;
+      });
+    }
   }
 
   @override
@@ -924,26 +945,15 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
   Future<void> _handleCommandAction(String action, [Map<String, dynamic>? params]) =>
       runCommandAction(widget.services, this, action, params);
 
-  /// Flips one of the logging panel's menu toggles: updates the local mirror
-  /// (`apply`) so the menu's checkmark and the widgets below react
-  /// immediately, and persists via `persist` so it survives a restart.
-  void _toggleMenuSetting({
-    required bool current,
-    required void Function(bool value) apply,
-    required Future<void> Function(bool value) persist,
-  }) {
-    final value = !current;
-    setState(() => apply(value));
-    persist(value);
-  }
-
-  /// The logging panel's own settings menu (field visibility, dupe/number
-  /// display, a bulk lookup refresh) — lives with the panel it affects
-  /// rather than the operation view's AppBar, since none of this applies to
-  /// the Info/Spots/Map tabs. Rendered at three call sites depending on
-  /// layout (the dock module header, the narrow tab bar's QSOs tab, the
-  /// fixed wide split's new logging-pane title bar) — same content
-  /// everywhere, so they can't drift.
+  /// The logging panel's own settings — field visibility, dupe/number
+  /// display, a bulk lookup refresh — behind the tune icon, built from
+  /// every declared setting targeting `'logging'`
+  /// (settings/settings_target_dialog.dart), rather than the operation
+  /// view's AppBar, since none of this applies to the Info/Spots/Map tabs.
+  /// Rendered at three call sites depending on layout (the dock module
+  /// header, the narrow tab bar's QSOs tab, the fixed wide split's new
+  /// logging-pane title bar) — same content everywhere, so they can't
+  /// drift.
   Widget _buildLoggingSettingsButton(List<Qso> qsos, {BuildContext? context}) {
     // Defaults to this State's own context, but the dock layout's
     // `tabActions` is a `WidgetBuilder` specifically so its call site can
@@ -959,116 +969,39 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
     // for their foreground, so the icon reads against all three.
     final theme = Theme.of(effectiveContext);
     final iconColor = theme.appBarTheme.foregroundColor ?? theme.colorScheme.onPrimary;
-    // A plain PopupMenuButton picks left-vs-right placement from a single
-    // fixed `offset`, but that offset only reads as "80% of the button
-    // stays visible" for whichever direction it was tuned for — the button
-    // moves around a lot across call sites (narrow tab near the left edge,
-    // wide split/dock headers anywhere else), and the OTHER direction ends
-    // up fully burying the button instead. Building the menu by hand lets
-    // each open pick its own direction and its own correctly-signed offset.
-    // The item list is built lazily inside onPressed (not here) so a
-    // rebuild of this button — e.g. every frame of the narrow tab bar's
-    // tab-switch animation — doesn't also reconstruct the whole menu.
     return Builder(
       builder: (buttonContext) => IconButton(
-        // PopupMenuButton (what this replaced) supplies this same label by
-        // default when none is given; a plain IconButton doesn't, so it has
-        // to be set explicitly to keep the button accessible. As a
-        // semanticLabel, not a tooltip — the app shows no hover labels
-        // (docs/design/user-interface.md).
+        // A plain IconButton doesn't supply an accessible name by default —
+        // set explicitly as a semanticLabel, not a tooltip, since the app
+        // shows no hover labels (docs/design/user-interface.md).
         icon: Icon(Icons.tune, color: iconColor, semanticLabel: MaterialLocalizations.of(effectiveContext).showMenuTooltip),
-        onPressed: () => _showLoggingSettingsMenu(buttonContext, _loggingSettingsMenuItems(qsos)),
+        onPressed: () => showSettingsForTarget(
+          buttonContext,
+          services: widget.services,
+          target: 'logging',
+          // The logging view's own title for its own dialog — distinct from
+          // LoggingSettingsGroup.title ("Logging"), which names the group as
+          // it appears in All Settings/Common Preferences, a different
+          // surface with a different audience.
+          title: effectiveContext.t.operation.menu.loggingSettingsTitle,
+          actions: [
+            (
+              icon: 'refresh',
+              label: effectiveContext.t.operation.menu.lookupAllQsos,
+              // Refreshes lookup data (QRZ, HamDB…) for the whole log via
+              // the background queue — progress shows in the status bar,
+              // and rows repaint as results land. The queue itself filters
+              // out event markers etc. Not itself a persisted setting, so
+              // it's an Actions-section item rather than a target element.
+              onTap: () {
+                Navigator.of(buttonContext).pop();
+                widget.services.lookupQueue.enqueueAll(qsos);
+              },
+            ),
+          ],
+        ),
       ),
     );
-  }
-
-  List<PopupMenuEntry<VoidCallback>> _loggingSettingsMenuItems(List<Qso> qsos) {
-    return [
-      CheckedPopupMenuItem<VoidCallback>(
-        checked: _showRSTFields,
-        value: () => _toggleMenuSetting(
-          current: _showRSTFields,
-          apply: (v) => _showRSTFields = v,
-          persist: widget.services.settings.setShowRSTFields,
-        ),
-        child: Text(context.t.operation.menu.showRstFields),
-      ),
-      CheckedPopupMenuItem<VoidCallback>(
-        checked: _showStateField,
-        value: () => _toggleMenuSetting(
-          current: _showStateField,
-          apply: (v) => _showStateField = v,
-          persist: widget.services.settings.setShowStateField,
-        ),
-        child: Text(context.t.operation.menu.showStateField),
-      ),
-      CheckedPopupMenuItem<VoidCallback>(
-        checked: _showGridField,
-        value: () => _toggleMenuSetting(
-          current: _showGridField,
-          apply: (v) => _showGridField = v,
-          persist: widget.services.settings.setShowGridField,
-        ),
-        child: Text(context.t.operation.menu.showGridField),
-      ),
-      CheckedPopupMenuItem<VoidCallback>(
-        checked: _showDeletedQSOs,
-        value: () => _toggleMenuSetting(
-          current: _showDeletedQSOs,
-          apply: (v) => _showDeletedQSOs = v,
-          persist: widget.services.settings.setShowDeletedQSOs,
-        ),
-        child: Text(context.t.operation.menu.showDeletedQsos),
-      ),
-      CheckedPopupMenuItem<VoidCallback>(
-        checked: _showQsoNumbers,
-        value: () => _toggleMenuSetting(
-          current: _showQsoNumbers,
-          apply: (v) => _showQsoNumbers = v,
-          persist: widget.services.settings.setShowQsoNumbers,
-        ),
-        child: Text(context.t.operation.menu.showQsoNumbers),
-      ),
-      const PopupMenuDivider(),
-      PopupMenuItem<VoidCallback>(
-        // Refreshes lookup data (QRZ, HamDB…) for the whole log via the
-        // background queue — progress shows in the status bar, and rows
-        // repaint as results land. The queue itself filters out event
-        // markers etc.
-        value: () => widget.services.lookupQueue.enqueueAll(qsos),
-        child: Text(context.t.operation.menu.lookupAllQsos),
-      ),
-    ];
-  }
-
-  /// Opens [_buildLoggingSettingsButton]'s menu, always leaving 80% of the
-  /// button visible (a 20% overlap) regardless of where on screen the
-  /// button ended up. [PopupMenuButton] itself picks left-vs-right by
-  /// comparing how close the (already-offset) button is to each edge of
-  /// the overlay — see `_PopupMenuRouteLayout.getPositionForChild` — so
-  /// forcing that comparison ourselves, using the button's *actual*
-  /// position, is what makes the two directions independently correct
-  /// instead of one working by accident and the other burying the button.
-  Future<void> _showLoggingSettingsMenu(BuildContext buttonContext, List<PopupMenuEntry<VoidCallback>> items) async {
-    final button = buttonContext.findRenderObject()! as RenderBox;
-    final overlay = Navigator.of(buttonContext).overlay!.context.findRenderObject()! as RenderBox;
-    final buttonTopLeft = button.localToGlobal(Offset.zero, ancestor: overlay);
-    final buttonSize = button.size;
-    final overlayWidth = overlay.size.width;
-    final top = buttonTopLeft.dy;
-
-    final openRight = buttonTopLeft.dx + buttonSize.width / 2 < overlayWidth / 2;
-    final RelativeRect position;
-    if (openRight) {
-      final left = buttonTopLeft.dx + buttonSize.width * 0.8;
-      position = RelativeRect.fromLTRB(left, top, overlayWidth, 0);
-    } else {
-      final right = overlayWidth - (buttonTopLeft.dx + buttonSize.width * 0.2);
-      position = RelativeRect.fromLTRB(overlayWidth, top, right, 0);
-    }
-
-    final selected = await showMenu<VoidCallback>(context: buttonContext, position: position, items: items);
-    selected?.call();
   }
 
   /// Floor for [_narrowTabBar]'s QSOs-tab padding — shrunk before the tab

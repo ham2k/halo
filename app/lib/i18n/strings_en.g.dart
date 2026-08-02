@@ -795,6 +795,9 @@ class Translations$settings$en {
 	late final Translations$settings$developer$en developer = Translations$settings$developer$en.internal(_root);
 	late final Translations$settings$about$en about = Translations$settings$about$en.internal(_root);
 	late final Translations$settings$panels$en panels = Translations$settings$panels$en.internal(_root);
+
+	/// en: 'Show more settings'
+	String get showMoreSettings => 'Show more settings';
 }
 
 // Path: commands
@@ -1242,6 +1245,15 @@ class Translations$operation$menu$en {
 
 	/// en: 'Lookup all QSOs'
 	String get lookupAllQsos => 'Lookup all QSOs';
+
+	/// en: 'Logging Settings'
+	String get loggingSettingsTitle => 'Logging Settings';
+
+	/// en: 'Actions'
+	String get actionsSection => 'Actions';
+
+	/// en: 'Relevant Settings'
+	String get relevantSettingsSection => 'Relevant Settings';
 }
 
 // Path: operation.export
@@ -2665,6 +2677,9 @@ extension on Translations {
 			'operation.menu.showDeletedQsos' => 'Show deleted QSOs',
 			'operation.menu.showQsoNumbers' => 'Show QSO Numbers',
 			'operation.menu.lookupAllQsos' => 'Lookup all QSOs',
+			'operation.menu.loggingSettingsTitle' => 'Logging Settings',
+			'operation.menu.actionsSection' => 'Actions',
+			'operation.menu.relevantSettingsSection' => 'Relevant Settings',
 			'operation.export.title' => 'Export',
 			'operation.export.syncedOperation' => 'Operation is synced',
 			'operation.export.unsyncedOperation' => 'Operation has unsynced changes',
@@ -3102,15 +3117,16 @@ extension on Translations {
 			'settings.panels.dataFiles' => 'Data Files',
 			'settings.panels.dataFilesDescription' => 'Manage cached data sources',
 			'settings.panels.developerSettings' => 'Developer Settings',
+			_ => null,
+		} ?? switch (path) {
 			'settings.panels.developerSettingsDescription' => 'Debugging and development tools',
 			'settings.panels.about' => 'About',
 			'settings.panels.aboutDescription' => 'Version, credits, and legal information',
-			_ => null,
-		} ?? switch (path) {
 			'settings.panels.unavailableTitle' => 'Some settings are unavailable',
 			'settings.panels.unavailableText' => 'The extension runtime failed to start, so extension-contributed settings are missing.',
 			'settings.panels.station' => 'Station Configuration',
 			'settings.panels.stationDescription' => 'Radios and other equipment',
+			'settings.showMoreSettings' => 'Show more settings',
 			'commands.enableSyncFirst' => 'Enable sync in Settings first.',
 			'commands.fullResyncStarted' => 'Full resync started — local data was backed up first.',
 			'commands.noDataFilesMatched' => ({required Object target}) => 'No data files matched "${target}".',

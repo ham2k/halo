@@ -416,6 +416,7 @@ class _Translations$settings$es extends Translations$settings$en {
 	@override late final _Translations$settings$developer$es developer = _Translations$settings$developer$es._(_root);
 	@override late final _Translations$settings$about$es about = _Translations$settings$about$es._(_root);
 	@override late final _Translations$settings$panels$es panels = _Translations$settings$panels$es._(_root);
+	@override String get showMoreSettings => 'Mostrar más ajustes';
 }
 
 // Path: commands
@@ -651,6 +652,9 @@ class _Translations$operation$menu$es extends Translations$operation$menu$en {
 	@override String get showDeletedQsos => 'Mostrar QSOs eliminados';
 	@override String get showQsoNumbers => 'Mostrar números de QSO';
 	@override String get lookupAllQsos => 'Buscar datos de todos los QSOs';
+	@override String get loggingSettingsTitle => 'Configuración de Registro';
+	@override String get actionsSection => 'Acciones';
+	@override String get relevantSettingsSection => 'Ajustes Relevantes';
 }
 
 // Path: operation.export
@@ -1427,6 +1431,9 @@ extension on TranslationsEs {
 			'operation.menu.showDeletedQsos' => 'Mostrar QSOs eliminados',
 			'operation.menu.showQsoNumbers' => 'Mostrar números de QSO',
 			'operation.menu.lookupAllQsos' => 'Buscar datos de todos los QSOs',
+			'operation.menu.loggingSettingsTitle' => 'Configuración de Registro',
+			'operation.menu.actionsSection' => 'Acciones',
+			'operation.menu.relevantSettingsSection' => 'Ajustes Relevantes',
 			'operation.export.title' => 'Exportar',
 			'operation.export.syncedOperation' => 'La operación está sincronizada',
 			'operation.export.unsyncedOperation' => 'La operación tiene cambios sin sincronizar',
@@ -1864,15 +1871,16 @@ extension on TranslationsEs {
 			'settings.panels.dataFiles' => 'Archivos de datos',
 			'settings.panels.dataFilesDescription' => 'Administra las fuentes de datos en caché',
 			'settings.panels.developerSettings' => 'Ajustes de desarrollador',
+			_ => null,
+		} ?? switch (path) {
 			'settings.panels.developerSettingsDescription' => 'Herramientas de depuración y desarrollo',
 			'settings.panels.about' => 'Acerca de',
 			'settings.panels.aboutDescription' => 'Versión, créditos e información legal',
-			_ => null,
-		} ?? switch (path) {
 			'settings.panels.unavailableTitle' => 'Algunos ajustes no están disponibles',
 			'settings.panels.unavailableText' => 'El motor de extensiones no pudo iniciarse, así que faltan los ajustes aportados por extensiones.',
 			'settings.panels.station' => 'Configuración de Estación',
 			'settings.panels.stationDescription' => 'Radios y otros equipos',
+			'settings.showMoreSettings' => 'Mostrar más ajustes',
 			'commands.enableSyncFirst' => 'Primero habilita la sincronización en la Configuración.',
 			'commands.fullResyncStarted' => 'Resincronización completa iniciada — los datos locales se respaldaron primero.',
 			'commands.noDataFilesMatched' => ({required Object target}) => 'Ningún archivo de datos coincide con «${target}».',

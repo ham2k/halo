@@ -6025,37 +6025,54 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
                       // LayoutBuilder explicitly doesn't support — so
                       // the icon just uses a fixed, comfortable size.)
                       // #236: stable id for agent/browser tooling.
-                      final submitButtonWidget = semanticId(
-                        'action.log',
-                        AspectRatio(
-                          key: _submitButtonKey,
-                          aspectRatio: 1,
-                          child: MouseRegion(
-                            cursor: SystemMouseCursors.click,
-                            child: FilledButton(
-                              // Disabled while viewing a deleted QSO —
-                              // there's nothing to save; restore first.
-                              // `_hasExecutableCommand` lets the button
-                              // accept a command too, matching Enter (a
-                              // command isn't a callsign, so `_canLog` alone
-                              // would leave it disabled — see that getter).
-                              onPressed: (!deletedQso && (_pendingDelete || _canLog || _hasExecutableCommand))
-                                  ? _log
-                                  : null,
-                              style: FilledButton.styleFrom(
-                                backgroundColor:
-                                    accentTheme.colorScheme.tertiary,
-                                foregroundColor:
-                                    accentTheme.colorScheme.onTertiary,
-                                minimumSize: Size.zero,
-                                padding: EdgeInsets.zero,
-                                shape: const CircleBorder(),
-                              ),
-                              child: Icon(
-                                _pendingDelete
-                                    ? resolveIconName('trash-can')
-                                    : (editing ? resolveIconName('content-save') : Icons.upload),
-                                size: 24 * 1.2 * MediaQuery.textScalerOf(context).scale(1.0),
+                      //
+                      // Keyed at this outer level (not just _submitButtonKey
+                      // on the AspectRatio inside) because leftieMode moves
+                      // this same widget between the Row's first and last
+                      // slot below — without a key on the widget actually
+                      // sitting in Row.children, Flutter's positional
+                      // matching sees a plain, unkeyed Semantics widget at
+                      // each slot and treats the move as two unrelated
+                      // widgets (drop one, mount another) rather than one
+                      // widget relocating. That's harmless on its own, but
+                      // doing it while a Dialog route is simultaneously open
+                      // above this screen (HALO-55's settings dialog, for
+                      // one) corrupts the semantics tree —
+                      // `identical(childRenderObject, parentRenderObject)`
+                      // asserting in RenderObject.computeChildGeometry — a
+                      // live crash toggling Leftie Mode from that dialog.
+                      final submitButtonWidget = KeyedSubtree(
+                        key: const ValueKey('logging-controls-submit-button'),
+                        child: semanticId(
+                          'action.log',
+                          AspectRatio(
+                            key: _submitButtonKey,
+                            aspectRatio: 1,
+                            child: MouseRegion(
+                              cursor: SystemMouseCursors.click,
+                              child: FilledButton(
+                                // Disabled while viewing a deleted QSO —
+                                // there's nothing to save; restore first.
+                                // `_hasExecutableCommand` lets the button
+                                // accept a command too, matching Enter (a
+                                // command isn't a callsign, so `_canLog` alone
+                                // would leave it disabled — see that getter).
+                                onPressed: (!deletedQso && (_pendingDelete || _canLog || _hasExecutableCommand))
+                                    ? _log
+                                    : null,
+                                style: FilledButton.styleFrom(
+                                  backgroundColor: accentTheme.colorScheme.tertiary,
+                                  foregroundColor: accentTheme.colorScheme.onTertiary,
+                                  minimumSize: Size.zero,
+                                  padding: EdgeInsets.zero,
+                                  shape: const CircleBorder(),
+                                ),
+                                child: Icon(
+                                  _pendingDelete
+                                      ? resolveIconName('trash-can')
+                                      : (editing ? resolveIconName('content-save') : Icons.upload),
+                                  size: 24 * 1.2 * MediaQuery.textScalerOf(context).scale(1.0),
+                                ),
                               ),
                             ),
                           ),

@@ -10,7 +10,7 @@
 // extensions contribute theirs through the settingsPanel hook, surfaced as
 // `extension_{panelKey}` sections by the All Settings panel.
 //
-// Two element-level attributes (docs/extensions/settings.md), settable by
+// Three element-level attributes (docs/extensions/settings.md), settable by
 // any of the above — core groups and extension settingsPanels alike — drive
 // visibility instead of a central whitelist:
 //
@@ -20,6 +20,17 @@
 //    the field outside the named platform(s) — everywhere, not just Common
 //    Preferences. Tokens: ios, android, macos, windows, linux, web — the
 //    same vocabulary notices.dart's `_knownPlatforms` uses.
+//  - `target: 'logging'` (or a list, for a setting reachable from more than
+//    one target-built modal) opts the field into a target-scoped settings
+//    modal (settings_target_dialog.dart's `showSettingsForTarget`) — e.g.
+//    the logging panel's tune-icon dialog collects every element targeting
+//    `'logging'`. A second bucket, `'<target>-extended'`, is collected too
+//    but starts hidden behind that dialog's own "show more settings"
+//    disclosure — for settings related to the same target but niche enough
+//    they'd otherwise crowd out the common ones. Unlike `common`/
+//    `environment`, absence of `target` isn't "matches everything" — a
+//    field with no `target` simply never appears in a target-scoped modal,
+//    only in All Settings/Common Preferences.
 
 import 'package:flutter/foundation.dart';
 import 'package:halo_widgets/halo_widgets.dart';
@@ -79,6 +90,21 @@ List<Map<String, dynamic>> filterElementsForEnvironment(List<Map<String, dynamic
   for (final el in elements)
     if (elementMatchesEnvironment(el)) el,
 ];
+
+/// Whether [element] declares [target] via its `target` attribute — a
+/// single target key, or a list when the same setting should surface under
+/// more than one target-built modal. No fail-open: an element with no
+/// `target` attribute at all matches nothing here, unlike
+/// [elementMatchesEnvironment].
+bool elementMatchesTarget(Map<String, dynamic> element, String target) {
+  final raw = element['target'];
+  final targets = switch (raw) {
+    String s => [s],
+    List l => l.whereType<String>().toList(),
+    _ => const <String>[],
+  };
+  return targets.contains(target);
+}
 
 /// Whether [element] is flagged `common: true` — shown on Common
 /// Preferences in addition to All Settings. Only meaningful for the

@@ -38,6 +38,7 @@ Map<String, dynamic> _select({
   required List<({String label, String value})> options,
   bool common = false,
   String? environment,
+  String? target,
 }) => {
   'type': 'field',
   'fieldType': 'select',
@@ -51,6 +52,7 @@ Map<String, dynamic> _select({
   ],
   if (common) 'common': true,
   if (environment != null) 'environment': environment,
+  if (target != null) 'target': target,
 };
 
 Map<String, dynamic> _toggle({
@@ -61,6 +63,7 @@ Map<String, dynamic> _toggle({
   required bool value,
   bool common = false,
   String? environment,
+  String? target,
 }) => {
   'type': 'field',
   'fieldType': 'checkbox',
@@ -71,6 +74,7 @@ Map<String, dynamic> _toggle({
   'value': value,
   if (common) 'common': true,
   if (environment != null) 'environment': environment,
+  if (target != null) 'target': target,
 };
 
 /// Theme, language, font scale, and units — the "User Interface" section.
@@ -193,11 +197,12 @@ class GeneralSettingsGroup extends SettingsGroup {
   }
 }
 
-/// Logging behavior and layout. The new fields (leftie mode, fields on
-/// top, flags, bearing, report order, jump-after-RST, bands/modes) are
-/// stored and declared but not yet consumed by the logging UI — each needs
-/// its own wiring as follow-up. The five show* toggles are the same ones
-/// the operation view's "..." menu flips.
+/// Logging behavior and layout. The five show* toggles are `target:
+/// 'logging'` — the base set the logging panel's tune-icon dialog
+/// (settings_target_dialog.dart) always shows. Everything else here is
+/// `target: 'logging-extended'` — reachable from the same dialog, behind
+/// its "show more settings" disclosure, since these are newer and more
+/// niche than the five toggles operators already know.
 class LoggingSettingsGroup extends SettingsGroup {
   final SettingsService settings;
 
@@ -225,6 +230,7 @@ class LoggingSettingsGroup extends SettingsGroup {
         icon: 'hand-front-left',
         description: settings.leftieMode ? s.leftieMode.descriptionOn : s.leftieMode.descriptionOff,
         value: settings.leftieMode,
+        target: 'logging-extended',
       ),
       _toggle(
         key: 'fieldsOnTop',
@@ -232,6 +238,7 @@ class LoggingSettingsGroup extends SettingsGroup {
         icon: 'page-layout-header',
         description: settings.fieldsOnTop ? s.fieldsOnTop.descriptionOn : s.fieldsOnTop.descriptionOff,
         value: settings.fieldsOnTop,
+        target: 'logging-extended',
       ),
       _select(
         key: 'dxFlags',
@@ -243,6 +250,7 @@ class LoggingSettingsGroup extends SettingsGroup {
           for (final option in DxFlags.values)
             (label: t['settings.logging.countryFlags.${option.name}'] as String, value: option.name),
         ],
+        target: 'logging-extended',
       ),
       _toggle(
         key: 'showBearing',
@@ -250,6 +258,7 @@ class LoggingSettingsGroup extends SettingsGroup {
         icon: 'compass',
         description: settings.showBearing ? s.showBearing.descriptionOn : s.showBearing.descriptionOff,
         value: settings.showBearing,
+        target: 'logging-extended',
       ),
       _toggle(
         key: 'switchSentRcvd',
@@ -257,6 +266,7 @@ class LoggingSettingsGroup extends SettingsGroup {
         icon: 'arrow-left-right',
         description: settings.switchSentRcvd ? s.switchSentRcvd.rcvdFirst : s.switchSentRcvd.sentFirst,
         value: settings.switchSentRcvd,
+        target: 'logging-extended',
       ),
       _toggle(
         key: 'jumpAfterRST',
@@ -264,6 +274,7 @@ class LoggingSettingsGroup extends SettingsGroup {
         icon: 'redo',
         description: settings.jumpAfterRST ? s.jumpAfterRST.descriptionOn : s.jumpAfterRST.descriptionOff,
         value: settings.jumpAfterRST,
+        target: 'logging-extended',
       ),
       // The mobile numbers row (issue #27, APP-21) — irrelevant without an
       // on-screen keyboard, hence `environment: 'ios,android'`, filtered out
@@ -281,6 +292,7 @@ class LoggingSettingsGroup extends SettingsGroup {
         value: settings.showNumbersRow,
         common: true,
         environment: 'ios,android',
+        target: 'logging-extended',
       ),
       if (settings.showNumbersRow) ...[
         _toggle(
@@ -291,6 +303,7 @@ class LoggingSettingsGroup extends SettingsGroup {
           value: settings.showExtraInNumbersRow,
           common: true,
           environment: 'ios,android',
+          target: 'logging-extended',
         ),
         _toggle(
           key: 'vibrateNumbersRow',
@@ -300,6 +313,7 @@ class LoggingSettingsGroup extends SettingsGroup {
           value: settings.vibrateNumbersRow,
           common: true,
           environment: 'ios,android',
+          target: 'logging-extended',
         ),
       ],
       {
@@ -311,6 +325,7 @@ class LoggingSettingsGroup extends SettingsGroup {
         'value': settings.enabledBands,
         'defaultValue': SettingsService.defaultBands,
         'options': r'$core.bands',
+        'target': 'logging-extended',
       },
       {
         'type': 'field',
@@ -321,35 +336,41 @@ class LoggingSettingsGroup extends SettingsGroup {
         'value': settings.enabledModes,
         'defaultValue': SettingsService.defaultModes,
         'options': r'$core.modes',
+        'target': 'logging-extended',
       },
       _toggle(
         key: 'showRSTFields',
         label: t.operation.menu.showRstFields,
         icon: 'signal',
         value: settings.showRSTFields,
+        target: 'logging',
       ),
       _toggle(
         key: 'showStateField',
         label: t.operation.menu.showStateField,
         icon: 'map',
         value: settings.showStateField,
+        target: 'logging',
       ),
       _toggle(
         key: 'showGridField',
         label: t.operation.menu.showGridField,
         icon: 'grid',
         value: settings.showGridField,
+        target: 'logging',
       ),
       _toggle(
         key: 'showDeletedQSOs',
         label: t.operation.menu.showDeletedQsos,
         icon: 'delete',
         value: settings.showDeletedQSOs,
+        target: 'logging',
       ),
       _toggle(
         key: 'showQsoNumbers',
         label: t.operation.menu.showQsoNumbers,
         icon: 'counter',
+        target: 'logging',
         value: settings.showQsoNumbers,
       ),
     ];

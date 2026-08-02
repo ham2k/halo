@@ -319,6 +319,117 @@ void main() {
     await tester.pump(const Duration(seconds: 5));
   });
 
+  testWidgets(
+    'the tune icon opens a target-built dialog: extended settings stay hidden until "show more"',
+    (tester) async {
+      // HALO-55: the popup menu was replaced by settings_target_dialog.dart's
+      // showSettingsForTarget(target: 'logging'). Fields the old menu never
+      // had (leftieMode etc., declared target: 'logging-extended') must not
+      // clutter the dialog by default, but must be reachable via "show more
+      // settings". (core_settings_groups_test.dart pins that those fields
+      // actually commit through to SettingsService — a live Switch's own
+      // animation mid-rebuild isn't stable to drive from a widget test.)
+      tester.view.physicalSize = const Size(430, 800);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
+
+      SharedPreferences.setMockInitialValues({});
+      final settings = SettingsService(await SharedPreferences.getInstance());
+      await settings.recordOnboardingShown(OnboardingFlows.operationSheet);
+      final db = HaLoDatabase(NativeDatabase.memory());
+      addTearDown(db.close);
+      final extensions = ExtensionServiceWithMockHost(MockExtensionHost(const {}))..settings = settings;
+      final services = HaLoServices(db, settings, extensions: extensions);
+      final operation = await services.operations.create(stationCall: 'N0CALL', userTitle: 'Test Op');
+
+      await tester.pumpWidget(TranslationProvider(
+        child: MaterialApp(
+          home: OperationView(services: services, operationUuid: operation.uuid),
+        ),
+      ));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byIcon(Icons.tune));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Show RST fields'), findsOneWidget, reason: 'target: "logging" base elements show upfront');
+      expect(
+        find.text('Leftie Mode'),
+        findsNothing,
+        reason: 'target: "logging-extended" elements start hidden behind "show more"',
+      );
+
+      // The Actions section and the "Relevant Settings" header push it
+      // below the fold at this narrow test size — scroll it into view
+      // before tapping, or the geometric tap lands on whatever's still
+      // visible at that (now-stale) offset instead.
+      await tester.ensureVisible(find.text('Show more settings'));
+      await tester.tap(find.text('Show more settings'));
+      await tester.pumpAndSettle();
+      expect(find.text('Leftie Mode'), findsOneWidget, reason: 'revealed once "show more" is tapped');
+
+      await tester.pumpWidget(const SizedBox());
+      await tester.pump(const Duration(seconds: 5));
+    },
+  );
+
+  testWidgets(
+    'toggling a field revealed via "show more" commits cleanly (regression, HALO-55)',
+    (tester) async {
+      // A live incident, not a hypothetical: toggling Leftie Mode from this
+      // dialog threw `identical(childRenderObject, parentRenderObject)`.
+      // Traced (by bypassing every layer of this dialog one at a time,
+      // down to calling SettingsService.setSettingValue directly while the
+      // dialog sat open) to logging_controls.dart's submit button — leftie
+      // mode moves it between the main Row's first and last slot, and
+      // without a stable Key on the widget actually sitting in
+      // Row.children (only an inner AspectRatio had one), Flutter treated
+      // the move as unmount-one/mount-another. Harmless on its own; fatal
+      // while a Dialog route was simultaneously open and running its own
+      // semantics pass. Fixed at the source (a KeyedSubtree around
+      // submitButtonWidget) — this test exercises the actual dialog path
+      // that crashed, not the underlying Row.
+      tester.view.physicalSize = const Size(430, 800);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
+
+      SharedPreferences.setMockInitialValues({});
+      final settings = SettingsService(await SharedPreferences.getInstance());
+      await settings.recordOnboardingShown(OnboardingFlows.operationSheet);
+      final db = HaLoDatabase(NativeDatabase.memory());
+      addTearDown(db.close);
+      final extensions = ExtensionServiceWithMockHost(MockExtensionHost(const {}))..settings = settings;
+      final services = HaLoServices(db, settings, extensions: extensions);
+      final operation = await services.operations.create(stationCall: 'N0CALL', userTitle: 'Test Op');
+
+      await tester.pumpWidget(TranslationProvider(
+        child: MaterialApp(
+          home: OperationView(services: services, operationUuid: operation.uuid),
+        ),
+      ));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byIcon(Icons.tune));
+      await tester.pumpAndSettle();
+
+      await tester.ensureVisible(find.text('Show more settings'));
+      await tester.tap(find.text('Show more settings'));
+      await tester.pumpAndSettle();
+
+      expect(settings.leftieMode, isFalse);
+      final leftieSwitch = find.descendant(of: find.widgetWithText(ListTile, 'Leftie Mode'), matching: find.byType(Switch));
+      await tester.ensureVisible(leftieSwitch);
+      await tester.tap(leftieSwitch);
+      await tester.pumpAndSettle();
+
+      expect(tester.takeException(), isNull, reason: 'the semantics-tree assertion used to fire exactly here');
+      expect(settings.leftieMode, isTrue);
+
+      await tester.pumpWidget(const SizedBox());
+      await tester.pump(const Duration(seconds: 5));
+    },
+  );
+
   testWidgets('the dots/accept control animates back on close, not an instant snap to plain dots', (tester) async {
     tester.view.physicalSize = const Size(1000, 800);
     tester.view.devicePixelRatio = 1.0;
