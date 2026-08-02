@@ -376,6 +376,8 @@ class _Translations$callInfo$es extends Translations$callInfo$en {
 	@override String get qrz => 'QRZ';
 	@override String get showImage => 'Mostrar imagen';
 	@override String get notes => 'Notas';
+	@override String distanceTo({required Object distance}) => '${distance} a';
+	@override String distanceBearingTo({required Object distance, required Object bearing}) => '${distance} (${bearing}°) a';
 	@override String distanceAway({required Object distance}) => 'a ${distance}';
 	@override String distanceBearingAway({required Object distance, required Object bearing}) => 'a ${distance} (${bearing}°)';
 	@override String get thisOpCountOne => '1 QSO en esta operación';
@@ -1636,6 +1638,8 @@ extension on TranslationsEs {
 			'callInfo.qrz' => 'QRZ',
 			'callInfo.showImage' => 'Mostrar imagen',
 			'callInfo.notes' => 'Notas',
+			'callInfo.distanceTo' => ({required Object distance}) => '${distance} a',
+			'callInfo.distanceBearingTo' => ({required Object distance, required Object bearing}) => '${distance} (${bearing}°) a',
 			'callInfo.distanceAway' => ({required Object distance}) => 'a ${distance}',
 			'callInfo.distanceBearingAway' => ({required Object distance, required Object bearing}) => 'a ${distance} (${bearing}°)',
 			'callInfo.thisOpCountOne' => '1 QSO en esta operación',
@@ -1869,10 +1873,10 @@ extension on TranslationsEs {
 			'settings.panels.profilesDescription' => 'Indicativo del operador y perfil de la estación',
 			'settings.panels.stationProfiles' => 'Perfiles de estación',
 			'settings.panels.dataFiles' => 'Archivos de datos',
-			'settings.panels.dataFilesDescription' => 'Administra las fuentes de datos en caché',
-			'settings.panels.developerSettings' => 'Ajustes de desarrollador',
 			_ => null,
 		} ?? switch (path) {
+			'settings.panels.dataFilesDescription' => 'Administra las fuentes de datos en caché',
+			'settings.panels.developerSettings' => 'Ajustes de desarrollador',
 			'settings.panels.developerSettingsDescription' => 'Herramientas de depuración y desarrollo',
 			'settings.panels.about' => 'Acerca de',
 			'settings.panels.aboutDescription' => 'Versión, créditos e información legal',

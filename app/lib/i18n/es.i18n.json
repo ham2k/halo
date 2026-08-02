@@ -356,6 +356,8 @@
     "qrz": "QRZ",
     "showImage": "Mostrar imagen",
     "notes": "Notas",
+    "distanceTo": "${distance} a",
+    "distanceBearingTo": "${distance} (${bearing}°) a",
     "distanceAway": "a ${distance}",
     "distanceBearingAway": "a ${distance} (${bearing}°)",
     "thisOpCountOne": "1 QSO en esta operación",

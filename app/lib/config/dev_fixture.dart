@@ -24,6 +24,7 @@ Map<String, dynamic> stubbedLookupResult(String call) {
       'name': 'Test Op $c',
       'city': 'Newington',
       'state': 'CT',
+      'location': 'Newington, CT',
       'country': 'United States',
       'entityName': 'United States',
       'entityPrefix': 'K',

@@ -720,6 +720,12 @@ class Translations$callInfo$en {
 	/// en: 'Notes'
 	String get notes => 'Notes';
 
+	/// en: '${distance} to'
+	String distanceTo({required Object distance}) => '${distance} to';
+
+	/// en: '${distance} (${bearing}°) to'
+	String distanceBearingTo({required Object distance, required Object bearing}) => '${distance} (${bearing}°) to';
+
 	/// en: '${distance} away'
 	String distanceAway({required Object distance}) => '${distance} away';
 
@@ -2882,6 +2888,8 @@ extension on Translations {
 			'callInfo.qrz' => 'QRZ',
 			'callInfo.showImage' => 'Show Image',
 			'callInfo.notes' => 'Notes',
+			'callInfo.distanceTo' => ({required Object distance}) => '${distance} to',
+			'callInfo.distanceBearingTo' => ({required Object distance, required Object bearing}) => '${distance} (${bearing}°) to',
 			'callInfo.distanceAway' => ({required Object distance}) => '${distance} away',
 			'callInfo.distanceBearingAway' => ({required Object distance, required Object bearing}) => '${distance} (${bearing}°) away',
 			'callInfo.thisOpCountOne' => '1 QSO in this operation',
@@ -3115,10 +3123,10 @@ extension on Translations {
 			'settings.panels.profilesDescription' => 'Operator callsign and station profile',
 			'settings.panels.stationProfiles' => 'Station Profiles',
 			'settings.panels.dataFiles' => 'Data Files',
-			'settings.panels.dataFilesDescription' => 'Manage cached data sources',
-			'settings.panels.developerSettings' => 'Developer Settings',
 			_ => null,
 		} ?? switch (path) {
+			'settings.panels.dataFilesDescription' => 'Manage cached data sources',
+			'settings.panels.developerSettings' => 'Developer Settings',
 			'settings.panels.developerSettingsDescription' => 'Debugging and development tools',
 			'settings.panels.about' => 'About',
 			'settings.panels.aboutDescription' => 'Version, credits, and legal information',

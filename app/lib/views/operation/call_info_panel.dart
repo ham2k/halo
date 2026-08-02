@@ -137,6 +137,20 @@ class _CallInfoPanelState extends State<CallInfoPanel> {
     var distStr = fmtDistance(approximate ? approxRoundedKm(km, miles: miles) : km, miles: miles);
     if (approximate) distStr = '~$distStr';
     final bearing = widget.services.settings.showBearing ? bearingOnEarthDeg(ourLoc, resolved.location).round() : null;
+
+    // Point "to" the guess's location (city/state, or the more specific
+    // portable location — e.g. a hunted POTA park — when there is one; see
+    // the compact call-info line in logging_panel.dart), falling back to the
+    // country/entity name (same precedence as the header above) when there's
+    // no location — e.g. a DXCC-prefix-only guess with no callbook hit. Falls
+    // back to "away" only when neither is known.
+    final label = _s('location') ?? _s('entityName') ?? _s('country');
+    if (label != null) {
+      final phrase = bearing != null
+          ? t.distanceBearingTo(distance: distStr, bearing: bearing)
+          : t.distanceTo(distance: distStr);
+      return '$phrase $label';
+    }
     return bearing != null ? t.distanceBearingAway(distance: distStr, bearing: bearing) : t.distanceAway(distance: distStr);
   }
 
