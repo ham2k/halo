@@ -12,9 +12,45 @@ import 'package:flutter/foundation.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:halo_core/halo_core.dart';
 
+import '../config/dev_flags.dart';
+
 enum LocationStatus { unknown, determining, available, unavailable, permissionDenied }
 
+/// Parses the raw `DEV_LOCATION` value into a grid location, or null when
+/// unset/invalid (logging the invalid case). Extracted to a top-level
+/// function — like `applyOnboardAsSpec` for `ONBOARD_AS` — so the
+/// invalid-locator fallback can be exercised with an arbitrary string from a
+/// test, rather than only via a real `--dart-define` launch.
+@visibleForTesting
+GridLocation? parseDevLocation(String raw) {
+  if (raw.isEmpty) return null;
+  final location = gridToLocation(raw);
+  if (location == null) debugPrint('[location] DEV_LOCATION "$raw" is not a valid grid locator, ignoring');
+  return location;
+}
+
 class LocationService extends ChangeNotifier {
+  // `DEV_LOCATION=FN21rq` mocks the device GPS with a fixed grid locator, so
+  // dev/testing doesn't need to grant OS location permissions or wait on a
+  // real fix. Parsed once — it's a launch-time flag, not something that
+  // changes mid-process.
+  static final GridLocation? _devLocation =
+      parseDevLocation(debugEnvFlag(const String.fromEnvironment('DEV_LOCATION'), 'DEV_LOCATION'));
+
+  static Position _mockPosition(GridLocation location) => Position(
+        latitude: location.latitude,
+        longitude: location.longitude,
+        timestamp: DateTime.now(),
+        accuracy: 0,
+        altitude: 0,
+        altitudeAccuracy: 0,
+        heading: 0,
+        headingAccuracy: 0,
+        speed: 0,
+        speedAccuracy: 0,
+        isMocked: true,
+      );
+
   Position? _position;
   LocationStatus _status = LocationStatus.unknown;
   StreamSubscription<Position>? _sub;
@@ -52,6 +88,18 @@ class LocationService extends ChangeNotifier {
   }
 
   Future<void> start() async {
+    if (_devLocation != null) {
+      // Mirrors the real path's `if (_sub != null) return;` guard below:
+      // skip re-notifying once already mocked, so a second view starting
+      // (e.g. the Location screen opened over the Activities view) doesn't
+      // retrigger listeners for no actual change.
+      if (_status == LocationStatus.available) return;
+      _position = _mockPosition(_devLocation!);
+      _status = LocationStatus.available;
+      notifyListeners();
+      return;
+    }
+
     _listenerCount++;
     // Skip only when a fix is already streaming — a listener count above 1
     // doesn't mean a previous attempt actually succeeded (it may have ended
@@ -121,6 +169,8 @@ class LocationService extends ChangeNotifier {
   /// permission/service-enabled checks below. Returns null on any
   /// denial/failure.
   Future<Position?> getCurrentPosition() async {
+    if (_devLocation != null) return _mockPosition(_devLocation!);
+
     try {
       final permission = await _resolvePermission();
       if (permission == LocationPermission.denied || permission == LocationPermission.deniedForever) return null;
