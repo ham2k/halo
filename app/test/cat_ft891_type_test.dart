@@ -21,7 +21,7 @@ import 'package:ham2k_logger/services/cat/equipment_registry.dart';
 import 'package:ham2k_logger/services/cat/transports/serial_transport.dart';
 
 void main() {
-  const type = Ft891SerialType();
+  final type = ft891SerialType;
 
   test('is a transceiver reached over a serial port', () {
     expect(type.key, 'ft891-serial');
@@ -112,8 +112,8 @@ void main() {
 
   test('the registry offers it alongside FlexRadio, over its own transport', () {
     final registry = EquipmentRegistry();
-    expect(registry.typeFor('ft891-serial'), isA<Ft891SerialType>());
-    expect(registry.typeFor('flexradio-tcp'), isA<FlexRadioTcpType>());
+    expect(registry.typeFor('ft891-serial'), same(ft891SerialType));
+    expect(registry.typeFor('flexradio-tcp'), same(flexRadioTcpType));
     // Two drivers, two transports — the split earning its keep.
     expect(registry.transportFor('serial'), isNotNull);
     expect(registry.transportFor('tcp'), isNotNull);

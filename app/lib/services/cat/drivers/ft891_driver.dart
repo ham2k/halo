@@ -36,7 +36,7 @@ import 'yaesu_cat_codec.dart';
 /// status" — so poll as well, in case AI mode misses a case we need or a
 /// hiccup drops it silently.
 
-class Ft891Driver implements EquipmentDriver {
+class Ft891Driver extends EquipmentDriver {
   const Ft891Driver();
 
   /// The FT-891's built-in "USB to Dual UART Bridge" is a Silicon Labs

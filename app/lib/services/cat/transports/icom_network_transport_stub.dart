@@ -7,8 +7,9 @@
 // connected" forever.
 
 import '../transport.dart';
+import 'icom_network_transport_config.dart';
 
-class IcomNetworkTransport implements EquipmentTransport {
+class IcomNetworkTransport extends EquipmentTransport with IcomNetworkTransportConfig {
   const IcomNetworkTransport();
 
   static const transportKey = 'icom-network';

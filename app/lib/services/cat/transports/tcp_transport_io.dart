@@ -11,10 +11,11 @@ import 'dart:io';
 import 'dart:typed_data';
 
 import '../transport.dart';
+import 'tcp_transport_config.dart';
 
 const _connectTimeout = Duration(seconds: 5);
 
-class TcpTransport implements EquipmentTransport {
+class TcpTransport extends EquipmentTransport with TcpTransportConfig {
   const TcpTransport();
 
   static const transportKey = 'tcp';

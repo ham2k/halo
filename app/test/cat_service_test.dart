@@ -74,7 +74,7 @@ class _Attempt {
   _Attempt(this.target, this.cancel);
 }
 
-class _FakeTransport implements EquipmentTransport {
+class _FakeTransport extends EquipmentTransport {
   final attempts = <_Attempt>[];
 
   /// Whether a cancelled attempt gives up. True mirrors the real
@@ -84,6 +84,22 @@ class _FakeTransport implements EquipmentTransport {
 
   @override
   String get key => 'fake';
+
+  @override
+  List<Map<String, dynamic>> configElements({
+    Map<String, dynamic> overrides = const {},
+    Map<String, dynamic> restrictions = const {},
+  }) =>
+      [const {'type': 'field', 'fieldType': 'text', 'key': 'host', 'label': 'Host'}];
+
+  @override
+  String? validateField(String key, dynamic value, Map<String, dynamic> config) {
+    if (key != 'host') return null;
+    return (value as String? ?? '').isEmpty ? 'An address is required' : null;
+  }
+
+  @override
+  String describeTarget(Map<String, dynamic> config) => '${config['host']}';
 
   @override
   Future<EquipmentConnection> connect(Map<String, dynamic> target, {required CatCancelToken cancel}) {
@@ -147,7 +163,7 @@ class _FakeSession implements EquipmentSession {
   }
 }
 
-class _FakeDriver implements EquipmentDriver {
+class _FakeDriver extends EquipmentDriver {
   final List<String> log;
   final sessions = <_FakeSession>[];
   var teardownThrows = false;
@@ -171,46 +187,14 @@ class _FakeDriver implements EquipmentDriver {
   }
 }
 
-class _FakeType extends EquipmentType {
-  @override
-  final EquipmentDriver driver;
-
-  _FakeType(this.driver);
-
-  @override
-  String get key => 'fake-type';
-
-  @override
-  String get category => kCategoryTransceiver;
-
-  @override
-  String get name => 'Fake Radio (Network)';
-
-  @override
-  String get transportKey => 'fake';
-
-  @override
-  Map<String, dynamic> get defaultConfig => const {'host': ''};
-
-  @override
-  List<Map<String, dynamic>> configElements() =>
-      [const {'type': 'field', 'fieldType': 'text', 'key': 'host', 'label': 'Host'}];
-
-  @override
-  Map<String, dynamic> targetFor(Map<String, dynamic> config) => {'host': config['host']};
-
-  @override
-  String describeTarget(Map<String, dynamic> config) => '${config['host']}';
-
-  @override
-  String? validate(Map<String, dynamic> config) => validateField('host', config['host'], config);
-
-  @override
-  String? validateField(String key, dynamic value, Map<String, dynamic> config) {
-    if (key != 'host') return null;
-    return (value as String? ?? '').isEmpty ? 'An address is required' : null;
-  }
-}
+EquipmentType _fakeType(EquipmentDriver driver, EquipmentTransport transport) => EquipmentType(
+      key: 'fake-type',
+      category: kCategoryTransceiver,
+      name: () => 'Fake Radio (Network)',
+      driver: driver,
+      transport: transport,
+      defaultConfig: const {'host': ''},
+    );
 
 // ----------------------------------------------------------------- setup
 
@@ -235,7 +219,7 @@ void main() {
       settings,
       radio: radio,
       registry: EquipmentRegistry(
-        types: [_FakeType(driver)],
+        types: [_fakeType(driver, transport)],
         transports: {'fake': transport},
       ),
       reconnectDelay: Duration.zero,

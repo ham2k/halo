@@ -6,9 +6,14 @@
 //
 // An [EquipmentType] is a (model × transport) pair — "FlexRadio over the
 // network", "Yaesu FT-891 over USB serial" — because that pair is what
-// decides the connection settings the user has to fill in. The protocol
-// itself is NOT duplicated per transport: the type points at one shared
-// [EquipmentDriver] per protocol family. See docs/design/cat.md.
+// decides the connection settings the user has to fill in. It is one
+// concrete, data-driven class: a catalogue entry is a plain instance, not a
+// subclass. The connection form itself is assembled from three sources —
+// [EquipmentTransport.configElements] (how the bytes get there),
+// [EquipmentDriver.configElements] (the protocol's own settings, e.g. a
+// CI-V bus address), and this instance's own [notes] — so a new radio never
+// needs to re-declare a serial port picker or re-parse a hex address. See
+// docs/design/cat.md.
 
 import '../../i18n/strings.g.dart';
 import 'discovery.dart';
@@ -22,83 +27,158 @@ import 'transports/icom_network_protocol.dart';
 import 'transports/icom_network_transport.dart';
 import 'transports/serial_transport.dart';
 import 'transports/tcp_transport.dart';
-import 'transports/udp_broadcast.dart';
 
-abstract class EquipmentType {
-  /// Subclasses are const singletons, so this has to be const too. They
-  /// EXTEND rather than implement: the defaults below (no secrets, driver
-  /// config unchanged) are the safe answers, and a type that forgets to
-  /// restate them should get those rather than fail to compile — or worse,
-  /// be forced to write a wrong one to satisfy the interface.
-  const EquipmentType();
-
+class EquipmentType {
   /// Stable id, stored in [EquipmentNode.typeKey]. Never change it once
   /// shipped — a user's configured node is looked up by this.
-  String get key;
+  final String key;
 
   /// General characteristics, per data-model.md — `transceiver` today.
-  String get category;
+  final String category;
 
-  /// What the user picks from the type list.
-  String get name;
+  final EquipmentDriver driver;
+  final EquipmentTransport transport;
 
-  /// Which [EquipmentTransport] reaches it.
-  String get transportKey;
+  /// Sensible starting values for a new node of this type — pure prefill,
+  /// used once when the Add form opens. Unlike [overrides] the user can
+  /// freely change these afterward.
+  final Map<String, dynamic> defaultConfig;
 
-  EquipmentDriver get driver;
+  /// Fixed values this pairing hardcodes rather than asking the user for —
+  /// e.g. the IC-705's network transport always talks to CI-V address A4,
+  /// so there is nothing to pick. [EquipmentTransport.configElements] and
+  /// [EquipmentDriver.configElements] skip a field entirely once its key is
+  /// here. Merged into the config fresh at every connect/render — never
+  /// written into the node's stored config, so a later change to this value
+  /// reaches every node using it instead of freezing whatever was true when
+  /// the node was added.
+  final Map<String, dynamic> overrides;
+
+  /// Per-field hints that narrow what a transport's or driver's own field
+  /// would otherwise offer — e.g. a radio whose CAT menu only supports a
+  /// handful of baud rates. Never adds an option the transport/driver
+  /// didn't already have.
+  final Map<String, dynamic> restrictions;
+
+  /// Overrides [driver.hardwareVerified] when this specific pairing's
+  /// hardware status differs from the driver's own — the Icom CI-V driver
+  /// is proven over the network, but that says nothing about the same
+  /// driver over a USB serial port, which has never met a radio.
+  final bool? hardwareVerifiedOverride;
+
+  /// Set when this pairing's equipment announces itself on the network.
+  final EquipmentDiscoverer? discoverer;
+
+  /// An escape hatch for a validation rule specific to just this one
+  /// pairing — not shareable with other radios on the same transport or
+  /// driver, so it doesn't belong in either's shared `validateField`. Null
+  /// for every radio today; exists so the next one that needs it doesn't
+  /// have to contaminate a shared transport/driver with per-radio
+  /// knowledge to get it.
+  final String? Function(Map<String, dynamic> config)? extraValidate;
+
+  /// What the user picks from the type list. A closure rather than a plain
+  /// string: `t.xxx` reads the CURRENT locale at call time, so baking the
+  /// value into a field here would freeze whatever language was active the
+  /// first time this catalogue entry got touched.
+  final String Function() _nameBuilder;
+
+  /// Extra FormRenderer elements appended after the transport's and
+  /// driver's own fields — how-to-configure notes, common troubleshooting.
+  /// Same live-locale reasoning as [_nameBuilder]. Plain data
+  /// (`divider`/`markdown` elements) once called: a radio's own entry never
+  /// contains code, only a translated-text lookup.
+  final List<Map<String, dynamic>> Function()? _notesBuilder;
+
+  const EquipmentType({
+    required this.key,
+    required this.category,
+    required String Function() name,
+    required this.driver,
+    required this.transport,
+    this.defaultConfig = const {},
+    this.overrides = const {},
+    this.restrictions = const {},
+    this.hardwareVerifiedOverride,
+    this.discoverer,
+    this.extraValidate,
+    List<Map<String, dynamic>> Function()? notes,
+  })  : _nameBuilder = name,
+        _notesBuilder = notes;
+
+  String get name => _nameBuilder();
+
+  List<Map<String, dynamic>> get notes => _notesBuilder?.call() ?? const [];
+
+  String get transportKey => transport.key;
+
+  bool get hardwareVerified => hardwareVerifiedOverride ?? driver.hardwareVerified;
+
+  /// Config keys whose values are credentials, kept in the platform
+  /// keychain instead of the SharedPreferences blob the rest of the config
+  /// lives in ([CatService] moves them on save). Always the transport's —
+  /// a driver never opens a connection of its own to authenticate.
+  Set<String> get secretFields => transport.secretFields;
 
   /// FormRenderer elements for the connection parameters and any
-  /// device-specific settings.
-  List<Map<String, dynamic>> configElements();
+  /// device-specific settings: transport section, then driver section,
+  /// then this pairing's own notes.
+  List<Map<String, dynamic>> configElements() => [
+        ...transport.configElements(overrides: overrides, restrictions: restrictions),
+        ...driver.configElements(overrides: overrides, restrictions: restrictions),
+        ...notes,
+      ];
 
-  /// Sensible starting values for a new node of this type.
-  Map<String, dynamic> get defaultConfig => const {};
+  Map<String, dynamic> _merged(Map<String, dynamic> config) => {...config, ...overrides};
 
-  /// Turns the user's configuration into the map the transport connects
-  /// with. Keeping this on the type is what lets two types share one
-  /// transport with different settings.
-  Map<String, dynamic> targetFor(Map<String, dynamic> config);
+  /// Turns the user's configuration into what the transport connects with.
+  Map<String, dynamic> targetFor(Map<String, dynamic> config) => transport.targetFor(_merged(config));
 
-  /// The configuration the DRIVER sees, which is not always the one the
-  /// user typed. The same reason [targetFor] exists: one driver serves
-  /// several types, and a type may know something about its protocol that
-  /// is not a setting anyone should be asked for.
-  ///
-  /// Default is the config unchanged.
-  Map<String, dynamic> driverConfig(Map<String, dynamic> config) => config;
-
-  /// Whether THIS pairing — this driver over this transport — has been
-  /// exercised against real hardware.
-  ///
-  /// Defaults to the driver's own answer, which is right for a type whose
-  /// driver has only ever had one transport. It is overridable because the
-  /// driver alone is the wrong granularity for the question the operator is
-  /// actually asking: the Icom CI-V driver is proven over the network after a
-  /// ten-minute IC-705 session, and that says nothing about the same driver
-  /// over a USB serial port, which has never met a radio. Flipping the driver
-  /// flag alone would have silently dropped the caveat from that second type.
-  bool get hardwareVerified => driver.hardwareVerified;
-
-  /// Config keys whose values are credentials: kept in the platform
-  /// keychain instead of the SharedPreferences blob the rest of the config
-  /// lives in ([CatService] moves them on save).
-  ///
-  /// Declared per type, deliberately. A manager that asked "is this the
-  /// IC-705 type?" would silently write the NEXT type's password in
-  /// plaintext, and nothing would say so.
-  Set<String> get secretFields => const {};
+  /// The configuration the DRIVER sees — the merged config, overrides
+  /// included, since a driver reads whatever keys it needs straight out of
+  /// the map rather than through a narrowed shape like [targetFor].
+  Map<String, dynamic> driverConfig(Map<String, dynamic> config) => _merged(config);
 
   /// A one-line "where is it" for the equipment list.
-  String describeTarget(Map<String, dynamic> config);
-
-  /// Null when the whole configuration is usable, otherwise why it isn't —
-  /// the check [CatService] runs before it bothers opening a socket.
-  String? validate(Map<String, dynamic> config);
+  String describeTarget(Map<String, dynamic> config) {
+    final merged = _merged(config);
+    final suffix = driver.describeSuffix(merged, overrides: overrides) ?? '';
+    return '${transport.describeTarget(merged)}$suffix';
+  }
 
   /// Per-field version, for the editor: FormRenderer validates one field at
-  /// a time and anchors the message on that field.
-  String? validateField(String key, dynamic value, Map<String, dynamic> config);
+  /// a time and anchors the message on that field. Tries the transport
+  /// first, then the driver — each recognizes only the keys it declared in
+  /// [configElements], so there's nothing to route explicitly.
+  String? validateField(String key, dynamic value, Map<String, dynamic> config) =>
+      transport.validateField(key, value, config) ?? driver.validateField(key, value, config);
+
+  /// Null when the whole configuration is usable, otherwise why it isn't —
+  /// the check [CatService] runs before it bothers opening a socket. Walks
+  /// [EquipmentTransport.recognizedConfigKeys]/[EquipmentDriver.recognizedConfigKeys]
+  /// rather than [configElements] deliberately: the latter, for a serial
+  /// pairing, enumerates real hardware to build the port picker's option
+  /// list — work [CatService]'s idle-retry loop would otherwise repeat on
+  /// every reconnect attempt of a disconnected radio, purely to learn a
+  /// field's key. An overridden key is skipped: it's never the user's to
+  /// get wrong.
+  String? validate(Map<String, dynamic> config) {
+    for (final key in {...transport.recognizedConfigKeys, ...driver.recognizedConfigKeys}) {
+      if (overrides.containsKey(key)) continue;
+      final error = validateField(key, config[key], config);
+      if (error != null) return error;
+    }
+    return extraValidate?.call(config);
+  }
+
+  /// Null for equipment that doesn't announce itself.
+  Stream<DiscoveredEquipment>? discover() => discoverer?.discover();
 }
+
+const _flexRadioTcpKey = 'flexradio-tcp';
+const _ft891SerialKey = 'ft891-serial';
+const _icomCivSerialKey = 'icom-civ-serial';
+const _ic705NetworkKey = 'ic705-network';
 
 /// FlexRadio radios reachable over the SmartSDR TCP API.
 ///
@@ -106,197 +186,45 @@ abstract class EquipmentType {
 /// Address and port can always be typed in as well — a radio on another
 /// subnet, or behind a router that doesn't forward broadcasts, never
 /// announces, and neither app-polo branch had a manual path at all.
-class FlexRadioTcpType extends EquipmentType implements EquipmentDiscoverer {
-  const FlexRadioTcpType();
+const flexRadioTcpType = EquipmentType(
+  key: _flexRadioTcpKey,
+  category: kCategoryTransceiver,
+  name: _flexRadioTcpName,
+  driver: FlexRadioDriver(),
+  transport: TcpTransport(),
+  defaultConfig: {'port': FlexRadioDriver.defaultPort},
+  discoverer: FlexRadioDiscoverer(typeKey: _flexRadioTcpKey),
+);
 
-  static const _driver = FlexRadioDriver();
-
-  @override
-  String get key => 'flexradio-tcp';
-
-  @override
-  String get category => kCategoryTransceiver;
-
-  @override
-  String get name => t.settings.station.types.flexRadioTcp;
-
-  @override
-  String get transportKey => TcpTransport.transportKey;
-
-  @override
-  EquipmentDriver get driver => _driver;
-
-  @override
-  Map<String, dynamic> get defaultConfig => {'port': FlexRadioDriver.defaultPort};
-
-  @override
-  List<Map<String, dynamic>> configElements() => [
-        {
-          'type': 'field',
-          'fieldType': 'text',
-          'key': 'host',
-          'label': t.settings.station.host,
-          'description': t.settings.station.hostDescription,
-        },
-        {
-          'type': 'field',
-          'fieldType': 'number',
-          'key': 'port',
-          'label': t.settings.station.port,
-        },
-      ];
-
-  @override
-  Map<String, dynamic> targetFor(Map<String, dynamic> config) => {
-        'host': _host(config),
-        'port': _port(config),
-      };
-
-  @override
-  String describeTarget(Map<String, dynamic> config) => '${_host(config)}:${_port(config)}';
-
-  @override
-  Stream<DiscoveredEquipment> discover() =>
-      udpBroadcastDatagrams(port: FlexRadioDriver.defaultPort).map(parseFlexDiscovery).where((found) => found != null).map(
-            (found) => DiscoveredEquipment(
-              typeKey: key,
-              // Serial when the radio offers one, so a radio that moves to a
-              // new address updates its entry instead of appearing twice.
-              id: found!.serial ?? '${found.host}:${found.port}',
-              name: found.nickname ?? found.model,
-              detail: [found.model, if (found.version != null) 'v${found.version}', found.host].join(' · '),
-              config: {'host': found.host, 'port': found.port},
-            ),
-          );
-
-  @override
-  String? validate(Map<String, dynamic> config) =>
-      validateField('host', config['host'], config) ?? validateField('port', config['port'], config);
-
-  @override
-  String? validateField(String key, dynamic value, Map<String, dynamic> config) {
-    final merged = {...config, key: value};
-    switch (key) {
-      case 'host':
-        return _host(merged).isEmpty ? t.settings.station.hostRequired : null;
-      case 'port':
-        final port = _port(merged);
-        return (port < 1 || port > 65535) ? t.settings.station.portInvalid : null;
-      default:
-        return null;
-    }
-  }
-
-  static String _host(Map<String, dynamic> config) => (config['host'] as String? ?? '').trim();
-
-  // The number field hands back an int, but a value round-tripped through
-  // JSON or typed into a text field can arrive as a double or a string.
-  static int _port(Map<String, dynamic> config) {
-    final raw = config['port'];
-    if (raw is num) return raw.toInt();
-    return int.tryParse('$raw') ?? FlexRadioDriver.defaultPort;
-  }
-}
+String _flexRadioTcpName() => t.settings.station.types.flexRadioTcp;
 
 /// Yaesu FT-891 over its built-in USB-to-serial CAT bridge.
-///
-/// The port is picked from a live enumeration; a USB adapter can appear or
-/// vanish between one look and the next, so the list is never cached.
 ///
 /// Baud is the operator's to set, deliberately. app-polo hardcoded 4800 with
 /// no UI, which its own notes call out as a silent-failure mode: a radio
 /// whose CAT menu says 38400 answers with garbage and no error at all.
-class Ft891SerialType extends EquipmentType {
-  const Ft891SerialType();
+const ft891SerialType = EquipmentType(
+  key: _ft891SerialKey,
+  category: kCategoryTransceiver,
+  name: _ft891SerialName,
+  driver: Ft891Driver(),
+  transport: SerialTransport(),
+  defaultConfig: {'baudRate': Ft891Driver.defaultBaudRate},
+  // The failure this driver actually produces is silence: the commands go
+  // out, nothing comes back, and nothing anywhere reports an error. Every
+  // cause is a setting the operator has to change on the radio or elsewhere
+  // on the machine, so the editor is where it is worth saying — by the time
+  // the row says "Connected" with no frequency, this form is exactly where
+  // they will come looking.
+  notes: _ft891SerialNotes,
+);
 
-  static const _driver = Ft891Driver();
+String _ft891SerialName() => t.settings.station.types.ft891Serial;
 
-  @override
-  String get key => 'ft891-serial';
-
-  @override
-  String get category => kCategoryTransceiver;
-
-  @override
-  String get name => t.settings.station.types.ft891Serial;
-
-  @override
-  String get transportKey => SerialTransport.transportKey;
-
-  @override
-  EquipmentDriver get driver => _driver;
-
-  @override
-  Map<String, dynamic> get defaultConfig => {'baudRate': Ft891Driver.defaultBaudRate};
-
-  @override
-  List<Map<String, dynamic>> configElements() {
-    final ports = availableSerialPorts();
-    return [
-      {
-        'type': 'field',
-        'fieldType': 'select',
-        'key': 'port',
-        'label': t.settings.station.serialPort,
-        'description': t.settings.station.serialPortDescription,
-        'options': [
-          for (final port in ports)
-            {
-              'value': port.name,
-              // The raw device name rarely identifies anything, and a dual
-              // -port bridge presents two that differ only in a trailing
-              // digit — see SerialPortOption.label.
-              'label': port.label,
-            },
-        ],
-      },
-      {
-        'type': 'field',
-        'fieldType': 'select',
-        'key': 'baudRate',
-        'label': t.settings.station.baudRate,
-        'description': t.settings.station.baudRateDescription,
-        'options': [
-          for (final rate in supportedBaudRates) {'value': rate, 'label': '$rate'},
-        ],
-      },
-      // A silent radio is the failure this driver actually produces: the
-      // commands go out, nothing comes back, and nothing anywhere reports an
-      // error. Every cause is a setting the operator has to change on the
-      // radio or elsewhere on the machine, so the editor is where it is worth
-      // saying — by the time the row says "Connected" with no frequency, this
-      // form is exactly where they will come looking.
+List<Map<String, dynamic>> _ft891SerialNotes() => [
       {'type': 'divider', 'title': t.settings.station.troubleshootingTitle},
       {'type': 'markdown', 'text': t.settings.station.ft891Troubleshooting},
     ];
-  }
-
-  @override
-  Map<String, dynamic> targetFor(Map<String, dynamic> config) => {
-        'port': _port(config),
-        'baudRate': _baudRate(config),
-      };
-
-  @override
-  String describeTarget(Map<String, dynamic> config) => '${_port(config)} @ ${_baudRate(config)}';
-
-  @override
-  String? validate(Map<String, dynamic> config) => validateField('port', config['port'], config);
-
-  @override
-  String? validateField(String key, dynamic value, Map<String, dynamic> config) {
-    if (key != 'port') return null;
-    return (value as String? ?? '').isEmpty ? t.settings.station.serialPortRequired : null;
-  }
-
-  static String _port(Map<String, dynamic> config) => (config['port'] as String? ?? '').trim();
-
-  static int _baudRate(Map<String, dynamic> config) {
-    final raw = config['baudRate'];
-    if (raw is num) return raw.toInt();
-    return int.tryParse('$raw') ?? Ft891Driver.defaultBaudRate;
-  }
-}
 
 /// Any Icom transceiver over CI-V on a serial port — the IC-705's USB
 /// connection, and equally an IC-7300 or IC-9700 with a different address.
@@ -305,246 +233,59 @@ class Ft891SerialType extends EquipmentType {
 /// settable on the radio, and because a wrong one is silent: the radio
 /// simply ignores frames addressed elsewhere, which looks exactly like a
 /// dead cable.
-class IcomCivSerialType extends EquipmentType {
-  const IcomCivSerialType();
+///
+/// The DRIVER is verified (a ten-minute IC-705 session over WiFi), but this
+/// pairing has never been pointed at a radio. The serial transport itself
+/// is proven by the FT-891, so this is likely fine — "likely fine" being
+/// exactly what [EquipmentType.hardwareVerifiedOverride] is for.
+const icomCivSerialType = EquipmentType(
+  key: _icomCivSerialKey,
+  category: kCategoryTransceiver,
+  name: _icomCivSerialName,
+  driver: IcomCivDriver(),
+  transport: SerialTransport(),
+  defaultConfig: {
+    // The IC-705's factory address, and the most likely radio here.
+    'civAddress': 'A4',
+    // Icom's CI-V default. The radio can also be set to Auto, which
+    // negotiates nothing and simply follows the host.
+    'baudRate': 19200,
+  },
+  hardwareVerifiedOverride: false,
+);
 
-  static const _driver = IcomCivDriver();
-
-  /// The DRIVER is verified (a ten-minute IC-705 session over WiFi), but this
-  /// type pairs it with the serial transport, and that pairing has never been
-  /// pointed at a radio. The serial transport itself is proven by the FT-891,
-  /// so this is likely fine — "likely fine" being exactly what the caveat is
-  /// for.
-  @override
-  bool get hardwareVerified => false;
-
-  @override
-  String get key => 'icom-civ-serial';
-
-  @override
-  String get category => kCategoryTransceiver;
-
-  @override
-  String get name => t.settings.station.types.icomCivSerial;
-
-  @override
-  String get transportKey => SerialTransport.transportKey;
-
-  @override
-  EquipmentDriver get driver => _driver;
-
-  @override
-  Map<String, dynamic> get defaultConfig => {
-        // The IC-705's factory address, and the most likely radio here.
-        'civAddress': 'A4',
-        // Icom's CI-V default. The radio can also be set to Auto, which
-        // negotiates nothing and simply follows the host.
-        'baudRate': 19200,
-      };
-
-  @override
-  List<Map<String, dynamic>> configElements() {
-    final ports = availableSerialPorts();
-    return [
-      {
-        'type': 'field',
-        'fieldType': 'select',
-        'key': 'port',
-        'label': t.settings.station.serialPort,
-        'description': t.settings.station.serialPortDescription,
-        'options': [
-          for (final port in ports)
-            {
-              'value': port.name,
-              'label': port.description == null ? port.name : '${port.name} — ${port.description}',
-            },
-        ],
-      },
-      {
-        'type': 'field',
-        'fieldType': 'select',
-        'key': 'baudRate',
-        'label': t.settings.station.baudRate,
-        'description': t.settings.station.baudRateDescription,
-        'options': [
-          for (final rate in supportedBaudRates) {'value': rate, 'label': '$rate'},
-        ],
-      },
-      {
-        'type': 'field',
-        'fieldType': 'text',
-        'key': 'civAddress',
-        'label': t.settings.station.civAddress,
-        'description': t.settings.station.civAddressDescription,
-      },
-    ];
-  }
-
-  @override
-  Map<String, dynamic> targetFor(Map<String, dynamic> config) => {
-        'port': _port(config),
-        'baudRate': _baudRate(config),
-      };
-
-  @override
-  String describeTarget(Map<String, dynamic> config) =>
-      '${_port(config)} @ ${_baudRate(config)} · CI-V ${_addressText(config)}';
-
-  @override
-  String? validate(Map<String, dynamic> config) =>
-      validateField('port', config['port'], config) ??
-      validateField('civAddress', config['civAddress'], config);
-
-  @override
-  String? validateField(String key, dynamic value, Map<String, dynamic> config) {
-    switch (key) {
-      case 'port':
-        return (value as String? ?? '').isEmpty ? t.settings.station.serialPortRequired : null;
-      case 'civAddress':
-        // A wrong address is SILENT — the radio ignores frames addressed
-        // elsewhere, which is indistinguishable from a dead cable. Catch an
-        // unusable one here rather than at the bench.
-        return _parseAddress(value) == null ? t.settings.station.civAddressInvalid : null;
-      default:
-        return null;
-    }
-  }
-
-  /// Hex, with or without an `0x`, as the radio's own menu shows it.
-  static int? _parseAddress(dynamic raw) {
-    if (raw is num) {
-      final value = raw.toInt();
-      return (value >= 1 && value <= 0xFF) ? value : null;
-    }
-    final text = '$raw'.trim().replaceFirst(RegExp(r'^0x', caseSensitive: false), '');
-    final parsed = int.tryParse(text, radix: 16);
-    return (parsed != null && parsed >= 1 && parsed <= 0xFF) ? parsed : null;
-  }
-
-  static String _addressText(Map<String, dynamic> config) {
-    final parsed = _parseAddress(config['civAddress']);
-    return parsed == null ? '?' : parsed.toRadixString(16).toUpperCase().padLeft(2, '0');
-  }
-
-  static String _port(Map<String, dynamic> config) => (config['port'] as String? ?? '').trim();
-
-  static int _baudRate(Map<String, dynamic> config) {
-    final raw = config['baudRate'];
-    if (raw is num) return raw.toInt();
-    return int.tryParse('$raw') ?? 19200;
-  }
-}
+String _icomCivSerialName() => t.settings.station.types.icomCivSerial;
 
 /// An IC-705 over WiFi, using Icom's RS-BA1 network protocol.
 ///
-/// The password is NOT in [EquipmentNode.config] — that is a plain
-/// SharedPreferences blob. It lives in the platform keychain via
-/// `SettingsService.equipmentSecret`, keyed by node uuid, and
-/// [CatService] merges it in only at connect time.
-class Ic705NetworkType extends EquipmentType {
-  const Ic705NetworkType();
+/// Both the CI-V address and the controller address are hardcoded rather
+/// than asked for: RS-BA1 only ever talks to the one radio it's paired
+/// with, at the IC-705's factory address, and the controller side of a
+/// network CI-V exchange is always 0xE1 — a fact about the transport, not a
+/// setting, so it never becomes a question in the editor.
+const ic705NetworkType = EquipmentType(
+  key: _ic705NetworkKey,
+  category: kCategoryTransceiver,
+  name: _ic705NetworkName,
+  driver: IcomCivDriver(),
+  transport: IcomNetworkTransport(),
+  overrides: {
+    'civAddress': 'A4',
+    'civControllerAddress': icomNetworkControllerAddress,
+  },
+  // The failure this transport actually produces is silence: the handshake
+  // succeeds and the login is ignored, so a busy radio and a refusal are
+  // indistinguishable from here. Every remedy is something the operator
+  // does at the radio or to another program.
+  notes: _ic705NetworkNotes,
+);
 
-  static const _driver = IcomCivDriver();
+String _ic705NetworkName() => t.settings.station.types.ic705Network;
 
-  /// Config keys whose values live in the keychain rather than the blob.
-  @override
-  Set<String> get secretFields => const {'password'};
-
-  @override
-  String get key => 'ic705-network';
-
-  @override
-  String get category => kCategoryTransceiver;
-
-  @override
-  String get name => t.settings.station.types.ic705Network;
-
-  @override
-  String get transportKey => IcomNetworkTransport.transportKey;
-
-  @override
-  EquipmentDriver get driver => _driver;
-
-  @override
-  Map<String, dynamic> get defaultConfig => {'civAddress': 'A4'};
-
-  @override
-  List<Map<String, dynamic>> configElements() => [
-        {
-          'type': 'field',
-          'fieldType': 'text',
-          'key': 'host',
-          'label': t.settings.station.host,
-          'description': t.settings.station.hostDescription,
-        },
-        {
-          'type': 'field',
-          'fieldType': 'text',
-          'key': 'username',
-          'label': t.settings.station.radioUser,
-          'description': t.settings.station.radioLoginDescription,
-        },
-        {
-          // 'secret' is the app's obscured field type; CatService routes
-          // this one to the keychain.
-          'type': 'field',
-          'fieldType': 'secret',
-          'key': 'password',
-          'label': t.settings.station.radioPass,
-        },
-      // The failure this transport actually produces is silence: the
-      // handshake succeeds and the login is ignored, so a busy radio and a
-      // refusal are indistinguishable from here. Every remedy is something
-      // the operator does at the radio or to another program.
+List<Map<String, dynamic>> _ic705NetworkNotes() => [
       {'type': 'divider', 'title': t.settings.station.ic705TroubleshootingTitle},
       {'type': 'markdown', 'text': t.settings.station.ic705Troubleshooting},
-      ];
-
-  @override
-  Map<String, dynamic> targetFor(Map<String, dynamic> config) => {
-        'host': _host(config),
-        'username': (config['username'] as String? ?? '').trim(),
-        'password': config['password'] as String? ?? '',
-      };
-
-  /// Over the network the controller is 0xE1, not the 0xE0 a PC uses on a
-  /// CI-V wire. That is a hardware finding — the value the bench tool used
-  /// for the verified exchange — and a wrong address is SILENT: the radio
-  /// ignores frames addressed elsewhere, which reads exactly like a dead
-  /// link. It is a fact about the transport, not a setting, so it is
-  /// injected here rather than asked for in the editor.
-  @override
-  Map<String, dynamic> driverConfig(Map<String, dynamic> config) => {
-        ...config,
-        'civControllerAddress': icomNetworkControllerAddress,
-      };
-
-  @override
-  String describeTarget(Map<String, dynamic> config) => _host(config);
-
-  @override
-  String? validate(Map<String, dynamic> config) =>
-      validateField('host', config['host'], config) ??
-      validateField('username', config['username'], config);
-
-  @override
-  String? validateField(String key, dynamic value, Map<String, dynamic> config) {
-    switch (key) {
-      case 'host':
-        return (value as String? ?? '').trim().isEmpty ? t.settings.station.hostRequired : null;
-      case 'username':
-        // A blank username fails at login with a timeout that looks like a
-        // network problem, so catch it in the editor.
-        return (value as String? ?? '').trim().isEmpty
-            ? t.settings.station.radioUserRequired
-            : null;
-      default:
-        return null;
-    }
-  }
-
-  static String _host(Map<String, dynamic> config) => (config['host'] as String? ?? '').trim();
-}
+    ];
 
 /// What the app can talk to, and how it gets there.
 ///
@@ -556,8 +297,7 @@ class EquipmentRegistry {
   final Map<String, EquipmentTransport> transports;
 
   EquipmentRegistry({List<EquipmentType>? types, Map<String, EquipmentTransport>? transports})
-      : types = types ??
-            const [FlexRadioTcpType(), Ft891SerialType(), IcomCivSerialType(), Ic705NetworkType()],
+      : types = types ?? const [flexRadioTcpType, ft891SerialType, icomCivSerialType, ic705NetworkType],
         transports = transports ??
             {
               TcpTransport.transportKey: const TcpTransport(),

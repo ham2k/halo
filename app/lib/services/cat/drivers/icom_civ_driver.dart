@@ -16,6 +16,7 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 
+import '../../../i18n/strings.g.dart';
 import '../driver.dart';
 import '../equipment.dart';
 import 'civ_codec.dart';
@@ -26,7 +27,7 @@ import 'civ_codec.dart';
 /// FlexRadio and FT-891 drivers use, for the same reason.
 const _pollInterval = Duration(seconds: 5);
 
-class IcomCivDriver implements EquipmentDriver {
+class IcomCivDriver extends EquipmentDriver {
   const IcomCivDriver();
 
   @override
@@ -53,21 +54,74 @@ class IcomCivDriver implements EquipmentDriver {
   @override
   EquipmentSession createSession(EquipmentSink sink, Map<String, dynamic> config) => IcomCivSession(
         sink,
-        radioAddress: _address(config['civAddress'], civRadioAddresses['IC-705']!),
-        controllerAddress: _address(config['civControllerAddress'], civDefaultControllerAddress),
+        radioAddress: _addressOrFallback(config['civAddress'], civRadioAddresses['IC-705']!),
+        controllerAddress: _addressOrFallback(config['civControllerAddress'], civDefaultControllerAddress),
       );
 
-  /// Addresses are entered as hex ("A4") or decimal, and round-trip through
-  /// JSON, so they arrive as a String or a num depending on the path.
-  static int _address(dynamic raw, int fallback) {
-    if (raw is num) return raw.toInt();
+  /// `civControllerAddress` is read directly in [createSession] above, on
+  /// every pairing, and never shown as a field on any of them — a network
+  /// fact ([icomNetworkControllerAddress]), not a setting.
+  @override
+  Set<String> get recognizedConfigKeys => {...super.recognizedConfigKeys, 'civControllerAddress'};
+
+  @override
+  List<Map<String, dynamic>> configElements({
+    Map<String, dynamic> overrides = const {},
+    Map<String, dynamic> restrictions = const {},
+  }) =>
+      // A pairing that hardcodes the address (the IC-705's network type
+      // fixes it, since RS-BA1 only ever talks to the one radio it's
+      // paired with) has nothing to show here.
+      overrides.containsKey('civAddress')
+          ? const []
+          : [
+              {
+                'type': 'field',
+                'fieldType': 'text',
+                'key': 'civAddress',
+                'label': t.settings.station.civAddress,
+                'description': t.settings.station.civAddressDescription,
+              },
+            ];
+
+  @override
+  String? validateField(String key, dynamic value, Map<String, dynamic> config) {
+    if (key != 'civAddress') return null;
+    // A wrong address is SILENT — the radio ignores frames addressed
+    // elsewhere, which is indistinguishable from a dead cable. Catch an
+    // unusable one here rather than at the bench.
+    return _parseAddress(value) == null ? t.settings.station.civAddressInvalid : null;
+  }
+
+  @override
+  String? describeSuffix(Map<String, dynamic> config, {Map<String, dynamic> overrides = const {}}) {
+    // A pairing that hardcodes the address (the IC-705's network type — see
+    // configElements above) never shows it as a field, so it shouldn't show
+    // up in the list row either: A4 is a network protocol constant there,
+    // not something the operator picked.
+    if (overrides.containsKey('civAddress')) return null;
+    final parsed = _parseAddress(config['civAddress']);
+    final text = parsed == null ? '?' : parsed.toRadixString(16).toUpperCase().padLeft(2, '0');
+    return ' · CI-V $text';
+  }
+
+  /// Hex, with or without an `0x`, as the radio's own menu shows it — or
+  /// decimal, since an address round-tripped through JSON arrives as a
+  /// String or a num depending on the path. Null for anything unusable.
+  static int? _parseAddress(dynamic raw) {
+    if (raw is num) {
+      final value = raw.toInt();
+      return (value >= 1 && value <= 0xFF) ? value : null;
+    }
     if (raw is String) {
       final text = raw.trim().replaceFirst(RegExp(r'^0x', caseSensitive: false), '');
       final parsed = int.tryParse(text, radix: 16);
-      if (parsed != null && parsed > 0 && parsed <= 0xFF) return parsed;
+      if (parsed != null && parsed >= 1 && parsed <= 0xFF) return parsed;
     }
-    return fallback;
+    return null;
   }
+
+  static int _addressOrFallback(dynamic raw, int fallback) => _parseAddress(raw) ?? fallback;
 }
 
 class IcomCivSession implements EquipmentSession {

@@ -8,8 +8,9 @@
 // connected" forever.
 
 import '../transport.dart';
+import 'tcp_transport_config.dart';
 
-class TcpTransport implements EquipmentTransport {
+class TcpTransport extends EquipmentTransport with TcpTransportConfig {
   const TcpTransport();
 
   static const transportKey = 'tcp';

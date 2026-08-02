@@ -60,6 +60,8 @@ abstract class EquipmentSession {
 }
 
 abstract class EquipmentDriver {
+  const EquipmentDriver();
+
   /// Stable id, e.g. `flexradio`.
   String get key;
 
@@ -80,4 +82,38 @@ abstract class EquipmentDriver {
   /// radio itself, and app-polo's IC-705 attempt is on record as having lost
   /// bench time to a wrong address it had no way to change.
   EquipmentSession createSession(EquipmentSink sink, Map<String, dynamic> config);
+
+  /// FormRenderer elements for this driver's own protocol settings (a CI-V
+  /// bus address, for one). Nothing about how the bytes get there — that's
+  /// [EquipmentTransport.configElements].
+  ///
+  /// See [EquipmentTransport.configElements] for what [overrides] and
+  /// [restrictions] mean; a key this driver doesn't recognize is silently
+  /// ignored — it belongs to the transport instead.
+  List<Map<String, dynamic>> configElements({
+    Map<String, dynamic> overrides = const {},
+    Map<String, dynamic> restrictions = const {},
+  }) =>
+      const [];
+
+  /// Per-field version, for the editor. Null for a key this driver doesn't
+  /// own.
+  String? validateField(String key, dynamic value, Map<String, dynamic> config) => null;
+
+  /// Every config key this driver reads, whether or not it shows a field
+  /// for it — see [EquipmentTransport.recognizedConfigKeys]. The IC-705's
+  /// network controller address is the reason this exists: read directly
+  /// in [createSession], on every pairing, never shown as a field on any
+  /// of them.
+  Set<String> get recognizedConfigKeys =>
+      configElements().where((e) => e['type'] == 'field').map((e) => e['key'] as String).toSet();
+
+  /// An optional trailing fragment for the equipment list's one-line
+  /// summary — e.g. ` · CI-V A4`. Null for a driver with nothing to add.
+  ///
+  /// [overrides] is the same map [configElements] gets — a driver that
+  /// hardcodes the value this suffix would show (never a field the user
+  /// sees) should suppress the suffix too, the same way it suppresses the
+  /// field.
+  String? describeSuffix(Map<String, dynamic> config, {Map<String, dynamic> overrides = const {}}) => null;
 }

@@ -21,10 +21,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_libserialport/flutter_libserialport.dart';
 
 import '../transport.dart';
-
-/// What the radio's CAT menu offers. Anything the port doesn't support
-/// fails at open rather than silently misbehaving.
-const supportedBaudRates = [4800, 9600, 19200, 38400, 57600, 115200];
+import 'serial_transport_config.dart';
 
 /// libserialport ships with a debug handler installed, and it calls
 /// `getenv("LIBSERIALPORT_DEBUG")` on EVERY debug statement — `serialport.c`
@@ -55,13 +52,16 @@ void _quietLibserialport() {
   }
 }
 
-class SerialTransport implements EquipmentTransport {
+class SerialTransport extends EquipmentTransport with SerialTransportConfig {
   const SerialTransport();
 
   static const transportKey = 'serial';
 
   @override
   String get key => transportKey;
+
+  @override
+  List<SerialPortOption> get availablePorts => availableSerialPorts();
 
   @override
   Future<EquipmentConnection> connect(Map<String, dynamic> target, {required CatCancelToken cancel}) async {
@@ -238,37 +238,4 @@ List<SerialPortOption> availableSerialPorts() {
   }
 
   return options;
-}
-
-class SerialPortOption {
-  final String name;
-  final String? description;
-  final String? manufacturer;
-  final String? productName;
-  final String? serialNumber;
-  final int? vendorId;
-  final int? productId;
-
-  const SerialPortOption({
-    required this.name,
-    this.description,
-    this.manufacturer,
-    this.productName,
-    this.serialNumber,
-    this.vendorId,
-    this.productId,
-  });
-
-  /// What to show in the picker. The raw device name rarely identifies
-  /// anything — a dual-port bridge (the CP2105 behind most Yaesu USB
-  /// interfaces) presents two of them, one carrying CAT and one carrying
-  /// PTT, distinguishable only by whatever the USB descriptors say.
-  String get label {
-    final detail = description ??
-        [
-          if (manufacturer != null) manufacturer!,
-          if (productName != null) productName!,
-        ].join(' ');
-    return detail.isEmpty ? name : '$name — $detail';
-  }
 }

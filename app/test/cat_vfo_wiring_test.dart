@@ -45,7 +45,7 @@ class _FakeConnection implements EquipmentConnection {
 
 /// A transport whose connects stay pending until the test says otherwise,
 /// so the retry loop and a manual Connect can be made to overlap.
-class _GatedTransport implements EquipmentTransport {
+class _GatedTransport extends EquipmentTransport {
   final pending = <Completer<EquipmentConnection>>[];
   final cancels = <CatCancelToken>[];
 
@@ -68,7 +68,7 @@ class _GatedTransport implements EquipmentTransport {
 }
 
 /// A radio that is switched off.
-class _RefusingTransport implements EquipmentTransport {
+class _RefusingTransport extends EquipmentTransport {
   @override
   String get key => 'fake';
   @override
@@ -76,13 +76,15 @@ class _RefusingTransport implements EquipmentTransport {
       throw const SocketException('Connection refused');
 }
 
-class _FakeTransport implements EquipmentTransport {
+class _FakeTransport extends EquipmentTransport {
   /// Kept so a test can close one from the outside, the way a radio being
   /// switched off closes it.
   final connections = <_FakeConnection>[];
 
   @override
   String get key => 'fake';
+  @override
+  Set<String> get secretFields => const {'apiKey'};
   @override
   Future<EquipmentConnection> connect(Map<String, dynamic> target, {required CatCancelToken cancel}) async {
     final connection = _FakeConnection();
@@ -130,7 +132,7 @@ class _FakeSession implements EquipmentSession {
   void teardown() => tornDown = true;
 }
 
-class _FakeDriver implements EquipmentDriver {
+class _FakeDriver extends EquipmentDriver {
   final sessions = <_FakeSession>[];
 
   @override
@@ -151,40 +153,17 @@ class _FakeDriver implements EquipmentDriver {
   }
 }
 
-class _FakeType extends EquipmentType {
-  @override
-  final EquipmentDriver driver;
-
-  _FakeType(this.driver);
-
-  @override
-  String get key => 'fake-type';
-  @override
-  String get category => kCategoryTransceiver;
-  @override
-  String get name => 'Fake Radio';
-  @override
-  String get transportKey => 'fake';
-
-  @override
-  Set<String> get secretFields => const {'apiKey'};
-
-  @override
-  Map<String, dynamic> driverConfig(Map<String, dynamic> config) =>
-      {...config, 'injectedByType': 'yes'};
-  @override
-  Map<String, dynamic> get defaultConfig => const {};
-  @override
-  List<Map<String, dynamic>> configElements() => const [];
-  @override
-  Map<String, dynamic> targetFor(Map<String, dynamic> config) => {'host': config['host']};
-  @override
-  String describeTarget(Map<String, dynamic> config) => '${config['host']}';
-  @override
-  String? validate(Map<String, dynamic> config) => null;
-  @override
-  String? validateField(String key, dynamic value, Map<String, dynamic> config) => null;
-}
+EquipmentType _fakeType(EquipmentDriver driver, EquipmentTransport transport) => EquipmentType(
+      key: 'fake-type',
+      category: kCategoryTransceiver,
+      name: () => 'Fake Radio',
+      driver: driver,
+      transport: transport,
+      // Exercises the same "the pairing hands the driver something the user
+      // never typed" path `Ic705NetworkType` uses for its controller
+      // address — here just a marker the test can look for.
+      overrides: const {'injectedByType': 'yes'},
+    );
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -206,7 +185,7 @@ void main() {
       settings,
       radio: radio,
       registry: EquipmentRegistry(
-        types: [_FakeType(driver)],
+        types: [_fakeType(driver, transport)],
         transports: {'fake': transport},
       ),
     );
@@ -627,7 +606,7 @@ void main() {
       final service = CatService(
         SettingsService(await SharedPreferences.getInstance()),
         radio: radio,
-        registry: EquipmentRegistry(types: [_FakeType(driver)], transports: {'fake': gated}),
+        registry: EquipmentRegistry(types: [_fakeType(driver, gated)], transports: {'fake': gated}),
         // Otherwise every one of these tests sleeps through the real 3s
         // gap between retries, for real, three times over.
         reconnectDelay: Duration.zero,
@@ -734,7 +713,7 @@ void main() {
       final service = CatService(
         SettingsService(await SharedPreferences.getInstance()),
         radio: radio,
-        registry: EquipmentRegistry(types: [_FakeType(driver)], transports: {'fake': gated}),
+        registry: EquipmentRegistry(types: [_fakeType(driver, gated)], transports: {'fake': gated}),
         // Otherwise every one of these tests sleeps through the real 3s
         // gap between retries, for real, three times over.
         reconnectDelay: Duration.zero,
@@ -772,7 +751,7 @@ void main() {
       final service = CatService(
         SettingsService(await SharedPreferences.getInstance()),
         radio: radio,
-        registry: EquipmentRegistry(types: [_FakeType(driver)], transports: {'fake': gated}),
+        registry: EquipmentRegistry(types: [_fakeType(driver, gated)], transports: {'fake': gated}),
         // Short, but not zero: this test needs the gap between retries to
         // exist at all — that gap is what the Connect lands in.
         reconnectDelay: const Duration(milliseconds: 500),
@@ -802,7 +781,7 @@ void main() {
         SettingsService(await SharedPreferences.getInstance()),
         radio: radio,
         registry: EquipmentRegistry(
-          types: [_FakeType(driver)],
+          types: [_fakeType(driver, _RefusingTransport())],
           transports: {'fake': _RefusingTransport()},
         ),
         reconnectDelay: Duration.zero,

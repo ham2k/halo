@@ -390,8 +390,9 @@ class CatService extends ChangeNotifier {
     _discoveryError = null;
 
     for (final type in registry.types) {
-      if (type is! EquipmentDiscoverer) continue;
-      _discoverySubscriptions.add((type as EquipmentDiscoverer).discover().listen(
+      final stream = type.discover();
+      if (stream == null) continue;
+      _discoverySubscriptions.add(stream.listen(
         (found) {
           _discovered[_discoveryKey(found)] = found;
           notifyListeners();

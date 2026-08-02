@@ -376,7 +376,7 @@ void main() {
   });
 
   group('the equipment type', () {
-    const type = Ic705NetworkType();
+    final type = ic705NetworkType;
 
     test('rides the Icom network transport', () {
       expect(type.transportKey, IcomNetworkTransport.transportKey);
@@ -401,6 +401,15 @@ void main() {
       expect(type.validate({'host': '10.0.0.1', 'username': 'op'}), isNull);
       expect(type.validate({'host': '', 'username': 'op'}), isNotNull);
       expect(type.validate({'host': '10.0.0.1', 'username': ''}), isNotNull);
+    });
+
+    test('the list row shows only the host — A4 is a network protocol constant, not the operator\'s to see', () {
+      // Unlike icomCivSerialType (where the address really is the user's
+      // setting, and belongs in the row — see cat_icom_civ_test.dart), this
+      // pairing hardcodes civAddress via `overrides`. A CI-V suffix here
+      // would be reporting a fixed RS-BA1 fact back to the operator as if
+      // it were something they configured.
+      expect(type.describeTarget({'host': '10.0.0.9', 'username': 'op'}), '10.0.0.9');
     });
   });
 
@@ -542,7 +551,7 @@ void main() {
     // The failure mode is a handshake that succeeds and a login that is
     // ignored. Every remedy is something the operator does at the radio or to
     // another program, which makes the editor the place to say it.
-    const type = Ic705NetworkType();
+    final type = ic705NetworkType;
     final note = type.configElements().firstWhere((e) => e['type'] == 'markdown');
     final text = note['text'] as String;
     expect(text, contains('wfview'), reason: 'the other client that holds the one session');
@@ -599,13 +608,13 @@ void main() {
 
   test('the registry offers all four types over three transports', () {
     final registry = EquipmentRegistry();
-    expect(registry.typeFor('ic705-network'), isA<Ic705NetworkType>());
+    expect(registry.typeFor('ic705-network'), same(ic705NetworkType));
     expect(registry.types, hasLength(4));
     expect(registry.transports.keys, containsAll(['tcp', 'serial', 'icom-network']));
   });
 
   group('what the driver is told, versus what the user typed', () {
-    const type = Ic705NetworkType();
+    final type = ic705NetworkType;
 
     test('the network controller address is injected, not asked for', () {
       // 0xE1, not the 0xE0 a PC uses on a CI-V wire. The bench tool that
@@ -638,8 +647,8 @@ void main() {
       // A manager that asked "is this the IC-705 type?" would write the
       // NEXT type's password into the plain prefs blob, silently.
       expect(type.secretFields, {'password'});
-      expect(const IcomCivSerialType().secretFields, isEmpty);
-      expect(const Ft891SerialType().secretFields, isEmpty);
+      expect(icomCivSerialType.secretFields, isEmpty);
+      expect(ft891SerialType.secretFields, isEmpty);
     });
   });
 }

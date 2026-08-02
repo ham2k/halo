@@ -113,4 +113,24 @@ void main() {
       throwsA(isA<SocketException>()),
     );
   });
+
+  group('a malformed stored port', () {
+    // This transport is shared by any TCP radio now, not a single one it
+    // could assume a sensible default for — so a value that fails to parse
+    // falls back to 0, an obviously-broken port `validate()` rejects,
+    // rather than a plausible-looking one that would silently pass it.
+
+    test('targetFor falls back to port 0, not a guessed default', () {
+      expect(const TcpTransport().targetFor({'host': 'radio.local', 'port': 'garbage'}),
+          {'host': 'radio.local', 'port': 0});
+    });
+
+    test('describeTarget reflects the same fallback', () {
+      expect(const TcpTransport().describeTarget({'host': 'radio.local', 'port': 'garbage'}), 'radio.local:0');
+    });
+
+    test('validateField rejects the fallen-back port', () {
+      expect(const TcpTransport().validateField('port', 'garbage', const {}), isNotNull);
+    });
+  });
 }

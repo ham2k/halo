@@ -39,6 +39,7 @@ import 'package:flutter/foundation.dart';
 
 import '../transport.dart';
 import 'icom_network_protocol.dart';
+import 'icom_network_transport_config.dart';
 
 const _handshakeTimeout = Duration(seconds: 3);
 
@@ -91,7 +92,7 @@ const _reauthInterval = Duration(seconds: 30);
 /// which is far longer than the radio waits before giving up on a packet.
 const _sentBufferSize = 128;
 
-class IcomNetworkTransport implements EquipmentTransport {
+class IcomNetworkTransport extends EquipmentTransport with IcomNetworkTransportConfig {
   const IcomNetworkTransport();
 
   static const transportKey = 'icom-network';

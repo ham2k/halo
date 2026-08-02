@@ -60,13 +60,61 @@ abstract class EquipmentConnection {
 }
 
 abstract class EquipmentTransport {
+  const EquipmentTransport();
+
   /// Stable id referenced by [EquipmentType.transportKey], e.g. `tcp`.
   String get key;
 
-  /// Opens a connection to [target] — the map an [EquipmentType] builds
-  /// from the user's configuration.
+  /// Opens a connection to [target] — this transport's own [targetFor]
+  /// output.
   ///
   /// Throws [CatCancelledException] if [cancel] fires first; any other
   /// throw is a real connection failure.
   Future<EquipmentConnection> connect(Map<String, dynamic> target, {required CatCancelToken cancel});
+
+  /// Config keys whose values are credentials, kept in the platform
+  /// keychain instead of the plain config blob. Empty for a transport that
+  /// needs none — most do.
+  Set<String> get secretFields => const {};
+
+  /// FormRenderer elements for this transport's own connection parameters
+  /// (host, port, serial port picker, baud rate…). Nothing device-specific
+  /// — that's [EquipmentDriver.configElements].
+  ///
+  /// [overrides] and [restrictions] come from the equipment definition,
+  /// keyed by field key. A key this transport doesn't recognize is
+  /// silently ignored — it belongs to the driver instead. [overrides]
+  /// means "hardcode this value and don't show the field at all";
+  /// [restrictions] means "narrow what the field would otherwise offer"
+  /// (e.g. a subset of baud rates). Prefill defaults aren't a parameter
+  /// here — [EquipmentType.defaultConfig] feeds the form's initial state
+  /// directly, without either owner needing to know about it.
+  List<Map<String, dynamic>> configElements({
+    Map<String, dynamic> overrides = const {},
+    Map<String, dynamic> restrictions = const {},
+  }) =>
+      const [];
+
+  /// Per-field version, for the editor. Null for a key this transport
+  /// doesn't own.
+  String? validateField(String key, dynamic value, Map<String, dynamic> config) => null;
+
+  /// Every config key this transport reads, whether or not it shows a
+  /// field for it. Defaults to exactly the keys [configElements] declares
+  /// as fields — override this too if a key is read straight out of the
+  /// config (never shown, never optional) rather than collected through a
+  /// field, so a typo'd [EquipmentType.overrides]/`restrictions` key still
+  /// gets caught instead of silently doing nothing.
+  Set<String> get recognizedConfigKeys =>
+      configElements().where((e) => e['type'] == 'field').map((e) => e['key'] as String).toSet();
+
+  /// Turns the merged config (submitted values plus the definition's
+  /// [EquipmentType.overrides]) into what [connect] needs. Identity by
+  /// default — a transport with nothing to reshape just uses the config
+  /// as-is.
+  Map<String, dynamic> targetFor(Map<String, dynamic> config) => config;
+
+  /// A one-line "where is it" fragment for the equipment list — e.g.
+  /// `192.168.1.5:4992` or `/dev/cu.usbserial @ 4800`. Empty by default.
+  String describeTarget(Map<String, dynamic> config) => '';
 }

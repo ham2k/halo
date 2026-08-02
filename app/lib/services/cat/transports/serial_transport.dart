@@ -5,4 +5,5 @@
 // built-in or external USB-to-serial bridge. Same conditional-export shape
 // as tcp_transport.dart; the web build has no ports of any kind.
 
+export 'serial_transport_config.dart';
 export 'serial_transport_stub.dart' if (dart.library.io) 'serial_transport_io.dart';

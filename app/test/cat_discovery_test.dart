@@ -17,6 +17,7 @@ import 'package:ham2k_logger/services/cat/drivers/flexradio_driver.dart';
 import 'package:ham2k_logger/services/cat/equipment.dart';
 import 'package:ham2k_logger/services/cat/equipment_registry.dart';
 import 'package:ham2k_logger/services/cat/cat_service.dart';
+import 'package:ham2k_logger/services/cat/transport.dart';
 import 'package:ham2k_logger/services/cat/transports/udp_broadcast.dart';
 import 'package:ham2k_logger/services/settings_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -167,7 +168,7 @@ void main() {
       cat = CatService(
         SettingsService(await SharedPreferences.getInstance()),
         registry: EquipmentRegistry(
-          types: [_FakeDiscoverableType(announcements.stream)],
+          types: [_fakeDiscoverableType(announcements.stream)],
           transports: const {},
         ),
       );
@@ -278,34 +279,50 @@ void main() {
 
 /// A type that announces itself on a stream the test controls, so the
 /// service's dedupe and filtering can be exercised without a socket.
-class _FakeDiscoverableType extends EquipmentType implements EquipmentDiscoverer {
+EquipmentType _fakeDiscoverableType(Stream<DiscoveredEquipment> announcements) => EquipmentType(
+      key: 'fake-discoverable',
+      category: kCategoryTransceiver,
+      name: () => 'Fake Discoverable Radio',
+      driver: const _NeverConnectsDriver(),
+      transport: const _NeverConnectsTransport(),
+      discoverer: _FakeDiscoverer(announcements),
+    );
+
+class _FakeDiscoverer implements EquipmentDiscoverer {
   final Stream<DiscoveredEquipment> announcements;
 
-  _FakeDiscoverableType(this.announcements);
+  const _FakeDiscoverer(this.announcements);
 
   @override
   Stream<DiscoveredEquipment> discover() => announcements;
+}
+
+class _NeverConnectsDriver extends EquipmentDriver {
+  const _NeverConnectsDriver();
 
   @override
-  String get key => 'fake-discoverable';
+  String get key => 'fake';
 
   @override
-  String get category => kCategoryTransceiver;
+  String get name => 'fake';
 
   @override
-  String get name => 'Fake Discoverable Radio';
+  bool get hardwareVerified => false;
 
   @override
-  String get transportKey => 'fake';
+  EquipmentSession createSession(EquipmentSink sink, Map<String, dynamic> config) =>
+      throw UnimplementedError('discovery never connects');
+}
+
+class _NeverConnectsTransport extends EquipmentTransport {
+  const _NeverConnectsTransport();
 
   @override
-  EquipmentDriver get driver => throw UnimplementedError('discovery never connects');
+  String get key => 'fake';
 
   @override
-  Map<String, dynamic> get defaultConfig => const {};
-
-  @override
-  List<Map<String, dynamic>> configElements() => const [];
+  Future<EquipmentConnection> connect(Map<String, dynamic> target, {required CatCancelToken cancel}) =>
+      throw UnimplementedError('discovery never connects');
 
   @override
   Map<String, dynamic> targetFor(Map<String, dynamic> config) =>
@@ -313,10 +330,4 @@ class _FakeDiscoverableType extends EquipmentType implements EquipmentDiscoverer
 
   @override
   String describeTarget(Map<String, dynamic> config) => '${config['host']}:${config['port']}';
-
-  @override
-  String? validate(Map<String, dynamic> config) => null;
-
-  @override
-  String? validateField(String key, dynamic value, Map<String, dynamic> config) => null;
 }

@@ -161,7 +161,7 @@ void main() {
   });
 
   group('the equipment type', () {
-    const type = IcomCivSerialType();
+    final type = icomCivSerialType;
 
     test('rides the serial transport that already shipped — no new transport code', () {
       expect(type.transportKey, SerialTransport.transportKey);
@@ -203,7 +203,7 @@ void main() {
 
     test('the registry offers it alongside the others', () {
       final registry = EquipmentRegistry();
-      expect(registry.typeFor('icom-civ-serial'), isA<IcomCivSerialType>());
+      expect(registry.typeFor('icom-civ-serial'), same(icomCivSerialType));
       // The CI-V driver is shared between the serial and WiFi types — the
       // transport/driver split paying off directly.
       expect(registry.typeFor('ic705-network')?.driver.key, 'icom-civ');

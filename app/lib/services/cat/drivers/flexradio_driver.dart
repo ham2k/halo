@@ -17,8 +17,10 @@ import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
 
+import '../discovery.dart';
 import '../driver.dart';
 import '../equipment.dart';
+import '../transports/udp_broadcast.dart';
 
 /// Belt-and-suspenders against a subscription silently going stale — a
 /// dropped WiFi/NAT mapping or a radio-side hiccup produces no error to
@@ -30,7 +32,7 @@ const _resyncInterval = Duration(seconds: 60);
 const _lineFeed = 0x0a;
 const _carriageReturn = 0x0d;
 
-class FlexRadioDriver implements EquipmentDriver {
+class FlexRadioDriver extends EquipmentDriver {
   const FlexRadioDriver();
 
   static const defaultPort = 4992;
@@ -47,6 +49,34 @@ class FlexRadioDriver implements EquipmentDriver {
   @override
   EquipmentSession createSession(EquipmentSink sink, Map<String, dynamic> config) =>
       FlexRadioSession(sink);
+}
+
+/// A FlexRadio announces itself over UDP broadcast on its default port —
+/// found automatically on the same subnet, and typed in manually otherwise
+/// (behind a router that doesn't forward broadcasts, or on another subnet).
+///
+/// A pairing (an [EquipmentType]) wires this in as its `discoverer` rather
+/// than the driver implementing [EquipmentDiscoverer] itself: discovery is
+/// protocol knowledge tied to one specific transport (this radio's
+/// broadcast, not a generic "any FlexRadio-driver pairing" capability).
+class FlexRadioDiscoverer implements EquipmentDiscoverer {
+  final String typeKey;
+
+  const FlexRadioDiscoverer({required this.typeKey});
+
+  @override
+  Stream<DiscoveredEquipment> discover() =>
+      udpBroadcastDatagrams(port: FlexRadioDriver.defaultPort).map(parseFlexDiscovery).where((found) => found != null).map(
+            (found) => DiscoveredEquipment(
+              typeKey: typeKey,
+              // Serial when the radio offers one, so a radio that moves to a
+              // new address updates its entry instead of appearing twice.
+              id: found!.serial ?? '${found.host}:${found.port}',
+              name: found.nickname ?? found.model,
+              detail: [found.model, if (found.version != null) 'v${found.version}', found.host].join(' · '),
+              config: {'host': found.host, 'port': found.port},
+            ),
+          );
 }
 
 /// What a FlexRadio says about itself when it announces on the network.
