@@ -8,7 +8,7 @@
 // single release cutter (it replaced the old scripts/release.sh).
 //
 //   dart run halo_build_tools:halo-ops status
-//   dart run halo_build_tools:halo-ops release [--edition next] [--dry-run] [--yes]
+//   dart run halo_build_tools:halo-ops release [--edition next] [--min-build N] [--dry-run] [--yes]
 
 import 'dart:convert';
 import 'dart:io';
@@ -109,6 +109,11 @@ Future<void> _release(List<String> args, {required _Out out, required bool json}
   final dryRun = rest.remove('--dry-run') || rest.remove('-n');
   final yes = rest.remove('--yes') || rest.remove('-y');
   final editionName = _takeValue(rest, '--edition');
+  final minBuildStr = _takeValue(rest, '--min-build');
+  final minBuild = minBuildStr == null ? null : int.tryParse(minBuildStr);
+  if (minBuildStr != null && minBuild == null) {
+    throw _CliError("--min-build must be a positive integer (got '$minBuildStr')");
+  }
   if (rest.isNotEmpty) throw _CliError("unexpected argument '${rest.first}'");
 
   final root = await _repoRoot();
@@ -134,7 +139,12 @@ Future<void> _release(List<String> args, {required _Out out, required bool json}
   final currentBuild = parsed.build;
   final latest = latestRelease(tags);
   // Highest shipped build + 1; seed from the file when there are no tags yet.
-  final nextBuild = latest == null ? currentBuild : latest.build + 1;
+  final ledgerBuild = latest == null ? currentBuild : latest.build + 1;
+  // --min-build is a floor, not a target: something outside the tag ledger
+  // (an ad-hoc CI test run, a store's own version-code history) may have
+  // already consumed build numbers the ledger doesn't know about. It only
+  // ever raises the plan, never lowers it below what the ledger computed.
+  final nextBuild = minBuild == null ? ledgerBuild : (minBuild > ledgerBuild ? minBuild : ledgerBuild);
   if (nextBuild > kBuildCap) throw _CliError('next build $nextBuild exceeds the $kBuildCap cap');
   final tagName = parsed.version.releaseTagName(nextBuild);
   final message = parsed.version.releaseMessage(nextBuild);
@@ -171,7 +181,12 @@ Future<void> _release(List<String> args, {required _Out out, required bool json}
   out.blank();
   out.field('Branch', branch);
   out.field('Edition', edition.name + (editionName == null ? '  (from branch)' : '  (--edition)'));
-  out.field('Build', '$currentBuild → $nextBuild${nextBuild == currentBuild ? '  (unchanged)' : ''}');
+  out.field(
+    'Build',
+    '$currentBuild → $nextBuild'
+    '${nextBuild == currentBuild ? '  (unchanged)' : ''}'
+    '${minBuild != null && nextBuild == minBuild && minBuild > ledgerBuild ? '  (--min-build, ledger alone would give $ledgerBuild)' : ''}',
+  );
   out.field('Version', parsed.version.value);
   out.field('Tag', tagName);
   out.field('Message', message);
@@ -913,6 +928,11 @@ Commands:
 
 Release options:
   --edition <dev|next|prod>   Override the branch→edition mapping.
+  --min-build <n>             Floor for the next build number — raises the
+                               ledger's computed value if it's lower, never
+                               lowers it. For build numbers a store or an
+                               ad-hoc CI run already consumed outside the tag
+                               ledger (e.g. a manual Google Play test upload).
   --dry-run, -n               Show the plan; don't write/commit/tag/push.
   --yes, -y                   Skip the confirmation prompt.
 
