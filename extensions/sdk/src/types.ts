@@ -1358,6 +1358,18 @@ export interface FormField {
   /// platform EXCEPT the listed ones. Mixing the two forms is invalid —
   /// treated as if `environment` were absent. Omit for "every platform".
   environment?: string | string[]
+  /// Only meaningful within a settingsPanel. Opts this field into a
+  /// target-scoped settings modal elsewhere in the app (e.g. the logging
+  /// view's tune-icon dialog uses `target: 'logging'`) — see
+  /// docs/extensions/settings.md's "Settings targets". A single target key,
+  /// or a list when the field should surface under more than one. A
+  /// `'<target>-extended'` target (e.g. `'logging-extended'`) is the same
+  /// idea, but starts hidden behind that modal's own "show more settings"
+  /// disclosure — for a field related to the target but niche enough it
+  /// shouldn't clutter the default view. Omitting `target` doesn't hide the
+  /// field from anywhere it already appears (Common Preferences, All
+  /// Settings) — it just means no target-scoped modal picks it up.
+  target?: string | string[]
 }
 
 export interface FormHeader {
@@ -1408,6 +1420,8 @@ export interface FormActionElement {
   common?: boolean
   /// Settings-panel-only; see FormField.environment.
   environment?: string | string[]
+  /// Settings-panel-only; see FormField.target.
+  target?: string | string[]
 }
 
 /// A row that opens an external URL (rendered as an icon-row-styled tile

@@ -367,6 +367,43 @@ elements. `environment`, by contrast, applies to every element type,
 headers included — a Tier 2 panel with a platform-specific sub-section can
 gate its own header the same way it gates the fields under it.
 
+## Settings targets
+
+A third element attribute, **`target`**, opts a field into a target-scoped
+settings modal somewhere else in the app — a curated view built around one
+concern rather than one owning group/panel. The logging view's tune icon is
+the first one: it collects every declared field (core- or
+extension-declared) tagged `target: 'logging'`, wherever it's declared, into
+one dialog.
+
+```ts
+{ type: "field", fieldType: "checkbox", key: "showBearing", label: "Show Bearing",
+  value: false, target: "logging" }
+```
+
+`target` is a single target key, or an array when the same field should
+surface under more than one. A `'<target>-extended'` target (e.g.
+`'logging-extended'`) is the same idea, but starts hidden behind that
+dialog's own "show more settings" disclosure — for a field related to the
+target but niche enough it shouldn't clutter the default view:
+
+```ts
+{ type: "field", fieldType: "checkbox", key: "leftieMode", label: "Leftie Mode",
+  value: false, target: "logging-extended" }
+```
+
+Omitting `target` doesn't hide a field from anywhere it already appears —
+Common Preferences and All Settings are unaffected either way. It's purely
+additive: an extra place a field can be reached from, on top of wherever
+`common`/`environment` already put it.
+
+`type: "field"` (including `fieldType: "account"`) and `type: "action"`
+elements can both set `target` and both appear in a target-scoped modal —
+an action's method dispatches through the same extension host call the
+full settings screens use, and an account field's Manage/Connect button
+opens that account's own standalone dialog, exactly as it would from All
+Settings.
+
 ---
 
 ## Relationship to `AccountHook`

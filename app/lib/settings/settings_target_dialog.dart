@@ -10,10 +10,28 @@
 // here is logging-specific — the title and any Actions-section items are
 // entirely the caller's to decide.
 //
-// Scans every group in [SettingsRegistry] (core groups only — extension
-// settingsPanels aren't included, since they're reached through a separate
-// registry; an extension field wanting a target-scoped modal is a
-// follow-up), so a target can span more than one group if it needs to.
+// Scans every group in [SettingsRegistry] AND every extension settingsPanel
+// (a separate registry, reached through [ExtensionService]), so a target can
+// span core groups and extensions alike. Extension-sourced `field` and
+// `action` elements get their rendered `key` namespaced `<panelKey>.<key>`
+// (mirroring the `<panelKey>.<fieldKey>` persistence convention
+// docs/extensions/settings.md already documents) so two panels sharing a
+// key — or an extension element colliding with a core one — can never
+// misroute a commit or an action dispatch; core-group elements stay
+// bare-keyed, unchanged from before this file scanned extensions too.
+// `type: 'action'` elements and `fieldType: 'account'` fields are both
+// wired up (onAction dispatches through [ExtensionService.runSettingsAction];
+// onManageAccount reuses [showAccountDialogByKey], reloading once its pane
+// closes so a status field this dialog shows doesn't go stale) — the same
+// as the full All Settings screen, just reached from a curated target
+// instead of a whole panel. Every extension-facing call receives `state`
+// scoped to that element's OWN panel (bare field keys, stripped of the
+// `<panelKey>.` prefix and of every other panel's/core's keys) — never
+// this dialog's combined, cross-panel `_values` map, which an extension's
+// hook has no way to make sense of. A caller whose target includes a
+// `type: 'action'` element needs a Scaffold ancestor (for the action's
+// result-banner SnackBar) — same requirement the full All Settings screen
+// already has, just not one this file can enforce on the caller's behalf.
 
 import 'package:flutter/material.dart';
 import 'package:halo_widgets/halo_widgets.dart';
@@ -22,6 +40,7 @@ import '../i18n/strings.g.dart';
 import '../main.dart';
 import '../services/link_opener.dart';
 import '../tools/form_chrome_labels.dart';
+import '../views/settings_view.dart' show showAccountDialogByKey;
 import 'settings_registry.dart';
 
 /// One row in the dialog's "Actions" section — caller-supplied, never a
@@ -105,20 +124,50 @@ class _TargetSettingsForm extends StatefulWidget {
   State<_TargetSettingsForm> createState() => _TargetSettingsFormState();
 }
 
+/// Where an extension-sourced field routes on validate/commit — [field] is
+/// the ORIGINAL (bare-keyed) element map, as declared by the extension,
+/// distinct from the namespaced copy actually handed to FormRenderer (see
+/// this file's header comment).
+typedef _ExtensionFieldRoute = ({String hookKey, String panelKey, String kind, String fieldKey, Map<String, dynamic> field});
+
+/// Where an extension-sourced `type: 'action'` element dispatches — no
+/// `kind` needed, unlike [_ExtensionFieldRoute]: [ExtensionService.runSettingsAction]
+/// always goes through the extension host regardless of panel tier.
+typedef _ExtensionActionRoute = ({String hookKey, String panelKey});
+
 class _TargetSettingsFormState extends State<_TargetSettingsForm> {
   List<Map<String, dynamic>>? _baseElements;
   List<Map<String, dynamic>>? _extendedElements;
   final _groupForKey = <String, SettingsGroup>{};
+  final _extensionFieldForKey = <String, _ExtensionFieldRoute>{};
+  final _extensionActionForKey = <String, _ExtensionActionRoute>{};
   bool _showExtended = false;
   bool _reloading = false;
   bool _reloadPending = false;
+
+  // FormRenderer calls the validator and onChange separately for the same
+  // (fieldKey, value) on every edit — cache the one real validate call so an
+  // extension field's edit doesn't cost two bridge round trips, or risk the
+  // two calls disagreeing. Same pattern as _ExtensionSettingsPanel's own
+  // _validate in settings_view.dart.
+  String? _lastValidatedFieldKey;
+  dynamic _lastValidatedValue;
+  String? _lastValidationError;
 
   List<SettingsGroup> get _groups => widget.services.settingsRegistry.groups;
 
   // Several groups share the same underlying Listenable (SettingsService
   // itself, in every core group's case) — a Set so each distinct one is
   // subscribed once, not once per group that happens to expose it.
-  List<Listenable> get _listenables => {for (final g in _groups) if (g.listenable != null) g.listenable!}.toList();
+  // runtimeGeneration ticks on a restart (crash recovery, the user
+  // enabling/disabling an extension) — without it, a dialog left open
+  // across one would keep showing extension panel data from the runtime
+  // generation it was first built with.
+  List<Listenable> get _listenables => {
+    for (final g in _groups)
+      if (g.listenable != null) g.listenable!,
+    widget.services.extensions.runtimeGeneration,
+  }.toList();
 
   @override
   void initState() {
@@ -149,6 +198,8 @@ class _TargetSettingsFormState extends State<_TargetSettingsForm> {
         final base = <Map<String, dynamic>>[];
         final extended = <Map<String, dynamic>>[];
         final groupForKey = <String, SettingsGroup>{};
+        final extensionFieldForKey = <String, _ExtensionFieldRoute>{};
+        final extensionActionForKey = <String, _ExtensionActionRoute>{};
         for (final group in _groups) {
           final resolved = await widget.services.systemLists.resolveInElements(await group.buildElements());
           for (final el in filterElementsForEnvironment(resolved)) {
@@ -162,6 +213,39 @@ class _TargetSettingsFormState extends State<_TargetSettingsForm> {
             }
           }
         }
+        for (final panel in await widget.services.extensions.getSettingsPanels()) {
+          final hookKey = panel['hookKey'] as String?;
+          final panelKey = panel['panelKey'] as String?;
+          final kind = panel['kind'] as String?;
+          if (hookKey == null || panelKey == null || kind == null) continue;
+          final definition = await widget.services.extensions.getSettingsPanelDefinition(
+            hookKey: hookKey,
+            panelKey: panelKey,
+            kind: kind,
+          );
+          final rawElements = (definition?['elements'] as List?)?.cast<Map<String, dynamic>>() ?? const [];
+          final resolved = await widget.services.systemLists.resolveInElements(rawElements);
+          for (final el in filterElementsForEnvironment(resolved)) {
+            final type = el['type'];
+            if (type != 'field' && type != 'action') continue;
+            final elementKey = el['key'];
+            if (elementKey is! String) continue;
+            final inBase = elementMatchesTarget(el, widget.target);
+            final inExtended = !inBase && elementMatchesTarget(el, '${widget.target}-extended');
+            if (!inBase && !inExtended) continue;
+            // Namespaced so it can never collide with a core group's bare
+            // key or another panel's same-named field/action — see header
+            // comment. (An `account`-typed field is still `type: 'field'`;
+            // it's namespaced and routed the same as any other field.)
+            final namespacedKey = '$panelKey.$elementKey';
+            (inBase ? base : extended).add({...el, 'key': namespacedKey});
+            if (type == 'field') {
+              extensionFieldForKey[namespacedKey] = (hookKey: hookKey, panelKey: panelKey, kind: kind, fieldKey: elementKey, field: el);
+            } else {
+              extensionActionForKey[namespacedKey] = (hookKey: hookKey, panelKey: panelKey);
+            }
+          }
+        }
         if (mounted) {
           setState(() {
             _baseElements = base;
@@ -169,6 +253,12 @@ class _TargetSettingsFormState extends State<_TargetSettingsForm> {
             _groupForKey
               ..clear()
               ..addAll(groupForKey);
+            _extensionFieldForKey
+              ..clear()
+              ..addAll(extensionFieldForKey);
+            _extensionActionForKey
+              ..clear()
+              ..addAll(extensionActionForKey);
           });
         }
       } while (_reloadPending && mounted);
@@ -177,11 +267,96 @@ class _TargetSettingsFormState extends State<_TargetSettingsForm> {
     }
   }
 
+  /// An extension hook's `state` argument is documented (docs/extensions/
+  /// settings.md) as that panel's own bare-keyed field values — never this
+  /// dialog's combined `_values` map, which mixes bare core keys with every
+  /// scanned panel's `<panelKey>.`-namespaced ones. Strips the prefix and
+  /// drops everything that isn't [panelKey]'s own, so a hook sees exactly
+  /// what a single-panel form (e.g. [_ExtensionSettingsPanel] in
+  /// settings_view.dart) would give it.
+  Map<String, dynamic> _panelState(Map<String, dynamic> state, String panelKey) {
+    final prefix = '$panelKey.';
+    return {
+      for (final entry in state.entries)
+        if (entry.key.startsWith(prefix)) entry.key.substring(prefix.length): entry.value,
+    };
+  }
+
+  Future<String?> _validate(String fieldKey, dynamic value, Map<String, dynamic> state) async {
+    final route = _extensionFieldForKey[fieldKey];
+    if (route == null) return null; // core-group fields: no validation today.
+    if (_lastValidatedFieldKey == fieldKey && _lastValidatedValue == value) return _lastValidationError;
+    final error = await widget.services.extensions.validateSettingsField(
+      kind: route.kind,
+      hookKey: route.hookKey,
+      panelKey: route.panelKey,
+      field: route.field,
+      fieldKey: route.fieldKey,
+      value: value,
+      state: _panelState(state, route.panelKey),
+    );
+    _lastValidatedFieldKey = fieldKey;
+    _lastValidatedValue = value;
+    _lastValidationError = error;
+    return error;
+  }
+
   Future<Map<String, dynamic>?> _autosave(String fieldKey, dynamic value, Map<String, dynamic> state) async {
     final group = _groupForKey[fieldKey];
-    if (group != null) await group.commit(fieldKey, value);
+    if (group != null) {
+      await group.commit(fieldKey, value);
+      if (mounted) await _load();
+      return null;
+    }
+    final route = _extensionFieldForKey[fieldKey];
+    if (route != null) {
+      if (await _validate(fieldKey, value, state) != null) return null;
+      final scopedState = _panelState(state, route.panelKey);
+      final committedValue = route.kind == 'dynamic'
+          ? await widget.services.extensions.transformSettingsField(
+              hookKey: route.hookKey,
+              panelKey: route.panelKey,
+              fieldKey: route.fieldKey,
+              value: value,
+              state: scopedState,
+            )
+          : value;
+      await widget.services.extensions.commitSettingsFieldValue(
+        kind: route.kind,
+        hookKey: route.hookKey,
+        panelKey: route.panelKey,
+        fieldKey: route.fieldKey,
+        value: committedValue,
+        state: scopedState,
+        isSecret: route.field['fieldType'] == 'secret',
+      );
+    }
     if (mounted) await _load();
     return null;
+  }
+
+  Future<String?> _onAction(String actionKey, String method, Map<String, dynamic> state) {
+    final route = _extensionActionForKey[actionKey];
+    if (route == null) return Future.value(null); // core groups declare no actions today.
+    return widget.services.extensions.runSettingsAction(
+      hookKey: route.hookKey,
+      panelKey: route.panelKey,
+      method: method,
+      state: _panelState(state, route.panelKey),
+    );
+  }
+
+  // showAccountDialogByKey's own account pane has no way to notify this
+  // dialog when it saves (unlike _ExtensionSettingsPanel's _manageAccount,
+  // which passes itself an onSaved callback) — reload unconditionally once
+  // it closes, for any reason, so a status field this dialog is showing
+  // ("Not Connected"/"Connected as X") doesn't go stale after Connect/
+  // Disconnect. Harmless on a plain cancel: _load() re-fetching unchanged
+  // data is the same no-op it already is after every core-group commit.
+  void _onManageAccount(String accountKey, String? subkey) {
+    showAccountDialogByKey(widget.services, accountKey, subkey: subkey).then((_) {
+      if (mounted) _load();
+    });
   }
 
   Widget _buildFormRenderer(List<Map<String, dynamic>> elements) => FormRenderer(
@@ -189,9 +364,12 @@ class _TargetSettingsFormState extends State<_TargetSettingsForm> {
     initialState: const {},
     showActions: false,
     showTitle: false,
+    validator: _validate,
     developerMode: widget.services.settings.developerMode,
     labels: formRendererLabelsFor(context.t),
     onChange: _autosave,
+    onAction: _onAction,
+    onManageAccount: _onManageAccount,
     onOpenLink: openExternalUrl,
     onSubmit: (_) {},
     onCancel: () {},
