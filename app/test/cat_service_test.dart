@@ -319,6 +319,97 @@ void main() {
     });
   });
 
+  group('the Main VFO is stored, never derived (HALO-50)', () {
+    test('None survives a relaunch instead of jumping to a rig', () async {
+      // The report, verbatim: "I can select None from the drop down, but this
+      // choice does not persist. When opening Halo next time, it jumps to one
+      // of the rigs, and fails."
+      await addRadio(host: 'a.local');
+      await cat.addNode(typeKey: 'fake-type', name: 'Right Radio', config: {'host': 'b.local'});
+      await cat.setRadio1(null);
+
+      final reloaded = await makeService();
+      addTearDown(reloaded.dispose);
+      expect(reloaded.radio1, isNull, reason: 'the app picked a rig behind the operator');
+    });
+
+    test('the newest transceiver added takes the VFO', () async {
+      final first = await addRadio(host: 'a.local');
+      expect(cat.radio1, first.uuid, reason: 'a one-radio shack never has to choose');
+
+      final second = await cat.addNode(typeKey: 'fake-type', name: 'Right Radio', config: {'host': 'b.local'});
+      expect(cat.radio1, second.uuid, reason: 'newest wins');
+    });
+
+    test('adding a rig after choosing None still takes the VFO', () async {
+      // Adding equipment is an action; None is a previous state, not a veto on
+      // future ones. This is the deliberate consequence of "newest wins".
+      await addRadio(host: 'a.local');
+      await cat.setRadio1(null);
+
+      final added = await cat.addNode(typeKey: 'fake-type', name: 'Third', config: {'host': 'c.local'});
+
+      expect(cat.radio1, added.uuid);
+    });
+
+    test('removing the designated radio clears it rather than promoting another', () async {
+      // Deliberately NOT promoting: moving the logging panel onto a different
+      // rig immediately after a destructive action is the same class of
+      // surprise this card is about.
+      final a = await addRadio(host: 'a.local');
+      final b = await cat.addNode(typeKey: 'fake-type', name: 'Right Radio', config: {'host': 'b.local'});
+      await cat.setRadio1(a.uuid);
+
+      await cat.removeNode(a.uuid);
+
+      expect(cat.radio1, isNull, reason: 'node ${b.uuid} was silently promoted');
+    });
+
+    test('removing a node that is NOT the designated one leaves it alone', () async {
+      final a = await addRadio(host: 'a.local');
+      final b = await cat.addNode(typeKey: 'fake-type', name: 'Right Radio', config: {'host': 'b.local'});
+      expect(cat.radio1, b.uuid);
+
+      await cat.removeNode(a.uuid);
+
+      expect(cat.radio1, b.uuid);
+    });
+
+    test('a stored radio1 whose node did not load reads as None', () async {
+      // The case the derived version got wrong: _load drops a record it cannot
+      // parse ("a single corrupt record drops that node"), and the old
+      // _ensureRadio1 would then designate some OTHER radio — or, with the
+      // first fix attempt, silently designate nothing while looking like an
+      // explicit None. Stored state has one answer: the choice points at
+      // nothing, so it is None, and the operator can see that and pick.
+      SharedPreferences.setMockInitialValues({
+        'stationEquipment': jsonEncode({
+          'version': 1,
+          'radio1': 'a-uuid-that-is-not-here',
+          'nodes': {
+            'b-uuid': {'typeKey': 'fake-type', 'name': 'Right Radio', 'config': {'host': 'b.local'}},
+          },
+        }),
+      });
+      final loaded = await makeService();
+      addTearDown(loaded.dispose);
+
+      expect(loaded.nodes, hasLength(1), reason: 'the surviving node still loads');
+      expect(loaded.radio1, isNull);
+    });
+
+    test('a station stored with a valid radio1 keeps it', () async {
+      // The migration case: every existing configuration has a radio1 key,
+      // because the old code persisted auto-designated values too.
+      final node = await addRadio();
+      expect(cat.radio1, node.uuid);
+
+      final reloaded = await makeService();
+      addTearDown(reloaded.dispose);
+      expect(reloaded.radio1, node.uuid);
+    });
+  });
+
   group('storage', () {
     test('equipment round-trips through prefs, and live status is not stored', () async {
       final node = await addRadio();

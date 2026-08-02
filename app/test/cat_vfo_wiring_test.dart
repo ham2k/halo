@@ -233,27 +233,43 @@ void main() {
       expect(cat.isRadio1(node.uuid), isTrue);
     });
 
-    test('a second radio does not take over, but can be handed the job', () async {
+    test('the newest transceiver takes the job, and it can be handed back', () async {
+      // This used to assert the OPPOSITE — "a second radio does not take
+      // over" — because radio1 was derived by designating the first
+      // transceiver found and never revisiting it. HALO-50 replaced that with
+      // plain stored state: adding a rig is an action, and the rig you just
+      // set up is the one you almost certainly want to drive the panel.
       final first = await cat.addNode(typeKey: 'fake-type', config: {'host': 'a'});
-      final second = await cat.addNode(typeKey: 'fake-type', config: {'host': 'b'});
       expect(cat.radio1, first.uuid);
 
-      await cat.setRadio1(second.uuid);
-      expect(cat.radio1, second.uuid);
+      final second = await cat.addNode(typeKey: 'fake-type', config: {'host': 'b'});
+      expect(cat.radio1, second.uuid, reason: 'newest wins');
+
+      // And the operator still has the final say.
+      await cat.setRadio1(first.uuid);
+      expect(cat.radio1, first.uuid);
     });
 
-    test('removing the designated radio hands the job to another', () async {
+    test('removing the designated radio clears it instead of promoting another', () async {
+      // Reversed deliberately in HALO-50. This used to promote a survivor, on
+      // the grounds that the logging panel should never be left with nothing
+      // driving it. The counter-argument won: silently moving the panel onto a
+      // DIFFERENT radio immediately after a destructive action is the same
+      // class of surprise as the bug that card reports, and the operator can
+      // see None in the dropdown and pick.
       final first = await cat.addNode(typeKey: 'fake-type', config: {'host': 'a'});
       final second = await cat.addNode(typeKey: 'fake-type', config: {'host': 'b'});
-      expect(cat.radio1, first.uuid);
-
-      await cat.removeNode(first.uuid);
-      // Otherwise the logging panel is left with nothing driving it and no
-      // indication of why.
-      expect(cat.radio1, second.uuid);
+      expect(cat.radio1, second.uuid, reason: 'newest added');
 
       await cat.removeNode(second.uuid);
-      expect(cat.radio1, isNull);
+      expect(cat.radio1, isNull, reason: 'the survivor must not be promoted silently');
+
+      // Removing a node that is NOT designated leaves the choice untouched.
+      await cat.setRadio1(first.uuid);
+      final third = await cat.addNode(typeKey: 'fake-type', config: {'host': 'c'});
+      await cat.setRadio1(first.uuid);
+      await cat.removeNode(third.uuid);
+      expect(cat.radio1, first.uuid);
     });
 
     test('the designation survives a restart', () async {
@@ -288,8 +304,12 @@ void main() {
     });
 
     test('a radio that is not radio1 does not touch the app VFO', () async {
-      await connectedRadio();
+      final designated = await connectedRadio();
       final other = await cat.addNode(typeKey: 'fake-type', config: {'host': 'b'});
+      // Adding it made IT radio1 (newest wins), so hand the job back before
+      // asserting that a non-designated radio is ignored — otherwise this
+      // tests the opposite of what it says.
+      await cat.setRadio1(designated.uuid);
       await cat.connect(other.uuid);
 
       // The second radio's session, reporting while the first is radio1.

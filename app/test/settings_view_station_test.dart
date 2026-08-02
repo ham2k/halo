@@ -88,6 +88,12 @@ void main() {
   testWidgets('configured equipment lists with its address and status', (tester) async {
     await pumpSettings(tester, catEnabled: true, equipment: {
       'version': 1,
+      // radio1 is spelled out because it is now plain stored state — the panel
+      // shows exactly what was saved and nothing designates a radio on load
+      // (HALO-50). A real blob always carries this key once a transceiver
+      // exists, since adding one writes it; a fixture without it describes a
+      // configuration the app never produces.
+      'radio1': 'radio-1',
       'nodes': {
         'radio-1': {
           'typeKey': 'flexradio-tcp',

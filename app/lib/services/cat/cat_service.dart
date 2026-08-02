@@ -112,8 +112,25 @@ class CatService extends ChangeNotifier {
   /// Which node drives the logging panel — `radio1` in data-model.md's
   /// terms, the transceiver whose VFO is `vfoA`.
   ///
-  /// Auto-assigned to the first transceiver added, so the common
-  /// one-radio shack never has to think about it.
+  /// PLAIN STORED STATE. Nothing derives it, and that is the design: three
+  /// simple rules, each triggered by something the operator did.
+  ///
+  ///  * adding a transceiver points it at that transceiver — the newest one
+  ///    wins, so a one-radio shack never has to think about it and a
+  ///    multi-radio one lands on the rig it just set up;
+  ///  * removing the designated node clears it to None, rather than quietly
+  ///    moving the logging panel onto a different radio right after a
+  ///    destructive action;
+  ///  * [setRadio1] is the operator saying so directly, None included.
+  ///
+  /// It used to be re-derived on load by an `_ensureRadio1` helper that
+  /// designated the first transceiver it found whenever radio1 was not valid.
+  /// That is HALO-50: a stored None is indistinguishable from never having
+  /// chosen, so picking None and relaunching handed the VFO back to a rig the
+  /// operator had deliberately freed for another program. Deriving it also
+  /// made a merely-unloadable record look like None, and let the designation
+  /// move between launches if a node's driver key stopped resolving. Storing
+  /// the value outright removes that whole class of question.
   String? _radio1;
 
   String? get radio1 => _radio1;
@@ -135,22 +152,6 @@ class CatService extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Picks a `radio1` when there isn't a valid one — after loading, after
-  /// adding the first transceiver, or after removing the designated node.
-  /// Returns true if it changed.
-  bool _ensureRadio1() {
-    if (_radio1 != null && _nodes.containsKey(_radio1)) return false;
-    for (final node in _nodes.values) {
-      if (registry.typeFor(node.typeKey)?.category == kCategoryTransceiver) {
-        _radio1 = node.uuid;
-        return true;
-      }
-    }
-    final had = _radio1 != null;
-    _radio1 = null;
-    return had;
-  }
-
   EquipmentState stateFor(String uuid) => _runtimes[uuid]?.state ?? const EquipmentState();
 
   /// The type handling [node], or null if it isn't in the catalogue — a
@@ -168,14 +169,27 @@ class CatService extends ChangeNotifier {
         if (node != null) _nodes[node.uuid] = node;
       }
     }
+    // Read, not derived. A stored uuid whose node did not load — a corrupt
+    // record, or one written by a newer build — leaves this None rather than
+    // silently designating some other radio.
     final radio1 = stored['radio1'];
     if (radio1 is String && _nodes.containsKey(radio1)) _radio1 = radio1;
-    _ensureRadio1();
   }
 
   Future<void> _save() => _settings.setStationEquipment({
         'version': _storageVersion,
-        if (_radio1 != null) 'radio1': _radio1,
+        // Always, null included, so the blob states what is true rather than
+        // leaving None to be inferred from a missing key.
+        //
+        // NOT load-bearing, and worth saying so: now that nothing derives
+        // radio1, an absent key and a stored null both read as None, so
+        // omitting it when null would behave identically. Verified by
+        // mutation — reverting this to `if (_radio1 != null)` fails no test,
+        // and that is correct rather than a hole in the tests. It was
+        // load-bearing in the first attempt at this fix, which kept the
+        // derivation and needed the key's presence to mean "the operator has
+        // chosen"; that design is gone.
+        'radio1': _radio1,
         'nodes': {for (final node in _nodes.values) node.uuid: node.toJson()},
       });
 
@@ -192,7 +206,10 @@ class CatService extends ChangeNotifier {
     );
     final stored = await _stashSecrets(node);
     _nodes[stored.uuid] = stored;
-    _ensureRadio1();
+    // The newest transceiver takes the VFO. Only transceivers: radio1 is the
+    // rig whose VFO is vfoA, and the category system exists so a rotator or a
+    // relay board added later cannot take it.
+    if (registry.typeFor(stored.typeKey)?.category == kCategoryTransceiver) _radio1 = stored.uuid;
     await _save();
     notifyListeners();
     return stored;
@@ -280,9 +297,10 @@ class CatService extends ChangeNotifier {
     }
     _nodes.remove(uuid);
     _runtimes.remove(uuid);
-    // Removing the designated radio hands the job to another transceiver
-    // rather than leaving the logging panel with nothing driving it.
-    _ensureRadio1();
+    // Removing the designated radio clears the choice rather than quietly
+    // moving the logging panel onto a different rig immediately after a
+    // destructive action. The dropdown is right there.
+    if (_radio1 == uuid) _radio1 = null;
     await _save();
     notifyListeners();
   }
