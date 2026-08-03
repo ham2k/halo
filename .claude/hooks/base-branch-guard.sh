@@ -14,6 +14,22 @@
 #              refs/remotes/app-halo-dist/dist the fetch above already left
 #              behind. Runs before every single edit, so it has to be cheap.
 #
+# This used to ALSO flag a branch whose local `main`/`main-public` was an
+# ancestor of HEAD, on the theory that either dead branch could only reach a
+# real base by way of being the base itself. `dist`'s 2026-07-24 history
+# rewrite (mailmap: bot@ham2k.com -> sd@ham2k.com, see project memory
+# halo-dist-history-rewrite-2026-07-24) broke that theory: every commit `main`
+# and `dist` once shared before that date now has a DIFFERENT sha on each side,
+# but `dist`'s rewritten copy is still the same tree/message/author-date as
+# main's tip — so `main` reads as an ancestor of literally every branch based
+# on current `dist`, including `dist` itself. Verified this false-positives on
+# every active worktree in the repo (2026-08-02); removed rather than patched
+# around, since a rewrite that once again made `main`'s content diverge from
+# `dist`'s would silently reintroduce the same failure mode. The BEHIND count
+# below already catches the original incident on its own merit (353 commits is
+# nowhere near a `STALE_LIMIT` of 50) — nothing here still needs the ancestor
+# check to tell stale from normal drift.
+#
 # Escape hatch: HALO_ALLOW_STALE_BASE=1 skips the block, for the rare deliberate
 # case (a hotfix on an old release branch, archaeology in a stale worktree).
 set -uo pipefail
@@ -47,25 +63,11 @@ MERGE_BASE="$(git merge-base HEAD "$REMOTE/$BASE" 2>/dev/null)" || exit 0
 # — that would count the branch's own commits and read clean work as stale.
 BEHIND="$(git rev-list --count "$MERGE_BASE..$REMOTE/$BASE" 2>/dev/null)" || exit 0
 
-# Cut from a branch that exists on no remote? Name it — "353 behind" invites a
-# rebase, when the real answer is that the base itself should not be in use.
-DEAD_BASE=""
-for dead in main main-public; do
-  if git rev-parse --verify --quiet "refs/heads/$dead" >/dev/null 2>&1 &&
-     git merge-base --is-ancestor "$dead" HEAD 2>/dev/null; then
-    DEAD_BASE="$dead"
-    break
-  fi
-done
-
 json_escape() { printf '%s' "$1" | sed 's/\\/\\\\/g; s/"/\\"/g'; }
 
 FIX="git fetch $REMOTE $BASE && git checkout -b <task-name> $REMOTE/$BASE"
 
-if [ -n "$DEAD_BASE" ]; then
-  VERDICT="wrong"
-  MSG="Branch '$BRANCH' descends from local '$DEAD_BASE', which exists on no remote and is $BEHIND commits behind $REMOTE/$BASE. Work here targets a tree that no longer matches the repo. Re-cut the branch: $FIX"
-elif [ "$BEHIND" -gt "$STALE_LIMIT" ]; then
+if [ "$BEHIND" -gt "$STALE_LIMIT" ]; then
   VERDICT="wrong"
   MSG="Branch '$BRANCH' is based $BEHIND commits behind $REMOTE/$BASE (limit $STALE_LIMIT) — it was not cut from a fresh dist. Re-cut the branch: $FIX"
 elif [ "$BEHIND" -gt 0 ]; then
@@ -81,7 +83,7 @@ ESCAPED="$(json_escape "$MSG")"
 case "$MODE" in
   session)
     if [ "$VERDICT" = "wrong" ]; then
-      printf '{"systemMessage":"Stale base branch: %s","hookSpecificOutput":{"hookEventName":"SessionStart","additionalContext":"BASE BRANCH PROBLEM — resolve before editing anything. %s Never base work on main or main-public; %s/%s is the only base."}}\n' \
+      printf '{"systemMessage":"Stale base branch: %s","hookSpecificOutput":{"hookEventName":"SessionStart","additionalContext":"BASE BRANCH PROBLEM — resolve before editing anything. %s %s/%s is the only base."}}\n' \
         "$ESCAPED" "$ESCAPED" "$REMOTE" "$BASE"
     else
       printf '{"suppressOutput":true,"hookSpecificOutput":{"hookEventName":"SessionStart","additionalContext":"Base branch check: %s"}}\n' "$ESCAPED"
