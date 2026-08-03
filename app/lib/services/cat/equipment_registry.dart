@@ -21,6 +21,7 @@ import 'driver.dart';
 import 'drivers/flexradio_driver.dart';
 import 'drivers/ft891_driver.dart';
 import 'drivers/icom_civ_driver.dart';
+import 'drivers/rigctld_driver.dart';
 import 'equipment.dart';
 import 'transport.dart';
 import 'transports/icom_network_protocol.dart';
@@ -190,6 +191,7 @@ class EquipmentType {
 }
 
 const _flexRadioTcpKey = 'flexradio-tcp';
+const _rigctldTcpKey = 'rigctld-tcp';
 const _ft891SerialKey = 'ft891-serial';
 const _icomCivSerialKey = 'icom-civ-serial';
 const _ic705NetworkKey = 'ic705-network';
@@ -211,6 +213,30 @@ const flexRadioTcpType = EquipmentType(
 );
 
 String _flexRadioTcpName() => t.settings.station.types.flexRadioTcp;
+
+/// Any radio Hamlib has a backend for, through a `rigctld` daemon the
+/// operator already runs — the app connects to the daemon, never to the
+/// radio. No discoverer: rigctld announces nothing, so it is always typed
+/// in by address, defaulting to the same machine.
+const rigctldTcpType = EquipmentType(
+  key: _rigctldTcpKey,
+  category: kCategoryTransceiver,
+  name: _rigctldTcpName,
+  driver: RigctldDriver(),
+  transport: TcpTransport(),
+  defaultConfig: {'host': '127.0.0.1', 'port': RigctldDriver.defaultPort},
+  // The failure this pairing actually produces is a refused or unanswered
+  // connection, and every cause lives outside the app: the daemon isn't
+  // running, is listening only on localhost, or is on another port.
+  notes: _rigctldTcpNotes,
+);
+
+String _rigctldTcpName() => t.settings.station.types.rigctldTcp;
+
+List<Map<String, dynamic>> _rigctldTcpNotes() => [
+      {'type': 'divider', 'title': t.settings.station.rigctldTroubleshootingTitle},
+      {'type': 'markdown', 'text': t.settings.station.rigctldTroubleshooting},
+    ];
 
 /// Yaesu FT-891 over its built-in USB-to-serial CAT bridge.
 ///
@@ -317,7 +343,7 @@ class EquipmentRegistry {
   final Map<String, EquipmentTransport> transports;
 
   EquipmentRegistry({List<EquipmentType>? types, Map<String, EquipmentTransport>? transports})
-      : types = types ?? const [flexRadioTcpType, ft891SerialType, icomCivSerialType, ic705NetworkType],
+      : types = types ?? const [flexRadioTcpType, ft891SerialType, icomCivSerialType, ic705NetworkType, rigctldTcpType],
         transports = transports ??
             {
               TcpTransport.transportKey: const TcpTransport(),

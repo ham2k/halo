@@ -3,8 +3,8 @@
 //
 // The whole chain with nothing faked but the radio: the real
 // EquipmentRegistry, the real TCP transport over a real loopback socket,
-// and the real FlexRadio driver, driven by CatService the way the Station
-// Configuration panel drives it.
+// and the real FlexRadio and rigctld drivers, driven by CatService the way
+// the Station Configuration panel drives it.
 //
 // The unit tests each prove one layer; this is the only tier that proves
 // they're wired to each other — that the type builds a target the transport
@@ -16,6 +16,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:ham2k_logger/services/cat/adaptive_poller.dart';
 import 'package:ham2k_logger/services/cat/equipment.dart';
 import 'package:ham2k_logger/services/cat/cat_service.dart';
 import 'package:ham2k_logger/services/settings_service.dart';
@@ -76,10 +77,67 @@ class _FakeFlex {
   }
 }
 
-Future<void> _settleUntil(bool Function() done) async {
-  for (var i = 0; i < 200 && !done(); i++) {
+/// rigctld is poll-driven: a change at the daemon reaches the app on the
+/// NEXT poll, up to [kPollSlow] away — so its waits need a budget past the
+/// slow interval, where FlexRadio's pushes land within the default.
+Future<void> _settleUntil(bool Function() done, {int tries = 200}) async {
+  for (var i = 0; i < tries && !done(); i++) {
     await Future<void>.delayed(const Duration(milliseconds: 10));
   }
+}
+
+/// A rigctld daemon as far as this test is concerned. The dialogue is
+/// captured from a real `rigctld -m 1` (Hamlib 4.7.2): extended-response
+/// reads answer with labeled lines, plain writes answer `RPRT 0`.
+class _FakeRigctld {
+  final ServerSocket _server;
+  final commands = <String>[];
+
+  /// The rig's state, in the daemon's own strings — writable by the test
+  /// (the operator at the radio) and by the client's `F`/`M` commands.
+  String frequency = '145000000';
+  String mode = 'FM';
+
+  _FakeRigctld(this._server) {
+    _server.listen(
+      (socket) {
+        unawaited(socket.done.then((_) {}, onError: (Object _) {}));
+        socket.listen(
+          (chunk) {
+            for (final line in utf8.decode(chunk).split('\n')) {
+              final command = line.trim();
+              if (command.isEmpty) continue;
+              commands.add(command);
+              if (command == '+\\chk_vfo') {
+                socket.add(utf8.encode('ChkVFO: 0\n'));
+              } else if (command == '+f') {
+                socket.add(utf8.encode('get_freq:\nFrequency: $frequency\nRPRT 0\n'));
+              } else if (command == '+m') {
+                socket.add(utf8.encode('get_mode:\nMode: $mode\nPassband: 15000\nRPRT 0\n'));
+              } else if (command.startsWith('F ')) {
+                frequency = command.substring(2).trim();
+                socket.add(utf8.encode('RPRT 0\n'));
+              } else if (command.startsWith('M ')) {
+                mode = command.split(' ')[1];
+                socket.add(utf8.encode('RPRT 0\n'));
+              }
+            }
+          },
+          onError: (Object _) {},
+          cancelOnError: true,
+        );
+      },
+      onError: (Object _) {},
+    );
+  }
+
+  static Future<_FakeRigctld> start() async =>
+      _FakeRigctld(await ServerSocket.bind(InternetAddress.loopbackIPv4, 0));
+
+  String get host => _server.address.address;
+  int get port => _server.port;
+
+  Future<void> stop() => _server.close();
 }
 
 void main() {
@@ -126,6 +184,38 @@ void main() {
     expect(cat.stateFor(node.uuid).status, EquipmentStatus.disconnected);
     await _settleUntil(() => flex.commands.any((c) => c.contains('unsub slice all')));
     expect(flex.commands.any((c) => c.contains('unsub slice all')), isTrue);
+  });
+
+  test('connects to a rigctld daemon over TCP and follows it by polling', () async {
+    final rig = await _FakeRigctld.start();
+    try {
+      final node = await cat.addNode(
+        typeKey: 'rigctld-tcp',
+        name: 'Shack Daemon',
+        config: {'host': rig.host, 'port': rig.port},
+      );
+
+      await cat.connect(node.uuid);
+      expect(cat.stateFor(node.uuid).status, EquipmentStatus.connected);
+
+      // startUpdates asks immediately; the first answers become the state
+      // the panel shows.
+      await _settleUntil(() => cat.stateFor(node.uuid).vfo.mode != null);
+      expect(cat.stateFor(node.uuid).vfo, const VfoReading(freqKHz: 145000, mode: 'FM'));
+
+      // The operator turns the knob. Nothing is pushed — the change rides
+      // in on the next poll, up to a slow interval away.
+      rig.frequency = '7123450';
+      rig.mode = 'LSB';
+      await _settleUntil(() => cat.stateFor(node.uuid).vfo.freqKHz != 145000,
+          tries: 2 * kPollSlow.inMilliseconds ~/ 10);
+      expect(cat.stateFor(node.uuid).vfo, const VfoReading(freqKHz: 7123.45, mode: 'LSB'));
+
+      await cat.disconnect(node.uuid);
+      expect(cat.stateFor(node.uuid).status, EquipmentStatus.disconnected);
+    } finally {
+      await rig.stop();
+    }
   });
 
   test('a radio that is not there reports an error instead of hanging', () async {

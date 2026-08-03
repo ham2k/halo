@@ -2075,6 +2075,12 @@ class Translations$settings$station$en {
 	/// en: 'Several Icom radios — the IC-705 among them — present **two** USB serial ports at once (Icom calls them Port A and Port B), both set to CI-V by default. Neither this app nor your OS can tell them apart beyond that — the same USB vendor/product ID just shows up twice, sometimes marked with a `#2` suffix here. **Port A is usually the right one** — normally the first one your OS or browser lists. If commands go out and the radio never answers, try the other port next.'
 	String get icomCivTroubleshooting => 'Several Icom radios — the IC-705 among them — present **two** USB serial ports at once (Icom calls them Port A and Port B), both set to CI-V by default. Neither this app nor your OS can tell them apart beyond that — the same USB vendor/product ID just shows up twice, sometimes marked with a `#2` suffix here. **Port A is usually the right one** — normally the first one your OS or browser lists. If commands go out and the radio never answers, try the other port next.';
 
+	/// en: 'If the app cannot connect'
+	String get rigctldTroubleshootingTitle => 'If the app cannot connect';
+
+	/// en: 'This connects to a **rigctld daemon you run yourself**, not to the radio directly — Hamlib's own backend talks to the radio and supports hundreds of models. - **The daemon must already be running**, e.g. `rigctld -m 1035 -r /dev/ttyUSB0`. Find your radio's model number with `rigctl -l`. - **From another machine**, start it with `-T 0.0.0.0` — by default rigctld only accepts connections from the machine it runs on. - **Port** is 4532 unless you started the daemon with `-t`. - Once connected, a missing frequency usually means the daemon itself cannot reach the radio — test it with `rigctl -m 2 f` on the daemon's machine.'
+	String get rigctldTroubleshooting => 'This connects to a **rigctld daemon you run yourself**, not to the radio directly — Hamlib\'s own backend talks to the radio and supports hundreds of models.\n\n- **The daemon must already be running**, e.g. `rigctld -m 1035 -r /dev/ttyUSB0`. Find your radio\'s model number with `rigctl -l`.\n- **From another machine**, start it with `-T 0.0.0.0` — by default rigctld only accepts connections from the machine it runs on.\n- **Port** is 4532 unless you started the daemon with `-t`.\n- Once connected, a missing frequency usually means the daemon itself cannot reach the radio — test it with `rigctl -m 2 f` on the daemon\'s machine.';
+
 	/// en: 'If the radio never answers'
 	String get ic705TroubleshootingTitle => 'If the radio never answers';
 
@@ -2650,6 +2656,9 @@ class Translations$settings$station$types$en {
 
 	/// en: 'Icom IC-705 — WiFi'
 	String get ic705Network => 'Icom IC-705 — WiFi';
+
+	/// en: 'Hamlib rigctld — Network'
+	String get rigctldTcp => 'Hamlib rigctld — Network';
 }
 
 /// The flat map containing all translations for locale <en>.
@@ -3113,6 +3122,7 @@ extension on Translations {
 			'settings.station.types.ft891Serial' => 'Yaesu FT-891 — USB serial',
 			'settings.station.types.icomCivSerial' => 'Icom (CI-V) — USB serial',
 			'settings.station.types.ic705Network' => 'Icom IC-705 — WiFi',
+			'settings.station.types.rigctldTcp' => 'Hamlib rigctld — Network',
 			'settings.station.troubleshootingTitle' => 'If the radio connects but shows no frequency',
 			'settings.station.ft891Troubleshooting' => 'The radio is receiving commands but answering nothing. Almost always one of:\n\n- **CAT RTS must be OFF at the radio** (FT-891 menu **05-08**). With it on, the radio waits for a handshake line the app deliberately never raises — on a Digirig, SignaLink or most home-brew cables that same line is PTT, so raising it would key your transmitter.\n- **Speed must match** the radio\'s CAT RATE (menu **05-06**). A mismatch answers with garbage, or nothing, and never with an error.\n- **Another app may hold the port** — WSJT-X, fldigi and rigctld all keep it open.',
 			'settings.station.statusConnected' => 'Connected',
@@ -3122,6 +3132,8 @@ extension on Translations {
 			'settings.station.noTransceiver' => 'None',
 			'settings.station.icomCivTroubleshootingTitle' => 'If two serial ports show up for the same radio',
 			'settings.station.icomCivTroubleshooting' => 'Several Icom radios — the IC-705 among them — present **two** USB serial ports at once (Icom calls them Port A and Port B), both set to CI-V by default. Neither this app nor your OS can tell them apart beyond that — the same USB vendor/product ID just shows up twice, sometimes marked with a `#2` suffix here. **Port A is usually the right one** — normally the first one your OS or browser lists. If commands go out and the radio never answers, try the other port next.',
+			'settings.station.rigctldTroubleshootingTitle' => 'If the app cannot connect',
+			'settings.station.rigctldTroubleshooting' => 'This connects to a **rigctld daemon you run yourself**, not to the radio directly — Hamlib\'s own backend talks to the radio and supports hundreds of models.\n\n- **The daemon must already be running**, e.g. `rigctld -m 1035 -r /dev/ttyUSB0`. Find your radio\'s model number with `rigctl -l`.\n- **From another machine**, start it with `-T 0.0.0.0` — by default rigctld only accepts connections from the machine it runs on.\n- **Port** is 4532 unless you started the daemon with `-t`.\n- Once connected, a missing frequency usually means the daemon itself cannot reach the radio — test it with `rigctl -m 2 f` on the daemon\'s machine.',
 			'settings.station.ic705TroubleshootingTitle' => 'If the radio never answers',
 			'settings.station.ic705Troubleshooting' => 'The radio has a **single** remote-control session. When the login is ignored, something else is almost always using it.\n\n- **Close any other client.** wfview or RS-BA1 connected to the same radio holds that one session, and the login here is simply ignored while it does.\n- **Check the radio\'s network settings** — that WLAN is on, it is on the same network, and its remote-control (Network) function is enabled.\n- **Power-cycle the radio\'s WLAN** if it stays stuck. That reliably clears a session the radio is genuinely holding.\n\nA **wrong password is refused explicitly**, not met with silence — so if you got here rather than a "rejected" message, the password is not the problem.',
 			'settings.station.statusStale' => 'Not responding',
@@ -3169,11 +3181,11 @@ extension on Translations {
 			'settings.about.releaseNotes' => 'Release Notes',
 			'settings.about.copiedVersion' => 'Copied version details to clipboard',
 			'settings.panels.commonPreferences' => 'Common Preferences',
+			_ => null,
+		} ?? switch (path) {
 			'settings.panels.commonPreferencesDescription' => 'Appearance, language, and everyday settings',
 			'settings.panels.allSettings' => 'All Settings',
 			'settings.panels.allSettingsDescription' => 'Every available setting in one place',
-			_ => null,
-		} ?? switch (path) {
 			'settings.panels.syncDescription' => 'Back up and sync your logs across devices',
 			'settings.panels.accountsDescription' => 'Sign in to online services and lookups',
 			'settings.panels.extensions' => 'Features & Extensions',
