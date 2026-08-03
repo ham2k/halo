@@ -12,7 +12,7 @@ import 'dart:math' as math;
 
 import 'package:intl/intl.dart';
 
-
+import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:drift_flutter/drift_flutter.dart';
 import 'package:flutter/foundation.dart'
     show defaultTargetPlatform, kDebugMode, kIsWeb, kReleaseMode, visibleForTesting, TargetPlatform;
@@ -720,6 +720,7 @@ class HaLoServices {
         extensions: extensions,
         prefs: settings.prefs,
         statusBar: statusBar,
+        connectivity: Connectivity().onConnectivityChanged,
       );
   late final StatusBarService statusBar = StatusBarService(settings.prefs);
 

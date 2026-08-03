@@ -962,6 +962,9 @@ class Translations$dataFiles$en {
 	/// en: 'This could be a network issue, or this link's host may not support direct downloads from a web browser. Try the desktop or mobile app, or a different hosting location.'
 	String get downloadFailedWebHint => 'This could be a network issue, or this link\'s host may not support direct downloads from a web browser. Try the desktop or mobile app, or a different hosting location.';
 
+	/// en: 'The server took too long to respond. Try again later.'
+	String get downloadTimedOut => 'The server took too long to respond. Try again later.';
+
 	/// en: 'Couldn't process ${name}'
 	String processingFailedTitle({required Object name}) => 'Couldn\'t process ${name}';
 
@@ -3239,6 +3242,7 @@ extension on Translations {
 			'dataFiles.downloading' => 'Downloading…',
 			'dataFiles.downloadFailedTitle' => ({required Object name}) => 'Couldn\'t download ${name}',
 			'dataFiles.downloadFailedWebHint' => 'This could be a network issue, or this link\'s host may not support direct downloads from a web browser. Try the desktop or mobile app, or a different hosting location.',
+			'dataFiles.downloadTimedOut' => 'The server took too long to respond. Try again later.',
 			'dataFiles.processingFailedTitle' => ({required Object name}) => 'Couldn\'t process ${name}',
 			'dataFiles.importedRecords' => ({required num count, required Object label}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: 'Imported ${count} record for ${label}.', other: 'Imported ${count} records for ${label}.', ), 
 			'dataFiles.importedData' => ({required Object label}) => 'Imported data for ${label}.',

@@ -724,6 +724,7 @@
     "downloading": "Downloading…",
     "downloadFailedTitle": "Couldn't download ${name}",
     "downloadFailedWebHint": "This could be a network issue, or this link's host may not support direct downloads from a web browser. Try the desktop or mobile app, or a different hosting location.",
+    "downloadTimedOut": "The server took too long to respond. Try again later.",
     "processingFailedTitle": "Couldn't process ${name}",
     "importedRecords": {
       "one": "Imported ${count} record for ${label}.",

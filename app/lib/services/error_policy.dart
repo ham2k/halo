@@ -17,6 +17,8 @@
 //
 // docs/design/error-reporting.md is the overview.
 
+import 'dart:io' show SocketException;
+
 import 'package:flutter/foundation.dart' show kIsWeb, visibleForTesting;
 import 'package:flutter/widgets.dart';
 import 'package:halo_extension_host/halo_extension_host.dart' show ExtensionHostException;
@@ -150,6 +152,14 @@ class ErrorPolicy {
       disposition: ErrorDisposition.logOnly,
       matches: _isExtensionRuntimeDead,
     ),
+    ErrorRule(
+      id: 'connectivity-backend-unavailable',
+      reason: "connectivity_plus's Linux backend needs NetworkManager over D-Bus; without it the "
+          'plugin throws out of its own stream setup, unreachable by any onError of ours. The app '
+          'degrades to no reconnect-resync',
+      disposition: ErrorDisposition.logOnly,
+      matches: _isConnectivityBackendUnavailable,
+    ),
   ];
 
   /// Flutter's own focus-traversal crash on web (ham2k/halo-dist#271),
@@ -267,6 +277,20 @@ class ErrorPolicy {
   /// the backoff restart lands.
   static bool _isExtensionRuntimeDead(Object error, FlutterErrorDetails? details) =>
       error is ExtensionHostException && error.message.startsWith('extension runtime is dead');
+
+  /// connectivity_plus's Linux backend connects to NetworkManager over D-Bus
+  /// inside its stream's own async `onListen`, so on a system without it
+  /// (WSL, systemd-networkd, minimal distros) the failure escapes as an
+  /// unhandled async error that no subscription-side onError can catch.
+  /// Matched by the error's identity: a DBusException (by type name — the
+  /// dbus package is a transitive dependency this app doesn't import), or a
+  /// SocketException aimed at a D-Bus socket path. Narrow enough that a
+  /// real network failure of ours — never aimed at a dbus socket — cannot
+  /// match.
+  static bool _isConnectivityBackendUnavailable(Object error, FlutterErrorDetails? details) {
+    if (error.runtimeType.toString() == 'DBusException') return true;
+    return error is SocketException && error.toString().contains('dbus');
+  }
 
   static final _oncePerSessionLogged = <String>{};
 

@@ -502,6 +502,7 @@ class _Translations$dataFiles$es extends Translations$dataFiles$en {
 	@override String get downloading => 'Descargando…';
 	@override String downloadFailedTitle({required Object name}) => 'No se pudo descargar ${name}';
 	@override String get downloadFailedWebHint => 'Esto podría ser un problema de red, o puede que el sitio de este enlace no permita descargas directas desde un navegador web. Prueba la app de escritorio o móvil, o un lugar de alojamiento diferente.';
+	@override String get downloadTimedOut => 'El servidor tardó demasiado en responder. Vuelve a intentarlo más tarde.';
 	@override String processingFailedTitle({required Object name}) => 'No se pudo procesar ${name}';
 	@override String importedRecords({required num count, required Object label}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count,
 		one: 'Se importó ${count} registro de ${label}.',
@@ -1957,6 +1958,7 @@ extension on TranslationsEs {
 			'dataFiles.downloading' => 'Descargando…',
 			'dataFiles.downloadFailedTitle' => ({required Object name}) => 'No se pudo descargar ${name}',
 			'dataFiles.downloadFailedWebHint' => 'Esto podría ser un problema de red, o puede que el sitio de este enlace no permita descargas directas desde un navegador web. Prueba la app de escritorio o móvil, o un lugar de alojamiento diferente.',
+			'dataFiles.downloadTimedOut' => 'El servidor tardó demasiado en responder. Vuelve a intentarlo más tarde.',
 			'dataFiles.processingFailedTitle' => ({required Object name}) => 'No se pudo procesar ${name}',
 			'dataFiles.importedRecords' => ({required num count, required Object label}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count, one: 'Se importó ${count} registro de ${label}.', other: 'Se importaron ${count} registros de ${label}.', ), 
 			'dataFiles.importedData' => ({required Object label}) => 'Se importaron datos de ${label}.',

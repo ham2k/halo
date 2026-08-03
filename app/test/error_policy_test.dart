@@ -10,6 +10,8 @@
 // The delivery of those decisions (which console line, which handler stops
 // where, what the operator sees) is error_reporting_test.dart's job.
 
+import 'dart:io' show SocketException;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:halo_extension_host/halo_extension_host.dart' show ExtensionHostException;
@@ -23,6 +25,15 @@ ErrorDisposition dispositionFor(Object error, {FlutterErrorDetails? details}) =>
 class _HostileError implements Exception {
   @override
   String toString() => throw StateError('toString() failed too');
+}
+
+/// Stands in for the dbus package's exception, which the rule matches by
+/// TYPE NAME because the app never imports that package — so this class
+/// must carry the real one's exact name for its runtimeType to print the
+/// same.
+class DBusException implements Exception {
+  final String message;
+  DBusException(this.message);
 }
 
 List<String> capturedPrints(void Function() body) {
@@ -128,6 +139,29 @@ void main() {
       // Only the framework's own assertion is exempt: an ordinary exception
       // of ours that happens to quote the field name must not ride along.
       expect(dispositionFor(StateError('canRequestFocus went wrong')), ErrorDisposition.notify);
+    });
+  });
+
+  group('connectivity backend unavailable', () {
+    // connectivity_plus's Linux backend throws out of its own async stream
+    // setup when NetworkManager's D-Bus service is missing — an escape no
+    // subscription-side onError can reach, on systems (WSL, minimal
+    // distros) where the app is otherwise fully functional.
+    test('a DBus-shaped failure is console-only', () {
+      expect(dispositionFor(DBusException('service unknown')), ErrorDisposition.logOnly);
+      expect(
+        dispositionFor(const SocketException('Connection failed, path = /run/dbus/system_bus_socket')),
+        ErrorDisposition.logOnly,
+      );
+    });
+
+    test('an ordinary network failure of ours is still loud', () {
+      // Only the D-Bus transport is exempt: a real SocketException from an
+      // app fetch must not ride along on the type alone.
+      expect(
+        dispositionFor(const SocketException('Connection refused, host example.com')),
+        ErrorDisposition.notify,
+      );
     });
   });
 

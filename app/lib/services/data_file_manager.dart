@@ -4,6 +4,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/foundation.dart';
 import 'package:halo_core/halo_core.dart';
 import 'package:halo_extension_host/halo_extension_host.dart';
@@ -71,6 +72,12 @@ String decodeDataFileBody(List<int> bytes, {String? encoding}) {
 /// constant itself isn't, so a test can't flip platforms without this.
 @visibleForTesting
 String friendlyDownloadError(Object error, {bool isWeb = kIsWeb}) {
+  if (error is TimeoutException) {
+    // TimeoutException.toString() leads with a raw Duration
+    // ("TimeoutException after 0:00:30.000000") — replaced wholesale rather
+    // than hinted, since the class carries no server detail worth keeping.
+    return t.dataFiles.downloadTimedOut;
+  }
   final message = error.toString();
   if (isWeb && error is http.ClientException) {
     return '$message\n\n${t.dataFiles.downloadFailedWebHint}';
@@ -109,11 +116,29 @@ class DataFileManager {
   final SharedPreferences prefs;
   final StatusBarService? statusBar;
 
+  /// Constructs the HTTP client for each download. Injectable so tests can
+  /// exercise [downloadFile]'s real ETag/retry/timeout logic instead of
+  /// stubbing the whole method out.
+  final http.Client Function() httpClientFactory;
+
+  /// See [friendlyDownloadError] — the [kIsWeb] constant can't be flipped by
+  /// a test, so web-only behavior branches on this field instead.
+  final bool isWeb;
+
+  /// Emissions of the device's current connectivity, [Connectivity.onConnectivityChanged]-shaped:
+  /// offline is "every entry is `none`". Optional so the many tests that
+  /// construct a manager without network concerns don't touch platform
+  /// channels.
+  final Stream<List<ConnectivityResult>>? connectivity;
+
   DataFileManager({
     required this.lookups,
     required this.extensions,
     required this.prefs,
     this.statusBar,
+    this.httpClientFactory = http.Client.new,
+    this.isWeb = kIsWeb,
+    this.connectivity,
   }) {
     // Every successful runtime start can register dataFile hooks that did
     // not exist before — a custom file added in a settings panel, an
@@ -127,30 +152,71 @@ class DataFileManager {
     // (whose own explicit call happens before this listener is registered,
     // since HaLoServices constructs DataFileManager lazily after start).
     extensions.runtimeGeneration.addListener(_onRuntimeReplaced);
+    connectivity?.listen(_onConnectivityChanged, onError: (Object e) {
+      // A connectivity backend that can't be watched (a platform-channel
+      // failure, no NetworkManager on Linux) costs only the reconnect
+      // resync — not worth any operator-facing noise. The Linux backend can
+      // also throw from its own async stream setup, where no onError of
+      // ours can reach it; ErrorPolicy's connectivity-backend-unavailable
+      // rule covers that leg.
+      debugPrint('[data-file] connectivity stream error: $e');
+    });
   }
 
-  bool _postStartSyncRunning = false;
-  bool _postStartSyncQueued = false;
+  bool _syncRunning = false;
 
-  void _onRuntimeReplaced() => unawaited(_syncAfterRuntimeReplaced());
+  /// Non-null while a follow-up pass is queued; the value is the OR of the
+  /// queued triggers' notify flags, so a queued attended pass keeps its
+  /// notices even when an unattended trigger is the one running the loop.
+  /// One field, not a queued-bool + notify-bool pair: the pair carries an
+  /// implicit only-meaningful-while-queued invariant that every reset site
+  /// would have to maintain by hand.
+  bool? _queuedNotify;
 
-  /// One sync per generation tick, serialized: concurrent full syncs would
-  /// double-download the same files. A tick landing mid-sync queues exactly
-  /// one follow-up pass (it may carry registrations the running pass's
-  /// snapshot predates).
-  Future<void> _syncAfterRuntimeReplaced() async {
-    if (_postStartSyncRunning) {
-      _postStartSyncQueued = true;
+  void _onRuntimeReplaced() => unawaited(_runSerializedSync(notifyOnFailure: true));
+
+  /// Seeded offline so the stream's FIRST online emission always triggers a
+  /// pass: on platforms whose stream does not replay the current state on
+  /// subscribe, a device that boots offline would otherwise emit only the
+  /// eventual `[wifi]` — with no preceding `[none]` observed, an
+  /// offline-to-online edge detector stays silent and the recovery this
+  /// listener exists for never runs. The cost on a normal online boot is one
+  /// redundant pass that the per-file age check reduces to a definition
+  /// fan-out.
+  bool _wasOffline = true;
+
+  void _onConnectivityChanged(List<ConnectivityResult> results) {
+    final offline = results.every((r) => r == ConnectivityResult.none);
+    final cameBackOnline = _wasOffline && !offline;
+    _wasOffline = offline;
+    if (cameBackOnline) {
+      // Stale and never-downloaded files are exactly the set an offline
+      // stretch leaves behind, and the age check skips everything else.
+      // Unattended moment → no failure notices, same as the boot sync.
+      unawaited(_runSerializedSync(notifyOnFailure: false));
+    }
+  }
+
+  /// Coalesces listener triggers: a trigger landing mid-sync (a runtime
+  /// generation tick, a reconnect) queues exactly one follow-up pass — it
+  /// may carry registrations the running pass's snapshot predates. Mutual
+  /// exclusion against DIRECT [syncAllDataFiles] callers is not this loop's
+  /// job; [syncAllDataFiles] itself serializes every pass.
+  Future<void> _runSerializedSync({required bool notifyOnFailure}) async {
+    if (_syncRunning) {
+      _queuedNotify = (_queuedNotify ?? false) || notifyOnFailure;
       return;
     }
-    _postStartSyncRunning = true;
+    _syncRunning = true;
     try {
-      do {
-        _postStartSyncQueued = false;
-        await syncAllDataFiles();
-      } while (_postStartSyncQueued);
+      bool? notify = notifyOnFailure;
+      while (notify != null) {
+        await syncAllDataFiles(notifyOnFailure: notify);
+        notify = _queuedNotify;
+        _queuedNotify = null;
+      }
     } finally {
-      _postStartSyncRunning = false;
+      _syncRunning = false;
     }
   }
 
@@ -343,35 +409,78 @@ class DataFileManager {
   /// even when the server would otherwise report the content unchanged.
   Future<String?> downloadFile(String key, String url, {bool force = false, String? encoding}) async {
     final resolvedUrl = _resolveFetchUrl(resolveDownloadUrl(url));
-    final client = http.Client();
-    final request = http.Request('GET', Uri.parse(resolvedUrl));
-    request.headers['User-Agent'] = await ham2kUserAgent();
-    final etagKey = 'data_file_etag_$key';
-    final cachedEtag = force ? null : prefs.getString(etagKey);
-    if (cachedEtag != null) {
-      request.headers['If-None-Match'] = cachedEtag;
+    // Set when a conditional GET failed on web but the unconditional retry
+    // below succeeded: that host rejects CORS preflights, and `If-None-Match`
+    // always forces one, so conditional requests are permanently off for
+    // this key. ETags aren't stored either — a stored one would be inert at
+    // best and, if this flag were ever cleared, poisonous.
+    final skipKey = 'data_file_skip_conditional_$key';
+    final skipConditional = prefs.getBool(skipKey) ?? false;
+    final cachedEtag = (force || skipConditional) ? null : prefs.getString('data_file_etag_$key');
+    try {
+      return await _fetchAndDecode(key, resolvedUrl, etag: cachedEtag, storeEtag: !skipConditional, encoding: encoding);
+    } on http.ClientException {
+      // On web, a browser-level failure of a CONDITIONAL request is most
+      // often a failed CORS preflight, not an outage: `If-None-Match` is not
+      // a safelisted header, so it forces an OPTIONS round-trip that static
+      // file hosts commonly reject even though the plain GET passes CORS
+      // fine — the file downloads once, caches an ETag, then every later
+      // refresh fails. The unconditional retry settles which failure this
+      // is: success proves the preflight was the problem, so the key is
+      // marked skip-conditional (see above) and its now-poisonous ETag
+      // dropped. A genuine outage fails the retry too, leaving the ETag
+      // intact to earn a 304 once the network returns.
+      if (!isWeb || cachedEtag == null) rethrow;
+      final body = await _fetchAndDecode(key, resolvedUrl, etag: null, storeEtag: false, encoding: encoding);
+      await prefs.remove('data_file_etag_$key');
+      await prefs.setBool(skipKey, true);
+      return body;
     }
+  }
 
-    debugPrint('[data-file] Fetching $key from ${redactUrlForLog(resolvedUrl)} (cached ETag: $cachedEtag)');
-    final streamedResponse = await client.send(request);
-    final response = await http.Response.fromStream(streamedResponse);
-    client.close();
+  /// Ceiling on waiting for response HEADERS — a hung connection answers
+  /// slowly or never, and without this ceiling one dead host stalls a sync
+  /// pass indefinitely.
+  static const headersTimeout = Duration(seconds: 30);
 
-    if (response.statusCode == 304) {
-      debugPrint('[data-file] File $key unchanged (304)');
-      return null;
+  /// Separate, longer ceiling on reading the BODY: a large reference file on
+  /// a slow link legitimately takes a while after the headers arrive, so a
+  /// single total budget would abort downloads that are actually making
+  /// progress.
+  static const bodyTimeout = Duration(minutes: 2);
+
+  Future<String?> _fetchAndDecode(String key, String resolvedUrl,
+      {String? etag, bool storeEtag = true, String? encoding}) async {
+    final client = httpClientFactory();
+    try {
+      final request = http.Request('GET', Uri.parse(resolvedUrl));
+      request.headers['User-Agent'] = await ham2kUserAgent();
+      if (etag != null) {
+        request.headers['If-None-Match'] = etag;
+      }
+
+      debugPrint('[data-file] Fetching $key from ${redactUrlForLog(resolvedUrl)} (cached ETag: $etag)');
+      final streamedResponse = await client.send(request).timeout(headersTimeout);
+      final response = await http.Response.fromStream(streamedResponse).timeout(bodyTimeout);
+
+      if (response.statusCode == 304) {
+        debugPrint('[data-file] File $key unchanged (304)');
+        return null;
+      }
+
+      if (response.statusCode != 200) {
+        throw HttpException('Failed to download $key: HTTP ${response.statusCode}');
+      }
+
+      final newEtag = response.headers['etag'];
+      if (storeEtag && newEtag != null) {
+        await prefs.setString('data_file_etag_$key', newEtag);
+      }
+      final resolved = resolveDataFileEncoding(encoding, response.headers['content-type']);
+      return decodeDataFileBody(response.bodyBytes, encoding: resolved);
+    } finally {
+      client.close();
     }
-
-    if (response.statusCode != 200) {
-      throw HttpException('Failed to download $key: HTTP ${response.statusCode}');
-    }
-
-    final newEtag = response.headers['etag'];
-    if (newEtag != null) {
-      await prefs.setString(etagKey, newEtag);
-    }
-    final resolved = resolveDataFileEncoding(encoding, response.headers['content-type']);
-    return decodeDataFileBody(response.bodyBytes, encoding: resolved);
   }
 
   /// Schedules sync and processing of registered data files. With
@@ -387,7 +496,23 @@ class DataFileManager {
   /// callers of this method pass `false` so an offline device doesn't raise a
   /// persistent notice on every single unattended sync; a
   /// user-driven caller (Update All, RELOAD) leaves it at the default `true`.
-  Future<int> syncAllDataFiles({bool force = false, String? categoryFilter, bool notifyOnFailure = true}) async {
+  Future<int> syncAllDataFiles({bool force = false, String? categoryFilter, bool notifyOnFailure = true}) {
+    // One pass at a time, whoever started it. [_runSerializedSync] only
+    // coalesces its own listener triggers; direct callers (boot, RELOAD,
+    // Update All, onboarding) land here too, and without this chain a
+    // reconnect or restart trigger overlaps a direct pass — both see the
+    // same not-yet-stamped timestamps and double-download every stale file,
+    // and their interleaved [_batchWriteToDatabase] stale sweeps delete
+    // each other's freshly written rows.
+    final pass = _syncTurn.then((_) => _syncAllDataFilesLocked(
+        force: force, categoryFilter: categoryFilter, notifyOnFailure: notifyOnFailure));
+    _syncTurn = pass.then((_) {}, onError: (_) {});
+    return pass;
+  }
+
+  Future<void> _syncTurn = Future.value();
+
+  Future<int> _syncAllDataFilesLocked({required bool force, String? categoryFilter, required bool notifyOnFailure}) async {
     final host = extensions.host;
     if (host == null) {
       debugPrint('[data-file] Extension host not ready');
@@ -488,7 +613,7 @@ class DataFileManager {
           key: statusKey,
           icon: 'alert-circle',
           title: t.dataFiles.downloadFailedTitle(name: label),
-          text: friendlyDownloadError(e),
+          text: friendlyDownloadError(e, isWeb: isWeb),
         );
       }
       rethrow;
@@ -510,6 +635,12 @@ class DataFileManager {
     } catch (e) {
       statusBar?.clear(statusKey);
       debugPrint('[data-file] Failed to process $key: $e');
+      // The stored ETag points at a body this device never ingested: without
+      // dropping it, the next sync's conditional GET answers 304, is treated
+      // as "unchanged", and stamps the file fresh for maxAgeDays with the
+      // data still missing. An unconditional re-download re-runs processing
+      // in full.
+      await prefs.remove('data_file_etag_$key');
       // Distinct title from the download-failure notice above — a JSON/CSV
       // parsing error after a successful download is a config/data problem,
       // not a network one, and labeling it "Couldn't download" misdiagnoses

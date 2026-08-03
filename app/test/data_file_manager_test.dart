@@ -3,10 +3,14 @@
 
 import 'dart:async';
 import 'dart:convert';
+import 'package:connectivity_plus/connectivity_plus.dart';
+import 'package:fake_async/fake_async.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:halo_core/halo_core.dart';
 import 'package:drift/native.dart';
 import 'package:http/http.dart' as http;
+import 'package:http/testing.dart' as http;
+import 'package:package_info_plus/package_info_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:halo_extension_host/halo_extension_host.dart';
 import 'package:ham2k_logger/i18n/strings.g.dart';
@@ -938,24 +942,328 @@ REF-002,Summit Two,45.56,-122.78
     await pumpEventQueue();
     expect(m.syncCalls, 3, reason: 'the blocked pass plus exactly one queued follow-up');
   });
+
+  group('downloadFile conditional-GET retry (web CORS preflight)', () {
+    // The failure mode this guards: `If-None-Match` is not a CORS-safelisted
+    // header, so on web a conditional GET forces an OPTIONS preflight that
+    // static file hosts commonly reject — the file downloads fine ONCE,
+    // caches an ETag, then every later refresh fails with a browser-level
+    // ClientException. The retry must strip the conditional header AND drop
+    // the stored ETag, or the very next sync re-arms the same failure.
+    setUp(() {
+      PackageInfo.setMockInitialValues(
+          appName: 'test', packageName: 'test', version: '1.0', buildNumber: '1', buildSignature: '');
+    });
+
+    // A fresh client per factory call: the manager closes its client after
+    // every fetch, so a factory that hands back the same instance only works
+    // while MockClient.close() stays a no-op.
+    DataFileManager buildManager({required bool isWeb, required Future<http.Response> Function(http.Request) handler}) =>
+        DataFileManager(
+          lookups: lookups,
+          extensions: extensions,
+          prefs: prefs,
+          httpClientFactory: () => http.MockClient(handler),
+          isWeb: isWeb,
+        );
+
+    test('on web, a failed conditional GET retries unconditionally, drops the ETag, and stops conditioning', () async {
+      await prefs.setString('data_file_etag_hams', '"abc"');
+      final requests = <http.Request>[];
+      final m = buildManager(
+          isWeb: true,
+          handler: (request) async {
+            requests.add(request);
+            if (request.headers.containsKey('If-None-Match')) {
+              throw http.ClientException('NetworkError when attempting to fetch resource.', request.url);
+            }
+            // The etag header is the trap: a preflight-hostile host DOES
+            // serve ETags on plain GETs, and re-storing this one would
+            // re-arm the identical failure on the next sync.
+            return http.Response('CONTENT', 200, headers: {'etag': '"fresh"'});
+          });
+
+      final body = await m.downloadFile('hams', 'https://example.com/f.txt');
+
+      expect(body, 'CONTENT', reason: 'the retry must surface the file, not the preflight failure');
+      expect(requests, hasLength(2));
+      expect(requests.last.headers.containsKey('If-None-Match'), isFalse);
+      expect(prefs.getString('data_file_etag_hams'), isNull,
+          reason: 'a kept or re-stored ETag re-arms the identical failure on the next sync');
+      expect(prefs.getBool('data_file_skip_conditional_hams'), isTrue,
+          reason: 'without the skip mark, the next unconditional 200 stores an ETag and the '
+              'fail-and-refetch cycle resumes one sync later');
+
+      // The next sync must be unconditional outright — no failed attempt,
+      // no retry.
+      final again = await m.downloadFile('hams', 'https://example.com/f.txt');
+      expect(again, 'CONTENT');
+      expect(requests, hasLength(3));
+      expect(requests.last.headers.containsKey('If-None-Match'), isFalse);
+      expect(prefs.getString('data_file_etag_hams'), isNull,
+          reason: 'a skip-marked key must not accumulate ETags it will never send');
+    });
+
+    test('on native, a failed conditional GET rethrows without retrying', () async {
+      // Native fetches never preflight, so a ClientException there is a real
+      // network failure — a blind retry would just double every outage.
+      await prefs.setString('data_file_etag_hams', '"abc"');
+      var calls = 0;
+      final m = buildManager(
+          isWeb: false,
+          handler: (request) async {
+            calls++;
+            throw http.ClientException('Connection failed', request.url);
+          });
+
+      await expectLater(
+        m.downloadFile('hams', 'https://example.com/f.txt'),
+        throwsA(isA<http.ClientException>()),
+      );
+      expect(calls, 1);
+      expect(prefs.getString('data_file_etag_hams'), '"abc"',
+          reason: 'a native failure says nothing about the ETag being poisonous');
+    });
+
+    test('on web with no cached ETag, a failure rethrows — there is no conditional header to strip', () async {
+      var calls = 0;
+      final m = buildManager(
+          isWeb: true,
+          handler: (request) async {
+            calls++;
+            throw http.ClientException('Failed to fetch', request.url);
+          });
+
+      await expectLater(
+        m.downloadFile('hams', 'https://example.com/f.txt'),
+        throwsA(isA<http.ClientException>()),
+      );
+      expect(calls, 1, reason: 'retrying an unconditional request repeats the identical failure');
+    });
+
+    test('a genuine web outage keeps the ETag: the failed retry proves nothing about it', () async {
+      // Dropping the ETag before the retry settles converts every outage
+      // into a post-recovery full re-download of files that would have
+      // 304'd.
+      await prefs.setString('data_file_etag_hams', '"abc"');
+      final m = buildManager(
+          isWeb: true,
+          handler: (request) async {
+            throw http.ClientException('Failed to fetch', request.url);
+          });
+
+      await expectLater(
+        m.downloadFile('hams', 'https://example.com/f.txt'),
+        throwsA(isA<http.ClientException>()),
+      );
+      expect(prefs.getString('data_file_etag_hams'), '"abc"',
+          reason: 'the ETag must survive to earn a 304 once the network returns');
+      expect(prefs.getBool('data_file_skip_conditional_hams'), isNot(isTrue),
+          reason: 'only a SUCCESSFUL unconditional retry proves the host is preflight-hostile');
+    });
+
+    test('a processing failure drops the stored ETag so the next sync cannot 304 past it', () async {
+      // The download precedes the processing failure, so the ETag points at
+      // a body this device never ingested: kept, the next sync's
+      // conditional GET answers 304, reads as "unchanged", and the file is
+      // stamped fresh for maxAgeDays with the data still missing.
+      final m = buildManager(
+          isWeb: false,
+          handler: (request) async => http.Response('not json at all', 200, headers: {'etag': '"e1"'}));
+
+      await expectLater(
+        m.processDataFile('bad', {'url': 'https://example.com/f.json', 'fetchType': 'json'}, notifyOnFailure: false),
+        throwsA(anything),
+      );
+      expect(prefs.getString('data_file_etag_bad'), isNull);
+    });
+  });
+
+  test('downloadFile times out instead of hanging on a dead connection', () {
+    // Without a ceiling on client.send, one unresponsive host stalls a sync
+    // pass forever — nothing downstream (notices, follow-up syncs, RELOAD
+    // completion) ever runs.
+    PackageInfo.setMockInitialValues(
+        appName: 'test', packageName: 'test', version: '1.0', buildNumber: '1', buildSignature: '');
+    fakeAsync((fake) {
+      final m = DataFileManager(
+        lookups: lookups,
+        extensions: extensions,
+        prefs: prefs,
+        httpClientFactory: _HangingClient.new,
+      );
+      Object? caught;
+      m.downloadFile('hams', 'https://example.com/f.txt').then<void>((_) {}, onError: (Object e) {
+        caught = e;
+      });
+      fake.elapse(DataFileManager.headersTimeout + const Duration(seconds: 1));
+      fake.flushMicrotasks();
+      expect(caught, isA<TimeoutException>());
+    });
+  });
+
+  group('connectivity-driven resync', () {
+    test('coming back online runs one unattended sync pass; staying online does not', () async {
+      final connectivity = StreamController<List<ConnectivityResult>>();
+      final m = _SyncCountingDataFileManager(
+        lookups: lookups,
+        extensions: MockExtensionService(MockExtensionHost({'dataFile:*:getDefinition': <Map<String, dynamic>>[]})),
+        prefs: prefs,
+        connectivity: connectivity.stream,
+      );
+
+      connectivity.add([ConnectivityResult.none]);
+      await pumpEventQueue();
+      expect(m.syncCalls, 0, reason: 'going offline is not a download opportunity');
+
+      connectivity.add([ConnectivityResult.wifi]);
+      await pumpEventQueue();
+      expect(m.syncCalls, 1);
+      expect(m.notifyFlags.single, isFalse,
+          reason: 'a reconnect is unattended, like the boot sync — failure notices on every '
+              'flaky-network recovery would be pure noise');
+
+      connectivity.add([ConnectivityResult.mobile]); // wifi→cellular, never offline
+      await pumpEventQueue();
+      expect(m.syncCalls, 1, reason: 'interface changes while online must not re-download');
+      await connectivity.close();
+    });
+
+    test('a reconnect trigger cannot overlap a direct sync pass', () async {
+      // The coalescing loop only covers listener triggers; the lock in
+      // syncAllDataFiles is what keeps a direct pass (boot, RELOAD, Update
+      // All) and a reconnect pass from double-downloading — and from
+      // interleaving the per-pass stale sweeps that delete each other's
+      // freshly written rows. The connectivity stream replays current state
+      // on subscribe on most platforms, so this overlap happens on every
+      // boot with stale files, not in a rare corner.
+      final connectivity = StreamController<List<ConnectivityResult>>();
+      final host = MockExtensionHost({
+        'dataFile:*:getDefinition': [
+          {
+            'ok': true,
+            'value': {'key': 'f1', 'url': 'https://example.com/f1', 'fetchType': 'json'},
+          },
+        ],
+      });
+      final m = _BlockingDownloadManager(
+        lookups: lookups,
+        extensions: MockExtensionService(host),
+        prefs: prefs,
+        connectivity: connectivity.stream,
+      );
+
+      m.blockDownload = Completer<void>();
+      final direct = m.syncAllDataFiles(notifyOnFailure: false);
+      await pumpEventQueue();
+      expect(m.downloadCalls, 1, reason: 'the direct pass is mid-download');
+
+      connectivity.add([ConnectivityResult.wifi]); // the on-subscribe replay
+      await pumpEventQueue();
+      expect(m.downloadCalls, 1,
+          reason: 'the reconnect pass must queue behind the direct pass, not race it');
+
+      m.blockDownload!.complete();
+      m.blockDownload = null;
+      await direct;
+      await pumpEventQueue();
+      expect(m.downloadCalls, 1,
+          reason: 'the serialized follow-up pass sees the fresh stamp and age-skips the file');
+      await connectivity.close();
+    });
+
+    test('a connectivity stream error degrades silently and keeps the subscription alive', () async {
+      final connectivity = StreamController<List<ConnectivityResult>>();
+      final m = _SyncCountingDataFileManager(
+        lookups: lookups,
+        extensions: MockExtensionService(MockExtensionHost({'dataFile:*:getDefinition': <Map<String, dynamic>>[]})),
+        prefs: prefs,
+        connectivity: connectivity.stream,
+      );
+
+      // Without an onError, this escapes as an unhandled zone error — an
+      // ErrorPolicy-default notice and upload for a background blip whose
+      // correct degradation is "no reconnect resync".
+      connectivity.addError(StateError('backend gone'));
+      await pumpEventQueue();
+      expect(m.syncCalls, 0);
+
+      connectivity.add([ConnectivityResult.wifi]);
+      await pumpEventQueue();
+      expect(m.syncCalls, 1, reason: 'an error event must not kill the subscription');
+      await connectivity.close();
+    });
+
+    test('the first online emission triggers a pass even with no observed offline first', () async {
+      // A device that boots offline may never EMIT `[none]`: on platforms
+      // whose stream does not replay the current state on subscribe, the
+      // first event is the eventual `[wifi]`. An edge detector that waits to
+      // see offline first would sit silent — and the boot-offline recovery
+      // this listener exists for would never run.
+      final connectivity = StreamController<List<ConnectivityResult>>();
+      final m = _SyncCountingDataFileManager(
+        lookups: lookups,
+        extensions: MockExtensionService(MockExtensionHost({'dataFile:*:getDefinition': <Map<String, dynamic>>[]})),
+        prefs: prefs,
+        connectivity: connectivity.stream,
+      );
+
+      connectivity.add([ConnectivityResult.wifi]);
+      await pumpEventQueue();
+      expect(m.syncCalls, 1);
+      await connectivity.close();
+    });
+  });
 }
 
 class _SyncCountingDataFileManager extends DataFileManager {
   int syncCalls = 0;
+  final notifyFlags = <bool>[];
   Completer<void>? blockNextSync;
 
   _SyncCountingDataFileManager({
     required super.lookups,
     required super.extensions,
     required super.prefs,
+    super.connectivity,
   });
 
   @override
   Future<int> syncAllDataFiles({bool force = false, String? categoryFilter, bool notifyOnFailure = true}) async {
     syncCalls++;
+    notifyFlags.add(notifyOnFailure);
     final block = blockNextSync;
     if (block != null) await block.future;
     return 0;
+  }
+}
+
+/// A client whose requests never complete — the shape of a dead host that
+/// accepts the connection and then says nothing.
+class _HangingClient extends http.BaseClient {
+  @override
+  Future<http.StreamedResponse> send(http.BaseRequest request) => Completer<http.StreamedResponse>().future;
+}
+
+/// Downloads block on [blockDownload] and resolve as a 304 (null body), so a
+/// test can hold one sync pass mid-download while another tries to start.
+class _BlockingDownloadManager extends DataFileManager {
+  int downloadCalls = 0;
+  Completer<void>? blockDownload;
+
+  _BlockingDownloadManager({
+    required super.lookups,
+    required super.extensions,
+    required super.prefs,
+    super.connectivity,
+  });
+
+  @override
+  Future<String?> downloadFile(String key, String url, {bool force = false, String? encoding}) async {
+    downloadCalls++;
+    final block = blockDownload;
+    if (block != null) await block.future;
+    return null;
   }
 }
 
