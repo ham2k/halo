@@ -6,7 +6,7 @@
 # the result to the `public` branch here.
 #
 # Publishing to the open-source MIRROR (ham2k/halo) is deliberately NOT part
-# of this workflow — `halo-ops publish` does that, on demand, so work can sit
+# of this workflow — `halo-ops publish-code` does that, on demand, so work can sit
 # on `main` for a few days before going public. (It also sidesteps GitHub's
 # `workflow`-scope restriction: the filtered history carries workflow files,
 # which no PAT or API-created deploy key here can push — the operator's own

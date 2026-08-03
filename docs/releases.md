@@ -608,7 +608,7 @@ on every push to `main`, the **Publish Public** workflow
 filtering `app_dist/` out of the full history with git-filter-repo, so
 `app_dist/` never reaches the public history and commits may freely mix the
 two sides; the open-source mirror (`ham2k/halo`) is then updated manually
-with `halo-ops publish`, so work can sit on `main` before going public.
+with `halo-ops publish-code`, so work can sit on `main` before going public.
 Commit messages are published verbatim (see `.agents/AGENTS.md`). A public
 checkout simply has no `app_dist/` directory.
 

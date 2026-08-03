@@ -17,7 +17,7 @@ import 'package:halo_build_tools/halo_build_tools.dart';
 
 const _remote = 'origin';
 
-/// The open-source mirror `publish` pushes to. Pushed over the operator's own
+/// The open-source mirror `publish-code` pushes to. Pushed over the operator's own
 /// git credentials (SSH) — user keys are exempt from the `workflow`-scope
 /// restriction that blocks PAT/deploy-key pushes carrying workflow files.
 const _mirrorUrl = 'git@github.com:ham2k/halo.git';
@@ -48,7 +48,7 @@ Future<void> main(List<String> args) async {
         await _preview(rest, out: out, json: json);
       case 'prune-previews':
         await _prunePreviews(rest, out: out, json: json);
-      case 'publish':
+      case 'publish-code':
         await _publish(rest, out: out, json: json);
       default:
         stderr.writeln("halo-ops: unknown command '$command'");
@@ -1014,7 +1014,7 @@ Commands:
   prune-patches          Delete old patch-<edition>-<sha> trigger tags (default: older than 2 months).
   preview <name>         Deploy a web preview of HEAD (tags web-preview-<name>, pushes it).
   prune-previews         List web previews; delete selected ones (Pages + DNS + tag).
-  publish                Mirror the generated public branch to the open-source repo.
+  publish-code           Mirror the generated public branch to the open-source repo.
 
 Release options:
   --edition <dev|next|prod>   Override the branch→edition mapping.
@@ -1039,7 +1039,7 @@ prune-patches options:
 preview options:
   --dry-run, -n / --yes, -y   As above.
 
-publish options:
+publish-code options:
   --ref <sha>            Publish up to this commit on origin/public instead of
                           the tip — the way to hold an experiment back while
                           publishing everything before it.
