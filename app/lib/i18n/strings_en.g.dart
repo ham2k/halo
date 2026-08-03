@@ -176,6 +176,9 @@ class Translations$onboarding$en {
 	/// en: 'Summits On The Air'
 	String get activitySota => 'Summits On The Air';
 
+	/// en: 'World Wide Flora & Fauna'
+	String get activityWwff => 'World Wide Flora & Fauna';
+
 	/// en: 'Data & Privacy'
 	String get consentTitle => 'Data & Privacy';
 
@@ -2650,6 +2653,7 @@ extension on Translations {
 			'onboarding.activitiesFooter' => '(You can find more options in the Settings)',
 			'onboarding.activityPota' => 'Parks On The Air',
 			'onboarding.activitySota' => 'Summits On The Air',
+			'onboarding.activityWwff' => 'World Wide Flora & Fauna',
 			'onboarding.consentTitle' => 'Data & Privacy',
 			'onboarding.consentUsageBody' => 'To help us make the app better, we\'d like to collect performance, crash, and app usage data.',
 			'onboarding.consentUsageLabel' => 'Share Usage Data',
@@ -3131,9 +3135,9 @@ extension on Translations {
 			'settings.panels.syncDescription' => 'Back up and sync your logs across devices',
 			'settings.panels.accountsDescription' => 'Sign in to online services and lookups',
 			'settings.panels.extensions' => 'Features & Extensions',
-			'settings.panels.extensionsDescription' => 'Turn optional features on or off',
 			_ => null,
 		} ?? switch (path) {
+			'settings.panels.extensionsDescription' => 'Turn optional features on or off',
 			'settings.panels.profilesDescription' => 'Operator callsign and station profile',
 			'settings.panels.stationProfiles' => 'Station Profiles',
 			'settings.panels.dataFiles' => 'Data Files',

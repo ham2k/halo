@@ -114,6 +114,7 @@ class _Translations$onboarding$es extends Translations$onboarding$en {
 	@override String get activitiesFooter => '(Encontrarás más opciones en la Configuración)';
 	@override String get activityPota => 'Parks On The Air';
 	@override String get activitySota => 'Summits On The Air';
+	@override String get activityWwff => 'World Wide Flora & Fauna';
 	@override String get consentTitle => 'Datos y Privacidad';
 	@override String get consentUsageBody => 'Para ayudarnos a mejorar la app, nos gustaría recopilar datos de rendimiento, fallos y uso.';
 	@override String get consentUsageLabel => 'Compartir datos de uso';
@@ -1394,6 +1395,7 @@ extension on TranslationsEs {
 			'onboarding.activitiesFooter' => '(Encontrarás más opciones en la Configuración)',
 			'onboarding.activityPota' => 'Parks On The Air',
 			'onboarding.activitySota' => 'Summits On The Air',
+			'onboarding.activityWwff' => 'World Wide Flora & Fauna',
 			'onboarding.consentTitle' => 'Datos y Privacidad',
 			'onboarding.consentUsageBody' => 'Para ayudarnos a mejorar la app, nos gustaría recopilar datos de rendimiento, fallos y uso.',
 			'onboarding.consentUsageLabel' => 'Compartir datos de uso',
@@ -1875,9 +1877,9 @@ extension on TranslationsEs {
 			'settings.panels.syncDescription' => 'Respalda y sincroniza tus registros entre dispositivos',
 			'settings.panels.accountsDescription' => 'Inicia sesión en servicios y búsquedas en línea',
 			'settings.panels.extensions' => 'Funciones y extensiones',
-			'settings.panels.extensionsDescription' => 'Activa o desactiva funciones opcionales',
 			_ => null,
 		} ?? switch (path) {
+			'settings.panels.extensionsDescription' => 'Activa o desactiva funciones opcionales',
 			'settings.panels.profilesDescription' => 'Indicativo del operador y perfil de la estación',
 			'settings.panels.stationProfiles' => 'Perfiles de estación',
 			'settings.panels.dataFiles' => 'Archivos de datos',

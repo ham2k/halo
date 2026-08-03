@@ -228,7 +228,7 @@ void main() {
     expect(settings.consentOpData, isTrue);
     // Activity picks are real extension enable/disable overrides now
     // (Extensions panel, issue #25) — not settings-group keys.
-    expect(settings.extensionOverrides, {'pota': true, 'sota': true});
+    expect(settings.extensionOverrides, {'pota': true, 'sota': true, 'wwff': false});
     expect(settings.settingValue('extension_pota', 'enabled'), isNull);
     await drainTimers(tester);
   });

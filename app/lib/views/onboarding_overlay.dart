@@ -142,6 +142,7 @@ class _OnboardingOverlayViewState extends State<OnboardingOverlayView> {
   // usage-data consent pre-checked, operation-data off.
   bool _pota = true;
   bool _sota = false;
+  bool _wwff = false;
   bool _consentAppData = true;
   bool _consentOpData = false;
 
@@ -161,6 +162,7 @@ class _OnboardingOverlayViewState extends State<OnboardingOverlayView> {
     final overrides = settings.extensionOverrides;
     _pota = overrides['pota'] ?? _pota;
     _sota = overrides['sota'] ?? _sota;
+    _wwff = overrides['wwff'] ?? _wwff;
     _consentAppData = (settings.settingValue(SettingsService.privacyGroup, 'consentAppData') as bool?) ?? _consentAppData;
     _consentOpData = (settings.settingValue(SettingsService.privacyGroup, 'consentOpData') as bool?) ?? _consentOpData;
 
@@ -242,7 +244,7 @@ class _OnboardingOverlayViewState extends State<OnboardingOverlayView> {
     // issue #379): _finish syncs data files right after, which needs the
     // runtime restart this triggers to have already loaded a newly-enabled
     // extension, or its dataFile hook wouldn't be there to ask yet.
-    await widget.services.extensions.setExtensionsEnabled({'pota': _pota, 'sota': _sota});
+    await widget.services.extensions.setExtensionsEnabled({'pota': _pota, 'sota': _sota, 'wwff': _wwff});
     await settings.updateSettingsGroup(SettingsService.privacyGroup, {
       'consentAppData': _consentAppData,
       'consentOpData': _consentOpData,
@@ -560,6 +562,13 @@ class _OnboardingOverlayViewState extends State<OnboardingOverlayView> {
                 value: _sota,
                 onChanged: (v) => setState(() => _sota = v),
               ),
+              SwitchListTile(
+                dense: true,
+                contentPadding: EdgeInsets.zero,
+                title: Text(s.activityWwff, style: bodyStyle?.copyWith(fontWeight: FontWeight.bold)),
+                value: _wwff,
+                onChanged: (v) => setState(() => _wwff = v),
+              ),
               const SizedBox(height: 8),
               Text(s.activitiesFooter, style: bodyStyle?.copyWith(fontSize: (bodyStyle.fontSize ?? 16) * 0.8)),
             ],
@@ -626,29 +635,38 @@ class _OnboardingOverlayViewState extends State<OnboardingOverlayView> {
     required bool isHeightConstrained,
   }) {
     final bodyWidget = SingleChildScrollView(child: body);
-    return Column(
-      key: key,
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      mainAxisSize: isHeightConstrained ? MainAxisSize.max : MainAxisSize.min,
-      children: [
-        title,
-        const SizedBox(height: 12),
-        isHeightConstrained ? Expanded(child: bodyWidget) : bodyWidget,
-        const SizedBox(height: 8),
-        Row(
+    // Caps the step's fields/buttons at the ideal reading width, centered,
+    // same convention as settings_view.dart and status_bar.dart — otherwise
+    // the callsign TextField and activity/consent switches would stretch
+    // edge-to-edge on a wide window.
+    return Center(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: idealPaneWidth),
+        child: Column(
+          key: key,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          mainAxisSize: isHeightConstrained ? MainAxisSize.max : MainAxisSize.min,
           children: [
-            TextButton(
-              onPressed: onSecondary,
-              style: secondaryButtonStyle,
-              child: Text(secondaryLabel),
+            title,
+            const SizedBox(height: 12),
+            isHeightConstrained ? Expanded(child: bodyWidget) : bodyWidget,
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                TextButton(
+                  onPressed: onSecondary,
+                  style: secondaryButtonStyle,
+                  child: Text(secondaryLabel),
+                ),
+                if (primaryLabel.isNotEmpty) ...[
+                  const Spacer(),
+                  FilledButton(onPressed: onPrimary, child: Text(primaryLabel)),
+                ],
+              ],
             ),
-            if (primaryLabel.isNotEmpty) ...[
-              const Spacer(),
-              FilledButton(onPressed: onPrimary, child: Text(primaryLabel)),
-            ],
           ],
         ),
-      ],
+      ),
     );
   }
 }
