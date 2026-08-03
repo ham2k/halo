@@ -1214,10 +1214,24 @@ class _HaLoAppState extends State<HaLoApp> {
   /// instead of opening another one over it.
   bool _commandDialogOpen = false;
 
+  // iOS never delivers ⌘-letter chords to HardwareKeyboard below — UIKit's
+  // key-command discovery intercepts them first — so AppDelegate.swift
+  // registers native UIKeyCommands for the same combos and forwards them
+  // here instead.
+  static const _keyCommandChannel = MethodChannel('ham2k/key_commands');
+
+  // The channel only holds one handler at a time, so whichever State set it
+  // last has to be the only one that clears it — otherwise an older
+  // instance's dispose() can null out a newer instance's handler. Same
+  // identity-check shape as the DevBridge guard in dispose() below.
+  static _HaLoAppState? _keyCommandHandlerOwner;
+
   @override
   void initState() {
     super.initState();
     HardwareKeyboard.instance.addHandler(_handleKeyEvent);
+    _keyCommandHandlerOwner = this;
+    _keyCommandChannel.setMethodCallHandler(_handleNativeKeyCommand);
     if (DevBridge.instance.installed) {
       DevBridge.instance.openCommandBarHandler = _openCommandDialog;
       DevBridge.instance.closeCommandBarHandler = _closeCommandDialog;
@@ -1227,11 +1241,36 @@ class _HaLoAppState extends State<HaLoApp> {
   @override
   void dispose() {
     HardwareKeyboard.instance.removeHandler(_handleKeyEvent);
+    if (identical(_keyCommandHandlerOwner, this)) {
+      _keyCommandChannel.setMethodCallHandler(null);
+      _keyCommandHandlerOwner = null;
+    }
     if (DevBridge.instance.openCommandBarHandler == _openCommandDialog) {
       DevBridge.instance.openCommandBarHandler = null;
       DevBridge.instance.closeCommandBarHandler = null;
     }
     super.dispose();
+  }
+
+  /// One `run` call per native UIKeyCommand in AppDelegate.swift, naming the
+  /// same actions `_handleKeyEvent` dispatches by key/modifier below — kept
+  /// as a single switch so the two paths can't drift apart.
+  Future<void> _handleNativeKeyCommand(MethodCall call) async {
+    if (call.method != 'run') return;
+    switch (call.arguments as String) {
+      case 'commandDialog':
+        _toggleCommandDialog();
+      case 'themeToggle':
+        _toggleTheme();
+      case 'localeToggle':
+        _toggleLocale();
+      case 'zoomIn':
+        widget.services.settings.increaseFontScale();
+      case 'zoomOut':
+        widget.services.settings.decreaseFontScale();
+      case 'zoomReset':
+        widget.services.settings.setFontScale(FontScale.normal);
+    }
   }
 
   /// Opens the ⌘K dialog, unless it's already up. Shared by the shortcut and
@@ -1250,6 +1289,31 @@ class _HaLoAppState extends State<HaLoApp> {
     navigatorKey.currentState?.pop();
   }
 
+  /// A second ⌘K while the dialog is open closes it rather than stacking a
+  /// second copy on top of the first.
+  void _toggleCommandDialog() {
+    if (_commandDialogOpen) {
+      _closeCommandDialog();
+    } else {
+      _openCommandDialog();
+    }
+  }
+
+  void _toggleTheme() {
+    final settings = widget.services.settings;
+    settings.setThemeMode(
+      toggledThemeMode(settings.themeMode, WidgetsBinding.instance.platformDispatcher.platformBrightness),
+    );
+  }
+
+  void _toggleLocale() {
+    final settings = widget.services.settings;
+    final newLocale = settings.locale == 'es' ? 'en' : 'es';
+    settings.setLocale(newLocale);
+    LocaleSettings.setLocaleRaw(newLocale);
+    widget.services.extensions.invalidateHookContext();
+  }
+
   bool _handleKeyEvent(KeyEvent event) {
     if (event is! KeyDownEvent) return false;
 
@@ -1262,32 +1326,23 @@ class _HaLoAppState extends State<HaLoApp> {
     final key = event.logicalKey;
     final settings = widget.services.settings;
 
-    if (key == LogicalKeyboardKey.keyK && !HardwareKeyboard.instance.isShiftPressed) {
-      // ⌘K (⌃K on Windows/Linux): the command dialog. Toggles —
-      // a second ⌘K while it's open closes it rather than stacking a second
-      // copy on top of the first.
-      if (_commandDialogOpen) {
-        _closeCommandDialog();
-      } else {
-        _openCommandDialog();
-      }
+    if (key == LogicalKeyboardKey.keyK) {
+      // ⌘K (⌃K on Windows/Linux) opens the command dialog. ⌘⇧K is accepted
+      // as the same action — iOS reserves plain ⌘K for its own software
+      // keyboard toggle, so AppDelegate.swift only gets ⌘⇧K to work with there.
+      _toggleCommandDialog();
       return true;
     }
 
     if (HardwareKeyboard.instance.isShiftPressed && key == LogicalKeyboardKey.keyD) {
       // ⌘⇧D (⌃⇧D on non-Mac): flip between light and dark themes.
-      settings.setThemeMode(
-        toggledThemeMode(settings.themeMode, WidgetsBinding.instance.platformDispatcher.platformBrightness),
-      );
+      _toggleTheme();
       return true;
     }
 
     if (HardwareKeyboard.instance.isShiftPressed && key == LogicalKeyboardKey.keyL) {
       // ⌘⇧L (⌃⇧L on non-Mac): toggle language between English and Spanish.
-      final newLocale = settings.locale == 'es' ? 'en' : 'es';
-      settings.setLocale(newLocale);
-      LocaleSettings.setLocaleRaw(newLocale);
-      widget.services.extensions.invalidateHookContext();
+      _toggleLocale();
       return true;
     }
 

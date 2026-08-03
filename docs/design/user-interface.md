@@ -173,6 +173,11 @@ up with the bar's search icon, so the two read as one object. The bar's
 height is fixed, so it doesn't resize when the placeholder gives way to typed
 text. Escape, a click outside, or a second ⌘K dismisses it.
 
+On iOS, plain ⌘K is reserved by the OS itself (it shows/hides the software
+keyboard) and never reaches the app on a hardware keyboard — ⌘⇧K is the
+chord that actually opens the dialog there (main.dart's `_handleKeyEvent` and
+AppDelegate.swift's `keyCommands` both accept it as an alternate everywhere).
+
 The field's placeholder is set in the regular face — it's prose — while what
 the user types is monospaced, since it's a callsign or a command.
 
