@@ -94,6 +94,118 @@ void main() {
     expect(rec.sent.single.headers['User-Agent'], 'Ham2K-Test/1.0');
   }, timeout: const Timeout(Duration(seconds: 60)));
 
+  test('a transient DNS lookup failure is retried once and recovers', () async {
+    var calls = 0;
+    final sent = <http.Request>[];
+    final client = MockClient((request) async {
+      sent.add(request);
+      calls++;
+      if (calls == 1) {
+        throw http.ClientException("Failed host lookup: 'api.pota.app'", request.url);
+      }
+      return http.Response('[]', 200, headers: {'content-type': 'application/json; charset=utf-8'});
+    });
+    final host = await hostWith(client);
+
+    final spots = await host.invokeHook('spots', key: 'pota', method: 'fetchSpots',
+        args: {'online': true}, timeout: const Duration(seconds: 20));
+
+    expect(spots, isEmpty);
+    expect(sent, hasLength(2));
+  }, timeout: const Timeout(Duration(seconds: 60)));
+
+  test('the retry delay stays within its documented 300-500ms jitter range', () async {
+    var calls = 0;
+    final client = MockClient((request) async {
+      calls++;
+      if (calls == 1) {
+        throw http.ClientException("Failed host lookup: 'api.pota.app'", request.url);
+      }
+      return http.Response('[]', 200, headers: {'content-type': 'application/json; charset=utf-8'});
+    });
+    final host = await hostWith(client);
+
+    final stopwatch = Stopwatch()..start();
+    await host.invokeHook('spots', key: 'pota', method: 'fetchSpots',
+        args: {'online': true}, timeout: const Duration(seconds: 20));
+    stopwatch.stop();
+
+    // Generous slack above the 300-500ms production range for test/CI
+    // scheduling noise — this only needs to catch a gross regression (e.g.
+    // the base and jitter width getting swapped), not pin the exact bounds.
+    expect(stopwatch.elapsedMilliseconds, greaterThanOrEqualTo(250));
+    expect(stopwatch.elapsedMilliseconds, lessThan(2000));
+  }, timeout: const Timeout(Duration(seconds: 60)));
+
+  test('a second consecutive DNS lookup failure is not retried again', () async {
+    final sent = <http.Request>[];
+    final client = MockClient((request) async {
+      sent.add(request);
+      throw http.ClientException("Failed host lookup: 'api.pota.app'", request.url);
+    });
+    final host = await hostWith(client);
+
+    await expectLater(
+      host.invokeHook('spots', key: 'pota', method: 'fetchSpots',
+          args: {'online': true}, timeout: const Duration(seconds: 20)),
+      throwsA(anything),
+    );
+    expect(sent, hasLength(2));
+  }, timeout: const Timeout(Duration(seconds: 60)));
+
+  test('a lookup failure for a different host (a followed redirect) is not retried', () async {
+    // dart:io follows redirects inside a single send() call, so a lookup
+    // failure can name a host other than the one this call actually targeted
+    // — by which point a POST body may already be sitting on the ORIGINAL
+    // server. Retrying then would resend it a second time, so only a failure
+    // naming this call's own host may be retried.
+    final sent = <http.Request>[];
+    final client = MockClient((request) async {
+      sent.add(request);
+      throw http.ClientException("Failed host lookup: 'cdn.example.com'", request.url);
+    });
+    final host = await hostWith(client);
+
+    await expectLater(
+      host.invokeHook('spots', key: 'pota', method: 'fetchSpots',
+          args: {'online': true}, timeout: const Duration(seconds: 20)),
+      throwsA(anything),
+    );
+    expect(sent, hasLength(1));
+  }, timeout: const Timeout(Duration(seconds: 60)));
+
+  test('a non-lookup network failure is not retried', () async {
+    final sent = <http.Request>[];
+    final client = MockClient((request) async {
+      sent.add(request);
+      throw http.ClientException('Connection refused', request.url);
+    });
+    final host = await hostWith(client);
+
+    await expectLater(
+      host.invokeHook('spots', key: 'pota', method: 'fetchSpots',
+          args: {'online': true}, timeout: const Duration(seconds: 20)),
+      throwsA(anything),
+    );
+    expect(sent, hasLength(1));
+  }, timeout: const Timeout(Duration(seconds: 60)));
+
+  test('a real DNS failure still matches the message the retry keys on', () async {
+    // MockClient above proves the retry's own logic; this proves the exact
+    // assumption that logic depends on — that package:http still wraps a
+    // real dart:io lookup failure as "Failed host lookup: '<host>'" (the
+    // literal condition `_hostFetch`'s catch checks). If a future
+    // package:http or Dart SDK release changes that wording, this is the
+    // test that goes red instead of the retry silently going dark.
+    final client = http.Client();
+    addTearDown(client.close);
+    const host = 'this-host-does-not-exist.invalid';
+    await expectLater(
+      client.get(Uri.parse('https://$host/')),
+      throwsA(isA<http.ClientException>().having((e) => e.message, 'message', startsWith("Failed host lookup: '$host'"))),
+    );
+  }, timeout: const Timeout(Duration(seconds: 30)));
+
   test('the manifest allowlist still blocks, stub or no stub', () async {
     final rec = recorder('[]');
     final host = await hostWith(rec.client, domains: const []);

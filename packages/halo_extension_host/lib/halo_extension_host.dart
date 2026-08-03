@@ -20,6 +20,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:isolate';
+import 'dart:math';
 
 import 'package:flutter/foundation.dart' show kIsWeb, visibleForTesting;
 import 'package:http/http.dart' as http;
@@ -854,7 +855,6 @@ class _HostCore {
     final method = (params['method'] as String? ?? 'GET').toUpperCase();
     final headers = ((params['headers'] ?? const {}) as Map).cast<String, String>();
 
-    final request = http.Request(method, uri)..headers.addAll(headers);
     // Set last so it wins over anything addAll put in: http.Request.headers
     // is case-insensitive, so this stamps HaLo's canonical UA on every call —
     // except for whitelisted extensions that supplied their own (see
@@ -865,16 +865,42 @@ class _HostCore {
       overrides: userAgentOverrides,
       callerHeaders: headers,
     );
-    if (effectiveUA != null) request.headers['User-Agent'] = effectiveUA;
-    if (params['body'] != null) request.body = params['body'] as String;
+    final body = params['body'] as String?;
 
-    final streamed = await _http.send(request).timeout(const Duration(seconds: 15));
-    // Headers arriving is no guarantee the body ever finishes: a server
-    // stalling mid-body would otherwise hang the calling hook indefinitely
-    // (the 15s above only covers up to the response headers).
-    final response = await http.Response.fromStream(streamed).timeout(const Duration(seconds: 30));
-    return {'status': response.statusCode, 'body': response.body};
+    for (var attempt = 0;; attempt++) {
+      final request = http.Request(method, uri)..headers.addAll(headers);
+      if (effectiveUA != null) request.headers['User-Agent'] = effectiveUA;
+      if (body != null) request.body = body;
+
+      try {
+        final streamed = await _http.send(request).timeout(const Duration(seconds: 15));
+        // Headers arriving is no guarantee the body ever finishes: a server
+        // stalling mid-body would otherwise hang the calling hook indefinitely
+        // (the 15s above only covers up to the response headers).
+        final response = await http.Response.fromStream(streamed).timeout(const Duration(seconds: 30));
+        return {'status': response.statusCode, 'body': response.body};
+      } on http.ClientException catch (e) {
+        // A resolver hiccup during a network handover, sleep/wake or VPN
+        // toggle surfaces as "Failed host lookup: '<host>'" (package:http's
+        // IOClient wraps the underlying SocketException verbatim — this
+        // never fires on web, where BrowserClient wraps a failed fetch()
+        // differently) and is usually gone on the next try — one retry
+        // clears it without troubling the caller. Anything else (timeout,
+        // connection refused, HTTP error) still surfaces at once.
+        //
+        // The message must name this call's OWN target host: dart:io follows
+        // redirects inside the same send(), so a lookup failure can name a
+        // redirect's target host after the original host has already fully
+        // received this request's body — retrying would then resend a
+        // non-idempotent request (e.g. a sync POST) a second time. Only the
+        // original hop is safe to retry.
+        if (attempt > 0 || !e.message.startsWith("Failed host lookup: '${uri.host}'")) rethrow;
+        await Future.delayed(Duration(milliseconds: 300 + _retryJitter.nextInt(200)));
+      }
+    }
   }
+
+  static final _retryJitter = Random();
 
   void dispose() {
     _pump?.cancel();
