@@ -1,4 +1,5 @@
 import Flutter
+import GameController
 import UIKit
 
 @main
@@ -10,6 +11,12 @@ import UIKit
   // itself. These mirror the modifier shortcuts in app/lib/main.dart's
   // `_handleKeyEvent`, which covers every other platform.
   private var keyCommandChannel: FlutterMethodChannel?
+
+  // Physical-keyboard presence for the logging fields' focus rules
+  // (docs/design/logging-fields.md): Flutter has no keyboard-presence API, so
+  // the Dart side (HardwareKeyboardService) asks here. GCKeyboard is the only
+  // public signal (iOS 14+, within the deployment floor).
+  private var hardwareKeyboardChannel: FlutterMethodChannel?
 
   override func application(
     _ application: UIApplication,
@@ -24,6 +31,30 @@ import UIKit
       name: "ham2k/key_commands",
       binaryMessenger: engineBridge.applicationRegistrar.messenger()
     )
+    hardwareKeyboardChannel = FlutterMethodChannel(
+      name: "ham2k/hardware_keyboard",
+      binaryMessenger: engineBridge.applicationRegistrar.messenger()
+    )
+    hardwareKeyboardChannel?.setMethodCallHandler { call, result in
+      guard call.method == "isAttached" else {
+        result(FlutterMethodNotImplemented)
+        return
+      }
+      result(GCKeyboard.coalesced != nil)
+    }
+    // Re-query on disconnect rather than pushing `false`: `coalesced`
+    // merges every attached keyboard, so one leaving doesn't mean none
+    // remain.
+    NotificationCenter.default.addObserver(
+      forName: .GCKeyboardDidConnect, object: nil, queue: .main
+    ) { [weak self] _ in
+      self?.hardwareKeyboardChannel?.invokeMethod("changed", arguments: true)
+    }
+    NotificationCenter.default.addObserver(
+      forName: .GCKeyboardDidDisconnect, object: nil, queue: .main
+    ) { [weak self] _ in
+      self?.hardwareKeyboardChannel?.invokeMethod("changed", arguments: GCKeyboard.coalesced != nil)
+    }
   }
 
   // UIKit matches a UIKeyCommand only on an EXACT modifierFlags match, so ⌘K

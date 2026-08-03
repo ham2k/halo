@@ -64,6 +64,7 @@ import 'services/status_bar_service.dart';
 import 'settings/core_settings_groups.dart';
 import 'settings/settings_registry.dart';
 import 'settings/system_lists.dart';
+import 'services/hardware_keyboard_service.dart';
 import 'services/window_chrome_service.dart';
 import 'services/update_check_service.dart';
 import 'services/update_service.dart';
@@ -132,6 +133,7 @@ void _mainBody({
   // Off in release, so nothing is emitted or buffered there.
   DevLog.instance.enabled = !kReleaseMode;
   WindowChromeService.init();
+  HardwareKeyboardService.init();
   // Web-only, non-release-only: exposes window.__halo for agent inspection
   // (no-op on native and in production release). See config/dev_bridge.dart.
   installDevBridge();

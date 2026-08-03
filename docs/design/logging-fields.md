@@ -93,7 +93,7 @@ Two consequences worth knowing before changing any of this:
 The callsign field is the default: if no other field is focused, focus
 belongs there.
 
-**Except on mobile with no external keyboard attached**, where having no
+**Except on mobile with no physical keyboard attached**, where having no
 field focused is fine — the view always starts that way, so the operator
 isn't met with a virtual keyboard covering half the screen. And while a
 virtual keyboard *is* displayed, tapping a field that is already focused and
@@ -103,13 +103,30 @@ closing it. Implemented app-wide (not just for the logging fields) by
 `TapToDismissEmptyField` in `keyboard_dismiss.dart`, since a per-field opt-in
 would be silently missing from every field added later.
 
+Whether a physical keyboard is attached comes from the native side over the
+`ham2k/hardware_keyboard` channel — GCKeyboard on iOS, InputDevice
+enumeration on Android — into halo_widgets' `hardwareKeyboardAttached`
+notifier, fed by the app's `HardwareKeyboardService`. Flutter itself cannot
+answer this: its HardwareKeyboard API only reports keys while they are
+pressed, and the `viewInsets` heuristic in `keyboard_dismiss.dart` only
+answers while a field is already focused — strictly after the moment the
+answer is needed. The value is read at each focus decision, not watched: a
+keyboard attached mid-session applies from the next decision on. (One
+harmless corner: `autofocus` re-evaluates per build, so with nothing focused
+a late attach can hand focus to the callsign field — with hardware attached
+there is no virtual keyboard to pop, so that is the default-focus rule, not
+a violation.) The default while the channel's first answer is in flight is
+"none attached", so a race costs a keyboard user one tap rather than popping
+an uninvited virtual keyboard.
+
 **Tapping a spot focuses the callsign field.** The suggestion it hands over
 means "work THIS station", so Enter must be able to log it immediately — but
 the tap itself lands in the Spots pane, outside the logging fields, leaving
 nothing focused for Enter to reach. The suggestedQso-change path asserts the
 focus itself (a deeplinked cold start gets it from the field's autofocus).
-Not on mobile, per the carve-out above: there the suggestion fills the
-fields without popping a keyboard over the call info the tap just surfaced.
+Not on mobile without a physical keyboard, per the carve-out above: there
+the suggestion fills the fields without popping a keyboard over the call
+info the tap just surfaced.
 
 ## Moving between the main fields
 
@@ -386,13 +403,14 @@ callsign — see [backlog.md](../backlog.md).
 
 Implemented except for:
 
-- The two mobile rules — starting with no field focused when no external
-  keyboard is attached, and making "nothing focused → the callsign field" a
-  standing invariant rather than something re-asserted after each action. Both
-  are blocked on a decision, not on the work; see [backlog.md](../backlog.md).
-  Enter is no longer one of the actions needing that re-assertion — it doesn't
-  drop focus in the first place (§ "Enter and focus") — which narrows the
-  second rule without settling it.
+- Making "nothing focused → the callsign field" a standing invariant rather
+  than something re-asserted after each action. Blocked on a decision, not on
+  the work; see [backlog.md](../backlog.md). Enter is no longer one of the
+  actions needing that re-assertion — it doesn't drop focus in the first
+  place (§ "Enter and focus") — which narrows the rule without settling it.
+  (The other mobile rule — starting with no field focused when no physical
+  keyboard is attached — is implemented; see the carve-out in § "Which field
+  has focus".)
 - The serial fields' `focus: 'skip'` opt-out noted above, which does not exist
   yet.
 - The Log button, which the focus ladder doesn't reach: Tab loops within the

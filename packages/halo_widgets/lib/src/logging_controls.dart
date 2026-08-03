@@ -1882,9 +1882,10 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
       // it right away — the tap that produced it landed outside the logging
       // fields, leaving nothing focused for Enter to reach. Focus the
       // callsign field (cursor-at-end comes from its focus listener). Not on
-      // mobile: an uninvited virtual keyboard would cover the call info the
-      // tap just surfaced (docs/design/logging-fields.md's mobile carve-out).
-      if (!isMobilePlatform) _callFocus.requestFocus();
+      // mobile without a physical keyboard: there an uninvited virtual
+      // keyboard would cover the call info the tap just surfaced
+      // (docs/design/logging-fields.md's mobile carve-out).
+      if (!isMobilePlatform || hardwareKeyboardAttached.value) _callFocus.requestFocus();
     }
   }
 
@@ -6425,7 +6426,16 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
                               // way to actually suppress it.
                               selectAllOnFocus: false,
                               enabled: !fieldsLocked,
-                              autofocus: true,
+                              // The callsign field is the default focus —
+                              // except on mobile with no physical keyboard,
+                              // where the view starts unfocused so the
+                              // operator isn't met with a virtual keyboard
+                              // covering half the screen
+                              // (docs/design/logging-fields.md). Read per
+                              // build, not watched: the channel's answer
+                              // normally beats navigation into an operation,
+                              // and losing that race only costs one tap.
+                              autofocus: !isMobilePlatform || hardwareKeyboardAttached.value,
                               autocorrect: _commandMixedCase,
                               enableSuggestions: _commandMixedCase,
                               // A command awaiting parameters (expectsParams)

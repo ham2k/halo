@@ -73,26 +73,19 @@ still only ships `refList` — a contest exchange needs a `textField` control
 kind (deferred in work phases 4 and 5), and scoring needs contest rules
 beyond the three core ones above.
 
-## Two logging-field focus rules still need a decision
+## One logging-field focus rule still needs a decision
 
 [design/logging-fields.md](design/logging-fields.md) specifies the focus and
 keyboard-navigation contract for the main logging fields. All of it is
-implemented except these two, which are blocked on a decision rather than on
-the work:
+implemented except this, which is blocked on a decision rather than on the
+work:
 
-- **Mobile should start with no field focused when no external keyboard is
-  attached.** The callsign field is `autofocus: true` unconditionally, so a
-  phone opens the operation view with the virtual keyboard already up. The
-  blocker is that nothing in the codebase can detect an external keyboard:
-  `isMobilePlatform` is the only platform signal, and the `viewInsets`
-  heuristic in `keyboard_dismiss.dart` can only report *while a field is
-  already focused* — strictly after the moment the answer is needed.
 - **"Nothing focused → focus the callsign field" is not a standing rule.** It
   is enforced at first build and after specific actions (log, wipe, collapsing
   a secondary control, Space in the frequency field) rather than as an
   invariant. Making it standing means deciding what should happen when focus
-  is dropped deliberately — including by the empty-field tap-to-blur above,
-  which would otherwise fight it on mobile.
+  is dropped deliberately — including by the empty-field tap-to-blur
+  (`TapToDismissEmptyField`), which would otherwise fight it on mobile.
 
 ## The QSO list has no "goto" search
 

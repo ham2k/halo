@@ -496,6 +496,9 @@ void main() {
       try {
         raiseKeyboard(tester);
         await tester.pumpWidget(host(showNumbersRow: true));
+        // Focus is explicit: mobile without a hardware keyboard starts with
+        // no field focused, and the row needs "a field has focus" to show.
+        await tester.tap(find.widgetWithText(TextField, 'Their call'));
         await pumpRow(tester);
         expect(find.byType(NumberKeys), findsOneWidget);
         // The full digit set is there…
@@ -566,7 +569,8 @@ void main() {
       try {
         raiseKeyboard(tester);
         await tester.pumpWidget(host(showNumbersRow: true));
-        await pumpRow(tester); // let the call field autofocus and the row publish
+        await tester.tap(find.widgetWithText(TextField, 'Their call')); // mobile starts unfocused
+        await pumpRow(tester);
 
         await tester.tap(keyInRow('5'));
         await tester.pump();
@@ -613,6 +617,7 @@ void main() {
       try {
         raiseKeyboard(tester);
         await tester.pumpWidget(host(showNumbersRow: true, showExtraInNumbersRow: false));
+        await tester.tap(find.widgetWithText(TextField, 'Their call')); // mobile starts unfocused
         await pumpRow(tester);
         expect(find.byType(NumberKeys), findsOneWidget);
         expect(keyInRow('.'), findsNothing);
@@ -6421,6 +6426,59 @@ void main() {
       expect(tester.widget<TextField>(callField).controller!.text, 'W1AW');
       expect(tester.widget<TextField>(callField).focusNode!.hasFocus, isFalse);
     } finally {
+      debugDefaultTargetPlatformOverride = null;
+    }
+  });
+
+  testWidgets('HALO-93: mobile with no hardware keyboard starts with no field focused', (tester) async {
+    debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
+    try {
+      // The carve-out itself: an unconditional autofocus here means every
+      // phone opens the operation view with the virtual keyboard already up.
+      await tester.pumpWidget(host());
+      await tester.pump();
+      expect(tester.widget<TextField>(find.widgetWithText(TextField, 'Their call')).focusNode!.hasFocus, isFalse);
+    } finally {
+      debugDefaultTargetPlatformOverride = null;
+    }
+  });
+
+  testWidgets('HALO-93: a hardware keyboard restores the callsign autofocus on mobile', (tester) async {
+    debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
+    hardwareKeyboardAttached.value = true;
+    try {
+      // With a physical keyboard there is no virtual keyboard to pop, so the
+      // desktop rule applies: the callsign field is the default focus.
+      await tester.pumpWidget(host());
+      await tester.pump();
+      expect(tester.widget<TextField>(find.widgetWithText(TextField, 'Their call')).focusNode!.hasFocus, isTrue);
+    } finally {
+      hardwareKeyboardAttached.value = false;
+      debugDefaultTargetPlatformOverride = null;
+    }
+  });
+
+  testWidgets('HALO-93: with a hardware keyboard, a spot tap focuses the callsign on mobile too', (tester) async {
+    debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
+    hardwareKeyboardAttached.value = true;
+    try {
+      await tester.pumpWidget(host());
+      FocusManager.instance.primaryFocus?.unfocus();
+      await tester.pump();
+
+      await tester.pumpWidget(host(suggestedQso: {
+        'their': {'call': 'W1AW'},
+        'freq': 14074.0,
+        'mode': 'FT8',
+      }));
+      await tester.pump();
+
+      // The keyboard clause, not the platform clause: dropping
+      // `hardwareKeyboardAttached` from the spot-tap guard leaves an iPad
+      // keyboard user unable to press Enter after tapping a spot.
+      expect(tester.widget<TextField>(find.widgetWithText(TextField, 'Their call')).focusNode!.hasFocus, isTrue);
+    } finally {
+      hardwareKeyboardAttached.value = false;
       debugDefaultTargetPlatformOverride = null;
     }
   });

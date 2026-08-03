@@ -106,6 +106,18 @@ bool get isWindowedPlatform =>
 bool get isMobilePlatform =>
     !kIsWeb && (defaultTargetPlatform == TargetPlatform.iOS || defaultTargetPlatform == TargetPlatform.android);
 
+/// Whether a physical keyboard is attached, on the platforms where that is a
+/// question — fed by the app's HardwareKeyboardService over the
+/// `ham2k/hardware_keyboard` channel (iOS 14+ via GCKeyboard, Android via
+/// InputDevice), the same app-feeds-the-notifier arrangement as
+/// [macOSWindowIsFullScreen]. Defaults to false, which on mobile means the
+/// no-uninvited-virtual-keyboard behavior (docs/design/logging-fields.md's
+/// carve-out) — the safe reading while the channel's first answer is still
+/// in flight. Only meaningful where [isMobilePlatform] is true; every
+/// consumer must gate on that first, since nothing feeds this on desktop or
+/// web.
+final ValueNotifier<bool> hardwareKeyboardAttached = ValueNotifier<bool>(false);
+
 /// True on iOS specifically — used where iOS's soft keyboards behave
 /// differently enough from Android's to warrant a per-platform choice, e.g.
 /// the NumbersAndPunctuation keyboard (numbers-first, but with symbols and a
