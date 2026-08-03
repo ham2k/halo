@@ -29,6 +29,18 @@ bool get isMacOSChromelessWindow =>
 bool get isWindowsChromelessWindow =>
     !kIsWeb && defaultTargetPlatform == TargetPlatform.windows;
 
+/// On Linux the runner (linux/runner/my_application.cc) installs an
+/// effectively invisible custom titlebar via `gtk_window_set_titlebar`
+/// instead of the native header bar — that keeps GTK on its normal
+/// client-side-decoration path (so the window manager still supplies
+/// drag/resize/shadow handling) while leaving nothing visible for it to
+/// draw. Like Windows, there are no native buttons left, so the caption
+/// controls are the same Flutter-drawn [WindowsCaptionButtons] at the top
+/// right — every place gated on [isWindowsChromelessWindow] below for that
+/// shared behavior also checks this.
+bool get isLinuxChromelessWindow =>
+    !kIsWeb && defaultTargetPlatform == TargetPlatform.linux;
+
 /// Horizontal space to reserve for the traffic-light buttons when
 /// [isMacOSChromelessWindow]. A PHYSICAL measurement: the native buttons are
 /// fixed-size system controls that don't scale with the UI, so this clearance
@@ -340,24 +352,26 @@ const _windowChromeChannel = MethodChannel('ham2k/window_chrome');
 /// background stands in for it. Double-clicking performs the native
 /// title-bar double-click action (macOS: zoom, or minimize/nothing per the
 /// user's System Settings choice, resolved in MainFlutterWindow.swift;
-/// Windows: maximize/restore). On Windows a drag also moves the window —
-/// without a caption there is no other way to move it (macOS keeps the
-/// system's invisible drag strip at the very top, so it needs no Flutter
-/// drag). flexibleSpace renders BEHIND the toolbar row in the AppBar's
-/// stack, so buttons and title keep winning hit-testing and only gestures
-/// on empty background land here. Null on all other platforms.
+/// Windows/Linux: maximize/restore). On Windows and Linux a drag also moves
+/// the window — without a caption there is no other way to move it (macOS
+/// keeps the system's invisible drag strip at the very top, so it needs no
+/// Flutter drag). flexibleSpace renders BEHIND the toolbar row in the
+/// AppBar's stack, so buttons and title keep winning hit-testing and only
+/// gestures on empty background land here. Null on all other platforms.
 Widget? windowHeaderGestureArea() {
-  if (!isMacOSChromelessWindow && !isWindowsChromelessWindow) return null;
+  if (!isMacOSChromelessWindow && !isWindowsChromelessWindow && !isLinuxChromelessWindow) return null;
   return GestureDetector(
     behavior: HitTestBehavior.opaque,
     onDoubleTap: () => _windowChromeChannel.invokeMethod('performHeaderDoubleClickAction'),
-    // The native side takes over the pointer (WM_NCLBUTTONDOWN enters the
-    // system move loop), so onPanStart is the whole gesture.
-    onPanStart: isWindowsChromelessWindow
+    // The native side takes over the pointer (WM_NCLBUTTONDOWN / gtk_window_
+    // begin_move_drag enters the system move loop), so onPanStart is the
+    // whole gesture.
+    onPanStart: (isWindowsChromelessWindow || isLinuxChromelessWindow)
         ? (_) => _windowChromeChannel.invokeMethod('startWindowDrag')
         : null,
     // Right-clicking a real Windows title bar opens the window system menu
-    // (Restore/Move/Size/…); the native side shows it at the cursor.
+    // (Restore/Move/Size/…); the native side shows it at the cursor. No
+    // Linux equivalent wired up yet.
     onSecondaryTap: isWindowsChromelessWindow
         ? () => _windowChromeChannel.invokeMethod('showSystemMenu')
         : null,
@@ -365,11 +379,13 @@ Widget? windowHeaderGestureArea() {
   );
 }
 
-/// True while the Windows window is maximized — pushed from the native
-/// runner (flutter_window.cpp) over the window-chrome channel and received
-/// by the app's WindowChromeService. Drives [WindowsCaptionButtons]'
-/// maximize/restore glyph; the buttons listen directly, so no scope is
-/// needed (nothing else lays out differently when maximized).
+/// True while the Windows or Linux window is maximized — pushed from the
+/// native runner (flutter_window.cpp / my_application.cc) over the
+/// window-chrome channel and received by the app's WindowChromeService.
+/// Drives [WindowsCaptionButtons]' maximize/restore glyph; the buttons
+/// listen directly, so no scope is needed (nothing else lays out
+/// differently when maximized). Name kept from when this was Windows-only;
+/// both chromeless platforms share the one notifier and channel method.
 final ValueNotifier<bool> windowsWindowIsMaximized = ValueNotifier<bool>(false);
 
 /// Width of one Flutter-drawn caption button ([WindowsCaptionButtons]) —
@@ -380,10 +396,10 @@ const double windowsCaptionButtonWidth = 46;
 
 /// Trailing space a window-top AppBar's `actions` must reserve so they
 /// don't sit under the caption-button overlay when
-/// [isWindowsChromelessWindow]; zero elsewhere, so it can be applied
-/// unconditionally as a trailing SizedBox.
+/// [isWindowsChromelessWindow] or [isLinuxChromelessWindow]; zero
+/// elsewhere, so it can be applied unconditionally as a trailing SizedBox.
 double windowsCaptionClearance(BuildContext context) =>
-    isWindowsChromelessWindow ? 3 * windowsCaptionButtonWidth + 8 : 0;
+    (isWindowsChromelessWindow || isLinuxChromelessWindow) ? 3 * windowsCaptionButtonWidth + 8 : 0;
 
 /// The trailing spacer every window-top AppBar puts at the END of its
 /// `actions` (adding one if it has none): it keeps action buttons — and,
@@ -461,25 +477,24 @@ Widget shrinkToFitText(Text text, {double minScale = 0.75, bool condensed = fals
 /// the controls never overlap:
 ///  - chromeless macOS: the traffic lights, a fixed PHYSICAL size
 ///    ([macOSTrafficLightInset] + [macOSTrafficLightGap]), so unscaled;
-///  - chromeless Windows: the Flutter-drawn caption buttons
-///    ([windowsCaptionClearance]'s width), logical, so scaled by [uiScale];
-///  - platforms with a native title bar (Linux): none — the controls live in
-///    their own bar, not over the content.
+///  - chromeless Windows/Linux: the Flutter-drawn caption buttons
+///    ([windowsCaptionClearance]'s width), logical, so scaled by [uiScale].
 /// Height is [minWindowSize] scaled.
 Size desktopMinimumWindowSize(double uiScale) {
   final double controls = isMacOSChromelessWindow
       ? macOSTrafficLightInset + macOSTrafficLightGap
-      : isWindowsChromelessWindow
+      : (isWindowsChromelessWindow || isLinuxChromelessWindow)
           ? (3 * windowsCaptionButtonWidth + 8) * uiScale
           : 0;
   return Size(minWindowSize.width * uiScale + controls, minWindowSize.height * uiScale);
 }
 
 /// The minimize / maximize-restore / close buttons for the chromeless
-/// Windows window, overlaid at the app root's top-right corner (main.dart)
-/// so they float over every route's header — the same "window chrome above
-/// app content" role the native traffic lights play on macOS. Actions go
-/// over the window-chrome channel to the native runner.
+/// Windows and Linux windows, overlaid at the app root's top-right corner
+/// (main.dart) so they float over every route's header — the same "window
+/// chrome above app content" role the native traffic lights play on macOS.
+/// Actions go over the window-chrome channel to the native runner
+/// (flutter_window.cpp / my_application.cc).
 class WindowsCaptionButtons extends StatelessWidget {
   const WindowsCaptionButtons({super.key});
 

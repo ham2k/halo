@@ -1,9 +1,6 @@
 #include "my_application.h"
 
 #include <flutter_linux/flutter_linux.h>
-#ifdef GDK_WINDOWING_X11
-#include <gdk/gdkx.h>
-#endif
 
 #include "flutter/generated_plugin_registrant.h"
 
@@ -19,6 +16,11 @@ struct _MyApplication {
   gint window_x;
   gint window_y;
   gboolean window_maximized;
+  // The window-chrome method channel (see window_chrome_method_call_cb and
+  // ham2k/window_chrome.dart-side WindowChromeService) — kept on the
+  // instance so my_application_on_window_state can push maximize
+  // transitions to it.
+  FlMethodChannel* window_chrome_channel;
 };
 
 G_DEFINE_TYPE(MyApplication, my_application, GTK_TYPE_APPLICATION)
@@ -29,10 +31,11 @@ static void first_frame_cb(MyApplication* self, FlView* view) {
 }
 
 // ── Remember the window's geometry across launches ──────────────────────────
-// Linux keeps native chrome and has no window-chrome channel, so window state
-// is persisted here in the runner: a small key file under the user's config
-// dir, written on shutdown and restored (size + position + maximized) in
-// activate before the window is shown, so there's no launch flash.
+// Window geometry isn't part of the ham2k/window_chrome channel (below) —
+// it's persisted here in the runner instead: a small key file under the
+// user's config dir, written on shutdown and restored (size + position +
+// maximized) in activate before the window is shown, so there's no launch
+// flash.
 
 static gchar* my_application_window_state_path() {
   return g_build_filename(g_get_user_config_dir(), APPLICATION_ID, "window.ini",
@@ -63,6 +66,14 @@ static gboolean my_application_on_window_state(GtkWidget* widget,
   if (event->changed_mask & GDK_WINDOW_STATE_MAXIMIZED) {
     self->window_maximized =
         (event->new_window_state & GDK_WINDOW_STATE_MAXIMIZED) != 0;
+    // Push the transition to the Flutter-drawn caption buttons
+    // (WindowsCaptionButtons/windowsWindowIsMaximized in platform_chrome.dart)
+    // the same way flutter_window.cpp does on WM_SIZE.
+    if (self->window_chrome_channel) {
+      g_autoptr(FlValue) maximized_value = fl_value_new_bool(self->window_maximized);
+      fl_method_channel_invoke_method(self->window_chrome_channel, "maximizedChanged",
+                                      maximized_value, nullptr, nullptr, nullptr);
+    }
   }
   return FALSE;
 }
@@ -119,38 +130,115 @@ static void my_application_save_window_state(MyApplication* self) {
   g_key_file_save_to_file(key_file, path, nullptr);
 }
 
+// ── Window-chrome channel ────────────────────────────────────────────────
+// Handles the same "ham2k/window_chrome" method calls the Windows runner's
+// SetUpWindowChromeChannel (flutter_window.cpp) does, for the Flutter-drawn
+// header controls (WindowsCaptionButtons / windowHeaderGestureArea in
+// platform_chrome.dart). user_data is the GtkWindow directly — this handler
+// has no other use for the MyApplication instance.
+static void window_chrome_method_call_cb(FlMethodChannel* channel,
+                                         FlMethodCall* method_call,
+                                         gpointer user_data) {
+  (void)channel;
+  GtkWindow* window = GTK_WINDOW(user_data);
+  const gchar* method = fl_method_call_get_name(method_call);
+
+  g_autoptr(FlMethodResponse) response = nullptr;
+  if (g_strcmp0(method, "performHeaderDoubleClickAction") == 0 ||
+      g_strcmp0(method, "toggleMaximizeWindow") == 0) {
+    // Windows title-bar double-click convention: toggle maximize.
+    if (gtk_window_is_maximized(window)) {
+      gtk_window_unmaximize(window);
+    } else {
+      gtk_window_maximize(window);
+    }
+    response = FL_METHOD_RESPONSE(fl_method_success_response_new(nullptr));
+  } else if (g_strcmp0(method, "minimizeWindow") == 0) {
+    gtk_window_iconify(window);
+    response = FL_METHOD_RESPONSE(fl_method_success_response_new(nullptr));
+  } else if (g_strcmp0(method, "closeWindow") == 0) {
+    gtk_window_close(window);
+    response = FL_METHOD_RESPONSE(fl_method_success_response_new(nullptr));
+  } else if (g_strcmp0(method, "startWindowDrag") == 0) {
+    // Unlike the Windows runner (which replays WM_NCLBUTTONDOWN from the
+    // still-down mouse button), there's no native mouse-down event here to
+    // hand off — this fires from Dart's onPanStart, after the fact. Re-derive
+    // the pointer's current root position instead and hand the whole drag to
+    // the window manager, the same delegation GtkHeaderBar itself uses.
+    GdkDisplay* display = gtk_widget_get_display(GTK_WIDGET(window));
+    GdkSeat* seat = gdk_display_get_default_seat(display);
+    GdkDevice* pointer = gdk_seat_get_pointer(seat);
+    gint root_x = 0;
+    gint root_y = 0;
+    gdk_device_get_position(pointer, nullptr, &root_x, &root_y);
+    gtk_window_begin_move_drag(window, /* left button */ 1, root_x, root_y, GDK_CURRENT_TIME);
+    response = FL_METHOD_RESPONSE(fl_method_success_response_new(nullptr));
+  } else if (g_strcmp0(method, "getIsMaximized") == 0) {
+    // Dart pulls this at startup: the maximize push above only fires on
+    // transitions, so a fresh Dart side (launch, hot restart) would
+    // otherwise assume "not maximized" forever.
+    g_autoptr(FlValue) result = fl_value_new_bool(gtk_window_is_maximized(window));
+    response = FL_METHOD_RESPONSE(fl_method_success_response_new(result));
+  } else if (g_strcmp0(method, "setMinimumSize") == 0) {
+    // The resize floor (layouts.md's minWindowSize), already multiplied by
+    // the UI scale on the Flutter side — same contract as the macOS/Windows
+    // runners' setMinimumSize handlers.
+    FlValue* args = fl_method_call_get_args(method_call);
+    FlValue* width_value = args ? fl_value_lookup_string(args, "width") : nullptr;
+    FlValue* height_value = args ? fl_value_lookup_string(args, "height") : nullptr;
+    if (width_value && height_value) {
+      gtk_widget_set_size_request(GTK_WIDGET(window), static_cast<gint>(fl_value_get_float(width_value)),
+                                  static_cast<gint>(fl_value_get_float(height_value)));
+      response = FL_METHOD_RESPONSE(fl_method_success_response_new(nullptr));
+    } else {
+      response = FL_METHOD_RESPONSE(
+          fl_method_error_response_new("bad_args", "Expected width and height doubles", nullptr));
+    }
+  } else {
+    // showSystemMenu and setTitleBarHeight are Windows/macOS-only concerns.
+    response = FL_METHOD_RESPONSE(fl_method_not_implemented_response_new());
+  }
+
+  g_autoptr(GError) error = nullptr;
+  if (!fl_method_call_respond(method_call, response, &error)) {
+    g_warning("Failed to send window_chrome response: %s", error->message);
+  }
+}
+
 // Implements GApplication::activate.
 static void my_application_activate(GApplication* application) {
   MyApplication* self = MY_APPLICATION(application);
   GtkWindow* window =
       GTK_WINDOW(gtk_application_window_new(GTK_APPLICATION(application)));
 
-  // Use a header bar when running in GNOME as this is the common style used
-  // by applications and is the setup most users will be using (e.g. Ubuntu
-  // desktop).
-  // If running on X and not using GNOME then just use a traditional title bar
-  // in case the window manager does more exotic layout, e.g. tiling.
-  // If running on Wayland assume the header bar will work (may need changing
-  // if future cases occur).
-  gboolean use_header_bar = TRUE;
-#ifdef GDK_WINDOWING_X11
-  GdkScreen* screen = gtk_window_get_screen(window);
-  if (GDK_IS_X11_SCREEN(screen)) {
-    const gchar* wm_name = gdk_x11_screen_get_window_manager_name(screen);
-    if (g_strcmp0(wm_name, "GNOME Shell") != 0) {
-      use_header_bar = FALSE;
-    }
-  }
-#endif
-  if (use_header_bar) {
-    GtkHeaderBar* header_bar = GTK_HEADER_BAR(gtk_header_bar_new());
-    gtk_widget_show(GTK_WIDGET(header_bar));
-    gtk_header_bar_set_title(header_bar, HALO_PRODUCT_NAME);
-    gtk_header_bar_set_show_close_button(header_bar, TRUE);
-    gtk_window_set_titlebar(window, GTK_WIDGET(header_bar));
-  } else {
-    gtk_window_set_title(window, HALO_PRODUCT_NAME);
-  }
+  gtk_window_set_title(window, HALO_PRODUCT_NAME);
+
+  // Chromeless window: replace the native title bar with an effectively
+  // invisible custom one, mirroring the macOS/Windows runners' "the app's
+  // own header reaches the window's top edge" treatment
+  // (window_chrome_service.dart). Installing ANY widget via
+  // gtk_window_set_titlebar keeps GTK on its normal client-side-decoration
+  // path — so the window manager still supplies the drag/resize/shadow
+  // handling CSD windows get for free — it just has nothing visible left to
+  // draw. Kept as a real GtkHeaderBar (rather than a plain container) since
+  // that's the widget GTK's CSD/resize negotiation is designed around; CSS
+  // forces its usual themed background and padding down to nothing.
+  GtkWidget* titlebar = gtk_header_bar_new();
+  gtk_header_bar_set_show_close_button(GTK_HEADER_BAR(titlebar), FALSE);
+  gtk_header_bar_set_title(GTK_HEADER_BAR(titlebar), nullptr);
+  gtk_widget_set_size_request(titlebar, -1, 1);
+  GtkStyleContext* titlebar_style = gtk_widget_get_style_context(titlebar);
+  gtk_style_context_add_class(titlebar_style, "ham2k-invisible-titlebar");
+  g_autoptr(GtkCssProvider) titlebar_css = gtk_css_provider_new();
+  gtk_css_provider_load_from_data(titlebar_css,
+                                  ".ham2k-invisible-titlebar { background: transparent; "
+                                  "background-image: none; border: none; box-shadow: none; "
+                                  "padding: 0; margin: 0; min-height: 0; }",
+                                  -1, nullptr);
+  gtk_style_context_add_provider(titlebar_style, GTK_STYLE_PROVIDER(titlebar_css),
+                                 GTK_STYLE_PROVIDER_PRIORITY_APPLICATION);
+  gtk_widget_show(titlebar);
+  gtk_window_set_titlebar(window, titlebar);
 
   // Ties every window to the themed icon named after APPLICATION_ID — the
   // per-edition icon the CMake install lays down as
@@ -179,6 +267,16 @@ static void my_application_activate(GApplication* application) {
   fl_view_set_background_color(view, &background_color);
   gtk_widget_show(GTK_WIDGET(view));
   gtk_container_add(GTK_CONTAINER(window), GTK_WIDGET(view));
+
+  // Chrome channel: minimize/maximize/close and window-drag for the
+  // Flutter-drawn header controls, mirroring the Windows runner's
+  // SetUpWindowChromeChannel (flutter_window.cpp).
+  g_autoptr(FlStandardMethodCodec) window_chrome_codec = fl_standard_method_codec_new();
+  self->window_chrome_channel =
+      fl_method_channel_new(fl_engine_get_binary_messenger(fl_view_get_engine(view)),
+                            "ham2k/window_chrome", FL_METHOD_CODEC(window_chrome_codec));
+  fl_method_channel_set_method_call_handler(self->window_chrome_channel, window_chrome_method_call_cb,
+                                            window, nullptr);
 
   // Show the window when Flutter renders.
   // Requires the view to be realized so we can start rendering.
@@ -253,6 +351,7 @@ static void my_application_shutdown(GApplication* application) {
 static void my_application_dispose(GObject* object) {
   MyApplication* self = MY_APPLICATION(object);
   g_clear_pointer(&self->dart_entrypoint_arguments, g_strfreev);
+  g_clear_object(&self->window_chrome_channel);
   G_OBJECT_CLASS(my_application_parent_class)->dispose(object);
 }
 
@@ -273,6 +372,7 @@ static void my_application_init(MyApplication* self) {
   self->window_x = -1;
   self->window_y = -1;
   self->window_maximized = FALSE;
+  self->window_chrome_channel = nullptr;
 }
 
 MyApplication* my_application_new() {

@@ -151,6 +151,35 @@ void main() {
     }
   });
 
+  testWidgets('on Linux, dragging the empty header background starts a window drag', (tester) async {
+    // Same as Windows: the chromeless Linux window has no caption at all, so
+    // the header drag is the ONLY way to move the window.
+    debugDefaultTargetPlatformOverride = TargetPlatform.linux;
+    try {
+      final calls = <MethodCall>[];
+      tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(channel, (call) async {
+        calls.add(call);
+        return null;
+      });
+
+      await tester.pumpWidget(host());
+
+      final appBar = tester.getRect(find.byType(AppBar));
+      final titleRight = tester.getTopRight(find.text('Title')).dx;
+      final actionLeft = tester.getTopLeft(find.byIcon(Icons.settings)).dx;
+      final empty = Offset((titleRight + actionLeft) / 2, appBar.center.dy);
+
+      await tester.dragFrom(empty, const Offset(40, 0));
+      // Flush the sibling double-tap recognizer's timeout.
+      await tester.pump(const Duration(milliseconds: 400));
+
+      expect(calls.map((c) => c.method), ['startWindowDrag']);
+    } finally {
+      debugDefaultTargetPlatformOverride = null;
+      tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(channel, null);
+    }
+  });
+
   testWidgets('the traffic-light mask paints the header colour fading to transparent, at fixed clearance width',
       (tester) async {
     // The mask hides header content that animates through the top-left corner

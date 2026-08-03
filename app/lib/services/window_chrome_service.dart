@@ -12,12 +12,13 @@
 // changes.
 //
 // The same channel also carries header gesture reports (double-click,
-// Windows drag) and window-control actions, sent from halo_widgets'
+// Windows/Linux drag) and window-control actions, sent from halo_widgets'
 // platform_chrome.dart (windowHeaderGestureArea, WindowsCaptionButtons)
 // since that's where the AppBar helpers live, plus window-state pushes from
 // the native side (received in [WindowChromeService.init]). The Windows
-// runner (windows/runner/flutter_window.cpp) serves the same channel for
-// its chromeless window.
+// (windows/runner/flutter_window.cpp) and Linux (linux/runner/
+// my_application.cc) runners serve the same channel for their chromeless
+// windows.
 
 import 'package:flutter/foundation.dart' show TargetPlatform, defaultTargetPlatform, kIsWeb;
 import 'package:flutter/services.dart';
@@ -41,10 +42,12 @@ class WindowChromeService {
 
   /// Platforms where the runner strips the native window chrome and this
   /// channel stands in for it (macOS traffic lights over the header; Windows
-  /// custom frame with Flutter-drawn caption buttons).
+  /// and Linux custom frame with Flutter-drawn caption buttons).
   static bool get _chromeless =>
       !kIsWeb &&
-      (defaultTargetPlatform == TargetPlatform.macOS || defaultTargetPlatform == TargetPlatform.windows);
+      (defaultTargetPlatform == TargetPlatform.macOS ||
+          defaultTargetPlatform == TargetPlatform.windows ||
+          defaultTargetPlatform == TargetPlatform.linux);
 
   static double? _lastReported;
   static Size? _lastMinimumSize;
@@ -53,8 +56,9 @@ class WindowChromeService {
   /// Native pushes: macOS full-screen transitions (feed halo_widgets'
   /// [macOSWindowIsFullScreen] so the header drops the traffic-light
   /// clearance while the buttons live in the system's auto-hiding titlebar
-  /// overlay) and Windows maximize state (feeds [windowsWindowIsMaximized]
-  /// for the caption buttons' maximize/restore glyph).
+  /// overlay) and Windows/Linux maximize state (feeds
+  /// [windowsWindowIsMaximized] for the caption buttons' maximize/restore
+  /// glyph).
   static void init() {
     if (!_chromeless) return;
     _channel.setMethodCallHandler((call) async {
@@ -71,15 +75,15 @@ class WindowChromeService {
       }
       return null;
     });
-    if (defaultTargetPlatform == TargetPlatform.windows) {
-      _syncWindowsMaximizedState();
+    if (defaultTargetPlatform == TargetPlatform.windows || defaultTargetPlatform == TargetPlatform.linux) {
+      _syncMaximizedState();
     }
   }
 
   /// The native side only pushes maximize TRANSITIONS, so a fresh Dart side
   /// (launch, hot restart) must pull the current state or a maximized
   /// window would show the wrong caption glyph until the next transition.
-  static Future<void> _syncWindowsMaximizedState() async {
+  static Future<void> _syncMaximizedState() async {
     try {
       final maximized = await _channel.invokeMethod<bool>('getIsMaximized');
       if (maximized != null) windowsWindowIsMaximized.value = maximized;
