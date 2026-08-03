@@ -405,7 +405,21 @@ TextTheme _withTabularFigures(TextTheme theme) {
   );
 }
 
-ThemeData buildHaLoTheme(Brightness brightness) {
+// One cached instance per brightness. MaterialApp rebuilds on every settings
+// change (font scale, etc.); handing it a freshly built ThemeData each time
+// would start a 200ms AnimatedTheme lerp between two same-valued themes
+// (closure-valued members like tabBarTheme.overlayColor never compare equal),
+// and mid-lerp AppBarTheme.lerp materializes an empty iconTheme that drops
+// AppBar action icons to the default black87 — a visible dark flicker on the
+// teal header in light mode (HALO-77). Identical instances make those
+// rebuilds theme-animation-free. The cache survives hot reload, so edits to
+// this file need a hot restart to show up.
+final Map<Brightness, ThemeData> _haloThemeCache = {};
+
+ThemeData buildHaLoTheme(Brightness brightness) =>
+    _haloThemeCache[brightness] ??= _buildHaLoTheme(brightness);
+
+ThemeData _buildHaLoTheme(Brightness brightness) {
   final isDark = brightness == Brightness.dark;
 
   // Values from app-polo lightColors.json / darkColors.json.
@@ -470,6 +484,18 @@ ThemeData buildHaLoTheme(Brightness brightness) {
     appBarTheme: AppBarTheme(
       backgroundColor: colorScheme.primary,
       foregroundColor: colorScheme.onPrimary,
+      // Explicit, not left to the foregroundColor fallback: during a genuine
+      // theme animation (light↔dark toggle) AppBarTheme.lerp turns two null
+      // iconThemes into an empty non-null one, which shadows foregroundColor
+      // in AppBar's resolution chain and drops header icons to the default
+      // black87 mid-animation. Real endpoints lerp onPrimary→onPrimary.
+      iconTheme: IconThemeData(color: colorScheme.onPrimary),
+      actionsIconTheme: IconThemeData(color: colorScheme.onPrimary),
+      // Explicit, not left to the foregroundColor fallback: during a genuine
+      // theme animation (light↔dark toggle) AppBarTheme.lerp turns two null
+      // iconThemes into an empty non-null one, which shadows foregroundColor
+      // in AppBar's resolution chain and drops header icons to the default
+      // black87 mid-animation. Real endpoints lerp onPrimary→onPrimary.
       // Every AppBar reads like a windowed title bar, left-aligned next to
       // any leading content — including on mobile, which otherwise centers
       // per each platform's own convention.

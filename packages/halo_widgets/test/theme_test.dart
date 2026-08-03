@@ -146,6 +146,77 @@ void main() {
         greaterThan(overlay.resolve({WidgetState.hovered})!.a),
       );
     });
+
+    test('repeated calls return the identical cached instance (HALO-77)', () {
+      // MaterialApp is rebuilt on every settings change (font scale steps
+      // included). A freshly built ThemeData never compares equal to the
+      // last one — closure-valued members like tabBarTheme.overlayColor have
+      // fresh identity each call — so each rebuild would restart a 200ms
+      // AnimatedTheme lerp, and mid-lerp AppBar action icons drop to the
+      // default black87 (visible as a dark flicker on the teal header in
+      // light mode).
+      for (final brightness in Brightness.values) {
+        expect(identical(buildHaLoTheme(brightness), buildHaLoTheme(brightness)), isTrue);
+      }
+    });
+
+    test('app bar icon themes are explicit onPrimary, not the foregroundColor fallback', () {
+      // During a genuine theme animation (light↔dark toggle) AppBarTheme.lerp
+      // turns two null iconThemes into an empty non-null one, which shadows
+      // foregroundColor in AppBar's resolution chain and drops header icons
+      // to the default black87 mid-animation. Explicit endpoints lerp
+      // onPrimary→onPrimary instead.
+      for (final brightness in Brightness.values) {
+        final theme = buildHaLoTheme(brightness);
+        expect(theme.appBarTheme.iconTheme?.color, theme.colorScheme.onPrimary);
+        expect(theme.appBarTheme.actionsIconTheme?.color, theme.colorScheme.onPrimary);
+      }
+    });
+
+    testWidgets('app bar action icons hold onPrimary through every frame of a theme animation (HALO-77)',
+        (tester) async {
+      final mode = ValueNotifier<ThemeMode>(ThemeMode.light);
+      await tester.pumpWidget(
+        ValueListenableBuilder<ThemeMode>(
+          valueListenable: mode,
+          builder: (context, themeMode, _) => MaterialApp(
+            theme: buildHaLoTheme(Brightness.light),
+            darkTheme: buildHaLoTheme(Brightness.dark),
+            themeMode: themeMode,
+            home: Scaffold(
+              appBar: AppBar(
+                title: const Text('Home'),
+                actions: [
+                  IconButton(key: const Key('gear'), icon: const Icon(Icons.settings), onPressed: () {}),
+                ],
+              ),
+            ),
+          ),
+        ),
+      );
+
+      Color iconColor() => tester
+          .widget<RichText>(find
+              .descendant(of: find.byKey(const Key('gear')), matching: find.byType(RichText))
+              .first)
+          .text
+          .style!
+          .color!;
+
+      // onPrimary is the same #F0F0F0 in both themes, so even mid-lerp the
+      // icon must read as that color — anything darker means the empty
+      // lerped iconTheme let the default black87 leak in.
+      // ARGB32 comparison: mid-lerp colors are float-rebuilt instances that
+      // fail exact Color equality while being the same on-screen color.
+      final onPrimary = buildHaLoTheme(Brightness.light).colorScheme.onPrimary.toARGB32();
+      expect(iconColor().toARGB32(), onPrimary);
+      mode.value = ThemeMode.dark;
+      await tester.pump();
+      for (var elapsed = 0; elapsed <= 300; elapsed += 16) {
+        expect(iconColor().toARGB32(), onPrimary, reason: 'at ${elapsed}ms into the theme animation');
+        await tester.pump(const Duration(milliseconds: 16));
+      }
+    });
   });
 
   group('HaLoColors.onSurfaceAccent (dark-mode contrast)', () {
