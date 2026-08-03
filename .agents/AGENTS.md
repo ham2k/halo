@@ -34,9 +34,10 @@ This is a multi-platform app for Amateur Radio Logging, called "Ham2K Logger" (o
 
 - The `/next` skill (`.claude/skills/next/SKILL.md`) runs the start-of-task
   steps below — refreshing `main`, naming the branch and worktree, bootstrapping
-  a fresh worktree, opening a draft PR with the plan, then a first pass and
-  updating that PR. Invoke it as `/next <card ref, PR number, or description>`;
-  keep it in step with this section.
+  a fresh worktree, grilling the user with a short round of pointed questions,
+  opening a draft PR with the plan, then a first pass and updating that PR.
+  Invoke it as `/next <card ref, PR number, or description>`; keep it in step
+  with this section.
 
 - The `/iterate` skill (`.claude/skills/iterate/SKILL.md`) covers the
   "iterate with the developer" step: it keeps a build running and refreshed and
@@ -56,7 +57,7 @@ This is a multi-platform app for Amateur Radio Logging, called "Ham2K Logger" (o
 
 - Steps when tackling a new task:
   - Open a new branch, off the latest `main`. Look for updates to AGENTS.md.
-  - Do a quick analisys of the problem, prepare a plan and open a **draft** PR to document this, before implementing anything. An empty commit is enough to open it. That PR is how the developer tracks which branch carries the task, what the plan is, and what's been found — so give them the link right away.
+  - Do a quick analisys of the problem, ask the user a short round of pointed questions to pin down scope and assumptions, then prepare a plan and open a **draft** PR to document this, before implementing anything. An empty commit is enough to open it. That PR is how the developer tracks which branch carries the task, what the plan is, and what's been found — so give them the link right away.
   - Take a full pass at the problem and then present the results to the developer. Bring the PR body up to date as the plan turns into findings — rewrite it, don't append. If possible and relevant, start a web build of the app for the developer to verify on.
   - Iterate with the developer. Don't pile up trivial commits. When iterating on a feature or approach, feel free to ammend the commits in the branch if it makes sense to keep work organized and easier to review, and skip running tests for short iterations unless it's useful.
   - Once the work has settled, run a code review, present the results to the developer and ask for followups.
