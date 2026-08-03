@@ -60,7 +60,14 @@ if [[ ! -f "$ROOT_DIR/app/lib/config/secrets.dart" ]]; then
   cp "$ROOT_DIR/app/lib/config/secrets.dart.example" "$ROOT_DIR/app/lib/config/secrets.dart"
 fi
 
-for pkg in packages/halo_core packages/halo_build_tools packages/halo_extension_host packages/halo_quickjs packages/halo_widgets app; do
+PACKAGES=(packages/halo_core packages/halo_build_tools packages/halo_extension_host packages/halo_quickjs packages/halo_widgets app)
+# The private distribution layer, present only in the halo-dist checkout — a
+# public checkout has no app_dist/ and must still pass everything above.
+if [[ -d "$ROOT_DIR/app_dist" ]]; then
+  PACKAGES+=(app_dist/halo_dist_tools app_dist)
+fi
+
+for pkg in "${PACKAGES[@]}"; do
   if [[ "$QUICK" -eq 1 ]]; then
     echo "▶ $pkg: pub get, analyze (quick mode: no tests)"
   else

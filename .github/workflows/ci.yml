@@ -212,6 +212,46 @@ jobs:
           flutter analyze --no-fatal-infos
           flutter test
 
+  # The private distribution layer. Gated on the repository because this
+  # workflow is published to the open-source mirror, where app_dist/ does not
+  # exist; there the job must not run at all rather than fail.
+  # `always() &&` for the same reason as `dart` above.
+  dist:
+    needs: extensions
+    if: always() && needs.extensions.result == 'success' && github.repository == 'ham2k/halo-dist'
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        package:
+          - app_dist/halo_dist_tools
+          - app_dist
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up mise (Flutter toolchain)
+        uses: jdx/mise-action@v2
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: extension-bundles
+          path: app/assets/extensions
+
+      # app_dist depends on the app package, which needs secrets.dart to
+      # analyze — same blank-template handling as the app-test job below.
+      - name: Use blank secrets template
+        run: |
+          if [ ! -f app/lib/config/secrets.dart ]; then
+            cp app/lib/config/secrets.dart.example app/lib/config/secrets.dart
+          fi
+
+      - name: pub get, analyze, test
+        run: |
+          cd "${{ matrix.package }}"
+          flutter pub get
+          flutter analyze --no-fatal-infos
+          flutter test
+
   # app is the slowest package by far (~45% of the old single-job runtime),
   # so its `flutter test` run is sharded across runners on top of the job
   # split. `flutter analyze` only runs once, on shard 0, since it isn't

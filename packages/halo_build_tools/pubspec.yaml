@@ -6,10 +6,6 @@ publish_to: 'none'
 environment:
   sdk: ^3.12.2
 
-# `dart run halo_build_tools:halo-ops …` (see bin/halo_ops.dart, #241).
-executables:
-  halo-ops: halo_ops
-
 dev_dependencies:
   lints: ^6.0.0
   test: ^1.25.6
