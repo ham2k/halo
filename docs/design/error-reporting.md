@@ -36,6 +36,8 @@ a session with a repeating error must not bury the operator's real notices.
 | `renderflex-overflow` | `logOnly` | A debug-only layout assertion; release builds clip silently and never throw it. Flutter already stripes the offending widget on screen. |
 | `set-state-during-build` | `logOnly` | A build-ordering bug of ours, invisible to the operator: the frame renders stale, the next one is correct. Repeats on every rebuild, so uploading it would bury real crashes. |
 | `focus-node-cannot-request-focus` | `logOnly` | `EditableText` losing a race with its own teardown — a field disposed or disabled in the same frame something asks it to focus. The framework recovers; nothing is lost but a caret. |
+| `extension-host-disposed` | `logOnly` | An in-flight hook call cut off by a deliberate runtime replacement (extension toggle, `restartOnChange` commit, shutdown). The caller self-heals against the new runtime; every subsystem with a call in flight reports the same teardown at once, so uploading it buries real crashes. |
+| `extension-runtime-dead` | `logOnly` | A hook call refused fast because the runtime already crashed. The crash itself is reported once with its real diagnostic (`extensions:restart`); these are per-call duplicates of that known state. |
 
 Each rule carries its full reasoning as a doc comment on its predicate. The
 console line for a quiet error names the rule and its tier, so an error that

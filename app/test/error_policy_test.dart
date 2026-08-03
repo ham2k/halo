@@ -12,6 +12,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:halo_extension_host/halo_extension_host.dart' show ExtensionHostException;
 
 import 'package:ham2k_logger/services/error_policy.dart';
 
@@ -147,6 +148,54 @@ void main() {
     test('needs the framework context, which an async error can never carry', () {
       ErrorPolicy.debugTreatAsWeb = true;
       expect(dispositionFor(TypeError()), ErrorDisposition.notify);
+    });
+  });
+
+  group('extension host teardown', () {
+    // dispose() fails every pending hook call with this exact message, and
+    // disposal only happens on a runtime replacement (an extension toggle,
+    // a restartOnChange commit, crash backoff, shutdown) — so every
+    // subsystem with a call in flight (lookup, data files, sync) reports
+    // the same expected teardown at once. Without this rule, toggling an
+    // extension raises the "Something went wrong" notice for that churn.
+    test('a hook call cut off by dispose() is console-only', () {
+      expect(
+        dispositionFor(ExtensionHostException('extension host disposed')),
+        ErrorDisposition.logOnly,
+      );
+    });
+
+    // The fail-fast for calls attempted between a crash and the backoff
+    // restart. The crash itself reports once via extensions:restart; each
+    // of these is a per-call duplicate of that known state.
+    test('a hook call refused against a dead runtime is console-only', () {
+      expect(
+        dispositionFor(ExtensionHostException('extension runtime is dead (hook lookupService.lookupCallInfo not attempted)')),
+        ErrorDisposition.logOnly,
+      );
+    });
+
+    test('other host exceptions are still loud', () {
+      // The exemption is the teardown races only. A timeout, a fetch
+      // failure or a hook's own throw arrives as the same type and must
+      // keep the default tier — those are the bugs worth seeing.
+      expect(
+        dispositionFor(ExtensionHostException('hook spots.fetchSpots timed out after 5000ms')),
+        ErrorDisposition.notify,
+      );
+      // The disposed matcher is exact, not contains(): a message merely
+      // embedding the text is some other failure quoting it.
+      expect(
+        dispositionFor(ExtensionHostException('wrapped: extension host disposed')),
+        ErrorDisposition.notify,
+      );
+    });
+
+    test('a foreign exception quoting the message is NOT swallowed', () {
+      // Only the host's own exception type is exempt; matching by message
+      // alone would let a wrapper of ours ride along.
+      expect(dispositionFor(StateError('extension host disposed')), ErrorDisposition.notify);
+      expect(dispositionFor(StateError('extension runtime is dead')), ErrorDisposition.notify);
     });
   });
 

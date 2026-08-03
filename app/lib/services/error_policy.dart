@@ -19,6 +19,7 @@
 
 import 'package:flutter/foundation.dart' show kIsWeb, visibleForTesting;
 import 'package:flutter/widgets.dart';
+import 'package:halo_extension_host/halo_extension_host.dart' show ExtensionHostException;
 
 /// What the app does with an error, from quietest to loudest. Each tier
 /// includes everything the ones above it do.
@@ -134,6 +135,21 @@ class ErrorPolicy {
       disposition: ErrorDisposition.logOnly,
       matches: _isFocusNodeCanRequestFocusAssertion,
     ),
+    ErrorRule(
+      id: 'extension-host-disposed',
+      reason: 'an in-flight hook call was cut off by a runtime replacement (extension toggle, '
+          'restartOnChange, crash backoff, shutdown); callers redo the work against the new '
+          'runtime or drop it by design',
+      disposition: ErrorDisposition.logOnly,
+      matches: _isExtensionHostDisposed,
+    ),
+    ErrorRule(
+      id: 'extension-runtime-dead',
+      reason: 'a hook call against a crashed runtime, refused without waiting out its timeout; '
+          'the crash itself is reported separately (extensions:restart)',
+      disposition: ErrorDisposition.logOnly,
+      matches: _isExtensionRuntimeDead,
+    ),
   ];
 
   /// Flutter's own focus-traversal crash on web (ham2k/halo-dist#271),
@@ -226,6 +242,31 @@ class ErrorPolicy {
     if (error is! FlutterError && error is! AssertionError) return false;
     return error.toString().contains('canRequestFocus');
   }
+
+  /// `ExtensionHost.dispose()` fails every pending hook call with exactly
+  /// this message. Disposal only happens on a runtime
+  /// replacement — an extension enable/disable toggle, a `restartOnChange`
+  /// settings commit, the crash-backoff replace, or app shutdown — so the
+  /// caller that lost its call (a lookup, a data-file pass, a sync round)
+  /// is about to find a fresh runtime, or none is needed again. Nothing
+  /// for the operator to act on, and uploading it would bury real crashes
+  /// under expected churn (every subsystem with a call in flight reports
+  /// the same teardown at once).
+  ///
+  /// Matched on the exact message, and only on the host's own exception
+  /// type: a wrapper of ours quoting the text stays loud.
+  static bool _isExtensionHostDisposed(Object error, FlutterErrorDetails? details) =>
+      error is ExtensionHostException && error.message == 'extension host disposed';
+
+  /// `ExtensionHost._send` refusing a call because the runtime already
+  /// crashed ('extension runtime is dead (hook X not attempted)') — the
+  /// fail-fast that spares the caller its full timeout. The crash that
+  /// killed the runtime is reported once, with its real diagnostic, by
+  /// ExtensionService's restart scheduling; every one of these is a
+  /// duplicate of that already-known state, one per call attempted before
+  /// the backoff restart lands.
+  static bool _isExtensionRuntimeDead(Object error, FlutterErrorDetails? details) =>
+      error is ExtensionHostException && error.message.startsWith('extension runtime is dead');
 
   static final _oncePerSessionLogged = <String>{};
 
