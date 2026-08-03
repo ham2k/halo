@@ -76,23 +76,21 @@ This is a multi-platform app for Amateur Radio Logging, called "Ham2K Logger" (o
 
 - When starting the app for developer checks, use `--dart-define=ONBOARD_AS="N0DEV,pota"` to provide a default setup and avoid the onboarding dialog (unless working on an onboarding feature).
 
-- We do all work on the `ham2k/halo-dist` repository (`origin`), where `main` is. We use "squash-and-merge" to merge PRs. Distribution-only code lives in `app_dist/`; commits may freely mix `app_dist` and public paths. On every push to `main`, the **Publish Public** workflow (`.github/workflows/publish-public.yml`) filters `app_dist/` out of the full history and force-pushes the result to the `public` branch. The open-source mirror `ham2k/halo` is updated **manually and deliberately** with `halo-ops publish-code` (`mise run ops -- publish-code`; `--ref` holds back recent work) — so features can sit on `main` for a while before going public. Rules: **commit messages are published verbatim — never describe `app_dist` contents in one**; **never push to `public` or `ham2k/halo` by hand** (generated artifacts; `publish-code` is the only path to the mirror); and agents never run `halo-ops publish-code` on their own — publishing is the maintainer's call.
+- We do all work on the `ham2k/halo-dist` repository (`origin`), where `main` is. Work lands on `main` as one squash commit per task, via `/merge`. Distribution-only code lives in `app_dist/`; commits may freely mix `app_dist` and public paths. On every push to `main`, the **Publish Public** workflow (`.github/workflows/publish-public.yml`) filters `app_dist/` out of the full history and force-pushes the result to the `public` branch. The open-source mirror `ham2k/halo` is updated **manually and deliberately** with `halo-ops publish-code` (`mise run ops -- publish-code`; `--ref` holds back recent work) — so features can sit on `main` for a while before going public. Rules: **commit messages are published verbatim — never describe `app_dist` contents in one**; **never push to `public` or `ham2k/halo` by hand** (generated artifacts; `publish-code` is the only path to the mirror); and agents never run `halo-ops publish-code` on their own — publishing is the maintainer's call.
 
 - New branches are pushed to `origin` (ham2k/halo-dist).
 
 - Branches for CaBo cards should be named `halo-<number>-<short-description>` (e.g. `halo-24-cabo-tracker` for `HALO-24`) and should be based off `origin/main`. Keep the `halo-` prefix: CaBo numbers restart at 1, so a bare `24-…` is ambiguous against the older branches named after GitHub Issue numbers.
 
-- PRs should cite the CaBo card ref and link to it. GitHub's "closes"/"fixes"/"resolves" keywords do **not** reach CaBo, so nothing auto-closes a card — `/merge` comments on it and moves it to the board's done column instead.
+- Squash commit messages should cite the CaBo card ref (`HALO-24`). GitHub's "closes"/"fixes"/"resolves" keywords do **not** reach CaBo, so nothing auto-closes a card — `/merge` comments on it and moves it to the board's done column instead.
 
 - Agents should name their sessions with "[HaLo]" as a prefix, followed by a very short description of the work at hand. It's ok to update the name of the session as we go along.
-
-- Except for trivial work, open the draft PR before implementing, and when completing the first round of planned work bring it up to date and run a code review.
 
 
 ## Tooling
 
 - **Verify with `./scripts/test.sh`** (or `mise run test`) before saying tests
-  pass or opening a PR — it is what CI runs. Per-package `flutter test` is right
+  pass or merging — it is what CI runs. Per-package `flutter test` is right
   for a fast inner loop but is NOT the gate: it skips the extensions'
   `npm run typecheck`, skips `halo_build_tools`, and skips rebuilding the
   extension bundles that the Dart integration tests load, so stale bundles pass
