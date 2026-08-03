@@ -839,7 +839,7 @@ Future<String> _git(List<String> args, {String? cwd}) async {
 Future<int> _gitExit(List<String> args, String root) async =>
     (await Process.run('git', args, workingDirectory: root)).exitCode;
 
-/// The current branch's upstream ref (e.g. `halo-dist/dist`), or null when
+/// The current branch's upstream ref (e.g. `origin/main`), or null when
 /// the branch has no upstream.
 Future<String?> _upstream(String root) async {
   final r = await Process.run(

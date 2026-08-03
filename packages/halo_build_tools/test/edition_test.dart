@@ -52,11 +52,12 @@ void main() {
   });
 
   group('editionForBranch (#241)', () {
-    test('dist (and its local alias) map to next — where Next is cut today', () {
-      // A pushed v* tag from dist builds the Next matrix, so a release cut from
-      // dist is a Next release.
+    test('main (and the transitional dist name) map to next — where Next is cut today', () {
+      // A pushed v* tag from main builds the Next matrix, so a release cut from
+      // main is a Next release. `dist` is the pre-rename name, kept while the
+      // transitional compat branch exists.
+      expect(editionForBranch('main'), Edition.next);
       expect(editionForBranch('dist'), Edition.next);
-      expect(editionForBranch('main-dist-private'), Edition.next);
       expect(editionForBranch('next'), Edition.next);
       expect(editionForBranch('prod'), Edition.prod);
     });

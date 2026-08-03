@@ -12,7 +12,7 @@
 #   git tag web-preview-my-feature && git push halo-dist web-preview-my-feature
 #
 # Tag pushes run the workflow file from the tagged commit, so tags only
-# trigger on commits that already contain this file (branches based on dist
+# trigger on commits that already contain this file (branches based on main
 # after it landed). For older commits, use the manual run (workflow_dispatch)
 # from the Actions tab, which takes any ref plus a preview name.
 #

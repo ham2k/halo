@@ -1,12 +1,12 @@
 # Copyright ©️ 2026 Sebastian Delmont <sd@ham2k.com>
 # SPDX-License-Identifier: MPL-2.0
 #
-# Deploys the web build to Cloudflare Pages after CI passes on `dist`.
+# Deploys the web build to Cloudflare Pages after CI passes on `main`.
 # Same build steps as scripts/deploy-web.sh, followed by a wrangler
 # direct upload to the `halo-dev-ham2k-net` Pages project.
 #
 # The workflow_run trigger only fires for the repository's default branch,
-# which is `dist` here — the branches filter is just an extra guard. A CI
+# which is `main` here — the branches filter is just an extra guard. A CI
 # failure skips the deploy silently; check the Actions tab.
 #
 # Requires two repository secrets:
@@ -19,7 +19,7 @@ on:
   workflow_run:
     workflows: [CI]
     types: [completed]
-    branches: [dist]
+    branches: [main]
   workflow_dispatch:
 
 concurrency:
@@ -124,9 +124,11 @@ jobs:
           HALO_SENTRY_DSN: ${{ secrets.HALO_SENTRY_DSN }}
 
       # --branch=dist marks the deployment as production: the Pages project's
-      # production branch is set to "dist" (changed from the direct-upload
-      # default of "main" on 2026-07-22; deploys with any other branch name
-      # land in the Preview environment and never reach halo-dev.ham2k.net).
+      # PRODUCTION BRANCH SETTING is "dist", a label independent of any git
+      # branch (the git branch is `main` since 2026-08-02). Deploys with any
+      # other branch label land in the Preview environment and never reach
+      # halo-dev.ham2k.net. Change this flag and the Pages project setting
+      # TOGETHER or production deploys silently stop.
       - name: Deploy to Cloudflare Pages
         run: npx wrangler@4 pages deploy app/build/web --project-name=halo-dev-ham2k-net --branch=dist
         env:

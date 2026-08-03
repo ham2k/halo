@@ -11,7 +11,7 @@
             "type": "command",
             "command": "G=\"$(git rev-parse --show-toplevel 2>/dev/null)/.claude/hooks/base-branch-guard.sh\"; [ -x \"$G\" ] || G=\"$CLAUDE_PROJECT_DIR/.claude/hooks/base-branch-guard.sh\"; [ -x \"$G\" ] && exec \"$G\" session || exit 0",
             "timeout": 25,
-            "statusMessage": "Checking branch base against halo-dist/dist"
+            "statusMessage": "Checking branch base against origin/main"
           }
         ]
       }

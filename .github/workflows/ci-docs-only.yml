@@ -13,7 +13,7 @@
 # both workflows; both `quick` check runs report on the PR.
 #
 # pull_request only, deliberately: a push-triggered shim named "CI" would
-# complete on `dist` and spuriously trigger the web deploy
+# complete on `main` and spuriously trigger the web deploy
 # (deploy-web.yml's workflow_run gate matches the workflow name).
 
 name: CI

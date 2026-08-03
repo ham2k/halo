@@ -1,44 +1,34 @@
 #!/usr/bin/env bash
-# Guard against working from a branch that was never based on halo-dist/dist.
+# Guard against working from a branch that was never based on origin/main.
 #
-# Why this exists: a session was handed a worktree whose branch had been cut from
-# the local `main` — a branch that exists on NO remote, was 353 commits behind
-# `dist`, and still contained the pre-#411 secrets layout. The files named in the
-# task did not exist in that tree. Nothing in the session's own state made that
-# visible; the branch looked perfectly ordinary.
+# A worktree can be handed over on a branch cut from a long-dead base — hundreds
+# of commits behind, files named in the task absent from its tree — and nothing
+# in the session's own state makes that visible. This hook makes it visible, and
+# blocks edits until the branch is re-cut.
 #
 # Two modes, deliberately different in cost:
 #   session  - SessionStart. Fetches (network), then reports. Never blocks; a
 #              session that cannot reach the remote must still be usable.
 #   guard    - PreToolUse on Edit|Write. NO network — compares against whatever
-#              refs/remotes/halo-dist/dist the fetch above already left
+#              refs/remotes/origin/main the fetch above already left
 #              behind. Runs before every single edit, so it has to be cheap.
 #
-# This used to ALSO flag a branch whose local `main`/`main-public` was an
-# ancestor of HEAD, on the theory that either dead branch could only reach a
-# real base by way of being the base itself. `dist`'s 2026-07-24 history
-# rewrite (mailmap: bot@ham2k.com -> sd@ham2k.com, see project memory
-# halo-dist-history-rewrite-2026-07-24) broke that theory: every commit `main`
-# and `dist` once shared before that date now has a DIFFERENT sha on each side,
-# but `dist`'s rewritten copy is still the same tree/message/author-date as
-# main's tip — so `main` reads as an ancestor of literally every branch based
-# on current `dist`, including `dist` itself. Verified this false-positives on
-# every active worktree in the repo (2026-08-02); removed rather than patched
-# around, since a rewrite that once again made `main`'s content diverge from
-# `dist`'s would silently reintroduce the same failure mode. The BEHIND count
-# below already catches the original incident on its own merit (353 commits is
-# nowhere near a `STALE_LIMIT` of 50) — nothing here still needs the ancestor
-# check to tell stale from normal drift.
+# The BEHIND count is the whole check. An ancestor-of-HEAD test on known-dead
+# branches was removed: the 2026-07-24 history rewrite left the old branches
+# sharing content (but not SHAs) with every rewritten commit, so the ancestor
+# test false-positived on every active worktree. A genuinely wrong base is
+# hundreds of commits behind and the count catches it on its own.
 #
 # Escape hatch: HALO_ALLOW_STALE_BASE=1 skips the block, for the rare deliberate
 # case (a hotfix on an old release branch, archaeology in a stale worktree).
 set -uo pipefail
 
 MODE="${1:-session}"
-REMOTE="halo-dist"
-BASE="dist"
+REMOTE="origin"
+BASE="main"
 # Generous on purpose: a long session legitimately drifts a few dozen commits
-# behind a busy `dist`. 353 is not drift. This separates "stale" from "wrong".
+# behind a busy `main`. Hundreds is not drift. This separates "stale" from
+# "wrong".
 STALE_LIMIT=50
 
 # Anything unexpected here means "not our business" — a hook must never be the
@@ -59,7 +49,7 @@ git rev-parse --verify --quiet "refs/remotes/$REMOTE/$BASE" >/dev/null 2>&1 || e
 BRANCH="$(git branch --show-current 2>/dev/null)"
 [ -n "$BRANCH" ] || BRANCH="(detached)"
 MERGE_BASE="$(git merge-base HEAD "$REMOTE/$BASE" 2>/dev/null)" || exit 0
-# How much of dist this branch was never based on. Not "how far behind HEAD is"
+# How much of main this branch was never based on. Not "how far behind HEAD is"
 # — that would count the branch's own commits and read clean work as stale.
 BEHIND="$(git rev-list --count "$MERGE_BASE..$REMOTE/$BASE" 2>/dev/null)" || exit 0
 
@@ -69,7 +59,7 @@ FIX="git fetch $REMOTE $BASE && git checkout -b <task-name> $REMOTE/$BASE"
 
 if [ "$BEHIND" -gt "$STALE_LIMIT" ]; then
   VERDICT="wrong"
-  MSG="Branch '$BRANCH' is based $BEHIND commits behind $REMOTE/$BASE (limit $STALE_LIMIT) — it was not cut from a fresh dist. Re-cut the branch: $FIX"
+  MSG="Branch '$BRANCH' is based $BEHIND commits behind $REMOTE/$BASE (limit $STALE_LIMIT) — it was not cut from a fresh main. Re-cut the branch: $FIX"
 elif [ "$BEHIND" -gt 0 ]; then
   VERDICT="ok"
   MSG="Branch '$BRANCH' is based $BEHIND commit(s) behind $REMOTE/$BASE — normal drift, no action needed."

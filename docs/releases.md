@@ -220,7 +220,7 @@ data and settings:
   patches can target it like any other edition (`ios-dev-patch`,
   `macos-dev-patch`). It still gets **no appcast and no extension OTA** — a new
   Dev *binary* means a rebuild or a fresh download. Everything needed to *build*
-  Dev locally remains in the public repo (§8), and that path never touches
+  Dev locally remains in the public history (§8), and that path never touches
   Shorebird.
 - **Next** and **Regular** are the two **official** editions that Ham2K signs and
   distributes publicly. Next runs ahead of Regular (§2.5) and is where binary
@@ -602,9 +602,9 @@ real `next` or `prod`.** The edition *identity* (name, bundle id) is derived fro
 single `HALO_EDITION` switch, so a public checkout can produce a `dev` build with
 no configuration — but it cannot sign, notarize, or reach the official feeds.
 
-Ham2K develops on `halo-dist` (branches off `dist`). Commits that
-touch `app_dist/` are split out there and **not** cherry-picked to `main-public`, so
-`app_dist/` never reaches the public repo (see `.agents/AGENTS.md`). A public
+Ham2K develops on `halo-dist` (branches off `main`). Commits that
+touch `app_dist/` are split out there and **not** cherry-picked to the `public` branch, so
+`app_dist/` never reaches the public history (see `.agents/AGENTS.md`). A public
 checkout simply has no `app_dist/` directory.
 
 **The seam is an optional include per platform** — the shape already used today by

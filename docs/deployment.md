@@ -33,7 +33,7 @@ mise run deploy-web
 
 ## 1b. Automatic Deployment from CI
 
-Every push to the `dist` branch of `halo-dist` runs CI, and when CI passes, the **Deploy Web** GitHub Actions workflow (`.github/workflows/deploy-web.yml`) runs the same build steps as the local script and deploys to the `halo-dev-ham2k-net` Pages project via wrangler direct upload. A CI failure skips the deploy silently. The workflow can also be run manually from the Actions tab (`workflow_dispatch`), bypassing the CI gate.
+Every push to the `main` branch of `halo-dist` runs CI, and when CI passes, the **Deploy Web** GitHub Actions workflow (`.github/workflows/deploy-web.yml`) runs the same build steps as the local script and deploys to the `halo-dev-ham2k-net` Pages project via wrangler direct upload. A CI failure skips the deploy silently. The workflow can also be run manually from the Actions tab (`workflow_dispatch`), bypassing the CI gate.
 
 The workflow requires two repository secrets on `halo-dist`:
 - `CLOUDFLARE_API_TOKEN` — an API token with the **Cloudflare Pages: Edit** permission (create at Cloudflare Dashboard → My Profile → API Tokens).
@@ -41,11 +41,11 @@ The workflow requires two repository secrets on `halo-dist`:
 
 ## 1c. Tagged Preview Deployments
 
-To deploy any commit as a **preview** (without touching the production URL), tag it `web-preview-<name>` and push the tag to `halo-dist` — or just run `mise run ops -- preview <name>`, which tags `HEAD` and pushes for you (and prints the URL):
+To deploy any commit as a **preview** (without touching the production URL), tag it `web-preview-<name>` and push the tag to `origin` — or just run `mise run ops -- preview <name>`, which tags `HEAD` and pushes for you (and prints the URL):
 
 ```bash
 mise run ops -- preview my-feature      # or, by hand:
-git tag web-preview-my-feature && git push halo-dist web-preview-my-feature
+git tag web-preview-my-feature && git push origin web-preview-my-feature
 ```
 
 The **Deploy Web Preview** workflow (`.github/workflows/deploy-web-preview.yml`) builds that commit and deploys it as a Cloudflare Pages preview, served at `https://<name>-halo-dev.ham2k.net`. Re-pushing a tag with the same name replaces the preview. There is no CI gate on previews.
@@ -53,10 +53,10 @@ The **Deploy Web Preview** workflow (`.github/workflows/deploy-web-preview.yml`)
 How the URL works: Pages gives every preview a branch alias at `https://<name>.halo-dev-ham2k-net.pages.dev` (which also works directly). The `halo-dev-preview-proxy` Worker (`workers/halo-dev-preview-proxy/`, routed on `*-halo-dev.ham2k.net/*`) proxies the flat subdomain to that alias, and the workflow upserts a proxied placeholder DNS record (`AAAA 100::`) for each preview name so the route receives traffic. Being one-level subdomains of `ham2k.net`, they are covered by Universal SSL.
 
 Caveats:
-- Tag pushes run the workflow file **from the tagged commit**, so tags only work on commits that contain the workflow (branches based on `dist` after it landed). For older commits, run the workflow manually from the Actions tab, giving it a ref and a preview name.
+- Tag pushes run the workflow file **from the tagged commit**, so tags only work on commits that contain the workflow (branches based on `main` after it landed). For older commits, run the workflow manually from the Actions tab, giving it a ref and a preview name.
 - Names are sanitized to Cloudflare's branch-alias rules (lowercase alphanumerics and hyphens, 28 chars max); the run summary shows the final URL.
 - The `CLOUDFLARE_API_TOKEN` secret needs **Zone → Zone → Read** and **Zone → DNS → Edit** on `ham2k.net` (in addition to Pages Edit) for the DNS step.
-- DNS records and preview deployments are never cleaned up automatically. Run `mise run ops -- prune-previews` to list them and delete selected/old ones (removes the Pages deployments, the DNS record, and the `web-preview-*` tag together); it needs `CLOUDFLARE_API_TOKEN` + `CLOUDFLARE_ACCOUNT_ID` in the environment. (Or prune by hand in the Cloudflare dashboard, plus `git push halo-dist :refs/tags/web-preview-<name>`.)
+- DNS records and preview deployments are never cleaned up automatically. Run `mise run ops -- prune-previews` to list them and delete selected/old ones (removes the Pages deployments, the DNS record, and the `web-preview-*` tag together); it needs `CLOUDFLARE_API_TOKEN` + `CLOUDFLARE_ACCOUNT_ID` in the environment. (Or prune by hand in the Cloudflare dashboard, plus `git push origin :refs/tags/web-preview-<name>`.)
 
 ---
 
@@ -92,7 +92,7 @@ npx wrangler login
 
 ### A. SPA Route Redirection (`_redirects`)
 To support deep-linking/client-side routing (e.g. refreshing `halo-dev.ham2k.net/settings` without hitting a server 404), we utilize a Cloudflare redirection rule.
-* Located at: [app/web/_redirects](file:///Users/sd/Work/ham2k/app-halo/app/web/_redirects)
+* Located at: [app/web/_redirects](file:///Users/sd/Work/ham2k/halo-dist/app/web/_redirects)
 * Content: `/*  /index.html  200`
 This tells Cloudflare Pages to fall back to serving `index.html` for all paths, allowing Flutter's internal router to handle path parsing client-side.
 
