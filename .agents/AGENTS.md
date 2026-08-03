@@ -67,7 +67,7 @@ This is a multi-platform app for Amateur Radio Logging, called "Ham2K Logger" (o
 
 - When starting the app for developer checks, use `--dart-define=ONBOARD_AS="N0DEV,pota"` to provide a default setup and avoid the onboarding dialog (unless working on an onboarding feature).
 
-- We do all work on the `ham2k/halo-dist` repository (`origin`), where `main` is. We use "squash-and-merge" to merge PRs. Any commits that include changes to the `app_dist` folder, or other private and distribution-related parts of the app, must be split into separate commits. The non-`app_dist` commits are then cherry-picked to the `public` branch, which carries the publishable history (the role the public repo's `main` used to play).
+- We do all work on the `ham2k/halo-dist` repository (`origin`), where `main` is. We use "squash-and-merge" to merge PRs. Distribution-only code lives in `app_dist/`; commits may freely mix `app_dist` and public paths — publishing is automated. On every push to `main`, the **Publish Public** workflow (`.github/workflows/publish-public.yml`) filters `app_dist/` out of the full history and force-pushes the result to the `public` branch and to the open-source mirror `ham2k/halo`. Two rules replace the old commit-splitting discipline: **commit messages are published verbatim — never describe `app_dist` contents in one**, and **never push to `public` or `ham2k/halo` by hand** (they are generated; the next run overwrites them).
 
 - New branches are pushed to `origin` (ham2k/halo-dist).
 

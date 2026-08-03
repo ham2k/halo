@@ -1,0 +1,90 @@
+# Copyright ©️ 2026 Sebastian Delmont <sd@ham2k.com>
+# SPDX-License-Identifier: MPL-2.0
+#
+# Regenerates the publishable history on every push to `main`: filters
+# `app_dist/` out of the FULL history with git-filter-repo, force-pushes the
+# result to the `public` branch here, and mirrors it to the open-source repo
+# (ham2k/halo, `main`).
+#
+# The filter is deterministic — same input history, same output SHAs — so
+# each run reproduces the previously published commits byte-for-byte and
+# appends the new ones; the force-push is effectively a fast-forward unless
+# `main` itself was rewritten. Commits that ONLY touched app_dist prune to
+# nothing and vanish from the public history.
+#
+# Consequences to keep in mind:
+#   - COMMIT MESSAGES are published verbatim. Never describe app_dist
+#     contents in one (see AGENTS.md).
+#   - `public` and ham2k/halo are generated artifacts. Never push to either
+#     by hand; anything pushed there is overwritten by the next run.
+#
+# PUBLISH_TOKEN (repo secret): a token with push access to ham2k/halo for
+# the mirror step. The same-repo `public` push uses the workflow's own token.
+
+name: Publish Public
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: publish-public
+  cancel-in-progress: true
+
+jobs:
+  publish:
+    # The workflow file itself is published; this keeps it inert if it ever
+    # runs anywhere but the private repo.
+    if: github.repository == 'ham2k/halo-dist'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          path: source
+
+      - name: Install git-filter-repo
+        run: pip install git-filter-repo
+
+      # filter-repo insists on a fresh clone; --no-local makes this one count.
+      - name: Filter app_dist out of the full history
+        run: |
+          git clone --no-local --branch main source filtered
+          cd filtered
+          git filter-repo --invert-paths --path app_dist
+
+      # Belt and braces: the push below must never carry an app_dist path,
+      # in any commit or in the tip tree.
+      - name: Guard — no app_dist anywhere in the filtered history
+        run: |
+          cd filtered
+          if [ -n "$(git log --all --oneline -- app_dist)" ]; then
+            echo "::error::app_dist appears in the filtered history"; exit 1
+          fi
+          if git ls-tree -r main --name-only | grep -q '^app_dist/'; then
+            echo "::error::app_dist appears in the filtered tip tree"; exit 1
+          fi
+          echo "clean: $(git rev-list --count main) commits, no app_dist"
+
+      - name: Push the public branch (this repo)
+        run: |
+          cd filtered
+          git push --force \
+            "https://x-access-token:${{ github.token }}@github.com/ham2k/halo-dist.git" \
+            main:refs/heads/public
+
+      - name: Mirror to ham2k/halo
+        env:
+          PUBLISH_TOKEN: ${{ secrets.PUBLISH_TOKEN }}
+        run: |
+          if [ -z "$PUBLISH_TOKEN" ]; then
+            echo "::warning::PUBLISH_TOKEN not set — public branch updated, mirror skipped"
+            exit 0
+          fi
+          cd filtered
+          git push --force \
+            "https://x-access-token:${PUBLISH_TOKEN}@github.com/ham2k/halo.git" \
+            main:refs/heads/main

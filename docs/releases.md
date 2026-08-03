@@ -602,10 +602,14 @@ real `next` or `prod`.** The edition *identity* (name, bundle id) is derived fro
 single `HALO_EDITION` switch, so a public checkout can produce a `dev` build with
 no configuration — but it cannot sign, notarize, or reach the official feeds.
 
-Ham2K develops on `halo-dist` (branches off `main`). Commits that
-touch `app_dist/` are split out there and **not** cherry-picked to the `public` branch, so
-`app_dist/` never reaches the public history (see `.agents/AGENTS.md`). A public
-checkout simply has no `app_dist/` directory.
+Ham2K develops on `halo-dist` (branches off `main`). Publishing is automated:
+on every push to `main`, the **Publish Public** workflow
+(`.github/workflows/publish-public.yml`) regenerates the `public` branch and
+the open-source mirror (`ham2k/halo`) by filtering `app_dist/` out of the full
+history with git-filter-repo, so `app_dist/` never reaches the public history
+and commits may freely mix the two sides. Commit messages are published
+verbatim (see `.agents/AGENTS.md`). A public checkout simply has no
+`app_dist/` directory.
 
 **The seam is an optional include per platform** — the shape already used today by
 `app/macos/Runner/Configs/AppInfo.xcconfig`'s
