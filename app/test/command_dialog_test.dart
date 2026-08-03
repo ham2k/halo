@@ -61,9 +61,12 @@ class _CannedExtensions extends ExtensionService {
         },
         {'command': 'SYNCALL', 'describe': 'Sync all operations now', 'category': 'Sync'},
         // The ranking pair: "SET" is in SETUP's NAME and in 20M's
-        // DESCRIPTION, and the name match has to win.
-        {'command': 'SETUP', 'describe': 'Open the setup screen', 'category': 'App'},
-        {'command': '20M', 'describe': 'Set the band to **20m**', 'category': 'Radio'},
+        // DESCRIPTION, and the name match has to win. Also the only two
+        // `suggest` entries, so the empty-field samples are deterministic:
+        // DEVMODE and SYNCALL stand in for the commands that must never be
+        // volunteered.
+        {'command': 'SETUP', 'describe': 'Open the setup screen', 'category': 'App', 'suggest': true},
+        {'command': '20M', 'describe': 'Set the band to **20m**', 'category': 'Radio', 'suggest': true},
       ];
 
   @override
@@ -191,7 +194,7 @@ Future<HaLoServices> _services(WidgetTester tester) async {
 /// Opens the dialog the way ⌘K does — as a route over a host screen — so
 /// that closing it (which the dialog does itself after running a command)
 /// behaves as it does in the app.
-Future<void> _pumpDialog(WidgetTester tester, HaLoServices services) async {
+Future<void> _pumpDialog(WidgetTester tester, HaLoServices services, {bool settle = true}) async {
   await tester.pumpWidget(TranslationProvider(
     child: MaterialApp(
       theme: buildHaLoTheme(Brightness.light),
@@ -208,7 +211,7 @@ Future<void> _pumpDialog(WidgetTester tester, HaLoServices services) async {
     ),
   ));
   await tester.tap(find.text('open'));
-  await _settle(tester);
+  if (settle) await _settle(tester);
 }
 
 /// Pumps enough frames for the route transition, the catalog read and — the
@@ -270,6 +273,42 @@ void main() {
     // available, not a browse-everything list.
     expect(find.byIcon(Icons.terminal), findsNWidgets(2));
     expect(find.text('Try'), findsOneWidget);
+
+    await _unmount(tester);
+  });
+
+  testWidgets('the field takes focus only after the entrance transition completes', (tester) async {
+    final services = await _services(tester);
+    await _pumpDialog(tester, services, settle: false);
+
+    // Mid-transition (the route animates for 140ms). Requesting focus while
+    // the dialog is still animating in is what loses the browser's DOM focus
+    // on web — anything animating alongside the open (a status bar progress
+    // item) makes that race reliable — so focus must not land yet.
+    await tester.pump(const Duration(milliseconds: 70));
+    final field = tester.widget<TextField>(find.byType(TextField));
+    expect(field.focusNode!.hasFocus, isFalse, reason: 'focusing mid-transition loses web DOM focus');
+
+    // Past the transition: the completion listener fires and focus sticks.
+    await tester.pump(const Duration(milliseconds: 150));
+    await tester.pump();
+    expect(field.focusNode!.hasFocus, isTrue);
+
+    await _unmount(tester);
+  });
+
+  testWidgets('suggestions only offer commands that opted in with `suggest`', (tester) async {
+    final services = await _services(tester);
+    await _pumpDialog(tester, services);
+
+    // The pool is exactly the catalog's `suggest: true` entries, never the
+    // whole catalog: DEVMODE and SYNCALL stand in for developer and
+    // destructive commands, which must stay searchable but can never be
+    // volunteered to someone who doesn't yet know what they do.
+    expect(find.text('SETUP'), findsOneWidget);
+    expect(find.text('20M'), findsOneWidget);
+    expect(find.text('DEVMODE'), findsNothing);
+    expect(find.text('SYNCALL'), findsNothing);
 
     await _unmount(tester);
   });

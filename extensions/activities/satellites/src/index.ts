@@ -310,7 +310,11 @@ const SatCommand = {
       params: t('catalogSatParams'),
       describe: t('catalogSat'),
       category: t('catalogCategory'),
+      // Its commands are updateQso/setVfo, which only the logging panel's
+      // dispatcher can apply — without an open operation they go nowhere.
+      needsOperation: true,
       expectsParams: true,
+      suggest: true,
     }]
   },
 }

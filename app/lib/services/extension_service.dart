@@ -1828,7 +1828,7 @@ class ExtensionService {
 
   /// Every command advertised by a `command` hook's optional `catalog()`, for
   /// the command dialog's browsable list — `{command, describe, params?,
-  /// category?, needsOperation?, expectsParams?}` per entry (see
+  /// category?, needsOperation?, expectsParams?, suggest?}` per entry (see
   /// `CommandCatalogEntry`, extensions/sdk/src/types.ts).
   ///
   /// Cached, deliberately: unlike [interpretCommand] this is NOT per

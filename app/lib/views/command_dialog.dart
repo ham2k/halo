@@ -239,7 +239,7 @@ class _CommandDialogState extends State<CommandDialog> {
     _engine.addListener(_onEngineChanged);
     _controller.addListener(_onTextChanged);
     _loadCatalog();
-    // Focus requested ONCE here rather than `autofocus: true` on the field.
+    // Focus requested ONCE rather than `autofocus: true` on the field.
     // Autofocus re-fires whenever the field's Focus node is re-attached, and
     // a re-request reopens the platform text-input connection.
     //
@@ -249,8 +249,33 @@ class _CommandDialogState extends State<CommandDialog> {
     // grounds that my explanation for each had been disproven. It had — but
     // the combination works and the individual contributions are unknown, so
     // they stay until something identifies which one matters.
+    //
+    // Requested when the route's entrance transition COMPLETES, not on the
+    // first frame: on web, focusing while the dialog is still animating in
+    // can leave the browser's own focus on the canvas rather than the text
+    // input's DOM element — Flutter believes the field is focused, but typed
+    // keys never reach it. Anything animating alongside the open (a status
+    // bar progress item) makes that race reliable. Once the tree has
+    // stopped moving a single request sticks, so wait for it.
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) _focusNode.requestFocus();
+      if (!mounted) return;
+      final animation = ModalRoute.of(context)?.animation;
+      if (animation == null || animation.isCompleted) {
+        _focusNode.requestFocus();
+        return;
+      }
+      // If the dialog is dismissed before the entrance completes, this
+      // listener is never removed here — cleanup then comes from the route
+      // disposing its own animation controller in the same teardown that
+      // disposes this State, and the mounted guard keeps the disposed focus
+      // node untouched.
+      late final AnimationStatusListener onStatus;
+      onStatus = (status) {
+        if (status != AnimationStatus.completed) return;
+        animation.removeStatusListener(onStatus);
+        if (mounted) _focusNode.requestFocus();
+      };
+      animation.addStatusListener(onStatus);
     });
     if (DevBridge.instance.installed) {
       DevBridge.instance.commandTextHandler = _devSetText;
@@ -285,6 +310,7 @@ class _CommandDialogState extends State<CommandDialog> {
   Map<String, dynamic> _devState() => {
         'open': true,
         'text': _controller.text,
+        'focused': _focusNode.hasFocus,
         'selected': _selected,
         'results': [
           for (final result in _lastResults)
@@ -345,9 +371,14 @@ class _CommandDialogState extends State<CommandDialog> {
   /// Two sample commands for an empty field, chosen once per open (not per
   /// keystroke — they must not reshuffle while the user reads them). Empty
   /// once the dialog is familiar: see [_suggestionsThreshold].
+  ///
+  /// Only entries that opted in with `suggest` are eligible: the samples go
+  /// to users who don't yet know what a command does, so destructive,
+  /// heavyweight or developer commands must never be volunteered here, even
+  /// though all of them stay listed and searchable in the palette.
   List<Map<String, dynamic>> _pickSuggestions() {
     if (_opens > _suggestionsThreshold) return const [];
-    final pool = [..._available];
+    final pool = _available.where((e) => e['suggest'] == true).toList();
     if (pool.length <= _suggestionCount) return pool;
     pool.shuffle();
     return pool.take(_suggestionCount).toList();

@@ -908,15 +908,21 @@ export interface CommandCatalogEntry {
   /// Groups entries under a heading in the palette. Defaults to the
   /// extension's own name when omitted.
   category?: string
-  /// True when the command needs an open operation (SEED, NOTE, SPOT). The
-  /// palette still lists it with no operation open, but greys it out rather
-  /// than letting the user pick it and get `interpret`'s `error` back.
+  /// True when the command needs an open operation (SEED, NOTE, SPOT). With
+  /// no operation open the palette drops the entry entirely rather than
+  /// letting the user pick it and get `interpret`'s `error` back.
   needsOperation?: boolean
   /// True when choosing the entry should leave the field open for typing
   /// instead of running the command straight away — the catalog counterpart
   /// of [CommandInterpretation.expectsParams], for commands whose bare form
   /// isn't useful on its own (NOTE, EXP).
   expectsParams?: boolean
+  /// True to let the empty-field "Try" samples offer this command. Opt-in on
+  /// purpose: the samples go to users who don't know what a command does yet,
+  /// so anything destructive, heavyweight (SYNCALL) or developer-only must
+  /// stay out — absent means listed and searchable in the palette, but never
+  /// volunteered.
+  suggest?: boolean
 }
 
 /// Registered under category `command`. `interpret` does its own matching

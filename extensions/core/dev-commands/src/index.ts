@@ -46,12 +46,16 @@ import manifest from "../manifest.json" with { type: "json" }
 /// runs when typed in full, developer mode or not; this only governs what the
 /// palette lists.
 ///
+/// `suggest` is honored only alongside `always`: a developer-mode entry can
+/// never be volunteered by the empty-field samples, no matter what its
+/// options say — only a genuinely user-facing command may opt in.
+///
 /// Strings here are plain English, like the rest of this extension's
 /// describe/confirm lines — dev-commands carries no i18n catalog.
 function devCatalog(
   command: string,
   describe: string,
-  opts: { always?: boolean; params?: string; needsOperation?: boolean; expectsParams?: boolean } = {},
+  opts: { always?: boolean; params?: string; needsOperation?: boolean; expectsParams?: boolean; suggest?: boolean } = {},
 ) {
   return async (ctx: HookContext): Promise<CommandCatalogEntry[]> => {
     if (!opts.always && !ctx.developerMode) return []
@@ -62,6 +66,7 @@ function devCatalog(
       ...(opts.params ? { params: opts.params } : {}),
       ...(opts.needsOperation ? { needsOperation: true } : {}),
       ...(opts.expectsParams ? { expectsParams: true } : {}),
+      ...(opts.always && opts.suggest ? { suggest: true } : {}),
     }]
   }
 }
@@ -237,7 +242,7 @@ const ReloadCommand = {
     }
   },
 
-  catalog: devCatalog('RELOAD', 'Re-sync data files', { always: true, params: '<POTA|SOTA|ALL>', expectsParams: true }),
+  catalog: devCatalog('RELOAD', 'Re-sync data files', { always: true, params: '<POTA|SOTA|ALL>', expectsParams: true, suggest: true }),
 }
 
 // "SEED" -> 10 QSOs; "SEED 20" -> 20; "SEED 15 3H" -> 15 spread over 3

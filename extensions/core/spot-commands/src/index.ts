@@ -58,6 +58,12 @@ const SelfSpotCommand = {
       describe: t('catalogSelfSpot'),
       category: t('catalogCategory'),
       needsOperation: true,
+      // Types in rather than running: SPOT posts to the public cluster, and
+      // it's offered as an empty-field sample to users who don't yet know
+      // that — picking it must not publish in one click. Enter still runs
+      // the bare form; the [comment] stays optional.
+      expectsParams: true,
+      suggest: true,
     }]
   },
 }

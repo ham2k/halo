@@ -48,6 +48,7 @@ const BandCommand = {
         describe: t('catalogBand'),
         category: t('catalogCategory'),
         expectsParams: true,
+        suggest: true,
       },
     ]
   },
@@ -100,6 +101,7 @@ const FrequencyCommand = {
         describe: t('catalogFreq'),
         category: t('catalogCategory'),
         expectsParams: true,
+        suggest: true,
       },
     ]
   },
@@ -127,6 +129,7 @@ const ModeCommand = {
         describe: t('catalogMode'),
         category: t('catalogCategory'),
         expectsParams: true,
+        suggest: true,
       },
     ]
   },

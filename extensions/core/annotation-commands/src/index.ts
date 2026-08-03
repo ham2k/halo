@@ -106,6 +106,7 @@ function noteLikeCommand({ pattern, kind, name, icon, describe, confirm, catalog
         category: t('catalogCategory'),
         needsOperation: true,
         expectsParams: true,
+        suggest: true,
       }]
     },
   }
@@ -208,6 +209,7 @@ const SolarCommand = {
       command: 'SOLAR',
       describe: t('catalogSolar'),
       category: t('catalogCategory'),
+      suggest: true,
     }]
   },
 }
@@ -320,6 +322,7 @@ const WeatherCommand = {
       command: 'WEATHER',
       describe: t('catalogWeather'),
       category: t('catalogCategory'),
+      suggest: true,
     }]
   },
 }

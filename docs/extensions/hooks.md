@@ -411,7 +411,7 @@ interface CommandHook {
   catalog?(ctx): Promise<CommandCatalogEntry[]>
 }
 // CommandInterpretation: {expectsParams?, mixedCase?, error?, describe?, confirm?, commands?: CommandAction[]}
-// CommandCatalogEntry: {command, describe, params?, category?, needsOperation?, expectsParams?}
+// CommandCatalogEntry: {command, describe, params?, category?, needsOperation?, expectsParams?, suggest?}
 // CommandAction (closed set): {setVfo?, updateQso?, addQso?, sendSpots?,
 //   syncAll?, updateSettings?, setCallField?, reloadDataFiles?, devNotice?,
 //   devStatus?, devProgress?, toggleExperiment?}
@@ -536,12 +536,16 @@ field when the entry is chosen, so it has to be something `interpret`
 recognizes. `params` is display-only. `describe` may use inline markdown
 (`**bold**`, `*italic*`, `` `code` ``), the same as `interpret`'s own
 `describe`/`confirm` — the dialog renders it as one ellipsized line rather
-than as blocks, so keep it to a single sentence. `needsOperation` greys the row out when
+than as blocks, so keep it to a single sentence. `needsOperation` drops the row entirely when
 no operation is open, instead of letting the user pick it and get
 `interpret`'s `error` back. `expectsParams` leaves the field open for typing
 rather than running the command immediately — the catalog counterpart of
 `CommandInterpretation.expectsParams`, and the reason picking NOTE doesn't
-log an empty note.
+log an empty note. `suggest` opts the entry into the empty-field "Try"
+samples shown while the dialog is new; it's opt-in on purpose — the samples
+go to users who don't yet know what a command does, so anything destructive,
+heavyweight or developer-only must stay out. Absent means listed and
+searchable, never volunteered.
 
 Three things differ from `interpret`, all deliberate:
 
