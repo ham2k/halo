@@ -1,18 +1,24 @@
 // Copyright ©️ 2026 Sebastian Delmont <sd@ham2k.com>
 // SPDX-License-Identifier: MPL-2.0
 
+import 'dart:ui' as ui;
+
 import 'package:halo_core/halo_core.dart';
 import 'package:intl/intl.dart';
 
 import '../i18n/strings.g.dart';
 
-/// "3.3 km" / "1,042 mi", with locale-aware separators (es: "1.042"). Shared by
-/// the Map tab (`map_panel.dart`) and the logging panel's call-info line — the
-/// unit label comes from i18n, so this lives in the app layer, not halo_core.
+/// "3.3 km" / "1,042 mi", with separators from the device's system locale
+/// (independent of the app's own Language setting — see [fmtDistance]'s
+/// sibling `formatNumber` in halo_widgets). Shared by the Map tab
+/// (`map_panel.dart`) and the logging panel's call-info line — the unit label
+/// comes from i18n, so this lives in the app layer, not halo_core.
 String fmtDistance(double km, {required bool miles}) {
   final value = miles ? km / kmPerMile : km;
-  final formatted =
-      NumberFormat(value <= 5 ? '#,##0.0' : '#,##0', LocaleSettings.currentLocale.languageCode).format(value);
+  final formatted = NumberFormat(
+    value <= 5 ? '#,##0.0' : '#,##0',
+    ui.PlatformDispatcher.instance.locale.toString(),
+  ).format(value);
   return miles ? t.map.distanceMiles(distance: formatted) : t.map.distanceKm(distance: formatted);
 }
 
