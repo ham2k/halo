@@ -605,10 +605,10 @@ void main() {
     expect(const IcomCredentialsMissing().toString(), contains('required'));
   });
 
-  test('the registry offers all five types over three transports', () {
+  test('the registry offers all six types over three transports', () {
     final registry = EquipmentRegistry();
     expect(registry.typeFor('ic705-network'), same(ic705NetworkType));
-    expect(registry.types, hasLength(5));
+    expect(registry.types, hasLength(6));
     expect(registry.transports.keys, containsAll(['tcp', 'serial', 'icom-network']));
   });
 

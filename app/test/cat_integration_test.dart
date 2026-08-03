@@ -140,6 +140,82 @@ class _FakeRigctld {
   Future<void> stop() => _server.close();
 }
 
+/// An flrig instance as far as this test is concerned. The dialogue is
+/// captured from a real flrig 2.0.12: HTTP/1.1 keep-alive, XMLRPC++ 0.8
+/// headers with a lowercase `Content-length`, one response per request.
+class _FakeFlrig {
+  final ServerSocket _server;
+  final methods = <String>[];
+
+  /// The rig's state, in flrig's own strings — writable by the test (the
+  /// operator at the radio) and by the client's set_* calls.
+  String frequency = '14070000';
+  String mode = 'USB';
+
+  _FakeFlrig(this._server) {
+    _server.listen(
+      (socket) {
+        unawaited(socket.done.then((_) {}, onError: (Object _) {}));
+        var pending = '';
+        socket.listen(
+          (chunk) {
+            pending += utf8.decode(chunk);
+            // One request per response, so requests are parsed with the
+            // same header-then-length walk the driver uses for responses.
+            while (true) {
+              final headerEnd = pending.indexOf('\r\n\r\n');
+              if (headerEnd < 0) return;
+              final length = int.parse(
+                  RegExp(r'content-length:\s*(\d+)', caseSensitive: false).firstMatch(pending.substring(0, headerEnd))!.group(1)!);
+              if (pending.length < headerEnd + 4 + length) return;
+              final body = pending.substring(headerEnd + 4, headerEnd + 4 + length);
+              pending = pending.substring(headerEnd + 4 + length);
+              final method = RegExp(r'<methodName>([^<]+)</methodName>').firstMatch(body)!.group(1)!;
+              methods.add(method);
+              switch (method) {
+                case 'rig.get_vfo':
+                  socket.add(_response(frequency));
+                case 'rig.get_mode':
+                  socket.add(_response(mode));
+                case 'rig.set_frequency':
+                  frequency = RegExp(r'<double>([\d.]+)</double>').firstMatch(body)!.group(1)!;
+                  socket.add(_response('<i4>1</i4>'));
+                case 'rig.set_mode':
+                  mode = RegExp(r'<param><value>([^<]+)</value></param>').firstMatch(body)!.group(1)!;
+                  socket.add(_response(''));
+              }
+            }
+          },
+          onError: (Object _) {},
+          cancelOnError: true,
+        );
+      },
+      onError: (Object _) {},
+    );
+  }
+
+  static List<int> _response(String inner) {
+    final body = '<?xml version="1.0"?>\r\n'
+        '<methodResponse><params><param>\r\n'
+        '\t<value>$inner</value>\r\n'
+        '</param></params></methodResponse>\r\n';
+    return utf8.encode('HTTP/1.1 200 OK\r\n'
+        'Server: XMLRPC++ 0.8\r\n'
+        'Content-Type: text/xml\r\n'
+        'Content-length: ${body.length}\r\n'
+        '\r\n'
+        '$body');
+  }
+
+  static Future<_FakeFlrig> start() async =>
+      _FakeFlrig(await ServerSocket.bind(InternetAddress.loopbackIPv4, 0));
+
+  String get host => _server.address.address;
+  int get port => _server.port;
+
+  Future<void> stop() => _server.close();
+}
+
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
@@ -210,6 +286,38 @@ void main() {
       await _settleUntil(() => cat.stateFor(node.uuid).vfo.freqKHz != 145000,
           tries: 2 * kPollSlow.inMilliseconds ~/ 10);
       expect(cat.stateFor(node.uuid).vfo, const VfoReading(freqKHz: 7123.45, mode: 'LSB'));
+
+      await cat.disconnect(node.uuid);
+      expect(cat.stateFor(node.uuid).status, EquipmentStatus.disconnected);
+    } finally {
+      await rig.stop();
+    }
+  });
+
+  test('connects to an flrig instance over TCP and follows it by polling', () async {
+    final rig = await _FakeFlrig.start();
+    try {
+      final node = await cat.addNode(
+        typeKey: 'flrig-tcp',
+        name: 'Shack flrig',
+        config: {'host': rig.host, 'port': rig.port},
+      );
+
+      await cat.connect(node.uuid);
+      expect(cat.stateFor(node.uuid).status, EquipmentStatus.connected);
+
+      // startUpdates asks immediately — one request at a time, answers
+      // correlated by order.
+      await _settleUntil(() => cat.stateFor(node.uuid).vfo.mode != null);
+      expect(cat.stateFor(node.uuid).vfo, const VfoReading(freqKHz: 14070, mode: 'USB'));
+
+      // The operator turns the knob. Nothing is pushed — the change rides
+      // in on the next poll.
+      rig.frequency = '7123450';
+      rig.mode = 'LSB-D';
+      await _settleUntil(() => cat.stateFor(node.uuid).vfo.freqKHz != 14070,
+          tries: 2 * kPollSlow.inMilliseconds ~/ 10);
+      expect(cat.stateFor(node.uuid).vfo, const VfoReading(freqKHz: 7123.45, mode: 'DATA-LSB'));
 
       await cat.disconnect(node.uuid);
       expect(cat.stateFor(node.uuid).status, EquipmentStatus.disconnected);

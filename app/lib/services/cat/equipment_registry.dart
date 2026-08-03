@@ -19,6 +19,7 @@ import '../../i18n/strings.g.dart';
 import 'discovery.dart';
 import 'driver.dart';
 import 'drivers/flexradio_driver.dart';
+import 'drivers/flrig_driver.dart';
 import 'drivers/ft891_driver.dart';
 import 'drivers/icom_civ_driver.dart';
 import 'drivers/rigctld_driver.dart';
@@ -191,6 +192,7 @@ class EquipmentType {
 }
 
 const _flexRadioTcpKey = 'flexradio-tcp';
+const _flrigTcpKey = 'flrig-tcp';
 const _rigctldTcpKey = 'rigctld-tcp';
 const _ft891SerialKey = 'ft891-serial';
 const _icomCivSerialKey = 'icom-civ-serial';
@@ -236,6 +238,30 @@ String _rigctldTcpName() => t.settings.station.types.rigctldTcp;
 List<Map<String, dynamic>> _rigctldTcpNotes() => [
       {'type': 'divider', 'title': t.settings.station.rigctldTroubleshootingTitle},
       {'type': 'markdown', 'text': t.settings.station.rigctldTroubleshooting},
+    ];
+
+/// Any radio flrig has a definition for, through an flrig instance the
+/// operator already runs — the app connects to flrig's XML-RPC server,
+/// never to the radio. No discoverer: flrig announces nothing, so it is
+/// always typed in by address, defaulting to the same machine.
+const flrigTcpType = EquipmentType(
+  key: _flrigTcpKey,
+  category: kCategoryTransceiver,
+  name: _flrigTcpName,
+  driver: FlrigDriver(),
+  transport: TcpTransport(),
+  defaultConfig: {'host': '127.0.0.1', 'port': FlrigDriver.defaultPort},
+  // The failure this pairing actually produces is a refused or unanswered
+  // connection, and every cause lives outside the app: flrig isn't
+  // running, its server is on another port, or it can't reach the radio.
+  notes: _flrigTcpNotes,
+);
+
+String _flrigTcpName() => t.settings.station.types.flrigTcp;
+
+List<Map<String, dynamic>> _flrigTcpNotes() => [
+      {'type': 'divider', 'title': t.settings.station.flrigTroubleshootingTitle},
+      {'type': 'markdown', 'text': t.settings.station.flrigTroubleshooting},
     ];
 
 /// Yaesu FT-891 over its built-in USB-to-serial CAT bridge.
@@ -343,7 +369,7 @@ class EquipmentRegistry {
   final Map<String, EquipmentTransport> transports;
 
   EquipmentRegistry({List<EquipmentType>? types, Map<String, EquipmentTransport>? transports})
-      : types = types ?? const [flexRadioTcpType, ft891SerialType, icomCivSerialType, ic705NetworkType, rigctldTcpType],
+      : types = types ?? const [flexRadioTcpType, ft891SerialType, icomCivSerialType, ic705NetworkType, rigctldTcpType, flrigTcpType],
         transports = transports ??
             {
               TcpTransport.transportKey: const TcpTransport(),
