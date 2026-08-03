@@ -2,9 +2,15 @@
 # SPDX-License-Identifier: MPL-2.0
 #
 # Regenerates the publishable history on every push to `main`: filters
-# `app_dist/` out of the FULL history with git-filter-repo, force-pushes the
-# result to the `public` branch here, and mirrors it to the open-source repo
-# (ham2k/halo, `main`).
+# `app_dist/` out of the FULL history with git-filter-repo and force-pushes
+# the result to the `public` branch here.
+#
+# Publishing to the open-source MIRROR (ham2k/halo) is deliberately NOT part
+# of this workflow — `halo-ops publish` does that, on demand, so work can sit
+# on `main` for a few days before going public. (It also sidesteps GitHub's
+# `workflow`-scope restriction: the filtered history carries workflow files,
+# which no PAT or API-created deploy key here can push — the operator's own
+# SSH key can.)
 #
 # The filter is deterministic — same input history, same output SHAs — so
 # each run reproduces the previously published commits byte-for-byte and
@@ -15,14 +21,8 @@
 # Consequences to keep in mind:
 #   - COMMIT MESSAGES are published verbatim. Never describe app_dist
 #     contents in one (see AGENTS.md).
-#   - `public` and ham2k/halo are generated artifacts. Never push to either
-#     by hand; anything pushed there is overwritten by the next run.
-#
-# HALO_MIRROR_SSH_KEY (repo secret): the private half of a write deploy key
-# on ham2k/halo, used by the mirror step. An SSH deploy key rather than a
-# PAT, deliberately: the filtered history carries .github/workflows/ files,
-# which GitHub refuses from any PAT without the `workflow` scope — deploy
-# keys are exempt. The same-repo `public` push uses the workflow's own token.
+#   - `public` is a generated artifact. Never push to it by hand; the next
+#     run overwrites it.
 
 name: Publish Public
 
@@ -78,17 +78,3 @@ jobs:
           git push --force \
             "https://x-access-token:${{ github.token }}@github.com/ham2k/halo-dist.git" \
             main:refs/heads/public
-
-      - name: Mirror to ham2k/halo
-        env:
-          MIRROR_KEY: ${{ secrets.HALO_MIRROR_SSH_KEY }}
-        run: |
-          if [ -z "$MIRROR_KEY" ]; then
-            echo "::warning::HALO_MIRROR_SSH_KEY not set — public branch updated, mirror skipped"
-            exit 0
-          fi
-          umask 077
-          printf '%s\n' "$MIRROR_KEY" > "$RUNNER_TEMP/mirror_key"
-          cd filtered
-          GIT_SSH_COMMAND="ssh -i $RUNNER_TEMP/mirror_key -o StrictHostKeyChecking=accept-new" \
-            git push --force git@github.com:ham2k/halo.git main:refs/heads/main

@@ -15,7 +15,13 @@ import 'dart:io';
 
 import 'package:halo_build_tools/halo_build_tools.dart';
 
-const _remote = 'halo-dist';
+const _remote = 'origin';
+
+/// The open-source mirror `publish` pushes to. Pushed over the operator's own
+/// git credentials (SSH) — user keys are exempt from the `workflow`-scope
+/// restriction that blocks PAT/deploy-key pushes carrying workflow files.
+const _mirrorUrl = 'git@github.com:ham2k/halo.git';
+const _mirrorBranch = 'main';
 
 Future<void> main(List<String> args) async {
   final rest = [...args];
@@ -42,6 +48,8 @@ Future<void> main(List<String> args) async {
         await _preview(rest, out: out, json: json);
       case 'prune-previews':
         await _prunePreviews(rest, out: out, json: json);
+      case 'publish':
+        await _publish(rest, out: out, json: json);
       default:
         stderr.writeln("halo-ops: unknown command '$command'");
         _printUsage();
@@ -891,6 +899,93 @@ Future<bool> _checkInSync(
   return false;
 }
 
+// ── publish ─────────────────────────────────────────────────────────────────
+
+/// Mirrors the generated `public` branch to the open-source repo — a
+/// deliberate act rather than an automatic one, so work can sit on `main`
+/// for a few days before going public. The Publish Public workflow keeps
+/// `origin/public` regenerated (app_dist filtered out of the full history)
+/// on every push to main; this command only decides WHEN that history
+/// reaches the mirror.
+Future<void> _publish(List<String> args, {required _Out out, required bool json}) async {
+  final dryRun = args.remove('--dry-run') || args.remove('-n');
+  final yes = args.remove('--yes') || args.remove('-y');
+  final force = args.remove('--force');
+  final ref = _takeValue(args, '--ref');
+  if (args.isNotEmpty) throw _CliError("unexpected argument '${args.first}'");
+
+  final root = await _repoRoot();
+  await _git(['fetch', _remote, 'public'], cwd: root);
+
+  final publicTip = (await _git(['rev-parse', 'refs/remotes/$_remote/public'], cwd: root)).trim();
+  final target = ref == null ? publicTip : (await _git(['rev-parse', '--verify', '$ref^{commit}'], cwd: root)).trim();
+
+  // Publish only generated history: the target must sit on the public branch
+  // (so an experiment can be held back by picking the commit before it — the
+  // filtered branch mirrors main's commit messages one-to-one), and its tree
+  // must carry no app_dist.
+  if (await _gitExit(['merge-base', '--is-ancestor', target, publicTip], root) != 0) {
+    throw _CliError('--ref must name a commit on $_remote/public (got ${target.substring(0, 8)})');
+  }
+  final topLevel = await _git(['ls-tree', '-d', '--name-only', target], cwd: root);
+  if (topLevel.split('\n').contains('app_dist')) {
+    throw _CliError('refusing to publish: app_dist present in ${target.substring(0, 8)} — not filtered history?');
+  }
+
+  // Where the mirror is now. The filter is deterministic, so a routine
+  // publish fast-forwards; anything else (first publish over the legacy
+  // lineage, a rewritten main) needs an explicit --force.
+  final lsRemote = await _git(['ls-remote', _mirrorUrl, 'refs/heads/$_mirrorBranch'], cwd: root);
+  final mirrorSha = lsRemote.trim().isEmpty ? null : lsRemote.trim().split(RegExp(r'\s+')).first;
+  var fastForward = mirrorSha == null;
+  var delta = 'mirror branch does not exist yet';
+  if (mirrorSha != null) {
+    final short = mirrorSha.substring(0, 8);
+    if (mirrorSha == target) {
+      fastForward = true;
+      delta = 'mirror is already at the target — nothing to publish';
+    } else if (await _gitExit(['cat-file', '-e', '$mirrorSha^{commit}'], root) == 0 &&
+        await _gitExit(['merge-base', '--is-ancestor', mirrorSha, target], root) == 0) {
+      fastForward = true;
+      final n = (await _git(['rev-list', '--count', '$mirrorSha..$target'], cwd: root)).trim();
+      delta = '$n new commit(s) since $short';
+    } else {
+      delta = 'NOT a fast-forward from $short (unrelated or rewritten history)';
+    }
+  }
+
+  if (json) {
+    stdout.writeln(jsonEncode({
+      'target': target,
+      'mirror': mirrorSha,
+      'fastForward': fastForward,
+      'dryRun': dryRun,
+    }));
+  } else {
+    out.title('Publish to the open-source mirror');
+    out.field('repo', _mirrorUrl);
+    out.field('target', '${target.substring(0, 8)}${ref == null ? '  (public tip)' : ''}');
+    out.field('mirror', mirrorSha == null ? '(none)' : mirrorSha.substring(0, 8));
+    out.field('delta', delta);
+  }
+
+  if (mirrorSha == target) return;
+  if (!fastForward && !force) {
+    throw _CliError('non-fast-forward publish — rerun with --force if the mirror history is meant to be replaced');
+  }
+  if (dryRun) {
+    if (!json) out.dim('  dry run: nothing pushed.');
+    return;
+  }
+  if (!json && !yes && !_confirm(out, 'Publish?')) {
+    out.dim('  aborted.');
+    return;
+  }
+
+  await _git(['push', if (force) '--force', _mirrorUrl, '$target:refs/heads/$_mirrorBranch'], cwd: root);
+  if (!json) out.ok('published ${target.substring(0, 8)} → $_mirrorBranch');
+}
+
 bool _confirm(_Out out, String question) {
   stdout.write(out.prompt('$question [y/N] '));
   final a = stdin.readLineSync()?.trim().toLowerCase();
@@ -919,6 +1014,7 @@ Commands:
   prune-patches          Delete old patch-<edition>-<sha> trigger tags (default: older than 2 months).
   preview <name>         Deploy a web preview of HEAD (tags web-preview-<name>, pushes it).
   prune-previews         List web previews; delete selected ones (Pages + DNS + tag).
+  publish                Mirror the generated public branch to the open-source repo.
 
 Release options:
   --edition <dev|next|prod>   Override the branch→edition mapping.
@@ -942,6 +1038,14 @@ prune-patches options:
 
 preview options:
   --dry-run, -n / --yes, -y   As above.
+
+publish options:
+  --ref <sha>            Publish up to this commit on origin/public instead of
+                          the tip — the way to hold an experiment back while
+                          publishing everything before it.
+  --force                Allow a non-fast-forward push (first publish over the
+                          legacy lineage, or after a main history rewrite).
+  --dry-run, -n / --yes, -y   As in release.
 
 prune-previews options (needs CLOUDFLARE_API_TOKEN + CLOUDFLARE_ACCOUNT_ID):
   --older-than <days>         Select previews whose newest deploy is older than N days.
