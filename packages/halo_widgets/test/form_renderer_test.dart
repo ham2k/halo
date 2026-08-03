@@ -756,7 +756,7 @@ void main() {
             onAction: (actionKey, method, state) async {
               capturedKey = actionKey;
               capturedMethod = method;
-              return 'Connected';
+              return const FormActionResult(message: 'Connected');
             },
             onSubmit: (_) {},
             onCancel: () {},
@@ -770,6 +770,170 @@ void main() {
       expect(capturedKey, 'test');
       expect(capturedMethod, 'testCredentials');
       expect(find.text('Connected'), findsOneWidget);
+    });
+
+    testWidgets('an action\'s fieldUpdates land in the sibling field it names, not just a message', (tester) async {
+      // The case this exists for: a browser device picker (or any action
+      // that picks a value on the operator's behalf) handing that value
+      // straight to the field it belongs in, instead of only being able to
+      // tell the operator about it in a message they'd have to retype.
+      await tester.pumpWidget(MaterialApp(
+        home: Scaffold(
+          body: FormRenderer(
+            formDefinition: const {
+              'elements': [
+                {
+                  'type': 'field',
+                  'fieldType': 'select',
+                  'key': 'port',
+                  'label': 'Port',
+                  'options': [
+                    {'value': 'COM1', 'label': 'COM1'},
+                    {'value': 'COM3', 'label': 'COM3'},
+                  ],
+                },
+                {'type': 'action', 'key': 'grant', 'label': 'Add device', 'method': 'requestDevice'},
+              ],
+            },
+            initialState: const {'port': 'COM1'},
+            onAction: (actionKey, method, state) async =>
+                const FormActionResult(fieldUpdates: {'port': 'COM3'}),
+            onSubmit: (_) {},
+            onCancel: () {},
+          ),
+        ),
+      ));
+
+      expect(find.text('COM1'), findsOneWidget);
+
+      await tester.tap(find.widgetWithText(OutlinedButton, 'Add device'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('COM3'), findsOneWidget);
+      expect(find.text('COM1'), findsNothing);
+    });
+
+    testWidgets('a select option marked isAction runs onAction instead of becoming the field\'s value',
+        (tester) async {
+      // The case this exists for: "add a USB device" living right in the
+      // port list rather than as a separate button — picking it must run
+      // the action, not silently "select" an option that was never a real
+      // port to begin with.
+      String? capturedActionKey;
+      String? capturedMethod;
+      await tester.pumpWidget(MaterialApp(
+        home: Scaffold(
+          body: FormRenderer(
+            formDefinition: const {
+              'elements': [
+                {
+                  'type': 'field',
+                  'fieldType': 'select',
+                  'key': 'port',
+                  'label': 'Port',
+                  'options': [
+                    {'value': 'COM1', 'label': 'COM1'},
+                    {'value': 'grant', 'label': 'Add a device…', 'isAction': true, 'method': 'requestDevice'},
+                  ],
+                },
+              ],
+            },
+            initialState: const {'port': 'COM1'},
+            onAction: (actionKey, method, state) async {
+              capturedActionKey = actionKey;
+              capturedMethod = method;
+              return null;
+            },
+            onSubmit: (_) {},
+            onCancel: () {},
+          ),
+        ),
+      ));
+
+      await tester.tap(find.byType(DropdownButtonFormField<dynamic>));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Add a device…').last);
+      await tester.pumpAndSettle();
+
+      expect(capturedActionKey, 'grant');
+      expect(capturedMethod, 'requestDevice');
+      // The field itself never changed — still shows the original port,
+      // not the action option masquerading as a picked value.
+      expect(find.text('COM1'), findsOneWidget);
+    });
+
+    testWidgets(
+        'an action\'s elements replace the form\'s own definition, so a newly-picked value is immediately selectable',
+        (tester) async {
+      // The case this exists for: fieldUpdates alone would set
+      // _values['port'] to a value the ORIGINAL options have no matching
+      // item for — a newly-granted Web Serial device isn't offered until
+      // the element list itself is rebuilt to include it.
+      Map<String, dynamic>? submitted;
+      await tester.pumpWidget(MaterialApp(
+        home: Scaffold(
+          body: Builder(
+            builder: (context) => TextButton(
+              onPressed: () async {
+                submitted = await showFormPane(
+                  context,
+                  formDefinition: const {
+                    'title': 'Radio',
+                    'elements': [
+                      {
+                        'type': 'field',
+                        'fieldType': 'select',
+                        'key': 'port',
+                        'label': 'Port',
+                        'options': [
+                          {'value': 'COM1', 'label': 'COM1'},
+                          {'value': 'grant', 'label': 'Add a device…', 'isAction': true, 'method': 'requestDevice'},
+                        ],
+                      },
+                    ],
+                  },
+                  initialState: const {'port': 'COM1'},
+                  onAction: (actionKey, method, state) async => const FormActionResult(
+                    fieldUpdates: {'port': 'usb-new'},
+                    elements: [
+                      {
+                        'type': 'field',
+                        'fieldType': 'select',
+                        'key': 'port',
+                        'label': 'Port',
+                        'options': [
+                          {'value': 'COM1', 'label': 'COM1'},
+                          {'value': 'usb-new', 'label': 'USB 10C4:EA70'},
+                          {'value': 'grant', 'label': 'Add a device…', 'isAction': true, 'method': 'requestDevice'},
+                        ],
+                      },
+                    ],
+                  ),
+                );
+              },
+              child: const Text('Open'),
+            ),
+          ),
+        ),
+      ));
+
+      await tester.tap(find.text('Open'));
+      await tester.pumpAndSettle();
+      expect(find.text('COM1'), findsOneWidget);
+
+      await tester.tap(find.byType(DropdownButtonFormField<dynamic>));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Add a device…').last);
+      await tester.pumpAndSettle();
+
+      // The newly-granted device is both selected AND a real option now —
+      // not a value the dropdown has nothing to show it as.
+      expect(find.text('USB 10C4:EA70'), findsOneWidget);
+      expect(find.text('COM1'), findsNothing);
+
+      await tester.tap(find.widgetWithText(FilledButton, 'Save'));
+      await tester.pumpAndSettle();
+      expect(submitted?['port'], 'usb-new');
     });
 
     testWidgets('account field shows Not Connected / Connect when no status is set', (tester) async {

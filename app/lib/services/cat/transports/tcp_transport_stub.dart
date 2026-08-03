@@ -19,6 +19,9 @@ class TcpTransport extends EquipmentTransport with TcpTransportConfig {
   String get key => transportKey;
 
   @override
+  bool get isSupportedOnThisPlatform => false;
+
+  @override
   Future<EquipmentConnection> connect(Map<String, dynamic> target, {required CatCancelToken cancel}) {
     throw UnsupportedError('CAT control needs raw sockets, which the web build does not have.');
   }

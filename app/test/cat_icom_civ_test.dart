@@ -181,7 +181,19 @@ void main() {
     });
 
     test('asks for port, speed and address', () {
-      expect([for (final e in type.configElements()) e['key']], ['port', 'baudRate', 'civAddress']);
+      expect(
+        [for (final e in type.configElements()) if (e['type'] == 'field') e['key']],
+        ['port', 'baudRate', 'civAddress'],
+      );
+    });
+
+    test('warns about a radio offering two serial ports at once', () {
+      // Several Icom radios (the IC-705 among them) expose two USB serial
+      // ports simultaneously, and neither the OS nor this app can tell them
+      // apart beyond a `#n` suffix — found by an operator confused by
+      // exactly that after granting access to one and seeing two.
+      final note = type.configElements().firstWhere((e) => e['type'] == 'markdown');
+      expect(note['text'], contains('Port A'), reason: 'which one to pick');
     });
 
     test('a bad address is refused in the editor, not discovered at the bench', () {

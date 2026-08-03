@@ -29,8 +29,10 @@ experiments:
     description: Rearrange the logging view's panes by dragging their tabs into splits and groups.
     aliases: [layout, dock, docking]
   # Station equipment and CAT control (docs/design/cat.md). Reveals the
-  # Station Configuration settings section. Does nothing on web, which has
-  # no sockets — the section stays hidden there even with this on.
+  # Station Configuration settings section, on every platform including web
+  # (HALO-64: the serial transport works there via the Web Serial API).
+  # A radio needing TCP or the Icom network transport still fails loudly at
+  # connect on web — neither has a web implementation — same as before.
   # The key stays 'gato' on purpose. It is what is written into stored
   # settings, so renaming it silently turns the experiment off for
   # everyone who has it on. The codename is retired from the code; the

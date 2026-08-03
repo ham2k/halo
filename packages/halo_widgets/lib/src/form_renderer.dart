@@ -16,9 +16,29 @@ import 'theme.dart';
 typedef FormValidator = Future<String?> Function(String fieldKey, dynamic value, Map<String, dynamic> state);
 typedef FormTransformer = Future<dynamic> Function(String fieldKey, dynamic value, Map<String, dynamic> state);
 typedef FormOnChange = Future<Map<String, dynamic>?> Function(String fieldKey, dynamic value, Map<String, dynamic> state);
-typedef FormAction = Future<String?> Function(String actionKey, String method, Map<String, dynamic> state);
+typedef FormAction = Future<FormActionResult?> Function(String actionKey, String method, Map<String, dynamic> state);
 typedef FormManageAccount = void Function(String accountKey, String? subkey);
 typedef FormOpenLink = void Function(String url);
+
+/// What a `type: 'action'` element's handler — or, same contract, a
+/// `select` option with `isAction: true` — can do: show the operator a
+/// result message, hand values back to sibling fields, replace the form's
+/// own element list, or any mix of the three. An action that picks
+/// something on the operator's behalf (a serial port their OS just
+/// granted, an OAuth-returned identifier) needs the second: a bare result
+/// string, the only thing the original contract could return, has nowhere
+/// to put a picked value except a message they'd have to retype into the
+/// field themselves. [elements] exists for the case a picked value isn't
+/// even offered yet by the CURRENT element list — a newly-granted device
+/// has to become a selectable option, not just a `_values` entry with no
+/// matching item in its own dropdown.
+class FormActionResult {
+  final String? message;
+  final Map<String, dynamic>? fieldUpdates;
+  final List<Map<String, dynamic>>? elements;
+
+  const FormActionResult({this.message, this.fieldUpdates, this.elements});
+}
 
 /// Substitutes `${key}` placeholders in [template] with values from [item].
 String _templateString(String template, Map<String, dynamic> item) {
@@ -201,6 +221,16 @@ class FormRenderer extends StatefulWidget {
   final FormTransformer? transformer;
   final FormOnChange? onChange;
   final FormAction? onAction;
+
+  /// An action's (or an actionable `select` option's) [FormActionResult.elements]
+  /// reaching the caller — the caller owns [formDefinition], not this
+  /// widget, so applying a new element list means the caller rebuilding
+  /// this widget with it, not something this widget can do to itself. Null
+  /// means whoever built this [FormRenderer] never wired the result up —
+  /// [FormActionResult.elements] is silently dropped rather than crashing,
+  /// same as an ignored [FormAction] result already does elsewhere.
+  final ValueChanged<List<Map<String, dynamic>>>? onElementsChanged;
+
   final FormManageAccount? onManageAccount;
 
   /// Opens a `type: 'link'` element's URL. The renderer stays free of any
@@ -228,6 +258,7 @@ class FormRenderer extends StatefulWidget {
     this.transformer,
     this.onChange,
     this.onAction,
+    this.onElementsChanged,
     this.onManageAccount,
     this.onOpenLink,
     required this.onSubmit,
@@ -250,6 +281,14 @@ class FormRendererState extends State<FormRenderer> {
   final Map<String, String> _errors = {};
   final Set<String> _runningActions = {};
   bool _isSubmitting = false;
+
+  /// Bumped after every action runs, and folded into every `select` field's
+  /// widget key. `DropdownButtonFormField` tracks which item is selected
+  /// internally once built — an `isAction` option stays visually "selected"
+  /// after being tapped no matter what `onChanged` does with `_values`, so
+  /// the fix is forcing the field to remount from `_values` fresh rather
+  /// than trying to talk it out of what it already decided.
+  int _actionGeneration = 0;
 
   List<Map<String, dynamic>> get _elements => (widget.formDefinition['elements'] as List? ?? const [])
       .cast<Map<String, dynamic>>()
@@ -478,23 +517,32 @@ class FormRendererState extends State<FormRenderer> {
     super.dispose();
   }
 
+  /// Merges externally-supplied values (an `onChange` result, an action's
+  /// [FormActionResult.fieldUpdates]) into [_values], keeping any live
+  /// `TextEditingController` in sync — a `select`/`checkbox`/etc. field
+  /// reads `_values` directly each build, but a text-type field's on-screen
+  /// text is the controller's, not `_values`', so `setState` alone would
+  /// update the model without the operator seeing it change.
+  void _applyFieldUpdates(Map<String, dynamic> updates) {
+    if (updates.isEmpty || !mounted) return;
+    setState(() {
+      for (final entry in updates.entries) {
+        _values[entry.key] = entry.value;
+        final controller = _controllers[entry.key];
+        if (controller != null) {
+          if (controller.text != entry.value?.toString()) {
+            controller.text = entry.value?.toString() ?? '';
+          }
+        }
+      }
+    });
+  }
+
   Future<void> _handleFieldBlurOrInteraction(String key, dynamic value) async {
     if (widget.onChange != null) {
       try {
         final updates = await widget.onChange!(key, value, _values);
-        if (updates != null && updates.isNotEmpty && mounted) {
-          setState(() {
-            for (final entry in updates.entries) {
-              _values[entry.key] = entry.value;
-              final controller = _controllers[entry.key];
-              if (controller != null) {
-                if (controller.text != entry.value?.toString()) {
-                  controller.text = entry.value?.toString() ?? '';
-                }
-              }
-            }
-          });
-        }
+        if (updates != null) _applyFieldUpdates(updates);
       } catch (e) {
         debugPrint('Error running onChange for $key: $e');
       }
@@ -807,6 +855,11 @@ class FormRendererState extends State<FormRenderer> {
         return _buildAccountField(el, theme);
       case 'select':
         return DropdownButtonFormField<dynamic>(
+          // See _actionGeneration: forces a remount from the true
+          // _values[key] after any action runs, since this widget
+          // otherwise keeps showing whatever item was last tapped —
+          // including an isAction option that never became the value.
+          key: ValueKey('$key-$_actionGeneration'),
           value: _values[key],
           focusNode: _focusNodes[key],
           menuMaxHeight: dropdownMenuMaxHeight(context),
@@ -827,6 +880,20 @@ class FormRendererState extends State<FormRenderer> {
           onChanged: _isSubmitting
               ? null
               : (val) {
+                  // An `isAction` option (the web serial transport's
+                  // "add a USB device", so far, sitting right in the port
+                  // list rather than as a separate button) never becomes
+                  // this field's value — picking it runs an action instead,
+                  // same contract a `type: 'action'` element's button uses.
+                  // Leaving `val` unselected here (rather than setting it
+                  // then reverting it once the action resolves) means there
+                  // is nothing to revert if the operator cancels the
+                  // browser's own picker partway through.
+                  final picked = options.firstWhere((o) => o['value'] == val, orElse: () => const {});
+                  if (picked['isAction'] == true) {
+                    unawaited(_runAction(val as String, picked['method'] as String? ?? ''));
+                    return;
+                  }
                   setState(() {
                     _values[key] = val;
                     _errors.remove(key);
@@ -1655,8 +1722,40 @@ class FormRendererState extends State<FormRenderer> {
     );
   }
 
-  /// A `type: 'action'` element: a button that invokes [FormAction] and
-  /// shows the returned string as a result banner.
+  /// Runs [FormAction] for [actionKey]/[method] and applies whatever comes
+  /// back — [FormActionResult.fieldUpdates] to the fields they belong to,
+  /// [FormActionResult.elements] handed up to whoever owns this form's
+  /// definition (see [FormRenderer.onElementsChanged]), and
+  /// [FormActionResult.message] as a result banner. Shared by the `action`
+  /// element's button and a `select` field's `isAction` option — an
+  /// option that grants access to something (a serial port the OS just
+  /// authorized) is the same shape of operation as a button that does,
+  /// just triggered by a different gesture.
+  Future<void> _runAction(String actionKey, String method) async {
+    if (widget.onAction == null) return;
+    setState(() => _runningActions.add(actionKey));
+    FormActionResult? result;
+    try {
+      result = await widget.onAction!(actionKey, method, _values);
+    } catch (e) {
+      result = FormActionResult(message: widget.labels.actionErrorLabel(e.toString()));
+    }
+    if (!mounted) return;
+    setState(() {
+      _runningActions.remove(actionKey);
+      _actionGeneration++;
+    });
+    final updates = result?.fieldUpdates;
+    if (updates != null) _applyFieldUpdates(updates);
+    final elements = result?.elements;
+    if (elements != null) widget.onElementsChanged?.call(elements);
+    final message = result?.message;
+    if (message != null && context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+    }
+  }
+
+  /// A `type: 'action'` element: a button that runs [_runAction].
   Widget _buildActionElement(Map<String, dynamic> el, ThemeData theme) {
     final actionKey = el['key'] as String? ?? '';
     final label = el['label'] as String? ?? '';
@@ -1666,22 +1765,7 @@ class FormRendererState extends State<FormRenderer> {
 
     return OutlinedButton(
       style: devModeColor == null ? null : OutlinedButton.styleFrom(foregroundColor: devModeColor, side: BorderSide(color: devModeColor)),
-      onPressed: widget.onAction == null || isRunning
-          ? null
-          : () async {
-              setState(() => _runningActions.add(actionKey));
-              String? result;
-              try {
-                result = await widget.onAction!(actionKey, method, _values);
-              } catch (e) {
-                result = widget.labels.actionErrorLabel(e.toString());
-              }
-              if (!mounted) return;
-              setState(() => _runningActions.remove(actionKey));
-              if (result != null && context.mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(result)));
-              }
-            },
+      onPressed: widget.onAction == null || isRunning ? null : () => _runAction(actionKey, method),
       child: isRunning
           ? const SizedBox(
               width: 16,
@@ -1806,6 +1890,14 @@ Future<Map<String, dynamic>?> showFormPane(
 }) {
   final formKey = GlobalKey<FormRendererState>();
   final submittingNotifier = ValueNotifier<bool>(false);
+  // An action (or an actionable select option) can replace the element
+  // list mid-edit — a newly-granted device becoming a selectable option,
+  // say — so `formDefinition['elements']` can't just be handed to
+  // [FormRenderer] once; this is what [FormRenderer.onElementsChanged]
+  // pushes into.
+  final elementsNotifier = ValueNotifier<List<Map<String, dynamic>>>(
+    (formDefinition['elements'] as List?)?.cast<Map<String, dynamic>>() ?? const [],
+  );
 
   return showModalPane<Map<String, dynamic>>(
     context,
@@ -1840,24 +1932,28 @@ Future<Map<String, dynamic>?> showFormPane(
           Flexible(
             child: SingleChildScrollView(
               padding: const EdgeInsets.fromLTRB(24, 12, 24, 12),
-              child: FormRenderer(
-                key: formKey,
-                formDefinition: formDefinition,
-                initialState: initialState,
-                validator: validator,
-                transformer: transformer,
-                onChange: onChange,
-                onAction: onAction,
-                onManageAccount: onManageAccount,
-                onOpenLink: onOpenLink,
-                developerMode: developerMode,
-                labels: labels,
-                // The pane's own title bar already shows formDefinition['title'].
-                showTitle: false,
-                showActions: false,
-                submittingNotifier: submittingNotifier,
-                onSubmit: (values) => Navigator.of(context).pop(values),
-                onCancel: () => Navigator.of(context).pop(null),
+              child: ValueListenableBuilder<List<Map<String, dynamic>>>(
+                valueListenable: elementsNotifier,
+                builder: (context, elements, _) => FormRenderer(
+                  key: formKey,
+                  formDefinition: {...formDefinition, 'elements': elements},
+                  initialState: initialState,
+                  validator: validator,
+                  transformer: transformer,
+                  onChange: onChange,
+                  onAction: onAction,
+                  onElementsChanged: (updated) => elementsNotifier.value = updated,
+                  onManageAccount: onManageAccount,
+                  onOpenLink: onOpenLink,
+                  developerMode: developerMode,
+                  labels: labels,
+                  // The pane's own title bar already shows formDefinition['title'].
+                  showTitle: false,
+                  showActions: false,
+                  submittingNotifier: submittingNotifier,
+                  onSubmit: (values) => Navigator.of(context).pop(values),
+                  onCancel: () => Navigator.of(context).pop(null),
+                ),
               ),
             ),
           ),

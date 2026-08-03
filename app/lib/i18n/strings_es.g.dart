@@ -1008,6 +1008,7 @@ class _Translations$settings$station$es extends Translations$settings$station$en
 	@override String get serialPortDescription => 'El puerto donde aparece la interfaz CAT de la radio.';
 	@override String get serialPortNone => 'No se encontraron puertos serie';
 	@override String get serialPortRequired => 'Elige un puerto serie';
+	@override String get serialDeviceRequest => 'Agregar un dispositivo USB…';
 	@override String get baudRate => 'Velocidad (baudios)';
 	@override String get baudRateDescription => 'Debe coincidir con el menú CAT de la radio — si no, responde con datos ilegibles y sin error.';
 	@override String get civAddress => 'Dirección CI-V de la radio';
@@ -1025,6 +1026,8 @@ class _Translations$settings$station$es extends Translations$settings$station$en
 	@override String get transceiverForMainVfo => 'Transceptor para el VFO principal';
 	@override String get equipmentInventory => 'Inventario de equipos';
 	@override String get noTransceiver => 'Ninguno';
+	@override String get icomCivTroubleshootingTitle => 'Si aparecen dos puertos serie para la misma radio';
+	@override String get icomCivTroubleshooting => 'Varias radios Icom — entre ellas la IC-705 — presentan **dos** puertos serie USB a la vez (Icom los llama Puerto A y Puerto B), ambos configurados en CI-V de forma predeterminada. Ni esta app ni tu sistema operativo pueden distinguirlos más allá de eso — el mismo identificador de fabricante/producto USB aparece dos veces, a veces marcado aquí con un sufijo `#2`. **El Puerto A suele ser el correcto** — normalmente el primero que lista tu sistema operativo o navegador. Si los comandos salen y la radio nunca responde, prueba el otro puerto a continuación.';
 	@override String get ic705TroubleshootingTitle => 'Si la radio nunca responde';
 	@override String get ic705Troubleshooting => 'La radio tiene una **única** sesión de control remoto. Cuando el inicio de sesión se ignora, casi siempre hay algo más usándola.\n\n- **Cierra cualquier otro cliente.** wfview o RS-BA1 conectado a la misma radio ocupa esa única sesión, y mientras tanto el inicio de sesión aquí simplemente se ignora.\n- **Revisa la configuración de red de la radio** — que la WLAN esté encendida, que esté en la misma red y que su función de control remoto (Network) esté activada.\n- **Reinicia la WLAN de la radio** si sigue atascada. Eso libera de forma fiable una sesión que la radio realmente esté reteniendo.\n\nUna **contraseña incorrecta se rechaza explícitamente**, no con silencio — así que si llegaste aquí en lugar de ver un mensaje de "rechazada", la contraseña no es el problema.';
 	@override String get statusStale => 'Sin respuesta';
@@ -1796,6 +1799,7 @@ extension on TranslationsEs {
 			'settings.station.serialPortDescription' => 'El puerto donde aparece la interfaz CAT de la radio.',
 			'settings.station.serialPortNone' => 'No se encontraron puertos serie',
 			'settings.station.serialPortRequired' => 'Elige un puerto serie',
+			'settings.station.serialDeviceRequest' => 'Agregar un dispositivo USB…',
 			'settings.station.baudRate' => 'Velocidad (baudios)',
 			'settings.station.baudRateDescription' => 'Debe coincidir con el menú CAT de la radio — si no, responde con datos ilegibles y sin error.',
 			'settings.station.civAddress' => 'Dirección CI-V de la radio',
@@ -1816,6 +1820,8 @@ extension on TranslationsEs {
 			'settings.station.transceiverForMainVfo' => 'Transceptor para el VFO principal',
 			'settings.station.equipmentInventory' => 'Inventario de equipos',
 			'settings.station.noTransceiver' => 'Ninguno',
+			'settings.station.icomCivTroubleshootingTitle' => 'Si aparecen dos puertos serie para la misma radio',
+			'settings.station.icomCivTroubleshooting' => 'Varias radios Icom — entre ellas la IC-705 — presentan **dos** puertos serie USB a la vez (Icom los llama Puerto A y Puerto B), ambos configurados en CI-V de forma predeterminada. Ni esta app ni tu sistema operativo pueden distinguirlos más allá de eso — el mismo identificador de fabricante/producto USB aparece dos veces, a veces marcado aquí con un sufijo `#2`. **El Puerto A suele ser el correcto** — normalmente el primero que lista tu sistema operativo o navegador. Si los comandos salen y la radio nunca responde, prueba el otro puerto a continuación.',
 			'settings.station.ic705TroubleshootingTitle' => 'Si la radio nunca responde',
 			'settings.station.ic705Troubleshooting' => 'La radio tiene una **única** sesión de control remoto. Cuando el inicio de sesión se ignora, casi siempre hay algo más usándola.\n\n- **Cierra cualquier otro cliente.** wfview o RS-BA1 conectado a la misma radio ocupa esa única sesión, y mientras tanto el inicio de sesión aquí simplemente se ignora.\n- **Revisa la configuración de red de la radio** — que la WLAN esté encendida, que esté en la misma red y que su función de control remoto (Network) esté activada.\n- **Reinicia la WLAN de la radio** si sigue atascada. Eso libera de forma fiable una sesión que la radio realmente esté reteniendo.\n\nUna **contraseña incorrecta se rechaza explícitamente**, no con silencio — así que si llegaste aquí en lugar de ver un mensaje de "rechazada", la contraseña no es el problema.',
 			'settings.station.statusStale' => 'Sin respuesta',
@@ -1870,11 +1876,11 @@ extension on TranslationsEs {
 			'settings.panels.accountsDescription' => 'Inicia sesión en servicios y búsquedas en línea',
 			'settings.panels.extensions' => 'Funciones y extensiones',
 			'settings.panels.extensionsDescription' => 'Activa o desactiva funciones opcionales',
+			_ => null,
+		} ?? switch (path) {
 			'settings.panels.profilesDescription' => 'Indicativo del operador y perfil de la estación',
 			'settings.panels.stationProfiles' => 'Perfiles de estación',
 			'settings.panels.dataFiles' => 'Archivos de datos',
-			_ => null,
-		} ?? switch (path) {
 			'settings.panels.dataFilesDescription' => 'Administra las fuentes de datos en caché',
 			'settings.panels.developerSettings' => 'Ajustes de desarrollador',
 			'settings.panels.developerSettingsDescription' => 'Herramientas de depuración y desarrollo',

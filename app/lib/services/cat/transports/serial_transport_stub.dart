@@ -1,14 +1,14 @@
 // Copyright ©️ 2026 Sebastian Delmont <sd@ham2k.com>
 // SPDX-License-Identifier: MPL-2.0
 //
-// Web fallback. Like the TCP stub this throws rather than no-opping —
-// reaching it means a platform gate is missing, and a silent no-op would
-// present a radio as merely "not connected" forever. Enumeration returns
-// empty instead: "no ports here" is a true answer, and the port picker asks
-// before anyone has chosen to connect.
-//
-// This is what a Chromium web build (Web Serial API) will eventually
-// replace — see HALO-64.
+// The fallback for a platform with neither `dart:io` nor `dart:js_interop`
+// — in practice, unreachable: every real target is one or the other. Kept
+// as the conditional export's required default, the same way
+// tcp_transport_stub.dart is. A Chromium web build gets the real
+// implementation in serial_transport_web.dart instead; Safari/Firefox,
+// which have no Web Serial API at all, get the same "no ports here, and
+// connecting throws" behavior this file would give, just from that file
+// (its own `navigatorSerial == null` checks), not this one.
 
 import '../transport.dart';
 import 'serial_transport_config.dart';

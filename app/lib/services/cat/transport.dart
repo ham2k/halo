@@ -42,6 +42,18 @@ class CatCancelledException implements Exception {
   String toString() => 'Superseded by a newer connection attempt';
 }
 
+/// What handling a `type: 'action'` element (see [EquipmentTransport.runAction])
+/// can produce. Deliberately not `halo_widgets`' own `FormActionResult` —
+/// this layer speaks CAT/config, not the UI package, the same way
+/// [EquipmentTransport.configElements] returns plain maps shaped for
+/// FormRenderer without importing it. The UI layer translates.
+class EquipmentActionResult {
+  final String? message;
+  final Map<String, dynamic>? fieldUpdates;
+
+  const EquipmentActionResult({this.message, this.fieldUpdates});
+}
+
 /// A live byte pipe to one piece of equipment.
 abstract class EquipmentConnection {
   /// Raw chunks as they arrive. NOT framed — a driver must handle a frame
@@ -65,6 +77,13 @@ abstract class EquipmentTransport {
   /// Stable id referenced by [EquipmentType.transportKey], e.g. `tcp`.
   String get key;
 
+  /// False for a transport whose [connect] throws unconditionally on this
+  /// platform — the TCP and Icom-network stubs on web, which have no raw
+  /// sockets. True by default; only a platform stub overrides it. Used to
+  /// keep the equipment list from offering (or discovery from probing for)
+  /// a radio the operator could never actually connect.
+  bool get isSupportedOnThisPlatform => true;
+
   /// Opens a connection to [target] — this transport's own [targetFor]
   /// output.
   ///
@@ -76,6 +95,16 @@ abstract class EquipmentTransport {
   /// keychain instead of the plain config blob. Empty for a transport that
   /// needs none — most do.
   Set<String> get secretFields => const {};
+
+  /// Async prep [configElements] may need before it can render — no-op by
+  /// default. [configElements] itself stays synchronous (every existing
+  /// caller relies on that), so a transport whose fields depend on
+  /// something async — the web serial transport's already-granted device
+  /// list, fetched via `navigator.serial.getPorts()` — does that fetch
+  /// here and caches it, rather than [configElements] returning a
+  /// `Future` and rippling that through every transport, driver, and the
+  /// registry self-check.
+  Future<void> prepareConfigElements() async {}
 
   /// FormRenderer elements for this transport's own connection parameters
   /// (host, port, serial port picker, baud rate…). Nothing device-specific
@@ -117,4 +146,14 @@ abstract class EquipmentTransport {
   /// A one-line "where is it" fragment for the equipment list — e.g.
   /// `192.168.1.5:4992` or `/dev/cu.usbserial @ 4800`. Empty by default.
   String describeTarget(Map<String, dynamic> config) => '';
+
+  /// Handles a `type: 'action'` element this transport declared in
+  /// [configElements] — e.g. the web serial transport's "add a USB
+  /// device" button. That can't be a plain field: authorizing a new
+  /// device needs a direct user gesture and opens the browser's own
+  /// native picker, not something a declarative field can drive. Null
+  /// (the default) for a transport with no actions of its own, or for a
+  /// key this transport didn't declare.
+  Future<EquipmentActionResult?> runAction(String actionKey, String method, Map<String, dynamic> state) async =>
+      null;
 }

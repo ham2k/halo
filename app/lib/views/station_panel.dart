@@ -40,16 +40,22 @@ class StationPanel extends StatelessWidget {
   CatService get _cat => services.cat;
 
   Future<void> _addEquipment(BuildContext context) async {
+    // Only FlexRadio announces itself today, over a UDP broadcast the web
+    // build's transport can't open — starting discovery there would just
+    // bind a socket that never reports anything, and `_showAddDialog`
+    // would spin its "searching" state forever for no reason.
+    final canDiscover =
+        _cat.registry.types.any((type) => type.discoverer != null && type.isSupportedOnThisPlatform);
     // Discovery holds a bound UDP socket, so it runs only while the dialog
     // that shows its results is open — and the socket has to be released
     // even if the dialog throws, or `isDiscovering` stays true and every
     // later Add silently reuses an orphaned subscription.
-    _cat.startDiscovery();
+    if (canDiscover) _cat.startDiscovery();
     final _AddChoice? choice;
     try {
-      choice = await _showAddDialog(context);
+      choice = await _showAddDialog(context, showDiscovery: canDiscover);
     } finally {
-      _cat.stopDiscovery();
+      if (canDiscover) _cat.stopDiscovery();
     }
     if (choice == null || !context.mounted) return;
 
@@ -66,7 +72,7 @@ class StationPanel extends StatelessWidget {
     await _cat.addNode(typeKey: type.key, name: values.name, config: values.config);
   }
 
-  Future<_AddChoice?> _showAddDialog(BuildContext context) {
+  Future<_AddChoice?> _showAddDialog(BuildContext context, {required bool showDiscovery}) {
     return showHaloDialog<_AddChoice>(
       context: context,
       builder: (context) => ListenableBuilder(
@@ -75,6 +81,10 @@ class StationPanel extends StatelessWidget {
           final st = context.t.settings.station;
           final found = _cat.discovered;
           final error = _cat.discoveryError;
+          // A radio whose transport can't connect on this platform at all
+          // (TCP, Icom network, on web) would only fail loudly once picked
+          // — no point offering it.
+          final manualTypes = _cat.registry.types.where((type) => type.isSupportedOnThisPlatform).toList();
 
           return HaloDialog(
             title: Text(st.addTitle),
@@ -82,38 +92,41 @@ class StationPanel extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                // What announced itself, first: for a Flex this is the whole
-                // interaction — tap it and it's configured.
-                if (error != null)
-                  ListTile(
-                    leading: Icon(Icons.wifi_off, color: Theme.of(context).colorScheme.error),
-                    title: Text(st.discoveryUnavailable(error: error)),
-                  )
-                else if (found.isEmpty)
-                  const ListTile(
-                    leading: SizedBox(
-                        width: 24,
-                        height: 24,
-                        child: Padding(padding: EdgeInsets.all(2), child: CircularProgressIndicator(strokeWidth: 2))),
-                    title: _SearchingLabel(),
-                  )
-                else ...[
-                  SectionHeader(st.found),
-                  for (final device in found)
+                if (showDiscovery) ...[
+                  // What announced itself, first: for a Flex this is the
+                  // whole interaction — tap it and it's configured.
+                  if (error != null)
                     ListTile(
-                      leading: Icon(_iconForCategory(_cat.registry.typeFor(device.typeKey)?.category)),
-                      title: Text(device.name),
-                      subtitle: device.detail == null ? null : Text(device.detail!),
-                      onTap: () => Navigator.of(context).pop(_AddChoice.discovered(device)),
-                      mouseCursor: SystemMouseCursors.click,
-                    ),
+                      leading: Icon(Icons.wifi_off, color: Theme.of(context).colorScheme.error),
+                      title: Text(st.discoveryUnavailable(error: error)),
+                    )
+                  else if (found.isEmpty)
+                    const ListTile(
+                      leading: SizedBox(
+                          width: 24,
+                          height: 24,
+                          child:
+                              Padding(padding: EdgeInsets.all(2), child: CircularProgressIndicator(strokeWidth: 2))),
+                      title: _SearchingLabel(),
+                    )
+                  else ...[
+                    SectionHeader(st.found),
+                    for (final device in found)
+                      ListTile(
+                        leading: Icon(_iconForCategory(_cat.registry.typeFor(device.typeKey)?.category)),
+                        title: Text(device.name),
+                        subtitle: device.detail == null ? null : Text(device.detail!),
+                        onTap: () => Navigator.of(context).pop(_AddChoice.discovered(device)),
+                        mouseCursor: SystemMouseCursors.click,
+                      ),
+                  ],
+                  const Divider(),
                 ],
-                const Divider(),
                 // A radio on another subnet, or behind a router that doesn't
                 // forward broadcasts, never announces. Neither app-polo
                 // branch had this path, and both were unusable without it.
                 SectionHeader(st.addManually),
-                for (final type in _cat.registry.types)
+                for (final type in manualTypes)
                   ListTile(
                     leading: Icon(_iconForCategory(type.category)),
                     title: Text(type.name),
@@ -170,25 +183,53 @@ class StationPanel extends StatelessWidget {
     final storedSecrets = node == null ? const <String>{} : await _cat.storedSecretFields(node.uuid);
     if (!context.mounted) return null;
 
-    final elements = [
-      {
-        'type': 'field',
-        'fieldType': 'text',
-        'key': 'name',
-        'label': st.name,
-        'description': st.nameDescription,
-      },
-      for (final element in type.configElements())
-        if (storedSecrets.contains(element['key'])) {...element, 'placeholder': _storedSecretPlaceholder} else element,
-    ];
+    // No-op for every transport except the web serial one, which uses this
+    // to fetch and cache navigator.serial's already-granted device list
+    // before configElements() (synchronous, so it can't await this itself)
+    // reads it.
+    await type.transport.prepareConfigElements();
+    if (!context.mounted) return null;
+
+    // Reused whenever an action changes what's available to pick (a newly
+    // granted USB device, say) — configElements() reflects the transport's
+    // CURRENT state each time it's called, so rebuilding from it is enough;
+    // nothing here needs to know what specifically changed.
+    List<Map<String, dynamic>> buildElements() => [
+          {
+            'type': 'field',
+            'fieldType': 'text',
+            'key': 'name',
+            'label': st.name,
+            'description': st.nameDescription,
+          },
+          for (final element in type.configElements())
+            if (storedSecrets.contains(element['key'])) {...element, 'placeholder': _storedSecretPlaceholder} else element,
+        ];
 
     final result = await showFormPane(
       context,
-      formDefinition: {'title': type.name, 'elements': elements},
+      formDefinition: {'title': type.name, 'elements': buildElements()},
       initialState: {'name': name, ...config},
       // Runs per field on submit, so a bad address blocks the save and says
       // so on the address field rather than failing later at connect time.
       validator: (key, value, values) async => type.validateField(key, value, values),
+      // A transport's own action — the web serial transport's "add a USB
+      // device" option, so far, living inside the port field's own list —
+      // CatService's layer speaks its own EquipmentActionResult rather
+      // than importing halo_widgets, so this is the one place that
+      // translates.
+      onAction: (actionKey, method, state) async {
+        final actionResult = await type.runAction(actionKey, method, state);
+        if (actionResult == null) return null;
+        return FormActionResult(
+          message: actionResult.message,
+          fieldUpdates: actionResult.fieldUpdates,
+          // A field changing might mean something newly exists to pick —
+          // the granted device isn't in the ORIGINAL options at all, so
+          // its own field alone isn't enough to make it selectable.
+          elements: actionResult.fieldUpdates == null ? null : buildElements(),
+        );
+      },
       // Only when the equipment already exists — there is nothing to delete
       // from the Add flow. Closes the editor before confirming: the question
       // is about the equipment, not about this form's unsaved edits, and

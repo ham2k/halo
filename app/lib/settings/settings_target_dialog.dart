@@ -335,15 +335,16 @@ class _TargetSettingsFormState extends State<_TargetSettingsForm> {
     return null;
   }
 
-  Future<String?> _onAction(String actionKey, String method, Map<String, dynamic> state) {
+  Future<FormActionResult?> _onAction(String actionKey, String method, Map<String, dynamic> state) async {
     final route = _extensionActionForKey[actionKey];
-    if (route == null) return Future.value(null); // core groups declare no actions today.
-    return widget.services.extensions.runSettingsAction(
+    if (route == null) return null; // core groups declare no actions today.
+    final message = await widget.services.extensions.runSettingsAction(
       hookKey: route.hookKey,
       panelKey: route.panelKey,
       method: method,
       state: _panelState(state, route.panelKey),
     );
+    return message == null ? null : FormActionResult(message: message);
   }
 
   // showAccountDialogByKey's own account pane has no way to notify this

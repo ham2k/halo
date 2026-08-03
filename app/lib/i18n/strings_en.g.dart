@@ -1976,6 +1976,9 @@ class Translations$settings$station$en {
 	/// en: 'Choose a serial port'
 	String get serialPortRequired => 'Choose a serial port';
 
+	/// en: 'Add a USB device…'
+	String get serialDeviceRequest => 'Add a USB device…';
+
 	/// en: 'Speed (baud)'
 	String get baudRate => 'Speed (baud)';
 
@@ -2025,6 +2028,12 @@ class Translations$settings$station$en {
 
 	/// en: 'None'
 	String get noTransceiver => 'None';
+
+	/// en: 'If two serial ports show up for the same radio'
+	String get icomCivTroubleshootingTitle => 'If two serial ports show up for the same radio';
+
+	/// en: 'Several Icom radios — the IC-705 among them — present **two** USB serial ports at once (Icom calls them Port A and Port B), both set to CI-V by default. Neither this app nor your OS can tell them apart beyond that — the same USB vendor/product ID just shows up twice, sometimes marked with a `#2` suffix here. **Port A is usually the right one** — normally the first one your OS or browser lists. If commands go out and the radio never answers, try the other port next.'
+	String get icomCivTroubleshooting => 'Several Icom radios — the IC-705 among them — present **two** USB serial ports at once (Icom calls them Port A and Port B), both set to CI-V by default. Neither this app nor your OS can tell them apart beyond that — the same USB vendor/product ID just shows up twice, sometimes marked with a `#2` suffix here. **Port A is usually the right one** — normally the first one your OS or browser lists. If commands go out and the radio never answers, try the other port next.';
 
 	/// en: 'If the radio never answers'
 	String get ic705TroubleshootingTitle => 'If the radio never answers';
@@ -3046,6 +3055,7 @@ extension on Translations {
 			'settings.station.serialPortDescription' => 'The port the radio\'s CAT interface appears on.',
 			'settings.station.serialPortNone' => 'No serial ports found',
 			'settings.station.serialPortRequired' => 'Choose a serial port',
+			'settings.station.serialDeviceRequest' => 'Add a USB device…',
 			'settings.station.baudRate' => 'Speed (baud)',
 			'settings.station.baudRateDescription' => 'Must match the radio\'s own CAT menu — a mismatch answers with garbage and no error.',
 			'settings.station.civAddress' => 'Radio CI-V address',
@@ -3066,6 +3076,8 @@ extension on Translations {
 			'settings.station.transceiverForMainVfo' => 'Transceiver for Main VFO',
 			'settings.station.equipmentInventory' => 'Equipment Inventory',
 			'settings.station.noTransceiver' => 'None',
+			'settings.station.icomCivTroubleshootingTitle' => 'If two serial ports show up for the same radio',
+			'settings.station.icomCivTroubleshooting' => 'Several Icom radios — the IC-705 among them — present **two** USB serial ports at once (Icom calls them Port A and Port B), both set to CI-V by default. Neither this app nor your OS can tell them apart beyond that — the same USB vendor/product ID just shows up twice, sometimes marked with a `#2` suffix here. **Port A is usually the right one** — normally the first one your OS or browser lists. If commands go out and the radio never answers, try the other port next.',
 			'settings.station.ic705TroubleshootingTitle' => 'If the radio never answers',
 			'settings.station.ic705Troubleshooting' => 'The radio has a **single** remote-control session. When the login is ignored, something else is almost always using it.\n\n- **Close any other client.** wfview or RS-BA1 connected to the same radio holds that one session, and the login here is simply ignored while it does.\n- **Check the radio\'s network settings** — that WLAN is on, it is on the same network, and its remote-control (Network) function is enabled.\n- **Power-cycle the radio\'s WLAN** if it stays stuck. That reliably clears a session the radio is genuinely holding.\n\nA **wrong password is refused explicitly**, not met with silence — so if you got here rather than a "rejected" message, the password is not the problem.',
 			'settings.station.statusStale' => 'Not responding',
@@ -3120,11 +3132,11 @@ extension on Translations {
 			'settings.panels.accountsDescription' => 'Sign in to online services and lookups',
 			'settings.panels.extensions' => 'Features & Extensions',
 			'settings.panels.extensionsDescription' => 'Turn optional features on or off',
+			_ => null,
+		} ?? switch (path) {
 			'settings.panels.profilesDescription' => 'Operator callsign and station profile',
 			'settings.panels.stationProfiles' => 'Station Profiles',
 			'settings.panels.dataFiles' => 'Data Files',
-			_ => null,
-		} ?? switch (path) {
 			'settings.panels.dataFilesDescription' => 'Manage cached data sources',
 			'settings.panels.developerSettings' => 'Developer Settings',
 			'settings.panels.developerSettingsDescription' => 'Debugging and development tools',

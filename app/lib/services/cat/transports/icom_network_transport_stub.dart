@@ -18,6 +18,9 @@ class IcomNetworkTransport extends EquipmentTransport with IcomNetworkTransportC
   String get key => transportKey;
 
   @override
+  bool get isSupportedOnThisPlatform => false;
+
+  @override
   Future<EquipmentConnection> connect(Map<String, dynamic> target, {required CatCancelToken cancel}) {
     throw UnsupportedError('CAT over WiFi needs UDP sockets, which the web build does not have.');
   }

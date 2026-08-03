@@ -220,9 +220,12 @@ class _SettingsViewState extends State<SettingsView> {
       ),
       // Station equipment and CAT control (docs/design/cat.md). Between
       // Callsign (-10) and Common Preferences (0) — who you are, then what
-      // you're operating with, then how the app behaves. Hidden on web,
-      // which has no sockets, so the section could never do anything there.
-      if (settings.experimentEnabled('gato') /* stored key, see experiments.yaml */ && !kIsWeb)
+      // you're operating with, then how the app behaves. No longer hidden
+      // on web outright (HALO-64): the serial transport works there now,
+      // via the Web Serial API. TCP and the Icom network transport still
+      // don't — a radio using either still throws UnsupportedError on
+      // connect, same as before, just not hidden a layer up from it.
+      if (settings.experimentEnabled('gato') /* stored key, see experiments.yaml */)
         _SettingsPanelEntry(
           key: 'station',
           title: t.settings.panels.station,
@@ -1698,12 +1701,15 @@ class _ExtensionSettingsPanelState extends State<_ExtensionSettingsPanel> {
       labels: formRendererLabelsFor(context.t),
       validator: _validate,
       onChange: _autosave,
-      onAction: (actionKey, method, state) => widget.services.extensions.runSettingsAction(
-        hookKey: _hookKey,
-        panelKey: _panelKey,
-        method: method,
-        state: state,
-      ),
+      onAction: (actionKey, method, state) async {
+        final message = await widget.services.extensions.runSettingsAction(
+          hookKey: _hookKey,
+          panelKey: _panelKey,
+          method: method,
+          state: state,
+        );
+        return message == null ? null : FormActionResult(message: message);
+      },
       onManageAccount: _manageAccount,
       onOpenLink: openExternalUrl,
       onSubmit: (_) {},

@@ -114,6 +114,11 @@ class EquipmentType {
 
   bool get hardwareVerified => hardwareVerifiedOverride ?? driver.hardwareVerified;
 
+  /// False for a pairing whose transport can't connect on this platform at
+  /// all (TCP and Icom-network on web) — used to keep the Add dialog from
+  /// offering a radio that would only fail loudly once picked.
+  bool get isSupportedOnThisPlatform => transport.isSupportedOnThisPlatform;
+
   /// Config keys whose values are credentials, kept in the platform
   /// keychain instead of the SharedPreferences blob the rest of the config
   /// lives in ([CatService] moves them on save). Always the transport's —
@@ -173,6 +178,15 @@ class EquipmentType {
 
   /// Null for equipment that doesn't announce itself.
   Stream<DiscoveredEquipment>? discover() => discoverer?.discover();
+
+  /// Routes a `type: 'action'` element's press to the transport that
+  /// declared it — see [EquipmentTransport.runAction]. Nothing here reads
+  /// or applies [overrides] to the result: an action-driven field update
+  /// (a newly-granted device's port) is exactly the kind of thing the
+  /// operator just did, so it's never something a radio definition would
+  /// want to override out from under them.
+  Future<EquipmentActionResult?> runAction(String actionKey, String method, Map<String, dynamic> state) =>
+      transport.runAction(actionKey, method, state);
 }
 
 const _flexRadioTcpKey = 'flexradio-tcp';
@@ -252,9 +266,15 @@ const icomCivSerialType = EquipmentType(
     'baudRate': 19200,
   },
   hardwareVerifiedOverride: false,
+  notes: _icomCivSerialNotes,
 );
 
 String _icomCivSerialName() => t.settings.station.types.icomCivSerial;
+
+List<Map<String, dynamic>> _icomCivSerialNotes() => [
+      {'type': 'divider', 'title': t.settings.station.icomCivTroubleshootingTitle},
+      {'type': 'markdown', 'text': t.settings.station.icomCivTroubleshooting},
+    ];
 
 /// An IC-705 over WiFi, using Icom's RS-BA1 network protocol.
 ///
