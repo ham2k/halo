@@ -12,8 +12,16 @@ has shipped and was removed from this file on 2026-07-15.
 ## Windows map backend unverified; Linux has no Mapbox path
 
 The Map tab routes Windows to the `flutter_inappwebview` Mapbox backend
-(`app/lib/views/map/mapbox_webview_map_view.dart`) — structurally supported
-but never run on a Windows machine.
+(`app/lib/views/map/mapbox_webview_map_view.dart`) — code-audited against
+`flutter_inappwebview_windows` 0.6.0 (the bridge, `evaluateJavascript`,
+`onConsoleMessage`, `transparentBackground` and `initialData` all have
+Windows implementations, and the routing falls back to OSM when the
+WebView2 runtime is missing) but still never run on a Windows machine.
+Two Windows-only caveats, also noted in the backend's header: WebView2's
+`NavigateToString` ignores `baseUrl`, so tile requests carry no Referer —
+the Mapbox token must stay free of URL restrictions or Windows breaks
+alone; and `NavigateToString` caps the document at 2MB (the page is ~10KB,
+nowhere close).
 
 Linux is routed to the OSM/`flutter_map` backend (markers/lines/callouts,
 no globe) because the `flutter_inappwebview` we pin (6.1.5, latest stable)
@@ -40,7 +48,9 @@ Mapbox GL JS on an `HtmlElementView` div via `<script>`-tag loading and
 the desktop webview backend. Verified against a dev
 `flutter run -d web-server` build; still to check on a real deployment: CSP
 headers allowing `api.mapbox.com`, and the Mapbox token's URL restrictions
-covering the production origin.
+covering the production origin — noting that the Windows webview sends no
+Referer at all (see the entry above), so any URL restriction on the shared
+token breaks Windows; restrict a separate web-only token instead if needed.
 
 ## Sync onboarding UX is a bare-minimum banner, not a guided flow
 

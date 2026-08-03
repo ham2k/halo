@@ -7,9 +7,11 @@
 // black circle per station QTH, and a great-circle line connecting each QSO
 // back to its QTH — then picks a rendering backend:
 //   - iOS/Android: MapboxNativeMapView (mapbox_maps_flutter)
-//   - macOS/Windows/Linux: MapboxWebviewMapView (Mapbox GL JS in a webview)
-//   - Web, or no Mapbox token configured yet: OsmMapView (flutter_map/OSM),
-//     the zero-token fallback every platform can render.
+//   - macOS/Windows: MapboxWebviewMapView (Mapbox GL JS in a webview)
+//   - Web: MapboxWebMapView (Mapbox GL JS on a platform-view div)
+//   - Linux, no Mapbox token configured, or Windows without the WebView2
+//     runtime: OsmMapView (flutter_map/OSM), the zero-token fallback every
+//     platform can render.
 // Owns the mercator/globe projection toggle — OsmMapView ignores it (no
 // globe support), the Mapbox backends honor it.
 //
@@ -55,6 +57,26 @@ class MapPanel extends StatefulWidget {
 
 class _MapPanelState extends State<MapPanel> {
   MapProjection _projection = MapProjection.mercator;
+
+  /// Whether the desktop webview backend can run here — false on a Windows
+  /// machine missing the WebView2 runtime, where routing to the webview
+  /// would leave the map permanently blank instead of falling back to OSM.
+  /// macOS starts true (WKWebView is part of the OS); Windows starts from
+  /// the cached answer, pessimistically false the first time, so at worst
+  /// the first map open shows OSM for the few frames the check takes.
+  bool _webviewSupported = false;
+
+  @override
+  void initState() {
+    super.initState();
+    if (kIsWeb || !(Platform.isMacOS || Platform.isWindows)) return;
+    _webviewSupported = MapboxWebviewMapView.resolvedSupport ?? !Platform.isWindows;
+    if (MapboxWebviewMapView.resolvedSupport == null) {
+      MapboxWebviewMapView.isSupported().then((ok) {
+        if (mounted && ok != _webviewSupported) setState(() => _webviewSupported = ok);
+      });
+    }
+  }
 
   // Lines are ~60% black at any zoom, splitting the difference on app-polo's
   // zoom-interpolated 50–90% opacity ramp (flat styling keeps the three
@@ -125,13 +147,14 @@ class _MapPanelState extends State<MapPanel> {
       map = MapboxWebMapView(markers: markers, lines: lines, projection: _projection);
     } else if (usesMapbox && (Platform.isIOS || Platform.isAndroid)) {
       map = MapboxNativeMapView(markers: markers, lines: lines, projection: _projection);
-    } else if (usesMapbox && (Platform.isMacOS || Platform.isWindows)) {
+    } else if (usesMapbox && (Platform.isMacOS || Platform.isWindows) && _webviewSupported) {
       map = MapboxWebviewMapView(markers: markers, lines: lines, projection: _projection);
     } else {
       // No token — or Linux, where no Mapbox path exists (flutter_inappwebview
       // ships no Linux implementation and mapbox_maps_flutter is
       // mobile-only), so the OSM backend is the real Linux map, not a
       // stopgap. It has markers/lines/callouts, just no globe projection.
+      // Windows without the WebView2 runtime lands here too.
       usesMapbox = false;
       map = OsmMapView(markers: markers, lines: lines);
     }

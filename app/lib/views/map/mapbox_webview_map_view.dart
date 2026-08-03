@@ -1,12 +1,17 @@
 // Copyright ©️ 2026 Sebastian Delmont <sd@ham2k.com>
 // SPDX-License-Identifier: MPL-2.0
 //
-// Mapbox backend for desktop (macOS today; Windows/Linux structurally
-// supported by flutter_inappwebview but not yet scaffolded/verified in this
-// project — see DESIGN.md §11). No official Mapbox Flutter SDK covers
-// desktop, so this loads Mapbox GL JS (which does support globe projection)
-// into a webview, bridged to Dart for marker/line data in and load/error
-// status out via `window.flutter_inappwebview.callHandler`.
+// Mapbox backend for desktop (macOS and Windows; Linux waits on a stable
+// flutter_inappwebview_linux — see docs/backlog.md). No official Mapbox
+// Flutter SDK covers desktop, so this loads Mapbox GL JS (which does support
+// globe projection) into a webview, bridged to Dart for marker/line data in
+// and load/error status out via `window.flutter_inappwebview.callHandler`.
+//
+// On Windows the webview is WebView2, whose NavigateToString ignores
+// InAppWebViewInitialData.baseUrl — the page runs from an about:blank-like
+// origin and map tile requests carry no Referer. Keep the Mapbox token free
+// of URL restrictions (or issue a separate restricted one for web) or the
+// Windows map breaks while every other platform keeps working.
 //
 // QSOs are band-colored circle divs, the QTH a black one, connected by
 // great-circle lines in a GeoJSON layer (pre-densified by the facade).
@@ -14,6 +19,7 @@
 // to match the Flutter backends' MapPopupCard.
 
 import 'dart:convert';
+import 'dart:io' show Platform;
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -37,6 +43,30 @@ class MapboxWebviewMapView extends StatefulWidget {
 
   @override
   State<MapboxWebviewMapView> createState() => _MapboxWebviewMapViewState();
+
+  /// Resolved availability, once [isSupported] has completed — lets the
+  /// routing in map_panel.dart answer synchronously on later builds instead
+  /// of flashing the fallback map every time the panel mounts.
+  static bool? get resolvedSupport => _resolvedSupport;
+  static bool? _resolvedSupport;
+  static Future<bool>? _support;
+
+  /// Whether this backend can run here. Always true on macOS (WKWebView is
+  /// part of the OS). On Windows the webview is WebView2, whose Evergreen
+  /// runtime is preinstalled on Windows 11 and nearly all Windows 10 — but
+  /// not guaranteed; without it the webview never creates and the map would
+  /// sit permanently blank, so the caller must fall back to the OSM backend.
+  static Future<bool> isSupported() => _support ??= _checkSupport();
+
+  static Future<bool> _checkSupport() async {
+    if (!Platform.isWindows) return _resolvedSupport = true;
+    try {
+      final version = await WebViewEnvironment.getAvailableVersion();
+      return _resolvedSupport = version != null;
+    } catch (_) {
+      return _resolvedSupport = false;
+    }
+  }
 }
 
 class _MapboxWebviewMapViewState extends State<MapboxWebviewMapView> {

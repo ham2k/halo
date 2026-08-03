@@ -18,6 +18,7 @@
 #
 # Requires the same repository secrets as deploy-web.yml —
 #   CLOUDFLARE_API_TOKEN, CLOUDFLARE_ACCOUNT_ID
+#   (and optionally MAPBOX_ACCESS_TOKEN; when unset, previews fall back to OSM)
 # — with the token also granting Zone Read + DNS Edit on ham2k.net for the
 # preview DNS records.
 
@@ -80,17 +81,20 @@ jobs:
           npm run build
 
       # lib/config/secrets.dart is gitignored, so a fresh checkout doesn't have
-      # it and the build fails to compile. The blank template is a supported
-      # configuration — every consumer degrades rather than failing. This deploy
-      # passes no MAPBOX_ACCESS_TOKEN, so the Map tab falls back to
-      # OpenStreetMap. Same handling, and the same wording, as
-      # scripts/test.sh:54-61.
-      - name: Use blank secrets template
+      # it and the build fails to compile. Generate it from the environment —
+      # MAPBOX_ACCESS_TOKEN is the only secret previews get; blank values
+      # degrade to the OpenStreetMap fallback. Same handling as deploy-web.yml.
+      - name: Generate build secrets
         run: |
-          if [ ! -f app/lib/config/secrets.dart ]; then
-            echo "no secrets present, using the blank template"
+          if [ -f app_dist/ci/secrets-common.sh ]; then
+            . app_dist/ci/secrets-common.sh
+            generate_secrets
+          else
+            echo "no app_dist (public checkout), using the blank template"
             cp app/lib/config/secrets.dart.example app/lib/config/secrets.dart
           fi
+        env:
+          MAPBOX_ACCESS_TOKEN: ${{ secrets.MAPBOX_ACCESS_TOKEN }}
 
       # HALO_GIT_SHA: short SHA of the built ref, shown after the build number in
       # the About view (version_label.dart's kGitSha) so a preview identifies the
