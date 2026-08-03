@@ -6367,6 +6367,64 @@ void main() {
     expect(fakeRadio.vfoA.mode, 'CW');
   });
 
+  testWidgets('HALO-58: a spot tap focuses the callsign field, so Enter can log the suggested QSO', (tester) async {
+    debugDefaultTargetPlatformOverride = TargetPlatform.macOS;
+    try {
+      await tester.pumpWidget(host());
+      // The tap that produces a suggestion lands in the Spots pane, outside
+      // the logging fields — without this unfocus, the call field's own
+      // autofocus keeps the assertion green with the fix deleted.
+      FocusManager.instance.primaryFocus?.unfocus();
+      await tester.pump();
+
+      await tester.pumpWidget(host(suggestedQso: {
+        'their': {'call': 'W1AW'},
+        'freq': 14074.0,
+        'mode': 'FT8',
+      }));
+      await tester.pump();
+
+      final callField = find.widgetWithText(TextField, 'Their call');
+      expect(tester.widget<TextField>(callField).focusNode!.hasFocus, isTrue);
+
+      // The point of the focus: Enter, with nothing else touched, logs the
+      // suggested contact. Driven the way the engine submits (receiveAction),
+      // which needs the field's input connection — absent when nothing holds
+      // focus.
+      await tester.pump(const Duration(milliseconds: 200));
+      await tester.testTextInput.receiveAction(TextInputAction.done);
+      await tester.pumpAndSettle();
+      expect(tester.widget<TextField>(callField).controller!.text, isEmpty); // wiped: the QSO was logged
+    } finally {
+      debugDefaultTargetPlatformOverride = null;
+    }
+  });
+
+  testWidgets('HALO-58: on mobile a spot tap leaves focus alone (no uninvited virtual keyboard)', (tester) async {
+    debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
+    try {
+      await tester.pumpWidget(host());
+      FocusManager.instance.primaryFocus?.unfocus();
+      await tester.pump();
+
+      await tester.pumpWidget(host(suggestedQso: {
+        'their': {'call': 'W1AW'},
+        'freq': 14074.0,
+        'mode': 'FT8',
+      }));
+      await tester.pump();
+
+      // The suggestion still filled the field — it just didn't grab focus,
+      // which on a phone would pop the keyboard over the call info the tap
+      // surfaced (docs/design/logging-fields.md's mobile carve-out).
+      final callField = find.widgetWithText(TextField, 'Their call');
+      expect(tester.widget<TextField>(callField).controller!.text, 'W1AW');
+      expect(tester.widget<TextField>(callField).focusNode!.hasFocus, isFalse);
+    } finally {
+      debugDefaultTargetPlatformOverride = null;
+    }
+  });
+
   testWidgets('clicking into the frequency field after a spot does not switch live follow off', (tester) async {
     await tester.pumpWidget(host(radioService: fakeRadio, suggestedQso: {
       'their': {'call': 'W1AW'},

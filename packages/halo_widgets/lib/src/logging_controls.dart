@@ -1878,6 +1878,13 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
       _spotSources = const [];
       _spotStatus.clear();
       _refreshSpotSources();
+      // A suggestion means "work THIS station", so Enter must be able to log
+      // it right away — the tap that produced it landed outside the logging
+      // fields, leaving nothing focused for Enter to reach. Focus the
+      // callsign field (cursor-at-end comes from its focus listener). Not on
+      // mobile: an uninvited virtual keyboard would cover the call info the
+      // tap just surfaced (docs/design/logging-fields.md's mobile carve-out).
+      if (!isMobilePlatform) _callFocus.requestFocus();
     }
   }
 

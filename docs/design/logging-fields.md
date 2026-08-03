@@ -103,6 +103,14 @@ closing it. Implemented app-wide (not just for the logging fields) by
 `TapToDismissEmptyField` in `keyboard_dismiss.dart`, since a per-field opt-in
 would be silently missing from every field added later.
 
+**Tapping a spot focuses the callsign field.** The suggestion it hands over
+means "work THIS station", so Enter must be able to log it immediately — but
+the tap itself lands in the Spots pane, outside the logging fields, leaving
+nothing focused for Enter to reach. The suggestedQso-change path asserts the
+focus itself (a deeplinked cold start gets it from the field's autofocus).
+Not on mobile, per the carve-out above: there the suggestion fills the
+fields without popping a keyboard over the call info the tap just surfaced.
+
 ## Moving between the main fields
 
 **Space** moves focus to the next main field in order, wrapping back to the
