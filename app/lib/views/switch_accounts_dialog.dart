@@ -31,6 +31,7 @@ import 'package:halo_widgets/halo_widgets.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 
 import '../i18n/strings.g.dart';
+import '../tools/sync_account_identity.dart';
 
 /// How the other device's deep link is assembled — same scheme and params
 /// as app-polo's SyncAccountDialog (`com.ham2k:///link_client?id=…&token=…`).
@@ -176,25 +177,28 @@ class _SwitchAccountsPaneState extends State<SwitchAccountsPane> {
     return '${t.switchAccounts.qsoCount(count: qsoCount ?? 0)} · ${t.switchAccounts.operationCount(count: operationCount ?? 0)}';
   }
 
-  /// One account row: callsign and email on the first line, QSO/operation
-  /// counts on the second. Shared by the current account (not tappable) and
-  /// the quick-switch list.
+  /// One account row: the account's identity (email or anonymous id — see
+  /// syncAccountIdentity; accounts are identified by email, not callsign)
+  /// on the first line, QSO/operation counts on the second. Shared by the
+  /// current account (not tappable) and the quick-switch list, which passes
+  /// [includePending] false: its tap links by the confirmed email, so the
+  /// row must not display a pending address the action won't use.
   Widget _accountTile({
     required Map<String, dynamic> account,
     required String iconName,
+    bool includePending = true,
     int? qsoCount,
     int? operationCount,
     VoidCallback? onTap,
   }) {
-    final call = account['call'] as String?;
-    final email = account['email'] as String?;
-    final firstLine = [if (call?.isNotEmpty == true) call!, if (email?.isNotEmpty == true) email!].join(' — ');
+    final identity = syncAccountIdentity(account, includePending: includePending);
     final counts = _countsLine(qsoCount, operationCount);
     return ListTile(
       contentPadding: EdgeInsets.zero,
       leading: Icon(resolveIconName(iconName)),
-      // A brand-new client's account can have neither call nor email yet.
-      title: Text(firstLine.isNotEmpty ? firstLine : t.switchAccounts.noCallsignOrEmail),
+      // The placeholder shown before account data has loaded carries no
+      // identity at all.
+      title: Text(identity ?? t.switchAccounts.noAccountDetails),
       subtitle: counts == null ? null : Text(counts),
       onTap: onTap,
       mouseCursor: onTap == null ? MouseCursor.defer : SystemMouseCursors.click,
@@ -474,12 +478,18 @@ class _SwitchAccountsPaneState extends State<SwitchAccountsPane> {
               Text(context.t.switchAccounts.otherAccounts, style: theme.textTheme.titleSmall),
               ...others.map((account) {
                 final stats = (account['stats'] as Map?)?.cast<String, dynamic>();
+                // Quick switch links by the confirmed email — the only
+                // address the server resolves — so an email-less account
+                // has nothing to switch to and must not look tappable.
+                final email = account['email'] as String?;
+                final canSwitch = email != null && email.isNotEmpty;
                 return _accountTile(
                   account: account,
                   iconName: 'account',
+                  includePending: false,
                   qsoCount: (stats?['qso_count'] as num?)?.toInt(),
                   operationCount: (stats?['operation_count'] as num?)?.toInt(),
-                  onTap: _busy ? null : () => _quickSwitch(account),
+                  onTap: _busy || !canSwitch ? null : () => _quickSwitch(account),
                 );
               }),
             ],

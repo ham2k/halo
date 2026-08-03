@@ -33,6 +33,7 @@ import '../services/extension_service.dart';
 import '../services/link_opener.dart';
 import '../services/settings_service.dart';
 import '../tools/form_chrome_labels.dart';
+import '../tools/sync_account_identity.dart';
 import 'header_profile_label.dart';
 import '../settings/settings_registry.dart';
 import 'experiments_pane.dart';
@@ -1009,13 +1010,7 @@ class _SyncPanelState extends State<_SyncPanel> {
 
   String get _syncAccountSubtitle {
     if (_loadingSyncAccount) return t.settings.syncPanel.checking;
-    final account = _syncAccount?['current_account'] as Map?;
-    final call = account?['call'] as String?;
-    if (call == null || call.isEmpty) return t.settings.syncPanel.notLinked;
-    final email = account?['email'] as String?;
-    return (email == null || email.isEmpty)
-        ? t.settings.syncPanel.linkedAs(call: call)
-        : t.settings.syncPanel.linkedAsWithEmail(call: call, email: email);
+    return syncAccountLabel(_syncAccount);
   }
 
   @override

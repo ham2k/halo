@@ -15,6 +15,7 @@ import 'package:flutter/material.dart';
 import '../i18n/strings.g.dart';
 import '../services/extension_service.dart';
 import '../services/settings_service.dart';
+import '../tools/sync_account_identity.dart';
 import 'settings_registry.dart';
 
 // Where the Privacy panel's policy links point.
@@ -541,10 +542,7 @@ class SyncSettingsGroup extends SettingsGroup {
   Future<List<Map<String, dynamic>>> buildElements() async {
     String account = '';
     if (settings.syncEnabled) {
-      final data = settings.syncState['accountData'];
-      final current = data is Map ? data['current_account'] : null;
-      final call = current is Map ? current['call'] as String? : null;
-      account = (call == null || call.isEmpty) ? t.settings.syncPanel.notLinked : t.settings.syncPanel.linkedAs(call: call);
+      account = syncAccountLabel(settings.syncState['accountData']);
     }
     return [
       _toggle(

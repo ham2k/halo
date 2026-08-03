@@ -65,6 +65,7 @@ class TranslationsEs extends Translations with BaseTranslations<AppLocale, Trans
 	@override late final _Translations$operationLocationScreen$es operationLocationScreen = _Translations$operationLocationScreen$es._(_root);
 	@override late final _Translations$versionLabel$es versionLabel = _Translations$versionLabel$es._(_root);
 	@override late final _Translations$notices$es notices = _Translations$notices$es._(_root);
+	@override late final _Translations$syncAccount$es syncAccount = _Translations$syncAccount$es._(_root);
 	@override late final _Translations$switchAccounts$es switchAccounts = _Translations$switchAccounts$es._(_root);
 }
 
@@ -596,6 +597,17 @@ class _Translations$notices$es extends Translations$notices$en {
 	@override String get emptyHistory => 'Aún no hay avisos';
 }
 
+// Path: syncAccount
+class _Translations$syncAccount$es extends Translations$syncAccount$en {
+	_Translations$syncAccount$es._(TranslationsEs root) : this._root = root, super.internal(root);
+
+	final TranslationsEs _root; // ignore: unused_field
+
+	// Translations
+	@override String anonymous({required Object id}) => 'Cuenta anónima (#${id})';
+	@override String pendingConfirmation({required Object email}) => '${email} (pendiente de confirmación)';
+}
+
 // Path: switchAccounts
 class _Translations$switchAccounts$es extends Translations$switchAccounts$en {
 	_Translations$switchAccounts$es._(TranslationsEs root) : this._root = root, super.internal(root);
@@ -603,7 +615,7 @@ class _Translations$switchAccounts$es extends Translations$switchAccounts$en {
 	final TranslationsEs _root; // ignore: unused_field
 
 	// Translations
-	@override String get noCallsignOrEmail => 'Aún sin indicativo ni email';
+	@override String get noAccountDetails => 'Aún sin detalles de la cuenta';
 	@override String get currentAccount => 'Cuenta actual';
 	@override String get otherAccounts => 'Otras cuentas';
 	@override String get linkToAnother => 'Vincular a otra cuenta';
@@ -917,8 +929,7 @@ class _Translations$settings$syncPanel$es extends Translations$settings$syncPane
 	@override String get switchAccountsDescription => 'Vincula este dispositivo a otra cuenta con un código QR o por email';
 	@override String get checking => 'Comprobando…';
 	@override String get notLinked => 'Aún no vinculado';
-	@override String linkedAs({required Object call}) => 'Vinculado como ${call}';
-	@override String linkedAsWithEmail({required Object call, required Object email}) => 'Vinculado como ${call} (${email})';
+	@override String linkedAs({required Object account}) => 'Vinculado como ${account}';
 	@override String get replaceDialogTitle => '¿Reemplazar los datos locales?';
 	@override String replaceDialogOperations({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count,
 		one: '${n} operación',
@@ -1737,8 +1748,7 @@ extension on TranslationsEs {
 			'settings.syncPanel.switchAccountsDescription' => 'Vincula este dispositivo a otra cuenta con un código QR o por email',
 			'settings.syncPanel.checking' => 'Comprobando…',
 			'settings.syncPanel.notLinked' => 'Aún no vinculado',
-			'settings.syncPanel.linkedAs' => ({required Object call}) => 'Vinculado como ${call}',
-			'settings.syncPanel.linkedAsWithEmail' => ({required Object call, required Object email}) => 'Vinculado como ${call} (${email})',
+			'settings.syncPanel.linkedAs' => ({required Object account}) => 'Vinculado como ${account}',
 			'settings.syncPanel.replaceDialogTitle' => '¿Reemplazar los datos locales?',
 			'settings.syncPanel.replaceDialogOperations' => ({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count, one: '${n} operación', other: '${n} operaciones', ), 
 			'settings.syncPanel.replaceDialogQsos' => ({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count, one: '${n} QSO', other: '${n} QSOs', ), 
@@ -1885,9 +1895,9 @@ extension on TranslationsEs {
 			'settings.panels.commonPreferences' => 'Preferencias comunes',
 			'settings.panels.commonPreferencesDescription' => 'Apariencia, idioma y ajustes cotidianos',
 			'settings.panels.allSettings' => 'Todos los ajustes',
+			'settings.panels.allSettingsDescription' => 'Todos los ajustes disponibles en un solo lugar',
 			_ => null,
 		} ?? switch (path) {
-			'settings.panels.allSettingsDescription' => 'Todos los ajustes disponibles en un solo lugar',
 			'settings.panels.syncDescription' => 'Respalda y sincroniza tus registros entre dispositivos',
 			'settings.panels.accountsDescription' => 'Inicia sesión en servicios y búsquedas en línea',
 			'settings.panels.extensions' => 'Funciones y extensiones',
@@ -1983,7 +1993,9 @@ extension on TranslationsEs {
 			'versionLabel.version' => ({required Object version}) => 'Versión ${version}',
 			'versionLabel.versionBuild' => ({required Object version, required Object build}) => 'Versión ${version} - Build ${build}',
 			'notices.emptyHistory' => 'Aún no hay avisos',
-			'switchAccounts.noCallsignOrEmail' => 'Aún sin indicativo ni email',
+			'syncAccount.anonymous' => ({required Object id}) => 'Cuenta anónima (#${id})',
+			'syncAccount.pendingConfirmation' => ({required Object email}) => '${email} (pendiente de confirmación)',
+			'switchAccounts.noAccountDetails' => 'Aún sin detalles de la cuenta',
 			'switchAccounts.currentAccount' => 'Cuenta actual',
 			'switchAccounts.otherAccounts' => 'Otras cuentas',
 			'switchAccounts.linkToAnother' => 'Vincular a otra cuenta',

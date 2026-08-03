@@ -88,23 +88,52 @@ void main() {
       },
     );
 
-    // The current account gets its own headed row — call and email on the
-    // first line, counts (from the response's top-level totals) on the
-    // second — and other accounts follow under their own header with
-    // per-account stats.
+    // The current account gets its own headed row — the email identity on
+    // the first line (never the callsign: accounts are identified by email),
+    // counts (from the response's top-level totals) on the second — and
+    // other accounts follow under their own header with per-account stats.
     expect(find.text('Current account'), findsOneWidget);
-    expect(find.text('N0CALL — me@example.com'), findsOneWidget);
+    expect(find.text('me@example.com'), findsOneWidget);
     expect(find.text('120 QSOs · 3 operations'), findsOneWidget);
     expect(find.text('Other accounts'), findsOneWidget);
-    expect(find.text('K2XYZ — other@example.com'), findsOneWidget);
+    expect(find.text('other@example.com'), findsOneWidget);
     expect(find.text('42 QSOs · 1 operation'), findsOneWidget);
-    await tester.tap(find.text('K2XYZ — other@example.com'));
+    await tester.tap(find.text('other@example.com'));
     await tester.pumpAndSettle();
 
     // The switch reuses the existing permission — linked by that account's
     // email — and reports success so the caller kicks reconciliation.
     expect(linkedEmails, ['other@example.com']);
     expect(results, [true]);
+  });
+
+  testWidgets('quick switch: rows show the confirmed email their tap acts on, and email-less rows are inert', (tester) async {
+    final linkedEmails = <String?>[];
+    await pumpDialog(
+      tester,
+      fetchAccountData: () async => accountData(others: [
+        // An account reachable only via the QR/blank-permission path.
+        {'uuid': '0a1b2c3d-4e5f-6789-abcd-ef0123456789', 'call': 'K2XYZ'},
+        {'uuid': 'acct-9', 'email': 'confirmed@example.com', 'pending_email': 'unconfirmed@example.com'},
+      ]),
+      linkClient: (email) async {
+        linkedEmails.add(email);
+        return {'permission': {}};
+      },
+    );
+
+    // The trap: displaying an address the tap wouldn't use. Quick switch
+    // links by the confirmed email, so that's the one on the row — never
+    // the pending address.
+    expect(find.text('confirmed@example.com'), findsOneWidget);
+    expect(find.textContaining('unconfirmed@example.com'), findsNothing);
+
+    // An email-less account has nothing to switch to: the row is labeled
+    // but a tap must be a no-op, not a silent failed link attempt.
+    expect(find.text('Anonymous Account (#0A1B2C3D)'), findsOneWidget);
+    await tester.tap(find.text('Anonymous Account (#0A1B2C3D)'));
+    await tester.pumpAndSettle();
+    expect(linkedEmails, isEmpty);
   });
 
   testWidgets('email flow: a pending permission shows its challenge code on screen', (tester) async {
@@ -215,7 +244,7 @@ void main() {
       },
     );
 
-    await tester.tap(find.text('K2XYZ — other@example.com'));
+    await tester.tap(find.text('other@example.com'));
     await tester.pumpAndSettle();
 
     // Straight to the code view — no retyping the email.

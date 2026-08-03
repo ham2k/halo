@@ -482,8 +482,7 @@
       "switchAccountsDescription": "Link this device to another account with a QR code or email",
       "checking": "Checking…",
       "notLinked": "Not linked yet",
-      "linkedAs": "Linked as ${call}",
-      "linkedAsWithEmail": "Linked as ${call} (${email})",
+      "linkedAs": "Linked as ${account}",
       "replaceDialogTitle": "Replace local data?",
       "replaceDialogOperations": {
         "one": "${n} operation",
@@ -781,8 +780,12 @@
   "notices": {
     "emptyHistory": "No notices yet"
   },
+  "syncAccount": {
+    "anonymous": "Anonymous Account (#${id})",
+    "pendingConfirmation": "${email} (pending confirmation)"
+  },
   "switchAccounts": {
-    "noCallsignOrEmail": "No callsign or email yet",
+    "noAccountDetails": "No account details yet",
     "currentAccount": "Current account",
     "otherAccounts": "Other accounts",
     "linkToAnother": "Link to another account",

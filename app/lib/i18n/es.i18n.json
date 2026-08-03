@@ -482,8 +482,7 @@
       "switchAccountsDescription": "Vincula este dispositivo a otra cuenta con un código QR o por email",
       "checking": "Comprobando…",
       "notLinked": "Aún no vinculado",
-      "linkedAs": "Vinculado como ${call}",
-      "linkedAsWithEmail": "Vinculado como ${call} (${email})",
+      "linkedAs": "Vinculado como ${account}",
       "replaceDialogTitle": "¿Reemplazar los datos locales?",
       "replaceDialogOperations": {
         "one": "${n} operación",
@@ -781,8 +780,12 @@
   "notices": {
     "emptyHistory": "Aún no hay avisos"
   },
+  "syncAccount": {
+    "anonymous": "Cuenta anónima (#${id})",
+    "pendingConfirmation": "${email} (pendiente de confirmación)"
+  },
   "switchAccounts": {
-    "noCallsignOrEmail": "Aún sin indicativo ni email",
+    "noAccountDetails": "Aún sin detalles de la cuenta",
     "currentAccount": "Cuenta actual",
     "otherAccounts": "Otras cuentas",
     "linkToAnother": "Vincular a otra cuenta",

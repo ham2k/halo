@@ -66,6 +66,7 @@ class Translations with BaseTranslations<AppLocale, Translations> {
 	late final Translations$operationLocationScreen$en operationLocationScreen = Translations$operationLocationScreen$en.internal(_root);
 	late final Translations$versionLabel$en versionLabel = Translations$versionLabel$en.internal(_root);
 	late final Translations$notices$en notices = Translations$notices$en.internal(_root);
+	late final Translations$syncAccount$en syncAccount = Translations$syncAccount$en.internal(_root);
 	late final Translations$switchAccounts$en switchAccounts = Translations$switchAccounts$en.internal(_root);
 }
 
@@ -1139,6 +1140,21 @@ class Translations$notices$en {
 	String get emptyHistory => 'No notices yet';
 }
 
+// Path: syncAccount
+class Translations$syncAccount$en {
+	Translations$syncAccount$en.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Anonymous Account (#${id})'
+	String anonymous({required Object id}) => 'Anonymous Account (#${id})';
+
+	/// en: '${email} (pending confirmation)'
+	String pendingConfirmation({required Object email}) => '${email} (pending confirmation)';
+}
+
 // Path: switchAccounts
 class Translations$switchAccounts$en {
 	Translations$switchAccounts$en.internal(this._root);
@@ -1147,8 +1163,8 @@ class Translations$switchAccounts$en {
 
 	// Translations
 
-	/// en: 'No callsign or email yet'
-	String get noCallsignOrEmail => 'No callsign or email yet';
+	/// en: 'No account details yet'
+	String get noAccountDetails => 'No account details yet';
 
 	/// en: 'Current account'
 	String get currentAccount => 'Current account';
@@ -1751,11 +1767,8 @@ class Translations$settings$syncPanel$en {
 	/// en: 'Not linked yet'
 	String get notLinked => 'Not linked yet';
 
-	/// en: 'Linked as ${call}'
-	String linkedAs({required Object call}) => 'Linked as ${call}';
-
-	/// en: 'Linked as ${call} (${email})'
-	String linkedAsWithEmail({required Object call, required Object email}) => 'Linked as ${call} (${email})';
+	/// en: 'Linked as ${account}'
+	String linkedAs({required Object account}) => 'Linked as ${account}';
 
 	/// en: 'Replace local data?'
 	String get replaceDialogTitle => 'Replace local data?';
@@ -3011,8 +3024,7 @@ extension on Translations {
 			'settings.syncPanel.switchAccountsDescription' => 'Link this device to another account with a QR code or email',
 			'settings.syncPanel.checking' => 'Checking…',
 			'settings.syncPanel.notLinked' => 'Not linked yet',
-			'settings.syncPanel.linkedAs' => ({required Object call}) => 'Linked as ${call}',
-			'settings.syncPanel.linkedAsWithEmail' => ({required Object call, required Object email}) => 'Linked as ${call} (${email})',
+			'settings.syncPanel.linkedAs' => ({required Object account}) => 'Linked as ${account}',
 			'settings.syncPanel.replaceDialogTitle' => 'Replace local data?',
 			'settings.syncPanel.replaceDialogOperations' => ({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: '${n} operation', other: '${n} operations', ), 
 			'settings.syncPanel.replaceDialogQsos' => ({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: '${n} QSO', other: '${n} QSOs', ), 
@@ -3159,9 +3171,9 @@ extension on Translations {
 			'settings.panels.commonPreferences' => 'Common Preferences',
 			'settings.panels.commonPreferencesDescription' => 'Appearance, language, and everyday settings',
 			'settings.panels.allSettings' => 'All Settings',
+			'settings.panels.allSettingsDescription' => 'Every available setting in one place',
 			_ => null,
 		} ?? switch (path) {
-			'settings.panels.allSettingsDescription' => 'Every available setting in one place',
 			'settings.panels.syncDescription' => 'Back up and sync your logs across devices',
 			'settings.panels.accountsDescription' => 'Sign in to online services and lookups',
 			'settings.panels.extensions' => 'Features & Extensions',
@@ -3257,7 +3269,9 @@ extension on Translations {
 			'versionLabel.version' => ({required Object version}) => 'Version ${version}',
 			'versionLabel.versionBuild' => ({required Object version, required Object build}) => 'Version ${version} - Build ${build}',
 			'notices.emptyHistory' => 'No notices yet',
-			'switchAccounts.noCallsignOrEmail' => 'No callsign or email yet',
+			'syncAccount.anonymous' => ({required Object id}) => 'Anonymous Account (#${id})',
+			'syncAccount.pendingConfirmation' => ({required Object email}) => '${email} (pending confirmation)',
+			'switchAccounts.noAccountDetails' => 'No account details yet',
 			'switchAccounts.currentAccount' => 'Current account',
 			'switchAccounts.otherAccounts' => 'Other accounts',
 			'switchAccounts.linkToAnother' => 'Link to another account',
