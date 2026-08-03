@@ -14,41 +14,20 @@
 # required asset directory (fresh checkouts don't have it, it's gitignored)
 # and app's own tests load real bundle content through it.
 #
-# Two tiers: pushes to `main` run the full parallel suite
-# below; pull requests run ONLY the single `quick` job (typecheck + analyze
-# via scripts/test.sh --quick — tests are run locally before opening a PR,
-# and the full suite runs on the target branch right after the merge, where
-# a failure on `main` blocks the web deploy via deploy-web.yml). One
-# sequential job instead of a matrix keeps the billed runner minutes down:
-# every extra job pays its own setup and rounds up to a whole minute.
-#
-# ONE exception, on the `extensions` gate below: a PR that touches
-# .github/workflows/** or scripts/** is changing the machinery that runs the
-# tests, so `quick` passing says nothing about whether the suite still runs.
-# #411 deleted a file three workflow steps still copied; app-test was red on
-# every push to `main` for four merges (and the web deploy, which fires on CI
-# succeeding, stopped with it) because no PR had ever exercised that job.
+# CI runs on pushes to `main` ONLY — no other branch and no pull_request
+# trigger, deliberately. Work happens on local branches and lands on main via
+# a locally-verified squash merge (`./scripts/test.sh` is the gate, see
+# AGENTS.md); branches pushed to the remote are backups, not review requests,
+# and must not burn CI minutes. A failure on `main` blocks the web deploy via
+# deploy-web.yml.
 name: CI
 
-# Docs-only changes skip this workflow entirely (zero billed minutes). The
-# ignore list must stay the exact mirror of the `paths` list in
-# ci-docs-only.yml — that shim reports an instant `quick` success for
-# docs-only PRs so a future required-check rule can't block on a skipped
-# workflow. Note: on `main`, a docs-only push therefore runs no CI, which
-# also means no web deploy (deploy-web.yml fires on CI completing) — the
-# previous deployment simply stays live.
+# Docs-only pushes skip this workflow entirely (zero billed minutes). Note:
+# that also means no web deploy for them (deploy-web.yml fires on CI
+# completing) — the previous deployment simply stays live.
 on:
   push:
-    # `main` (renamed from `dist` on 2026-08-02) is the only branch this repo
-    # pushes to and the only base for new work. Triggers naming branches that
-    # can never fire read as coverage this workflow does not have.
     branches: [main]
-    paths-ignore:
-      - 'docs/**'
-      - '**/*.md'
-      - '.agents/**'
-      - '.claude/**'
-  pull_request:
     paths-ignore:
       - 'docs/**'
       - '**/*.md'
@@ -56,77 +35,9 @@ on:
       - '.claude/**'
 
 jobs:
-  quick:
-    if: github.event_name == 'pull_request'
-    runs-on: ubuntu-latest
-    # Stated explicitly, not left to the repository default: the step below
-    # reads the PR's file list from the API, and `bash -e` would fail this job
-    # on EVERY pull request if the default token happened to lack that scope.
-    permissions:
-      contents: read
-      pull-requests: read
-    # Read by the `extensions` gate to decide whether this PR also needs the
-    # full suite. Computed as a step here rather than in a job of its own
-    # precisely to hold the line on billed minutes: `quick` already runs on
-    # every PR, so this costs nothing, where a separate job would round up to a
-    # whole extra minute on every PR forever.
-    outputs:
-      touches_ci: ${{ steps.touches_ci.outputs.result }}
-    steps:
-      - uses: actions/checkout@v4
-
-      # First, and needing no toolchain: the answer is still recorded when the
-      # checks below fail, which keeps the gate's own logic readable.
-      #
-      # Asks the API for the PR's file list rather than diffing against the base
-      # — the checkout above is shallow and has no base commit to diff against,
-      # and `fetch-depth: 0` would slow down every PR to serve the rare one.
-      - name: Does this PR touch CI or the build scripts?
-        id: touches_ci
-        run: |
-          files=$(gh api \
-            "repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }}/files" \
-            --paginate --jq '.[].filename')
-          if grep -qE '^(\.github/workflows/|scripts/)' <<<"$files"; then
-            echo 'result=true' >> "$GITHUB_OUTPUT"
-            echo 'touches CI or the build scripts — the full suite will run too'
-          else
-            echo 'result=false' >> "$GITHUB_OUTPUT"
-            echo 'no CI or build-script changes — quick only'
-          fi
-        env:
-          GH_TOKEN: ${{ github.token }}
-
-      - name: Set up Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: npm
-          cache-dependency-path: extensions/package-lock.json
-
-      # mise provides the Flutter version pinned in mise.toml, so CI and local
-      # runs use exactly the same toolchain.
-      - name: Set up mise (Flutter toolchain)
-        uses: jdx/mise-action@v2
-
-      - name: Basic checks (typecheck + analyze, no tests)
-        run: ./scripts/test.sh --quick
-
-  # This is the single gate for the whole heavy suite: `dart` and `app-test`
-  # declare `needs: extensions` and no `if:` of their own, so skipping this job
-  # skips both of them with it.
-  #
-  # `always()` is what lets a push through at all — `quick` is
-  # pull_request-only, and a skipped dependency would otherwise skip this job
-  # too. On the PR path `quick` must also have SUCCEEDED: a CI-touching PR then
-  # runs the suite after it rather than alongside (a few minutes more wall
-  # clock, on a rare PR), which beats spending nine jobs on a branch that
-  # doesn't even analyze.
+  # The root job: `dart`, `app-test` and `dist` all consume the bundle
+  # artifact this builds, and their plain `needs:` skips them if it fails.
   extensions:
-    needs: quick
-    if: >-
-      always() && (github.event_name == 'push' ||
-      (needs.quick.result == 'success' && needs.quick.outputs.touches_ci == 'true'))
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -156,15 +67,8 @@ jobs:
           path: app/assets/extensions
           retention-days: 1
 
-  # `always() &&` is load-bearing, not decoration. A skip propagates TRANSITIVELY
-  # down a needs chain: `extensions` needs `quick`, `quick` is pull_request-only,
-  # so on a push to `main` the skipped `quick` skipped this job too — even though
-  # `extensions` itself succeeded. Three pushes to `main` reported a green CI in
-  # 29 seconds having run no tests at all. Gate on `extensions` explicitly
-  # instead, which is the only upstream result that should decide this.
   dart:
     needs: extensions
-    if: always() && needs.extensions.result == 'success'
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -215,10 +119,9 @@ jobs:
   # The private distribution layer. Gated on the repository because this
   # workflow is published to the open-source mirror, where app_dist/ does not
   # exist; there the job must not run at all rather than fail.
-  # `always() &&` for the same reason as `dart` above.
   dist:
     needs: extensions
-    if: always() && needs.extensions.result == 'success' && github.repository == 'ham2k/halo-dist'
+    if: github.repository == 'ham2k/halo-dist'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -259,10 +162,8 @@ jobs:
   # so its `flutter test` run is sharded across runners on top of the job
   # split. `flutter analyze` only runs once, on shard 0, since it isn't
   # shardable and gains nothing from repeating it per shard.
-  # `always() &&` here for the same reason as `dart` above — see that comment.
   app-test:
     needs: extensions
-    if: always() && needs.extensions.result == 'success'
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false

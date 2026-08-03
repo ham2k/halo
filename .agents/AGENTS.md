@@ -22,7 +22,7 @@ This is a multi-platform app for Amateur Radio Logging, called "Ham2K Logger" (o
 
 ## Development Process
 
-- **Tasks, bugs and ideas live in [CaBo](https://cabo.ham2k.com/halo), not GitHub Issues.** Cards are referenced as `HALO-24` and deep-link as `https://cabo.ham2k.com/halo/c/24`. Read and write them through the `cabo` MCP server — `list_projects`, `search_cards`, `get_board`, `get_card`, `create_card`, `update_card`, `move_card`, `add_comment`, `get_activity`. Leave a comment on the card whenever the state a human would want to see changes: the PR link once the branch exists, findings that redefine the task, and the merge. GitHub still owns **pull requests**, code review and CI — only issue tracking moved.
+- **Tasks, bugs and ideas live in [CaBo](https://cabo.ham2k.com/halo), not GitHub Issues.** Cards are referenced as `HALO-24` and deep-link as `https://cabo.ham2k.com/halo/c/24`. Read and write them through the `cabo` MCP server — `list_projects`, `search_cards`, `get_board`, `get_card`, `create_card`, `update_card`, `move_card`, `add_comment`, `get_activity`. Leave a comment on the card whenever the state a human would want to see changes: the branch name and plan once work starts, findings that redefine the task, and the merge. **GitHub PRs are not part of the workflow** — GitHub is the remote (and runs CI on `main` only); the card is where a task's plan and state live.
 
 - Agents should always work on a worktree, with a branch off of the `main` branch on `origin` (ham2k/halo-dist; usually available as `main` locally too, tracking `origin/main`). As new tasks come in, use new branches and rename the worktree to keep the name relevant.
 
@@ -30,14 +30,15 @@ This is a multi-platform app for Amateur Radio Logging, called "Ham2K Logger" (o
   `git fetch origin main && git rev-list --count $(git merge-base HEAD origin/main)..origin/main`
   A large number means the branch was cut from the wrong place; re-cut it with `git checkout -b <task-name> origin/main` rather than rebasing. `.claude/hooks/base-branch-guard.sh` enforces this and will block edits, but the check is yours to make first.
 
-- Keep `main` updated. Rebase your branches on top of the latest `main` before submitting or updating a PR.
+- Keep `main` updated. Rebase your branches on top of the latest `main` before finalizing or merging.
+
+- **Merging to `main` requires the developer's approval, every time** — via `/merge` or by asking. Never land work on `main` on your own initiative. CI runs only on pushes to `main`, so the local `./scripts/test.sh` run before merging IS the gate; there is no CI safety net on branches.
 
 - The `/next` skill (`.claude/skills/next/SKILL.md`) runs the start-of-task
   steps below — refreshing `main`, naming the branch and worktree, bootstrapping
   a fresh worktree, grilling the user with a short round of pointed questions,
-  opening a draft PR with the plan, then a first pass and updating that PR.
-  Invoke it as `/next <card ref, PR number, or description>`; keep it in step
-  with this section.
+  recording the plan on the CaBo card, then a first pass. Invoke it as
+  `/next <card ref or description>`; keep it in step with this section.
 
 - The `/iterate` skill (`.claude/skills/iterate/SKILL.md`) covers the
   "iterate with the developer" step: it keeps a build running and refreshed and
@@ -45,24 +46,24 @@ This is a multi-platform app for Amateur Radio Logging, called "Ham2K Logger" (o
   point the steps below resume.
 
 - The `/finalize` skill (`.claude/skills/finalize/SKILL.md`) covers the "work
-  has settled" step: closes out an `/iterate` cycle if one's running, makes
-  sure the PR exists and is current, runs the full test and checks suite,
-  ensures a code review has run (re-running it if more than trivial changes
-  landed since), and hands over a fresh build for the developer to check.
+  has settled" step: closes out an `/iterate` cycle if one's running, brings
+  the CaBo card up to date, runs the full test and checks suite, ensures a
+  code review has run (re-running it if more than trivial changes landed
+  since), and hands over a fresh build for the developer to check.
 
-- The `/merge` skill (`.claude/skills/merge/SKILL.md`) covers the last step:
-  rebases the branch onto the latest `main`, resolves any conflicts, verifies
-  the full test and checks suite is green, and squash-merges the PR without
-  waiting on a recorded GitHub review — then asks what's next.
+- The `/merge` skill (`.claude/skills/merge/SKILL.md`) covers the last step,
+  run only with the developer's go-ahead: rebases the branch onto the latest
+  `main`, resolves any conflicts, verifies the full test and checks suite is
+  green locally, squash-merges onto `main` and pushes — then asks what's next.
 
 - Steps when tackling a new task:
   - Open a new branch, off the latest `main`. Look for updates to AGENTS.md.
-  - Do a quick analisys of the problem, ask the user a short round of pointed questions to pin down scope and assumptions, then prepare a plan and open a **draft** PR to document this, before implementing anything. An empty commit is enough to open it. That PR is how the developer tracks which branch carries the task, what the plan is, and what's been found — so give them the link right away.
-  - Take a full pass at the problem and then present the results to the developer. Bring the PR body up to date as the plan turns into findings — rewrite it, don't append. If possible and relevant, start a web build of the app for the developer to verify on.
+  - Do a quick analisys of the problem, ask the user a short round of pointed questions to pin down scope and assumptions, then record the plan — as a comment on the CaBo card when one exists, otherwise presented directly to the developer — before implementing anything.
+  - Take a full pass at the problem and then present the results to the developer. If possible and relevant, start a web build of the app for the developer to verify on.
   - Iterate with the developer. Don't pile up trivial commits. When iterating on a feature or approach, feel free to ammend the commits in the branch if it makes sense to keep work organized and easier to review, and skip running tests for short iterations unless it's useful.
   - Once the work has settled, run a code review, present the results to the developer and ask for followups.
-  - When the followups have been addressed, rebase on top of an updated `main`, solve any merge conflicts, run tests and present the PR for user approval.
-  - Apart from that early draft PR, don't push to the PR branch until it's ready for review. Avoid pushing to the remote repository until necessary. Test locally first.
+  - When the followups have been addressed, rebase on top of an updated `main`, run the full suite, and ask the developer to approve the merge.
+  - Work stays local. Push the branch to `origin` only as a **backup** when a task stretches past a couple of hours (or holds unmerged work between sessions) — pushed branches trigger no CI and invite no review; delete them after the merge.
 
 - Whenever running the app (any `flutter run`, including the web dev server), always pass a `DEV_LABEL` set to your session name or a brief description of the work at hand, so the running build is identifiable in the home-screen header — e.g. `flutter run -d macos --dart-define=DEV_LABEL="header work"` or `DEV_LABEL="header work" flutter run -d web-server`. See [DEVELOPMENT.md](file:///Users/sd/Work/ham2k/halo-dist/DEVELOPMENT.md).
 
