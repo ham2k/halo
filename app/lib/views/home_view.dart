@@ -187,12 +187,6 @@ const _newOperationNudgeThreshold = 2;
 /// either — so the nudge waits, and any touch in the meantime cancels it.
 const _newOperationNudgeDelay = Duration(seconds: 5);
 
-/// A vivid cyan-leaning version of colorScheme.primary (#006783, same hue,
-/// lightness pushed up), used only for the FAB so it stands out against the
-/// operation list rather than blending in like a regular primary-colored
-/// control.
-const _fabColor = Color(0xFF00B4E6);
-
 /// How long the FAB's extend/collapse takes, and how long after the last
 /// change we wait before forcing it to its resting state (see
 /// [_HomeViewState._setFabExtended]). The slack is deliberate: the transition
@@ -523,7 +517,7 @@ class _HomeViewState extends State<HomeView> with WidgetsBindingObserver {
                                   height: 56,
                                   width: _isFabExtended ? null : 56,
                                   decoration: BoxDecoration(
-                                    color: _fabColor,
+                                    color: fabAccentColor,
                                     borderRadius: BorderRadius.circular(16),
                                     boxShadow: [
                                       BoxShadow(

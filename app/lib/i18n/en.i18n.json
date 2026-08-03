@@ -213,6 +213,7 @@
   },
   "activitiesView": {
     "title": "Activities",
+    "sheetTitle": "Operation Setup",
     "activitiesCountZero": "No Activities Selected",
     "activitiesCountOne": "1 Activity",
     "activitiesCountOther": "${count} Activities",
@@ -236,6 +237,7 @@
     "exports": "Exports",
     "options": "Options",
     "optionsTitle": "Operation Options",
+    "operationDetails": "Operation Details",
     "share": "Share",
     "archive": "Archive",
     "deleteOperation": "Delete Operation",

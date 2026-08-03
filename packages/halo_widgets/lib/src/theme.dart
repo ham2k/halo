@@ -298,6 +298,32 @@ double dropdownMenuMaxHeight(BuildContext context) {
 /// the operation list and count pills already use.
 Color haloDialogBandColor(BuildContext context) => Theme.of(context).colorScheme.surfaceContainerHighest;
 
+/// The elevation every modal surface (dialog card, Modal Pane) is raised to.
+/// Content that has to match a pane's own banding from the inside must tint
+/// itself to the same elevation — see [haloDialogBandColorAt].
+const double modalSurfaceElevation = 6.0;
+
+/// [haloDialogBandColor] as it actually PAINTS inside a modal surface: a
+/// Material at [modalSurfaceElevation] tints its color by that elevation, so
+/// content drawing its own band inside a pane has to apply the same tint or
+/// it lands a shade off the pane's own header.
+Color haloDialogBandColorAt(BuildContext context) {
+  final theme = Theme.of(context);
+  return ElevationOverlay.applySurfaceTint(
+    theme.dialogTheme.backgroundColor ?? haloDialogBandColor(context),
+    theme.colorScheme.surfaceTint,
+    modalSurfaceElevation,
+  );
+}
+
+/// A vivid cyan-leaning version of colorScheme.primary (#006783, same hue,
+/// lightness pushed up) — the fill for the app's standout action buttons
+/// (the home screen's New Operation FAB, the operation sheet's accept
+/// button), paired with onPrimary content. Deliberately NOT a ColorScheme
+/// role: it must pop against primary-colored chrome and surfaces alike, in
+/// both brightnesses.
+const Color fabAccentColor = Color(0xFF00B4E6);
+
 /// The width a plain prompt or confirmation gets — a line or two of text and
 /// a couple of buttons. They look stranded stretched to [maxDialogWidth], so
 /// that width is opt-in ([HaloDialog.wide]) for dialogs that actually carry

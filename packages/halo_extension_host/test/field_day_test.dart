@@ -364,17 +364,63 @@ void main() {
 
     test('the suggestion carries what the operation row will show', () async {
       // A suggestion is persisted VERBATIM and never runs through
-      // `decorateRef`, so a missing label reads as a blank activity row.
+      // `decorateRef`, so a missing label reads as a blank activity row —
+      // and a contest row leads with `label`, not `shortLabel`, so THAT is
+      // the field standing between this suggestion and a blank row. It
+      // names the event and the running's year: "ARRL Field Day 2027".
       final suggestion = (await suggest('fd', 'field day')).single;
       expect(suggestion['type'], 'fd');
       expect(suggestion['shortLabel'], 'FD');
-      expect(suggestion['name'], isNotEmpty);
+      expect(suggestion['label'], isNotEmpty);
       expect(suggestion['label'], contains(RegExp(r'20\d\d')));
+      // No exchange yet — `name` is the row's second line and stays empty
+      // until the operator configures a class and section, which is what
+      // makes the fresh row read as "not set up yet" rather than repeating
+      // the event name back.
+      expect(suggestion['name'], anyOf(isNull, isEmpty));
       // The ref is the YEAR of the running — the picker's duplicate guard
       // compares type+ref, so without one the same event could be added twice.
       expect(suggestion['ref'], matches(RegExp(r'^20\d\d$')));
       expect(suggestion['relevance'], isA<num>());
     }, timeout: const Timeout(Duration(seconds: 60)));
+  });
+
+  group('how a configured entry names itself', () {
+    // The operation row leads with `label` and puts `name` on its second
+    // line, so those two must split the event from the exchange rather than
+    // both saying some mix of the two. Getting this backwards is what made
+    // a configured Field Day row read "3A ENY" with no clue which contest
+    // it belonged to.
+    Future<Map<String, dynamic>> decorate(String key, Map<String, dynamic> ref) async {
+      final host = await hostFor(key);
+      final result = await host.invokeHook('ref:$key', key: key, method: 'decorateRef',
+          args: {'ref': {'type': key, ...ref}}, timeout: const Duration(seconds: 10)) as Map;
+      return result.cast<String, dynamic>();
+    }
+
+    for (final entry in [('fd', 'ARRL'), ('wfd', 'Winter')]) {
+      final type = entry.$1;
+      final nameFragment = entry.$2;
+
+      test('$type: the event and its year lead, the exchange follows', () async {
+        final ref = await decorate(type, {'ref': '2027', 'ourClass': '3A', 'ourSection': 'ENY'});
+        expect(ref['label'], contains(nameFragment));
+        expect(ref['label'], contains('2027'));
+        // The exchange belongs on the second line only — repeating it in the
+        // label is what the row already shows underneath.
+        expect(ref['label'], isNot(contains('3A')));
+        expect(ref['name'], '3A ENY');
+      }, timeout: const Timeout(Duration(seconds: 60)));
+
+      test('$type: an unconfigured entry still names the event', () async {
+        // Added from the search and not set up yet: the row must still say
+        // which contest it is, and must not invent an exchange.
+        final ref = await decorate(type, {'ref': '2027'});
+        expect(ref['label'], contains(nameFragment));
+        expect(ref['label'], contains('2027'));
+        expect(ref['name'], anyOf(isNull, isEmpty));
+      }, timeout: const Timeout(Duration(seconds: 60)));
+    }
   });
 
   group('what the review found', () {

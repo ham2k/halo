@@ -213,6 +213,7 @@
   },
   "activitiesView": {
     "title": "Actividades",
+    "sheetTitle": "Configuración de la Operación",
     "activitiesCountZero": "Sin actividades seleccionadas",
     "activitiesCountOne": "1 actividad",
     "activitiesCountOther": "${count} actividades",
@@ -236,6 +237,7 @@
     "exports": "Exportar",
     "options": "Opciones",
     "optionsTitle": "Opciones de la operación",
+    "operationDetails": "Detalles de la Operación",
     "share": "Compartir",
     "archive": "Archivar",
     "deleteOperation": "Borrar operación",

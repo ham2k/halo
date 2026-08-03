@@ -222,6 +222,7 @@ class _Translations$activitiesView$es extends Translations$activitiesView$en {
 
 	// Translations
 	@override String get title => 'Actividades';
+	@override String get sheetTitle => 'Configuración de la Operación';
 	@override String get activitiesCountZero => 'Sin actividades seleccionadas';
 	@override String get activitiesCountOne => '1 actividad';
 	@override String activitiesCountOther({required Object count}) => '${count} actividades';
@@ -245,6 +246,7 @@ class _Translations$activitiesView$es extends Translations$activitiesView$en {
 	@override String get exports => 'Exportar';
 	@override String get options => 'Opciones';
 	@override String get optionsTitle => 'Opciones de la operación';
+	@override String get operationDetails => 'Detalles de la Operación';
 	@override String get share => 'Compartir';
 	@override String get archive => 'Archivar';
 	@override String get deleteOperation => 'Borrar operación';
@@ -1539,6 +1541,7 @@ extension on TranslationsEs {
 			'map.flat' => 'Plano',
 			'map.globe' => 'Globo',
 			'activitiesView.title' => 'Actividades',
+			'activitiesView.sheetTitle' => 'Configuración de la Operación',
 			'activitiesView.activitiesCountZero' => 'Sin actividades seleccionadas',
 			'activitiesView.activitiesCountOne' => '1 actividad',
 			'activitiesView.activitiesCountOther' => ({required Object count}) => '${count} actividades',
@@ -1562,6 +1565,7 @@ extension on TranslationsEs {
 			'activitiesView.exports' => 'Exportar',
 			'activitiesView.options' => 'Opciones',
 			'activitiesView.optionsTitle' => 'Opciones de la operación',
+			'activitiesView.operationDetails' => 'Detalles de la Operación',
 			'activitiesView.share' => 'Compartir',
 			'activitiesView.archive' => 'Archivar',
 			'activitiesView.deleteOperation' => 'Borrar operación',
@@ -1901,10 +1905,10 @@ extension on TranslationsEs {
 			'settings.developer.runtimeNotAvailable' => 'El motor de extensiones no está disponible.',
 			'settings.developer.panelLoadFailed' => 'No se pudo cargar este panel de configuración.',
 			'settings.developer.categoryCore' => 'Núcleo y motor',
-			'settings.about.notices' => 'Avisos y mensajes',
-			'settings.about.noticesDescription' => 'Anuncios y mensajes de estado',
 			_ => null,
 		} ?? switch (path) {
+			'settings.about.notices' => 'Avisos y mensajes',
+			'settings.about.noticesDescription' => 'Anuncios y mensajes de estado',
 			'settings.about.releaseNotes' => 'Notas de la versión',
 			'settings.about.copiedVersion' => 'Detalles de versión copiados al portapapeles',
 			'settings.panels.commonPreferences' => 'Preferencias comunes',

@@ -167,8 +167,8 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byKey(const Key('operationHeaderGrab')), findsNothing);
-    // The 3-dots and accept morphing control next to the title/subtitle.
-    expect(find.byWidgetPredicate((w) => w.runtimeType.toString() == '_HeaderDotsAndAcceptControl'), findsOneWidget);
+    // The 3-dots control next to the title/subtitle.
+    expect(find.byWidgetPredicate((w) => w.runtimeType.toString() == '_HeaderDotsControl'), findsOneWidget);
 
     final toolbarHeight = Theme.of(tester.element(find.byType(AppBar))).appBarTheme.toolbarHeight ?? kToolbarHeight;
     final tabBarTop = tester.getTopLeft(find.byKey(const Key('narrowTabBar'))).dy;
@@ -430,7 +430,7 @@ void main() {
     },
   );
 
-  testWidgets('the dots/accept control animates back on close, not an instant snap to plain dots', (tester) async {
+  testWidgets('the header dots animate back on close, not an instant snap to their resting place', (tester) async {
     tester.view.physicalSize = const Size(1000, 800);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.reset);
@@ -451,15 +451,23 @@ void main() {
     ));
     await tester.pumpAndSettle();
 
-    // _HeaderDotsAndAcceptControl's own width IS its progress (10px..28px,
-    // see operation_view.dart) — reading it black-box like this avoids
-    // needing access to the private painter's progress field.
-    final control = find.byWidgetPredicate((w) => w.runtimeType.toString() == '_HeaderDotsAndAcceptControl');
+    // The control reserves a fixed width (the header title must not shift as
+    // the sheet opens), so its geometry says nothing about the animation —
+    // the painter's own progress is the thing to read. The painter class is
+    // private to operation_view.dart, but `progress` is a public member on
+    // it, so a dynamic read reaches it from here.
+    final control = find.byWidgetPredicate((w) => w.runtimeType.toString() == '_HeaderDotsControl');
+    double progress() {
+      final paint = tester.widget<CustomPaint>(
+        find.descendant(of: control, matching: find.byType(CustomPaint)),
+      );
+      return (paint.painter as dynamic).progress as double;
+    }
 
     await tester.tap(find.text('N0CALL Test Op'));
     await tester.pumpAndSettle();
     expect(find.byType(OperationSheet), findsOneWidget);
-    expect(tester.getSize(control).width, closeTo(28, 0.5), reason: 'fully morphed to the accept circle while open');
+    expect(progress(), closeTo(1, 0.01), reason: 'fully fallen away while the sheet is open');
 
     // Closing: saveAndClose() awaits saveData() before calling pop(), so a
     // couple of bare pumps first flush that gap; the awaited showTopModalPane
@@ -473,13 +481,13 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 150));
 
-    final midWidth = tester.getSize(control).width;
-    expect(midWidth, greaterThan(10.5), reason: 'still mid-close — must not have already snapped back to plain dots');
-    expect(midWidth, lessThan(27.5), reason: 'and must not still read as fully open either — genuinely animating');
+    final mid = progress();
+    expect(mid, lessThan(0.99), reason: 'still mid-close — must not have already snapped back to plain dots');
+    expect(mid, greaterThan(0.01), reason: 'and must not still read as fully open either — genuinely animating');
 
     await tester.pumpAndSettle();
     expect(find.byType(OperationSheet), findsNothing);
-    expect(tester.getSize(control).width, closeTo(10, 0.5), reason: 'settles back to plain dots once fully closed');
+    expect(progress(), closeTo(0, 0.01), reason: 'settles back to plain dots once fully closed');
 
     await tester.pumpWidget(const SizedBox());
     await tester.pump(const Duration(seconds: 5));

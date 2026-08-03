@@ -622,7 +622,6 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
   Animation<double>? _sheetAnimation;
   VoidCallback? _sheetAnimationListener;
   GlobalKey<OperationSheetState>? _activeSheetKey;
-  ValueNotifier<bool>? _activeHasUpdatesNotifier;
 
   Future<void> _openOperationSheet(Operation operation) async {
     // No manual re-fetch on pop: watchOperation streams the change back.
@@ -631,22 +630,11 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
     // as a pushed screen this had explicit-back dismissal only, and Escape
     // while typing in the suggestions search would close the whole pane.
     final sheetKey = GlobalKey<OperationSheetState>();
-    final hasUpdatesNotifier = ValueNotifier<bool>(false);
-    // The pane's header lives in the modal route's own subtree, so this
-    // screen's setState never rebuilds it — the draft has to reach it as a
-    // listenable or the chips freeze at the values the sheet opened with.
-    final draftNotifier = ValueNotifier<Operation>(operation);
     if (!mounted) return;
     setState(() {
       _draftOperation = operation;
       _activeSheetKey = sheetKey;
-      _activeHasUpdatesNotifier = hasUpdatesNotifier;
     });
-
-    void onUpdatesChanged() {
-      if (mounted) setState(() {});
-    }
-    hasUpdatesNotifier.addListener(onUpdatesChanged);
 
     try {
       await showTopModalPane<void>(
@@ -662,7 +650,7 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
           // AndClose() calls pop() — well before the route's reverse
           // transition actually finishes playing. If this listener were
           // torn down in that `finally` block instead, _sheetAnimation
-          // would go null immediately, snapping the header's dots/accept
+          // would go null immediately, snapping the header's dots
           // control straight to "closed" while the sheet itself keeps
           // sliding away for the rest of its 600ms. So this detaches
           // itself only once the animation genuinely reaches
@@ -689,174 +677,88 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
         // Left-aligned with the dots-and-title control that opens it,
         // rather than centered in the pane.
         leftInset: _headerTitleLeftInset,
-        title: ValueListenableBuilder<Operation>(
-          valueListenable: draftNotifier,
-          builder: (context, draft, _) {
-            final stationCall = draft.stationCall;
-            final operatorCall = draft.data['operatorCall'] as String?;
-            final operationTitle = draft.userTitle;
-            final notes = (draft.data['notes'] as String?) ?? '';
-
-            final theme = Theme.of(context);
-            final chipColor = theme.appBarTheme.backgroundColor ?? theme.colorScheme.primary;
-            final chipTextStyle = theme.textTheme.labelLarge?.copyWith(
-              color: theme.colorScheme.onPrimary,
-              fontWeight: FontWeight.bold,
-            );
-            Widget chip(Widget child) => Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: chipColor,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: DefaultTextStyle.merge(style: chipTextStyle, child: child),
-                );
-
-            return Align(
-              alignment: Alignment.centerLeft,
-              child: MouseRegion(
-                cursor: SystemMouseCursors.click,
-                child: GestureDetector(
-                  onTap: () async {
-                    final updated = await editOperationDetails(
-                      context,
-                      widget.services.operations,
-                      _draftOperation ?? operation,
-                      save: false,
-                    );
-                    if (updated != null && mounted) {
-                      setState(() {
-                        _draftOperation = Operation(
-                          uuid: _draftOperation!.uuid,
-                          data: {
-                            ..._draftOperation!.data,
-                            ...updated.data,
-                          },
-                          qsoCount: _draftOperation!.qsoCount,
-                          startAtMillisMin: _draftOperation!.startAtMillisMin,
-                          startAtMillisMax: _draftOperation!.startAtMillisMax,
-                          localData: _draftOperation!.localData,
-                        );
-                      });
-                      draftNotifier.value = _draftOperation!;
-                      sheetKey.currentState?.updateOperation(_draftOperation!);
-                    }
-                  },
-                  child: Wrap(
-                    spacing: 8,
-                    runSpacing: 4,
-                    children: [
-                      chip(
-                        Text.rich(
-                          TextSpan(
-                            children: [
-                              const TextSpan(text: 'Station: '),
-                              TextSpan(
-                                text: stationCall,
-                                style: const TextStyle(fontFamily: 'RobotoMono'),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                      if (operatorCall != null && operatorCall.isNotEmpty)
-                        chip(
-                          Text.rich(
-                            TextSpan(
-                              children: [
-                                const TextSpan(text: 'Op: '),
-                                TextSpan(
-                                  text: operatorCall,
-                                  style: const TextStyle(fontFamily: 'RobotoMono'),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      // A title is free text and can run long — it ellipsizes
-                      // rather than pushing the callsign chips off the header
-                      // (or wrapping the whole row onto a second line).
-                      if (operationTitle.isNotEmpty)
-                        ConstrainedBox(
-                          constraints: const BoxConstraints(maxWidth: 240),
-                          child: chip(
-                            Text(operationTitle, maxLines: 1, overflow: TextOverflow.ellipsis),
-                          ),
-                        ),
-                      // Notes have no useful short form, so this chip only
-                      // says that there ARE notes — the details are one tap
-                      // away, in the same operation-details dialog. The icon
-                      // rides inside a Text so the chip takes its height from
-                      // the same line box as its text-bearing siblings,
-                      // rather than from the glyph.
-                      if (notes.trim().isNotEmpty)
-                        chip(
-                          Text.rich(
-                            WidgetSpan(
-                              alignment: PlaceholderAlignment.middle,
-                              // Nudged up 1px: the glyph's own bearing sits
-                              // it slightly low against the text line box
-                              // that PlaceholderAlignment.middle centers on.
-                              child: Transform.translate(
-                                offset: const Offset(0, -1),
-                                child: Icon(
-                                  resolveIconName('file-document'),
-                                  size: 16,
-                                  color: theme.colorScheme.onPrimary,
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                    ],
-                  ),
-                ),
-              ),
-            );
-          },
-        ),
         scrollable: false,
         barrierDismissible: true,
         onDismiss: () => sheetKey.currentState?.saveAndClose(),
-        leading: null,
-        trailing: ValueListenableBuilder<bool>(
-          valueListenable: hasUpdatesNotifier,
-          builder: (context, updates, child) {
-            final theme = Theme.of(context);
-            if (updates) {
-              return IconButton(
-                icon: Icon(Icons.undo, semanticLabel: context.t.common.cancel),
-                style: IconButton.styleFrom(
-                  backgroundColor: theme.colorScheme.errorContainer,
-                  foregroundColor: theme.colorScheme.onErrorContainer,
+        // The sheet's own accept button — the header's top dot visually
+        // hands off to it as the sheet slides down (see _HeaderDotsControl).
+        leading: Builder(
+          builder: (context) => IconButton(
+            icon: Icon(Icons.check, semanticLabel: context.t.common.save),
+            style: IconButton.styleFrom(
+              backgroundColor: fabAccentColor,
+              foregroundColor: Theme.of(context).colorScheme.onPrimary,
+            ),
+            onPressed: () => sheetKey.currentState?.saveAndClose(),
+          ),
+        ),
+        title: Text(context.t.activitiesView.sheetTitle),
+        // Options and Exports for the operation as a whole, right-aligned in
+        // the sheet's top row. The operation's own identity travels with its
+        // activities instead (activities_view.dart's _operationPills).
+        trailing: Builder(
+          builder: (context) {
+            final onColor = Theme.of(context).colorScheme.onSurface;
+            return Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextButton.icon(
+                  onPressed: () => sheetKey.currentState?.showOptions(),
+                  icon: const Icon(Icons.settings, size: 18),
+                  label: Text(context.t.activitiesView.options),
+                  style: TextButton.styleFrom(foregroundColor: onColor),
                 ),
-                onPressed: () => sheetKey.currentState?.revert(),
-              );
-            } else {
-              return IconButton(
-                icon: Icon(Icons.undo, color: theme.disabledColor, semanticLabel: context.t.common.cancel),
-                onPressed: null,
-              );
-            }
+                Opacity(
+                  opacity: operation.qsoCount == 0 ? 0.8 : 1.0,
+                  child: TextButton.icon(
+                    onPressed: () => _export(_draftOperation ?? operation),
+                    icon: Icon(resolveIconName('file-export-outline'), size: 18),
+                    label: Text(context.t.activitiesView.exports),
+                    style: TextButton.styleFrom(foregroundColor: onColor),
+                  ),
+                ),
+              ],
+            );
           },
         ),
         builder: (_) => OperationSheet(
           key: sheetKey,
           services: widget.services,
           operation: operation,
-          hasUpdatesNotifier: hasUpdatesNotifier,
           onOperationChanged: (updated) {
             if (!mounted) return;
             final previous = _draftOperation;
             setState(() => _draftOperation = updated);
-            draftNotifier.value = updated;
             // Refs are the only input the title is built from, so nothing
             // else in the draft is worth a hook fan-out.
             if (previous == null || !_sameRefs(previous.data['refs'], updated.data['refs'])) {
               unawaited(_retitleDraft(updated));
             }
           },
-          onExport: () => _export(_draftOperation ?? operation),
+          onEditDetails: () async {
+            final updated = await editOperationDetails(
+              context,
+              widget.services.operations,
+              _draftOperation ?? operation,
+              save: false,
+            );
+            if (updated != null && mounted) {
+              setState(() {
+                _draftOperation = Operation(
+                  uuid: _draftOperation!.uuid,
+                  data: {
+                    ..._draftOperation!.data,
+                    ...updated.data,
+                  },
+                  qsoCount: _draftOperation!.qsoCount,
+                  startAtMillisMin: _draftOperation!.startAtMillisMin,
+                  startAtMillisMax: _draftOperation!.startAtMillisMax,
+                  localData: _draftOperation!.localData,
+                );
+              });
+              sheetKey.currentState?.updateOperation(_draftOperation!);
+            }
+          },
           // Close the sheet first: both the confirmation and the pop that
           // follows it belong to this screen, not to the pane stacked over
           // it — and the draft's unsaved edits are moot once it's deleted.
@@ -871,7 +773,6 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
         ),
       );
     } finally {
-      hasUpdatesNotifier.removeListener(onUpdatesChanged);
       // _sheetAnimation/_sheetAnimationListener are NOT reset here — this
       // `finally` runs as soon as Navigator.push() resolves, which is at
       // pop() time, well before the route's reverse transition actually
@@ -883,7 +784,6 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
       if (mounted) {
         setState(() {
           _activeSheetKey = null;
-          _activeHasUpdatesNotifier = null;
           // Carry the draft's final (just-saved — see saveAndClose(), the
           // only path that reaches here today) values into _operation
           // BEFORE dropping the draft, rather than leaving the header to
@@ -917,8 +817,6 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
           _draftTitleGeneration++;
         });
       }
-      hasUpdatesNotifier.dispose();
-      draftNotifier.dispose();
     }
   }
 
@@ -1428,7 +1326,7 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
                   return null;
                 }),
                 child: Padding(
-                  // A small left inset so the dots/accept control doesn't
+                  // A small left inset so the dots control doesn't
                   // sit flush against the back button, and a small right
                   // inset — the title doesn't stretch to fill the AppBar —
                   // so the control's own edge doesn't sit flush against
@@ -1438,9 +1336,8 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      _HeaderDotsAndAcceptControl(
+                      _HeaderDotsControl(
                         progress: _sheetAnimation?.value ?? 0.0,
-                        hasUpdates: _activeHasUpdatesNotifier?.value ?? false,
                       ),
                       const SizedBox(width: 4),
                       // Flexible (loose), not Expanded (tight): Expanded
@@ -1646,129 +1543,65 @@ class _LazyTabState extends State<_LazyTab> with AutomaticKeepAliveClientMixin {
   }
 }
 
-class _HeaderDotsAndAcceptControl extends StatelessWidget {
+class _HeaderDotsControl extends StatelessWidget {
   final double progress;
-  final bool hasUpdates;
 
-  const _HeaderDotsAndAcceptControl({
-    required this.progress,
-    required this.hasUpdates,
-  });
+  const _HeaderDotsControl({required this.progress});
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final onPrimary = theme.colorScheme.onPrimary;
+    final onPrimary = Theme.of(context).colorScheme.onPrimary;
 
-    // Control width expands smoothly from 10px (tight 3-dots) to 28px (accept circle),
-    // pushing the header title to the right at the exact animation speed.
-    final controlWidth = 10.0 + (18.0 * progress);
-
-    final bgColor = hasUpdates ? const Color(0xFFDCFCE7) : theme.colorScheme.onPrimary;
-    final iconColor = hasUpdates ? const Color(0xFF15803D) : (theme.appBarTheme.backgroundColor ?? theme.colorScheme.primary);
-
+    // Fixed width: the space stays reserved while the sheet is open, so the
+    // header title never shifts — the accept button lives in the sheet's own
+    // top row, not here.
     return SizedBox(
-      width: controlWidth,
+      width: 10,
       height: 32,
       child: CustomPaint(
-        size: Size(controlWidth, 32),
-        painter: _MorphingDotsAcceptPainter(
+        size: const Size(10, 32),
+        painter: _FallingDotsPainter(
           progress: progress,
           dotColor: onPrimary,
-          buttonBgColor: bgColor,
-          buttonIconColor: iconColor,
         ),
       ),
     );
   }
 }
 
-class _MorphingDotsAcceptPainter extends CustomPainter {
+class _FallingDotsPainter extends CustomPainter {
   final double progress;
   final Color dotColor;
-  final Color buttonBgColor;
-  final Color buttonIconColor;
 
-  _MorphingDotsAcceptPainter({
+  _FallingDotsPainter({
     required this.progress,
     required this.dotColor,
-    required this.buttonBgColor,
-    required this.buttonIconColor,
   });
 
   @override
   void paint(Canvas canvas, Size size) {
-    // 1. Morphing Top Dot (Dot 1 -> Accept Circle)
-    // Center morphs smoothly from (4.0, 10.0) [centered 3-dots] to (14.0, 16.0) [28px circle]
-    final cx = 4.0 + (10.0 * progress);
-    final cy = 10.0 + (6.0 * progress);
-    // Radius morphs smoothly from 1.8px (dot) to 14.0px (28px diameter circle)
-    final radius = 1.8 + (12.2 * progress);
+    // The dots fall toward the sheet sliding in below and fade out on the
+    // way; the top dot grows slightly as it goes, reading as a hand-off to
+    // the accept button in the sheet's top row.
+    final opacity = (1.0 - progress / 0.6).clamp(0.0, 1.0);
+    if (opacity <= 0) return;
 
-    // Color morphs smoothly from dotColor to buttonBgColor with no crossfade
-    final currentBgColor = Color.lerp(dotColor, buttonBgColor, progress) ?? buttonBgColor;
-
-    final circlePaint = Paint()
-      ..color = currentBgColor
+    final paint = Paint()
+      ..color = dotColor.withValues(alpha: dotColor.a * opacity)
       ..style = PaintingStyle.fill;
 
-    canvas.drawCircle(Offset(cx, cy), radius, circlePaint);
+    const x = 4.0;
+    const dotRadius = 1.8;
+    final dy = 26.0 * progress;
 
-    // Subtle elevation shadow as the circle expands into a button
-    if (progress > 0.3) {
-      final shadowOpacity = (progress - 0.3) / 0.7 * 0.15;
-      final shadowPaint = Paint()
-        ..color = Colors.black.withValues(alpha: shadowOpacity)
-        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 2.0);
-      canvas.drawCircle(Offset(cx, cy + 1), radius, shadowPaint);
-      canvas.drawCircle(Offset(cx, cy), radius, circlePaint);
-    }
-
-    // 2. Checkmark Icon inside the expanding circle (scales & appears as circle grows)
-    if (progress > 0.1) {
-      final iconOpacity = ((progress - 0.1) / 0.9).clamp(0.0, 1.0);
-      final checkPaint = Paint()
-        ..color = buttonIconColor.withValues(alpha: buttonIconColor.a * iconOpacity)
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 2.2
-        ..strokeCap = StrokeCap.round
-        ..strokeJoin = StrokeJoin.round;
-
-      final checkScale = (progress - 0.1) / 0.9;
-      final path = Path()
-        ..moveTo(cx - 4.5 * checkScale, cy + 0.5 * checkScale)
-        ..lineTo(cx - 1.0 * checkScale, cy + 4.0 * checkScale)
-        ..lineTo(cx + 4.5 * checkScale, cy - 3.5 * checkScale);
-
-      canvas.drawPath(path, checkPaint);
-    }
-
-    // 3. Dots 2 and 3 (vertically centered when closed; translate down & fade out)
-    final dotsOpacity = (1.0 - progress).clamp(0.0, 1.0);
-    if (dotsOpacity > 0) {
-      final dotsPaint = Paint()
-        ..color = dotColor.withValues(alpha: dotColor.a * dotsOpacity)
-        ..style = PaintingStyle.fill;
-
-      const dotRadius = 1.8;
-      const x = 4.0;
-
-      // Middle dot (Dot 2) - starts at 16.0 (vertically centered in 32px height)
-      final y2 = 16.0 + (14.0 * progress);
-      canvas.drawCircle(Offset(x, y2), dotRadius, dotsPaint);
-
-      // Bottom dot (Dot 3) - starts at 22.0
-      final y3 = 22.0 + (14.0 * progress);
-      canvas.drawCircle(Offset(x, y3), dotRadius, dotsPaint);
-    }
+    canvas.drawCircle(Offset(x, 10.0 + dy), dotRadius + 4.0 * progress, paint);
+    canvas.drawCircle(Offset(x, 16.0 + dy), dotRadius, paint);
+    canvas.drawCircle(Offset(x, 22.0 + dy), dotRadius, paint);
   }
 
   @override
-  bool shouldRepaint(_MorphingDotsAcceptPainter oldDelegate) =>
-      oldDelegate.progress != progress ||
-      oldDelegate.dotColor != dotColor ||
-      oldDelegate.buttonBgColor != buttonBgColor ||
-      oldDelegate.buttonIconColor != buttonIconColor;
+  bool shouldRepaint(_FallingDotsPainter oldDelegate) =>
+      oldDelegate.progress != progress || oldDelegate.dotColor != dotColor;
 }
 
 

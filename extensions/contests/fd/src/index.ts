@@ -249,8 +249,9 @@ const ActivityHook = {
         // produce a ref the core recognises as the same activity.
         ref: String(year),
         // A suggestion is persisted VERBATIM and never runs through
-        // `decorateRef`, so everything the operation row reads has to be here.
-        name: t('activityLabel'),
+        // `decorateRef`, so everything the operation row reads has to be
+        // here. No `name`: the row leads with `label`, and the second line
+        // is for the exchange once the operator configures one.
         program: 'Contest',
         label: `${t('activityLabel')} ${year}`,
         shortLabel: 'FD',
@@ -343,10 +344,13 @@ const RefHandler = {
     const own = [str((ref as Record<string, JSONValue>).ourClass), str((ref as Record<string, JSONValue>).ourSection)]
       .filter((part) => part)
       .join(' ')
+    // The event (with its year) leads; the exchange is detail. `name` is
+    // the operation row's second line, so it carries the exchange rather
+    // than repeating the event.
     return {
       ...ref,
-      name: own || t('activityLabel'),
-      label: own ? `${t('activityLabel')}: ${own}` : t('activityLabel'),
+      name: own || undefined,
+      label: [t('activityLabel'), str((ref as Record<string, JSONValue>).ref)].filter((part) => part).join(' '),
       shortLabel: own || 'FD',
     }
   },

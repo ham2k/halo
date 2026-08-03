@@ -365,6 +365,9 @@ class Translations$activitiesView$en {
 	/// en: 'Activities'
 	String get title => 'Activities';
 
+	/// en: 'Operation Setup'
+	String get sheetTitle => 'Operation Setup';
+
 	/// en: 'No Activities Selected'
 	String get activitiesCountZero => 'No Activities Selected';
 
@@ -433,6 +436,9 @@ class Translations$activitiesView$en {
 
 	/// en: 'Operation Options'
 	String get optionsTitle => 'Operation Options';
+
+	/// en: 'Operation Details'
+	String get operationDetails => 'Operation Details';
 
 	/// en: 'Share'
 	String get share => 'Share';
@@ -2829,6 +2835,7 @@ extension on Translations {
 			'map.flat' => 'Flat',
 			'map.globe' => 'Globe',
 			'activitiesView.title' => 'Activities',
+			'activitiesView.sheetTitle' => 'Operation Setup',
 			'activitiesView.activitiesCountZero' => 'No Activities Selected',
 			'activitiesView.activitiesCountOne' => '1 Activity',
 			'activitiesView.activitiesCountOther' => ({required Object count}) => '${count} Activities',
@@ -2852,6 +2859,7 @@ extension on Translations {
 			'activitiesView.exports' => 'Exports',
 			'activitiesView.options' => 'Options',
 			'activitiesView.optionsTitle' => 'Operation Options',
+			'activitiesView.operationDetails' => 'Operation Details',
 			'activitiesView.share' => 'Share',
 			'activitiesView.archive' => 'Archive',
 			'activitiesView.deleteOperation' => 'Delete Operation',
@@ -3191,10 +3199,10 @@ extension on Translations {
 			'settings.developer.runtimeNotAvailable' => 'Extension runtime not available.',
 			'settings.developer.panelLoadFailed' => 'Could not load this settings panel.',
 			'settings.developer.categoryCore' => 'Core & Runtime',
-			'settings.about.notices' => 'Notices & Messages',
-			'settings.about.noticesDescription' => 'Announcements and status messages',
 			_ => null,
 		} ?? switch (path) {
+			'settings.about.notices' => 'Notices & Messages',
+			'settings.about.noticesDescription' => 'Announcements and status messages',
 			'settings.about.releaseNotes' => 'Release Notes',
 			'settings.about.copiedVersion' => 'Copied version details to clipboard',
 			'settings.panels.commonPreferences' => 'Common Preferences',

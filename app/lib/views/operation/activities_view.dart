@@ -58,6 +58,15 @@ const _nearbyGridAdoptionKm = 15;
 /// LinearProgressIndicator's own default thickness.
 const _searchProgressHeight = 4.0;
 
+/// Height of the search-field band (excluding the progress slot) at text
+/// scale 1. A constant because the band rides in a pinned
+/// SliverPersistentHeader, which needs an explicit extent it cannot measure:
+/// 8px padding + a 44px dense field/button row + 8px. The OS text-scale
+/// preference composes on top of the app's own Font Scale (ui-scaling.md
+/// rule 3) and grows the field inside it, so callers scale this — see
+/// [_PinnedSearchBand].
+const _searchBandHeight = 60.0;
+
 /// Decides which grid (if any) an operation should adopt right after a new
 /// activity ref is added, given it doesn't already have one:
 ///  - if live GPS is available, adopt it — but only when the just-added ref
@@ -103,6 +112,12 @@ bool allowsMultipleRefsOfType(
   return false;
 }
 
+/// Whether a ref of [type] is form-configured (a contest). Their `label`
+/// carries the event name with its variation baked in ("CQ WW CW",
+/// "ARRL Field Day 2027"), so lists lead with it — a plain reference
+/// activity leads with its code-like `shortLabel` ("POTA US-1234") instead.
+bool refTypeIsForm(Map<String, dynamic>? control) => (control?['input'] as Map?)?['kind'] == 'form';
+
 /// Whether a ref of [type] has anything to edit once it's on the operation.
 /// Defaults to FALSE — a plain reference activity (POTA, SOTA) carries only
 /// the code its own search already resolved, so retyping it by hand invites a
@@ -114,8 +129,27 @@ bool refTypeIsEditable(Map<String, dynamic>? control) {
   // than making every contest also set `editable: true` — the flag exists to
   // mark the unusual reference type that carries more than a looked-up code,
   // and a form control is that by definition.
-  if ((control?['input'] as Map?)?['kind'] == 'form') return true;
+  if (refTypeIsForm(control)) return true;
   return control?['editable'] == true;
+}
+
+/// What an activity row leads with, for a ref or a suggestion alike — the
+/// two must agree, or the same reference reads differently before and after
+/// it is added. See [refTypeIsForm] for which field wins.
+String activityRowTitle(Map<String, dynamic>? control, Map<String, dynamic> entry) {
+  final leading = refTypeIsForm(control) ? entry['label'] ?? entry['shortLabel'] : entry['shortLabel'];
+  return (leading ?? entry['ref'] ?? '?') as String;
+}
+
+/// An activity row's second line: what the reference IS, beyond its code —
+/// a park's name and location, a contest's exchange. Null when the entry
+/// carries neither, so the row stays a single line rather than an empty one.
+String? activityRowDetail(Map<String, dynamic> entry) {
+  final detail = [
+    entry['name'],
+    entry['location'],
+  ].whereType<String>().where((s) => s.isNotEmpty).join(' • ');
+  return detail.isEmpty ? null : detail;
 }
 
 /// The refs to keep when adding one of [type]: all of them when the type
@@ -164,25 +198,27 @@ class ActivitySearchQuery {
   static String scopePrefixFor(String activityKey) => '$activityKey: ';
 }
 
-/// The operation sheet's body: the activities accordion plus the operation's
-/// own controls. Driven through its [OperationSheetState] by the screen that
-/// presents it (save/revert, and pushing draft edits back in).
+/// The operation sheet's body: the activities list and search, plus the
+/// operation's own controls. Driven through its [OperationSheetState] by the
+/// screen that presents it (saving, and pushing draft edits back in).
 class OperationSheet extends StatefulWidget {
   final HaLoServices services;
   final Operation operation;
-  final ValueNotifier<bool>? hasUpdatesNotifier;
   final ValueChanged<Operation>? onOperationChanged;
-  final VoidCallback? onExport;
   final VoidCallback? onDelete;
+
+  /// Opens the operation-details editor (callsign, title, notes) — owned by
+  /// the presenting screen, which routes the result back in through
+  /// [OperationSheetState.updateOperation].
+  final VoidCallback? onEditDetails;
 
   const OperationSheet({
     super.key,
     required this.services,
     required this.operation,
-    this.hasUpdatesNotifier,
     this.onOperationChanged,
-    this.onExport,
     this.onDelete,
+    this.onEditDetails,
   });
 
   @override
@@ -196,7 +232,6 @@ class OperationSheetState extends State<OperationSheet> {
     if (mounted) {
       final before = _operation;
       setState(() => _operation = op);
-      widget.hasUpdatesNotifier?.value = _hasUpdates(op, widget.operation);
       _reloadControlsIfRefsChanged(before, op);
     }
   }
@@ -240,8 +275,6 @@ class OperationSheetState extends State<OperationSheet> {
   Timer? _flashTimer;
   final Map<String, GlobalKey> _refRowKeys = {};
 
-  bool _activitiesExpanded = true;
-  bool _searchExpanded = true;
   late bool _allOptionsExpanded;
   late bool _allOptionsFullyOpened;
 
@@ -253,7 +286,6 @@ class OperationSheetState extends State<OperationSheet> {
   void initState() {
     super.initState();
     _operation = widget.operation;
-    widget.hasUpdatesNotifier?.value = _hasUpdates(_operation, widget.operation);
     _loadControls();
     
     final hidden = widget.services.settings.prefs.getBool('activitiesAllOptionsHidden') ?? false;
@@ -264,13 +296,6 @@ class OperationSheetState extends State<OperationSheet> {
     widget.services.location.start();
     widget.services.location.addListener(_onLocationChanged);
     _search('');
-    // Focusing the search field always reveals its results, even if the
-    // user (or a previous collapse) had left the accordion closed.
-    _searchFocusNode.addListener(() {
-      if (_searchFocusNode.hasFocus && !_searchExpanded) {
-        setState(() => _searchExpanded = true);
-      }
-    });
   }
 
   @override
@@ -344,15 +369,6 @@ class OperationSheetState extends State<OperationSheet> {
     return true;
   }
 
-  bool _hasUpdates(Operation current, Operation initial) {
-    if (current.grid != initial.grid) return true;
-    if (current.stationCall != initial.stationCall) return true;
-    if (current.userTitle != initial.userTitle) return true;
-    if (((current.data['operatorCall'] as String?) ?? '') != ((initial.data['operatorCall'] as String?) ?? '')) return true;
-    if (((current.data['notes'] as String?) ?? '') != ((initial.data['notes'] as String?) ?? '')) return true;
-    return !_areRefsEqual(current.refs, initial.refs);
-  }
-
   void _saveOperationData(Map<String, dynamic> patch) {
     final updated = Operation(
       uuid: _operation.uuid,
@@ -365,7 +381,6 @@ class OperationSheetState extends State<OperationSheet> {
     if (mounted) {
       final before = _operation;
       setState(() => _operation = updated);
-      widget.hasUpdatesNotifier?.value = _hasUpdates(updated, widget.operation);
       widget.onOperationChanged?.call(updated);
       _reloadControlsIfRefsChanged(before, updated);
     }
@@ -550,8 +565,9 @@ class OperationSheetState extends State<OperationSheet> {
   /// The operation-level actions that don't belong in the activities list
   /// itself. Share and Archive are declared but inert — the rows are here so
   /// the menu's shape is settled, and they stay disabled until each has an
-  /// implementation behind it.
-  Future<void> _showOptions() async {
+  /// implementation behind it. Public: the sheet's Options button lives in
+  /// the modal route's own header, which reaches in through the sheet key.
+  Future<void> showOptions() async {
     final t = context.t.activitiesView;
     final theme = Theme.of(context);
     await showHaloDialog<void>(
@@ -565,6 +581,16 @@ class OperationSheetState extends State<OperationSheet> {
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
+            ListTile(
+              leading: const Icon(Icons.edit_note),
+              title: Text(t.operationDetails),
+              // Same editor the pills open — the menu closes first so the
+              // details dialog isn't stacked on top of it.
+              onTap: () {
+                Navigator.of(dialogContext).pop();
+                widget.onEditDetails?.call();
+              },
+            ),
             ListTile(
               enabled: false,
               leading: const Icon(Icons.share),
@@ -680,9 +706,8 @@ class OperationSheetState extends State<OperationSheet> {
       selection: TextSelection.collapsed(offset: prefix.length),
     );
     setState(() {
-      // The results live in the section above, so open it and put the caret
-      // in the field ready for the reference or name.
-      _searchExpanded = true;
+      // The results live in the scroll area above, so close this section and
+      // put the caret in the field ready for the reference or name.
       _allOptionsExpanded = false;
     });
     _searchFocusNode.requestFocus();
@@ -805,16 +830,14 @@ class OperationSheetState extends State<OperationSheet> {
   Future<void> _flashExistingRef(String type, String code) async {
     final id = _refRowId(type, code);
     setState(() {
-      // A collapsed section has no row to flash or scroll to.
-      _activitiesExpanded = true;
       _flashingRefRowId = id;
       _flashToken++;
     });
     _flashTimer?.cancel();
 
-    // The row may have only just been built (the section was collapsed, or
-    // this is the first frame it exists on), so wait for it to be laid out
-    // before asking the list to bring it into view.
+    // The row may have only just been built (this can be the first frame it
+    // exists on), so wait for it to be laid out before asking the list to
+    // bring it into view.
     await WidgetsBinding.instance.endOfFrame;
     if (!mounted || _flashingRefRowId != id) return;
     final rowContext = _refRowKeys[id]?.currentContext;
@@ -864,32 +887,6 @@ class OperationSheetState extends State<OperationSheet> {
     );
   }
 
-  /// Builds a section's body from a list of (already opaquely white) rows:
-  /// content-sized when [fill] is false, or a scrollable list when [fill]
-  /// is true — the leftover space below the last row then shows the
-  /// Scaffold's own gray background straight through, since neither
-  /// ListView nor its rows' surrounding space paint anything there. [fill]
-  /// varies at runtime (Current Activities only fills when Search is
-  /// collapsed), so this shape has to be chosen here rather than baked
-  /// into a fixed widget tree.
-  Widget _sectionBody({required bool fill, required List<Widget> rows, required Widget emptyPlaceholder}) {
-    if (rows.isEmpty) return emptyPlaceholder;
-    // One ink layer PER ROW. A ListTile paints its `tileColor` (and its
-    // splash) with `Ink`, onto the nearest ancestor Material — and a
-    // Material clips ink to ITS OWN bounds (`_RenderInkFeatures.paint`), not
-    // to anything in between. With the sheet's root Material as the nearest
-    // one, that clip is the whole sheet, so a row scrolled out of a viewport
-    // would keep painting its background wherever it had got to. A Material
-    // around the list would just move the problem to the list's bounds; per
-    // row, the clip IS the row. MaterialType.transparency: an ink layer, no
-    // surface of its own.
-    final inkedRows = [
-      for (final row in rows) Material(type: MaterialType.transparency, child: row),
-    ];
-    if (!fill) return Column(mainAxisSize: MainAxisSize.min, children: inkedRows);
-    return ListView(children: inkedRows);
-  }
-
   /// Persists [_operation], refreshing `data['title']` from a FRESH
   /// suggestion first — the sheet's own live-preview title (driven by
   /// OperationView's `_draftTitleFragments`) never lands in `_operation`
@@ -925,14 +922,116 @@ class OperationSheetState extends State<OperationSheet> {
     if (mounted) Navigator.of(context).pop();
   }
 
-  void revert() {
-    _searchController.clear();
-    updateOperation(widget.operation);
-  }
+  /// The operation's own identity — Station/Op callsign chips, the free-text
+  /// title, and a notes marker — shown at the far right of the always-visible
+  /// header row. Tapping any of it opens the details editor (see
+  /// [OperationSheet.onEditDetails]).
+  Widget _operationPills(ThemeData theme) {
+    final stationCall = _operation.stationCall;
+    final operatorCall = _operation.data['operatorCall'] as String?;
+    final operationTitle = _operation.userTitle;
+    final notes = (_operation.data['notes'] as String?) ?? '';
 
-  void revertAndClose() {
-    revert();
-    Navigator.of(context).pop();
+    // Only the station chip carries the full teal; its companions are the
+    // same hue a step lighter, so the station callsign reads first.
+    final chipColor = theme.appBarTheme.backgroundColor ?? theme.colorScheme.primary;
+    final lightChipColor = Color.lerp(chipColor, Colors.white, 0.25)!;
+    Widget chip(Widget child, {bool light = false}) => Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+          decoration: BoxDecoration(
+            color: light ? lightChipColor : chipColor,
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: DefaultTextStyle.merge(
+            style: theme.textTheme.labelLarge?.copyWith(
+              color: theme.colorScheme.onPrimary,
+              fontWeight: FontWeight.bold,
+            ),
+            child: child,
+          ),
+        );
+
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      // Opaque: a tap in the gaps between chips still opens the editor
+      // rather than falling through to anything behind the pills.
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: widget.onEditDetails,
+        child: Wrap(
+          spacing: 8,
+          runSpacing: 4,
+          alignment: WrapAlignment.end,
+          crossAxisAlignment: WrapCrossAlignment.center,
+          children: [
+            // Notes have no useful short form, so this chip only says that
+            // there ARE notes — the details are one tap away, in the same
+            // operation-details dialog. The icon rides inside a Text so the
+            // chip takes its height from the same line box as its
+            // text-bearing siblings, rather than from the glyph.
+            if (notes.trim().isNotEmpty)
+              chip(
+                light: true,
+                Text.rich(
+                  WidgetSpan(
+                    alignment: PlaceholderAlignment.middle,
+                    // Nudged up 1px: the glyph's own bearing sits it slightly
+                    // low against the text line box that
+                    // PlaceholderAlignment.middle centers on.
+                    child: Transform.translate(
+                      offset: const Offset(0, -1),
+                      child: Icon(
+                        resolveIconName('file-document'),
+                        size: 16,
+                        color: theme.colorScheme.onPrimary,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            // A title is free text and can run long — it ellipsizes rather
+            // than pushing the callsign chips aside (or wrapping the whole
+            // row onto extra lines).
+            if (operationTitle.isNotEmpty)
+              ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 240),
+                child: chip(
+                  light: true,
+                  Text(operationTitle, maxLines: 1, overflow: TextOverflow.ellipsis),
+                ),
+              ),
+            if (operatorCall != null && operatorCall.isNotEmpty)
+              chip(
+                light: true,
+                Text.rich(
+                  TextSpan(
+                    children: [
+                      const TextSpan(text: 'Op: '),
+                      TextSpan(
+                        text: operatorCall,
+                        style: const TextStyle(fontFamily: 'RobotoMono'),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            chip(
+              Text.rich(
+                TextSpan(
+                  children: [
+                    const TextSpan(text: 'Station: '),
+                    TextSpan(
+                      text: stationCall,
+                      style: const TextStyle(fontFamily: 'RobotoMono'),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   @override
@@ -941,7 +1040,9 @@ class OperationSheetState extends State<OperationSheet> {
     final theme = Theme.of(context);
     final refs = _operation.refs;
     final isDark = theme.brightness == Brightness.dark;
-    final accordionColor = theme.colorScheme.surfaceContainerHighest;
+    // The same color the sheet's top row shows — matching it by hand would
+    // drift the moment the pane's own banding changes.
+    final accordionColor = haloDialogBandColorAt(context);
     final onAccordionColor = theme.colorScheme.onSurfaceVariant;
     // Rows paint an opaque color so they read distinctly from the pane's
     // gray/dark background (the ColoredBox below), which otherwise shows
@@ -950,322 +1051,353 @@ class OperationSheetState extends State<OperationSheet> {
     // (full screen and dialog card) look the same.
     final listBgColor = isDark ? const Color(0xFF141618) : const Color(0xFFF3F4F6);
     final rowColor = isDark ? const Color(0xFF212426) : Colors.white;
-    // Current Activities only takes the flexible remaining space when
-    // Search isn't there to claim it.
-    final activitiesFill = !_searchExpanded;
 
     return Material(
       color: listBgColor,
       child: Column(
         children: [
-          _AccordionSection(
-            title: Padding(
-              padding: const EdgeInsets.only(right: 16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
+          // The operation's own header row — always visible, no accordion:
+          // the activities count and subtitle at left, the operation pills
+          // at right. The pills get most of the row (loose 3:1 against the
+          // title), and the title's lines ellipsize rather than pushing them
+          // aside; leftover space lands between the two (spaceBetween), so
+          // the pills stay flush right.
+          Material(
+            color: accordionColor,
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 10, 12, 10),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text(
-                    _activitiesTitle(
-                      refs.map((r) => r['type'] as String?).whereType<String>().where((t) => t.isNotEmpty).toSet().length,
-                    ),
-                    style: theme.textTheme.titleMedium?.copyWith(
-                      color: onAccordionColor,
-                      fontWeight: FontWeight.w600,
+                  Flexible(
+                    child: Padding(
+                      padding: const EdgeInsets.only(right: 16),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            _activitiesTitle(
+                              refs
+                                  .map((r) => r['type'] as String?)
+                                  .whereType<String>()
+                                  .where((t) => t.isNotEmpty)
+                                  .toSet()
+                                  .length,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: theme.textTheme.titleMedium?.copyWith(
+                              color: onAccordionColor,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            refs.isEmpty ? context.t.activitiesView.emptySheet : _groupedActivitiesSubtitle(refs),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: theme.textTheme.bodyMedium?.copyWith(
+                              color: theme.colorScheme.outline,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
-                  const SizedBox(height: 2),
-                  Text(
-                    refs.isEmpty ? context.t.activitiesView.emptySheet : _groupedActivitiesSubtitle(refs),
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      color: theme.colorScheme.outline,
-                    ),
-                  ),
+                  Flexible(flex: 3, child: _operationPills(theme)),
                 ],
               ),
             ),
-            expanded: _activitiesExpanded,
-            fill: activitiesFill,
-            onToggle: () => setState(() => _activitiesExpanded = !_activitiesExpanded),
-            headerColor: accordionColor,
-            onHeaderColor: onAccordionColor,
-            trailing: Row(
-                    mainAxisSize: MainAxisSize.min,
+          ),
+          // Selected activities, the search field and its results live in
+          // ONE clipped scroll area — only Activity Types below keeps the
+          // accordion behavior.
+          Expanded(
+            child: Builder(
+              builder: (context) {
+                final locStatus = widget.services.location.status;
+                final operationGrid = _operation.grid;
+
+                // Every variation is the same filled button: white icon and
+                // label on a state color, rather than colored text on nothing.
+                const onLocationColor = Colors.white;
+                final Widget locationPin;
+                final String label;
+                final Color locationColor;
+
+                if (operationGrid != null && operationGrid.isNotEmpty) {
+                  final gridSource = _operation.data['gridSource'] as String? ?? (
+                    (widget.services.location.grid != null && operationGrid == widget.services.location.grid)
+                        ? 'gps'
+                        : 'manual'
+                  );
+
+                  if (gridSource == 'gps') {
+                    locationPin = Icon(resolveIconName('map-marker'), color: onLocationColor);
+                    label = operationGrid;
+                    locationColor = const Color(0xFF1B5E20);
+                  } else {
+                    locationPin = Icon(resolveIconName('pin'), color: onLocationColor);
+                    label = operationGrid;
+                    locationColor = const Color(0xFF455A64);
+                  }
+                } else {
+                  if (locStatus == LocationStatus.unknown || locStatus == LocationStatus.determining) {
+                    locationPin = const _PulsingGpsPin(color: onLocationColor);
+                    label = 'GPS…';
+                    locationColor = const Color(0xFF1565C0);
+                  } else if (locStatus == LocationStatus.available && widget.services.location.grid != null) {
+                    locationPin = Icon(resolveIconName('map-marker'), color: onLocationColor);
+                    label = widget.services.location.grid!;
+                    locationColor = const Color(0xFF1B5E20);
+                  } else if (locStatus == LocationStatus.available && widget.services.location.grid == null) {
+                    locationPin = const _PulsingGpsPin(color: onLocationColor);
+                    label = 'GPS…';
+                    locationColor = const Color(0xFF1565C0);
+                  } else {
+                    locationPin = Icon(resolveIconName('map-marker-off'), color: onLocationColor);
+                    label = '';
+                    locationColor = const Color(0xFFC62828);
+                  }
+                }
+
+                final searchBand = Material(
+                  color: accordionColor,
+                  child: Column(
                     children: [
-                      TextButton.icon(
-                        onPressed: _showOptions,
-                        icon: const Icon(Icons.settings, size: 18),
-                        label: Text(context.t.activitiesView.options),
-                        style: TextButton.styleFrom(
-                          foregroundColor: onAccordionColor,
+                      SizedBox(
+                        height: MediaQuery.textScalerOf(context).scale(_searchBandHeight),
+                        child: Padding(
+                          padding: const EdgeInsets.fromLTRB(16, 8, 12, 8),
+                          child: Row(
+                            children: [
+                        Expanded(
+                          child: TextField(
+                            selectAllOnFocus: false,
+                            controller: _searchController,
+                            focusNode: _searchFocusNode,
+                            decoration: InputDecoration(
+                              hintText: t.searchHint,
+                              prefixIcon: Icon(Icons.search, color: onAccordionColor.withValues(alpha: 0.6)),
+                              filled: true,
+                              // Paler than the band it sits on, so the field
+                              // reads as a well rather than blending in.
+                              fillColor: theme.colorScheme.surface,
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(8),
+                                borderSide: BorderSide(color: onAccordionColor.withValues(alpha: 0.25)),
+                              ),
+                              isDense: true,
+                            ),
+                            onChanged: _onSearchChanged,
+                          ),
                         ),
-                      ),
-                      Opacity(
-                        opacity: _operation.qsoCount == 0 ? 0.8 : 1.0,
-                        child: TextButton.icon(
-                          onPressed: widget.onExport,
-                          icon: Icon(resolveIconName('file-export-outline'), size: 18),
-                          label: Text(context.t.activitiesView.exports),
-                          style: TextButton.styleFrom(
-                            foregroundColor: onAccordionColor,
+                        Padding(
+                          padding: const EdgeInsets.only(left: 8),
+                          child: TextButton.icon(
+                            icon: locationPin,
+                            label: Text(
+                              label,
+                              style: const TextStyle(
+                                fontFamily: 'RobotoMono',
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            style: TextButton.styleFrom(
+                              backgroundColor: locationColor,
+                              foregroundColor: onLocationColor,
+                            ),
+                            onPressed: () async {
+                              final patch = await showHaloDialog<Map<String, dynamic>>(
+                                context: context,
+                                builder: (_) => OperationLocationScreen(
+                                  services: widget.services,
+                                  operation: _operation,
+                                ),
+                              );
+                              if (patch != null && mounted) {
+                                final updated = Operation(
+                                  uuid: _operation.uuid,
+                                  data: {..._operation.data, ...patch},
+                                  qsoCount: _operation.qsoCount,
+                                  startAtMillisMin: _operation.startAtMillisMin,
+                                  startAtMillisMax: _operation.startAtMillisMax,
+                                  localData: _operation.localData,
+                                );
+                                updateOperation(updated);
+                                widget.onOperationChanged?.call(updated);
+                              }
+                            },
+                          ),
+                        ),
+                            ],
                           ),
                         ),
                       ),
+                      // The slot is always there, empty when idle: showing
+                      // and hiding the bar itself would move every row under
+                      // it by its height each time a search resolved.
+                      SizedBox(
+                        height: _searchProgressHeight,
+                        child: _loadingSuggestions
+                            ? const LinearProgressIndicator(minHeight: _searchProgressHeight)
+                            : null,
+                      ),
                     ],
                   ),
-            child: _sectionBody(
-              fill: activitiesFill,
-              emptyPlaceholder: const SizedBox.shrink(),
-              rows: [
-                for (final ref in refs)
-                  _flashableRow(
-                    ref,
-                    ListTile(
-                    tileColor: _loadingControls
-                        ? rowColor
-                        : (isUnknownRefType(_controls, ref['type'] as String?)
-                            ? theme.colorScheme.errorContainer.withValues(alpha: 0.4)
-                            : rowColor),
-                    // Right padding matches the accordion header's own
-                    // horizontal inset, so this trailing icon button lines
-                    // up under the search row's options button — same
-                    // IconButton defaults (no custom size/padding) too.
-                    contentPadding: const EdgeInsets.only(left: 16, right: 12),
-                    leading: _loadingControls
-                        ? Icon(resolveIconName('puzzle'))
-                        : activityRefIcon(_controls, ref['type'] as String?),
-                    title: Text(
-                      (ref['shortLabel'] ?? ref['ref'] ?? '?') as String,
-                      style: const TextStyle(fontWeight: FontWeight.bold),
-                    ),
-                    subtitle: (ref['name'] as String?) != null ? Text(ref['name'] as String) : null,
-                    // Tappable only for a type that declares it has
-                    // something to edit — a plain ref activity doesn't, so
-                    // the row stays inert rather than offering to retype a
-                    // code its own search already resolved.
-                    onTap: refTypeIsEditable(controlForRefType(_controls, ref['type'] as String?))
-                        ? () => _editRef(ref)
-                        : null,
-                    trailing: IconButton(
-                      icon: Icon(Icons.delete, semanticLabel: t.removeActivity),
-                      onPressed: () => _deleteRef(ref),
-                    ),
-                    ),
-                  ),
-              ],
-            ),
-          ),
-          Builder(
-            builder: (context) {
-              final locStatus = widget.services.location.status;
-              final operationGrid = _operation.grid;
-
-              // Every variation is the same filled button: white icon and
-              // label on a state color, rather than colored text on nothing.
-              const onLocationColor = Colors.white;
-              final Widget locationPin;
-              final String label;
-              final Color locationColor;
-
-              if (operationGrid != null && operationGrid.isNotEmpty) {
-                final gridSource = _operation.data['gridSource'] as String? ?? (
-                  (widget.services.location.grid != null && operationGrid == widget.services.location.grid)
-                      ? 'gps'
-                      : 'manual'
                 );
 
-                if (gridSource == 'gps') {
-                  locationPin = Icon(resolveIconName('map-marker'), color: onLocationColor);
-                  label = operationGrid;
-                  locationColor = const Color(0xFF1B5E20);
-                } else {
-                  locationPin = Icon(resolveIconName('pin'), color: onLocationColor);
-                  label = operationGrid;
-                  locationColor = const Color(0xFF455A64);
-                }
-              } else {
-                if (locStatus == LocationStatus.unknown || locStatus == LocationStatus.determining) {
-                  locationPin = const _PulsingGpsPin(color: onLocationColor);
-                  label = 'GPS…';
-                  locationColor = const Color(0xFF1565C0);
-                } else if (locStatus == LocationStatus.available && widget.services.location.grid != null) {
-                  locationPin = Icon(resolveIconName('map-marker'), color: onLocationColor);
-                  label = widget.services.location.grid!;
-                  locationColor = const Color(0xFF1B5E20);
-                } else if (locStatus == LocationStatus.available && widget.services.location.grid == null) {
-                  locationPin = const _PulsingGpsPin(color: onLocationColor);
-                  label = 'GPS…';
-                  locationColor = const Color(0xFF1565C0);
-                } else {
-                  locationPin = Icon(resolveIconName('map-marker-off'), color: onLocationColor);
-                  label = '';
-                  locationColor = const Color(0xFFC62828);
-                }
-              }
-
-              return _AccordionSection(
-                title: TextField(
-                  selectAllOnFocus: false,
-                  controller: _searchController,
-                  focusNode: _searchFocusNode,
-                  decoration: InputDecoration(
-                    hintText: t.searchHint,
-                    prefixIcon: Icon(Icons.search, color: onAccordionColor.withValues(alpha: 0.6)),
-                    filled: true,
-                    fillColor: Color.alphaBlend(onAccordionColor.withValues(alpha: 0.06), accordionColor),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8),
-                      borderSide: BorderSide(color: onAccordionColor.withValues(alpha: 0.25)),
+                final resultRows = <Widget>[
+                  // Above the hits: an activity the user asked for by name
+                  // that's simply switched off would otherwise look like it
+                  // doesn't exist.
+                  for (final info in _disabledMatches)
+                    ListTile(
+                      tileColor: theme.colorScheme.secondaryContainer,
+                      leading: _accentIcon(info.icon, resolveExtensionColor(info.accentColor)),
+                      title: Text(
+                        t.enableExtension(name: info.nameFor(LocaleSettings.currentLocale.languageCode)),
+                        style: const TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                      subtitle: Text(t.enableExtensionHint),
+                      trailing: const Icon(Icons.add),
+                      onTap: () => _enableExtension(info),
                     ),
-                    isDense: true,
-                  ),
-                  onChanged: _onSearchChanged,
-                ),
-                titleIsInteractive: true,
-                trailing: Padding(
-                        padding: const EdgeInsets.only(left: 8),
-                        child: TextButton.icon(
-                          icon: locationPin,
-                          label: Text(
-                            label,
-                            style: const TextStyle(
-                              fontFamily: 'RobotoMono',
-                              fontWeight: FontWeight.bold,
+                  for (final suggestion in _suggestions)
+                    Builder(builder: (context) {
+                      final alreadySelected =
+                          refs.any((r) => r['type'] == suggestion['type'] && r['ref'] == suggestion['ref']);
+                      // A nearby suggestion for a ref already on the
+                      // operation is just noise, but a SEARCH hit has to
+                      // stay: dropping what you searched for reads as
+                      // "no such reference". Marked, not hidden.
+                      if (alreadySelected && !_suggestionsAreSearchResults) {
+                        return const SizedBox.shrink();
+                      }
+                      final suggestionControl = controlForRefType(_controls, suggestion['type'] as String?);
+                      return ListTile(
+                        tileColor: _loadingControls
+                            ? rowColor
+                            : (isUnknownRefType(_controls, suggestion['type'] as String?)
+                                ? theme.colorScheme.errorContainer.withValues(alpha: 0.4)
+                                : rowColor),
+                        leading: _loadingControls
+                            ? Icon(resolveIconName('puzzle'))
+                            : activityRefIcon(_controls, suggestion['type'] as String?),
+                        title: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Flexible(
+                              child: Text(
+                                activityRowTitle(suggestionControl, suggestion),
+                                style: const TextStyle(fontWeight: FontWeight.bold),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                            if (alreadySelected)
+                              Padding(
+                                padding: const EdgeInsets.only(left: 8),
+                                child: _AlreadySelectedChip(label: t.alreadySelected),
+                              ),
+                            const Spacer(),
+                            if (suggestion['distance'] is num)
+                              Text(
+                                fmtDistance(
+                                  (suggestion['distance'] as num).toDouble(),
+                                  miles: widget.services.settings.distanceUnits == DistanceUnits.miles,
+                                ),
+                                style: theme.textTheme.bodyMedium?.copyWith(
+                                  color: theme.colorScheme.onSurfaceVariant,
+                                ),
+                              ),
+                          ],
+                        ),
+                        subtitle: Text(activityRowDetail(suggestion) ?? ''),
+                        onTap: () => _addSuggestion(suggestion),
+                      );
+                    }),
+                ];
+
+                // One ink layer PER ROW: a ListTile's tileColor/splash ink
+                // clips to the nearest Material's bounds, which must be the
+                // row itself for rows scrolled out of this viewport to stop
+                // painting.
+                return CustomScrollView(
+                  slivers: [
+                    SliverList(
+                      delegate: SliverChildListDelegate([
+                    for (final ref in refs)
+                      Builder(builder: (context) {
+                        final control = controlForRefType(_controls, ref['type'] as String?);
+                        final detail = activityRowDetail(ref);
+                        return Material(
+                          type: MaterialType.transparency,
+                          child: _flashableRow(
+                            ref,
+                            ListTile(
+                              tileColor: _loadingControls
+                                  ? rowColor
+                                  : (control == null
+                                      ? theme.colorScheme.errorContainer.withValues(alpha: 0.4)
+                                      : rowColor),
+                              // Right padding matches the header rows' own
+                              // horizontal inset, so this trailing icon button
+                              // lines up under the search row's location
+                              // button — same IconButton defaults (no custom
+                              // size/padding) too.
+                              contentPadding: const EdgeInsets.only(left: 16, right: 12),
+                              leading: _loadingControls
+                                  ? Icon(resolveIconName('puzzle'))
+                                  : activityRefIcon(_controls, ref['type'] as String?),
+                              title: Text(
+                                activityRowTitle(control, ref),
+                                style: const TextStyle(fontWeight: FontWeight.bold),
+                              ),
+                              subtitle: detail == null ? null : Text(detail),
+                              // Tappable only for a type that declares it has
+                              // something to edit — a plain ref activity
+                              // doesn't, so the row stays inert rather than
+                              // offering to retype a code its own search
+                              // already resolved.
+                              onTap: refTypeIsEditable(control) ? () => _editRef(ref) : null,
+                              trailing: IconButton(
+                                icon: Icon(Icons.delete, semanticLabel: t.removeActivity),
+                                onPressed: () => _deleteRef(ref),
+                              ),
                             ),
                           ),
-                          style: TextButton.styleFrom(
-                            backgroundColor: locationColor,
-                            foregroundColor: onLocationColor,
-                          ),
-                          onPressed: () async {
-                            final patch = await showHaloDialog<Map<String, dynamic>>(
-                              context: context,
-                              builder: (_) => OperationLocationScreen(
-                                services: widget.services,
-                                operation: _operation,
-                              ),
-                            );
-                            if (patch != null && mounted) {
-                              final updated = Operation(
-                                uuid: _operation.uuid,
-                                data: {..._operation.data, ...patch},
-                                qsoCount: _operation.qsoCount,
-                                startAtMillisMin: _operation.startAtMillisMin,
-                                startAtMillisMax: _operation.startAtMillisMax,
-                                localData: _operation.localData,
-                              );
-                              updateOperation(updated);
-                              widget.onOperationChanged?.call(updated);
-                            }
-                          },
-                        ),
+                        );
+                      }),
+                      ]),
+                    ),
+                    // The band pins below the sheet's header once the
+                    // activity rows above it scroll away; the results keep
+                    // scrolling underneath it.
+                    SliverPersistentHeader(
+                      pinned: true,
+                      delegate: _PinnedSearchBand(
+                        height: MediaQuery.textScalerOf(context).scale(_searchBandHeight) +
+                            _searchProgressHeight,
+                        child: searchBand,
                       ),
-                expanded: _searchExpanded,
-                fill: true,
-                onToggle: () => setState(() => _searchExpanded = !_searchExpanded),
-                headerColor: accordionColor,
-                onHeaderColor: onAccordionColor,
-            child: Column(
-              children: [
-                // The slot is always there, empty when idle: showing and
-                // hiding the bar itself would move every row under it by its
-                // height each time a search resolved.
-                SizedBox(
-                  height: _searchProgressHeight,
-                  child: _loadingSuggestions
-                      ? const LinearProgressIndicator(minHeight: _searchProgressHeight)
-                      : null,
-                ),
-                Expanded(
-                  child: _sectionBody(
-                    fill: true,
-                    emptyPlaceholder: _loadingSuggestions
-                        ? const SizedBox.shrink()
-                        : Padding(
+                    ),
+                    SliverList(
+                      delegate: SliverChildListDelegate([
+                        if (resultRows.isEmpty && !_loadingSuggestions)
+                          Padding(
                             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                             child: Text(_suggestionsEmptyMessage, style: TextStyle(color: theme.colorScheme.outline)),
-                          ),
-                    rows: [
-                      // Above the hits: an activity the user asked for by
-                      // name that's simply switched off would otherwise look
-                      // like it doesn't exist.
-                      for (final info in _disabledMatches)
-                        ListTile(
-                          tileColor: theme.colorScheme.secondaryContainer,
-                          leading: _accentIcon(info.icon, resolveExtensionColor(info.accentColor)),
-                          title: Text(
-                            t.enableExtension(name: info.nameFor(LocaleSettings.currentLocale.languageCode)),
-                            style: const TextStyle(fontWeight: FontWeight.bold),
-                          ),
-                          subtitle: Text(t.enableExtensionHint),
-                          trailing: const Icon(Icons.add),
-                          onTap: () => _enableExtension(info),
-                        ),
-                      for (final suggestion in _suggestions)
-                        Builder(builder: (context) {
-                          final alreadySelected =
-                              refs.any((r) => r['type'] == suggestion['type'] && r['ref'] == suggestion['ref']);
-                          // A nearby suggestion for a ref already on the
-                          // operation is just noise, but a SEARCH hit has to
-                          // stay: dropping what you searched for reads as
-                          // "no such reference". Marked, not hidden.
-                          if (alreadySelected && !_suggestionsAreSearchResults) {
-                            return const SizedBox.shrink();
-                          }
-                          return ListTile(
-                            tileColor: _loadingControls
-                                ? rowColor
-                                : (isUnknownRefType(_controls, suggestion['type'] as String?)
-                                    ? theme.colorScheme.errorContainer.withValues(alpha: 0.4)
-                                    : rowColor),
-                            leading: _loadingControls
-                                ? Icon(resolveIconName('puzzle'))
-                                : activityRefIcon(_controls, suggestion['type'] as String?),
-                            title: Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Flexible(
-                                  child: Text(
-                                    (suggestion['shortLabel'] ?? suggestion['ref'] ?? '?') as String,
-                                    style: const TextStyle(fontWeight: FontWeight.bold),
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                ),
-                                if (alreadySelected)
-                                  Padding(
-                                    padding: const EdgeInsets.only(left: 8),
-                                    child: _AlreadySelectedChip(label: t.alreadySelected),
-                                  ),
-                                const Spacer(),
-                                if (suggestion['distance'] is num)
-                                  Text(
-                                    fmtDistance(
-                                      (suggestion['distance'] as num).toDouble(),
-                                      miles: widget.services.settings.distanceUnits == DistanceUnits.miles,
-                                    ),
-                                    style: theme.textTheme.bodyMedium?.copyWith(
-                                      color: theme.colorScheme.onSurfaceVariant,
-                                    ),
-                                  ),
-                              ],
-                            ),
-                            subtitle: Text(
-                              [
-                                suggestion['name'],
-                                suggestion['location'],
-                              ].whereType<String>().where((s) => s.isNotEmpty).join(' • '),
-                            ),
-                            onTap: () => _addSuggestion(suggestion),
-                          );
-                        }),
-                    ],
-                  ),
-                ),
-              ],
+                          )
+                        else
+                          for (final row in resultRows) Material(type: MaterialType.transparency, child: row),
+                      ]),
+                    ),
+                  ],
+                );
+              },
             ),
-          );
-        },
-      ),
+          ),
           _AccordionSection(
             title: Padding(
               padding: const EdgeInsets.only(right: 16),
@@ -1347,7 +1479,7 @@ class OperationSheetState extends State<OperationSheet> {
                         // ancestor Material — without this that's the
                         // sheet's root, above this scroll view, and ink is
                         // clipped to that Material's bounds rather than to
-                        // the viewport in between (see `_sectionBody`), so
+                        // the viewport in between, so
                         // rows scrolled out of this 84px window would still
                         // paint their backgrounds over the sections above.
                         // MaterialType.transparency: an ink layer, no
@@ -1364,6 +1496,37 @@ class OperationSheetState extends State<OperationSheet> {
       ),
     );
   }
+}
+
+/// The search band's pinned-sliver delegate — fixed extent
+/// ([_searchBandHeight] + [_searchProgressHeight]), since a
+/// SliverPersistentHeader can't size itself to its child.
+class _PinnedSearchBand extends SliverPersistentHeaderDelegate {
+  final double height;
+  final Widget child;
+
+  _PinnedSearchBand({required this.height, required this.child});
+
+  @override
+  double get minExtent => height;
+
+  @override
+  double get maxExtent => height;
+
+  // A pinned sliver whose child paints shorter or taller than the extent it
+  // declared throws ("layoutExtent exceeds paintExtent"), so the child is
+  // held to exactly that box rather than trusted to match it.
+  Widget _sized(Widget child) => SizedBox(height: height, child: child);
+
+  @override
+  Widget build(BuildContext context, double shrinkOffset, bool overlapsContent) => _sized(child);
+
+  // Always true: [child] is rebuilt fresh by the enclosing build, so the
+  // comparison would never match anyway — and a false here would leave the
+  // stale band on screen, since RenderSliverPersistentHeader only picks up a
+  // new delegate when this says so.
+  @override
+  bool shouldRebuild(_PinnedSearchBand oldDelegate) => true;
 }
 
 /// Marks a suggestion the operation already carries. Tapping the row still
@@ -1393,17 +1556,8 @@ class _AlreadySelectedChip extends StatelessWidget {
 
 /// One collapsible section. The tinted header always shows, arrow on the
 /// left; the body appears below it only while expanded, using the default
-/// (untinted) background. When [fill] and expanded, the whole section
-/// (header + body) is wrapped in [Expanded] so it consumes whatever
-/// vertical space its siblings don't need — [child] must then provide its
-/// own bounded/scrollable content (see the Suggestions & Search section's
-/// `ListView`).
-///
-/// The arrow rotates and (for non-[fill] sections) the body cross-fades and
-/// resizes smoothly. A [fill] section's own Expanded/flex toggle stays
-/// instant — animating who claims leftover flex space between sibling
-/// sections isn't something Flutter's implicit animations do — but its
-/// arrow still animates like every other section's.
+/// (untinted) background. The arrow rotates and the body cross-fades and
+/// resizes smoothly.
 class _AccordionSection extends StatelessWidget {
   final Widget title;
   final bool expanded;
@@ -1411,15 +1565,9 @@ class _AccordionSection extends StatelessWidget {
   final Color headerColor;
   final Color onHeaderColor;
   final Widget child;
-  final bool fill;
-
-  /// True when [title] is itself an interactive control (the search field)
-  /// that shouldn't also toggle expand/collapse on tap — only the arrow
-  /// button does, in that case.
-  final bool titleIsInteractive;
 
   /// An optional extra control at the far right of the header, after
-  /// [title] (e.g. the search section's options button).
+  /// [title] (e.g. the Manage extensions button).
   final Widget? trailing;
 
   const _AccordionSection({
@@ -1429,8 +1577,6 @@ class _AccordionSection extends StatelessWidget {
     required this.headerColor,
     required this.onHeaderColor,
     required this.child,
-    this.fill = false,
-    this.titleIsInteractive = false,
     this.trailing,
   });
 
@@ -1453,9 +1599,9 @@ class _AccordionSection extends StatelessWidget {
     );
 
     final headerRow = Padding(
-      // Extra room on the right so the trailing controls (Options /
-      // Exports, the search section's own buttons) don't sit flush against
-      // the pane's edge — the rows below match it, see `contentPadding`.
+      // Extra room on the right so the trailing control doesn't sit flush
+      // against the pane's edge — the rows below match it, see
+      // `contentPadding`.
       padding: const EdgeInsets.fromLTRB(4, 6, 12, 6),
       child: Row(
         children: [
@@ -1473,36 +1619,8 @@ class _AccordionSection extends StatelessWidget {
 
     final header = Material(
       color: headerColor,
-      child: titleIsInteractive ? headerRow : InkWell(onTap: onToggle, child: headerRow),
+      child: InkWell(onTap: onToggle, child: headerRow),
     );
-
-    if (fill) {
-      if (!expanded) return header;
-      // The Expanded/flex allocation itself can't be smoothly animated
-      // (space redistribution between flex siblings isn't something
-      // Flutter's layout interpolates, and attempting it risks overflow
-      // mid-animation) — fading the newly-revealed content in is the safe
-      // way to still give this section a visible reveal animation. Same
-      // widget position across rebuilds (e.g. every search keystroke) keeps
-      // the fade's AnimationController alive, so it only actually plays
-      // once, right when the section opens.
-      return Expanded(
-        child: Column(
-          children: [
-            header,
-            Expanded(
-              child: TweenAnimationBuilder<double>(
-                tween: Tween(begin: 0, end: 1),
-                duration: _duration,
-                curve: Curves.easeIn,
-                builder: (context, opacity, child) => Opacity(opacity: opacity, child: child),
-                child: child,
-              ),
-            ),
-          ],
-        ),
-      );
-    }
 
     final body = AnimatedCrossFade(
       firstChild: child,

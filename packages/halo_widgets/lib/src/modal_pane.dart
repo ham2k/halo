@@ -269,7 +269,7 @@ class _ModalPaneScaffold extends StatelessWidget {
                   constraints: dialogConstraints,
                   child: Material(
                     color: theme.dialogTheme.backgroundColor ?? haloDialogBandColor(context),
-                    elevation: 6,
+                    elevation: modalSurfaceElevation,
                     shadowColor: Colors.transparent,
                     surfaceTintColor: theme.colorScheme.surfaceTint,
                     borderRadius: BorderRadius.circular(28),
@@ -453,15 +453,27 @@ class _TopModalPaneScaffold extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final headerHeight = theme.appBarTheme.toolbarHeight ?? kToolbarHeight;
-    final topOffset = MediaQuery.of(context).padding.top + headerHeight;
     final screenSize = MediaQuery.sizeOf(context);
     // Below S: no room for a floating card — the sheet becomes the screen,
-    // edge to edge, clearing only the header above and the device's own
-    // bottom safe area (home indicator) below.
+    // the WHOLE screen, covering the header behind it (its own top row
+    // supplies the controls); a SafeArea inside the sheet keeps content off
+    // the status bar, and only the device's bottom safe area (home
+    // indicator) is cleared outside.
     final isNarrow = !ShirtSize.of(context).isTwoPane;
+    final topOffset = isNarrow ? 0.0 : MediaQuery.of(context).padding.top + headerHeight;
+    // How far left of [TopModalPaneRoute.leftInset] the sheet's edge sits, so
+    // that the caller's header control lands centered over the sheet's own
+    // leading button: the caller centers its control's content 12px in, and
+    // HaloDialogHeader centers a leading button 36px in (its 12px padding
+    // plus half a 48px icon-button box). With no leading button there is
+    // nothing to line up against, and the header's inset is 24 rather than
+    // 12 — so the sheet sits exactly where the caller asked.
+    final leftNudge = route.leading == null ? 0.0 : 24.0;
     final sheetWidth = isNarrow
         ? screenSize.width
-        : (screenSize.width < maxDialogWidth ? screenSize.width : maxDialogWidth);
+        // The nudge widens the sheet rather than shifting it: its right
+        // edge stays at leftInset + maxDialogWidth.
+        : math.min(screenSize.width, maxDialogWidth + (route.leftInset == null ? 0.0 : leftNudge));
     // Never negative: a window shorter than the clearance below (no native
     // min-size floor on web/Linux; a large font scale divides the logical
     // height further) would otherwise assert on invalid constraints — same
@@ -475,11 +487,10 @@ class _TopModalPaneScaffold extends StatelessWidget {
           // haloDialogConstraints' 1.5-header-height clearance.
           : screenSize.height - topOffset - headerHeight / 2,
     );
-    // A few pixels left of the header control it lines up with — purely a
-    // visual nudge, not worth applying in the full-width narrow case.
+    // Not applied in the full-width narrow case.
     final leftInset = isNarrow
         ? null
-        : (route.leftInset == null ? null : route.leftInset! - 8);
+        : (route.leftInset == null ? null : route.leftInset! - leftNudge);
 
     final curvedAnimation = CurvedAnimation(parent: route.animation!, curve: Curves.easeOutCubic);
 
@@ -571,7 +582,7 @@ class _TopModalPaneScaffold extends StatelessWidget {
                           ),
                           child: Material(
                           color: theme.dialogTheme.backgroundColor ?? haloDialogBandColor(context),
-                          elevation: 6,
+                          elevation: modalSurfaceElevation,
                           shadowColor: Colors.transparent,
                           surfaceTintColor: theme.colorScheme.surfaceTint,
                           // Square at the bottom in the narrow case — it
@@ -580,7 +591,16 @@ class _TopModalPaneScaffold extends StatelessWidget {
                           borderRadius:
                               isNarrow ? BorderRadius.zero : const BorderRadius.vertical(bottom: Radius.circular(28)),
                           clipBehavior: Clip.antiAlias,
-                          child: Column(
+                          // Narrow only: the sheet starts at the screen's
+                          // very top, so its first row must clear the status
+                          // bar itself. Wide starts below the app's header —
+                          // a SafeArea there would double-inset.
+                          child: SafeArea(
+                            top: isNarrow,
+                            bottom: false,
+                            left: false,
+                            right: false,
+                            child: Column(
                                 mainAxisSize: MainAxisSize.min,
                                 crossAxisAlignment: CrossAxisAlignment.stretch,
                                 children: [
@@ -614,6 +634,7 @@ class _TopModalPaneScaffold extends StatelessWidget {
                                     ),
                                 ],
                               ),
+                          ),
                         ),
                       ),
                     ),
