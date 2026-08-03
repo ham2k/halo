@@ -220,12 +220,6 @@ jobs:
     needs: extensions
     if: always() && needs.extensions.result == 'success' && github.repository == 'ham2k/halo-dist'
     runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        package:
-          - app_dist/halo_dist_tools
-          - app_dist
     steps:
       - uses: actions/checkout@v4
 
@@ -245,12 +239,21 @@ jobs:
             cp app/lib/config/secrets.dart.example app/lib/config/secrets.dart
           fi
 
-      - name: pub get, analyze, test
+      # Sequential, halo_dist_tools FIRST — analyzing app_dist recurses into
+      # the nested package, and without that package's own pub get (its
+      # .dart_tool/package_config) the analyzer folds its files into
+      # app_dist's context, where package:halo_dist_tools doesn't resolve.
+      # Same order scripts/test.sh uses.
+      - name: pub get, analyze, test (halo_dist_tools, then app_dist)
         run: |
-          cd "${{ matrix.package }}"
-          flutter pub get
-          flutter analyze --no-fatal-infos
-          flutter test
+          for pkg in app_dist/halo_dist_tools app_dist; do
+            (
+              cd "$pkg"
+              flutter pub get
+              flutter analyze --no-fatal-infos
+              flutter test
+            )
+          done
 
   # app is the slowest package by far (~45% of the old single-job runtime),
   # so its `flutter test` run is sharded across runners on top of the job
