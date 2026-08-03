@@ -138,13 +138,14 @@ void main() {
     expect(entries.first['data']['grid'], isNull);
   }, timeout: const Timeout(Duration(seconds: 60)));
 
-  test('ela reads the space-separated `NAME OF LIGHTHOUSE` column', () async {
-    // ECA underscores its name column and ELA does not — copying one loader to
-    // the other silently yields nameless references.
+  test('ela reads the underscored `NAME_OF_LIGHTHOUSE` column', () async {
+    // The live file underscores the name column, same as ECA — verified
+    // against ham2k.com/data/cached/ela/ELA_References.json. A spaced
+    // 'NAME OF LIGHTHOUSE' key reads nothing and yields nameless references.
     final entries = await mapJson('ela', 'ela-all-lighthouses', [
       {
         'ELA': 'ENG 001',
-        'NAME OF LIGHTHOUSE': 'Beachy Head',
+        'NAME_OF_LIGHTHOUSE': 'Beachy Head',
         'LOCATION': 'East Sussex',
         'LATITUDE': '50.7361',
         'LONGITUDE': '0.2494',

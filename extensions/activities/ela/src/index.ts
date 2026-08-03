@@ -85,8 +85,7 @@ const elaDataFile: DataFileDefinition = {
     const parsedLon = Number.parseFloat(entry?.LONGITUDE)
     const lat = Number.isNaN(parsedLat) ? undefined : parsedLat
     const lon = Number.isNaN(parsedLon) ? undefined : parsedLon
-    // Spelled out with a space, unlike ECA's underscored NAME_OF_CASTLE.
-    const name = String(entry?.['NAME OF LIGHTHOUSE'] ?? '').trim()
+    const name = String(entry?.NAME_OF_LIGHTHOUSE ?? '').trim()
     const location = entry?.LOCATION
 
     return {
