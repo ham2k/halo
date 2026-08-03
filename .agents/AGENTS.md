@@ -56,6 +56,13 @@ This is a multi-platform app for Amateur Radio Logging, called "Ham2K Logger" (o
   `main`, resolves any conflicts, verifies the full test and checks suite is
   green locally, squash-merges onto `main` and pushes — then asks what's next.
 
+- The `/cleanup` skill (`.claude/skills/cleanup/SKILL.md`) is end-of-session
+  housekeeping: inventories stray files, this session's worktree, branches and
+  background processes, removes them after one batch confirmation once the
+  work has landed on `main`, and archives the session. `/cleanup all` widens
+  to a repo-wide sweep for leftovers from other finished sessions, skipping
+  anything an active session still claims.
+
 - Steps when tackling a new task:
   - Open a new branch, off the latest `main`. Look for updates to AGENTS.md.
   - Do a quick analisys of the problem, ask the user a short round of pointed questions to pin down scope and assumptions, then record the plan — as a comment on the CaBo card when one exists, otherwise presented directly to the developer — before implementing anything.
