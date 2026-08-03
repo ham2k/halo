@@ -283,7 +283,11 @@ void main() {
       // in on the next poll, up to a slow interval away.
       rig.frequency = '7123450';
       rig.mode = 'LSB';
-      await _settleUntil(() => cat.stateFor(node.uuid).vfo.freqKHz != 145000,
+      // Settle on BOTH fields: the daemon answers frequency and mode as
+      // separate writes, so waiting on frequency alone races the mode
+      // answer still in flight and asserts against a stale reading.
+      await _settleUntil(
+          () => cat.stateFor(node.uuid).vfo == const VfoReading(freqKHz: 7123.45, mode: 'LSB'),
           tries: 2 * kPollSlow.inMilliseconds ~/ 10);
       expect(cat.stateFor(node.uuid).vfo, const VfoReading(freqKHz: 7123.45, mode: 'LSB'));
 
@@ -315,7 +319,11 @@ void main() {
       // in on the next poll.
       rig.frequency = '7123450';
       rig.mode = 'LSB-D';
-      await _settleUntil(() => cat.stateFor(node.uuid).vfo.freqKHz != 14070,
+      // Settle on BOTH fields — same in-flight-mode race as the rigctld
+      // test above; flrig's one-outstanding queue makes the gap between
+      // the two answers even wider.
+      await _settleUntil(
+          () => cat.stateFor(node.uuid).vfo == const VfoReading(freqKHz: 7123.45, mode: 'DATA-LSB'),
           tries: 2 * kPollSlow.inMilliseconds ~/ 10);
       expect(cat.stateFor(node.uuid).vfo, const VfoReading(freqKHz: 7123.45, mode: 'DATA-LSB'));
 
