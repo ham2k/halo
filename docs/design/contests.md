@@ -470,7 +470,7 @@ in a file the operator submits.
 
 | Piece | Why not yet |
 |---|---|
-| One export **per reference** | **Built elsewhere, and not by the core.** When this was written POTA and SOTA registered no `export` hook at all, so the two-pass collection would have been an interface with no caller. The activities work (ham2k/app-halo-dist#398) then gave them one: `sdk/src/activityExports.ts` offers one ADIF per activated reference by encoding the reference into the `exportType` (`pota-adif:US-1234`) and declaring `refType` for the QSO slicing. No core change was needed — `exportType` round-trips verbatim and the panel keys selections by `hookKey:exportType`. Whether the core should ALSO grow a per-reference axis is now a genuinely open question rather than a deferral; nothing needs it. |
+| One export **per reference** | **Built elsewhere, and not by the core.** When this was written POTA and SOTA registered no `export` hook at all, so the two-pass collection would have been an interface with no caller. The activities work (ham2k/halo-dist#398) then gave them one: `sdk/src/activityExports.ts` offers one ADIF per activated reference by encoding the reference into the `exportType` (`pota-adif:US-1234`) and declaring `refType` for the QSO slicing. No core change was needed — `exportType` round-trips verbatim and the panel keys selections by `hookKey:exportType`. Whether the core should ALSO grow a per-reference axis is now a genuinely open question rather than a deferral; nothing needs it. |
 | `includeAllSegments` | Only means anything once an export is per-reference. |
 | `includeOtherRefHandlers` | Same, and honouring it changes ADIF output users have already submitted (see the implementation note below). |
 

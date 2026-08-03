@@ -1,7 +1,7 @@
 // Copyright ©️ 2026 Sebastian Delmont <sd@ham2k.com>
 // SPDX-License-Identifier: MPL-2.0
 
-// Shorebird Dart-patch support for halo-ops (ham2k/app-halo-dist).
+// Shorebird Dart-patch support for halo-ops (ham2k/halo-dist).
 //
 // A patch may carry only pure-Dart (and asset) changes (docs/releases.md §4.2);
 // anything touching native platform code, plugins, or the dependency manifest

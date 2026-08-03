@@ -1,7 +1,7 @@
 # Porting app-polo's activity extensions
 
 Status: **every activity is ported** (A0–A5). Tracking issue:
-ham2k/app-halo-dist#148.
+ham2k/halo-dist#148.
 
 Companion to [contests.md](contests.md), which owns the twelve contest
 extensions and, per the decision in §5 below, also owns `fd`, `wfd` and
@@ -97,7 +97,7 @@ operation to that one activation ref and delegates to the `adif` extension in
 the runtime, so each file is byte-identical to a normal export of that narrowed
 operation.
 
-This is the multiplicity ham2k/app-halo-dist#389 left unbuilt for want of a
+This is the multiplicity ham2k/halo-dist#389 left unbuilt for want of a
 producer; it consumes #389 rather than changing it, declaring `refType` so the
 core slices to the segments where the activity was actually running.
 

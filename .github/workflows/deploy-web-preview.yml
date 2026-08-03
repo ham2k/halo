@@ -9,7 +9,7 @@
 # https://<name>.halo-dev-ham2k-net.pages.dev also works). Re-pushing a tag
 # with the same name replaces that preview.
 #
-#   git tag web-preview-my-feature && git push app-halo-dist web-preview-my-feature
+#   git tag web-preview-my-feature && git push halo-dist web-preview-my-feature
 #
 # Tag pushes run the workflow file from the tagged commit, so tags only
 # trigger on commits that already contain this file (branches based on dist

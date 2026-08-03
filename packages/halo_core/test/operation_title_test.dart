@@ -1,7 +1,7 @@
 // Copyright ©️ 2026 Sebastian Delmont <sd@ham2k.com>
 // SPDX-License-Identifier: MPL-2.0
 //
-// mergeOperationTitleSuggestions (ham2k/app-halo-dist#174): the pure
+// mergeOperationTitleSuggestions (ham2k/halo-dist#174): the pure
 // grouping/join step between per-ref `suggestOperationTitle` hook results
 // and the UI's final "for X at Y" sentence assembly.
 

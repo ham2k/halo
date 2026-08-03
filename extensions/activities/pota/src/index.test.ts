@@ -146,7 +146,7 @@ test("activationDefaultPrefix always uses our own station's country", () => {
   assert.equal(activationDefaultPrefix({}), "US")
 })
 
-test("suggestOperationTitleForPota suggests the park reference as 'at' and the park's decorated name as subtitle (ham2k/app-halo-dist#174)", () => {
+test("suggestOperationTitleForPota suggests the park reference as 'at' and the park's decorated name as subtitle (ham2k/halo-dist#174)", () => {
   const suggestion = suggestOperationTitleForPota(
     { type: "potaActivation", ref: "US-0757", name: "Golden Gate NRA" },
     "potaActivation",

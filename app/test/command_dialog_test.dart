@@ -1,7 +1,7 @@
 // Copyright ©️ 2026 Sebastian Delmont <sd@ham2k.com>
 // SPDX-License-Identifier: MPL-2.0
 //
-// The ⌘K command dialog (ham2k/app-halo-dist#55). What these pin down is the
+// The ⌘K command dialog (ham2k/halo-dist#55). What these pin down is the
 // palette's own behavior — the typing/interpretation rules it inherits from
 // `CommandEngine` are covered by home_quick_lookup_test.dart, which runs the
 // same engine.

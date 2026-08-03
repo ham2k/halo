@@ -128,7 +128,7 @@ void main() {
     // about it — so the notice it used to raise was pure alarm. These tests are
     // about the NARROWNESS of that exemption: everything else still reports.
 
-    /// The real shape, from the stack recorded in ham2k/app-halo-dist#271.
+    /// The real shape, from the stack recorded in ham2k/halo-dist#271.
     FlutterErrorDetails focusTraversalNull({
       Object? error,
       String? context = 'while dispatching notifications for WidgetsBindingObserver.didChangeViewFocus',

@@ -109,7 +109,7 @@ near-invisibly painted so its events route through Flutter — that wash is
 load-bearing, see `ResizableSplitView._platformViewHitWashAlpha`.
 
 **PaneSafeArea holds in both styles, and also carries real device insets
-(ham2k/app-halo-dist#205).** Content that needs interactivity near the
+(ham2k/halo-dist#205).** Content that needs interactivity near the
 divider edge reads `PaneSafeArea.leftOf(context)` and insets itself — rows
 and backgrounds still render edge-to-edge, only their content shifts.
 Surfaces advises the grab-strip width; solid advises 0 (nothing overlays

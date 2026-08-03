@@ -536,7 +536,7 @@ class LoggingControls extends StatefulWidget {
   final List<String>? enabledBands;
   final List<String>? enabledModes;
 
-  /// Spotting control (ham2k/app-halo-dist#10) — null (either) disables the
+  /// Spotting control (ham2k/halo-dist#10) — null (either) disables the
   /// control's icon-row/send-button UI, matching how `radioService: null`
   /// degrades the Radio control elsewhere in this widget.
   final SuggestSpotSources? suggestSpotSources;
@@ -558,7 +558,7 @@ class LoggingControls extends StatefulWidget {
   /// would carry neither a band nor a frequency (HALO-24) — see [_log].
   final String? bandOrFreqRequiredLabel;
 
-  /// Logging view "..." menu toggles (ham2k/app-halo-dist#1) — gate the
+  /// Logging view "..." menu toggles (ham2k/halo-dist#1) — gate the
   /// Sent/Rcvd RST fields and add optional inline State/Grid fields. The
   /// underlying data (State/Grid) is always editable via the "More" pane
   /// regardless of these flags; they only control the primary controls'
@@ -1442,7 +1442,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   bool _pendingDelete = false;
 
   /// Whether the form is a read-only view: a staged delete, or an
-  /// already-deleted QSO awaiting restore (ham2k/app-halo-dist#59). Every
+  /// already-deleted QSO awaiting restore (ham2k/halo-dist#59). Every
   /// input path — fields, save, keyboard shortcuts — must consult this,
   /// not `_pendingDelete` alone.
   bool get _fieldsLocked => _pendingDelete || (widget.editingQso?.deleted ?? false);
@@ -1465,7 +1465,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   bool _gridTouched = false;
   bool _stateTouched = false;
 
-  /// Spotting control state (ham2k/app-halo-dist#10) — lives here, not in
+  /// Spotting control state (ham2k/halo-dist#10) — lives here, not in
   /// `expandedBuilder`'s closure, since that's a plain render function
   /// re-invoked on every build, not a separately-stateful widget.
   final _spotCommentController = TextEditingController();
@@ -3959,13 +3959,13 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   /// started for the button to offer spotting it at all. This is deliberately
   /// NOT part of `SpotEligibility` — no spots source today needs a different
   /// tolerance (POTA is the only `postOtherSpot` implementation; SOTA has no
-  /// posting support yet, see DESIGN notes on ham2k/app-halo-dist#10), so
+  /// posting support yet, see DESIGN notes on ham2k/halo-dist#10), so
   /// making it hook-reported would be speculative. Revisit if a second
   /// source ever needs its own window.
   static const Duration _spotStaleAfter = Duration(minutes: 5);
 
   /// Resolves the Spotting control's summary/button text and enabled state
-  /// per the issue's exact state machine (ham2k/app-halo-dist#10): no VFO
+  /// per the issue's exact state machine (ham2k/halo-dist#10): no VFO
   /// frequency disables self-spotting; editing a QSO switches to spotting
   /// that QSO's station instead, only while it's recent enough (5min).
   /// `summary` (the collapsed pill) is always one of the two short, fixed
@@ -4134,7 +4134,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   /// QSO's refs to resolve a park/summit grid, but the lookup is otherwise
   /// keyed and cached by callsign alone — so a ref added after the call would
   /// never reach the guess. Invalidate the cache entry for the active call and
-  /// re-schedule (ham2k/app-halo-dist#185).
+  /// re-schedule (ham2k/halo-dist#185).
   void _relookupForRefsChanged() {
     if (_populating || widget.lookup == null) return;
     final activeCall = _callAtCursor;
@@ -5531,7 +5531,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   /// the fields are the record's only display and can't be repopulated
   /// without reselecting it. When editing an existing QSO it discards any
   /// unsaved changes and ends the editing session entirely
-  /// (ham2k/app-halo-dist#199), unlike Revert, which discards changes and
+  /// (ham2k/halo-dist#199), unlike Revert, which discards changes and
   /// stays in edit mode. When composing a new QSO it goes through the wipe
   /// button's path, so the 5-second undo offer applies to Esc too.
   void _handleEscape() {
@@ -5733,7 +5733,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
       }
     } else if (editingQso.deleted) {
       // An already-deleted QSO (selected via the "show deleted QSOs"
-      // toggle) — one tap restores it immediately (ham2k/app-halo-dist#59);
+      // toggle) — one tap restores it immediately (ham2k/halo-dist#59);
       // no staged-until-save step, since restoring isn't destructive.
       icon = resolveIconName('delete-restore');
       actionLabel = widget.restoreLabel ?? 'Restore';
@@ -6098,7 +6098,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     final editing = widget.editingQso != null;
     // Viewing an already-deleted QSO: fields are read-only, same as a
     // staged delete — the only actions are restoring it (the second
-    // button) or selecting away (ham2k/app-halo-dist#59).
+    // button) or selecting away (ham2k/halo-dist#59).
     final deletedQso = widget.editingQso?.deleted ?? false;
     final fieldsLocked = _fieldsLocked;
     final accentPoloColors = editing
@@ -6168,7 +6168,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
                 // row itself animates the border→pills gap, so any padding
                 // here would show as bare panel background above the
                 // panel's dark area. Left/right add the real device inset
-                // (ham2k/app-halo-dist#205) — SecondaryControlRow's own
+                // (ham2k/halo-dist#205) — SecondaryControlRow's own
                 // `horizontalBleed` stays keyed to the fixed
                 // `_secondaryPanelHorizontalInset` only, so its expanded
                 // panel still stops short of the physical edge by that
@@ -6836,7 +6836,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   }
 
   /// The read-only warning shown in place of the info area for a staged-delete
-  /// or already-deleted QSO (ham2k/app-halo-dist#59).
+  /// or already-deleted QSO (ham2k/halo-dist#59).
   Widget _buildLockedWarning(ThemeData theme, bool deletedQso) {
     return Row(
       children: [

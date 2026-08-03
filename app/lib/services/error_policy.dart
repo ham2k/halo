@@ -109,7 +109,7 @@ class ErrorPolicy {
   static final List<ErrorRule> rules = [
     ErrorRule(
       id: 'web-focus-traversal-null',
-      reason: 'Flutter web focus-traversal null on view-focus change (ham2k/app-halo-dist#271); '
+      reason: 'Flutter web focus-traversal null on view-focus change (ham2k/halo-dist#271); '
           'later ones are silent',
       disposition: ErrorDisposition.ignore,
       logOncePerSession: true,
@@ -136,7 +136,7 @@ class ErrorPolicy {
     ),
   ];
 
-  /// Flutter's own focus-traversal crash on web (ham2k/app-halo-dist#271),
+  /// Flutter's own focus-traversal crash on web (ham2k/halo-dist#271),
   /// which this app drops on the floor.
   ///
   /// `ReadingOrderTraversalPolicy._pickNext` force-unwraps a directionality that

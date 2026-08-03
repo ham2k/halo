@@ -1,7 +1,7 @@
 // Copyright ©️ 2026 Sebastian Delmont <sd@ham2k.com>
 // SPDX-License-Identifier: MPL-2.0
 //
-// Telemetry consent gating (ham2k/app-halo-dist#255): without "Share app
+// Telemetry consent gating (ham2k/halo-dist#255): without "Share app
 // usage data" nothing may reach the MetricsService, because that consent
 // check is the app's entire privacy guarantee for analytics. The concrete
 // analytics backend lives in the private distribution layer and has its

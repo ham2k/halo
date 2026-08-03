@@ -60,7 +60,7 @@ test("summitGlyphFromDetails returns an empty string when there's no points suff
   assert.equal(summitGlyphFromDetails(""), "")
 })
 
-test("suggestOperationTitleForSota suggests the summit reference as 'at' and the summit's decorated name as subtitle (ham2k/app-halo-dist#174)", () => {
+test("suggestOperationTitleForSota suggests the summit reference as 'at' and the summit's decorated name as subtitle (ham2k/halo-dist#174)", () => {
   const suggestion = suggestOperationTitleForSota(
     { type: "sotaActivation", ref: "W6/SD-123", name: "Mount Example" },
     "sotaActivation",

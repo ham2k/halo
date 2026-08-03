@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: MPL-2.0
 //
 // PaneSafeArea.root wraps Home's body with the device's real safe-area
-// insets (ham2k/app-halo-dist#205) — but a widget built directly inside
+// insets (ham2k/halo-dist#205) — but a widget built directly inside
 // _HomeViewState.build (like the new-operation FAB's Positioned) captures
 // that method's own BuildContext, which sits ABOVE the PaneSafeArea it just
 // established, not below it. Reading PaneSafeArea.xxxOf(context) with that

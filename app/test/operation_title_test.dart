@@ -1,7 +1,7 @@
 // Copyright ©️ 2026 Sebastian Delmont <sd@ham2k.com>
 // SPDX-License-Identifier: MPL-2.0
 //
-// displayTitleFor/displaySubtitleFor (ham2k/app-halo-dist#174): the final,
+// displayTitleFor/displaySubtitleFor (ham2k/halo-dist#174): the final,
 // localized "for X at Y" assembly step, layered over the pure
 // mergeOperationTitleSuggestions grouping tested in halo_core.
 

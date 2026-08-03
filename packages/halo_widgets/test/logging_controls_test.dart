@@ -1143,7 +1143,7 @@ void main() {
     expect(enqueued.map((q) => q.uuid).toList(), [existingQso.uuid, k1abc.uuid]);
   });
 
-  testWidgets('constructed already editing a QSO enqueues it for a background lookup (ham2k/app-halo-dist#279 follow-up)',
+  testWidgets('constructed already editing a QSO enqueues it for a background lookup (ham2k/halo-dist#279 follow-up)',
       (tester) async {
     final existingQso = (await tester.runAsync(() => qsos.add(operation.uuid, {
           'their': {'call': 'W1AW'},
@@ -5300,7 +5300,7 @@ void main() {
     expect(dispatched, ['devOnboard']);
   });
 
-  testWidgets('SPOTLAST resolves to the last real QSO, skipping trailing event markers (ham2k/app-halo-dist#10)', (tester) async {
+  testWidgets('SPOTLAST resolves to the last real QSO, skipping trailing event markers (ham2k/halo-dist#10)', (tester) async {
     // `qsos` is oldest-first (matches watchForOperation's ORDER BY
     // startAtMillis) — the event marker logged after both real QSOs must
     // NOT be picked just because it's last in the list.

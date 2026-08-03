@@ -15,7 +15,7 @@ import 'dart:io';
 
 import 'package:halo_build_tools/halo_build_tools.dart';
 
-const _remote = 'app-halo-dist';
+const _remote = 'halo-dist';
 
 Future<void> main(List<String> args) async {
   final rest = [...args];
@@ -230,7 +230,7 @@ Future<void> _release(List<String> args, {required _Out out, required bool json}
 /// The actual release cut, in Dart (git shelled out): refuse to clobber an
 /// existing tag, write the new build into version.dart, commit ONLY that file
 /// (else tag HEAD as-is), annotated-tag it, and — only when the branch tracks
-/// app-halo-dist — push HEAD to its upstream branch plus the tag.
+/// halo-dist — push HEAD to its upstream branch plus the tag.
 Future<void> _cut({
   required _Out out,
   required String root,
@@ -839,7 +839,7 @@ Future<String> _git(List<String> args, {String? cwd}) async {
 Future<int> _gitExit(List<String> args, String root) async =>
     (await Process.run('git', args, workingDirectory: root)).exitCode;
 
-/// The current branch's upstream ref (e.g. `app-halo-dist/dist`), or null when
+/// The current branch's upstream ref (e.g. `halo-dist/dist`), or null when
 /// the branch has no upstream.
 Future<String?> _upstream(String root) async {
   final r = await Process.run(

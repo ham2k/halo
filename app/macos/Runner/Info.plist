@@ -21,7 +21,7 @@
 				<string>com.ham2k.logger</string>
 				<string>com.ham2k.logger.$(HALO_EDITION)</string>
 				<string>com.ham2k.logger.auth</string>
-				<!-- SOTA's per-edition OAuth client (ham2k/app-halo-dist#253) —
+				<!-- SOTA's per-edition OAuth client (ham2k/halo-dist#253) —
 				     must match the redirect URL registered with THIS edition's
 				     Keycloak client. -->
 				<string>com.ham2k.logger.$(HALO_EDITION).auth</string>

@@ -38,7 +38,7 @@ void main() {
     final settings = SettingsService(await SharedPreferences.getInstance());
     final db = HaLoDatabase(NativeDatabase.memory());
     // Selecting a QSO for editing now enqueues it for a background lookup
-    // (ham2k/app-halo-dist#279's follow-up) — the default LookupQueueService
+    // (ham2k/halo-dist#279's follow-up) — the default LookupQueueService
     // waits (real time) for the extension runtime to report ready, which
     // never happens in these widget tests and leaves a timer pending past
     // teardown. A no-op lookup with no wait budget keeps the queue instant
@@ -181,7 +181,7 @@ void main() {
 }
 
 /// Selecting a QSO for editing now enqueues it for a background lookup
-/// (ham2k/app-halo-dist#279's follow-up). Once that (stubbed, instant)
+/// (ham2k/halo-dist#279's follow-up). Once that (stubbed, instant)
 /// lookup completes, `StatusBarService.setProgress` schedules a 5s
 /// auto-clear timer for the finished progress item — drain it before the
 /// test ends, or the framework flags it as a leaked pending timer.

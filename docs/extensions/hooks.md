@@ -111,7 +111,7 @@ function with its own unit test suite
 `extensions/`) — this is the highest-defect-risk logic in the feature, so it
 is tested in isolation from the hook/bridge plumbing.
 
-## ✅ `spots` — spot sources and spotting (ham2k/app-halo-dist#9, #10)
+## ✅ `spots` — spot sources and spotting (ham2k/halo-dist#9, #10)
 
 ```ts
 interface SpotsHook {
@@ -205,7 +205,7 @@ interface RefHandlerHook {
 }
 // Ref: {type, ref?, name?, label?, shortLabel?, grid?, location?, program?, ...}
 // TitleSuggestion: {title?, for?, at?, subtitle?, priority?} — a fragment of
-// the operation's title/subtitle sentence (ham2k/app-halo-dist#174). Only
+// the operation's title/subtitle sentence (ham2k/halo-dist#174). Only
 // return one for the ref type that means "this operation is happening AT/FOR
 // this reference" (e.g. an activation, not a hunted ref) — a hunting ref
 // contributes nothing here. `priority` breaks ties when multiple refs supply
@@ -495,13 +495,13 @@ needs the existing log: SEED reads it through `ctx.getQsos`, using the
 action field — the hook only parses "EXP <key-or-alias>", and the app
 resolves the token against `app/experiments.yaml` and reports the outcome,
 since the catalog and the stored per-experiment state both live app-side),
-`annotation-commands` (ham2k/app-halo-dist#64, ported from
+`annotation-commands` (ham2k/halo-dist#64, ported from
 app-polo's AnnotationCommands: NOTE/TODO `<text>`, SOLAR, and WEATHER each
 add an annotation row to the log — an event pseudo-QSO, `band: 'event'`,
 via `addQso`, rendered as a yellow row by the QSO list. SOLAR fetches
 hamqsl.com's solar indices and WEATHER fetches Open-Meteo conditions for
 the operation's grid square — as soon as the command is recognized
-(ham2k/app-halo-dist#189), not only at `execute`: `interpret` kicks the
+(ham2k/halo-dist#189), not only at `execute`: `interpret` kicks the
 fetch off in the background and returns a placeholder `describe`
 immediately, then pushes the resolved reading via `host.updateInterpretation`
 once it lands, so it shows in the UI before the user presses Enter. One
@@ -698,7 +698,7 @@ description and field labels this way.
 build edition, a function `(args, ctx) => OAuth2Config` called the same way
 any other hook method is (`ctx.edition` is `'dev' | 'next' | 'prod'` — see
 `HookContext.edition` below). SOTA registers a separate Keycloak client per
-edition (ham2k/app-halo-dist#253 — each edition is its own app identity,
+edition (ham2k/halo-dist#253 — each edition is its own app identity,
 `com.ham2k.logger.dev`/`.next`/`.prod`, each needing its own redirect URL
 registered with SOTA) rather than sharing one client across builds.
 

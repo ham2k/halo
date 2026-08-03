@@ -471,7 +471,7 @@ void main() {
     },
   );
 
-  group('annotation rows (note/todo/solar/weather events, ham2k/app-halo-dist#64)', () {
+  group('annotation rows (note/todo/solar/weather events, ham2k/halo-dist#64)', () {
     // The event pseudo-QSO shape the annotation-commands extension emits
     // through its `addQso` action.
     Future<Qso> addAnnotation(

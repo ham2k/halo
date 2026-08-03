@@ -24,11 +24,11 @@ This is a multi-platform app for Amateur Radio Logging, called "Ham2K Logger" (o
 
 - **Tasks, bugs and ideas live in [CaBo](https://cabo.ham2k.com/halo), not GitHub Issues.** Cards are referenced as `HALO-24` and deep-link as `https://cabo.ham2k.com/halo/c/24`. Read and write them through the `cabo` MCP server — `list_projects`, `search_cards`, `get_board`, `get_card`, `create_card`, `update_card`, `move_card`, `add_comment`, `get_activity`. Leave a comment on the card whenever the state a human would want to see changes: the PR link once the branch exists, findings that redefine the task, and the merge. GitHub still owns **pull requests**, code review and CI — only issue tracking moved.
 
-- Agents should always work on a worktree, with a branch off of the `dist` branch on the `app-halo-dist` origin (that branch is usually available as `dist` locally too, tracking `app-halo-dist/dist`). As new tasks come in, use new branches and rename the worktree to keep the name relevant.
+- Agents should always work on a worktree, with a branch off of the `dist` branch on the `halo-dist` origin (that branch is usually available as `dist` locally too, tracking `halo-dist/dist`). As new tasks come in, use new branches and rename the worktree to keep the name relevant.
 
-- **`app-halo-dist/dist` is the only base.** Never `main` or `main-public`: both are stale local-only branches, absent from every remote, and every commit on them is already in `dist` under a different SHA. Do not trust the branch a session hands you — a worktree created for you may already be on the wrong base, and nothing about it looks unusual. Check before editing:
-  `git fetch app-halo-dist dist && git rev-list --count $(git merge-base HEAD app-halo-dist/dist)..app-halo-dist/dist`
-  A large number means the branch was cut from the wrong place; re-cut it with `git checkout -b <task-name> app-halo-dist/dist` rather than rebasing. `.claude/hooks/base-branch-guard.sh` enforces this and will block edits, but the check is yours to make first.
+- **`halo-dist/dist` is the only base.** Never `main` or `main-public`: both are stale local-only branches, absent from every remote, and every commit on them is already in `dist` under a different SHA. Do not trust the branch a session hands you — a worktree created for you may already be on the wrong base, and nothing about it looks unusual. Check before editing:
+  `git fetch halo-dist dist && git rev-list --count $(git merge-base HEAD halo-dist/dist)..halo-dist/dist`
+  A large number means the branch was cut from the wrong place; re-cut it with `git checkout -b <task-name> halo-dist/dist` rather than rebasing. `.claude/hooks/base-branch-guard.sh` enforces this and will block edits, but the check is yours to make first.
 
 - Keep `dist` updated. Rebase your branches on top of the latest `dist` before submitting or updating a PR.
 
@@ -67,11 +67,11 @@ This is a multi-platform app for Amateur Radio Logging, called "Ham2K Logger" (o
 
 - When starting the app for developer checks, use `--dart-define=ONBOARD_AS="N0DEV,pota"` to provide a default setup and avoid the onboarding dialog (unless working on an onboarding feature).
 
-- We do most work on the `app-halo-dist` repository, where the `dist` branch is. We use "squash-and-merge" to merge PRs. Any commits that include changes to the `app_dist` folder, or other private and distribution-related parts of the app, must be split into separate commits in `app-halo-dist`. The non `app_dist` changes are then cherry-picked to `main` in the public repo `app-halo` (the `origin` remote).
+- We do most work on the `halo-dist` repository, where the `dist` branch is. We use "squash-and-merge" to merge PRs. Any commits that include changes to the `app_dist` folder, or other private and distribution-related parts of the app, must be split into separate commits in `halo-dist`. The non `app_dist` changes are then cherry-picked to `main` in the public repo `app-halo` (the `origin` remote).
 
-- New branches should be pushed to the `app-halo-dist` origin, never to regular `origin`.
+- New branches should be pushed to the `halo-dist` origin, never to regular `origin`.
 
-- Branches for CaBo cards should be named `halo-<number>-<short-description>` (e.g. `halo-24-cabo-tracker` for `HALO-24`) and should be based off the `dist` branch of the `app-halo-dist` repository (available as `dist` locally too). Keep the `halo-` prefix: CaBo numbers restart at 1, so a bare `24-…` is ambiguous against the older branches named after GitHub Issue numbers.
+- Branches for CaBo cards should be named `halo-<number>-<short-description>` (e.g. `halo-24-cabo-tracker` for `HALO-24`) and should be based off the `dist` branch of the `halo-dist` repository (available as `dist` locally too). Keep the `halo-` prefix: CaBo numbers restart at 1, so a bare `24-…` is ambiguous against the older branches named after GitHub Issue numbers.
 
 - PRs should cite the CaBo card ref and link to it. GitHub's "closes"/"fixes"/"resolves" keywords do **not** reach CaBo, so nothing auto-closes a card — `/merge` comments on it and moves it to the board's done column instead.
 

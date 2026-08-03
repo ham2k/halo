@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: MPL-2.0
 //
 // End-to-end verification of the annotation commands (annotation-commands
-// extension, ham2k/app-halo-dist#64): NOTE/TODO add note/todo event
+// extension, ham2k/halo-dist#64): NOTE/TODO add note/todo event
 // pseudo-QSOs to the log via `addQso`, SOLAR/WEATHER do the same with
 // fetched conditions. Since issue #189, SOLAR/WEATHER kick off their fetch
 // in the background on ANY recognized interpret() call, not just execute —

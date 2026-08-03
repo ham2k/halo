@@ -1,6 +1,6 @@
 # Telemetry (MetricsBackend)
 
-Event tracking for HaLo (ham2k/app-halo-dist#255), mirroring app-polo's
+Event tracking for HaLo (ham2k/halo-dist#255), mirroring app-polo's
 MetricsBackend usage so both apps report a comparable event vocabulary.
 
 ## Privacy model

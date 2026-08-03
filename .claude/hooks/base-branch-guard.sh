@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Guard against working from a branch that was never based on app-halo-dist/dist.
+# Guard against working from a branch that was never based on halo-dist/dist.
 #
 # Why this exists: a session was handed a worktree whose branch had been cut from
 # the local `main` — a branch that exists on NO remote, was 353 commits behind
@@ -11,7 +11,7 @@
 #   session  - SessionStart. Fetches (network), then reports. Never blocks; a
 #              session that cannot reach the remote must still be usable.
 #   guard    - PreToolUse on Edit|Write. NO network — compares against whatever
-#              refs/remotes/app-halo-dist/dist the fetch above already left
+#              refs/remotes/halo-dist/dist the fetch above already left
 #              behind. Runs before every single edit, so it has to be cheap.
 #
 # This used to ALSO flag a branch whose local `main`/`main-public` was an
@@ -35,7 +35,7 @@
 set -uo pipefail
 
 MODE="${1:-session}"
-REMOTE="app-halo-dist"
+REMOTE="halo-dist"
 BASE="dist"
 # Generous on purpose: a long session legitimately drifts a few dozen commits
 # behind a busy `dist`. 353 is not drift. This separates "stale" from "wrong".

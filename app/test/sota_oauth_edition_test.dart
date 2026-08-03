@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: MPL-2.0
 //
 // SOTA registers a separate OAuth client per build edition with SOTA's
-// Keycloak (ham2k/app-halo-dist#253) — its account hook's `oauth2` is a
+// Keycloak (ham2k/halo-dist#253) — its account hook's `oauth2` is a
 // function of `ctx.edition`, not a plain object, so the kernel's
 // `account`/`getDefinition` dispatch has to call it (see kernel.ts) rather
 // than read it as a static field. This exercises the whole real path: Dart's

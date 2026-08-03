@@ -32,7 +32,7 @@ a session with a repeating error must not bury the operator's real notices.
 
 | rule | disposition | why |
 | --- | --- | --- |
-| `web-focus-traversal-null` | `ignore` | An unsound `!` in Flutter's own `ReadingOrderTraversalPolicy`, thrown on every browser focus change on web (ham2k/app-halo-dist#271). |
+| `web-focus-traversal-null` | `ignore` | An unsound `!` in Flutter's own `ReadingOrderTraversalPolicy`, thrown on every browser focus change on web (ham2k/halo-dist#271). |
 | `renderflex-overflow` | `logOnly` | A debug-only layout assertion; release builds clip silently and never throw it. Flutter already stripes the offending widget on screen. |
 | `set-state-during-build` | `logOnly` | A build-ordering bug of ours, invisible to the operator: the frame renders stale, the next one is correct. Repeats on every rebuild, so uploading it would bury real crashes. |
 | `focus-node-cannot-request-focus` | `logOnly` | `EditableText` losing a race with its own teardown — a field disposed or disabled in the same frame something asks it to focus. The framework recovers; nothing is lost but a caret. |

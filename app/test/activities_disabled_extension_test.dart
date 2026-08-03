@@ -61,7 +61,7 @@ void main() {
     final iconFinder = find.descendant(of: leadingFinder, matching: find.byIcon(Icons.question_mark));
     expect(iconFinder, findsOneWidget);
     // Same 16px the pre-shared-helper inline markup used — activityRefIcon
-    // must default to it, not the ambient IconTheme size (ham2k/app-halo-dist#261).
+    // must default to it, not the ambient IconTheme size (ham2k/halo-dist#261).
     expect(tester.widget<Icon>(iconFinder).size, 16);
 
     // Verify tile background color is from the errorContainer (pale red)

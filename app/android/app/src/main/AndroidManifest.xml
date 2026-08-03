@@ -37,7 +37,7 @@
                 <data android:scheme="com.ham2k.logger.dev"/>
                 <data android:scheme="com.ham2k.logger.next"/>
                 <data android:scheme="com.ham2k.logger.auth"/>
-                <!-- SOTA's per-edition OAuth clients (ham2k/app-halo-dist#253) —
+                <!-- SOTA's per-edition OAuth clients (ham2k/halo-dist#253) —
                      the manifest isn't flavor-specific here, so every build
                      carries every edition's scheme, same as .dev/.next above. -->
                 <data android:scheme="com.ham2k.logger.prod.auth"/>

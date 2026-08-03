@@ -3,7 +3,7 @@
 //
 // Reactive QSO list, styled after app-polo's log rows: Roboto Mono data
 // columns, hairline dividers, newest QSO at the bottom edge next to the
-// logging panel. Row layout follows ham2k/app-halo-dist#2's field list and
+// logging panel. Row layout follows ham2k/halo-dist#2's field list and
 // order: Number (optional) | Time | Frequency (or Band, if no frequency) |
 // Mode (only when the operation uses more than one) | Callsign |
 // Emoji(s)/Name | References | RST.
@@ -83,7 +83,7 @@ Map<String, int> _refCountsByType(Qso qso, List<Map<String, dynamic>> controls) 
 
 /// Which optional columns a row actually shows.
 ///
-/// Widths (#354, ham2k/app-halo-dist#186) are list-wide and content-derived —
+/// Widths (#354, ham2k/halo-dist#186) are list-wide and content-derived —
 /// the longest callsign, the longest freq — so that every row lines up. What
 /// none of them consult is the width the list is actually given: in a narrow
 /// split, or at a large font scale, their sum can exceed the row. Name's
@@ -120,7 +120,7 @@ class _ColumnPlan {
 /// its state instead of going blank. Null when neither is available. Shared
 /// by the list-wide column-width precompute and the per-row builder in
 /// `_QsoListState.build`, so they can never disagree about what a QSO shows
-/// there (ham2k/app-halo-dist#186).
+/// there (ham2k/halo-dist#186).
 ({String text, bool isFlag, bool guessed})? _dxStateContentFor(Qso qso, String? ourEntityPrefix) {
   final theirEntityPrefix = qso.theirEntityPrefix;
   final isDX = theirEntityPrefix != null && ourEntityPrefix != null && theirEntityPrefix != ourEntityPrefix;
@@ -253,11 +253,11 @@ class QsoList extends StatefulWidget {
   /// its time. Falls back to [onSelect] when omitted.
   final void Function(Qso qso)? onSelectEvent;
 
-  /// Whether to show the RST column (ham2k/app-halo-dist#1's logging-view
+  /// Whether to show the RST column (ham2k/halo-dist#1's logging-view
   /// menu) — the underlying data always exists, this only hides the column.
   final bool showRSTFields;
 
-  /// Whether to show the Number column (ham2k/app-halo-dist#2's logging-view
+  /// Whether to show the Number column (ham2k/halo-dist#2's logging-view
   /// menu) — the underlying numbering always exists, this only hides it.
   final bool showQsoNumbers;
 
@@ -626,7 +626,7 @@ class _QsoListState extends State<QsoList> {
     // Column widths are computed once for the whole list so every row lines
     // up, per the issue: "wide enough to fit the largest number"/"longest
     // callsign in all qsos" — DX/State and the Name column right after it
-    // are no exception (ham2k/app-halo-dist#186): a QSO with neither a flag
+    // are no exception (ham2k/halo-dist#186): a QSO with neither a flag
     // nor a state must still reserve that column's width, or Name starts at
     // a different x position on every row depending on its neighbors.
     final numberWidth = showQsoNumbers
@@ -714,7 +714,7 @@ class _QsoListState extends State<QsoList> {
       if (qso.isEvent) {
         // Operation segment markers keep their centered-label treatment;
         // every other event kind (note/todo/solar/weather — the annotation
-        // commands, ham2k/app-halo-dist#64) renders as a yellow annotation
+        // commands, ham2k/halo-dist#64) renders as a yellow annotation
         // row in the timeline, following app-polo's QSOList dispatch.
         final kind = qso.eventKind;
         if (kind == 'start' || kind == 'break' || kind == 'end') {
@@ -888,7 +888,7 @@ class _QsoListState extends State<QsoList> {
                   // Fixed-width, like callsign/number above — reserved
                   // whenever ANY row in the list has a flag/state to show,
                   // even on rows with neither, so Name always starts at the
-                  // same x position (ham2k/app-halo-dist#186).
+                  // same x position (ham2k/halo-dist#186).
                   if (plan.showDxState) ...[
                     SizedBox(width: dxStateWidth, child: dxStateField),
                     const SizedBox(width: _columnGap),
@@ -914,7 +914,7 @@ class _QsoListState extends State<QsoList> {
                           // An unrecognized type (its extension isn't
                           // installed/loaded right now) gets a small
                           // pale-red question-mark marker instead of the
-                          // usual themed icon (ham2k/app-halo-dist#261) —
+                          // usual themed icon (ham2k/halo-dist#261) —
                           // via the shared activityRefIcon, sized down for
                           // this compact inline usage; the known-type icon
                           // stays bespoke, using the row's neutral
@@ -1010,7 +1010,7 @@ class _QsoListState extends State<QsoList> {
 
     // What each optional column costs, INCLUDING the [_columnGap] it brings
     // with it, and whether it has earned its place on content at all (#354,
-    // ham2k/app-halo-dist#186 decide that part).
+    // ham2k/halo-dist#186 decide that part).
     //
     // ORDER IS THE PRIORITY: the first entry is the last column given up.
     // It is a list, not the argument order of a constructor, precisely so
@@ -1419,7 +1419,7 @@ class EventRow extends StatelessWidget {
 }
 
 /// A note/todo/solar/weather annotation row in [QsoList] — an event
-/// pseudo-QSO added by the annotation commands (ham2k/app-halo-dist#64,
+/// pseudo-QSO added by the annotation commands (ham2k/halo-dist#64,
 /// `extensions/core/annotation-commands`). Unlike [EventRow]'s centered
 /// segment markers, annotations are timeline entries: they keep the QSO
 /// rows' time column (left-aligned, [leadingWidth] preserving the Number
