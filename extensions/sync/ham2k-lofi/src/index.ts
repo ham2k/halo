@@ -31,7 +31,9 @@ const DEFAULT_SECRET = 'no-secret'
 defineExtension({
   ...manifest,
   onActivation({ registerHook }) {
-    registerHook('syncTransport', { hook: { sync, getAccountData, linkClient, linkClientWithEmail } })
+    registerHook('syncTransport', {
+      hook: { sync, getAccountData, linkClient, linkClientWithEmail, ensureClientRegistered, fetchWebhookEvents },
+    })
     registerHook('command', { key: 'ham2k-lofi-syncall', hook: { interpret: syncAllCommand, catalog: syncAllCatalog } })
   },
 })
@@ -63,12 +65,29 @@ async function syncAllCatalog(ctx: HookContext): Promise<CommandCatalogEntry[]> 
 // `host.kv` so a restart doesn't force re-registering as a "new" device.
 let cachedToken: string | null = null
 
+// `sync`, `ensureClientRegistered`, and now a user-triggered OAuth login
+// (HALO-22) can all reach `registerClient()` within the same tick on a
+// fresh device — sharing one in-flight attempt (rather than each firing its
+// own POST /v1/client) is what keeps their `host.kvSet` writes below from
+// interleaving into a mismatched token/push_channel/webhook_token trio.
+let registrationInFlight: Promise<string> | null = null
+
 async function serverUrl(): Promise<string> {
   const configured = await host.kvGet('server')
   return typeof configured === 'string' && configured ? configured : DEFAULT_LOFI_SERVER
 }
 
 async function registerClient(): Promise<string> {
+  if (registrationInFlight) return registrationInFlight
+  registrationInFlight = doRegisterClient()
+  try {
+    return await registrationInFlight
+  } finally {
+    registrationInFlight = null
+  }
+}
+
+async function doRegisterClient(): Promise<string> {
   const [key, secret, call] = await Promise.all([host.kvGet('key'), host.kvGet('secret'), host.kvGet('call')])
   const server = await serverUrl()
 
@@ -95,6 +114,20 @@ async function registerClient(): Promise<string> {
   }
   cachedToken = json.token
   await host.kvSet('token', cachedToken)
+
+  // `client` carries push_channel/webhook_client_token alongside uuid/name
+  // (Client#as_json on the server) — cached the same way as the token so a
+  // caller that only wants the channel/webhook identity (ensureClientRegistered,
+  // used regardless of whether QSO sync is enabled — HALO-66) doesn't force a
+  // second round trip.
+  const client = json.client
+  if (client && typeof client === 'object') {
+    const pushChannelName = (client as Record<string, JSONValue>).push_channel
+    const webhookClientToken = (client as Record<string, JSONValue>).webhook_client_token
+    if (typeof pushChannelName === 'string') await host.kvSet('push_channel_name', pushChannelName)
+    if (typeof webhookClientToken === 'string') await host.kvSet('webhook_client_token', webhookClientToken)
+  }
+
   return cachedToken
 }
 
@@ -200,4 +233,38 @@ async function linkClientWithEmail(
   _ctx: HookContext,
 ): Promise<Record<string, JSONValue>> {
   return request('POST', 'v1/client/permissions', { email, send_email: true })
+}
+
+/// Registers this device with the sync server if it hasn't been already —
+/// independent of whether QSO sync is enabled (unlike `sync`/`getAccountData`,
+/// this never touches log data, so the host calls it regardless of
+/// `settings.syncEnabled`; see HALO-66). Returns the Pusher channel to
+/// subscribe to and the signed token used to build the `state` param for a
+/// webhook-relayed OAuth flow (HALO-65).
+async function ensureClientRegistered(
+  _args: Record<string, never>,
+  _ctx: HookContext,
+): Promise<{ push_channel_name: string; webhook_client_token: string }> {
+  const read = () => Promise.all([host.kvGet('push_channel_name'), host.kvGet('webhook_client_token')])
+  let [pushChannelName, webhookClientToken] = await read()
+  if (typeof pushChannelName !== 'string' || typeof webhookClientToken !== 'string') {
+    await registerClient()
+    ;[pushChannelName, webhookClientToken] = await read()
+  }
+  if (typeof pushChannelName !== 'string' || typeof webhookClientToken !== 'string') {
+    throw new Error('LoFi registration did not return a push channel/webhook token')
+  }
+  return { push_channel_name: pushChannelName, webhook_client_token: webhookClientToken }
+}
+
+/// Fetches this device's pending webhook events (HALO-65) — the poll
+/// fallback, and how the app retrieves the actual payload after a Pusher
+/// `webhook_event` ping, which intentionally carries only an id.
+async function fetchWebhookEvents(
+  _args: Record<string, never>,
+  _ctx: HookContext,
+): Promise<{ webhook_events: Record<string, JSONValue>[] }> {
+  const response = await request('GET', 'v1/client/webhooks')
+  const events = response.webhook_events
+  return { webhook_events: Array.isArray(events) ? (events as Record<string, JSONValue>[]) : [] }
 }

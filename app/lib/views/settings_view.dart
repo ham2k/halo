@@ -40,7 +40,7 @@ import 'extensions_panel.dart';
 import 'station_panel.dart';
 import 'ham2k_logo.dart';
 import 'notice_history_view.dart';
-import 'oauth_browser_login.dart';
+import 'oauth_relay_login.dart';
 import 'operation_dialogs.dart';
 import 'release_overlay.dart';
 import 'switch_accounts_dialog.dart';
@@ -2659,10 +2659,37 @@ class _AccountPaneState extends State<_AccountPane> {
     final oauth2 = _oauth2!;
     final issuer = oauth2['issuer'] as String;
     final clientId = oauth2['clientId'] as String;
-    final redirectUrl = oauth2['redirectUrl'] as String;
     final scopes = (oauth2['scopes'] as List).cast<String>();
+    // Web/Linux can't catch the native com.ham2k.*.auth:// redirect at all
+    // (oauth_relay_login.dart's header explains why) — they go through
+    // LoFi's webhook relay instead; every other platform keeps using the
+    // original in-app webview + deep-link interception below, unchanged.
+    final useRelay = oauthUsesWebhookRelay();
+    final redirectUrl = (useRelay ? oauth2['webhookRedirectUrl'] : oauth2['redirectUrl']) as String?;
 
     try {
+      if (redirectUrl == null) {
+        // Only reachable if some future OAuth2 hook doesn't declare
+        // webhookRedirectUrl — SOTA always does. Fail with the same relay
+        // message rather than a null-check crash three lines down.
+        throw Exception(t.settings.accounts.relayLoginUnavailable);
+      }
+
+      // Only the relay path needs this device's LoFi identity — the native
+      // webview/deep-link path (used on macOS/Windows/Android/iOS) never
+      // touches LoFi at all, same as before HALO-22. Goes through
+      // `connectLofiRealtime` itself (register-and-subscribe, same as boot
+      // does) rather than re-deriving that sequence inline — boot may not
+      // have reached it yet on a fresh device, so it's still called here,
+      // just through the one place that knows how, not a second copy of it.
+      LofiClientRegistration? registration;
+      if (useRelay) {
+        registration = await widget.services.connectLofiRealtime();
+        if (registration == null) {
+          throw Exception(t.settings.accounts.relayLoginUnavailable);
+        }
+      }
+
       final userAgent = await ham2kUserAgent();
       final discoveryUrl = Uri.parse('$issuer/.well-known/openid-configuration');
       final response = await http.get(discoveryUrl, headers: {'User-Agent': userAgent});
@@ -2673,7 +2700,25 @@ class _AccountPaneState extends State<_AccountPane> {
 
       final codeVerifier = _randomString(64);
       final codeChallenge = _sha256Challenge(codeVerifier);
-      final state = _randomString(16);
+      // On the relay path, `state` carries two jobs at once: a per-attempt
+      // CSRF nonce (`n`, so a stale/replayed redirect from a previous
+      // attempt can't be mistaken for this one — the whole encoded blob is
+      // what gets compared, not just `n` in isolation), and this device's
+      // signed webhook-relay token (`t`), which is how LoFi's public
+      // callback endpoint (HALO-65) knows which client's channel to notify
+      // — every compliant OAuth provider is required to echo `state` back
+      // unmodified, which is what makes this portable across providers
+      // without a per-provider wildcard-redirect negotiation (see HALO-65's
+      // design note on why this isn't a per-client URL instead). On the
+      // native path `state` is just a plain CSRF nonce, same as always —
+      // the redirect_uri itself already identifies this device.
+      final state = useRelay
+          ? base64Url.encode(utf8.encode(jsonEncode({
+              'n': _randomString(16),
+              't': registration!.webhookClientToken,
+              'p': widget.account['key'],
+            })))
+          : _randomString(16);
 
       final authUri = Uri.parse(authEndpoint).replace(
         queryParameters: {
@@ -2689,91 +2734,100 @@ class _AccountPaneState extends State<_AccountPane> {
 
       if (!mounted) return;
 
-      // The provider redirects to a com.ham2k.*.auth:// URL. Normally the
-      // webview intercepts it below, but if the OS handles it instead (the
-      // schemes are registered as deep links), it comes back through
-      // DeepLinkService — either way the webview route pops with the code.
-      final navigator = Navigator.of(context);
       String? authError;
-      final linkSub = widget.services.deepLinks.links.listen((uri) {
-        if (!DeepLinkService.isAuthCallback(uri)) return;
-        if (uri.queryParameters['state'] != state) return;
-        authError = uri.queryParameters['error_description'] ?? uri.queryParameters['error'];
-        navigator.pop(uri.queryParameters['code']);
-      });
+      final String? code;
+      if (useRelay) {
+        code = await Navigator.of(context).push<String>(
+          MaterialPageRoute(
+            builder: (context) => OAuthRelayLoginPage(
+              accountLabel: '${widget.account['label']}',
+              authUri: authUri,
+              expectedState: state,
+              webhookEvents: widget.services.webhookEvents,
+              fetchWebhookEvents: widget.services.extensions.fetchLofiWebhookEvents,
+              // A redirect that carries `error` instead of `code` ends the
+              // login the same way a code does.
+              onError: (error) => authError = error,
+            ),
+          ),
+        );
+      } else {
+        // The provider redirects to a com.ham2k.*.auth:// URL. Normally the
+        // webview intercepts it below, but if the OS handles it instead
+        // (the schemes are registered as deep links), it comes back through
+        // DeepLinkService — either way the webview route pops with the code.
+        final navigator = Navigator.of(context);
+        final linkSub = widget.services.deepLinks.links.listen((uri) {
+          if (!DeepLinkService.isAuthCallback(uri)) return;
+          if (uri.queryParameters['state'] != state) return;
+          authError = uri.queryParameters['error_description'] ?? uri.queryParameters['error'];
+          navigator.pop(uri.queryParameters['code']);
+        });
 
-      InAppWebViewController? webViewController;
-
-      // Linux has no in-app webview to log in through — building one there
-      // crashes (oauth_browser_login.dart) — so the login happens in the
-      // operator's own browser and comes back by paste.
-      final code = oauthNeedsSystemBrowser()
-          ? await navigator.push<String>(
-              MaterialPageRoute(
-                builder: (context) => OAuthBrowserLoginPage(
-                  accountLabel: '${widget.account['label']}',
-                  authUri: authUri,
-                  redirectUrl: redirectUrl,
-                  expectedState: state,
-                  // A redirect that carries `error` instead of `code` ends the
-                  // login the same way the webview route's listener ends it.
-                  onError: (error) => authError = error,
-                ),
-              ),
-            )
-          : await navigator.push<String>(
-              MaterialPageRoute(
-                builder: (context) => Scaffold(
-                  appBar: AppBar(
-                    flexibleSpace: windowHeaderGestureArea(),
-                    title: Text(context.t.settings.accounts.connectTo(label: '${widget.account['label']}')),
-                    actions: [
-                      // Continues the login in the system browser (from wherever
-                      // the in-app page currently is); the redirect then comes
-                      // back through the deep-link listener above. Keep this page
-                      // open — closing it abandons the flow.
-                      TextButton(
-                        child: Text(context.t.settings.accounts.openInBrowser),
-                        onPressed: () async {
-                          final current = await webViewController?.getUrl();
-                          unawaited(launchUrl(Uri.parse((current ?? authUri).toString()), mode: LaunchMode.externalApplication));
-                        },
-                      ),
-                      windowsCaptionSpacer(context),
-                    ],
-                    leadingWidth: macOSAwareLeadingWidth(context),
-                    leading: isMacOSChromelessWindow
-                        ? Padding(
-                            padding: EdgeInsets.only(left: macOSTrafficLightClearance(context)),
-                            child: CloseButton(onPressed: () => Navigator.of(context).pop()),
-                          )
-                        : CloseButton(onPressed: () => Navigator.of(context).pop()),
-                  ),
-                  body: InAppWebView(
-                    onWebViewCreated: (controller) => webViewController = controller,
-                    initialUrlRequest: URLRequest(url: WebUri(authUri.toString())),
-                    initialSettings: InAppWebViewSettings(javaScriptEnabled: true, useShouldOverrideUrlLoading: true),
-                    shouldOverrideUrlLoading: (controller, navigationAction) async {
-                      final url = navigationAction.request.url?.toString();
-                      if (url != null && url.startsWith(redirectUrl)) {
-                        final uri = Uri.parse(url);
-                        final redirectCode = uri.queryParameters['code'];
-                        final redirectState = uri.queryParameters['state'];
-                        if (redirectState == state) {
-                          Navigator.of(context).pop(redirectCode);
-                        } else {
-                          Navigator.of(context).pop();
-                        }
-                        return NavigationActionPolicy.CANCEL;
-                      }
-                      return NavigationActionPolicy.ALLOW;
+        InAppWebViewController? webViewController;
+        code = await navigator.push<String>(
+          MaterialPageRoute(
+            builder: (context) => Scaffold(
+              appBar: AppBar(
+                flexibleSpace: windowHeaderGestureArea(),
+                title: Text(context.t.settings.accounts.connectTo(label: '${widget.account['label']}')),
+                actions: [
+                  // Continues the login in the system browser (from wherever
+                  // the in-app page currently is); the redirect then comes
+                  // back through the deep-link listener above. Keep this
+                  // page open — closing it abandons the flow.
+                  TextButton(
+                    child: Text(context.t.settings.accounts.openInBrowser),
+                    onPressed: () async {
+                      final current = await webViewController?.getUrl();
+                      unawaited(
+                        launchUrl(Uri.parse((current ?? authUri).toString()), mode: LaunchMode.externalApplication),
+                      );
                     },
                   ),
-                ),
+                  windowsCaptionSpacer(context),
+                ],
+                leadingWidth: macOSAwareLeadingWidth(context),
+                leading: isMacOSChromelessWindow
+                    ? Padding(
+                        padding: EdgeInsets.only(left: macOSTrafficLightClearance(context)),
+                        child: CloseButton(onPressed: () => Navigator.of(context).pop()),
+                      )
+                    : CloseButton(onPressed: () => Navigator.of(context).pop()),
               ),
-            );
-
-      await linkSub.cancel();
+              body: InAppWebView(
+                onWebViewCreated: (controller) => webViewController = controller,
+                initialUrlRequest: URLRequest(url: WebUri(authUri.toString())),
+                initialSettings: InAppWebViewSettings(javaScriptEnabled: true, useShouldOverrideUrlLoading: true),
+                shouldOverrideUrlLoading: (controller, navigationAction) async {
+                  final url = navigationAction.request.url?.toString();
+                  final uri = url != null ? Uri.tryParse(url) : null;
+                  final expected = Uri.parse(redirectUrl);
+                  // Scheme and authority, not a string prefix: prefix-matching
+                  // `com.ham2k.logger.next.auth://sota` would also accept
+                  // `…://sota.example.com`. The state check below is what
+                  // actually protects the exchange, but there is no reason to
+                  // accept a redirect addressed somewhere else.
+                  if (uri != null &&
+                      uri.scheme.toLowerCase() == expected.scheme.toLowerCase() &&
+                      uri.authority.toLowerCase() == expected.authority.toLowerCase()) {
+                    final redirectCode = uri.queryParameters['code'];
+                    final redirectState = uri.queryParameters['state'];
+                    if (redirectState == state) {
+                      Navigator.of(context).pop(redirectCode);
+                    } else {
+                      Navigator.of(context).pop();
+                    }
+                    return NavigationActionPolicy.CANCEL;
+                  }
+                  return NavigationActionPolicy.ALLOW;
+                },
+              ),
+            ),
+          ),
+        );
+        await linkSub.cancel();
+      }
 
       if (code == null) {
         if (authError != null) throw Exception(authError);

@@ -6,9 +6,9 @@
       "runtimeExecutable": "bash",
       "runtimeArgs": [
         "-c",
-        "cd app && flutter run -d web-server --web-port 8765"
+        "cd app && flutter run -d web-server --web-port \"$PORT\""
       ],
-      "port": 8765
+      "autoPort": true
     }
   ]
 }

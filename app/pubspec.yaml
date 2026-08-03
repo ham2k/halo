@@ -67,6 +67,19 @@ dependencies:
   # That broke every platform in 26.8.1-alpha1+98 (#385 moved it out of here).
   sentry_flutter: ^9.0.0
   flutter_libserialport: ^0.6.0
+  # Minimal hand-rolled Pusher-protocol client (PusherService) sits on top of
+  # this rather than a Pusher SDK package: the official pusher_channels_flutter
+  # only covers android/ios/web (no macos/windows/linux — the exact platform
+  # gap that already bit the SOTA OAuth flow, see oauth_browser_login.dart),
+  # and the community pure-Dart alternatives are low-trust single-maintainer
+  # packages not worth depending on for something that carries OAuth codes.
+  # web_socket_channel is the official Dart-team package and covers all six
+  # HaLo targets.
+  web_socket_channel: ^3.0.3
+  # Only the plain StreamChannel supertype web_socket_channel builds on —
+  # PusherService is typed against it directly so tests can inject a fake
+  # in-memory channel instead of a real socket.
+  stream_channel: ^2.1.4
 
 dev_dependencies:
   flutter_test:

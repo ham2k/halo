@@ -1008,6 +1008,19 @@ export interface SyncTransportHook {
   /// gracefully when it's missing.
   linkClient?(args: { email?: string }, ctx: HookContext): Promise<Record<string, JSONValue>>
   linkClientWithEmail(args: { email: string }, ctx: HookContext): Promise<Record<string, JSONValue>>
+  /// Ensures this device is registered with the sync server, independent of
+  /// whether the operator has QSO sync enabled — registration establishes
+  /// device identity and the realtime push channel, it does not push any log
+  /// data. Returns the Pusher channel to subscribe to and the signed token
+  /// used to build the `state` param for a webhook-relayed OAuth flow
+  /// (HALO-65/66). Optional so transports predating this contract keep
+  /// compiling.
+  ensureClientRegistered?(args: Record<string, never>, ctx: HookContext): Promise<{ push_channel_name: string, webhook_client_token: string }>
+  /// Fetches this device's pending webhook events (HALO-65) — the poll
+  /// fallback, and how the app retrieves the actual payload after a Pusher
+  /// `webhook_event` ping (which intentionally carries only an id, never the
+  /// sensitive payload — see HALO-65's design note).
+  fetchWebhookEvents?(args: Record<string, never>, ctx: HookContext): Promise<{ webhook_events: Record<string, JSONValue>[] }>
 }
 
 export interface AccountField {
@@ -1021,7 +1034,17 @@ export interface AccountField {
 export interface OAuth2Config {
   issuer: string
   clientId: string
+  /// The native custom-scheme redirect (`com.ham2k.*.auth://…`), used on
+  /// every platform that can intercept it via an in-app webview or OS deep
+  /// link (macOS/Windows/Android/iOS today — see `oauthUsesWebhookRelay` in
+  /// app/lib/views/oauth_relay_login.dart).
   redirectUrl: string
+  /// The LoFi webhook-relay callback (HALO-65/66), used instead of
+  /// [redirectUrl] on platforms that can't catch a custom scheme at all
+  /// (Web, Linux). Optional so an OAuth2 hook that only supports the native
+  /// flow keeps compiling — the host then simply can't offer relay-only
+  /// platforms this login.
+  webhookRedirectUrl?: string
   scopes: string[]
 }
 

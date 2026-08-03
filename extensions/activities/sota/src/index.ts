@@ -379,16 +379,37 @@ const SOTA_SSO_REALM = 'https://sso.sota.org.uk/auth/realms/SOTA'
 // SOTA granted HaLo a separate Keycloak client per build edition
 // (ham2k/app-halo-dist#253) — each edition is its own app identity
 // (com.ham2k.logger.dev/.next/.prod), so each needs its own registered
-// redirect URL. HaLo's OAuth webview intercepts the redirect itself (see
-// `_doOAuth` above), so the URL only has to match what's registered with
-// the corresponding client; an unset/unrecognized edition falls back to
-// `dev`, the same default `packages/halo_build_tools`' Edition uses for an
-// unset HALO_EDITION define.
+// native redirect URL. HaLo's OAuth webview intercepts that redirect itself
+// (see `_doOAuth` above) on every platform capable of it — an unset/
+// unrecognized edition falls back to `dev`, the same default
+// `packages/halo_build_tools`' Edition uses for an unset HALO_EDITION define.
 const SOTA_OAUTH2_BY_EDITION: Record<string, { clientId: string; redirectUrl: string }> = {
   prod: { clientId: 'com.ham2k.logger.prod', redirectUrl: 'com.ham2k.logger.prod.auth://sota' },
   next: { clientId: 'com.ham2k.logger.next', redirectUrl: 'com.ham2k.logger.next.auth://sota' },
   dev: { clientId: 'com.ham2k.logger.dev', redirectUrl: 'com.ham2k.logger.dev.auth://sota' },
 }
+
+// Web and Linux can't catch that custom-scheme redirect at all (no
+// `flutter_inappwebview` on Linux; a non-http(s) scheme a browser tab
+// navigates to just fails) — those two platforms go through LoFi's
+// webhook-relay callback instead (HALO-65/66), one fixed URL shared by
+// every edition and every client, registered with SOTA as a literal exact
+// string, no wildcard: https://lofi.ham2k.net/v1/webhooks/client/oauth. The
+// host (`_doOAuth`, settings_view.dart) picks which of `redirectUrl` /
+// `webhookRedirectUrl` to actually use per `oauthUsesWebhookRelay()|
+// (oauth_relay_login.dart) — the client is told apart via the OAuth `state`
+// param in that case, not the URL (state is the only thing every compliant
+// provider is required to echo back unmodified, which is what makes it
+// portable — see HALO-65's design note for why this isn't a per-client URL).
+//
+// SOTA-local rather than exported from the `ham2k-lofi` sync extension
+// (which owns the matching `DEFAULT_LOFI_SERVER`): extensions have no
+// established cross-package import mechanism today, and SOTA is the only
+// OAuth2 hook in the repo, so there's nothing yet for a shared export to
+// serve. If a second OAuth-based extension shows up, that's the point to
+// hoist this — until then, both sides just have to be kept in sync by hand
+// if LoFi's webhook endpoint URL ever moves.
+const SOTA_OAUTH_WEBHOOK_REDIRECT_URL = 'https://lofi.ham2k.net/v1/webhooks/client/oauth'
 
 /// The registered client for an edition, from the build's secrets when it has
 /// them and from the table above otherwise.
@@ -400,7 +421,7 @@ const SOTA_OAUTH2_BY_EDITION: Record<string, { clientId: string; redirectUrl: st
 /// checkout can still log in to SOTAWatch, which is the whole feature.
 async function sotaOAuth2Config(
   edition: string | undefined,
-): Promise<{ issuer: string; clientId: string; redirectUrl: string; scopes: string[] }> {
+): Promise<{ issuer: string; clientId: string; redirectUrl: string; webhookRedirectUrl: string; scopes: string[] }> {
   const name = (edition ?? 'dev').toUpperCase()
   const fallback = SOTA_OAUTH2_BY_EDITION[edition ?? 'dev'] ?? SOTA_OAUTH2_BY_EDITION.dev
   const [clientId, redirectUrl] = await Promise.all([
@@ -411,6 +432,7 @@ async function sotaOAuth2Config(
     issuer: SOTA_SSO_REALM,
     clientId: clientId || fallback.clientId,
     redirectUrl: redirectUrl || fallback.redirectUrl,
+    webhookRedirectUrl: SOTA_OAUTH_WEBHOOK_REDIRECT_URL,
     scopes: ['openid'],
   }
 }

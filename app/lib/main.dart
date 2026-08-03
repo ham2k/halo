@@ -40,6 +40,7 @@ import 'config/dev_fixture.dart';
 import 'config/dev_flags.dart';
 import 'config/experiments.dart';
 import 'config/release_notes.dart';
+import 'config/secrets.dart';
 import 'config/version.dart';
 import 'services/auto_update_service.dart';
 import 'services/deep_link_service.dart';
@@ -53,6 +54,7 @@ import 'services/location_service.dart';
 import 'services/lookup_queue_service.dart';
 import 'services/metrics_service.dart';
 import 'services/purchase_service.dart';
+import 'services/pusher_service.dart';
 import 'services/radio_service.dart';
 import 'services/restart_service.dart';
 import 'services/operation_title_service.dart';
@@ -485,6 +487,12 @@ Future<HaLoServices> bootstrap({
   if (syncDeviceKey != null) {
     services.extensions.setSyncCredentials(deviceKey: syncDeviceKey, operatorCall: settings.activeProfile.operatorCall);
     services.syncEngine.start();
+    // Independent of syncEngine.start() above: this registers device
+    // identity/the realtime channel regardless of whether the operator has
+    // QSO sync enabled (HALO-66) — registration pushes no log data, only
+    // syncEngine (gated on settings.syncEnabled) does that. Not awaited:
+    // it's a network round-trip and boot must not wait on it.
+    unawaited(services.connectLofiRealtime());
   } else {
     debugPrint('[boot] no sync device key (secure storage unavailable) — continuing without sync');
   }
@@ -668,6 +676,41 @@ class HaLoServices {
   late final CatService cat = CatService(settings, radio: radio);
   final LocationService location = LocationService();
   final DeepLinkService deepLinks = DeepLinkService();
+
+  /// Pusher app key + cluster for the realtime client (HALO-66) — public,
+  /// non-secret values (every Pusher client SDK ships them this way), but
+  /// still build-time configured like the Mapbox token or SOTA's OAuth
+  /// client id (config/secrets.dart) since they point at whichever LoFi
+  /// deployment this build talks to. Empty in a checkout that hasn't filled
+  /// them in: [pusher] is then null and every realtime feature falls back
+  /// to its polling path rather than crashing.
+  late final PusherService? pusher = (secrets['PUSHER_KEY']?.isEmpty ?? true) || (secrets['PUSHER_CLUSTER']?.isEmpty ?? true)
+      ? null
+      : PusherService(appKey: secrets['PUSHER_KEY']!, cluster: secrets['PUSHER_CLUSTER']!);
+
+  /// Registers this device with the sync server — independent of QSO sync
+  /// being enabled, HALO-66's whole point — and, once that succeeds,
+  /// subscribes the realtime client to its push channel. Safe to call
+  /// repeatedly (boot, and every [setOperatorCall]):
+  /// `ensureLofiClientRegistered` is idempotent, and re-subscribing an
+  /// already-subscribed channel is a no-op ([PusherService.subscribe]).
+  ///
+  /// Returns the registration so a caller that also needs it directly (e.g.
+  /// `_doOAuth`, for the `webhookClientToken` its `state` param carries) can
+  /// go through this one place rather than re-registering by hand.
+  Future<LofiClientRegistration?> connectLofiRealtime() async {
+    final registration = await extensions.ensureLofiClientRegistered();
+    if (registration != null) pusher?.subscribe(registration.pushChannelName);
+    return registration;
+  }
+
+  /// Webhook-relay events (HALO-65) on this device's push channel — an
+  /// OAuth flow waiting on a provider redirect (HALO-22) listens here for
+  /// the ping, then calls [ExtensionService.fetchLofiWebhookEvents] for the
+  /// payload (the push itself only ever carries an event id, never the
+  /// sensitive payload — see HALO-65's design note).
+  Stream<PusherEvent> get webhookEvents =>
+      pusher?.events.where((e) => e.event == 'webhook_event') ?? const Stream.empty();
   final DataFileManager? _dataFilesOverride;
   late final DataFileManager dataFiles = _dataFilesOverride ??
       DataFileManager(
@@ -945,6 +988,10 @@ class HaLoServices {
         deviceKey: deviceKey,
         operatorCall: settings.activeProfile.operatorCall,
       );
+      // Independent of QSO sync being enabled — see connectLofiRealtime's
+      // doc comment (HALO-66). Not awaited, same reasoning as the flags
+      // refresh below.
+      unawaited(connectLofiRealtime());
     }
     // Flags are callsign-specific — refresh them (a no-op if the callsign
     // didn't actually change). Not awaited: the callsign edit shouldn't block
@@ -970,6 +1017,7 @@ class HaLoServices {
         deviceKey: deviceKey,
         operatorCall: settings.activeProfile.operatorCall,
       );
+      unawaited(connectLofiRealtime());
     }
     syncEngine.start();
   }

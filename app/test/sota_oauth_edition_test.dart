@@ -36,6 +36,10 @@ void main() {
     // dev — this test binary's own edition (no HALO_EDITION define set).
     expect(oauth2['clientId'], 'com.ham2k.logger.dev');
     expect(oauth2['redirectUrl'], 'com.ham2k.logger.dev.auth://sota');
+    // One fixed relay URL shared by every edition (HALO-22), used only on
+    // platforms oauthUsesWebhookRelay() sends through LoFi (Web/Linux) — see
+    // extensions/activities/sota/src/index.ts's SOTA_OAUTH_WEBHOOK_REDIRECT_URL.
+    expect(oauth2['webhookRedirectUrl'], 'https://lofi.ham2k.net/v1/webhooks/client/oauth');
     // Never PoLo's borrowed client, which HaLo used before #253.
     expect(oauth2['clientId'], isNot('polo'));
   });

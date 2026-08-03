@@ -1871,6 +1871,18 @@ class Translations$settings$accounts$en {
 	/// en: 'That link looks cut off. Copy the whole thing and paste it again.'
 	String get pastedLinkMalformed => 'That link looks cut off. Copy the whole thing and paste it again.';
 
+	/// en: 'Waiting for you to finish signing in — this page will continue automatically once you do.'
+	String get relayLoginWaiting => 'Waiting for you to finish signing in — this page will continue automatically once you do.';
+
+	/// en: 'Ham2K Logger could not open your browser automatically. Use the button below to open the login page yourself.'
+	String get relayLoginNotOpened => 'Ham2K Logger could not open your browser automatically. Use the button below to open the login page yourself.';
+
+	/// en: 'Couldn't reach the sync server needed to complete this login. Check your connection and try again.'
+	String get relayLoginUnavailable => 'Couldn\'t reach the sync server needed to complete this login. Check your connection and try again.';
+
+	/// en: 'That login attempt didn't complete correctly. Please try connecting again.'
+	String get relayLoginMalformedEvent => 'That login attempt didn\'t complete correctly. Please try connecting again.';
+
 	/// en: 'Account logins can’t be saved'
 	String get noKeyringTitle => 'Account logins can’t be saved';
 
@@ -3026,6 +3038,10 @@ extension on Translations {
 			'settings.accounts.pastedLinkWrongLogin' => 'That link belongs to a different login attempt. Close this page and connect again.',
 			'settings.accounts.pastedLinkNoCode' => 'That link carries no login code. Finish signing in first, then copy the link it sends you to.',
 			'settings.accounts.pastedLinkMalformed' => 'That link looks cut off. Copy the whole thing and paste it again.',
+			'settings.accounts.relayLoginWaiting' => 'Waiting for you to finish signing in — this page will continue automatically once you do.',
+			'settings.accounts.relayLoginNotOpened' => 'Ham2K Logger could not open your browser automatically. Use the button below to open the login page yourself.',
+			'settings.accounts.relayLoginUnavailable' => 'Couldn\'t reach the sync server needed to complete this login. Check your connection and try again.',
+			'settings.accounts.relayLoginMalformedEvent' => 'That login attempt didn\'t complete correctly. Please try connecting again.',
 			'settings.accounts.noKeyringTitle' => 'Account logins can’t be saved',
 			'settings.accounts.noKeyringText' => 'Ham2K Logger can’t reach a keyring service on this computer, so account logins can’t be stored or read — connecting an account will fail until this is sorted. Install and start **gnome-keyring**, **KWallet** or **KeePassXC**, or unlock the keyring you already have, then restart. Logging, exports and data files are unaffected; log sync stays off while this lasts.',
 			'settings.accounts.noKeyringInline' => 'Logins can’t be saved: this computer’s keyring can’t be reached. Install and start gnome-keyring, KWallet or KeePassXC, or unlock the one you have.',
@@ -3132,11 +3148,11 @@ extension on Translations {
 			'settings.panels.commonPreferencesDescription' => 'Appearance, language, and everyday settings',
 			'settings.panels.allSettings' => 'All Settings',
 			'settings.panels.allSettingsDescription' => 'Every available setting in one place',
+			_ => null,
+		} ?? switch (path) {
 			'settings.panels.syncDescription' => 'Back up and sync your logs across devices',
 			'settings.panels.accountsDescription' => 'Sign in to online services and lookups',
 			'settings.panels.extensions' => 'Features & Extensions',
-			_ => null,
-		} ?? switch (path) {
 			'settings.panels.extensionsDescription' => 'Turn optional features on or off',
 			'settings.panels.profilesDescription' => 'Operator callsign and station profile',
 			'settings.panels.stationProfiles' => 'Station Profiles',

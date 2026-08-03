@@ -33,9 +33,16 @@ import 'package:url_launcher/url_launcher.dart' show LaunchMode;
 import '../i18n/strings.g.dart';
 import '../main.dart';
 import 'link_opener.dart';
+import '../tools/backoff.dart';
 import '../tools/form_chrome_labels.dart';
 import '../tools/activity_suggestions.dart';
 import '../tools/qso_patch.dart';
+
+/// This device's LoFi identity (HALO-65/66): the Pusher channel to subscribe
+/// to, and the signed token a webhook-relayed OAuth login embeds in its
+/// `state` param. Returned by [ExtensionService.ensureLofiClientRegistered]
+/// and [HaLoServices.connectLofiRealtime] alike.
+typedef LofiClientRegistration = ({String pushChannelName, String webhookClientToken});
 
 /// The QSON payload shape shared by every hook that takes a whole operation's
 /// worth of QSOs in one coarse call (export, scoring, …) — `operation.data`
@@ -1009,7 +1016,7 @@ class ExtensionService {
   void _scheduleRestart(String reason) {
     if (_restartTimer != null) return;
     _restartAttempts++;
-    final delay = Duration(seconds: 1 << _restartAttempts.clamp(1, 5)); // 2s..32s, then flat
+    final delay = exponentialBackoff(_restartAttempts, cap: const Duration(seconds: 32)); // 2s..32s, then flat
     debugPrint('[extensions] $reason — restarting runtime in ${delay.inSeconds}s (attempt $_restartAttempts)');
     // A crash-looping runtime is a single point of failure for lookups, data
     // files, spots, and scoring all at once — the same "app just isn't doing
@@ -1987,6 +1994,47 @@ class ExtensionService {
     } on ExtensionHostException catch (e) {
       debugPrint('[extensions] syncLinkClientWithEmail failed: $e');
       return null;
+    }
+  }
+
+  /// Ensures this device is registered with the sync server — independent
+  /// of whether the operator has QSO sync enabled (HALO-66); registration
+  /// establishes device identity and the realtime push channel, it never
+  /// pushes log data. Returns null if the runtime isn't up or registration
+  /// failed (e.g. no network) — callers should treat that as "not
+  /// available yet", not as "sync is off".
+  Future<LofiClientRegistration?> ensureLofiClientRegistered() async {
+    final host = _host;
+    if (host == null) return null;
+    try {
+      final result = await host.invokeHook('syncTransport', method: 'ensureClientRegistered', args: const {});
+      if (result is! Map) return null;
+      final map = result.cast<String, dynamic>();
+      final pushChannelName = map['push_channel_name'] as String?;
+      final webhookClientToken = map['webhook_client_token'] as String?;
+      if (pushChannelName == null || webhookClientToken == null) return null;
+      return (pushChannelName: pushChannelName, webhookClientToken: webhookClientToken);
+    } on ExtensionHostException catch (e) {
+      debugPrint('[extensions] ensureLofiClientRegistered failed: $e');
+      return null;
+    }
+  }
+
+  /// Fetches this device's pending webhook events (HALO-65) — the poll
+  /// fallback, and how a caller retrieves the actual payload after a
+  /// [HaLoServices.webhookEvents] Pusher ping (which intentionally carries
+  /// only an id, never the sensitive payload).
+  Future<List<Map<String, dynamic>>> fetchLofiWebhookEvents() async {
+    final host = _host;
+    if (host == null) return const [];
+    try {
+      final result = await host.invokeHook('syncTransport', method: 'fetchWebhookEvents', args: const {});
+      final events = result is Map ? result['webhook_events'] : null;
+      if (events is! List) return const [];
+      return events.whereType<Map>().map((e) => e.cast<String, dynamic>()).toList();
+    } on ExtensionHostException catch (e) {
+      debugPrint('[extensions] fetchLofiWebhookEvents failed: $e');
+      return const [];
     }
   }
 

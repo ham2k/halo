@@ -57,7 +57,7 @@ enum ExportAction {
 ///
 /// [isWeb] and [platform] exist only so tests can cover the whole matrix:
 /// `kIsWeb` is a compile-time false under `flutter test`, so the web branch
-/// is otherwise unreachable. Same seam as `oauth_browser_login.dart`.
+/// is otherwise unreachable.
 List<ExportAction> bulkExportActions({bool? isWeb, TargetPlatform? platform}) {
   if (isWeb ?? isWebPlatform) return const [ExportAction.download];
   final target = platform ?? defaultTargetPlatform;
