@@ -525,7 +525,9 @@ Future<HaLoServices> bootstrap({
   // Await the extension system being fully booted, then initialize and sync data files
   unawaited(extensions.start().then((_) async {
     await services.dataFiles.loadRawDataFiles();
-    await services.dataFiles.syncAllDataFiles();
+    // Unattended (no user action prompted this): a persistent failure notice
+    // here would repeat on every single offline boot.
+    await services.dataFiles.syncAllDataFiles(notifyOnFailure: false);
     // After the enabled extensions have refreshed their data-file ownership
     // records, drop the data of any extension disabled long enough ago.
     await services.dataFiles.purgeStaleExtensionData(settings.extensionDisabledSince);

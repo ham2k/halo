@@ -603,7 +603,6 @@
       "noFilesDescription": "Enable activity or lookup extensions to download their offline data here.",
       "refresh": "Refresh",
       "refreshing": "Refreshing…",
-      "refreshFailed": "Could not refresh ${name}: ${error}",
       "updateAll": "Update All",
       "updatingAll": "Updating all data files…",
       "neverDownloaded": "Never downloaded",
@@ -612,7 +611,8 @@
       "updatedDaysHoursAgo": "Updated ${days}d ${hours}h ago",
       "updatedHoursAgo": "Updated ${hours}h ago",
       "updatedHoursMinutesAgo": "Updated ${hours}h ${minutes}m ago",
-      "updatedMinutesAgo": "Updated ${minutes}m ago"
+      "updatedMinutesAgo": "Updated ${minutes}m ago",
+      "extensionsSection": "Extensions"
     },
     "profiles": {
       "notSet": "Not set"
@@ -720,6 +720,9 @@
   },
   "dataFiles": {
     "downloading": "Downloading…",
+    "downloadFailedTitle": "Couldn't download ${name}",
+    "downloadFailedWebHint": "This could be a network issue, or this link's host may not support direct downloads from a web browser. Try the desktop or mobile app, or a different hosting location.",
+    "processingFailedTitle": "Couldn't process ${name}",
     "importedRecords": {
       "one": "Imported ${count} record for ${label}.",
       "other": "Imported ${count} records for ${label}."
@@ -730,7 +733,8 @@
       "one": "Removed data for ${count} data file from disabled extensions.",
       "other": "Removed data for ${count} data files from disabled extensions."
     },
-    "recordsProgress": "${end} / ${total} records"
+    "recordsProgress": "${end} / ${total} records",
+    "definitionUnavailable": "The file's source didn't provide a definition — its extension may be mid-restart or misconfigured. Try again in a moment."
   },
   "updates": {
     "updateAvailable": "Update available",

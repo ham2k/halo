@@ -955,6 +955,15 @@ class Translations$dataFiles$en {
 	/// en: 'Downloading…'
 	String get downloading => 'Downloading…';
 
+	/// en: 'Couldn't download ${name}'
+	String downloadFailedTitle({required Object name}) => 'Couldn\'t download ${name}';
+
+	/// en: 'This could be a network issue, or this link's host may not support direct downloads from a web browser. Try the desktop or mobile app, or a different hosting location.'
+	String get downloadFailedWebHint => 'This could be a network issue, or this link\'s host may not support direct downloads from a web browser. Try the desktop or mobile app, or a different hosting location.';
+
+	/// en: 'Couldn't process ${name}'
+	String processingFailedTitle({required Object name}) => 'Couldn\'t process ${name}';
+
 	/// en: '(one) {Imported ${count} record for ${label}.} (other) {Imported ${count} records for ${label}.}'
 	String importedRecords({required num count, required Object label}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count,
 		one: 'Imported ${count} record for ${label}.',
@@ -975,6 +984,9 @@ class Translations$dataFiles$en {
 
 	/// en: '${end} / ${total} records'
 	String recordsProgress({required Object end, required Object total}) => '${end} / ${total} records';
+
+	/// en: 'The file's source didn't provide a definition — its extension may be mid-restart or misconfigured. Try again in a moment.'
+	String get definitionUnavailable => 'The file\'s source didn\'t provide a definition — its extension may be mid-restart or misconfigured. Try again in a moment.';
 }
 
 // Path: updates
@@ -2083,9 +2095,6 @@ class Translations$settings$offlineData$en {
 	/// en: 'Refreshing…'
 	String get refreshing => 'Refreshing…';
 
-	/// en: 'Could not refresh ${name}: ${error}'
-	String refreshFailed({required Object name, required Object error}) => 'Could not refresh ${name}: ${error}';
-
 	/// en: 'Update All'
 	String get updateAll => 'Update All';
 
@@ -2112,6 +2121,9 @@ class Translations$settings$offlineData$en {
 
 	/// en: 'Updated ${minutes}m ago'
 	String updatedMinutesAgo({required Object minutes}) => 'Updated ${minutes}m ago';
+
+	/// en: 'Extensions'
+	String get extensionsSection => 'Extensions';
 }
 
 // Path: settings.profiles
@@ -3106,7 +3118,6 @@ extension on Translations {
 			'settings.offlineData.noFilesDescription' => 'Enable activity or lookup extensions to download their offline data here.',
 			'settings.offlineData.refresh' => 'Refresh',
 			'settings.offlineData.refreshing' => 'Refreshing…',
-			'settings.offlineData.refreshFailed' => ({required Object name, required Object error}) => 'Could not refresh ${name}: ${error}',
 			'settings.offlineData.updateAll' => 'Update All',
 			'settings.offlineData.updatingAll' => 'Updating all data files…',
 			'settings.offlineData.neverDownloaded' => 'Never downloaded',
@@ -3116,6 +3127,7 @@ extension on Translations {
 			'settings.offlineData.updatedHoursAgo' => ({required Object hours}) => 'Updated ${hours}h ago',
 			'settings.offlineData.updatedHoursMinutesAgo' => ({required Object hours, required Object minutes}) => 'Updated ${hours}h ${minutes}m ago',
 			'settings.offlineData.updatedMinutesAgo' => ({required Object minutes}) => 'Updated ${minutes}m ago',
+			'settings.offlineData.extensionsSection' => 'Extensions',
 			'settings.profiles.notSet' => 'Not set',
 			'settings.search.clear' => 'Clear',
 			'settings.search.hint' => 'Search settings',
@@ -3147,9 +3159,9 @@ extension on Translations {
 			'settings.panels.commonPreferences' => 'Common Preferences',
 			'settings.panels.commonPreferencesDescription' => 'Appearance, language, and everyday settings',
 			'settings.panels.allSettings' => 'All Settings',
-			'settings.panels.allSettingsDescription' => 'Every available setting in one place',
 			_ => null,
 		} ?? switch (path) {
+			'settings.panels.allSettingsDescription' => 'Every available setting in one place',
 			'settings.panels.syncDescription' => 'Back up and sync your logs across devices',
 			'settings.panels.accountsDescription' => 'Sign in to online services and lookups',
 			'settings.panels.extensions' => 'Features & Extensions',
@@ -3201,11 +3213,15 @@ extension on Translations {
 			'spotting.unknownError' => 'unknown error',
 			'spotting.notSent' => 'Spot not sent.',
 			'dataFiles.downloading' => 'Downloading…',
+			'dataFiles.downloadFailedTitle' => ({required Object name}) => 'Couldn\'t download ${name}',
+			'dataFiles.downloadFailedWebHint' => 'This could be a network issue, or this link\'s host may not support direct downloads from a web browser. Try the desktop or mobile app, or a different hosting location.',
+			'dataFiles.processingFailedTitle' => ({required Object name}) => 'Couldn\'t process ${name}',
 			'dataFiles.importedRecords' => ({required num count, required Object label}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: 'Imported ${count} record for ${label}.', other: 'Imported ${count} records for ${label}.', ), 
 			'dataFiles.importedData' => ({required Object label}) => 'Imported data for ${label}.',
 			'dataFiles.cleanedUpTitle' => 'Cleaned up extension data',
 			'dataFiles.removedData' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: 'Removed data for ${count} data file from disabled extensions.', other: 'Removed data for ${count} data files from disabled extensions.', ), 
 			'dataFiles.recordsProgress' => ({required Object end, required Object total}) => '${end} / ${total} records',
+			'dataFiles.definitionUnavailable' => 'The file\'s source didn\'t provide a definition — its extension may be mid-restart or misconfigured. Try again in a moment.',
 			'updates.updateAvailable' => 'Update available',
 			'updates.newVersionAvailable' => ({required Object version}) => 'A new version (${version}) is available.',
 			'updates.getIt' => 'Get it',

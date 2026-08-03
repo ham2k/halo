@@ -261,7 +261,12 @@ class _OnboardingOverlayViewState extends State<OnboardingOverlayView> {
       // (POTA/SOTA parks/summits) to finish downloading —
       // already a no-op for anything fresh (see syncAllDataFiles' staleness
       // check), so this only actually waits on what genuinely still needs
-      // fetching.
+      // fetching. Failures MUST notify: per-file download failures never
+      // escape syncAllDataFiles (its internal catch reports and moves on),
+      // so the status-bar notice raised in processDataFile is the ONLY
+      // signal a user onboarding offline gets that their parks/notes data
+      // is missing — it outlives this overlay, and the once-per-boot sync
+      // that follows is deliberately silent.
       await widget.services.dataFiles.syncAllDataFiles();
     } catch (e, st) {
       // setExtensionsEnabled's runtime restart can throw (e.g. disposing the

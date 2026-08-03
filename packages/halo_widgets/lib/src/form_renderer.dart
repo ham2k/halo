@@ -151,6 +151,17 @@ class FormRendererLabels {
   String actionErrorLabel(String error) => actionError?.call(error) ?? 'Error: $error';
 }
 
+/// The three callbacks a `fieldType: 'list'` editor needs — built by
+/// `_FormRendererState._listFieldActions`, shared by both presentations
+/// (`_buildInlineListField`'s inline rows and `_openListEditor`'s dialog).
+class _ListFieldActions {
+  final Future<void> Function(int? index) editItem;
+  final void Function(int index) deleteItem;
+  final void Function(int oldIndex, int newIndex) reorder;
+
+  const _ListFieldActions({required this.editItem, required this.deleteItem, required this.reorder});
+}
+
 /// The Cancel/Save (+ submitting spinner) row shared by every presenter of
 /// a [FormRenderer] — the renderer's own `showActions` footer,
 /// [showFormDialog]'s action bar, and [showFormPane]'s pinned footer. Only
@@ -781,12 +792,26 @@ class FormRendererState extends State<FormRenderer> {
   Widget _buildMarkdown(Map<String, dynamic> el, ThemeData theme) {
     final text = el['text'] as String? ?? '';
     final devModeColor = _devModeColor(el);
+    final styleSheet = devModeColor == null ? null : MarkdownStyleSheet(p: TextStyle(color: devModeColor));
+    if (el['collapsible'] == true) {
+      // ExpansionTile carries its own expanded/collapsed state internally —
+      // nothing for this (stateless-per-build) method to track.
+      return Theme(
+        data: theme.copyWith(dividerColor: Colors.transparent),
+        child: ExpansionTile(
+          tilePadding: _rowContentPadding,
+          childrenPadding: _rowContentPadding,
+          title: Text(
+            el['title'] as String? ?? '',
+            style: theme.textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.bold, color: devModeColor),
+          ),
+          children: [Align(alignment: Alignment.centerLeft, child: MarkdownBody(data: text, styleSheet: styleSheet))],
+        ),
+      );
+    }
     return Padding(
       padding: _rowContentPadding,
-      child: MarkdownBody(
-        data: text,
-        styleSheet: devModeColor == null ? null : MarkdownStyleSheet(p: TextStyle(color: devModeColor)),
-      ),
+      child: MarkdownBody(data: text, styleSheet: styleSheet),
     );
   }
 
@@ -1240,10 +1265,15 @@ class FormRendererState extends State<FormRenderer> {
         : item.values.firstWhere((v) => v != null && v.toString().isNotEmpty, orElse: () => '').toString();
   }
 
-  /// A `fieldType: 'list'` field: a single row summarizing the current
-  /// items as a comma-separated list; tapping it opens [_openListEditor]'s
-  /// dialog where the actual add/edit/delete/reorder happens.
+  /// A `fieldType: 'list'` field. `inline: true` renders the item rows (with
+  /// a reorder handle/delete button per row, and an Add row) directly here
+  /// — see [_buildInlineListField]. Otherwise: a single row summarizing the
+  /// current items as a comma-separated list; tapping it opens
+  /// [_openListEditor]'s dialog where the actual add/edit/delete/reorder
+  /// happens.
   Widget _buildListField(Map<String, dynamic> el, ThemeData theme) {
+    if (el['inline'] == true) return _buildInlineListField(el, theme);
+
     final key = el['key'] as String;
     final label = el['label'] as String? ?? '';
     final description = el['description'] as String?;
@@ -1276,6 +1306,153 @@ class FormRendererState extends State<FormRenderer> {
     );
   }
 
+  /// `inline: true`'s rendering: the same add/edit/delete/reorder behavior
+  /// as [_openListEditor] (both built from [_listFieldActions]), just laid
+  /// out directly in the form instead of behind a summary row that opens a
+  /// dialog — for a list that IS the section's content (e.g. call-notes'
+  /// custom files), not one field among several. Tapping a row (or Add)
+  /// still opens the `itemFields` editor dialog; only the outer
+  /// reorder/delete/add wrapper is inline instead of a second, nested
+  /// dialog.
+  Widget _buildInlineListField(Map<String, dynamic> el, ThemeData theme) {
+    final key = el['key'] as String;
+    final label = el['label'] as String? ?? '';
+    final itemLabel = el['itemLabel'] as String? ?? label;
+    final orderable = el['orderable'] == true;
+    final errorText = _errors[key];
+    final items = ((_values[key] as List?) ?? const []).cast<Map<String, dynamic>>();
+    final actions = _listFieldActions(context: context, key: key, el: el, items: items, itemLabel: itemLabel);
+
+    Widget rowFor(int index) {
+      final title = _listItemTitle(el, items[index]);
+      return ListTile(
+        key: ValueKey('$key-item-$index'),
+        contentPadding: _rowContentPadding,
+        // Leading, not trailing (unlike the dialog editor's drag handle) —
+        // the drag gesture is scoped to just this icon via the listener
+        // below, so it can't be confused with the row's own onTap.
+        leading: orderable
+            ? ReorderableDragStartListener(index: index, child: const Icon(Icons.drag_handle))
+            : null,
+        title: Text(title.isEmpty ? widget.labels.untitledItem : title),
+        onTap: _isSubmitting ? null : () => actions.editItem(index),
+        trailing: IconButton(
+          icon: Icon(Icons.delete, size: 20, semanticLabel: widget.labels.removeItemLabel),
+          onPressed: _isSubmitting ? null : () => actions.deleteItem(index),
+        ),
+        mouseCursor: SystemMouseCursors.click,
+      );
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        if (errorText != null)
+          Padding(
+            padding: _rowContentPadding,
+            child: Text(errorText, style: TextStyle(color: theme.colorScheme.error, fontSize: 12)),
+          ),
+        if (orderable)
+          ReorderableListView(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            onReorder: actions.reorder,
+            // Otherwise, on a desktop/web (mouse) platform, the framework
+            // auto-adds its OWN trailing drag handle to every row — landing
+            // right on top of the delete IconButton above. rowFor already
+            // wires up its own leading handle via ReorderableDragStartListener.
+            buildDefaultDragHandles: false,
+            children: [for (var i = 0; i < items.length; i++) rowFor(i)],
+          )
+        else
+          for (var i = 0; i < items.length; i++) rowFor(i),
+        Padding(
+          padding: _rowContentPadding,
+          child: TextButton.icon(
+            onPressed: _isSubmitting ? null : () => actions.editItem(null),
+            icon: const Icon(Icons.add, size: 18),
+            label: Text(widget.labels.addItemLabel(itemLabel)),
+          ),
+        ),
+      ],
+    );
+  }
+
+  /// The add/edit/delete/reorder behavior shared by [_buildInlineListField]
+  /// and [_openListEditor] — the only thing that differs between the two
+  /// presentations is the surrounding chrome (an inline `Column` vs a
+  /// `HaloDialog`) and each row's own layout, both of which stay with their
+  /// respective callers. [items] is the current value list at the moment
+  /// of the call — both callers already re-derive it from `_values[key]`
+  /// on every rebuild they care about (the inline field's own `build`, or
+  /// the dialog's `StatefulBuilder`), so a plain list is enough; nothing
+  /// here needs to re-read it later. [afterCommit], when given, runs right
+  /// after a commit's `setState` — only the dialog needs it, to also
+  /// refresh its own `StatefulBuilder` (the inline field's `build` already
+  /// covers that).
+  _ListFieldActions _listFieldActions({
+    required BuildContext context,
+    required String key,
+    required Map<String, dynamic> el,
+    required List<Map<String, dynamic>> items,
+    required String itemLabel,
+    VoidCallback? afterCommit,
+  }) {
+    final itemFields = (el['itemFields'] as List? ?? const []).cast<Map<String, dynamic>>();
+
+    Future<void> commit(List<Map<String, dynamic>> newItems) async {
+      setState(() {
+        _values[key] = newItems;
+        _errors.remove(key);
+      });
+      afterCommit?.call();
+      await _handleFieldBlurOrInteraction(key, newItems);
+    }
+
+    Future<void> editItem(int? index) async {
+      final itemPath = '$key[${index ?? items.length}]';
+      final initial = index != null ? Map<String, dynamic>.from(items[index]) : <String, dynamic>{};
+      final result = await showFormDialog(
+        context,
+        formDefinition: {
+          'title': index != null ? widget.labels.editItemLabel(itemLabel) : widget.labels.addItemLabel(itemLabel),
+          'elements': itemFields,
+        },
+        initialState: initial,
+        validator: widget.validator == null
+            ? null
+            : (fieldKey, value, state) => widget.validator!('$itemPath.$fieldKey', value, state),
+        transformer: widget.transformer == null
+            ? null
+            : (fieldKey, value, state) => widget.transformer!('$itemPath.$fieldKey', value, state),
+        developerMode: widget.developerMode,
+        labels: widget.labels,
+      );
+      if (result == null) return;
+      final newItems = List<Map<String, dynamic>>.from(items);
+      if (index != null) {
+        newItems[index] = result;
+      } else {
+        newItems.add(result);
+      }
+      await commit(newItems);
+    }
+
+    void deleteItem(int index) {
+      final newItems = List<Map<String, dynamic>>.from(items)..removeAt(index);
+      commit(newItems);
+    }
+
+    void reorder(int oldIndex, int newIndex) {
+      final newItems = List<Map<String, dynamic>>.from(items);
+      if (newIndex > oldIndex) newIndex -= 1;
+      newItems.insert(newIndex, newItems.removeAt(oldIndex));
+      commit(newItems);
+    }
+
+    return _ListFieldActions(editItem: editItem, deleteItem: deleteItem, reorder: reorder);
+  }
+
   /// The list field's editor dialog: a summary row per item plus an "Add"
   /// row. Every mutation commits immediately (autosave, like every other
   /// field) — Done just closes. Editing or adding an item reopens the same
@@ -1285,7 +1462,11 @@ class FormRendererState extends State<FormRenderer> {
   Future<void> _openListEditor(Map<String, dynamic> el) async {
     final key = el['key'] as String;
     final label = el['label'] as String? ?? '';
-    final itemFields = (el['itemFields'] as List? ?? const []).cast<Map<String, dynamic>>();
+    // Matches _buildInlineListField's own fallback — without it, a non-inline
+    // list field that declares itemLabel had it silently ignored here,
+    // showing the plural container label in the Add/Edit dialog and button
+    // instead.
+    final itemLabel = el['itemLabel'] as String? ?? label;
     final orderable = el['orderable'] == true;
 
     await showHaloDialog<void>(
@@ -1295,56 +1476,17 @@ class FormRendererState extends State<FormRenderer> {
           // Read through _values each build so both this dialog and the
           // summary row behind it stay live.
           final items = ((_values[key] as List?) ?? const []).cast<Map<String, dynamic>>();
-
-          Future<void> commit(List<Map<String, dynamic>> newItems) async {
-            setState(() {
-              _values[key] = newItems;
-              _errors.remove(key);
-            });
-            setDialogState(() {});
-            await _handleFieldBlurOrInteraction(key, newItems);
-          }
-
-          Future<void> editItem(int? index) async {
-            final itemPath = '$key[${index ?? items.length}]';
-            final initial = index != null ? Map<String, dynamic>.from(items[index]) : <String, dynamic>{};
-            final result = await showFormDialog(
-              dialogContext,
-              formDefinition: {
-                'title': index != null ? widget.labels.editItemLabel(label) : widget.labels.addItemLabel(label),
-                'elements': itemFields,
-              },
-              initialState: initial,
-              validator: widget.validator == null
-                  ? null
-                  : (fieldKey, value, state) => widget.validator!('$itemPath.$fieldKey', value, state),
-              transformer: widget.transformer == null
-                  ? null
-                  : (fieldKey, value, state) => widget.transformer!('$itemPath.$fieldKey', value, state),
-              developerMode: widget.developerMode,
-              labels: widget.labels,
-            );
-            if (result == null) return;
-            final newItems = List<Map<String, dynamic>>.from(items);
-            if (index != null) {
-              newItems[index] = result;
-            } else {
-              newItems.add(result);
-            }
-            await commit(newItems);
-          }
-
-          void deleteItem(int index) {
-            final newItems = List<Map<String, dynamic>>.from(items)..removeAt(index);
-            commit(newItems);
-          }
-
-          void reorder(int oldIndex, int newIndex) {
-            final newItems = List<Map<String, dynamic>>.from(items);
-            if (newIndex > oldIndex) newIndex -= 1;
-            newItems.insert(newIndex, newItems.removeAt(oldIndex));
-            commit(newItems);
-          }
+          final actions = _listFieldActions(
+            context: dialogContext,
+            key: key,
+            el: el,
+            items: items,
+            itemLabel: itemLabel,
+            // The inline field's own `build` already picks up a commit via
+            // the outer setState; this dialog is a separate overlay that
+            // needs telling explicitly to redraw with the new items.
+            afterCommit: () => setDialogState(() {}),
+          );
 
           Widget rowFor(int index) {
             final title = _listItemTitle(el, items[index]);
@@ -1353,14 +1495,22 @@ class FormRendererState extends State<FormRenderer> {
               dense: true,
               contentPadding: EdgeInsets.zero,
               title: Text(title.isEmpty ? widget.labels.untitledItem : title),
-              onTap: _isSubmitting ? null : () => editItem(index),
+              onTap: _isSubmitting ? null : () => actions.editItem(index),
               trailing: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  if (orderable) const Icon(Icons.drag_handle, size: 20),
+                  // A real drag listener, not decoration — with the
+                  // framework's auto handle off below, this icon IS the
+                  // drag affordance (same wiring as the inline editor's
+                  // leading handle).
+                  if (orderable)
+                    ReorderableDragStartListener(
+                      index: index,
+                      child: const Icon(Icons.drag_handle, size: 20),
+                    ),
                   IconButton(
                     icon: Icon(Icons.delete, size: 20, semanticLabel: widget.labels.removeItemLabel),
-                    onPressed: _isSubmitting ? null : () => deleteItem(index),
+                    onPressed: _isSubmitting ? null : () => actions.deleteItem(index),
                   ),
                 ],
               ),
@@ -1384,15 +1534,21 @@ class FormRendererState extends State<FormRenderer> {
                       ReorderableListView(
                         shrinkWrap: true,
                         physics: const NeverScrollableScrollPhysics(),
-                        onReorder: reorder,
+                        // Same as the inline editor: on mouse platforms the
+                        // framework auto-adds its own trailing handle to
+                        // every row, doubling the row's own — the trailing
+                        // icon above carries the ReorderableDragStartListener
+                        // instead.
+                        buildDefaultDragHandles: false,
+                        onReorder: actions.reorder,
                         children: [for (var i = 0; i < items.length; i++) rowFor(i)],
                       )
                     else
                       for (var i = 0; i < items.length; i++) rowFor(i),
                     TextButton.icon(
-                      onPressed: _isSubmitting ? null : () => editItem(null),
+                      onPressed: _isSubmitting ? null : () => actions.editItem(null),
                       icon: const Icon(Icons.add, size: 18),
-                      label: Text(widget.labels.addItemLabel(label)),
+                      label: Text(widget.labels.addItemLabel(itemLabel)),
                     ),
                   ],
                 ),

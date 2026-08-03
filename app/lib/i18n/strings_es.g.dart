@@ -499,6 +499,9 @@ class _Translations$dataFiles$es extends Translations$dataFiles$en {
 
 	// Translations
 	@override String get downloading => 'Descargando…';
+	@override String downloadFailedTitle({required Object name}) => 'No se pudo descargar ${name}';
+	@override String get downloadFailedWebHint => 'Esto podría ser un problema de red, o puede que el sitio de este enlace no permita descargas directas desde un navegador web. Prueba la app de escritorio o móvil, o un lugar de alojamiento diferente.';
+	@override String processingFailedTitle({required Object name}) => 'No se pudo procesar ${name}';
 	@override String importedRecords({required num count, required Object label}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count,
 		one: 'Se importó ${count} registro de ${label}.',
 		other: 'Se importaron ${count} registros de ${label}.',
@@ -510,6 +513,7 @@ class _Translations$dataFiles$es extends Translations$dataFiles$en {
 		other: 'Se eliminaron los datos de ${count} archivos de datos de extensiones deshabilitadas.',
 	);
 	@override String recordsProgress({required Object end, required Object total}) => '${end} / ${total} registros';
+	@override String get definitionUnavailable => 'La fuente del archivo no proporcionó una definición — su extensión puede estar reiniciándose o mal configurada. Inténtalo de nuevo en un momento.';
 }
 
 // Path: updates
@@ -1050,7 +1054,6 @@ class _Translations$settings$offlineData$es extends Translations$settings$offlin
 	@override String get noFilesDescription => 'Habilita extensiones de actividades o búsquedas para descargar aquí sus datos sin conexión.';
 	@override String get refresh => 'Actualizar';
 	@override String get refreshing => 'Actualizando…';
-	@override String refreshFailed({required Object name, required Object error}) => 'No se pudo actualizar ${name}: ${error}';
 	@override String get updateAll => 'Actualizar todo';
 	@override String get updatingAll => 'Actualizando todos los archivos de datos…';
 	@override String get neverDownloaded => 'Nunca descargado';
@@ -1060,6 +1063,7 @@ class _Translations$settings$offlineData$es extends Translations$settings$offlin
 	@override String updatedHoursAgo({required Object hours}) => 'Actualizado hace ${hours}h';
 	@override String updatedHoursMinutesAgo({required Object hours, required Object minutes}) => 'Actualizado hace ${hours}h ${minutes}m';
 	@override String updatedMinutesAgo({required Object minutes}) => 'Actualizado hace ${minutes}m';
+	@override String get extensionsSection => 'Extensiones';
 }
 
 // Path: settings.profiles
@@ -1840,7 +1844,6 @@ extension on TranslationsEs {
 			'settings.offlineData.noFilesDescription' => 'Habilita extensiones de actividades o búsquedas para descargar aquí sus datos sin conexión.',
 			'settings.offlineData.refresh' => 'Actualizar',
 			'settings.offlineData.refreshing' => 'Actualizando…',
-			'settings.offlineData.refreshFailed' => ({required Object name, required Object error}) => 'No se pudo actualizar ${name}: ${error}',
 			'settings.offlineData.updateAll' => 'Actualizar todo',
 			'settings.offlineData.updatingAll' => 'Actualizando todos los archivos de datos…',
 			'settings.offlineData.neverDownloaded' => 'Nunca descargado',
@@ -1850,6 +1853,7 @@ extension on TranslationsEs {
 			'settings.offlineData.updatedHoursAgo' => ({required Object hours}) => 'Actualizado hace ${hours}h',
 			'settings.offlineData.updatedHoursMinutesAgo' => ({required Object hours, required Object minutes}) => 'Actualizado hace ${hours}h ${minutes}m',
 			'settings.offlineData.updatedMinutesAgo' => ({required Object minutes}) => 'Actualizado hace ${minutes}m',
+			'settings.offlineData.extensionsSection' => 'Extensiones',
 			'settings.profiles.notSet' => 'Sin definir',
 			'settings.search.clear' => 'Borrar',
 			'settings.search.hint' => 'Buscar en la configuración',
@@ -1881,9 +1885,9 @@ extension on TranslationsEs {
 			'settings.panels.commonPreferences' => 'Preferencias comunes',
 			'settings.panels.commonPreferencesDescription' => 'Apariencia, idioma y ajustes cotidianos',
 			'settings.panels.allSettings' => 'Todos los ajustes',
-			'settings.panels.allSettingsDescription' => 'Todos los ajustes disponibles en un solo lugar',
 			_ => null,
 		} ?? switch (path) {
+			'settings.panels.allSettingsDescription' => 'Todos los ajustes disponibles en un solo lugar',
 			'settings.panels.syncDescription' => 'Respalda y sincroniza tus registros entre dispositivos',
 			'settings.panels.accountsDescription' => 'Inicia sesión en servicios y búsquedas en línea',
 			'settings.panels.extensions' => 'Funciones y extensiones',
@@ -1935,11 +1939,15 @@ extension on TranslationsEs {
 			'spotting.unknownError' => 'error desconocido',
 			'spotting.notSent' => 'Spot no enviado.',
 			'dataFiles.downloading' => 'Descargando…',
+			'dataFiles.downloadFailedTitle' => ({required Object name}) => 'No se pudo descargar ${name}',
+			'dataFiles.downloadFailedWebHint' => 'Esto podría ser un problema de red, o puede que el sitio de este enlace no permita descargas directas desde un navegador web. Prueba la app de escritorio o móvil, o un lugar de alojamiento diferente.',
+			'dataFiles.processingFailedTitle' => ({required Object name}) => 'No se pudo procesar ${name}',
 			'dataFiles.importedRecords' => ({required num count, required Object label}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count, one: 'Se importó ${count} registro de ${label}.', other: 'Se importaron ${count} registros de ${label}.', ), 
 			'dataFiles.importedData' => ({required Object label}) => 'Se importaron datos de ${label}.',
 			'dataFiles.cleanedUpTitle' => 'Datos de extensiones limpiados',
 			'dataFiles.removedData' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count, one: 'Se eliminaron los datos de ${count} archivo de datos de extensiones deshabilitadas.', other: 'Se eliminaron los datos de ${count} archivos de datos de extensiones deshabilitadas.', ), 
 			'dataFiles.recordsProgress' => ({required Object end, required Object total}) => '${end} / ${total} registros',
+			'dataFiles.definitionUnavailable' => 'La fuente del archivo no proporcionó una definición — su extensión puede estar reiniciándose o mal configurada. Inténtalo de nuevo en un momento.',
 			'updates.updateAvailable' => 'Actualización disponible',
 			'updates.newVersionAvailable' => ({required Object version}) => 'Hay una nueva versión (${version}) disponible.',
 			'updates.getIt' => 'Obtener',

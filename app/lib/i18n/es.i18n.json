@@ -603,7 +603,6 @@
       "noFilesDescription": "Habilita extensiones de actividades o búsquedas para descargar aquí sus datos sin conexión.",
       "refresh": "Actualizar",
       "refreshing": "Actualizando…",
-      "refreshFailed": "No se pudo actualizar ${name}: ${error}",
       "updateAll": "Actualizar todo",
       "updatingAll": "Actualizando todos los archivos de datos…",
       "neverDownloaded": "Nunca descargado",
@@ -612,7 +611,8 @@
       "updatedDaysHoursAgo": "Actualizado hace ${days}d ${hours}h",
       "updatedHoursAgo": "Actualizado hace ${hours}h",
       "updatedHoursMinutesAgo": "Actualizado hace ${hours}h ${minutes}m",
-      "updatedMinutesAgo": "Actualizado hace ${minutes}m"
+      "updatedMinutesAgo": "Actualizado hace ${minutes}m",
+      "extensionsSection": "Extensiones"
     },
     "profiles": {
       "notSet": "Sin definir"
@@ -720,6 +720,9 @@
   },
   "dataFiles": {
     "downloading": "Descargando…",
+    "downloadFailedTitle": "No se pudo descargar ${name}",
+    "downloadFailedWebHint": "Esto podría ser un problema de red, o puede que el sitio de este enlace no permita descargas directas desde un navegador web. Prueba la app de escritorio o móvil, o un lugar de alojamiento diferente.",
+    "processingFailedTitle": "No se pudo procesar ${name}",
     "importedRecords": {
       "one": "Se importó ${count} registro de ${label}.",
       "other": "Se importaron ${count} registros de ${label}."
@@ -730,7 +733,8 @@
       "one": "Se eliminaron los datos de ${count} archivo de datos de extensiones deshabilitadas.",
       "other": "Se eliminaron los datos de ${count} archivos de datos de extensiones deshabilitadas."
     },
-    "recordsProgress": "${end} / ${total} registros"
+    "recordsProgress": "${end} / ${total} registros",
+    "definitionUnavailable": "La fuente del archivo no proporcionó una definición — su extensión puede estar reiniciándose o mal configurada. Inténtalo de nuevo en un momento."
   },
   "updates": {
     "updateAvailable": "Actualización disponible",

@@ -1310,10 +1310,28 @@ export interface FormField {
   /// `itemFields`. The field renders as a single row summarizing the items
   /// (comma-separated `itemTitle`s); tapping opens an editor dialog with
   /// per-item rows and add/edit/delete (edit/add reuse the same form
-  /// renderer recursively, scoped to `itemFields`, in a nested dialog).
+  /// renderer recursively, scoped to `itemFields`, in a nested dialog) —
+  /// unless `inline` opts out of that, see below.
   itemFields?: FormField[]
+  /// `${key}` placeholders substituted from each item's own fields — e.g.
+  /// `"${name}"`. NOT `{{key}}` (Mustache-style double braces), which the
+  /// renderer does not recognize and would show literally, unsubstituted.
   itemTitle?: string
   orderable?: boolean
+  /// Only used when fieldType === 'list'. Renders the item rows (with
+  /// reorder handle/delete button per row, and an Add row) directly in the
+  /// panel instead of behind a single summary row that opens an editor
+  /// dialog — for a list that's the main content of its own section rather
+  /// than one field among several. Tapping a row (or Add) still opens the
+  /// `itemFields` editor dialog; only the extra list-editor dialog wrapping
+  /// reorder/delete/add is skipped.
+  inline?: boolean
+  /// Only used when fieldType === 'list'. Singular noun for one item (e.g.
+  /// "custom note file"), used in the Add/Edit dialog titles and the Add
+  /// button instead of `label` — which names the list as a whole (typically
+  /// plural) and would otherwise read as "Add custom note files" for a
+  /// dialog that adds exactly one. Defaults to `label` when omitted.
+  itemLabel?: string
   /// Only used when fieldType === 'multiselect': the selection the editor's
   /// Defaults button restores. Omit it and no Defaults button is offered.
   defaultValue?: any[]
@@ -1393,6 +1411,16 @@ export interface FormField {
   /// field from anywhere it already appears (Common Preferences, All
   /// Settings) — it just means no target-scoped modal picks it up.
   target?: string | string[]
+  /// Only meaningful within a `kind: 'dynamic'` settingsPanel. After this
+  /// field commits, the app restarts the extension runtime — for a Tier 2
+  /// field whose value is only consulted at `onActivation` (e.g. a list of
+  /// URLs to register as `dataFile` hooks), since there's no other way for
+  /// a value read via `host.getSettings()` mid-runtime to reach code that
+  /// only runs once, at activation. Don't set this on a field an extension
+  /// hook can simply re-read on its next invocation (most Tier 2 fields
+  /// don't need it) — a restart is disruptive, reserved for the fields that
+  /// genuinely require one.
+  restartOnChange?: boolean
 }
 
 export interface FormHeader {
@@ -1427,6 +1455,14 @@ export interface FormMarkdownBlock {
   devMode?: boolean
   /// Settings-panel-only; see FormField.environment.
   environment?: string | string[]
+  /// Starts collapsed behind a tappable `title` header instead of always
+  /// showing `text` — for supplementary help/reference material (e.g. "How
+  /// to build your own X") that would otherwise clutter the panel for
+  /// everyone who doesn't need it. Requires `title`, since a collapsed block
+  /// needs something to show. Omit for the default: `text` always visible.
+  collapsible?: boolean
+  /// The tappable header shown when `collapsible` is set; ignored otherwise.
+  title?: string
 }
 
 /// A button that invokes a named hook method (e.g. 'testCredentials')
@@ -1496,6 +1532,24 @@ export interface SettingsPanelDescriptor {
   title: string
   icon?: string
   order?: number
+  /// Defaults to true. Set false to keep this panel out of the app's
+  /// top-level settings navigation (the sidebar list of panels).
+  /// Independent of [dataFilesSection] below — this only controls the
+  /// top-level nav, not where else (if anywhere) the panel surfaces.
+  sidebar?: boolean
+
+  /// Defaults false. Set true to also show this panel as a row in the Data
+  /// Files screen's own "Extensions" section
+  /// (app/lib/views/settings_view.dart's `_dataFileScopedPanels`) — for a
+  /// data-file-management panel (e.g. enabling/disabling individual note
+  /// sources) that belongs there instead of, or in addition to, the
+  /// top-level nav. This is the ONLY host-recognized alternate surface
+  /// today; there is no way to route a panel anywhere else, so leave this
+  /// false for anything not actually about managing data files. Independent
+  /// of `sidebar`, deliberately: inferring it from `sidebar: false` would
+  /// sweep any sidebar-opt-out panel into Data Files whether or not that
+  /// made sense for it.
+  dataFilesSection?: boolean
 }
 
 /// Same shape as FormField, but validate/transform closures are dropped in
@@ -1530,6 +1584,10 @@ export interface SimpleSettingsPanel {
   title: string
   icon?: string
   order?: number
+  /// See SettingsPanelDescriptor.sidebar's doc comment.
+  sidebar?: boolean
+  /// See SettingsPanelDescriptor.dataFilesSection's doc comment.
+  dataFilesSection?: boolean
   fields: (SettingsField | FormActionElement)[]
 }
 

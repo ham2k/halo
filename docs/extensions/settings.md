@@ -74,6 +74,18 @@ export interface SimpleSettingsPanel {
   title: string;
   icon?: string;
   order?: number;
+  // Defaults true. Set false to keep this panel out of the app's top-level
+  // settings navigation (the sidebar list). Independent of dataFilesSection
+  // below — this only controls the top-level nav.
+  sidebar?: boolean;
+  // Defaults false. Set true to also show this panel as a row in the Data
+  // Files screen's own "Extensions" section — the ONLY host-recognized
+  // alternate surface today, so leave this false for anything not actually
+  // about managing data files. Independent of `sidebar`; a panel usually
+  // wants both false-then-true, but the two aren't coupled at the type
+  // level — inferring this from `sidebar: false` alone would sweep any
+  // sidebar-opt-out panel in here.
+  dataFilesSection?: boolean;
   fields: (SettingsField | FormActionElement)[];
 }
 ```
@@ -122,6 +134,8 @@ export interface SettingsPanelDescriptor {
   title: string;
   icon?: string;
   order?: number;
+  sidebar?: boolean; // see SimpleSettingsPanel.sidebar above; defaults true
+  dataFilesSection?: boolean; // see SimpleSettingsPanel.dataFilesSection above; defaults false
 }
 
 export interface DynamicSettingsPanel {
@@ -134,8 +148,10 @@ export interface DynamicSettingsPanel {
   // Fired on every accepted change (post-validate/transform). Unlike
   // FormHook.onChangeField, this isn't patching sibling form state — it's
   // "the field committed, go persist it." The extension is responsible for
-  // its own persistence here (e.g. host.kvSet), since the engine can't
-  // infer storage for computed fields the way it can for Tier 1.
+  // its own persistence here (e.g. host.setSettings — NOT host.kvSet, which
+  // is in-memory only and does not survive a runtime restart), since the
+  // engine can't infer storage for computed fields the way it can for
+  // Tier 1.
   onChangeField(args: { panelKey: string; fieldKey: string; value: any; state: Record<string, any> }, ctx: HookContext): Promise<void>;
 }
 ```
@@ -403,6 +419,36 @@ an action's method dispatches through the same extension host call the
 full settings screens use, and an account field's Manage/Connect button
 opens that account's own standalone dialog, exactly as it would from All
 Settings.
+
+## Restarting the runtime after a Tier 2 field commits
+
+A `kind: 'dynamic'` field can set `restartOnChange: true` when its value is
+only ever consulted at `onActivation` — the common case being a list of URLs
+the extension turns into `dataFile` hook registrations at startup, the way
+`getPanels`/`getDefinition` can be re-queried on demand but `onActivation`
+cannot. Once the field commits, the app calls the same `restartRuntime()`
+already used when the user toggles an extension on/off, so `onActivation`
+runs again and picks up the new value via `host.getSettings()`.
+
+Don't reach for this by default — most Tier 2 fields are read fresh by a
+hook that runs on every relevant call (`getDefinition`, `lookup`, etc.), so
+they see a change immediately with no restart needed. Reserve
+`restartOnChange` for the fields that genuinely can't be re-read any other
+way, since a restart is a real interruption, not a free way to "make sure
+everything's fresh."
+
+`onActivation` re-running is only half the story — it also needs to read
+that new value, which means `await host.getSettings()` before any
+`registerHook` calls that depend on it. Nothing in the kernel awaits
+`onActivation` itself (it's dispatched fire-and-forget), so those
+`registerHook` calls land whenever that promise happens to resolve, not
+before boot "finishes." In practice this is safe because the app's own
+boot path always makes an unrelated host round trip of its own before
+returning control to any caller — which reliably gives a pending
+`getSettings()` continuation enough time to land first — but there's no
+hard guarantee of that ordering, only an incidental one. Register anything
+that DOESN'T depend on settings (a static builtin list, say) synchronously,
+before the `await`, so at least that part is never subject to this.
 
 ---
 

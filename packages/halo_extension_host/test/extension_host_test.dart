@@ -388,21 +388,48 @@ __polo.defineExtension({
         ExtensionBundle(key: 'call-notes', source: bundleSource('call-notes')),
       ],
       useIsolate: false,
+      // call-notes' onActivation awaits host.getSettings() (HALO-53, to
+      // read enabledNotes/customFiles before registering this run's
+      // dataFile hooks) — without an answer here that await never resolves
+      // and NONE of its registerHook calls ever run, not just the
+      // settings-dependent ones.
+      onHostCall: (method, params) async => method == 'getSettings' ? {'extensions': {}} : null,
     );
     addTearDown(host.dispose);
+
+    // onActivation's `await host.getSettings()` needs one full message
+    // round trip to settle before its registerHook calls take effect —
+    // ExtensionHost.start() itself only waits for the kernel's synchronous
+    // activation pass; kernel.ts's activateAll runs the actual awaiting
+    // fire-and-forget (deadlocks the isolate backend otherwise) and posts
+    // `activationComplete` once every extension's onActivation has settled.
+    // Awaiting [ExtensionHost.activated] is the structural guarantee that
+    // late registrations exist — not a synthetic delay standing in for
+    // incidental timing elsewhere.
+    await host.activated;
+    final defsBeforeLoad = await host.invokeHookAll('dataFile', method: 'getDefinition');
+    expect(
+      defsBeforeLoad.any((e) => (e['value'] as Map?)?['key'] == 'hams-of-note'),
+      isTrue,
+      reason: 'the builtin dataFile hook must be registered by now',
+    );
 
     // The exact invocations DataFileManager._processRaw makes for a
     // fetchType 'raw' data file: parse the body, then hand the (JSON-cached)
     // result back through onLoadRawData — issue #17's Hams of Note file.
+    // Registered under its own identifier ('hams-of-note'), not the
+    // extension's key — HALO-53 gave every note source (this builtin, plus
+    // any user-added custom file) its own dataFile registration, so they
+    // can be fetched/cached/enabled independently of one another.
     const body = '# TITLE: Hams of Note\n'
         '\n'
         'KI2D 🤩 Sebastián - Ham2K PoLo Creator\n'
         'KI2D 😁 also an Elmer\n'
         'DAN WD4DAN,WD4JMM\n';
-    final parsed = await host.invokeHook('dataFile', key: 'call-notes', method: 'rawToJSONData',
+    final parsed = await host.invokeHook('dataFile', key: 'hams-of-note', method: 'rawToJSONData',
         args: {'body': body, 'url': 'https://ham2k.com/data/hams-of-note.txt', 'options': {}});
     expect((parsed as Map)['KI2D'], hasLength(2));
-    await host.invokeHook('dataFile', key: 'call-notes', method: 'onLoadRawData', args: parsed);
+    await host.invokeHook('dataFile', key: 'hams-of-note', method: 'onLoadRawData', args: parsed);
 
     // The full lookup pipeline (annotation pre-step + fan-out + merge)
     // carries the combined note and marker emoji onto the guess.
@@ -1057,8 +1084,9 @@ __polo.defineExtension({
     );
     addTearDown(host.dispose);
 
-    // Two hooks in one fan-out used to mean two getSettings round trips
-    // (and for account-owning extensions, two keychain reads) — per call.
+    // The fan-out must share one context per call: without the shared ctx,
+    // two hooks would each pay a getSettings round trip (and, for
+    // account-owning extensions, a keychain read).
     final all = await host.invokeHookAll('ctxTest', method: 'probe');
     expect(all.map((e) => e['value']), ['es', 'es']);
     expect(getSettingsCalls, 1);

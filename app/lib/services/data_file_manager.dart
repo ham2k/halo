@@ -1,6 +1,7 @@
 // Copyright ©️ 2026 Sebastian Delmont <sd@ham2k.com>
 // SPDX-License-Identifier: MPL-2.0
 
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
@@ -55,6 +56,28 @@ String decodeDataFileBody(List<int> bytes, {String? encoding}) {
   }
 }
 
+/// The message shown in a download-failure notice. `package:http`'s
+/// BrowserClient wraps every browser-level fetch failure (a cross-origin
+/// download the browser refuses — one that would work from a native build
+/// — but also a plain network outage) in a [http.ClientException]; that
+/// class gets a plain-language hint appended, worded to cover both causes
+/// rather than assuming it's specifically a CORS block. Check the TYPE,
+/// never the message text: `'Failed to fetch'` is Chromium/V8's own wording
+/// for the underlying `fetch()` TypeError, and Firefox and Safari phrase
+/// the identical failure differently — a string match silently never fires
+/// for them. Every other failure (a 404, a malformed URL) is shown
+/// as-is, since guessing at THOSE causes would be more likely to mislead
+/// than help. [isWeb] defaults to [kIsWeb] but is overridable — the
+/// constant itself isn't, so a test can't flip platforms without this.
+@visibleForTesting
+String friendlyDownloadError(Object error, {bool isWeb = kIsWeb}) {
+  final message = error.toString();
+  if (isWeb && error is http.ClientException) {
+    return '$message\n\n${t.dataFiles.downloadFailedWebHint}';
+  }
+  return message;
+}
+
 /// One registered data file's definition plus its last-download time, for
 /// the Data Files settings panel. [updatedAt] is null when the file has
 /// never been downloaded on this device.
@@ -91,7 +114,45 @@ class DataFileManager {
     required this.extensions,
     required this.prefs,
     this.statusBar,
-  });
+  }) {
+    // Every successful runtime start can register dataFile hooks that did
+    // not exist before — a custom file added in a settings panel, an
+    // extension enabled from the Extensions panel, a crash-recovery start
+    // finally coming up — and nothing else fetches those until the next
+    // boot. runtimeGeneration ticks once per successful start (never on a
+    // failed one), so listening to it covers every restart path with one
+    // channel. Cheap when nothing changed: fresh files are age-skipped, so
+    // a no-op pass costs one definition fan-out. Failures notify — a
+    // restart-adjacent sync is an attended moment, unlike the boot sync
+    // (whose own explicit call happens before this listener is registered,
+    // since HaLoServices constructs DataFileManager lazily after start).
+    extensions.runtimeGeneration.addListener(_onRuntimeReplaced);
+  }
+
+  bool _postStartSyncRunning = false;
+  bool _postStartSyncQueued = false;
+
+  void _onRuntimeReplaced() => unawaited(_syncAfterRuntimeReplaced());
+
+  /// One sync per generation tick, serialized: concurrent full syncs would
+  /// double-download the same files. A tick landing mid-sync queues exactly
+  /// one follow-up pass (it may carry registrations the running pass's
+  /// snapshot predates).
+  Future<void> _syncAfterRuntimeReplaced() async {
+    if (_postStartSyncRunning) {
+      _postStartSyncQueued = true;
+      return;
+    }
+    _postStartSyncRunning = true;
+    try {
+      do {
+        _postStartSyncQueued = false;
+        await syncAllDataFiles();
+      } while (_postStartSyncQueued);
+    } finally {
+      _postStartSyncRunning = false;
+    }
+  }
 
   /// The serializable definitions every enabled extension contributes
   /// through the `dataFile`/`getDefinition` hook. Malformed or failed
@@ -107,11 +168,23 @@ class DataFileManager {
       ErrorReportingService.report(e, st, context: 'data-files:fetch-definitions');
       return const [];
     }
-    return [
-      for (final entry in entries)
-        if (entry is Map && entry['ok'] == true && entry['value'] != null)
-          Map<String, dynamic>.from(entry['value'] as Map),
-    ];
+    final defs = <Map<String, dynamic>>[];
+    for (final entry in entries) {
+      if (entry is! Map || entry['ok'] != true || entry['value'] == null) continue;
+      try {
+        defs.add(Map<String, dynamic>.from(entry['value'] as Map));
+      } catch (e) {
+        // Matches this method's own doc comment: a malformed entry (here,
+        // `value` present but not actually a Map — some extension's
+        // `dataFile.getDefinition` hook returning the wrong shape) is
+        // dropped, not left to throw uncaught out of every caller.
+        // refreshDataFile then finds no definition for the key and raises
+        // its own no-definition notice — dropping here is safe because that
+        // path speaks.
+        debugPrint('[data-file] dropping malformed definition entry: $e');
+      }
+    }
+    return defs;
   }
 
   /// Lists every registered data file with its last-download time (read
@@ -149,6 +222,17 @@ class DataFileManager {
       await prefs.setInt('data_file_updated_$key', now.millisecondsSinceEpoch);
       return now;
     }
+    // No matching definition: the host is mid-restart, the whole fetch
+    // failed, or this key's entry was dropped as malformed. None of those
+    // paths reach processDataFile, so without a notice HERE a Refresh tap
+    // would end in silence — spinner stops, timestamp unchanged, nothing
+    // said.
+    statusBar?.showNotice(
+      key: 'dataFile:$key',
+      icon: 'alert-circle',
+      title: t.dataFiles.downloadFailedTitle(name: key),
+      text: t.dataFiles.definitionUnavailable,
+    );
     return null;
   }
 
@@ -158,6 +242,12 @@ class DataFileManager {
     if (u.contains('dropbox.com/')) {
       u = u.replaceAll(RegExp(r'[&?]raw=\d'), '').replaceAll(RegExp(r'[&?]dl=\d'), '');
       u = u.contains('?') ? '$u&dl=1&raw=1' : '$u?dl=1&raw=1';
+      // Dropbox serves share links from both the bare and `www.` host, but
+      // only `www.dropbox.com` is in `_resolveFetchUrl`'s allowedDomains (and
+      // the services.ham2k.net proxy route) — without this, a bare-host link
+      // would skip the CORS proxy on web and hit the exact failure this is
+      // meant to fix.
+      u = u.replaceFirstMapped(RegExp(r'^(https?://)dropbox\.com/'), (m) => '${m[1]}www.dropbox.com/');
     } else if (u.contains('drive.google.com/')) {
       final match = RegExp(r'file/d/([\w_-]+)').firstMatch(u);
       if (match != null) {
@@ -167,6 +257,29 @@ class DataFileManager {
       final match = RegExp(r'/d/([\w_-]+)').firstMatch(u);
       if (match != null) {
         u = 'https://docs.google.com/document/export?format=txt&id=${match.group(1)}';
+      }
+    } else if (u.contains('gist.github.com/') &&
+        !(Uri.tryParse(u)?.pathSegments.contains('raw') ?? false)) {
+      // The share page itself is HTML, not the file's content — `/raw`
+      // (no filename) redirects to the latest revision's raw content,
+      // which is what every other branch above resolves to as well. The
+      // owner segment is optional: pre-2018 anonymous gists (GitHub stopped
+      // letting new ones be created, but existing ones stay reachable) are
+      // keyed by hash alone, with no username in the URL.
+      //
+      // Skipped entirely when the URL already has a `raw` PATH SEGMENT:
+      // that's already a direct download link, possibly naming one specific
+      // file in a multi-file gist — rewriting it to the generic
+      // latest-revision form would discard that filename and silently fetch
+      // a different file. Matched as a segment, not a substring: a gist
+      // owner named `rawmilk` must not disable the rewrite.
+      final match = RegExp(r'gist\.github\.com/(?:([\w-]+)/)?([0-9a-fA-F]+)').firstMatch(u);
+      if (match != null) {
+        final owner = match.group(1);
+        final hash = match.group(2);
+        u = owner != null
+            ? 'https://gist.githubusercontent.com/$owner/$hash/raw'
+            : 'https://gist.githubusercontent.com/$hash/raw';
       }
     }
     return u;
@@ -184,6 +297,15 @@ class DataFileManager {
         'pota.app',
         'www.sotadata.org.uk',
         'sotadata.org.uk',
+        // Custom data-file hosts (e.g. call-notes' custom note files):
+        // neither sends CORS headers on its share-link redirect hop, so a
+        // direct browser fetch is blocked even though the final redirected
+        // response is itself CORS-permissive. docs.google.com and GitHub
+        // Gists' raw content aren't listed here — both already send
+        // permissive CORS headers directly, verified against the real
+        // services, so proxying them would be needless indirection.
+        'www.dropbox.com',
+        'drive.google.com',
       };
       if (allowedDomains.contains(uri.host)) {
         return 'https://services.ham2k.net/${uri.host}${uri.path}${uri.hasQuery ? "?${uri.query}" : ""}';
@@ -260,7 +382,12 @@ class DataFileManager {
   /// check — RELOAD's whole point is usually that our own mapping logic
   /// changed, not the source data, so an unchanged server response still
   /// needs reprocessing. Returns how many data files matched the filter.
-  Future<int> syncAllDataFiles({bool force = false, String? categoryFilter}) async {
+  ///
+  /// [notifyOnFailure] forwards to [processDataFile] — the boot/onboarding
+  /// callers of this method pass `false` so an offline device doesn't raise a
+  /// persistent notice on every single unattended sync; a
+  /// user-driven caller (Update All, RELOAD) leaves it at the default `true`.
+  Future<int> syncAllDataFiles({bool force = false, String? categoryFilter, bool notifyOnFailure = true}) async {
     final host = extensions.host;
     if (host == null) {
       debugPrint('[data-file] Extension host not ready');
@@ -275,6 +402,8 @@ class DataFileManager {
       ErrorReportingService.report(e, st, context: 'data-files:sync-all-fetch-definitions');
       return 0;
     }
+
+    await _purgeOrphanedKeys(entries);
 
     var matched = 0;
     await Future.wait(entries.map((entry) async {
@@ -304,7 +433,7 @@ class DataFileManager {
         final isStale = age > maxAgeDays * 24 * 60 * 60 * 1000;
 
         if (force || isStale || lastUpdateTime == 0) {
-          await processDataFile(key, def, force: force);
+          await processDataFile(key, def, force: force, notifyOnFailure: notifyOnFailure);
           await prefs.setInt(lastUpdateKey, DateTime.now().millisecondsSinceEpoch);
         }
       } catch (e, stack) {
@@ -323,21 +452,54 @@ class DataFileManager {
   }
 
   /// Natively parses and processes a data file based on its `fetchType`.
-  Future<void> processDataFile(String key, Map<String, dynamic> def, {bool force = false}) async {
-    final url = def['url'] as String;
-    final fetchType = def['fetchType'] as String;
+  ///
+  /// [notifyOnFailure] gates the persistent status-bar notice below — off
+  /// for the unattended background path ([syncAllDataFiles]'s boot/onboarding
+  /// callers), which would otherwise raise the same alert on every single
+  /// offline boot; on (the default) for every user-driven caller (a Refresh
+  /// tap, Update All, RELOAD), which is the one place users actually need to
+  /// see it.
+  Future<void> processDataFile(String key, Map<String, dynamic> def, {bool force = false, bool notifyOnFailure = true}) async {
     final label = _labelFor(key, def);
     final statusKey = 'dataFile:$key';
 
     statusBar?.setProgress(key: statusKey, title: label, text: t.dataFiles.downloading);
+    final String? body;
+    final String fetchType;
     try {
-      final body = await downloadFile(key, url, force: force, encoding: def['encoding'] as String?);
-      if (body == null) {
-        // Unchanged 304.
-        statusBar?.clear(statusKey);
-        return;
+      // `url`/`fetchType` extraction lives INSIDE this try, not before it —
+      // a malformed definition (an extension's getDefinition() missing or
+      // mistyping either) would otherwise throw uncaught, reaching a caller
+      // like _refresh's silent catch with zero feedback at all, where every
+      // other failure at least shows a notice.
+      final url = def['url'] as String;
+      fetchType = def['fetchType'] as String;
+      body = await downloadFile(key, url, force: force, encoding: def['encoding'] as String?);
+    } catch (e) {
+      statusBar?.clear(statusKey);
+      debugPrint('[data-file] Failed to download $key: $e');
+      // A persistent notice, not the transient progress line above — every
+      // caller of processDataFile (a single Refresh tap, Update All, the
+      // background sync after adding a custom file) funnels through here,
+      // so this is the one place that needs to say so; callers that also
+      // catch this (e.g. syncAllDataFiles) still get to report/log it too.
+      if (notifyOnFailure) {
+        statusBar?.showNotice(
+          key: statusKey,
+          icon: 'alert-circle',
+          title: t.dataFiles.downloadFailedTitle(name: label),
+          text: friendlyDownloadError(e),
+        );
       }
+      rethrow;
+    }
+    if (body == null) {
+      // Unchanged 304.
+      statusBar?.clear(statusKey);
+      return;
+    }
 
+    try {
       if (fetchType == 'csv') {
         await _processCsv(key, def, body);
       } else if (fetchType == 'json') {
@@ -347,6 +509,19 @@ class DataFileManager {
       }
     } catch (e) {
       statusBar?.clear(statusKey);
+      debugPrint('[data-file] Failed to process $key: $e');
+      // Distinct title from the download-failure notice above — a JSON/CSV
+      // parsing error after a successful download is a config/data problem,
+      // not a network one, and labeling it "Couldn't download" misdiagnoses
+      // it.
+      if (notifyOnFailure) {
+        statusBar?.showNotice(
+          key: statusKey,
+          icon: 'alert-circle',
+          title: t.dataFiles.processingFailedTitle(name: label),
+          text: e.toString(),
+        );
+      }
       rethrow;
     }
   }
@@ -529,6 +704,64 @@ class DataFileManager {
     if (existing is Map && existing['ext'] == ext && existing['category'] == category) return;
     all[key] = {'ext': ext, 'category': category};
     await prefs.setString(_ownershipKey, jsonEncode(all));
+  }
+
+  /// Purges the disk cache/etag/last-updated prefs of a dataFile key whose
+  /// owning extension is still enabled and loaded, but no longer registers
+  /// that key — e.g. a call-notes `customFiles` entry whose URL (and so
+  /// derived identifier) changed. Distinct from [purgeStaleExtensionData],
+  /// which only acts on entire DISABLED extensions; without this, the OLD
+  /// identifier's cache/prefs would persist on disk forever, since no other
+  /// path ever revisits a key that stopped being registered.
+  /// [entries] is [syncAllDataFiles]'s own `getDefinition` fan-out — the set
+  /// of keys an extension registers THIS pass, before any [categoryFilter]
+  /// narrows what actually gets downloaded.
+  Future<void> _purgeOrphanedKeys(List<dynamic> entries) async {
+    // Purging is destructive and this snapshot is the sole evidence, so it
+    // must be TRUSTWORTHY before any key is condemned:
+    // - a start that proceeded past the bounded activation wait can be
+    //   missing registrations an extension makes after its own internal
+    //   await — a partial picture, not an authoritative one;
+    // - a single ok:false record (a throwing url()/description() ctx
+    //   function, a transient host-call failure) means some registered key
+    //   is invisible this pass — and the failed record carries no
+    //   extensionKey, so it cannot even be matched to its owner.
+    // Either way: stand down; a later clean pass purges genuinely orphaned
+    // keys. The cost of deferring is a stale cache file; the cost of
+    // purging on a partial snapshot is destroying offline data.
+    if (extensions.activationIncomplete) return;
+    for (final entry in entries) {
+      if (entry is! Map || entry['ok'] != true) return;
+    }
+    final currentKeysByExtension = <String, Set<String>>{};
+    for (final entry in entries) {
+      if (entry is! Map || entry['ok'] != true || entry['value'] is! Map) continue;
+      final def = entry['value'] as Map;
+      final key = def['key'] as String?;
+      final ext = def['extensionKey'] as String?;
+      if (key == null || ext == null) continue;
+      (currentKeysByExtension[ext] ??= {}).add(key);
+    }
+
+    final all = _ownership();
+    var purged = 0;
+    for (final entry in all.entries.toList()) {
+      final owner = entry.value;
+      if (owner is! Map) continue;
+      final liveKeys = currentKeysByExtension[owner['ext']];
+      // The extension didn't appear in this sync pass at all (disabled, or
+      // the runtime isn't up) — purgeStaleExtensionData handles that case on
+      // its own schedule; nothing to do here unless it's currently loaded
+      // and simply dropped this one key.
+      if (liveKeys == null || liveKeys.contains(entry.key)) continue;
+      final key = entry.key;
+      final category = owner['category'] as String? ?? key;
+      debugPrint('[data-file] Purging orphaned key $key (extension ${owner['ext']} no longer registers it)');
+      await _purgeDataFileData(key, category);
+      all.remove(key);
+      purged++;
+    }
+    if (purged > 0) await prefs.setString(_ownershipKey, jsonEncode(all));
   }
 
   /// Purges the downloaded data of extensions that have been DISABLED for at

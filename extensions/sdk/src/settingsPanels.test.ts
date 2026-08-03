@@ -54,14 +54,50 @@ test("settingsPanelEntriesFor: Tier 1 (kind: 'simple') is always exactly one pan
     hook: { kind: "simple", title: "POTA", icon: "pine-tree", order: 3 },
   }
   assert.deepEqual(settingsPanelEntriesFor(record), [
-    { panelKey: "pota", hookKey: "pota", extensionKey: "pota", title: "POTA", icon: "pine-tree", order: 3, kind: "simple" },
+    {
+      panelKey: "pota",
+      hookKey: "pota",
+      extensionKey: "pota",
+      title: "POTA",
+      icon: "pine-tree",
+      order: 3,
+      kind: "simple",
+      sidebar: true,
+      dataFilesSection: false,
+    },
   ])
+})
+
+test("settingsPanelEntriesFor: Tier 1's sidebar: false is passed through", () => {
+  const record = { key: "pota", extensionKey: "pota", hook: { kind: "simple", title: "POTA", sidebar: false } }
+  assert.equal(settingsPanelEntriesFor(record)[0].sidebar, false)
+})
+
+test("settingsPanelEntriesFor: Tier 1's dataFilesSection: true is passed through, defaulting false when omitted", () => {
+  const record = {
+    key: "call-notes",
+    extensionKey: "call-notes",
+    hook: { kind: "simple", title: "Callsign Notes", sidebar: false, dataFilesSection: true },
+  }
+  assert.equal(settingsPanelEntriesFor(record)[0].dataFilesSection, true)
+  const withoutIt = { key: "pota", extensionKey: "pota", hook: { kind: "simple", title: "POTA" } }
+  assert.equal(settingsPanelEntriesFor(withoutIt)[0].dataFilesSection, false)
 })
 
 test("settingsPanelEntriesFor: Tier 2 without getPanels is one implicit panel with a null title", () => {
   const record = { key: "lofi", extensionKey: "lofi", hook: { kind: "dynamic" } }
   assert.deepEqual(settingsPanelEntriesFor(record, undefined), [
-    { panelKey: "lofi", hookKey: "lofi", extensionKey: "lofi", title: null, icon: null, order: null, kind: "dynamic" },
+    {
+      panelKey: "lofi",
+      hookKey: "lofi",
+      extensionKey: "lofi",
+      title: null,
+      icon: null,
+      order: null,
+      kind: "dynamic",
+      sidebar: true,
+      dataFilesSection: false,
+    },
   ])
 })
 
@@ -82,6 +118,29 @@ test("settingsPanelEntriesFor: Tier 2 with getPanels fans out to multiple panels
   assert.equal(entries[1].panelKey, "pota_spots")
   assert.equal(entries[1].icon, "map")
   assert.equal(entries[1].order, 1)
+})
+
+test("settingsPanelEntriesFor: a getPanels() descriptor's sidebar: false is passed through, defaulting true when omitted", () => {
+  const record = { key: "call-notes", extensionKey: "call-notes", hook: { kind: "dynamic" } }
+  const descriptors = [
+    { key: "call-notes", title: "Callsign Notes", sidebar: false },
+    { key: "call-notes_other", title: "Other" },
+  ]
+  const entries = settingsPanelEntriesFor(record, descriptors)
+  assert.equal(entries[0].sidebar, false)
+  assert.equal(entries[1].sidebar, true)
+})
+
+test("settingsPanelEntriesFor: a getPanels() descriptor's dataFilesSection: true is passed through, defaulting false — independent of sidebar", () => {
+  const record = { key: "call-notes", extensionKey: "call-notes", hook: { kind: "dynamic" } }
+  const descriptors = [
+    { key: "call-notes", title: "Callsign Notes", sidebar: false, dataFilesSection: true },
+    { key: "call-notes_other", title: "Other", sidebar: false },
+  ]
+  const entries = settingsPanelEntriesFor(record, descriptors)
+  assert.equal(entries[0].dataFilesSection, true)
+  assert.equal(entries[1].dataFilesSection, false,
+    "opting out of the sidebar alone must not also opt into the Data Files section")
 })
 
 test("settingsPanelEntriesFor: an empty getPanels() result yields no panels at all", () => {

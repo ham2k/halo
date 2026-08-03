@@ -83,3 +83,37 @@ export function expansionValueFor(entries: CallNoteEntry[] | undefined): string 
   }
   return null
 }
+
+/// A custom note file (HALO-53) has no separate enable toggle — removing it
+/// from settings IS how it's disabled, unlike a builtin — so its `dataFile`
+/// registration key has to be *derived* from something the user's settings
+/// already carry, not a separately-stored id. `location` is what's actually
+/// unique per file, and deriving from it means editing anything BUT the URL
+/// (the file's display name, say) keeps the same identifier — so the same
+/// download cache and last-updated bookkeeping carry over, rather than
+/// orphaning it under an id that no longer matches anything. This key also
+/// becomes a literal filename (`data_file_manager.dart` caches each file's
+/// parsed index as `<key>.json`), which is why every non-alphanumeric
+/// character is stripped rather than just lowercased.
+/// Cheap, deterministic 32-bit hash (djb2 variant) of the FULL location —
+/// the `.slice(0, 60)` below only keeps the slug readable; two different
+/// long URLs (e.g. pre-signed links whose distinguishing token sits past
+/// character 60) can share the same first 60 slug characters, and without
+/// this suffix would collide onto the same `registerHook` key, silently
+/// dropping one file's data.
+function shortHash(input: string): string {
+  let hash = 5381
+  for (let i = 0; i < input.length; i++) {
+    hash = (Math.imul(hash, 33) + input.charCodeAt(i)) | 0
+  }
+  return (hash >>> 0).toString(36)
+}
+
+export function customIdentifier(location: string): string {
+  const slug = location
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 60)
+  return `custom-${slug}-${shortHash(location)}`
+}

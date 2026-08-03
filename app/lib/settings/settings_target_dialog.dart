@@ -329,6 +329,7 @@ class _TargetSettingsFormState extends State<_TargetSettingsForm> {
         value: committedValue,
         state: scopedState,
         isSecret: route.field['fieldType'] == 'secret',
+        restartOnChange: route.field['restartOnChange'] == true,
       );
     }
     if (mounted) await _load();

@@ -1,6 +1,8 @@
 // Copyright ©️ 2026 Sebastian Delmont <sd@ham2k.com>
 // SPDX-License-Identifier: MPL-2.0
 
+import 'dart:async';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:halo_extension_host/halo_extension_host.dart';
@@ -240,6 +242,107 @@ void main() {
     expect(result, 'Cache cleared');
   });
 
+  test('commitSettingsFieldValue restarts the runtime when the field is restartOnChange', () async {
+    final mockHost = MockExtensionHost({'settingsPanel:lofi:onChangeField': null});
+    final extensions = _RestartTrackingExtensionService(mockHost)..settings = settings;
+
+    await extensions.commitSettingsFieldValue(
+      kind: 'dynamic',
+      hookKey: 'lofi',
+      panelKey: 'lofi',
+      fieldKey: 'customFiles',
+      value: [],
+      state: const {},
+      restartOnChange: true,
+    );
+
+    expect(extensions.restartCount, 1, reason: 'a restartOnChange field must restart once its commit reaches the extension');
+  });
+
+  test('a pending debounced restart waits for an in-flight commit before disposing the host', () async {
+    // The race this guards: commit A arms the 400ms timer; commit B's
+    // onChangeField bridge call is still in flight when it fires. Restarting
+    // then would dispose the host under B, completing its pending call with
+    // an exception and silently dropping the edit — so the timer must wait
+    // for commit quiescence before restarting.
+    final blockB = Completer<dynamic>();
+    var calls = 0;
+    final mockHost = MockExtensionHost({
+      'settingsPanel:lofi:onChangeField': (_) {
+        calls++;
+        return calls == 1 ? Future<dynamic>.value() : blockB.future;
+      },
+    });
+    final extensions = _RestartTrackingExtensionService(mockHost)..settings = settings;
+
+    final first = extensions.commitSettingsFieldValue(
+      kind: 'dynamic',
+      hookKey: 'lofi',
+      panelKey: 'lofi',
+      fieldKey: 'customFiles',
+      value: ['https://example.com/one.txt'],
+      state: const {},
+      restartOnChange: true,
+    );
+    // B starts inside A's debounce window and blocks on its bridge call.
+    final second = extensions.commitSettingsFieldValue(
+      kind: 'dynamic',
+      hookKey: 'lofi',
+      panelKey: 'lofi',
+      fieldKey: 'customFiles',
+      value: ['https://example.com/one.txt', 'https://example.com/two.txt'],
+      state: const {},
+      restartOnChange: true,
+    );
+
+    // Let the timer fire while B is still in flight.
+    await Future<void>.delayed(const Duration(milliseconds: 500));
+    expect(extensions.restartCount, 0, reason: 'the restart must wait for the in-flight commit, not tear the host down under it');
+
+    blockB.complete();
+    await Future.wait([first, second]);
+    await pumpEventQueue();
+    expect(calls, 2, reason: "both commits' persistence calls completed — neither was dropped");
+    expect(extensions.restartCount, 1, reason: 'the burst still coalesces into exactly one restart, after quiescence');
+  });
+
+  test('commitSettingsFieldValue does not restart when restartOnChange is false (the default)', () async {
+    final mockHost = MockExtensionHost({'settingsPanel:lofi:onChangeField': null});
+    final extensions = _RestartTrackingExtensionService(mockHost)..settings = settings;
+
+    await extensions.commitSettingsFieldValue(
+      kind: 'dynamic',
+      hookKey: 'lofi',
+      panelKey: 'lofi',
+      fieldKey: 'endpoint',
+      value: 'https://example.com',
+      state: const {},
+    );
+
+    expect(extensions.restartCount, 0, reason: 'most Tier 2 fields are re-read on their next hook call and need no restart');
+  });
+
+  test('commitSettingsFieldValue does not restart when onChangeField itself threw', () async {
+    // If the extension's own persistence call failed, the value never
+    // actually saved — restarting anyway would just re-run onActivation
+    // against the same stale settings for no benefit, and previously did
+    // so unconditionally regardless of this catch block's outcome.
+    final mockHost = MockExtensionHost({'settingsPanel:lofi:onChangeField': Exception('bridge timeout')});
+    final extensions = _RestartTrackingExtensionService(mockHost)..settings = settings;
+
+    await extensions.commitSettingsFieldValue(
+      kind: 'dynamic',
+      hookKey: 'lofi',
+      panelKey: 'lofi',
+      fieldKey: 'customFiles',
+      value: [],
+      state: const {},
+      restartOnChange: true,
+    );
+
+    expect(extensions.restartCount, 0, reason: 'a failed commit must not trigger a restart, even with restartOnChange: true');
+  });
+
   test('transformSettingsField falls back to the original value when the hook has no transformField method', () async {
     // No 'settingsPanel:core:transformField' entry registered — the bridge
     // call resolves to null, same as a Tier 2 hook that never declared
@@ -297,6 +400,7 @@ class MockExtensionHost implements ExtensionHost {
     final hookKey = '$category:$key:$method';
     if (mockHookResults.containsKey(hookKey)) {
       final res = mockHookResults[hookKey];
+      if (res is Exception) throw res;
       if (res is Function) return res(args);
       return res;
     }
@@ -327,6 +431,19 @@ class MockExtensionService extends ExtensionService {
 
   @override
   ExtensionHost? get host => mockHost;
+}
+
+/// Overrides the real, disruptive [restartRuntime] (dispose + rebuild a
+/// live runtime) with a call counter — for pinning that a commit actually
+/// triggers one, without booting a real extension host in a unit test.
+class _RestartTrackingExtensionService extends MockExtensionService {
+  _RestartTrackingExtensionService(super.mockHost);
+  int restartCount = 0;
+
+  @override
+  Future<void> restartRuntime() async {
+    restartCount++;
+  }
 }
 
 /// Stubs [getAccountCredentials] with canned data instead of hitting real

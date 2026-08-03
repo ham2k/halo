@@ -90,6 +90,16 @@ class ExtensionHost {
   bool _dead = false;
   bool _disposed = false;
 
+  /// Completes once the kernel's `activationComplete` message arrives — every
+  /// extension's `onActivation` has genuinely settled, not just been kicked
+  /// off (kernel.ts's `activateAll` fires this fire-and-forget from `load()`,
+  /// so it can arrive as an early message before this object even exists;
+  /// see the `earlyMessages` replay in `start()`). A caller that needs every
+  /// registered hook to be in its final state — not just "the bundles
+  /// evaluated" — should await [activated] rather than relying on incidental
+  /// timing elsewhere.
+  final _activated = Completer<void>();
+
   SendPort? _toIsolate;
   Isolate? _isolate;
   final List<ReceivePort> _isolatePorts = [];
@@ -103,6 +113,9 @@ class ExtensionHost {
   });
 
   Stream<String> get logs => _logs.stream;
+
+  /// See [_activated]'s doc comment.
+  Future<void> get activated => _activated.future;
 
   /// A `command` hook pushed a later CommandInterpretation for an `input` it
   /// was already asked to interpret (see `host.updateInterpretation`'s SDK
@@ -413,6 +426,8 @@ class ExtensionHost {
         }
       case 'log':
         _log(msg['message'] as String? ?? '');
+      case 'activationComplete':
+        if (!_activated.isCompleted) _activated.complete();
       case 'updateInterpretation':
         final input = msg['input'] as String?;
         if (input == null) return;
@@ -441,6 +456,9 @@ class ExtensionHost {
         _pending.clear();
         _inFlight.clear();
         _fatalErrors.add(error);
+        // A crash before activation ever finishes must not leave a caller
+        // awaiting [activated] hanging forever.
+        if (!_activated.isCompleted) _activated.complete();
     }
   }
 
@@ -699,6 +717,8 @@ class _HostCore {
         _outstandingIds.remove(msg['id']);
         emit(msg);
       case 'log':
+        emit(msg);
+      case 'activationComplete':
         emit(msg);
       case 'updateInterpretation':
         emit(msg);

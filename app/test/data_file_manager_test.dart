@@ -1,12 +1,15 @@
 // Copyright ©️ 2026 Sebastian Delmont <sd@ham2k.com>
 // SPDX-License-Identifier: MPL-2.0
 
+import 'dart:async';
 import 'dart:convert';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:halo_core/halo_core.dart';
 import 'package:drift/native.dart';
+import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:halo_extension_host/halo_extension_host.dart';
+import 'package:ham2k_logger/i18n/strings.g.dart';
 import 'package:ham2k_logger/services/data_file_manager.dart';
 import 'package:ham2k_logger/services/extension_service.dart';
 import 'package:ham2k_logger/services/status_bar_service.dart';
@@ -72,6 +75,94 @@ void main() {
       manager.resolveDownloadUrl('https://drive.google.com/file/d/123456_789/view?usp=sharing'),
       'https://drive.google.com/uc?id=123456_789&export=download',
     );
+    expect(
+      // The share page is HTML, not the file's content — `/raw` (no
+      // filename) redirects to the latest revision's raw content.
+      manager.resolveDownloadUrl('https://gist.github.com/octocat/6cad326836d38bd3a7ae'),
+      'https://gist.githubusercontent.com/octocat/6cad326836d38bd3a7ae/raw',
+    );
+    expect(
+      // Pre-2018 anonymous gists have no username in their URL at all.
+      manager.resolveDownloadUrl('https://gist.github.com/6cad326836d38bd3a7ae'),
+      'https://gist.githubusercontent.com/6cad326836d38bd3a7ae/raw',
+      reason: 'an owner-less gist URL must still resolve, not silently pass through unchanged',
+    );
+    expect(
+      // Dropbox serves share links from both hosts; only www. is in the web
+      // CORS-proxy allowlist (_resolveFetchUrl), so the bare host must be
+      // normalized here or a web download would still fail.
+      manager.resolveDownloadUrl('https://dropbox.com/s/abcdef/file.csv?dl=0'),
+      'https://www.dropbox.com/s/abcdef/file.csv?dl=1&raw=1',
+    );
+    expect(
+      // Already a direct link to one specific file in a multi-file gist —
+      // rewriting it to the generic latest-revision `/raw` form would
+      // discard the filename and silently fetch a different file
+      //.
+      manager.resolveDownloadUrl('https://gist.github.com/octocat/6cad326836d38bd3a7ae/raw/notes.txt'),
+      'https://gist.github.com/octocat/6cad326836d38bd3a7ae/raw/notes.txt',
+      reason: 'a URL naming a specific file must pass through unchanged, not be collapsed to the generic /raw form',
+    );
+    expect(
+      // `raw` must be matched as a PATH SEGMENT, not a substring: an owner
+      // whose username merely starts with "raw" is a share page like any
+      // other, and skipping the rewrite would download the page's HTML and
+      // ingest it as callsign entries.
+      manager.resolveDownloadUrl('https://gist.github.com/rawmilk/6cad326836d38bd3a7ae'),
+      'https://gist.githubusercontent.com/rawmilk/6cad326836d38bd3a7ae/raw',
+      reason: 'a gist owner named raw* must not disable the raw rewrite',
+    );
+  });
+
+  test('DataFileManager: refreshDataFile with no matching definition raises a notice, not silence', () async {
+    // The no-definition null return never reaches processDataFile, so
+    // without a notice HERE a Refresh tap ends in nothing: spinner stops,
+    // timestamp unchanged, no signal anywhere (the host being mid-restart —
+    // exactly when the user is editing these settings — is the common way
+    // to get here).
+    final statusBar = StatusBarService(prefs);
+    final m = TestDataFileManager(
+      lookups: lookups,
+      extensions: MockExtensionService(MockExtensionHost({'dataFile:*:getDefinition': <Map<String, dynamic>>[]})),
+      prefs: prefs,
+      statusBar: statusBar,
+    );
+    final result = await m.refreshDataFile('vanished-key');
+    expect(result, isNull);
+    final notice = statusBar.activeNotices.singleWhere((n) => n.key == 'dataFile:vanished-key');
+    expect(notice.text, isNotEmpty, reason: 'a user-driven refresh that cannot run must say so');
+  });
+
+  group('friendlyDownloadError', () {
+    test('a browser fetch failure (Chromium wording) on web gets a plain-language hint appended', () {
+      final result = friendlyDownloadError(http.ClientException('Failed to fetch', Uri.parse('https://example.com')), isWeb: true);
+      expect(result, contains('Failed to fetch'), reason: 'the raw detail is kept, not hidden');
+      expect(result, contains(t.dataFiles.downloadFailedWebHint));
+    });
+
+    test('the same failure phrased in Firefox/Safari wording still gets the hint — checked by TYPE, not message text',
+        () {
+      // The whole point of matching on `error is http.ClientException` rather
+      // than the literal string 'Failed to fetch' (Chromium/V8's own
+      // wording): a non-Chromium browser's identical underlying failure is
+      // still a ClientException, just phrased differently — this must not
+      // silently miss it.
+      final result = friendlyDownloadError(
+        http.ClientException('NetworkError when attempting to fetch resource.', Uri.parse('https://example.com')),
+        isWeb: true,
+      );
+      expect(result, contains(t.dataFiles.downloadFailedWebHint));
+    });
+
+    test('the same exception type on a non-web platform is shown as-is — this hint is web-only', () {
+      final result = friendlyDownloadError(http.ClientException('Failed to fetch', Uri.parse('https://example.com')), isWeb: false);
+      expect(result, isNot(contains(t.dataFiles.downloadFailedWebHint)));
+    });
+
+    test('an unrelated failure (e.g. a 404) is shown as-is, even on web — guessing would mislead', () {
+      final result = friendlyDownloadError(Exception('HttpException: Failed to download x: HTTP 404'), isWeb: true);
+      expect(result, isNot(contains(t.dataFiles.downloadFailedWebHint)));
+    });
   });
 
   group('decodeDataFileBody (#317)', () {
@@ -420,6 +511,123 @@ REF-002,Summit Two,45.56,-122.78
     expect(matched, 1);
   });
 
+  test('DataFileManager: processDataFile raises a persistent notice and rethrows on a download failure', () async {
+    final statusBar = StatusBarService(prefs);
+    final managerWithMock = TestDataFileManager(
+      lookups: lookups,
+      extensions: extensions,
+      prefs: prefs,
+      statusBar: statusBar,
+    )..mockDownloadError = Exception('ClientException: Failed to fetch, uri=https://example.com/notes.txt');
+
+    final def = {
+      'key': 'my-custom-file',
+      'name': 'My Custom File',
+      'url': 'https://example.com/notes.txt',
+      'fetchType': 'raw',
+      'category': 'call-notes',
+    };
+
+    await expectLater(
+      managerWithMock.processDataFile('my-custom-file', def),
+      throwsA(isA<Exception>()),
+      reason: "the caller (a Refresh tap, Update All) still needs to know it failed — this doesn't swallow it",
+    );
+
+    final notice = statusBar.activeNotices.singleWhere((n) => n.key == 'dataFile:my-custom-file');
+    expect(notice.title, t.dataFiles.downloadFailedTitle(name: 'My Custom File'));
+    expect(notice.text, contains('Failed to fetch'));
+    expect(statusBar.itemForKey('dataFile:my-custom-file'), isNull, reason: 'the transient progress line is cleared, not left spinning');
+  });
+
+  test(
+      'DataFileManager: a malformed definition (missing url/fetchType) still raises a notice, not a silent throw', () async {
+    // _fetchDefinitions only checks that `value` is a Map — an extension's
+    // getDefinition() could still return one missing url/fetchType. Before
+    // this fix, def['url'] as String threw BEFORE the try block that shows
+    // a notice, so callers like settings_view's _refresh (which now trusts
+    // processDataFile to always notify before rethrowing) got nothing at all.
+    final statusBar = StatusBarService(prefs);
+    final managerWithMock = TestDataFileManager(lookups: lookups, extensions: extensions, prefs: prefs, statusBar: statusBar);
+
+    final malformedDef = {'key': 'malformed-file', 'name': 'Malformed File', 'category': 'test'};
+
+    await expectLater(managerWithMock.processDataFile('malformed-file', malformedDef), throwsA(isA<TypeError>()));
+
+    final notice = statusBar.activeNotices.singleWhere((n) => n.key == 'dataFile:malformed-file');
+    expect(notice.title, t.dataFiles.downloadFailedTitle(name: 'Malformed File'),
+        reason: 'some notice must show — even a generically-labeled one beats total silence');
+  });
+
+  test(
+      'DataFileManager: a failure AFTER a successful download (JSON parsing) gets a distinct "processing failed" '
+      'notice, not "download failed"', () async {
+    final statusBar = StatusBarService(prefs);
+    final managerWithMock = TestDataFileManager(
+      lookups: lookups,
+      extensions: extensions,
+      prefs: prefs,
+      statusBar: statusBar,
+      // A well-formed download, so the failure below can only come from
+      // parsing — a misconfigured rootPath resolving to a scalar rather than
+      // an Array or Object.
+    )..mockDownloadBody = '{"meta": "not a list or map of entries"}';
+
+    final def = {
+      'key': 'my-json-file',
+      'name': 'My JSON File',
+      'url': 'https://example.com/data.json',
+      'fetchType': 'json',
+      'category': 'test',
+      'jsonOptions': {'rootPath': 'meta'},
+    };
+
+    await expectLater(managerWithMock.processDataFile('my-json-file', def), throwsA(isA<FormatException>()));
+
+    final notice = statusBar.activeNotices.singleWhere((n) => n.key == 'dataFile:my-json-file');
+    expect(notice.title, t.dataFiles.processingFailedTitle(name: 'My JSON File'),
+        reason: 'the download itself succeeded — mislabeling this "download failed" would misdiagnose a config bug as a network one');
+    expect(notice.title, isNot(t.dataFiles.downloadFailedTitle(name: 'My JSON File')));
+  });
+
+  test('DataFileManager: a download failure during syncAllDataFiles (the background/boot/onboarding path) also raises a notice',
+      () async {
+    // syncAllDataFiles is what app boot, onboarding completion, and "Update
+    // All" call — not just an explicit per-file Refresh tap. This proves the
+    // same processDataFile notice fires through THAT path too, not only when
+    // called directly (see the test above), closing that coverage gap.
+    final statusBar = StatusBarService(prefs);
+    final mockHost = MockExtensionHost({
+      'dataFile:*:getDefinition': [
+        {
+          'key': 'flaky-file',
+          'ok': true,
+          'value': {
+            'key': 'flaky-file',
+            'name': 'Flaky File',
+            'url': 'https://example.com/flaky.txt',
+            'maxAgeInDays': 10,
+            'fetchType': 'raw',
+            'category': 'flaky',
+          },
+        },
+      ],
+    });
+    final managerWithMock = TestDataFileManager(
+      lookups: lookups,
+      extensions: MockExtensionService(mockHost),
+      prefs: prefs,
+      statusBar: statusBar,
+    )..mockDownloadError = Exception('ClientException: Failed to fetch, uri=https://example.com/flaky.txt');
+
+    // syncAllDataFiles isolates each entry's failure (per its own doc
+    // comment) rather than letting it propagate — so this must not throw.
+    await managerWithMock.syncAllDataFiles();
+
+    final notice = statusBar.activeNotices.singleWhere((n) => n.key == 'dataFile:flaky-file');
+    expect(notice.title, t.dataFiles.downloadFailedTitle(name: 'Flaky File'));
+  });
+
   test('DataFileManager: listDataFiles reports definitions sorted by name with last-download time', () async {
     final host = MockExtensionHost({
       'dataFile:*:getDefinition': [
@@ -560,6 +768,195 @@ REF-002,Summit Two,45.56,-122.78
       expect(await lookups.getLookup('pota', 'US-0001'), isNotNull);
     });
   });
+
+  test(
+      'syncAllDataFiles purges a still-enabled extension\'s OLD key once it stops registering it',
+      () async {
+    // call-notes derives a customFiles entry's dataFile key (and, in this
+    // fixture, its lookup category) from its URL, so editing the URL changes
+    // both — the extension itself stays enabled and loaded the whole time.
+    // Distinct categories per key isolate "orphan cleanup" from "the new
+    // key's own resync happens to reinsert the same row" (the two share a
+    // category in the real extension, but that's incidental to this fix).
+    Map<String, dynamic> definitionFor(String key) => {
+          'key': key,
+          'ok': true,
+          'value': {
+            'key': key,
+            'extensionKey': 'call-notes',
+            'name': 'Custom Notes',
+            'description': '',
+            'url': 'https://example.com/notes.txt',
+            'fetchType': 'csv',
+            'category': key,
+          },
+        };
+
+    final host = MockExtensionHost({
+      'dataFile:*:getDefinition': [definitionFor('custom-old')],
+      'dataFile:custom-old:mapCsvBatch': (args) => [
+            for (final r in zipCsvRows(args)) {'key': r['call'], 'name': r['note']},
+          ],
+      'dataFile:custom-new:mapCsvBatch': (args) => [
+            for (final r in zipCsvRows(args)) {'key': r['call'], 'name': r['note']},
+          ],
+    });
+    final m = TestDataFileManager(
+      lookups: lookups,
+      extensions: MockExtensionService(host),
+      prefs: prefs,
+      statusBar: StatusBarService(prefs),
+    )..mockDownloadBody = 'call,note\nKI2D,Test Note\n';
+
+    await m.syncAllDataFiles();
+    expect(await lookups.getLookup('custom-old', 'KI2D'), isNotNull);
+    expect(prefs.getString('data_file_ownership'), contains('custom-old'));
+    expect(prefs.getInt('data_file_updated_custom-old'), isNotNull);
+
+    // The user edited the custom file's URL — call-notes re-derives a new
+    // identifier and no longer registers the old one, but is still enabled.
+    host.mockHookResults['dataFile:*:getDefinition'] = [definitionFor('custom-new')];
+    await m.syncAllDataFiles();
+
+    expect(prefs.getString('data_file_ownership'), isNot(contains('custom-old')),
+        reason: 'the old key\'s ownership record must not linger forever');
+    expect(prefs.getInt('data_file_updated_custom-old'), isNull, reason: 'orphaned prefs cleaned up');
+    expect(await lookups.getLookup('custom-old', 'KI2D'), isNull, reason: 'orphaned lookup rows cleaned up');
+    expect(await lookups.getLookup('custom-new', 'KI2D'), isNotNull, reason: 'the new key registers and syncs normally');
+  });
+
+  group('the orphan purge stands down on an untrustworthy snapshot', () {
+    // Purging is destructive and the definition fan-out is its only
+    // evidence. A snapshot that is provably partial — one record failed, or
+    // activation never settled — must purge NOTHING: the cost of deferring
+    // is a stale cache file, the cost of purging is destroying data that
+    // cannot be re-downloaded offline.
+    Map<String, dynamic> definitionFor(String key) => {
+          'key': key,
+          'ok': true,
+          'value': {
+            'key': key,
+            'extensionKey': 'call-notes',
+            'name': 'Custom Notes',
+            'description': '',
+            'url': 'https://example.com/notes.txt',
+            'fetchType': 'csv',
+            'category': key,
+          },
+        };
+
+    Future<(TestDataFileManager, MockExtensionHost, MockExtensionService)> seeded() async {
+      final host = MockExtensionHost({
+        'dataFile:*:getDefinition': [definitionFor('custom-old')],
+        'dataFile:custom-old:mapCsvBatch': (args) => [
+              for (final r in zipCsvRows(args)) {'key': r['call'], 'name': r['note']},
+            ],
+      });
+      final extensions = MockExtensionService(host);
+      final m = TestDataFileManager(
+        lookups: lookups,
+        extensions: extensions,
+        prefs: prefs,
+        statusBar: StatusBarService(prefs),
+      )..mockDownloadBody = 'call,note\nKI2D,Test Note\n';
+      await m.syncAllDataFiles();
+      expect(prefs.getInt('data_file_updated_custom-old'), isNotNull);
+      return (m, host, extensions);
+    }
+
+    test('one failed getDefinition record vetoes the whole purge pass', () async {
+      final (m, host, _) = await seeded();
+      // The dangerous shape: the extension is LIVE via a sibling key (so
+      // the whole-extension-absent skip does not apply), the old key is
+      // missing, and a record FAILED — the missing key could be the failed
+      // one (a failed record carries no extensionKey to match it by).
+      host.mockHookResults['dataFile:*:getDefinition'] = [
+        definitionFor('custom-new'),
+        {'key': 'broken', 'ok': false, 'error': 'url() threw'},
+      ];
+      host.mockHookResults['dataFile:custom-new:mapCsvBatch'] = (args) => [
+            for (final r in zipCsvRows(args)) {'key': r['call'], 'name': r['note']},
+          ];
+      await m.syncAllDataFiles();
+      expect(prefs.getInt('data_file_updated_custom-old'), isNotNull,
+          reason: 'a transient hook failure must never cost cached data');
+      expect(await lookups.getLookup('custom-old', 'KI2D'), isNotNull);
+    });
+
+    test('an activation-incomplete start vetoes the purge; the next clean pass purges', () async {
+      final (m, host, extensions) = await seeded();
+      // The extension stays live via a sibling key; only custom-old is gone
+      // from the snapshot — exactly the shape the purge exists for.
+      host.mockHookResults['dataFile:*:getDefinition'] = [definitionFor('custom-new')];
+      host.mockHookResults['dataFile:custom-new:mapCsvBatch'] = (args) => [
+            for (final r in zipCsvRows(args)) {'key': r['call'], 'name': r['note']},
+          ];
+      // Boot proceeded past the bounded activation wait: registrations may
+      // be missing (call-notes registers custom files only after its own
+      // internal await), so a missing key proves nothing...
+      extensions.activationIncompleteOverride = true;
+      await m.syncAllDataFiles();
+      expect(prefs.getInt('data_file_updated_custom-old'), isNotNull,
+          reason: 'a partial registration set must never cost cached data');
+
+      // ...but once activation settles, a clean pass purges normally — the
+      // guard defers the cleanup, it does not disable it.
+      extensions.activationIncompleteOverride = false;
+      await m.syncAllDataFiles();
+      expect(prefs.getInt('data_file_updated_custom-old'), isNull,
+          reason: 'the guard must not turn the purge into dead code');
+    });
+  });
+
+  test('a runtimeGeneration tick syncs data files once; ticks mid-sync queue exactly one follow-up', () async {
+    // Every successful runtime start can register dataFile hooks that did
+    // not exist before (a just-added custom file, a just-enabled extension,
+    // a crash recovery finally coming up) — the generation listener is what
+    // downloads them without waiting for the next boot. Serialized: a tick
+    // landing mid-sync must queue ONE follow-up pass, not run concurrently
+    // (concurrent passes double-download) and not be dropped (its snapshot
+    // may carry registrations the running pass predates).
+    final host = MockExtensionHost({'dataFile:*:getDefinition': <Map<String, dynamic>>[]});
+    final extensions = MockExtensionService(host);
+    final m = _SyncCountingDataFileManager(
+      lookups: lookups,
+      extensions: extensions,
+      prefs: prefs,
+    );
+
+    extensions.runtimeGeneration.value++;
+    await pumpEventQueue();
+    expect(m.syncCalls, 1, reason: 'a successful restart triggers a sync');
+
+    m.blockNextSync = Completer<void>();
+    extensions.runtimeGeneration.value++;
+    await pumpEventQueue();
+    extensions.runtimeGeneration.value++; // lands mid-sync
+    extensions.runtimeGeneration.value++; // and another — still one queued pass
+    m.blockNextSync!.complete();
+    m.blockNextSync = null;
+    await pumpEventQueue();
+    expect(m.syncCalls, 3, reason: 'the blocked pass plus exactly one queued follow-up');
+  });
+}
+
+class _SyncCountingDataFileManager extends DataFileManager {
+  int syncCalls = 0;
+  Completer<void>? blockNextSync;
+
+  _SyncCountingDataFileManager({
+    required super.lookups,
+    required super.extensions,
+    required super.prefs,
+  });
+
+  @override
+  Future<int> syncAllDataFiles({bool force = false, String? categoryFilter, bool notifyOnFailure = true}) async {
+    syncCalls++;
+    final block = blockNextSync;
+    if (block != null) await block.future;
+    return 0;
+  }
 }
 
 class MockExtensionHost implements ExtensionHost {
@@ -607,12 +1004,21 @@ class MockExtensionService extends ExtensionService {
   final MockExtensionHost mockHost;
   MockExtensionService(this.mockHost);
 
+  bool activationIncompleteOverride = false;
+
   @override
   ExtensionHost? get host => mockHost;
+
+  @override
+  bool get activationIncomplete => activationIncompleteOverride;
 }
 
 class TestDataFileManager extends DataFileManager {
   String? mockDownloadBody;
+
+  /// Set to make [downloadFile] throw instead of returning [mockDownloadBody]
+  /// — simulates a real network/CORS failure without an actual HTTP call.
+  Object? mockDownloadError;
 
   TestDataFileManager({
     required super.lookups,
@@ -623,6 +1029,8 @@ class TestDataFileManager extends DataFileManager {
 
   @override
   Future<String?> downloadFile(String key, String url, {bool force = false, String? encoding}) async {
+    final error = mockDownloadError;
+    if (error != null) throw error;
     return mockDownloadBody;
   }
 }

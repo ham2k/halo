@@ -407,6 +407,65 @@ void main() {
 
   });
 
+  group('FormRenderer collapsible markdown block', () {
+    final collapsibleFormDefinition = {
+      'elements': [
+        {
+          'type': 'markdown',
+          'collapsible': true,
+          'title': 'How to build your own',
+          'text': 'Read **this** carefully.',
+        },
+      ],
+    };
+
+    testWidgets('starts collapsed, showing the title but not the text', (tester) async {
+      await tester.pumpWidget(MaterialApp(
+        home: Scaffold(
+          body: FormRenderer(formDefinition: collapsibleFormDefinition, initialState: const {}, onSubmit: (_) {}, onCancel: () {}),
+        ),
+      ));
+
+      expect(find.text('How to build your own'), findsOneWidget);
+      expect(find.byType(MarkdownBody), findsNothing, reason: 'the help text is collapsed by default');
+    });
+
+    testWidgets('tapping the header expands it to reveal the text', (tester) async {
+      await tester.pumpWidget(MaterialApp(
+        home: Scaffold(
+          body: FormRenderer(formDefinition: collapsibleFormDefinition, initialState: const {}, onSubmit: (_) {}, onCancel: () {}),
+        ),
+      ));
+
+      await tester.tap(find.text('How to build your own'));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(MarkdownBody), findsOneWidget);
+      expect(find.text('Read this carefully.'), findsOneWidget);
+    });
+
+    testWidgets('a plain (non-collapsible) markdown block is unaffected', (tester) async {
+      await tester.pumpWidget(MaterialApp(
+        home: Scaffold(
+          body: FormRenderer(
+            formDefinition: {
+              'elements': [
+                {'type': 'markdown', 'text': 'Always visible'},
+              ],
+            },
+            initialState: const {},
+            onSubmit: (_) {},
+            onCancel: () {},
+          ),
+        ),
+      ));
+
+      expect(find.byType(ExpansionTile), findsNothing);
+      expect(find.byType(MarkdownBody), findsOneWidget);
+      expect(find.text('Always visible'), findsOneWidget);
+    });
+  });
+
   group('FormRenderer secret/list/action fields', () {
     testWidgets('secret field obscures its text', (tester) async {
       await tester.pumpWidget(MaterialApp(
@@ -560,6 +619,174 @@ void main() {
       await tester.tap(find.widgetWithText(TextButton, 'Done'));
       await tester.pumpAndSettle();
       expect(find.text('Field Day — 2A NNJ'), findsNothing);
+    });
+
+    testWidgets('non-inline list field editor honors itemLabel too, not just the inline one',
+        (tester) async {
+      final listFormDefinition = {
+        'elements': [
+          {
+            'type': 'field',
+            'fieldType': 'list',
+            'key': 'presets',
+            'label': 'Presets',
+            'itemLabel': 'preset',
+            'itemTitle': r'${name}',
+            'itemFields': [
+              {'type': 'field', 'fieldType': 'text', 'key': 'name', 'label': 'Name'},
+            ],
+          },
+        ],
+      };
+
+      await tester.pumpWidget(MaterialApp(
+        home: Scaffold(
+          body: FormRenderer(
+            formDefinition: listFormDefinition,
+            initialState: const {},
+            onSubmit: (_) {},
+            onCancel: () {},
+          ),
+        ),
+      ));
+
+      await tester.tap(find.text('Presets'));
+      await tester.pumpAndSettle();
+      // Singular itemLabel, not the field's own (plural) label — the bug fixed
+      // here was this dialog hardcoding the plain label instead.
+      expect(find.widgetWithText(TextButton, 'Add preset'), findsOneWidget);
+      expect(find.widgetWithText(TextButton, 'Add Presets'), findsNothing);
+    });
+
+    testWidgets('dialog list editor suppresses the framework drag handle and wires its own', (tester) async {
+      // On mouse platforms ReorderableListView auto-adds a trailing drag
+      // handle per row; the row already draws its own. The dialog editor
+      // must both suppress the framework one (or desktop rows show two) and
+      // wire its own icon as a real ReorderableDragStartListener (or, with
+      // the framework one suppressed, reordering stops working entirely).
+      final listFormDefinition = {
+        'elements': [
+          {
+            'type': 'field',
+            'fieldType': 'list',
+            'key': 'presets',
+            'label': 'Presets',
+            'itemLabel': 'preset',
+            'itemTitle': r'${name}',
+            'orderable': true,
+            'itemFields': [
+              {'type': 'field', 'fieldType': 'text', 'key': 'name', 'label': 'Name'},
+            ],
+            'value': [
+              {'name': 'One'},
+              {'name': 'Two'},
+            ],
+          },
+        ],
+      };
+
+      await tester.pumpWidget(MaterialApp(
+        home: Scaffold(
+          body: FormRenderer(
+            formDefinition: listFormDefinition,
+            initialState: const {},
+            onSubmit: (_) {},
+            onCancel: () {},
+          ),
+        ),
+      ));
+
+      await tester.tap(find.text('Presets'));
+      await tester.pumpAndSettle();
+
+      final listView = tester.widget<ReorderableListView>(find.byType(ReorderableListView));
+      expect(listView.buildDefaultDragHandles, isFalse,
+          reason: 'the framework auto-handle doubles the row\'s own on mouse platforms');
+      expect(find.byIcon(Icons.drag_handle), findsNWidgets(2), reason: 'one handle per row, no extras');
+      expect(
+        find.ancestor(of: find.byIcon(Icons.drag_handle).first, matching: find.byType(ReorderableDragStartListener)),
+        findsWidgets,
+        reason: 'with the framework handle off, the row\'s icon must be the real drag listener',
+      );
+    });
+
+    testWidgets('inline list field renders rows and Add directly, with no summary-row dialog', (tester) async {
+      Map<String, dynamic>? submittedValues;
+      final inlineListFormDefinition = {
+        'elements': [
+          {
+            'type': 'field',
+            'fieldType': 'list',
+            'key': 'customFiles',
+            'label': 'Custom note files',
+            'itemLabel': 'custom note file',
+            'inline': true,
+            'itemTitle': r'${name}',
+            'orderable': true,
+            'itemFields': [
+              {'type': 'field', 'fieldType': 'text', 'key': 'name', 'label': 'Name'},
+              {'type': 'field', 'fieldType': 'text', 'key': 'location', 'label': 'File URL'},
+            ],
+            'value': [
+              {'name': 'Club Roster', 'location': 'https://example.com/a.txt'},
+            ],
+          },
+        ],
+      };
+
+      await tester.pumpWidget(MaterialApp(
+        home: Scaffold(
+          body: FormRenderer(
+            formDefinition: inlineListFormDefinition,
+            initialState: const {},
+            onSubmit: (vals) => submittedValues = vals,
+            onCancel: () {},
+          ),
+        ),
+      ));
+
+      // The item, the reorder handle, delete button, and Add row are all
+      // directly on the form — no summary row / "tap to open a dialog" step.
+      expect(find.text('Club Roster'), findsOneWidget);
+      expect(find.byIcon(Icons.drag_handle), findsOneWidget);
+      expect(find.byIcon(Icons.delete), findsOneWidget);
+      expect(find.widgetWithText(TextButton, 'Add custom note file'), findsOneWidget);
+      expect(find.byType(HaloDialog), findsNothing, reason: 'no list-editor dialog should have opened yet');
+
+      // Tapping the item opens the itemFields editor dialog directly (the
+      // ONLY dialog in this flow) — titled from itemLabel, singular, not
+      // from the list's own (plural) label.
+      await tester.tap(find.text('Club Roster'));
+      await tester.pumpAndSettle();
+      expect(find.text('Edit custom note file'), findsOneWidget);
+      final nameField = tester.widget<TextField>(find.widgetWithText(TextField, 'Name'));
+      expect(nameField.controller?.text, 'Club Roster');
+      await tester.tap(find.descendant(of: find.byType(HaloDialog), matching: find.widgetWithText(FilledButton, 'Save')));
+      await tester.pumpAndSettle();
+      expect(find.byType(HaloDialog), findsNothing);
+
+      // Add opens the same dialog, titled from itemLabel as well — scoped to
+      // the dialog since the Add button behind it shares the same text.
+      await tester.tap(find.widgetWithText(TextButton, 'Add custom note file'));
+      await tester.pumpAndSettle();
+      expect(find.descendant(of: find.byType(HaloDialog), matching: find.text('Add custom note file')),
+          findsOneWidget);
+      await tester.enterText(find.widgetWithText(TextField, 'Name'), 'Second File');
+      await tester.tap(find.descendant(of: find.byType(HaloDialog), matching: find.widgetWithText(FilledButton, 'Save')));
+      await tester.pumpAndSettle();
+      expect(find.text('Second File'), findsOneWidget);
+
+      // Delete removes the row directly, no dialog involved.
+      await tester.tap(find.byIcon(Icons.delete).first);
+      await tester.pumpAndSettle();
+      expect(find.text('Club Roster'), findsNothing);
+      expect(find.text('Second File'), findsOneWidget);
+
+      await tester.tap(find.widgetWithText(FilledButton, 'Save'));
+      await tester.pumpAndSettle();
+      expect(submittedValues!['customFiles'], [
+        {'name': 'Second File', 'location': ''},
+      ]);
     });
 
     testWidgets('multiselect toggles from a fixed vocabulary with common-subset disclosure', (tester) async {

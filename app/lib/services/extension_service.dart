@@ -57,7 +57,20 @@ class ExtensionService {
   Future<void>? _starting;
   Timer? _restartTimer;
   int _restartAttempts = 0;
-  bool _restarting = false;
+
+  /// The in-flight [_replaceRuntime] call, if any — [commitSettingsFieldValue]
+  /// awaits this instead of bailing out when [host] is momentarily null
+  /// mid-restart, so a commit that lands in that window still reaches the
+  /// fresh runtime instead of silently no-oping.
+  Future<void>? _restartFuture;
+
+  /// True when the last runtime start proceeded past the bounded activation
+  /// wait without every extension's onActivation settling — hook
+  /// registrations may be INCOMPLETE for this generation. Consumers that
+  /// treat the hook set as authoritative (the data-file orphan purge) must
+  /// check this and stand down rather than act on a partial picture.
+  bool get activationIncomplete => _activationIncomplete;
+  bool _activationIncomplete = false;
   ({String deviceKey, String operatorCall})? _lastSyncCredentials;
 
   static const _keychainAccountName = 'Ham2K Logger';
@@ -682,7 +695,14 @@ class ExtensionService {
   /// kv (SharedPreferences) normally, `FlutterSecureStorage` for
   /// `fieldType: 'secret'`. Tier 2 has no local persistence at all; the
   /// call is forwarded to `onChangeField` and the extension is responsible
-  /// for storing it itself (e.g. its own `host.kvSet`).
+  /// for storing it itself (e.g. its own `host.setSettings` — NOT
+  /// `host.kvSet`, which is in-memory only).
+  ///
+  /// [restartOnChange] (the field's own `restartOnChange` attribute, see
+  /// docs/extensions/settings.md's "Restarting the runtime after a Tier 2
+  /// field commits") restarts the extension runtime once the commit above
+  /// finishes, so `onActivation` re-runs and can pick up the new value via
+  /// `getSettings()` — for a value nothing else re-reads on its own.
   Future<void> commitSettingsFieldValue({
     required String kind,
     required String hookKey,
@@ -691,13 +711,26 @@ class ExtensionService {
     required dynamic value,
     required Map<String, dynamic> state,
     bool isSecret = false,
+    bool restartOnChange = false,
   }) async {
     if (kind == 'simple') {
       await _writeSettingsValue(panelKey: panelKey, fieldKey: fieldKey, value: value, isSecret: isSecret);
       return;
     }
+    // Wait out any in-flight restart before touching `host` — it's briefly
+    // null while `_replaceRuntime` tears down and reboots. Without this, a
+    // commit landing in that window bailed out below (host == null) without
+    // ever calling onChangeField, silently dropping that edit rather than
+    // just delaying it.
+    final inFlightRestart = _restartFuture;
+    if (inFlightRestart != null) await inFlightRestart;
     final host = this.host;
     if (host == null) return;
+    // Counted so a pending debounce timer cannot restart the runtime UNDER
+    // this commit's bridge call — disposing the host completes the pending
+    // invokeHook with an exception and the edit would be silently dropped.
+    // The timer waits for quiescence before restarting.
+    _inFlightFieldCommits++;
     try {
       await host.invokeHook(
         'settingsPanel',
@@ -707,7 +740,57 @@ class ExtensionService {
       );
     } catch (e) {
       debugPrint('[extensions] settingsPanel onChangeField failed: $e');
+      // Not restarted below: onChangeField is the extension's own persistence
+      // call (e.g. host.setSettings) — if IT failed, the value never
+      // actually saved, so restarting anyway would just re-run onActivation
+      // against the same stale settings for no benefit.
+      return;
+    } finally {
+      _inFlightFieldCommits--;
+      if (_inFlightFieldCommits == 0) {
+        _fieldCommitsIdle?.complete();
+        _fieldCommitsIdle = null;
+      }
     }
+    if (restartOnChange) await _debouncedRestartRuntime();
+  }
+
+  int _inFlightFieldCommits = 0;
+  Completer<void>? _fieldCommitsIdle;
+
+  Timer? _restartOnChangeDebounce;
+  Completer<void>? _restartOnChangeCompleter;
+
+  /// Coalesces a burst of `restartOnChange` commits (e.g. deleting or
+  /// reordering several rows of an inline list field one at a time) into a
+  /// SINGLE runtime restart once they settle, instead of tearing down and
+  /// rebooting every OTHER loaded extension once per row action — a full
+  /// [restartRuntime] is the existing, already-accepted cost of
+  /// `restartOnChange` (the same one an extension enable/disable toggle
+  /// pays), but nothing before call-notes' `customFiles` field exercised it
+  /// from a rapid, un-awaited per-row UI action.
+  Future<void> _debouncedRestartRuntime() {
+    _restartOnChangeDebounce?.cancel();
+    final completer = _restartOnChangeCompleter ??= Completer<void>();
+    _restartOnChangeDebounce = Timer(const Duration(milliseconds: 400), () async {
+      // A commit whose onChangeField round trip is still in flight when this
+      // timer fires must finish before the restart tears the host down; the
+      // loop re-checks because a waiting commit can itself be followed by
+      // another within the same window.
+      while (_inFlightFieldCommits > 0) {
+        await (_fieldCommitsIdle ??= Completer<void>()).future;
+      }
+      // A commit that finished DURING that wait re-armed the timer onto this
+      // same completer — but its write is already durable and the restart
+      // below will read it, so that re-arm is redundant: absorb it. If a
+      // parallel firing of this callback got here first, the completer no
+      // longer matches and this one stands down.
+      if (!identical(_restartOnChangeCompleter, completer)) return;
+      _restartOnChangeCompleter = null;
+      _restartOnChangeDebounce?.cancel();
+      restartRuntime().then(completer.complete, onError: completer.completeError);
+    });
+    return completer.future;
   }
 
   /// Transforms one field's value (Tier 2 only — Tier 1 fields never carry
@@ -885,6 +968,18 @@ class ExtensionService {
       // don't stay dark until app restart.
       _host!.fatalErrors.listen((error) => _scheduleRestart('runtime died: $error'));
       _restartAttempts = 0;
+      // Every extension's onActivation has now genuinely settled — not just
+      // been kicked off (kernel.ts's activateAll fires it fire-and-forget).
+      // Without this await, a caller querying dataFile/settingsPanel hooks
+      // right after start() returned could miss a registration an extension
+      // makes only after its own internal await (call-notes' custom files
+      // await host.getSettings() first). Bounded: a hung extension's
+      // activation must degrade boot, not stall it forever.
+      _activationIncomplete = false;
+      await _host!.activated.timeout(const Duration(seconds: 5), onTimeout: () {
+        debugPrint('[extensions] activation did not complete within 5s — continuing anyway');
+        _activationIncomplete = true;
+      });
       runtimeGeneration.value++;
       // Resolve each account's synchronizable flag; account access blocks on
       // _accountSyncReady (completed below) until this is done, so every
@@ -1041,10 +1136,21 @@ class ExtensionService {
   }
 
   /// The one runtime-replacement path: dispose + fresh [start] + re-seed of
-  /// the in-memory sync KV. Serialized behind [_restarting].
-  Future<void> _replaceRuntime({required bool onlyIfDead}) async {
-    if (_restarting) return;
-    _restarting = true;
+  /// the in-memory sync KV. Serialized behind [_restartFuture] — a second
+  /// call while one is already in flight returns the SAME future rather than
+  /// racing a second replace, so every caller (including
+  /// [commitSettingsFieldValue], which awaits [_restartFuture] directly to
+  /// avoid reading [host] while it's momentarily null) observes one
+  /// consistent completion.
+  Future<void> _replaceRuntime({required bool onlyIfDead}) {
+    final inFlight = _restartFuture;
+    if (inFlight != null) return inFlight;
+    final future = _doReplaceRuntime(onlyIfDead: onlyIfDead);
+    _restartFuture = future;
+    return future;
+  }
+
+  Future<void> _doReplaceRuntime({required bool onlyIfDead}) async {
     try {
       // A boot may already be in flight (e.g. setSyncCredentials calls
       // start()); replacing the host under it would leak a live runtime.
@@ -1070,7 +1176,7 @@ class ExtensionService {
         debugPrint('[extensions] runtime restarted');
       }
     } finally {
-      _restarting = false;
+      _restartFuture = null;
     }
   }
 

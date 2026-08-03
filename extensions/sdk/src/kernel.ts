@@ -306,11 +306,18 @@ async function callHookMethod(record: HookRecord, method: string, args: unknown,
   return await member.call(record.hook, args, ctx)
 }
 
-function activateExtension(def: ExtensionDefinition) {
+/// Activates one extension, returning once its onActivation call (and
+/// whatever it awaits, e.g. `host.getSettings()` before registering some of
+/// its hooks) has actually settled — not just been kicked off. `activateAll`
+/// awaits every extension's promise before telling the host activation is
+/// complete: without that, an extension whose hook registration depends on
+/// an internal await isn't guaranteed to have finished by the time the host
+/// considers the runtime started.
+async function activateExtension(def: ExtensionDefinition): Promise<void> {
   if (activated.has(def.key)) return
   activated.add(def.key)
   try {
-    def.onActivation({
+    await def.onActivation({
       // Activation is the identity hand-off: this function closes over the
       // extension's kernel-recorded key, and the SDK copy inside the bundle
       // captures it in module scope — unreachable from other bundles.
@@ -417,9 +424,23 @@ const kernel = {
     currentBundleKey = null
   },
 
-  /// Called by the host once all bundles are evaluated.
+  /// Called by the host once all bundles are evaluated. Deliberately NOT
+  /// awaited by the caller (`load()`/`init()` on the Dart side) — the host's
+  /// own message-receive loop isn't running until `load()` returns, so
+  /// blocking here on an onActivation call that awaits a host round trip
+  /// (e.g. call-notes' `getSettings()`) would deadlock. Instead this runs the
+  /// activations, awaits them all, and posts a one-shot `activationComplete`
+  /// message once they've genuinely settled — picked up later by the
+  /// already-running receive loop, same as any other message (HALO-53
+  /// review).
   activateAll() {
-    for (const def of Object.values(extensions)) activateExtension(def)
+    void (async () => {
+      try {
+        await Promise.allSettled(Object.values(extensions).map(activateExtension))
+      } finally {
+        post({ type: 'activationComplete' })
+      }
+    })()
   },
 
   invokeHook(id: number, category: string, key: string | null, method: string, argsJson: string) {

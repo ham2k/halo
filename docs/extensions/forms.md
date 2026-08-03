@@ -41,13 +41,24 @@ export interface FormField {
   validate?: (value: any, state: Record<string, any>) => string | null | undefined | Promise<string | null | undefined>;
   transform?: (value: any, state: Record<string, any>) => any | Promise<any>;
   // Only used when fieldType === 'list'. `value` is then a
-  // Record<string, any>[]; each item is shaped like itemFields. Rows
-  // render as a summary (from itemTitle, templated against the item's
-  // values); edit/add reuse the same form renderer recursively, scoped to
-  // itemFields, in a dialog.
+  // Record<string, any>[]; each item is shaped like itemFields. By default
+  // the field renders as one summary row (from itemTitle, templated
+  // against the item's values, e.g. "${name}" — NOT "{{name}}") that opens
+  // an editor dialog with per-item rows and add/edit/delete; `inline: true`
+  // instead renders those rows (with reorder handle/delete per row, and an
+  // Add row) directly in the form, skipping that outer dialog — for a list
+  // that's the main content of its own section. Either way, tapping a row
+  // (or Add) opens the same itemFields editor dialog (the form renderer
+  // recursively, scoped to itemFields).
   itemFields?: FormField[];
   itemTitle?: string;
   orderable?: boolean;
+  inline?: boolean;
+  // Singular noun for one item (e.g. "custom note file"), used in the
+  // editor dialog's Add/Edit titles and the Add button instead of `label`
+  // — which names the list as a whole and is typically plural. Defaults to
+  // `label` when omitted.
+  itemLabel?: string;
   // Only used when fieldType === 'account'. See settings.md's "account
   // field type" section — this never defines or stores account data
   // itself, it's a pointer into the separate `account` hook system.
@@ -68,6 +79,14 @@ export interface FormField {
   // tokens are a whitelist; `-`-prefixed tokens are a blacklist. See
   // settings.md.
   environment?: string | string[];
+  // Settings-panel-only. Opts this field into a target-scoped settings
+  // modal elsewhere in the app — see settings.md's "Settings targets".
+  target?: string | string[];
+  // Only meaningful within a `kind: 'dynamic'` settingsPanel. After this
+  // field commits, the app restarts the extension runtime — for a value
+  // only consulted at onActivation (e.g. a list of URLs to register as
+  // dataFile hooks). See settings.md's Tier 2 section.
+  restartOnChange?: boolean;
 }
 
 export interface FormHeader {
@@ -90,6 +109,8 @@ export interface FormMarkdownBlock {
   text: string;
   devMode?: boolean;
   environment?: string | string[]; // settings-panel-only; see FormField.environment
+  collapsible?: boolean; // starts collapsed behind a tappable `title` header; requires `title`
+  title?: string; // the tappable header shown when `collapsible` is set; ignored otherwise
 }
 
 // A button that invokes a named hook method (e.g. 'clearCache') against the

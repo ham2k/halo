@@ -245,14 +245,19 @@ class _SettingsViewState extends State<SettingsView> {
         order: 60,
         description: t.settings.panels.dataFilesDescription,
       ),
+      // sidebar: false (e.g. call-notes, HALO-53) opts a panel out of this
+      // top-level list — it's still returned by getSettingsPanels() for
+      // whichever screen the extension links it from instead (Data Files'
+      // own "Extensions" section, here).
       for (final p in _extensionPanels)
-        _SettingsPanelEntry(
-          key: p['panelKey'] as String,
-          title: (p['title'] as String?) ?? (p['panelKey'] as String),
-          icon: resolveIconName(p['icon'] as String?),
-          order: (p['order'] as num?)?.toInt() ?? _extensionPanelDefaultOrder,
-          descriptor: p,
-        ),
+        if (p['sidebar'] != false)
+          _SettingsPanelEntry(
+            key: p['panelKey'] as String,
+            title: (p['title'] as String?) ?? (p['panelKey'] as String),
+            icon: resolveIconName(p['icon'] as String?),
+            order: (p['order'] as num?)?.toInt() ?? _extensionPanelDefaultOrder,
+            descriptor: p,
+          ),
       if (settings.developerMode)
         _SettingsPanelEntry(
           key: 'developer',
@@ -1233,6 +1238,20 @@ class _DataFilesPanelState extends State<_DataFilesPanel> {
   final Set<String> _refreshing = {};
   bool _updatingAll = false;
 
+  /// Every registered settingsPanel (HALO-53). Starts empty rather than
+  /// null: the section simply doesn't render until the first load rather
+  /// than needing its own separate loading gate from [_files].
+  List<Map<String, dynamic>> _extensionPanels = const [];
+
+  /// The subset actually shown in this screen's own "Extensions" section:
+  /// only panels that explicitly opted into it (`dataFilesSection: true`) —
+  /// NOT every panel that merely opted out of the top-level sidebar. Those
+  /// are independent settings (extensions/sdk/src/types.ts); keying this on
+  /// `sidebar: false` would sweep in any sidebar-opt-out panel whatever its
+  /// reason, whether or not it is about data files.
+  List<Map<String, dynamic>> get _dataFileScopedPanels =>
+      [for (final p in _extensionPanels) if (p['dataFilesSection'] == true) p];
+
   @override
   void initState() {
     super.initState();
@@ -1249,23 +1268,37 @@ class _DataFilesPanelState extends State<_DataFilesPanel> {
   Future<void> _load() async {
     await widget.services.extensions.start();
     final files = await widget.services.dataFiles.listDataFiles();
-    if (mounted) setState(() => _files = files);
+    final panels = await widget.services.extensions.getSettingsPanels();
+    if (mounted) {
+      setState(() {
+        _files = files;
+        _extensionPanels = panels;
+      });
+    }
   }
+
+  /// Modal Pane (docs/design/layouts.md): a full screen on narrow windows,
+  /// a centered dialog on wide ones — the same presentation every other
+  /// settings-adjacent pane in the app uses, via [showModalPane].
+  Future<void> _openExtensionPanel(BuildContext context, Map<String, dynamic> panel) => showModalPane<void>(
+    context,
+    title: (panel['title'] as String?) ?? (panel['panelKey'] as String?) ?? '',
+    builder: (context) => _ExtensionSettingsPanel(services: widget.services, descriptor: panel),
+  );
 
   Future<void> _refresh(DataFileStatus file) async {
     setState(() => _refreshing.add(file.key));
     try {
       // The stamped time comes back from the refresh, so the row updates
-      // from it directly — no second listDataFiles round-trip.
+      // from it directly — no second listDataFiles round-trip. A failure
+      // needs no handling here: processDataFile raises the notice for
+      // download/parse failures, and refreshDataFile itself raises one for
+      // the no-definition null return — every failure path speaks for
+      // itself before this catch sees it.
       final updatedAt = await widget.services.dataFiles.refreshDataFile(file.key);
       if (mounted && updatedAt != null) _applyUpdatedAt(file.key, updatedAt);
-    } catch (e) {
-      if (mounted) {
-        widget.services.statusBar.setMessage(
-          key: 'dataFile:refresh',
-          text: t.settings.offlineData.refreshFailed(name: file.name, error: e),
-        );
-      }
+    } catch (_) {
+      // Swallowed deliberately — see the comment above.
     } finally {
       if (mounted) setState(() => _refreshing.remove(file.key));
     }
@@ -1322,7 +1355,29 @@ class _DataFilesPanelState extends State<_DataFilesPanel> {
           _buildUpdateAllRow(context),
           for (final file in files) _buildRow(context, file),
         ],
+        if (_dataFileScopedPanels.isNotEmpty) ...[
+          Padding(
+            padding: EdgeInsets.only(left: safeLeft, top: 8),
+            child: SectionHeader(context.t.settings.offlineData.extensionsSection),
+          ),
+          for (final panel in _dataFileScopedPanels) _buildExtensionPanelRow(context, panel),
+        ],
       ],
+    );
+  }
+
+  /// One row per [_dataFileScopedPanels] entry (HALO-53) — call-notes'
+  /// builtin/custom-file toggles, and whichever other extensions declare a
+  /// `dataFilesSection: true` panel of their own, live there (the same panel
+  /// All Settings would show), not in this generic status-and-refresh list.
+  Widget _buildExtensionPanelRow(BuildContext context, Map<String, dynamic> panel) {
+    final title = (panel['title'] as String?) ?? (panel['panelKey'] as String?) ?? '';
+    return ListTile(
+      leading: Icon(resolveIconName(panel['icon'] as String?)),
+      title: Text(title),
+      trailing: const Icon(Icons.chevron_right),
+      onTap: () => _openExtensionPanel(context, panel),
+      mouseCursor: SystemMouseCursors.click,
     );
   }
 
@@ -1603,6 +1658,7 @@ class _ExtensionSettingsPanelState extends State<_ExtensionSettingsPanel> {
       value: committedValue,
       state: state,
       isSecret: field['fieldType'] == 'secret',
+      restartOnChange: field['restartOnChange'] == true,
     );
     // Re-fetch so the panel reflects whatever the commit actually changed —
     // not just this field's own value, but anything getDefinition derives

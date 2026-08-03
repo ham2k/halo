@@ -14,7 +14,8 @@
     "callNotes",
     "command",
     "dataFile",
-    "lookup"
+    "lookup",
+    "settingsPanel"
   ],
   "domains": [
     "ham2k.com"

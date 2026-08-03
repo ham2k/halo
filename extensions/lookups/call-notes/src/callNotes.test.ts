@@ -6,7 +6,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 
-import { parseCallNotes, combineNotes, expansionValueFor } from './callNotes.ts'
+import { parseCallNotes, combineNotes, customIdentifier, expansionValueFor } from './callNotes.ts'
 
 test('parseCallNotes: skips comments and blank lines, splits key from note', () => {
   const body = [
@@ -87,4 +87,30 @@ test('expansionValueFor: falls through to the first eligible entry', () => {
     { call: 'DAN', note: 'WD4DAN,WD4JMM' },
   ])
   assert.equal(value, 'WD4DAN,WD4JMM')
+})
+
+test('customIdentifier: strips scheme/punctuation into a filename-safe slug', () => {
+  assert.equal(customIdentifier('https://example.com/my-club-notes.txt'), 'custom-https-example-com-my-club-notes-txt-1l4nzmd')
+})
+
+test('customIdentifier: same location always derives the same identifier', () => {
+  const location = 'https://example.com/a.txt'
+  assert.equal(customIdentifier(location), customIdentifier(location))
+})
+
+test('customIdentifier: a changed location derives a different identifier (no stale cache reuse)', () => {
+  assert.notEqual(customIdentifier('https://example.com/a.txt'), customIdentifier('https://example.com/b.txt'))
+})
+
+test('customIdentifier: caps length so an absurdly long URL still makes a safe filename', () => {
+  const identifier = customIdentifier(`https://example.com/${'x'.repeat(200)}.txt`)
+  // slug (<=60) + 'custom-' + '-' + a 32-bit hash rendered base-36 (<=7 chars)
+  assert.ok(identifier.length <= 'custom-'.length + 60 + 1 + 7)
+})
+
+test('customIdentifier: two URLs sharing the same first 60 slug characters still get distinct identifiers', () => {
+  // Differ only after character 60 — the truncated slug alone would be
+  // identical for both; the hash suffix is what keeps them apart.
+  const base = 'https://example.com/pre-signed/' + 'x'.repeat(40)
+  assert.notEqual(customIdentifier(`${base}/token-aaaa.txt`), customIdentifier(`${base}/token-bbbb.txt`))
 })

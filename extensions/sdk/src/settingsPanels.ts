@@ -17,6 +17,12 @@ export interface SettingsPanelEntry {
   icon: string | null
   order: number | null
   kind: "simple" | "dynamic"
+  /// See SettingsPanelDescriptor.sidebar's doc comment (types.ts) — defaults
+  /// true.
+  sidebar: boolean
+  /// See SettingsPanelDescriptor.dataFilesSection's doc comment (types.ts)
+  /// — defaults false.
+  dataFilesSection: boolean
 }
 
 /// Key namespacing rule (docs/extensions/settings.md): for categories where
@@ -62,6 +68,8 @@ export function settingsPanelEntriesFor(
         icon: (hook.icon as string) ?? null,
         order: (hook.order as number) ?? null,
         kind: "simple",
+        sidebar: (hook.sidebar as boolean | undefined) ?? true,
+        dataFilesSection: (hook.dataFilesSection as boolean | undefined) ?? false,
       },
     ]
   }
@@ -84,6 +92,8 @@ export function settingsPanelEntriesFor(
           icon: d.icon ?? null,
           order: d.order ?? null,
           kind: "dynamic",
+          sidebar: d.sidebar ?? true,
+          dataFilesSection: d.dataFilesSection ?? false,
         }))
     }
     // No getPanels: the registration itself is the one panel. Title is
@@ -98,6 +108,8 @@ export function settingsPanelEntriesFor(
         icon: null,
         order: null,
         kind: "dynamic",
+        sidebar: true,
+        dataFilesSection: false,
       },
     ]
   }
