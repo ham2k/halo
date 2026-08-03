@@ -92,8 +92,7 @@ HALO_QJS_API void halo_qjs_set_max_stack_size(HaloQjs *h, size_t bytes);
 /// exception, but the handler stays latched until the outermost call returns,
 /// so a `catch` runs out of budget on its first bytecode. That is the point:
 /// the interrupt lands inside nested evals too, where a JS_GetException would
-/// otherwise clear it and let the runaway outer loop resume - measured at
-/// 2201ms against a 200ms budget before the latch existed.
+/// otherwise clear it and let the runaway outer loop resume.
 ///
 /// The consequence for callers: a script killed this way cannot report its
 /// own failure, so the HOST must fail the outstanding request when eval

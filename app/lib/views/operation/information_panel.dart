@@ -12,18 +12,15 @@ import '../../tools/operation_stats.dart';
 import '../../tools/scoring_summaries.dart';
 import 'call_info_panel.dart';
 
-/// The Operation View's "Info" pane on two-pane layouts (issue #85): basic
-/// operation statistics, then the score summaries. When a call is being
-/// logged it becomes the Call Info detail (issue #40).
-/// Formerly `InformationArea`, LoggingPanel's own >=900px side panel — it
-/// moved here when the wide layout became the operation view's job
-/// (docs/design/layouts.md).
+/// The Operation View's "Info" pane on two-pane layouts (see
+/// docs/design/layouts.md): basic operation statistics, then the score
+/// summaries. When a call is being logged it becomes the Call Info detail.
 class InformationPanel extends StatelessWidget {
   final Operation operation;
   final List<Qso> qsos;
 
   /// When set, the pane shows the Call Info detail instead of the operation
-  /// stats — the current call being logged (issue #40).
+  /// stats — the current call being logged.
   final CallInfoData? callInfo;
   final HaLoServices? services;
   final String? ourEntityPrefix;
@@ -45,7 +42,6 @@ class InformationPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // A call being logged takes over the pane with its detail (issue #40).
     final info = callInfo;
     if (info != null && services != null) {
       return Padding(
@@ -70,8 +66,8 @@ class InformationPanel extends StatelessWidget {
     // (never synced — DESIGN.md §4) each time this operation is (re)scored;
     // absent until the first rescore completes.
     final scoring = operation.localData['scoring'] as Map<String, dynamic>?;
-    // Keyed by scorer since contest scoring landed; these two lines are core's
-    // own tallies (see app/lib/tools/scoring_summaries.dart).
+    // Keyed by scorer; these two lines are core's own tallies (see
+    // app/lib/tools/scoring_summaries.dart).
     final operationSummary = operationSummaryFor(scoring, 'core');
     final dxcc = operationSummary?['dxcc'] as Map<String, dynamic>?;
     final dxccCount = (dxcc?['entities'] as Map?)?.length ?? 0;
@@ -83,7 +79,7 @@ class InformationPanel extends StatelessWidget {
     final theme = Theme.of(context);
     return ListView(
       // Extra inset on every edge that's a divider grab strip or a real
-      // device safe area (ham2k/app-halo-dist#205).
+      // device safe area.
       padding: EdgeInsets.all(16).add(PaneSafeArea.paddingOf(context)),
       children: [
         Text(context.t.loggingPanel.stats, style: theme.textTheme.titleSmall),

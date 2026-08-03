@@ -1,7 +1,7 @@
 // Copyright ©️ 2026 Sebastian Delmont <sd@ham2k.com>
 // SPDX-License-Identifier: MPL-2.0
 //
-// Merges per-ref `suggestOperationTitle` results (ham2k/app-halo-dist#174)
+// Merges per-ref `suggestOperationTitle` results
 // into grouped fragment strings, mirroring app-polo's buildOperationTitle —
 // but stopping short of the final "for X at Y" sentence: that needs the
 // locale's "for"/"at" words, which this Flutter-less, pure/testable function

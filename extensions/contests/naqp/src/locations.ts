@@ -22,8 +22,8 @@ const US_STATES = [
 ]
 
 /// Washington DC is NOT a state, and IS a multiplier — NAQP's rules name it
-/// alongside the fifty. Missing it cost a real multiplier AND, once the guess
-/// gate and the `invalidExchange` alert landed, told an operator working a DC
+/// alongside the fifty. Missing it costs a real multiplier AND tells an
+/// operator working a DC
 /// station that a perfectly good exchange was wrong. §5.3's dataset table says
 /// 111 locations; the fifty states alone give 110, and this is the one missing.
 const DISTRICT_OF_COLUMBIA = ['DC']

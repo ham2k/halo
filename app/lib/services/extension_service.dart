@@ -38,7 +38,7 @@ import '../tools/form_chrome_labels.dart';
 import '../tools/activity_suggestions.dart';
 import '../tools/qso_patch.dart';
 
-/// This device's LoFi identity (HALO-65/66): the Pusher channel to subscribe
+/// This device's LoFi identity: the Pusher channel to subscribe
 /// to, and the signed token a webhook-relayed OAuth login embeds in its
 /// `state` param. Returned by [ExtensionService.ensureLofiClientRegistered]
 /// and [HaLoServices.connectLofiRealtime] alike.
@@ -67,10 +67,10 @@ class ExtensionService {
     mOptions: MacOsOptions(
       // FILE keychain on macOS. The data-protection keychain needs the RESTRICTED
       // keychain-access-groups entitlement, which a Developer ID build can't
-      // carry (no provisioning profile → spawn crash #276), so it fails every
+      // carry (no provisioning profile → spawn crash), so it fails every
       // save with errSecMissingEntitlement (-34018). The file keychain needs no
-      // entitlement and works under the sandbox (it's what debug already used).
-      // A future Mac App Store build (#285) has a profile and can switch back.
+      // entitlement and works under the sandbox.
+      // A future Mac App Store build has a profile and can switch back.
       usesDataProtectionKeychain: false,
       accountName: _keychainAccountName,
     ),
@@ -127,7 +127,7 @@ class ExtensionService {
       // successful refresh resolved in place rather than wiping it: on a
       // restart, stale flags still describe the accounts the user has, while
       // an empty map silently reads and writes every account under the
-      // device-local default — the exact miss #402 was about.
+      // device-local default — the exact miss this cache exists to prevent.
       if (accounts == null) return;
       _accountSynchronizable
         ..clear()
@@ -166,10 +166,10 @@ class ExtensionService {
   /// still wait, because getting them the right flag is the whole reason the
   /// gate exists.
   ///
-  /// Bypassing yields the device-local defaults, which is exactly what the
-  /// caller got before this fix — the refresh timed out, so the flag map stayed
-  /// empty for the whole session — so this is never worse than the status quo,
-  /// and unlike the status quo the flags are correct a moment later.
+  /// Bypassing yields the device-local defaults. Without the bypass the
+  /// refresh deadlocks and times out, leaving the flag map empty for the
+  /// whole session — so the bypass is never worse, and unlike the deadlock
+  /// the flags are correct a moment later.
   Future<({MacOsOptions mOptions, IOSOptions iOptions})> _accountKeychainOptions(
     String kvKey, {
     bool fromHostCall = false,
@@ -214,7 +214,7 @@ class ExtensionService {
   LocationService? location;
 
   /// Extension keys allowed to call `getLocation` (manifest.json
-  /// `requiresLocation`, APP-34) — same allowlist shape as [_fetchAllowlists]
+  /// `requiresLocation`) — same allowlist shape as [_fetchAllowlists]
   /// below, resolved once at load time in [_start].
   Set<String> _locationAllowlist = const {};
 
@@ -299,8 +299,8 @@ class ExtensionService {
     }
   }
 
-  /// Every export option offered by every `export` hook (Exports Panel,
-  /// ham2k/app-halo-dist#4). Hooks that don't implement
+  /// Every export option offered by every `export` hook (Exports Panel).
+  /// Hooks that don't implement
   /// `suggestExportOptions` are silently absent from the list.
   Future<List<Map<String, dynamic>>> getExportOptions(Map<String, dynamic> args) => _collectHookResults(
         'export',
@@ -309,8 +309,8 @@ class ExtensionService {
         debugLabel: 'getExportOptions',
       );
 
-  /// Every `spots` hook currently willing to post a spot (Spotting control,
-  /// ham2k/app-halo-dist#10), each tagged with `hookKey` so a later
+  /// Every `spots` hook currently willing to post a spot (Spotting
+  /// control), each tagged with `hookKey` so a later
   /// `sendSpot` call can be routed back to it. Calls `isSelfSpotEnabled`
   /// when `qso` is omitted, `isOtherSpotEnabled` otherwise; hooks that don't
   /// implement the relevant method, or report `enabled: false`, are
@@ -339,8 +339,8 @@ class ExtensionService {
     }
   }
 
-  /// Every spot offered by every `spots` hook (Spots Panel,
-  /// ham2k/app-halo-dist#9), each tagged with `hookKey` so the panel can
+  /// Every spot offered by every `spots` hook (Spots Panel),
+  /// each tagged with `hookKey` so the panel can
   /// group/filter by source.
   Future<List<Map<String, dynamic>>> getSpots() => _collectHookResults(
         'spots',
@@ -438,13 +438,13 @@ class ExtensionService {
   /// The distinction is the whole point. An empty map means "this account is not
   /// connected", which is a fact about the account; null means "we cannot know",
   /// which is a fact about the machine — a Linux box with no Secret Service
-  /// running, a locked keyring (#438). Collapsing the two would tell an operator
+  /// running, a locked keyring. Collapsing the two would tell an operator
   /// they had been logged out, and invite them to log in again into a store that
   /// cannot keep it.
   ///
-  /// Before, this threw: `_loadAccounts` spun forever and the account dialog
-  /// rendered with no fields at all, because both read it before their own
-  /// `setState`.
+  /// Never let this throw: `_loadAccounts` would spin forever and the account
+  /// dialog would render with no fields at all, because both read it before
+  /// their own `setState`.
   Future<Map<String, String>?> getAccountCredentials(String kvKey) async {
     final o = await _accountKeychainOptions(kvKey);
     final String? raw;
@@ -453,8 +453,8 @@ class ExtensionService {
     } catch (e, st) {
       // EVERYTHING, not just PlatformException: a build where the plugin failed
       // to register raises MissingPluginException, and catching only the former
-      // reopened the exact hang this exists to prevent — `_loadAccounts` reads
-      // this before its own `setState`. `KeyringLocked` on Linux covers three
+      // would reopen the exact hang this exists to prevent — `_loadAccounts`
+      // reads this before its own `setState`. `KeyringLocked` on Linux covers three
       // different situations anyway (no Secret Service, no default collection,
       // one that would not unlock), so nothing here claims which.
       debugPrint('[extensions] secure storage unavailable reading $kvKey: $e');
@@ -848,7 +848,7 @@ class ExtensionService {
         fetchAllowlists[info.key] = info.domains;
         if (info.allowUserAgentOverride) userAgentOverrides.add(info.key);
         // The manifest's declared `getLocation` capability (build.mjs
-        // `requiresLocation`, APP-34).
+        // `requiresLocation`).
         if (info.requiresLocation) locationAllowlist.add(info.key);
         // Resolve what this extension is allowed to see, once, at load time —
         // the host then holds only that subset and needs no policy of its own.
@@ -893,9 +893,9 @@ class ExtensionService {
       await _refreshAccountSynchronizable();
     } catch (e) {
       debugPrint('[extensions] failed to start extension runtime: $e');
-      // A transient boot failure (asset hiccup, engine init) used to leave
-      // extensions off for the rest of the session ("_starting" memoized
-      // the failure). Retry with backoff instead.
+      // A transient boot failure (asset hiccup, engine init) must not leave
+      // extensions off for the rest of the session ("_starting" memoizes),
+      // so retry with backoff.
       _scheduleRestart('start failed: $e');
     } finally {
       // Never leave account access blocked, even if start threw before the
@@ -934,7 +934,7 @@ class ExtensionService {
   final ValueNotifier<int> runtimeGeneration = ValueNotifier(0);
 
   /// A `command` hook pushed a later CommandInterpretation for an `input` it
-  /// was already asked to interpret (issue #189 — SOLAR/WEATHER's fetch
+  /// was already asked to interpret (SOLAR/WEATHER's fetch
   /// resolving after their own describe-preview call already returned).
   /// Owned by the service, not the current [_host]: a restart replaces
   /// [_host] but callers (LoggingControls) hold one subscription for the
@@ -1084,8 +1084,8 @@ class ExtensionService {
       case 'getAccount':
         final kvKey = params['kvKey'] as String;
         final o = await _accountKeychainOptions(kvKey, fromHostCall: true);
-        // This is the path an extension actually uses at runtime, and it was the
-        // one still lying: an unguarded throw here rejects the host call, the
+        // This is the path an extension actually uses at runtime, so it must
+        // not lie: an unguarded throw here rejects the host call, the
         // kernel turns a rejection into `undefined` (sdk/src/kernel.ts), and the
         // extension reads that as a logged-out account — the same collapse
         // `getAccountCredentials` refuses to make. Saying `unavailable` instead
@@ -1127,7 +1127,7 @@ class ExtensionService {
           // the UI's platform-tailored name.
           'appName': ham2kMachineName,
           // 'dev' | 'next' | 'prod' — for a hook whose static config must
-          // vary per build edition (e.g. SOTA's OAuth client, issue #253).
+          // vary per build edition (e.g. SOTA's OAuth client).
           'edition': kEdition.name,
           'themeMode': settings?.themeMode.name ?? 'system',
           'fontScale': settings?.fontScale.name ?? 'normal',
@@ -1246,7 +1246,7 @@ class ExtensionService {
         // One-shot device GPS fix (SDK's `host.getLocation()`) — e.g. WEATHER
         // falling back to device location when there's no operation grid.
         // May prompt for location permission; null on any denial/failure.
-        // Gated by the manifest's `requiresLocation` capability (APP-34),
+        // Gated by the manifest's `requiresLocation` capability,
         // same allowlist shape as host.fetch's `domains`.
         final extensionKey = params['extensionKey'] as String?;
         if (!_locationAllowed(extensionKey)) {
@@ -1469,7 +1469,7 @@ class ExtensionService {
     }
   }
 
-  /// Deterministic offline lookups (#238): with `--dart-define=HALO_STUB_LOOKUPS=1`
+  /// Deterministic offline lookups: with `--dart-define=HALO_STUB_LOOKUPS=1`
   /// in a dev build, [lookupCall] returns a fixed canned result instead of
   /// invoking the (network/credentialed) lookup extensions. `debugEnvFlag`
   /// returns '' in release, so this can never engage there.
@@ -1543,8 +1543,7 @@ class ExtensionService {
   /// selected each. An `'always'` scorer maps to a null ref; a ref-gated one is
   /// listed once per matching ref TYPE — two refs of one type are ONE
   /// invocation, carrying the first, so an operation running two events of the
-  /// same contest scores only one of them (this comment used to claim the
-  /// opposite, which is a promise the loop below has never kept).
+  /// same contest scores only one of them.
   /// [segments] resolves the operation's `break`/`start` overrides. Selection
   /// spans EVERY segment: a contest that only covers the back half of a log
   /// would never be invoked if this read the base operation alone
@@ -1998,7 +1997,7 @@ class ExtensionService {
   }
 
   /// Ensures this device is registered with the sync server — independent
-  /// of whether the operator has QSO sync enabled (HALO-66); registration
+  /// of whether the operator has QSO sync enabled; registration
   /// establishes device identity and the realtime push channel, it never
   /// pushes log data. Returns null if the runtime isn't up or registration
   /// failed (e.g. no network) — callers should treat that as "not
@@ -2020,7 +2019,7 @@ class ExtensionService {
     }
   }
 
-  /// Fetches this device's pending webhook events (HALO-65) — the poll
+  /// Fetches this device's pending webhook events — the poll
   /// fallback, and how a caller retrieves the actual payload after a
   /// [HaLoServices.webhookEvents] Pusher ping (which intentionally carries
   /// only an id, never the sensitive payload).
@@ -2071,7 +2070,7 @@ class ExtensionInfo {
   final bool allowUserAgentOverride;
 
   /// Whether this extension may call the `getLocation` host call (build.mjs
-  /// `requiresLocation`, APP-34) — the device's raw GPS fix. Off by default,
+  /// `requiresLocation`) — the device's raw GPS fix. Off by default,
   /// same allowlist shape as [domains].
   final bool requiresLocation;
 

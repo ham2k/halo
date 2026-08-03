@@ -6,7 +6,7 @@
 // Logger", "Browser Logger", …) overlapping its lower-left — each word on its
 // own line in bold RobotoSlab, black with a white outline and its own drop
 // shadow. The brand lockup used on the startup splash, the release/onboarding
-// overlays, and the About screen header (Issue #42). The compact home
+// overlays, and the About screen header. The compact home
 // header/right pane use the square mark (`ham2kSquareLogoAsset`) instead.
 //
 // The colors are baked into each SVG per edition (the "2K" is gray on Dev,
@@ -156,8 +156,8 @@ class Ham2kBrandMark extends StatelessWidget {
     // name text takes [titleFontSizeDelta] on top of it.
     final baseFontSize = logoWidth * 0.1785;
     final fontSize = baseFontSize + titleFontSizeDelta;
-    // Product names are two words ("Mac Logger", "Browser Logger", …); stack one
-    // word per line, left-aligned at the spot the lone "Logger" used to sit.
+    // Product names are two words ("Mac Logger", "Browser Logger", …); stack
+    // one word per line, left-aligned.
     final titleText = ham2kProductName.split(' ').join('\n');
     final titleStyle = TextStyle(
       fontFamily: 'RobotoSlab',

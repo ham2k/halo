@@ -68,7 +68,7 @@ async function lookupCall(
   // HamDB reports missing fields as the literal string "NOT_FOUND" — on
   // ANY field, not just names (common for Canadian/German records with no
   // grid). Passed through, it reaches the UI and ADIF exports, and a
-  // "NOT_FOUND" grid used to crash the merge pipeline and silently discard
+  // "NOT_FOUND" grid makes the merge pipeline throw and silently discard
   // this whole result, valid name and city included.
   const real = (value: unknown): string | undefined =>
     typeof value === 'string' && value !== '' && value !== 'NOT_FOUND' ? value : undefined

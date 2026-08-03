@@ -5,7 +5,7 @@
 // call (`lookupService/core`), and this hook does everything else internally
 // — the hardcoded callsign-annotation pre-step, a priority-ordered fan-out
 // to every registered `lookup` hook, and the locationScope-aware merge —
-// entirely inside the runtime. See ham2k/app-halo-dist#8.
+// entirely inside the runtime.
 
 import { defineExtension, hooks, host } from "@ham2k/halo-extension-sdk"
 import type { CallInfo, CallInfoLookup, HookContext, LookupServiceRequest, LookupServiceResult } from "@ham2k/halo-extension-sdk"

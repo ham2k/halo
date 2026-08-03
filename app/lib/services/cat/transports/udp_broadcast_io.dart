@@ -6,10 +6,9 @@
 // different protocol and a different socket).
 //
 // Binding a UDP port is a LISTENING socket, so on macOS this needs
-// `com.apple.security.network.server`, which is why that entitlement is now
-// in Release.entitlements as well as Debug. It had been Debug-only, which
-// meant this would have worked in every development build and failed
-// silently in the shipped, signed app.
+// `com.apple.security.network.server` — and it must stay in
+// Release.entitlements as well as Debug: Debug-only would work in every
+// development build and fail silently in the shipped, signed app.
 
 import 'dart:async';
 import 'dart:io';

@@ -123,8 +123,8 @@ class StationPanel extends StatelessWidget {
                   const Divider(),
                 ],
                 // A radio on another subnet, or behind a router that doesn't
-                // forward broadcasts, never announces. Neither app-polo
-                // branch had this path, and both were unusable without it.
+                // forward broadcasts, never announces — the manual path must
+                // always be offered.
                 SectionHeader(st.addManually),
                 for (final type in manualTypes)
                   ListTile(
@@ -465,8 +465,8 @@ class _EquipmentTile extends StatelessWidget {
     //
     // Both rows split with spaceBetween rather than a Spacer or a trailing
     // Expanded: a flex child that uses LESS than its share leaves the slack
-    // at the END of the row, which is what kept the right-hand items from
-    // reaching the edge.
+    // at the END of the row, which keeps the right-hand items from reaching
+    // the edge.
     return ListTile(
       leading: Icon(_iconForCategory(resolvedType.category)),
       title: Row(
@@ -546,9 +546,8 @@ class _EquipmentTile extends StatelessWidget {
                     padding: const EdgeInsets.only(left: 12),
                     child: _Pill(
                       // A link that is up but silent must not wear the same
-                      // confident green as one that is working: the row was
-                      // showing a frequency from minutes earlier as though
-                      // it were current.
+                      // confident green as one that is working: the
+                      // frequency shown may be minutes old.
                       label: state.stale ? st.statusStale : st.statusConnected,
                       background: state.stale ? theme.colorScheme.error : _connectedGreen(theme),
                       foreground: Colors.white,
@@ -603,9 +602,9 @@ class _Pill extends StatelessWidget {
 }
 
 /// The plug: pulled out (grey) or pushed in (green). Pressing it does the
-/// other thing. This replaced a "Not connected" label plus a Connect button
-/// — two localized words' worth of row width to say what one glyph says,
-/// on a row whose whole point is to show a live frequency.
+/// other thing. A glyph rather than a "Not connected" label plus a Connect
+/// button — two localized words' worth of row width to say what one glyph
+/// says, on a row whose whole point is to show a live frequency.
 class _ConnectionToggle extends StatelessWidget {
   final bool busy;
   final bool connected;

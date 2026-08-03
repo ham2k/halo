@@ -21,8 +21,7 @@
 /// nothing else. A contest needs this to record what it actually sent when the
 /// operator typed nothing — the country file's zone, written as data of record
 /// so the log, the scorer and the export cannot disagree
-/// (docs/design/contests.md §8). The narrowness is what makes it safe, and it
-/// is precisely what the earlier blanket refusal was protecting:
+/// (docs/design/contests.md §8). The narrowness is what makes it safe:
 ///   * no other activity's ref can be dropped or altered — a patch entry whose
 ///     type isn't [owner] is ignored;
 ///   * no ref is ever removed, only merged into or appended;

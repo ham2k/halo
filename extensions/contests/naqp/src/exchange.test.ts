@@ -5,9 +5,9 @@
 // ref at save and exported as though the station had sent it — so a wrong guess
 // is a wrong claim in a submitted log, not a cosmetic annoyance.
 //
-// Both bugs a review caught in this file's logic were data-shape assumptions
-// that one command against the country file would have disproved. These check
-// the country file rather than restating what it was assumed to say.
+// Both bugs found in this file's logic were data-shape assumptions that one
+// command against the country file would have disproved. These check the
+// country file rather than restating what it was assumed to say.
 
 import { test } from "node:test"
 import assert from "node:assert/strict"

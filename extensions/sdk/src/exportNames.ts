@@ -3,10 +3,10 @@
 //
 // One filename scheme for every export, in two forms.
 //
-// Before this, each hook spelled its own filename inline — the activity SDK
-// said `n0call-at-us-1234.adi`, core ADIF said `20260727-n0call-my-op.adi`,
-// each contest said `CQ-WW-CW-N0CALL.log` — so the same log came out under
-// three unrelated conventions and none of them could be turned off. The
+// Without this, each hook spells its own filename inline — the activity SDK
+// `n0call-at-us-1234.adi`, core ADIF `20260727-n0call-my-op.adi`,
+// each contest `CQ-WW-CW-N0CALL.log` — so the same log comes out under
+// three unrelated conventions and none of them can be turned off. The
 // "Use compact file names" setting (app-polo's `useCompactFileNames`) needs a
 // single place to switch, which is what this is.
 //

@@ -1,7 +1,7 @@
 // Copyright ©️ 2026 Sebastian Delmont <sd@ham2k.com>
 // SPDX-License-Identifier: MPL-2.0
 //
-// Global error capture (#76): backend upload when one is injected, local
+// Global error capture: backend upload when one is injected, local
 // logging and a StatusBar notice always — as far as [ErrorPolicy] allows.
 // WHAT an error deserves is decided there and only there (see
 // services/error_policy.dart); this file is the plumbing that carries the
@@ -153,7 +153,7 @@ class ErrorReportingService {
 
     // Replace Flutter's grey/red box with the compact branded tile; the
     // failed widget's slot shows the tile, the rest of the app keeps
-    // working (#76 — see views/error_tile.dart).
+    // working (see views/error_tile.dart).
     ErrorWidget.builder = (details) => HaLoErrorTile(details: details);
   }
 
@@ -175,9 +175,9 @@ class ErrorReportingService {
       statusBar.showNotice(
         key: 'error-reporting:first-error',
         // resolveIconName expects a Material Design Icons name (kebab-case)
-        // or an fa- prefixed FontAwesome one — 'error_outline' (Flutter's
-        // own Icons constant name, a different set entirely) matched
-        // neither and silently fell back to the puzzle-piece placeholder.
+        // or an fa- prefixed FontAwesome one — a Flutter Icons constant
+        // name like 'error_outline' (a different set entirely) matches
+        // neither and silently falls back to the puzzle-piece placeholder.
         icon: 'alert-circle',
         title: 'Something went wrong',
         text: reportingEnabled

@@ -58,8 +58,8 @@ export type FDScoresheet = {
   qsoPoints: number
   qsoCount: number
   /// Reset on each new UTC day. Field Day ALWAYS spans two of them (1800Z
-  /// Saturday to 2100Z Sunday), so without these the per-day header reported
-  /// the running total and re-added the whole bonus to every day.
+  /// Saturday to 2100Z Sunday), so without these the per-day header reports
+  /// the running total and re-adds the whole bonus to every day.
   dayPoints: number
   dayQsos: number
   /// The setup as it stood while these QSOs were scored.
@@ -125,8 +125,8 @@ export function bonusPoints(ref: Record<string, JSONValue> | undefined): number 
 
   // 100 per transmitter, capped at 20 — and ONLY for running entirely on
   // emergency power. There is no standalone per-transmitter bonus: awarding one
-  // gave a mains-powered home station points it is not entitled to, and gave a
-  // station that IS on emergency power the same amount twice.
+  // gives a mains-powered home station points it is not entitled to, and gives
+  // a station that IS on emergency power the same amount twice.
   if (flag('bonusEmergencyPower')) total += Math.min(num('bonusTransmitters'), 20) * 100
 
   // 10 per formal message, capped at 10 messages.
@@ -144,8 +144,7 @@ export function bonusPoints(ref: Record<string, JSONValue> | undefined): number 
 
 /// The bonuses that are simply claimed or not, and what each is worth.
 ///
-/// Not all 100 — web submission is 50 and Site Responsibilities is 50. They
-/// were all scored as 100 at first, which over-claimed on two of them.
+/// Not all 100 — web submission is 50 and Site Responsibilities is 50.
 export const CLAIMED_BONUSES: Record<string, number> = {
   bonusMediaPublicity: 100,
   bonusPublicLocation: 100,

@@ -3,8 +3,8 @@
 //
 // CQ WPX Contest. Ported from app-polo's CQWPXExtension.
 //
-// The third contest ported (docs/design/contests.md M3), chosen for the one
-// thing the first two didn't have: a SERIAL NUMBER exchange. In app-polo the
+// What sets it apart from the other CQ
+// contests: a SERIAL NUMBER exchange. In app-polo the
 // sent number is state on the operation ref, bumped by a dispatch after each
 // save — which leaks a number whenever a half-composed QSO is wiped, and hands
 // the same number to two QSOs if a spot is tapped mid-entry. Here the extension
@@ -93,8 +93,8 @@ const ActivityHook = {
     // Off-contest, contribute nothing. This is an OPTIMIZATION, not the rule:
     // the core already refuses a primary field to any activity the operation
     // isn't running (halo_widgets' `_textControls`), so forgetting this guard
-    // is invisible to the operator. What it saves is the work below — a country
-    // -file annotation per keystroke-triggered refresh, in the JS isolate,
+    // is invisible to the operator. What it saves is the work below, run per
+    // keystroke-triggered refresh in the JS isolate,
     // multiplied by every contest extension the user happens to have enabled.
     if (!refOfType(args.operation, TYPE)) return []
 
@@ -257,8 +257,8 @@ const ExportHook = {
   async generateExport(args: ExportRequest, ctx: HookContext): Promise<ExportResult> {
     // Only the two exportTypes `suggestExportOptions` above offers. Belt and
     // braces alongside the keyed `invokeOne` below: a hook that answers for an
-    // exportType it never offered is how the ADIF delegation recursed into
-    // itself in the first place.
+    // exportType it never offered makes the ADIF delegation recurse into
+    // itself.
     if (args.exportType !== 'cabrillo' && args.exportType !== 'contest-adif') {
       return { filename: '', mimeType: '', content: '' }
     }
@@ -294,7 +294,7 @@ const ExportHook = {
     const { hooks } = await import("@ham2k/halo-extension-sdk")
     // invokeOne, NOT invokeAll: the fan-out includes this contest's own
     // `generateExport`, which would take the same ADIF branch and delegate
-    // again — unbounded recursion that only surfaced as a 30s export timeout.
+    // again — unbounded recursion.
     const entries = await hooks.invokeOne('export', 'adif', 'generateExport', {
       operation: args.operation,
       qsos: args.qsos,

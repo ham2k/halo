@@ -57,7 +57,7 @@ class OperationView extends StatefulWidget {
 // TabController whenever the tab count changes (the two-pane breakpoint swaps
 // a 4-tab layout for a 3-tab one), so more than one ticker exists over its
 // lifetime — which is exactly what SingleTickerProviderStateMixin asserts
-// against, and what resizing across the breakpoint used to trip.
+// against, and what resizing across the breakpoint would trip.
 class _OperationViewState extends State<OperationView> with TickerProviderStateMixin {
   Operation? _operation;
   List<Map<String, dynamic>> _loggingControls = const [];
@@ -95,16 +95,17 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
   String? _ourEntityPrefix;
 
   /// The station's own ITU region (1/2/3) and lowercase ISO country code
-  /// (HALO-52) — resolved alongside [_ourEntityPrefix], from the same guess,
+  /// — resolved alongside [_ourEntityPrefix], from the same guess,
   /// and fed to LoggingControls' band-plan mode guess so it can prefer/
   /// exclude region- or country-scoped segments for where the operator
   /// actually is instead of guessing blind.
   int? _ourItuRegion;
   String? _ourCountryCode;
 
-  /// Cached QSO stream. Recreating `watchForOperation` inside `build` made a
-  /// fresh drift query on every rebuild — a menu toggle, a `_loggingControls`
-  /// arrival, an entity-prefix resolve, a rescore refresh — each tearing
+  /// Cached QSO stream. Recreating `watchForOperation` inside `build` would
+  /// make a fresh drift query on every rebuild — a menu toggle, a
+  /// `_loggingControls` arrival, an entity-prefix resolve, a rescore refresh
+  /// — each tearing
   /// down and re-running the whole query. Keyed on `_showDeletedQSOs`, the
   /// only input that changes during the view's life (the uuid is fixed).
   Stream<List<Qso>>? _qsoStream;
@@ -178,7 +179,7 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
   bool _openedActivities = false;
 
   /// Whether THIS view has already auto-opened the sheet for the
-  /// 'operation-sheet' onboarding flow (issue #348) — same one-shot guard as
+  /// 'operation-sheet' onboarding flow — same one-shot guard as
   /// [_openedActivities], for the same reason: the operation stream re-emits
   /// on every change. Independent of [_openedActivities]: this fires for
   /// ANY operation, new or existing, the first time ever for this user;
@@ -231,7 +232,7 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
   /// reference here is harmless.
   Map<String, dynamic>? _suggestedQso;
 
-  /// The current call-info (issue #40), pushed up from LoggingControls — shown
+  /// The current call-info, pushed up from LoggingControls — shown
   /// as the Call Info detail on the Info tab (wide) or a modal (narrow) — the
   /// producer (LoggingPanel) and the display (InformationPanel) are sibling
   /// panes.
@@ -306,9 +307,8 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
     final s = widget.services.settings;
     final enabled = s.experimentEnabled('layouts');
     // Local mirrors of the logging panel's own toggles (see
-    // _buildLoggingSettingsButton) — now flipped from the settings dialog
-    // rather than by the popup menu's own apply/persist pair, so this is
-    // the only place they follow SettingsService again.
+    // _buildLoggingSettingsButton) — flipped from the settings dialog,
+    // so this is the only place they follow SettingsService.
     final changed = enabled != _customLayout ||
         s.showRSTFields != _showRSTFields ||
         s.showStateField != _showStateField ||
@@ -419,9 +419,9 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
       _openedActivities = true;
       // Also consumes the independent trigger below for THIS view: a new
       // operation is this view's to handle end to end, including the
-      // existing (pre-#348) case where operatorCall is still empty and only
+      // case where operatorCall is still empty and only
       // the callsign prompt shows, never the sheet — that must stay exactly
-      // as it was, not get a second, onboarding-driven attempt to reopen
+      // as it is, not get a second, onboarding-driven attempt to reopen
       // something on a later re-emission of the operation stream.
       _openedOperationSheetOnboarding = true;
       final markOnboardingSeen =
@@ -429,7 +429,7 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
       _afterPushTransition(() => _openActivitiesOrPromptForCallsign(operation, markOnboardingSeen: markOnboardingSeen));
     } else if (!_openedOperationSheetOnboarding &&
         widget.services.settings.onboardingShownCount(OnboardingFlows.operationSheet) == 0) {
-      // Independent of the new-operation auto-open above (issue #348): the
+      // Independent of the new-operation auto-open above: the
       // FIRST operation this user ever opens — new or existing — shows the
       // sheet once, so it isn't a surprise the first time they go looking
       // for it on an operation that predates the sheet.
@@ -449,7 +449,7 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
       }
       if (previous == null || !_sameRefs(previous.data['refs'], operation.data['refs'])) {
         unawaited(_refreshLoggingControls(operation));
-        // Refs are what suggestOperationTitle reads (ham2k/app-halo-dist#174)
+        // Refs are what suggestOperationTitle reads
         // — no debounce needed, refs only change on a deliberate edit, unlike
         // the QSO list's rescore trigger below.
         unawaited(widget.services.operationTitles.retitleOperation(operation));
@@ -494,7 +494,7 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
     // before it resolves, and the ref-changed branch below would then have
     // already cached the correct, fresher suggestion — retitling from this
     // stale closed-over snapshot would silently overwrite it with the old
-    // one (ham2k/app-halo-dist#174; there's no ordering guard on the cache
+    // one (there's no ordering guard on the cache
     // write to catch this, unlike the fingerprinted rescore below).
     unawaited(widget.services.operationTitles.retitleOperation(_operation ?? operation));
     // The extension runtime is ready now; a rescore scheduled before it was
@@ -564,7 +564,7 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
     await widget.services.setOperatorCall(result);
   }
 
-  /// Tap on the compact call-info area (issue #40): on wide layouts the detail
+  /// Tap on the compact call-info area: on wide layouts the detail
   /// already lives on the Info tab, so just surface it; on narrow, open it as a
   /// modal (which re-reads the latest `_callInfo` on rebuild via the modal's
   /// own key, so live updates flow through while it's open).
@@ -889,7 +889,7 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
           // BEFORE dropping the draft, rather than leaving the header to
           // fall back on _operation as it stood before this edit session
           // and wait for watchOperation's stream to catch up. That gap
-          // used to show a flicker of stale values in the header for a
+          // would show a flicker of stale values in the header for a
           // frame or two while the sheet was still closing. If a live
           // title-preview was showing (refs edited during this session),
           // bake ITS suggestion into the carried-forward operation too —
@@ -958,7 +958,7 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
     // Defaults to this State's own context, but the dock layout's
     // `tabActions` is a `WidgetBuilder` specifically so its call site can
     // pass a context at the module's real tree position instead (see
-    // `_buildGroup`'s own Builder, ham2k/app-halo-dist#205) — using the
+    // `_buildGroup`'s own Builder) — using the
     // wrong one is currently harmless (no nested Theme/Localizations
     // override exists anywhere in the dock tree today) but would silently
     // read the wrong ambient values the day one is added.
@@ -1258,7 +1258,7 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
         // them inline) but aren't real contacts — every QSO *count* shown to
         // the user excludes them, matching scoring/export.
         final realQsoCount = qsos.where((q) => q.isRealContact).length;
-        // The ref-derived subtitle (ham2k/app-halo-dist#174) only exists once
+        // The ref-derived subtitle only exists once
         // OperationTitleService has run at least once — until then, fall
         // back to the raw ref labels so the header isn't blank.
         final suggestedSubtitle = displaySubtitleFor(operation);
@@ -1396,8 +1396,8 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
               // supplies its own (small) inset instead of relying on the
               // theme's default gap here.
               titleSpacing: 0,
-              // The logging-only settings menu used to live here; it now
-              // travels with the logging panel itself (dock module header,
+              // The logging-only settings menu travels with the logging
+              // panel itself, not this AppBar (dock module header,
               // narrow QSOs tab, or the fixed wide split's pane title bar —
               // see _buildLoggingSettingsButton), since none of its toggles
               // apply to the Info/Spots/Map tabs.
@@ -1428,12 +1428,12 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
                   return null;
                 }),
                 child: Padding(
-                  // A small left inset for the dots/accept control — it used
-                  // to sit flush against the back button with no breathing
-                  // room at all — and a small right inset now that the
-                  // title no longer stretches to fill the AppBar, so the
-                  // button's own edge doesn't sit flush against whatever's
-                  // to its right (actions, or the window's own edge).
+                  // A small left inset so the dots/accept control doesn't
+                  // sit flush against the back button, and a small right
+                  // inset — the title doesn't stretch to fill the AppBar —
+                  // so the control's own edge doesn't sit flush against
+                  // whatever's to its right (actions, or the window's own
+                  // edge).
                   padding: const EdgeInsets.only(left: 8, right: 12, top: 2, bottom: 2),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
@@ -1452,8 +1452,7 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
                       // bare, non-flexible Row child gets an UNBOUNDED main-
                       // axis constraint instead — Flutter only bounds a
                       // Row's main axis for Expanded/Flexible children —
-                      // which is what caused the overflow when this was
-                      // first tried as a plain child), but no longer forces
+                      // which would overflow), without forcing
                       // the Column to consume space it doesn't need.
                       Flexible(
                         child: Column(
@@ -1461,9 +1460,9 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             // Title and description each shrink to fit their own
-                            // width independently (issue #182) rather than
+                            // width independently rather than
                             // truncating — down to 75% of their natural font size,
-                            // past which the line ellipsizes instead (#361). The
+                            // past which the line ellipsizes instead. The
                             // description tries Roboto's condensed glyph width
                             // first, before shrinking its font size at all.
                             shrinkToFitText(
@@ -1497,7 +1496,7 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
           body: PaneSafeArea.root(
             context,
             // Real device safe-area insets (notch, home indicator) bubble
-            // in from here (ham2k/app-halo-dist#205); PaneSafeArea's own
+            // in from here; PaneSafeArea's own
             // divider-clearance role composes with it further down.
             child: isTwoPane && _customLayout
                 ? _dockLayout(
@@ -1518,7 +1517,7 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
                     // The fixed split's counterpart to the dock layout's
                     // module header and the narrow view's QSOs tab: the
                     // logging pane has no title of its own otherwise, and
-                    // that's where its settings button now lives.
+                    // that's where its settings button lives.
                     // `kTextTabBarHeight` matches the secondary's TabBar so
                     // both sides of the split line up at the divider.
                     primary: Column(
@@ -1532,9 +1531,8 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
                             // context is an ANCESTOR of the `PaneSafeArea.root`
                             // wrapping the whole body below, so `leftOf` would
                             // always resolve to its `?? 0` default instead of
-                            // the real inset — the same mistake dock_layout.dart's
-                            // `_buildGroup` already hit and fixed this way
-                            // (ham2k/app-halo-dist#205).
+                            // the real inset — same pattern as
+                            // dock_layout.dart's `_buildGroup`.
                             child: Builder(
                               builder: (context) => Padding(
                                 padding: EdgeInsets.only(left: PaneSafeArea.leftOf(context)),

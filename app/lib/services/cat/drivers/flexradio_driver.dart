@@ -7,7 +7,7 @@
 // We track slice 0's frequency and mode.
 //
 // Ported from app-polo's FlexRadioDriver.js, which was verified against a
-// live FLEX-6600. Two things changed on the way over: readings go to a sink
+// live FLEX-6600. Two deliberate divergences: readings go to a sink
 // instead of straight into the store, and chunks are reassembled into lines
 // (polo split each chunk on '\n' with no residual buffer, so a status line
 // straddling two TCP reads was mangled).

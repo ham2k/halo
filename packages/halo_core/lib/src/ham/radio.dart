@@ -61,19 +61,18 @@ typedef _BandPlanSegment = ({
   List<String> countries,
 });
 
-/// Guesses the mode for [khz] from the amateur radio band plan (HALO-32) —
+/// Guesses the mode for [khz] from the amateur radio band plan —
 /// the generous, worldwide segments (CW/Phone/Data sub-bands) where a
 /// specific mode is conventionally used, not a regulatory boundary (that's
 /// [bandForFrequency]'s job). Returns null where the band plan doesn't settle
 /// on one mode for [khz] (e.g. a repeater/beacon segment, or no segment
 /// covers it at all) — callers should fall back to the current/default mode.
 ///
-/// [ituRegion]/[countryCode] (HALO-52) are the operator's own — from the
+/// [ituRegion]/[countryCode] are the operator's own — from the
 /// callsign-annotation guess, e.g. `guess['ituRegion']`/`guess['countryCode']`
 /// — when the caller has them. Only [bandPlanModeSegments] entries scoped to
-/// a *different* region/country are affected: with both null (the default,
-/// and every caller that hasn't been updated yet), scope can't be checked at
-/// all and every segment stays a candidate, exactly as before HALO-52.
+/// a *different* region/country are affected: with both null (the default),
+/// scope can't be checked at all and every segment stays a candidate.
 ///
 /// Priority always wins first, matching the source library: a narrowband
 /// digital carve-out (FT8/FT4, priority 100) beats the wider CW/Phone/Data
@@ -160,7 +159,7 @@ bool _isBetterModeMatch(_BandPlanSegment candidate, _BandPlanSegment current, {r
   return candidateWidth < currentWidth;
 }
 
-/// MHz/kHz/Hz split for QSO-row display (issue ham2k/app-halo-dist#2): MHz
+/// MHz/kHz/Hz split for QSO-row display: MHz
 /// bold, kHz regular, Hz (if any) regular at a smaller size, dot-separated.
 /// [hz] is null when the operation has no QSO needing sub-kHz precision —
 /// see [hzDigitsNeeded].
@@ -175,7 +174,7 @@ class FreqParts {
 /// Rounds a kHz value to the nearest Hz as a single integer, then splits by
 /// integer division/modulo — the shared source of truth for [freqDisplayParts]
 /// and [hzDigitsNeeded]. Flooring/subtracting the kHz-as-double pieces
-/// separately (the previous approach) can round a remainder up to exactly
+/// separately can round a remainder up to exactly
 /// 1000 Hz on IEEE-754 boundary values (e.g. 8.158 MHz parses to the double
 /// 8157.999999999999 kHz) and then clamp it back down to 999 instead of
 /// carrying into kHz/MHz — rounding to a single integer up front sidesteps
@@ -313,8 +312,8 @@ double? parseFreq(String input) {
 /// Formats kHz for display: "14,285.5".
 String fmtFreq(double khz) {
   // Round to one decimal FIRST, then split into whole/fraction — splitting
-  // the unrounded value and rounding just the fraction (the previous
-  // approach) drops the carry whenever the fraction is >= 0.95, e.g.
+  // the unrounded value and rounding just the fraction drops the carry
+  // whenever the fraction is >= 0.95, e.g.
   // 14285.96 would format as "14,285.0" instead of "14,286".
   final rounded = (khz * 10).round() / 10;
   final wholePart = rounded.truncate();
@@ -360,17 +359,14 @@ String fmtFreqInput(double khz) {
 //   [A-Z0-9]+      the suffix, at least one character
 //   (/[A-Z0-9]+)*  any number of postindicators, e.g. "/P", "/1/QRP/P"
 //
-// The hand-rolled regex this replaces only demanded *some* digit with a
-// letter after it, so band commands matched: "20M" parsed as prefix "2",
-// digit "0", suffix "M", and typing it fired a full offline+online lookup
-// for a station called 20M. Every prefix form here needs a letter before
-// the separating digit, so no band token can reach it.
+// Every prefix form here needs a letter before the separating digit, so a
+// band token like "20M" can never parse as a callsign and fire a full
+// offline+online lookup for a station called 20M.
 //
 // One deliberate departure from the library's `(\/[A-Z0-9/]+){0,1}` tail:
 // each postindicator must be non-empty, so halo's call-stack separator
-// ("K1ABC//W1AW", issue #7) isn't read as one callsign. The library's
-// SSID handling (`N0CALL-1`) is left out too — halo has no notion of one,
-// and the old gate rejected hyphens as well.
+// ("K1ABC//W1AW") isn't read as one callsign. The library's
+// SSID handling (`N0CALL-1`) is left out too — halo has no notion of one.
 final RegExp _callsignRegex = RegExp(r'^([A-Z0-9]+/)?'
     r'([45]U[A-Z]*|[0-9][A-Z]{1,2}[0-9]|[ACDEHJLOPQSTUVXYZ][0-9]|[A-Z]{1,2}[0-9])'
     r'[A-Z0-9]+'
@@ -384,9 +380,7 @@ bool looksLikeCallsign(String text) => _callsignRegex.hasMatch(text.trim().toUpp
 /// (`vfoA`..`vfoD`, see `RadioService`). Device-global, not tied to any
 /// one operation: a physical radio is tuned to one frequency regardless of
 /// which operation you're logging into. `band` is only set when `freq` is
-/// null (a manually picked band with no specific frequency) — mirrors the
-/// `_manualBand` precedence `LoggingControls` already used before this
-/// state existed.
+/// null (a manually picked band with no specific frequency).
 class Vfo {
   final double? freq;
   final String? band;

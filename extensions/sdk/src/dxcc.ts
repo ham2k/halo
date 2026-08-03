@@ -5,8 +5,8 @@
 // country file (no network) and, separately, looks up that entity's flag
 // emoji. core/lookups' callsign-annotation pre-step, core/scoring's
 // DXCC-worked-entities rule, and activities/pota's country-prefix
-// formatting each used to carry their own copy of the same
-// parseCallsign+annotateFromCountryFile call.
+// formatting all share this one parseCallsign+annotateFromCountryFile
+// call instead of carrying their own copies.
 //
 // A plain module, not part of the `@ham2k/halo-extension-sdk` *value* import users
 // must avoid (see activities/pota/src/refFormatting.ts's header comment) —
@@ -41,7 +41,7 @@ export function flagForDxccCode(dxccCode: number | undefined): string | undefine
 }
 
 /// That entity's ITU region (1/2/3) and lowercase ISO country code, via
-/// `@ham2k/lib-dxcc-data` (HALO-52) — the same table `flagForDxccCode` reads.
+/// `@ham2k/lib-dxcc-data` — the same table `flagForDxccCode` reads.
 /// `countryCode` matches band_plan_segments.dart's `countries` values
 /// exactly (both come from this same upstream data), so the two can be
 /// compared directly with no further normalization.

@@ -1,7 +1,7 @@
 // Copyright ©️ 2026 Sebastian Delmont <sd@ham2k.com>
 // SPDX-License-Identifier: MPL-2.0
 //
-// Pure parsing for the web-preview DEV_LABEL (ham2k/app-halo-dist#234): given a
+// Pure parsing for the web-preview DEV_LABEL: given a
 // hostname, decide which preview name to show — or none. Deliberately free of
 // any web/dart:html import so it stays unit-testable on the Dart VM.
 

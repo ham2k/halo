@@ -1,7 +1,7 @@
 // Copyright ©️ 2026 Sebastian Delmont <sd@ham2k.com>
 // SPDX-License-Identifier: MPL-2.0
 //
-// Call-field shortcuts for spotting (ham2k/app-halo-dist#10), ported from
+// Call-field shortcuts for spotting, ported from
 // app-polo's MiscCommands.js:
 //   SPOT / SPOTME / SPME / SELFSPOT  — self-spot, optional free-text comment
 //   QRV / QRT / QSY / QRX            — self-spot; the Q-code itself becomes

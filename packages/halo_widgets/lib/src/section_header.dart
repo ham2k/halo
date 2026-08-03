@@ -20,8 +20,7 @@ class SectionHeader extends StatelessWidget {
     final theme = Theme.of(context);
     // HaLoColors.onSurfaceAccent, not colorScheme.primary directly — this text
     // sits on the surface, and primary's dark-mode value is a fill color
-    // tuned for the AppBar, not for reading directly on a dark background
-    // directly.
+    // tuned for the AppBar, not for reading directly on a dark background.
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
       child: Text(title, style: theme.textTheme.titleSmall?.copyWith(color: color ?? HaLoColors.of(context).onSurfaceAccent)),

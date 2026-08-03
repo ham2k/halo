@@ -777,13 +777,12 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   String? _selectedControlKey;
 
   /// The last command message pushed to the parent via
-  /// `onCommandMessageChanged`. Every keystroke used to fire that callback
-  /// with `null` unconditionally, and the parent (LoggingPanel) answered
-  /// with a setState that rebuilds the whole QsoList — day-bucketing,
-  /// per-column TextPainter measurement, the scores map, all O(n) over the
-  /// log, per keystroke. Deduping here means the callback only fires on a
-  /// real change. Starts null, matching the parent's own initial "no
-  /// message" state, so a redundant null is a no-op.
+  /// `onCommandMessageChanged`, so the callback only fires on a real change.
+  /// Firing `null` unconditionally per keystroke makes the parent
+  /// (LoggingPanel) answer with a setState that rebuilds the whole QsoList —
+  /// day-bucketing, per-column TextPainter measurement, the scores map, all
+  /// O(n) over the log, per keystroke. Starts null, matching the parent's
+  /// own initial "no message" state, so a redundant null is a no-op.
   String? _lastSentCommandMessage;
 
   /// Overrides the QSO's timestamp when set via the Time control; null
@@ -1274,9 +1273,9 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   /// The listener is what makes the `options` suggestion menu appear: the menu is
   /// derived from which field has focus, and focus alone rebuilds nothing. On a
   /// new QSO the panel is repainting anyway (the callsign is being typed), which
-  /// is why this looked like it worked — but on an existing QSO opened for
-  /// editing, tabbing into a searchable exchange showed no offer at all while
-  /// Space would still have rewritten the field.
+  /// masks its absence — but on an existing QSO opened for editing, tabbing
+  /// into a searchable exchange would show no offer at all while Space still
+  /// rewrote the field.
   FocusNode _textFocusFor(String key) => _controlTextFocus[key] ??= (FocusNode(
         debugLabel: 'exchange:$key',
         onKeyEvent: _onExchangeKeyEvent,
@@ -2113,9 +2112,8 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     }
     if (vfo.mode != null && vfo.mode != _mode) {
       _mode = vfo.mode!;
-      // What `_setMode` and the setVfo command both do. Seeding skipped it,
-      // so a CW radio left the default RSTs at 59 — invisible until a
-      // connected rig started changing the mode on its own.
+      // What `_setMode` and the setVfo command both do — without it a CW
+      // radio leaves the default RSTs at 59.
       if (!_rstsTouched) _applyDefaultRSTs();
     }
   }
@@ -2136,10 +2134,11 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
       // straight back at the radio, forever.
       final wasPopulating = _populating;
       _populating = true;
-      // A pending frequency edit used to suppress the whole seed. That
-      // dropped a mode the rig reported meanwhile, and the pending push
-      // then sent the panel's stale mode back — taking a rig the operator
-      // had just put into CW back out of it, and logging USB at 59.
+      // Skip only the frequency, never the whole seed: suppressing it
+      // entirely would drop a mode the rig reported meanwhile, and the
+      // pending push would then send the panel's stale mode back — taking a
+      // rig the operator had just put into CW back out of it, and logging
+      // USB at 59.
       _seedFromRadioService(skipFrequency: _freqTouched);
       _populating = wasPopulating;
     });
@@ -2154,16 +2153,15 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   /// Ends a pending frequency edit at a QSO boundary — logging, wiping, or
   /// an editing session closing.
   ///
-  /// `_freqTouched` switches live radio follow off, and nothing else ever
-  /// reset it: a partial entry of three characters or fewer arms no
-  /// debounce, so the Radio control stopped following the rig for the rest
-  /// of the session. A push that is still pending is flushed rather than
+  /// `_freqTouched` switches live radio follow off, and nothing else resets
+  /// it: a partial entry of three characters or fewer arms no debounce, so
+  /// without this the Radio control stops following the rig for the rest of
+  /// the session. A push that is still pending is flushed rather than
   /// dropped — the operator typed it, and the field still shows it.
   ///
   /// [flush] is false on the one caller that runs inside `didUpdateWidget`:
   /// `setVfo` notifies, and a listener calling `setState` during the build
-  /// phase is exactly the error class the earlier review turned up. That
-  /// caller is discarding the composing form anyway.
+  /// phase errors. That caller is discarding the composing form anyway.
   void _settlePendingFreqEdit({bool flush = true}) {
     if (flush && (_vfoDebounce?.isActive ?? false)) {
       _vfoDebounce!.cancel();
@@ -2908,12 +2906,12 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   /// suggestion menu) already claims and consumes Up/Down before it gets
   /// here, so this only ever sees the ones meant for us.
   ///
-  /// This does mean Enter no longer logs the QSO from ANY expanded control's
-  /// fields. Every one of them used to log, by one of two routes: the Radio
-  /// control's own `onSubmitted`, or — for the activity reference controls and
-  /// the spot comment, which declare none — the panel's root Enter shortcut,
-  /// which this handler now intercepts below. APP-19 asks for close-first, and
-  /// Enter logs again one rung down, from any main field.
+  /// Enter deliberately does NOT log the QSO from ANY expanded control's
+  /// fields — without this handler it would, via the Radio control's own
+  /// `onSubmitted` or, for the activity reference controls and the spot
+  /// comment (which declare none), the panel's root Enter shortcut this
+  /// handler intercepts below. APP-19 asks for close-first, and Enter logs
+  /// again one rung down, from any main field.
   KeyEventResult _onExpandedKeyEvent(String key, KeyEvent event) {
     if (event is! KeyDownEvent && event is! KeyRepeatEvent) return KeyEventResult.ignored;
     final logicalKey = event.logicalKey;
@@ -3284,10 +3282,9 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   /// Supplying `onEditingComplete` replaces the branch that did BOTH of those,
   /// so the composing-region cleanup is reinstated here by hand. It does not
   /// replace everything: `_finalizeEditing`'s trailing
-  /// `if (shouldUnfocus) _scheduleRestartConnection()` still runs, and now
+  /// `if (shouldUnfocus) _scheduleRestartConnection()` still runs, and
   /// actually restarts the platform input connection rather than finding it
-  /// already closed — measured as one fewer call than before (the `hide` is
-  /// gone), so the keyboard no longer blinks per QSO.
+  /// already closed — which is what keeps the keyboard from blinking per QSO.
   ///
   /// Secondary controls are deliberately not covered — they keep their widget
   /// defaults (docs/design/logging-fields.md § "The three parts"), and the
@@ -3517,8 +3514,8 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
         // Live clock only while nothing overrides the timestamp (a manually
         // set time, or editing an existing — necessarily historical — QSO);
         // the chip re-reads this once per second without rebuilding the
-        // panel (the old approach — a panel-level ticker calling setState on
-        // all of _LoggingControlsState — cost a full panel rebuild per tick).
+        // panel (a panel-level ticker calling setState on all of
+        // _LoggingControlsState would cost a full panel rebuild per tick).
         liveSummary: _effectiveStartAtMillis == null ? () => _timeSummary : null,
         expandedBuilder: (context) => Row(
           mainAxisSize: MainAxisSize.min,
@@ -4275,11 +4272,11 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
         ],
         // An unrecognized value tints the field's own underline rather than
         // going through `errorText`. A decorator with an error — even an empty
-        // one styled to zero height — still reserves its error slot, which made
-        // the field 5px taller and, through the row's IntrinsicHeight, moved
+        // one styled to zero height — still reserves its error slot, making
+        // the field 5px taller and, through the row's IntrinsicHeight, moving
         // every primary control and the submit button DOWN as the operator
-        // typed. A contest exchange is invalid for most of the keystrokes it
-        // takes to type it, so that was a jump per QSO.
+        // types. A contest exchange is invalid for most of the keystrokes it
+        // takes to type it, so that would be a jump per QSO.
         decoration: _primaryFieldDecoration(context, label, horizontalPadding: padding).copyWith(
           hintText: input['placeholder'] as String?,
           enabledBorder: isInvalid ? _invalidUnderline(context, width: 1) : null,
@@ -4575,11 +4572,11 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   ///
   /// Set ONLY for a rightward arrow move — the single path that wants anything
   /// other than the end-of-value default the focus listeners already apply. A
-  /// leftward move and both Tab wraps want the end, so they set nothing; an
-  /// earlier version wrote `text.length` for them too, which meant Tab onto an
-  /// already-focused node (a row with one primary field) left an instruction
-  /// nobody collected, and the next field to focus — Frequency, say — took it
-  /// and put its caret at 0.
+  /// leftward move and both Tab wraps want the end, so they set nothing:
+  /// writing `text.length` for them too means Tab onto an already-focused node
+  /// (a row with one primary field) leaves an instruction nobody collects, and
+  /// the next field to focus — Frequency, say — takes it and puts its caret
+  /// at 0.
   ///
   /// Keyed to the node because `requestFocus` does NOT deliver focus
   /// synchronously: `FocusManager` applies it on a microtask, so another node
@@ -6229,7 +6226,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
                             expandLabel: widget.expandControlsLabel,
                             collapseLabel: widget.collapseControlsLabel,
                             // The dupe warning (and the other scoring notices)
-                            // now live on the info area's third line — see
+                            // live on the info area's third line — see
                             // `_buildInfoArea` (issue #40).
                           ),
                         ),
@@ -6496,9 +6493,9 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
               // publishes the row and the overlay draws it in that one spot.
               // See `_syncNumbersRow` / KeyboardAccessoryController.
               // Reserve the home indicator at the bottom so the fields (and
-              // numbers row) clear it — the Scaffold no longer resizes, it
+              // numbers row) clear it — the Scaffold doesn't resize, it
               // extends full height so each pane fills behind it, and the
-              // status footer no longer reserves the indicator globally. The
+              // status footer doesn't reserve the indicator globally. The
               // keyboard is NOT reserved here: `_StatusBarOverlay` does that
               // for the whole app so the footer can ride above it, so the space
               // this panel is handed already ends above the keyboard. The
@@ -6548,10 +6545,8 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   ///
   /// And nothing at all while the keyboard is up — the keyboard covers the home
   /// indicator, so the strip the overlay is already holding back IS that space.
-  /// (This is what the old `max(keyboardInset, safeInset)` expressed when this
-  /// getter still owned both.) `viewPadding`, not `MediaQuery.padding`, because
-  /// the latter zeroes out under the keyboard and would make the two branches
-  /// indistinguishable.
+  /// `viewPadding`, not `MediaQuery.padding`, because the latter zeroes out
+  /// under the keyboard and would make the two branches indistinguishable.
   double get _bottomReserve {
     if (!isMobilePlatform) return 0;
     final view = View.of(context);
@@ -6568,7 +6563,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
         isMobilePlatform &&
         !_fieldsLocked &&
         // Focus is not enough: this panel keeps focus when it is tabbed away
-        // from behind a keep-alive, and the row is now drawn outside the tab
+        // from behind a keep-alive, and the row is drawn outside the tab
         // view, so it would hang over whatever replaced it.
         KeyboardAccessoryVisibility.of(context) &&
         virtualKeyboardIsUp(context) &&
@@ -6652,11 +6647,10 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   /// takes priority; otherwise, once a callsign of ≥3 letters/digits is in the
   /// field, the call-info panel; otherwise the operation-statistics default.
   ///
-  /// The `options` exchange suggestions are NOT here. They started out as a line
-  /// in this area, which cost the call-info panel — the DUPE warning with it —
-  /// its space for as long as an exchange field had focus. They are a menu
-  /// floating over the fields instead (`_buildOptionSuggestionMenu`), so this
-  /// area keeps saying what it always said.
+  /// The `options` exchange suggestions are deliberately NOT here: a line in
+  /// this area would cost the call-info panel — the DUPE warning with it — its
+  /// space for as long as an exchange field had focus. They are a menu floating
+  /// over the fields instead (`_buildOptionSuggestionMenu`).
   Widget _buildInfoArea(ThemeData theme) {
     final message = _commandMessage;
     if (message != null) {
@@ -6694,7 +6688,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   ///
   /// Both columns are sized from the widest value measured in BOLD, so the menu
   /// keeps its shape as the highlight moves — a menu that resized under the
-  /// arrow keys would be the same jump the fields themselves used to have.
+  /// arrow keys would jump under the operator's hands.
   ///
   /// Colours are the dialog scheme, not the panel's: this is a surface floating
   /// over the panel rather than part of it, so it reads like every other thing
@@ -7133,8 +7127,8 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     return (lead: leadMatch?.group(0), markdown: flagsInMarkdown(rest, fontSize: fontSize));
   }
 
-  /// `code` in a note, matching what MarkdownStyleSheet.fromTheme used to give
-  /// it — without this, backticks vanish and the run reads as ordinary prose.
+  /// `code` in a note, matching MarkdownStyleSheet.fromTheme's own code style
+  /// — without this, backticks vanish and the run reads as ordinary prose.
   TextStyle _noteCodeStyle(double fontSize) => haloMonoStyle(context, fontSize: fontSize * 0.85);
 
   /// A link blue tuned per theme so the note's socials/URLs read clearly on the
@@ -7199,8 +7193,8 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
         // A flag decodes and gets the same Windows image fallback as every
         // other flag site; any other pictographic emoji still needs
         // emojiFontFamily (via flagGlyph's non-flag branch) instead of
-        // textStyle's Roboto, or it renders as nothing at all — same gap
-        // #451's review found and fixed at call_info_panel.dart's flag Text.
+        // textStyle's Roboto, or it renders as nothing at all — same as
+        // call_info_panel.dart's flag Text.
         flagGlyph(parts.lead!, fontSize: textStyle?.fontSize ?? 14, shadows: _glyphGlow(theme)),
         if (markdown != null) ...[
           const SizedBox(width: 4),

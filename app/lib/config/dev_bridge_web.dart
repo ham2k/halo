@@ -15,9 +15,7 @@ import 'dev_bridge.dart';
 ///
 /// Gated to non-release (debug/profile) builds — where agents run the web app
 /// locally (`flutter run -d web-server`). A control surface must never ship to
-/// end users. Deployed previews are release builds; extending the gate to them
-/// via the preview-URL check (`webPreviewLabel()`, #234) is a one-line
-/// follow-up once that lands in `dist`.
+/// end users; deployed previews are release builds, so they're excluded too.
 void installDevBridge() {
   if (kReleaseMode) return;
 
@@ -28,12 +26,12 @@ void installDevBridge() {
       ((JSString field, JSString value) => DevBridge.instance.setField(field.toDart, value.toDart)).toJS;
   bridge['tap'] = ((JSString action) => DevBridge.instance.action(action.toDart)).toJS;
   // A single stable promise (resolves when signalReady() fires) — `await
-  // window.__halo.ready` replaces sleeping after a page load. #239.
+  // window.__halo.ready` replaces sleeping after a page load.
   bridge['ready'] = DevBridge.instance.ready.toJS;
   // Buffered structured events ([qso], [lookup], …) — query recent history
-  // instead of only streaming the console. #237.
+  // instead of only streaming the console.
   bridge['recentLog'] = (() => DevBridge.instance.recentLog().jsify()).toJS;
-  // Command dialog (#55) — see DevBridge's own note on why the shortcut
+  // Command dialog — see DevBridge's own note on why the shortcut
   // can't be driven from outside.
   // A Promise: the dialog's route mounts a frame later, so callers must be
   // able to `await` it before typing into the dialog.
@@ -44,7 +42,7 @@ void installDevBridge() {
   bridge['commandMove'] = ((JSNumber delta) => DevBridge.instance.commandMove(delta.toDartInt)).toJS;
   bridge['commandBarState'] = (() => DevBridge.instance.commandBarState().jsify()).toJS;
   // Reset to a known fixture (wipe + seed + known settings), returning a
-  // Promise of the summary. #238.
+  // Promise of the summary.
   bridge['resetFixture'] = (() => DevBridge.instance.resetFixture().then((r) => r.jsify()).toJS).toJS;
   globalContext['__halo'] = bridge;
   DevBridge.instance.installed = true;

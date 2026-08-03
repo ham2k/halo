@@ -16,7 +16,7 @@ import 'error_reporting_service.dart';
 import 'extension_service.dart';
 import 'status_bar_service.dart';
 
-/// The encoding to decode a data file with, resolved by precedence (#317):
+/// The encoding to decode a data file with, resolved by precedence:
 /// the definition's [defEncoding] wins (it overrides a wrong/missing server
 /// header), else the `charset` from the response's Content-Type
 /// [contentTypeHeader], else null — [decodeDataFileBody] then defaults to
@@ -36,7 +36,7 @@ String? resolveDataFileEncoding(String? defEncoding, String? contentTypeHeader) 
 /// (internally Unicode). [encoding] comes from [resolveDataFileEncoding]
 /// (definition override → server charset → UTF-8 default). Malformed bytes are
 /// replaced (U+FFFD), never thrown, so one bad byte can't fail the whole file.
-/// Unknown/unsupported encodings fall back to UTF-8. See #317.
+/// Unknown/unsupported encodings fall back to UTF-8.
 String decodeDataFileBody(List<int> bytes, {String? encoding}) {
   switch ((encoding ?? 'utf-8').toLowerCase().replaceAll('_', '-')) {
     case 'latin1':
@@ -215,8 +215,8 @@ class DataFileManager {
   /// on a 304, or throws. Decoded per [resolveDataFileEncoding]: the
   /// definition's [encoding] overrides the response's Content-Type charset,
   /// which is otherwise honored, defaulting to UTF-8 — NOT `http.Response.body`,
-  /// which defaults a charset-less response to latin1 and so garbled UTF-8 park
-  /// names (#317). Uses ETag cached in [prefs] to avoid duplicate downloads,
+  /// which defaults a charset-less response to latin1 and so garbles UTF-8 park
+  /// names. Uses ETag cached in [prefs] to avoid duplicate downloads,
   /// unless [force] skips sending it — a manual reload wants a full reprocess
   /// even when the server would otherwise report the content unchanged.
   Future<String?> downloadFile(String key, String url, {bool force = false, String? encoding}) async {
@@ -363,11 +363,11 @@ class DataFileManager {
     // Rows stay as positional lists and the header row is sent ONCE per chunk,
     // for the kernel to zip back into the `Record<string,string>` that
     // `csvToLookupEntry` expects (extensions/sdk/src/kernel.ts). Building the
-    // maps here instead meant every column name was repeated in the JSON for
-    // every row: measured on SOTA's 181,604-row file that was ~241 of the ~395
-    // bytes per row — 61% of everything crossing the boundary was the same 17
-    // strings over and over, paid four times (encode, escape into the eval
-    // source, tokenize, JSON.parse). See APP-16.
+    // maps here instead would repeat every column name in the JSON for every
+    // row: measured on SOTA's 181,604-row file that is ~241 of the ~395
+    // bytes per row — 61% of everything crossing the boundary would be the
+    // same 17 strings over and over, paid four times (encode, escape into
+    // the eval source, tokenize, JSON.parse).
     final lines = const LineSplitter().convert(body);
     final parsedRows = <dynamic>[];
     List<String>? headers;
@@ -661,10 +661,7 @@ class DataFileManager {
       // The timeout is explicit because the default 10s is a per-CALL budget
       // that a 5000-row chunk shares with every other data file being synced
       // at the same time — `syncAllDataFiles` starts ~20 of them at once and
-      // they all queue through the one single-threaded engine. A chunk that
-      // overran used to be dropped without a trace (the `is List` check below
-      // just skipped it), i.e. 5000 summits silently missing until the next
-      // refresh. See APP-16.
+      // they all queue through the one single-threaded engine.
       //
       // TODO: 60s is cover for that contention, not a considered per-chunk
       // budget. If syncAllDataFiles moves to parallel downloads + serial
@@ -682,10 +679,10 @@ class DataFileManager {
         // and the caller already treats a failed data file as a failed sync.
         //
         // Throwing here also protects what is already in the table. Skipping
-        // instead let the loop run to the `deleteCategoryStale` below with
-        // nothing imported, which sweeps every row that this run did not
-        // stamp — so a mapper that returned nothing WIPED the whole category.
-        // Bailing out leaves the partial import in place (same primary key,
+        // instead would let the loop run to the `deleteCategoryStale` below
+        // with nothing imported, which sweeps every row that this run did not
+        // stamp — a mapper that returned nothing would WIPE the whole
+        // category. Bailing out leaves the partial import in place (same primary key,
         // insertOrReplace, so no duplicates), skips the sweep, and leaves
         // `data_file_updated_$key` unstamped, so the next sync redoes the file
         // in full and sweeps then.

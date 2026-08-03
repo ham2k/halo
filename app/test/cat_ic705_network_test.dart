@@ -559,15 +559,15 @@ void main() {
 
     // This used to require "Retype the password" FIRST, because the rejection
     // path was inherited untested and a stale credential could not be told
-    // apart from a busy radio. Confirmed on hardware 2026-07-30: a wrong
-    // password is refused explicitly. So the copy now rules the password OUT
-    // instead of leading with it, and this asserts that it says so.
+    // apart from a busy radio. Confirmed on hardware: a wrong password is
+    // refused explicitly. So the copy now rules the password OUT instead of
+    // leading with it, and this asserts that it says so.
     expect(text, contains('refused explicitly'),
         reason: 'a wrong password is confirmed to produce a refusal, not silence, so the '
             'operator should not be sent to re-check it when they see a timeout');
 
-    // The advice this branch spent its life giving, all of it built on a bug
-    // that was ours. If any of it comes back, this fails.
+    // Speculative advice that was built on a bug that was ours. If any of it
+    // comes back, this fails.
     expect(text, isNot(contains('Wait about a minute')));
     expect(text, isNot(contains('prolong')));
     expect(text, isNot(contains('releases it more slowly')));
@@ -577,9 +577,8 @@ void main() {
     // This test used to REQUIRE the message to say the radio was "holding a
     // previous session" and to advise waiting. That diagnosis was wrong: the
     // cause was our own login-answer matcher pinning the radio's sequence
-    // counter, and this message is what sent everyone — including us — to
-    // investigate the radio instead. A test can encode a false intent just as
-    // faithfully as a true one, and this one did, for the life of the branch.
+    // counter, and this message is what sent everyone to investigate the
+    // radio instead.
     final message = const IcomLoginTimeout().toString();
 
     // Actionable: the one thing that genuinely produces a silent login now.

@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: MPL-2.0
 //
 // The OAuth login leg for platforms that can't catch a custom-scheme
-// redirect at all (HALO-22): Web (a browser tab navigating to a non-http(s)
+// redirect at all: Web (a browser tab navigating to a non-http(s)
 // scheme just fails) and Linux (`flutter_inappwebview` ships no Linux
 // implementation, and nothing in the app's `.desktop`/GTK setup can receive
 // the scheme as a deep link either — see the git history of the now-deleted
@@ -16,8 +16,8 @@
 // `com.ham2k.*.auth://` custom scheme, so there's no redirect for the device
 // to intercept directly — the browser lands on LoFi's own confirmation page
 // instead. The only way home is the relay: LoFi's server-side receiver
-// (HALO-65) creates a WebhookEvent and Pusher-pings this device's channel
-// (HALO-66), with periodic polling as the fallback for a missed ping.
+// creates a WebhookEvent and Pusher-pings this device's channel, with
+// periodic polling as the fallback for a missed ping.
 
 import 'dart:async';
 
@@ -35,8 +35,8 @@ import '../services/pusher_service.dart';
 /// in-app webview, no working deep-link delivery either). Everywhere else,
 /// the original webview+deep-link flow in `_doOAuth` still applies.
 ///
-/// [isWeb] and [platform] are injectable so both answers are testable, same
-/// reasoning as the deleted `oauthNeedsSystemBrowser` had: `kIsWeb` is a
+/// [isWeb] and [platform] are injectable so both answers are testable:
+/// `kIsWeb` is a
 /// compile-time constant `flutter test` can't flip, and `defaultTargetPlatform`
 /// is overridable with `debugDefaultTargetPlatformOverride` while
 /// `Platform.isLinux` is not — a Linux-only branch no test on this project's
@@ -165,8 +165,7 @@ class _OAuthRelayLoginPageState extends State<OAuthRelayLoginPage> {
           // `error` — a malformed/incomplete relay payload. Both end the
           // login with a message rather than leaving the page waiting on an
           // event that already arrived and will never look any different on
-          // the next poll (Rule 12: fail loud, don't strand the operator on
-          // a spinner that can't resolve).
+          // the next poll.
           widget.onError?.call(error?.toString() ?? t.settings.accounts.relayLoginMalformedEvent);
           Navigator.of(context).pop();
         }

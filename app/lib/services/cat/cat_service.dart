@@ -62,9 +62,9 @@ const _autoReconnectCooldown = Duration(seconds: 60);
 /// while it sits disconnected, and how far to back off when it keeps failing.
 ///
 /// A drop buys one burst (see [_autoReconnectAfterDrop]), and when that burst
-/// fails nothing else ever tries — verified on hardware 2026-08-02 by cutting
-/// power to an IC-705 and restoring it: the radio came back and stayed up for
-/// two solid minutes while the app sat disconnected, having spent its burst
+/// fails nothing else ever tries — verified on hardware by cutting power to
+/// an IC-705 and restoring it: the radio came back and stayed up for two
+/// solid minutes while the app sat disconnected, having spent its burst
 /// while the radio was still booting. That is the gap this closes.
 ///
 /// It BACKS OFF, because the cost of being eager here is measured. This
@@ -168,14 +168,14 @@ class CatService extends ChangeNotifier {
   ///    destructive action;
   ///  * [setRadio1] is the operator saying so directly, None included.
   ///
-  /// It used to be re-derived on load by an `_ensureRadio1` helper that
-  /// designated the first transceiver it found whenever radio1 was not valid.
-  /// That is HALO-50: a stored None is indistinguishable from never having
-  /// chosen, so picking None and relaunching handed the VFO back to a rig the
-  /// operator had deliberately freed for another program. Deriving it also
-  /// made a merely-unloadable record look like None, and let the designation
-  /// move between launches if a node's driver key stopped resolving. Storing
-  /// the value outright removes that whole class of question.
+  /// Do NOT re-derive it on load (e.g. designating the first transceiver
+  /// found whenever the stored value is not valid): a stored None is
+  /// indistinguishable from never having chosen, so picking None and
+  /// relaunching would hand the VFO back to a rig the operator deliberately
+  /// freed for another program. Deriving it would also make a
+  /// merely-unloadable record look like None, and let the designation move
+  /// between launches if a node's driver key stopped resolving. Storing the
+  /// value outright removes that whole class of question.
   String? _radio1;
 
   String? get radio1 => _radio1;
@@ -226,14 +226,10 @@ class CatService extends ChangeNotifier {
         // Always, null included, so the blob states what is true rather than
         // leaving None to be inferred from a missing key.
         //
-        // NOT load-bearing, and worth saying so: now that nothing derives
-        // radio1, an absent key and a stored null both read as None, so
-        // omitting it when null would behave identically. Verified by
-        // mutation — reverting this to `if (_radio1 != null)` fails no test,
-        // and that is correct rather than a hole in the tests. It was
-        // load-bearing in the first attempt at this fix, which kept the
-        // derivation and needed the key's presence to mean "the operator has
-        // chosen"; that design is gone.
+        // NOT load-bearing, and worth saying so: nothing derives radio1, so
+        // an absent key and a stored null both read as None — writing
+        // `if (_radio1 != null)` would behave identically and fail no test,
+        // and that is correct rather than a hole in the tests.
         'radio1': _radio1,
         'nodes': {for (final node in _nodes.values) node.uuid: node.toJson()},
       });
@@ -445,9 +441,10 @@ class CatService extends ChangeNotifier {
     // resume looking after this node.
     _runtimeFor(uuid).userDisconnected = false;
     // The backoff belongs to the designated radio's loop, so only that radio's
-    // Connect may reset it. Unconditionally, connecting a SECOND rig dragged
-    // radio1's wait from eight minutes back to thirty seconds — an unrelated
-    // action re-entering the eager-poking regime the backoff exists to avoid.
+    // Connect may reset it. Done unconditionally, connecting a SECOND rig
+    // would drag radio1's wait from eight minutes back to thirty seconds — an
+    // unrelated action re-entering the eager-poking regime the backoff exists
+    // to avoid.
     if (isRadio1(uuid)) _idleRetryDelay = idleRetryFirst;
     return _connect(uuid);
   }
@@ -541,10 +538,10 @@ class CatService extends ChangeNotifier {
       // none is needed. _teardown calls _closeSession FIRST, which sets
       // runtime.connection = null, and only then closes the connection — so a
       // disconnect the operator asked for exits at the guard above and never
-      // reaches this line. A `status == disconnecting` check was written here
-      // and removed as dead code once a mutation test showed it could not
-      // change any outcome. If teardown's ordering ever changes, the test
-      // 'a DELIBERATE disconnect is never undone' is what will catch it.
+      // reaches this line. A `status == disconnecting` check here would be
+      // dead code for the same reason. If teardown's ordering ever changes,
+      // the test 'a DELIBERATE disconnect is never undone' is what will
+      // catch it.
       // The driver keeps its own timers (FlexRadio resyncs every 60s, the
       // CI-V drivers poll every 5s). Dropping the session without tearing
       // it down leaves them ticking for the life of the process — once per
@@ -555,11 +552,10 @@ class CatService extends ChangeNotifier {
       // And keep trying slowly afterwards, in case that burst is spent before
       // the radio is back.
       //
-      // Unconditional on purpose. An `isRadio1(uuid)` guard here was written
-      // and removed: [_scheduleIdleRetry] reads _radio1 itself and stops on
+      // Unconditional on purpose. An `isRadio1(uuid)` guard here would be
+      // dead code: [_scheduleIdleRetry] reads _radio1 itself and stops on
       // the first tick if that radio is connected or absent, so the guard
-      // could not change any outcome — mutation testing confirmed removing it
-      // failed nothing. One place decides, and it is the loop.
+      // could not change any outcome. One place decides, and it is the loop.
       _scheduleIdleRetry();
     }));
 
@@ -592,10 +588,7 @@ class CatService extends ChangeNotifier {
   /// [_autoReconnectAfterDrop] handles the moment a live session dies. This
   /// handles everything after: a radio that was switched off, or was still
   /// booting when that burst was spent, or that refused because another client
-  /// held it. Verified as a real gap on hardware — power to an IC-705 was cut
-  /// and restored, and the app sat disconnected for two minutes with the radio
-  /// up and stable, because the drop trigger had already fired and nothing
-  /// else ever tries.
+  /// held it. A real gap, verified on hardware — see [_idleRetryFirst].
   ///
   /// Three things keep it from becoming the bug it is meant to fix:
   ///
@@ -603,7 +596,7 @@ class CatService extends ChangeNotifier {
   ///    records that, and only [connect] clears it;
   ///  * it only ever looks at the designated radio, so a station full of
   ///    equipment does not generate traffic nobody asked for. With no radio
-  ///    designated (HALO-50's None) it does nothing at all;
+  ///    designated (None) it does nothing at all;
   ///  * it backs off to [_idleRetryMax]. This radio measurably degrades when
   ///    reconnected at speed, so a rig that is present and refusing must not
   ///    be poked on a fixed short cycle.
@@ -632,13 +625,12 @@ class CatService extends ChangeNotifier {
       // mid-flight. Only these two mean "in progress"; `error` is a FAILED
       // attempt and is exactly what we are here to retry.
       //
-      // Two versions of this got it wrong, both caught by tests rather than by
-      // reading. The first treated `connecting` as nothing-to-do and STOPPED,
-      // so the drop burst still being in flight on the first tick shut the
-      // loop down permanently — reintroducing the gap this exists to close.
-      // The second waited on anything that was not `disconnected`, which
-      // includes `error`, so after the first failure it waited for ever and
-      // never retried at all.
+      // Both tempting simplifications are wrong. Treating `connecting` as
+      // nothing-to-do and STOPPING shuts the loop down permanently when the
+      // drop burst is still in flight on the first tick — reintroducing the
+      // gap this exists to close. Waiting on anything that is not
+      // `disconnected` includes `error`, so after the first failure it would
+      // wait for ever and never retry at all.
       if (status == EquipmentStatus.connecting || status == EquipmentStatus.disconnecting) {
         _scheduleIdleRetry();
         return;
@@ -670,9 +662,9 @@ class CatService extends ChangeNotifier {
   /// back — once, and then leave it alone.
   ///
   /// The radio can end a session without us doing anything wrong: it says so
-  /// with an 0x50 (see the Icom transport, which now listens for that), or it
-  /// simply stops answering. Before this, the row went disconnected and stayed
-  /// there until the operator noticed and pressed Connect — a poor answer from
+  /// with an 0x50 (see the Icom transport, which listens for that), or it
+  /// simply stops answering. Without this, the row goes disconnected and stays
+  /// there until the operator notices and presses Connect — a poor answer from
   /// a logger whose job is to follow the VFO.
   ///
   /// DELIBERATELY TIMID, for a reason recorded in hardware terms.
@@ -761,13 +753,10 @@ class CatService extends ChangeNotifier {
   /// login until it times out on its own, so quitting without a disconnect is
   /// what makes the NEXT connect fail.
   ///
-  /// This doc used to justify itself with an audio flood — ~95 packets/second
-  /// left pointed at a dead port, ICMP-rejected, swamping the radio's WiFi.
-  /// That was measured FALSE on hardware (see the CAT commit "the IC-705 sends
-  /// us no audio"): the radio only streams audio to a client that completes a
-  /// session handshake on port 50003, which we never do. Corrected here rather
-  /// than left standing, because a comment asserting a disproved mechanism is
-  /// how the next person picks the wrong thing to fix.
+  /// It is NOT about an audio flood: measured on hardware, the radio only
+  /// streams audio to a client that completes a session handshake on port
+  /// 50003, which we never do — so quitting without a disconnect leaves no
+  /// stray audio stream, only the held session slot above.
   ///
   /// [dispose] cannot serve this purpose: it is synchronous and leaves the
   /// teardown unawaited, so the process can exit before the datagrams are
@@ -812,11 +801,11 @@ class CatService extends ChangeNotifier {
     // A radio echoing back what it already reported shouldn't churn this
     // service's own listeners — but it must still reach RadioService.
     //
-    // Returning here instead was a permanent desync: pick a band (or clear
-    // the frequency field) and vfoA.freq goes null while the radio has not
-    // moved, so every later report matches this cache and is swallowed. The
-    // panel then showed a band with no frequency, and logged QSOs with it,
-    // until the operator physically turned the knob. RadioService.setVfo
+    // Returning here instead would be a permanent desync: pick a band (or
+    // clear the frequency field) and vfoA.freq goes null while the radio has
+    // not moved, so every later report matches this cache and is swallowed.
+    // The panel then shows a band with no frequency, and logs QSOs with it,
+    // until the operator physically turns the knob. RadioService.setVfo
     // does its own no-op check, so forwarding unconditionally is free.
     if (merged != runtime.state.vfo) _setState(uuid, runtime.state.copyWith(vfo: merged));
 
@@ -862,13 +851,12 @@ class CatService extends ChangeNotifier {
       // rest the delay sits at its floor, so tuning cannot start dialling a
       // radio nobody has switched on.
       //
-      // An `_idleRetryTimer != null` guard stood here and was removed as dead,
-      // the third of this shape in this feature (see the drop handler's own
-      // note, and [_scheduleIdleRetry]). Reaching a null timer with a
-      // backed-off delay means the loop settled, and every reason it settles —
-      // node gone, nothing designated, switched off by hand, or connected —
-      // either returns above or settles the new loop again before it can
-      // attempt anything. Mutation testing confirmed it changed no outcome.
+      // An `_idleRetryTimer != null` guard here would be dead code, like the
+      // guards discussed in the drop handler and [_scheduleIdleRetry].
+      // Reaching a null timer with a backed-off delay means the loop settled,
+      // and every reason it settles — node gone, nothing designated, switched
+      // off by hand, or connected — either returns above or settles the new
+      // loop again before it can attempt anything.
       if (_idleRetryDelay != idleRetryFirst) {
         _idleRetryDelay = idleRetryFirst;
         _scheduleIdleRetry();

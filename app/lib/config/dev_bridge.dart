@@ -1,10 +1,9 @@
 // Copyright ©️ 2026 Sebastian Delmont <sd@ham2k.com>
 // SPDX-License-Identifier: MPL-2.0
 //
-// A dev/preview-only bridge for inspecting (and later driving) the running app
-// from outside it — so agents and scripts can query app state deterministically
-// instead of pixel-hunting the Flutter canvas (ham2k/app-halo-dist#235). This
-// read-only first cut exposes a state snapshot; the web installer
+// A dev/preview-only bridge for inspecting and driving the running app from
+// outside it — so agents and scripts can query app state deterministically
+// instead of pixel-hunting the Flutter canvas. The web installer
 // (dev_bridge_installer.dart) surfaces it as `window.__halo`.
 //
 // Pure Dart with no web import, so it's inert off web and in production: nothing
@@ -54,7 +53,7 @@ class DevBridge {
   void setField(String field, String value) => setFieldHandler?.call(field, value);
   void action(String id) => actionHandler?.call(id);
 
-  // ── Command dialog (⌘K, #55) ──────────────────────────────────────────────
+  // ── Command dialog (⌘K) ───────────────────────────────────────────────────
   // The shortcut itself cannot be driven from outside: synthetic modifier
   // combos don't reach the Flutter canvas (a plain `key "ctrl+k"` no-ops, and
   // so does the pre-existing ⌘⇧D), so without these the dialog is
@@ -126,7 +125,7 @@ class DevBridge {
       commandBarStateProvider?.call() ?? <String, dynamic>{'open': false};
 
 
-  // ── Fixture reset (#238) ──────────────────────────────────────────────────
+  // ── Fixture reset ─────────────────────────────────────────────────────────
 
   /// Wired in `main()` (when [installed]) to reset the app to a known fixture —
   /// back up then clear operations + QSOs, set font scale/units to defaults,
@@ -143,14 +142,14 @@ class DevBridge {
   Future<Map<String, dynamic>> resetFixture() =>
       resetFixtureHandler?.call() ?? Future.value(<String, dynamic>{'error': 'no fixture handler'});
 
-  // ── Structured log (#237) ─────────────────────────────────────────────────
+  // ── Structured log ────────────────────────────────────────────────────────
 
   /// Recent structured dev-log events (`[qso]`, `[lookup]`, …), oldest-first —
   /// backs `window.__halo.recentLog()`. Empty unless [DevLog] is enabled (dev
   /// builds). See [DevLog].
   List<Map<String, Object?>> recentLog() => DevLog.instance.recent();
 
-  // ── Readiness (#239) ──────────────────────────────────────────────────────
+  // ── Readiness ─────────────────────────────────────────────────────────────
 
   Completer<void> _ready = Completer<void>();
 

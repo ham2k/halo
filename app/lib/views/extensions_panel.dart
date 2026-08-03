@@ -1,7 +1,7 @@
 // Copyright ©️ 2026 Sebastian Delmont <sd@ham2k.com>
 // SPDX-License-Identifier: MPL-2.0
 //
-// Extension Management (Issue #25): enable/disable the optional extensions,
+// Extension Management: enable/disable the optional extensions,
 // grouped per category, with a search/filter field pinned at the TOP.
 // Core (always-enabled) extensions are never listed. Metadata comes from
 // the build index (ExtensionService.loadAvailableExtensions — readable
@@ -99,7 +99,6 @@ class ExtensionsPanelState extends State<ExtensionsPanel> {
                   if (info.matchesSearch(query, locale: locale)) info,
               ];
 
-        // Fixed category order, then whatever else appears.
         final categories = <String>[
           ..._categoryOrder,
           ...{for (final info in visible) info.category ?? 'other'}.where((c) => !_categoryOrder.contains(c)),
@@ -139,7 +138,6 @@ class ExtensionsPanelState extends State<ExtensionsPanel> {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // Search/filter field pinned at the top of the panel.
             Padding(
               padding: EdgeInsets.fromLTRB(16 + safeLeft, 12, 16, 8),
               child: TextField(

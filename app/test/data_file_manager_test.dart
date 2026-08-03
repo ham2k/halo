@@ -264,7 +264,6 @@ REF-002,Summit Two,45.56,-122.78
 
     await managerWithMock.processDataFile('test-csv-file', def);
 
-    // Verify lookup rows are inserted in DB
     final row1 = await lookups.getLookup('test_category', 'REF-001');
     expect(row1, isNotNull);
     expect(row1!.name, 'Summit One');
@@ -356,7 +355,6 @@ REF-002,Summit Two,45.56,-122.78
 
     await managerWithMock.processDataFile('test-json-file', def);
 
-    // Verify lookup rows are inserted in DB
     final row1 = await lookups.getLookup('test_json_category', 'G/LD-001');
     expect(row1, isNotNull);
     expect(row1!.name, 'Scafell Pike');

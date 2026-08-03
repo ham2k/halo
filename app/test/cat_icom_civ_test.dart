@@ -166,9 +166,9 @@ void main() {
     test('rides the serial transport that already shipped — no new transport code', () {
       expect(type.transportKey, SerialTransport.transportKey);
       expect(type.category, kCategoryTransceiver);
-      // The DRIVER is verified as of 2026-08-01 (ten minutes against a real
-      // IC-705 over WiFi), but this type pairs it with the SERIAL transport
-      // and that pairing has never met a radio. Asserting on the type rather
+      // The DRIVER is verified on hardware (a real IC-705 over WiFi), but
+      // this type pairs it with the SERIAL transport and that pairing has
+      // never met a radio. Asserting on the type rather
       // than the driver is the whole point: flipping the driver flag would
       // otherwise have silently dropped the caveat from this type too.
       expect(type.driver.hardwareVerified, isTrue, reason: 'the CI-V driver itself is proven');

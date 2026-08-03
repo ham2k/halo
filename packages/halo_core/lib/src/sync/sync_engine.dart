@@ -34,11 +34,9 @@ typedef SyncTransportCall = Future<Map<String, dynamic>> Function(String method,
 ///
 /// The transport reaches the network through the `ham2k-lofi` extension, so it
 /// is unusable until the extension host has finished loading — which on a cold
-/// start is after the first periodic round has already fired. Every other
-/// consumer of the host treats "not loaded yet" as a no-op and returns; only
-/// this path had no way to say so, so it threw and each launch counted a sync
-/// failure and filed a crash report for a race that resolves itself a moment
-/// later.
+/// start is after the first periodic round has already fired. Without this
+/// distinction, every launch would count a sync failure and file a crash
+/// report for a race that resolves itself a moment later.
 ///
 /// [SyncEngine.runOneRound] treats this like its other "nothing to do right
 /// now" exits: reschedule, no error count, no onError.
@@ -124,9 +122,7 @@ class SyncEngine {
   /// app layer can wire it in directly (`onError: ErrorReportingService.
   /// report`) rather than wrapping it. Null when the app layer doesn't want
   /// round failures reported (this package stays free of a Sentry/Flutter
-  /// dependency itself — file header). "Not syncing" reports were
-  /// previously undiagnosable: every failure mode (HTTP error, auth
-  /// rejection, a dead extension runtime) funneled into [log] alone.
+  /// dependency itself — file header).
   final void Function(Object error, StackTrace? stackTrace, {String? context})? onError;
 
   /// Called once a `sync` round comes back rejected (the transport's
@@ -145,7 +141,7 @@ class SyncEngine {
   final void Function(SyncProgress progress)? onProgress;
 
   static const smallBatchSize = 10;
-  static const defaultLargeBatchSize = 100; // matches sync.js since app-polo 20a23100 restored it from a debug value
+  static const defaultLargeBatchSize = 100; // matches sync.js
   static const debounceDelay = Duration(milliseconds: 500);
   static const debounceMaxWait = Duration(seconds: 3);
   static const defaultLoopDelay = Duration(seconds: 20);
@@ -547,9 +543,9 @@ class SyncEngine {
     // The real server nests its tuning knobs under `meta.flags` in
     // snake_case (api-lofi's Client#meta_for_client); accept app-polo's
     // full fallback chain — top-level camelCase, top-level snake_case, then
-    // flags. Reading only top-level camelCase silently ignored every real
-    // server response, so the loop kept its 20s default delay and each
-    // post-page follow-up request landed inside the server's sync cooldown.
+    // flags. Reading only top-level camelCase would silently ignore every
+    // real server response, so the loop keeps its 20s default delay and each
+    // post-page follow-up request lands inside the server's sync cooldown.
     final flags = (meta['flags'] as Map?)?.cast<String, dynamic>() ?? const {};
     int? knob(String camel, String snake) => ((meta[camel] ?? meta[snake] ?? flags[snake]) as num?)?.toInt();
 
@@ -570,8 +566,8 @@ class SyncEngine {
 
     // The forward watermark accumulates from every merged record's
     // server-side syncedAtMillis — during backfill too. Substituting the
-    // local clock at backfill completion (the old behavior) permanently
-    // skipped records other devices synced *while* this backfill ran (their
+    // local clock at backfill completion would permanently skip records
+    // other devices synced *while* this backfill ran (their
     // stamps fall between the backfill cursor and "now"), and anything in a
     // local-vs-server clock-skew window. Server stamps only, app-polo style.
     final newOpWatermark = opWatermark?.latestSyncedAtMillis;
@@ -616,7 +612,7 @@ class SyncEngine {
       advanceCursor('earliestQSOSyncedAtMillis', qsoWatermark, inboundQsosCount);
 
       // Trust the server's own records-left counts to decide whether older
-      // history remains (app-polo 20a23100): a cooldown-gated or otherwise
+      // history remains: a cooldown-gated or otherwise
       // short response must never be mistaken for "nothing left", or
       // completedFullSync flips permanently with a hole in the history.
       // Only when the server doesn't report a count does the old inference

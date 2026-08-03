@@ -1,7 +1,7 @@
 // Copyright ©️ 2026 Sebastian Delmont <sd@ham2k.com>
 // SPDX-License-Identifier: MPL-2.0
 //
-// First-run onboarding (Issue #43): the release overlay's look — full-bleed
+// First-run onboarding: the release overlay's look — full-bleed
 // release photo, brand mark, credits — but the bottom band walks the
 // app-polo onboarding steps (Welcome → Callsign → Activities → Data &
 // Privacy) instead of showing release notes. Shown by `_OnboardingGate` in
@@ -91,7 +91,7 @@ class _OnboardingOverlayViewState extends State<OnboardingOverlayView> {
   Timer? _navLockTimer;
 
   /// True from the moment Done is tapped until the overlay dismisses —
-  /// swaps the consent step's body/buttons for a wait state (issue #379):
+  /// swaps the consent step's body/buttons for a wait state:
   /// call-notes' data file and any just-enabled extension's own data file
   /// (POTA/SOTA parks/summits) may still be downloading, and letting the
   /// user in before they land means the app looks broken (empty lookups,
@@ -240,10 +240,10 @@ class _OnboardingOverlayViewState extends State<OnboardingOverlayView> {
   Future<void> _persistChoices() async {
     final settings = widget.services.settings;
     // The activity picks are real extension enable/disable overrides
-    // (Extensions settings panel, issue #25). Awaited (unlike before
-    // issue #379): _finish syncs data files right after, which needs the
-    // runtime restart this triggers to have already loaded a newly-enabled
-    // extension, or its dataFile hook wouldn't be there to ask yet.
+    // (Extensions settings panel). Awaited: _finish syncs data files right
+    // after, which needs the runtime restart this triggers to have already
+    // loaded a newly-enabled extension, or its dataFile hook wouldn't be
+    // there to ask yet.
     await widget.services.extensions.setExtensionsEnabled({'pota': _pota, 'sota': _sota, 'wwff': _wwff});
     await settings.updateSettingsGroup(SettingsService.privacyGroup, {
       'consentAppData': _consentAppData,
@@ -258,7 +258,7 @@ class _OnboardingOverlayViewState extends State<OnboardingOverlayView> {
     try {
       await _persistChoices();
       // Waits for call-notes' data file and any now-enabled extension's own
-      // (POTA/SOTA parks/summits) to finish downloading (issue #379) —
+      // (POTA/SOTA parks/summits) to finish downloading —
       // already a no-op for anything fresh (see syncAllDataFiles' staleness
       // check), so this only actually waits on what genuinely still needs
       // fetching.
@@ -335,10 +335,10 @@ class _OnboardingOverlayViewState extends State<OnboardingOverlayView> {
 
           // Compact is based on constraints.maxHeight (screen size) instead of available
           // screen height - keyboardInset so that opening the virtual keyboard does NOT
-          // trigger resizing the logo in the background (Issue 188).
+          // trigger resizing the logo in the background.
           final compact = constraints.maxHeight < _compactHeightThreshold;
 
-          // Consistent band height when no virtual keyboard is displayed (Issue 188)
+          // Consistent band height when no virtual keyboard is displayed.
           final bandHeight = math.min(available, math.max(available * _bandHeightFactorExpanded, _bandMinExpandedHeight));
           final bandOpacity = expanded ? _bandOpacityExpanded : _bandOpacityCollapsed;
 

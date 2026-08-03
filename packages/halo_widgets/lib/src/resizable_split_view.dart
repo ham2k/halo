@@ -51,7 +51,7 @@ class ResizableSplitView extends StatefulWidget {
   /// The caller-owned preferred width for [primary] (see the header
   /// comment), or null when the user has never dragged this divider — the
   /// primary then defaults to about two thirds of the available width,
-  /// capped at [ShirtSize.sMax] (issue #85 follow-up).
+  /// capped at [ShirtSize.sMax].
   final double? preferredPrimaryWidth;
 
   final double minPrimaryWidth;
@@ -302,7 +302,7 @@ class _ResizableSplitViewState extends State<ResizableSplitView> {
         // only reaches the pane at the split's own right edge (secondary
         // when present, primary when it's the only pane) — the OTHER pane's
         // matching edge is internal (divider-adjacent), not a device edge,
-        // so it reads 0 there instead (ham2k/app-halo-dist#205).
+        // so it reads 0 there instead.
         final ambient = PaneSafeArea.maybeOf(context);
         final ambientLeft = ambient?.left ?? 0;
         final ambientTop = ambient?.top ?? 0;
@@ -433,7 +433,7 @@ class _ResizableSplitViewState extends State<ResizableSplitView> {
   }
 }
 
-/// Advisory clearance a pane's content can read (ham2k/app-halo-dist#205):
+/// Advisory clearance a pane's content can read:
 /// composed of two independent sources, both by the same convention —
 /// backgrounds, ink, and rows still render edge-to-edge, only content that
 /// needs clicks/hover/legibility near an edge shifts in by padding:
@@ -565,7 +565,7 @@ class _DividerHandleState extends State<_DividerHandle> {
             // already the visible strip: the app's status-bar overlay holds the
             // on-screen keyboard's height back above everything and consumes
             // the inset, so nothing below it is laid out behind the keyboard.
-            // Padding by `viewInsets.bottom` here as well pushed the line into
+            // Padding by `viewInsets.bottom` here as well pushes the line into
             // the top third of the strip on iPad with the keyboard up.
             child: Center(
               // Subdued until the pointer is over the strip (or dragging):

@@ -156,3 +156,17 @@ If you think a convention is harmful, surface it. Don't fork silently.
 "Completed" is wrong if anything was skipped silently.
 "Tests pass" is wrong if any were skipped.
 Default to surfacing uncertainty, not hiding it.
+
+## Rule 13 — Comments state constraints, not history
+A comment exists to say what the code cannot: contracts, invariants,
+deliberate divergences ("polo does X, we deliberately do Y"), warnings
+against a tempting change, cross-references to design docs.
+Write in the present tense. Never narrate history — no "used to",
+"previously", "this was added after…", no review or debugging stories.
+If a past bug justifies the code's shape, state the failure mode as a
+present-tense counterfactual ("without this guard, a second connect
+races the first"), not as an anecdote.
+No issue/PR numbers or dates — git blame holds them. Exception: a ref
+that IS the defining spec for the code (link it as such).
+Don't restate the adjacent code. In tests, comments state the trap or
+the mutation the test exists to catch (Rule 9), never the assertion.

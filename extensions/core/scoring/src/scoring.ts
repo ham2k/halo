@@ -2,8 +2,8 @@
 // SPDX-License-Identifier: MPL-2.0
 //
 // Core scoring: duplicate detection, DXCC entities worked, and bands/modes
-// worked. Originally ported from web-lofi's day-sectioning/handler-accumulation
-// model; now expressed as a `ContestScorer` (docs/design/contests.md §5.2) so it
+// worked. Ported from web-lofi's day-sectioning/handler-accumulation
+// model, expressed as a `ContestScorer` (docs/design/contests.md §5.2) so it
 // runs as an ordinary peer scorer alongside any contest rather than being the
 // one hardcoded scorer. The per-QSO loop, day sectioning and the live path all
 // come from the shared harness, which still makes one coarse bridge call

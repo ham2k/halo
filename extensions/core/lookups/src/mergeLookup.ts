@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: MPL-2.0
 //
 // Pure merge algorithm for folding one CallInfoLookup result into a running
-// `guess`, per the locationScope rules from ham2k/app-halo-dist#8. Kept free
+// `guess`, per the locationScope rules. Kept free
 // of any hook/host dependencies so it can be unit tested in isolation —
 // this is the highest-defect-risk piece of the whole feature.
 
@@ -68,7 +68,7 @@ export function mergeLookupIntoGuess(guess: CallInfo, result: CallInfoLookup): C
   // lookup (QRZ/HamDB, which inherit whatever locationScope a POTA/SOTA ref
   // already set) would fill the city/state a park's grid-only result left
   // empty, and the grid/city reconciliation below would then thrash the park
-  // grid and location away (ham2k/app-halo-dist#185). A more precise same-scope
+  // grid and location away. A more precise same-scope
   // result took over above; an equal one still first-wins per-field below.
   const locationLocked =
     resultScope != null &&

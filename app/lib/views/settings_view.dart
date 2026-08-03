@@ -220,11 +220,11 @@ class _SettingsViewState extends State<SettingsView> {
       ),
       // Station equipment and CAT control (docs/design/cat.md). Between
       // Callsign (-10) and Common Preferences (0) — who you are, then what
-      // you're operating with, then how the app behaves. No longer hidden
-      // on web outright (HALO-64): the serial transport works there now,
-      // via the Web Serial API. TCP and the Icom network transport still
-      // don't — a radio using either still throws UnsupportedError on
-      // connect, same as before, just not hidden a layer up from it.
+      // you're operating with, then how the app behaves. Not hidden
+      // on web: the serial transport works there,
+      // via the Web Serial API. TCP and the Icom network transport
+      // don't — a radio using either throws UnsupportedError on
+      // connect, just not hidden a layer up from it.
       if (settings.experimentEnabled('gato') /* stored key, see experiments.yaml */)
         _SettingsPanelEntry(
           key: 'station',
@@ -302,7 +302,7 @@ class _SettingsViewState extends State<SettingsView> {
         // shadow. See docs/design/layouts.md.
         dividerStyle: SplitDividerStyle.surfaces,
         // Fixed at 40% of the split's width — the sidebar isn't
-        // user-resizable (issue #183 follow-up).
+        // user-resizable.
         resizable: false,
         primaryFraction: 0.4,
         minPrimaryWidth: 240,
@@ -402,7 +402,7 @@ class _SettingsViewState extends State<SettingsView> {
     required List<_SettingsPanelEntry> panels,
     required String selectedKey,
   }) {
-    // The status footer no longer reserves the home indicator globally (it
+    // The status footer doesn't reserve the home indicator globally (it
     // collapses when empty), so the list clears the bottom safe area itself;
     // the Scaffold canvas fills behind it.
     return SafeArea(
@@ -540,7 +540,7 @@ Widget _buildPanelContent(_SettingsPanelEntry panel, HaLoServices services) {
   // Cap settings content at the ideal reading width, centered in the pane
   // rather than stretching across (or pinning to one edge of) a wide one.
   // The SafeArea sits inside the cap: each panel's scroll view clears the
-  // bottom safe area itself now that the status footer no longer reserves
+  // bottom safe area itself, since the status footer doesn't reserve
   // the home indicator globally.
   return Center(
     child: ConstrainedBox(
@@ -732,7 +732,7 @@ bool _elementMatchesQuery(Map<String, dynamic> el, String query) {
 /// empty (nothing in that group/panel is flagged `common`, or an
 /// `environment` filter rules out everything left) is only known after its
 /// own async load, so an empty one collapses itself to nothing rather than
-/// this widget pre-filtering synchronously the way the old static whitelist
+/// this widget pre-filtering synchronously the way a static whitelist
 /// could.
 class _CommonSettingsPanel extends StatefulWidget {
   final HaLoServices services;
@@ -768,7 +768,7 @@ class _CommonSettingsPanelState extends State<_CommonSettingsPanel> {
   @override
   Widget build(BuildContext context) {
     final extensionPanels = _extensionPanels;
-    // FormRenderer rows now pick up their own content inset from the
+    // FormRenderer rows pick up their own content inset from the
     // ambient ListTileTheme (settings_view.dart's wide-layout wrapper), so
     // this is just the small margin between a row's background and the
     // pane edge — matching the ListTile-based panels' own ListView padding.
@@ -1027,7 +1027,7 @@ class _SyncPanelState extends State<_SyncPanel> {
             Padding(
                 padding: EdgeInsets.only(left: safeLeft),
                 child: SectionHeader(context.t.settings.syncPanel.configuration)),
-            // The operator-callsign row moved to the Station Profiles panel
+            // The operator-callsign row lives in the Station Profiles panel
             // (settings.activeProfile).
             SwitchListTile(
               secondary: Icon(resolveIconName(settings.syncEnabled ? 'cloud-sync' : 'cloud-off')),
@@ -1130,7 +1130,7 @@ class _AccountsPanelState extends State<_AccountsPanel> {
 
   Future<void> _loadAccounts() async {
     await widget.services.extensions.start();
-    // A failure (null) shows the panel empty, same as before — but this panel
+    // A failure (null) shows the panel empty — but this panel
     // re-asks on every open and after every save, so it recovers on its own.
     final accounts = await widget.services.extensions.getAccounts() ?? const <Map<String, dynamic>>[];
     final identities = <String, String>{};
@@ -1138,9 +1138,9 @@ class _AccountsPanelState extends State<_AccountsPanel> {
     for (final account in accounts) {
       final kvKey = account['kvKey'] as String;
       // Null means secure storage could not be reached — not that the account is
-      // disconnected (#438). Stop asking (every account would fail the same way)
+      // disconnected. Stop asking (every account would fail the same way)
       // and let the pane say so, rather than throwing out of here and leaving
-      // `_accounts` null, which spun the panel's progress indicator forever.
+      // `_accounts` null, which would spin the panel's progress indicator forever.
       final creds = await widget.services.extensions.getAccountCredentials(kvKey);
       if (creds == null) {
         storageUnavailable = true;
@@ -1182,8 +1182,8 @@ class _AccountsPanelState extends State<_AccountsPanel> {
       children: [
         Padding(
             padding: EdgeInsets.only(left: safeLeft), child: SectionHeader(context.t.settings.accounts.title)),
-        // The panel used to spin here forever instead (#438). Saying it once, at
-        // the top, beats each row claiming to be disconnected.
+        // Said once, at
+        // the top — beats each row claiming to be disconnected.
         if (_secureStorageUnavailable)
           ListTile(
             leading: const Icon(Icons.key_off),
@@ -2162,8 +2162,7 @@ class _ActiveExtensionsListState extends State<_ActiveExtensionsList> {
 }
 
 /// How many releases' notes show in the About screen's "Release Notes"
-/// preview/modal — a handful of the most recent, not the full history (the
-/// old "last 20 releases as cards" design this replaced).
+/// preview/modal — a handful of the most recent, not the full history.
 const _aboutRecentReleaseCount = 3;
 
 /// Tapping the About screen's version row copies the full app name and
@@ -2253,9 +2252,8 @@ class _AboutPanel extends StatelessWidget {
             if (updateCheckAppliesTo(services)) const SliverToBoxAdapter(child: Divider(height: 1)),
             SliverToBoxAdapter(child: centered(UpdateCheckRow(services: services))),
             const SliverToBoxAdapter(child: Divider(height: 1)),
-            // Notices & Messages used to be its own top-level settings
-            // panel — moved here (issue #183), between the version and the
-            // release notes, as an entry point into the same history view.
+            // Notices & Messages sits here, between the version and the
+            // release notes, as an entry point into the history view.
             SliverToBoxAdapter(
               child: centered(
                 ListTile(
@@ -2364,8 +2362,7 @@ class _ReleaseNotesPreview extends StatelessWidget {
 
 /// The About screen's top banner: the current release's cover photo fading
 /// into the surface color (same technique as `ReleaseOverlayView`), with the
-/// ham2k arc and app name over it — Issue #42's "Recent Changes" header
-/// treatment.
+/// ham2k arc and app name over it.
 class _AboutHeader extends StatelessWidget {
   final ReleaseNotesEntry? release;
 
@@ -2470,11 +2467,6 @@ class _PendingAccountBanner extends StatelessWidget {
   }
 }
 
-/// One extension account's credentials, shown as a Modal Pane
-/// (docs/design/layouts.md): a dialog on wide layouts, a full screen on
-/// phones, where the old AlertDialog was cramped. The route provides the
-/// title and chrome; the action row renders here because it depends on
-/// this State (_testing, _loggedIn).
 /// Opens [accountKey]'s standalone account dialog from anywhere in the app
 /// (declarative `account` actions — e.g. an extension's "reconnect your
 /// account" dialog button). `accountKey` matches the account's kvKey.
@@ -2510,6 +2502,11 @@ Future<void> showAccountDialogByKey(HaLoServices services, String accountKey, {S
   );
 }
 
+/// One extension account's credentials, shown as a Modal Pane
+/// (docs/design/layouts.md): a dialog on wide layouts, a full screen on
+/// phones. The route provides the
+/// title and chrome; the action row renders here because it depends on
+/// this State (_testing, _loggedIn).
 class _AccountPane extends StatefulWidget {
   final HaLoServices services;
   final Map<String, dynamic> account;
@@ -2555,7 +2552,7 @@ class _AccountPaneState extends State<_AccountPane> {
   Future<void> _loadInitialData() async {
     // Null is "secure storage is unreachable", and it must not stop the rest of
     // this: the controllers below are what the fields render from, so throwing
-    // here left the dialog with no fields at all (#438).
+    // here would leave the dialog with no fields at all.
     final stored = await widget.services.extensions.getAccountCredentials(_kvKey);
     final creds = stored ?? const <String, String>{};
     setState(() {
@@ -2630,8 +2627,8 @@ class _AccountPaneState extends State<_AccountPane> {
     if (_oauth2 != null) {
       final stored = _pendingCredentials ?? await widget.services.extensions.getAccountCredentials(_kvKey);
       if (stored == null) {
-        // The read failed. Resetting `_testing` is the point: it was left true,
-        // which disabled Test AND Connect for as long as the dialog stayed open.
+        // The read failed. Resetting `_testing` is the point: left true, it
+        // disables Test AND Connect for as long as the dialog stays open.
         if (mounted && generation == _testGeneration) {
           setState(() {
             _testing = false;
@@ -2677,7 +2674,7 @@ class _AccountPaneState extends State<_AccountPane> {
 
       // Only the relay path needs this device's LoFi identity — the native
       // webview/deep-link path (used on macOS/Windows/Android/iOS) never
-      // touches LoFi at all, same as before HALO-22. Goes through
+      // touches LoFi at all. Goes through
       // `connectLofiRealtime` itself (register-and-subscribe, same as boot
       // does) rather than re-deriving that sequence inline — boot may not
       // have reached it yet on a fresh device, so it's still called here,
@@ -2705,11 +2702,10 @@ class _AccountPaneState extends State<_AccountPane> {
       // attempt can't be mistaken for this one — the whole encoded blob is
       // what gets compared, not just `n` in isolation), and this device's
       // signed webhook-relay token (`t`), which is how LoFi's public
-      // callback endpoint (HALO-65) knows which client's channel to notify
+      // callback endpoint knows which client's channel to notify
       // — every compliant OAuth provider is required to echo `state` back
       // unmodified, which is what makes this portable across providers
-      // without a per-provider wildcard-redirect negotiation (see HALO-65's
-      // design note on why this isn't a per-client URL instead). On the
+      // without a per-provider wildcard-redirect negotiation. On the
       // native path `state` is just a plain CSRF nonce, same as always —
       // the redirect_uri itself already identifies this device.
       final state = useRelay

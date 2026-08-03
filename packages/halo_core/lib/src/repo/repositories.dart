@@ -107,9 +107,9 @@ class OperationsRepository {
   }
 
   Stream<List<Operation>> watchAll() {
-    // We select non-deleted operations. Since we want a robust sorting
-    // that uses fields within the JSON data blob (like createdAtMillis)
-    // as a fallback for operations with no QSOs, we perform the sort in Dart.
+    // Sorting falls back to fields within the JSON data blob (like
+    // createdAtMillis) for operations with no QSOs, so the sort happens
+    // in Dart rather than SQL.
     final query = (db.select(db.operations)
       ..where((op) => op.deleted.equals(false)));
     return query.watch().map((rows) {
@@ -468,7 +468,7 @@ class QsosRepository {
       await _refreshOperationCounters(operationUuid);
     });
     onChange?.call();
-    // Structured dev event (#237) — real contacts only, not timeline markers.
+    // Structured dev event — real contacts only, not timeline markers.
     if (!qso.isEvent) {
       DevLog.instance.log('qso', {
         'uuid': qso.uuid,
@@ -522,7 +522,7 @@ class QsosRepository {
 
   Future<void> softDelete(Qso qso) => _writeDeleted(qso, deleted: true);
 
-  /// Restores a soft-deleted QSO (ham2k/app-halo-dist#59). Pushing sends
+  /// Restores a soft-deleted QSO. Pushing sends
   /// `deleted` only when true (see `SyncEngine._buildPayload`), so the
   /// restored record's payload simply omits the key.
   Future<void> undelete(Qso qso) => _writeDeleted(qso, deleted: false);

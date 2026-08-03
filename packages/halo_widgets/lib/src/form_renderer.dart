@@ -179,7 +179,7 @@ Widget _formActionsRow({
           // The colour travels WITH the action rather than as a second
           // optional beside it: the point of this button is that a
           // destructive verb reads as destructive, and a caller that
-          // supplied one and forgot the other used to get a Remove button
+          // supplied one and forgot the other would get a Remove button
           // indistinguishable from Cancel.
           style: TextButton.styleFrom(foregroundColor: destructive.color),
           onPressed: isSubmitting ? null : destructive.onPressed,
@@ -424,7 +424,7 @@ class FormRendererState extends State<FormRenderer> {
       // Parks offers Texas three power classes and Ohio two — while the value
       // persists on the ref, so switching that operation to Ohio leaves a `QRP`
       // no Ohio dropdown has an item for. `DropdownButton` asserts that its
-      // value is exactly one of its items, so the form THREW instead of
+      // value is exactly one of its items, so the form would throw instead of
       // rendering. Dropping it here also means Save clears it, rather than
       // writing back a value nothing downstream will honour.
       final options = (field['options'] as List?)?.cast<Map>() ?? const [];
@@ -864,9 +864,9 @@ class FormRendererState extends State<FormRenderer> {
           focusNode: _focusNodes[key],
           menuMaxHeight: dropdownMenuMaxHeight(context),
           // Fill the field rather than taking the width of the widest OPTION,
-          // which is what an unexpanded dropdown does — so one long label (a
+          // which is what an unexpanded dropdown does — one long label (a
           // contest sponsor's own description of an entry category, say)
-          // overflowed the whole dialog to the right, for every extension.
+          // would overflow the whole dialog to the right, for every extension.
           isExpanded: true,
           decoration: poloFieldDecoration(context, label, hintText: placeholder, errorText: errorText, labelColor: devModeColor),
           hint: placeholder != null ? Text(placeholder) : null,
@@ -1085,7 +1085,7 @@ class FormRendererState extends State<FormRenderer> {
       context: context,
       builder: (dialogContext) => HaloDialog(
         title: Text(label),
-        // Edge to edge, the way SimpleDialog laid its children out; the shell
+        // Edge to edge, matching SimpleDialog's child layout; the shell
         // scrolls the list when the options outgrow the dialog.
         contentPadding: EdgeInsets.zero,
         content: Column(
@@ -1188,8 +1188,8 @@ class FormRendererState extends State<FormRenderer> {
       default: // text, multiline, email, callsign, number, secret
         // The label lives in the row above, so `placeholder` is the only hint
         // this layout can show — and the full-width layout already honors it
-        // (via poloFieldDecoration). Dropping it here made the same element
-        // render differently depending on whether it carried an `icon`.
+        // (via poloFieldDecoration). Dropping it here would make the same
+        // element render differently depending on whether it carried an `icon`.
         //
         // The hint needs dimming to the same 0.38 poloFieldDecoration uses,
         // and for the same reason: Material's default renders it at full
@@ -1372,7 +1372,7 @@ class FormRendererState extends State<FormRenderer> {
             title: Text(label),
             // Rows run edge to edge; the shell's own scroll view is off because
             // this content scrolls itself, and its width comes from the shared
-            // sizing rather than a fixed 420.
+            // sizing.
             contentPadding: EdgeInsets.zero,
             scrollable: false,
             content: SingleChildScrollView(
@@ -1550,7 +1550,7 @@ class FormRendererState extends State<FormRenderer> {
             title: Text(label),
             // Rows run edge to edge; the shell's own scroll view is off because
             // this content scrolls itself, and its width comes from the shared
-            // sizing rather than a fixed 360.
+            // sizing.
             contentPadding: EdgeInsets.zero,
             scrollable: false,
             content: Column(
@@ -1819,7 +1819,7 @@ Future<Map<String, dynamic>?> showFormDialog(
         ],
       ),
       contentPadding: const EdgeInsets.fromLTRB(24, 16, 24, 16),
-      // Width comes from the shared sizing now, and the shell scrolls the body.
+      // Width comes from the shared sizing, and the shell scrolls the body.
       content: FormRenderer(
         key: formKey,
         formDefinition: formDefinition,
@@ -1908,11 +1908,10 @@ Future<Map<String, dynamic>?> showFormPane(
     builder: (context) => ValueListenableBuilder<bool>(
       valueListenable: submittingNotifier,
       // While a submit's async validators/transformers are in flight the
-      // pane must not be dismissible — the old AlertDialog guaranteed this
-      // with barrierDismissible:false plus a disabled Cancel, but the
-      // pane's title-bar close button, Escape, and the XS/S back button
-      // would otherwise pop null mid-submit and silently discard edits the
-      // user explicitly saved (submit()'s mounted guard drops the result).
+      // pane must not be dismissible — the pane's title-bar close button,
+      // Escape, and the XS/S back button would otherwise pop null mid-submit
+      // and silently discard edits the user explicitly saved (submit()'s
+      // mounted guard drops the result).
       // All three dismissal paths go through Navigator.maybePop (see
       // modal_pane.dart), which this PopScope blocks; the deliberate pops
       // below (Save's onSubmit, the footer's Cancel) call pop() directly

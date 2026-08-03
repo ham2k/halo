@@ -98,7 +98,7 @@ class ModalPaneRoute<T> extends PopupRoute<T> {
   /// all (`ModalRoute`'s `barrierDismissible` is the single flag the SDK
   /// overloads for both "tap the barrier" and "press Escape"), and a caller
   /// asking to block a stray tap outside — the only reason any caller here
-  /// passes `false` — was silently losing Escape too as a side effect.
+  /// passes `false` — would silently lose Escape too as a side effect.
   /// [barrierDismissible] always returns true instead; a dismissal it lets
   /// through still goes via `Navigator.maybePop()` (both here and in
   /// Flutter's own action), so a pane's `PopScope` (e.g. `showFormPane`'s,
@@ -391,7 +391,7 @@ class TopModalPaneRoute<T> extends PopupRoute<T> {
   /// See [ModalPaneRoute.closeLabel].
   final String closeLabel;
 
-  /// See [showTopModalPane]'s doc comment. Null centers, as before.
+  /// See [showTopModalPane]'s doc comment. Null centers.
   final double? leftInset;
 
   /// Called when tapping outside the sheet (barrier below or header above).
@@ -470,9 +470,9 @@ class _TopModalPaneScaffold extends StatelessWidget {
       0.0,
       isNarrow
           ? screenSize.height - topOffset - MediaQuery.of(context).padding.bottom
-          // Wide: still a floating card, just taller than before — down to
-          // half a header's height above the screen's bottom edge rather than
-          // the generic haloDialogConstraints' 1.5-header-height clearance.
+          // Wide: still a floating card — allowed down to half a header's
+          // height above the screen's bottom edge rather than the generic
+          // haloDialogConstraints' 1.5-header-height clearance.
           : screenSize.height - topOffset - headerHeight / 2,
     );
     // A few pixels left of the header control it lines up with — purely a
@@ -566,7 +566,7 @@ class _TopModalPaneScaffold extends StatelessWidget {
                             maxHeight: sheetMaxHeight,
                             // Narrow: always fills to the bottom edge, same as
                             // the full-width requirement. Wide: only when not
-                            // scrollable, as before.
+                            // scrollable.
                             minHeight: (isNarrow || !route.scrollable) ? sheetMaxHeight : 0,
                           ),
                           child: Material(

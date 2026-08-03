@@ -8,8 +8,8 @@
 //
 // Activation is lazy: defineExtension only registers the definition; the host
 // calls activateAll() after every bundle has been evaluated. This removes
-// the declaration-order footgun spike 01 found (esbuild IIFE output hoists
-// late declarations as undefined vars).
+// a declaration-order footgun (esbuild IIFE output hoists late declarations
+// as undefined vars).
 //
 // Bridge protocol (all payloads are JSON strings over the 'polo' channel):
 //   JS → Dart:  {type:'result', id, ok, value|error, jsMillis}
@@ -216,7 +216,7 @@ function boundHostCallFor(extensionKey: string) {
   }
 }
 
-// Hook-context caching: settings and account credentials used to be
+// Hook-context caching: without it, settings and account credentials get
 // re-fetched over the bridge before EVERY hook method call — 1-2 extra
 // round trips (the account one hitting the platform keychain) multiplied
 // by N hooks in every invokeHookAll fan-out, on paths as hot as the
@@ -325,7 +325,7 @@ function activateExtension(def: ExtensionDefinition) {
             // `headers` arrives once per chunk rather than once per row: the
             // host sends positional rows and the zip happens here, because
             // repeating every column name in the JSON for every row was 61% of
-            // the bytes crossing the boundary on SOTA's 181k-row file (APP-16).
+            // the bytes crossing the boundary on SOTA's 181k-row file.
             // Without headers (a `hasHeaders: false` file) the row is passed
             // through positionally, which is the other half of the declared
             // `string[] | Record<string, string>` mapper signature.
@@ -462,8 +462,8 @@ const kernel = {
         const records = hooksFor('account', null)
         const entries = await Promise.all(records.map(async (record) => {
           try {
-            // A per-edition client (e.g. SOTA's OAuth, ham2k/app-halo-dist#253)
-            // is a function; callHookMethod builds it a ctx the same way any
+            // A per-edition client (e.g. SOTA's OAuth) is a function;
+            // callHookMethod builds it a ctx the same way any
             // other hook method call would. A plain object needs neither.
             // Own try/catch, not just the outer one: one account's oauth2
             // throwing must not blank out every other account's entry too

@@ -10,7 +10,7 @@
 // a constant. app-polo's IC-705 attempt burned bench time on a wrong
 // address it had no way to change without an edit-and-rebuild.
 //
-// NOT hardware-verified. Nothing here has been run against a radio.
+// For what has and has not met real hardware, see [hardwareVerified] below.
 
 import 'dart:async';
 
@@ -36,11 +36,11 @@ class IcomCivDriver extends EquipmentDriver {
   @override
   String get name => 'Icom (CI-V)';
 
-  /// Exercised against a real IC-705 on 2026-08-01: connected through the app,
-  /// held for ten minutes, frequency tracking the VFO throughout. Ten minutes
-  /// deliberately — this driver's sessions used to go silent at about two (see
-  /// `_reauthInterval` in icom_network_transport_io.dart), so any shorter run
-  /// would have looked perfect and proved nothing.
+  /// Exercised against a real IC-705: connected through the app, held for
+  /// ten minutes, frequency tracking the VFO throughout. Ten minutes
+  /// deliberately — without periodic reauth these sessions go silent at about
+  /// two (see `_reauthInterval` in icom_network_transport_io.dart), so any
+  /// shorter run would have looked perfect and proved nothing.
   ///
   /// PRECISELY WHAT THAT COVERS: this driver over the **network** transport.
   /// The same driver also backs Icom CI-V over USB serial, and that

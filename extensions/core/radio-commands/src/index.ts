@@ -5,14 +5,11 @@
 // call field and triggered on space. Ported from app-polo's RadioCommands
 // extension (src/extensions/commands/RadioCommands.js) — this is the
 // reference implementation of the `command` hook category (DESIGN.md §4,
-// docs/extensions/hooks.md), replacing what used to be a hand-rolled regex
-// in LoggingPanel.
+// docs/extensions/hooks.md).
 //
-// Delegating frequency parsing to @ham2k/lib-format-tools' parseFreq (the
-// same published parser app-polo uses) instead of a Dart-side regex fixes
-// a real bug: the old Dart regex required 3+ digits before any decimal
-// point, so MHz-style input like "14.285" never matched even though
-// parseFreq has always supported it.
+// Frequency parsing delegates to @ham2k/lib-format-tools' parseFreq (the
+// same published parser app-polo uses), which accepts MHz-style input
+// like "14.285" as well as kHz.
 
 import { parseFreq, fmtFreq } from "@ham2k/lib-format-tools"
 import { bandForFrequency } from "@ham2k/lib-operation-data"

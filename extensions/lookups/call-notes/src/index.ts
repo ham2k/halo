@@ -1,7 +1,7 @@
 // Copyright ©️ 2026 Sebastian Delmont <sd@ham2k.com>
 // SPDX-License-Identifier: MPL-2.0
 //
-// Callsign Notes ("Hams of Note", ham2k/app-halo-dist#17). Four hooks:
+// Callsign Notes ("Hams of Note"). Four hooks:
 //
 //  - `dataFile`: fetches https://ham2k.com/data/hams-of-note.txt daily and
 //    keeps the parsed index in module memory. `fetchType: 'raw'` means the

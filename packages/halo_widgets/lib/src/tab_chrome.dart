@@ -12,7 +12,7 @@ import 'package:flutter/semantics.dart';
 /// asymmetric width to leave room for a trailing button). Sharing this piece
 /// keeps the two from silently diverging on it — label-color resolution,
 /// the selection indicator, and the `Semantics(role: tab)` a screen reader
-/// needs to announce it as a tab at all, which neither had before.
+/// needs to announce it as a tab at all.
 class TabChrome extends StatelessWidget {
   final bool selected;
   final String semanticLabel;

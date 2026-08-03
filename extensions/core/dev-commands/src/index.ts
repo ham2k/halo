@@ -2,12 +2,12 @@
 // SPDX-License-Identifier: MPL-2.0
 //
 // Developer-only call-field shortcuts: DEVMODE toggles developer mode
-// (moved here from radio-commands — it's a dev tool, not a radio one), and
+// (a dev tool, not a radio one, so it lives here and not radio-commands), and
 // DEVNOTICE/DEVSTATUS/DEVPROGRESS post sample items to the status bar so
 // the footer/notice UI can be exercised without a real extension driving
-// it. DEVSPLASH re-shows the startup release-notes overlay (Issue #42) on
+// it. DEVSPLASH re-shows the startup release-notes overlay on
 // demand, bypassing its normal "once per version" gate. DEVSENTRY pushes a
-// synthetic error through the error-reporting pipeline (#76) to verify the
+// synthetic error through the error-reporting pipeline to verify the
 // Sentry wiring. RELOAD forces a data-file re-sync (bypassing the normal 30-day
 // staleness check), for both developers iterating on `csvToLookupEntry`
 // mapping logic and anyone troubleshooting stale/missing lookup data.
@@ -173,7 +173,7 @@ const DevSplashCommand = {
   catalog: devCatalog('DEVSPLASH', 'Re-show the release-notes overlay'),
 }
 
-// DEVSPLASH's sibling for the first-run onboarding overlay (Issue #43):
+// DEVSPLASH's sibling for the first-run onboarding overlay:
 // re-shows it on demand, bypassing its "default profile callsign undefined"
 // gate — for iterating on the flow. The overlay is live: completing it
 // (Done) applies its choices; Skip leaves existing settings untouched.
@@ -191,7 +191,7 @@ const DevOnboardCommand = {
 }
 
 // "DEVSENTRY" / "DEVSENTRY custom message" -> push a synthetic error through
-// the app's error-reporting pipeline (#76) to verify the Sentry wiring end
+// the app's error-reporting pipeline to verify the Sentry wiring end
 // to end; the app reports back whether it uploaded or only logged locally
 // (no DSN in this build). `mixedCase` keeps Space literal so bare DEVSENTRY
 // stays executable while still extendable with a free-text message (the

@@ -199,13 +199,13 @@ class QsoListLabels {
 /// reference comes from a `refList`.
 ///
 /// "Primary field" must mean the same set here as in the logging panel's
-/// `_textControls`, i.e. `text`, `serial` AND `options`. It didn't, and since
-/// `controlForRefType` returns the FIRST control for a type and CQ WPX declares
-/// its serial (order 10) before its text exchange (order 20), every WPX QSO
-/// read as an activity reference and wore an icon. `options` — M5's searchable
-/// exchange — had to join this list the moment it joined `_textControls`: the
-/// core writes only `{type, field}` onto the ref an exchange field fills, so a
-/// state-park QSO carries nothing else to say it is a contest contact.
+/// `_textControls`, i.e. `text`, `serial` AND `options`: `controlForRefType`
+/// returns the FIRST control for a type, and CQ WPX declares its serial before
+/// its text exchange, so dropping `serial` here makes every WPX QSO read as an
+/// activity reference and wear an icon. `options` — the searchable exchange —
+/// belongs here for as long as it is in `_textControls`: the core writes only
+/// `{type, field}` onto the ref an exchange field fills, so a state-park QSO
+/// carries nothing else to say it is a contest contact.
 bool _isContestRef(Map<String, dynamic> ref, List<Map<String, dynamic>> controls) {
   if (ref['program'] == 'Contest') return true;
   final control = controlForRefType(controls, ref['type'] as String?);
@@ -999,7 +999,7 @@ class _QsoListState extends State<QsoList> {
     // layout that follows it rounds independently, so the two need not agree
     // to the pixel. Budgeting to the exact measurement leaves a row one
     // rounding difference away from overflowing by a fraction of a pixel —
-    // which is still an error, and was still being logged.
+    // still a logged error.
     final mandatoryWidth = textWidth(context, _timeLabelSample, monoDim) +
         _columnGap +
         freqWidth +
@@ -1133,14 +1133,6 @@ class _QsoListState extends State<QsoList> {
 /// and scoring summaries").
 class _DayHeaderDelegate extends SliverPersistentHeaderDelegate {
   final Widget child;
-  // Matches an ordinary QSO row's own height (4px vertical padding either
-  // side of a 14px line at its natural, un-inflated line height — see
-  // `DayHeaderRow.build`'s `rowStyle`) plus a little headroom so [child]'s
-  // forced `SizedBox` below never clips/overflows it. The
-  // border lives in `foregroundDecoration`, not `decoration`, specifically
-  // so it doesn't add to this the way `Container` would otherwise
-  // auto-inset for a `decoration`'s border.
-
 
   const _DayHeaderDelegate({required this.child});
 
@@ -1228,7 +1220,7 @@ class DayHeaderRow extends StatelessWidget {
     final theme = Theme.of(context);
     // Same base size as the QSO rows below it (app-polo's QSOHeader reuses
     // its row font wholesale, just bolding the date) — labelLarge/labelMedium
-    // read visibly larger than the row text and made the header feel like a
+    // read visibly larger than the row text and make the header feel like a
     // different, heavier UI element instead of a divider within the list.
     // `height: 1.0` overrides bodyMedium's Material 3 line-height multiplier
     // (1.43, meant for prose) back down to the font's natural metric — same
@@ -1289,7 +1281,7 @@ class DayHeaderRow extends StatelessWidget {
       // QSO rows — matching app-polo's QSOHeader (`headerRow`'s
       // `borderBottomWidth: 2`) — using `outline`, not `outlineVariant`,
       // since `outlineVariant` is nearly the same color as the header's own
-      // background and the border all but disappeared against it.
+      // background and the border all but disappears against it.
       foregroundDecoration: BoxDecoration(
         border: Border(
           bottom: BorderSide(color: theme.colorScheme.outline, width: 3),
@@ -1303,8 +1295,8 @@ class DayHeaderRow extends StatelessWidget {
           children: [
             // The header lives inside the same minimum width the QSO rows do,
             // so at that minimum the date and count have to give rather than
-            // overflow. `Expanded` does the job the `Spacer` used to — push
-            // the badges right — while also capping the pair.
+            // overflow. `Expanded` pushes the badges right (what a bare
+            // `Spacer` would do) while also capping the pair.
             //
             // That makes the score badges the one thing here that never
             // yields, which is deliberate: they are fixed-size chips with

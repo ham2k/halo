@@ -92,7 +92,7 @@ void runHaLoApp({
   UpdateCheckService? updateCheck,
   ErrorReportingBackend? errorReporting,
 }) {
-  // Global error capture (#76): backend upload when one is injected, local
+  // Global error capture: backend upload when one is injected, local
   // logging + the error tile + a StatusBar notice everywhere — see
   // services/error_reporting_service.dart. The ENTIRE startup sequence
   // (binding init included) runs inside so everything shares one zone: a
@@ -129,7 +129,7 @@ void _mainBody({
   }
   // Turn on structured dev logging ([qso], [lookup], …) for all non-release
   // builds — console output + a buffer window.__halo.recentLog() can query.
-  // Off in release, so nothing is emitted or buffered there (#237).
+  // Off in release, so nothing is emitted or buffered there.
   DevLog.instance.enabled = !kReleaseMode;
   WindowChromeService.init();
   // Web-only, non-release-only: exposes window.__halo for agent inspection
@@ -141,7 +141,7 @@ void _mainBody({
   // find / computer) staring at a blank canvas — with it on they see labeled,
   // Semantics(identifier:)-targetable nodes. The handle is intentionally left
   // undisposed so semantics stay on for the app's lifetime. Native already has
-  // real accessibility; production is untouched (#236).
+  // real accessibility; production is untouched.
   if (DevBridge.instance.installed) {
     SemanticsBinding.instance.ensureSemantics();
   }
@@ -184,7 +184,7 @@ void _mainBody({
     unawaited(const AutoUpdateService().start());
 
     // Wire window.__halo.resetFixture() to a real reset now that services
-    // exist — only in dev/web where the bridge is installed (#238).
+    // exist — only in dev/web where the bridge is installed.
     if (DevBridge.instance.installed) {
       DevBridge.instance.resetFixtureHandler = () => resetDevFixture(services);
     }
@@ -232,7 +232,7 @@ Future<void> _preloadEmojiFont() async {
   }
 }
 
-/// Resets the app to a known fixture for agent/dev verification (#238): back up
+/// Resets the app to a known fixture for agent/dev verification: back up
 /// then clear all operations + QSOs, restore font scale and distance units to
 /// their defaults, seed a fresh operation with canned QSOs, and navigate into
 /// it. Returns a summary including the `backupId` of the pre-reset snapshot.
@@ -376,9 +376,8 @@ class _BootGateState extends State<BootGate> with SingleTickerProviderStateMixin
         ));
       }
     }).catchError((Object error, StackTrace stackTrace) {
-      // Fail loud: previously `await bootstrap()` in main() let a boot
-      // failure throw before runApp() ever ran; now that runApp() happens
-      // first, an unhandled rejection here would otherwise strand the user
+      // Fail loud: runApp() happens before bootstrap() resolves, so an
+      // unhandled rejection here would strand the user
       // on the splash screen forever with no visible error.
       debugPrint('[boot] bootstrap() failed: $error\n$stackTrace');
       ErrorReportingService.report(error, stackTrace, context: 'boot:bootstrap');
@@ -489,7 +488,7 @@ Future<HaLoServices> bootstrap({
     services.syncEngine.start();
     // Independent of syncEngine.start() above: this registers device
     // identity/the realtime channel regardless of whether the operator has
-    // QSO sync enabled (HALO-66) — registration pushes no log data, only
+    // QSO sync enabled — registration pushes no log data, only
     // syncEngine (gated on settings.syncEnabled) does that. Not awaited:
     // it's a network round-trip and boot must not wait on it.
     unawaited(services.connectLofiRealtime());
@@ -508,9 +507,9 @@ Future<HaLoServices> bootstrap({
     unawaited(services.cat.reconnectDesignatedRadio());
   }
 
-  // OUTSIDE the experiment gate, deliberately. This used to sit inside it, so
-  // turning CAT on in Settings mid-session and then connecting a radio left no
-  // listener at all — the fix bypassed for exactly the people who had just
+  // OUTSIDE the experiment gate, deliberately: gated inside it, turning CAT
+  // on in Settings mid-session and then connecting a radio would leave no
+  // listener at all — bypassing exactly the people who had just
   // enabled the feature. shutdown() is a no-op when nothing is connected, so
   // installing it always costs nothing.
   if (!kIsWeb) _catShutdownOnExit(services);
@@ -550,7 +549,7 @@ Future<HaLoServices> bootstrap({
 const noKeyringNoticeKey = 'accounts:no-keyring';
 const _noKeyringNoticeShownKey = 'accounts:noKeyringNoticeShown';
 
-/// Says once, on Linux, that account logins cannot be saved (#438).
+/// Says once, on Linux, that account logins cannot be saved.
 ///
 /// Public for its test: the Linux-only condition and the once-ness are the parts
 /// worth pinning.
@@ -586,7 +585,6 @@ void maybeShowNoKeyringNotice(HaLoServices services) {
   );
 }
 
-/// The core services bundle passed down to screens.
 /// One open Operation View's contribution to the ⌘K dialog's context — see
 /// [HaLoServices.openOperationContext].
 class OperationCommandContext {
@@ -610,14 +608,13 @@ AppLifecycleListener? _catLifecycle;
 /// A session the radio is never told to end is one it keeps holding. The
 /// IC-705 has a single remote-control slot and holds the login until it times
 /// out on its own, so quitting without a disconnect is what makes the NEXT
-/// connect fail — the "radio did not answer the login" that this transport
-/// spent weeks being blamed for.
+/// connect fail — the "radio did not answer the login".
 ///
-/// This comment used to claim something else: that the radio streams ~95
-/// packets/second at us and an ungraceful exit leaves that flood pointed at a
-/// dead port. That was measured FALSE on hardware (see the CAT commit "the
-/// IC-705 sends us no audio") — the radio only streams audio to a client that
-/// has completed a session handshake on port 50003, which we never do. The
+/// NOT the reason: "the radio streams ~95 packets/second at us and an
+/// ungraceful exit leaves that flood pointed at a dead port" — measured
+/// FALSE on hardware (see the CAT commit "the IC-705 sends us no audio");
+/// the radio only streams audio to a client that has completed a session
+/// handshake on port 50003, which we never do. The
 /// reason above is the real one.
 ///
 /// `onExitRequested` is the desktop hook that can actually *await* cleanup
@@ -649,6 +646,7 @@ void _catShutdownOnExit(HaLoServices services) {
   );
 }
 
+/// The core services bundle passed down to screens.
 class HaLoServices {
   final HaLoDatabase db;
   final SettingsService settings;
@@ -677,7 +675,7 @@ class HaLoServices {
   final LocationService location = LocationService();
   final DeepLinkService deepLinks = DeepLinkService();
 
-  /// Pusher app key + cluster for the realtime client (HALO-66) — public,
+  /// Pusher app key + cluster for the realtime client — public,
   /// non-secret values (every Pusher client SDK ships them this way), but
   /// still build-time configured like the Mapbox token or SOTA's OAuth
   /// client id (config/secrets.dart) since they point at whichever LoFi
@@ -689,7 +687,7 @@ class HaLoServices {
       : PusherService(appKey: secrets['PUSHER_KEY']!, cluster: secrets['PUSHER_CLUSTER']!);
 
   /// Registers this device with the sync server — independent of QSO sync
-  /// being enabled, HALO-66's whole point — and, once that succeeds,
+  /// being enabled, deliberately — and, once that succeeds,
   /// subscribes the realtime client to its push channel. Safe to call
   /// repeatedly (boot, and every [setOperatorCall]):
   /// `ensureLofiClientRegistered` is idempotent, and re-subscribing an
@@ -704,11 +702,11 @@ class HaLoServices {
     return registration;
   }
 
-  /// Webhook-relay events (HALO-65) on this device's push channel — an
-  /// OAuth flow waiting on a provider redirect (HALO-22) listens here for
+  /// Webhook-relay events on this device's push channel — an
+  /// OAuth flow waiting on a provider redirect listens here for
   /// the ping, then calls [ExtensionService.fetchLofiWebhookEvents] for the
   /// payload (the push itself only ever carries an event id, never the
-  /// sensitive payload — see HALO-65's design note).
+  /// sensitive payload — deliberately).
   Stream<PusherEvent> get webhookEvents =>
       pusher?.events.where((e) => e.event == 'webhook_event') ?? const Stream.empty();
   final DataFileManager? _dataFilesOverride;
@@ -963,7 +961,7 @@ class HaLoServices {
         (key, {subkey}) => unawaited(showAccountDialogByKey(this, key, subkey: subkey));
   }
 
-  /// The ONE gate for analytics (ham2k/app-halo-dist#255): forwards to
+  /// The ONE gate for analytics: forwards to
   /// [metrics] only while the user's "Share app usage data" consent is on.
   /// Every instrumentation site calls this — never metrics.logEvent
   /// directly — so consent is checked live at each event, and turning the
@@ -989,7 +987,7 @@ class HaLoServices {
         operatorCall: settings.activeProfile.operatorCall,
       );
       // Independent of QSO sync being enabled — see connectLofiRealtime's
-      // doc comment (HALO-66). Not awaited, same reasoning as the flags
+      // doc comment. Not awaited, same reasoning as the flags
       // refresh below.
       unawaited(connectLofiRealtime());
     }
@@ -1099,7 +1097,7 @@ class HaLoServices {
         return null;
       case 'devSentry':
         // DEVSENTRY [message]: push a synthetic error through the real
-        // reporting pipeline (#76) to verify the Sentry wiring end to end.
+        // reporting pipeline to verify the Sentry wiring end to end.
         // Deliberately report(), not throw — the point is testing upload
         // + feedback, not exercising the error UI (DEVNOTICE covers that).
         final message = (params?['message'] as String? ?? 'test message').trim();
@@ -1263,7 +1261,7 @@ class _HaLoAppState extends State<HaLoApp> {
     final settings = widget.services.settings;
 
     if (key == LogicalKeyboardKey.keyK && !HardwareKeyboard.instance.isShiftPressed) {
-      // ⌘K (⌃K on Windows/Linux): the command dialog (issue #55). Toggles —
+      // ⌘K (⌃K on Windows/Linux): the command dialog. Toggles —
       // a second ⌘K while it's open closes it rather than stacking a second
       // copy on top of the first.
       if (_commandDialogOpen) {
@@ -1434,15 +1432,6 @@ class _HaLoAppState extends State<HaLoApp> {
   }
 }
 
-/// First-run onboarding (Issue #43): wraps the release overlay gate so the
-/// onboarding paints on top of everything, whenever the default profile has
-/// NEVER had a callsign set — undefined, not '' (an explicit empty from a
-/// previous Skip counts as answered). Unlike the release overlay/About photo
-/// modal, always full screen — even on wide layouts — rather than
-/// `wideModalChrome`'s centered card: this is a first impression, and the
-/// release photo should fill the whole window rather than float over a
-/// blurred backdrop. No barrier dismissal either way; the flow's own
-/// Skip/Done are the exits.
 /// Debug-only shortcut for skipping the onboarding flow: set
 /// `ONBOARD_AS=CALL,activity,...` — e.g. `ONBOARD_AS=KI2D,pota,sota` — as a
 /// `--dart-define` or an environment variable, and a first run applies that
@@ -1478,6 +1467,15 @@ Future<void> applyOnboardAsSpec(HaLoServices services, String spec) async {
   }
 }
 
+/// First-run onboarding: wraps the release overlay gate so the
+/// onboarding paints on top of everything, whenever the default profile has
+/// NEVER had a callsign set — undefined, not '' (an explicit empty from a
+/// previous Skip counts as answered). Unlike the release overlay/About photo
+/// modal, always full screen — even on wide layouts — rather than
+/// `wideModalChrome`'s centered card: this is a first impression, and the
+/// release photo should fill the whole window rather than float over a
+/// blurred backdrop. No barrier dismissal either way; the flow's own
+/// Skip/Done are the exits.
 class _OnboardingGate extends StatefulWidget {
   final HaLoServices services;
   final Widget child;
@@ -1717,8 +1715,8 @@ class DevOverlayTrigger extends ChangeNotifier {
 /// status footer can both grow, the numbers row is a fixed height whenever a
 /// focused field publishes one, and the keyboard strip takes whatever the
 /// keyboard is using. The app gets what is left — and must not be squeezed to
-/// nothing, which is what happened when each of these sized itself against the
-/// whole window on its own and their sum quietly exceeded the strip they share.
+/// nothing, which is what happens when each of these sizes itself against the
+/// whole window on its own and their sum quietly exceeds the strip they share.
 ///
 /// So the sum is bounded here, once, rather than each piece guessing.
 ///
@@ -1730,11 +1728,11 @@ class DevOverlayTrigger extends ChangeNotifier {
 ///
 /// "No matter what" only holds if every cap here is one the consumer cannot
 /// exceed, so both are TOTALS — the whole stack including its band, the whole
-/// expanded footer including its collapsed height. An earlier version handed
-/// [NoticeStack] a cap for the card alone and paid for the band here; the
-/// stack then overran a tight budget by the whole band, measured at 3pt on a
+/// expanded footer including its collapsed height. Handing
+/// [NoticeStack] a cap for the card alone and paying for the band here lets
+/// the stack overrun a tight budget by the whole band (measured at 3pt on a
 /// 375pt landscape phone at Largest+ and 5pt at Largest++ with a 210pt
-/// keyboard. Chrome a widget adds on its own account has to be that widget's
+/// keyboard). Chrome a widget adds on its own account has to be that widget's
 /// arithmetic.
 ///
 /// Getting this wrong is not hypothetical, and it is not visible in portrait:
@@ -1742,7 +1740,7 @@ class DevOverlayTrigger extends ChangeNotifier {
 /// insets it hands down (docs/design/ui-scaling.md), while the fixed 52 and 28
 /// above stay put. On a landscape phone with the keyboard up, that fixed 80
 /// grows from 42% of the space above the keyboard at Normal to all of it at
-/// Largest++ — which is how the sum used to run past the window and drive the
+/// Largest++ — which is how the sum can run past the window and drive the
 /// app to zero height.
 @visibleForTesting
 class BottomChromeBudget {
@@ -1831,10 +1829,10 @@ class StatusBarOverlay extends StatelessWidget {
         // keyboard is up — it both RESERVES the keyboard's height and CONSUMES
         // the inset, and the two have to go together.
         //
-        // Reserving: the footer used to be hidden outright whenever the
-        // keyboard was open, because this Column's bottom edge is the WINDOW's
-        // bottom edge and anything placed there is behind the keyboard. It is
-        // chrome the operator needs precisely while typing (a sync's progress,
+        // Reserving: this Column's bottom edge is the WINDOW's
+        // bottom edge and anything placed there is behind the keyboard. The
+        // footer is chrome the operator needs precisely while typing (a
+        // sync's progress,
         // a command's output), so instead the keyboard's height is held back
         // below the footer and the footer rides above it. The strip is painted
         // in the app-bar colour — the one the footer and the mobile numbers row
@@ -1864,12 +1862,12 @@ class StatusBarOverlay extends StatelessWidget {
         final keyboardInset = MediaQuery.viewInsetsOf(context).bottom;
 
         // How much of the window the chrome below the app may take, divided
-        // between the two pieces that can grow. Everything down here used to
-        // size itself against the WHOLE window independently — the notice at
+        // between the two pieces that can grow. If everything down here
+        // sized itself against the WHOLE window independently — the notice at
         // 40% of it, the expanded footer at another 40%, the numbers row at
-        // whatever it is — so their sum could exceed the strip they share and
-        // the Column overflowed, crushing the app to nothing. Three separate
-        // fixes each capped one piece and moved the overflow to the next; the
+        // whatever it is — their sum could exceed the strip they share and
+        // the Column would overflow, crushing the app to nothing. Capping
+        // one piece just moves the overflow to the next; the
         // sum is the thing that has to be bounded, so it is worked out once,
         // here, by the only widget that can see all of them.
         final accessory = services.keyboardAccessory.value;

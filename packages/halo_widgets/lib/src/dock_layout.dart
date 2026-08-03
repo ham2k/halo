@@ -367,7 +367,7 @@ class DockLayoutViewState extends State<DockLayoutView> {
         // a physical screen edge — an interior child (between two others)
         // touches no device edge on that axis and reads 0 there. The
         // cross-axis isn't divided by this split, so it passes through to
-        // every child unchanged (ham2k/app-halo-dist#205).
+        // every child unchanged.
         final ambient = PaneSafeArea.maybeOf(context);
         final ambientLeft = ambient?.left ?? 0;
         final ambientTop = ambient?.top ?? 0;
@@ -447,7 +447,7 @@ class DockLayoutViewState extends State<DockLayoutView> {
             // PaneSafeArea against DockLayoutView's OWN outer ambient,
             // ignoring the position-correct value `_buildSplit` wrapped THIS
             // child in. Builder gets a context at this group's real tree
-            // position (ham2k/app-halo-dist#205).
+            // position.
             child: Builder(
               builder: (context) {
                 final selectedModule = group.modules[group.selected];

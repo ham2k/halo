@@ -4,7 +4,7 @@
 import 'package:flutter/widgets.dart';
 
 /// Wraps [child] so it carries a stable, translation-independent semantics
-/// [identifier] for agent/browser tooling (ham2k/app-halo-dist#236). In Flutter
+/// [identifier] for agent/browser tooling. In Flutter
 /// web's accessibility DOM this surfaces as `flt-semantics-identifier="<id>"`,
 /// which the generic browser tools (read_page / find / computer) can target
 /// directly — no `window.__halo` bridge call needed for the common cases.

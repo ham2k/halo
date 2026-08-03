@@ -1,7 +1,7 @@
 // Copyright ©️ 2026 Sebastian Delmont <sd@ham2k.com>
 // SPDX-License-Identifier: MPL-2.0
 //
-// Builds an operation's title/subtitle from its refs (ham2k/app-halo-dist#174):
+// Builds an operation's title/subtitle from its refs:
 // each ref's `ref:<type>` hook gets one `suggestOperationTitle` call (mirrors
 // `decorateRef`'s per-ref dispatch), and the merged fragments are cached into
 // `operations.local_data` — device-local like `ScoringService`'s summaries,
@@ -19,8 +19,8 @@ class OperationTitleService {
   /// One generation counter per operation, so an OLDER call's cache write
   /// can't land after a NEWER one's and clobber it with stale data — unlike
   /// a fingerprint dedup (which only catches redundant *identical* calls),
-  /// this catches two DIFFERENT ref-sets racing out of issue order (e.g. the
-  /// plain Activities modal now persists each ref edit immediately, so
+  /// this catches two DIFFERENT ref-sets racing out of issue order (the
+  /// plain Activities modal persists each ref edit immediately, so
   /// adding two refs in quick succession fires two overlapping retitles;
   /// nothing guarantees the one for the smaller ref-set resolves first).
   final Map<String, int> _generationByUuid = {};

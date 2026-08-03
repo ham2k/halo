@@ -40,7 +40,6 @@ void main() {
     await tester.pumpWidget(TranslationProvider(child: HaLoApp(services: services)));
     await tester.pumpAndSettle();
 
-    // Verify current TranslationProvider locale is English
     expect(LocaleSettings.currentLocale, AppLocale.en);
 
     // Simulate Cmd + Shift + L
@@ -51,7 +50,6 @@ void main() {
     await tester.sendKeyUpEvent(LogicalKeyboardKey.metaLeft);
     await tester.pumpAndSettle();
 
-    // Verify locale has toggled to Spanish
     expect(services.settings.locale, 'es');
     expect(LocaleSettings.currentLocale, AppLocale.es);
 
@@ -63,7 +61,6 @@ void main() {
     await tester.sendKeyUpEvent(LogicalKeyboardKey.metaLeft);
     await tester.pumpAndSettle();
 
-    // Verify locale has toggled back to English
     expect(services.settings.locale, 'en');
     expect(LocaleSettings.currentLocale, AppLocale.en);
 

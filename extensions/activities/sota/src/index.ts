@@ -331,7 +331,7 @@ function refsOfType(container: Record<string, unknown>, type: string): Ref[] {
 /// more specific ("portable") location than a home QTH. A summit is small, so
 /// its grid is tagged `ACCURATE` — more precise than a POTA park — and the
 /// merge keeps the most accurate same-scope result, so a summit wins over a
-/// park on the same qso regardless of order (ham2k/app-halo-dist#185).
+/// park on the same qso regardless of order.
 async function lookupCall(
   { callInfo, qso }: { callInfo: AnnotatedCallInfo; qso: Record<string, JSONValue>; operation: Record<string, JSONValue> },
   ctx: HookContext,
@@ -377,7 +377,7 @@ const AdifFieldsHook = {
 const SOTA_SSO_REALM = 'https://sso.sota.org.uk/auth/realms/SOTA'
 
 // SOTA granted HaLo a separate Keycloak client per build edition
-// (ham2k/app-halo-dist#253) — each edition is its own app identity
+// — each edition is its own app identity
 // (com.ham2k.logger.dev/.next/.prod), so each needs its own registered
 // native redirect URL. HaLo's OAuth webview intercepts that redirect itself
 // (see `_doOAuth` above) on every platform capable of it — an unset/

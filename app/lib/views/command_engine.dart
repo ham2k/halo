@@ -4,14 +4,13 @@
 // The lookup-and-command engine behind the two places a user can type a
 // callsign or a command outside the logging panel: the Home view's Quick
 // Lookup bar (`HomeQuickLookup`) and the ⌘K command dialog
-// (`CommandDialog`). Both need the same non-obvious behavior, and it has
-// already been fixed twice in the one place it used to live — the debounce
+// (`CommandDialog`). Both need the same non-obvious behavior — the debounce
 // split (150ms describe preview vs 300ms lookup), the retained
-// interpretation that keeps spaces legal mid-command
-// (ham2k/app-halo-dist#190), `expectsParams`/`mixedCase`, the second
-// `execute: true` interpret call before dispatch (so a hook like SEED builds
-// its real commands instead of a stale cheap preview), and the
-// error-vs-confirm message states. A second copy would drift.
+// interpretation that keeps spaces legal mid-command,
+// `expectsParams`/`mixedCase`, the second `execute: true` interpret call
+// before dispatch (so a hook like SEED builds its real commands instead of a
+// stale cheap preview), and the error-vs-confirm message states. A second
+// copy would drift.
 //
 // This owns state and timing only. Both callers render it themselves: the
 // Home bar shows a single message line, the dialog a list of results.
@@ -120,8 +119,8 @@ class CommandEngine extends ChangeNotifier {
   /// The last interpret() result retained for the field's space-restriction
   /// — deliberately separate from [_currentInterpretation], which resets
   /// synchronously on every keystroke (for the describe-message UI): the
-  /// field's formatter must not snap back to denying spaces mid-command
-  /// (ham2k/app-halo-dist#190). Same "retained interpretation" pattern as
+  /// field's formatter must not snap back to denying spaces mid-command.
+  /// Same "retained interpretation" pattern as
   /// `logging_controls.dart`'s call field, scoped down to just spaces since
   /// these fields otherwise accept any character.
   Map<String, dynamic>? _retainedInterpretation;
@@ -133,7 +132,7 @@ class CommandEngine extends ChangeNotifier {
   /// The raw field text this engine last reacted to. A
   /// [TextEditingController] notifies its listeners for SELECTION changes as
   /// well as text changes, so without this every caret move — a tap into the
-  /// field, an arrow key, a click to reposition — re-ran the whole
+  /// field, an arrow key, a click to reposition — would re-run the whole
   /// interpret-and-lookup cycle for text that had not changed at all.
   String _lastText = '';
 
@@ -215,11 +214,10 @@ class CommandEngine extends ChangeNotifier {
   /// Forgets everything about the current callsign lookup, in one place.
   ///
   /// There are two paths that must forget one — the field going empty, and
-  /// the text ceasing to look like a callsign — and keeping them in step by
-  /// hand is exactly how an empty field ended up with the spinner still
-  /// turning: the empty-text path cleared the RESULT but not the STAGE, so
-  /// the UI stayed in `searching` while the in-flight lookup aborted on its
-  /// own stale-text guard and never replaced it.
+  /// the text ceasing to look like a callsign — and both must clear the
+  /// RESULT and the STAGE together: clearing only the result leaves the UI
+  /// stuck in `searching` while the in-flight lookup aborts on its own
+  /// stale-text guard and never replaces it.
   void _resetLookup() {
     _lookupFor = null;
     _lookupResult = null;
@@ -237,8 +235,8 @@ class CommandEngine extends ChangeNotifier {
     final raw = _text;
 
     // Selection-only notification — a cursor move, not an edit. Bail before
-    // cancelling any timers: restarting the debounces here is what made the
-    // results re-resolve, and visibly re-render, every time the caret moved.
+    // cancelling any timers: restarting the debounces here would make the
+    // results re-resolve, and visibly re-render, every time the caret moves.
     if (raw == _lastText) return;
 
     _lastText = raw;
@@ -335,7 +333,7 @@ class CommandEngine extends ChangeNotifier {
     final result = _lookupResult;
     if (result == null || _lookupFor != trimmedText) return null;
     final guess = result['guess'] as Map<String, dynamic>? ?? const {};
-    // A callsign note (issue #17) takes the name's slot outright rather
+    // A callsign note takes the name's slot outright rather
     // than joining it — same rule as the logging panel's _lookupLine
     // (packages/halo_widgets/lib/src/logging_controls.dart).
     final note = guess['note'] as String?;
@@ -422,8 +420,8 @@ class CommandEngine extends ChangeNotifier {
     } else if (interpretation == null && clearOnNoMatch) {
       // Nothing matched — the Home bar treats Enter as "clear this search".
       // Clearing the controller runs _onTextChanged, which resets the lookup
-      // state; doing it by hand here as well is how the stage was left stale
-      // (an empty field still showing "Looking up callsign…").
+      // state; don't also reset it by hand here — a partial copy leaves the
+      // stage stale (an empty field still showing "Looking up callsign…").
       _controller?.clear();
       _setMessage(null, CommandMessageKind.describe);
       _retainedInterpretation = null;

@@ -57,11 +57,10 @@ class RefTransform {
       );
 }
 
-/// References are always uppercase, live as the user types — not just at
-/// submit time (`_add` already uppercased there) — since `toUpperCase()` is
-/// length-preserving for the characters this field allows, the selection
-/// from `newValue` carries over unchanged. Shares the package-wide
-/// [UpperCaseTextFormatter] (text_formatters.dart).
+/// References are always uppercase, live as the user types — since
+/// `toUpperCase()` is length-preserving for the characters this field
+/// allows, the selection from `newValue` carries over unchanged. Shares the
+/// package-wide [UpperCaseTextFormatter] (text_formatters.dart).
 const _upperCaseFormatter = UpperCaseTextFormatter();
 
 /// Builds the [TextEditingValue] that typing [text] at the cursor of

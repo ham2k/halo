@@ -89,8 +89,8 @@ bool get isWindowedPlatform =>
     defaultTargetPlatform == TargetPlatform.linux;
 
 /// True on iOS/Android — where on-screen keyboards make "/" awkward to type
-/// (issue #7's "." → "/" autocorrect for logging inputs) and other
-/// mobile-only input quirks apply.
+/// (the "." → "/" autocorrect for logging inputs) and other mobile-only
+/// input quirks apply.
 bool get isMobilePlatform =>
     !kIsWeb && (defaultTargetPlatform == TargetPlatform.iOS || defaultTargetPlatform == TargetPlatform.android);
 
@@ -104,7 +104,7 @@ bool get isIOSPlatform => !kIsWeb && defaultTargetPlatform == TargetPlatform.iOS
 
 /// True on Windows specifically — used by `flags.dart`'s image-based flag
 /// fallback (Flutter's Windows-desktop Skia text layout can't compose a
-/// multi-codepoint flag emoji into a single glyph, ham2k/app-halo-dist#APP-29).
+/// multi-codepoint flag emoji into a single glyph).
 bool get isWindowsPlatform => !kIsWeb && defaultTargetPlatform == TargetPlatform.windows;
 
 /// Lowercase platform token for data-driven platform filtering — settings'
@@ -397,7 +397,7 @@ Widget windowsCaptionSpacer(BuildContext context) => SizedBox(width: windowsCapt
 /// icon/badge with text — to fit whatever width it's given, with no floor.
 /// Every plain single-line title uses [shrinkToFitText] instead, which adds
 /// a minimum-legible-size floor; reach for this only when the content isn't
-/// a single [Text] (issue #182).
+/// a single [Text].
 ///
 /// `FittedBox(fit: BoxFit.scaleDown)`: its child gets loose/unbounded
 /// constraints, so it lays out at its natural size, then the whole thing
@@ -410,15 +410,14 @@ Widget shrinkToFit(Widget child, {AlignmentGeometry alignment = Alignment.center
 /// smaller size instead of truncating outright — use in place of
 /// `overflow: TextOverflow.ellipsis`. Font size shrinks to fit, but never
 /// below [minScale] (default 75%) of its natural size — past that point the
-/// line falls back to an ellipsis instead of shrinking into illegibility
-/// (issue #182, floor raised from 50% in #361).
+/// line falls back to an ellipsis instead of shrinking into illegibility.
 ///
 /// [condensed], for a secondary line (a subtitle under its own title — not
 /// the title itself, which should stay at normal width), tries Roboto's
 /// variable-font 'wdth' axis at its Condensed value (75, vs. 100 Normal) —
 /// same font size, narrower glyphs — BEFORE shrinking the font size at all:
 /// a condensed render stays fully legible, unlike a smaller one, so it's the
-/// cheaper trade to make first (#361). No-ops if condensing wouldn't
+/// cheaper trade to make first. No-ops if condensing wouldn't
 /// actually narrow the text (e.g. a font with no 'wdth' axis).
 Widget shrinkToFitText(Text text, {double minScale = 0.75, bool condensed = false}) => LayoutBuilder(
   builder: (context, constraints) {

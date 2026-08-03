@@ -53,8 +53,8 @@ function str(value: JSONValue | undefined): string {
 /// field days, and the date ranking decides which comes first.
 const ALIASES = ['WFD', 'WINTER FIELD DAY', 'WINTERFIELDDAY', 'WINTER FD', 'WINTER', 'FIELD DAY', 'FIELDDAY']
 
-/// Precomputed beside the option list: both were rebuilt per keystroke, which
-/// is ~120 allocations and an 86-entry scan to answer a question that only
+/// Precomputed beside the option list: rebuilding both per keystroke costs
+/// ~120 allocations and an 86-entry scan to answer a question that only
 /// depends on one digit.
 const PREFIX_ENTRIES = Object.entries(PREFIX_TO_LOCATION)
 
@@ -117,10 +117,10 @@ const ActivityHook = {
               // The RUNNING this setup is for, and the ref's identity.
               //
               // `ref` is the one core-owned key a setup form legitimately sets
-              // (`stateparks` does the same). Without it the form wrote
-              // `ref: null` while `suggest` wrote the year — so the picker's
-              // duplicate guard, which compares type+ref, never matched, and
-              // adding from the search REPLACED a configured setup with a bare
+              // (`stateparks` does the same). Without it the form writes
+              // `ref: null` while `suggest` writes the year — so the picker's
+              // duplicate guard, which compares type+ref, never matches, and
+              // adding from the search REPLACES a configured setup with a bare
               // ref, silently losing class, section, power and every bonus.
               {
                 type: 'field',
@@ -186,7 +186,7 @@ const ActivityHook = {
 
     const now = Date.now()
     // ONE source for which running this is — the label, the ref and the ranking
-    // all read it. Deriving it separately in here is how the suggestion came to
+    // all read it. Deriving it separately in here lets the suggestion
     // advertise next year's running while ranking it as if it were on the air.
     const year = nextRunningYear(now)
 

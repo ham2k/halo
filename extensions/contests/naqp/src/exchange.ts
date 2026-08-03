@@ -5,9 +5,7 @@
 //
 // Separate from index.ts so these can be unit-tested: index.ts calls
 // `defineExtension` at import time, so nothing in it is reachable from
-// `node --test`. Both bugs a review caught here — Alaska's country-file prefix,
-// and a setup key colliding with a core-owned ref slot — lived in exactly that
-// untestable gap.
+// `node --test`.
 
 import type { JSONValue } from "@ham2k/halo-extension-sdk"
 import { annotateCallAgainstCountryFile } from "../../../sdk/src/dxcc.ts"

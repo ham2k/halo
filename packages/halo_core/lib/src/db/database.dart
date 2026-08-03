@@ -166,9 +166,9 @@ class HaLoDatabase extends _$HaLoDatabase {
 
           // The whole upgrade is one transaction. `addColumn` is not
           // idempotent and drift only writes `user_version` once this
-          // returns, so a step that failed partway used to leave the earlier
+          // returns, so a step that fails partway would leave the earlier
           // steps applied with the version unchanged — and the next open
-          // re-ran them, hitting `duplicate column name` for reads too,
+          // re-runs them, hitting `duplicate column name` for reads too,
           // permanently.
           await m.database.transaction(() async {
             if (from < 2) {

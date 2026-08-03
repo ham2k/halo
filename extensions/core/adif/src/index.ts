@@ -4,8 +4,8 @@
 // ADIF export. Lives in the extension runtime (DESIGN.md §4: export hooks are
 // extension territory) and reuses the published ham-js-libs for dates and
 // mode/submode mapping. Deliberately minimal compared to app-polo's
-// template-driven exporter — activity/contest extensions will contribute their
-// own fields via adifFieldsForOneQSO hooks in a later phase.
+// template-driven exporter — activity/contest extensions contribute their
+// own fields via `adifFields` hooks.
 
 import { fmtADIFDate, fmtADIFTime } from "@ham2k/lib-format-tools"
 import { adifModeAndSubmodeForMode } from "@ham2k/lib-operation-data"
@@ -63,7 +63,7 @@ function baseRowFor(
 ): string {
   const our = (qso.our ?? {}) as Record<string, unknown>
   const their = (qso.their ?? {}) as Record<string, unknown>
-  // The merged lookup guess (Lookups feature, ham2k/app-halo-dist#8)
+  // The merged lookup guess
   // stays nested under `their.guess` rather than flattened onto
   // `their` itself — fall back to it for fields the operator never
   // manually entered, same convention as app-polo's ADIF exporter.

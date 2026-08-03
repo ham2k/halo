@@ -38,12 +38,11 @@ export function createTranslator(resources: Record<string, any>, currentLocale: 
     // probes for Intl.PluralRules, does not find it under QuickJS-NG, and logs
     // "Your environment seems not to be Intl API compatible" through the host
     // log on EVERY translator build — and createCachedTranslator builds one per
-    // extension per locale, so that was live noise on every platform after the
-    // engine swap (macOS and iOS had Intl under JavaScriptCore before it).
+    // extension per locale, so that is live noise on every platform.
     //
     // Declaring v3 makes the supported plural shape a decision rather than a
-    // silent fallback. It is inert for correctness today: all 26 catalogs were
-    // checked and none uses a plural-suffixed key in either shape, and no call
+    // silent fallback. It is inert for correctness today: no catalog uses a
+    // plural-suffixed key in either shape, and no call
     // site passes `count` to t() — the one place that needs a plural spells it
     // out with a ternary (core/scoring/src/scoring.ts). If a catalog ever does
     // want plurals, v3's `key`/`key_plural` pair is what will work here.

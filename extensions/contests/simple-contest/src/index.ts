@@ -5,7 +5,7 @@
 // exchange, one point per contact, dupes on the same band+mode. Ported from
 // app-polo's SimpleContestExtension.
 //
-// It is deliberately the first contest ported (docs/design/contests.md §6): it
+// It is deliberately minimal (docs/design/contests.md §6): it
 // exercises the whole pipeline — operation setup, a typed exchange, scoring,
 // and both ADIF and Cabrillo export — with no data files, serial numbers or
 // multipliers to obscure the infrastructure work.
@@ -114,8 +114,8 @@ const ActivityHook = {
     // Off-contest, contribute nothing. This is an OPTIMIZATION, not the rule:
     // the core already refuses a primary field to any activity the operation
     // isn't running (halo_widgets' `_textControls`), so forgetting this guard
-    // is invisible to the operator. What it saves is the work below — a country
-    // -file annotation per keystroke-triggered refresh, in the JS isolate,
+    // is invisible to the operator. What it saves is the work below, run per
+    // keystroke-triggered refresh in the JS isolate,
     // multiplied by every contest extension the user happens to have enabled.
     if (!refOfType(args.operation, TYPE)) return []
 
@@ -270,8 +270,8 @@ const ExportHook = {
   async generateExport(args: ExportRequest, ctx: HookContext): Promise<ExportResult> {
     // Only the two exportTypes `suggestExportOptions` above offers. Belt and
     // braces alongside the keyed `invokeOne` below: a hook that answers for an
-    // exportType it never offered is how the ADIF delegation recursed into
-    // itself in the first place.
+    // exportType it never offered makes the ADIF delegation recurse into
+    // itself.
     if (args.exportType !== 'cabrillo' && args.exportType !== 'contest-adif') {
       return { filename: '', mimeType: '', content: '' }
     }
@@ -324,7 +324,7 @@ async function hooksInvokeAdif(args: ExportRequest, _ctx: HookContext): Promise<
   const { hooks } = await import("@ham2k/halo-extension-sdk")
   // invokeOne, NOT invokeAll: the fan-out includes this contest's own
   // `generateExport`, which would take the same ADIF branch and delegate
-  // again — unbounded recursion that only surfaced as a 30s export timeout.
+  // again — unbounded recursion.
   const entries = await hooks.invokeOne('export', 'adif', 'generateExport', {
     operation: args.operation,
     qsos: args.qsos,

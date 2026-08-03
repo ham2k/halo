@@ -23,7 +23,7 @@ export interface HookContext {
   /// packages/halo_build_tools/lib/src/edition.dart), for a hook whose
   /// static configuration must vary per-edition (e.g. SOTA's OAuth client:
   /// each edition's app identity is registered as its own client with
-  /// SOTA's Keycloak, ham2k/app-halo-dist#253).
+  /// SOTA's Keycloak).
   edition?: string
   /// Fetches one operation's QSON by uuid, with `uuid` folded in — the same
   /// shape hooks receive as an `operation` argument (see `qsonPayloadFor`
@@ -185,7 +185,7 @@ export interface Ref {
 }
 
 /// A fragment of an operation's title/subtitle sentence, contributed by one
-/// ref (ham2k/app-halo-dist#174) — `title`/`for`/`at` are alternative ways
+/// ref — `title`/`for`/`at` are alternative ways
 /// to phrase the fragment (the core picks one wording per group and joins
 /// with a LOCALIZED "for"/"at", never hardcoded English); `subtitle` is
 /// free-form detail shown below the title. Only return one for the ref type
@@ -367,8 +367,8 @@ export interface TextInputDescriptor {
 /// accept the top hit — Space still advances afterwards, because that is what
 /// an operator's hands expect on every field.
 ///
-/// The set is INLINE. §5.3 sketched a registered `optionSet` for large sets;
-/// that was deferred at M5, because nothing can currently write rows into the
+/// The set is INLINE. A registered `optionSet` for large sets (sketched in
+/// §5.3) is deferred: nothing can currently write rows into the
 /// lookups table (the host exposes three READ calls and no writer) and the
 /// largest set any real contest puts in one descriptor is a few hundred
 /// entries — small next to the QSO log the scoring hooks already ship on every
@@ -593,8 +593,8 @@ export interface ExportOption {
   ///
   /// A contest that started at a break, or ended at one, otherwise puts the
   /// WHOLE operation into its Cabrillo, including contacts made when it wasn't
-  /// running. That is a false claim in a submitted file, and it is the same
-  /// mistake the scorer used to make before §5.1.3 gated it.
+  /// running. That is a false claim in a submitted file — the same mistake
+  /// §5.1.3 gates in the scorer.
   ///
   /// Omit it for an export that genuinely covers the whole log, like the full
   /// ADIF. On an unsegmented operation it changes nothing either way.
@@ -1078,7 +1078,7 @@ export interface AccountHook {
   fields?: Localizable<AccountField[]>
   /// A plain config, or a function for a client that varies per build
   /// edition (`ctx.edition`) — e.g. SOTA registers a separate Keycloak
-  /// client per edition (ham2k/app-halo-dist#253). Called the same way any
+  /// client per edition. Called the same way any
   /// other hook method is (`fn(args, ctx)`, `args` always `{}`) — see
   /// docs/extensions/hooks.md's `account` section.
   oauth2?: OAuth2Config | ((args: Record<string, never>, ctx: HookContext) => OAuth2Config | Promise<OAuth2Config>)
@@ -1245,7 +1245,7 @@ export interface DataFileDefinition {
   /// Character encoding of the fetched file. When omitted the host uses the
   /// response's Content-Type charset, defaulting to `'utf-8'`. Set this
   /// (`'latin1'` / `'iso-8859-1'` / `'ascii'`) to OVERRIDE a server that sends
-  /// a wrong or missing charset for a non-UTF-8 source (#317).
+  /// a wrong or missing charset for a non-UTF-8 source.
   encoding?: string
 
   category?: string

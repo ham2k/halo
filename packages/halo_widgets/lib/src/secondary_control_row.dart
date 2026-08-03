@@ -564,8 +564,8 @@ class _SecondaryControlRowState extends State<SecondaryControlRow> with SingleTi
                   // AnimatedSize (rather than a manual cross-fade) animates
                   // the height change between the single-line strip and the
                   // multi-row grid — the content swap itself stays instant
-                  // (only one of the two is ever built, matching the row's
-                  // pre-animation behavior). The Row and Wrap below are
+                  // (only one of the two is ever built). The Row and Wrap
+                  // below are
                   // different widget types, so Flutter already rebuilds
                   // this subtree fresh on every toggle regardless — each
                   // chip's GlobalKey (`_animatedChipKeyFor`) is what

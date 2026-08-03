@@ -16,10 +16,8 @@
 // surface. `notes` needs the call-notes extension, which this module has no
 // access to, so a rule gated on it is intentionally treated as non-matching
 // — a notice gated on it simply never shows, the same safe direction as a
-// user whose value isn't in the list. `countries`/`ituRegions` used to be in
-// that same boat (HaLo had no ISO country code / ITU region for the
-// operator) but HALO-52 closed that gap — see [countryCode]/[ituRegion]
-// below — so both now match for real.
+// user whose value isn't in the list. `countries`/`ituRegions` match for
+// real — see [countryCode]/[ituRegion] below.
 
 /// The operator + app facts the notice rules are evaluated against. Mirrors
 /// app-polo's `templateData.operator`/`app` plus the callsign-derived filter
@@ -40,11 +38,10 @@ class NoticeContext {
   final String? continent;
 
   /// Lowercase ISO country code (e.g. `us`) — matched against the notice's
-  /// `countries` filter. HALO-52.
+  /// `countries` filter.
   final String? countryCode;
 
   /// ITU region (1/2/3) — matched against the notice's `ituRegions` filter.
-  /// HALO-52.
   final int? ituRegion;
 
   /// The app's public version string (e.g. `26.8.0`) — matched against

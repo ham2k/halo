@@ -1,8 +1,8 @@
 // Copyright ©️ 2026 Sebastian Delmont <sd@ham2k.com>
 // SPDX-License-Identifier: MPL-2.0
 //
-// Pure parsing/combining logic for Callsign Notes files ("Hams of Note",
-// ham2k/app-halo-dist#17), kept free of hook/host dependencies so it can be
+// Pure parsing/combining logic for Callsign Notes files ("Hams of Note"),
+// kept free of hook/host dependencies so it can be
 // unit tested with plain `node --test` (see annotate.ts's header comment for
 // the same constraint).
 //
@@ -28,7 +28,7 @@ export type CallNotesIndex = Record<string, CallNoteEntry[]>
 const LEADING_EMOJI =
   /^[\u{1F000}-\u{1FFFF}\u{2300}-\u{23FF}\u{2600}-\u{27BF}\u{2B00}-\u{2BFF}\u{FE0F}\u{200D}]+/u
 
-/// Expansion eligibility (issue #17): the note must read as a plain list of
+/// Expansion eligibility: the note must read as a plain list of
 /// callsign-like tokens — ASCII letters/digits//- only, commas between
 /// tokens, spaces allowed ONLY right after a comma. Anything with emoji or
 /// free-text spacing is descriptive, not an expansion.
@@ -74,7 +74,7 @@ export function combineNotes(entries: CallNoteEntry[] | undefined): { note: stri
 /// The value `//KEY` expands to: the first of the key's entries whose note
 /// is expansion-eligible (see EXPANDABLE above), uppercased — e.g. an entry
 /// `DAN WD4DAN,WD4JMM` expands to "WD4DAN,WD4JMM", which the call field
-/// then treats as an ordinary comma-separated call list (issue #7). Returns
+/// then treats as an ordinary comma-separated call list. Returns
 /// null when no entry qualifies, in which case no expansion is offered.
 export function expansionValueFor(entries: CallNoteEntry[] | undefined): string | null {
   for (const entry of entries ?? []) {

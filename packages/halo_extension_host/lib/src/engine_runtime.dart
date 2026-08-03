@@ -1,8 +1,8 @@
 // Copyright ©️ 2026 Sebastian Delmont <sd@ham2k.com>
 // SPDX-License-Identifier: MPL-2.0
 //
-// Platform boundary for the JS engine. `flutter_js` (QuickJS via dart:ffi)
-// backs native platforms; web has no dart:ffi, so it runs the same kernel +
+// Platform boundary for the JS engine. QuickJS (packages/halo_quickjs, via
+// dart:ffi) backs native platforms; web has no dart:ffi, so it runs the same kernel +
 // extension bundles in a real Web Worker instead, talking to it over
 // postMessage. See engine_runtime_io.dart / engine_runtime_web.dart and
 // js_engine.dart for the conditional-export wiring.

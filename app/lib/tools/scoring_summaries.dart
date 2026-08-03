@@ -1,14 +1,15 @@
 // Copyright ©️ 2026 Sebastian Delmont <sd@ham2k.com>
 // SPDX-License-Identifier: MPL-2.0
 //
-// Reading `operations.local_data.scoring`, which is keyed by SCORER since
-// contest scoring landed (docs/design/contests.md §5.1):
+// Reading `operations.local_data.scoring`, which is keyed by SCORER
+// (docs/design/contests.md §5.1):
 //
 //   {core: {daySections, operationSummary, scoresheet}, cqww: {…}}
 //
-// Before that it was a single flat `{daySections, operationSummary}`, so every
-// consumer that still indexes it directly reads null and silently renders
-// nothing. These helpers are the one place that shape is understood.
+// An older cached blob can still hold the flat pre-scorer-keyed shape
+// (`{daySections, operationSummary}` at the top level), so a consumer that
+// indexes directly reads null and silently renders nothing. These helpers
+// are the one place that shape is understood.
 
 /// Scorer keys in display order: `core` first (dupes/DXCC/bands are the
 /// baseline every operation has), then the rest alphabetically. The scorers

@@ -63,8 +63,7 @@ class HaLoColors extends ThemeExtension<HaLoColors> {
   /// The active-tab indicator on any TabBar (they all sit on the teal
   /// AppBar/pane color, both brightnesses — see theme.dart's tabBarTheme).
   /// Same value in both variants, like [bands]: unlike every ColorScheme
-  /// role, this needs to read the same regardless of brightness, not invert
-  /// (ham2k/app-halo-dist#272).
+  /// role, this needs to read the same regardless of brightness, not invert.
   final Color tabIndicator;
 
   /// The teal accent for text/icons sitting directly on a surface (a section
@@ -175,7 +174,7 @@ class HaLoColors extends ThemeExtension<HaLoColors> {
       Theme.of(context).extension<HaLoColors>() ?? light;
 }
 
-/// [context] is unused now but kept so every call site doesn't need editing
+/// [context] is unused but kept so every call site doesn't need editing
 /// if a context-dependent tweak (e.g. platform-specific tracking) is needed
 /// later.
 ///
@@ -183,10 +182,10 @@ class HaLoColors extends ThemeExtension<HaLoColors> {
 /// style feeds into already applies the ambient `MediaQuery.textScalerOf`
 /// once on its own (Flutter's default), same as every other text style in
 /// the app (`buildHaLoTheme`'s `textTheme` is never manually pre-scaled
-/// either). Pre-multiplying by the scaler here used to double-apply it —
-/// once here, once again when `Text` resolved its effective scaler — so
-/// mono text grew quadratically with the font-scale setting instead of
-/// linearly like the rest of the UI.
+/// either). Pre-multiplying by the scaler here double-applies it —
+/// once here, once again when `Text` resolves its effective scaler — so
+/// mono text would grow quadratically with the font-scale setting instead
+/// of linearly like the rest of the UI.
 TextStyle haloMonoStyle(
   BuildContext context, {
   double? fontSize,
@@ -262,8 +261,8 @@ double spansWidth(
 /// to the browser/OS's color emoji font the way plain HTML does — emoji
 /// glyphs render as nothing without an explicit bundled color-emoji font.
 /// Named here, not just inline on whichever `Text` widget needs it, so the
-/// next emoji use in the app (the issue's own "Emoji(s)" name column, still
-/// unimplemented) doesn't have to rediscover this requirement from scratch.
+/// next emoji use in the app doesn't have to rediscover this requirement
+/// from scratch.
 const String emojiFontFamily = 'NotoColorEmoji';
 
 /// The pubspec-declared asset path backing [emojiFontFamily], shared so
@@ -272,8 +271,7 @@ const String emojiFontFamily = 'NotoColorEmoji';
 const String emojiFontAssetPath = 'assets/fonts/NotoColorEmoji.ttf';
 
 /// A `TextStyle` for rendering a single emoji glyph (e.g. a DXCC entity's
-/// flag) at [fontSize] — proportional, not `haloMonoStyle`'s monospace, per
-/// the issue's "emoji and name...use a proportional font".
+/// flag) at [fontSize] — proportional, not `haloMonoStyle`'s monospace.
 TextStyle emojiStyle({double fontSize = 16}) => TextStyle(fontSize: fontSize, fontFamily: emojiFontFamily);
 
 /// Height cap for dropdown overlays — [DropdownMenu.menuHeight] /
@@ -473,8 +471,8 @@ ThemeData buildHaLoTheme(Brightness brightness) {
       backgroundColor: colorScheme.primary,
       foregroundColor: colorScheme.onPrimary,
       // Every AppBar reads like a windowed title bar, left-aligned next to
-      // any leading content — including on mobile (issue #182), which
-      // otherwise centers per each platform's own convention.
+      // any leading content — including on mobile, which otherwise centers
+      // per each platform's own convention.
       centerTitle: false,
       elevation: 0,
       toolbarHeight: 48.0,
@@ -499,10 +497,10 @@ ThemeData buildHaLoTheme(Brightness brightness) {
       labelColor: colorScheme.onPrimary,
       unselectedLabelColor: colorScheme.onPrimary.withValues(alpha: 0.7),
       // A light blue marker reads as a deliberate active-tab indicator
-      // against the teal AppBar; the old onPrimary indicator was the same
-      // near-white as the label text itself, so it barely registered as its
-      // own element (issue #272). HaLoColors.tabIndicator, not a ColorScheme
-      // role — onPrimaryContainer looked right in dark mode by coincidence
+      // against the teal AppBar; an onPrimary indicator would be the same
+      // near-white as the label text itself and barely register as its
+      // own element. HaLoColors.tabIndicator, not a ColorScheme
+      // role — onPrimaryContainer looks right in dark mode by coincidence
       // (it's #BCE9FF there) but is a near-black #001F29 in light mode,
       // since that role flips meaning across brightness; this exact blue
       // reads well in both, so it isn't tied to either.
@@ -510,7 +508,7 @@ ThemeData buildHaLoTheme(Brightness brightness) {
       // Default M3 hover/focus/pressed overlays are tuned for a
       // surface-colored bar and read as barely-there on this teal
       // background — a bit more opacity so hovering a tab is actually
-      // visible (issue #272).
+      // visible.
       overlayColor: WidgetStateProperty.resolveWith((states) {
         if (states.contains(WidgetState.pressed) || states.contains(WidgetState.focused)) {
           return colorScheme.onPrimary.withValues(alpha: 0.20);
@@ -522,7 +520,7 @@ ThemeData buildHaLoTheme(Brightness brightness) {
       }),
       // M3's TabBar paints its own 1px divider below itself by default
       // (colorScheme.outlineVariant) — a stray hairline under a bar that
-      // otherwise sits flush against the AppBar/pane color (issue #272).
+      // otherwise sits flush against the AppBar/pane color.
       dividerHeight: 0,
     ),
     dividerTheme: DividerThemeData(

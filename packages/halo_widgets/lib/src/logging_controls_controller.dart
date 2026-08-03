@@ -67,8 +67,9 @@ class LoggingControlsController {
   /// nothing is attached.
   bool get isFieldsLocked => _isFieldsLocked?.call() ?? false;
 
-  /// Puts the keyboard back on the callsign field — the bottom rung of
-  /// APP-19's focus ladder, used when Escape ends an edit from the list: a
+  /// Puts the keyboard back on the callsign field — the bottom rung of the
+  /// focus ladder (docs/design/logging-fields.md), used when Escape ends an
+  /// edit from the list: a
   /// fresh start for composing the next contact, not a return to wherever
   /// the operator happened to be before arrowing up into the list.
   void focusCall() => _focusCall?.call();

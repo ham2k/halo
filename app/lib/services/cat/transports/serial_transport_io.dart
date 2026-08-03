@@ -213,9 +213,9 @@ List<SerialPortOption> availableSerialPorts() {
     final port = SerialPort(name);
     // Each attribute in its own try. libserialport reads several of these by
     // opening the port, and on macOS that fails with EAGAIN for every port —
-    // so fetching them together (as this used to) threw on `description` and
-    // silently cost us the USB identity as well, leaving the picker showing
-    // bare device names like `cu.usbserial-01AF7D0E0`.
+    // so fetching them together would throw on `description` and silently
+    // cost us the USB identity as well, leaving the picker showing bare
+    // device names like `cu.usbserial-01AF7D0E0`.
     T? probe<T>(String field, T Function() read) {
       try {
         return read();

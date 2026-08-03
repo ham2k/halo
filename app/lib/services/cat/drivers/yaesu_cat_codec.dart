@@ -140,8 +140,8 @@ int? parseFrequencyParams(String params) {
 
 /// The radio's own status packet, which is what Auto-Information actually
 /// pushes when the operator turns the dial — NOT `FA`/`MD`, which only ever
-/// come back as answers to a read. Ignoring `IF` is why a connected radio
-/// used to move only when the 5-second poll came round.
+/// come back as answers to a read. Ignoring `IF` would leave a connected
+/// radio moving only when the 5-second poll comes round.
 ///
 /// Layout, derived from a live FT-891 rather than from the manual's table
 /// (`IF001014233700+000000200000;` alongside its own `FA014233700;` and

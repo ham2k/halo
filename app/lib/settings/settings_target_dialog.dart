@@ -18,7 +18,7 @@
 // docs/extensions/settings.md already documents) so two panels sharing a
 // key — or an extension element colliding with a core one — can never
 // misroute a commit or an action dispatch; core-group elements stay
-// bare-keyed, unchanged from before this file scanned extensions too.
+// bare-keyed.
 // `type: 'action'` elements and `fieldType: 'account'` fields are both
 // wired up (onAction dispatches through [ExtensionService.runSettingsAction];
 // onManageAccount reuses [showAccountDialogByKey], reloading once its pane
@@ -410,7 +410,7 @@ class _TargetSettingsFormState extends State<_TargetSettingsForm> {
           // FormRenderer widgets swapped/composited — the extended fields
           // are simply spliced into the same array once _showExtended
           // flips, so they're absent from the tree (and from find.text in
-          // a test) until then, same contract as before, with a plain
+          // a test) until then, with a plain
           // widget subtree AnimatedSize can safely resize around.
           AnimatedSize(
             duration: const Duration(milliseconds: 220),

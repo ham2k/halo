@@ -1,7 +1,7 @@
 // Copyright ©️ 2026 Sebastian Delmont <sd@ham2k.com>
 // SPDX-License-Identifier: MPL-2.0
 //
-// Operation Exports Panel (ham2k/app-halo-dist#4): every export option the
+// Operation Exports Panel: every export option the
 // extensions suggest for this operation, with a checkbox each and a button
 // each, over a sync-status summary, under a settings gear.
 //
@@ -107,7 +107,7 @@ Future<void> showOperationExportPanel(
         builder: (context) => IconButton(
           icon: Icon(
             resolveIconName('tune'),
-            // No hover tooltips in this app (#433) — the accessible name is
+            // No hover tooltips in this app — the accessible name is
             // the only name this button has.
             semanticLabel: t.operation.export.settingsButton,
           ),
@@ -204,7 +204,7 @@ class _OperationExportPanelState extends State<OperationExportPanel> {
   /// The operation's active activity controls, for their declared accent
   /// colors. An export names the `refType` it covers, so a park's file can
   /// wear the same green the POTA row wears in the operation sheet
-  /// (`colorForRefType`, issue #187) instead of a palette invented here.
+  /// (`colorForRefType`) instead of a palette invented here.
   List<Map<String, dynamic>> _controls = const [];
 
   final Map<String, bool> _selected = {};
@@ -384,8 +384,7 @@ class _OperationExportPanelState extends State<OperationExportPanel> {
         case ExportAction.export:
           // Only when the operator actually shared. Reporting unconditionally
           // would announce a completed share for a sheet they dismissed —
-          // worse than the silence this replaced, because it asserts an
-          // outcome that didn't happen.
+          // asserting an outcome that didn't happen.
           if (await exports.shareFiles(files)) {
             statusBar.setMessage(
               key: 'export:status',
@@ -618,7 +617,7 @@ class _OperationExportPanelState extends State<OperationExportPanel> {
                   resolveIconName(exportActionIcon(rowAction)),
                   // Names the FILE, not just the verb: a column of identical
                   // "Download" buttons tells a screen-reader user nothing about
-                  // which one they are on, and this app has no tooltips (#433).
+                  // which one they are on, and this app has no tooltips.
                   semanticLabel: _rowLabel(rowAction, filename),
                 ),
                 onPressed: _busy ? null : () => _run(rowAction, [option]),
@@ -639,7 +638,7 @@ class _OperationExportPanelState extends State<OperationExportPanel> {
 
   /// The option's icon, circled in the activity's accent when it has one —
   /// the same treatment the activity's own row gets in the operation sheet
-  /// (`_accentIcon`, issue #187), so the POTA export and the POTA row are
+  /// (`_accentIcon`), so the POTA export and the POTA row are
   /// recognisably the same thing.
   Widget _optionIcon(Map<String, dynamic> option, Color? activityColor, HaLoColors colors) {
     final icon = Icon(
@@ -696,7 +695,7 @@ class _OperationExportPanelState extends State<OperationExportPanel> {
     );
   }
 
-  /// Just the way out. Everything that DOES something lives in the list now,
+  /// Just the way out. Everything that DOES something lives in the list,
   /// so this stays a plain dismissal — nothing here is destructive or
   /// unsaved, and the exports have already happened by the time it's pressed.
   Widget _buildFooter(BuildContext context, ThemeData theme) {

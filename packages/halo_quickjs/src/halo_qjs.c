@@ -121,9 +121,6 @@ static char *halo_to_cstring(JSContext *ctx, JSValueConst v);
 
 // An unhandled promise rejection is otherwise completely silent: nothing
 // throws, no eval returns non-zero, and the reaction simply never runs.
-// flutter_js took a hostPromiseRejectionHandler and logged it on
-// Android/Windows/Linux, so dropping this would be a regression on the
-// platforms that had it — and it is the first time macOS/iOS get it at all.
 //
 // Reported on the same channel as everything else rather than through a
 // separate callback: the host already routes 'polo' messages to its log, and
@@ -246,10 +243,10 @@ HaloQjs *halo_qjs_new(void) {
   // defaults to 1MB, but an extension-host isolate thread gets only about
   // that much on Windows and Android, so QuickJS never trips its own check,
   // the OS stack overflows first, and the process dies with an uncatchable
-  // fault - no Dart error, nothing on Sentry. That is #349, and it took down
-  // first-run onboarding on Windows. Defaulting here rather than relying on
-  // the caller means the safe value is what you get if Phase 3 forgets to set
-  // one; Linux threads default to 8MB and can raise it back to 2MB.
+  // fault - no Dart error, nothing on Sentry. Defaulting here rather than
+  // relying on the caller means the safe value is what you get if the caller
+  // forgets to set one; Linux threads default to 8MB and can raise it back
+  // to 2MB.
   JS_SetMaxStackSize(h->rt, 512 * 1024);
   return h;
 }
@@ -315,9 +312,8 @@ static char *halo_format_exception(JSContext *ctx) {
   // Coercing the exception can itself throw — `throw Object.create(null)` has
   // no toString, and a Symbol cannot be converted at all. Returning NULL then
   // produced a hook failure with NO diagnostic text whatsoever
-  // ("evaluating invokeHook: "), and left the new exception pending. This is
-  // the same defect the eval path already guards against; this was the last
-  // site still doing it.
+  // ("evaluating invokeHook: "), and left the new exception pending. The eval
+  // path guards against the same defect.
   if (!msg) {
     if (JS_HasException(ctx)) {
       JSValue stranded = JS_GetException(ctx);
@@ -350,15 +346,14 @@ static char *halo_format_exception(JSContext *ctx) {
 // EVERY entry into JS goes through these — halo_qjs_eval and
 // halo_qjs_execute_pending_job both. Keeping the rule in one place is the
 // point: the deadline, the stack anchor and the interrupt latch are all
-// per-outermost-call state, and each was got wrong at least once when this
-// logic lived inline at a single call site.
+// per-outermost-call state.
 static void halo_enter(HaloQjs *h) {
   if (h->depth == 0) {
     // A Dart isolate is not pinned to one OS thread, so QuickJS's recorded
     // stack_top can belong to a thread we are no longer on — re-anchor it.
     // Only at depth 0: re-anchoring a nested entry would hand that frame a
     // full fresh budget measured from an already-deep sp and overflow the
-    // real OS stack, which is #349's failure mode.
+    // real OS stack.
     JS_UpdateStackTop(h->rt);
     if (h->budget_ms > 0) h->deadline_ms = halo_now_ms() + h->budget_ms;
     h->interrupted = 0;
@@ -407,11 +402,10 @@ int halo_qjs_eval(HaloQjs *h, const char *code, const char *filename, char **out
 
 int halo_qjs_execute_pending_job(HaloQjs *h) {
   if (!h) return 0;
-  // A pending job is a JS entry point in its own right. Without this it armed
-  // no deadline (a reaction inherited whatever the LAST eval left behind —
-  // measured: a benign reaction killed by a deadline that had expired 350ms
-  // before it started), re-anchored no stack, and ran at depth 0, so a
-  // reaction re-entering the host re-anchored mid-stack: #349 again.
+  // A pending job is a JS entry point in its own right. Without this it arms
+  // no deadline (a reaction inherits whatever the LAST eval left behind),
+  // re-anchors no stack, and runs at depth 0, so a reaction re-entering the
+  // host re-anchors mid-stack and overflows the real OS stack.
   halo_enter(h);
   JSContext *pctx = NULL;
   int r = JS_ExecutePendingJob(h->rt, &pctx);

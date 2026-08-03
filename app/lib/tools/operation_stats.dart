@@ -6,7 +6,7 @@ import 'package:halo_core/halo_core.dart';
 
 import '../i18n/strings.g.dart';
 
-/// The operation's default statistics (issue #40): count + duration, "since
+/// The operation's default statistics: count + duration, "since
 /// last" (only while the last QSO is recent), and last-10 / last-100 Q/h
 /// rates. Mirrors app-polo's OpInfo. Shared by LoggingControls' compact info
 /// row and the wide-layout Information Panel so both stay in sync.

@@ -139,9 +139,8 @@ void main() {
     expect(find.text('FlexRadio (SmartSDR) — Network'), findsOneWidget);
     expect(find.text('Yaesu FT-891 — USB serial'), findsOneWidget);
     // The caveat marks the DISTINCTION, and it is now down to one. The Flex
-    // (a FLEX-6600), the FT-891 over its own USB bridge, and — as of
-    // 2026-08-01 — the IC-705 over WiFi have all met their hardware, the last
-    // held for ten minutes through the app itself rather than a bench tool.
+    // (a FLEX-6600), the FT-891 over its own USB bridge, and the IC-705 over
+    // WiFi have all met their hardware.
     //
     // What still carries it is Icom CI-V over USB SERIAL: same driver, but
     // that pairing has never been pointed at a radio. The flag lives on the

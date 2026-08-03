@@ -3,7 +3,7 @@
 
 import 'dart:convert' show jsonEncode;
 
-/// Dev-only structured, tagged logging (ham2k/app-halo-dist#237). Bakes in the
+/// Dev-only structured, tagged logging. Bakes in the
 /// "instrument + grep the console" pattern instead of sprinkling one-off
 /// `debugPrint`s: [log] emits a stable `[tag] {json}` line to the console (so
 /// `read_console_messages` picks it up) AND buffers the event so agents can

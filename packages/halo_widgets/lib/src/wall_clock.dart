@@ -3,10 +3,10 @@
 //
 // A shared heartbeat for UI that displays live wall-clock time (the Time
 // chip's HH:MM:SSz, relative "Ns ago" labels, etc.). Widgets that tick on
-// their own timer each rebuild whatever State owns the timer — historically
-// the Time chip's timer lived on _LoggingControlsState and rebuilt the whole
-// logging panel once per second — and several independent timers tick out of
-// phase, costing one frame each. One shared notifier fixes both: subscribers
+// their own timer each rebuild whatever State owns the timer — a per-State
+// ticker can rebuild a whole panel once per second — and several independent
+// timers tick out of phase, costing one frame each. One shared notifier
+// fixes both: subscribers
 // rebuild only their own leaf subtree, and every tick lands on a wall-clock
 // second boundary so all of them coalesce into the same frame (and the
 // displayed time never lags the real clock by a stray fraction).

@@ -2,8 +2,8 @@
 // SPDX-License-Identifier: MPL-2.0
 //
 // Hardcoded callsign-annotation pre-step (not a registered `lookup` hook —
-// always runs first, regardless of any other hook's declared priority, per
-// ham2k/app-halo-dist#8). Parses the callsign's structure and annotates it
+// always runs first, regardless of any other hook's declared
+// priority). Parses the callsign's structure and annotates it
 // against the bundled DXCC country file, the same way `core/scoring` does.
 //
 // `annotateCallAgainstCountryFile`/`flagForDxccCode` come in by relative
@@ -27,8 +27,8 @@ const PORTABLE_INDICATORS = new Set(['P', 'M', 'AM', 'MM'])
 // QSON schema) doesn't declare — the same way every hook result already
 // crosses the Dart/JS bridge as a plain untyped map, and
 // `mergeLookupIntoGuess` merges any field generically, not just the ones
-// CallInfo declares. `flag` is used by the QSO row's DX/domestic column
-// (ham2k/app-halo-dist#2); `ituRegion`/`countryCode` (HALO-52) let
+// CallInfo declares. `flag` is used by the QSO row's DX/domestic column;
+// `ituRegion`/`countryCode` let
 // `modeForFrequency` prefer/exclude region- or country-scoped band-plan
 // segments for the operator's own entity, without porting
 // lib-dxcc-data's entity table into Dart. Widening only these fields,

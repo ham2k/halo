@@ -3,12 +3,13 @@
 //
 // North American QSO Party. Ported from app-polo's NAQPExtension.
 //
-// The sixth contest ported (docs/design/contests.md M4). What it exercises that
-// the others didn't: TWO primary fields writing to one ref — NAQP sends a name
+// What it exercises that
+// the other contests don't: TWO primary fields writing to one ref — NAQP sends
+// a name
 // and a location, and both are typed on every QSO.
 //
-// Its location set is inline (`locations.ts`), which §5.3's own dataset table
-// already called for and §5.3's M4 amendment explains generally.
+// Its location set is inline (`locations.ts`), per docs/design/contests.md
+// §5.3's dataset table.
 
 import { contestScorer, defineExtension, exportFilename, startMillisOf } from "@ham2k/halo-extension-sdk"
 import type {
@@ -318,7 +319,7 @@ const ExportHook = {
   async generateExport(args: ExportRequest, ctx: HookContext): Promise<ExportResult> {
     // Only the two exportTypes offered above. Belt and braces alongside the
     // keyed `invokeOne` below: a hook answering for an exportType it never
-    // offered is how the ADIF delegation once recursed into itself.
+    // offered makes the ADIF delegation recurse into itself.
     if (args.exportType !== 'cabrillo' && args.exportType !== 'contest-adif') {
       return { filename: '', mimeType: '', content: '' }
     }
@@ -361,7 +362,7 @@ const ExportHook = {
     const { hooks } = await import("@ham2k/halo-extension-sdk")
     // invokeOne, NOT invokeAll: the fan-out includes this contest's own
     // `generateExport`, which would take the same ADIF branch and delegate
-    // again — unbounded recursion that only surfaced as an export timeout.
+    // again — unbounded recursion.
     const entries = await hooks.invokeOne('export', 'adif', 'generateExport', {
       operation: args.operation,
       qsos: args.qsos,

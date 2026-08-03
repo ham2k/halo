@@ -388,10 +388,9 @@ class ExportService {
   ///
   /// Nothing here touches `dart:io` or `path_provider`, neither of which
   /// works on web — which is why this can't reuse [saveToDisk] or
-  /// [shareFiles]. Before it existed, exporting from the browser either threw
-  /// (one file: `File('')` on the dummy location `file_selector_web` returns)
-  /// or silently did nothing at all (several: a null directory, which reads
-  /// as a user cancel).
+  /// [shareFiles]: on web those either throw (one file: `File('')` on the
+  /// dummy location `file_selector_web` returns) or silently do nothing at
+  /// all (several: a null directory, which reads as a user cancel).
   ///
   /// One download per file rather than a zip: a browser will ask about the
   /// second and subsequent downloads from a page, which is a prompt the

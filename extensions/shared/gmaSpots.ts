@@ -24,7 +24,7 @@ const GMA_SPOT_URL = 'https://www.cqgma.org/spotsmart2.php'
 /// `application/x-www-form-urlencoded`, by hand.
 ///
 /// QuickJS has no `URLSearchParams` — it is a Web API, not part of the
-/// language — and reaching for it here threw `URLSearchParams is not defined`
+/// language — so reaching for it here throws `URLSearchParams is not defined`
 /// at the first real spot. Spaces become `+` rather than `%20`, matching what
 /// app-polo's `URLSearchParams` produced and what the endpoint has always been
 /// fed.
@@ -39,7 +39,7 @@ export function formEncode(fields: Record<string, string>): string {
 /// `??` is not enough for any of the callsigns below: the core hands over an
 /// EMPTY STRING as readily as it omits a key — `models.dart`'s `ourCall` getter
 /// coerces a null column to `''` — and `'' ?? fallback` is `''`. That silently
-/// posted a spot with no spotter, which reads on the cluster as a spot nobody
+/// posts a spot with no spotter, which reads on the cluster as a spot nobody
 /// sent.
 function firstNonEmpty(...values: unknown[]): string {
   for (const value of values) {

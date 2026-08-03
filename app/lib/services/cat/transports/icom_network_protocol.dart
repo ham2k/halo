@@ -95,20 +95,18 @@ List<int> zeros(int n) => List<int>.filled(n, 0);
 /// choose. A single 1500-byte packet carries 371 pairs, so answering every one
 /// would put tens of thousands of packets on the wire in reply to one inbound
 /// packet — roughly a 30,000x amplification, driven synchronously inside a
-/// socket callback. Bounding each pair separately (the first version of this)
-/// does not help, because it is the pair COUNT that is unbounded. Nothing
-/// legitimate can ask for more than the send buffer holds, since anything
-/// older than that is gone.
+/// socket callback. Bounding each pair separately does not help, because it
+/// is the pair COUNT that is unbounded. Nothing legitimate can ask for more
+/// than the send buffer holds, since anything older than that is gone.
 List<int> icomRetransmitRange(List<int> bytes, {required int limit}) {
   final wanted = <int>[];
   for (var at = 16; at + 4 <= bytes.length && wanted.length < limit; at += 4) {
     final from = bytes[at] | (bytes[at + 1] << 8);
     final to = bytes[at + 2] | (bytes[at + 3] << 8);
     // A reversed pair needs no guard of its own: `seq <= to` is false from the
-    // start, so it contributes nothing. An `if (to < from) continue;` stood
-    // here claiming to stop a count running past 65535, and mutation testing
-    // showed deleting it changed no outcome — the loop condition, not the
-    // guard, is what makes it safe. The test pins that.
+    // start, so it contributes nothing. An `if (to < from) continue;` here
+    // would be dead code — the loop condition, not a guard, is what makes
+    // this safe, and the test pins that.
     for (var seq = from; seq <= to && wanted.length < limit; seq++) {
       wanted.add(seq);
     }
@@ -229,12 +227,12 @@ List<int> buildSerialOpen(int local, int remote, int innerSeq, {int magic = 0x05
       0xc0, 0x01, 0, (innerSeq >> 8) & 0xFF, innerSeq & 0xFF, magic,
     ];
 
-/// The datagram length is a full LE32 and the CI-V length an LE16; both used
-/// to be written as a single byte with the high bytes hardcoded to zero. That
-/// is byte-identical for every frame we send today — the driver's longest is
-/// about 11 bytes — and silently corrupts the first frame past 234 (a 0x1A 05
+/// The datagram length is a full LE32 and the CI-V length an LE16 — never a
+/// single byte with the high bytes hardcoded to zero. That shortcut is
+/// byte-identical for every frame we send today — the driver's longest is
+/// about 11 bytes — but silently corrupts the first frame past 234 (a 0x1A 05
 /// settings block, memory contents), which would land as a wrong length the
-/// radio cannot parse. Fixed while it costs nothing rather than when it does.
+/// radio cannot parse.
 List<int> buildCivData(int local, int remote, int innerSeq, List<int> civ) => [
       ...le32(0x15 + civ.length),
       0, 0, 0, 0,
@@ -249,11 +247,11 @@ List<int> unwrapCiv(List<int> b) => b.sublist(21);
 /// Stamps a packet with the outer sequence number and returns the key a
 /// retransmit request will quote back, produced together on purpose.
 ///
-/// They used to be computed in two places: the wire got `counter & 0xFFFF`
-/// while the retransmit map was keyed on the raw `counter`. Past 65535 the
-/// wire wrapped and the key did not, so every retransmit lookup missed —
-/// permanently, and silently, about 1h49m into a session at ten idles a
-/// second. Returning both from one function is what stops that recurring.
+/// Computed in two places, they drift: a wire that gets `counter & 0xFFFF`
+/// while the retransmit map is keyed on the raw `counter` wraps past 65535
+/// where the key does not, so every retransmit lookup misses — permanently,
+/// and silently, about 1h49m into a session at ten idles a second.
+/// Returning both from one function is what stops that.
 ({int key, List<int> packet}) icomStampSequence(List<int> bytes, int counter) {
   if (bytes.length < 8) throw ArgumentError('a packet with a sequence field is at least 8 bytes');
   final seq = counter & 0xFFFF;
@@ -274,13 +272,11 @@ int icomReadSequence(List<int> b) => b.length < 8 ? -1 : b[6] | (b[7] << 8);
 
 /// How the radio answered our stream request.
 ///
-/// Read as a POSITIVE test. This used to hunt for 0xffff — first at offsets
-/// 56..57 (constant zero in an accepted answer, so it could never fire), then
-/// at the port echo at 66/70. Both were wrong in the same way: they looked for
-/// a refusal encoding that **no capture has ever shown**, and treated
-/// "0xffff not found" as success. An auth failure carries zeros at 66..71 and
-/// so sailed straight through — the same false-success the offset-56 fix was
-/// written to eliminate, re-entered by a different door.
+/// Read as a POSITIVE test — never a hunt for a refusal marker (e.g. 0xffff
+/// at some offset) with "marker not found" treated as success. No capture
+/// has ever shown such a refusal encoding, and an auth failure carries zeros
+/// at 66..71, so a negative test sails it straight through as a false
+/// success.
 ///
 /// The discriminator is bytes 48..50 plus byte 64, from kappanhang
 /// (github.com/nonoo/kappanhang, MIT, © 2020 Norbert Varga HA2NON and Akos
@@ -309,14 +305,12 @@ IcomStreamAnswer readStreamAnswer(List<int> b) {
   if (b[48] == 0x00 && b[49] == 0x00 && b[50] == 0x00) {
     if (b[64] == 0x01) return IcomStreamAnswer.radioDisconnected;
     if (b[64] == 0x00) {
-      // The port echo is corroboration, not the primary test. Replacing the
-      // old 0xffff hunt with the 48..50 discriminator was right, but it threw
-      // the echo away entirely — and every accepted answer we have captured
-      // carries the radio's serial port there. A zero or 0xffff echo on a
-      // header that otherwise says "accepted" is not something we understand,
-      // and the one thing this function must never do is round an answer it
-      // cannot read up to success: that is what produced a connected row that
-      // never reads, twice.
+      // The port echo is corroboration, not the primary test — but do not
+      // drop it: every accepted answer we have captured carries the radio's
+      // serial port there. A zero or 0xffff echo on a header that otherwise
+      // says "accepted" is not something we understand, and the one thing
+      // this function must never do is round an answer it cannot read up to
+      // success: that is what produces a connected row that never reads.
       final serialEcho = (b[66] << 8) | b[67];
       if (serialEcho == 0x0000 || serialEcho == 0xffff) return IcomStreamAnswer.unknown;
       return IcomStreamAnswer.accepted;

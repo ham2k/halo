@@ -4,7 +4,7 @@
 // Non-web fallback: every other platform has a filesystem and a save dialog
 // or a share sheet, so ExportService never routes here. It throws rather
 // than no-opping — reaching it means the platform branch is wrong, and a
-// silent no-op is exactly the failure mode web exports already had.
+// silent no-op would hide exactly that.
 
 void downloadFile({required String filename, required String content, String? mimeType}) {
   throw UnsupportedError('downloadFile is web-only; use saveToDisk or shareFiles instead.');

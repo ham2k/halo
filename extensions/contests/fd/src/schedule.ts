@@ -42,9 +42,9 @@ export function endOfFieldDay(year: number): number {
 /// The YEAR whose running is the next one — the single source for "which
 /// running is this?".
 ///
-/// Both the ranking and the suggestion's label read this. They used to decide
-/// it separately, against different ends of the event, and disagreed for the 27
-/// hours in between: the picker offered next year's running while ranking it as
+/// Both the ranking and the suggestion's label read this. Deciding it
+/// separately, against different ends of the event, disagrees for the 27
+/// hours in between: the picker offers next year's running while ranking it as
 /// if it were on the air.
 ///
 /// Rolls once the running is a fortnight past, so a list ordered by it reads as
@@ -69,7 +69,7 @@ export function isFieldDayOn(nowMillis: number): boolean {
 /// Relevance for a running [days] away, given whether it is on RIGHT NOW.
 ///
 /// `days <= 0` alone is not "on now": `daysUntil` stays negative for the
-/// fortnight after the event, so without the `isOn` term the contest sat at
+/// fortnight after the event, so without the `isOn` term the contest sits at
 /// maximum relevance for two weeks after it finished.
 ///
 /// This only ORDERS the suggestion list, and only against other suggestions

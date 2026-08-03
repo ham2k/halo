@@ -7,7 +7,7 @@
 // a built-in USB-to-serial bridge and has no network option at all.
 //
 // Ported from app-polo's Ft891Driver.js, which shipped without ever being
-// tested against a radio. That is no longer where this stands: it has been
+// tested against a radio. This version, unlike polo's, has been
 // run against a real FT-891 (4800 baud, over the radio's own CP2105 USB
 // bridge — NOT a Digirig, which carries audio and PTT but no CAT at all).
 // Both directions are verified on hardware. Reading end to end, including
@@ -41,7 +41,7 @@ class Ft891Driver extends EquipmentDriver {
 
   /// The FT-891's built-in "USB to Dual UART Bridge" is a Silicon Labs
   /// CP2105 on SiLabs' own default VID/PID (confirmed on hardware via
-  /// `ioreg`, not just the forum posts this started as).
+  /// `ioreg`).
   ///
   /// DEAD ON macOS, though: libserialport cannot read vendorId or productId
   /// there either — the same EAGAIN/ENOENT that defeats `description`, which
@@ -109,9 +109,9 @@ class Ft891Session implements EquipmentSession {
       mode: reading.mode ?? _lastReported?.mode,
     );
     // The FIRST reading is not the radio moving — it is the answer to the
-    // question startUpdates just asked. Treating it as movement dropped
-    // every connection into 200ms polling for the second or so it took to
-    // ramp back, for a radio nobody was touching.
+    // question startUpdates just asked. Treating it as movement would drop
+    // every connection into 200ms polling for the second or so it takes to
+    // ramp back, for a radio nobody is touching.
     final first = _lastReported == null;
     if (merged != _lastReported) {
       _lastReported = merged;
@@ -193,9 +193,6 @@ class Ft891Session implements EquipmentSession {
   @override
   void teardown() {
     // Via stopUpdates, so "stop talking to the radio" is written once.
-    // Both used to send AI0; independently, which meant a normal disconnect
-    // wrote it twice and a change to the teardown protocol had to be made
-    // in two places.
     stopUpdates();
   }
 

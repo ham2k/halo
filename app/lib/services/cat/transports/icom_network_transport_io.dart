@@ -6,29 +6,25 @@
 // read, because the stream request must name a real port.
 //
 // Verified against a real IC-705: a complete CI-V exchange in ~290 ms, and a
-// held connection answering 149 of 150 polls over five minutes.
-//
-// That figure used to read "30 of 30 polls over a minute", and the minute was
-// the problem: the radio stops answering CI-V at about two minutes unless we
-// re-authenticate, so the evidence stopped exactly where the bug started. See
-// [_reauthInterval]. Any future claim about this transport staying up should
-// come with the duration it was measured over. See
+// held connection answering 149 of 150 polls over five minutes. The duration
+// matters: the radio stops answering CI-V at about two minutes unless we
+// re-authenticate (see [_reauthInterval]), so any claim about this transport
+// staying up must come with the duration it was measured over. See
 // icom_network_protocol.dart for the five byte-level corrections this needed
 // over app-polo's attempt, and docs/design/cat.md for the story.
 //
-// RESOLVED, and worth reading before blaming this radio for anything again.
-// Reconnecting immediately after a disconnect used to fail most of the time,
-// and for a long while that was attributed to the radio holding its login
-// longer than the logout released it. It was ours: the login-answer matcher
-// pinned the radio's outer sequence counter to 0x0001 (see login()), so a
-// valid answer was discarded whenever the radio slipped an idle in first, and
-// the resulting 3s timeout was reported to the operator as "the radio may
-// still be holding a previous session". A race, presenting as radio state.
-// Verified on hardware 2026-07-30: repeated disconnect/reconnect cycles.
+// Worth reading before blaming this radio for anything: reconnecting
+// immediately after a disconnect WORKS — verified on hardware with repeated
+// disconnect/reconnect cycles. A failure that presents as "the radio may
+// still be holding a previous session" has so far always been ours; the
+// canonical example is a login-answer matcher that pinned the radio's outer
+// sequence counter to 0x0001 (see login()), discarding valid answers
+// whenever the radio slipped an idle in first — a race, presenting as radio
+// state.
 //
-// The teardown was genuinely wrong too — order, repetition, and never waiting
-// for the acknowledgement — and is fixed. See docs/design/ic705-teardown.md
-// for both, derived from a packet capture of a working client.
+// The teardown's order, repetition, and wait-for-acknowledgement are exact —
+// see docs/design/ic705-teardown.md, derived from a packet capture of a
+// working client.
 
 import 'dart:async';
 import 'dart:io';
@@ -51,11 +47,9 @@ const _logoutAckTimeout = Duration(milliseconds: 600);
 /// kappanhang's cadences. app-polo ran neither, which is why its sessions
 /// died.
 ///
-/// "Ours stay up indefinitely" is what this comment used to say. It was false
-/// for the life of the file: keepalives alone hold the SOCKET open while the
-/// radio quietly stops answering CI-V after about two minutes. See
-/// [_reauthInterval] for the measurement. The claim survived because every
-/// test ever run against this transport was shorter than the failure.
+/// Keepalives alone are NOT enough to stay up: they hold the SOCKET open
+/// while the radio quietly stops answering CI-V after about two minutes. See
+/// [_reauthInterval] for the measurement.
 const _idleInterval = Duration(milliseconds: 100);
 const _pingInterval = Duration(seconds: 3);
 
@@ -77,17 +71,14 @@ const _pingInterval = Duration(seconds: 3);
 /// keep flowing, the socket is fine, `onLost` never fires because inbound
 /// traffic keeps resetting it, and the operator sees a connected radio with a
 /// frozen frequency. That is exactly the "green but no frequency displayed"
-/// report, and what the 30s stale flag was built to paper over.
-///
-/// This is why the transport used to claim sessions "stay up indefinitely" —
-/// every test ever run against it was shorter than the failure.
+/// report, and what the 30s stale flag was built to paper over. Any test
+/// shorter than the two-minute failure looks perfect and proves nothing.
 const _reauthInterval = Duration(seconds: 30);
 
 /// How many sent packets we keep so the radio can ask for one again.
 ///
-/// 32 was fine while only handshake packets were tracked — a handful, held
-/// forever. Now that idles are tracked too the buffer turns over at ten a
-/// second, and 32 would mean a retransmit request older than ~3 seconds always
+/// Tracked idles turn the buffer over at ten a second, so a small buffer
+/// (say 32) would mean a retransmit request older than ~3 seconds always
 /// missed, evicting the CI-V frames most worth resending. 128 covers ~12s,
 /// which is far longer than the radio waits before giving up on a packet.
 const _sentBufferSize = 128;
@@ -185,13 +176,10 @@ class IcomCredentialsMissing implements Exception {
 
 /// The radio refused the credentials.
 ///
-/// CONFIRMED against hardware 2026-07-30: a deliberately wrong password
-/// produces this, not silence. That had been inherited untested from the
-/// wfview/kappanhang lineage and hedged as "believed" everywhere it was
-/// mentioned, which mattered — while it was unverified, a stale password and
-/// an unreachable radio were indistinguishable from the operator's side, so
-/// the troubleshooting text had to lead with "retype the password" as the
-/// cheapest thing to rule out. It no longer does.
+/// CONFIRMED against hardware: a deliberately wrong password produces this,
+/// not silence — so a stale password and an unreachable radio are
+/// distinguishable from the operator's side, and the troubleshooting text
+/// does not need to lead with "retype the password".
 class IcomLoginRejected implements Exception {
   const IcomLoginRejected();
 
@@ -201,16 +189,14 @@ class IcomLoginRejected implements Exception {
 
 /// The radio never answered the login.
 ///
-/// This used to say the radio was "still holding a previous session", because
-/// that is what the symptom looked like for a long time. It was wrong, and the
-/// wrongness was expensive: the real cause was our own login-answer matcher
-/// discarding valid answers (see the note at the top of this file), and this
-/// message sent everyone looking at the radio instead. Now that the race is
-/// fixed, a genuine silence here means something else — most often another
-/// client already holding the radio's single remote-control session.
+/// A genuine silence here most often means another client already holding
+/// the radio's single remote-control session.
 ///
-/// Do not put a speculative cause back in this string. Name the checks that
-/// are actually actionable and let the troubleshooting text carry the rest.
+/// Do not put a speculative cause in this string: a message here once blamed
+/// "a previous session" when the real cause was our own login-answer matcher
+/// discarding valid answers (see the note at the top of this file), and it
+/// sent everyone looking at the radio instead. Name the checks that are
+/// actually actionable and let the troubleshooting text carry the rest.
 class IcomLoginTimeout implements Exception {
   const IcomLoginTimeout();
 
@@ -312,11 +298,10 @@ class _IcomSession {
 
   void _startKeepalives() {
     _idleTimer = Timer.periodic(_idleInterval, (_) {
-      // sendTracked, not _send. Idles consume sequence numbers either way, but
-      // _send never recorded them — and after the first minute idles are ~100%
-      // of what the control session emits (sendTracked ran four times during
-      // the handshake and then never again). So when the radio asked us to
-      // resend, we almost always could not, and answered with nothing.
+      // sendTracked, not _send. Idles consume sequence numbers either way,
+      // but _send does not record them — and after the first minute idles are
+      // ~100% of what the control session emits, so with plain _send the
+      // radio's resend requests would almost always find nothing to answer.
       //
       // The seq argument is 0 because sendTracked stamps the real one; passing
       // _seq++ here would burn two numbers per idle.
@@ -364,14 +349,13 @@ class _IcomSession {
       if (packet != null) _send(packet);
       return;
     }
-    // ...or a RANGE, which we used to ignore entirely. The 0x18 form carries
-    // (start, end) pairs as 4 bytes each from offset 16, little-endian and
-    // inclusive. A radio that lost a burst asks this way, so ignoring it meant
-    // the one request that matters after a bad moment on the link went
-    // unanswered.
+    // ...or a RANGE. The 0x18 form carries (start, end) pairs as 4 bytes
+    // each from offset 16, little-endian and inclusive. A radio that lost a
+    // burst asks this way — ignoring it would leave the one request that
+    // matters after a bad moment on the link unanswered.
     if (bytes.length >= 20 && icomPrefixIs(bytes, [0x18, 0, 0, 0, 0x01, 0])) {
       // Bounded in ONE place, by total rather than per pair — see
-      // icomRetransmitRange for why the per-pair form was not a bound at all.
+      // icomRetransmitRange for why per-pair bounding is not a bound at all.
       for (final seq in icomRetransmitRange(bytes, limit: _sentBufferSize)) {
         final packet = _sent[seq];
         if (packet != null) _send(packet);
@@ -379,16 +363,16 @@ class _IcomSession {
       return;
     }
     // The radio telling us the session is over. A STANDING branch, not an
-    // _expect: every listener installed during the handshake removes itself on
-    // first match, so once connect() returns nothing on the control session
-    // consumes an 0x50 at all and these notices were simply dropped.
+    // _expect: every listener installed during the handshake removes itself
+    // on first match, so once connect() returns nothing else on the control
+    // session consumes an 0x50 at all — without this branch these notices
+    // are simply dropped.
     //
-    // Losing them was expensive. `onLost` cannot cover it — it is reset by ANY
+    // Losing them is expensive. `onLost` cannot cover it — it is reset by ANY
     // inbound datagram (see the top of this method) and the radio keeps
-    // pinging us at ~100ms — so the only thing that eventually noticed was the
+    // pinging us at ~100ms — so the only thing that eventually notices is the
     // 30s stale flag: half a minute of a connected row showing a frozen
-    // frequency, and no reason to give the operator. The bytes were already
-    // decodable by readStreamAnswer; nobody was listening to them.
+    // frequency, and no reason to give the operator.
     //
     // Gated on `onLost`, which is only set once _IcomConnection exists — i.e.
     // once the handshake is DONE. That is what keeps this from stealing the
@@ -421,9 +405,10 @@ class _IcomSession {
   }
 
   void sendTracked(List<int> bytes) {
-    // The key and the wire value come from one function, deliberately: they
-    // used to be computed separately and drifted apart past 65535, which
-    // silently killed every retransmit answer about 1h49m into a session.
+    // The key and the wire value come from one function, deliberately:
+    // computed separately they drift apart past 65535, silently killing
+    // every retransmit answer about 1h49m into a session (see
+    // icomStampSequence).
     final (:key, :packet) = icomStampSequence(bytes, _seq++);
     _sent[key] = packet;
     if (_sent.length > _sentBufferSize) _sent.remove(_sent.keys.first);
@@ -469,9 +454,9 @@ class _IcomSession {
     try {
       // Six bytes, NOT eight. Bytes 6..7 are the sender's outer sequence
       // number, and on a radio->client packet that is the RADIO's monotonic
-      // counter — not a constant. We used to require 0x0001 there, which held
-      // only while the radio answered the login before its first idle. Every
-      // login answer in the reference capture arrives as 0x0002, because the
+      // counter — not a constant. Requiring 0x0001 there holds only while
+      // the radio answers the login before its first idle. Every login
+      // answer in the reference capture arrives as 0x0002, because the
       // radio's ~100ms idle timer fires first when it is slow to answer pkt6.
       //
       // The cost of getting this wrong is invisible and wildly misleading: a
@@ -488,9 +473,9 @@ class _IcomSession {
       // and type-6 carries a literal 0x0001 that our OWN pkt6 sets too — it
       // does not consume a counter tick. See docs/design/ic705-teardown.md.
       //
-      // Named, not inline, so a test can exercise THIS predicate rather than a
-      // copy of it — an inline lambda here produced a regression test that
-      // passed against the very bug it was written to catch.
+      // Named, not inline, so a test can exercise THIS predicate rather than
+      // a copy of it — an inline lambda invites a regression test that
+      // passes against the very bug it is written to catch.
       answer = await _expect('login answer', isLoginAnswer);
     } on TimeoutException {
       throw const IcomLoginTimeout();
@@ -559,13 +544,11 @@ class _IcomSession {
     final answer = await _expect('stream answer',
         (b) => b.length == 80 && icomPrefixIs(b, [0x50, 0, 0, 0, 0, 0]) && b[20] == 0x02);
 
-    // A POSITIVE test. Two previous versions of this guard hunted for 0xffff
-    // — first at offsets 56..57, then at the port echo at 66/70 — and treated
-    // "not found" as success. Both were wrong the same way: the 0xffff
-    // encoding has never been observed from a radio, while an AUTH FAILURE
-    // carries zeros at 66..71 and so passed straight through. We would then
-    // send the serial-open into a stream the radio never opened and give the
-    // operator a connected row that never reads.
+    // A POSITIVE test — never a hunt for a refusal marker with "not found"
+    // treated as success (see readStreamAnswer): an AUTH FAILURE would pass
+    // straight through such a guard, and we would then send the serial-open
+    // into a stream the radio never opened and give the operator a connected
+    // row that never reads.
     switch (readStreamAnswer(answer)) {
       case IcomStreamAnswer.accepted:
         break;
@@ -588,9 +571,8 @@ class _IcomSession {
   /// The acknowledgement is a 64-byte auth packet carrying 0x02 at the offset
   /// where our request carries 0x01. That is read straight off a packet
   /// capture of a working client (see `docs/design/ic705-teardown.md`), and
-  /// knowing how to match it is what lets this send **once and confirm**.
-  /// This previously fired three times and never looked at the answer,
-  /// because at the time we had no idea what the answer looked like.
+  /// knowing how to match it is what lets this send **once and confirm**
+  /// rather than fire blind repeats.
   Future<void> logout() async {
     final authId = _authId;
     if (authId == null || _closed) return;
@@ -624,19 +606,19 @@ class _IcomSession {
     _reauthTimer?.cancel();
     if (serialStream) {
       // sendTracked, not _send: it stamps the outer sequence number, which a
-      // working client fills in here and we used to leave at zero.
+      // working client fills in here rather than leaving at zero.
       // The inner sequence CONTINUES the CI-V stream's counter, which is why
-      // the caller passes it in. This used to use the session's own _innerSeq,
-      // which nothing else on the serial session advances — so the close went
-      // out carrying a number the radio processed long ago. If it dedupes on
+      // the caller passes it in. Using the session's own _innerSeq — which
+      // nothing else on the serial session advances — would send the close
+      // carrying a number the radio processed long ago. If it dedupes on
       // that counter (the only reason the counter exists) the close is dropped
       // as a stale duplicate and the stream stays registered on the radio.
       // The reference client's close continues the CI-V numbering.
       sendTracked(buildSerialOpen(localSid, remoteSid, serialCloseInnerSeq ?? _innerSeq++, magic: 0x00));
     }
     // Once. A working client sends exactly one disconnect per channel and the
-    // radio releases the session; the previous three-with-delays spread this
-    // teardown over ~300ms per channel, and datagrams two and three arrive
+    // radio releases the session; repeating it with delays spreads the
+    // teardown over ~300ms per channel, with datagrams two and three
     // referring to a session the radio has already forgotten.
     _send(buildDisconnect(localSid, remoteSid));
     // Let the datagram leave the box before the socket goes; the caller may
@@ -711,13 +693,12 @@ class _IcomConnection implements EquipmentConnection {
     await _shutdown();
   }
 
-  /// Order matters, and it is the order a working client uses: log out on
-  /// the control session, then tear the streams down.
+  /// Order matters, and it is the order a working client uses: streams down
+  /// first, then the logout on the control session.
   ///
-  /// Each step guarded independently. A throw part-way used to skip the
-  /// rest — leaving the control socket open and, worse, the radio still
-  /// holding the login, which is precisely what makes the NEXT connect fail
-  /// (see this file's KNOWN LIMITATION).
+  /// Each step guarded independently: a throw part-way must not skip the
+  /// rest — that leaves the control socket open and, worse, the radio still
+  /// holding the login, which is precisely what makes the NEXT connect fail.
   Future<void> _shutdown() async {
     Future<void> step(String what, Future<void> Function() run) async {
       try {
@@ -727,13 +708,12 @@ class _IcomConnection implements EquipmentConnection {
       }
     }
 
-    // Order matters, and this is the reverse of what it used to be. The login
-    // owns the streams, so the streams go down first and the login last.
-    // A capture of a working client tears down audio, then serial, then
+    // The login owns the streams, so the streams go down first and the login
+    // last. A capture of a working client tears down audio, then serial, then
     // control — logout and disconnect back to back — inside a single
-    // millisecond, and its next connect succeeds two seconds later. We used
-    // to release the login *first* and then spend the better part of a second
-    // closing streams the radio no longer had a logged-in owner for.
+    // millisecond, and its next connect succeeds two seconds later. Releasing
+    // the login first would spend the better part of a second closing streams
+    // the radio no longer has a logged-in owner for.
     await step('audio', () async => audio.close());
     await step('serial', () => serial.close(serialStream: true, serialCloseInnerSeq: _civSeq++));
     await step('logout', control.logout);

@@ -276,7 +276,7 @@ class LoggingSettingsGroup extends SettingsGroup {
         value: settings.jumpAfterRST,
         target: 'logging-extended',
       ),
-      // The mobile numbers row (issue #27, APP-21) — irrelevant without an
+      // The mobile numbers row — irrelevant without an
       // on-screen keyboard, hence `environment: 'ios,android'`, filtered out
       // everywhere (not just Common Preferences) on desktop/web. Flagged
       // `common: true` so it's reachable from Common Preferences too, not

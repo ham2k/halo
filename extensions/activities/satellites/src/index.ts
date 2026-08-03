@@ -1,7 +1,7 @@
 // Copyright ©️ 2026 Sebastian Delmont <sd@ham2k.com>
 // SPDX-License-Identifier: MPL-2.0
 //
-// Satellite operations — the last activity in the port (#148), and the only one
+// Satellite operations — the only activity
 // that is not an award. Nothing is activated and nothing is scored: a satellite
 // QSO is an ordinary contact that happens to name the bird it went through, so
 // this registers no `scoring` and no `export`, exactly as app-polo does.

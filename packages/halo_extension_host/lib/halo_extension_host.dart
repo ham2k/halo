@@ -136,8 +136,7 @@ class ExtensionHost {
   /// posting, data files — and it is deliberately BELOW the interesting code:
   /// the allowlist check, the https requirement, the canonical User-Agent and
   /// both timeouts all still run. Stubbing `host.fetch` itself would test none
-  /// of them, and the absence of any seam here previously let a wrong spot
-  /// payload reach review untested.
+  /// of them.
   ///
   /// [userAgent], when set, is stamped as the `User-Agent` on every
   /// `host.fetch` request — overriding any the extension supplied — so all
@@ -391,8 +390,8 @@ class ExtensionHost {
     switch (msg['type']) {
       case 'result':
         // Defensive cast: a malformed id from the JS side must not throw
-        // inside this listener (on the isolate path that used to be exactly
-        // what killed the isolate; here it would kill the subscription).
+        // inside this listener — it would kill the subscription, and on the
+        // isolate path the isolate itself.
         final id = msg['id'];
         if (id is! int) return;
         final completer = _pending.remove(id);
@@ -492,12 +491,9 @@ class ExtensionHost {
     //
     // Isolate.kill reclaims Dart memory, not the JS engine's. QuickJS holds a
     // real malloc'd heap — the kernel bundle alone needs 10-12MB before any
-    // extension loads — and only halo_qjs_free returns it. The isolate entry
-    // point has always had a `{'type':'dispose'}` branch that runs
-    // core.dispose(), but nothing ever sent the message, so that branch and
-    // the EngineRuntime.dispose() behind it were dead code. Under flutter_js
-    // that was invisible; now it leaks the engine on every restart, and the
-    // crash-restart path in extension_service.dart retries with backoff.
+    // extension loads — and only halo_qjs_free returns it, so skipping this
+    // leaks the engine on every restart (and the crash-restart path in
+    // extension_service.dart retries with backoff).
     //
     // Best effort by design: the kill still happens, so a wedged isolate
     // (mid-runaway-hook, say) cannot hold shutdown up.

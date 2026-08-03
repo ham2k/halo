@@ -3,11 +3,9 @@
 //
 // CQ World Wide DX Contest. Ported from app-polo's CQWWExtension.
 //
-// The second contest ported (docs/design/contests.md M2), chosen to exercise
-// what simple-contest didn't: a validated numeric exchange, and per-band
-// multipliers accumulated from two different axes (zone and country). Both
-// were meant to need no further catalog work after M1 — this is the test of
-// whether the input union was really finalized.
+// What it exercises that simple-contest doesn't: a validated numeric
+// exchange, and per-band
+// multipliers accumulated from two different axes (zone and country).
 
 import { contestScorer, defineExtension, exportFilename, startMillisOf } from "@ham2k/halo-extension-sdk"
 import type {
@@ -290,8 +288,8 @@ const ExportHook = {
   async generateExport(args: ExportRequest, ctx: HookContext): Promise<ExportResult> {
     // Only the two exportTypes `suggestExportOptions` above offers. Belt and
     // braces alongside the keyed `invokeOne` below: a hook that answers for an
-    // exportType it never offered is how the ADIF delegation recursed into
-    // itself in the first place.
+    // exportType it never offered makes the ADIF delegation recurse into
+    // itself.
     if (args.exportType !== 'cabrillo' && args.exportType !== 'contest-adif') {
       return { filename: '', mimeType: '', content: '' }
     }
@@ -328,7 +326,7 @@ const ExportHook = {
     const { hooks } = await import("@ham2k/halo-extension-sdk")
     // invokeOne, NOT invokeAll: the fan-out includes this contest's own
     // `generateExport`, which would take the same ADIF branch and delegate
-    // again — unbounded recursion that only surfaced as a 30s export timeout.
+    // again — unbounded recursion.
     const entries = await hooks.invokeOne('export', 'adif', 'generateExport', {
       operation: args.operation,
       qsos: args.qsos,

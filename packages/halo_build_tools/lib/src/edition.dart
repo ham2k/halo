@@ -58,10 +58,9 @@ Edition? editionFromName(String name) => switch (name.trim().toLowerCase()) {
   _ => null,
 };
 
-/// The [Edition] a release cut from git branch [branch] targets
-/// (ham2k/app-halo-dist#241).
+/// The [Edition] a release cut from git branch [branch] targets.
 ///
-/// No branch→edition mapping existed before; this defines one. Today Next is
+/// Today Next is
 /// cut from the `dist` branch (a pushed `v*` tag builds the Next matrix), so
 /// `dist` (and its local alias `main-dist-private`) → `next`, and a dedicated
 /// `prod` branch → `prod`. Everything else — feature branches — is `dev`, which

@@ -9,7 +9,7 @@
 // alone, readable and movable without reaching into a sibling, is worth more
 // here than not repeating it.
 //
-// What actually differs from Winter Field Day, and why a shared version would
+// What actually differs from ARRL Field Day, and why a shared version would
 // have had to be parameterised on all of it anyway:
 //   - class is `1H`..`9O` — Home, Indoor, Mobile, Outdoor, no `PC` prefix
 //   - the multiplier is the objectives met, each with its OWN weight
@@ -41,8 +41,7 @@ export const CLASS_REGEX = /^([1-9][0-9]*)([HIMO])$/
 /// Phone is worth one, everything else two.
 const POINTS: Record<string, number> = { PHONE: 1, CW: 2, DATA: 2 }
 
-/// Winter Field Day excludes the same four WARC bands as ARRL Field Day. This
-/// was an empty set at first, on the mistaken belief that WFD excluded none.
+/// Winter Field Day excludes the same four WARC bands as ARRL Field Day.
 const INVALID_BANDS = new Set(['60m', '30m', '17m', '12m'])
 
 /// Valid to receive, but not sections — they are tallied on their own.
@@ -58,16 +57,16 @@ export type WFDScoresheet = {
   modesByCall: Record<string, Record<string, true>>
   qsoPoints: number
   qsoCount: number
-  /// Reset on each new UTC day. Field Day ALWAYS spans two of them (1800Z
-  /// Saturday to 2100Z Sunday), so without these the per-day header reported
-  /// the running total and re-added the whole bonus to every day.
+  /// Reset on each new UTC day. Winter Field Day ALWAYS spans two of them
+  /// (1900Z Saturday to 1859Z Sunday), so without these the per-day header
+  /// reports the running total instead of that day's.
   dayPoints: number
   dayQsos: number
   /// The setup as it stood while these QSOs were scored.
   ///
   /// `summarizeScore` is handed the FIRST segment's ref, so reading the
-  /// multiplier there loses a mid-contest change — switching generator to
-  /// battery is the normal way to earn the x5. Latched here instead, the way
+  /// multiplier there loses a mid-contest change — checking off another
+  /// objective partway through is normal. Latched here instead, the way
   /// `stateparks` does it.
   multiplier: number
   byMode: Record<string, number>
@@ -103,8 +102,8 @@ export function refOfType(
 /// The multiplier: one for taking part, plus each objective's OWN weight.
 ///
 /// NOT one per objective. The objectives are weighted 1 to 6 and there are
-/// twelve of them, so the real maximum is 33 — counting them flat capped it at
-/// 8 and reported a well-equipped station's score at a fraction of the truth.
+/// twelve of them, so the real maximum is 33 — counting them flat caps it at
+/// 8 and reports a well-equipped station's score at a fraction of the truth.
 export function objectiveMultiplier(ref: Record<string, JSONValue> | undefined): number {
   let total = 1
   for (const [key, weight] of Object.entries(OBJECTIVES)) {

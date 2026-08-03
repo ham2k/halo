@@ -118,9 +118,9 @@ int? exchangeMatchTier(
 /// name they have started typing. A SUBSTRING hit is fine to show — it is how you
 /// find "Alum Creek" from "creek" — but accepting one silently swaps in a code
 /// the typed text isn't even the start of. In the shipped Ohio set, `CR` (an
-/// operator heading for "Crane Creek") substring-matches "Alum **Cr**eek" and
-/// used to log `ALU`: a park they never worked, in a field they were only passing
-/// through on their way to the next one.
+/// operator heading for "Crane Creek") substring-matches "Alum **Cr**eek";
+/// accepting that logs `ALU`: a park they never worked, in a field they were
+/// only passing through on their way to the next one.
 bool isAcceptableExchangeMatch(
   String query,
   ExchangeOption option, {

@@ -27,8 +27,7 @@ class PusherEvent {
 /// `web_socket_channel` dependency for why: the official
 /// `pusher_channels_flutter` package only covers android/ios/web, not
 /// macOS/Windows/Linux, and the alternatives are low-trust community
-/// packages not worth the risk for something that carries OAuth codes
-/// (HALO-66).
+/// packages not worth the risk for something that carries OAuth codes.
 ///
 /// api-lofi's push channels (`client-<uuid[0..7]>-<verifier>`,
 /// `account-...`, `operation-...`) are all *public* channels secured by an

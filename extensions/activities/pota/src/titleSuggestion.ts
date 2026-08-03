@@ -20,7 +20,7 @@ interface TitleSuggestionLike {
 }
 
 // Only the activation ref means "this operation is happening at this park"
-// (ham2k/app-halo-dist#174) — a hunting ref just names a station worked, not
+// — a hunting ref just names a station worked, not
 // where this operation is. `ref`/`name` are proper nouns, not prose, so no
 // translation needed here (unlike decorateRef's placeholders).
 export function suggestOperationTitleForPota(ref: RefLike, activationType: string): TitleSuggestionLike | null {

@@ -1,7 +1,7 @@
 // Copyright ©️ 2026 Sebastian Delmont <sd@ham2k.com>
 // SPDX-License-Identifier: MPL-2.0
 //
-// Spots Panel (ham2k/app-halo-dist#9): fetches spots from every extension's
+// Spots Panel: fetches spots from every extension's
 // `spots` hook, combines/dedupes across sources, groups by band, and lets
 // the user filter by band/mode/age/source via a dialog opened from the
 // spots-count row. Ported from app-polo's SpotsPanel.jsx, notably its
@@ -28,14 +28,14 @@ const _ageOptionsInMinutes = [15, 30, 60, 180];
 /// Height of the initial-load progress bar above the spots list — reserved
 /// whether or not a fetch is running, matching LinearProgressIndicator's own
 /// default thickness. Same value/convention as activities_view.dart's
-/// `_searchProgressHeight` (#360).
+/// `_searchProgressHeight`.
 const _spotsProgressHeight = 4.0;
 
 String? _callOf(Map<String, dynamic> spot) => (spot['their'] as Map?)?['call'] as String?;
 /// The individual operator callsigns within a `their.call` — a comma-joined
 /// compound for a multi-op spot (see `mergeSpotsByFreqAndRefs`), a single call
 /// otherwise. Empty segments are dropped. Everything that keys off `_callNotes`
-/// (per single call) must iterate these, not the raw compound string (#316).
+/// (per single call) must iterate these, not the raw compound string.
 Iterable<String> _callsIn(String? call) => (call ?? '').split(',').where((c) => c.isNotEmpty);
 double? _freqOf(Map<String, dynamic> spot) => (spot['freq'] as num?)?.toDouble();
 String? _bandOf(Map<String, dynamic> spot) => spot['band'] as String?;
@@ -175,7 +175,7 @@ List<({String key, List<Map<String, dynamic>> spots})> sectionSpots(
   final sections = <({String key, List<Map<String, dynamic>> spots})>[];
 
   if (callsWithNotes.isNotEmpty) {
-    // Pin a multi-op spot when ANY of its operators has a note (#316) — a
+    // Pin a multi-op spot when ANY of its operators has a note — a
     // compound `their.call` never matches the per-call `callsWithNotes` set.
     final noted = spots.where((s) => _callsIn(_callOf(s)).any(callsWithNotes.contains)).toList();
     if (noted.isNotEmpty) sections.add((key: 'notes', spots: noted));
@@ -216,9 +216,9 @@ Map<String, dynamic> suggestedQsoFromSpot(Map<String, dynamic> spot) => {
 ///
 /// A spot passes if ANY of its operators is on a continent that isn't
 /// disabled — or whose continent is still unknown. Reading the compound
-/// `their.call` as one key was the bug behind #316: it never matched the
-/// per-call `continentOf` map, so every multi-op spot looked
-/// permanently-unresolved and slipped through the filter untouched. Keeping
+/// `their.call` as one key would never match the
+/// per-call `continentOf` map, so every multi-op spot would look
+/// permanently-unresolved and slip through the filter untouched. Keeping
 /// the "unknown continent never hides a spot" rule means we only hide a spot
 /// when EVERY known operator is on a disabled continent. Public for
 /// `spots_panel_merge_test.dart`.
@@ -465,7 +465,7 @@ class _SpotsPanelState extends State<SpotsPanel> {
       spots = spots.where((s) => _timeOf(s) >= cutoff).toList();
     }
     if (_disabledContinents.isNotEmpty) {
-      // Per-operator so multi-op spots narrow correctly (#316); an unresolved
+      // Per-operator so multi-op spots narrow correctly; an unresolved
       // continent never hides a spot. See spotPassesContinentFilter.
       spots = spots
           .where((s) => spotPassesContinentFilter(_callOf(s), _disabledContinents, (c) => _callNotes[c]?.continent))
@@ -490,7 +490,7 @@ class _SpotsPanelState extends State<SpotsPanel> {
 
   /// The note emoji to show on a spot's tile — the first of its operators
   /// that has one, so a multi-op spot still shows a marker when any op is
-  /// noted (#316; the compound `their.call` never matched `_callNotes`).
+  /// noted (the compound `their.call` never matches `_callNotes`).
   String? _noteEmojiOf(Map<String, dynamic> spot) {
     for (final call in _callsIn(_callOf(spot))) {
       final emoji = _callNotes[call]?.emoji;
@@ -533,9 +533,9 @@ class _SpotsPanelState extends State<SpotsPanel> {
   }
 
   Future<void> _openFilterDialog() {
-    // Computed once and shared — each of these used to independently call
-    // _mergedRawSpots (re-running the merge pipeline from scratch every
-    // time), so opening the dialog re-merged the same spot list 4x.
+    // Computed once and shared — calling _mergedRawSpots independently for
+    // each count map would re-run the merge pipeline from scratch 4x per
+    // dialog open.
     final merged = _mergedRawSpots;
     return showHaloDialog<void>(
         context: context,
@@ -620,8 +620,8 @@ class _SpotsPanelState extends State<SpotsPanel> {
           refreshing: _refreshing,
           loading: _loading,
         ),
-        // Clears the bottom safe area (home indicator) itself, now that the
-        // status footer no longer reserves it globally; the panel fills behind.
+        // Clears the bottom safe area (home indicator) itself — the status
+        // footer doesn't reserve it globally; the panel fills behind.
         Expanded(
           child: SafeArea(
             top: false,
@@ -678,7 +678,7 @@ class _SpotsPanelState extends State<SpotsPanel> {
       child: filtered.isEmpty
           // While the initial fetch is still in flight (see the progress bar
           // above), "no spots" would be misleading — none have loaded yet,
-          // not necessarily none exist (#360, matches activities_view.dart's
+          // not necessarily none exist (matches activities_view.dart's
           // own loading/empty-message split).
           ? (_loading
               ? const SizedBox.shrink()
@@ -743,7 +743,7 @@ class _SpotsSectionHeader extends StatelessWidget {
       ),
       // Background stays edge-to-edge; the label insets by the split's
       // grab-strip clearance and the real device inset, like the spot rows
-      // below it (ham2k/app-halo-dist#205).
+      // below it.
       padding: PaneSafeArea.symmetricOf(context, horizontal: 12, vertical: 4),
       child: Text(
         label,
@@ -954,7 +954,7 @@ class _SpotTile extends StatelessWidget {
     final tile = Padding(
       // Rows render edge-to-edge (the ink below spans the full width); the
       // content inset grows by the split's grab-strip clearance on the left
-      // and the real device inset on both edges (ham2k/app-halo-dist#205)
+      // and the real device inset on both edges
       // so nothing interactive sits under the divider overlay or a cutout.
       padding: PaneSafeArea.symmetricOf(context, horizontal: 12, vertical: 6),
       child: Column(
@@ -996,7 +996,7 @@ class _SpotsFilterPill extends StatelessWidget {
   final VoidCallback onRefresh;
   final bool refreshing;
 
-  /// Whether the initial spots fetch is still in flight (#360) — shows the
+  /// Whether the initial spots fetch is still in flight — shows the
   /// progress bar reserved at the bottom of this pill's own background.
   final bool loading;
 
@@ -1028,7 +1028,7 @@ class _SpotsFilterPill extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           Padding(
-            // Left/right clear the real device inset (ham2k/app-halo-dist#205)
+            // Left/right clear the real device inset
             // — the row's own content is centered, but a wide enough pane on a
             // device with a landscape cutout could still push a pill under it.
             padding: PaneSafeArea.symmetricOf(context, vertical: 4),
@@ -1075,7 +1075,7 @@ class _SpotsFilterPill extends StatelessWidget {
               ],
             ),
           ),
-          // Reserved whether or not the initial fetch is in flight (#360) —
+          // Reserved whether or not the initial fetch is in flight —
           // lives at the bottom of THIS pill's own (salmon/tertiaryContainer)
           // background, flush with its lower edge, rather than floating on
           // the plain scaffold background below the whole filter area.

@@ -31,9 +31,8 @@ const kPublicVersionInfo = PublicVersion(
 /// Windows·Linux `FILEVERSION` build), shared across every platform — a simple
 /// monotonic integer. You don't edit it by hand: `halo-ops release` advances
 /// it per release from the `v<version>+<build>` tag ledger and writes it here
-/// (§2.2). Small enough to fit every platform's field (Windows/Linux cap it at
-/// 16 bits), so unlike the old date-encoded id it needs no per-platform
-/// narrowing.
+/// (§2.2). Must stay small enough to fit every platform's field —
+/// Windows/Linux cap it at 16 bits.
 const kBuildNumber = 123;
 
 /// The short git SHA of the commit this build was cut from, baked in at build
@@ -80,7 +79,7 @@ final kVersionName = kPublicVersionInfo.displayName;
 /// [kVersionName] with the edition qualifier appended for the non-stable
 /// editions — `August '26 (Dev)`, `August '26 (Next)` — so a build's edition
 /// is visible wherever the version name is shown. Unchanged for Regular
-/// (`kEdition.label` is null), so stable builds read exactly as before.
+/// (`kEdition.label` is null).
 final kEditionVersionName = kEdition.label == null ? kVersionName : '$kVersionName (${kEdition.label})';
 
 /// The product-line/build channel in the User-Agent (user_agent.dart), e.g.

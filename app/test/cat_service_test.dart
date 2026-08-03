@@ -253,10 +253,10 @@ void main() {
   // ------------------------------------------------------- idle retry
 
   group('the designated radio keeps being retried while it is off', () {
-    // Verified as a real gap on hardware 2026-08-02: power to an IC-705 was
-    // cut and restored, and the app sat disconnected for two solid minutes
-    // with the radio up and stable — the drop burst had been spent while the
-    // radio was still booting, and nothing else ever tried.
+    // Verified as a real gap on hardware: power to an IC-705 was cut and
+    // restored, and the app sat disconnected with the radio up and stable —
+    // the drop burst had been spent while the radio was still booting, and
+    // nothing else ever tried.
     /// Runs the clock while FAILING every attempt, which is what a radio that
     /// is switched off actually does. The fake transport leaves an attempt
     /// pending forever otherwise, so the node would sit in `connecting` and

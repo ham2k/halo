@@ -1,7 +1,7 @@
 // Copyright ©️ 2026 Sebastian Delmont <sd@ham2k.com>
 // SPDX-License-Identifier: MPL-2.0
 //
-// A password/secret text field with a show/hide toggle (ham2k/app-halo-dist#193).
+// A password/secret text field with a show/hide toggle.
 // Secret fields (extension settings passwords/API keys, the login dialog's
 // password) obscure their text by default; this adds the conventional eye
 // button so the operator can check what they typed — important on a phone

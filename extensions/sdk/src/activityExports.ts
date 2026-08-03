@@ -17,7 +17,7 @@
 //
 // The QSO set is the core's business, not ours: declaring `refType` makes it
 // hand `generateExport` only the contacts made while this activity was actually
-// running (ham2k/app-halo-dist#389), which is what keeps a park activated after
+// running, which is what keeps a park activated after
 // a break from claiming the whole day's log.
 //
 // Types and `hooks` come in by relative path, not the
@@ -132,8 +132,8 @@ export function activityExportHook(rules: ActivityExportRules) {
 
     async generateExport(args: ExportRequest, ctx: HookContext): Promise<ExportResult> {
       // Answer ONLY for the exportTypes suggested above. A hook that answers
-      // for one it never offered is how the ADIF delegation below recursed into
-      // itself and hung the export (see contest_export_test.dart).
+      // for one it never offered makes the ADIF delegation below recurse into
+      // itself and hang the export (see contest_export_test.dart).
       const exportType = String(args.exportType ?? '')
       if (!exportType.startsWith(`${prefix}${SEPARATOR}`)) {
         throw new Error(`${rules.key}: unknown export type '${exportType}'`)

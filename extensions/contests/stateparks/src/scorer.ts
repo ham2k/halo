@@ -204,10 +204,10 @@ export const StateParksScorer: ContestScorer<StateParksScoresheet> = {
     // A slot that has been credited ANYTHING is closed to a parkless claim: once
     // a station has been worked on this band and mode, the only thing that earns
     // another contact is a park they hadn't given us. Filtering only against
-    // `credited` let `''` through as though "no park" were a park the slot was
-    // still missing, so a park contact followed by a parkless one — the same
+    // `credited` would let `''` through as though "no park" were a park the slot
+    // was still missing, so a park contact followed by a parkless one — the same
     // operator having left the park, or the hunter chip simply not logged that
-    // time — scored twice.
+    // time — would score twice.
     const fresh = credited ? claims.filter((park) => park && !credited.includes(park)) : claims
 
     if (credited && fresh.length === 0) {

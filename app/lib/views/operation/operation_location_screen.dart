@@ -44,8 +44,8 @@ class _OperationLocationScreenState extends State<OperationLocationScreen> {
   List<Map<String, dynamic>> _controls = const [];
   // While this is true, _controls is still empty — a ref whose extension IS
   // active would otherwise flash the unknown-type red/question-mark
-  // treatment for a moment on every open (ham2k/app-halo-dist#261; mirrors
-  // ActivitiesView's own _loadingControls).
+  // treatment for a moment on every open (mirrors ActivitiesView's own
+  // _loadingControls).
   bool _loadingControls = true;
 
   @override

@@ -59,7 +59,7 @@ class LoggingPanel extends StatefulWidget {
   final String? ourEntityPrefix;
 
   /// The operator's own ITU region (1/2/3) and lowercase ISO country code
-  /// (HALO-52) — resolved by `operation_view.dart` alongside
+  /// — resolved by `operation_view.dart` alongside
   /// [ourEntityPrefix], and passed straight through to LoggingControls so a
   /// typed/commanded frequency gets a band-plan mode guess scoped to where
   /// the operator actually is.
@@ -69,9 +69,8 @@ class LoggingPanel extends StatefulWidget {
   final Map<String, dynamic>? suggestedQso;
 
   /// Forwards LoggingControls' command output up to the operation view,
-  /// which shows it on the Info pane (this panel used to render it in its
-  /// own >=900px side area — that layout is the operation view's job now,
-  /// see docs/design/layouts.md).
+  /// which shows it on the Info pane (the wide layout is the operation
+  /// view's job — see docs/design/layouts.md).
   final ValueChanged<String?>? onCommandMessageChanged;
 
   /// Forwards the current call-info up to the operation view for the Call Info
@@ -109,7 +108,7 @@ class LoggingPanel extends StatefulWidget {
 class _LoggingPanelState extends State<LoggingPanel> {
   Qso? _selectedQso;
 
-  /// The QSO list as a rung of the keyboard's focus ladder (APP-19): Arrow Up
+  /// The QSO list as a rung of the keyboard's focus ladder: Arrow Up
   /// off the logging controls' pill strip lands here, Up/Down then walk the
   /// list selecting each row for editing, and Enter/Escape hand the keyboard
   /// back down. The list's own rows stay plain tap targets — this is one node
@@ -129,7 +128,7 @@ class _LoggingPanelState extends State<LoggingPanel> {
   late final List<String> _enabledBands = widget.services.settings.enabledBands;
   late final List<String> _enabledModes = widget.services.settings.enabledModes;
 
-  // The mobile numbers row (issue #27). Unlike the per-operation view
+  // The mobile numbers row. Unlike the per-operation view
   // toggles, these live in the global General settings screen, so they can
   // change while this panel is alive — mirrored here and refreshed via the
   // listener below.
@@ -140,7 +139,7 @@ class _LoggingPanelState extends State<LoggingPanel> {
   late bool _leftieMode = widget.services.settings.leftieMode;
 
   // Whether the QSO list's empty state should warn to check the radio
-  // (HALO-24) — mirrors LoggingControls' own `_vfoIsUnset`: no band *and* no
+  // — mirrors LoggingControls' own `_vfoIsUnset`: no band *and* no
   // frequency, or no mode. Cached and diffed in `_onRadioChanged` for the
   // same reason as the numbers-row settings above — this panel's QsoList is
   // expensive to rebuild, and most VFO changes (e.g. tuning within the same
@@ -157,7 +156,7 @@ class _LoggingPanelState extends State<LoggingPanel> {
     super.initState();
     widget.services.settings.addListener(_onSettingsChanged);
     // The QSO list's empty state warns when the VFO needs attention
-    // (HALO-24) — rebuild so it clears the moment the operator answers via
+    // — rebuild so it clears the moment the operator answers via
     // the Radio control, without waiting for an unrelated rebuild.
     widget.services.radio.addListener(_onRadioChanged);
     // Route the dev bridge's actions to this panel's LoggingControls — only
@@ -191,7 +190,7 @@ class _LoggingPanelState extends State<LoggingPanel> {
     super.dispose();
   }
 
-  // ── Keyboard navigation of the QSO list (APP-19) ─────────────────────────
+  // ── Keyboard navigation of the QSO list ──────────────────────────────────
 
   /// The rows arrow navigation can land on, and where the current selection
   /// sits among them.
@@ -370,14 +369,13 @@ class _LoggingPanelState extends State<LoggingPanel> {
 
   /// Escape reaching here (not `LoggingControls`' own `CallbackShortcuts`)
   /// means focus is elsewhere in this panel — the QSO list, or nowhere at
-  /// all — issue #199's follow-up ask that Escape deselect regardless of
-  /// what has focus.
+  /// all; Escape must deselect regardless of what has focus.
   ///
-  /// It only ever deselects. Escape used to toggle: a second press within a
-  /// few seconds re-selected the QSO the first had just dropped, mirroring
-  /// the compose form's wipe-undo. That fights the focus ladder (APP-19),
-  /// where Escape is uniformly the way *out* of wherever the keyboard is —
-  /// walking back *in* is the one thing it must never do.
+  /// It only ever deselects, never toggles: a second press must not
+  /// re-select the QSO the first had just dropped (mirroring the compose
+  /// form's wipe-undo would fight the focus ladder, where Escape is
+  /// uniformly the way *out* of wherever the keyboard is — walking back
+  /// *in* is the one thing it must never do).
   ///
   /// A locked (staged-delete or deleted) QSO's fields are always disabled, so
   /// its view can never hold focus and `LoggingControls`' own Escape guard
@@ -453,7 +451,7 @@ class _LoggingPanelState extends State<LoggingPanel> {
     widget.services.settings.setHiddenSecondaryControls(hidden);
   }
 
-  /// The call-info panel's line-1 location string (issue #40) — distance (and
+  /// The call-info panel's line-1 location string — distance (and
   /// bearing, if the setting is on) to the contact, then a location label.
   /// Country is shown only for DX contacts, never our own entity. A distance
   /// from a centroid (not a real grid) is shown approximate ("~") and rounded.
@@ -521,7 +519,7 @@ class _LoggingPanelState extends State<LoggingPanel> {
     // (never synced — DESIGN.md §4); absent until the first rescore lands.
     final scoring =
         widget.operation.localData['scoring'] as Map<String, dynamic>?;
-    // Keyed by scorer since contest scoring landed, so this folds every
+    // Keyed by scorer, so this folds every
     // active scorer's sections into one day-keyed list (see
     // app/lib/tools/scoring_summaries.dart).
     final daySections = mergedDaySections(scoring);
@@ -541,9 +539,9 @@ class _LoggingPanelState extends State<LoggingPanel> {
       labels: _qsoListLabelsFor(context),
     );
 
-    // Escape deselecting a QSO regardless of what has focus (issue #199
-    // follow-up — e.g. the QSO was selected via a list tap, which never
-    // focuses anything inside LoggingControls). LoggingControls' own
+    // Escape deselecting a QSO regardless of what has focus (e.g. the QSO
+    // was selected via a list tap, which never focuses anything inside
+    // LoggingControls). LoggingControls' own
     // CallbackShortcuts, closer to the compose form's fields, still handles
     // Escape whenever focus IS there (discard-typed-changes, wipe/undo) —
     // this one only fires when that inner one doesn't.
@@ -553,7 +551,7 @@ class _LoggingPanelState extends State<LoggingPanel> {
         children: [
           Expanded(
             // skipTraversal: Tab belongs to the logging controls' own field
-            // rotation; the list is reached with the arrow keys (APP-19), not
+            // rotation; the list is reached with the arrow keys, not
             // by tabbing into it.
             child: Focus(
               focusNode: _listFocus,
@@ -564,8 +562,8 @@ class _LoggingPanelState extends State<LoggingPanel> {
           ),
           LoggingControls(
             controller: _loggingController,
-            // Call notes carry socials and URLs; the panel has always styled
-            // them as links, this makes them open.
+            // Call notes carry socials and URLs, styled as links; this makes
+            // them open.
             onOpenLink: openExternalUrl,
             operation: widget.operation,
             qsosRepository: widget.services.qsos,
@@ -638,7 +636,7 @@ class _LoggingPanelState extends State<LoggingPanel> {
             onQsoUndeleted: (qso) {
               if (!qso.isEvent) widget.services.track('qso_undeleted', _qsoTrackProps(qso));
             },
-            // A comma-separated call list (issue #7) logs several QSOs at
+            // A comma-separated call list logs several QSOs at
             // once — one rescore for the whole batch, not one per call.
             onCallListLogged: () =>
                 widget.services.scoring.rescoreOperation(widget.operation),

@@ -1,8 +1,8 @@
 // Copyright ©️ 2026 Sebastian Delmont <sd@ham2k.com>
 // SPDX-License-Identifier: MPL-2.0
 //
-// WWBOTA (Bunkers on the Air) — the first ported award with its own spot FEED,
-// and the first whose activation threshold depends on WHICH reference is being
+// WWBOTA (Bunkers on the Air) — an award with its own spot FEED,
+// and one whose activation threshold depends on WHICH reference is being
 // activated: 10 contacts in Slovenia and North Macedonia, 25 everywhere else.
 //
 // It also answers for the legacy `ukbota` ref types. The award was UKBOTA

@@ -32,8 +32,7 @@ Color? colorForRefType(List<Map<String, dynamic>> controls, String? refType) =>
 
 /// Whether [refType] doesn't match any currently active control — its
 /// extension isn't installed/loaded/enabled right now. A null [refType]
-/// (no control ever declares one) counts as unknown too, same as before
-/// this got its own named helper.
+/// (no control ever declares one) counts as unknown too.
 bool isUnknownRefType(List<Map<String, dynamic>> controls, String? refType) =>
     controlForRefType(controls, refType) == null;
 
@@ -41,13 +40,13 @@ bool isUnknownRefType(List<Map<String, dynamic>> controls, String? refType) =>
 /// icon, tinted with its declared accent color if any — or, when it matches
 /// no active control, a pale-red circle with a question-mark, so a ref from
 /// an extension that's no longer installed/loaded degrades visibly instead
-/// of silently showing a generic marker (ham2k/app-halo-dist#261). Shared by
-/// every place that lists refs against the current controls (ActivitiesView,
+/// of silently showing a generic marker. Shared by every place that lists
+/// refs against the current controls (ActivitiesView,
 /// OperationLocationScreen, QsoList). [iconSize]/[avatarRadius] default to
 /// the ambient Icon/CircleAvatar sizes (a ListTile's `leading` slot) for the
-/// known-type icon — the question-mark itself defaults to 16 regardless (its
-/// prior hardcoded size), overridable for a more compact inline usage (e.g.
-/// QsoList's per-row count).
+/// known-type icon — the question-mark itself defaults to 16 regardless,
+/// overridable for a more compact inline usage (e.g. QsoList's per-row
+/// count).
 Widget activityRefIcon(
   List<Map<String, dynamic>> controls,
   String? refType, {

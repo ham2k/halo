@@ -1,7 +1,7 @@
 // Copyright ©️ 2026 Sebastian Delmont <sd@ham2k.com>
 // SPDX-License-Identifier: MPL-2.0
 
-// Web-preview deploy/prune support for halo-ops (ham2k/app-halo-dist#244).
+// Web-preview deploy/prune support for halo-ops.
 //
 // Previews are cut by tagging a commit `web-preview-<name>` and pushing it;
 // `.github/workflows/deploy-web-preview.yml` deploys it to the

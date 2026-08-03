@@ -506,8 +506,8 @@ class NoticeStack extends StatefulWidget {
   ///
   /// Deliberately the total, not the card. The band is chrome this widget adds
   /// on its own account, so a caller dividing up a fixed strip cannot pay for
-  /// it without knowing these internals — and when it tried, the stack quietly
-  /// overran a tight budget by the whole band. Below [_noticeBandHeight] the
+  /// it without knowing these internals — a card-only cap quietly overruns a
+  /// tight budget by the whole band. Below [_noticeBandHeight] the
   /// band itself gives way, so this is a bound the widget cannot exceed.
   final double? maxHeight;
 

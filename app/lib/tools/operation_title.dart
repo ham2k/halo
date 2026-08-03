@@ -1,8 +1,8 @@
 // Copyright ©️ 2026 Sebastian Delmont <sd@ham2k.com>
 // SPDX-License-Identifier: MPL-2.0
 //
-// The final "for X at Y" assembly step for an operation's title
-// (ham2k/app-halo-dist#174) — `OperationTitleFragments` (halo_core) already
+// The final "for X at Y" assembly step for an operation's title —
+// `OperationTitleFragments` (halo_core) already
 // grouped and joined extensions' ref-derived fragments; this just localizes
 // the "for"/"at" prepositions (BuildContext lives here, not in halo_core)
 // and leads with the user's own title when they set one.

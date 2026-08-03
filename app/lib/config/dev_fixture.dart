@@ -1,7 +1,7 @@
 // Copyright ©️ 2026 Sebastian Delmont <sd@ham2k.com>
 // SPDX-License-Identifier: MPL-2.0
 //
-// Canned dev data for the fixture + determinism hooks (ham2k/app-halo-dist#238):
+// Canned dev data for the fixture + determinism hooks:
 // a deterministic stubbed lookup result (so callsign lookups don't need network
 // or QRZ credentials and always return the same thing) and a fixed set of seed
 // QSOs for `window.__halo.resetFixture()`. Pure data — no service/UI imports —

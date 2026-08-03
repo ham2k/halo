@@ -14,8 +14,6 @@ import '../i18n/strings.g.dart';
 import '../main.dart';
 import '../tools/operation_title.dart';
 
-/// Prompts to confirm, then soft-deletes on confirmation. Returns whether
-/// the operation was deleted.
 const _monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
 /// A short month-and-day label, e.g. `Jan 3`.
@@ -41,6 +39,7 @@ String formatOperationDateRange(DateTime? from, DateTime? to) {
 /// Confirms deleting [operation], naming it in the body rather than in the
 /// title: the title says what's about to happen, the body says to what, so a
 /// long operation name can't push the action itself out of view.
+/// Soft-deletes on confirmation; returns whether the operation was deleted.
 Future<bool> confirmDeleteOperation(
   BuildContext context,
   HaLoServices services,
@@ -68,8 +67,7 @@ Future<bool> confirmDeleteOperation(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // The same name the user just saw on the row or header they're
-            // deleting from (ham2k/app-halo-dist#174), not the raw (usually
-            // empty) title field.
+            // deleting from, not the raw (usually empty) title field.
             Text(
               '${operation.stationCall} ${displayTitleFor(context, operation)}',
               style: theme.textTheme.titleMedium,

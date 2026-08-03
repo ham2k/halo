@@ -1,7 +1,7 @@
 // Copyright ©️ 2026 Sebastian Delmont <sd@ham2k.com>
 // SPDX-License-Identifier: MPL-2.0
 //
-// The Call Info detail panel (issue #40) — the richer view of the callsign
+// The Call Info detail panel — the richer view of the callsign
 // currently being logged, modeled on app-polo's CallInfoPanel. Shown as the
 // Info tab's content on wide layouts, and as a modal (`showModalPane`) when the
 // compact call-info area is tapped on a narrow layout.
@@ -263,8 +263,7 @@ class _CallInfoPanelState extends State<CallInfoPanel> {
             sizedImageBuilder: flagMarkdownImageBuilder,
             styleSheet: MarkdownStyleSheet.fromTheme(theme),
             // Stays a MarkdownBody — notes are joined with blank lines, so this
-            // is genuinely a block. It only lacked a tap handler, which left the
-            // same note's links dead here while they opened on the logging line.
+            // is genuinely a block.
             onTapLink: (_, href, _) {
               if (href != null) openExternalUrl(href);
             },

@@ -255,8 +255,7 @@ class _WebSerialConnection implements EquipmentConnection {
   /// [closed] is deliberately completed AFTER the release below, not
   /// before: `CatService` starts its own reconnect attempt — reopening
   /// this very [_port] — the moment [closed] fires. Completing it early
-  /// would race that reopen against this teardown, and lose exactly the
-  /// same way the missing teardown itself used to.
+  /// would race that reopen against this teardown, and lose.
   Future<void> _markClosed() async {
     if (!_open) return;
     _open = false;

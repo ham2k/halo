@@ -144,7 +144,7 @@ class StatusBarService extends ChangeNotifier {
   /// In the order the keys were first posted. Dart maps iterate in insertion
   /// order, and assigning an EXISTING key leaves its position alone, so an
   /// update never reshuffles the footer — deliberately not sorted by
-  /// [StatusBarItem.updatedAt], which is what used to make a refreshing
+  /// [StatusBarItem.updatedAt], which would make a refreshing
   /// progress bar leapfrog the messages around it.
   List<StatusBarItem> get items => _items.values.toList();
 

@@ -1,7 +1,7 @@
 // Copyright ©️ 2026 Sebastian Delmont <sd@ham2k.com>
 // SPDX-License-Identifier: MPL-2.0
 //
-// The command dialog (ham2k/app-halo-dist#55) — ⌘K anywhere in the app opens
+// The command dialog — ⌘K anywhere in the app opens
 // a search field with a sheet of results descending from it. One field, four
 // kinds of result: the commands extensions advertise through their `catalog`
 // hook, whatever the typed text currently interprets as, places to navigate
@@ -88,7 +88,7 @@ class _CatalogResult extends _Result {
   bool get expectsParams => entry['expectsParams'] == true;
 
   /// One heading for all of them, NOT the hook's category: rows are ranked
-  /// across categories now (see `_rank`), so grouping by category would
+  /// across categories (see `_rank`), so grouping by category would
   /// either reorder them back or repeat the same heading down the list. The
   /// category shows as a trailing label on the row instead.
   @override
@@ -264,7 +264,7 @@ class _CommandDialogState extends State<CommandDialog> {
     }
   }
 
-  // ── Dev bridge (#55) ──────────────────────────────────────────────────────
+  // ── Dev bridge ────────────────────────────────────────────────────────────
   // The whole dialog is unreachable from outside the app without these: its
   // shortcut is a modifier combo, and those don't reach the Flutter canvas.
 
@@ -620,7 +620,7 @@ class _CommandDialogState extends State<CommandDialog> {
                 // Deliberately NOT animated. An AnimatedSize here clips
                 // HIT-TESTING to its in-progress box, so result rows are laid
                 // out, painted and returned by getRect while being silently
-                // untappable — it cost an afternoon once already. The card
+                // untappable. The card
                 // just appears; the route's own fade is the entrance.
                 child: _resultsCard(theme, t, results, selectable,
                     searching: searching, hasCallInfo: hasCallInfo, hasEmptyState: hasEmptyState, hasMessage: hasMessage),
@@ -788,14 +788,13 @@ class _CommandDialogState extends State<CommandDialog> {
           if (isMobilePlatform) MobileDotToSlashFormatter(),
           // Spaces are only meaningful mid-command (a command's free-text
           // parameters, e.g. "NOTE hello") — otherwise they'd just corrupt a
-          // callsign/command being typed (ham2k/app-halo-dist#190).
+          // callsign/command being typed.
           if (!_engine.commandExpectsParams && !_engine.commandMixedCase)
             FilteringTextInputFormatter.deny(RegExp(r'\s')),
           // Uppercase unless the live command declared `mixedCase` — the rule
           // as documented for the call field (hooks.md, `command`), so a NOTE
           // typed here keeps its prose as written. The Home bar's own copy of
-          // this list uppercases unconditionally; that predates this dialog
-          // and is left alone rather than changed as a side effect.
+          // this list deliberately uppercases unconditionally.
           if (!_engine.commandMixedCase)
             TextInputFormatter.withFunction(
               (oldValue, newValue) => newValue.copyWith(text: newValue.text.toUpperCase()),
@@ -921,7 +920,7 @@ class _CommandDialogState extends State<CommandDialog> {
     final (IconData icon, String title, String? trailing, String? subtitle) = switch (result) {
       _TypedResult(:final text, :final describe) => (Icons.play_arrow, text, null, describe),
       // The category rides along as a trailing label instead of a grouping
-      // heading: results are ranked across every category now, so grouping
+      // heading: results are ranked across every category, so grouping
       // them would either fight the ranking or repeat headings.
       _CatalogResult(:final command, :final params, :final describe, :final category) => (
           Icons.terminal,

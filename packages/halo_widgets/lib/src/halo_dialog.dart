@@ -38,7 +38,7 @@ class HaloDialogHeader extends StatelessWidget {
       child: Padding(
         // Horizontal only: the minHeight above sets the height, and a close
         // button's 48pt tap target already fills it — adding vertical padding
-        // on top pushed the header to 72. Tighter on the leading/trailing edge
+        // on top pushes the header to 72. Tighter on the leading/trailing edge
         // when a button lives there, since its tap target supplies that inset.
         padding: EdgeInsets.only(
           left: leading == null ? 24 : 12,
@@ -71,7 +71,7 @@ class HaloDialogHeader extends StatelessWidget {
 /// A footer row with [cancel] pinned to the leading edge and [actions]
 /// packed to the trailing edge, wrapping onto extra lines when narrow —
 /// shared by [HaloDialog] and any other footer that needs the same
-/// pinned-cancel convention (issue #191) instead of duplicating the layout.
+/// pinned-cancel convention instead of duplicating the layout.
 Widget haloDialogFooterRow({Widget? cancel, List<Widget> actions = const []}) {
   return Row(
     // start, not the Row default of center: if actions wraps onto more than
@@ -110,7 +110,7 @@ class HaloDialog extends StatelessWidget {
   /// `TextButton`. Kept separate from [actions] (rather than just being
   /// listed first in it) so it always sits at the opposite edge from the
   /// primary action(s), not merely leftmost within the same right-packed
-  /// group (issue #191).
+  /// group.
   final Widget? cancel;
 
   /// Whether [content] is wrapped in a scroll view. Turn OFF for content that

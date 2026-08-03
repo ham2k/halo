@@ -1,11 +1,11 @@
 // Copyright ©️ 2026 Sebastian Delmont <sd@ham2k.com>
 // SPDX-License-Identifier: MPL-2.0
 //
-// halo-ops — a small operations CLI for the Ham2K Logger repo
-// (ham2k/app-halo-dist#241). Clean, styled output for humans by default;
+// halo-ops — a small operations CLI for the Ham2K Logger repo.
+// Clean, styled output for humans by default;
 // `--json` for automation. Pure Dart, reusing halo_build_tools for the
 // version/edition/tag logic and shelling out only to `git`. `release` is the
-// single release cutter (it replaced the old scripts/release.sh).
+// single release cutter.
 //
 //   dart run halo_build_tools:halo-ops status
 //   dart run halo_build_tools:halo-ops release [--edition next] [--min-build N] [--dry-run] [--yes]
@@ -130,8 +130,7 @@ Future<void> _release(List<String> args, {required _Out out, required bool json}
     edition = editionForBranch(branch);
   }
 
-  // Compute the plan in Dart from the same tag ledger + version.dart the retired
-  // scripts/release.sh used — halo-ops is now the single release cutter.
+  // Compute the plan from the tag ledger and version.dart.
   final tags = parseReleaseTags((await _git(['tag', '--list'], cwd: root)).split('\n'));
   final versionFile = File('$root/app/lib/config/version.dart');
   final source = await versionFile.readAsString();
@@ -280,15 +279,10 @@ Future<void> _cut({
     // resolves a tag build to the branch the tagged commit lives on; if the
     // commit isn't on any branch yet when it processes the tag webhook, it can't
     // resolve a branch and SILENTLY skips the build — no build record, no error.
-    //
-    // The earlier tag-first (#293) + 10s-wait (#313) approach had this exactly
-    // backwards: it delayed the branch push, so Codemagic saw the tag while the
-    // commit was still off `dist`, and dropped cuts +89/+90/+91 (webhook 202,
-    // no build). An isolated cut whose branch push happened to land within
-    // Codemagic's processing latency (+88, ~1s) slipped through by luck. Atomic
-    // push removes the window: `--atomic` updates both refs together, before any
-    // webhook fires. Pushing the branch does NOT cause a duplicate build — the
-    // workflows trigger on `v*` tags only, not branch pushes.
+    // Tagging first and pushing the branch later leaves exactly that window;
+    // `--atomic` updates both refs together, before any webhook fires. Pushing
+    // the branch does NOT cause a duplicate build — the workflows trigger on
+    // `v*` tags only, not branch pushes.
     //
     // The branch target is the *upstream* branch (e.g. `dist`), NOT the local
     // branch name: a `main-dist-private` local branch's same-named remote ref is
@@ -426,7 +420,7 @@ Future<void> _patch(List<String> args, {required _Out out, required bool json}) 
   // reusable tag is moved. `-f`/`--force` only matter when re-patching the exact
   // same commit (the tag already exists); a normal patch advances HEAD → new sha.
   // These patch workflows are distinct from the release matrix, so there's no
-  // commit-dedup to fight (unlike `release`, hence no tag-first dance here).
+  // commit-dedup to fight.
   await _git(['tag', '-f', tag], cwd: root);
   await _git(['push', _remote, '--force', 'refs/tags/$tag'], cwd: root);
   out.ok('Pushed $tag → ${edition.name} patch builds (${platforms.join(', ')}).');
@@ -577,7 +571,7 @@ Future<void> _preview(List<String> args, {required _Out out, required bool json}
   out.dim('  (give the workflow a minute; follow it in the Actions tab.)');
 }
 
-// ── prune-previews (#244) ─────────────────────────────────────────────────────
+// ── prune-previews ────────────────────────────────────────────────────────────
 
 Future<void> _prunePreviews(List<String> args, {required _Out out, required bool json}) async {
   final rest = [...args];

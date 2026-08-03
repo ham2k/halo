@@ -29,7 +29,7 @@ import '../i18n/strings.g.dart';
 /// `--dart-define=DEV_LABEL=…` or (off web) a `DEV_LABEL` environment variable;
 /// that explicit label is dev-only (stripped in release). Web preview
 /// deployments are themselves release builds, so they instead fall back to the
-/// preview name derived from the URL (ham2k/app-halo-dist#234). Empty
+/// preview name derived from the URL. Empty
 /// otherwise. Resolved once (a lazy top-level final).
 final String _devLabel = _resolveDevLabel();
 
@@ -52,7 +52,7 @@ class _OperationRow extends StatelessWidget {
     final theme = Theme.of(context);
     final when = operation.startAtMax;
     final dateLabel = when == null ? '' : formatShortDate(when);
-    // The ref-derived subtitle (ham2k/app-halo-dist#174) only exists once
+    // The ref-derived subtitle only exists once
     // OperationTitleService has run at least once for this operation — until
     // then, fall back to the raw ref names so the row isn't blank.
     final suggestedSubtitle = displaySubtitleFor(operation);
@@ -178,7 +178,7 @@ class HomeView extends StatefulWidget {
 }
 
 /// How many new operations a user has to open before the FAB's onboarding
-/// nudge (see [_NewOperationNudge]) stops — issue #348.
+/// nudge (see [_NewOperationNudge]) stops.
 const _newOperationNudgeThreshold = 2;
 
 /// How long the screen sits still before the nudge fires. Someone who is
@@ -236,9 +236,9 @@ class _HomeViewState extends State<HomeView> with WidgetsBindingObserver {
   /// resubscribe (and re-run the SELECT) each of those frames.
   late final Stream<List<Operation>> _operationsStream = widget.services.operations.watchAll();
 
-  /// The old dialog's modal barrier blocked a second tap while _newOperation
-  /// was in flight; without it, a fast double-tap could create two
-  /// operations before the pushed route starts absorbing pointer events.
+  /// Blocks a second tap while _newOperation is in flight — a fast
+  /// double-tap could otherwise create two operations before the pushed
+  /// route starts absorbing pointer events.
   bool _creatingOperation = false;
 
   /// No call/title dialog: the station call comes from the active profile's
@@ -253,14 +253,14 @@ class _HomeViewState extends State<HomeView> with WidgetsBindingObserver {
         stationCall: widget.services.settings.activeProfile.operatorCall,
       );
       widget.services.track('operation_created');
-      // Counts opened new operations, not overlay displays (issue #348) —
+      // Counts opened new operations, not overlay displays —
       // what the FAB's nudge (_NewOperationNudge) is gated on.
       unawaited(widget.services.settings.recordOnboardingShown(OnboardingFlows.newOperation));
       if (context.mounted) {
         // The guard stays up until the pushed route pops back to this
         // screen — the home screen remains hit-testable during the push
         // transition, so releasing right after push would reopen the
-        // double-tap window the removed dialog's barrier used to close.
+        // double-tap window.
         unawaited(
           Navigator.of(context)
               .push(
@@ -325,7 +325,7 @@ class _HomeViewState extends State<HomeView> with WidgetsBindingObserver {
     });
   }
 
-  // The FAB's extend/collapse has been seen stuck mid-transition, at least on
+  // The FAB's extend/collapse can get stuck mid-transition, at least on
   // web, where a backgrounded tab's frame pump doesn't necessarily resume on
   // its own once the tab is visible again — whatever frame the animation was
   // mid-paint on then never gets redrawn. AppLifecycleState.resumed fires for
@@ -390,7 +390,7 @@ class _HomeViewState extends State<HomeView> with WidgetsBindingObserver {
           children: [
             // The product name gets priority over the edition badge/dev
             // label when the header is too narrow to fit both at full size
-            // (issue #182) — a 3:1 flex split shrinks the trailing group
+            // — a 3:1 flex split shrinks the trailing group
             // first and further, rather than shrinking both equally.
             Flexible(flex: 3, child: shrinkToFitText(Text(ham2kProductName))),
             if (ham2kEditionBadgeAsset != null || _devLabel.isNotEmpty) ...[
@@ -436,7 +436,7 @@ class _HomeViewState extends State<HomeView> with WidgetsBindingObserver {
       body: PaneSafeArea.root(
         context,
         // Real device safe-area insets (notch, home indicator) bubble in
-        // from here (ham2k/app-halo-dist#205); PaneSafeArea's own
+        // from here; PaneSafeArea's own
         // divider-clearance role composes with it further down.
         child: ResizableSplitView(
           // Home is ViewLayoutPolicy.fixed and (for now) opts into the
@@ -466,8 +466,8 @@ class _HomeViewState extends State<HomeView> with WidgetsBindingObserver {
                           builder: (context, snapshot) {
                             // First real snapshot = bootstrap done + first data
                             // load complete: resolve the dev bridge's `ready`
-                            // promise so agents can await it instead of sleeping
-                            // (#239). Idempotent; only while the bridge is live.
+                            // promise so agents can await it instead of
+                            // sleeping. Idempotent; only while the bridge is live.
                             //
                             // Anchored to the build because that's what the test
                             // harness can drive; the cost is that on a HIDDEN web
@@ -483,8 +483,8 @@ class _HomeViewState extends State<HomeView> with WidgetsBindingObserver {
                               // `snapshot.hasData` distinguishes "the stream
                               // hasn't emitted its first snapshot yet" from "it
                               // emitted an empty list" — collapsing both into
-                              // `snapshot.data ?? []` was what previously made
-                              // OperationListPanel need to guess (via a fixed
+                              // `snapshot.data ?? []` would leave
+                              // OperationListPanel guessing (via a fixed
                               // delay) how long "still loading" might last.
                               loading: !snapshot.hasData,
                               operations: snapshot.data ?? const <Operation>[],
@@ -500,7 +500,7 @@ class _HomeViewState extends State<HomeView> with WidgetsBindingObserver {
                       // gets a genuine descendant context while staying a
                       // transparent, non-RenderObject wrapper — Positioned's
                       // ParentDataWidget mechanism sees straight through it to
-                      // this Stack (ham2k/app-halo-dist#205).
+                      // this Stack.
                       Builder(
                         builder: (context) => Positioned(
                           // Clears the device's real bottom/right insets (home
@@ -597,10 +597,8 @@ class _HomeViewState extends State<HomeView> with WidgetsBindingObserver {
   }
 }
 
-/// The home view's right column on two-pane layouts: the operation list has
-
-/// Wraps the FAB with a repeating wiggle to draw a first-time user's eye
-/// (issue #348), for as long as [_newOperationNudgeThreshold] new operations
+/// Wraps the FAB with a repeating wiggle to draw a first-time user's eye,
+/// for as long as [_newOperationNudgeThreshold] new operations
 /// haven't been opened yet. The caller decides both WHETHER to include this
 /// widget (by reading the onboarding count) and WHEN (after
 /// [_newOperationNudgeDelay] of an untouched screen), rather than this widget
@@ -718,7 +716,7 @@ class _NewOperationNudgeState extends State<_NewOperationNudge> with SingleTicke
 
 /// The home view's right column on two-pane layouts: the operation list has
 /// nothing useful to spend the extra width on, so it shows the wordmark and
-/// version instead (issue #85).
+/// version instead.
 class _BrandingPane extends StatelessWidget {
   const _BrandingPane();
 
@@ -731,7 +729,7 @@ class _BrandingPane extends StatelessWidget {
       // No keyboard padding here: `StatusBarOverlay` holds the keyboard's
       // height back for the whole app and consumes the inset, so this pane is
       // already only as tall as the space above the keyboard. Padding by
-      // `viewInsets.bottom` as well used to shrink the branding to a sliver
+      // `viewInsets.bottom` as well would shrink the branding to a sliver
       // pinned near the top on iPad landscape.
       // Scale the branding down rather than overflow when the pane is short —
       // e.g. landscape two-pane with the keyboard up shrinks it well below
@@ -777,7 +775,7 @@ class _BrandingPane extends StatelessWidget {
             nameOnly: true,
             style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant),
           ),
-          // Build number + git SHA (APP-24), dev builds only — lets a
+          // Build number + git SHA, dev builds only — lets a
           // developer confirm exactly which build/commit is running.
           if (!kReleaseMode)
             Text(
@@ -806,7 +804,7 @@ class _HomeQuickLookupState extends State<HomeQuickLookup> with WidgetsBindingOb
 
   /// Lookup, command interpretation and execution all live in the shared
   /// engine — the ⌘K command dialog runs on the same one, so the debounce,
-  /// space-retention (ham2k/app-halo-dist#190) and execute rules can't drift
+  /// space-retention and execute rules can't drift
   /// between the two. This widget only renders it.
   late final CommandEngine _engine;
 
@@ -823,7 +821,7 @@ class _HomeQuickLookupState extends State<HomeQuickLookup> with WidgetsBindingOb
     _engine.addListener(_onEngineChanged);
     // The clear button and the numbers row's contextual key both key off the
     // text, and the numbers row shows only while this field has focus, so
-    // rebuild for both (issue #27).
+    // rebuild for both.
     _controller.addListener(_onEngineChanged);
     _focusNode.addListener(_onFocusChanged);
     // The numbers row and the bottom reserve both ask the raw FlutterView
@@ -867,7 +865,7 @@ class _HomeQuickLookupState extends State<HomeQuickLookup> with WidgetsBindingOb
   /// on-screen keyboard is up (`virtualKeyboardIsUp`'s >100px threshold ignores
   /// iOS's thin hardware-keyboard accessory bar, ~45–55px).
   ///
-  /// Reads the raw `FlutterView`, not MediaQuery: `StatusBarOverlay` now
+  /// Reads the raw `FlutterView`, not MediaQuery: `StatusBarOverlay`
   /// consumes the bottom inset for everything below it, so MediaQuery reports 0
   /// here even with the keyboard up. That is deliberate — it stops every route
   /// reserving the keyboard a second time — but it means "is the keyboard up?"
@@ -938,7 +936,7 @@ class _HomeQuickLookupState extends State<HomeQuickLookup> with WidgetsBindingOb
     final commandMessage = _engine.message;
     final hasContent = commandMessage != null || lookupLine != null;
 
-    // The Home Scaffold no longer resizes for the keyboard, so this bar
+    // The Home Scaffold doesn't resize for the keyboard, so this bar
     // reserves the bottom safe area itself below the field (and the numbers
     // row, when shown), and its Material fills that strip so the teal forms the
     // home-indicator strip. NOT the keyboard: `StatusBarOverlay` reserves that
@@ -1024,8 +1022,7 @@ class _HomeQuickLookupState extends State<HomeQuickLookup> with WidgetsBindingOb
                 if (isMobilePlatform) MobileDotToSlashFormatter(),
                 // Spaces are only meaningful mid-command (a command's free-
                 // text parameters, e.g. "NOTE hello") — otherwise they'd
-                // just corrupt a callsign/command being typed
-                // (ham2k/app-halo-dist#190).
+                // just corrupt a callsign/command being typed.
                 if (!_engine.commandExpectsParams && !_engine.commandMixedCase)
                   FilteringTextInputFormatter.deny(RegExp(r'\s')),
                 TextInputFormatter.withFunction(

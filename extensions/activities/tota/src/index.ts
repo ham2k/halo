@@ -5,8 +5,7 @@
 //
 // The one award here whose LIST needs the API key, not just its spots: the
 // key is a query parameter on the data-file URL. A build without one has no
-// towers at all, which is why this extension was unportable until
-// `host.secret('TOTA_API_KEY')` existed.
+// towers at all.
 //
 // Because the key rides in a URL, nothing here may log one — see
 // `DataFileManager.redactUrlForLog` for the same rule on the core side.

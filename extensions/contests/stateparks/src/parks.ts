@@ -61,8 +61,8 @@ export function configuredOurPark(event: StateParkEvent, operation: Container, o
 /// The POTA activation is authoritative when there is one: it is a reference,
 /// checked and decorated, and the operator is logging it either way. The
 /// abbreviation from setup is a FALLBACK for someone running the event without
-/// POTA — not an addition to it. Adding it doubled every QSO's points and
-/// invented a second activated park whenever the two disagreed.
+/// POTA — not an addition to it. Adding it would double every QSO's points and
+/// invent a second activated park whenever the two disagree.
 export function ourParkRefs(event: StateParkEvent, operation: Container, ownRef?: Record<string, JSONValue>): string[] {
   const activated = refsOfType(operation, POTA_ACTIVATION)
     .map((r) => str(r.ref).toUpperCase())

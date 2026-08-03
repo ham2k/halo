@@ -3,8 +3,8 @@
 //
 // Replacement for Flutter's built-in ErrorWidget (the release-mode grey box /
 // debug red screen): a compact tile shown in place of the one widget whose
-// build threw, so a bad cell in a panel doesn't take the session down with it
-// (#76). Installed globally by ErrorReportingService._installLocalHooks().
+// build threw, so a bad cell in a panel doesn't take the session down with it.
+// Installed globally by ErrorReportingService._installLocalHooks().
 //
 // Built from primitives only (no Material/Theme lookups): this renders at
 // arbitrary — possibly broken — points in the tree, where Theme.of or

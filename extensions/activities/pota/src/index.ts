@@ -282,12 +282,12 @@ function refsOfType(container: Record<string, unknown>, type: string): Ref[] {
 
 /// A QSO-scoped grid lookup: any POTA park hunted on THIS qso is a more
 /// specific ("portable") location than a callsign's registered home QTH —
-/// same concept as a `/P` callsign, per ham2k/app-halo-dist#8's worked
-/// example. Returns the park's grid tagged `REASONABLE` accuracy (a park can
+/// same concept as a `/P` callsign. Returns the park's grid tagged
+/// `REASONABLE` accuracy (a park can
 /// be large, so its single-point grid may be off by a few grids); the merge
-/// keeps whichever same-scope result is most accurate, so this no longer has
+/// keeps whichever same-scope result is most accurate, so this doesn't have
 /// to bail when a grid already exists — a more precise SOTA summit on the same
-/// qso still wins (ham2k/app-halo-dist#185). Skips when there's no POTA ref or
+/// qso still wins. Skips when there's no POTA ref or
 /// this pass is offline (the network fallback in `fetchPark` needs online).
 async function lookupCall(
   { callInfo, qso }: { callInfo: AnnotatedCallInfo; qso: Record<string, JSONValue>; operation: Record<string, JSONValue> },
@@ -473,8 +473,8 @@ const SpotsHook = {
 }
 
 /// Posts directly to the POTA API — no authentication required (unlike
-/// SOTA's spot API, which needs a logged-in account app-halo doesn't have
-/// yet). Ported from app-polo's POTAPostSpotAPI.js.
+/// SOTA's spot API, which needs a logged-in account). Ported from
+/// app-polo's POTAPostSpotAPI.js.
 async function postSpotToPOTA(
   { call, spotter, freq, mode, refs, comment, appName }: { call: string; spotter: string; freq: number; mode?: string; refs: Ref[]; comment?: string; appName?: string },
 ): Promise<PostResult> {

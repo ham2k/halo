@@ -63,9 +63,9 @@ class UiScale extends StatelessWidget {
     // the whole mechanism silently degrades: the subtree still lays out in the
     // divided coordinate space (so the UI reflows) but never gets magnified.
     // That asymmetry only shows above 1.0 — below it the child is larger than
-    // the window and gets clamped, which looks correct — so it hid until a
-    // loose-constraint ancestor appeared at the app root. Expanding here makes
-    // the primitive independent of the parent's constraint discipline.
+    // the window and gets clamped, which looks correct — so a loose-constraint
+    // ancestor can hide the failure entirely. Expanding here makes the
+    // primitive independent of the parent's constraint discipline.
     return _UiScaleScope(
       scale: scale,
       child: SizedBox.expand(

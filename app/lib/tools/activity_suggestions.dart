@@ -16,11 +16,11 @@
 /// DESCENDING `relevance`.
 ///
 /// The second band is the part worth explaining. Ranking every distance-less
-/// suggestion equal — as returning `infinity` for all of them did — throws away
+/// suggestion equal — e.g. returning `infinity` for all of them — throws away
 /// `relevance`, which for those results is the ONLY ranking signal there is.
-/// That was not hypothetical: POTA always sets `relevance` and sets `distance`
+/// Not hypothetical: POTA always sets `relevance` and sets `distance`
 /// only when a location is known, so a park search run with no operation grid
-/// and no GPS discarded `relevanceForMatch` entirely and returned rows in raw
+/// and no GPS would discard `relevanceForMatch` entirely and return rows in raw
 /// database order — an exact code match no more likely to be first than a
 /// substring hit.
 ///

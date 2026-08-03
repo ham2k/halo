@@ -22,8 +22,7 @@ const _allowedSchemes = {'http', 'https', 'mailto'};
 /// Silently does nothing for a malformed or disallowed URL — callers are tap
 /// handlers on text that the operator did not write, where the useful response
 /// to junk is to ignore it rather than to raise anything. A URL that passes and
-/// then fails to launch is a different case: that stays unhandled, exactly as it
-/// was at each of the call sites this replaced.
+/// then fails to launch is a different case: that stays unhandled.
 ///
 /// [mode] defaults to leaving the app. Pass [LaunchMode.platformDefault] where
 /// an in-app browser (Custom Tab / SFSafariViewController on mobile) is the

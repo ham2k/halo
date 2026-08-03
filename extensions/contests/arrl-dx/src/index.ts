@@ -3,11 +3,11 @@
 //
 // ARRL International DX Contest. Ported from app-polo's ARRLDXExtension.
 //
-// The M2 test of the dynamic side of the input catalog: this contest's single
+// The dynamic side of the input catalog in action: this contest's single
 // exchange field is a state/province OR a power level depending on which side
 // of the contest we're on — different label, different validation, same
 // control. `loggingControls` gets the operation, so the descriptor is just
-// computed per call; nothing in the core had to change to support it.
+// computed per call; nothing in the core is needed to support it.
 
 import { contestScorer, defineExtension, exportFilename, startMillisOf } from "@ham2k/halo-extension-sdk"
 import type {
@@ -106,8 +106,8 @@ const ActivityHook = {
     // Off-contest, contribute nothing. This is an OPTIMIZATION, not the rule:
     // the core already refuses a primary field to any activity the operation
     // isn't running (halo_widgets' `_textControls`), so forgetting this guard
-    // is invisible to the operator. What it saves is the work below — a country
-    // -file annotation per keystroke-triggered refresh, in the JS isolate,
+    // is invisible to the operator. What it saves is the work below, run per
+    // keystroke-triggered refresh in the JS isolate,
     // multiplied by every contest extension the user happens to have enabled.
     const ref = refOfType(args.operation, TYPE)
     if (!ref) return []
@@ -276,8 +276,8 @@ const ExportHook = {
   async generateExport(args: ExportRequest, ctx: HookContext): Promise<ExportResult> {
     // Only the two exportTypes `suggestExportOptions` above offers. Belt and
     // braces alongside the keyed `invokeOne` below: a hook that answers for an
-    // exportType it never offered is how the ADIF delegation recursed into
-    // itself in the first place.
+    // exportType it never offered makes the ADIF delegation recurse into
+    // itself.
     if (args.exportType !== 'cabrillo' && args.exportType !== 'contest-adif') {
       return { filename: '', mimeType: '', content: '' }
     }
@@ -314,7 +314,7 @@ const ExportHook = {
     const { hooks } = await import("@ham2k/halo-extension-sdk")
     // invokeOne, NOT invokeAll: the fan-out includes this contest's own
     // `generateExport`, which would take the same ADIF branch and delegate
-    // again — unbounded recursion that only surfaced as a 30s export timeout.
+    // again — unbounded recursion.
     const entries = await hooks.invokeOne('export', 'adif', 'generateExport', {
       operation: args.operation,
       qsos: args.qsos,

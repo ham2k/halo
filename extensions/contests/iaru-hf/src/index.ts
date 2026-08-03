@@ -3,14 +3,14 @@
 //
 // IARU HF World Championship. Ported from app-polo's IARUHFExtension.
 //
-// The fifth contest ported (docs/design/contests.md M4). What it exercises that
-// the first four didn't: a setup form that VARIES WITH ITSELF. What we send is
+// What it exercises that the other contests don't: a setup form that VARIES
+// WITH ITSELF. What we send is
 // an ITU zone, a society abbreviation or an IARU office depending on the kind
 // of station we are, so the form shows one of three fields — which is the whole
-// reason `visibleWhen` exists (§5.4.1).
+// reason `visibleWhen` exists (docs/design/contests.md §5.4.1).
 //
 // It needs no reference data. ITU zone and continent both come from the bundled
-// country file, which is why M4 ships no `operation-data` extension (§5.3).
+// country file (§5.3).
 
 import { contestScorer, defineExtension, exportFilename, startMillisOf } from "@ham2k/halo-extension-sdk"
 import type {
@@ -345,7 +345,7 @@ const ExportHook = {
   async generateExport(args: ExportRequest, ctx: HookContext): Promise<ExportResult> {
     // Only the two exportTypes offered above. Belt and braces alongside the
     // keyed `invokeOne` below: a hook answering for an exportType it never
-    // offered is how the ADIF delegation once recursed into itself.
+    // offered makes the ADIF delegation recurse into itself.
     if (args.exportType !== 'cabrillo' && args.exportType !== 'contest-adif') {
       return { filename: '', mimeType: '', content: '' }
     }
@@ -382,7 +382,7 @@ const ExportHook = {
     const { hooks } = await import("@ham2k/halo-extension-sdk")
     // invokeOne, NOT invokeAll: the fan-out includes this contest's own
     // `generateExport`, which would take the same ADIF branch and delegate
-    // again — unbounded recursion that only surfaced as an export timeout.
+    // again — unbounded recursion.
     const entries = await hooks.invokeOne('export', 'adif', 'generateExport', {
       operation: args.operation,
       qsos: args.qsos,

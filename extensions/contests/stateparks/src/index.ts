@@ -153,7 +153,7 @@ const ActivityHook = {
         label: t('eventLabel'),
         // A default, because this form is also how an event is FIRST chosen: the
         // renderer prefers the value already on the ref, and without one a
-        // straight Save on a fresh setup wrote `ref: null` — an activity row
+        // straight Save on a fresh setup writes `ref: null` — an activity row
         // naming no event, and a scorer with nothing to score.
         value: currentKey || options[0]?.value,
         options,
@@ -251,7 +251,7 @@ const ActivityHook = {
     if (!event) return null
 
     // PRESENCE, not truthiness — `theirParkWasDecided`/`theirParkAbbreviation`
-    // own that rule now, so the save path, the ADIF and the Cabrillo cannot
+    // own that rule, so the save path, the ADIF and the Cabrillo cannot
     // disagree about whether a blank field was a decision (§5.4).
     const decided = theirParkWasDecided(qso)
     const park = theirParkAbbreviation(event, qso)

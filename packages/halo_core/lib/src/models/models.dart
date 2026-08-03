@@ -77,7 +77,7 @@ class Operation {
       ((data['refs'] as List?) ?? const []).whereType<Map>().map((r) => r.cast<String, dynamic>()).toList();
 
   /// The ref-derived title/subtitle fragments `OperationTitleService` cached
-  /// under `localData['titleSuggestion']` (ham2k/app-halo-dist#174) — device-
+  /// under `localData['titleSuggestion']` — device-
   /// local like `scoring`, since it's cheaply regenerable from `refs`. A UI
   /// layer localizes the "for"/"at" prepositions and assembles the final
   /// sentence (this model has no BuildContext to do that itself) — that
@@ -157,15 +157,15 @@ class Qso {
   String? get ourGrid => _our['grid'] as String?;
 
   String get theirCall => (_their['call'] as String?) ?? '';
-  // `guess` (the merged lookup result — see the Lookups feature,
-  // ham2k/app-halo-dist#8) stays nested rather than flattened onto `their`,
+  // `guess` (the merged lookup result) stays nested rather than flattened
+  // onto `their`,
   // matching lib-qson-tools' `AnnotatedCallInfo` type; a manually
   // entered/edited top-level value always wins over the guess.
   String? get theirName => (_their['name'] as String?) ?? (_theirGuess['name'] as String?);
   String? get theirGrid => (_their['grid'] as String?) ?? (_theirGuess['grid'] as String?);
   String? get theirState => (_their['state'] as String?) ?? (_theirGuess['state'] as String?);
-  // Both set by the callsign-annotation lookup step (ham2k/app-halo-dist#8's
-  // `annotateCallsign`) — `entityPrefix` identifies the DXCC entity for the
+  // Both set by the callsign-annotation lookup step
+  // (`annotateCallsign`) — `entityPrefix` identifies the DXCC entity for the
   // QSO row's DX/domestic column, `flag` is that entity's emoji flag,
   // resolved JS-side (extensions/core/lookups/src/annotate.ts) so Dart
   // doesn't need its own copy of the DXCC entity table.
@@ -177,7 +177,7 @@ class Qso {
   /// The contest/activity exchange the other station sent (QSON `their.exchange`,
   /// alongside their RST) — a serial number, name, zone, etc. HaLo has no
   /// exchange input field yet, so today this is populated only via import/sync
-  /// or a lookup guess; the QSO row shows it after the signal reports (#354).
+  /// or a lookup guess; the QSO row shows it after the signal reports.
   String? get theirExchange => (_their['exchange'] as String?) ?? (_theirGuess['exchange'] as String?);
 
   /// Whether the value returned for `their[field]` (e.g. `'name'`, `'grid'`,

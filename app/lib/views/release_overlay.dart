@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: MPL-2.0
 //
 // The dismissible "what's new" overlay shown once per new version on
-// startup (Issue #42). Shown by `_StartupGate` in main.dart when
+// startup. Shown by `_StartupGate` in main.dart when
 // `config/release_notes.dart`'s current entry hasn't been dismissed yet
 // (SettingsService.lastSeenReleaseVersion); dismissing it persists that
 // version so it doesn't show again until the next release.
@@ -226,11 +226,10 @@ class _ReleaseOverlayViewState extends State<ReleaseOverlayView> {
                 ),
                 // The caption and the notes band are siblings in ONE
                 // Positioned/Column, not two separate Positioned widgets — a
-                // standalone Positioned here for just the caption previously
-                // broke the photo's rendering (a reproducible CanvasKit
-                // compositing issue with this many overlapping top-level
-                // Positioned layers), so it stays folded in alongside the band
-                // instead. Tapping the notes area (not the Continue button)
+                // standalone Positioned here for just the caption breaks the
+                // photo's rendering (a reproducible CanvasKit compositing
+                // issue with this many overlapping top-level Positioned
+                // layers). Tapping the notes area (not the Continue button)
                 // toggles between a short, non-scrollable preview and an
                 // expanded, scrollable view; the band's height/opacity and the
                 // caption's fade-out both animate off of `_expanded`.
@@ -285,11 +284,10 @@ class _ReleaseOverlayViewState extends State<ReleaseOverlayView> {
                                           // (revealing whatever's underneath,
                                           // same as a real fade-to-transparent)
                                           // — a decorative gradient-colored box
-                                          // painted on top instead (the
-                                          // previous approach) only approximates
-                                          // that, and didn't read as a fade at
-                                          // all against the band's own
-                                          // semi-transparent color.
+                                          // painted on top instead only
+                                          // approximates that, and doesn't read
+                                          // as a fade at all against the band's
+                                          // own semi-transparent color.
                                           : ShaderMask(
                                               shaderCallback: (bounds) => const LinearGradient(
                                                 begin: Alignment.topCenter,

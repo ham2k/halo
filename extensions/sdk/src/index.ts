@@ -66,8 +66,8 @@ let currentExtensionKey = 'unknown'
 /// one per extension this bundle defines ('pota' also defines
 /// 'pota-all-parks'). Module-scoped — each bundle carries its own SDK copy,
 /// so other bundles can't reach these closures. Identity params are
-/// injected by the kernel; the `ns` values this module used to pass are now
-/// just ignored fallbacks.
+/// injected by the kernel; the `ns` values this module passes alongside are
+/// ignored fallbacks.
 const privilegedHostCalls: Record<string, (method: string, params: Record<string, unknown>) => Promise<unknown>> = {}
 
 function kernel(): KernelApi {
@@ -110,7 +110,7 @@ export const hooks = {
   ///
   /// Prefer this over filtering `invokeAll`'s results for the key you wanted.
   /// A contest's `generateExport` delegating the ADIF build is exactly the
-  /// recursive shape described above, and spun forever until it did this.
+  /// recursive shape described above, and loops forever through `invokeAll`.
   invokeOne(category: string, key: string, method: string, args: unknown, online?: boolean) {
     return kernel().invokeLocal(category, method, args, online, key)
   },

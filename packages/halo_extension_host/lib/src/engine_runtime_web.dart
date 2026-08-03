@@ -1,13 +1,13 @@
 // Copyright ©️ 2026 Sebastian Delmont <sd@ham2k.com>
 // SPDX-License-Identifier: MPL-2.0
 //
-// Web backend: since QuickJS/flutter_js needs dart:ffi (unavailable on
+// Web backend: since QuickJS needs dart:ffi (unavailable on
 // web), this runs the kernel + extension bundles directly in the browser's
 // own JS engine, inside a dedicated Web Worker so extension work stays off
 // the UI thread — mirroring the isolate used natively. The worker is built
 // at runtime from a Blob URL (bundle sources are only known at runtime, not
 // static asset paths) and speaks the same 'polo' protocol as kernel.ts,
-// just over postMessage instead of flutter_js's channel mechanism.
+// just over postMessage instead of the native `sendMessage` global.
 //
 // The bootstrap script below loads bundle sources via indirect `eval` and
 // the worker itself is constructed from a `blob:` URL. A Content-Security-

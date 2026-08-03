@@ -137,8 +137,8 @@ class RadioService extends ChangeNotifier implements VfoStore {
   @override
   void dispose() {
     // Flush rather than cancel: dropping the timer would discard up to
-    // `writeDelay` of VFO state, which every `setVfo` used to persist
-    // immediately. `flushPendingWrites` cancels the timer itself.
+    // `writeDelay` of VFO state. `flushPendingWrites` cancels the timer
+    // itself.
     unawaited(flushPendingWrites());
     super.dispose();
   }

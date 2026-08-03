@@ -40,8 +40,8 @@ import '../../tools/operation_title.dart';
 
 
 /// An icon, circled in [color] at 60% opacity when the control declares an
-/// accent (issue #187) — sparingly used, so a control with no color just
-/// renders the bare icon as before.
+/// accent — sparingly used, so a control with no color just
+/// renders the bare icon.
 Widget _accentIcon(String? iconName, Color? color) {
   final icon = Icon(resolveIconName(iconName));
   if (color == null) return icon;
@@ -712,7 +712,7 @@ class OperationSheetState extends State<OperationSheet> {
   /// The message shown in the Suggestions & Search section when there are
   /// no results: while there's a search term, a plain "no matches" message
   /// always applies; with an empty term (nearby suggestions) and no
-  /// operation grid, the three location-driven states from issue #6 kick in
+  /// operation grid, the location-driven states kick in
   /// instead — determining the device's location, or location known to be
   /// unavailable.
   String get _suggestionsEmptyMessage {
@@ -796,14 +796,6 @@ class OperationSheetState extends State<OperationSheet> {
     }
   }
 
-  /// Builds a section's body from a list of (already opaquely white) rows:
-  /// content-sized when [fill] is false, or a scrollable list when [fill]
-  /// is true — the leftover space below the last row then shows the
-  /// Scaffold's own gray background straight through, since neither
-  /// ListView nor its rows' surrounding space paint anything there. [fill]
-  /// varies at runtime (Current Activities only fills when Search is
-  /// collapsed), so this shape has to be chosen here rather than baked
-  /// into a fixed widget tree.
   String _refRowId(String? type, String? code) => '$type/$code';
 
   /// Points at the ref the user just tried to add again. Rather than telling
@@ -872,6 +864,14 @@ class OperationSheetState extends State<OperationSheet> {
     );
   }
 
+  /// Builds a section's body from a list of (already opaquely white) rows:
+  /// content-sized when [fill] is false, or a scrollable list when [fill]
+  /// is true — the leftover space below the last row then shows the
+  /// Scaffold's own gray background straight through, since neither
+  /// ListView nor its rows' surrounding space paint anything there. [fill]
+  /// varies at runtime (Current Activities only fills when Search is
+  /// collapsed), so this shape has to be chosen here rather than baked
+  /// into a fixed widget tree.
   Widget _sectionBody({required bool fill, required List<Widget> rows, required Widget emptyPlaceholder}) {
     if (rows.isEmpty) return emptyPlaceholder;
     // One ink layer PER ROW. A ListTile paints its `tileColor` (and its
@@ -879,9 +879,9 @@ class OperationSheetState extends State<OperationSheet> {
     // Material clips ink to ITS OWN bounds (`_RenderInkFeatures.paint`), not
     // to anything in between. With the sheet's root Material as the nearest
     // one, that clip is the whole sheet, so a row scrolled out of a viewport
-    // kept painting its background wherever it had got to. A Material around
-    // the list would just move the problem to the list's bounds; per row,
-    // the clip IS the row. MaterialType.transparency: an ink layer, no
+    // would keep painting its background wherever it had got to. A Material
+    // around the list would just move the problem to the list's bounds; per
+    // row, the clip IS the row. MaterialType.transparency: an ink layer, no
     // surface of its own.
     final inkedRows = [
       for (final row in rows) Material(type: MaterialType.transparency, child: row),
@@ -1168,7 +1168,7 @@ class OperationSheetState extends State<OperationSheet> {
             child: Column(
               children: [
                 // The slot is always there, empty when idle: showing and
-                // hiding the bar itself moved every row under it by its
+                // hiding the bar itself would move every row under it by its
                 // height each time a search resolved.
                 SizedBox(
                   height: _searchProgressHeight,
@@ -1344,12 +1344,12 @@ class OperationSheetState extends State<OperationSheet> {
                         // Its own ink layer, INSIDE the scroll view, so the
                         // viewport clips it along with the rows. A ListTile
                         // paints `tileColor` with `Ink`, onto the nearest
-                        // ancestor Material — which was the sheet's root,
-                        // above this scroll view, and ink is clipped to that
-                        // Material's bounds rather than to the viewport in
-                        // between (see `_sectionBody`). So rows scrolled out
-                        // of this 84px window still painted their
-                        // backgrounds, over the sections above.
+                        // ancestor Material — without this that's the
+                        // sheet's root, above this scroll view, and ink is
+                        // clipped to that Material's bounds rather than to
+                        // the viewport in between (see `_sectionBody`), so
+                        // rows scrolled out of this 84px window would still
+                        // paint their backgrounds over the sections above.
                         // MaterialType.transparency: an ink layer, no
                         // surface of its own.
                         child: Material(
@@ -1366,19 +1366,6 @@ class OperationSheetState extends State<OperationSheet> {
   }
 }
 
-/// One collapsible section. The tinted header always shows, arrow on the
-/// left; the body appears below it only while expanded, using the default
-/// (untinted) background. When [fill] and expanded, the whole section
-/// (header + body) is wrapped in [Expanded] so it consumes whatever
-/// vertical space its siblings don't need — [child] must then provide its
-/// own bounded/scrollable content (see the Suggestions & Search section's
-/// `ListView`).
-///
-/// The arrow rotates and (for non-[fill] sections) the body cross-fades and
-/// resizes smoothly. A [fill] section's own Expanded/flex toggle stays
-/// instant — animating who claims leftover flex space between sibling
-/// sections isn't something Flutter's implicit animations do — but its
-/// arrow still animates like every other section's.
 /// Marks a suggestion the operation already carries. Tapping the row still
 /// goes through `_addSuggestion`, which flashes the existing Current
 /// Activities row rather than adding a second copy.
@@ -1404,6 +1391,19 @@ class _AlreadySelectedChip extends StatelessWidget {
   }
 }
 
+/// One collapsible section. The tinted header always shows, arrow on the
+/// left; the body appears below it only while expanded, using the default
+/// (untinted) background. When [fill] and expanded, the whole section
+/// (header + body) is wrapped in [Expanded] so it consumes whatever
+/// vertical space its siblings don't need — [child] must then provide its
+/// own bounded/scrollable content (see the Suggestions & Search section's
+/// `ListView`).
+///
+/// The arrow rotates and (for non-[fill] sections) the body cross-fades and
+/// resizes smoothly. A [fill] section's own Expanded/flex toggle stays
+/// instant — animating who claims leftover flex space between sibling
+/// sections isn't something Flutter's implicit animations do — but its
+/// arrow still animates like every other section's.
 class _AccordionSection extends StatelessWidget {
   final Widget title;
   final bool expanded;
@@ -1527,7 +1527,7 @@ class _PulsingGpsPin extends StatefulWidget {
 class _PulsingGpsPinState extends State<_PulsingGpsPin> with SingleTickerProviderStateMixin {
   // A repeating controller repaints the scene at the display's refresh rate
   // for as long as the pin is mounted — on the web, where a GPS fix can stay
-  // pending indefinitely (unanswered permission prompt), that pegged a CPU
+  // pending indefinitely (unanswered permission prompt), that pegs a CPU
   // core. So the pulse winds down in phases: smooth for a few full cycles,
   // then a brief dim blip every couple of seconds (frames are only drawn
   // during the blip), then a static icon.

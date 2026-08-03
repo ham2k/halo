@@ -6,10 +6,9 @@
 // directly on top of the on-screen keyboard — it reads as an extension of the
 // keyboard, so nothing may come between them.
 //
-// Those two facts can't both be satisfied where the row used to live. Each
-// route built its own row inside itself, and the status footer is one level
-// up in `StatusBarOverlay` (one integration point for every route), so the
-// footer was always painted BELOW the row no matter what either did.
+// A row built inside a route can't satisfy both facts: the status footer is
+// one level up in `StatusBarOverlay` (one integration point for every route),
+// so it would always paint BELOW the footer's spot no matter what either did.
 //
 // So the row is published rather than placed: the focused field describes the
 // row it wants, and the overlay draws it in the one spot that is under the
@@ -23,10 +22,9 @@ import 'package:flutter/widgets.dart';
 ///
 /// Focus is not enough on its own. On a phone the logging panel sits in a
 /// `TabBarView` behind a keep-alive, so switching to Spots neither disposes it
-/// nor takes focus off the call field — it just stops being visible. That used
-/// to be harmless because the row was drawn inside the panel and went with it;
-/// now the row is drawn one level up, OUTSIDE the tab view, so without this it
-/// stays pinned over the spot list and types into the hidden call field.
+/// nor takes focus off the call field — it just stops being visible. The row
+/// is drawn one level up, OUTSIDE the tab view, so without this it stays
+/// pinned over the spot list and types into the hidden call field.
 ///
 /// Absent means visible, so tests and any host with a single pane need not
 /// think about it.

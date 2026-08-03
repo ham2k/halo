@@ -88,7 +88,7 @@ class SettingsService extends ChangeNotifier implements SyncSettings {
   /// locked and would not unlock. The plugin reports all three as
   /// `KeyringLocked`, so this deliberately does not claim which
   /// (flutter_secure_storage_linux, `Secret.hpp` `warmupKeyring`). Boot reads it
-  /// to say, once, that account logins cannot be saved (#438).
+  /// to say, once, that account logins cannot be saved.
   ///
   /// Not persisted: it describes THIS session, and a keyring installed or
   /// unlocked later must be picked up on the next launch without anything to
@@ -104,10 +104,10 @@ class SettingsService extends ChangeNotifier implements SyncSettings {
             // The data-protection keychain requires the `keychain-access-groups`
             // entitlement, which is RESTRICTED: a Developer ID direct-download
             // build has no provisioning profile to validate it, so ADDING it
-            // makes the app fail to spawn (#276) and NOT adding it makes every
+            // makes the app fail to spawn and NOT adding it makes every
             // save throw errSecMissingEntitlement (-34018). The file keychain
             // needs no entitlement and works under the sandbox (it's what debug
-            // already uses). A future Mac App Store build (#285) has a profile
+            // already uses). A future Mac App Store build has a profile
             // and can switch back. See ExtensionService._secureStorage.
             mOptions: MacOsOptions(usesDataProtectionKeychain: false, accountName: 'Ham2K Logger'),
             iOptions: IOSOptions(accountName: 'Ham2K Logger'),
@@ -639,7 +639,7 @@ class SettingsService extends ChangeNotifier implements SyncSettings {
   Future<void> setIncludePrivateData(bool value) =>
       setSettingValue(exportsGroup, 'includePrivateData', value);
 
-  /// Logging view "..." menu toggles (ham2k/app-halo-dist#1).
+  /// Logging view "..." menu toggles.
   bool get showRSTFields => _loggingBool(_showRSTFieldsKey, true);
 
   Future<void> setShowRSTFields(bool value) => setSettingValue(loggingGroup, _showRSTFieldsKey, value);
@@ -653,8 +653,7 @@ class SettingsService extends ChangeNotifier implements SyncSettings {
   Future<void> setShowGridField(bool value) => setSettingValue(loggingGroup, _showGridFieldKey, value);
 
   /// Off by default — deleted QSOs are hidden from the list unless the user
-  /// opts in, matching `QsoRepository.watchForOperation`'s previous
-  /// hardcoded behavior of always excluding them.
+  /// opts in.
   bool get showDeletedQSOs => _loggingBool(_showDeletedQSOsKey, false);
 
   Future<void> setShowDeletedQSOs(bool value) => setSettingValue(loggingGroup, _showDeletedQSOsKey, value);
@@ -673,8 +672,8 @@ class SettingsService extends ChangeNotifier implements SyncSettings {
   bool get jumpAfterRST => _loggingBool('jumpAfterRST', false);
 
   /// The mobile "numbers row" — a bar of digit keys the logging panel floats
-  /// above the on-screen keyboard while a logging field has focus (issue
-  /// #27). Off by default (opt-in), matching app-polo's `showNumbersRow`.
+  /// above the on-screen keyboard while a logging field has focus.
+  /// Off by default (opt-in), matching app-polo's `showNumbersRow`.
   /// The two settings below only take effect while this is on: the extra
   /// contextual key ("/" while composing a callsign, "." in numeric fields,
   /// on by default) and haptic feedback on each key press (on by default).
@@ -802,8 +801,7 @@ abstract final class LayoutKeys {
 /// Flow ids for [SettingsService.onboardingShownCount] /
 /// [SettingsService.recordOnboardingShown].
 abstract final class OnboardingFlows {
-  /// The app's first-run overlay (issue #43) — renamed from a bare
-  /// callsign-undefined check to a tracked flow (issue #348).
+  /// The app's first-run overlay.
   static const firstUse = 'first-use';
 
   /// The operation sheet, auto-opened once for a user who's never seen it —

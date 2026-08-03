@@ -1,7 +1,7 @@
 // Copyright ©️ 2026 Sebastian Delmont <sd@ham2k.com>
 // SPDX-License-Identifier: MPL-2.0
 //
-// The Map tab facade (ham2k/app-halo-dist#13): builds the backend-agnostic
+// The Map tab facade: builds the backend-agnostic
 // marker and line lists once — a band-colored circle per QSO with any
 // location (grid square, or guessed from state / DXCC entity prefix), a
 // black circle per station QTH, and a great-circle line connecting each QSO
@@ -143,7 +143,7 @@ class _MapPanelState extends State<MapPanel> {
           Positioned(
             // Clears the device's real top/right insets (notch, camera
             // cutout) so the toggle isn't drawn under them — the map tiles
-            // themselves stay edge-to-edge (ham2k/app-halo-dist#205).
+            // themselves stay edge-to-edge.
             top: 8 + PaneSafeArea.topOf(context),
             right: 8 + PaneSafeArea.rightOf(context),
             child: SegmentedButton<MapProjection>(

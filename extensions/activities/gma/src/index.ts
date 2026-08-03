@@ -1,7 +1,7 @@
 // Copyright ©️ 2026 Sebastian Delmont <sd@ham2k.com>
 // SPDX-License-Identifier: MPL-2.0
 //
-// GMA (Global Mountain Activity) — the first ported award with a HUNTING side:
+// GMA (Global Mountain Activity) — an award with a HUNTING side:
 // a QSO carries the summits the other station was on, and the logging panel
 // gains a per-QSO control for them.
 //

@@ -1,17 +1,17 @@
 // Copyright ©️ 2026 Sebastian Delmont <sd@ham2k.com>
 // SPDX-License-Identifier: MPL-2.0
 //
-// Annotation commands (ham2k/app-halo-dist#64), ported from app-polo's
+// Annotation commands, ported from app-polo's
 // AnnotationCommands: NOTE/TODO capture free text, SOLAR/WEATHER capture
 // current conditions, and all four add a non-QSO row to the log — an event
 // pseudo-QSO (`band: 'event'`, see `Qso.isEvent`) via the `addQso` action,
-// rendered as a yellow annotation row by the QSO list. This supersedes the
-// original note-command extension, whose NOTE wrote to the in-progress
-// QSO's notes field instead of the log timeline (the Notes logging control
-// still covers that).
+// rendered as a yellow annotation row by the QSO list. NOTE writes to the
+// log timeline, not the in-progress
+// QSO's notes field — the Notes logging control
+// covers that.
 //
 // SOLAR/WEATHER fetch in the background even on a describe-preview call
-// (issue #189) — the fetch itself doesn't block interpret()'s own Promise,
+// — the fetch itself doesn't block interpret()'s own Promise,
 // which still returns immediately with a placeholder describe; once the
 // fetch resolves, host.updateInterpretation pushes the real reading so it
 // shows in the UI before the user ever presses Enter. The one in-flight
@@ -19,7 +19,7 @@
 // event, so pressing Enter doesn't trigger a second fetch.
 //
 // Unlike NOTE/TODO/CHAT, SOLAR/WEATHER report externally-sourced conditions
-// that are meaningful with no operation open (APP-34) — only their `addQso`
+// that are meaningful with no operation open — only their `addQso`
 // logging step needs one, since there's no log to add the event row to
 // otherwise. WEATHER's location comes from the operation's grid when it has
 // one, else the device's GPS fix via `host.getLocation()` (same fallback
@@ -167,7 +167,7 @@ const SolarCommand = {
 
     // Solar conditions are global — SOLAR fetches and describes them with or
     // without an open operation. Only the `addQso` logging step below
-    // (issue APP-34) needs one, since there's no log to add the event row
+    // needs one, since there's no log to add the event row
     // to otherwise.
     if (!solarFetch) {
       solarFetch = fetchSolarData()
@@ -200,7 +200,7 @@ const SolarCommand = {
     }
   },
 
-  // Unlike NOTE/TODO, SOLAR works with no operation open (APP-34) — the
+  // Unlike NOTE/TODO, SOLAR works with no operation open — the
   // palette shouldn't grey it out.
   async catalog(ctx: HookContext): Promise<CommandCatalogEntry[]> {
     const t = tFor(ctx)
@@ -312,8 +312,8 @@ const WeatherCommand = {
     }
   },
 
-  // Unlike NOTE/TODO, WEATHER works with no operation open (APP-34,
-  // falling back to device location) — the palette shouldn't grey it out.
+  // Unlike NOTE/TODO, WEATHER works with no operation open (falling back
+  // to device location) — the palette shouldn't grey it out.
   async catalog(ctx: HookContext): Promise<CommandCatalogEntry[]> {
     const t = tFor(ctx)
     return [{

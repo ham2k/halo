@@ -26,7 +26,7 @@ import manifest from "../manifest.json" with { type: "json" }
 export const DEFAULT_LOFI_SERVER = 'https://lofi.ham2k.net'
 const DEFAULT_SECRET = 'no-secret'
 // The host stamps HaLo's canonical User-Agent on every host.fetch call (see
-// docs/design/network.md), so this extension no longer sets its own.
+// docs/design/network.md), so this extension doesn't set its own.
 
 defineExtension({
   ...manifest,
@@ -65,8 +65,8 @@ async function syncAllCatalog(ctx: HookContext): Promise<CommandCatalogEntry[]> 
 // `host.kv` so a restart doesn't force re-registering as a "new" device.
 let cachedToken: string | null = null
 
-// `sync`, `ensureClientRegistered`, and now a user-triggered OAuth login
-// (HALO-22) can all reach `registerClient()` within the same tick on a
+// `sync`, `ensureClientRegistered`, and a user-triggered OAuth login
+// can all reach `registerClient()` within the same tick on a
 // fresh device — sharing one in-flight attempt (rather than each firing its
 // own POST /v1/client) is what keeps their `host.kvSet` writes below from
 // interleaving into a mismatched token/push_channel/webhook_token trio.
@@ -194,7 +194,7 @@ function parseJson(body: string): Record<string, JSONValue> {
 // SyncEngine treats an `error`-shaped response as recoverable — same
 // convention `linkClient` already uses below. Any other status (500, 429, a
 // real outage, ...) is a genuine failure and must keep propagating so it
-// still reaches onError/crash reporting like before this existed.
+// still reaches onError/crash reporting.
 async function sync(payload: SyncPayload, _ctx: HookContext): Promise<SyncResponse> {
   try {
     return (await request('POST', 'v1/sync', payload as unknown as JSONValue)) as SyncResponse

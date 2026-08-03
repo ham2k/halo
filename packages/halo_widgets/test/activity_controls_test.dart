@@ -22,8 +22,7 @@ void main() {
     });
 
     // No control ever declares a null refType, so a null-typed ref is just
-    // as unmatched as an unrecognized string one — same as before this got
-    // its own named helper (ham2k/app-halo-dist#261 code review).
+    // as unmatched as an unrecognized string one.
     test('true for a null type, same as an unrecognized one', () {
       expect(isUnknownRefType(controls, null), isTrue);
     });

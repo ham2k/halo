@@ -6,9 +6,8 @@
 // (map_panel.dart) from `Qso`/`Operation` domain objects via halo_core's
 // location resolution and great-circle math, so no backend widget touches
 // halo_core's QSO shape directly or re-derives geo math. Markers are plain
-// circles (band-colored for QSOs, black for the QTH) per
-// ham2k/app-halo-dist#13; lines are pre-densified great-circle polylines,
-// already split at the antimeridian.
+// circles (band-colored for QSOs, black for the QTH); lines are
+// pre-densified great-circle polylines, already split at the antimeridian.
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart' show Color;

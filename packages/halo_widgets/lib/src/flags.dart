@@ -6,13 +6,10 @@
 // regional-indicator pair (🇺🇸) or, for England/Scotland/Wales/Northern
 // Ireland, a black-flag-plus-tag-sequence (🏴󠁧󠁢󠁥󠁮󠁧󠁿). Flutter's Windows-desktop
 // Skia text layout can't compose either form into a single glyph, no matter
-// which font is bundled — confirmed after swapping the bundled Noto Color
-// Emoji build for a current one didn't fix it (#451; ham2k/app-halo-dist
-// APP-29 is that same regression, still reproducing on Windows: raw
-// regional-indicator letters, and an uncomposed black flag for England).
-// This is a known, structural gap in Flutter's Windows text shaping, not a
-// missing-glyph problem — so instead of relying on emoji composition on
-// Windows, this renders a pre-composed image there instead.
+// which font is bundled — swapping the bundled Noto Color Emoji build for a
+// newer one does not fix it. It's a structural gap in Flutter's Windows text
+// shaping, not a missing-glyph problem — so instead of relying on emoji
+// composition on Windows, this renders a pre-composed image there instead.
 //
 // The images are flag-icons (github.com/lipis/flag-icons, MIT), vendored
 // under app/assets/flags/ (app/assets/flag-icons-LICENSE.txt) — the full set

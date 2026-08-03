@@ -5,10 +5,9 @@
 // verbatim — a `host` field is a `host` field whether it's reached over TCP
 // or the Icom network login, and "this value might be a num or a string
 // round-tripped through JSON" is the same parse regardless of which numeric
-// field it's for. Shared here so a fix to either only has to land once —
-// the reason this file exists is the bug two independently-drifted copies
-// of the CI-V address parser caused before this transport/driver split
-// existed (see IcomCivDriver._parseAddress).
+// field it's for. Shared here so a fix to either only has to land once:
+// independently-drifted copies of this kind of parsing have already caused
+// a bug (see IcomCivDriver._parseAddress) — don't fork new copies.
 
 import '../../../i18n/strings.g.dart';
 

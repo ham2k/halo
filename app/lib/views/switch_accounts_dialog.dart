@@ -1,7 +1,7 @@
 // Copyright ©️ 2026 Sebastian Delmont <sd@ham2k.com>
 // SPDX-License-Identifier: MPL-2.0
 //
-// The Settings "Switch Accounts" dialog (issue #79): moves this device to a
+// The Settings "Switch Accounts" dialog: moves this device to a
 // different Ham2K Log Filer account. Ported from app-polo's
 // SyncAccountDialog/SyncLinkingDialog pair, but HaLo is only ever the
 // *requesting* side here — approval happens on a device already linked to
@@ -399,7 +399,7 @@ class _SwitchAccountsPaneState extends State<SwitchAccountsPane> {
   Widget build(BuildContext context) {
     // The Modal Pane route provides the chrome (title, scrolling, width);
     // the action row lives here because it depends on this State (_mode,
-    // _busy) — the same coupling AlertDialog had.
+    // _busy).
     return PopScope(
       // While a challenge is being polled for (QR/code/emailSent), Escape
       // and the system back gesture must not be able to abandon it any more

@@ -31,8 +31,7 @@ typedef HaloQuickJsSend = void Function(String channel, String message);
 /// On macOS/iOS the sources are compiled into the app binary itself, so the
 /// symbols are already in the process. On Linux/Windows/Android the plugin
 /// is its own shared library. Under `flutter test` there is no platform
-/// build at all, so a host library built by tool/build_host.sh is used —
-/// that is the one case the spike papered over with an absolute path.
+/// build at all, so a host library built by tool/build_host.sh is used.
 DynamicLibrary _openLibrary() {
   const envOverride = String.fromEnvironment('HALO_QUICKJS_LIB');
   if (envOverride.isNotEmpty) return DynamicLibrary.open(envOverride);
@@ -73,10 +72,8 @@ List<String> _hostCandidates() {
   // `flutter test` runs with the cwd set to whichever package is under test,
   // and there is no platform build to provide the library — so find the one
   // tool/build_host.sh produced by walking UP to the repo root. A fixed list
-  // of relative guesses only works for the depth it was written for: the
-  // first version handled packages/* and silently failed from app/, where the
-  // constructor then threw and a `late` field turned it into a
-  // LateInitializationError that named nothing useful.
+  // of relative guesses only works for the depth it was written for, and a
+  // miss surfaces as a LateInitializationError that names nothing useful.
   final candidates = <String>['build/host/$name'];
   var dir = Directory.current;
   for (var i = 0; i < 6; i++) {

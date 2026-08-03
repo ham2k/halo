@@ -5,7 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 /// A row of digit keys the logging panel floats above the on-screen keyboard
-/// on mobile (issue #27), so digits — and one contextual "/" or "." — are a
+/// on mobile, so digits — and one contextual "/" or "." — are a
 /// single tap away while a callsign/RST/frequency field has focus. Ported
 /// from app-polo's `NumberKeys`.
 ///

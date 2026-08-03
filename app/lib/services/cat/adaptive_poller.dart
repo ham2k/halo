@@ -141,10 +141,9 @@ class AdaptivePoller {
       onPoll();
     } catch (e) {
       // Caught, not just guarded against: a driver throwing here must not
-      // end polling for the life of the connection — `Timer.periodic`,
-      // which this replaced, would have fired again next interval — and it
-      // must not escape into the zone either, which is how CatService
-      // already treats every other call into a driver.
+      // end polling for the life of the connection, and it must not escape
+      // into the zone either, which is how CatService already treats every
+      // other call into a driver.
       debugPrint('[cat] poll failed, continuing: $e');
     }
     // After the callback, so a poll that provokes an immediate answer
