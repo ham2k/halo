@@ -123,14 +123,13 @@ jobs:
         env:
           HALO_SENTRY_DSN: ${{ secrets.HALO_SENTRY_DSN }}
 
-      # --branch=dist marks the deployment as production: the Pages project's
-      # PRODUCTION BRANCH SETTING is "dist", a label independent of any git
-      # branch (the git branch is `main` since 2026-08-02). Deploys with any
-      # other branch label land in the Preview environment and never reach
-      # halo-dev.ham2k.net. Change this flag and the Pages project setting
-      # TOGETHER or production deploys silently stop.
+      # --branch=main marks the deployment as production: it must match the
+      # Pages project's PRODUCTION BRANCH SETTING (also "main"). Deploys with
+      # any other branch label land in the Preview environment and never
+      # reach halo-dev.ham2k.net. Change this flag and the Pages project
+      # setting TOGETHER or production deploys silently stop.
       - name: Deploy to Cloudflare Pages
-        run: npx wrangler@4 pages deploy app/build/web --project-name=halo-dev-ham2k-net --branch=dist
+        run: npx wrangler@4 pages deploy app/build/web --project-name=halo-dev-ham2k-net --branch=main
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
