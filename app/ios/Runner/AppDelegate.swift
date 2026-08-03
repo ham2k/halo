@@ -32,11 +32,13 @@ import UIKit
     [
       // Plain ⌘K is reserved by iOS itself (show/hide the software keyboard)
       // and never reaches this handler on a hardware keyboard — registered
-      // anyway in case a future iOS version frees it up. ⌘⇧K is the one that
-      // actually works today; app/lib/main.dart's `_handleKeyEvent` accepts
-      // it as an alternate on every other platform too.
+      // anyway in case a future iOS version frees it up. ⌘⇧K is reserved
+      // too, at least on the Simulator — ⌘⌥K is the one that actually works;
+      // app/lib/main.dart's `_handleKeyEvent` accepts either as an alternate
+      // on every other platform too.
       UIKeyCommand(input: "k", modifierFlags: .command, action: #selector(runCommandDialog)),
       UIKeyCommand(input: "k", modifierFlags: [.command, .shift], action: #selector(runCommandDialog)),
+      UIKeyCommand(input: "k", modifierFlags: [.command, .alternate], action: #selector(runCommandDialog)),
       UIKeyCommand(input: "d", modifierFlags: [.command, .shift], action: #selector(runThemeToggle)),
       UIKeyCommand(input: "l", modifierFlags: [.command, .shift], action: #selector(runLocaleToggle)),
       // ⌘⇧=/⌘⇧- mirror the common browser-style zoom chords — main.dart's
