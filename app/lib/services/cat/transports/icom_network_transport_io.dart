@@ -167,7 +167,7 @@ class IcomNetworkTransport extends EquipmentTransport with IcomNetworkTransportC
 
 /// The radio's remote-control login is missing. Distinct from a refusal:
 /// nothing was attempted.
-class IcomCredentialsMissing implements Exception {
+class IcomCredentialsMissing implements CatUnreachable {
   const IcomCredentialsMissing();
 
   @override
@@ -180,7 +180,7 @@ class IcomCredentialsMissing implements Exception {
 /// not silence — so a stale password and an unreachable radio are
 /// distinguishable from the operator's side, and the troubleshooting text
 /// does not need to lead with "retype the password".
-class IcomLoginRejected implements Exception {
+class IcomLoginRejected implements CatUnreachable {
   const IcomLoginRejected();
 
   @override
@@ -197,7 +197,7 @@ class IcomLoginRejected implements Exception {
 /// discarding valid answers (see the note at the top of this file), and it
 /// sent everyone looking at the radio instead. Name the checks that are
 /// actually actionable and let the troubleshooting text carry the rest.
-class IcomLoginTimeout implements Exception {
+class IcomLoginTimeout implements CatUnreachable {
   const IcomLoginTimeout();
 
   @override

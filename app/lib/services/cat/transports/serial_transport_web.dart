@@ -201,7 +201,7 @@ class SerialTransport extends EquipmentTransport with SerialTransportConfig {
 /// gives no event for that beyond the next `getPorts()` simply not listing
 /// it. Same shape as the io transport's exception of the same name; never
 /// both compiled into one binary, so nothing forces them to match.
-class SerialPortUnavailable implements Exception {
+class SerialPortUnavailable implements CatUnreachable {
   final String portName;
   final String reason;
 

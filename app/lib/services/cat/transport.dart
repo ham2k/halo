@@ -42,6 +42,32 @@ class CatCancelledException implements Exception {
   String toString() => 'Superseded by a newer connection attempt';
 }
 
+/// Marks a [EquipmentTransport.connect] failure that is about the equipment
+/// rather than about this app: a rig switched off, a port another program
+/// holds, a login the rig refuses. A transport must NOT use it for a failure
+/// it cannot explain — `ErrorPolicy`'s `cat-equipment-unreachable` rule keeps
+/// these out of the crash backend and off the operator's screen, so anything
+/// tagged with it is silent by design.
+abstract class CatUnreachable implements Exception {}
+
+/// A failed connect, tagged with the equipment type it was aimed at.
+///
+/// [CatService] wraps every throw out of [EquipmentTransport.connect] in this
+/// before reporting it, because provenance is what `ErrorPolicy` needs to
+/// tell a rig that is switched off — a SocketException, retried on a loop for
+/// as long as the app runs — from the same exception type escaping anywhere
+/// else in the app. Only the report is wrapped: the equipment row still shows
+/// the underlying failure's own words.
+class CatConnectFailure implements Exception {
+  final String typeKey;
+  final Object cause;
+
+  const CatConnectFailure(this.typeKey, this.cause);
+
+  @override
+  String toString() => 'Connecting to $typeKey failed: $cause';
+}
+
 /// What handling a `type: 'action'` element (see [EquipmentTransport.runAction])
 /// can produce. Deliberately not `halo_widgets`' own `FormActionResult` —
 /// this layer speaks CAT/config, not the UI package, the same way
@@ -88,7 +114,10 @@ abstract class EquipmentTransport {
   /// output.
   ///
   /// Throws [CatCancelledException] if [cancel] fires first; any other
-  /// throw is a real connection failure.
+  /// throw is a real connection failure. A raw `SocketException` or
+  /// `TimeoutException` is understood as the equipment's own doing; tag
+  /// anything else it caused with [CatUnreachable]. Untagged, a failure is
+  /// treated as a bug of ours and reported as such.
   Future<EquipmentConnection> connect(Map<String, dynamic> target, {required CatCancelToken cancel});
 
   /// Config keys whose values are credentials, kept in the platform

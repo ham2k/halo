@@ -10,12 +10,20 @@
 // The delivery of those decisions (which console line, which handler stops
 // where, what the operator sees) is error_reporting_test.dart's job.
 
+import 'dart:async' show TimeoutException;
 import 'dart:io' show SocketException;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:halo_extension_host/halo_extension_host.dart' show ExtensionHostException;
 
+import 'package:ham2k_logger/services/cat/transport.dart' show CatConnectFailure;
+// The io implementations directly, as cat_ic705_network_test.dart does: the
+// conditional export resolves to the web stub under the analyzer, and these
+// exceptions — the concrete CatUnreachable implementations this rule has to
+// keep quiet — exist only on the socket/serial side.
+import 'package:ham2k_logger/services/cat/transports/icom_network_transport_io.dart' show IcomLoginTimeout;
+import 'package:ham2k_logger/services/cat/transports/serial_transport_io.dart' show SerialPortUnavailable;
 import 'package:ham2k_logger/services/error_policy.dart';
 
 ErrorDisposition dispositionFor(Object error, {FlutterErrorDetails? details}) =>
@@ -230,6 +238,60 @@ void main() {
       // alone would let a wrapper of ours ride along.
       expect(dispositionFor(StateError('extension host disposed')), ErrorDisposition.notify);
       expect(dispositionFor(StateError('extension runtime is dead')), ErrorDisposition.notify);
+    });
+  });
+
+  group('cat equipment unreachable', () {
+    // The everyday state of a station: the rig is off, or the cable is out,
+    // or another program holds it. CatService retries the designated radio
+    // for the whole session, so without this rule ONE switched-off radio
+    // means a notice on the operator's screen and an upload every few
+    // minutes until they turn it on.
+    test('a radio that is not answering is console-only', () {
+      expect(
+        // Verbatim from a Flex left switched off at launch.
+        dispositionFor(const CatConnectFailure(
+          'flexradio',
+          SocketException('Connection failed (OS Error: No route to host, errno = 65), '
+              'address = 10.0.0.66, port = 4992'),
+        )),
+        ErrorDisposition.logOnly,
+      );
+      expect(
+        dispositionFor(CatConnectFailure('icom-network', TimeoutException('the radio did not answer: login'))),
+        ErrorDisposition.logOnly,
+      );
+      // A transport's own account of the same thing, tagged CatUnreachable.
+      expect(
+        dispositionFor(const CatConnectFailure('ft891', SerialPortUnavailable('/dev/cu.usbserial', 'busy'))),
+        ErrorDisposition.logOnly,
+      );
+      expect(
+        dispositionFor(const CatConnectFailure('icom-network', IcomLoginTimeout())),
+        ErrorDisposition.logOnly,
+      );
+    });
+
+    test('a bug raised inside a connect attempt is still loud', () {
+      // The reason the cause is inspected at all rather than the rule
+      // matching every failed connect: our own code runs inside that try —
+      // a bad config cast, a handshake step that gets its state wrong — and
+      // those are bugs the rule must not take down with the radio.
+      expect(dispositionFor(CatConnectFailure('flexradio', TypeError())), ErrorDisposition.notify);
+      expect(
+        dispositionFor(CatConnectFailure('icom-network', StateError('the radio sent a stream answer we do not understand'))),
+        ErrorDisposition.notify,
+      );
+    });
+
+    test('the same socket failure outside a connect attempt is still loud', () {
+      // The wrapper IS the rule's scope. A SocketException reaching the
+      // policy from anywhere else in the app has no radio to blame.
+      expect(
+        dispositionFor(const SocketException('Connection failed (OS Error: No route to host, errno = 65), '
+            'address = 10.0.0.66, port = 4992')),
+        ErrorDisposition.notify,
+      );
     });
   });
 

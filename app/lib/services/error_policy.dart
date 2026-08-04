@@ -17,11 +17,14 @@
 //
 // docs/design/error-reporting.md is the overview.
 
+import 'dart:async' show TimeoutException;
 import 'dart:io' show SocketException;
 
 import 'package:flutter/foundation.dart' show kIsWeb, visibleForTesting;
 import 'package:flutter/widgets.dart';
 import 'package:halo_extension_host/halo_extension_host.dart' show ExtensionHostException;
+
+import 'cat/transport.dart' show CatConnectFailure, CatUnreachable;
 
 /// What the app does with an error, from quietest to loudest. Each tier
 /// includes everything the ones above it do.
@@ -161,6 +164,14 @@ class ErrorPolicy {
       matches: _isConnectivityBackendUnavailable,
     ),
     ErrorRule(
+      id: 'cat-equipment-unreachable',
+      reason: "a radio didn't answer a connect attempt (switched off, unplugged, already held by "
+          'another program, or refusing the login); the equipment row says so and the retry loop '
+          'keeps trying',
+      disposition: ErrorDisposition.logOnly,
+      matches: _isCatEquipmentUnreachable,
+    ),
+    ErrorRule(
       id: 'fetch-transport-transient',
       reason: "a host.fetch call failed at the transport layer (connection reset, refused or "
           'closed mid-body, or a fetch timeout) rather than anything our code did; worth seeing '
@@ -298,6 +309,39 @@ class ErrorPolicy {
   static bool _isConnectivityBackendUnavailable(Object error, FlutterErrorDetails? details) {
     if (error.runtimeType.toString() == 'DBusException') return true;
     return error is SocketException && error.toString().contains('dbus');
+  }
+
+  /// A connect attempt that failed because the equipment was not there to
+  /// answer it — the everyday state of a station: the rig is off, the USB
+  /// cable is out, another program holds the port, the rig refuses the
+  /// login. None of it is a bug, and none of it is news to the operator: the
+  /// equipment row is already red with this exact message, and the failure
+  /// is what the row is FOR.
+  ///
+  /// Silencing it matters more than the single event suggests. CatService
+  /// retries the designated radio on a backoff loop for as long as the app
+  /// runs, so a rig left switched off doesn't upload one report — it uploads
+  /// one every few minutes, all session, from every operator whose radio is
+  /// not on, which is what would bury the crashes worth reading.
+  ///
+  /// Reaching this at all means [CatService]'s own catch wrapped the failure
+  /// in a [CatConnectFailure], so nothing outside a connect attempt can
+  /// match, however it reads. The CAUSE is then checked against the three
+  /// shapes an absent or refusing rig produces:
+  ///
+  ///  * a [SocketException] — no route, refused, timed out, unknown host;
+  ///  * a [TimeoutException] — the rig took the packets and never answered;
+  ///  * a [CatUnreachable] — a transport's own account of the same thing (a
+  ///    serial port that won't open, an Icom login refused or ignored).
+  ///
+  /// Anything else out of a transport stays loud: a TypeError on a config
+  /// value, a StateError from a handshake step, a NoSuchMethodError in a
+  /// driver are bugs of ours, and they are exactly what a rule matching "any
+  /// failed connect" would swallow.
+  static bool _isCatEquipmentUnreachable(Object error, FlutterErrorDetails? details) {
+    if (error is! CatConnectFailure) return false;
+    final cause = error.cause;
+    return cause is SocketException || cause is TimeoutException || cause is CatUnreachable;
   }
 
   /// `_hostFetch`'s own transport call — `http.Client.send`, or either of

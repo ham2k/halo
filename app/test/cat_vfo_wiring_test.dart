@@ -14,6 +14,7 @@ import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:fake_async/fake_async.dart';
+import 'package:flutter/foundation.dart' show debugPrint;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ham2k_logger/services/cat/driver.dart';
 import 'package:ham2k_logger/services/cat/equipment.dart';
@@ -805,6 +806,42 @@ void main() {
       // than sitting on "Not connected" with no explanation.
       expect(failing.stateFor(node.uuid).status, EquipmentStatus.error);
       expect(failing.stateFor(node.uuid).error, isNotNull);
+    });
+
+    test('a radio that is switched off never reaches the loud path', () async {
+      // The wiring half of ErrorPolicy's cat-equipment-unreachable rule,
+      // which error_policy_test.dart can only exercise on a hand-built
+      // CatConnectFailure. What is proven here is that the wrapper is
+      // actually PUT ON at the catch site: unwrapped, a bare SocketException
+      // matches no rule, takes the default tier, and every retry against a
+      // rig left switched off is a crash upload and a "Something went wrong"
+      // notice — the bug this test exists to keep fixed.
+      final failing = CatService(
+        SettingsService(await SharedPreferences.getInstance()),
+        radio: radio,
+        registry: EquipmentRegistry(
+          models: [_fakeModel(driver, _RefusingTransport())],
+          transports: {'fake': _RefusingTransport()},
+        ),
+        reconnectDelay: Duration.zero,
+      );
+      addTearDown(failing.dispose);
+      final node = await failing.addNode(typeKey: 'fake-type', config: {'host': 'nope'});
+
+      final lines = <String>[];
+      final previousPrint = debugPrint;
+      debugPrint = (String? message, {int? wrapWidth}) => lines.add(message ?? '');
+      try {
+        await failing.connect(node.uuid);
+      } finally {
+        debugPrint = previousPrint;
+      }
+
+      expect(
+        lines.where((line) => line.contains('[error-policy] cat-equipment-unreachable')),
+        isNotEmpty,
+        reason: 'the policy has to claim it, or the report goes to the backend and the operator',
+      );
     });
   });
 

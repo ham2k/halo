@@ -124,7 +124,7 @@ class SerialTransport extends EquipmentTransport with SerialTransportConfig {
 }
 
 /// The port could not be opened, with the reason libserialport gave.
-class SerialPortUnavailable implements Exception {
+class SerialPortUnavailable implements CatUnreachable {
   final String portName;
   final String? reason;
 

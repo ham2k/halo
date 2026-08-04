@@ -582,7 +582,11 @@ class CatService extends ChangeNotifier {
       return _ConnectOutcome.superseded;
     } catch (e, st) {
       if (attempt != runtime.attemptSeq) return _ConnectOutcome.superseded;
-      ErrorReportingService.report(e, st, context: 'cat:connect');
+      // Wrapped for the report only: ErrorPolicy needs to know a bare
+      // SocketException came from a connect attempt before it can keep a
+      // switched-off rig out of the backend. The state below keeps the
+      // underlying error's own words, which is what the operator reads.
+      ErrorReportingService.report(CatConnectFailure(node.typeKey, e), st, context: 'cat:connect');
       _setState(uuid, EquipmentState(status: EquipmentStatus.error, error: '$e'));
       return _ConnectOutcome.failed;
     }
