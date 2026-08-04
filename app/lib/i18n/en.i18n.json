@@ -43,6 +43,14 @@
   "startScreen": {
     "credits": "by KI2D and friends"
   },
+  "testerOverlay": {
+    "tape": "CAUTION: UNDER CONSTRUCTION",
+    "build": "Build ${build}",
+    "warningTitle": "This app is a work in progress",
+    "warningBody": "Most features have uneven surfaces and there are trip hazards all over. Please check for updates regularly.",
+    "whatsNew": "What's new in build ${build}",
+    "thanks": "Thank you for putting your log at risk in order to help us make this app better!"
+  },
   "extensionsPanel": {
     "categoryActivity": "Activities",
     "categoryContest": "Contests",

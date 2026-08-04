@@ -9,6 +9,7 @@ import 'package:halo_core/halo_core.dart';
 import 'package:halo_widgets/halo_widgets.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:ham2k_logger/config/release_notes.dart';
+import 'package:ham2k_logger/config/tester_notes.dart';
 import 'package:ham2k_logger/i18n/strings.g.dart';
 import 'package:ham2k_logger/main.dart';
 import 'package:ham2k_logger/services/settings_service.dart';
@@ -232,6 +233,7 @@ void main() {
     testWidgets('Cmd+=/-/_/0 drive the app-wide font scale handler', (tester) async {
       SharedPreferences.setMockInitialValues({});
       setReleaseNotesForTesting(const []);
+      setTesterNotesForTesting(const []);
       final settings = SettingsService(await SharedPreferences.getInstance(), secureStorage: FakeSecureStorage());
       final db = HaLoDatabase(NativeDatabase.memory());
       final extensions = ExtensionServiceWithMockHost(const MockExtensionHost({}))..settings = settings;
@@ -305,6 +307,7 @@ void main() {
 
       SharedPreferences.setMockInitialValues({});
       setReleaseNotesForTesting(const []);
+      setTesterNotesForTesting(const []);
       final settings = SettingsService(await SharedPreferences.getInstance(), secureStorage: FakeSecureStorage());
       await settings.setFontScale(FontScale.smaller);
       final db = HaLoDatabase(NativeDatabase.memory());

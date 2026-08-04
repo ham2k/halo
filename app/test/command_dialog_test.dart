@@ -31,6 +31,7 @@ import 'package:halo_core/halo_core.dart';
 import 'package:halo_widgets/halo_widgets.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'package:ham2k_logger/config/tester_notes.dart';
 import 'package:ham2k_logger/i18n/strings.g.dart';
 import 'package:ham2k_logger/main.dart';
 import 'package:ham2k_logger/services/extension_service.dart';
@@ -186,6 +187,10 @@ class _CannedExtensions extends ExtensionService {
 
 Future<HaLoServices> _services(WidgetTester tester) async {
   SharedPreferences.setMockInitialValues({});
+  // Empty prefs mean lastSeenTesterBuild == 0, so without this stub the
+  // tester gate loads the real tester-notes asset mid-test and mounts a
+  // focus-stealing full-screen overlay over the ⌘K assertions.
+  setTesterNotesForTesting(const []);
   final settings = SettingsService(await SharedPreferences.getInstance());
   final db = HaLoDatabase(NativeDatabase.memory());
   addTearDown(db.close);
