@@ -162,6 +162,7 @@ class SettingsService extends ChangeNotifier implements SyncSettings {
   static const loggingGroup = 'logging';
   static const privacyGroup = 'privacy';
   static const exportsGroup = 'exports';
+  static const radioGroup = 'radio';
 
   String _groupPrefsKey(String group) => 'settings.$group';
 
@@ -638,6 +639,68 @@ class SettingsService extends ChangeNotifier implements SyncSettings {
 
   Future<void> setIncludePrivateData(bool value) =>
       setSettingValue(exportsGroup, 'includePrivateData', value);
+
+  /// Smart VFO Snap: whether a knob turn on the connected radio settles on a
+  /// round frequency (app/lib/services/cat/vfo_snap.dart).
+  ///
+  /// Off by default — it moves the operator's radio, which nothing else in
+  /// the app does uninvited, so it is opted into rather than out of.
+  ///
+  /// One setting for the VFO the app is driving, not one per radio: the
+  /// operator has one pair of ears and one preference about where voice
+  /// contacts sit.
+  bool get smartVfoSnap => (settingValue(radioGroup, 'smartVfoSnap') as bool?) ?? false;
+
+  Future<void> setSmartVfoSnap(bool value) => setSettingValue(radioGroup, 'smartVfoSnap', value);
+
+  /// Smart VFO Snap's feel, as four numbers the operator can turn.
+  ///
+  /// The option lists live HERE rather than beside the settings fields, and
+  /// the getters resolve through them, because the alternative is a setting
+  /// that displays one value and acts on another: the picker has to fall back
+  /// to an offered option when the stored one isn't in its list (a
+  /// `DropdownButtonFormField` throws on a value with no matching item), and
+  /// if that fallback happened only in the UI, a stored value withdrawn from
+  /// the list would keep driving the snapper while the dialog showed
+  /// something else.
+  ///
+  /// Values are the option strings the `select` fields emit — the convention
+  /// every other select-backed setting here follows (`fontScale`,
+  /// `distanceUnits`).
+  static const smartVfoSnapDebounceOptions = ['150', '200', '250', '300', '400', '500', '750', '1000'];
+  static const smartVfoSnapLongMoveOptions = ['1', '1.5', '2', '3', '5', '10'];
+  static const smartVfoSnapMinMoveOptions = ['0.1', '0.15', '0.2', '0.3', '0.5'];
+  static const smartVfoSnapMinSpeedOptions = ['0.25', '0.5', '1', '2', '4'];
+
+  /// The stored value for [key], resolved to the nearest value [options]
+  /// actually offers. An unparseable or missing value takes [fallback], which
+  /// must itself be one of the options.
+  double _radioNumber(String key, List<String> options, String fallback) {
+    final stored = '${settingValue(radioGroup, key) ?? ''}';
+    if (options.contains(stored)) return double.parse(stored);
+    // Not offered: the closest one that is — measured against what was
+    // stored while that still parses as a number, and against the default
+    // when it doesn't. Same answer the picker shows, because the picker
+    // reads this getter.
+    final target = double.tryParse(stored) ?? double.parse(fallback);
+    return options.map(double.parse).reduce((a, b) => (a - target).abs() <= (b - target).abs() ? a : b);
+  }
+
+  /// How long the VFO must hold still before a movement is settled.
+  ///
+  /// The one that decides whether the feature feels immediate or laggy, and
+  /// the one with a real cost at either end: too short chops a slow move into
+  /// pieces that each measure as a fine adjustment, too long leaves the
+  /// frequency jumping after the operator has moved on to the callsign field.
+  Duration get smartVfoSnapDebounce =>
+      Duration(milliseconds: _radioNumber('smartVfoSnapDebounceMs', smartVfoSnapDebounceOptions, '300').round());
+
+  double get smartVfoSnapLongMoveKHz =>
+      _radioNumber('smartVfoSnapLongMoveKHz', smartVfoSnapLongMoveOptions, '2');
+
+  double get smartVfoSnapMinMoveKHz => _radioNumber('smartVfoSnapMinMoveKHz', smartVfoSnapMinMoveOptions, '0.2');
+
+  double get smartVfoSnapMinSpeed => _radioNumber('smartVfoSnapMinSpeed', smartVfoSnapMinSpeedOptions, '0.5');
 
   /// Logging view "..." menu toggles.
   bool get showRSTFields => _loggingBool(_showRSTFieldsKey, true);

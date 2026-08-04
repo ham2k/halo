@@ -40,6 +40,7 @@ Map<String, dynamic> _select({
   bool common = false,
   String? environment,
   String? target,
+  bool devMode = false,
 }) => {
   'type': 'field',
   'fieldType': 'select',
@@ -54,6 +55,7 @@ Map<String, dynamic> _select({
   if (common) 'common': true,
   if (environment != null) 'environment': environment,
   if (target != null) 'target': target,
+  if (devMode) 'devMode': true,
 };
 
 Map<String, dynamic> _toggle({
@@ -395,6 +397,146 @@ class LoggingSettingsGroup extends SettingsGroup {
     }
   }
 }
+
+/// How the app behaves towards the radio it is driving — the settings the
+/// Station panel's tune icon collects under `target: 'current-radio'`.
+/// About the VFO the app follows, not about any one piece of equipment,
+/// which is why these are here and not in an equipment node's own config.
+class RadioSettingsGroup extends SettingsGroup {
+  final SettingsService settings;
+
+  RadioSettingsGroup(this.settings);
+
+  @override
+  String get key => 'radio';
+
+  @override
+  String get title => t.settings.radio.title;
+
+  @override
+  int get order => 15;
+
+  @override
+  Listenable? get listenable => settings;
+
+  @override
+  Future<List<Map<String, dynamic>>> buildElements() async {
+    // Nothing here means anything without CAT, which is still behind the
+    // Station Configuration experiment — an empty group renders nothing at
+    // all (see settings_view.dart's _SettingsGroupForm), rather than a
+    // section header over nothing.
+    if (!settings.experimentEnabled('gato') /* stored key, see experiments.yaml */) return [];
+    final s = t.settings.radio;
+    return [
+      _toggle(
+        key: 'smartVfoSnap',
+        label: s.smartVfoSnap.title,
+        icon: 'magnet',
+        description: settings.smartVfoSnap ? s.smartVfoSnap.descriptionOn : s.smartVfoSnap.descriptionOff,
+        value: settings.smartVfoSnap,
+        target: 'current-radio',
+      ),
+      // The feel, in the `-extended` bucket behind the dialog's "show more
+      // settings" — four numbers nobody should have to meet to use the
+      // feature, and which only mean anything once it's on.
+      //
+      // Emitted only in developer mode rather than merely flagged
+      // `devMode: true`: the flag hides an element inside FormRenderer, but
+      // the target dialog decides whether to offer "show more settings" from
+      // whether the bucket is EMPTY, so flagging alone would leave everyone
+      // else a disclosure that expands to nothing. The flag is set as well,
+      // for the dev-mode accent and for All Settings.
+      if (settings.smartVfoSnap && settings.developerMode) ...[
+        _tuningSelect(
+          key: 'smartVfoSnapDebounceMs',
+          label: s.snapDebounce.title,
+          description: s.snapDebounce.description,
+          icon: 'timer-outline',
+          value: settings.smartVfoSnapDebounce.inMilliseconds.toString(),
+          options: SettingsService.smartVfoSnapDebounceOptions,
+          unit: s.units.ms,
+        ),
+        _tuningSelect(
+          key: 'smartVfoSnapLongMoveKHz',
+          label: s.snapLongMove.title,
+          description: s.snapLongMove.description,
+          icon: 'arrow-expand-horizontal',
+          value: _numText(settings.smartVfoSnapLongMoveKHz),
+          options: SettingsService.smartVfoSnapLongMoveOptions,
+          unit: s.units.kHz,
+        ),
+        _tuningSelect(
+          key: 'smartVfoSnapMinMoveKHz',
+          label: s.snapMinMove.title,
+          description: s.snapMinMove.description,
+          icon: 'arrow-collapse-horizontal',
+          value: _numText(settings.smartVfoSnapMinMoveKHz),
+          options: SettingsService.smartVfoSnapMinMoveOptions,
+          unit: s.units.kHz,
+        ),
+        _tuningSelect(
+          key: 'smartVfoSnapMinSpeed',
+          label: s.snapMinSpeed.title,
+          description: s.snapMinSpeed.description,
+          icon: 'speedometer-slow',
+          value: _numText(settings.smartVfoSnapMinSpeed),
+          options: SettingsService.smartVfoSnapMinSpeedOptions,
+          unit: s.units.kHzPerSecond,
+        ),
+      ],
+    ];
+  }
+
+  /// One of Smart VFO Snap's tuning knobs: a `select` over preset values
+  /// rather than a `number` field, so trying one is a single tap and no
+  /// half-typed value is ever committed and acted on.
+  Map<String, dynamic> _tuningSelect({
+    required String key,
+    required String label,
+    required String description,
+    required String icon,
+    required String value,
+    required List<String> options,
+    required String unit,
+  }) {
+    String labelFor(String option) => '$option $unit';
+    // No fallback here: [value] comes from a getter that already resolved
+    // the stored value against this same list (SettingsService's option
+    // lists), so it always names an item. Falling back at THIS layer instead
+    // would show one value while the snapper ran on another.
+    assert(options.contains(value), 'a select whose value has no item throws when the dialog opens');
+
+    return _select(
+      key: key,
+      label: label,
+      icon: icon,
+      // Current value first, then what it does. Every other select here puts
+      // the value alone in this slot (theme, font scale) — but a knob nobody
+      // can guess the meaning of from its name needs the sentence too, and a
+      // row that shows only prose leaves the setting's actual value invisible
+      // until it's opened.
+      description: '${labelFor(value)} — $description',
+      value: value,
+      options: [for (final option in options) (label: labelFor(option), value: option)],
+      target: 'current-radio-extended',
+      devMode: true,
+    );
+  }
+
+  @override
+  Future<void> commit(String fieldKey, dynamic value) async {
+    // The toggle is a bool; every tuning knob is one of its own option
+    // strings. Anything else is a build mismatch and is dropped rather than
+    // stored for a later parse to fall back from.
+    if (value is! bool && value is! String) return;
+    await settings.setSettingValue(SettingsService.radioGroup, fieldKey, value);
+  }
+}
+
+/// A tuning value as its option string — `2.0` is offered as `'2'`, `0.25`
+/// as `'0.25'`, so a stored value matches the dropdown's own items.
+String _numText(double value) =>
+    value == value.roundToDouble() ? value.toInt().toString() : '$value';
 
 /// Data-sharing consents (both opt-in, app-polo keys and wording) and the
 /// Ham2K policy links.

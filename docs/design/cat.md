@@ -254,18 +254,21 @@ rather than a wedged one:
 
 ## Platforms
 
-CAT does nothing on web — no sockets, no serial, no BLE. The transport layer sits behind the
-codebase's conditional-export barrel (`export 'x_stub.dart' if (dart.library.io) 'x_io.dart';`) and
-the stub **throws**, per the convention `web_download_stub.dart` states: a silent no-op is the
-failure mode to avoid. The settings section itself is hidden on web.
+**Serial works on web**, through the Web Serial API — so a USB-attached rig is controllable from a
+browser build, and the settings section is NOT hidden there. Sockets are what web lacks: TCP and the
+Icom network transport have no web implementation, so a radio needing either throws on connect.
+
+The transport layer sits behind the codebase's conditional-export barrel
+(`export 'x_stub.dart' if (dart.library.io) 'x_io.dart';`) and the socket stubs **throw**, per the
+convention `web_download_stub.dart` states: a silent no-op is the failure mode to avoid.
 
 The one deliberate exception is **discovery**, whose stub returns an empty stream instead. The rule
 exists because a silent no-op turns "this cannot work here" into "this didn't happen to work" — but
 discovery's honest answer genuinely *is* "nothing announced itself", and every caller already has to
 handle that. A throw there would be an error the UI has to special-case to say the same thing.
 
-A consequence for development: the usual "here's a web build to check" hand-off does not work for
-this feature. Verification is `flutter run -d macos`.
+A consequence for development: the usual "here's a web build to check" hand-off DOES work, for a
+serial rig. A radio on TCP or the Icom network needs `flutter run -d macos`.
 
 ### Entitlements
 
@@ -384,6 +387,96 @@ retunes the rig. This is the opposite of the ambient seed it overrides, which on
 Two limits. It fires only when the suggestion actually carried radio state, so a bare callsign (a
 deeplink, say) never retunes anything; and never while an existing QSO is open for editing, matching
 the guard every other write site uses.
+
+## Smart VFO Snap
+
+Off by default, and it is the only thing in the app that moves the operator's radio without being
+asked to — so almost all of its design is about when to keep its hands off. The rules are
+`app/lib/services/cat/vfo_snap.dart`; when to ask them is `CatService._noteSnapReading`.
+
+The shape: the knob's own moves are watched, and once the VFO has held still for the settle delay
+the app decides whether the operator was *arriving somewhere* or *tuning a signal*. Arriving
+somewhere gets rounded to a grid; tuning a signal is left exactly where it is.
+
+**Distance decides the grid. Speed only ever disqualifies.** In order, against the four numbers the
+operator can set (defaults in brackets):
+
+1. moved ≥ **long move** [2 kHz] → round to a whole kHz, *and stop here* — speed is not consulted;
+2. moved < **smallest move** [0.2 kHz] → leave it alone;
+3. average speed < **slowest move** [0.5 kHz/s] → leave it alone;
+4. otherwise ≥ half a long move → 250 Hz, else → 100 Hz.
+
+Each rule is answering a specific way of being wrong:
+
+- **The long-move rule is checked FIRST, before the speed floor**, because a sweep across the band
+  usually *ends* slowly — easing in over the last turn of the knob is how anyone lands on a signal,
+  and averaging that over the burst drags the speed under any useful floor. A long haul is a search
+  for a clear slot however it finished.
+- **The smallest-move rule holds whatever the speed was.** A 120 Hz correction made quickly measures
+  at 6 kHz/s, and rounding it moves the rig off the voice the operator was zero-beating — the single
+  worst thing this feature can do.
+- **The speed floor** is what separates a nudge that *arrives* from a deliberate creep that is
+  someone placing the VFO exactly.
+- **An unmeasurable speed is not a slow one.** A burst of a single reading — which is every burst on
+  a polled radio — yields no speed at all, and the floor is skipped rather than applied against a
+  zero. Treating it as slow would turn the feature off on that hardware entirely.
+- **The speed is measured strictly between the burst's own readings.** Nothing says *when* the VFO
+  left the resting frequency, only that it had by the first reading of the burst — so that first
+  step's distance is deliberately not counted. Charging it to an interval that begins after it
+  divides a longer journey by a shorter time, and on a polled radio (whose poller sits at 3 s until
+  it sees a change, then drops to 200 ms) the overestimate is big enough to carry a deliberate creep
+  over the floor.
+
+The **settle delay** [300 ms] is the one that decides whether this feels immediate or laggy, and it
+costs something at both ends: too short chops a slow move into pieces that each measure as a fine
+adjustment, too long leaves the frequency jumping after the operator has moved on to the callsign
+field. It is read per reading, so changing it takes effect on the next turn of the knob rather than
+at the next reconnect.
+
+All four are `select` fields over preset values rather than free-entry numbers: trying one is a
+single tap, and no half-typed value is ever committed and acted on. They sit in the
+`current-radio-extended` bucket, behind the tune dialog's "show more settings", and are **developer
+mode only** — they exist to find the defaults, not to be shipped as choices.
+
+They are *emitted* only in developer mode rather than merely flagged `devMode: true`. The flag hides
+an element inside `FormRenderer`, but `showSettingsForTarget` decides whether to offer "show more
+settings" from whether the bucket is empty — so flagging alone would leave every other operator a
+disclosure that expands to nothing. The flag is set as well, for the dev-mode accent colour and for
+All Settings.
+
+What it refuses, and why each one is not an edge case:
+
+- **Anything but phone**, checked on *every* reading rather than once when the movement starts. CW
+  and data operators tune to exact frequencies; a rig switched to CW mid-sweep must abandon the
+  movement, not settle it under the mode it started in.
+- **A snap that would reach a band edge.** Rounding to nearest moves the VFO at most half a grid
+  step, and half a step is enough: 7299.7 rounds to 7300.0. The check is *strictly* inside the
+  band's limits, because `bandForFrequency` answers with the band at either limit, and a carrier on
+  the edge puts its sideband outside.
+- **Anything the operator stated exactly** — a typed frequency, a band pick, a tapped spot. Those
+  arrive as `VfoOrigin.user` and both cancel a pending snap and become the new resting point.
+- **A radio that isn't `radio1`.** One snapper, not one per node: the setting is about the VFO the
+  app is driving, which is also why it is a plain app setting rather than per-equipment config.
+
+The settled value is written back as `VfoOrigin.user`, deliberately: the snap is a decision about
+where the operator meant to be, so it takes the same path a typed frequency does and the existing
+`_onVfoChanged` retunes the rig. Tagging it `radio` would leave the app showing a frequency the rig
+is not on. `settle()` takes its own answer as the new resting point, so the radio's confirmation of
+the snap reads as no movement rather than as the start of another one.
+
+**A polled radio reports a whole knob turn as one jump.** The FT-891 and the CI-V drivers report
+every few seconds, so distance decides alone (see the unmeasurable-speed rule above). What they
+cannot do is tell a still-turning knob from a settled one, so on those radios a snap can land
+mid-turn; the operator's next move overrides it.
+
+**A restated frequency is not movement.** Every polled driver calls `report` on each poll whether or
+not the value changed, and `AdaptivePoller`'s fast cadence is 200 ms — shorter than any settle delay
+on offer. So `VfoSnapper.report` answers false for a reading that repeats the last one: the burst
+survives, but the caller does not re-arm its quiet period. Re-arming there would push the settle out
+for as long as the poller stayed fast — seconds, on a 300 ms setting.
+
+The settings live under `target: 'current-radio'` (settings_registry.dart), reached from the tune
+icon beside the Station panel's transceiver picker.
 
 ## Where this is going
 

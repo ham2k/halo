@@ -792,6 +792,7 @@ class Translations$settings$en {
 	String get userInterface => 'User Interface';
 
 	late final Translations$settings$logging$en logging = Translations$settings$logging$en.internal(_root);
+	late final Translations$settings$radio$en radio = Translations$settings$radio$en.internal(_root);
 	late final Translations$settings$privacy$en privacy = Translations$settings$privacy$en.internal(_root);
 
 	/// en: 'Operator Callsign'
@@ -1696,6 +1697,25 @@ class Translations$settings$logging$en {
 	String get modes => 'Modes';
 }
 
+// Path: settings.radio
+class Translations$settings$radio$en {
+	Translations$settings$radio$en.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Radio'
+	String get title => 'Radio';
+
+	late final Translations$settings$radio$units$en units = Translations$settings$radio$units$en.internal(_root);
+	late final Translations$settings$radio$smartVfoSnap$en smartVfoSnap = Translations$settings$radio$smartVfoSnap$en.internal(_root);
+	late final Translations$settings$radio$snapDebounce$en snapDebounce = Translations$settings$radio$snapDebounce$en.internal(_root);
+	late final Translations$settings$radio$snapLongMove$en snapLongMove = Translations$settings$radio$snapLongMove$en.internal(_root);
+	late final Translations$settings$radio$snapMinMove$en snapMinMove = Translations$settings$radio$snapMinMove$en.internal(_root);
+	late final Translations$settings$radio$snapMinSpeed$en snapMinSpeed = Translations$settings$radio$snapMinSpeed$en.internal(_root);
+}
+
 // Path: settings.privacy
 class Translations$settings$privacy$en {
 	Translations$settings$privacy$en.internal(this._root);
@@ -2104,6 +2124,9 @@ class Translations$settings$station$en {
 
 	/// en: 'Not responding'
 	String get statusStale => 'Not responding';
+
+	/// en: 'Current radio settings'
+	String get currentRadioSettings => 'Current radio settings';
 }
 
 // Path: settings.offlineData
@@ -2616,6 +2639,102 @@ class Translations$settings$logging$numbersRowVibrate$en {
 	String get description => 'Haptic feedback when you tap a number key';
 }
 
+// Path: settings.radio.units
+class Translations$settings$radio$units$en {
+	Translations$settings$radio$units$en.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'ms'
+	String get ms => 'ms';
+
+	/// en: 'kHz'
+	String get kHz => 'kHz';
+
+	/// en: 'kHz/s'
+	String get kHzPerSecond => 'kHz/s';
+}
+
+// Path: settings.radio.smartVfoSnap
+class Translations$settings$radio$smartVfoSnap$en {
+	Translations$settings$radio$smartVfoSnap$en.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Smart VFO Snap'
+	String get title => 'Smart VFO Snap';
+
+	/// en: 'After you stop turning the dial, round the frequency to a sensible step. Voice modes only.'
+	String get descriptionOn => 'After you stop turning the dial, round the frequency to a sensible step. Voice modes only.';
+
+	/// en: 'The radio stays exactly where you tuned it.'
+	String get descriptionOff => 'The radio stays exactly where you tuned it.';
+}
+
+// Path: settings.radio.snapDebounce
+class Translations$settings$radio$snapDebounce$en {
+	Translations$settings$radio$snapDebounce$en.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Smart Snap: Settle delay'
+	String get title => 'Smart Snap: Settle delay';
+
+	/// en: 'How long the dial has to stop before the frequency is rounded. Shorter feels immediate; longer leaves room for a slow move.'
+	String get description => 'How long the dial has to stop before the frequency is rounded. Shorter feels immediate; longer leaves room for a slow move.';
+}
+
+// Path: settings.radio.snapLongMove
+class Translations$settings$radio$snapLongMove$en {
+	Translations$settings$radio$snapLongMove$en.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Smart Snap: Long move'
+	String get title => 'Smart Snap: Long move';
+
+	/// en: 'Move at least this far and the frequency rounds to a whole kHz, however slowly you finished.'
+	String get description => 'Move at least this far and the frequency rounds to a whole kHz, however slowly you finished.';
+}
+
+// Path: settings.radio.snapMinMove
+class Translations$settings$radio$snapMinMove$en {
+	Translations$settings$radio$snapMinMove$en.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Smart Snap: Smallest move'
+	String get title => 'Smart Snap: Smallest move';
+
+	/// en: 'Move less than this and nothing is rounded — fine tuning is left alone.'
+	String get description => 'Move less than this and nothing is rounded — fine tuning is left alone.';
+}
+
+// Path: settings.radio.snapMinSpeed
+class Translations$settings$radio$snapMinSpeed$en {
+	Translations$settings$radio$snapMinSpeed$en.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Smart Snap: Slowest move'
+	String get title => 'Smart Snap: Slowest move';
+
+	/// en: 'Turn the dial slower than this and nothing is rounded, unless it was a long move.'
+	String get description => 'Turn the dial slower than this and nothing is rounded, unless it was a long move.';
+}
+
 // Path: settings.privacy.shareAppData
 class Translations$settings$privacy$shareAppData$en {
 	Translations$settings$privacy$shareAppData$en.internal(this._root);
@@ -3028,6 +3147,21 @@ extension on Translations {
 			'settings.logging.numbersRowVibrate.description' => 'Haptic feedback when you tap a number key',
 			'settings.logging.bands' => 'Bands',
 			'settings.logging.modes' => 'Modes',
+			'settings.radio.title' => 'Radio',
+			'settings.radio.units.ms' => 'ms',
+			'settings.radio.units.kHz' => 'kHz',
+			'settings.radio.units.kHzPerSecond' => 'kHz/s',
+			'settings.radio.smartVfoSnap.title' => 'Smart VFO Snap',
+			'settings.radio.smartVfoSnap.descriptionOn' => 'After you stop turning the dial, round the frequency to a sensible step. Voice modes only.',
+			'settings.radio.smartVfoSnap.descriptionOff' => 'The radio stays exactly where you tuned it.',
+			'settings.radio.snapDebounce.title' => 'Smart Snap: Settle delay',
+			'settings.radio.snapDebounce.description' => 'How long the dial has to stop before the frequency is rounded. Shorter feels immediate; longer leaves room for a slow move.',
+			'settings.radio.snapLongMove.title' => 'Smart Snap: Long move',
+			'settings.radio.snapLongMove.description' => 'Move at least this far and the frequency rounds to a whole kHz, however slowly you finished.',
+			'settings.radio.snapMinMove.title' => 'Smart Snap: Smallest move',
+			'settings.radio.snapMinMove.description' => 'Move less than this and nothing is rounded — fine tuning is left alone.',
+			'settings.radio.snapMinSpeed.title' => 'Smart Snap: Slowest move',
+			'settings.radio.snapMinSpeed.description' => 'Turn the dial slower than this and nothing is rounded, unless it was a long move.',
 			'settings.privacy.title' => 'Privacy',
 			'settings.privacy.shareAppData.title' => 'Share app usage data',
 			'settings.privacy.shareAppData.descriptionOn' => 'Help us improve the app by sharing usage, crash and performance data',
@@ -3160,6 +3294,7 @@ extension on Translations {
 			'settings.station.ic705TroubleshootingTitle' => 'If the radio never answers',
 			'settings.station.ic705Troubleshooting' => 'The radio has a **single** remote-control session. When the login is ignored, something else is almost always using it.\n\n- **Close any other client.** wfview or RS-BA1 connected to the same radio holds that one session, and the login here is simply ignored while it does.\n- **Check the radio\'s network settings** — that WLAN is on, it is on the same network, and its remote-control (Network) function is enabled.\n- **Power-cycle the radio\'s WLAN** if it stays stuck. That reliably clears a session the radio is genuinely holding.\n\nA **wrong password is refused explicitly**, not met with silence — so if you got here rather than a "rejected" message, the password is not the problem.',
 			'settings.station.statusStale' => 'Not responding',
+			'settings.station.currentRadioSettings' => 'Current radio settings',
 			'settings.offlineData.title' => 'Offline Data',
 			'settings.offlineData.noFiles' => 'No data files',
 			'settings.offlineData.noFilesDescription' => 'Enable activity or lookup extensions to download their offline data here.',
@@ -3183,6 +3318,8 @@ extension on Translations {
 			'settings.developer.experiments' => 'Experiments',
 			'settings.developer.experimentsEnabled' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: '${count} enabled', other: '${count} enabled', ), 
 			'settings.developer.patchTrack' => 'Patch Track',
+			_ => null,
+		} ?? switch (path) {
 			'settings.developer.patchTrackDescription' => 'Which over-the-air patch ring this device follows. More adventurous rings get fixes earlier, less tested. Patches apply on the next restart.',
 			'settings.developer.trackStable' => 'Stable',
 			'settings.developer.trackUnstable' => 'Unstable',
@@ -3199,8 +3336,6 @@ extension on Translations {
 			'settings.developer.runtimeNotAvailable' => 'Extension runtime not available.',
 			'settings.developer.panelLoadFailed' => 'Could not load this settings panel.',
 			'settings.developer.categoryCore' => 'Core & Runtime',
-			_ => null,
-		} ?? switch (path) {
 			'settings.about.notices' => 'Notices & Messages',
 			'settings.about.noticesDescription' => 'Announcements and status messages',
 			'settings.about.releaseNotes' => 'Release Notes',

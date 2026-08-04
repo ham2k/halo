@@ -685,6 +685,10 @@ class _SettingsGroupFormState extends State<_SettingsGroupForm> {
     if (elements == null) {
       return const Padding(padding: EdgeInsets.all(24), child: Center(child: CircularProgressIndicator()));
     }
+    // A group can decline to contribute anything at all — RadioSettingsGroup
+    // does while the CAT experiment is off. Its title is chrome for the rows
+    // below it, so with no rows there is nothing to head.
+    if (elements.isEmpty) return const SizedBox.shrink();
     if (widget.commonOnly) {
       elements = [
         for (final el in elements)

@@ -18,6 +18,7 @@ import 'package:halo_widgets/halo_widgets.dart';
 
 import '../i18n/strings.g.dart';
 import '../main.dart';
+import '../settings/settings_target_dialog.dart';
 import '../services/cat/discovery.dart';
 import '../services/cat/equipment.dart';
 import '../services/cat/equipment_registry.dart';
@@ -314,8 +315,11 @@ class StationPanel extends StatelessWidget {
               child: SectionHeader(st.currentConfiguration),
             ),
             Padding(
-              padding: EdgeInsets.fromLTRB(safeLeft + 16, 8, 16, 8),
-              child: DropdownButtonFormField<String?>(
+              padding: EdgeInsets.fromLTRB(safeLeft + 16, 8, 4, 8),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: DropdownButtonFormField<String?>(
                 // FormFieldState reads `initialValue` once and never again
                 // (its didUpdateWidget only handles forceErrorText), so
                 // without a key that changes with the value this dropdown
@@ -323,16 +327,37 @@ class StationPanel extends StatelessWidget {
                 // reassigns it behind this panel's back — auto-designating
                 // the first transceiver added, and re-designating when the
                 // current one is removed — and neither would have appeared.
-                key: ValueKey(_cat.radio1),
-                initialValue: transceivers.any((n) => n.uuid == _cat.radio1) ? _cat.radio1 : null,
-                decoration: poloFieldDecoration(context, st.transceiverForMainVfo),
-                menuMaxHeight: dropdownMenuMaxHeight(context),
-                items: [
-                  DropdownMenuItem<String?>(value: null, child: Text(st.noTransceiver)),
-                  for (final radio in transceivers)
-                    DropdownMenuItem<String?>(value: radio.uuid, child: Text(_displayName(radio))),
+                      key: ValueKey(_cat.radio1),
+                      initialValue: transceivers.any((n) => n.uuid == _cat.radio1) ? _cat.radio1 : null,
+                      decoration: poloFieldDecoration(context, st.transceiverForMainVfo),
+                      menuMaxHeight: dropdownMenuMaxHeight(context),
+                      items: [
+                        DropdownMenuItem<String?>(value: null, child: Text(st.noTransceiver)),
+                        for (final radio in transceivers)
+                          DropdownMenuItem<String?>(value: radio.uuid, child: Text(_displayName(radio))),
+                      ],
+                      onChanged: (uuid) => unawaited(_cat.setRadio1(uuid)),
+                    ),
+                  ),
+                  // How the app behaves towards whichever radio is selected
+                  // above — not that radio's own configuration, which is
+                  // inside its row in the inventory below. Same tune glyph
+                  // and the same target-built dialog the logging panel uses.
+                  Builder(
+                    builder: (buttonContext) => IconButton(
+                      // The app shows no hover tooltips
+                      // (docs/design/user-interface.md), so the accessible
+                      // name is the only place this button is named.
+                      icon: Icon(Icons.tune, semanticLabel: st.currentRadioSettings),
+                      onPressed: () => showSettingsForTarget(
+                        buttonContext,
+                        services: services,
+                        target: 'current-radio',
+                        title: st.currentRadioSettings,
+                      ),
+                    ),
+                  ),
                 ],
-                onChanged: (uuid) => unawaited(_cat.setRadio1(uuid)),
               ),
             ),
 
@@ -451,8 +476,11 @@ class _EquipmentTile extends StatelessWidget {
         state.status == EquipmentStatus.disconnecting;
     final vfo = state.vfo;
     final reading = [
-      if (vfo.freqKHz != null) fmtFreq(vfo.freqKHz!),
       if (vfo.mode != null) vfo.mode!,
+      // To the Hz, not [fmtFreq]'s 100 Hz: this row is the app's view of
+      // where the rig actually is, and Smart VFO Snap's whole effect lives in
+      // the digits fmtFreq drops.
+      if (vfo.freqKHz != null) fmtFreqToTheHz(vfo.freqKHz!),
     ].join('  ');
     final connected = state.status == EquipmentStatus.connected;
 

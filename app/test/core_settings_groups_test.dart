@@ -8,6 +8,8 @@
 // Mistagging a field here is silent everywhere else — it just quietly
 // stops showing up in (or starts cluttering) the dialog.
 
+import 'dart:convert';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -58,6 +60,123 @@ void main() {
       expect(settings.leftieMode, isFalse);
       await group.commit('leftieMode', true);
       expect(settings.leftieMode, isTrue);
+    });
+  });
+
+  group('RadioSettingsGroup', () {
+    Future<SettingsService> settingsWith({
+      bool cat = true,
+      bool snap = true,
+      bool developer = true,
+    }) async {
+      SharedPreferences.setMockInitialValues({
+        if (cat) 'experiments': jsonEncode({
+            'gato': {'enabled': true},
+          }),
+        if (snap) 'settings.radio': jsonEncode({'smartVfoSnap': true}),
+        if (developer) 'developerMode': true,
+      });
+      return SettingsService(await SharedPreferences.getInstance());
+    }
+
+    Future<Set<String>> keysFor(SettingsService settings) async =>
+        {for (final el in await RadioSettingsGroup(settings).buildElements()) el['key'] as String};
+
+    test('contributes nothing at all until the CAT experiment is on', () async {
+      // An empty group renders nothing; a group with only a header renders a
+      // section title over no rows, on everyone's All Settings screen.
+      expect(await keysFor(await settingsWith(cat: false)), isEmpty);
+    });
+
+    test('the tuning knobs are emitted, not merely flagged, only in developer mode', () async {
+      // The distinction is load-bearing: `devMode: true` alone hides the
+      // fields inside FormRenderer, but showSettingsForTarget offers "show
+      // more settings" whenever the extended bucket is NON-EMPTY — so
+      // flagging without gating leaves every other operator a disclosure that
+      // expands to nothing.
+      expect(await keysFor(await settingsWith(developer: false)), {'smartVfoSnap'});
+      expect(await keysFor(await settingsWith()), contains('smartVfoSnapDebounceMs'));
+    });
+
+    test('the knobs mean nothing with the feature off, and are not offered', () async {
+      expect(await keysFor(await settingsWith(snap: false)), {'smartVfoSnap'});
+    });
+
+    test('every knob is dev-flagged, extended-targeted, and lands in settings when committed', () async {
+      final settings = await settingsWith();
+      final group = RadioSettingsGroup(settings);
+      final knobs = [
+        for (final el in await group.buildElements())
+          if (el['key'] != 'smartVfoSnap') el,
+      ];
+      expect(knobs, hasLength(4));
+      for (final el in knobs) {
+        expect(el['devMode'], isTrue, reason: '${el['key']} would show without developer mode in All Settings');
+        expect(elementMatchesTarget(el, 'current-radio-extended'), isTrue,
+            reason: '${el['key']} would crowd the tune dialog\'s always-visible set');
+      }
+
+      // The select fields emit strings; a commit path that only handled bools
+      // would drop every one of them silently.
+      await group.commit('smartVfoSnapDebounceMs', '750');
+      expect(settings.smartVfoSnapDebounce, const Duration(milliseconds: 750));
+      await group.commit('smartVfoSnapMinMoveKHz', '0.5');
+      expect(settings.smartVfoSnapMinMoveKHz, 0.5);
+    });
+
+    test('a stored value this build no longer offers falls back in the ENGINE, not just the picker', () async {
+      // Any option list can lose an entry between builds, and a
+      // DropdownButtonFormField whose value matches no item throws — so the
+      // dialog has to show something offered. The trap is falling back only
+      // there: the row would read "0.25 kHz/s" while the snapper went on
+      // applying the withdrawn 0, and re-picking the value already displayed
+      // would be the only way to reconcile them.
+      SharedPreferences.setMockInitialValues({
+        'experiments': jsonEncode({
+          'gato': {'enabled': true},
+        }),
+        'developerMode': true,
+        'settings.radio': jsonEncode({'smartVfoSnap': true, 'smartVfoSnapMinSpeed': '0'}),
+      });
+      final settings = SettingsService(await SharedPreferences.getInstance());
+      final speed = (await RadioSettingsGroup(settings).buildElements())
+          .firstWhere((el) => el['key'] == 'smartVfoSnapMinSpeed');
+      final offered = [for (final o in speed['options'] as List) (o as Map)['value']];
+
+      expect(offered, isNot(contains('0')));
+      expect(offered, contains(speed['value']), reason: 'the dropdown would throw on a value it has no item for');
+      expect(speed['value'], '0.25');
+      expect(settings.smartVfoSnapMinSpeed, 0.25, reason: 'the snapper must run on what the row shows');
+    });
+
+    test('every offered option round-trips through the getter that renders it', () async {
+      // The picker's `value` is the getter's answer formatted back into an
+      // option string. An option that doesn't survive that round trip (0.10,
+      // say, which formats as "0.1") leaves the dropdown with no matching
+      // item — which throws when the dialog opens.
+      SharedPreferences.setMockInitialValues({
+        'experiments': jsonEncode({
+          'gato': {'enabled': true},
+        }),
+        'developerMode': true,
+      });
+      final prefs = await SharedPreferences.getInstance();
+      final settings = SettingsService(prefs);
+
+      for (final (key, options) in [
+        ('smartVfoSnapDebounceMs', SettingsService.smartVfoSnapDebounceOptions),
+        ('smartVfoSnapLongMoveKHz', SettingsService.smartVfoSnapLongMoveOptions),
+        ('smartVfoSnapMinMoveKHz', SettingsService.smartVfoSnapMinMoveOptions),
+        ('smartVfoSnapMinSpeed', SettingsService.smartVfoSnapMinSpeedOptions),
+      ]) {
+        for (final option in options) {
+          await settings.setSettingValue(SettingsService.radioGroup, 'smartVfoSnap', true);
+          await settings.setSettingValue(SettingsService.radioGroup, key, option);
+          final el =
+              (await RadioSettingsGroup(settings).buildElements()).firstWhere((e) => e['key'] == key);
+          expect(el['value'], option, reason: '$key: "$option" does not survive the getter it renders through');
+        }
+      }
     });
   });
 }

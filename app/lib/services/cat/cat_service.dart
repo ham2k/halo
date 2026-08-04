@@ -26,6 +26,7 @@ import 'driver.dart';
 import 'equipment.dart';
 import 'equipment_registry.dart';
 import 'transport.dart';
+import 'vfo_snap.dart';
 
 const _uuidGenerator = Uuid();
 
@@ -136,10 +137,24 @@ class CatService extends ChangeNotifier {
   Timer? _idleRetryTimer;
   late Duration _idleRetryDelay = idleRetryFirst;
 
+  /// Smart VFO Snap's movement tracker and its quiet-period timer. ONE of
+  /// each, not one per node: the setting applies to the VFO the app is
+  /// driving — `radio1`'s — not separately to every radio in the shack.
+  final _snapper = VfoSnapper();
+  Timer? _snapTimer;
+
+  /// What stamps each reading for the snapper's speed measurement.
+  /// Injectable because how FAST the knob moved is half of what decides the
+  /// grid, and a test cannot turn a knob — a `fakeAsync` timer doesn't move
+  /// `DateTime.now()`, so without this a staged burst always measures as
+  /// instantaneous.
+  final DateTime Function() now;
+
   CatService(this._settings,
       {EquipmentRegistry? registry,
       RadioService? radio,
       this.reconnectDelay = _defaultReconnectDelay,
+      this.now = DateTime.now,
       this.idleRetryFirst = _idleRetryFirst})
       : assert(idleRetryFirst > Duration.zero, 'a zero first delay makes the backoff a tight loop'),
         registry = registry ?? EquipmentRegistry(),
@@ -192,6 +207,9 @@ class CatService extends ChangeNotifier {
     for (final id in [_radio1, uuid]) {
       if (id != null) _runtimes[id]?.lastSent = null;
     }
+    // Same reasoning for the snapper: a movement measured on the outgoing
+    // radio says nothing about where the incoming one is sitting.
+    _cancelSnap(null);
     _radio1 = uuid;
     await _save();
     notifyListeners();
@@ -816,6 +834,62 @@ class CatService extends ChangeNotifier {
     if (uuid != _radio1) return;
     runtime.lastSent = merged;
     _radio?.setVfo('vfoA', freq: merged.freqKHz, mode: merged.mode, origin: VfoOrigin.radio);
+    _noteSnapReading(merged);
+  }
+
+  // ------------------------------------------------- smart VFO snap
+  //
+  // The knob's own moves, rounded to a sensible number once the operator
+  // stops turning (docs/design/cat.md § Smart VFO Snap). The rules live in
+  // vfo_snap.dart; what is here is when to ask them.
+
+  /// Feeds `radio1`'s reading to the snapper and re-arms the quiet period.
+  ///
+  /// Phone only, and checked on every reading rather than once: a radio
+  /// switched from SSB to CW mid-burst must abandon the burst, not settle it
+  /// under the old mode. CW and data operators tune to exact frequencies and
+  /// snapping under them would be the app moving the rig off a signal.
+  void _noteSnapReading(VfoReading reading) {
+    final freqKHz = reading.freqKHz;
+    if (!_settings.smartVfoSnap || freqKHz == null || superModeForMode(reading.mode) != 'Phone') {
+      _cancelSnap(freqKHz);
+      return;
+    }
+    if (!_snapper.report(freqKHz, now())) return;
+    _snapTimer?.cancel();
+    // Read per reading, not cached: the operator tuning this setting is
+    // turning the knob to feel the difference, and a cached period would make
+    // the change take effect only after a reconnect.
+    _snapTimer = Timer(_settings.smartVfoSnapDebounce, _settleSnap);
+  }
+
+  /// Abandons any pending snap and takes [freqKHz] as the new resting point.
+  /// For everything that is not the knob turning: a typed frequency, a spot,
+  /// a session ending, the setting going off.
+  void _cancelSnap(double? freqKHz) {
+    _snapTimer?.cancel();
+    _snapTimer = null;
+    _snapper.rebase(freqKHz);
+  }
+
+  /// The VFO held still long enough. Retunes the radio if the movement
+  /// earned a snap.
+  void _settleSnap() {
+    _snapTimer = null;
+    final target = _snapper.settle(VfoSnapTuning(
+      longMoveKHz: _settings.smartVfoSnapLongMoveKHz,
+      minMoveKHz: _settings.smartVfoSnapMinMoveKHz,
+      minSpeedKHzPerSec: _settings.smartVfoSnapMinSpeed,
+    ));
+    // Settled first, so the movement is consumed either way: switching the
+    // setting off during a turn must not leave a burst behind to be settled
+    // by whatever reading follows it being switched back on.
+    if (target == null || _disposed || !_settings.smartVfoSnap) return;
+    // Written as the OPERATOR, deliberately: the snap is a decision about
+    // where they meant to be, so it takes the same path a typed frequency
+    // does — RadioService notifies, [_onVfoChanged] tunes the radio. Tagging
+    // it `radio` would leave the app showing a frequency the rig is not on.
+    _radio?.setVfo('vfoA', freq: target);
   }
 
   /// The app's VFO moved — the operator typed a frequency, picked a band,
@@ -827,6 +901,12 @@ class CatService extends ChangeNotifier {
     // to go where it already is, and its confirmation would arrive as
     // another notification.
     if (radio.lastVfoOrigin == VfoOrigin.radio) return;
+    // Whatever the operator just stated — typed, picked, or tapped from a
+    // spot — is exact intent and is where the next knob turn is measured
+    // from. Any snap still pending was decided against a frequency nobody is
+    // on any more. (Our OWN snap arrives here too, harmlessly: it rebases to
+    // the value the snapper already settled on.)
+    _cancelSnap(radio.vfoA.freq);
 
     final uuid = _radio1;
     if (uuid == null) return;
@@ -913,6 +993,12 @@ class CatService extends ChangeNotifier {
     // previous session happened to be on, leaving the app and a
     // freshly-reconnected radio silently disagreeing.
     runtime.lastSent = null;
+    // A pending snap belongs to the session that reported the movement. It
+    // has nowhere to be sent now, and the next session's first reading is a
+    // fresh resting point, not the continuation of a knob turn. Only for the
+    // designated radio — nothing else ever feeds the snapper, and clearing it
+    // when some other node disconnects would drop a live knob turn.
+    if (_radio1 != null && identical(_runtimes[_radio1], runtime)) _cancelSnap(null);
 
     if (subscription != null) await subscription.cancel();
 
@@ -950,6 +1036,8 @@ class CatService extends ChangeNotifier {
     // will rightly complain about one outliving its service.
     _idleRetryTimer?.cancel();
     _idleRetryTimer = null;
+    _snapTimer?.cancel();
+    _snapTimer = null;
     stopDiscovery();
     for (final runtime in _runtimes.values) {
       runtime.cancel?.cancel();

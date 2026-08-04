@@ -450,6 +450,35 @@
       "bands": "Bands",
       "modes": "Modes"
     },
+    "radio": {
+      "title": "Radio",
+      "units": {
+        "ms": "ms",
+        "kHz": "kHz",
+        "kHzPerSecond": "kHz/s"
+      },
+      "smartVfoSnap": {
+        "title": "Smart VFO Snap",
+        "descriptionOn": "After you stop turning the dial, round the frequency to a sensible step. Voice modes only.",
+        "descriptionOff": "The radio stays exactly where you tuned it."
+      },
+      "snapDebounce": {
+        "title": "Smart Snap: Settle delay",
+        "description": "How long the dial has to stop before the frequency is rounded. Shorter feels immediate; longer leaves room for a slow move."
+      },
+      "snapLongMove": {
+        "title": "Smart Snap: Long move",
+        "description": "Move at least this far and the frequency rounds to a whole kHz, however slowly you finished."
+      },
+      "snapMinMove": {
+        "title": "Smart Snap: Smallest move",
+        "description": "Move less than this and nothing is rounded — fine tuning is left alone."
+      },
+      "snapMinSpeed": {
+        "title": "Smart Snap: Slowest move",
+        "description": "Turn the dial slower than this and nothing is rounded, unless it was a long move."
+      }
+    },
     "privacy": {
       "title": "Privacy",
       "shareAppData": {
@@ -602,7 +631,8 @@
       "flrigTroubleshooting": "This connects to an **flrig program you run yourself**, not to the radio directly — flrig talks to the radio and supports most makes and models.\n\n- **flrig must already be running**, with its transceiver configured and connected.\n- **Port** is 12345 unless you changed it in flrig's configuration (Config → Setup → Server).\n- **From another machine**, make sure flrig's server is reachable — it listens on all interfaces, but your firewall may not agree.\n- Once connected, a missing frequency usually means flrig itself cannot reach the radio — check that flrig's own display is following the dial.",
       "ic705TroubleshootingTitle": "If the radio never answers",
       "ic705Troubleshooting": "The radio has a **single** remote-control session. When the login is ignored, something else is almost always using it.\n\n- **Close any other client.** wfview or RS-BA1 connected to the same radio holds that one session, and the login here is simply ignored while it does.\n- **Check the radio's network settings** — that WLAN is on, it is on the same network, and its remote-control (Network) function is enabled.\n- **Power-cycle the radio's WLAN** if it stays stuck. That reliably clears a session the radio is genuinely holding.\n\nA **wrong password is refused explicitly**, not met with silence — so if you got here rather than a \"rejected\" message, the password is not the problem.",
-      "statusStale": "Not responding"
+      "statusStale": "Not responding",
+      "currentRadioSettings": "Current radio settings"
     },
     "offlineData": {
       "title": "Offline Data",

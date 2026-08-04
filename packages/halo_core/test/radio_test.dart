@@ -184,6 +184,24 @@ void main() {
     });
   });
 
+  group('fmtFreqToTheHz', () {
+    test('always shows three decimals, grouped', () {
+      // Trailing zeros are the point: a live reading that changes width as
+      // its last digits settle is unreadable.
+      expect(fmtFreqToTheHz(14285.4), '14,285.400');
+      expect(fmtFreqToTheHz(14285), '14,285.000');
+      expect(fmtFreqToTheHz(14285.432), '14,285.432');
+      expect(fmtFreqToTheHz(472.5), '472.500');
+    });
+
+    test('carries into the whole part instead of formatting a fourth digit', () {
+      // Splitting the double directly leaves a fraction that rounds to 1000,
+      // and 14285.9996 formats as "14,285.1000".
+      expect(fmtFreqToTheHz(14285.9996), '14,286.000');
+      expect(fmtFreqToTheHz(999.9999), '1,000.000');
+    });
+  });
+
   group('fmtFreqInput', () {
     test('preserves full precision and round-trips through parseFreq', () {
       // The bug fmtFreq caused on the edit field: 100Hz rounding degraded a

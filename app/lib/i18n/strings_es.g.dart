@@ -409,6 +409,7 @@ class _Translations$settings$es extends Translations$settings$en {
 	@override late final _Translations$settings$distanceUnitsOpts$es distanceUnitsOpts = _Translations$settings$distanceUnitsOpts$es._(_root);
 	@override String get userInterface => 'Interfaz de Usuario';
 	@override late final _Translations$settings$logging$es logging = _Translations$settings$logging$es._(_root);
+	@override late final _Translations$settings$radio$es radio = _Translations$settings$radio$es._(_root);
 	@override late final _Translations$settings$privacy$es privacy = _Translations$settings$privacy$es._(_root);
 	@override String get operatorCall => 'Indicativo del Operador';
 	@override late final _Translations$settings$sync$es sync = _Translations$settings$sync$es._(_root);
@@ -888,6 +889,22 @@ class _Translations$settings$logging$es extends Translations$settings$logging$en
 	@override String get modes => 'Modos';
 }
 
+// Path: settings.radio
+class _Translations$settings$radio$es extends Translations$settings$radio$en {
+	_Translations$settings$radio$es._(TranslationsEs root) : this._root = root, super.internal(root);
+
+	final TranslationsEs _root; // ignore: unused_field
+
+	// Translations
+	@override String get title => 'Radio';
+	@override late final _Translations$settings$radio$units$es units = _Translations$settings$radio$units$es._(_root);
+	@override late final _Translations$settings$radio$smartVfoSnap$es smartVfoSnap = _Translations$settings$radio$smartVfoSnap$es._(_root);
+	@override late final _Translations$settings$radio$snapDebounce$es snapDebounce = _Translations$settings$radio$snapDebounce$es._(_root);
+	@override late final _Translations$settings$radio$snapLongMove$es snapLongMove = _Translations$settings$radio$snapLongMove$es._(_root);
+	@override late final _Translations$settings$radio$snapMinMove$es snapMinMove = _Translations$settings$radio$snapMinMove$es._(_root);
+	@override late final _Translations$settings$radio$snapMinSpeed$es snapMinSpeed = _Translations$settings$radio$snapMinSpeed$es._(_root);
+}
+
 // Path: settings.privacy
 class _Translations$settings$privacy$es extends Translations$settings$privacy$en {
 	_Translations$settings$privacy$es._(TranslationsEs root) : this._root = root, super.internal(root);
@@ -1058,6 +1075,7 @@ class _Translations$settings$station$es extends Translations$settings$station$en
 	@override String get ic705TroubleshootingTitle => 'Si la radio nunca responde';
 	@override String get ic705Troubleshooting => 'La radio tiene una **única** sesión de control remoto. Cuando el inicio de sesión se ignora, casi siempre hay algo más usándola.\n\n- **Cierra cualquier otro cliente.** wfview o RS-BA1 conectado a la misma radio ocupa esa única sesión, y mientras tanto el inicio de sesión aquí simplemente se ignora.\n- **Revisa la configuración de red de la radio** — que la WLAN esté encendida, que esté en la misma red y que su función de control remoto (Network) esté activada.\n- **Reinicia la WLAN de la radio** si sigue atascada. Eso libera de forma fiable una sesión que la radio realmente esté reteniendo.\n\nUna **contraseña incorrecta se rechaza explícitamente**, no con silencio — así que si llegaste aquí en lugar de ver un mensaje de "rechazada", la contraseña no es el problema.';
 	@override String get statusStale => 'Sin respuesta';
+	@override String get currentRadioSettings => 'Ajustes de la radio actual';
 }
 
 // Path: settings.offlineData
@@ -1344,6 +1362,74 @@ class _Translations$settings$logging$numbersRowVibrate$es extends Translations$s
 	// Translations
 	@override String get title => 'Vibrar al pulsar';
 	@override String get description => 'Respuesta háptica al pulsar una tecla numérica';
+}
+
+// Path: settings.radio.units
+class _Translations$settings$radio$units$es extends Translations$settings$radio$units$en {
+	_Translations$settings$radio$units$es._(TranslationsEs root) : this._root = root, super.internal(root);
+
+	final TranslationsEs _root; // ignore: unused_field
+
+	// Translations
+	@override String get ms => 'ms';
+	@override String get kHz => 'kHz';
+	@override String get kHzPerSecond => 'kHz/s';
+}
+
+// Path: settings.radio.smartVfoSnap
+class _Translations$settings$radio$smartVfoSnap$es extends Translations$settings$radio$smartVfoSnap$en {
+	_Translations$settings$radio$smartVfoSnap$es._(TranslationsEs root) : this._root = root, super.internal(root);
+
+	final TranslationsEs _root; // ignore: unused_field
+
+	// Translations
+	@override String get title => 'Ajuste inteligente del VFO';
+	@override String get descriptionOn => 'Al dejar de girar el dial, redondea la frecuencia a un paso razonable. Solo en modos de voz.';
+	@override String get descriptionOff => 'La radio se queda exactamente donde la sintonizaste.';
+}
+
+// Path: settings.radio.snapDebounce
+class _Translations$settings$radio$snapDebounce$es extends Translations$settings$radio$snapDebounce$en {
+	_Translations$settings$radio$snapDebounce$es._(TranslationsEs root) : this._root = root, super.internal(root);
+
+	final TranslationsEs _root; // ignore: unused_field
+
+	// Translations
+	@override String get title => 'Ajuste inteligente: retardo de reposo';
+	@override String get description => 'Cuánto debe detenerse el dial antes de redondear la frecuencia. Menos se siente inmediato; más deja margen para un giro lento.';
+}
+
+// Path: settings.radio.snapLongMove
+class _Translations$settings$radio$snapLongMove$es extends Translations$settings$radio$snapLongMove$en {
+	_Translations$settings$radio$snapLongMove$es._(TranslationsEs root) : this._root = root, super.internal(root);
+
+	final TranslationsEs _root; // ignore: unused_field
+
+	// Translations
+	@override String get title => 'Ajuste inteligente: giro largo';
+	@override String get description => 'Si te mueves al menos esto, la frecuencia se redondea a un kHz entero, por lento que hayas terminado.';
+}
+
+// Path: settings.radio.snapMinMove
+class _Translations$settings$radio$snapMinMove$es extends Translations$settings$radio$snapMinMove$en {
+	_Translations$settings$radio$snapMinMove$es._(TranslationsEs root) : this._root = root, super.internal(root);
+
+	final TranslationsEs _root; // ignore: unused_field
+
+	// Translations
+	@override String get title => 'Ajuste inteligente: giro mínimo';
+	@override String get description => 'Si te mueves menos que esto no se redondea nada — el ajuste fino se respeta.';
+}
+
+// Path: settings.radio.snapMinSpeed
+class _Translations$settings$radio$snapMinSpeed$es extends Translations$settings$radio$snapMinSpeed$en {
+	_Translations$settings$radio$snapMinSpeed$es._(TranslationsEs root) : this._root = root, super.internal(root);
+
+	final TranslationsEs _root; // ignore: unused_field
+
+	// Translations
+	@override String get title => 'Ajuste inteligente: velocidad mínima';
+	@override String get description => 'Si giras el dial más despacio que esto no se redondea nada, salvo que haya sido un giro largo.';
 }
 
 // Path: settings.privacy.shareAppData
@@ -1734,6 +1820,21 @@ extension on TranslationsEs {
 			'settings.logging.numbersRowVibrate.description' => 'Respuesta háptica al pulsar una tecla numérica',
 			'settings.logging.bands' => 'Bandas',
 			'settings.logging.modes' => 'Modos',
+			'settings.radio.title' => 'Radio',
+			'settings.radio.units.ms' => 'ms',
+			'settings.radio.units.kHz' => 'kHz',
+			'settings.radio.units.kHzPerSecond' => 'kHz/s',
+			'settings.radio.smartVfoSnap.title' => 'Ajuste inteligente del VFO',
+			'settings.radio.smartVfoSnap.descriptionOn' => 'Al dejar de girar el dial, redondea la frecuencia a un paso razonable. Solo en modos de voz.',
+			'settings.radio.smartVfoSnap.descriptionOff' => 'La radio se queda exactamente donde la sintonizaste.',
+			'settings.radio.snapDebounce.title' => 'Ajuste inteligente: retardo de reposo',
+			'settings.radio.snapDebounce.description' => 'Cuánto debe detenerse el dial antes de redondear la frecuencia. Menos se siente inmediato; más deja margen para un giro lento.',
+			'settings.radio.snapLongMove.title' => 'Ajuste inteligente: giro largo',
+			'settings.radio.snapLongMove.description' => 'Si te mueves al menos esto, la frecuencia se redondea a un kHz entero, por lento que hayas terminado.',
+			'settings.radio.snapMinMove.title' => 'Ajuste inteligente: giro mínimo',
+			'settings.radio.snapMinMove.description' => 'Si te mueves menos que esto no se redondea nada — el ajuste fino se respeta.',
+			'settings.radio.snapMinSpeed.title' => 'Ajuste inteligente: velocidad mínima',
+			'settings.radio.snapMinSpeed.description' => 'Si giras el dial más despacio que esto no se redondea nada, salvo que haya sido un giro largo.',
 			'settings.privacy.title' => 'Privacidad',
 			'settings.privacy.shareAppData.title' => 'Compartir datos de uso',
 			'settings.privacy.shareAppData.descriptionOn' => 'Ayúdanos a mejorar la app compartiendo datos de uso, fallos y rendimiento',
@@ -1866,6 +1967,7 @@ extension on TranslationsEs {
 			'settings.station.ic705TroubleshootingTitle' => 'Si la radio nunca responde',
 			'settings.station.ic705Troubleshooting' => 'La radio tiene una **única** sesión de control remoto. Cuando el inicio de sesión se ignora, casi siempre hay algo más usándola.\n\n- **Cierra cualquier otro cliente.** wfview o RS-BA1 conectado a la misma radio ocupa esa única sesión, y mientras tanto el inicio de sesión aquí simplemente se ignora.\n- **Revisa la configuración de red de la radio** — que la WLAN esté encendida, que esté en la misma red y que su función de control remoto (Network) esté activada.\n- **Reinicia la WLAN de la radio** si sigue atascada. Eso libera de forma fiable una sesión que la radio realmente esté reteniendo.\n\nUna **contraseña incorrecta se rechaza explícitamente**, no con silencio — así que si llegaste aquí en lugar de ver un mensaje de "rechazada", la contraseña no es el problema.',
 			'settings.station.statusStale' => 'Sin respuesta',
+			'settings.station.currentRadioSettings' => 'Ajustes de la radio actual',
 			'settings.offlineData.title' => 'Datos sin conexión',
 			'settings.offlineData.noFiles' => 'No hay archivos de datos',
 			'settings.offlineData.noFilesDescription' => 'Habilita extensiones de actividades o búsquedas para descargar aquí sus datos sin conexión.',
@@ -1889,6 +1991,8 @@ extension on TranslationsEs {
 			'settings.developer.experiments' => 'Experimentos',
 			'settings.developer.experimentsEnabled' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count, one: '${count} habilitado', other: '${count} habilitados', ), 
 			'settings.developer.patchTrack' => 'Canal de parches',
+			_ => null,
+		} ?? switch (path) {
 			'settings.developer.patchTrackDescription' => 'Qué canal de parches over-the-air sigue este dispositivo. Los canales más aventureros reciben correcciones antes, menos probadas. Los parches se aplican en el próximo reinicio.',
 			'settings.developer.trackStable' => 'Estable',
 			'settings.developer.trackUnstable' => 'Inestable',
@@ -1905,8 +2009,6 @@ extension on TranslationsEs {
 			'settings.developer.runtimeNotAvailable' => 'El motor de extensiones no está disponible.',
 			'settings.developer.panelLoadFailed' => 'No se pudo cargar este panel de configuración.',
 			'settings.developer.categoryCore' => 'Núcleo y motor',
-			_ => null,
-		} ?? switch (path) {
 			'settings.about.notices' => 'Avisos y mensajes',
 			'settings.about.noticesDescription' => 'Anuncios y mensajes de estado',
 			'settings.about.releaseNotes' => 'Notas de la versión',

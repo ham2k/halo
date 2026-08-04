@@ -331,6 +331,22 @@ String fmtFreq(double khz) {
   return grouped.toString();
 }
 
+/// Formats kHz for display at Hz precision, thousands-grouped and always
+/// three decimals: "14,285.400".
+///
+/// For the surfaces that show where a radio actually IS, rather than where a
+/// QSO was logged — [fmtFreq]'s 100 Hz rounding hides the last two digits,
+/// and a rig's own reading is exactly where those matter. Trailing zeros are
+/// kept (unlike [fmtFreqInput]) so the reading doesn't change width as the
+/// last digits settle.
+///
+/// Carried in whole Hz rather than by splitting the double: 14285.9996 taken
+/// apart directly yields a fraction of 1000 and formats as "14,285.1000".
+String fmtFreqToTheHz(double khz) {
+  final totalHz = (khz * 1000).round();
+  return '${fmtFreq((totalHz ~/ 1000).toDouble())}.${(totalHz % 1000).toString().padLeft(3, '0')}';
+}
+
 /// Formats kHz for an editable frequency field, at full stored precision
 /// (down to 1 Hz — three decimals in kHz) and without thousands grouping,
 /// so a value round-trips through [parseFreq] unchanged. Unlike [fmtFreq]
